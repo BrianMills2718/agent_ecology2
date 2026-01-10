@@ -110,18 +110,18 @@ class World:
         """Execute an action intent. Returns the result.
 
         Cost model:
-        - Action cost (flow): Real resource cost - deducted from flow budget
+        - Action cost (compute): Real resource cost - deducted from compute budget
         - Economic cost (scrip): Prices, fees - deducted from scrip balance
         """
-        flow_cost = self.get_cost(intent.action_type)
+        compute_cost = self.get_cost(intent.action_type)
 
         # Check if principal has enough FLOW for the action
-        if not self.ledger.can_spend_flow(intent.principal_id, flow_cost):
+        if not self.ledger.can_spend_compute(intent.principal_id, compute_cost):
             result = ActionResult(
                 success=False,
-                message=f"Insufficient flow. Need {flow_cost}, have {self.ledger.get_flow(intent.principal_id)}"
+                message=f"Insufficient compute. Need {compute_cost}, have {self.ledger.get_compute(intent.principal_id)}"
             )
-            self._log_action(intent, result, flow_cost, False)
+            self._log_action(intent, result, compute_cost, False)
             return result
 
         # Execute based on action type
@@ -192,8 +192,8 @@ class World:
                 net_new_bytes = new_size - existing_size
 
                 if net_new_bytes > 0 and not self.rights_registry.can_write(intent.principal_id, net_new_bytes):
-                    quota = self.rights_registry.get_stock_quota(intent.principal_id)
-                    used = self.rights_registry.get_stock_used(intent.principal_id)
+                    quota = self.rights_registry.get_disk_quota(intent.principal_id)
+                    used = self.rights_registry.get_disk_used(intent.principal_id)
                     result = ActionResult(
                         success=False,
                         message=f"Disk quota exceeded. Need {net_new_bytes} bytes, have {quota - used} available (quota: {quota}, used: {used})"
@@ -272,36 +272,36 @@ class World:
                 )
 
         elif isinstance(intent, InvokeArtifactIntent):
-            result = self._execute_invoke(intent, flow_cost=flow_cost)
+            result = self._execute_invoke(intent, compute_cost=compute_cost)
 
         else:
             result = ActionResult(success=False, message=f"Unknown action type")
 
         # Deduct FLOW cost only if action succeeded (real resource consumption)
         if result.success:
-            self.ledger.spend_flow(intent.principal_id, flow_cost)
+            self.ledger.spend_compute(intent.principal_id, compute_cost)
 
-        self._log_action(intent, result, flow_cost, result.success)
+        self._log_action(intent, result, compute_cost, result.success)
         return result
 
-    def _log_action(self, intent: ActionIntent, result: ActionResult, flow_cost: int, charged: bool):
+    def _log_action(self, intent: ActionIntent, result: ActionResult, compute_cost: int, charged: bool):
         """Log an action execution"""
         self.logger.log("action", {
             "tick": self.tick,
             "intent": intent.to_dict(),
             "result": result.to_dict(),
-            "flow_cost": flow_cost,
+            "compute_cost": compute_cost,
             "charged": charged,
-            "flow_after": self.ledger.get_flow(intent.principal_id),
+            "compute_after": self.ledger.get_compute(intent.principal_id),
             "scrip_after": self.ledger.get_scrip(intent.principal_id)
         })
 
-    def _execute_invoke(self, intent: InvokeArtifactIntent, flow_cost: int = 0) -> ActionResult:
+    def _execute_invoke(self, intent: InvokeArtifactIntent, compute_cost: int = 0) -> ActionResult:
         """
         Execute an invoke_artifact action.
 
         Cost model:
-        - Gas (flow): Real compute cost - paid from flow budget
+        - Gas (compute): Real compute cost - paid from compute budget
         - Price (scrip): Economic payment to artifact owner - paid from scrip
 
         Handles both:
@@ -310,7 +310,7 @@ class World:
 
         Args:
             intent: The invoke intent
-            flow_cost: The base flow cost (already checked by execute_action)
+            compute_cost: The base compute cost (already checked by execute_action)
         """
         artifact_id = intent.artifact_id
         method_name = intent.method
@@ -383,12 +383,12 @@ class World:
             owner_id = regular_artifact.owner_id
 
             # Check affordability:
-            # - Gas comes from FLOW (checked separately from base action flow)
+            # - Gas comes from COMPUTE (checked separately from base action compute)
             # - Price comes from SCRIP
-            if not self.ledger.can_spend_flow(intent.principal_id, gas_cost):
+            if not self.ledger.can_spend_compute(intent.principal_id, gas_cost):
                 return ActionResult(
                     success=False,
-                    message=f"Insufficient flow for gas: need {gas_cost}, have {self.ledger.get_flow(intent.principal_id)}"
+                    message=f"Insufficient compute for gas: need {gas_cost}, have {self.ledger.get_compute(intent.principal_id)}"
                 )
             if price > 0 and not self.ledger.can_afford_scrip(intent.principal_id, price):
                 return ActionResult(
@@ -397,7 +397,7 @@ class World:
                 )
 
             # Deduct gas FIRST from FLOW (always paid, even on failure)
-            self.ledger.spend_flow(intent.principal_id, gas_cost)
+            self.ledger.spend_compute(intent.principal_id, gas_cost)
 
             # Execute the code
             executor = get_executor()
@@ -411,7 +411,7 @@ class World:
 
                 return ActionResult(
                     success=True,
-                    message=f"Invoked {artifact_id} (gas: {gas_cost} flow, price: {price} scrip to {owner_id})",
+                    message=f"Invoked {artifact_id} (gas: {gas_cost} compute, price: {price} scrip to {owner_id})",
                     data={
                         "result": exec_result.get("result"),
                         "gas_paid": gas_cost,
@@ -423,7 +423,7 @@ class World:
                 # Execution failed - gas already paid, no price charged
                 return ActionResult(
                     success=False,
-                    message=f"Execution failed (gas paid: {gas_cost} flow): {exec_result.get('error')}",
+                    message=f"Execution failed (gas paid: {gas_cost} compute): {exec_result.get('error')}",
                     data={"gas_paid": gas_cost, "error": exec_result.get("error")}
                 )
 
@@ -494,7 +494,7 @@ class World:
             for artifact_id, sub in oracle.submissions.items():
                 oracle_status[artifact_id] = {
                     "status": sub.get("status", "unknown"),
-                    "submitter": sub.get("submitter_id", "unknown"),
+                    "submitter": sub.get("submitter", "unknown"),
                     "score": sub.get("score") if sub.get("status") == "scored" else None
                 }
 

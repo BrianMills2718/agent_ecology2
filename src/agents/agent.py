@@ -66,10 +66,10 @@ class Agent:
         if quotas:
             quota_info = f"""
 ## Your Rights (Quotas)
-- Flow quota: {quotas.get('flow_quota', 50)} credits/tick
-- Stock quota: {quotas.get('stock_quota', 10000)} bytes
-- Stock used: {quotas.get('stock_used', 0)} bytes
-- Stock available: {quotas.get('stock_available', 10000)} bytes"""
+- Compute quota: {quotas.get('compute_quota', 50)} per tick
+- Disk quota: {quotas.get('disk_quota', 10000)} bytes
+- Disk used: {quotas.get('disk_used', 0)} bytes
+- Disk available: {quotas.get('disk_available', 10000)} bytes"""
 
         # Format oracle submissions
         oracle_subs = world_state.get('oracle_submissions', {})
