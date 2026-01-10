@@ -3,14 +3,35 @@
 All configurable values come from config/config.yaml.
 No magic numbers in code - everything is configurable.
 
-See config/schema.yaml for documentation of each field.
+Configuration is validated at load time using Pydantic.
+Typos and invalid values fail fast with clear error messages.
+
+Usage:
+    from config import load_config, get, get_validated_config
+
+    # Load and validate (call once at startup)
+    load_config("config/config.yaml")
+
+    # Get values by dot-path (backward compatible)
+    max_ticks = get("world.max_ticks")
+
+    # Or use the typed config object
+    config = get_validated_config()
+    max_ticks = config.world.max_ticks
 """
 
 from __future__ import annotations
 
+import sys
 import yaml
 from pathlib import Path
 from typing import Any, TypedDict
+
+# Handle both relative and absolute imports
+try:
+    from .config_schema import AppConfig, load_validated_config, validate_config_dict
+except ImportError:
+    from config_schema import AppConfig, load_validated_config, validate_config_dict
 
 
 class PerAgentQuota(TypedDict):
@@ -21,41 +42,70 @@ class PerAgentQuota(TypedDict):
     llm_budget_quota: float
 
 
-# Global config instance
+# Global config instances
 _config: dict[str, Any] | None = None
+_validated_config: AppConfig | None = None
 
 # Default config path
 DEFAULT_CONFIG_PATH: Path = Path(__file__).parent.parent / "config" / "config.yaml"
 
 
 def load_config(config_path: str | None = None) -> dict[str, Any]:
-    """Load configuration from YAML file.
+    """Load and validate configuration from YAML file.
+
+    Validates the config against the Pydantic schema. Invalid configs
+    raise a ValidationError with details about what's wrong.
 
     Args:
         config_path: Path to config file. Defaults to config/config.yaml.
 
     Returns:
-        Configuration dictionary.
+        Configuration dictionary (for backward compatibility).
+
+    Raises:
+        FileNotFoundError: If config file doesn't exist.
+        pydantic.ValidationError: If config is invalid.
     """
-    global _config
+    global _config, _validated_config
 
     path: Path = Path(config_path) if config_path else DEFAULT_CONFIG_PATH
+
+    # Load and validate with Pydantic
+    _validated_config = load_validated_config(path)
+
+    # Also keep raw dict for backward compatibility
     with open(path) as f:
         loaded: Any = yaml.safe_load(f)
         if not isinstance(loaded, dict):
-            raise TypeError(f"Config file must contain a dict, got {type(loaded)}")
+            loaded = {}
         _config = loaded
 
     return _config
 
 
 def get_config() -> dict[str, Any]:
-    """Get the loaded configuration. Loads default if not already loaded."""
+    """Get the loaded configuration dict. Loads default if not already loaded.
+
+    For typed access, use get_validated_config() instead.
+    """
     global _config
     if _config is None:
         load_config()
     assert _config is not None
     return _config
+
+
+def get_validated_config() -> AppConfig:
+    """Get the validated configuration object.
+
+    Returns a typed AppConfig instance with IDE autocompletion support.
+    Loads default config if not already loaded.
+    """
+    global _validated_config
+    if _validated_config is None:
+        load_config()
+    assert _validated_config is not None
+    return _validated_config
 
 
 def get(key: str, default: Any = None) -> Any:
@@ -115,24 +165,52 @@ def compute_per_agent_quota(num_agents: int) -> PerAgentQuota:
     if num_agents <= 0:
         num_agents = 1
 
-    # Compute (flow resource) - per tick, distributed equally by default
-    compute_total: int = get_flow_resource("compute", "per_tick") or 1000
-    compute_dist: str = get_flow_resource("compute", "distribution") or "equal"
+    config = get_validated_config()
 
-    # Disk (stock resource) - total, distributed equally by default
-    disk_total: int = get_stock_resource("disk", "total") or 50000
-    disk_dist: str = get_stock_resource("disk", "distribution") or "equal"
+    # Compute (flow resource) - per tick, distributed equally
+    compute_total = config.resources.flow.compute.per_tick
 
-    # LLM budget (stock resource) - total $, distributed equally by default
-    llm_total: float = get_stock_resource("llm_budget", "total") or 1.00
-    llm_dist: str = get_stock_resource("llm_budget", "distribution") or "equal"
+    # Disk (stock resource) - total, distributed equally
+    disk_total = int(config.resources.stock.disk.total)
 
-    # Equal distribution (only type supported for now)
-    # Note: compute_dist, disk_dist, llm_dist are read but only "equal" is implemented
-    _ = (compute_dist, disk_dist, llm_dist)  # Acknowledge unused variables
+    # LLM budget (stock resource) - total $, distributed equally
+    llm_total = config.resources.stock.llm_budget.total
 
     return {
         "compute_quota": compute_total // num_agents,
         "disk_quota": disk_total // num_agents,
         "llm_budget_quota": llm_total / num_agents,
     }
+
+
+def set_config_value(key: str, value: Any) -> None:
+    """Set a config value by dot-separated key path.
+
+    Used for runtime overrides (e.g., CLI args).
+    Does NOT re-validate - use with caution.
+
+    Args:
+        key: Dot-separated key path (e.g., "world.max_ticks")
+        value: Value to set
+    """
+    global _config, _validated_config
+
+    if _config is None:
+        load_config()
+
+    assert _config is not None
+
+    keys = key.split(".")
+    target = _config
+
+    # Navigate to parent
+    for k in keys[:-1]:
+        if k not in target:
+            target[k] = {}
+        target = target[k]
+
+    # Set the value
+    target[keys[-1]] = value
+
+    # Re-validate the config
+    _validated_config = validate_config_dict(_config)
