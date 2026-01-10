@@ -70,7 +70,11 @@ genesis:
 # -----------------------------------------------------------------------------
 executor:
   timeout_seconds: 5
-  allowed_imports:
+  # NOTE: These modules are PRE-LOADED into the execution namespace.
+  # This is NOT a security whitelist - agents can import any stdlib module.
+  # Security boundary is the container, not code-level sandboxing.
+  # See docs/SECURITY.md for rationale.
+  preloaded_imports:
     - math
     - json
     - random

@@ -1,11 +1,14 @@
 """SafeExecutor - Execution of agent-created code
 
 Uses standard Python exec() with:
-- Whitelisted modules only (configurable in config.yaml)
-- Controlled globals with pre-imported allowed modules
+- Pre-loaded modules available without import (configurable in config.yaml)
+- Controlled globals namespace
 - Timeout protection (configurable via signal)
 
-Security model: Docker non-root user (external), not code-level sandboxing.
+NOTE: This is NOT a security sandbox. Agents CAN import any stdlib module.
+The preloaded_imports config just makes common modules available without
+explicit import statements. Security boundary is the container (Docker
+non-root user), not code-level restrictions. See docs/SECURITY.md.
 """
 
 from __future__ import annotations
@@ -46,7 +49,7 @@ class _DatetimeModule:
     timedelta: type[timedelta] = timedelta
 
 
-# Available modules that can be whitelisted in config
+# Available modules that can be pre-loaded into execution namespace
 AVAILABLE_MODULES: dict[str, ModuleType | _DatetimeModule] = {
     "math": math,
     "json": json,
@@ -55,16 +58,30 @@ AVAILABLE_MODULES: dict[str, ModuleType | _DatetimeModule] = {
 }
 
 
-def get_allowed_modules() -> dict[str, ModuleType | _DatetimeModule]:
-    """Get allowed modules based on config."""
-    allowed_imports: list[str] = get("executor.allowed_imports") or [
-        "math", "json", "random", "datetime"
-    ]
+def get_preloaded_modules() -> dict[str, ModuleType | _DatetimeModule]:
+    """Get modules to pre-load into execution namespace.
+
+    NOTE: This is NOT a security whitelist. Agents can still import
+    any stdlib module via import statements. These modules are just
+    made available without explicit import for convenience.
+    """
+    # Support both new name and legacy name for backward compatibility
+    preloaded: list[str] = (
+        get("executor.preloaded_imports") or
+        get("executor.allowed_imports") or  # Legacy fallback
+        ["math", "json", "random", "datetime"]
+    )
     return {
         name: AVAILABLE_MODULES[name]
-        for name in allowed_imports
+        for name in preloaded
         if name in AVAILABLE_MODULES
     }
+
+
+# Backward compatibility alias
+def get_allowed_modules() -> dict[str, ModuleType | _DatetimeModule]:
+    """DEPRECATED: Use get_preloaded_modules()"""
+    return get_preloaded_modules()
 
 
 # Default for backward compatibility
@@ -112,20 +129,22 @@ class SafeExecutor:
 
     Features:
     - Standard Python exec() with controlled namespace
-    - Whitelisted imports pre-loaded (configurable)
+    - Common modules pre-loaded (configurable via preloaded_imports)
     - Execution timeout (configurable)
-    - Full Python capability for agent sub-calls
+    - Full Python capability - agents CAN import any stdlib module
 
-    Security: Docker non-root user (external), not code-level sandboxing.
+    NOTE: This is NOT a security sandbox. Security boundary is the
+    container (Docker non-root user), not code-level restrictions.
+    See docs/SECURITY.md for rationale.
     """
 
     timeout: int
-    allowed_modules: dict[str, ModuleType | _DatetimeModule]
+    preloaded_modules: dict[str, ModuleType | _DatetimeModule]
 
     def __init__(self, timeout: int | None = None) -> None:
         default_timeout: int = get("executor.timeout_seconds") or 5
         self.timeout = timeout or default_timeout
-        self.allowed_modules = get_allowed_modules()
+        self.preloaded_modules = get_preloaded_modules()
 
     def validate_code(self, code: str) -> tuple[bool, str]:
         """
@@ -182,7 +201,7 @@ class SafeExecutor:
         # Build controlled globals with full builtins and allowed modules
         controlled_builtins = dict(vars(builtins))
         controlled_builtins["__import__"] = _make_controlled_import(
-            self.allowed_modules
+            self.preloaded_modules
         )
 
         controlled_globals: dict[str, Any] = {
@@ -191,7 +210,7 @@ class SafeExecutor:
         }
 
         # Add allowed modules to namespace (so they can be used without import)
-        for name, module in self.allowed_modules.items():
+        for name, module in self.preloaded_modules.items():
             controlled_globals[name] = module
 
         # Execute the code definition (creates the run function)
