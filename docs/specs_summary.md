@@ -2327,3 +2327,267 @@ Document extension should stop when the system is implemented enough to generate
 **35.8 Final Summary**
 This document is a thinking scaffold, encoding commitments resisting convenience, boundaries preventing drift, and a posture valuing learning over success. The instruction for the next model is: Do not optimize this. Stress it. If it breaks, that is information. If it survives, that is progress.
 
+---
+
+## Appendix A: Initial World Bootstrapping
+
+This section describes how the system is brought into existence: how the first principals, resources, artifacts, and rules appear, and what assumptions are explicitly not made at genesis. Bootstrapping is treated as a constrained, inspectable process—not a magical prelude.
+
+### A.1 Why Bootstrapping Must Be Explicit
+
+Many systems hide critical assumptions in their bootstrapping phase: implicit superusers, invisible initial resources, unaccounted privileges, or hard-coded authority. This system rejects that pattern.
+
+The initial state of the world must be:
+- minimal
+- legible
+- reproducible
+- and explainable using the same ontology as all later states
+
+If something exists at time zero, there must be a reason.
+
+### A.2 The Genesis Event
+
+World creation is modeled as a **genesis event**, which:
+- initializes core physics parameters
+- creates a minimal set of principals with standing
+- allocates initial balances and stock
+- installs baseline contracts (genesis artifacts)
+- creates foundational artifacts
+
+The genesis event is:
+- logged
+- versioned
+- and replayable at the substrate level
+
+Genesis is not "outside the system"; it is simply the first action sequence.
+
+### A.3 Initial Principals
+
+At minimum, the world begins with:
+
+**Root Principal (System)**
+- Has standing (owner_id: "system")
+- Responsible for installing initial configuration and contracts
+- Does not have unlimited privilege beyond what is explicitly granted via genesis artifacts
+
+**Initial Agents**
+- One or more LLM-driven agents with standing
+- Each with explicit initial balances (scrip) and compute quotas
+- No implicit coordination or hierarchy
+
+Any additional principals must be created via explicit actions after genesis (using `genesis_ledger.spawn_principal()`).
+
+### A.4 Initial Resources and Limits
+
+Initial flow and stock limits are intentionally conservative. The goal is not to enable impressive behavior, but to:
+- stress test costing
+- surface failure modes early
+- prevent runaway execution
+
+Typical initial constraints include:
+- tight flow budgets (compute per tick)
+- small stock allocations (disk quota)
+- aggressive logging
+- low thresholds for freezing
+
+These limits are expected to be relaxed over time—but only after they are understood.
+
+### A.5 Genesis Artifacts (Baseline Contracts)
+
+The world begins with a minimal set of genesis artifacts that act as system-owned proxies to core infrastructure:
+
+| Genesis Artifact | Purpose | Methods |
+|-----------------|---------|---------|
+| `genesis_ledger` | Balance management | `balance`, `all_balances`, `transfer`, `spawn_principal` |
+| `genesis_oracle` | External minting | `status`, `submit`, `check`, `process` |
+| `genesis_rights_registry` | Quota management | `check_quota`, `all_quotas`, `transfer_quota` |
+| `genesis_event_log` | Observability | `read` |
+
+These artifacts:
+- consume no stock (system-owned)
+- can be invoked but not modified by agents
+- are inspectable like any other state
+- enforce cost rules (some methods free, some cost scrip)
+
+There is no "hard-coded law" beyond physics—all rules are expressed through these artifacts.
+
+### A.6 No Pre-Existing Structure
+
+Crucially, the world does not begin with:
+- organizations
+- roles
+- markets
+- schedules
+- or coordination mechanisms
+
+If any of these appear later, they must:
+- be constructed via artifacts
+- stabilized by contracts
+- and sustained by cost
+
+Genesis sets the stage; it does not decide the play.
+
+### A.7 Re-Genesis and World Reset
+
+Because genesis is explicit and logged, it is possible to:
+- re-initialize the world
+- adjust initial parameters
+- and compare outcomes across runs
+
+This is invaluable for ontology validation, slice iteration, and controlled experimentation. Re-genesis is a development tool—not a production mechanism.
+
+---
+
+## Appendix B: ActionIntent Schema Design
+
+The ActionIntent schema represents the "narrow waist" linking the LLM and the world. The LLM can only propose intents in this format, and the world is solely responsible for execution. Getting this right allows subsequent changes without rewriting the stack.
+
+### B.1 Schema Options Evaluated
+
+The design evaluated four options on a spectrum from tight/safe/testable to flexible/powerful/harder-to-debug:
+
+**Option A: Tiny, Closed Set (Recommended for V0/V1)**
+
+Actions (4 total):
+- `noop` - Do nothing
+- `read_artifact(artifact_id)` - Read an artifact's content
+- `write_artifact(artifact_id, content, ...)` - Create or modify an artifact
+- `invoke_artifact(artifact_id, method, args)` - Invoke a method on an artifact
+
+*Pros:* Extremely testable and debuggable, easy to validate/clip/reject, forces LLM to "program" via artifacts (good for emergence), keeps world deterministic.
+
+*Cons:* LLM may feel "boxed in" initially, some behaviors require multi-step plans.
+
+**Option B: Medium, Open-Ended But Typed**
+
+Adds structured actions like `create_contract`, `offer_contract`, `spawn_executable_artifact`.
+
+*Use in:* Slice 1–2 after the kernel is stable.
+
+**Option C: General Code Execution (Avoided)**
+
+Something like `eval(code)` or `run_python(code)`.
+
+*Rejected because:* Destroys the narrow waist, testability plummets, security becomes a whole project, hard to reason about costs/standing/rights.
+
+**Option D: High-Level Intent Language (Avoided Early)**
+
+Something like `achieve(goal="make a demo go viral")`.
+
+*Rejected because:* Not testable, hidden governance/semantics, can't tell what failed.
+
+### B.2 Implemented Schema
+
+The current implementation uses **Option A**:
+
+```python
+ActionType = Literal["noop", "read_artifact", "write_artifact", "invoke_artifact"]
+```
+
+Key design rule: **Any action must be reducible to: consume flow + read/write artifacts + emit an event.**
+
+Money transfers (`transfer`) and quota transfers (`transfer_quota`) are handled via `invoke_artifact` on genesis artifacts, not as separate action types. This keeps the narrow waist minimal.
+
+### B.3 Why This Matters for Testability
+
+A small, typed ActionIntent schema means:
+- Every LLM output is machine-checkable
+- Every failure has a category (validation error, insufficient funds, contract denial)
+- Every success has measurable cost
+
+A large or vague schema would blur failures, turn debugging into "prompt mysticism," and hide ontology bugs behind "LLMs are stochastic."
+
+---
+
+## Appendix C: Implementation Slices
+
+This section details the thin-slice implementation plan, ensuring each step is testable and reversible.
+
+### C.1 Guiding Rule
+
+Each slice must ship:
+- A runnable simulation command
+- Deterministic seeds
+- A JSONL event log
+- 2-3 tests for invariants
+
+### C.2 Slice Plan (LLMs Early)
+
+**Slice 0: Deterministic Kernel**
+- Flow/stock accounting
+- Ledger with proxy admission + post-hoc settlement
+- Artifact store (IDs, bytes accounting)
+- JSONL event log
+- Deterministic replay
+
+*Tests:* Budget resets, memory accounting, settlement charges, negative balance freezing, replay determinism.
+
+**Slice 0.5: LLM Agent (Sandboxed)**
+- LLM outputs ActionIntent JSON only
+- Runtime parses, validates, accepts/rejects/clips
+- Rejected intents logged as events
+- **Critical rule:** LLM never directly mutates world state
+
+*Tests:* World step determinism given fixed model response, invalid JSON handling, denial of unsafe/costly intents.
+
+**Slice 1: Minimal Action Surface**
+- 4 actions: `noop`, `read_artifact`, `write_artifact`, `invoke_artifact`
+- Genesis artifacts as system proxies
+- Basic cost charging
+
+**Slice 2: Contracts v0 (Policy Artifacts)**
+- Simple artifact policies (read_price, invoke_price, allow_read, allow_write, allow_invoke)
+- Contract evaluation during action execution
+
+**Slice 3+: Demos + Harness + External Minting**
+- Demo manifest and TypeScript renderer
+- Puppeteer evidence artifacts
+- Oracle minting pipeline (stub initially, external later)
+
+### C.3 Current Implementation Status
+
+The codebase has implemented through approximately Slice 2:
+- ✅ Deterministic kernel with flow/stock accounting
+- ✅ LLM agents outputting typed ActionIntents (Pydantic models)
+- ✅ All 4 action types implemented
+- ✅ Genesis artifacts (ledger, oracle, rights_registry, event_log)
+- ✅ Basic policy system on artifacts
+- ✅ Two-phase commit execution
+- ✅ Cooldown mechanism based on output tokens
+- ✅ spawn_principal for dynamic agent creation
+- ✅ Originality oracle with duplicate detection
+
+---
+
+## Appendix D: Testability Checklist
+
+Testability means determining if the system behaves correctly *independent of the LLM's intelligence*.
+
+### D.1 Five Aspects of Testability
+
+1. **Deterministic World Execution**
+   - Given the same initial state and sequence of accepted ActionIntents
+   - The world produces identical next state, event log, and cost charges
+   - The LLM is outside the deterministic core
+
+2. **Strict Action Validation**
+   - Every LLM output is classifiable as: ✅ valid and executed, ❌ invalid and rejected, ⚠️ clipped/modified with logged reason
+   - Bad behavior is observable; prompt bugs don't corrupt world state
+
+3. **Observable Invariants**
+   - Balances never change except via ledger entries
+   - Memory usage never exceeds limits
+   - Negative balance ⇒ no new actions
+   - Contracts never mutate state directly
+   - If any invariant breaks, it's a system bug, not "LLM weirdness"
+
+4. **Replayable Evidence**
+   - Action intents, accept/reject decisions, cost measurements, state diffs are stored
+   - Can replay without calling the LLM
+   - Can inspect exactly where things diverged
+
+5. **Isolation of Intelligence from Physics**
+   - The LLM proposes, never executes
+   - The world executes, never reasons
+   - If an agent fails, you can swap the LLM or replay with fixed output without touching world code
+
