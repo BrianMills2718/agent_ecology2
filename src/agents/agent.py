@@ -1,4 +1,9 @@
-"""LLM Agent - proposes actions based on world state"""
+"""LLM Agent - proposes actions based on world state
+
+Supports both synchronous and asynchronous action proposal:
+- propose_action(): Synchronous, for single-agent or sequential use
+- propose_action_async(): Async, for parallel agent thinking with asyncio.gather()
+"""
 
 import sys
 import json
@@ -217,6 +222,55 @@ Your response should include:
                 response: ActionResponse = flat_response.to_action_response()
             else:
                 response = self.llm.generate(
+                    prompt,
+                    response_model=ActionResponse
+                )
+            usage: TokenUsage = self.llm.last_usage.copy()
+
+            return {
+                "action": response.action.model_dump(),
+                "thought_process": response.thought_process,
+                "usage": usage
+            }
+        except ValidationError as e:
+            # Pydantic validation failed
+            usage = self.llm.last_usage.copy()
+            return {
+                "error": f"Pydantic validation failed: {e}",
+                "raw_response": None,
+                "usage": usage
+            }
+        except Exception as e:
+            return {
+                "error": f"LLM call failed: {e}",
+                "raw_response": None,
+                "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "cost": 0.0}
+            }
+
+    async def propose_action_async(self, world_state: dict[str, Any]) -> ActionResult:
+        """
+        Async version of propose_action for parallel agent thinking.
+
+        Uses LLMProvider.generate_async() for non-blocking LLM calls,
+        enabling multiple agents to think concurrently with asyncio.gather().
+
+        Returns same structure as propose_action():
+          - 'action' (valid action dict) and 'thought_process' (str), or 'error' (string)
+          - 'usage' (token usage: input_tokens, output_tokens, total_tokens, cost)
+        """
+        prompt: str = self.build_prompt(world_state)
+
+        try:
+            # Use FlatActionResponse for Gemini (avoids anyOf/oneOf issues)
+            # Use ActionResponse for other models (OpenAI, Anthropic, etc.)
+            if self._is_gemini_model():
+                flat_response: FlatActionResponse = await self.llm.generate_async(
+                    prompt,
+                    response_model=FlatActionResponse
+                )
+                response: ActionResponse = flat_response.to_action_response()
+            else:
+                response = await self.llm.generate_async(
                     prompt,
                     response_model=ActionResponse
                 )
