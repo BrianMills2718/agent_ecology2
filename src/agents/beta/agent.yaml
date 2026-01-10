@@ -1,0 +1,11 @@
+id: beta
+enabled: true
+llm_model: "gemini/gemini-3-flash-preview"
+starting_credits: 100
+
+# Genotype traits:
+# - Risk tolerance: LOW
+# - Communication: READ-HEAVY
+# - Collaboration: MEDIUM
+# - Time horizon: LONG
+# - Strategy: EXPLOITATIVE (optimize known patterns)

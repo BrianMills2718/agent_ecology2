@@ -1,0 +1,25 @@
+version: '3.3'
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./qdrant_storage:/qdrant/storage
+    restart: unless-stopped
+
+  simulation:
+    build: .
+    depends_on:
+      - qdrant
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+      - ./llm_logs:/app/llm_logs
+    command: ["python", "run.py"]

@@ -1,0 +1,11 @@
+id: delta
+enabled: true
+llm_model: "gemini/gemini-3-flash-preview"
+starting_credits: 100
+
+# Genotype traits:
+# - Risk tolerance: HIGH
+# - Communication: WRITE-HEAVY
+# - Collaboration: LOW
+# - Time horizon: LONG
+# - Strategy: INFRASTRUCTURE-BUILDING

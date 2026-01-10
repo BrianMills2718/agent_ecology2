@@ -1,0 +1,109 @@
+# =============================================================================
+# ACTION SPECIFICATION - V1 Target
+# =============================================================================
+# All actions an agent can take. This is the "narrow waist" interface.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# IMPLEMENTED (Slice 0.5)
+# -----------------------------------------------------------------------------
+
+noop:
+  description: "Do nothing. Consumes minimal credits."
+  cost: 1
+  parameters: {}
+  effects: "None"
+  failure_modes: "Only fails if balance < 1"
+  status: IMPLEMENTED
+
+read_artifact:
+  description: "Read an artifact's content."
+  cost: 2
+  parameters:
+    artifact_id: "string (required)"
+  effects: "Returns artifact content to agent"
+  failure_modes:
+    - "Artifact doesn't exist"
+    - "Insufficient credits"
+  status: IMPLEMENTED
+
+write_artifact:
+  description: "Create or update an artifact."
+  cost: 5
+  parameters:
+    artifact_id: "string (required)"
+    artifact_type: "string (optional, default: 'generic')"
+    content: "string (required)"
+  effects:
+    - "Creates new artifact if doesn't exist"
+    - "Updates content if owner matches"
+  failure_modes:
+    - "Trying to update artifact owned by another agent"
+    - "Insufficient credits"
+  ownership_rule: "Creator owns artifact. Only owner can modify."
+  status: IMPLEMENTED
+
+transfer:
+  description: "Send credits to another agent."
+  cost: 1  # plus the amount transferred
+  parameters:
+    to_principal_id: "string (required)"
+    amount: "positive integer (required)"
+  effects: "Moves credits from sender to recipient"
+  failure_modes:
+    - "Recipient doesn't exist"
+    - "Insufficient credits (cost + amount)"
+    - "Amount <= 0"
+  status: IMPLEMENTED
+
+# -----------------------------------------------------------------------------
+# PLANNED (Future Slices)
+# -----------------------------------------------------------------------------
+
+delete_artifact:
+  description: "Delete an artifact you own."
+  cost: 1
+  parameters:
+    artifact_id: "string (required)"
+  effects: "Removes artifact from world"
+  failure_modes:
+    - "Artifact doesn't exist"
+    - "Not the owner"
+  status: PLANNED
+  slice: "1.0"
+
+list_artifacts:
+  description: "Get list of all artifact IDs (not contents)."
+  cost: 1
+  parameters: {}
+  effects: "Returns list of artifact IDs and metadata"
+  rationale: "Cheaper than reading each one. Discovery mechanism."
+  status: PLANNED
+  slice: "1.0"
+
+# -----------------------------------------------------------------------------
+# FUTURE (V2+)
+# -----------------------------------------------------------------------------
+
+invoke_tool:
+  description: "Execute a tool defined in an artifact."
+  cost: "Variable (defined by tool)"
+  parameters:
+    tool_artifact_id: "string"
+    tool_input: "JSON"
+  effects: "Executes tool logic, returns result"
+  notes: "Requires tool execution sandbox. Complex."
+  status: DEFERRED
+  slice: "V2"
+
+propose_contract:
+  description: "Create a conditional agreement between agents."
+  cost: 10
+  parameters:
+    contract_type: "string"
+    parties: "list of agent IDs"
+    terms: "JSON defining conditions and transfers"
+  effects: "Creates pending contract artifact"
+  notes: "Requires contract engine. Very complex."
+  status: DEFERRED
+  slice: "V2"

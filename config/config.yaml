@@ -1,0 +1,114 @@
+# =============================================================================
+# AGENT ECOLOGY - CONFIGURATION
+# =============================================================================
+# All numbers that control the simulation. No magic numbers in code.
+# See schema.yaml for documentation of each field.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# RESOURCES - Map to real physical/financial scarcity
+# -----------------------------------------------------------------------------
+resources:
+  stock:  # Finite pool, don't refresh
+    llm_budget:
+      total: 1.00               # $ for API calls
+      unit: dollars
+      distribution: equal
+    disk:
+      total: 50000              # bytes total
+      unit: bytes
+      distribution: equal
+
+  flow:  # Rate-limited, refresh per tick
+    compute:
+      per_tick: 1000            # cycles available per tick
+      unit: cycles
+      distribution: equal
+    bandwidth:
+      per_tick: 0               # 0 = disabled for now
+      unit: bytes
+      distribution: equal
+
+# -----------------------------------------------------------------------------
+# SCRIP - Economic currency (not a resource)
+# -----------------------------------------------------------------------------
+scrip:
+  starting_amount: 100
+
+# -----------------------------------------------------------------------------
+# COSTS - What actions consume (compute units)
+# -----------------------------------------------------------------------------
+costs:
+  actions:
+    noop: 1
+    read_artifact: 2
+    write_artifact: 5
+    invoke_artifact: 1
+  execution_gas: 2
+  default: 1
+  # Token costs for thinking
+  per_1k_input_tokens: 1
+  per_1k_output_tokens: 3
+
+# -----------------------------------------------------------------------------
+# GENESIS ARTIFACTS - System services and fees (scrip)
+# -----------------------------------------------------------------------------
+genesis:
+  ledger:
+    transfer_fee: 1
+  oracle:
+    submit_fee: 5
+    mint_ratio: 10              # score / 10 = scrip minted
+  rights_registry:
+    transfer_fee: 1
+  event_log:
+    max_per_read: 100
+    buffer_size: 1000
+
+# -----------------------------------------------------------------------------
+# EXECUTOR
+# -----------------------------------------------------------------------------
+executor:
+  timeout_seconds: 5
+  allowed_imports:
+    - math
+    - json
+    - random
+    - datetime
+
+# -----------------------------------------------------------------------------
+# ORACLE SCORER
+# -----------------------------------------------------------------------------
+oracle_scorer:
+  model: "gemini/gemini-3-flash-preview"
+  timeout: 30
+  max_content_length: 200000
+
+# -----------------------------------------------------------------------------
+# LLM
+# -----------------------------------------------------------------------------
+llm:
+  default_model: "gemini/gemini-3-flash-preview"
+  timeout: 60
+  rate_limit_delay: 15
+
+# -----------------------------------------------------------------------------
+# LOGGING
+# -----------------------------------------------------------------------------
+logging:
+  output_file: "run.jsonl"
+  log_dir: "llm_logs"
+  default_recent: 50
+
+# -----------------------------------------------------------------------------
+# WORLD
+# -----------------------------------------------------------------------------
+world:
+  max_ticks: 100
+
+# -----------------------------------------------------------------------------
+# BUDGET - Global API limit
+# -----------------------------------------------------------------------------
+budget:
+  max_api_cost: 1.00            # $ (0 = unlimited)
+  checkpoint_file: "checkpoint.json"

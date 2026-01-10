@@ -1,0 +1,11 @@
+id: gamma
+enabled: true
+llm_model: "gemini/gemini-3-flash-preview"
+starting_credits: 100
+
+# Genotype traits:
+# - Risk tolerance: MEDIUM
+# - Communication: BALANCED
+# - Collaboration: HIGH
+# - Time horizon: MEDIUM
+# - Strategy: COORDINATION-FOCUSED

@@ -1,0 +1,94 @@
+"""
+Agent Loader - Discovers and loads agents from directory structure
+
+Each agent lives in src/agents/<name>/ with:
+  - agent.yaml: config (id, model, credits, enabled)
+  - system_prompt.md: the agent's system prompt
+"""
+
+import yaml
+from pathlib import Path
+from typing import List, Dict, Any
+
+# Resolve paths relative to project root
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+
+def load_agents(agents_dir: str = None, prompts_dir: str = None) -> List[Dict[str, Any]]:
+    """
+    Load all enabled agents from the agents directory.
+    Returns list of agent configs with prompts loaded.
+    """
+    agents_path = Path(agents_dir) if agents_dir else Path(__file__).parent
+    prompts_path = Path(prompts_dir) if prompts_dir else PROJECT_ROOT / "config" / "prompts"
+
+    # Load shared action schema
+    action_schema_path = prompts_path / "action_schema.md"
+    action_schema = ""
+    if action_schema_path.exists():
+        action_schema = action_schema_path.read_text()
+
+    agents = []
+
+    # Iterate through agent directories
+    for agent_dir in sorted(agents_path.iterdir()):
+        # Skip non-directories and template
+        if not agent_dir.is_dir():
+            continue
+        if agent_dir.name.startswith("_"):
+            continue
+
+        config_path = agent_dir / "agent.yaml"
+        prompt_path = agent_dir / "system_prompt.md"
+
+        # Skip if missing required files
+        if not config_path.exists():
+            print(f"Warning: {agent_dir.name} missing agent.yaml, skipping")
+            continue
+
+        # Load config
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+
+        # Skip disabled agents
+        if not config.get("enabled", True):
+            continue
+
+        # Load prompt
+        system_prompt = ""
+        if prompt_path.exists():
+            system_prompt = prompt_path.read_text()
+
+        # Build full agent config
+        agent = {
+            "id": config.get("id", agent_dir.name),
+            "llm_model": config.get("llm_model"),
+            "starting_credits": config.get("starting_credits", 100),
+            "system_prompt": system_prompt,
+            "action_schema": action_schema,
+            # Optional overrides
+            "temperature": config.get("temperature"),
+            "max_tokens": config.get("max_tokens"),
+        }
+
+        agents.append(agent)
+
+    return agents
+
+
+def list_agents(agents_dir: str = "agents") -> List[str]:
+    """List all agent directory names (excluding template)"""
+    agents_path = Path(agents_dir)
+    return [
+        d.name for d in sorted(agents_path.iterdir())
+        if d.is_dir() and not d.name.startswith("_")
+    ]
+
+
+if __name__ == "__main__":
+    # Quick test
+    agents = load_agents()
+    print(f"Found {len(agents)} agents:")
+    for a in agents:
+        print(f"  - {a['id']}: {a['starting_credits']} credits")
+        print(f"    prompt: {len(a['system_prompt'])} chars")

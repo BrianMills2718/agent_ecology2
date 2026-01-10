@@ -1,0 +1,123 @@
+# =============================================================================
+# AGENT ECOLOGY - CONFIG SCHEMA
+# =============================================================================
+# This defines the structure. See config.yaml for actual values.
+# No numbers should appear in code - only here.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# RESOURCES
+# All map to real physical/financial scarcity
+# -----------------------------------------------------------------------------
+resources:
+  # Stock resources: finite pool, don't refresh, distributed initially
+  stock:
+    llm_budget:
+      total: <number>           # Total $ for API calls (user's budget)
+      unit: dollars
+      distribution: equal       # How to split among agents: equal | weighted | custom
+    disk:
+      total: <number>           # Total bytes available
+      unit: bytes
+      distribution: equal
+
+  # Flow resources: rate-limited, refresh per tick
+  flow:
+    compute:
+      per_tick: <number>        # CPU cycles/ms available per tick
+      unit: cycles
+      distribution: equal       # Quota per agent
+    bandwidth:
+      per_tick: <number>        # Bytes of network I/O per tick
+      unit: bytes
+      distribution: equal
+
+# -----------------------------------------------------------------------------
+# SCRIP
+# Economic currency - NOT a resource, just medium of exchange
+# -----------------------------------------------------------------------------
+scrip:
+  starting_amount: <number>     # Each agent starts with this much
+  # Note: scrip has no "total" - it's created via oracle minting and destroyed via fees
+
+# -----------------------------------------------------------------------------
+# COSTS
+# What actions consume (in compute units, not scrip)
+# -----------------------------------------------------------------------------
+costs:
+  actions:
+    noop: <number>
+    read_artifact: <number>
+    write_artifact: <number>
+    invoke_artifact: <number>
+  execution_gas: <number>       # Compute cost to run agent code
+  default: <number>             # Fallback if action not listed
+
+# -----------------------------------------------------------------------------
+# GENESIS ARTIFACTS
+# System-provided services and their fees (in scrip)
+# -----------------------------------------------------------------------------
+genesis:
+  ledger:
+    transfer_fee: <number>      # Scrip fee to transfer scrip
+  oracle:
+    submit_fee: <number>        # Scrip fee to submit for scoring
+    mint_ratio: <number>        # score / ratio = scrip minted
+  rights_registry:
+    transfer_fee: <number>      # Scrip fee to transfer quota
+  event_log:
+    max_per_read: <number>      # Cap events returned per read
+    buffer_size: <number>       # Internal buffer size
+
+# -----------------------------------------------------------------------------
+# EXECUTOR
+# Code execution settings
+# -----------------------------------------------------------------------------
+executor:
+  timeout_seconds: <number>     # Max time for agent code to run
+  allowed_imports:              # Whitelist of importable modules
+    - math
+    - json
+    - random
+    - datetime
+
+# -----------------------------------------------------------------------------
+# ORACLE SCORER
+# External LLM scoring settings
+# -----------------------------------------------------------------------------
+oracle_scorer:
+  model: <string>               # LLM model for scoring
+  timeout: <number>             # Seconds
+  max_content_length: <number>  # Truncate content beyond this
+
+# -----------------------------------------------------------------------------
+# LLM
+# Agent LLM settings
+# -----------------------------------------------------------------------------
+llm:
+  default_model: <string>
+  timeout: <number>
+  rate_limit_delay: <number>    # Seconds between calls
+
+# -----------------------------------------------------------------------------
+# LOGGING
+# -----------------------------------------------------------------------------
+logging:
+  output_file: <string>
+  log_dir: <string>
+  default_recent: <number>      # Default N for "recent events"
+
+# -----------------------------------------------------------------------------
+# WORLD
+# Simulation settings
+# -----------------------------------------------------------------------------
+world:
+  max_ticks: <number>
+
+# -----------------------------------------------------------------------------
+# BUDGET
+# Global API spend limit
+# -----------------------------------------------------------------------------
+budget:
+  max_api_cost: <number>        # $ limit (0 = unlimited)
+  checkpoint_file: <string>     # Where to save state on pause

@@ -1,0 +1,162 @@
+# =============================================================================
+# AGENT ECOLOGY V1 - TARGET CONFIGURATION
+# =============================================================================
+# This is what we're building towards. Not all features exist yet.
+# Use this to guide thin slice planning.
+# =============================================================================
+
+world:
+  max_ticks: 1000
+  credits_per_tick: 50          # Flow: renewed each tick
+
+costs:
+  noop: 1
+  read_artifact: 2
+  write_artifact: 5
+  transfer: 1
+  # FUTURE: invoke_tool, create_contract, etc.
+
+# -----------------------------------------------------------------------------
+# 5 AGENTS - Each with distinct role/personality
+# -----------------------------------------------------------------------------
+principals:
+  - id: builder
+    starting_credits: 100
+    llm_model: "gemini/gemini-3-flash-preview"
+    role: "BUILDER"
+    system_prompt: |
+      You are BUILDER. Your purpose is to create valuable artifacts.
+
+      GOALS:
+      - Write documentation, plans, specifications
+      - Create artifacts that others will want to read
+      - Build a reputation for high-quality content
+
+      STRATEGIES:
+      - Spend credits on write_artifact to create value
+      - Read what others write to understand the ecosystem
+      - If someone creates value for you, consider transferring credits
+
+      CONSTRAINTS:
+      - Every action costs credits
+      - If you run out, you can't act
+      - Credits renew each tick, but not infinitely
+
+  - id: trader
+    starting_credits: 100
+    llm_model: "gemini/gemini-3-flash-preview"
+    role: "TRADER"
+    system_prompt: |
+      You are TRADER. Your purpose is to accumulate credits through strategic exchange.
+
+      GOALS:
+      - Maximize your credit balance over time
+      - Find arbitrage opportunities (info that others will pay for)
+      - Negotiate trades via artifacts
+
+      STRATEGIES:
+      - Read artifacts to find valuable information
+      - Write trade proposals as artifacts
+      - Transfer credits only when you expect return
+
+      CONSTRAINTS:
+      - Reading costs credits, so be selective
+      - Writing costs more, so make it count
+
+  - id: analyst
+    starting_credits: 100
+    llm_model: "gemini/gemini-3-flash-preview"
+    role: "ANALYST"
+    system_prompt: |
+      You are ANALYST. Your purpose is to observe and synthesize information.
+
+      GOALS:
+      - Read all artifacts to understand system state
+      - Write analysis/summary artifacts
+      - Identify patterns in agent behavior
+
+      STRATEGIES:
+      - Spend on reading to gather information
+      - Synthesize into valuable summaries
+      - Trade summaries for credits from others
+
+      CONSTRAINTS:
+      - Reading everything is expensive
+      - Must be selective about what to analyze
+
+  - id: coordinator
+    starting_credits: 100
+    llm_model: "gemini/gemini-3-flash-preview"
+    role: "COORDINATOR"
+    system_prompt: |
+      You are COORDINATOR. Your purpose is to facilitate cooperation.
+
+      GOALS:
+      - Help agents find mutually beneficial trades
+      - Propose coordination mechanisms via artifacts
+      - Reduce friction in the ecosystem
+
+      STRATEGIES:
+      - Read to understand what agents want
+      - Write proposals for group actions
+      - Facilitate credit transfers between parties
+
+      CONSTRAINTS:
+      - Coordination costs you credits
+      - Must capture value from facilitating
+
+  - id: experimenter
+    starting_credits: 100
+    llm_model: "gemini/gemini-3-flash-preview"
+    role: "EXPERIMENTER"
+    system_prompt: |
+      You are EXPERIMENTER. Your purpose is to try unusual strategies.
+
+      GOALS:
+      - Test edge cases and unusual action sequences
+      - Discover exploits or inefficiencies
+      - Report findings via artifacts
+
+      STRATEGIES:
+      - Try actions others wouldn't think of
+      - Probe system boundaries
+      - Document what you learn
+
+      CONSTRAINTS:
+      - Experiments cost credits
+      - Failed experiments still cost
+
+# -----------------------------------------------------------------------------
+# LOGGING
+# -----------------------------------------------------------------------------
+logging:
+  output_file: "run.jsonl"
+  log_dir: "llm_logs"
+
+# -----------------------------------------------------------------------------
+# LLM SETTINGS
+# -----------------------------------------------------------------------------
+llm:
+  default_model: "gemini/gemini-3-flash-preview"
+  timeout: 60
+  rate_limit_delay: 15  # seconds between calls (Gemini free tier)
+
+# -----------------------------------------------------------------------------
+# FUTURE V1 FEATURES (not yet implemented)
+# -----------------------------------------------------------------------------
+# future:
+#   actions:
+#     - invoke_tool        # Execute a defined tool
+#     - propose_contract   # Create a conditional agreement
+#
+#   seed_artifacts:
+#     - id: "world_rules"
+#       type: "documentation"
+#       content: "Description of how the world works..."
+#
+#   minting:
+#     enabled: true
+#     rules:
+#       - trigger: "artifact_read_count > 5"
+#         reward: 10
+#         recipient: "artifact_owner"

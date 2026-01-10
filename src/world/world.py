@@ -1,0 +1,511 @@
+"""World kernel - the core simulation loop"""
+
+import sys
+from pathlib import Path
+from typing import Dict, Any, List
+
+from .ledger import Ledger
+from .artifacts import ArtifactStore
+from .logger import EventLogger
+from .actions import (
+    ActionIntent, ActionResult, ActionType,
+    NoopIntent, ReadArtifactIntent, WriteArtifactIntent,
+    InvokeArtifactIntent
+)
+# NOTE: TransferIntent removed - all transfers via genesis_ledger.transfer()
+from .genesis import create_genesis_artifacts
+from .executor import get_executor
+
+# Add src to path for absolute imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from config import get as config_get, compute_per_agent_quota
+
+
+class World:
+    """The world kernel - manages state, executes actions, logs everything"""
+
+    def __init__(self, config: Dict[str, Any]):
+        self.config = config
+        self.tick = 0
+        self.max_ticks = config["world"]["max_ticks"]
+        self.costs = config["costs"]
+
+        # Compute per-agent quotas from resource totals
+        num_agents = len(config.get("principals", []))
+        quotas = compute_per_agent_quota(num_agents) if num_agents > 0 else {}
+
+        # Rights configuration (Layer 2: Means of Production)
+        # See docs/RESOURCE_MODEL.md for design rationale
+        # Values come from config via compute_per_agent_quota()
+        self.rights_config = config.get("rights", {
+            "default_compute_quota": quotas.get("compute_quota", config_get("resources.flow.compute.per_tick") or 50),
+            "default_disk_quota": quotas.get("disk_quota", config_get("resources.stock.disk.total") or 10000)
+        })
+
+        # Core state
+        self.ledger = Ledger()
+        self.artifacts = ArtifactStore()
+        self.logger = EventLogger(config["logging"]["output_file"])
+
+        # Genesis artifacts (system-owned proxies)
+        self.genesis_artifacts = create_genesis_artifacts(
+            ledger=self.ledger,
+            mint_callback=self._mint_scrip,
+            artifact_store=self.artifacts,
+            logger=self.logger,
+            rights_config=self.rights_config
+        )
+
+        # Store reference to rights registry for quota enforcement
+        self.rights_registry = self.genesis_artifacts.get("genesis_rights_registry")
+
+        # Initialize principals from config
+        self.principal_ids = []
+        default_starting_scrip = config_get("scrip.starting_amount") or 100
+        for p in config["principals"]:
+            # Initialize with starting scrip (persistent currency)
+            # Flow will be set when first tick starts
+            starting_scrip = p.get("starting_scrip", p.get("starting_credits", default_starting_scrip))
+            self.ledger.create_principal(p["id"], starting_scrip=starting_scrip)
+            self.principal_ids.append(p["id"])
+            # Initialize agent in rights registry
+            if self.rights_registry:
+                self.rights_registry.ensure_agent(p["id"])
+
+        # Log world init
+        self.logger.log("world_init", {
+            "max_ticks": self.max_ticks,
+            "rights": self.rights_config,
+            "costs": self.costs,
+            "principals": [
+                {
+                    "id": p["id"],
+                    "starting_scrip": p.get("starting_scrip", p.get("starting_credits", default_starting_scrip)),
+                    "compute_quota": self.rights_config.get("default_compute_quota", quotas.get("compute_quota", 50))
+                }
+                for p in config["principals"]
+            ]
+        })
+
+    def _mint_scrip(self, principal_id: str, amount: int) -> None:
+        """Mint new scrip for a principal (used by oracle).
+
+        Scrip is the economic currency - minting adds purchasing power.
+        """
+        self.ledger.credit_scrip(principal_id, amount)
+        self.logger.log("mint", {
+            "tick": self.tick,
+            "principal_id": principal_id,
+            "amount": amount,
+            "scrip_after": self.ledger.get_scrip(principal_id)
+        })
+
+    def get_cost(self, action_type: ActionType) -> int:
+        """Get the cost for an action type"""
+        actions = self.costs.get("actions", {})
+        default = self.costs.get("default", config_get("costs.default") or 1)
+        return actions.get(action_type.value, default)
+
+    def execute_action(self, intent: ActionIntent) -> ActionResult:
+        """Execute an action intent. Returns the result.
+
+        Cost model:
+        - Action cost (flow): Real resource cost - deducted from flow budget
+        - Economic cost (scrip): Prices, fees - deducted from scrip balance
+        """
+        flow_cost = self.get_cost(intent.action_type)
+
+        # Check if principal has enough FLOW for the action
+        if not self.ledger.can_spend_flow(intent.principal_id, flow_cost):
+            result = ActionResult(
+                success=False,
+                message=f"Insufficient flow. Need {flow_cost}, have {self.ledger.get_flow(intent.principal_id)}"
+            )
+            self._log_action(intent, result, flow_cost, False)
+            return result
+
+        # Execute based on action type
+        if isinstance(intent, NoopIntent):
+            result = ActionResult(success=True, message="Noop executed")
+
+        elif isinstance(intent, ReadArtifactIntent):
+            # Check regular artifacts first
+            artifact = self.artifacts.get(intent.artifact_id)
+            if artifact:
+                # Check read permission (policy)
+                if not artifact.can_read(intent.principal_id):
+                    result = ActionResult(
+                        success=False,
+                        message=f"Access denied: you are not allowed to read {intent.artifact_id}"
+                    )
+                else:
+                    # Check if can afford read_price (economic cost -> SCRIP)
+                    read_price = artifact.policy.get("read_price", 0)
+                    if read_price > 0 and not self.ledger.can_afford_scrip(intent.principal_id, read_price):
+                        result = ActionResult(
+                            success=False,
+                            message=f"Cannot afford read price: {read_price} scrip (have {self.ledger.get_scrip(intent.principal_id)})"
+                        )
+                    else:
+                        # Pay read_price to owner (economic transfer -> SCRIP)
+                        if read_price > 0:
+                            self.ledger.deduct_scrip(intent.principal_id, read_price)
+                            self.ledger.credit_scrip(artifact.owner_id, read_price)
+                        result = ActionResult(
+                            success=True,
+                            message=f"Read artifact {intent.artifact_id}" + (f" (paid {read_price} scrip to {artifact.owner_id})" if read_price > 0 else ""),
+                            data={"artifact": artifact.to_dict(), "read_price_paid": read_price}
+                        )
+            # Check genesis artifacts (always public, free)
+            elif intent.artifact_id in self.genesis_artifacts:
+                genesis = self.genesis_artifacts[intent.artifact_id]
+                result = ActionResult(
+                    success=True,
+                    message=f"Read genesis artifact {intent.artifact_id}",
+                    data={"artifact": genesis.to_dict()}
+                )
+            else:
+                result = ActionResult(
+                    success=False,
+                    message=f"Artifact {intent.artifact_id} not found"
+                )
+
+        elif isinstance(intent, WriteArtifactIntent):
+            # Protect genesis artifacts from modification
+            if intent.artifact_id in self.genesis_artifacts:
+                result = ActionResult(
+                    success=False,
+                    message=f"Cannot modify system artifact {intent.artifact_id}"
+                )
+            # Check write permission for existing artifacts (policy-based)
+            elif (existing := self.artifacts.get(intent.artifact_id)) and not existing.can_write(intent.principal_id):
+                result = ActionResult(
+                    success=False,
+                    message=f"Access denied: you are not allowed to write to {intent.artifact_id}"
+                )
+            # Check disk quota (Layer 2: Stock Rights)
+            elif self.rights_registry:
+                # Calculate new content size
+                new_size = len(intent.content.encode('utf-8')) + len(intent.code.encode('utf-8'))
+                # Get existing artifact size (if updating)
+                existing_size = self.artifacts.get_artifact_size(intent.artifact_id)
+                net_new_bytes = new_size - existing_size
+
+                if net_new_bytes > 0 and not self.rights_registry.can_write(intent.principal_id, net_new_bytes):
+                    quota = self.rights_registry.get_stock_quota(intent.principal_id)
+                    used = self.rights_registry.get_stock_used(intent.principal_id)
+                    result = ActionResult(
+                        success=False,
+                        message=f"Disk quota exceeded. Need {net_new_bytes} bytes, have {quota - used} available (quota: {quota}, used: {used})"
+                    )
+                # Validate executable code if provided
+                elif intent.executable:
+                    executor = get_executor()
+                    valid, error = executor.validate_code(intent.code)
+                    if not valid:
+                        result = ActionResult(
+                            success=False,
+                            message=f"Invalid executable code: {error}"
+                        )
+                    else:
+                        artifact = self.artifacts.write(
+                            intent.artifact_id,
+                            intent.artifact_type,
+                            intent.content,
+                            intent.principal_id,
+                            executable=True,
+                            price=intent.price,
+                            code=intent.code
+                        )
+                        result = ActionResult(
+                            success=True,
+                            message=f"Wrote executable artifact {intent.artifact_id} (price: {intent.price})",
+                            data={"artifact_id": intent.artifact_id, "executable": True, "price": intent.price}
+                        )
+                else:
+                    artifact = self.artifacts.write(
+                        intent.artifact_id,
+                        intent.artifact_type,
+                        intent.content,
+                        intent.principal_id
+                    )
+                    result = ActionResult(
+                        success=True,
+                        message=f"Wrote artifact {intent.artifact_id}",
+                        data={"artifact_id": intent.artifact_id}
+                    )
+            # Fallback for when rights_registry is not available
+            elif intent.executable:
+                executor = get_executor()
+                valid, error = executor.validate_code(intent.code)
+                if not valid:
+                    result = ActionResult(
+                        success=False,
+                        message=f"Invalid executable code: {error}"
+                    )
+                else:
+                    artifact = self.artifacts.write(
+                        intent.artifact_id,
+                        intent.artifact_type,
+                        intent.content,
+                        intent.principal_id,
+                        executable=True,
+                        price=intent.price,
+                        code=intent.code
+                    )
+                    result = ActionResult(
+                        success=True,
+                        message=f"Wrote executable artifact {intent.artifact_id} (price: {intent.price})",
+                        data={"artifact_id": intent.artifact_id, "executable": True, "price": intent.price}
+                    )
+            else:
+                artifact = self.artifacts.write(
+                    intent.artifact_id,
+                    intent.artifact_type,
+                    intent.content,
+                    intent.principal_id
+                )
+                result = ActionResult(
+                    success=True,
+                    message=f"Wrote artifact {intent.artifact_id}",
+                    data={"artifact_id": intent.artifact_id}
+                )
+
+        elif isinstance(intent, InvokeArtifactIntent):
+            result = self._execute_invoke(intent, flow_cost=flow_cost)
+
+        else:
+            result = ActionResult(success=False, message=f"Unknown action type")
+
+        # Deduct FLOW cost only if action succeeded (real resource consumption)
+        if result.success:
+            self.ledger.spend_flow(intent.principal_id, flow_cost)
+
+        self._log_action(intent, result, flow_cost, result.success)
+        return result
+
+    def _log_action(self, intent: ActionIntent, result: ActionResult, flow_cost: int, charged: bool):
+        """Log an action execution"""
+        self.logger.log("action", {
+            "tick": self.tick,
+            "intent": intent.to_dict(),
+            "result": result.to_dict(),
+            "flow_cost": flow_cost,
+            "charged": charged,
+            "flow_after": self.ledger.get_flow(intent.principal_id),
+            "scrip_after": self.ledger.get_scrip(intent.principal_id)
+        })
+
+    def _execute_invoke(self, intent: InvokeArtifactIntent, flow_cost: int = 0) -> ActionResult:
+        """
+        Execute an invoke_artifact action.
+
+        Cost model:
+        - Gas (flow): Real compute cost - paid from flow budget
+        - Price (scrip): Economic payment to artifact owner - paid from scrip
+
+        Handles both:
+        - Genesis artifacts (system proxies to ledger, oracle)
+        - Executable artifacts (Phase 3 - agent-created code)
+
+        Args:
+            intent: The invoke intent
+            flow_cost: The base flow cost (already checked by execute_action)
+        """
+        artifact_id = intent.artifact_id
+        method_name = intent.method
+        args = intent.args
+
+        # Check genesis artifacts first
+        if artifact_id in self.genesis_artifacts:
+            genesis = self.genesis_artifacts[artifact_id]
+            method = genesis.get_method(method_name)
+
+            if not method:
+                return ActionResult(
+                    success=False,
+                    message=f"Method '{method_name}' not found on {artifact_id}. Available: {[m['name'] for m in genesis.list_methods()]}"
+                )
+
+            # Genesis method costs are SCRIP (economic fees)
+            if method.cost > 0 and not self.ledger.can_afford_scrip(intent.principal_id, method.cost):
+                return ActionResult(
+                    success=False,
+                    message=f"Cannot afford method fee: {method.cost} scrip (have {self.ledger.get_scrip(intent.principal_id)})"
+                )
+
+            # Execute the genesis method
+            try:
+                result_data = method.handler(args, intent.principal_id)
+
+                if result_data.get("success"):
+                    # Deduct method cost on success (SCRIP)
+                    if method.cost > 0:
+                        self.ledger.deduct_scrip(intent.principal_id, method.cost)
+                    return ActionResult(
+                        success=True,
+                        message=f"Invoked {artifact_id}.{method_name}",
+                        data=result_data
+                    )
+                else:
+                    # Method failed - no cost charged
+                    return ActionResult(
+                        success=False,
+                        message=result_data.get("error", "Method failed")
+                    )
+            except Exception as e:
+                return ActionResult(
+                    success=False,
+                    message=f"Method execution error: {str(e)}"
+                )
+
+        # Check regular artifacts for executable invocation
+        regular_artifact = self.artifacts.get(artifact_id)
+        if regular_artifact:
+            if not regular_artifact.executable:
+                return ActionResult(
+                    success=False,
+                    message=f"Artifact {artifact_id} is not executable"
+                )
+
+            # Check invoke permission (policy-based)
+            if not regular_artifact.can_invoke(intent.principal_id):
+                return ActionResult(
+                    success=False,
+                    message=f"Access denied: you are not allowed to invoke {artifact_id}"
+                )
+
+            # Gas cost (FLOW) - real compute resource
+            config_gas = config_get("costs.execution_gas") or 2
+            gas_cost = self.costs.get("execution_gas", config_gas)
+            # Price (SCRIP) - economic payment to owner
+            price = regular_artifact.price
+            owner_id = regular_artifact.owner_id
+
+            # Check affordability:
+            # - Gas comes from FLOW (checked separately from base action flow)
+            # - Price comes from SCRIP
+            if not self.ledger.can_spend_flow(intent.principal_id, gas_cost):
+                return ActionResult(
+                    success=False,
+                    message=f"Insufficient flow for gas: need {gas_cost}, have {self.ledger.get_flow(intent.principal_id)}"
+                )
+            if price > 0 and not self.ledger.can_afford_scrip(intent.principal_id, price):
+                return ActionResult(
+                    success=False,
+                    message=f"Insufficient scrip for price: need {price}, have {self.ledger.get_scrip(intent.principal_id)}"
+                )
+
+            # Deduct gas FIRST from FLOW (always paid, even on failure)
+            self.ledger.spend_flow(intent.principal_id, gas_cost)
+
+            # Execute the code
+            executor = get_executor()
+            exec_result = executor.execute(regular_artifact.code, args)
+
+            if exec_result.get("success"):
+                # Pay price to owner from SCRIP (only on success)
+                if price > 0 and owner_id != intent.principal_id:
+                    self.ledger.deduct_scrip(intent.principal_id, price)
+                    self.ledger.credit_scrip(owner_id, price)
+
+                return ActionResult(
+                    success=True,
+                    message=f"Invoked {artifact_id} (gas: {gas_cost} flow, price: {price} scrip to {owner_id})",
+                    data={
+                        "result": exec_result.get("result"),
+                        "gas_paid": gas_cost,
+                        "price_paid": price,
+                        "owner": owner_id
+                    }
+                )
+            else:
+                # Execution failed - gas already paid, no price charged
+                return ActionResult(
+                    success=False,
+                    message=f"Execution failed (gas paid: {gas_cost} flow): {exec_result.get('error')}",
+                    data={"gas_paid": gas_cost, "error": exec_result.get("error")}
+                )
+
+        # Artifact not found
+        return ActionResult(
+            success=False,
+            message=f"Artifact {artifact_id} not found"
+        )
+
+    def advance_tick(self) -> bool:
+        """
+        Advance to the next tick. Renews COMPUTE for all principals.
+        Returns False if max_ticks reached.
+
+        COMPUTE (LLM tokens) resets each tick based on compute_quota.
+        SCRIP (economic currency) is NOT reset - it persists and accumulates.
+
+        See docs/RESOURCE_MODEL.md for design rationale.
+        """
+        if self.tick >= self.max_ticks:
+            return False
+
+        self.tick += 1
+
+        # Reset COMPUTE for all principals (use it or lose it)
+        # Only compute resets - scrip is persistent economic currency
+        for pid in self.principal_ids:
+            if self.rights_registry:
+                compute_quota = self.rights_registry.get_compute_quota(pid)
+                self.ledger.reset_compute(pid, compute_quota)
+            else:
+                # Fallback to config
+                config_compute = config_get("resources.flow.compute.per_tick")
+                default_compute = self.rights_config.get("default_compute_quota", config_compute or 50)
+                self.ledger.reset_compute(pid, default_compute)
+
+        self.logger.log("tick", {
+            "tick": self.tick,
+            "compute": self.ledger.get_all_compute(),
+            "scrip": self.ledger.get_all_scrip(),
+            "artifact_count": self.artifacts.count()
+        })
+
+        return True
+
+    def get_state_summary(self) -> Dict[str, Any]:
+        """Get a summary of current world state"""
+        # Combine regular artifacts with genesis artifacts
+        all_artifacts = self.artifacts.list_all()
+        for genesis in self.genesis_artifacts.values():
+            all_artifacts.append(genesis.to_dict())
+
+        # Get quota info for all agents
+        quotas = {}
+        if self.rights_registry:
+            for pid in self.principal_ids:
+                quotas[pid] = {
+                    "compute_quota": self.rights_registry.get_compute_quota(pid),
+                    "disk_quota": self.rights_registry.get_disk_quota(pid),
+                    "disk_used": self.rights_registry.get_disk_used(pid),
+                    "disk_available": self.rights_registry.get_disk_quota(pid) - self.rights_registry.get_disk_used(pid)
+                }
+
+        # Get oracle submission status
+        oracle_status = {}
+        oracle = self.genesis_artifacts.get("genesis_oracle")
+        if oracle and hasattr(oracle, 'submissions'):
+            for artifact_id, sub in oracle.submissions.items():
+                oracle_status[artifact_id] = {
+                    "status": sub.get("status", "unknown"),
+                    "submitter": sub.get("submitter_id", "unknown"),
+                    "score": sub.get("score") if sub.get("status") == "scored" else None
+                }
+
+        return {
+            "tick": self.tick,
+            "balances": self.ledger.get_all_balances(),
+            "artifacts": all_artifacts,
+            "quotas": quotas,
+            "oracle_submissions": oracle_status
+        }
+
+    def get_recent_events(self, n: int = 20) -> List[Dict[str, Any]]:
+        """Get recent events from the log"""
+        return self.logger.read_recent(n)

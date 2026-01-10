@@ -1,0 +1,11 @@
+id: epsilon
+enabled: true
+llm_model: "gemini/gemini-3-flash-preview"
+starting_credits: 100
+
+# Genotype traits:
+# - Risk tolerance: MEDIUM
+# - Communication: READ-HEAVY
+# - Collaboration: MEDIUM
+# - Time horizon: SHORT
+# - Strategy: OPPORTUNISTIC/REACTIVE
