@@ -7,15 +7,84 @@ Provides persistent memory for each agent across ticks.
 import os
 import atexit
 from pathlib import Path
+from typing import Any, TypedDict
+
 from dotenv import load_dotenv
-from mem0 import Memory
+from mem0 import Memory  # type: ignore[import-untyped,unused-ignore]
 
 load_dotenv()
 
 # Track memory instances for cleanup
-_cleanup_list = []
+_cleanup_list: list["AgentMemory"] = []
 
-def _cleanup_memories():
+
+class MemoryResult(TypedDict, total=False):
+    """Result from memory add operation."""
+    error: str
+    results: list[dict[str, Any]]
+
+
+class MemorySearchResult(TypedDict, total=False):
+    """Individual memory search result."""
+    memory: str
+    score: float
+
+
+class EmbedderConfig(TypedDict):
+    """Configuration for embedder."""
+    model: str
+    api_key: str | None
+    embedding_dims: int
+
+
+class LLMConfig(TypedDict):
+    """Configuration for LLM."""
+    model: str
+    api_key: str | None
+    temperature: float
+
+
+class VectorStoreServerConfig(TypedDict):
+    """Configuration for vector store in server mode."""
+    collection_name: str
+    embedding_model_dims: int
+    host: str
+    port: int
+
+
+class VectorStoreLocalConfig(TypedDict):
+    """Configuration for vector store in local mode."""
+    collection_name: str
+    embedding_model_dims: int
+    path: str
+
+
+class EmbedderSection(TypedDict):
+    """Embedder section of config."""
+    provider: str
+    config: EmbedderConfig
+
+
+class LLMSection(TypedDict):
+    """LLM section of config."""
+    provider: str
+    config: LLMConfig
+
+
+class VectorStoreSection(TypedDict):
+    """Vector store section of config."""
+    provider: str
+    config: VectorStoreServerConfig | VectorStoreLocalConfig
+
+
+class MemoryConfig(TypedDict):
+    """Full memory configuration."""
+    embedder: EmbedderSection
+    llm: LLMSection
+    vector_store: VectorStoreSection
+
+
+def _cleanup_memories() -> None:
     """Cleanup handler to close qdrant clients properly"""
     for mem in _cleanup_list:
         try:
@@ -30,24 +99,27 @@ atexit.register(_cleanup_memories)
 class AgentMemory:
     """Shared memory manager for all agents using Mem0"""
 
-    _instance = None
+    _instance: "AgentMemory | None" = None
+    _initialized: bool
+    memory: Memory
 
-    def __new__(cls):
+    def __new__(cls) -> "AgentMemory":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         if self._initialized:
             return
 
-        api_key = os.getenv('GEMINI_API_KEY')
+        api_key: str | None = os.getenv('GEMINI_API_KEY')
 
         # Check if running with qdrant server (Docker) or local mode
-        qdrant_host = os.getenv('QDRANT_HOST')
-        qdrant_port = int(os.getenv('QDRANT_PORT', '6333'))
+        qdrant_host: str | None = os.getenv('QDRANT_HOST')
+        qdrant_port: int = int(os.getenv('QDRANT_PORT', '6333'))
 
+        vector_store_config: VectorStoreSection
         if qdrant_host:
             # Server mode (Docker)
             vector_store_config = {
@@ -61,8 +133,8 @@ class AgentMemory:
             }
         else:
             # Local mode (fallback)
-            project_root = Path(__file__).parent.parent.parent
-            qdrant_path = project_root / 'qdrant_data'
+            project_root: Path = Path(__file__).parent.parent.parent
+            qdrant_path: Path = project_root / 'qdrant_data'
             qdrant_path.mkdir(exist_ok=True)
             vector_store_config = {
                 'provider': 'qdrant',
@@ -73,7 +145,7 @@ class AgentMemory:
                 }
             }
 
-        config = {
+        config: MemoryConfig = {
             'embedder': {
                 'provider': 'gemini',
                 'config': {
@@ -97,39 +169,40 @@ class AgentMemory:
         self._initialized = True
         _cleanup_list.append(self)
 
-    def add(self, agent_id: str, content: str) -> dict:
+    def add(self, agent_id: str, content: str) -> dict[str, Any]:
         """Add a memory for an agent"""
         try:
-            result = self.memory.add(content, user_id=agent_id)
-            return result
+            result: Any = self.memory.add(content, user_id=agent_id)
+            return result  # type: ignore[no-any-return]
         except Exception as e:
             return {"error": str(e)}
 
-    def search(self, agent_id: str, query: str, limit: int = 5) -> list:
+    def search(self, agent_id: str, query: str, limit: int = 5) -> list[dict[str, Any]]:
         """Search memories for an agent"""
         try:
-            results = self.memory.search(query, user_id=agent_id, limit=limit)
-            return results.get('results', [])
-        except Exception as e:
+            results: Any = self.memory.search(query, user_id=agent_id, limit=limit)
+            return results.get('results', [])  # type: ignore[no-any-return]
+        except Exception:
             return []
 
     def get_relevant_memories(self, agent_id: str, context: str, limit: int = 5) -> str:
         """Get relevant memories formatted as a string for prompt injection"""
-        memories = self.search(agent_id, context, limit=limit)
+        memories: list[dict[str, Any]] = self.search(agent_id, context, limit=limit)
 
         if not memories:
             return "(No relevant memories)"
 
-        lines = []
+        lines: list[str] = []
         for m in memories:
-            memory_text = m.get('memory', '')
+            memory_text: Any = m.get('memory', '')
             lines.append(f"- {memory_text}")
 
         return "\n".join(lines)
 
-    def record_action(self, agent_id: str, action_type: str, details: str, success: bool):
+    def record_action(self, agent_id: str, action_type: str, details: str, success: bool) -> dict[str, Any]:
         """Record an action as a memory"""
         # Use simpler format for better memory extraction by Mem0's LLM
+        memory: str
         if success:
             if action_type == "write_artifact":
                 memory = f"I created an artifact with details: {details}"
@@ -143,14 +216,14 @@ class AgentMemory:
             memory = f"I tried to {action_type} but failed: {details}"
         return self.add(agent_id, memory)
 
-    def record_observation(self, agent_id: str, observation: str):
+    def record_observation(self, agent_id: str, observation: str) -> dict[str, Any]:
         """Record an observation as a memory"""
-        memory = f"I observed: {observation}"
+        memory: str = f"I observed: {observation}"
         return self.add(agent_id, memory)
 
 
 # Global instance
-_memory = None
+_memory: AgentMemory | None = None
 
 
 def get_memory() -> AgentMemory:

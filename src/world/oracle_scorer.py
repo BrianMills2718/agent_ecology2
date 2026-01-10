@@ -9,9 +9,12 @@ requiring actual Reddit API integration.
 All configuration (model, timeout, max_content_length) comes from config.yaml.
 """
 
+from __future__ import annotations
+
+import json
 import sys
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import TypedDict
 
 # Add llm_provider_standalone to path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -24,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get
 
 
-SCORING_PROMPT = """You are evaluating content that was submitted to a community platform.
+SCORING_PROMPT: str = """You are evaluating content that was submitted to a community platform.
 Rate this content on how much engagement (upvotes) it would likely receive.
 
 Consider:
@@ -55,26 +58,42 @@ Respond with ONLY the JSON object.
 """
 
 
+class ScoringResult(TypedDict, total=False):
+    """Result from artifact scoring."""
+    success: bool
+    score: int
+    reason: str
+    error: str
+
+
 class OracleScorer:
     """Uses an LLM to score artifacts for the mock oracle.
 
     All settings (model, timeout, max_content_length) come from config.yaml.
     """
 
-    def __init__(self, model: str = None, log_dir: str = None):
+    llm: LLMProvider
+    max_content_length: int
+
+    def __init__(self, model: str | None = None, log_dir: str | None = None) -> None:
         # Get config values with fallbacks
         model = model or get("oracle_scorer.model") or "gemini/gemini-2.0-flash"
         log_dir = log_dir or get("logging.log_dir") or "llm_logs"
-        timeout = get("oracle_scorer.timeout") or 30
+        timeout: int = get("oracle_scorer.timeout") or 30
 
         self.llm = LLMProvider(
             model=model,
             log_dir=log_dir,
             timeout=timeout
         )
-        self.max_content_length = get("oracle_scorer.max_content_length") or 2000
+        self.max_content_length: int = get("oracle_scorer.max_content_length") or 2000
 
-    def score_artifact(self, artifact_id: str, artifact_type: str, content: str) -> Dict[str, Any]:
+    def score_artifact(
+        self,
+        artifact_id: str,
+        artifact_type: str,
+        content: str
+    ) -> ScoringResult:
         """
         Score an artifact using LLM evaluation.
 
@@ -101,7 +120,8 @@ class OracleScorer:
         )
 
         try:
-            response = self.llm.generate(prompt)
+            response_raw = self.llm.generate(prompt)
+            response: str = str(response_raw)
         except Exception as e:
             return {
                 "success": False,
@@ -111,13 +131,12 @@ class OracleScorer:
             }
 
         # Parse the response
-        import json
         try:
             # Extract JSON from response
             response = response.strip()
             if response.startswith("```"):
                 lines = response.split("\n")
-                json_lines = []
+                json_lines: list[str] = []
                 in_block = False
                 for line in lines:
                     if line.startswith("```") and not in_block:
@@ -134,9 +153,9 @@ class OracleScorer:
             if start == -1 or end == 0:
                 raise ValueError("No JSON object found")
 
-            data = json.loads(response[start:end])
+            data: dict[str, int | str] = json.loads(response[start:end])
             score = int(data.get("score", 0))
-            reason = data.get("reason", "")
+            reason = str(data.get("reason", ""))
 
             # Clamp score to 0-100
             score = max(0, min(100, score))
@@ -158,10 +177,10 @@ class OracleScorer:
 
 
 # Singleton instance
-_scorer = None
+_scorer: OracleScorer | None = None
 
 
-def get_scorer(model: str = None, log_dir: str = None) -> OracleScorer:
+def get_scorer(model: str | None = None, log_dir: str | None = None) -> OracleScorer:
     """Get or create the OracleScorer singleton.
 
     Model and log_dir default to config values if not specified.

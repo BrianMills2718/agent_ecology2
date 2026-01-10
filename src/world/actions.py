@@ -1,13 +1,16 @@
 """Action definitions and execution logic"""
 
-from dataclasses import dataclass
-from typing import Any, Dict, Optional, Union
-from enum import Enum
+from __future__ import annotations
+
 import json
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any
 
 
 class ActionType(str, Enum):
     """The narrow waist - only 3 physics verbs (plus noop)"""
+
     NOOP = "noop"
     READ_ARTIFACT = "read_artifact"
     WRITE_ARTIFACT = "write_artifact"
@@ -18,10 +21,11 @@ class ActionType(str, Enum):
 @dataclass
 class ActionIntent:
     """Base class for action intents"""
+
     action_type: ActionType
     principal_id: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {"action_type": self.action_type.value, "principal_id": self.principal_id}
 
 
@@ -29,20 +33,21 @@ class ActionIntent:
 class NoopIntent(ActionIntent):
     """Do nothing, just consume minimal cost"""
 
-    def __init__(self, principal_id: str):
+    def __init__(self, principal_id: str) -> None:
         super().__init__(ActionType.NOOP, principal_id)
 
 
 @dataclass
 class ReadArtifactIntent(ActionIntent):
     """Read an artifact's content"""
+
     artifact_id: str
 
-    def __init__(self, principal_id: str, artifact_id: str):
+    def __init__(self, principal_id: str, artifact_id: str) -> None:
         super().__init__(ActionType.READ_ARTIFACT, principal_id)
         self.artifact_id = artifact_id
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
         d["artifact_id"] = self.artifact_id
         return d
@@ -51,6 +56,7 @@ class ReadArtifactIntent(ActionIntent):
 @dataclass
 class WriteArtifactIntent(ActionIntent):
     """Write/create an artifact (optionally executable)"""
+
     artifact_id: str
     artifact_type: str
     content: str
@@ -67,8 +73,8 @@ class WriteArtifactIntent(ActionIntent):
         content: str,
         executable: bool = False,
         price: int = 0,
-        code: str = ""
-    ):
+        code: str = "",
+    ) -> None:
         super().__init__(ActionType.WRITE_ARTIFACT, principal_id)
         self.artifact_id = artifact_id
         self.artifact_type = artifact_type
@@ -77,7 +83,7 @@ class WriteArtifactIntent(ActionIntent):
         self.price = price
         self.code = code
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
         d["artifact_id"] = self.artifact_id
         d["artifact_type"] = self.artifact_type
@@ -92,17 +98,24 @@ class WriteArtifactIntent(ActionIntent):
 @dataclass
 class InvokeArtifactIntent(ActionIntent):
     """Invoke a method on an artifact (genesis or executable)"""
+
     artifact_id: str
     method: str
-    args: list
+    args: list[Any]
 
-    def __init__(self, principal_id: str, artifact_id: str, method: str, args: list = None):
+    def __init__(
+        self,
+        principal_id: str,
+        artifact_id: str,
+        method: str,
+        args: list[Any] | None = None,
+    ) -> None:
         super().__init__(ActionType.INVOKE_ARTIFACT, principal_id)
         self.artifact_id = artifact_id
         self.method = method
         self.args = args or []
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
         d["artifact_id"] = self.artifact_id
         d["method"] = self.method
@@ -113,25 +126,30 @@ class InvokeArtifactIntent(ActionIntent):
 @dataclass
 class ActionResult:
     """Result of executing an action"""
+
     success: bool
     message: str
-    data: Optional[Dict[str, Any]] = None
+    data: dict[str, Any] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {"success": self.success, "message": self.message, "data": self.data}
 
 
-def parse_intent_from_json(principal_id: str, json_str: str) -> Union[ActionIntent, str]:
+def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | str:
     """
     Parse an ActionIntent from JSON string.
     Returns the intent if valid, or an error string if invalid.
     """
     try:
-        data = json.loads(json_str)
+        data: dict[str, Any] = json.loads(json_str)
     except json.JSONDecodeError as e:
         return f"Invalid JSON: {e}"
 
-    action_type = data.get("action_type", "").lower()
+    action_type = data.get("action_type", "")
+    if isinstance(action_type, str):
+        action_type = action_type.lower()
+    else:
+        action_type = ""
 
     if action_type == "noop":
         return NoopIntent(principal_id)
@@ -140,6 +158,8 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> Union[ActionInte
         artifact_id = data.get("artifact_id")
         if not artifact_id:
             return "read_artifact requires 'artifact_id'"
+        if not isinstance(artifact_id, str):
+            return "artifact_id must be a string"
         return ReadArtifactIntent(principal_id, artifact_id)
 
     elif action_type == "write_artifact":
@@ -152,6 +172,14 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> Union[ActionInte
 
         if not artifact_id:
             return "write_artifact requires 'artifact_id'"
+        if not isinstance(artifact_id, str):
+            return "artifact_id must be a string"
+        if not isinstance(artifact_type, str):
+            artifact_type = "generic"
+        if not isinstance(content, str):
+            content = ""
+        if not isinstance(code, str):
+            code = ""
 
         # Validate executable artifact fields
         if executable:
@@ -160,9 +188,17 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> Union[ActionInte
             if not code:
                 return "executable artifact requires 'code' with a run() function"
 
+        if not isinstance(price, int):
+            price = 0
+
         return WriteArtifactIntent(
-            principal_id, artifact_id, artifact_type, content,
-            executable=executable, price=price, code=code
+            principal_id,
+            artifact_id,
+            artifact_type,
+            content,
+            executable=bool(executable),
+            price=price,
+            code=code,
         )
 
     elif action_type == "transfer":
@@ -175,8 +211,12 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> Union[ActionInte
         args = data.get("args", [])
         if not artifact_id:
             return "invoke_artifact requires 'artifact_id'"
+        if not isinstance(artifact_id, str):
+            return "artifact_id must be a string"
         if not method:
             return "invoke_artifact requires 'method'"
+        if not isinstance(method, str):
+            return "method must be a string"
         if not isinstance(args, list):
             return "invoke_artifact 'args' must be a list"
         return InvokeArtifactIntent(principal_id, artifact_id, method, args)

@@ -3,19 +3,76 @@
 import sys
 import json
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Any, TypedDict
 
 # Add llm_provider_standalone to path
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / 'llm_provider_standalone'))
 
 from llm_provider import LLMProvider
 from .schema import ACTION_SCHEMA, validate_action_json
-from .memory import get_memory
+from .memory import AgentMemory, get_memory
+
+
+class TokenUsage(TypedDict):
+    """Token usage statistics from LLM call."""
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+    cost: float
+
+
+class ActionResult(TypedDict, total=False):
+    """Result from propose_action method."""
+    action: dict[str, Any]
+    error: str
+    raw_response: str | None
+    usage: TokenUsage
+
+
+class ArtifactInfo(TypedDict, total=False):
+    """Information about an artifact in world state."""
+    id: str
+    owner_id: str
+    type: str
+    executable: bool
+    price: int
+    methods: list[dict[str, Any]]
+
+
+class QuotaInfo(TypedDict, total=False):
+    """Quota information for an agent."""
+    compute_quota: int
+    disk_quota: int
+    disk_used: int
+    disk_available: int
+
+
+class OracleSubmission(TypedDict, total=False):
+    """Oracle submission status."""
+    status: str
+    score: float
+    submitter: str
+
+
+class WorldState(TypedDict, total=False):
+    """World state passed to agents."""
+    tick: int
+    balances: dict[str, int]
+    artifacts: list[ArtifactInfo]
+    quotas: dict[str, QuotaInfo]
+    oracle_submissions: dict[str, OracleSubmission]
 
 
 class Agent:
     """An LLM-powered agent that proposes actions"""
+
+    agent_id: str
+    system_prompt: str
+    action_schema: str
+    memory: AgentMemory
+    last_action_result: str | None
+    llm: LLMProvider
 
     def __init__(
         self,
@@ -24,7 +81,7 @@ class Agent:
         system_prompt: str = "",
         action_schema: str = "",
         log_dir: str = "llm_logs"
-    ):
+    ) -> None:
         self.agent_id = agent_id
         self.system_prompt = system_prompt
         self.action_schema = action_schema or ACTION_SCHEMA  # Fall back to default
@@ -38,22 +95,23 @@ class Agent:
             timeout=60
         )
 
-    def build_prompt(self, world_state: Dict[str, Any]) -> str:
+    def build_prompt(self, world_state: dict[str, Any]) -> str:
         """Build the prompt for the LLM (events require genesis_event_log)"""
         # Get relevant memories based on current context
-        context = f"tick {world_state.get('tick', 0)}, balance {world_state.get('balances', {}).get(self.agent_id, 0)}"
-        memories = self.memory.get_relevant_memories(self.agent_id, context, limit=5)
+        context: str = f"tick {world_state.get('tick', 0)}, balance {world_state.get('balances', {}).get(self.agent_id, 0)}"
+        memories: str = self.memory.get_relevant_memories(self.agent_id, context, limit=5)
 
         # Format artifact list with more detail for executables
-        artifacts = world_state.get('artifacts', [])
+        artifacts: list[dict[str, Any]] = world_state.get('artifacts', [])
+        artifact_list: str
         if artifacts:
-            artifact_lines = []
+            artifact_lines: list[str] = []
             for a in artifacts:
-                line = f"- {a.get('id', '?')} (owner: {a.get('owner_id', '?')}, type: {a.get('type', '?')})"
+                line: str = f"- {a.get('id', '?')} (owner: {a.get('owner_id', '?')}, type: {a.get('type', '?')})"
                 if a.get('executable'):
                     line += f" [EXECUTABLE, price: {a.get('price', 0)}]"
                 if a.get('methods'):  # Genesis artifacts
-                    method_names = [m['name'] for m in a.get('methods', [])]
+                    method_names: list[str] = [m['name'] for m in a.get('methods', [])]
                     line += f" methods: {method_names}"
                 artifact_lines.append(line)
             artifact_list = "\n".join(artifact_lines)
@@ -61,8 +119,8 @@ class Agent:
             artifact_list = "(No artifacts yet)"
 
         # Get quota info if available
-        quotas = world_state.get('quotas', {}).get(self.agent_id, {})
-        quota_info = ""
+        quotas: dict[str, Any] = world_state.get('quotas', {}).get(self.agent_id, {})
+        quota_info: str = ""
         if quotas:
             quota_info = f"""
 ## Your Rights (Quotas)
@@ -72,11 +130,12 @@ class Agent:
 - Disk available: {quotas.get('disk_available', 10000)} bytes"""
 
         # Format oracle submissions
-        oracle_subs = world_state.get('oracle_submissions', {})
+        oracle_subs: dict[str, Any] = world_state.get('oracle_submissions', {})
+        oracle_info: str
         if oracle_subs:
-            oracle_lines = []
+            oracle_lines: list[str] = []
             for art_id, sub in oracle_subs.items():
-                status = sub.get('status', 'unknown')
+                status: str = sub.get('status', 'unknown')
                 if status == 'scored':
                     oracle_lines.append(f"- {art_id}: SCORED (score: {sub.get('score')}) by {sub.get('submitter')}")
                 else:
@@ -86,6 +145,7 @@ class Agent:
             oracle_info = "\n## Oracle Submissions\n(No submissions yet - submit code artifacts to mint credits!)"
 
         # Format last action result feedback
+        action_feedback: str
         if self.last_action_result:
             action_feedback = f"""
 ## Last Action Result
@@ -94,7 +154,7 @@ class Agent:
         else:
             action_feedback = ""
 
-        prompt = f"""You are {self.agent_id} in a simulated world.
+        prompt: str = f"""You are {self.agent_id} in a simulated world.
 
 {self.system_prompt}
 {action_feedback}
@@ -118,18 +178,18 @@ Based on the current state and your memories, decide what action to take. Respon
 """
         return prompt
 
-    def propose_action(self, world_state: Dict[str, Any]) -> Dict[str, Any]:
+    def propose_action(self, world_state: dict[str, Any]) -> ActionResult:
         """
         Have the LLM propose an action based on world state.
         Returns a dict with:
           - 'action' (valid action dict) or 'error' (string)
           - 'usage' (token usage: input_tokens, output_tokens, total_tokens, cost)
         """
-        prompt = self.build_prompt(world_state)
+        prompt: str = self.build_prompt(world_state)
 
         try:
-            response = self.llm.generate(prompt)
-            usage = self.llm.last_usage.copy()
+            response: str = self.llm.generate(prompt)
+            usage: TokenUsage = self.llm.last_usage.copy()
         except Exception as e:
             return {
                 "error": f"LLM call failed: {e}",
@@ -138,7 +198,7 @@ Based on the current state and your memories, decide what action to take. Respon
             }
 
         # Validate the response
-        validation_result = validate_action_json(response)
+        validation_result: dict[str, Any] | str = validate_action_json(response)
 
         if isinstance(validation_result, str):
             # Validation failed, return error
@@ -147,15 +207,15 @@ Based on the current state and your memories, decide what action to take. Respon
             # Validation passed, return action
             return {"action": validation_result, "raw_response": response, "usage": usage}
 
-    def record_action(self, action_type: str, details: str, success: bool):
+    def record_action(self, action_type: str, details: str, success: bool) -> dict[str, Any]:
         """Record an action to memory after execution"""
         return self.memory.record_action(self.agent_id, action_type, details, success)
 
-    def set_last_result(self, action_type: str, success: bool, message: str):
+    def set_last_result(self, action_type: str, success: bool, message: str) -> None:
         """Set the result of the last action for feedback in next prompt"""
-        status = "SUCCESS" if success else "FAILED"
+        status: str = "SUCCESS" if success else "FAILED"
         self.last_action_result = f"Action: {action_type}\nResult: {status}\nMessage: {message}"
 
-    def record_observation(self, observation: str):
+    def record_observation(self, observation: str) -> None:
         """Record an observation to memory"""
         self.memory.record_observation(self.agent_id, observation)

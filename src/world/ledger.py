@@ -7,7 +7,17 @@ Two separate accounting systems:
 See docs/RESOURCE_MODEL.md for full design rationale.
 """
 
-from typing import Dict, Any
+from __future__ import annotations
+
+import math
+from typing import Any, TypedDict
+
+
+class BalanceInfo(TypedDict):
+    """Type for balance information per principal."""
+
+    compute: int
+    scrip: int
 
 
 class Ledger:
@@ -18,13 +28,18 @@ class Ledger:
     - scrip: Persistent economic currency (earned/spent, never resets)
     """
 
-    def __init__(self):
-        # Compute: LLM tokens remaining this tick (resets each tick)
-        self.compute: Dict[str, int] = {}
-        # Scrip: persistent currency (accumulates/depletes)
-        self.scrip: Dict[str, int] = {}
+    compute: dict[str, int]
+    scrip: dict[str, int]
 
-    def create_principal(self, principal_id: str, starting_scrip: int, starting_compute: int = 0) -> None:
+    def __init__(self) -> None:
+        # Compute: LLM tokens remaining this tick (resets each tick)
+        self.compute = {}
+        # Scrip: persistent currency (accumulates/depletes)
+        self.scrip = {}
+
+    def create_principal(
+        self, principal_id: str, starting_scrip: int, starting_compute: int = 0
+    ) -> None:
         """Create a new principal with starting balances"""
         self.scrip[principal_id] = starting_scrip
         self.compute[principal_id] = starting_compute
@@ -103,28 +118,28 @@ class Ledger:
         """DEPRECATED: Use reset_compute()"""
         self.reset_compute(principal_id, quota)
 
-    def get_all_flow(self) -> Dict[str, int]:
+    def get_all_flow(self) -> dict[str, int]:
         """DEPRECATED: Use get_all_compute()"""
         return self.get_all_compute()
 
     # ===== REPORTING =====
 
-    def get_all_balances(self) -> Dict[str, Any]:
+    def get_all_balances(self) -> dict[str, BalanceInfo]:
         """Get snapshot of all balances (both compute and scrip)"""
-        result = {}
+        result: dict[str, BalanceInfo] = {}
         all_principals = set(self.compute.keys()) | set(self.scrip.keys())
         for pid in all_principals:
             result[pid] = {
                 "compute": self.compute.get(pid, 0),
-                "scrip": self.scrip.get(pid, 0)
+                "scrip": self.scrip.get(pid, 0),
             }
         return result
 
-    def get_all_scrip(self) -> Dict[str, int]:
+    def get_all_scrip(self) -> dict[str, int]:
         """Get snapshot of all scrip balances"""
         return dict(self.scrip)
 
-    def get_all_compute(self) -> Dict[str, int]:
+    def get_all_compute(self) -> dict[str, int]:
         """Get snapshot of all compute balances"""
         return dict(self.compute)
 
@@ -133,7 +148,7 @@ class Ledger:
         input_tokens: int,
         output_tokens: int,
         rate_input: float,
-        rate_output: float
+        rate_output: float,
     ) -> int:
         """
         Calculate thinking cost based on token usage and rates.
@@ -149,7 +164,6 @@ class Ledger:
         Returns:
             Total thinking cost in compute units (rounded up)
         """
-        import math
         input_cost = (input_tokens / 1000) * rate_input
         output_cost = (output_tokens / 1000) * rate_output
         return math.ceil(input_cost + output_cost)
@@ -160,7 +174,7 @@ class Ledger:
         input_tokens: int,
         output_tokens: int,
         rate_input: float,
-        rate_output: float
+        rate_output: float,
     ) -> tuple[bool, int]:
         """
         Calculate and deduct thinking cost from principal's COMPUTE.
@@ -170,6 +184,8 @@ class Ledger:
         Returns:
             (success, cost): Whether deduction succeeded and the cost amount
         """
-        cost = self.calculate_thinking_cost(input_tokens, output_tokens, rate_input, rate_output)
+        cost = self.calculate_thinking_cost(
+            input_tokens, output_tokens, rate_input, rate_output
+        )
         success = self.spend_compute(principal_id, cost)
         return success, cost

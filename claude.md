@@ -81,3 +81,52 @@ All values in config, not code. See:
 - `config/config.yaml` - Actual values
 
 Code reads config. Code has no magic numbers.
+
+## Coding Standards
+
+### Configuration Rules
+
+1. **No magic numbers in code** - Every numeric value must come from config
+2. **Use `src/config.py` helpers** - `get()`, `get_genesis_config()`, `get_action_cost()`
+3. **Fallbacks must also be configurable** - If you write `or 50`, that 50 should come from config
+4. **New features need config entries** - Add to both `config.yaml` and `schema.yaml`
+
+Example:
+```python
+# WRONG
+timeout = 30
+limit = min(n, 100)
+
+# RIGHT
+from config import get
+timeout = get("oracle_scorer.timeout") or 30  # 30 is schema default
+max_limit = get("genesis.event_log.max_per_read") or 100
+limit = min(n, max_limit)
+```
+
+### Type Hints
+
+1. **All functions must have type hints** - Parameters and return types
+2. **Use modern Python typing** - `dict[str, Any]` not `Dict[str, Any]` for Python 3.9+
+3. **Must pass `mypy --strict`** - No `Any` without justification
+4. **Use TypedDict for structured dicts** - Especially config and state objects
+
+Example:
+```python
+# WRONG
+def get_balance(agent_id):
+    return self.balances.get(agent_id, 0)
+
+# RIGHT
+def get_balance(self, agent_id: str) -> int:
+    return self.balances.get(agent_id, 0)
+```
+
+### Terminology
+
+Use consistent terms throughout:
+- `compute` not `flow` (for CPU/GPU cycles per tick)
+- `disk` not `stock` (for storage bytes)
+- `scrip` not `credits` (for economic currency)
+- `compute_quota` not `flow_quota`
+- `disk_quota` not `stock_quota`

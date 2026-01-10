@@ -8,27 +8,49 @@ Each agent lives in src/agents/<name>/ with:
 
 import yaml
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, TypedDict
+
 
 # Resolve paths relative to project root
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
 
 
-def load_agents(agents_dir: str = None, prompts_dir: str = None) -> List[Dict[str, Any]]:
+class AgentConfig(TypedDict, total=False):
+    """Configuration for an agent."""
+    id: str
+    llm_model: str | None
+    starting_credits: int
+    system_prompt: str
+    action_schema: str
+    temperature: float | None
+    max_tokens: int | None
+
+
+class AgentYamlConfig(TypedDict, total=False):
+    """Configuration loaded from agent.yaml file."""
+    id: str
+    llm_model: str
+    starting_credits: int
+    enabled: bool
+    temperature: float
+    max_tokens: int
+
+
+def load_agents(agents_dir: str | None = None, prompts_dir: str | None = None) -> list[AgentConfig]:
     """
     Load all enabled agents from the agents directory.
     Returns list of agent configs with prompts loaded.
     """
-    agents_path = Path(agents_dir) if agents_dir else Path(__file__).parent
-    prompts_path = Path(prompts_dir) if prompts_dir else PROJECT_ROOT / "config" / "prompts"
+    agents_path: Path = Path(agents_dir) if agents_dir else Path(__file__).parent
+    prompts_path: Path = Path(prompts_dir) if prompts_dir else PROJECT_ROOT / "config" / "prompts"
 
     # Load shared action schema
-    action_schema_path = prompts_path / "action_schema.md"
-    action_schema = ""
+    action_schema_path: Path = prompts_path / "action_schema.md"
+    action_schema: str = ""
     if action_schema_path.exists():
         action_schema = action_schema_path.read_text()
 
-    agents = []
+    agents: list[AgentConfig] = []
 
     # Iterate through agent directories
     for agent_dir in sorted(agents_path.iterdir()):
@@ -38,8 +60,8 @@ def load_agents(agents_dir: str = None, prompts_dir: str = None) -> List[Dict[st
         if agent_dir.name.startswith("_"):
             continue
 
-        config_path = agent_dir / "agent.yaml"
-        prompt_path = agent_dir / "system_prompt.md"
+        config_path: Path = agent_dir / "agent.yaml"
+        prompt_path: Path = agent_dir / "system_prompt.md"
 
         # Skip if missing required files
         if not config_path.exists():
@@ -48,19 +70,19 @@ def load_agents(agents_dir: str = None, prompts_dir: str = None) -> List[Dict[st
 
         # Load config
         with open(config_path) as f:
-            config = yaml.safe_load(f)
+            config: dict[str, Any] = yaml.safe_load(f)
 
         # Skip disabled agents
         if not config.get("enabled", True):
             continue
 
         # Load prompt
-        system_prompt = ""
+        system_prompt: str = ""
         if prompt_path.exists():
             system_prompt = prompt_path.read_text()
 
         # Build full agent config
-        agent = {
+        agent: AgentConfig = {
             "id": config.get("id", agent_dir.name),
             "llm_model": config.get("llm_model"),
             "starting_credits": config.get("starting_credits", 100),
@@ -76,9 +98,9 @@ def load_agents(agents_dir: str = None, prompts_dir: str = None) -> List[Dict[st
     return agents
 
 
-def list_agents(agents_dir: str = "agents") -> List[str]:
+def list_agents(agents_dir: str = "agents") -> list[str]:
     """List all agent directory names (excluding template)"""
-    agents_path = Path(agents_dir)
+    agents_path: Path = Path(agents_dir)
     return [
         d.name for d in sorted(agents_path.iterdir())
         if d.is_dir() and not d.name.startswith("_")
@@ -87,7 +109,7 @@ def list_agents(agents_dir: str = "agents") -> List[str]:
 
 if __name__ == "__main__":
     # Quick test
-    agents = load_agents()
+    agents: list[AgentConfig] = load_agents()
     print(f"Found {len(agents)} agents:")
     for a in agents:
         print(f"  - {a['id']}: {a['starting_credits']} credits")

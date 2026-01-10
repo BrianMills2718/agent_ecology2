@@ -1,11 +1,13 @@
 """World kernel - the core simulation loop"""
 
+from __future__ import annotations
+
 import sys
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, TypedDict
 
 from .ledger import Ledger
-from .artifacts import ArtifactStore
+from .artifacts import ArtifactStore, Artifact
 from .logger import EventLogger
 from .actions import (
     ActionIntent, ActionResult, ActionType,
@@ -13,18 +15,96 @@ from .actions import (
     InvokeArtifactIntent
 )
 # NOTE: TransferIntent removed - all transfers via genesis_ledger.transfer()
-from .genesis import create_genesis_artifacts
+from .genesis import (
+    create_genesis_artifacts, GenesisArtifact, GenesisRightsRegistry,
+    GenesisOracle, RightsConfig, SubmissionInfo
+)
 from .executor import get_executor
 
 # Add src to path for absolute imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import get as config_get, compute_per_agent_quota
+from config import get as config_get, compute_per_agent_quota, PerAgentQuota
+
+
+class PrincipalConfig(TypedDict, total=False):
+    """Configuration for a principal."""
+    id: str
+    starting_scrip: int
+    starting_credits: int  # Legacy name
+
+
+class LoggingConfig(TypedDict):
+    """Logging configuration."""
+    output_file: str
+
+
+class CostsConfig(TypedDict, total=False):
+    """Costs configuration."""
+    actions: dict[str, int]
+    default: int
+    execution_gas: int
+
+
+class WorldConfig(TypedDict):
+    """World configuration section."""
+    max_ticks: int
+
+
+class ConfigDict(TypedDict, total=False):
+    """Full configuration dictionary."""
+    world: WorldConfig
+    costs: CostsConfig
+    logging: LoggingConfig
+    principals: list[PrincipalConfig]
+    rights: RightsConfig
+
+
+class BalanceInfo(TypedDict):
+    """Balance information for an agent."""
+    compute: int
+    scrip: int
+
+
+class QuotaInfo(TypedDict):
+    """Quota information for an agent."""
+    compute_quota: int
+    disk_quota: int
+    disk_used: int
+    disk_available: int
+
+
+class OracleSubmissionStatus(TypedDict, total=False):
+    """Status of an oracle submission."""
+    status: str
+    submitter: str
+    score: int | None
+
+
+class StateSummary(TypedDict):
+    """World state summary."""
+    tick: int
+    balances: dict[str, BalanceInfo]
+    artifacts: list[dict[str, Any]]
+    quotas: dict[str, QuotaInfo]
+    oracle_submissions: dict[str, OracleSubmissionStatus]
 
 
 class World:
     """The world kernel - manages state, executes actions, logs everything"""
 
-    def __init__(self, config: Dict[str, Any]):
+    config: ConfigDict
+    tick: int
+    max_ticks: int
+    costs: CostsConfig
+    rights_config: RightsConfig
+    ledger: Ledger
+    artifacts: ArtifactStore
+    logger: EventLogger
+    genesis_artifacts: dict[str, GenesisArtifact]
+    rights_registry: GenesisRightsRegistry | None
+    principal_ids: list[str]
+
+    def __init__(self, config: ConfigDict) -> None:
         self.config = config
         self.tick = 0
         self.max_ticks = config["world"]["max_ticks"]
@@ -32,7 +112,8 @@ class World:
 
         # Compute per-agent quotas from resource totals
         num_agents = len(config.get("principals", []))
-        quotas = compute_per_agent_quota(num_agents) if num_agents > 0 else {}
+        empty_quotas: PerAgentQuota = {"compute_quota": 0, "disk_quota": 0, "llm_budget_quota": 0.0}
+        quotas: PerAgentQuota = compute_per_agent_quota(num_agents) if num_agents > 0 else empty_quotas
 
         # Rights configuration (Layer 2: Means of Production)
         # See docs/RESOURCE_MODEL.md for design rationale
@@ -57,11 +138,12 @@ class World:
         )
 
         # Store reference to rights registry for quota enforcement
-        self.rights_registry = self.genesis_artifacts.get("genesis_rights_registry")
+        rights_registry = self.genesis_artifacts.get("genesis_rights_registry")
+        self.rights_registry = rights_registry if isinstance(rights_registry, GenesisRightsRegistry) else None
 
         # Initialize principals from config
         self.principal_ids = []
-        default_starting_scrip = config_get("scrip.starting_amount") or 100
+        default_starting_scrip: int = config_get("scrip.starting_amount") or 100
         for p in config["principals"]:
             # Initialize with starting scrip (persistent currency)
             # Flow will be set when first tick starts
@@ -103,7 +185,7 @@ class World:
     def get_cost(self, action_type: ActionType) -> int:
         """Get the cost for an action type"""
         actions = self.costs.get("actions", {})
-        default = self.costs.get("default", config_get("costs.default") or 1)
+        default: int = self.costs.get("default", config_get("costs.default") or 1)
         return actions.get(action_type.value, default)
 
     def execute_action(self, intent: ActionIntent) -> ActionResult:
@@ -140,7 +222,7 @@ class World:
                     )
                 else:
                     # Check if can afford read_price (economic cost -> SCRIP)
-                    read_price = artifact.policy.get("read_price", 0)
+                    read_price: int = artifact.policy.get("read_price", 0)
                     if read_price > 0 and not self.ledger.can_afford_scrip(intent.principal_id, read_price):
                         result = ActionResult(
                             success=False,
@@ -275,7 +357,7 @@ class World:
             result = self._execute_invoke(intent, compute_cost=compute_cost)
 
         else:
-            result = ActionResult(success=False, message=f"Unknown action type")
+            result = ActionResult(success=False, message="Unknown action type")
 
         # Deduct FLOW cost only if action succeeded (real resource consumption)
         if result.success:
@@ -284,7 +366,13 @@ class World:
         self._log_action(intent, result, compute_cost, result.success)
         return result
 
-    def _log_action(self, intent: ActionIntent, result: ActionResult, compute_cost: int, charged: bool):
+    def _log_action(
+        self,
+        intent: ActionIntent,
+        result: ActionResult,
+        compute_cost: int,
+        charged: bool
+    ) -> None:
         """Log an action execution"""
         self.logger.log("action", {
             "tick": self.tick,
@@ -296,7 +384,11 @@ class World:
             "scrip_after": self.ledger.get_scrip(intent.principal_id)
         })
 
-    def _execute_invoke(self, intent: InvokeArtifactIntent, compute_cost: int = 0) -> ActionResult:
+    def _execute_invoke(
+        self,
+        intent: InvokeArtifactIntent,
+        compute_cost: int = 0
+    ) -> ActionResult:
         """
         Execute an invoke_artifact action.
 
@@ -336,7 +428,7 @@ class World:
 
             # Execute the genesis method
             try:
-                result_data = method.handler(args, intent.principal_id)
+                result_data: dict[str, Any] = method.handler(args, intent.principal_id)
 
                 if result_data.get("success"):
                     # Deduct method cost on success (SCRIP)
@@ -376,8 +468,8 @@ class World:
                 )
 
             # Gas cost (FLOW) - real compute resource
-            config_gas = config_get("costs.execution_gas") or 2
-            gas_cost = self.costs.get("execution_gas", config_gas)
+            config_gas: int = config_get("costs.execution_gas") or 2
+            gas_cost: int = self.costs.get("execution_gas", config_gas)
             # Price (SCRIP) - economic payment to owner
             price = regular_artifact.price
             owner_id = regular_artifact.owner_id
@@ -456,8 +548,8 @@ class World:
                 self.ledger.reset_compute(pid, compute_quota)
             else:
                 # Fallback to config
-                config_compute = config_get("resources.flow.compute.per_tick")
-                default_compute = self.rights_config.get("default_compute_quota", config_compute or 50)
+                config_compute: int | None = config_get("resources.flow.compute.per_tick")
+                default_compute: int = self.rights_config.get("default_compute_quota", config_compute or 50)
                 self.ledger.reset_compute(pid, default_compute)
 
         self.logger.log("tick", {
@@ -469,15 +561,17 @@ class World:
 
         return True
 
-    def get_state_summary(self) -> Dict[str, Any]:
+    def get_state_summary(self) -> StateSummary:
         """Get a summary of current world state"""
         # Combine regular artifacts with genesis artifacts
-        all_artifacts = self.artifacts.list_all()
+        all_artifacts: list[dict[str, Any]] = self.artifacts.list_all()
         for genesis in self.genesis_artifacts.values():
-            all_artifacts.append(genesis.to_dict())
+            # Cast to dict[str, Any] since GenesisArtifactDict is a TypedDict
+            genesis_dict = dict(genesis.to_dict())
+            all_artifacts.append(genesis_dict)
 
         # Get quota info for all agents
-        quotas = {}
+        quotas: dict[str, QuotaInfo] = {}
         if self.rights_registry:
             for pid in self.principal_ids:
                 quotas[pid] = {
@@ -488,9 +582,9 @@ class World:
                 }
 
         # Get oracle submission status
-        oracle_status = {}
+        oracle_status: dict[str, OracleSubmissionStatus] = {}
         oracle = self.genesis_artifacts.get("genesis_oracle")
-        if oracle and hasattr(oracle, 'submissions'):
+        if oracle and isinstance(oracle, GenesisOracle) and hasattr(oracle, 'submissions'):
             for artifact_id, sub in oracle.submissions.items():
                 oracle_status[artifact_id] = {
                     "status": sub.get("status", "unknown"),
@@ -506,6 +600,6 @@ class World:
             "oracle_submissions": oracle_status
         }
 
-    def get_recent_events(self, n: int = 20) -> List[Dict[str, Any]]:
+    def get_recent_events(self, n: int = 20) -> list[dict[str, Any]]:
         """Get recent events from the log"""
         return self.logger.read_recent(n)

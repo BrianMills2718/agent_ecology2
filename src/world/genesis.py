@@ -9,25 +9,162 @@ These enable agents to interact with core infrastructure through
 the same invoke_artifact mechanism they use for agent-created artifacts.
 """
 
-from typing import Any, Dict, Optional, Callable
-from dataclasses import dataclass
+from __future__ import annotations
 
 import sys
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Callable, TypedDict
+
 # Add src to path for absolute imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get_genesis_config, get
 
+from .ledger import Ledger
+from .artifacts import ArtifactStore
+from .logger import EventLogger
+
 
 # System owner ID - cannot be modified by agents
-SYSTEM_OWNER = "system"
+SYSTEM_OWNER: str = "system"
+
+
+class MethodInfo(TypedDict):
+    """Information about a genesis method for listing."""
+    name: str
+    cost: int
+    description: str
+
+
+class BalanceResult(TypedDict):
+    """Result from balance query."""
+    success: bool
+    agent_id: str
+    flow: int
+    scrip: int
+
+
+class AllBalancesResult(TypedDict):
+    """Result from all_balances query."""
+    success: bool
+    balances: dict[str, dict[str, int]]
+
+
+class TransferResult(TypedDict, total=False):
+    """Result from transfer operation."""
+    success: bool
+    error: str
+    transferred: int
+    currency: str
+    to: str
+    from_scrip_after: int
+    to_scrip_after: int
+
+
+class OracleStatusResult(TypedDict):
+    """Result from oracle status query."""
+    success: bool
+    oracle: str
+    type: str
+    pending_submissions: int
+    scored_submissions: int
+    total_submissions: int
+
+
+class SubmissionInfo(TypedDict, total=False):
+    """Information about a submission."""
+    submitter: str
+    status: str
+    score: int | None
+    reason: str | None
+
+
+class SubmitResult(TypedDict, total=False):
+    """Result from submit operation."""
+    success: bool
+    error: str
+    message: str
+    receipt: str
+
+
+class CheckResult(TypedDict, total=False):
+    """Result from check operation."""
+    success: bool
+    error: str
+    submission: SubmissionInfo
+
+
+class ProcessResult(TypedDict, total=False):
+    """Result from process operation."""
+    success: bool
+    message: str
+    artifact_id: str
+    score: int
+    reason: str
+    credits_minted: int
+    submitter: str
+    error: str
+
+
+class QuotaInfo(TypedDict):
+    """Quota information for an agent."""
+    compute_quota: int
+    disk_quota: int
+    disk_used: int
+    disk_available: int
+
+
+class CheckQuotaResult(TypedDict, total=False):
+    """Result from check_quota operation."""
+    success: bool
+    error: str
+    agent_id: str
+    compute_quota: int
+    disk_quota: int
+    disk_used: int
+    disk_available: int
+
+
+class AllQuotasResult(TypedDict):
+    """Result from all_quotas operation."""
+    success: bool
+    quotas: dict[str, QuotaInfo]
+
+
+class TransferQuotaResult(TypedDict, total=False):
+    """Result from transfer_quota operation."""
+    success: bool
+    error: str
+    transferred: int
+    quota_type: str
+    to: str
+    from_new_quota: int
+    to_new_quota: int
+
+
+class ReadEventsResult(TypedDict):
+    """Result from read events operation."""
+    success: bool
+    events: list[dict[str, Any]]
+    count: int
+    total_available: int
+    warning: str
+
+
+class GenesisArtifactDict(TypedDict):
+    """Dictionary representation of a genesis artifact."""
+    id: str
+    type: str
+    owner_id: str
+    content: str
+    methods: list[MethodInfo]
 
 
 @dataclass
 class GenesisMethod:
     """A method exposed by a genesis artifact"""
     name: str
-    handler: Callable
+    handler: Callable[[list[Any], str], dict[str, Any]]
     cost: int  # 0 = free (system-subsidized)
     description: str
 
@@ -35,14 +172,26 @@ class GenesisMethod:
 class GenesisArtifact:
     """Base class for genesis artifacts (system proxies)"""
 
-    def __init__(self, artifact_id: str, description: str):
+    id: str
+    type: str
+    owner_id: str
+    description: str
+    methods: dict[str, GenesisMethod]
+
+    def __init__(self, artifact_id: str, description: str) -> None:
         self.id = artifact_id
         self.type = "genesis"
         self.owner_id = SYSTEM_OWNER
         self.description = description
-        self.methods: Dict[str, GenesisMethod] = {}
+        self.methods = {}
 
-    def register_method(self, name: str, handler: Callable, cost: int = 0, description: str = ""):
+    def register_method(
+        self,
+        name: str,
+        handler: Callable[[list[Any], str], dict[str, Any]],
+        cost: int = 0,
+        description: str = ""
+    ) -> None:
         """Register a callable method on this genesis artifact"""
         self.methods[name] = GenesisMethod(
             name=name,
@@ -51,18 +200,18 @@ class GenesisArtifact:
             description=description
         )
 
-    def get_method(self, method_name: str) -> Optional[GenesisMethod]:
+    def get_method(self, method_name: str) -> GenesisMethod | None:
         """Get a method by name"""
         return self.methods.get(method_name)
 
-    def list_methods(self) -> list:
+    def list_methods(self) -> list[MethodInfo]:
         """List available methods"""
         return [
             {"name": m.name, "cost": m.cost, "description": m.description}
             for m in self.methods.values()
         ]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> GenesisArtifactDict:
         """Convert to dict for artifact listing"""
         return {
             "id": self.id,
@@ -87,7 +236,9 @@ class GenesisLedger(GenesisArtifact):
     - transfer(from_id, to_id, amount) -> bool  [1 scrip fee] - transfers SCRIP
     """
 
-    def __init__(self, ledger):
+    ledger: Ledger
+
+    def __init__(self, ledger: Ledger) -> None:
         super().__init__(
             artifact_id="genesis_ledger",
             description="System ledger - check balances (flow/scrip) and transfer scrip"
@@ -116,11 +267,11 @@ class GenesisLedger(GenesisArtifact):
             description="Transfer SCRIP to another agent. Args: [from_id, to_id, amount]"
         )
 
-    def _balance(self, args: list, invoker_id: str) -> Dict[str, Any]:
+    def _balance(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Get balance for an agent (both flow and scrip)"""
         if not args or len(args) < 1:
             return {"success": False, "error": "balance requires [agent_id]"}
-        agent_id = args[0]
+        agent_id: str = args[0]
         return {
             "success": True,
             "agent_id": agent_id,
@@ -128,16 +279,18 @@ class GenesisLedger(GenesisArtifact):
             "scrip": self.ledger.get_scrip(agent_id)
         }
 
-    def _all_balances(self, args: list, invoker_id: str) -> Dict[str, Any]:
+    def _all_balances(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Get all balances (flow and scrip for each agent)"""
         return {"success": True, "balances": self.ledger.get_all_balances()}
 
-    def _transfer(self, args: list, invoker_id: str) -> Dict[str, Any]:
+    def _transfer(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Transfer SCRIP between agents (not flow - flow is non-transferable)"""
         if not args or len(args) < 3:
             return {"success": False, "error": "transfer requires [from_id, to_id, amount]"}
 
-        from_id, to_id, amount = args[0], args[1], args[2]
+        from_id: str = args[0]
+        to_id: str = args[1]
+        amount: Any = args[2]
 
         # Security check: invoker can only transfer FROM themselves
         if from_id != invoker_id:
@@ -175,7 +328,16 @@ class GenesisOracle(GenesisArtifact):
     - process() -> result  [FREE] - processes one pending submission
     """
 
-    def __init__(self, mint_callback: Callable, artifact_store=None):
+    mint_callback: Callable[[str, int], None]
+    artifact_store: ArtifactStore | None
+    submissions: dict[str, SubmissionInfo]
+    _scorer: Any  # OracleScorer, lazy-loaded
+
+    def __init__(
+        self,
+        mint_callback: Callable[[str, int], None],
+        artifact_store: ArtifactStore | None = None
+    ) -> None:
         """
         Args:
             mint_callback: Function(agent_id, amount) to mint credits
@@ -187,7 +349,7 @@ class GenesisOracle(GenesisArtifact):
         )
         self.mint_callback = mint_callback
         self.artifact_store = artifact_store
-        self.submissions: Dict[str, Dict] = {}  # artifact_id -> submission info
+        self.submissions = {}  # artifact_id -> submission info
         self._scorer = None  # Lazy-loaded
 
         self.register_method(
@@ -218,7 +380,7 @@ class GenesisOracle(GenesisArtifact):
             description="Process one pending submission with LLM scoring. Args: []"
         )
 
-    def _status(self, args: list, invoker_id: str) -> Dict[str, Any]:
+    def _status(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Return oracle status"""
         pending = sum(1 for s in self.submissions.values() if s["status"] == "pending")
         scored = sum(1 for s in self.submissions.values() if s["status"] == "scored")
@@ -231,7 +393,7 @@ class GenesisOracle(GenesisArtifact):
             "total_submissions": len(self.submissions)
         }
 
-    def _submit(self, args: list, invoker_id: str) -> Dict[str, Any]:
+    def _submit(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Submit an artifact for external scoring.
 
         IMPORTANT: Only executable (code) artifacts are accepted.
@@ -240,7 +402,7 @@ class GenesisOracle(GenesisArtifact):
         if not args or len(args) < 1:
             return {"success": False, "error": "submit requires [artifact_id]"}
 
-        artifact_id = args[0]
+        artifact_id: str = args[0]
 
         # Check if artifact exists
         if self.artifact_store:
@@ -273,12 +435,12 @@ class GenesisOracle(GenesisArtifact):
             "receipt": artifact_id
         }
 
-    def _check(self, args: list, invoker_id: str) -> Dict[str, Any]:
+    def _check(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Check status of a submission"""
         if not args or len(args) < 1:
             return {"success": False, "error": "check requires [artifact_id]"}
 
-        artifact_id = args[0]
+        artifact_id: str = args[0]
         submission = self.submissions.get(artifact_id)
 
         if not submission:
@@ -286,10 +448,10 @@ class GenesisOracle(GenesisArtifact):
 
         return {"success": True, "submission": submission}
 
-    def _process(self, args: list, invoker_id: str) -> Dict[str, Any]:
+    def _process(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Process one pending submission using LLM scoring"""
         # Find a pending submission
-        pending_id = None
+        pending_id: str | None = None
         for artifact_id, submission in self.submissions.items():
             if submission["status"] == "pending":
                 pending_id = artifact_id
@@ -315,7 +477,7 @@ class GenesisOracle(GenesisArtifact):
             self._scorer = get_scorer()
 
         # Score the artifact
-        result = self._scorer.score_artifact(
+        result: dict[str, Any] = self._scorer.score_artifact(
             artifact_id=pending_id,
             artifact_type=artifact.type,
             content=artifact.content
@@ -324,8 +486,8 @@ class GenesisOracle(GenesisArtifact):
         submission = self.submissions[pending_id]
 
         if result["success"]:
-            score = result["score"]
-            reason = result["reason"]
+            score: int = result["score"]
+            reason: str = result["reason"]
 
             submission["status"] = "scored"
             submission["score"] = score
@@ -333,7 +495,7 @@ class GenesisOracle(GenesisArtifact):
 
             # Mint credits based on score (score 0-100 -> credits)
             # Scale: score / mint_ratio (configurable)
-            mint_ratio = get_genesis_config("oracle", "mint_ratio") or 10
+            mint_ratio: int = get_genesis_config("oracle", "mint_ratio") or 10
             credits_to_mint = score // mint_ratio
             if credits_to_mint > 0:
                 self.mint_callback(submission["submitter"], credits_to_mint)
@@ -369,7 +531,7 @@ class GenesisOracle(GenesisArtifact):
         submission["reason"] = "Mock score for testing"
 
         # Mint credits based on score
-        mint_ratio = get_genesis_config("oracle", "mint_ratio") or 10
+        mint_ratio: int = get_genesis_config("oracle", "mint_ratio") or 10
         credits_to_mint = score // mint_ratio
         if credits_to_mint > 0:
             self.mint_callback(submission["submitter"], credits_to_mint)
@@ -393,7 +555,17 @@ class GenesisRightsRegistry(GenesisArtifact):
     - transfer_quota(from, to, 'compute'|'disk', amount) -> bool  [1 scrip fee]
     """
 
-    def __init__(self, default_compute: int, default_disk: int, artifact_store=None):
+    default_compute: int
+    default_disk: int
+    artifact_store: ArtifactStore | None
+    quotas: dict[str, dict[str, int]]
+
+    def __init__(
+        self,
+        default_compute: int,
+        default_disk: int,
+        artifact_store: ArtifactStore | None = None
+    ) -> None:
         """
         Args:
             default_compute: Default compute quota per tick for new agents
@@ -409,7 +581,7 @@ class GenesisRightsRegistry(GenesisArtifact):
         self.artifact_store = artifact_store
 
         # Track quotas per agent: {agent_id: {"compute": int, "disk": int}}
-        self.quotas: Dict[str, Dict[str, int]] = {}
+        self.quotas = {}
 
         self.register_method(
             name="check_quota",
@@ -475,12 +647,12 @@ class GenesisRightsRegistry(GenesisArtifact):
         """DEPRECATED: Use get_disk_used()"""
         return self.get_disk_used(agent_id)
 
-    def _check_quota(self, args: list, invoker_id: str) -> Dict[str, Any]:
+    def _check_quota(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Check quotas for an agent"""
         if not args or len(args) < 1:
             return {"success": False, "error": "check_quota requires [agent_id]"}
 
-        agent_id = args[0]
+        agent_id: str = args[0]
         self.ensure_agent(agent_id)
 
         quota = self.quotas[agent_id]
@@ -495,9 +667,9 @@ class GenesisRightsRegistry(GenesisArtifact):
             "disk_available": quota["disk"] - disk_used
         }
 
-    def _all_quotas(self, args: list, invoker_id: str) -> Dict[str, Any]:
+    def _all_quotas(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Get all agent quotas"""
-        result = {}
+        result: dict[str, QuotaInfo] = {}
         for agent_id, quota in self.quotas.items():
             disk_used = self.get_disk_used(agent_id)
             result[agent_id] = {
@@ -508,12 +680,15 @@ class GenesisRightsRegistry(GenesisArtifact):
             }
         return {"success": True, "quotas": result}
 
-    def _transfer_quota(self, args: list, invoker_id: str) -> Dict[str, Any]:
+    def _transfer_quota(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Transfer quota between agents"""
         if not args or len(args) < 4:
             return {"success": False, "error": "transfer_quota requires [from_id, to_id, 'compute'|'disk', amount]"}
 
-        from_id, to_id, quota_type, amount = args[0], args[1], args[2], args[3]
+        from_id: str = args[0]
+        to_id: str = args[1]
+        quota_type: str = args[2]
+        amount: Any = args[3]
 
         # Security check: can only transfer FROM yourself
         if from_id != invoker_id:
@@ -562,7 +737,9 @@ class GenesisEventLog(GenesisArtifact):
     - read([offset, limit]) -> list of events  [FREE]
     """
 
-    def __init__(self, logger):
+    logger: EventLogger
+
+    def __init__(self, logger: EventLogger) -> None:
         """
         Args:
             logger: The world's EventLogger instance
@@ -580,7 +757,7 @@ class GenesisEventLog(GenesisArtifact):
             description="Read recent events. Args: [offset, limit] - both optional. Default: last 50 events."
         )
 
-    def _read(self, args: list, invoker_id: str) -> Dict[str, Any]:
+    def _read(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Read events from the log.
 
         Args format: [offset, limit]
@@ -588,9 +765,9 @@ class GenesisEventLog(GenesisArtifact):
         - limit: return at most this many events (default from config)
         """
         offset = 0
-        default_limit = get("logging.default_recent") or 50
-        max_per_read = get_genesis_config("event_log", "max_per_read") or 100
-        buffer_size = get_genesis_config("event_log", "buffer_size") or 1000
+        default_limit: int = get("logging.default_recent") or 50
+        max_per_read: int = get_genesis_config("event_log", "max_per_read") or 100
+        buffer_size: int = get_genesis_config("event_log", "buffer_size") or 1000
         limit = default_limit
 
         if args and len(args) >= 1 and isinstance(args[0], int):
@@ -619,13 +796,21 @@ class GenesisEventLog(GenesisArtifact):
         }
 
 
+class RightsConfig(TypedDict, total=False):
+    """Configuration for rights registry."""
+    default_compute_quota: int
+    default_disk_quota: int
+    default_flow_quota: int  # Legacy name
+    default_stock_quota: int  # Legacy name
+
+
 def create_genesis_artifacts(
-    ledger,
-    mint_callback: Callable,
-    artifact_store=None,
-    logger=None,
-    rights_config: Dict[str, int] = None
-) -> Dict[str, GenesisArtifact]:
+    ledger: Ledger,
+    mint_callback: Callable[[str, int], None],
+    artifact_store: ArtifactStore | None = None,
+    logger: EventLogger | None = None,
+    rights_config: RightsConfig | None = None
+) -> dict[str, GenesisArtifact]:
     """
     Factory function to create all genesis artifacts.
 
@@ -643,7 +828,7 @@ def create_genesis_artifacts(
     genesis_ledger = GenesisLedger(ledger)
     genesis_oracle = GenesisOracle(mint_callback, artifact_store=artifact_store)
 
-    artifacts = {
+    artifacts: dict[str, GenesisArtifact] = {
         genesis_ledger.id: genesis_ledger,
         genesis_oracle.id: genesis_oracle
     }
@@ -656,8 +841,8 @@ def create_genesis_artifacts(
     # Add rights registry if config provided
     if rights_config:
         # Support both new names and legacy names, with config fallback
-        compute_fallback = get("resources.flow.compute.per_tick") or 50
-        disk_fallback = get("resources.stock.disk.total") or 10000
+        compute_fallback: int = get("resources.flow.compute.per_tick") or 50
+        disk_fallback: int = get("resources.stock.disk.total") or 10000
         default_compute = rights_config.get("default_compute_quota",
                           rights_config.get("default_flow_quota", compute_fallback))
         default_disk = rights_config.get("default_disk_quota",

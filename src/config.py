@@ -6,18 +6,29 @@ No magic numbers in code - everything is configurable.
 See config/schema.yaml for documentation of each field.
 """
 
+from __future__ import annotations
+
 import yaml
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, TypedDict
+
+
+class PerAgentQuota(TypedDict):
+    """Per-agent resource quotas computed from distribution."""
+
+    compute_quota: int
+    disk_quota: int
+    llm_budget_quota: float
+
 
 # Global config instance
-_config: Optional[Dict[str, Any]] = None
+_config: dict[str, Any] | None = None
 
 # Default config path
-DEFAULT_CONFIG_PATH = Path(__file__).parent.parent / "config" / "config.yaml"
+DEFAULT_CONFIG_PATH: Path = Path(__file__).parent.parent / "config" / "config.yaml"
 
 
-def load_config(config_path: str = None) -> Dict[str, Any]:
+def load_config(config_path: str | None = None) -> dict[str, Any]:
     """Load configuration from YAML file.
 
     Args:
@@ -28,18 +39,22 @@ def load_config(config_path: str = None) -> Dict[str, Any]:
     """
     global _config
 
-    path = Path(config_path) if config_path else DEFAULT_CONFIG_PATH
+    path: Path = Path(config_path) if config_path else DEFAULT_CONFIG_PATH
     with open(path) as f:
-        _config = yaml.safe_load(f)
+        loaded: Any = yaml.safe_load(f)
+        if not isinstance(loaded, dict):
+            raise TypeError(f"Config file must contain a dict, got {type(loaded)}")
+        _config = loaded
 
     return _config
 
 
-def get_config() -> Dict[str, Any]:
+def get_config() -> dict[str, Any]:
     """Get the loaded configuration. Loads default if not already loaded."""
     global _config
     if _config is None:
         load_config()
+    assert _config is not None
     return _config
 
 
@@ -51,10 +66,10 @@ def get(key: str, default: Any = None) -> Any:
         get("costs.actions.noop")
         get("genesis.ledger.transfer_fee")
     """
-    config = get_config()
-    keys = key.split(".")
+    config: dict[str, Any] = get_config()
+    keys: list[str] = key.split(".")
 
-    value = config
+    value: Any = config
     for k in keys:
         if isinstance(value, dict) and k in value:
             value = value[k]
@@ -78,7 +93,8 @@ def get_flow_resource(name: str, field: str = "per_tick") -> Any:
 # Cost helpers
 def get_action_cost(action: str) -> int:
     """Get the cost for an action type."""
-    return get(f"costs.actions.{action}", get("costs.default", 1))
+    cost: Any = get(f"costs.actions.{action}", get("costs.default", 1))
+    return int(cost) if cost is not None else 1
 
 
 def get_genesis_config(artifact: str, field: str) -> Any:
@@ -87,7 +103,7 @@ def get_genesis_config(artifact: str, field: str) -> Any:
 
 
 # Computed defaults based on distribution
-def compute_per_agent_quota(num_agents: int) -> Dict[str, Any]:
+def compute_per_agent_quota(num_agents: int) -> PerAgentQuota:
     """Compute per-agent quotas based on distribution type and total resources.
 
     Args:
@@ -100,20 +116,23 @@ def compute_per_agent_quota(num_agents: int) -> Dict[str, Any]:
         num_agents = 1
 
     # Compute (flow resource) - per tick, distributed equally by default
-    compute_total = get_flow_resource("compute", "per_tick") or 1000
-    compute_dist = get_flow_resource("compute", "distribution") or "equal"
+    compute_total: int = get_flow_resource("compute", "per_tick") or 1000
+    compute_dist: str = get_flow_resource("compute", "distribution") or "equal"
 
     # Disk (stock resource) - total, distributed equally by default
-    disk_total = get_stock_resource("disk", "total") or 50000
-    disk_dist = get_stock_resource("disk", "distribution") or "equal"
+    disk_total: int = get_stock_resource("disk", "total") or 50000
+    disk_dist: str = get_stock_resource("disk", "distribution") or "equal"
 
     # LLM budget (stock resource) - total $, distributed equally by default
-    llm_total = get_stock_resource("llm_budget", "total") or 1.00
-    llm_dist = get_stock_resource("llm_budget", "distribution") or "equal"
+    llm_total: float = get_stock_resource("llm_budget", "total") or 1.00
+    llm_dist: str = get_stock_resource("llm_budget", "distribution") or "equal"
 
     # Equal distribution (only type supported for now)
+    # Note: compute_dist, disk_dist, llm_dist are read but only "equal" is implemented
+    _ = (compute_dist, disk_dist, llm_dist)  # Acknowledge unused variables
+
     return {
         "compute_quota": compute_total // num_agents,
         "disk_quota": disk_total // num_agents,
-        "llm_budget_quota": llm_total / num_agents
+        "llm_budget_quota": llm_total / num_agents,
     }

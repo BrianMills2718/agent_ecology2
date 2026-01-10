@@ -1,10 +1,13 @@
 """JSON schema for ActionIntent validation"""
 
 import json
-from typing import Union, Dict, Any
+from typing import Any
+
+# Type alias for action validation result
+ActionValidationResult = dict[str, Any] | str
 
 # The schema that LLMs must follow for action output
-ACTION_SCHEMA = """
+ACTION_SCHEMA: str = """
 You must respond with a single JSON object representing your action.
 
 ## Available Actions (Narrow Waist - only 3 verbs)
@@ -59,7 +62,7 @@ Respond with ONLY the JSON object, no other text.
 """
 
 
-def validate_action_json(json_str: str) -> Union[Dict[str, Any], str]:
+def validate_action_json(json_str: str) -> dict[str, Any] | str:
     """
     Validate that a JSON string is a valid action.
     Returns the parsed dict if valid, or an error string if invalid.
@@ -69,10 +72,10 @@ def validate_action_json(json_str: str) -> Union[Dict[str, Any], str]:
 
     # Handle markdown code blocks
     if json_str.startswith("```"):
-        lines = json_str.split("\n")
+        lines: list[str] = json_str.split("\n")
         # Remove first and last lines (```json and ```)
-        json_lines = []
-        in_block = False
+        json_lines: list[str] = []
+        in_block: bool = False
         for line in lines:
             if line.startswith("```") and not in_block:
                 in_block = True
@@ -84,22 +87,22 @@ def validate_action_json(json_str: str) -> Union[Dict[str, Any], str]:
         json_str = "\n".join(json_lines)
 
     # Find JSON object boundaries
-    start = json_str.find("{")
-    end = json_str.rfind("}") + 1
+    start: int = json_str.find("{")
+    end: int = json_str.rfind("}") + 1
     if start == -1 or end == 0:
         return "No JSON object found in response"
 
     json_str = json_str[start:end]
 
     try:
-        data = json.loads(json_str)
+        data: Any = json.loads(json_str)
     except json.JSONDecodeError as e:
         return f"Invalid JSON: {e}"
 
     if not isinstance(data, dict):
         return "Response must be a JSON object"
 
-    action_type = data.get("action_type", "").lower()
+    action_type: str = data.get("action_type", "").lower()
     if action_type not in ["noop", "read_artifact", "write_artifact", "invoke_artifact"]:
         if action_type == "transfer":
             return "transfer is not a kernel action. Use: invoke_artifact('genesis_ledger', 'transfer', [from_id, to_id, amount])"
@@ -119,7 +122,7 @@ def validate_action_json(json_str: str) -> Union[Dict[str, Any], str]:
             return "invoke_artifact requires 'artifact_id'"
         if not data.get("method"):
             return "invoke_artifact requires 'method'"
-        args = data.get("args", [])
+        args: Any = data.get("args", [])
         if not isinstance(args, list):
             return "invoke_artifact 'args' must be a list"
 

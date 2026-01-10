@@ -1,12 +1,39 @@
 """Simple artifact store - in-memory dict of artifacts"""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Any, List, Union
 from datetime import datetime
+from typing import Any, TypedDict
 
 
 # Type alias for policy allow fields: either a static list or a contract reference
-PolicyAllow = Union[List[str], str]
+PolicyAllow = list[str] | str
+
+
+class PolicyDict(TypedDict, total=False):
+    """Type for artifact policy dictionary."""
+
+    read_price: int
+    invoke_price: int
+    allow_read: PolicyAllow
+    allow_write: PolicyAllow
+    allow_invoke: PolicyAllow
+
+
+class ArtifactDict(TypedDict, total=False):
+    """Type for artifact dictionary representation."""
+
+    id: str
+    type: str
+    content: str
+    owner_id: str
+    created_at: str
+    updated_at: str
+    executable: bool
+    price: int
+    has_code: bool
+    policy: PolicyDict
 
 
 def is_contract_reference(value: PolicyAllow) -> bool:
@@ -14,7 +41,7 @@ def is_contract_reference(value: PolicyAllow) -> bool:
     return isinstance(value, str) and value.startswith("@")
 
 
-def default_policy() -> Dict[str, Any]:
+def default_policy() -> dict[str, Any]:
     """Default policy: public read, owner-only write, no invoke cost
 
     Policy allow fields support two formats (Hybrid Policy Schema):
@@ -31,10 +58,10 @@ def default_policy() -> Dict[str, Any]:
         Requester pays gas for policy check execution. Fail-closed on errors.
     """
     return {
-        "read_price": 0,        # Scrip cost to read content
-        "invoke_price": 0,      # Scrip cost to invoke (for executables)
-        "allow_read": ["*"],    # Static list OR "@contract_id"
-        "allow_write": [],      # Static list OR "@contract_id" (empty = owner only)
+        "read_price": 0,  # Scrip cost to read content
+        "invoke_price": 0,  # Scrip cost to invoke (for executables)
+        "allow_read": ["*"],  # Static list OR "@contract_id"
+        "allow_write": [],  # Static list OR "@contract_id" (empty = owner only)
         "allow_invoke": ["*"],  # Static list OR "@contract_id"
     }
 
@@ -59,6 +86,7 @@ class Artifact:
     - Static lists (["*"], ["alice"]) are enforced by kernel (fast path)
     - Contract refs ("@dao_vote") defer to executable artifact (slow path, V2)
     """
+
     id: str
     type: str
     content: str
@@ -69,19 +97,22 @@ class Artifact:
     executable: bool = False
     code: str = ""  # Python code (must define run() function)
     # Policy for access control and pricing
-    policy: Dict[str, Any] = field(default_factory=default_policy)
+    policy: dict[str, Any] = field(default_factory=default_policy)
 
     @property
     def price(self) -> int:
         """Backwards compatibility: invoke_price from policy"""
-        return self.policy.get("invoke_price", 0)
+        invoke_price = self.policy.get("invoke_price", 0)
+        if isinstance(invoke_price, int):
+            return invoke_price
+        return 0
 
     def can_read(self, agent_id: str) -> bool:
         """Check if agent can read this artifact
 
         Raises NotImplementedError if policy uses @contract reference (V2 feature).
         """
-        allow = self.policy.get("allow_read", ["*"])
+        allow: PolicyAllow = self.policy.get("allow_read", ["*"])
 
         # V2: Contract-based policy (deferred)
         if is_contract_reference(allow):
@@ -92,7 +123,9 @@ class Artifact:
             )
 
         # V1: Static list policy (fast path)
-        return "*" in allow or agent_id in allow or agent_id == self.owner_id
+        if isinstance(allow, list):
+            return "*" in allow or agent_id in allow or agent_id == self.owner_id
+        return agent_id == self.owner_id
 
     def can_write(self, agent_id: str) -> bool:
         """Check if agent can write to this artifact
@@ -103,7 +136,7 @@ class Artifact:
         if agent_id == self.owner_id:
             return True
 
-        allow = self.policy.get("allow_write", [])
+        allow: PolicyAllow = self.policy.get("allow_write", [])
 
         # V2: Contract-based policy (deferred)
         if is_contract_reference(allow):
@@ -114,7 +147,9 @@ class Artifact:
             )
 
         # V1: Static list policy (fast path)
-        return agent_id in allow
+        if isinstance(allow, list):
+            return agent_id in allow
+        return False
 
     def can_invoke(self, agent_id: str) -> bool:
         """Check if agent can invoke this artifact
@@ -124,7 +159,7 @@ class Artifact:
         if not self.executable:
             return False
 
-        allow = self.policy.get("allow_invoke", ["*"])
+        allow: PolicyAllow = self.policy.get("allow_invoke", ["*"])
 
         # V2: Contract-based policy (deferred)
         if is_contract_reference(allow):
@@ -135,10 +170,12 @@ class Artifact:
             )
 
         # V1: Static list policy (fast path)
-        return "*" in allow or agent_id in allow or agent_id == self.owner_id
+        if isinstance(allow, list):
+            return "*" in allow or agent_id in allow or agent_id == self.owner_id
+        return agent_id == self.owner_id
 
-    def to_dict(self) -> Dict[str, Any]:
-        result = {
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
             "id": self.id,
             "type": self.type,
             "content": self.content,
@@ -160,14 +197,16 @@ class Artifact:
 class ArtifactStore:
     """In-memory artifact storage"""
 
-    def __init__(self):
-        self.artifacts: Dict[str, Artifact] = {}
+    artifacts: dict[str, Artifact]
+
+    def __init__(self) -> None:
+        self.artifacts = {}
 
     def exists(self, artifact_id: str) -> bool:
         """Check if artifact exists"""
         return artifact_id in self.artifacts
 
-    def get(self, artifact_id: str) -> Optional[Artifact]:
+    def get(self, artifact_id: str) -> Artifact | None:
         """Get an artifact by ID"""
         return self.artifacts.get(artifact_id)
 
@@ -180,7 +219,7 @@ class ArtifactStore:
         executable: bool = False,
         price: int = 0,
         code: str = "",
-        policy: Dict[str, Any] = None
+        policy: dict[str, Any] | None = None,
     ) -> Artifact:
         """Create or update an artifact. Returns the artifact.
 
@@ -223,18 +262,18 @@ class ArtifactStore:
                 updated_at=now,
                 executable=executable,
                 code=code,
-                policy=artifact_policy
+                policy=artifact_policy,
             )
             self.artifacts[artifact_id] = artifact
 
         return artifact
 
-    def get_owner(self, artifact_id: str) -> Optional[str]:
+    def get_owner(self, artifact_id: str) -> str | None:
         """Get owner of an artifact"""
         artifact = self.get(artifact_id)
         return artifact.owner_id if artifact else None
 
-    def list_all(self) -> list:
+    def list_all(self) -> list[dict[str, Any]]:
         """List all artifacts"""
         return [a.to_dict() for a in self.artifacts.values()]
 
@@ -247,19 +286,20 @@ class ArtifactStore:
         artifact = self.get(artifact_id)
         if not artifact:
             return 0
-        return len(artifact.content.encode('utf-8')) + len(artifact.code.encode('utf-8'))
+        return len(artifact.content.encode("utf-8")) + len(
+            artifact.code.encode("utf-8")
+        )
 
     def get_owner_usage(self, owner_id: str) -> int:
         """Get total disk usage for an owner in bytes"""
         total = 0
         for artifact in self.artifacts.values():
             if artifact.owner_id == owner_id:
-                total += len(artifact.content.encode('utf-8')) + len(artifact.code.encode('utf-8'))
+                total += len(artifact.content.encode("utf-8")) + len(
+                    artifact.code.encode("utf-8")
+                )
         return total
 
-    def list_by_owner(self, owner_id: str) -> list:
+    def list_by_owner(self, owner_id: str) -> list[dict[str, Any]]:
         """List all artifacts owned by a principal"""
-        return [
-            a.to_dict() for a in self.artifacts.values()
-            if a.owner_id == owner_id
-        ]
+        return [a.to_dict() for a in self.artifacts.values() if a.owner_id == owner_id]

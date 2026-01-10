@@ -7,14 +7,17 @@ Uses RestrictedPython to safely execute Python code with:
 - Timeout protection (configurable)
 """
 
-import math
+from __future__ import annotations
+
 import json
+import math
 import random
 import signal
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from types import FrameType, ModuleType
+from typing import Any, TypedDict
 
 from RestrictedPython import compile_restricted, safe_globals
 from RestrictedPython.Eval import default_guarded_getiter, default_guarded_getitem
@@ -25,29 +28,46 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get
 
 
+class ExecutionResult(TypedDict, total=False):
+    """Result from code execution."""
+    success: bool
+    result: Any
+    error: str
+
+
+class ValidationResult(TypedDict, total=False):
+    """Result from code validation."""
+    valid: bool
+    error: str
+
+
+# Create a simple datetime module-like object
+class _DatetimeModule:
+    """A simple namespace for datetime classes."""
+    datetime: type[datetime] = datetime
+    timedelta: type[timedelta] = timedelta
+
+
 # Available modules that can be whitelisted in config
-AVAILABLE_MODULES = {
+AVAILABLE_MODULES: dict[str, ModuleType | _DatetimeModule] = {
     "math": math,
     "json": json,
     "random": random,
-    "datetime": type("datetime_module", (), {
-        "datetime": datetime,
-        "timedelta": timedelta,
-    })(),
+    "datetime": _DatetimeModule(),
 }
 
 
-def get_allowed_modules() -> Dict[str, Any]:
+def get_allowed_modules() -> dict[str, ModuleType | _DatetimeModule]:
     """Get allowed modules based on config."""
-    allowed_imports = get("executor.allowed_imports") or ["math", "json", "random", "datetime"]
+    allowed_imports: list[str] = get("executor.allowed_imports") or ["math", "json", "random", "datetime"]
     return {name: AVAILABLE_MODULES[name] for name in allowed_imports if name in AVAILABLE_MODULES}
 
 
 # Default for backward compatibility
-ALLOWED_MODULES = AVAILABLE_MODULES
+ALLOWED_MODULES: dict[str, ModuleType | _DatetimeModule] = AVAILABLE_MODULES
 
 # Safe subset of built-in functions
-SAFE_BUILTINS = {
+SAFE_BUILTINS: dict[str, Any] = {
     # Type constructors
     "int": int,
     "float": float,
@@ -114,13 +134,15 @@ class TimeoutError(Exception):
     pass
 
 
-def _timeout_handler(signum, frame):
+def _timeout_handler(signum: int, frame: FrameType | None) -> None:
     raise TimeoutError("Execution timed out")
 
 
-def _make_safe_import(allowed_modules: Dict[str, Any]):
+def _make_safe_import(
+    allowed_modules: dict[str, ModuleType | _DatetimeModule]
+) -> Any:
     """Create a restricted import function for the given allowed modules."""
-    def _safe_import(name, *args, **kwargs):
+    def _safe_import(name: str, *args: Any, **kwargs: Any) -> ModuleType | _DatetimeModule:
         """Restricted import that only allows whitelisted modules"""
         if name in allowed_modules:
             return allowed_modules[name]
@@ -128,7 +150,7 @@ def _make_safe_import(allowed_modules: Dict[str, Any]):
     return _safe_import
 
 
-def _write_guard(obj):
+def _write_guard(obj: Any) -> Any:
     """Guard for write operations - allow basic types only"""
     if isinstance(obj, (list, dict, set)):
         return obj
@@ -149,12 +171,15 @@ class SafeExecutor:
     - Execution timeout (configurable)
     """
 
-    def __init__(self, timeout: int = None):
-        default_timeout = get("executor.timeout_seconds") or 5
+    timeout: int
+    allowed_modules: dict[str, ModuleType | _DatetimeModule]
+
+    def __init__(self, timeout: int | None = None) -> None:
+        default_timeout: int = get("executor.timeout_seconds") or 5
         self.timeout = timeout or default_timeout
         self.allowed_modules = get_allowed_modules()
 
-    def validate_code(self, code: str) -> Tuple[bool, str]:
+    def validate_code(self, code: str) -> tuple[bool, str]:
         """
         Validate that code can be safely compiled.
 
@@ -177,7 +202,7 @@ class SafeExecutor:
         except Exception as e:
             return False, f"Compilation failed: {e}"
 
-    def execute(self, code: str, args: list = None) -> Dict[str, Any]:
+    def execute(self, code: str, args: list[Any] | None = None) -> ExecutionResult:
         """
         Execute code in sandbox and call run(*args).
 
@@ -211,7 +236,7 @@ class SafeExecutor:
         safe_builtins["__import__"] = _make_safe_import(self.allowed_modules)
 
         # Build restricted globals
-        restricted_globals = {
+        restricted_globals: dict[str, Any] = {
             "__builtins__": safe_builtins,
             "__name__": "__main__",
             "__metaclass__": type,
@@ -226,12 +251,12 @@ class SafeExecutor:
         for name, module in self.allowed_modules.items():
             restricted_globals[name] = module
 
-        restricted_locals = {}
+        restricted_locals: dict[str, Any] = {}
 
         # Execute the code definition (creates the run function)
         try:
             # Set up timeout (Unix only)
-            old_handler = None
+            old_handler: Any = None
             try:
                 old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
                 signal.alarm(self.timeout)
@@ -301,10 +326,10 @@ class SafeExecutor:
 
 
 # Singleton instance
-_executor = None
+_executor: SafeExecutor | None = None
 
 
-def get_executor(timeout: int = None) -> SafeExecutor:
+def get_executor(timeout: int | None = None) -> SafeExecutor:
     """Get or create the SafeExecutor singleton.
 
     Timeout defaults to config value if not specified.
