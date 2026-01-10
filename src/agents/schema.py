@@ -1,7 +1,16 @@
 """JSON schema for ActionIntent validation"""
 
 import json
-from typing import Any
+from typing import Any, Literal
+
+# Literal type for valid action types
+ActionType = Literal[
+    "noop",
+    "read_artifact",
+    "write_artifact",
+    "invoke_artifact",
+    "transfer",  # Deprecated - returns error message
+]
 
 # Type alias for action validation result
 ActionValidationResult = dict[str, Any] | str
@@ -102,7 +111,7 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
     if not isinstance(data, dict):
         return "Response must be a JSON object"
 
-    action_type: str = data.get("action_type", "").lower()
+    action_type: ActionType | str = data.get("action_type", "").lower()
     if action_type not in ["noop", "read_artifact", "write_artifact", "invoke_artifact"]:
         if action_type == "transfer":
             return "transfer is not a kernel action. Use: invoke_artifact('genesis_ledger', 'transfer', [from_id, to_id, amount])"

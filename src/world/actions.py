@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
+from agents.schema import ActionType as ActionTypeLiteral
+
 
 class ActionType(str, Enum):
     """The narrow waist - only 3 physics verbs (plus noop)"""
@@ -145,9 +147,9 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
     except json.JSONDecodeError as e:
         return f"Invalid JSON: {e}"
 
-    action_type = data.get("action_type", "")
-    if isinstance(action_type, str):
-        action_type = action_type.lower()
+    raw_action_type = data.get("action_type", "")
+    if isinstance(raw_action_type, str):
+        action_type: ActionTypeLiteral | str = raw_action_type.lower()
     else:
         action_type = ""
 

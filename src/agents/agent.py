@@ -10,7 +10,7 @@ PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / 'llm_provider_standalone'))
 
 from llm_provider import LLMProvider
-from .schema import ACTION_SCHEMA, validate_action_json
+from .schema import ACTION_SCHEMA, ActionType, validate_action_json
 from .memory import AgentMemory, get_memory
 
 
@@ -207,11 +207,11 @@ Based on the current state and your memories, decide what action to take. Respon
             # Validation passed, return action
             return {"action": validation_result, "raw_response": response, "usage": usage}
 
-    def record_action(self, action_type: str, details: str, success: bool) -> dict[str, Any]:
+    def record_action(self, action_type: ActionType, details: str, success: bool) -> dict[str, Any]:
         """Record an action to memory after execution"""
         return self.memory.record_action(self.agent_id, action_type, details, success)
 
-    def set_last_result(self, action_type: str, success: bool, message: str) -> None:
+    def set_last_result(self, action_type: ActionType, success: bool, message: str) -> None:
         """Set the result of the last action for feedback in next prompt"""
         status: str = "SUCCESS" if success else "FAILED"
         self.last_action_result = f"Action: {action_type}\nResult: {status}\nMessage: {message}"

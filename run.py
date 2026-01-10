@@ -30,6 +30,7 @@ from world import World
 from world.actions import parse_intent_from_json, ActionIntent
 from agents import Agent
 from agents.loader import load_agents
+from agents.schema import ActionType
 
 
 class PrincipalConfig(TypedDict):
@@ -300,15 +301,16 @@ def run_simulation(
                 print(f"    -> {status}: {result.message}")
 
             # Feed result back to agent for next prompt
-            agent.set_last_result(
-                action_dict.get("action_type", "unknown"), result.success, result.message
-            )
+            # Extract action_type and cast to ActionType (defaults to "noop" if invalid)
+            raw_action_type: str = action_dict.get("action_type", "noop")
+            action_type: ActionType = raw_action_type if raw_action_type in (
+                "noop", "read_artifact", "write_artifact", "invoke_artifact", "transfer"
+            ) else "noop"
+            agent.set_last_result(action_type, result.success, result.message)
 
             # Record action to agent's memory
             action_details: str = json.dumps(action_dict)
-            agent.record_action(
-                action_dict.get("action_type", "unknown"), action_details, result.success
-            )
+            agent.record_action(action_type, action_details, result.success)
 
             # Rate limit delay
             if delay > 0:
