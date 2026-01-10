@@ -14,7 +14,7 @@ from pydantic import ValidationError
 from llm_provider import LLMProvider
 from .schema import ACTION_SCHEMA, ActionType
 from .memory import AgentMemory, get_memory
-from .models import ActionResponse
+from .models import ActionResponse, FlatActionResponse
 
 
 class TokenUsage(TypedDict):
@@ -77,17 +77,19 @@ class Agent:
     memory: AgentMemory
     last_action_result: str | None
     llm: LLMProvider
+    llm_model: str
     cooldown_ticks: int = 0
 
     def __init__(
         self,
         agent_id: str,
-        llm_model: str = "gemini/gemini-3-flash-preview",
+        llm_model: str = "gemini/gemini-2.0-flash",
         system_prompt: str = "",
         action_schema: str = "",
         log_dir: str = "llm_logs"
     ) -> None:
         self.agent_id = agent_id
+        self.llm_model = llm_model
         self.system_prompt = system_prompt
         self.action_schema = action_schema or ACTION_SCHEMA  # Fall back to default
         self.memory = get_memory()
@@ -100,6 +102,10 @@ class Agent:
             log_dir=log_dir,
             timeout=60
         )
+
+    def _is_gemini_model(self) -> bool:
+        """Check if using a Gemini model (requires flat action schema)."""
+        return "gemini" in self.llm_model.lower()
 
     def build_prompt(self, world_state: dict[str, Any]) -> str:
         """Build the prompt for the LLM (events require genesis_event_log)"""
@@ -192,6 +198,7 @@ Your response should include:
         Have the LLM propose an action based on world state.
 
         Uses Pydantic structured outputs for reliable parsing.
+        For Gemini models, uses FlatActionResponse to avoid discriminated union issues.
 
         Returns a dict with:
           - 'action' (valid action dict) and 'thought_process' (str), or 'error' (string)
@@ -200,10 +207,19 @@ Your response should include:
         prompt: str = self.build_prompt(world_state)
 
         try:
-            response: ActionResponse = self.llm.generate(
-                prompt,
-                response_model=ActionResponse
-            )
+            # Use FlatActionResponse for Gemini (avoids anyOf/oneOf issues)
+            # Use ActionResponse for other models (OpenAI, Anthropic, etc.)
+            if self._is_gemini_model():
+                flat_response: FlatActionResponse = self.llm.generate(
+                    prompt,
+                    response_model=FlatActionResponse
+                )
+                response: ActionResponse = flat_response.to_action_response()
+            else:
+                response = self.llm.generate(
+                    prompt,
+                    response_model=ActionResponse
+                )
             usage: TokenUsage = self.llm.last_usage.copy()
 
             return {

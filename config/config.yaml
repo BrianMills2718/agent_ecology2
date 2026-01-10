@@ -80,7 +80,7 @@ executor:
 # ORACLE SCORER
 # -----------------------------------------------------------------------------
 oracle_scorer:
-  model: "gemini/gemini-3-flash-preview"
+  model: "gemini/gemini-2.0-flash"
   timeout: 30
   max_content_length: 200000
 
@@ -88,7 +88,7 @@ oracle_scorer:
 # LLM
 # -----------------------------------------------------------------------------
 llm:
-  default_model: "gemini/gemini-3-flash-preview"
+  default_model: "gemini/gemini-2.0-flash"
   timeout: 60
   rate_limit_delay: 15
 
