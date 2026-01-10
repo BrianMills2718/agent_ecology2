@@ -40,11 +40,18 @@ class PrincipalConfig(TypedDict):
     starting_scrip: int
 
 
+class BalanceInfo(TypedDict):
+    """Balance information for an agent."""
+
+    compute: int
+    scrip: int
+
+
 class CheckpointData(TypedDict):
     """Structure for checkpoint file data."""
 
     tick: int
-    balances: dict[str, int]
+    balances: dict[str, BalanceInfo]
     cumulative_api_cost: float
     artifacts: list[dict[str, Any]]
     agent_ids: list[str]
@@ -82,11 +89,53 @@ def save_checkpoint(
     return checkpoint_file
 
 
+def load_checkpoint(checkpoint_file: str) -> CheckpointData | None:
+    """Load simulation state from checkpoint file.
+
+    Args:
+        checkpoint_file: Path to the checkpoint JSON file.
+
+    Returns:
+        CheckpointData dict if file exists and is valid, None otherwise.
+    """
+    checkpoint_path: Path = Path(checkpoint_file)
+    if not checkpoint_path.exists():
+        return None
+
+    with open(checkpoint_path) as f:
+        data: dict[str, Any] = json.load(f)
+
+    # Cast to CheckpointData (assumes file structure is valid)
+    # Parse balances - handle both old format (int) and new format (BalanceInfo dict)
+    raw_balances: dict[str, Any] = data["balances"]
+    balances: dict[str, BalanceInfo] = {}
+    for agent_id, balance_data in raw_balances.items():
+        if isinstance(balance_data, dict):
+            balances[agent_id] = {
+                "compute": int(balance_data.get("compute", 0)),
+                "scrip": int(balance_data.get("scrip", 0)),
+            }
+        else:
+            # Legacy format: just scrip value as int
+            balances[agent_id] = {"compute": 0, "scrip": int(balance_data)}
+
+    checkpoint: CheckpointData = {
+        "tick": int(data["tick"]),
+        "balances": balances,
+        "cumulative_api_cost": float(data["cumulative_api_cost"]),
+        "artifacts": list(data["artifacts"]),
+        "agent_ids": list(data["agent_ids"]),
+        "reason": str(data["reason"]),
+    }
+    return checkpoint
+
+
 def run_simulation(
     config: dict[str, Any],
     max_agents: int | None = None,
     verbose: bool = True,
     delay: float | None = None,
+    checkpoint: CheckpointData | None = None,
 ) -> World:
     """Run the simulation.
 
@@ -95,6 +144,7 @@ def run_simulation(
         max_agents: Limit number of agents (optional)
         verbose: Print progress (default True)
         delay: Seconds between LLM calls (defaults to config value)
+        checkpoint: Checkpoint data to resume from (optional)
     """
     # Use delay from config if not specified
     if delay is None:
@@ -103,7 +153,9 @@ def run_simulation(
     # Budget configuration
     budget_config: dict[str, Any] = config.get("budget", {})
     max_api_cost: float = budget_config.get("max_api_cost", 0)  # 0 = unlimited
-    cumulative_api_cost: float = 0.0
+    cumulative_api_cost: float = (
+        checkpoint["cumulative_api_cost"] if checkpoint else 0.0
+    )
 
     # Load agents from directory structure
     agent_configs: list[dict[str, Any]] = load_agents()
@@ -127,6 +179,37 @@ def run_simulation(
 
     # Initialize world
     world: World = World(config)
+
+    # Restore checkpoint state if resuming
+    if checkpoint:
+        # Restore tick (subtract 1 because advance_tick increments before first iteration)
+        world.tick = checkpoint["tick"] - 1
+
+        # Restore balances
+        for agent_id, balance_info in checkpoint["balances"].items():
+            if agent_id in world.ledger.scrip:
+                world.ledger.scrip[agent_id] = balance_info["scrip"]
+
+        # Restore artifacts
+        for artifact_data in checkpoint["artifacts"]:
+            world.artifacts.write(
+                artifact_id=artifact_data["id"],
+                type=artifact_data.get("type", "data"),
+                content=artifact_data.get("content", ""),
+                owner_id=artifact_data.get("owner_id", "system"),
+                executable=artifact_data.get("executable", False),
+                price=artifact_data.get("price", 0),
+                code=artifact_data.get("code", ""),
+                policy=artifact_data.get("policy"),
+            )
+
+        if verbose:
+            print(f"=== Resuming from checkpoint ===")
+            print(f"Previous tick: {checkpoint['tick']}")
+            print(f"Previous reason: {checkpoint['reason']}")
+            print(f"Cumulative API cost: ${cumulative_api_cost:.4f}")
+            print(f"Restored artifacts: {len(checkpoint['artifacts'])}")
+            print()
 
     # Extract token rates from config
     costs: dict[str, Any] = config.get("costs", {})
@@ -347,6 +430,14 @@ def main() -> None:
         default=None,
         help="Delay between LLM calls (defaults to config value)",
     )
+    parser.add_argument(
+        "--resume",
+        type=str,
+        nargs="?",
+        const="checkpoint.json",
+        default=None,
+        help="Resume from checkpoint file (default: checkpoint.json)",
+    )
     args: argparse.Namespace = parser.parse_args()
 
     config: dict[str, Any] = load_config(args.config)
@@ -354,7 +445,20 @@ def main() -> None:
     if args.ticks:
         config["world"]["max_ticks"] = args.ticks
 
-    run_simulation(config, max_agents=args.agents, verbose=not args.quiet, delay=args.delay)
+    # Load checkpoint if resuming
+    checkpoint: CheckpointData | None = None
+    if args.resume:
+        checkpoint = load_checkpoint(args.resume)
+        if checkpoint is None and not args.quiet:
+            print(f"Warning: Checkpoint file '{args.resume}' not found. Starting fresh.")
+
+    run_simulation(
+        config,
+        max_agents=args.agents,
+        verbose=not args.quiet,
+        delay=args.delay,
+        checkpoint=checkpoint,
+    )
 
 
 if __name__ == "__main__":

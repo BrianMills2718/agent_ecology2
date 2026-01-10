@@ -36,6 +36,14 @@ class ArtifactDict(TypedDict, total=False):
     policy: PolicyDict
 
 
+class WriteResult(TypedDict):
+    """Result of an artifact write operation."""
+
+    success: bool
+    message: str
+    data: dict[str, Any] | None
+
+
 def is_contract_reference(value: PolicyAllow) -> bool:
     """Check if a policy value is a contract reference (starts with @)"""
     return isinstance(value, str) and value.startswith("@")
@@ -303,3 +311,57 @@ class ArtifactStore:
     def list_by_owner(self, owner_id: str) -> list[dict[str, Any]]:
         """List all artifacts owned by a principal"""
         return [a.to_dict() for a in self.artifacts.values() if a.owner_id == owner_id]
+
+    def write_artifact(
+        self,
+        artifact_id: str,
+        artifact_type: str,
+        content: str,
+        owner_id: str,
+        executable: bool = False,
+        price: int = 0,
+        code: str = "",
+        policy: dict[str, Any] | None = None,
+    ) -> WriteResult:
+        """Write an artifact and return a standardized result.
+
+        This is a higher-level wrapper around write() that returns a WriteResult
+        with success status, message, and data. Used to deduplicate write logic
+        in the world kernel.
+
+        Args:
+            artifact_id: Unique identifier for the artifact
+            artifact_type: Type of artifact (e.g., "generic", "code")
+            content: The artifact content
+            owner_id: Owner principal ID
+            executable: Whether the artifact is executable
+            price: Service fee for invocation (for executables)
+            code: Python code with run() function (for executables)
+            policy: Optional access control policy
+
+        Returns:
+            WriteResult with success=True and artifact data, or success=False on error
+        """
+        self.write(
+            artifact_id=artifact_id,
+            type=artifact_type,
+            content=content,
+            owner_id=owner_id,
+            executable=executable,
+            price=price,
+            code=code,
+            policy=policy,
+        )
+
+        if executable:
+            return {
+                "success": True,
+                "message": f"Wrote executable artifact {artifact_id} (price: {price})",
+                "data": {"artifact_id": artifact_id, "executable": True, "price": price},
+            }
+        else:
+            return {
+                "success": True,
+                "message": f"Wrote artifact {artifact_id}",
+                "data": {"artifact_id": artifact_id},
+            }

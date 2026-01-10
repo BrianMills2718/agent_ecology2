@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, TypedDict
 
 from .ledger import Ledger
-from .artifacts import ArtifactStore, Artifact
+from .artifacts import ArtifactStore, Artifact, WriteResult
 from .logger import EventLogger
 from .actions import (
     ActionIntent, ActionResult, ActionType,
@@ -253,105 +253,7 @@ class World:
                 )
 
         elif isinstance(intent, WriteArtifactIntent):
-            # Protect genesis artifacts from modification
-            if intent.artifact_id in self.genesis_artifacts:
-                result = ActionResult(
-                    success=False,
-                    message=f"Cannot modify system artifact {intent.artifact_id}"
-                )
-            # Check write permission for existing artifacts (policy-based)
-            elif (existing := self.artifacts.get(intent.artifact_id)) and not existing.can_write(intent.principal_id):
-                result = ActionResult(
-                    success=False,
-                    message=f"Access denied: you are not allowed to write to {intent.artifact_id}"
-                )
-            # Check disk quota (Layer 2: Stock Rights)
-            elif self.rights_registry:
-                # Calculate new content size
-                new_size = len(intent.content.encode('utf-8')) + len(intent.code.encode('utf-8'))
-                # Get existing artifact size (if updating)
-                existing_size = self.artifacts.get_artifact_size(intent.artifact_id)
-                net_new_bytes = new_size - existing_size
-
-                if net_new_bytes > 0 and not self.rights_registry.can_write(intent.principal_id, net_new_bytes):
-                    quota = self.rights_registry.get_disk_quota(intent.principal_id)
-                    used = self.rights_registry.get_disk_used(intent.principal_id)
-                    result = ActionResult(
-                        success=False,
-                        message=f"Disk quota exceeded. Need {net_new_bytes} bytes, have {quota - used} available (quota: {quota}, used: {used})"
-                    )
-                # Validate executable code if provided
-                elif intent.executable:
-                    executor = get_executor()
-                    valid, error = executor.validate_code(intent.code)
-                    if not valid:
-                        result = ActionResult(
-                            success=False,
-                            message=f"Invalid executable code: {error}"
-                        )
-                    else:
-                        artifact = self.artifacts.write(
-                            intent.artifact_id,
-                            intent.artifact_type,
-                            intent.content,
-                            intent.principal_id,
-                            executable=True,
-                            price=intent.price,
-                            code=intent.code
-                        )
-                        result = ActionResult(
-                            success=True,
-                            message=f"Wrote executable artifact {intent.artifact_id} (price: {intent.price})",
-                            data={"artifact_id": intent.artifact_id, "executable": True, "price": intent.price}
-                        )
-                else:
-                    artifact = self.artifacts.write(
-                        intent.artifact_id,
-                        intent.artifact_type,
-                        intent.content,
-                        intent.principal_id
-                    )
-                    result = ActionResult(
-                        success=True,
-                        message=f"Wrote artifact {intent.artifact_id}",
-                        data={"artifact_id": intent.artifact_id}
-                    )
-            # Fallback for when rights_registry is not available
-            elif intent.executable:
-                executor = get_executor()
-                valid, error = executor.validate_code(intent.code)
-                if not valid:
-                    result = ActionResult(
-                        success=False,
-                        message=f"Invalid executable code: {error}"
-                    )
-                else:
-                    artifact = self.artifacts.write(
-                        intent.artifact_id,
-                        intent.artifact_type,
-                        intent.content,
-                        intent.principal_id,
-                        executable=True,
-                        price=intent.price,
-                        code=intent.code
-                    )
-                    result = ActionResult(
-                        success=True,
-                        message=f"Wrote executable artifact {intent.artifact_id} (price: {intent.price})",
-                        data={"artifact_id": intent.artifact_id, "executable": True, "price": intent.price}
-                    )
-            else:
-                artifact = self.artifacts.write(
-                    intent.artifact_id,
-                    intent.artifact_type,
-                    intent.content,
-                    intent.principal_id
-                )
-                result = ActionResult(
-                    success=True,
-                    message=f"Wrote artifact {intent.artifact_id}",
-                    data={"artifact_id": intent.artifact_id}
-                )
+            result = self._execute_write(intent)
 
         elif isinstance(intent, InvokeArtifactIntent):
             result = self._execute_invoke(intent, compute_cost=compute_cost)
@@ -383,6 +285,75 @@ class World:
             "compute_after": self.ledger.get_compute(intent.principal_id),
             "scrip_after": self.ledger.get_scrip(intent.principal_id)
         })
+
+    def _execute_write(self, intent: WriteArtifactIntent) -> ActionResult:
+        """Execute a write_artifact action.
+
+        Handles:
+        - Protection of genesis artifacts
+        - Write permission checks (policy-based)
+        - Disk quota enforcement (when rights_registry available)
+        - Executable code validation
+        - Artifact creation/update via ArtifactStore.write_artifact()
+
+        Returns:
+            ActionResult with success status, message, and optional data
+        """
+        # Protect genesis artifacts from modification
+        if intent.artifact_id in self.genesis_artifacts:
+            return ActionResult(
+                success=False,
+                message=f"Cannot modify system artifact {intent.artifact_id}"
+            )
+
+        # Check write permission for existing artifacts (policy-based)
+        existing = self.artifacts.get(intent.artifact_id)
+        if existing and not existing.can_write(intent.principal_id):
+            return ActionResult(
+                success=False,
+                message=f"Access denied: you are not allowed to write to {intent.artifact_id}"
+            )
+
+        # Check disk quota if rights_registry is available (Layer 2: Stock Rights)
+        if self.rights_registry:
+            new_size = len(intent.content.encode('utf-8')) + len(intent.code.encode('utf-8'))
+            existing_size = self.artifacts.get_artifact_size(intent.artifact_id)
+            net_new_bytes = new_size - existing_size
+
+            if net_new_bytes > 0 and not self.rights_registry.can_write(intent.principal_id, net_new_bytes):
+                quota = self.rights_registry.get_disk_quota(intent.principal_id)
+                used = self.rights_registry.get_disk_used(intent.principal_id)
+                return ActionResult(
+                    success=False,
+                    message=f"Disk quota exceeded. Need {net_new_bytes} bytes, have {quota - used} available (quota: {quota}, used: {used})"
+                )
+
+        # Validate executable code if provided
+        if intent.executable:
+            executor = get_executor()
+            valid, error = executor.validate_code(intent.code)
+            if not valid:
+                return ActionResult(
+                    success=False,
+                    message=f"Invalid executable code: {error}"
+                )
+
+        # Write the artifact using the deduplicated helper
+        write_result: WriteResult = self.artifacts.write_artifact(
+            artifact_id=intent.artifact_id,
+            artifact_type=intent.artifact_type,
+            content=intent.content,
+            owner_id=intent.principal_id,
+            executable=intent.executable,
+            price=intent.price,
+            code=intent.code,
+        )
+
+        return ActionResult(
+            success=write_result["success"],
+            message=write_result["message"],
+            data=write_result["data"]
+        )
 
     def _execute_invoke(
         self,
