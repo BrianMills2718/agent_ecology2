@@ -3,6 +3,16 @@ from .agent import Agent, ActionResult, TokenUsage, WorldState
 from .schema import ACTION_SCHEMA, ActionType, validate_action_json
 from .loader import load_agents, list_agents, AgentConfig
 from .memory import AgentMemory, get_memory
+from .models import (
+    Action,
+    ActionField,
+    ActionResponse,
+    InvokeArtifactAction,
+    NoopAction,
+    PolicyDict,
+    ReadArtifactAction,
+    WriteArtifactAction,
+)
 
 __all__: list[str] = [
     "Agent",
@@ -17,4 +27,13 @@ __all__: list[str] = [
     "AgentConfig",
     "AgentMemory",
     "get_memory",
+    # Pydantic models
+    "Action",
+    "ActionField",
+    "ActionResponse",
+    "InvokeArtifactAction",
+    "NoopAction",
+    "PolicyDict",
+    "ReadArtifactAction",
+    "WriteArtifactAction",
 ]

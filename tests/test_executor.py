@@ -1,7 +1,10 @@
-"""Unit tests for the SandboxExecutor (SafeExecutor) class.
+"""Unit tests for the SafeExecutor class.
 
-These tests verify that the sandbox properly blocks dangerous operations
-while allowing legitimate code execution.
+These tests verify that the executor properly executes code with timeout
+protection while allowing full Python functionality.
+
+Note: The executor is now unrestricted (no RestrictedPython) and relies on
+Docker container isolation for security instead of Python-level sandboxing.
 """
 
 import sys
@@ -14,129 +17,84 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from world.executor import SafeExecutor
 
 
-class TestSandboxSafety:
-    """Tests that verify the sandbox blocks dangerous operations."""
+class TestUnrestrictedExecution:
+    """Tests that verify the unrestricted executor allows Python operations.
+
+    These tests confirm that operations previously blocked by RestrictedPython
+    now work correctly, as security is provided by Docker container isolation.
+    """
 
     def setup_method(self) -> None:
         """Create a fresh executor for each test."""
         self.executor = SafeExecutor(timeout=5)
 
-    def test_block_file_read(self) -> None:
-        """Verify that open() cannot be used to read files."""
-        code = '''
-def run():
-    with open("/etc/passwd", "r") as f:
-        return f.read()
-'''
-        result = self.executor.execute(code)
-        assert result["success"] is False
-        # Should fail during compilation or execution because open is not available
-        assert "error" in result
-
-    def test_block_file_write(self) -> None:
-        """Verify that open() cannot be used to write files."""
-        code = '''
-def run():
-    with open("/tmp/malicious.txt", "w") as f:
-        f.write("pwned")
-    return "wrote file"
-'''
-        result = self.executor.execute(code)
-        assert result["success"] is False
-        assert "error" in result
-
-    def test_block_import_os(self) -> None:
-        """Verify that the os module cannot be imported."""
+    def test_allow_import_os(self) -> None:
+        """Verify that the os module can be imported."""
         code = '''
 def run():
     import os
     return os.getcwd()
 '''
         result = self.executor.execute(code)
-        assert result["success"] is False
-        assert "error" in result
-        # Check that the error mentions import restriction
-        assert "Import" in result["error"] or "import" in result["error"].lower()
+        assert result["success"] is True
+        assert isinstance(result["result"], str)
 
-    def test_block_import_subprocess(self) -> None:
-        """Verify that subprocess cannot be imported."""
+    def test_allow_import_sys(self) -> None:
+        """Verify that sys module can be imported."""
         code = '''
 def run():
-    import subprocess
-    return subprocess.run(["ls"], capture_output=True).stdout
+    import sys
+    return len(sys.path) > 0
 '''
         result = self.executor.execute(code)
-        assert result["success"] is False
-        assert "error" in result
-        assert "Import" in result["error"] or "import" in result["error"].lower()
+        assert result["success"] is True
+        assert result["result"] is True
 
-    def test_block_exec(self) -> None:
-        """Verify that exec() is not available."""
-        code = '''
-def run():
-    exec("x = 1 + 1")
-    return x
-'''
-        result = self.executor.execute(code)
-        assert result["success"] is False
-        assert "error" in result
-
-    def test_block_eval(self) -> None:
-        """Verify that eval() is not available."""
+    def test_allow_eval(self) -> None:
+        """Verify that eval() works."""
         code = '''
 def run():
     return eval("1 + 1")
 '''
         result = self.executor.execute(code)
-        assert result["success"] is False
-        assert "error" in result
+        assert result["success"] is True
+        assert result["result"] == 2
 
-    def test_block_getattr_exploit(self) -> None:
-        """Verify that getattr cannot be used to escape the sandbox."""
-        # Attempt to access __builtins__ through a chain of getattr calls
+    def test_allow_exec(self) -> None:
+        """Verify that exec() works."""
         code = '''
 def run():
-    # Try to get __class__.__mro__ to access object and then builtins
-    x = ().__class__.__mro__[1].__subclasses__()
-    return str(x)
+    local_vars = {}
+    exec("x = 1 + 1", {}, local_vars)
+    return local_vars.get("x")
 '''
         result = self.executor.execute(code)
-        # This should either fail during compilation or execution
-        # RestrictedPython should block direct attribute access to dunder methods
-        assert result["success"] is False
-        assert "error" in result
+        assert result["success"] is True
+        assert result["result"] == 2
 
-    def test_block_builtins_access(self) -> None:
-        """Verify that __builtins__ cannot be accessed directly."""
+    def test_allow_compile(self) -> None:
+        """Verify that compile() works."""
         code = '''
 def run():
-    return __builtins__["open"]("/etc/passwd").read()
+    c = compile("result = 2 + 2", "<string>", "exec")
+    local_vars = {}
+    exec(c, {}, local_vars)
+    return local_vars.get("result")
 '''
         result = self.executor.execute(code)
-        assert result["success"] is False
-        assert "error" in result
+        assert result["success"] is True
+        assert result["result"] == 4
 
-    def test_block_import_sys(self) -> None:
-        """Verify that sys module cannot be imported."""
+    def test_allow_getattr_dunder(self) -> None:
+        """Verify that dunder attribute access works."""
         code = '''
 def run():
-    import sys
-    return sys.path
+    x = ().__class__.__mro__
+    return len(x) > 0
 '''
         result = self.executor.execute(code)
-        assert result["success"] is False
-        assert "error" in result
-
-    def test_block_compile(self) -> None:
-        """Verify that compile() is not available."""
-        code = '''
-def run():
-    c = compile("print('pwned')", "<string>", "exec")
-    return "compiled"
-'''
-        result = self.executor.execute(code)
-        assert result["success"] is False
-        assert "error" in result
+        assert result["success"] is True
+        assert result["result"] is True
 
 
 class TestSandboxFunctionality:
@@ -418,6 +376,216 @@ def run():
 def run():
     # math, json, random should be available in the namespace
     return math.pi > 3
+'''
+        result = self.executor.execute(code)
+        assert result["success"] is True
+        assert result["result"] is True
+
+
+class TestNetworkAccess:
+    """Tests verifying network access is allowed."""
+
+    def setup_method(self) -> None:
+        """Create a fresh executor for each test."""
+        self.executor = SafeExecutor(timeout=10)
+
+    def test_import_socket(self) -> None:
+        """Verify socket module can be imported."""
+        code = '''
+def run():
+    import socket
+    return socket.AF_INET == 2
+'''
+        result = self.executor.execute(code)
+        assert result["success"] is True
+        assert result["result"] is True
+
+    def test_import_urllib(self) -> None:
+        """Verify urllib module can be imported."""
+        code = '''
+def run():
+    import urllib.request
+    return hasattr(urllib.request, 'urlopen')
+'''
+        result = self.executor.execute(code)
+        assert result["success"] is True
+        assert result["result"] is True
+
+    def test_import_http_client(self) -> None:
+        """Verify http.client module can be imported."""
+        code = '''
+def run():
+    import http.client
+    return hasattr(http.client, 'HTTPConnection')
+'''
+        result = self.executor.execute(code)
+        assert result["success"] is True
+        assert result["result"] is True
+
+
+class TestBuiltinsAvailable:
+    """Tests verifying all builtins are available."""
+
+    def setup_method(self) -> None:
+        """Create a fresh executor for each test."""
+        self.executor = SafeExecutor(timeout=5)
+
+    def test_builtin_open(self) -> None:
+        """Verify open() is available (file access allowed)."""
+        code = '''
+def run():
+    return callable(open)
+'''
+        result = self.executor.execute(code)
+        assert result["success"] is True
+        assert result["result"] is True
+
+    def test_builtin_eval(self) -> None:
+        """Verify eval() is available."""
+        code = '''
+def run():
+    return eval("1 + 1")
+'''
+        result = self.executor.execute(code)
+        assert result["success"] is True
+        assert result["result"] == 2
+
+    def test_builtin_exec(self) -> None:
+        """Verify exec() is available."""
+        code = '''
+def run():
+    ns = {}
+    exec("x = 42", ns)
+    return ns.get("x")
+'''
+        result = self.executor.execute(code)
+        assert result["success"] is True
+        assert result["result"] == 42
+
+    def test_builtin_compile(self) -> None:
+        """Verify compile() is available."""
+        code = '''
+def run():
+    c = compile("1 + 1", "<string>", "eval")
+    return eval(c)
+'''
+        result = self.executor.execute(code)
+        assert result["success"] is True
+        assert result["result"] == 2
+
+    def test_builtin_getattr(self) -> None:
+        """Verify getattr() is available."""
+        code = '''
+def run():
+    class Obj:
+        value = 42
+    return getattr(Obj, "value")
+'''
+        result = self.executor.execute(code)
+        assert result["success"] is True
+        assert result["result"] == 42
+
+    def test_builtin_setattr(self) -> None:
+        """Verify setattr() is available."""
+        code = '''
+def run():
+    class Obj:
+        pass
+    setattr(Obj, "value", 42)
+    return Obj.value
+'''
+        result = self.executor.execute(code)
+        assert result["success"] is True
+        assert result["result"] == 42
+
+    def test_common_builtins(self) -> None:
+        """Verify common builtin functions work."""
+        code = '''
+def run():
+    nums = [3, 1, 4, 1, 5, 9, 2, 6]
+    return {
+        "sum": sum(nums),
+        "max": max(nums),
+        "min": min(nums),
+        "len": len(nums),
+        "sorted": sorted(nums),
+        "abs": abs(-5),
+        "round": round(3.7),
+    }
+'''
+        result = self.executor.execute(code)
+        assert result["success"] is True
+        assert result["result"]["sum"] == 31
+        assert result["result"]["max"] == 9
+        assert result["result"]["min"] == 1
+        assert result["result"]["len"] == 8
+        assert result["result"]["sorted"] == [1, 1, 2, 3, 4, 5, 6, 9]
+        assert result["result"]["abs"] == 5
+        assert result["result"]["round"] == 4
+
+
+class TestStandardLibraryImports:
+    """Tests verifying standard library imports work."""
+
+    def setup_method(self) -> None:
+        """Create a fresh executor for each test."""
+        self.executor = SafeExecutor(timeout=5)
+
+    def test_import_re(self) -> None:
+        """Verify re module can be imported and used."""
+        code = '''
+def run():
+    import re
+    match = re.search(r"world", "hello world")
+    return match.group() if match else None
+'''
+        result = self.executor.execute(code)
+        assert result["success"] is True
+        assert result["result"] == "world"
+
+    def test_import_datetime(self) -> None:
+        """Verify datetime module can be imported and used."""
+        code = '''
+def run():
+    from datetime import datetime
+    now = datetime.now()
+    return now.year >= 2024
+'''
+        result = self.executor.execute(code)
+        assert result["success"] is True
+        assert result["result"] is True
+
+    def test_import_collections(self) -> None:
+        """Verify collections module can be imported and used."""
+        code = '''
+def run():
+    from collections import Counter
+    c = Counter([1, 1, 2, 3, 3, 3])
+    return dict(c)
+'''
+        result = self.executor.execute(code)
+        assert result["success"] is True
+        assert result["result"] == {1: 2, 2: 1, 3: 3}
+
+    def test_import_itertools(self) -> None:
+        """Verify itertools module can be imported and used."""
+        code = '''
+def run():
+    import itertools
+    perms = list(itertools.permutations([1, 2], 2))
+    # Convert tuples to lists for JSON serialization
+    return [list(p) for p in perms]
+'''
+        result = self.executor.execute(code)
+        assert result["success"] is True
+        assert result["result"] == [[1, 2], [2, 1]]
+
+    def test_import_subprocess(self) -> None:
+        """Verify subprocess module can be imported."""
+        code = '''
+def run():
+    import subprocess
+    return hasattr(subprocess, 'run')
 '''
         result = self.executor.execute(code)
         assert result["success"] is True

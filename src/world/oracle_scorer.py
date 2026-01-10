@@ -11,6 +11,7 @@ All configuration (model, timeout, max_content_length) comes from config.yaml.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -74,6 +75,7 @@ class OracleScorer:
 
     llm: LLMProvider
     max_content_length: int
+    _seen_hashes: set[str] = set()
 
     def __init__(self, model: str | None = None, log_dir: str | None = None) -> None:
         # Get config values with fallbacks
@@ -87,6 +89,17 @@ class OracleScorer:
             timeout=timeout
         )
         self.max_content_length: int = get("oracle_scorer.max_content_length") or 2000
+
+    def _compute_content_hash(self, content: str) -> str:
+        """Compute MD5 hash of content for duplicate detection."""
+        # Normalize: strip whitespace, lowercase
+        normalized = content.strip().lower()
+        return hashlib.md5(normalized.encode()).hexdigest()
+
+    def is_original(self, content: str) -> bool:
+        """Check if content is original (not seen before)."""
+        content_hash = self._compute_content_hash(content)
+        return content_hash not in self._seen_hashes
 
     def score_artifact(
         self,
@@ -109,6 +122,18 @@ class OracleScorer:
             - reason: str (explanation)
             - error: str (if failed)
         """
+        # Check for duplicate content (originality check)
+        content_hash = self._compute_content_hash(content)
+        if content_hash in self._seen_hashes:
+            return {
+                "success": True,
+                "score": 0,
+                "reason": "Duplicate content - no originality reward",
+                "error": ""
+            }
+        # Mark as seen for future duplicate detection
+        self._seen_hashes.add(content_hash)
+
         # Truncate very long content
         if len(content) > self.max_content_length:
             content = content[:self.max_content_length] + "... [truncated]"

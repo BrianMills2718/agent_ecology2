@@ -9,9 +9,12 @@ from typing import Any, TypedDict
 PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / 'llm_provider_standalone'))
 
+from pydantic import ValidationError
+
 from llm_provider import LLMProvider
-from .schema import ACTION_SCHEMA, ActionType, validate_action_json
+from .schema import ACTION_SCHEMA, ActionType
 from .memory import AgentMemory, get_memory
+from .models import ActionResponse
 
 
 class TokenUsage(TypedDict):
@@ -25,6 +28,7 @@ class TokenUsage(TypedDict):
 class ActionResult(TypedDict, total=False):
     """Result from propose_action method."""
     action: dict[str, Any]
+    thought_process: str
     error: str
     raw_response: str | None
     usage: TokenUsage
@@ -73,6 +77,7 @@ class Agent:
     memory: AgentMemory
     last_action_result: str | None
     llm: LLMProvider
+    cooldown_ticks: int = 0
 
     def __init__(
         self,
@@ -87,6 +92,7 @@ class Agent:
         self.action_schema = action_schema or ACTION_SCHEMA  # Fall back to default
         self.memory = get_memory()
         self.last_action_result = None  # Track result of last action for feedback
+        self.cooldown_ticks = 0  # Cooldown ticks set by run.py based on output tokens
 
         # Initialize LLM provider
         self.llm = LLMProvider(
@@ -174,38 +180,51 @@ class Agent:
 ## Available Actions
 {self.action_schema}
 
-Based on the current state and your memories, decide what action to take. Respond with ONLY a JSON object.
+Based on the current state and your memories, decide what action to take.
+Your response should include:
+- thought_process: Your internal reasoning about the situation
+- action: The action to execute (with action_type and relevant parameters)
 """
         return prompt
 
     def propose_action(self, world_state: dict[str, Any]) -> ActionResult:
         """
         Have the LLM propose an action based on world state.
+
+        Uses Pydantic structured outputs for reliable parsing.
+
         Returns a dict with:
-          - 'action' (valid action dict) or 'error' (string)
+          - 'action' (valid action dict) and 'thought_process' (str), or 'error' (string)
           - 'usage' (token usage: input_tokens, output_tokens, total_tokens, cost)
         """
         prompt: str = self.build_prompt(world_state)
 
         try:
-            response: str = self.llm.generate(prompt)
+            response: ActionResponse = self.llm.generate(
+                prompt,
+                response_model=ActionResponse
+            )
             usage: TokenUsage = self.llm.last_usage.copy()
+
+            return {
+                "action": response.action.model_dump(),
+                "thought_process": response.thought_process,
+                "usage": usage
+            }
+        except ValidationError as e:
+            # Pydantic validation failed
+            usage = self.llm.last_usage.copy()
+            return {
+                "error": f"Pydantic validation failed: {e}",
+                "raw_response": None,
+                "usage": usage
+            }
         except Exception as e:
             return {
                 "error": f"LLM call failed: {e}",
                 "raw_response": None,
                 "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "cost": 0.0}
             }
-
-        # Validate the response
-        validation_result: dict[str, Any] | str = validate_action_json(response)
-
-        if isinstance(validation_result, str):
-            # Validation failed, return error
-            return {"error": validation_result, "raw_response": response, "usage": usage}
-        else:
-            # Validation passed, return action
-            return {"action": validation_result, "raw_response": response, "usage": usage}
 
     def record_action(self, action_type: ActionType, details: str, success: bool) -> dict[str, Any]:
         """Record an action to memory after execution"""
@@ -219,3 +238,12 @@ Based on the current state and your memories, decide what action to take. Respon
     def record_observation(self, observation: str) -> None:
         """Record an observation to memory"""
         self.memory.record_observation(self.agent_id, observation)
+
+    def is_on_cooldown(self) -> bool:
+        """Check if the agent is currently on cooldown."""
+        return self.cooldown_ticks > 0
+
+    def decrement_cooldown(self) -> None:
+        """Decrement the cooldown counter if greater than zero."""
+        if self.cooldown_ticks > 0:
+            self.cooldown_ticks -= 1

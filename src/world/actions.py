@@ -66,6 +66,8 @@ class WriteArtifactIntent(ActionIntent):
     executable: bool = False
     price: int = 0
     code: str = ""
+    # Policy for access control and pricing
+    policy: dict[str, Any] | None = None
 
     def __init__(
         self,
@@ -76,6 +78,7 @@ class WriteArtifactIntent(ActionIntent):
         executable: bool = False,
         price: int = 0,
         code: str = "",
+        policy: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(ActionType.WRITE_ARTIFACT, principal_id)
         self.artifact_id = artifact_id
@@ -84,6 +87,7 @@ class WriteArtifactIntent(ActionIntent):
         self.executable = executable
         self.price = price
         self.code = code
+        self.policy = policy
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
@@ -94,6 +98,8 @@ class WriteArtifactIntent(ActionIntent):
             d["executable"] = True
             d["price"] = self.price
             d["code"] = self.code[:100] + "..." if len(self.code) > 100 else self.code
+        if self.policy is not None:
+            d["policy"] = self.policy
         return d
 
 
@@ -171,6 +177,7 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
         executable = data.get("executable", False)
         price = data.get("price", 0)
         code = data.get("code", "")
+        policy: dict[str, Any] | None = data.get("policy")  # Can be None or a dict
 
         if not artifact_id:
             return "write_artifact requires 'artifact_id'"
@@ -182,6 +189,10 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
             content = ""
         if not isinstance(code, str):
             code = ""
+
+        # Validate policy if provided
+        if policy is not None and not isinstance(policy, dict):
+            return "policy must be a dict or null"
 
         # Validate executable artifact fields
         if executable:
@@ -201,6 +212,7 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
             executable=bool(executable),
             price=price,
             code=code,
+            policy=policy,
         )
 
     elif action_type == "transfer":

@@ -107,6 +107,19 @@ def list_agents(agents_dir: str = "agents") -> list[str]:
     ]
 
 
+def get_default_prompt() -> str:
+    """
+    Load the default system prompt for spawned agents.
+    Returns the contents of prompts/default.md.
+    """
+    default_prompt_path: Path = Path(__file__).parent / "prompts" / "default.md"
+    if not default_prompt_path.exists():
+        raise FileNotFoundError(
+            f"Default prompt not found at {default_prompt_path}"
+        )
+    return default_prompt_path.read_text()
+
+
 if __name__ == "__main__":
     # Quick test
     agents: list[AgentConfig] = load_agents()

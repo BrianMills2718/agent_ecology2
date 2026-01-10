@@ -347,6 +347,7 @@ class World:
             executable=intent.executable,
             price=intent.price,
             code=intent.code,
+            policy=intent.policy,
         )
 
         return ActionResult(

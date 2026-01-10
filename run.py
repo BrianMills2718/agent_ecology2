@@ -14,6 +14,7 @@ import sys
 import yaml
 import argparse
 import json
+import random
 import time
 from pathlib import Path
 from typing import Any, TypedDict
@@ -31,6 +32,10 @@ from world.actions import parse_intent_from_json, ActionIntent
 from agents import Agent
 from agents.loader import load_agents
 from agents.schema import ActionType
+
+# Default tokens per tick capacity for cooldown calculation
+# Can be overridden in config.yaml later
+TOKENS_PER_TICK_CAPACITY: int = 500
 
 
 class PrincipalConfig(TypedDict):
@@ -56,6 +61,15 @@ class CheckpointData(TypedDict):
     artifacts: list[dict[str, Any]]
     agent_ids: list[str]
     reason: str
+
+
+class ActionProposal(TypedDict):
+    """Structure for an agent's action proposal during two-phase commit."""
+
+    agent: Agent
+    proposal: dict[str, Any]
+    thinking_cost: int
+    api_cost: float
 
 
 def load_config(config_path: str = "config/config.yaml") -> dict[str, Any]:
@@ -128,6 +142,63 @@ def load_checkpoint(checkpoint_file: str) -> CheckpointData | None:
         "reason": str(data["reason"]),
     }
     return checkpoint
+
+
+def check_for_new_principals(
+    world: World,
+    agents: list[Agent],
+    config: dict[str, Any],
+    verbose: bool = True,
+) -> list[Agent]:
+    """
+    Check ledger for principals that don't have Agent instances.
+    Creates default Agent instances for new principals.
+
+    Args:
+        world: The World instance containing the ledger
+        agents: Current list of Agent instances
+        config: Configuration dictionary
+        verbose: Whether to print status messages
+
+    Returns:
+        List of newly created Agent instances
+    """
+    # Get all principal IDs from the ledger
+    ledger_principals: set[str] = set(world.ledger.scrip.keys())
+
+    # Get IDs of existing agents
+    existing_agent_ids: set[str] = {agent.agent_id for agent in agents}
+
+    # Find principals without agents
+    new_principal_ids: set[str] = ledger_principals - existing_agent_ids
+
+    # Create default agents for new principals
+    new_agents: list[Agent] = []
+    default_model: str = config.get("llm", {}).get(
+        "default_model", "gemini/gemini-3-flash-preview"
+    )
+    log_dir: str = config.get("logging", {}).get("log_dir", "llm_logs")
+    default_system_prompt: str = (
+        "You are a new agent. Survive and thrive. "
+        "You start with nothing - seek resources and opportunities."
+    )
+
+    for principal_id in new_principal_ids:
+        new_agent = Agent(
+            agent_id=principal_id,
+            llm_model=default_model,
+            system_prompt=default_system_prompt,
+            action_schema="",  # Use default schema
+            log_dir=log_dir,
+        )
+        # Initialize cooldown_ticks attribute
+        new_agent.cooldown_ticks = 0
+        new_agents.append(new_agent)
+
+        if verbose:
+            print(f"  [NEW AGENT] Created agent for principal: {principal_id}")
+
+    return new_agents
 
 
 def run_simulation(
@@ -216,6 +287,11 @@ def run_simulation(
     rate_input: int = costs.get("per_1k_input_tokens", 1)
     rate_output: int = costs.get("per_1k_output_tokens", 3)
 
+    # Get tokens per tick capacity for cooldown calculation (configurable)
+    tokens_per_tick_capacity: int = config.get("cooldown", {}).get(
+        "tokens_per_tick_capacity", TOKENS_PER_TICK_CAPACITY
+    )
+
     # Initialize agents
     agents: list[Agent] = []
     for a in agent_configs:
@@ -226,6 +302,8 @@ def run_simulation(
             action_schema=a.get("action_schema", ""),
             log_dir=config["logging"]["log_dir"],
         )
+        # Initialize cooldown_ticks attribute for cooldown mechanism
+        agent.cooldown_ticks = 0
         agents.append(agent)
 
     if verbose:
@@ -241,14 +319,40 @@ def run_simulation(
         print(f"Compute quota/tick: {world.rights_config.get('default_compute_quota', 50)}")
         print()
 
-    # Main simulation loop
+    # Main simulation loop with Two-Phase Commit
     while world.advance_tick():
         if verbose:
             print(f"--- Tick {world.tick} ---")
 
-        # Each agent proposes an action
+        # ========================================
+        # STEP 0: Detect new principals and create Agent instances
+        # ========================================
+        new_agents: list[Agent] = check_for_new_principals(
+            world, agents, config, verbose
+        )
+        agents.extend(new_agents)
+
+        # ========================================
+        # STEP 1: Capture frozen state snapshot (Two-Phase Commit: Observe)
+        # ========================================
+        # All agents will see the SAME snapshot when thinking
+        tick_state: dict[str, Any] = world.get_state_summary()
+
+        # ========================================
+        # PHASE 1: Collect proposals (all agents see same snapshot)
+        # ========================================
+        proposals: list[ActionProposal] = []
+
         for agent in agents:
-            state: dict[str, Any] = world.get_state_summary()
+            # Check cooldown - if agent is cooling down, decrement and skip
+            if hasattr(agent, "cooldown_ticks") and agent.cooldown_ticks > 0:
+                if verbose:
+                    print(
+                        f"  {agent.agent_id} cooling down... ({agent.cooldown_ticks} ticks remaining)"
+                    )
+                agent.cooldown_ticks -= 1
+                continue
+
             compute_before: int = world.ledger.get_compute(agent.agent_id)
             scrip_before: int = world.ledger.get_scrip(agent.agent_id)
 
@@ -278,8 +382,8 @@ def run_simulation(
                 )
                 return world
 
-            # Get action from LLM (events require genesis_event_log)
-            proposal: dict[str, Any] = agent.propose_action(state)
+            # Get action from LLM - ALL agents see the SAME tick_state snapshot
+            proposal: dict[str, Any] = agent.propose_action(tick_state)
 
             # Extract token usage and deduct thinking cost
             usage: dict[str, Any] = proposal.get("usage", {})
@@ -287,6 +391,9 @@ def run_simulation(
             cumulative_api_cost += api_cost
             input_tokens: int = usage.get("input_tokens", 0)
             output_tokens: int = usage.get("output_tokens", 0)
+
+            # Calculate cooldown based on output tokens
+            agent.cooldown_ticks = output_tokens // tokens_per_tick_capacity
 
             # Deduct thinking cost
             thinking_result: tuple[bool, int] = world.ledger.deduct_thinking_cost(
@@ -301,8 +408,13 @@ def run_simulation(
                     if api_cost > 0
                     else ""
                 )
+                cooldown_str: str = (
+                    f", cooldown: {agent.cooldown_ticks} ticks"
+                    if agent.cooldown_ticks > 0
+                    else ""
+                )
                 print(
-                    f"    Tokens: {input_tokens} in, {output_tokens} out -> {thinking_cost} compute{cost_str}"
+                    f"    Tokens: {input_tokens} in, {output_tokens} out -> {thinking_cost} compute{cost_str}{cooldown_str}"
                 )
 
             if not thinking_success:
@@ -335,6 +447,7 @@ def run_simulation(
                     "input_tokens": input_tokens,
                     "output_tokens": output_tokens,
                     "thinking_cost": thinking_cost,
+                    "cooldown_ticks": agent.cooldown_ticks,
                     "compute_after": world.ledger.get_compute(agent.agent_id),
                 },
             )
@@ -356,6 +469,30 @@ def run_simulation(
                     time.sleep(delay)
                 continue
 
+            # Add to proposals for Phase 2
+            proposals.append({
+                "agent": agent,
+                "proposal": proposal,
+                "thinking_cost": thinking_cost,
+                "api_cost": api_cost,
+            })
+
+            # Rate limit delay between LLM calls
+            if delay > 0:
+                time.sleep(delay)
+
+        # ========================================
+        # PHASE 2: Randomize and execute actions (Two-Phase Commit: Act)
+        # ========================================
+        if verbose and proposals:
+            print(f"  [PHASE 2] Executing {len(proposals)} proposals in randomized order...")
+
+        random.shuffle(proposals)
+
+        for action_proposal in proposals:
+            agent = action_proposal["agent"]
+            proposal = action_proposal["proposal"]
+
             # Parse and execute the action
             action_dict: dict[str, Any] = proposal["action"]
             intent: ActionIntent | str = parse_intent_from_json(
@@ -374,14 +511,14 @@ def run_simulation(
                     },
                 )
                 if verbose:
-                    print(f"    -> PARSE ERROR: {intent}")
+                    print(f"    {agent.agent_id}: PARSE ERROR: {intent}")
                 continue
 
             # Execute the action
             result = world.execute_action(intent)
             if verbose:
                 status: str = "SUCCESS" if result.success else "FAILED"
-                print(f"    -> {status}: {result.message}")
+                print(f"    {agent.agent_id}: {status}: {result.message}")
 
             # Feed result back to agent for next prompt
             # Extract action_type and cast to ActionType (defaults to "noop" if invalid)
@@ -394,10 +531,6 @@ def run_simulation(
             # Record action to agent's memory
             action_details: str = json.dumps(action_dict)
             agent.record_action(action_type, action_details, result.success)
-
-            # Rate limit delay
-            if delay > 0:
-                time.sleep(delay)
 
         if verbose:
             print(f"  End of tick. Scrip: {world.ledger.get_all_scrip()}")

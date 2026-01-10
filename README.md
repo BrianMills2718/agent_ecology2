@@ -6,11 +6,22 @@ A simulation framework where LLM agents interact under real resource constraints
 
 Agent Ecology creates an economic environment where multiple LLM agents operate within realistic resource limits. Agents can read, write, and invoke artifacts (code and data), trade resources, and earn scrip (currency) by creating valuable services.
 
-The simulation models actual physical and financial scarcity:
+## Physics-First Philosophy
 
-- **Compute** - CPU/GPU cycles, refreshes each tick
-- **Disk** - Storage bytes, finite pool
-- **Scrip** - Economic currency for trading and payments
+The simulation is built on five core principles:
+
+1. **Time is scarce** - Every token consumes time. Agents that use fewer tokens get more turns via the cooldown mechanism.
+
+2. **Resources are concrete** - Three distinct resource types with physical meaning:
+   - *Compute* (flow) - Refreshes each tick, models CPU/GPU cycles
+   - *Disk* (stock) - Finite storage, never refreshes
+   - *Scrip* (signal) - Economic currency, separate from physical constraints
+
+3. **Money is a signal** - Scrip is deliberately separated from physical resources. An agent can be rich in scrip but starved of compute, or vice versa.
+
+4. **Identity is capital** - Agents can spawn new principals via `spawn_principal`. Each identity has its own resource accounts and reputation.
+
+5. **Trust is emergent** - The ledger is ground truth; agent descriptions can lie. Trust must be verified through behavior, not claimed.
 
 ## Quick Start
 
@@ -65,6 +76,46 @@ budget:
   max_api_cost: 1.00              # $ total API spend
 ```
 
+## Key Features
+
+### Two-Phase Commit
+Each tick executes in two phases for fairness:
+1. **Collect phase** - All agents submit actions simultaneously
+2. **Execute phase** - Actions are applied atomically
+
+This prevents ordering advantages and enables true concurrency.
+
+### Cooldown Mechanism
+Efficient agents act more frequently. After each turn, agents enter cooldown proportional to tokens used:
+- `cooldown_ticks = tokens_used / tokens_per_tick`
+- Agents with remaining cooldown skip the current tick
+- Incentivizes concise, efficient prompting
+
+### spawn_principal
+Agents can create new agents dynamically:
+```json
+{"action_type": "spawn_principal", "principal_id": "my_worker", "config": {...}}
+```
+Spawned principals inherit resources from their creator and can act independently.
+
+### Policy System
+Artifacts support access control policies:
+- **read_policy** - Who can read the artifact
+- **invoke_policy** - Who can call methods
+- Policies reference principal IDs or wildcards
+
+### Originality Oracle
+The `genesis_oracle` detects duplicate or derivative artifacts:
+- Compares new submissions against existing artifacts
+- Only novel contributions earn scrip rewards
+- Prevents copy-paste farming
+
+### Pydantic Structured Outputs
+Actions are parsed using Pydantic models for reliability:
+- Schema validation on all agent outputs
+- Clear error messages for malformed actions
+- Type-safe action handling throughout
+
 ## Architecture
 
 ### Core Components
@@ -93,6 +144,16 @@ System-provided services available to all agents:
 | Flow | `compute`, `bandwidth` | Refreshes each tick |
 
 When agents exhaust resources, they must acquire more from others via trading rights.
+
+## Security Model
+
+Agent code executes with minimal restrictions:
+
+- **Unrestricted executor** - No RestrictedPython sandbox. Agent code has full Python capabilities.
+- **Docker isolation** - Simulation runs as non-root user inside Docker container for process-level isolation.
+- **API key access** - Agent code can access environment variables including API keys. This is intentional - agents may need to call external services.
+
+The security boundary is the container, not the Python interpreter. Agents are trusted with full code execution within the container's constraints.
 
 ## Actions
 

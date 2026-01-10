@@ -74,6 +74,21 @@ Each tick:
 4. **Scrip is information** - Not a resource, just a signal
 5. **No hardcoded numbers** - All values come from config
 
+## Physics-First Doctrine
+
+1. **Time is Scarce**: Cognitive effort (tokens) consumes time. Efficient agents act more frequently via cooldown mechanism.
+
+2. **Resources are Concrete**:
+   - Compute (flow): Renewable, resets each tick. Used for thinking and execution.
+   - Disk (stock): Fixed, persistent. Used for storing artifacts.
+   - Scrip (signal): Persistent currency. Used for trade.
+
+3. **Money is a Signal**: Scrip is purely economic, separate from physical constraints.
+
+4. **Identity is Capital**: Standing is defined by having a wallet (ledger ID). Agents can spawn new principals via genesis_ledger.spawn_principal().
+
+5. **Trust is Emergent**: The system allows subjective lying (descriptions) but enforces objective truth (the ledger).
+
 ## Configuration
 
 All values in config, not code. See:
@@ -104,12 +119,49 @@ max_limit = get("genesis.event_log.max_per_read") or 100
 limit = min(n, max_limit)
 ```
 
+### Pydantic Models
+
+1. **Use Pydantic for all structured data** - Actions, events, state objects
+2. **Prefer `BaseModel` over TypedDict** - Better validation and serialization
+3. **Use discriminated unions for action types** - `Literal["transfer"]` discriminator field
+4. **Validators for business logic** - Use `@field_validator` for constraints
+
+Example:
+```python
+# WRONG
+action = {"type": "transfer", "to": "agent_b", "amount": 50}
+
+# RIGHT
+from pydantic import BaseModel, Field
+
+class TransferAction(BaseModel):
+    type: Literal["transfer"] = "transfer"
+    to: str
+    amount: int = Field(gt=0)
+```
+
+### Executor Pattern
+
+1. **Unrestricted executor** - No artificial constraints on what agents can do
+2. **Physics enforces limits** - Resources and ledger provide real constraints
+3. **Subjective descriptions allowed** - Agents can lie in `description` fields
+4. **Objective actions enforced** - Ledger validates all transfers and state changes
+
+Example:
+```python
+# Agent can claim anything in description (subjective)
+action = Action(
+    description="Generous gift to help a friend",  # May be a lie
+    transfer=TransferAction(to="agent_b", amount=50)  # Ledger enforces balance
+)
+```
+
 ### Type Hints
 
 1. **All functions must have type hints** - Parameters and return types
 2. **Use modern Python typing** - `dict[str, Any]` not `Dict[str, Any]` for Python 3.9+
 3. **Must pass `mypy --strict`** - No `Any` without justification
-4. **Use TypedDict for structured dicts** - Especially config and state objects
+4. **Use Pydantic models over TypedDict** - Especially for validated data
 
 Example:
 ```python
@@ -130,3 +182,5 @@ Use consistent terms throughout:
 - `scrip` not `credits` (for economic currency)
 - `compute_quota` not `flow_quota`
 - `disk_quota` not `stock_quota`
+- `principal` not `account` (for ledger identity)
+- `spawn_principal` not `create_account` (for new identity creation)

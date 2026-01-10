@@ -40,6 +40,18 @@ class TestInitialBalances:
         assert ledger.get_scrip("agent_1") == 100
         assert ledger.get_compute("agent_1") == 0
 
+    def test_initial_balances_zero_values(self, ledger: Ledger) -> None:
+        """Verify agents can be created with 0 starting scrip and compute.
+
+        This is used when spawning principals that start with nothing.
+        """
+        ledger.create_principal("spawned_agent", starting_scrip=0, starting_compute=0)
+
+        assert ledger.get_scrip("spawned_agent") == 0
+        assert ledger.get_compute("spawned_agent") == 0
+        # Verify the agent exists in the ledger
+        assert "spawned_agent" in ledger.get_all_balances()
+
     def test_initial_balances_multiple_agents(
         self, ledger_with_agents: Ledger
     ) -> None:

@@ -12,6 +12,7 @@ the same invoke_artifact mechanism they use for agent-created artifacts.
 from __future__ import annotations
 
 import sys
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, TypedDict
@@ -59,6 +60,13 @@ class TransferResult(TypedDict, total=False):
     to: str
     from_scrip_after: int
     to_scrip_after: int
+
+
+class SpawnPrincipalResult(TypedDict, total=False):
+    """Result from spawn_principal operation."""
+    success: bool
+    error: str
+    principal_id: str
 
 
 class OracleStatusResult(TypedDict):
@@ -234,6 +242,7 @@ class GenesisLedger(GenesisArtifact):
     - balance(agent_id) -> {flow, scrip}  [FREE]
     - all_balances() -> {agent_id: {flow, scrip}}  [FREE]
     - transfer(from_id, to_id, amount) -> bool  [1 scrip fee] - transfers SCRIP
+    - spawn_principal() -> {principal_id}  [1 scrip fee] - creates new principal
     """
 
     ledger: Ledger
@@ -265,6 +274,13 @@ class GenesisLedger(GenesisArtifact):
             handler=self._transfer,
             cost=get_genesis_config("ledger", "transfer_fee") or 1,
             description="Transfer SCRIP to another agent. Args: [from_id, to_id, amount]"
+        )
+
+        self.register_method(
+            name="spawn_principal",
+            handler=self._spawn_principal,
+            cost=1,  # 1 scrip processing fee
+            description="Spawn a new principal with 0 scrip and 0 compute. Args: []"
         )
 
     def _balance(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
@@ -312,6 +328,27 @@ class GenesisLedger(GenesisArtifact):
             }
         else:
             return {"success": False, "error": "Transfer failed (insufficient scrip or invalid recipient)"}
+
+    def _spawn_principal(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
+        """Spawn a new principal with 0 scrip and 0 compute.
+
+        The new principal starts with nothing - parent must transfer resources
+        to keep it alive.
+
+        Args:
+            args: [] (no arguments needed, system generates ID)
+            invoker_id: The agent spawning the new principal
+
+        Returns:
+            {"success": True, "principal_id": new_id} on success
+        """
+        # Generate a unique principal ID
+        new_id = f"agent_{uuid.uuid4().hex[:8]}"
+
+        # Create ledger entry with 0 scrip, 0 compute
+        self.ledger.create_principal(new_id, starting_scrip=0, starting_compute=0)
+
+        return {"success": True, "principal_id": new_id}
 
 
 class GenesisOracle(GenesisArtifact):
