@@ -200,45 +200,79 @@ def check_permission(artifact_id, action, requester_id):
 **Contracts can do anything.** (Decision updated: 2026-01-11)
 
 Contracts are executable artifacts with full capabilities:
-- Call LLM (invoker pays)
-- Invoke other artifacts (invoker pays)
-- Make external API calls (invoker pays)
+- Call LLM
+- Invoke other artifacts
+- Make external API calls (weather, databases, oracles)
 - Cannot modify state directly (return decision, not mutate)
 
 ```python
-# Contract execution context - full capabilities, invoker pays costs
-def execute_contract(contract_code: str, inputs: dict, invoker_id: str) -> PermissionResult:
+# Contract execution context - full capabilities
+def execute_contract(contract_code: str, inputs: dict, context: dict) -> PermissionResult:
     namespace = {
         "artifact_id": inputs["artifact_id"],
         "action": inputs["action"],
         "requester_id": inputs["requester_id"],
         "artifact_content": inputs["artifact_content"],
-        "context": inputs["context"],
+        "context": context,
 
-        # Full capabilities - costs charged to invoker
-        "invoke": lambda *args: invoke_as(invoker_id, *args),
-        "call_llm": lambda *args: call_llm_as(invoker_id, *args),
+        # Full capabilities - cost model determined by contract
+        "invoke": lambda *args: invoke_artifact(*args),
+        "call_llm": lambda *args: call_llm(*args),
+        "charge": lambda principal, amount: charge_principal(principal, amount),
     }
     exec(contract_code, namespace)
     return namespace["result"]
 ```
 
 **Rationale:**
-- LLMs are just API calls, not privileged - no reason to forbid
+- LLMs are just API calls, like weather APIs - no special treatment
 - Agents choose complexity/cost tradeoff for their contracts
-- "Pure contracts with workarounds" adds complexity without preventing LLM usage
 - Non-determinism accepted (system is already non-deterministic via agents)
-- Invoker bears costs, preserving economic accountability
 
-**Cost Model:**
-| Operation | Who Pays |
-|-----------|----------|
-| Simple permission check | Free (pure logic) |
-| Contract calls LLM | Invoker |
-| Contract invokes other artifacts | Invoker |
-| Contract execution time | Invoker (compute) |
+### Cost Model: Contract-Specified
+
+Who pays for contract execution is determined by the contract itself, not hardcoded:
+
+```python
+# Contract specifies its cost model
+{
+    "id": "my_contract",
+    "cost_model": "invoker_pays",  # or "owner_pays", "artifact_pays", "split"
+}
+
+# Or handle dynamically in logic
+def check_permission(artifact_id, action, requester_id, context):
+    cost = calculate_cost()
+    charge(context["artifact_owner"], cost)  # Owner pays
+    # or: charge(requester_id, cost)  # Invoker pays
+    # ...
+```
+
+| Default | Behavior |
+|---------|----------|
+| `invoker_pays` | Requester bears all costs (sensible default) |
+| `owner_pays` | Artifact owner bears costs |
+| `split` | Costs divided by contract logic |
+| Custom | Contract implements any payment model |
 
 **Note:** Contracts still cannot directly mutate world state - they return decisions. The kernel applies state changes.
+
+### Execution Depth Limit
+
+Contract execution has a depth limit to prevent stack overflow:
+
+```python
+MAX_PERMISSION_DEPTH = 10
+
+def check_permission(artifact, action, requester, depth=0):
+    if depth > MAX_PERMISSION_DEPTH:
+        return {"allowed": False, "reason": "Permission check depth exceeded"}
+
+    contract = get_contract(artifact.access_contract_id)
+    return contract.check(artifact, action, requester, depth=depth+1)
+```
+
+This prevents: Contract A invokes B → B's check invokes C → C's check invokes A → infinite loop.
 
 ---
 
@@ -361,6 +395,40 @@ def check_permission_cached(artifact, action, requester):
 - Explicit invalidation when contract itself changes
 
 **Uncertainty:** Cache invalidation is hard. May see stale permission results.
+
+---
+
+## Risks and Limitations
+
+### Orphan Artifacts
+
+Artifacts can become permanently inaccessible if their `access_contract_id` chain becomes broken or circular:
+
+```
+Artifact X.access_contract_id → Contract A
+Contract A: "allow if Oracle reports temperature > 70°F"
+Oracle is permanently offline → X is orphaned forever
+```
+
+Or circular:
+```
+Contract A: "allow if B allows"
+Contract B: "allow if C allows"
+Contract C: "allow if A allows"
+All deny → permanently locked
+```
+
+**This is accepted.** No automatic rescue mechanism exists because:
+
+1. **Many loops are valuable** - Mutual interdependence (A controls B, B controls A) is how partnerships and multi-sig work
+
+2. **Detection is impossible** - Contracts can depend on external state, time, LLM interpretation. Cannot statically determine if an artifact is permanently inaccessible
+
+3. **Trustlessness** - Adding backdoors breaks the security model
+
+**Consequence:** Creators are responsible for designing access control carefully. Orphaned artifacts remain forever, like lost Bitcoin.
+
+See DESIGN_CLARIFICATIONS.md for full discussion of considered alternatives.
 
 ---
 
