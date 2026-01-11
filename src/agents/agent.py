@@ -74,6 +74,13 @@ class WorldState(TypedDict, total=False):
     oracle_submissions: dict[str, OracleSubmission]
 
 
+class RAGConfigDict(TypedDict, total=False):
+    """RAG configuration dictionary."""
+    enabled: bool
+    limit: int
+    query_template: str
+
+
 class Agent:
     """An LLM-powered agent that proposes actions"""
 
@@ -84,6 +91,7 @@ class Agent:
     last_action_result: str | None
     llm: LLMProvider
     llm_model: str
+    rag_config: RAGConfigDict
 
     def __init__(
         self,
@@ -93,6 +101,7 @@ class Agent:
         action_schema: str = "",
         log_dir: str | None = None,
         run_id: str | None = None,
+        rag_config: RAGConfigDict | None = None,
     ) -> None:
         # Get defaults from config
         default_model: str = config_get("llm.default_model") or "gemini/gemini-3-flash-preview"
@@ -105,6 +114,14 @@ class Agent:
         self.action_schema = action_schema or ACTION_SCHEMA  # Fall back to default
         self.memory = get_memory()
         self.last_action_result = None  # Track result of last action for feedback
+
+        # RAG config: per-agent overrides merged with global defaults
+        global_rag: dict[str, Any] = config_get("agent.rag") or {}
+        self.rag_config: RAGConfigDict = {
+            "enabled": (rag_config or {}).get("enabled", global_rag.get("enabled", True)),
+            "limit": (rag_config or {}).get("limit", global_rag.get("limit", 5)),
+            "query_template": (rag_config or {}).get("query_template", global_rag.get("query_template", "")),
+        }
 
         # Initialize LLM provider with agent metadata for logging
         extra_metadata: dict[str, Any] = {"agent_id": agent_id}
@@ -123,13 +140,48 @@ class Agent:
 
     def build_prompt(self, world_state: dict[str, Any]) -> str:
         """Build the prompt for the LLM (events require genesis_event_log)"""
-        # Get relevant memories based on current context
-        memory_limit: int = config_get("agent.prompt.memory_limit") or 5
-        context: str = f"tick {world_state.get('tick', 0)}, balance {world_state.get('balances', {}).get(self.agent_id, 0)}"
-        memories: str = self.memory.get_relevant_memories(self.agent_id, context, limit=memory_limit)
-
-        # Format artifact list with more detail for executables
+        # Extract world state for RAG context
+        tick: int = world_state.get('tick', 0)
+        balance: int = world_state.get('balances', {}).get(self.agent_id, 0)
         artifacts: list[dict[str, Any]] = world_state.get('artifacts', [])
+        my_artifacts: list[str] = [a.get('id', '?') for a in artifacts
+                                    if a.get('owner_id') == self.agent_id]
+        other_agents: list[str] = [p for p in world_state.get('balances', {}).keys()
+                                   if p != self.agent_id]
+
+        # Include last action context if available
+        last_action_info: str = ""
+        if self.last_action_result:
+            # Truncate to avoid huge context
+            last_action_info = f"Last action: {self.last_action_result[:150]}"
+
+        # Get memories using configurable RAG
+        memories: str = "(No relevant memories)"
+        if self.rag_config.get("enabled", True):
+            rag_limit: int = self.rag_config.get("limit", 5)
+            query_template: str = self.rag_config.get("query_template", "")
+
+            # Build RAG query from template (or use default if empty)
+            if query_template:
+                try:
+                    rag_context = query_template.format(
+                        tick=tick,
+                        agent_id=self.agent_id,
+                        balance=balance,
+                        my_artifacts=', '.join(my_artifacts) if my_artifacts else 'none yet',
+                        other_agents=', '.join(other_agents),
+                        last_action=last_action_info,
+                    )
+                except KeyError:
+                    # Template has unknown variables - use as-is
+                    rag_context = query_template
+            else:
+                # Fallback default query
+                rag_context = f"Tick {tick}. I am {self.agent_id} with {balance} scrip. What should I do?"
+
+            memories = self.memory.get_relevant_memories(self.agent_id, rag_context, limit=rag_limit)
+
+        # Format artifact list with more detail for executables (artifacts already fetched above)
         artifact_list: str
         if artifacts:
             artifact_lines: list[str] = []
@@ -189,32 +241,32 @@ class Agent:
             event_lines: list[str] = []
             for event in recent_events[-recent_events_count:]:
                 event_type: str = event.get('type', 'unknown')
-                tick: int = event.get('tick', 0)
+                event_tick: int = event.get('tick', 0)
                 if event_type == 'action':
                     intent: dict[str, Any] = event.get('intent', {})
                     result: dict[str, Any] = event.get('result', {})
                     agent: str = intent.get('principal_id', '?')
                     action: str = intent.get('action_type', '?')
                     success: str = 'OK' if result.get('success') else 'FAIL'
-                    event_lines.append(f"[T{tick}] {agent}: {action} -> {success}")
+                    event_lines.append(f"[T{event_tick}] {agent}: {action} -> {success}")
                 elif event_type == 'tick':
-                    event_lines.append(f"[T{tick}] --- tick {tick} started ---")
+                    event_lines.append(f"[T{event_tick}] --- tick {event_tick} started ---")
                 elif event_type == 'intent_rejected':
                     agent = event.get('principal_id', '?')
                     error = event.get('error', 'unknown error')[:50]
-                    event_lines.append(f"[T{tick}] {agent}: REJECTED - {error}")
+                    event_lines.append(f"[T{event_tick}] {agent}: REJECTED - {error}")
                 elif event_type == 'oracle_auction':
                     winner = event.get('winner_id')
                     artifact = event.get('artifact_id', '?')
                     score = event.get('score', 0)
                     if winner:
-                        event_lines.append(f"[T{tick}] ORACLE: {winner} won with {artifact} (score={score})")
+                        event_lines.append(f"[T{event_tick}] ORACLE: {winner} won with {artifact} (score={score})")
                     else:
-                        event_lines.append(f"[T{tick}] ORACLE: no winner this tick")
+                        event_lines.append(f"[T{event_tick}] ORACLE: no winner this tick")
                 elif event_type == 'thinking_failed':
                     agent = event.get('principal_id', '?')
                     reason = event.get('reason', 'unknown')
-                    event_lines.append(f"[T{tick}] {agent}: OUT OF COMPUTE ({reason})")
+                    event_lines.append(f"[T{event_tick}] {agent}: OUT OF COMPUTE ({reason})")
             recent_activity = "\n## Recent Activity\n" + "\n".join(event_lines) if event_lines else ""
         else:
             recent_activity = ""

@@ -1,0 +1,171 @@
+# Target Execution Model
+
+What we're building toward.
+
+**See current:** [../current/execution_model.md](../current/execution_model.md)
+
+---
+
+## Continuous Autonomous Loops
+
+Agents act independently, not synchronized by ticks.
+
+### Agent Loop
+
+```python
+async def agent_loop(agent):
+    while agent.alive:
+        # Check sleep conditions
+        if agent.is_sleeping:
+            await agent.wait_for_wake_condition()
+
+        # Check resource availability
+        if agent.compute_balance < 0:
+            await wait_for_accumulation()
+            continue
+
+        # Act
+        action = await agent.think()
+        result = await agent.act(action)
+
+        # Loop continues immediately
+```
+
+### Key Differences from Current
+
+| Current | Target |
+|---------|--------|
+| System triggers agents | Agents self-trigger |
+| All agents act each tick | Agents act at own pace |
+| Fixed rate (1 action/tick) | Variable rate (resource-limited) |
+| No sleeping | Agents can self-sleep |
+
+---
+
+## What Ticks Become
+
+Ticks are NOT execution triggers. They become:
+
+1. **Metrics aggregation windows** - Reporting, monitoring
+2. **Flow accumulation reference** - Token bucket uses time, ticks just label it
+3. **Oracle resolution schedule** - Periodic auction resolution
+
+### Background Clock
+
+```python
+async def metrics_loop():
+    while running:
+        await asyncio.sleep(tick_duration)
+        log_metrics(current_tick)
+        current_tick += 1
+```
+
+Agents ignore this clock. They act based on their own loops.
+
+---
+
+## Agent Sleep
+
+### Self-Managed
+
+Agents own their sleep configuration. System provides primitives:
+
+```python
+# Agent can call these
+await sleep(duration_seconds)
+await sleep_until_event("escrow_listing")
+await sleep_until(lambda: self.scrip_balance > 100)
+```
+
+### Wake Conditions
+
+| Type | Example |
+|------|---------|
+| Duration | "Sleep for 60 seconds" |
+| Event | "Wake when new escrow listing" |
+| Predicate | "Wake when my scrip > 100" |
+
+### Why Sleep
+
+- Conserve compute (not spending if not thinking)
+- Wait for conditions (no polling)
+- Strategic timing (act when opportunity arises)
+
+---
+
+## Race Conditions
+
+### Handled by Artifacts, Not Orchestration
+
+With autonomous loops, agents can act simultaneously. Conflicts resolved by genesis artifacts:
+
+```
+Agent A: purchase(artifact_x)  ─┐
+                                 ├─> Escrow handles atomically
+Agent B: purchase(artifact_x)  ─┘    One succeeds, one fails
+```
+
+### Artifact Responsibilities
+
+| Artifact | Handles |
+|----------|---------|
+| genesis_ledger | Transfer atomicity, balance checks |
+| genesis_escrow | Purchase race resolution |
+| genesis_rights_registry | Quota enforcement |
+
+### Agent Responsibility
+
+Agents must handle failures gracefully:
+- Check result of actions
+- Retry or adjust strategy on failure
+- Don't assume action will succeed
+
+---
+
+## Time Injection
+
+System injects current timestamp into every LLM context:
+
+```
+Current time: 2025-01-11T14:30:00Z
+```
+
+Agents always know what time it is. Enables:
+- Calculating oracle resolution schedule
+- Coordinating with other agents
+- Time-based strategies
+
+---
+
+## Implications
+
+### Variable Agent Productivity
+- Fast/efficient agents can do more
+- Expensive thinkers fall into debt, slow down
+- Natural differentiation emerges
+
+### No Snapshot Consistency
+- Agents see real-time state
+- State may change between read and action
+- Must handle stale reads
+
+### Emergent Throttling
+- Total flow rate limits system throughput
+- Debt mechanism naturally throttles expensive agents
+- No hardcoded "max N agents"
+
+---
+
+## Migration Notes
+
+### Breaking Changes
+- `runner.run()` loop completely redesigned
+- `advance_tick()` no longer triggers agents
+- `asyncio.gather()` for thinking removed
+- Phase 1/Phase 2 pattern removed
+
+### Preserved
+- Action types (noop, read, write, invoke)
+- Genesis artifact interfaces
+- Memory system
+- LLM integration

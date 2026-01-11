@@ -220,6 +220,19 @@ agent:
     recent_events_count: 5        # Last N events shown in prompt
     memory_limit: 5               # Max relevant memories to include
 
+  # RAG (Retrieval-Augmented Generation) defaults
+  # Per-agent overrides in src/agents/<name>/agent.yaml
+  rag:
+    enabled: true                 # Set false to disable RAG entirely
+    limit: 5                      # Max memories to retrieve
+    # Query template - variables: {tick}, {agent_id}, {balance}, {my_artifacts}, {other_agents}, {last_action}
+    query_template: |
+      Tick {tick}. I am {agent_id} with {balance} scrip.
+      My artifacts: {my_artifacts}.
+      Other agents: {other_agents}.
+      {last_action}
+      What worked before? What should I try?
+
 # -----------------------------------------------------------------------------
 # MEMORY - Mem0/Qdrant configuration
 # -----------------------------------------------------------------------------

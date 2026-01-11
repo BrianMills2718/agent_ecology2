@@ -665,10 +665,39 @@ class AgentPromptConfig(StrictModel):
     )
 
 
+DEFAULT_RAG_QUERY_TEMPLATE: str = """Tick {tick}. I am {agent_id} with {balance} scrip.
+My artifacts: {my_artifacts}.
+Other agents: {other_agents}.
+{last_action}
+What worked before? What should I try?"""
+
+
+class RAGConfig(StrictModel):
+    """Configuration for RAG (Retrieval-Augmented Generation).
+
+    Can be overridden per-agent in agent.yaml.
+    """
+
+    enabled: bool = Field(
+        default=True,
+        description="Enable/disable RAG for this agent"
+    )
+    limit: int = Field(
+        default=5,
+        gt=0,
+        description="Maximum memories to retrieve"
+    )
+    query_template: str = Field(
+        default=DEFAULT_RAG_QUERY_TEMPLATE,
+        description="Template for RAG query. Variables: {tick}, {agent_id}, {balance}, {my_artifacts}, {other_agents}, {last_action}"
+    )
+
+
 class AgentConfig(StrictModel):
     """Configuration for agent behavior."""
 
     prompt: AgentPromptConfig = Field(default_factory=AgentPromptConfig)
+    rag: RAGConfig = Field(default_factory=RAGConfig)
 
 
 # =============================================================================

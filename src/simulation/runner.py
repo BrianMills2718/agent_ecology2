@@ -164,6 +164,7 @@ class SimulationRunner:
                 action_schema=a.get("action_schema", ""),
                 log_dir=self.config["logging"]["log_dir"],
                 run_id=self.run_id,
+                rag_config=a.get("rag"),  # Per-agent RAG config (None = use defaults)
             )
             agents.append(agent)
         return agents

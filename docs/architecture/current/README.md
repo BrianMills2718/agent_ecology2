@@ -1,0 +1,56 @@
+# Current Architecture
+
+Documentation of how the system works TODAY. Updated as code changes.
+
+Last verified: 2025-01-11
+
+---
+
+## Overview
+
+The Agent Ecology is a tick-synchronized multi-agent system where LLM-powered agents observe shared world state, propose actions, and execute them within resource constraints.
+
+**Key Characteristics:**
+- **Tick-synchronized execution** - All agents act within discrete tick cycles
+- **Two-phase commit** - Observe (parallel) → Execute (sequential randomized)
+- **Strict resource constraints** - No debt, cannot spend more than available
+- **Discrete flow refresh** - Flow resources reset each tick (use-or-lose)
+
+---
+
+## Documents
+
+| Document | Description |
+|----------|-------------|
+| [execution_model.md](execution_model.md) | Tick loop, two-phase commit, timing |
+| [agents.md](agents.md) | Agent lifecycle, thinking, memory |
+| [resources.md](resources.md) | Flow/stock resources, scrip, costs |
+| [genesis_artifacts.md](genesis_artifacts.md) | System services (ledger, oracle, etc.) |
+
+---
+
+## Quick Reference
+
+### Execution Flow (Per Tick)
+```
+1. advance_tick() - increment, reset flow resources
+2. oracle.on_tick() - resolve auctions if any
+3. get_state_summary() - snapshot world state
+4. PHASE 1: All agents think in parallel (asyncio.gather)
+5. PHASE 2: Execute actions in randomized order
+6. Optional: checkpoint save
+7. Sleep for rate_limit_delay
+8. Repeat
+```
+
+### Resource Types
+| Type | Examples | Behavior |
+|------|----------|----------|
+| Flow | compute (llm_tokens) | Reset each tick to quota |
+| Stock | disk, llm_budget | Never reset, persistent |
+| Currency | scrip | Transfers only, never reset |
+
+### Key Constraints
+- No negative balances (resources or scrip)
+- Cannot spend more than available
+- Flow resources lost if unused at tick end

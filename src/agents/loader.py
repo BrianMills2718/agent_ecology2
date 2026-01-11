@@ -15,6 +15,13 @@ from typing import Any, TypedDict
 PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
 
 
+class RAGConfigDict(TypedDict, total=False):
+    """RAG configuration from agent.yaml."""
+    enabled: bool
+    limit: int
+    query_template: str
+
+
 class AgentConfig(TypedDict, total=False):
     """Configuration for an agent."""
     id: str
@@ -24,6 +31,7 @@ class AgentConfig(TypedDict, total=False):
     action_schema: str
     temperature: float | None
     max_tokens: int | None
+    rag: RAGConfigDict | None
 
 
 class AgentYamlConfig(TypedDict, total=False):
@@ -34,6 +42,7 @@ class AgentYamlConfig(TypedDict, total=False):
     enabled: bool
     temperature: float
     max_tokens: int
+    rag: RAGConfigDict
 
 
 def load_agents(agents_dir: str | None = None, prompts_dir: str | None = None) -> list[AgentConfig]:
@@ -91,6 +100,8 @@ def load_agents(agents_dir: str | None = None, prompts_dir: str | None = None) -
             # Optional overrides
             "temperature": config.get("temperature"),
             "max_tokens": config.get("max_tokens"),
+            # Per-agent RAG config (None = use global defaults)
+            "rag": config.get("rag"),
         }
 
         agents.append(agent)

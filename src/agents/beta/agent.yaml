@@ -9,3 +9,13 @@ starting_credits: 100
 # - Collaboration: MEDIUM
 # - Time horizon: LONG
 # - Strategy: EXPLOITATIVE (optimize known patterns)
+
+# Per-agent RAG config (overrides global defaults in config.yaml)
+rag:
+  enabled: true
+  limit: 7  # More memories - beta likes to observe patterns
+  query_template: |
+    I am {agent_id}, an integrator who uses others' tools.
+    Other agents: {other_agents}. Their artifacts might be useful.
+    {last_action}
+    What tools exist? Who should I collaborate with?

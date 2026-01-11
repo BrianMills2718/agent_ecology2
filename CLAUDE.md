@@ -107,13 +107,16 @@ from src.world import World
 
 ### Terminology
 
-| Use | Not |
-|-----|-----|
-| `compute` | `flow` |
-| `disk` | `stock` |
-| `scrip` | `credits` |
-| `principal` | `account` |
-| `tick` | `turn` |
+See `docs/GLOSSARY.md` for full definitions. Quick reference:
+
+| Use | Not | Why |
+|-----|-----|-----|
+| `compute` | `flow` | Use specific resource name |
+| `disk` | `stock` | Use specific resource name |
+| `scrip` | `credits` | Consistency |
+| `principal` | `account` | Principals include artifacts/contracts |
+| `tick` | `turn` | Consistency |
+| `llm_tokens` | `compute` (in code) | Code uses `llm_tokens` internally |
 
 ### Testing Philosophy
 
@@ -205,6 +208,7 @@ Multiple Claude Code instances may work simultaneously.
 
 | Doc | Purpose |
 |-----|---------|
+| `docs/GLOSSARY.md` | **Canonical terminology** - use these terms |
 | `docs/TASK_LOG.md` | Completed task history |
 | `docs/FALLBACKS.md` | Fallback registry with feature flags |
 | `docs/RESOURCE_MODEL.md` | Resource system design |

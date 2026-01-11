@@ -9,3 +9,13 @@ starting_credits: 100
 # - Collaboration: LOW (solo-focused)
 # - Time horizon: SHORT
 # - Strategy: EXPLORATORY
+
+# Per-agent RAG config (overrides global defaults in config.yaml)
+rag:
+  enabled: true
+  limit: 5
+  query_template: |
+    I am {agent_id}, an architect building tools.
+    Balance: {balance} scrip. My artifacts: {my_artifacts}.
+    {last_action}
+    What patterns worked for building? What should I create next?
