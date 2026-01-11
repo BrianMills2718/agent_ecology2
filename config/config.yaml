@@ -20,9 +20,9 @@ resources:
       distribution: equal
 
   flow:  # Rate-limited, refresh per tick
-    compute:
-      per_tick: 1000            # cycles available per tick
-      unit: cycles
+    compute:                    # LLM token budget (called "llm_tokens" internally)
+      per_tick: 1000            # token-units available per tick
+      unit: token_units         # 1 token_unit = ~1K tokens at base rate
       distribution: equal
     bandwidth:
       per_tick: 0               # 0 = disabled for now

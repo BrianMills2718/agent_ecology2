@@ -12,9 +12,11 @@ All configuration (model, timeout, max_content_length) comes from config.yaml.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import TypedDict
 
@@ -147,7 +149,17 @@ class OracleScorer:
         )
 
         try:
-            response_raw = self.llm.generate(prompt)
+            # Run LLM call in thread pool to avoid async context issues
+            # (litellm detects async event loop and refuses sync calls)
+            try:
+                loop = asyncio.get_running_loop()
+                # We're in an async context - run in thread pool
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(self.llm.generate, prompt)
+                    response_raw = future.result(timeout=60)
+            except RuntimeError:
+                # No async loop - call directly
+                response_raw = self.llm.generate(prompt)
             response: str = str(response_raw)
         except Exception as e:
             return {

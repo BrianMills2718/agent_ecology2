@@ -7,6 +7,7 @@ This document describes the rules, resources, and methods available to agents in
 ## Resource Model
 
 ### Compute (Flow Resource)
+- **What it is**: Your LLM token budget per tick
 - **Refreshes every tick** to your quota amount
 - **Consumed by**: Thinking (LLM tokens), actions, method invocations
 - **If exhausted**: You cannot think or act until next tick
@@ -34,11 +35,11 @@ Query and transfer scrip, manage ownership.
 
 | Method | Args | Cost | Description |
 |--------|------|------|-------------|
-| `balance` | `[principal_id]` | 0 | Check scrip balance |
+| `balance` | `[principal_id]` | 0 | Check scrip and compute balance |
 | `all_balances` | `[]` | 0 | See all balances |
-| `transfer` | `[to_id, amount]` | 1 | Transfer scrip to another principal |
+| `transfer` | `[from_id, to_id, amount]` | 1 | Transfer scrip (from_id must be you) |
 | `spawn_principal` | `[]` | 1 | Create a new principal (see Spawning) |
-| `transfer_ownership` | `[artifact_id, to_id]` | 1 | Transfer artifact ownership to another principal |
+| `transfer_ownership` | `[artifact_id, to_id]` | 1 | Transfer artifact ownership |
 
 ### genesis_oracle
 Submit artifacts for scoring and scrip minting.
@@ -57,7 +58,7 @@ Manage compute and disk quotas.
 |--------|------|------|-------------|
 | `check_quota` | `[principal_id]` | 0 | Check quotas for a principal |
 | `all_quotas` | `[]` | 0 | See all quotas |
-| `transfer_quota` | `[to_id, resource, amount]` | 1 | Transfer quota rights |
+| `transfer_quota` | `[from_id, to_id, resource, amount]` | 1 | Transfer quota (from_id must be you) |
 
 ### genesis_event_log
 Read simulation history.
@@ -108,13 +109,13 @@ Create or update an artifact. Costs 5 compute + disk quota.
 ```
 
 ### invoke_artifact
-Call a method on an artifact. Costs 1 compute + method cost + method fee.
+Call a method on an artifact. Costs 1 compute + method cost (scrip).
 ```json
 {
   "action_type": "invoke_artifact",
   "artifact_id": "genesis_ledger",
   "method": "transfer",
-  "args": ["agent_b", 10]
+  "args": ["my_id", "agent_b", 10]
 }
 ```
 
@@ -191,14 +192,16 @@ When you spawn a new principal:
 
 ### Funding a Child
 ```json
-// First: spawn the principal
-{"action_type": "invoke_artifact", "artifact_id": "genesis_ledger", "method": "spawn_principal", "args": ["my_worker"]}
+// First: spawn the principal (returns the new principal_id)
+{"action_type": "invoke_artifact", "artifact_id": "genesis_ledger", "method": "spawn_principal", "args": []}
 
 // Then: transfer compute quota so they can think
-{"action_type": "invoke_artifact", "artifact_id": "genesis_rights_registry", "method": "transfer_quota", "args": ["my_worker", "compute", 20]}
+// args: [from_id (you), to_id, resource, amount]
+{"action_type": "invoke_artifact", "artifact_id": "genesis_rights_registry", "method": "transfer_quota", "args": ["my_id", "new_principal_id", "compute", 20]}
 
 // Then: transfer scrip so they can trade
-{"action_type": "invoke_artifact", "artifact_id": "genesis_ledger", "method": "transfer", "args": ["my_worker", 50]}
+// args: [from_id (you), to_id, amount]
+{"action_type": "invoke_artifact", "artifact_id": "genesis_ledger", "method": "transfer", "args": ["my_id", "new_principal_id", 50]}
 ```
 
 **Only spawn if you have a purpose** - unfunded children waste your resources.

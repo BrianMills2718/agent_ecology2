@@ -23,9 +23,9 @@ resources:
 
   # Flow resources: rate-limited, refresh per tick
   flow:
-    compute:
-      per_tick: <number>        # CPU cycles/ms available per tick
-      unit: cycles
+    compute:                    # LLM token budget (stored as "llm_tokens" in ledger)
+      per_tick: <number>        # Token-units available per tick (~1K tokens each)
+      unit: token_units
       distribution: equal       # Quota per agent
     bandwidth:
       per_tick: <number>        # Bytes of network I/O per tick
