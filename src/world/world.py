@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, TypedDict
 
 from .ledger import Ledger
@@ -177,97 +178,33 @@ class World:
         })
 
     def _seed_handbook(self) -> None:
-        """Seed the genesis_handbook artifact with documentation for agents.
+        """Seed handbook artifacts from src/agents/_handbook/ files.
 
-        The handbook provides agents with:
-        - Quick reference for available actions
-        - How to use genesis artifacts
-        - Economic and resource rules
+        Each .md file becomes a separate artifact (handbook_<name>).
+        Agents can read specific sections they need.
         """
-        handbook_content = """# Agent Handbook
+        handbook_dir = Path(__file__).parent.parent / "agents" / "_handbook"
 
-## Quick Reference
+        # Map of filename (without .md) to artifact_id
+        handbook_sections = {
+            "actions": "handbook_actions",
+            "genesis": "handbook_genesis",
+            "resources": "handbook_resources",
+            "trading": "handbook_trading",
+            "oracle": "handbook_oracle",
+        }
 
-### Actions (only 3 verbs)
-- `read_artifact`: Read any artifact's content (free)
-- `write_artifact`: Create/update artifacts (uses disk quota)
-- `invoke_artifact`: Call methods on artifacts (may cost scrip)
-
-### Genesis Artifacts (System)
-
-**genesis_ledger** - Scrip management:
-- `balance([agent_id])` - Check any agent's balance
-- `all_balances([])` - See everyone's balance
-- `transfer([your_id, to_id, amount])` - Send scrip to another agent
-
-**genesis_oracle** - Mint new scrip via auctions:
-- `status([])` - Check auction phase and timing
-- `bid([artifact_id, amount])` - Bid scrip to submit an artifact
-- `check([])` - Check your bid status
-- Winner's artifact is scored, scrip minted based on score
-- Losing bids are refunded, winning bid becomes UBI
-
-**genesis_rights_registry** - Resource quotas:
-- `check_quota([agent_id])` - Check compute/disk quotas
-- `all_quotas([])` - See all agent quotas
-- `transfer_quota([from, to, "compute"|"disk", amount])` - Trade quotas
-
-**genesis_event_log** - World history:
-- `read([offset, limit])` - Read recent events
-
-**genesis_escrow** - Trustless artifact trading:
-- First: `invoke("genesis_ledger", "transfer_ownership", [artifact_id, "genesis_escrow"])`
-- Then: `invoke("genesis_escrow", "deposit", [artifact_id, price])`
-- Buyer: `invoke("genesis_escrow", "purchase", [artifact_id])`
-
-## Resources
-
-**Scrip** - Economic currency (persistent)
-- Earned by: Oracle submissions, selling services, trading
-- Spent on: Artifact prices, genesis method fees
-
-**Compute** - Per-tick action budget (resets each tick)
-- Used by: Genesis method costs, code execution
-- If exhausted: Wait for next tick
-
-**Disk** - Storage quota (persistent)
-- Used by: write_artifact (content + code bytes)
-- If full: Delete artifacts or trade for more quota
-
-## Creating Executable Artifacts
-
-To submit code to the oracle:
-```json
-{
-  "action_type": "write_artifact",
-  "artifact_id": "my_tool",
-  "artifact_type": "executable",
-  "content": "Description of what it does",
-  "executable": true,
-  "price": 5,
-  "code": "def run(*args):\\n    return {'result': 'hello'}"
-}
-```
-
-Then bid in the oracle auction:
-```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_oracle", "method": "bid", "args": ["my_tool", 10]}
-```
-
-## Tips
-- Use `genesis_event_log.read([])` to see what's happening
-- Use `genesis_ledger.all_balances([])` to scout the competition
-- Create useful tools and charge for them
-- Trade quotas strategically
-"""
-
-        self.artifacts.write(
-            artifact_id="genesis_handbook",
-            type="documentation",
-            content=handbook_content,
-            owner_id="system",
-            executable=False,
-        )
+        for section_name, artifact_id in handbook_sections.items():
+            section_path = handbook_dir / f"{section_name}.md"
+            if section_path.exists():
+                content = section_path.read_text()
+                self.artifacts.write(
+                    artifact_id=artifact_id,
+                    type="documentation",
+                    content=content,
+                    owner_id="system",
+                    executable=False,
+                )
 
     def _mint_scrip(self, principal_id: str, amount: int) -> None:
         """Mint new scrip for a principal (used by oracle).

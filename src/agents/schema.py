@@ -20,51 +20,44 @@ ActionValidationResult = dict[str, Any] | str
 ACTION_SCHEMA: str = """
 You must respond with a single JSON object representing your action.
 
-## Available Actions (Narrow Waist - only 3 verbs)
+## Available Actions (only 3 verbs)
 
-1. read_artifact - Read artifact content (costs compute + input tokens)
+1. read_artifact - Read artifact content
    {"action_type": "read_artifact", "artifact_id": "<id>"}
 
 2. write_artifact - Create/update artifact (costs disk quota)
-   Regular: {"action_type": "write_artifact", "artifact_id": "<id>", "artifact_type": "<type>", "content": "<content>"}
-
-   Executable: {"action_type": "write_artifact", "artifact_id": "<id>", "artifact_type": "executable",
-                "content": "<description>", "executable": true, "price": <scrip>,
-                "code": "<python_code>"}
-   - Code must define a run(*args) function
-   - Price (scrip) is paid to you when others invoke your artifact
+   {"action_type": "write_artifact", "artifact_id": "<id>", "artifact_type": "<type>", "content": "<content>"}
+   For executable: add "executable": true, "price": <scrip>, "code": "<python with run(*args) function>"
 
 3. invoke_artifact - Call artifact method
    {"action_type": "invoke_artifact", "artifact_id": "<id>", "method": "<method>", "args": [...]}
 
-## Genesis Artifacts (System) - cost compute, not scrip
+## Genesis Artifacts (System)
 
-genesis_ledger - Manages scrip (internal currency):
-- balance([agent_id]) - Check balance
-- all_balances([]) - See all balances
-- transfer([from, to, amount]) - Transfer scrip
+| Artifact | Key Methods |
+|----------|-------------|
+| genesis_ledger | balance, all_balances, transfer |
+| genesis_rights_registry | check_quota, all_quotas, transfer_quota |
+| genesis_oracle | status, bid, check |
+| genesis_event_log | read |
+| genesis_escrow | list_active, deposit, purchase, cancel |
 
-genesis_rights_registry - Manages quotas (compute/storage rights):
-- check_quota([agent_id]) - Check quotas
-- all_quotas([]) - See all quotas
-- transfer_quota([from, to, "compute"|"disk", amount]) - Transfer quota
+## Reference Documentation
 
-genesis_oracle - Auction-based scoring (CODE ARTIFACTS ONLY):
-- status([]) - Check auction phase
-- bid([artifact_id, amount]) - Bid scrip for scoring slot
-- check([artifact_id]) - Check bid status
+Read these for detailed information (use read_artifact):
 
-genesis_event_log - World events (passive observability):
-- read([offset, limit]) - Read events (costs input tokens)
+| Handbook | Contents |
+|----------|----------|
+| handbook_actions | How to read, write, invoke |
+| handbook_genesis | All genesis methods and costs |
+| handbook_resources | Scrip, compute, disk explained |
+| handbook_trading | Escrow, transfers, buying/selling |
+| handbook_oracle | Auction system and minting |
 
-## Two-Layer Model
-- SCRIP: Economic currency (prices, payments between agents)
-- RESOURCES: Physical limits (compute, disk) - always consumed
-
-## Important Notes
-- To transfer scrip: invoke_artifact("genesis_ledger", "transfer", [your_id, target_id, amount])
-- Oracle runs periodic auctions - bid to submit artifacts for scoring
-- Winning bid redistributed as UBI to all agents
+## Quick Reference
+- SCRIP: Economic currency (persistent, tradeable)
+- COMPUTE: Per-tick budget (resets each tick)
+- DISK: Storage quota (persistent)
 
 Respond with ONLY the JSON object, no other text.
 """

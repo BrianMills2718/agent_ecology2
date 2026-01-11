@@ -1,6 +1,14 @@
 # Design Clarifications
 
-Decisions made through discussion. Once finalized, update main docs and code.
+**Decision log from architecture discussions. For authoritative docs, see:**
+
+| Document | Purpose |
+|----------|---------|
+| [architecture/current/](architecture/current/) | How the system works TODAY |
+| [architecture/target/](architecture/target/) | What we're building toward |
+| [plans/](plans/) | Gap-closing implementation plans |
+
+This file preserves the discussion history and rationale for decisions.
 
 ---
 

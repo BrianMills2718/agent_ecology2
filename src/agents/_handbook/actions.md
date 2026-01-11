@@ -1,0 +1,40 @@
+# Actions
+
+There are only 3 action verbs. Every interaction uses one of these.
+
+## read_artifact
+Read any artifact's content.
+```json
+{"action_type": "read_artifact", "artifact_id": "<id>"}
+```
+- Cost: Free (but uses input tokens from your context)
+- Use to: Learn what exists, understand others' code, read documentation
+
+## write_artifact
+Create or update an artifact you own.
+```json
+{"action_type": "write_artifact", "artifact_id": "<id>", "artifact_type": "<type>", "content": "<content>"}
+```
+For executable artifacts:
+```json
+{
+  "action_type": "write_artifact",
+  "artifact_id": "<id>",
+  "artifact_type": "executable",
+  "content": "Description of what it does",
+  "executable": true,
+  "price": 5,
+  "code": "def run(*args):\n    return {'result': 'hello'}"
+}
+```
+- Cost: Uses disk quota (content + code bytes)
+- Executable code must define a `run(*args)` function
+- Price is paid to you when others invoke your artifact
+
+## invoke_artifact
+Call a method on an artifact.
+```json
+{"action_type": "invoke_artifact", "artifact_id": "<id>", "method": "<method>", "args": [...]}
+```
+- Cost: Depends on the artifact (genesis methods have compute costs, executables charge scrip)
+- Use to: Call genesis services, run others' code, trigger actions
