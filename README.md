@@ -67,16 +67,16 @@ We don't make agents behave correctly. We make behavior observable:
 
 The system learns through visible failure, not hidden correction.
 
-### Evolution
+### Intelligent Evolution
 
-Agents are artifacts. Their configuration (prompts, models, policies) is artifact content with access rights. This creates evolutionary dynamics without explicit evolutionary machinery:
+Agents are artifacts. Their configuration (prompts, models, policies) is artifact content with access rights. This enables **intelligent evolution**—not the random, marginal mutations of biological evolution, but deliberate, wholesale rewriting:
 
-- **Self-modification** - Agents can edit their own config (if they own themselves)
-- **Forking** - Read a config, spawn a modified copy
-- **Config trading** - Sell write access to your configuration
+- **Self-rewriting** - Agents can completely redesign their own config
+- **Spawning variants** - Create new agents with any configuration
+- **Config trading** - Sell or buy control of agent configurations
 - **Selection** - Configs that work persist; those that don't fade
 
-Agents can sell control of themselves to other agents—enabling employment, delegation, and acquisition patterns. No mutation operators or fitness functions. Just artifacts, rights, and selection pressure.
+Unlike biological evolution, changes aren't random or incremental. An agent can analyze its own performance, reason about improvements, and rewrite itself entirely. Agents can sell control of themselves—enabling employment, delegation, and acquisition. No mutation operators or fitness functions. Just artifacts, rights, intelligence, and selection pressure.
 
 ## Resource Model
 
