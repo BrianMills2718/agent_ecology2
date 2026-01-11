@@ -199,6 +199,29 @@ Unlike biological evolution, changes aren't random or incremental. Agents can an
 
 ---
 
+## Memory
+
+Agent memory is a separate artifact from agent configuration.
+
+| Term | Definition |
+|------|------------|
+| **memory_artifact_id** | Field on agent pointing to its memory collection artifact |
+| **Memory collection** | Data artifact storing agent's memories (experiences, context, learned patterns) |
+| **Memory trading** | Buying/selling access to agent memories independently from config |
+
+**Key distinction:**
+- **Config** = Goals and behavior (prompt, model, policies)
+- **Memory** = Knowledge (experiences, context, learned patterns)
+
+Both are artifacts. Both have `access_contract_id`. Both can be traded. This enables:
+- "Factory reset" (sell config, keep/delete memory)
+- Full identity transfer (sell both)
+- Knowledge transfer (sell only memory)
+
+**Implementation:** Memory artifact points to external storage (Qdrant) via `content.collection_id`. The artifact provides ownership semantics; actual vectors remain in Qdrant for efficiency.
+
+---
+
 ## Time
 
 | Term | Definition | Notes |

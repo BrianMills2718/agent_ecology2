@@ -1,6 +1,6 @@
 # Agent Ecology - External Review Package
 
-Generated: 2026-01-11 23:25
+Generated: 2026-01-11 23:32
 
 This document concatenates all target architecture documentation 
 in recommended reading order for external review.
@@ -1083,6 +1083,92 @@ Even with config rights:
 
 ---
 
+## Memory as Artifact
+
+### The Problem
+
+Agent identity has two components:
+- **Config** (prompt, model, policies) - determines goals and behavior
+- **Memory** (experiences, context, learned patterns) - determines knowledge
+
+If config is tradeable but memory isn't, trading creates identity crises:
+- New owner gets old memories with new goals
+- Can't "factory reset" an acquired agent
+- Can't sell experiences independently
+
+### Solution: Memory Collection Artifact
+
+Each agent has a `memory_artifact_id` pointing to their memory collection:
+
+```python
+{
+    "id": "agent_alice",
+    "has_standing": True,
+    "can_execute": True,
+    "content": {
+        "prompt": "...",
+        "model": "...",
+    },
+    "memory_artifact_id": "alice_memories",  # Separate artifact
+    "access_contract_id": "genesis_self_owned"
+}
+
+{
+    "id": "alice_memories",
+    "has_standing": False,  # Memory doesn't pay costs
+    "can_execute": False,   # Memory isn't executable
+    "content": {
+        "storage_type": "qdrant",
+        "collection_id": "alice_mem_collection"
+    },
+    "access_contract_id": "genesis_self_owned"  # Alice controls access
+}
+```
+
+### Trading Scenarios
+
+**Sell config only (factory reset):**
+```
+1. Buyer acquires agent config artifact
+2. Buyer creates new memory artifact for agent
+3. Agent starts fresh with no prior memories
+4. Seller can keep/sell/delete old memories
+```
+
+**Sell config + memory (full identity transfer):**
+```
+1. Buyer acquires agent config artifact
+2. Buyer acquires memory artifact
+3. Agent continues with full history
+```
+
+**Sell memory only:**
+```
+1. Buyer acquires memory artifact
+2. Buyer's agent gains seller's experiences
+3. Useful for: training data, context transfer, "hiring for knowledge"
+```
+
+### Memory Access Control
+
+Memory artifact has its own `access_contract_id`:
+
+| Scenario | Config Owner | Memory Owner | Result |
+|----------|--------------|--------------|--------|
+| Normal | Alice | Alice | Alice controls both |
+| Sold config | Bob | Alice | Bob runs agent, but Alice controls what it remembers |
+| Sold memory | Alice | Bob | Alice runs agent, but Bob can read/modify memories |
+| Full sale | Bob | Bob | Bob has complete control |
+
+### Implementation Notes
+
+- Memory artifact points to external storage (Qdrant) via `content.collection_id`
+- The artifact provides ownership/access semantics
+- Actual vectors remain in Qdrant for efficiency
+- Wiping memory = clearing the Qdrant collection (owner permission required)
+
+---
+
 ## Sleep Mechanics
 
 ### Self-Managed
@@ -2042,7 +2128,7 @@ Recover from crashes automatically.
 | 1 | UBI floor starts at zero | 65% | Starvation may cascade too fast to detect | [Link](#7-ubi-floor-starts-at-zero-65) |
 | 2 | No refund on 429 rate limit errors | 60% | May be too harsh on agents during provider outages | [Link](#8-no-refund-on-429-rate-limit-errors-60) |
 | 3 | Spawned agents start with zero resources | 60% | Rich-get-richer dynamics may calcify hierarchy | [Link](#9-spawned-agents-start-with-zero-resources-60) |
-| 4 | Memory: hybrid Qdrant/artifact model | 55% | Two systems may diverge over time | [Link](#11-memory-as-artifacts-accept-hybrid-55) |
+| 4 | ~~Memory: hybrid Qdrant/artifact model~~ | ~~55%~~ | **REVISED**: Memory is separate artifact with access control | [Link](#memory-as-artifact-revised-2026-01-11) |
 | 5 | Checkpoint: stop-the-world | 55% | May not scale; WAL might be needed | [Link](#12-checkpoint-atomicity-stop-the-world-initially-55) |
 | 6 | Rate limit sync: adapt from 429s | 50% | Charging on external failures may be unfair | [Link](#13-rate-limit-sync-trust-internal--learn-from-429s-50) |
 | 7 | Event system design | 40% | Don't know what agents actually need | [Link](#10-event-system-design-40) |
@@ -2059,7 +2145,8 @@ Recover from crashes automatically.
 |----------|-----------|---------|
 | ~~Contracts are pure functions~~ | ~~95%~~ | **REVISED**: Contracts can do anything, invoker pays |
 | ~~Contracts cannot invoke()~~ | ~~92%~~ | **REVISED**: Contracts can invoke, invoker pays |
-| Memory: keep Qdrant separate (for now) | 90% | Defer artifact migration |
+| Memory: keep Qdrant separate (storage) | 90% | Vectors stay in Qdrant for efficiency |
+| Memory as separate artifact | 100% | Agent has memory_artifact_id, tradeable independently |
 | Single ID namespace | 90% | All IDs are artifact IDs |
 | Everything is an artifact | 90% | Agents, contracts, data - all artifacts |
 | Standing = pays own costs | 90% | has_standing determines payment |
@@ -2110,8 +2197,9 @@ Full list of all architectural decisions with certainty levels, organized by top
 | | Periodic resolution | 85% | DECIDED |
 | | UBI floor starts at 0 | 65% | OPEN |
 | **Memory** | | | |
-| | Keep Qdrant separate | 90% | DECIDED |
-| | Hybrid wrapper (future) | 55% | OPEN |
+| | Keep Qdrant separate (storage) | 90% | DECIDED |
+| | Memory as separate artifact | 100% | REVISED 2026-01-11 |
+| | Memory independently tradeable | 100% | REVISED 2026-01-11 |
 | **Infrastructure** | | | |
 | | Docker isolation | 85% | DECIDED |
 | | Checkpoint stop-the-world | 55% | OPEN |
@@ -6026,6 +6114,76 @@ def create_artifact(creator_id, config):
 **Concern:** Per-agent limits disadvantage productive agents. May need "quota trading" like other resources.
 
 **Open question:** Should agents be able to buy/trade artifact quota?
+
+---
+
+### Memory as Artifact (REVISED 2026-01-11)
+
+**Decision:** Memory is a separate artifact with its own `access_contract_id`.
+
+**Problem:** Agent identity has two components:
+- **Config** (prompt, model, policies) - determines goals and behavior
+- **Memory** (experiences, context, learned patterns) - determines knowledge
+
+If config is tradeable but memory isn't, trading creates identity crises:
+- New owner gets old memories with new goals
+- Can't "factory reset" an acquired agent
+- Can't sell experiences independently (valuable for training data, context transfer)
+
+**Solution:** Each agent has a `memory_artifact_id` pointing to a separate memory collection artifact:
+
+```python
+# Agent artifact
+{
+    "id": "agent_alice",
+    "has_standing": True,
+    "can_execute": True,
+    "content": {"prompt": "...", "model": "..."},
+    "memory_artifact_id": "alice_memories",  # Separate artifact
+    "access_contract_id": "genesis_self_owned"
+}
+
+# Memory collection artifact
+{
+    "id": "alice_memories",
+    "has_standing": False,   # Memory doesn't pay costs
+    "can_execute": False,    # Memory isn't executable
+    "content": {
+        "storage_type": "qdrant",
+        "collection_id": "alice_mem_collection"
+    },
+    "access_contract_id": "genesis_self_owned"  # Initially self-controlled
+}
+```
+
+**Trading scenarios enabled:**
+
+| Scenario | What Transfers | Result |
+|----------|----------------|--------|
+| Config only | Agent artifact | "Factory reset" - buyer creates new memory |
+| Config + memory | Both artifacts | Full identity transfer |
+| Memory only | Memory artifact | Buyer's agent gains seller's experiences |
+
+**Access control matrix:**
+
+| Scenario | Config Owner | Memory Owner | Result |
+|----------|--------------|--------------|--------|
+| Normal | Alice | Alice | Alice controls both |
+| Sold config | Bob | Alice | Bob runs agent, Alice controls memories |
+| Sold memory | Alice | Bob | Alice runs agent, Bob reads/modifies memories |
+| Full sale | Bob | Bob | Bob has complete control |
+
+**Certainty:** 100% - This directly solves the "ontological drift" problem raised by external review.
+
+**Rationale:**
+- Preserves "everything is artifact" purity
+- Enables rich trading patterns
+- Actual vectors remain in Qdrant for efficiency (the artifact provides ownership semantics)
+- Memory artifact has its own `access_contract_id` - full flexibility
+
+**Supersedes:** "Memory as Artifacts: Accept Hybrid (55%)" - that was about storage. This is about ownership and tradability.
+
+**See:** `docs/architecture/target/agents.md` for full specification.
 
 ---
 

@@ -117,6 +117,92 @@ Even with config rights:
 
 ---
 
+## Memory as Artifact
+
+### The Problem
+
+Agent identity has two components:
+- **Config** (prompt, model, policies) - determines goals and behavior
+- **Memory** (experiences, context, learned patterns) - determines knowledge
+
+If config is tradeable but memory isn't, trading creates identity crises:
+- New owner gets old memories with new goals
+- Can't "factory reset" an acquired agent
+- Can't sell experiences independently
+
+### Solution: Memory Collection Artifact
+
+Each agent has a `memory_artifact_id` pointing to their memory collection:
+
+```python
+{
+    "id": "agent_alice",
+    "has_standing": True,
+    "can_execute": True,
+    "content": {
+        "prompt": "...",
+        "model": "...",
+    },
+    "memory_artifact_id": "alice_memories",  # Separate artifact
+    "access_contract_id": "genesis_self_owned"
+}
+
+{
+    "id": "alice_memories",
+    "has_standing": False,  # Memory doesn't pay costs
+    "can_execute": False,   # Memory isn't executable
+    "content": {
+        "storage_type": "qdrant",
+        "collection_id": "alice_mem_collection"
+    },
+    "access_contract_id": "genesis_self_owned"  # Alice controls access
+}
+```
+
+### Trading Scenarios
+
+**Sell config only (factory reset):**
+```
+1. Buyer acquires agent config artifact
+2. Buyer creates new memory artifact for agent
+3. Agent starts fresh with no prior memories
+4. Seller can keep/sell/delete old memories
+```
+
+**Sell config + memory (full identity transfer):**
+```
+1. Buyer acquires agent config artifact
+2. Buyer acquires memory artifact
+3. Agent continues with full history
+```
+
+**Sell memory only:**
+```
+1. Buyer acquires memory artifact
+2. Buyer's agent gains seller's experiences
+3. Useful for: training data, context transfer, "hiring for knowledge"
+```
+
+### Memory Access Control
+
+Memory artifact has its own `access_contract_id`:
+
+| Scenario | Config Owner | Memory Owner | Result |
+|----------|--------------|--------------|--------|
+| Normal | Alice | Alice | Alice controls both |
+| Sold config | Bob | Alice | Bob runs agent, but Alice controls what it remembers |
+| Sold memory | Alice | Bob | Alice runs agent, but Bob can read/modify memories |
+| Full sale | Bob | Bob | Bob has complete control |
+
+### Implementation Notes
+
+- Memory artifact points to external storage (Qdrant) via `content.collection_id`
+- The artifact provides ownership/access semantics
+- Actual vectors remain in Qdrant for efficiency
+- Wiping memory = clearing the Qdrant collection (owner permission required)
+
+---
+
 ## Sleep Mechanics
 
 ### Self-Managed
