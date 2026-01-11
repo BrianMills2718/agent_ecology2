@@ -578,9 +578,30 @@ class SimulationRunner:
             if self.delay > 0:
                 await asyncio.sleep(self.delay)
 
+            # Periodic checkpoint saving
+            checkpoint_interval: int = self.config.get("budget", {}).get("checkpoint_interval", 10)
+            if checkpoint_interval > 0 and self.world.tick % checkpoint_interval == 0:
+                checkpoint_file = save_checkpoint(
+                    self.world, self.agents, self.engine.cumulative_api_cost,
+                    self.config, f"periodic_tick_{self.world.tick}"
+                )
+                if self.verbose:
+                    print(f"  [CHECKPOINT] Saved to {checkpoint_file}")
+
             if self.verbose:
                 print(f"  End of tick. Scrip: {self.world.ledger.get_all_scrip()}")
                 print()
+
+        # Save final checkpoint if configured
+        checkpoint_on_end: bool = self.config.get("budget", {}).get("checkpoint_on_end", True)
+        if checkpoint_on_end:
+            checkpoint_file = save_checkpoint(
+                self.world, self.agents, self.engine.cumulative_api_cost,
+                self.config, "simulation_complete"
+            )
+            if self.verbose:
+                print(f"\n=== SIMULATION COMPLETE ===")
+                print(f"Checkpoint saved to: {checkpoint_file}")
 
         self._running = False
         SimulationRunner._active_runner = None

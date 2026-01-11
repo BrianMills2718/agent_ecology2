@@ -573,6 +573,15 @@ class BudgetConfig(StrictModel):
         default="checkpoint.json",
         description="File for saving simulation checkpoints"
     )
+    checkpoint_interval: int = Field(
+        default=10,
+        ge=0,
+        description="Save checkpoint every N ticks (0 = disable periodic saves)"
+    )
+    checkpoint_on_end: bool = Field(
+        default=True,
+        description="Save checkpoint when simulation ends normally"
+    )
 
 
 # =============================================================================
