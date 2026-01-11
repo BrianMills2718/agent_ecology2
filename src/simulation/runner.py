@@ -435,6 +435,17 @@ class SimulationRunner:
             agent.set_last_result(action_type, result.success, result.message)
             agent.record_action(action_type, json.dumps(action_dict), result.success)
 
+            # Store artifact content in memory when successfully read
+            if action_type == "read_artifact" and result.success and result.data:
+                artifact_data = result.data.get("artifact", {})
+                artifact_id = artifact_data.get("id", action_dict.get("artifact_id", "unknown"))
+                content = artifact_data.get("content", "")
+                # Truncate long content for memory storage
+                if len(content) > 500:
+                    content = content[:500] + "..."
+                observation = f"Read {artifact_id}: {content}"
+                agent.record_observation(observation)
+
     def _print_startup_info(self) -> None:
         """Print simulation startup information."""
         if not self.verbose:

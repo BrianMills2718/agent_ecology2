@@ -164,20 +164,19 @@ Multiple Claude Code instances may work simultaneously.
 | CC-1 | Available | - |
 | CC-2 | Available | - |
 | CC-3 | Available | - |
-| CC-4 | Available | - |
+| CC-4 | Add artifact ID length validation | 2025-01-11 |
 
 ### Task Backlog
 
 | Task | Description | Priority |
 |------|-------------|----------|
-| Add artifact ID length validation | Prevent DoS | Low |
 | Document Windows timeout limitation | signal.alarm Unix-only | Low |
 
 ### In Progress
 
 | Task | CC-ID | Started | Notes |
 |------|-------|---------|-------|
-| (none) | - | - | - |
+| Add artifact ID length validation | CC-4 | 2025-01-11 | Prevent DoS via huge IDs |
 
 ### Awaiting Review
 

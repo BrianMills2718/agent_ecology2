@@ -179,6 +179,13 @@ executor:
     - datetime
 
 # -----------------------------------------------------------------------------
+# VALIDATION - Input validation limits to prevent DoS
+# -----------------------------------------------------------------------------
+validation:
+  max_artifact_id_length: 128   # Max chars for artifact IDs
+  max_method_name_length: 64    # Max chars for method names
+
+# -----------------------------------------------------------------------------
 # ORACLE SCORER
 # -----------------------------------------------------------------------------
 oracle_scorer:
