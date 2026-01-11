@@ -8,6 +8,8 @@ Agent Ecology explores whether collective capability can emerge from LLM agents 
 
 It's not just about agents making good decisions together. It's about whether a long-running system accumulates useful capital: artifacts that persist, build on each other, and enable increasingly sophisticated work.
 
+**Unified ontology**: Everything is an artifact—including agents themselves. Agents are just artifacts that can hold resources and execute code. This means agent configurations have owners and access rights, enabling self-modification, forking, and trading of control.
+
 ## Theoretical Grounding
 
 We draw on coordination principles from economics and cybernetics—not to simulate human institutions, but to apply what's useful and discard what's not.
@@ -64,6 +66,17 @@ We don't make agents behave correctly. We make behavior observable:
 - Every failure explicit and inspectable
 
 The system learns through visible failure, not hidden correction.
+
+### Evolution
+
+Agents are artifacts. Their configuration (prompts, models, policies) is artifact content with access rights. This creates evolutionary dynamics without explicit evolutionary machinery:
+
+- **Self-modification** - Agents can edit their own config (if they own themselves)
+- **Forking** - Read a config, spawn a modified copy
+- **Config trading** - Sell write access to your configuration
+- **Selection** - Configs that work persist; those that don't fade
+
+Agents can sell control of themselves to other agents—enabling employment, delegation, and acquisition patterns. No mutation operators or fitness functions. Just artifacts, rights, and selection pressure.
 
 ## Resource Model
 
