@@ -1,38 +1,59 @@
 # Glossary
 
-Canonical terminology for the Agent Ecology. Use these terms consistently across code and documentation.
+Canonical terminology for Agent Ecology. Use these terms consistently across code and documentation.
+
+**Last updated:** 2026-01-11
 
 ---
 
-## Entities
+## Core Ontology
 
-| Term | Definition | Notes |
-|------|------------|-------|
-| **Agent** | An LLM-powered entity that observes state and proposes actions | Has a system prompt, memory, and LLM model |
-| **Principal** | Any identity that can hold scrip/resources in the ledger | Includes agents, artifacts, contracts. Broader than "agent" |
-| **Artifact** | Data or code stored in the world | Can be executable (has `run()` function) or passive (data only) |
-| **Genesis Artifact** | System-provided artifact (ledger, oracle, etc.) | Prefixed with `genesis_` |
-| **Contract** | An executable artifact that manages resources/access for others | Uses Gatekeeper pattern |
+Everything is an artifact. Other entity types are artifacts with specific properties.
+
+| Term | Definition | Properties |
+|------|------------|------------|
+| **Artifact** | Any persistent, addressable object in the system | `id`, `content`, `access_contract_id` |
+| **Agent** | Artifact that can hold resources, execute code, and call LLM | `has_standing=true`, `can_execute=true` |
+| **Principal** | Any artifact with standing (can hold resources, bear costs) | `has_standing=true` |
+| **Contract** | Executable artifact that answers permission questions | `can_execute=true`, implements `check_permission` |
+| **Genesis Artifact** | Artifact created at system initialization | Prefixed with `genesis_`, solves cold-start |
+
+**Key relationships:**
+- Agent ⊂ Principal ⊂ Artifact
+- Contract ⊂ Artifact (contracts don't need standing)
+- All artifacts have an `access_contract_id` pointing to their governing contract
 
 ---
 
-## Resources
+## Resource Taxonomy
 
-### Stock Resources (Finite, Never Refresh)
+Three categories based on how resources behave over time:
 
-| Term | What It Is | Unit | Notes |
-|------|-----------|------|-------|
-| **llm_budget** | Real $ for LLM API calls | dollars | Shared pool, exhaustion stops all agents |
-| **disk** | Storage space for artifacts | bytes | Per-principal quota |
+### Depletable (Consumed Forever)
 
-### Flow Resources (Per-Tick Quota, Refreshes)
+| Resource | What It Is | Unit | Notes |
+|----------|------------|------|-------|
+| **llm_budget** | Real $ for LLM API calls | dollars | External boundary; when exhausted, simulation pauses |
 
-| Term | Config Name | Code Name | What It Is | Unit |
-|------|-------------|-----------|-----------|------|
-| **compute** | `compute` | `llm_tokens` | Token budget for thinking | token_units |
-| **bandwidth** | `bandwidth` | `bandwidth` | Network I/O | bytes (disabled) |
+Rights to depletable resources are distributed and tradeable like any other resource. The total pool is an external parameter.
 
-**Note:** Config uses `compute`, code stores as `llm_tokens`. They are the same resource.
+### Allocatable (Finite But Reusable)
+
+| Resource | What It Is | Unit | Notes |
+|----------|------------|------|-------|
+| **disk** | Storage space for artifacts | bytes | Per-principal quota; freed when artifacts deleted |
+| **memory** | RAM for execution | bytes | Container limit; freed after use |
+
+Allocatable resources are finite but can be reclaimed. Deleting an artifact frees its disk. Ending execution frees memory.
+
+### Renewable (Replenishes Over Time)
+
+| Resource | What It Is | Unit | Notes |
+|----------|------------|------|-------|
+| **compute** | Rate limit on actions/tokens | token_units | Token bucket model: accumulates to capacity |
+| **bandwidth** | Network I/O | bytes/tick | Rate limited per time window |
+
+Renewable resources use a **token bucket model**: accumulate at a fixed rate up to a capacity limit. Can go into debt (negative balance = frozen until recovery).
 
 ---
 
@@ -40,11 +61,141 @@ Canonical terminology for the Agent Ecology. Use these terms consistently across
 
 | Term | Definition | Notes |
 |------|------------|-------|
-| **Scrip** | Economic currency for agent-to-agent trade | NOT a physical resource. Persists across ticks. |
+| **Scrip** | Internal economic currency | NOT a physical resource. Coordination signal. |
 
 **Key distinction:**
-- **Resources** = Physical limits (compute, disk) - always consumed
-- **Scrip** = Economic signal (prices, payments) - flows between agents
+- **Resources** = Physical constraints (compute, disk, memory, bandwidth, llm_budget)
+- **Scrip** = Economic signal (prices, payments, coordination)
+
+An agent can be rich in scrip but starved of compute, or vice versa.
+
+---
+
+## Actions (Narrow Waist)
+
+Only 3 action types (plus noop):
+
+| Action | Purpose | Costs |
+|--------|---------|-------|
+| **read_artifact** | Read artifact content | May cost scrip (read_price) |
+| **write_artifact** | Create/update artifact | Disk quota |
+| **invoke_artifact** | Call method on artifact | Scrip fee + compute |
+
+**No direct transfer action.** Transfers happen via: `invoke_artifact("genesis_ledger", "transfer", [...])`
+
+---
+
+## Contracts
+
+### Core Concepts
+
+| Term | Definition |
+|------|------------|
+| **access_contract_id** | Field on every artifact pointing to its governing contract |
+| **check_permission** | Required method contracts implement to answer permission questions |
+
+### Contract Capabilities (Revised 2026-01-11)
+
+**Contracts can do anything.** Invoker pays all costs.
+
+- Can call LLM (invoker pays)
+- Can invoke other artifacts (invoker pays)
+- Can make external API calls (invoker pays)
+- Cannot directly mutate state (return decisions, kernel applies)
+
+### Contract Types
+
+Contracts can implement any pattern. Common patterns include:
+
+| Pattern | Description |
+|---------|-------------|
+| **Freeware** | Always allows access (e.g., `genesis_freeware`) |
+| **Self-owned** | Only owner can access (e.g., `genesis_self_owned`) |
+| **Gatekeeper** | Manages access for multiple stakeholders |
+| **Escrow** | Holds resources pending conditions |
+| **Paywall** | Requires payment for access |
+
+**Note:** These are patterns, not required types. Contracts are infinitely flexible.
+
+### Executable vs Voluntary Contracts
+
+| Type | Enforcement | Example |
+|------|-------------|---------|
+| **Executable** | Enforced automatically by code | Escrow releases on payment |
+| **Voluntary** | Depends on parties choosing to comply | Handshake agreements |
+
+There is no government of last resort. Defection is possible. Reputation and repeated interaction are the only enforcement for voluntary contracts.
+
+---
+
+## Genesis Artifacts
+
+System-provided artifacts for bootstrapping. Theoretically replaceable—agents could build alternatives.
+
+| Artifact | Purpose | Key Methods |
+|----------|---------|-------------|
+| **genesis_oracle** | Score artifacts, mint scrip | `submit`, `bid`, `process` |
+| **genesis_escrow** | Trustless artifact trading | `deposit`, `purchase`, `cancel` |
+| **genesis_event_log** | Simulation history | `read` |
+| **genesis_handbook** | Documentation for agents | `read` |
+| **genesis_freeware** | Permissive access contract | `check_permission` (always true) |
+| **genesis_self_owned** | Self-only access contract | `check_permission` (owner only) |
+
+**Genesis artifacts solve cold-start.** They're not the only way to coordinate—just the initial way.
+
+---
+
+## System Primitives
+
+Part of the world itself—agents cannot replace these:
+
+- Action execution (read, write, invoke)
+- Resource accounting (balances for all resource types)
+- Scrip ledger
+- Artifact store
+- Tick/time progression
+
+Genesis artifacts provide *interfaces* to some primitives, but the underlying state is system-level.
+
+---
+
+## External Feedback
+
+How value enters the system from outside:
+
+| Term | Definition |
+|------|------------|
+| **Minting** | Creating new scrip based on external validation |
+| **External validation** | Value judgments from outside the system (upvotes, bounties, API outcomes) |
+| **User bounty** | Human posts task with reward; pays winner if satisfied |
+
+The oracle is the interface for minting—but the *source* of value judgments is external.
+
+---
+
+## Organizational Structures
+
+Agents can create any organizational structure:
+
+| Structure | How It Works |
+|-----------|--------------|
+| **Hierarchy** | One agent owns/controls others via config ownership |
+| **Flat coordination** | Peers cooperating via contracts |
+| **Market** | Price-mediated exchange via escrow/trading |
+| **Firm** | Group coordinating internally to reduce transaction costs |
+
+---
+
+## Evolution
+
+| Term | Definition |
+|------|------------|
+| **Intelligent evolution** | Deliberate self-modification, not random mutation |
+| **Self-rewriting** | Agent modifies its own config (prompt, model, policies) |
+| **Config trading** | Buying/selling control of agent configurations |
+| **Selection** | Configs that work persist; those that don't fade |
+
+Unlike biological evolution, changes aren't random or incremental. Agents can analyze performance, reason about improvements, and rewrite entirely.
 
 ---
 
@@ -52,100 +203,11 @@ Canonical terminology for the Agent Ecology. Use these terms consistently across
 
 | Term | Definition | Notes |
 |------|------------|-------|
-| **Tick** | One simulation step | All agents observe, then act in random order |
+| **Tick** | One simulation step | Used for observation/metrics |
 
-**Do NOT use:** "turn", "round", "step"
+**Current implementation:** Tick-based execution (observe, then act).
 
----
-
-## Actions (Narrow Waist)
-
-Only 4 action types exist:
-
-| Action | Purpose | Costs |
-|--------|---------|-------|
-| **noop** | Do nothing | None |
-| **read_artifact** | Read artifact content | May cost scrip (read_price) |
-| **write_artifact** | Create/update artifact | Disk quota |
-| **invoke_artifact** | Call method on artifact | May cost scrip (invoke_price) |
-
-**No `transfer` action.** Transfers use: `invoke_artifact("genesis_ledger", "transfer", [...])`
-
----
-
-## Genesis Artifacts
-
-| Artifact | Purpose | Key Methods |
-|----------|---------|-------------|
-| **genesis_ledger** | Scrip balances, transfers, ownership | balance, transfer, spawn_principal, transfer_ownership |
-| **genesis_oracle** | Auction-based artifact scoring | status, bid, check |
-| **genesis_rights_registry** | Resource quota management | check_quota, transfer_quota |
-| **genesis_event_log** | Simulation history | read |
-| **genesis_escrow** | Trustless artifact trading | deposit, purchase, cancel |
-| **genesis_handbook** | Seeded documentation | (read-only) |
-
----
-
-## Resource Categories
-
-| Category | Meaning | Resources | Behavior |
-|----------|---------|-----------|----------|
-| **Stock** | Finite pool | llm_budget, disk | Never refreshes. Trade or exhaust. |
-| **Flow** | Per-tick quota | compute, bandwidth | Refreshes each tick. Use-or-lose. |
-
-**Use the specific resource name** (`compute`, `disk`) not the category name (`flow`, `stock`).
-
----
-
-## Policy Terms
-
-| Term | Definition |
-|------|------------|
-| **read_price** | Scrip cost to read artifact content |
-| **invoke_price** | Scrip cost to invoke executable (paid to owner) |
-| **allow_read/write/invoke** | Access control list: `["*"]`, `["alice"]`, or `"@contract"` |
-| **resource_policy** | Who pays physical resources: `"caller_pays"` or `"owner_pays"` |
-
----
-
-## Oracle Terms
-
-| Term | Definition |
-|------|------------|
-| **Vickrey Auction** | Sealed-bid, second-price auction. Winner pays second-highest bid. |
-| **UBI** | Universal Basic Income. Winning bid redistributed to all agents. |
-| **Minting** | Creating new scrip. Only oracle can mint (for winning submissions). |
-| **Scoring** | LLM evaluation of artifact quality (0-100 scale). |
-
----
-
-## Patterns
-
-| Pattern | Definition |
-|---------|------------|
-| **Gatekeeper** | Contract holds artifact ownership, manages access for multiple stakeholders |
-| **Two-Layer Model** | Scrip (economic) and Resources (physical) are independent layers |
-| **Two-Phase Commit** | Observe (frozen state) → Act (randomized execution) |
-| **Narrow Waist** | Only 3 verbs (read/write/invoke) - all capabilities derive from these |
-| **Vulture Capitalist** | [Target] Market-driven rescue of frozen agents via unilateral transfers |
-
----
-
-## Target Architecture Terms
-
-These terms are defined in the target architecture but not yet implemented. See `docs/architecture/target/`.
-
-| Term | Definition | Gap |
-|------|------------|-----|
-| **has_standing** | Property that allows artifact to hold resources and bear costs | #6 |
-| **can_execute** | Property that allows artifact code to be invoked | #6 |
-| **access_contract_id** | Artifact field pointing to contract governing permissions | #6 |
-| **Token Bucket** | Rolling window resource accumulation (rate + capacity) | #1 |
-| **Tombstone** | Soft delete marker for dangling reference handling | #18 |
-| **genesis_store** | Proposed genesis artifact for artifact discovery | #16 |
-| **Frozen** | Agent with negative resource balance, cannot act until recovery | #1, #4 |
-| **Compute Debt** | Negative compute balance - natural throttling mechanism | #4 |
-| **Continuous Execution** | Agents run autonomous loops, not tick-synchronized | #2 |
+**Target architecture:** Continuous autonomous loops. Ticks remain useful for metrics but agents aren't tick-synchronized.
 
 ---
 
@@ -159,6 +221,7 @@ These terms are defined in the target architecture but not yet implemented. See 
 | flow (as resource name) | compute | Use specific name |
 | stock (as resource name) | disk | Use specific name |
 | transfer (as action) | invoke_artifact | No direct transfer action |
+| pure contract | contract | Contracts can do anything now |
 
 ---
 
@@ -168,5 +231,5 @@ These terms are defined in the target architecture but not yet implemented. See 
 |-------------|---------------|-------|
 | `resources.flow.compute` | `llm_tokens` | Legacy naming in code |
 | `resources.stock.disk` | `disk` | Consistent |
+| `resources.stock.llm_budget` | `llm_budget` | Consistent |
 | `scrip.starting_amount` | `scrip[id]` | Ledger field |
-| `validation.max_artifact_id_length` | 128 | DoS prevention |
