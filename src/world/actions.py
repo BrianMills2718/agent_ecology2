@@ -149,12 +149,11 @@ class ActionResult:
     success: bool
     message: str
     data: dict[str, Any] | None = None
-    # Resource consumption tracking
     resources_consumed: dict[str, float] | None = None
     charged_to: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        result = {"success": self.success, "message": self.message, "data": self.data}
+        result: dict[str, Any] = {"success": self.success, "message": self.message, "data": self.data}
         if self.resources_consumed:
             result["resources_consumed"] = self.resources_consumed
         if self.charged_to:

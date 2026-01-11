@@ -34,7 +34,6 @@ class ArtifactDict(TypedDict, total=False):
     price: int
     has_code: bool
     policy: PolicyDict
-    resource_policy: str  # "caller_pays" or "owner_pays"
 
 
 class WriteResult(TypedDict):
@@ -107,9 +106,7 @@ class Artifact:
     code: str = ""  # Python code (must define run() function)
     # Policy for access control and pricing
     policy: dict[str, Any] = field(default_factory=default_policy)
-    # Resource payment policy: who pays physical resource costs on invocation
-    # - "caller_pays": Invoker's resources consumed (default)
-    # - "owner_pays": Owner's resources consumed (enables "full service" pricing)
+    # Resource payment policy: "caller_pays" or "owner_pays"
     resource_policy: str = "caller_pays"
 
     @property
@@ -204,7 +201,7 @@ class Artifact:
         # Include policy if non-default
         if self.policy != default_policy():
             result["policy"] = self.policy
-        # Include resource_policy if non-default
+        # Include resource_policy if not default
         if self.resource_policy != "caller_pays":
             result["resource_policy"] = self.resource_policy
         return result
@@ -249,9 +246,7 @@ class ArtifactStore:
         - invoke_price: cost to invoke (overrides price param)
         - allow_read, allow_write, allow_invoke: access lists
 
-        Resource policy controls who pays physical resource costs:
-        - "caller_pays": Invoker's resources consumed (default)
-        - "owner_pays": Owner's resources consumed
+        resource_policy: "caller_pays" or "owner_pays"
         """
         now = datetime.utcnow().isoformat()
 
@@ -379,7 +374,7 @@ class ArtifactStore:
             price: Service fee for invocation (for executables)
             code: Python code with run() function (for executables)
             policy: Optional access control policy
-            resource_policy: Who pays resource costs ("caller_pays" or "owner_pays")
+            resource_policy: Who pays gas ("caller_pays" or "owner_pays")
 
         Returns:
             WriteResult with success=True and artifact data, or success=False on error

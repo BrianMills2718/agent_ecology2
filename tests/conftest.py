@@ -32,14 +32,8 @@ def minimal_config() -> ConfigDict:
             "max_ticks": 10
         },
         "costs": {
-            "actions": {
-                "noop": 1,
-                "read_artifact": 2,
-                "write_artifact": 5,
-                "invoke_artifact": 1
-            },
-            "default": 1,
-            "execution_gas": 2
+            "per_1k_input_tokens": 1,
+            "per_1k_output_tokens": 3
         },
         "logging": {
             "output_file": "test_run.jsonl"
@@ -105,14 +99,8 @@ def single_agent_config() -> ConfigDict:
             "max_ticks": 5
         },
         "costs": {
-            "actions": {
-                "noop": 1,
-                "read_artifact": 2,
-                "write_artifact": 5,
-                "invoke_artifact": 1
-            },
-            "default": 1,
-            "execution_gas": 2
+            "per_1k_input_tokens": 1,
+            "per_1k_output_tokens": 3
         },
         "logging": {
             "output_file": "test_single.jsonl"

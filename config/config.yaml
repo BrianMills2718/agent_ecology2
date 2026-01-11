@@ -36,19 +36,15 @@ scrip:
   starting_amount: 100
 
 # -----------------------------------------------------------------------------
-# COSTS - What actions consume (compute units)
+# COSTS - Token costs for thinking (real physical costs)
 # -----------------------------------------------------------------------------
+# Actions themselves are free. Real costs come from:
+# - LLM tokens (thinking) - costs from your budget
+# - Disk usage (writing) - costs from your disk quota
+# - Genesis method costs (configurable per-method below)
 costs:
-  actions:
-    noop: 1
-    read_artifact: 2
-    write_artifact: 5
-    invoke_artifact: 1
-  execution_gas: 2
-  default: 1
-  # Token costs for thinking
-  per_1k_input_tokens: 1
-  per_1k_output_tokens: 3
+  per_1k_input_tokens: 1    # Compute cost per 1K input tokens
+  per_1k_output_tokens: 3   # Compute cost per 1K output tokens
 
 # -----------------------------------------------------------------------------
 # GENESIS ARTIFACTS - System services (fully configurable)

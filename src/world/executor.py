@@ -18,14 +18,10 @@ import json
 import math
 import random
 import signal
-import sys
 from datetime import datetime, timedelta
-from pathlib import Path
 from types import FrameType, ModuleType
 from typing import Any, TypedDict
 
-# Add src to path for absolute imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get
 
 # Import Ledger type for type hints (avoid circular import at runtime)

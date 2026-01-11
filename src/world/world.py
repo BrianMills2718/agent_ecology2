@@ -2,12 +2,7 @@
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 from typing import Any, TypedDict
-
-# Add src to path for absolute imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from .ledger import Ledger
 from .artifacts import ArtifactStore, Artifact, WriteResult
@@ -40,10 +35,9 @@ class LoggingConfig(TypedDict):
 
 
 class CostsConfig(TypedDict, total=False):
-    """Costs configuration."""
-    actions: dict[str, int]
-    default: int
-    execution_gas: int
+    """Costs configuration (token costs only)."""
+    per_1k_input_tokens: int
+    per_1k_output_tokens: int
 
 
 class WorldConfig(TypedDict):
@@ -192,47 +186,18 @@ class World:
             "scrip_after": self.ledger.get_scrip(principal_id)
         })
 
-    def get_cost(self, action_type: ActionType) -> int:
-        """Get the cost for an action type"""
-        actions = self.costs.get("actions", {})
-        default: int = self.costs.get("default", config_get("costs.default") or 1)
-        return actions.get(action_type.value, default)
-
     def execute_action(self, intent: ActionIntent) -> ActionResult:
         """Execute an action intent. Returns the result.
 
-        Cost model:
-        - Action cost (compute): Real resource cost - deducted from compute budget
-        - Economic cost (scrip): Prices, fees - deducted from scrip balance
-
-        Resource tracking:
-        - resources_consumed: Dict of resource type -> amount consumed
-        - charged_to: Principal who paid the resource cost
+        Actions are free. Real costs come from:
+        - LLM tokens (thinking) - costs from compute budget
+        - Disk quota (writing) - costs from disk allocation
+        - Genesis method costs (configurable per-method)
+        - Artifact prices (scrip paid to owner)
         """
-        compute_cost = self.get_cost(intent.action_type)
-
-        # Check if principal has enough FLOW for the action
-        if not self.ledger.can_spend_compute(intent.principal_id, compute_cost):
-            result = ActionResult(
-                success=False,
-                message=f"Insufficient compute. Need {compute_cost}, have {self.ledger.get_compute(intent.principal_id)}",
-                resources_consumed={"compute": 0},
-                charged_to=intent.principal_id
-            )
-            self._log_action(intent, result, compute_cost, False)
-            return result
-
-        # Track resources consumed
-        resources: dict[str, float] = {"compute": float(compute_cost)}
-
         # Execute based on action type
         if isinstance(intent, NoopIntent):
-            result = ActionResult(
-                success=True,
-                message="Noop executed",
-                resources_consumed=resources,
-                charged_to=intent.principal_id
-            )
+            result = ActionResult(success=True, message="Noop executed")
 
         elif isinstance(intent, ReadArtifactIntent):
             # Check regular artifacts first
@@ -242,9 +207,7 @@ class World:
                 if not artifact.can_read(intent.principal_id):
                     result = ActionResult(
                         success=False,
-                        message=f"Access denied: you are not allowed to read {intent.artifact_id}",
-                        resources_consumed={"compute": 0},
-                        charged_to=intent.principal_id
+                        message=f"Access denied: you are not allowed to read {intent.artifact_id}"
                     )
                 else:
                     # Check if can afford read_price (economic cost -> SCRIP)
@@ -252,9 +215,7 @@ class World:
                     if read_price > 0 and not self.ledger.can_afford_scrip(intent.principal_id, read_price):
                         result = ActionResult(
                             success=False,
-                            message=f"Cannot afford read price: {read_price} scrip (have {self.ledger.get_scrip(intent.principal_id)})",
-                            resources_consumed={"compute": 0},
-                            charged_to=intent.principal_id
+                            message=f"Cannot afford read price: {read_price} scrip (have {self.ledger.get_scrip(intent.principal_id)})"
                         )
                     else:
                         # Pay read_price to owner (economic transfer -> SCRIP)
@@ -264,9 +225,7 @@ class World:
                         result = ActionResult(
                             success=True,
                             message=f"Read artifact {intent.artifact_id}" + (f" (paid {read_price} scrip to {artifact.owner_id})" if read_price > 0 else ""),
-                            data={"artifact": artifact.to_dict(), "read_price_paid": read_price},
-                            resources_consumed=resources,
-                            charged_to=intent.principal_id
+                            data={"artifact": artifact.to_dict(), "read_price_paid": read_price}
                         )
             # Check genesis artifacts (always public, free)
             elif intent.artifact_id in self.genesis_artifacts:
@@ -274,54 +233,32 @@ class World:
                 result = ActionResult(
                     success=True,
                     message=f"Read genesis artifact {intent.artifact_id}",
-                    data={"artifact": genesis.to_dict()},
-                    resources_consumed=resources,
-                    charged_to=intent.principal_id
+                    data={"artifact": genesis.to_dict()}
                 )
             else:
                 result = ActionResult(
                     success=False,
-                    message=f"Artifact {intent.artifact_id} not found",
-                    resources_consumed={"compute": 0},
-                    charged_to=intent.principal_id
+                    message=f"Artifact {intent.artifact_id} not found"
                 )
 
         elif isinstance(intent, WriteArtifactIntent):
-            result = self._execute_write(intent, resources)
+            result = self._execute_write(intent)
 
         elif isinstance(intent, InvokeArtifactIntent):
-            result = self._execute_invoke(intent, compute_cost=compute_cost, resources=resources)
+            result = self._execute_invoke(intent)
 
         else:
-            result = ActionResult(
-                success=False,
-                message="Unknown action type",
-                resources_consumed={"compute": 0},
-                charged_to=intent.principal_id
-            )
+            result = ActionResult(success=False, message="Unknown action type")
 
-        # Deduct FLOW cost only if action succeeded (real resource consumption)
-        if result.success:
-            self.ledger.spend_compute(intent.principal_id, compute_cost)
-
-        self._log_action(intent, result, compute_cost, result.success)
+        self._log_action(intent, result)
         return result
 
-    def _log_action(
-        self,
-        intent: ActionIntent,
-        result: ActionResult,
-        compute_cost: int,
-        charged: bool
-    ) -> None:
+    def _log_action(self, intent: ActionIntent, result: ActionResult) -> None:
         """Log an action execution"""
         self.logger.log("action", {
             "tick": self.tick,
             "intent": intent.to_dict(),
             "result": result.to_dict(),
-            "compute_cost": compute_cost,
-            "charged": charged,
-            "compute_after": self.ledger.get_compute(intent.principal_id),
             "scrip_after": self.ledger.get_scrip(intent.principal_id)
         })
 
@@ -334,9 +271,6 @@ class World:
         - Disk quota enforcement (when rights_registry available)
         - Executable code validation
         - Artifact creation/update via ArtifactStore.write_artifact()
-
-        Returns:
-            ActionResult with success status, message, and optional data
         """
         # Protect genesis artifacts from modification
         if intent.artifact_id in self.genesis_artifacts:
@@ -353,12 +287,13 @@ class World:
                 message=f"Access denied: you are not allowed to write to {intent.artifact_id}"
             )
 
+        # Calculate disk bytes
+        new_size = len(intent.content.encode('utf-8')) + len(intent.code.encode('utf-8'))
+        existing_size = self.artifacts.get_artifact_size(intent.artifact_id)
+        net_new_bytes = max(0, new_size - existing_size)
+
         # Check disk quota if rights_registry is available (Layer 2: Stock Rights)
         if self.rights_registry:
-            new_size = len(intent.content.encode('utf-8')) + len(intent.code.encode('utf-8'))
-            existing_size = self.artifacts.get_artifact_size(intent.artifact_id)
-            net_new_bytes = new_size - existing_size
-
             if net_new_bytes > 0 and not self.rights_registry.can_write(intent.principal_id, net_new_bytes):
                 quota = self.rights_registry.get_disk_quota(intent.principal_id)
                 used = self.rights_registry.get_disk_used(intent.principal_id)
@@ -377,7 +312,7 @@ class World:
                     message=f"Invalid executable code: {error}"
                 )
 
-        # Write the artifact using the deduplicated helper
+        # Write the artifact
         write_result: WriteResult = self.artifacts.write_artifact(
             artifact_id=intent.artifact_id,
             artifact_type=intent.artifact_type,
@@ -396,25 +331,16 @@ class World:
             data=write_result["data"]
         )
 
-    def _execute_invoke(
-        self,
-        intent: InvokeArtifactIntent,
-        compute_cost: int = 0
-    ) -> ActionResult:
-        """
-        Execute an invoke_artifact action.
-
-        Cost model:
-        - Gas (compute): Real compute cost - paid from compute budget
-        - Price (scrip): Economic payment to artifact owner - paid from scrip
+    def _execute_invoke(self, intent: InvokeArtifactIntent) -> ActionResult:
+        """Execute an invoke_artifact action.
 
         Handles both:
-        - Genesis artifacts (system proxies to ledger, oracle)
-        - Executable artifacts (Phase 3 - agent-created code)
+        - Genesis artifacts (system proxies to ledger, oracle, etc.)
+        - Executable artifacts (agent-created code)
 
-        Args:
-            intent: The invoke intent
-            compute_cost: The base compute cost (already checked by execute_action)
+        Cost model:
+        - Genesis method costs: Configurable compute cost per method
+        - Artifact prices: Scrip paid to owner on successful invocation
         """
         artifact_id = intent.artifact_id
         method_name = intent.method
@@ -453,7 +379,6 @@ class World:
                         data=result_data
                     )
                 else:
-                    # Method failed - compute already paid
                     return ActionResult(
                         success=False,
                         message=result_data.get("error", "Method failed")
@@ -480,29 +405,16 @@ class World:
                     message=f"Access denied: you are not allowed to invoke {artifact_id}"
                 )
 
-            # Gas cost (FLOW) - real compute resource
-            config_gas: int = config_get("costs.execution_gas") or 2
-            gas_cost: int = self.costs.get("execution_gas", config_gas)
             # Price (SCRIP) - economic payment to owner
             price = regular_artifact.price
             owner_id = regular_artifact.owner_id
 
-            # Check affordability:
-            # - Gas comes from COMPUTE (checked separately from base action compute)
-            # - Price comes from SCRIP
-            if not self.ledger.can_spend_compute(intent.principal_id, gas_cost):
-                return ActionResult(
-                    success=False,
-                    message=f"Insufficient compute for gas: need {gas_cost}, have {self.ledger.get_compute(intent.principal_id)}"
-                )
+            # Check if caller can afford the price
             if price > 0 and not self.ledger.can_afford_scrip(intent.principal_id, price):
                 return ActionResult(
                     success=False,
                     message=f"Insufficient scrip for price: need {price}, have {self.ledger.get_scrip(intent.principal_id)}"
                 )
-
-            # Deduct gas FIRST from FLOW (always paid, even on failure)
-            self.ledger.spend_compute(intent.principal_id, gas_cost)
 
             # Execute the code
             executor = get_executor()
@@ -516,20 +428,18 @@ class World:
 
                 return ActionResult(
                     success=True,
-                    message=f"Invoked {artifact_id} (gas: {gas_cost} compute, price: {price} scrip to {owner_id})",
+                    message=f"Invoked {artifact_id}" + (f" (paid {price} scrip to {owner_id})" if price > 0 else ""),
                     data={
                         "result": exec_result.get("result"),
-                        "gas_paid": gas_cost,
                         "price_paid": price,
                         "owner": owner_id
                     }
                 )
             else:
-                # Execution failed - gas already paid, no price charged
                 return ActionResult(
                     success=False,
-                    message=f"Execution failed (gas paid: {gas_cost} compute): {exec_result.get('error')}",
-                    data={"gas_paid": gas_cost, "error": exec_result.get("error")}
+                    message=f"Execution failed: {exec_result.get('error')}",
+                    data={"error": exec_result.get("error")}
                 )
 
         # Artifact not found

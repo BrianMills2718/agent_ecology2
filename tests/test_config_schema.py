@@ -14,7 +14,6 @@ from config_schema import (
     load_validated_config,
     WorldConfig,
     CostsConfig,
-    ActionCosts,
 )
 
 
@@ -26,7 +25,9 @@ class TestValidConfig:
         config = validate_config_dict({})
         assert config.world.max_ticks == 100
         assert config.scrip.starting_amount == 100
-        assert config.costs.actions.noop == 1
+        # Token costs use defaults
+        assert config.costs.per_1k_input_tokens == 1
+        assert config.costs.per_1k_output_tokens == 3
 
     def test_partial_config_merges_defaults(self) -> None:
         """Partial config should merge with defaults."""
@@ -93,17 +94,15 @@ class TestInvalidConfig:
             })
         assert "max_ticks" in str(exc_info.value)
 
-    def test_nested_typo_rejected(self) -> None:
-        """Typos in nested config should be rejected."""
+    def test_negative_token_cost_rejected(self) -> None:
+        """Negative token costs should be rejected."""
         with pytest.raises(ValidationError) as exc_info:
             validate_config_dict({
                 "costs": {
-                    "actions": {
-                        "nop": 1  # Typo: nop instead of noop
-                    }
+                    "per_1k_input_tokens": -1
                 }
             })
-        assert "nop" in str(exc_info.value)
+        assert "per_1k_input_tokens" in str(exc_info.value)
 
 
 class TestConfigDefaults:
@@ -119,13 +118,11 @@ class TestConfigDefaults:
         config = AppConfig()
         assert config.scrip.starting_amount == 100
 
-    def test_default_action_costs(self) -> None:
-        """Default action costs should match expected values."""
+    def test_default_token_costs(self) -> None:
+        """Default token costs should match expected values."""
         config = AppConfig()
-        assert config.costs.actions.noop == 1
-        assert config.costs.actions.read_artifact == 2
-        assert config.costs.actions.write_artifact == 5
-        assert config.costs.actions.invoke_artifact == 1
+        assert config.costs.per_1k_input_tokens == 1
+        assert config.costs.per_1k_output_tokens == 3
 
     def test_default_genesis_fees(self) -> None:
         """Default genesis fees should match expected values."""
@@ -189,7 +186,7 @@ class TestTypedAccess:
 
         # These should all work with IDE autocomplete
         _ = config.world.max_ticks
-        _ = config.costs.actions.noop
+        _ = config.costs.per_1k_input_tokens
         _ = config.resources.stock.disk.total
         _ = config.genesis.oracle.mint_ratio
         _ = config.executor.preloaded_imports

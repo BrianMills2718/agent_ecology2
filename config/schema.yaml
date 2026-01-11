@@ -42,16 +42,15 @@ scrip:
 
 # -----------------------------------------------------------------------------
 # COSTS
-# What actions consume (in compute units, not scrip)
+# Token costs for thinking (real physical costs)
+# Actions themselves are free. Real costs come from:
+# - LLM tokens (thinking) - costs from your budget
+# - Disk usage (writing) - costs from your disk quota
+# - Genesis method costs (configurable per-method below)
 # -----------------------------------------------------------------------------
 costs:
-  actions:
-    noop: <number>
-    read_artifact: <number>
-    write_artifact: <number>
-    invoke_artifact: <number>
-  execution_gas: <number>       # Compute cost to run agent code
-  default: <number>             # Fallback if action not listed
+  per_1k_input_tokens: <number>   # Compute cost per 1K input tokens
+  per_1k_output_tokens: <number>  # Compute cost per 1K output tokens
 
 # -----------------------------------------------------------------------------
 # GENESIS ARTIFACTS

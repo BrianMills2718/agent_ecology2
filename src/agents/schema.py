@@ -24,19 +24,16 @@ You must respond with a single JSON object representing your action.
 1. read_artifact - Read artifact content (costs compute + input tokens)
    {"action_type": "read_artifact", "artifact_id": "<id>"}
 
-2. write_artifact - Create/update artifact (costs compute + disk quota)
+2. write_artifact - Create/update artifact (costs disk quota)
    Regular: {"action_type": "write_artifact", "artifact_id": "<id>", "artifact_type": "<type>", "content": "<content>"}
 
    Executable: {"action_type": "write_artifact", "artifact_id": "<id>", "artifact_type": "executable",
                 "content": "<description>", "executable": true, "price": <scrip>,
-                "code": "<python_code>", "resource_policy": "caller_pays"|"owner_pays"}
+                "code": "<python_code>"}
    - Code must define a run(*args) function
    - Price (scrip) is paid to you when others invoke your artifact
-   - resource_policy: who pays physical resource costs
-     - "caller_pays" (default): invoker's compute consumed
-     - "owner_pays": your compute consumed (premium service model)
 
-3. invoke_artifact - Call artifact method (costs compute + gas)
+3. invoke_artifact - Call artifact method
    {"action_type": "invoke_artifact", "artifact_id": "<id>", "method": "<method>", "args": [...]}
 
 ## Genesis Artifacts (System) - cost compute, not scrip

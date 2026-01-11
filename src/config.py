@@ -27,10 +27,7 @@ import yaml
 from pathlib import Path
 from typing import Any, TypedDict
 
-try:
-    from .config_schema import AppConfig, load_validated_config, validate_config_dict
-except ImportError:
-    from config_schema import AppConfig, load_validated_config, validate_config_dict
+from config_schema import AppConfig, load_validated_config, validate_config_dict
 
 
 class PerAgentQuota(TypedDict):

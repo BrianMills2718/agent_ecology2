@@ -34,9 +34,6 @@ def minimal_config():
             {"id": "agent_2", "starting_scrip": 100},
         ],
         "costs": {
-            "read_artifact": 2,
-            "write_artifact": 5,
-            "invoke_artifact": 1,
             "per_1k_input_tokens": 1,
             "per_1k_output_tokens": 3,
         },
@@ -318,7 +315,7 @@ class TestFullTickCycle:
     """Tests for full tick cycle behavior."""
 
     def test_full_tick_cycle(self, world_with_temp_log):
-        """Advance tick, reset compute, verify state."""
+        """Advance tick, execute actions, verify state."""
         world = world_with_temp_log
 
         # Initial state
@@ -332,22 +329,24 @@ class TestFullTickCycle:
         initial_compute = world.ledger.get_compute("agent_1")
         assert initial_compute > 0
 
-        # Execute some actions to consume compute
+        # Execute noop action (actions are free - no compute cost)
         noop_intent = NoopIntent(principal_id="agent_1")
-        world.execute_action(noop_intent)
+        result = world.execute_action(noop_intent)
+        assert result.success is True
 
+        # Compute should be unchanged (actions are free)
         compute_after_action = world.ledger.get_compute("agent_1")
-        assert compute_after_action < initial_compute
+        assert compute_after_action == initial_compute
 
         # Advance to next tick
         world.advance_tick()
         assert world.tick == 2
 
-        # Compute should be reset
+        # Compute should still be the same after reset
         compute_after_reset = world.ledger.get_compute("agent_1")
         assert compute_after_reset == initial_compute
 
-        # Scrip should NOT be reset (it persists)
+        # Scrip should NOT change (it persists)
         assert world.ledger.get_scrip("agent_1") == 100
 
     def test_state_summary_after_actions(self, world_with_temp_log):
@@ -392,31 +391,30 @@ class TestComputeAndScripSeparation:
         initial_scrip = world.ledger.get_scrip("agent_1")
         initial_compute = world.ledger.get_compute("agent_1")
 
-        # Execute action that costs compute
-        intent = NoopIntent(principal_id="agent_1")
-        world.execute_action(intent)
+        # Execute action - actions are free, but compute can be spent explicitly
+        world.ledger.spend_compute("agent_1", 5)
 
         # Compute should decrease, scrip should stay same
         assert world.ledger.get_compute("agent_1") < initial_compute
         assert world.ledger.get_scrip("agent_1") == initial_scrip
 
-    def test_insufficient_compute_fails_action(self, world_with_temp_log):
-        """Action fails if insufficient compute."""
+    def test_compute_and_scrip_are_independent(self, world_with_temp_log):
+        """Spending compute doesn't affect scrip and vice versa."""
         world = world_with_temp_log
         world.advance_tick()
 
-        # Exhaust all compute
-        while world.ledger.get_compute("agent_1") > 0:
-            world.ledger.spend_compute("agent_1", 1)
+        initial_scrip = world.ledger.get_scrip("agent_1")
+        initial_compute = world.ledger.get_compute("agent_1")
 
-        assert world.ledger.get_compute("agent_1") == 0
+        # Spend some compute
+        world.ledger.spend_compute("agent_1", 10)
 
-        # Try to execute action
-        intent = NoopIntent(principal_id="agent_1")
-        result = world.execute_action(intent)
+        # Transfer some scrip
+        world.ledger.transfer_scrip("agent_1", "agent_2", 20)
 
-        assert result.success is False
-        assert "Insufficient compute" in result.message
+        # Verify they changed independently
+        assert world.ledger.get_compute("agent_1") == initial_compute - 10
+        assert world.ledger.get_scrip("agent_1") == initial_scrip - 20
 
 
 class TestTransferVieLedger:
@@ -470,124 +468,3 @@ class TestTransferVieLedger:
         # When genesis method returns error, it's wrapped in ActionResult
         assert result.success is False
         assert "Cannot transfer from" in result.message
-
-
-class TestResourcePolicy:
-    """Tests for artifact resource_policy field."""
-
-    def test_default_resource_policy_is_caller_pays(self, world_with_temp_log):
-        """Default resource_policy should be 'caller_pays'."""
-        world = world_with_temp_log
-        world.advance_tick()
-
-        intent = WriteArtifactIntent(
-            principal_id="agent_1",
-            artifact_id="test_artifact",
-            artifact_type="code",
-            content="Test content",
-            executable=True,
-            price=10,
-            code="def run(args, ctx): return {'result': 'ok'}"
-        )
-        result = world.execute_action(intent)
-        assert result.success is True
-
-        artifact = world.artifacts.get("test_artifact")
-        assert artifact is not None
-        assert artifact.resource_policy == "caller_pays"
-
-    def test_can_set_owner_pays_resource_policy(self, world_with_temp_log):
-        """Can create artifact with 'owner_pays' resource policy."""
-        world = world_with_temp_log
-        world.advance_tick()
-
-        intent = WriteArtifactIntent(
-            principal_id="agent_1",
-            artifact_id="premium_service",
-            artifact_type="code",
-            content="Premium service with owner-paid resources",
-            executable=True,
-            price=50,
-            code="def run(args, ctx): return {'result': 'premium'}",
-            resource_policy="owner_pays"
-        )
-        result = world.execute_action(intent)
-        assert result.success is True
-
-        artifact = world.artifacts.get("premium_service")
-        assert artifact is not None
-        assert artifact.resource_policy == "owner_pays"
-
-    def test_resource_policy_in_to_dict_when_not_default(self, world_with_temp_log):
-        """resource_policy should appear in to_dict() only when not default."""
-        world = world_with_temp_log
-        world.advance_tick()
-
-        # Create artifact with default policy
-        intent1 = WriteArtifactIntent(
-            principal_id="agent_1",
-            artifact_id="default_policy",
-            artifact_type="code",
-            content="Default policy artifact",
-            executable=True,
-            price=10,
-            code="def run(args, ctx): return {'result': 'ok'}"
-        )
-        world.execute_action(intent1)
-
-        # Create artifact with owner_pays
-        intent2 = WriteArtifactIntent(
-            principal_id="agent_1",
-            artifact_id="owner_pays_artifact",
-            artifact_type="code",
-            content="Owner pays artifact",
-            executable=True,
-            price=50,
-            code="def run(args, ctx): return {'result': 'ok'}",
-            resource_policy="owner_pays"
-        )
-        world.execute_action(intent2)
-
-        # Check to_dict output
-        default_dict = world.artifacts.get("default_policy").to_dict()
-        owner_pays_dict = world.artifacts.get("owner_pays_artifact").to_dict()
-
-        # Default policy should NOT include resource_policy in output
-        assert "resource_policy" not in default_dict
-
-        # Non-default policy SHOULD include resource_policy
-        assert "resource_policy" in owner_pays_dict
-        assert owner_pays_dict["resource_policy"] == "owner_pays"
-
-    def test_can_update_resource_policy(self, world_with_temp_log):
-        """Can update an artifact's resource_policy."""
-        world = world_with_temp_log
-        world.advance_tick()
-
-        # Create with caller_pays
-        intent1 = WriteArtifactIntent(
-            principal_id="agent_1",
-            artifact_id="changeable",
-            artifact_type="code",
-            content="Changeable policy",
-            executable=True,
-            price=10,
-            code="def run(args, ctx): return {'result': 'ok'}",
-            resource_policy="caller_pays"
-        )
-        world.execute_action(intent1)
-        assert world.artifacts.get("changeable").resource_policy == "caller_pays"
-
-        # Update to owner_pays
-        intent2 = WriteArtifactIntent(
-            principal_id="agent_1",
-            artifact_id="changeable",
-            artifact_type="code",
-            content="Changeable policy - updated",
-            executable=True,
-            price=20,
-            code="def run(args, ctx): return {'result': 'updated'}",
-            resource_policy="owner_pays"
-        )
-        world.execute_action(intent2)
-        assert world.artifacts.get("changeable").resource_policy == "owner_pays"

@@ -23,7 +23,6 @@ from typing import TypedDict
 # Add llm_provider_standalone to path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / 'llm_provider_standalone'))
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from llm_provider import LLMProvider
 

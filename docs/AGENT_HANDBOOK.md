@@ -6,14 +6,14 @@ This document describes the rules, resources, and methods available to agents in
 
 ## Resource Model
 
-**Two things matter: Scrip and Scarce Resources. Both are always required.**
+**Two things matter: Scrip and Scarce Resources.**
 
 ### Scrip (Economic Currency)
 - **What it is**: Money for trading with other agents
 - **Persists across ticks** - does not refresh
 - **Earned by**: Oracle submissions, selling artifacts, receiving transfers
 - **Spent on**: Paying for artifacts/services (price goes to owner)
-- **If exhausted**: You cannot buy, but can still think and take free actions
+- **If exhausted**: You cannot buy, but can still think and take actions
 
 ### Scarce Resources (Physical Limits)
 These are **hard limits from reality**, not prices. They are consumed regardless of scrip.
@@ -23,38 +23,25 @@ These are **hard limits from reality**, not prices. They are consumed regardless
 | **LLM Tokens** | Your thinking budget | Yes, each tick |
 | **Disk** | Storage space (bytes) | No, fixed quota |
 
-- **If out of tokens**: You cannot think or act until next tick
+- **If out of tokens**: You cannot think until next tick
 - **If out of disk**: You cannot write new artifacts
 
-### The Two-Layer Model
+### How Resources Work
 
-When you use someone's artifact:
-```
-1. You pay SCRIP to the owner (price for value)
-2. Someone pays RESOURCES (actual consumption)
-```
+**Actions are free.** The real costs are:
+1. **LLM tokens** - consumed when you think (input/output tokens)
+2. **Disk quota** - consumed when you write artifacts
+3. **Scrip** - paid to artifact owners when you use their services
 
-**Who pays resources?** Depends on the artifact's `resource_policy`:
-- `caller_pays` (default): Your resources are consumed
-- `owner_pays`: Owner absorbs resource costs (built into their price)
-
-### Example
-
-Agent A creates a tool with `price: 50, resource_policy: owner_pays`
-
-When you invoke it:
-- You pay: 50 scrip → Agent A
-- Resources consumed: From Agent A's budget (not yours!)
-
-Agent A priced high enough to cover their resource costs + profit.
+When you use someone's artifact with a price:
+- You pay SCRIP to the owner (economic exchange)
+- Resources are consumed based on what you do
 
 ---
 
 ## Genesis Artifacts
 
 System-provided services. Invoke via `invoke_artifact`.
-
-**Note on costs**: Genesis methods cost **compute** (like all actions), not scrip. Scrip only flows for agent↔agent trades and oracle rewards.
 
 ### genesis_ledger
 Query and transfer scrip, manage ownership.
@@ -108,33 +95,33 @@ Trustless artifact trading. Seller deposits, buyer purchases, escrow handles exc
 ## Actions
 
 ### noop
-Do nothing. Costs 1 compute.
+Do nothing.
 ```json
 {"action_type": "noop"}
 ```
 
 ### read_artifact
-Read an artifact's content. Costs 2 compute + artifact's read price (scrip).
+Read an artifact's content. May cost scrip if artifact has read_price.
 ```json
 {"action_type": "read_artifact", "artifact_id": "some_artifact"}
 ```
 
 ### write_artifact
-Create or update an artifact. Costs 5 compute + disk quota.
+Create or update an artifact. Consumes disk quota.
 ```json
 {
   "action_type": "write_artifact",
   "artifact_id": "my_tool",
   "artifact_type": "code",
-  "content": "def run(args, ctx): return {'result': 'hello'}",
+  "content": "A simple greeting tool",
   "executable": true,
   "price": 2,
-  "description": "A simple greeting tool"
+  "code": "def run(args, ctx): return {'result': 'hello'}"
 }
 ```
 
 ### invoke_artifact
-Call a method on an artifact. Costs 1 compute + method cost (scrip).
+Call a method on an artifact. May cost scrip (invoke_price to owner).
 ```json
 {
   "action_type": "invoke_artifact",
@@ -211,9 +198,8 @@ Use `genesis_escrow` for trustless trades. The escrow holds the artifact until t
 
 When you spawn a new principal:
 
-1. **Cost**: 1 compute + 1 scrip
-2. **Child starts with**: 0 scrip, 0 compute quota, 0 disk quota
-3. **Child cannot act** until you transfer quota to them
+1. **Child starts with**: 0 scrip, 0 compute quota, 0 disk quota
+2. **Child cannot act** until you transfer quota to them
 
 ### Funding a Child
 ```json
@@ -295,9 +281,9 @@ When an auction closes, the winning bid (second-price amount) is split equally a
 
 ## Survival Tips
 
-1. **Preserve compute** - Don't waste tokens on verbose reasoning
+1. **Preserve tokens** - Don't waste tokens on verbose reasoning
 2. **Price your artifacts** - Free artifacts generate no income
-3. **Check balances before transfers** - Failed transfers waste compute
+3. **Check balances before transfers** - Failed transfers are wasted effort
 4. **Read before writing** - Don't duplicate existing artifacts
 5. **Fund spawned children** - Or don't spawn at all
 6. **Use genesis methods** - They're reliable and documented

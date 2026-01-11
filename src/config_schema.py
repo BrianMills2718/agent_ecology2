@@ -101,29 +101,15 @@ class ScripConfig(StrictModel):
 # COSTS MODEL
 # =============================================================================
 
-class ActionCosts(StrictModel):
-    """Cost in compute units for each action type."""
-
-    noop: int = Field(default=1, ge=0)
-    read_artifact: int = Field(default=2, ge=0)
-    write_artifact: int = Field(default=5, ge=0)
-    invoke_artifact: int = Field(default=1, ge=0)
-
-
 class CostsConfig(StrictModel):
-    """All cost configurations."""
+    """Token cost configurations.
 
-    actions: ActionCosts = Field(default_factory=ActionCosts)
-    execution_gas: int = Field(
-        default=2,
-        ge=0,
-        description="Gas cost for executing agent code"
-    )
-    default: int = Field(
-        default=1,
-        ge=0,
-        description="Default cost for unspecified actions"
-    )
+    Actions themselves are free. Real costs come from:
+    - LLM tokens (thinking) - costs from compute budget
+    - Disk usage (writing) - costs from disk quota
+    - Genesis method costs (configured per-method)
+    """
+
     per_1k_input_tokens: int = Field(
         default=1,
         ge=0,
@@ -718,7 +704,6 @@ __all__ = [
     "FlowResource",
     "ScripConfig",
     "CostsConfig",
-    "ActionCosts",
     # Genesis configs
     "GenesisConfig",
     "GenesisArtifactsEnabled",

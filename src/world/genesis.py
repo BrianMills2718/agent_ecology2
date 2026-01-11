@@ -11,14 +11,10 @@ the same invoke_artifact mechanism they use for agent-created artifacts.
 
 from __future__ import annotations
 
-import sys
 import uuid
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Callable, TypedDict
 
-# Add src to path for absolute imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get_genesis_config, get, get_validated_config
 from config_schema import GenesisConfig
 
