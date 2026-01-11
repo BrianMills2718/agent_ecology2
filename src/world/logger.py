@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from config import get
+from ..config import get
 
 
 class EventLogger:

@@ -85,6 +85,7 @@ class ThinkingEvent(BaseModel):
     thinking_cost: float = 0
     success: bool = True
     error: str | None = None
+    thought_process: str | None = None  # Agent's reasoning/thinking content
 
 
 class TickSummary(BaseModel):
@@ -258,3 +259,90 @@ class FlowLink(BaseModel):
     target: str
     value: int
     tick: int | None = None
+
+
+# Network Graph Models
+
+class Interaction(BaseModel):
+    """Single interaction between agents."""
+    tick: int
+    timestamp: str
+    from_id: str
+    to_id: str
+    interaction_type: Literal["scrip_transfer", "escrow_trade", "ownership_transfer", "artifact_invoke"]
+    amount: int | None = None  # For scrip transfers
+    artifact_id: str | None = None  # For trades/ownership/invokes
+    details: str | None = None  # Human-readable description
+
+
+class NetworkNode(BaseModel):
+    """Node in the network graph."""
+    id: str
+    label: str
+    node_type: Literal["agent", "genesis", "artifact"] = "agent"
+    scrip: int = 0
+    status: Literal["active", "low_resources", "frozen"] = "active"
+
+
+class NetworkEdge(BaseModel):
+    """Edge in the network graph."""
+    from_id: str
+    to_id: str
+    interaction_type: str
+    tick: int
+    weight: int = 1  # For aggregated views
+    label: str | None = None
+
+
+class NetworkGraphData(BaseModel):
+    """Complete network graph data."""
+    nodes: list[NetworkNode] = Field(default_factory=list)
+    edges: list[NetworkEdge] = Field(default_factory=list)
+    interactions: list[Interaction] = Field(default_factory=list)
+    tick_range: tuple[int, int] = (0, 0)
+
+
+# Activity Feed Models
+
+class ActivityItem(BaseModel):
+    """Single item in the activity feed."""
+    tick: int
+    timestamp: str
+    activity_type: Literal[
+        "artifact_created", "artifact_updated", "escrow_listed", "escrow_purchased",
+        "escrow_cancelled", "scrip_transfer", "ownership_transfer", "oracle_mint",
+        "principal_spawned", "thinking", "action"
+    ]
+    agent_id: str | None = None
+    target_id: str | None = None  # Other agent or artifact
+    amount: int | None = None
+    artifact_id: str | None = None
+    description: str
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class ActivityFeed(BaseModel):
+    """Activity feed response."""
+    items: list[ActivityItem] = Field(default_factory=list)
+    total_count: int = 0
+
+
+# Artifact Detail Models
+
+class ArtifactDetail(BaseModel):
+    """Full artifact detail with content."""
+    artifact_id: str
+    artifact_type: str
+    owner_id: str
+    executable: bool = False
+    price: int = 0
+    size_bytes: int = 0
+    created_at: str
+    updated_at: str
+    content: str | None = None  # The actual code/data
+    methods: list[str] = Field(default_factory=list)  # For executable artifacts
+    oracle_score: float | None = None
+    oracle_status: Literal["pending", "scored", "none"] = "none"
+    invocation_count: int = 0
+    ownership_history: list[OwnershipTransfer] = Field(default_factory=list)
+    invocation_history: list[ActionEvent] = Field(default_factory=list)

@@ -25,11 +25,8 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-
-from world import World
-from simulation import SimulationRunner, load_checkpoint, CheckpointData
+from src.world import World
+from src.simulation import SimulationRunner, load_checkpoint, CheckpointData
 
 
 def load_config(config_path: str = "config/config.yaml") -> dict[str, Any]:
@@ -107,7 +104,7 @@ async def run_with_dashboard(
 ) -> World:
     """Run simulation with dashboard server in parallel."""
     import uvicorn
-    from dashboard import create_app
+    from src.dashboard import create_app
 
     # Get dashboard config
     dashboard_config = config.get("dashboard", {})
@@ -176,7 +173,7 @@ async def run_with_dashboard(
 
 def run_dashboard_only(config: dict[str, Any]) -> None:
     """Run only the dashboard server (no simulation)."""
-    from dashboard import run_dashboard
+    from src.dashboard import run_dashboard
 
     dashboard_config = config.get("dashboard", {})
     host = dashboard_config.get("host", "0.0.0.0")

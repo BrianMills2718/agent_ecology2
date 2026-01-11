@@ -4,8 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from world import World
-from agents import Agent
+from ..world import World
+from ..agents import Agent
 
 from .types import CheckpointData, BalanceInfo
 

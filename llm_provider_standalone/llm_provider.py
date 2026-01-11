@@ -102,6 +102,7 @@ class LLMProvider:
         log_retention_days: Optional[int] = None,
         cache_dir: Optional[str] = None,
         cache_ttl: Optional[int] = None,
+        extra_metadata: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize LLMProvider.
@@ -116,6 +117,7 @@ class LLMProvider:
             log_retention_days: Automatically delete logs older than N days (None = keep forever)
             cache_dir: Directory for response cache (None = no caching)
             cache_ttl: Cache time-to-live in seconds (None = cache forever)
+            extra_metadata: Additional metadata to include in every log entry (e.g., agent_id, run_id)
         """
         self.model = model
         self.log_dir = Path(log_dir)
@@ -125,6 +127,7 @@ class LLMProvider:
         self.log_retention_days = log_retention_days
         self.cache_dir = Path(cache_dir) if cache_dir else None
         self.cache_ttl = cache_ttl
+        self.extra_metadata: Dict[str, Any] = extra_metadata or {}
 
         # Create log directory
         self.log_dir.mkdir(exist_ok=True)
@@ -536,8 +539,13 @@ class LLMProvider:
         timestamp_str = now.strftime("%Y%m%d_%H%M%S_%f")[:20]  # YYYYMMDD_HHMMSS_mmmmmm -> 20 chars
         log_file = date_dir / f"{timestamp_str}_{call_metadata.request_id}.json"
 
+        # Merge extra_metadata into the log entry
+        log_data = asdict(call_metadata)
+        if self.extra_metadata:
+            log_data["metadata"] = {**log_data.get("metadata", {}), **self.extra_metadata}
+
         with open(log_file, 'w', encoding='utf-8') as f:
-            json.dump(asdict(call_metadata), f, indent=2, ensure_ascii=False)
+            json.dump(log_data, f, indent=2, ensure_ascii=False)
 
     async def _call_llm_with_retry(
         self,

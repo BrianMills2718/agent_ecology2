@@ -1,13 +1,11 @@
 """Unit tests for Pydantic action models."""
 
-import sys
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-from agents.models import (
+from src.agents.models import (
     NoopAction,
     ReadArtifactAction,
     WriteArtifactAction,

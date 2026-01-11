@@ -31,6 +31,13 @@ from .models import (
     EconomicFlowData,
     FlowNode,
     FlowLink,
+    Interaction,
+    NetworkNode,
+    NetworkEdge,
+    NetworkGraphData,
+    ActivityItem,
+    ActivityFeed,
+    ArtifactDetail,
 )
 
 
@@ -63,6 +70,11 @@ class ArtifactState:
     updated_at: str = ""
     oracle_score: float | None = None
     oracle_status: Literal["pending", "scored", "none"] = "none"
+    content: str | None = None
+    methods: list[str] = field(default_factory=list)
+    invocation_count: int = 0
+    ownership_history: list[OwnershipTransfer] = field(default_factory=list)
+    invocation_history: list[ActionEvent] = field(default_factory=list)
 
 
 @dataclass
@@ -105,6 +117,12 @@ class SimulationState:
     # Flow data
     scrip_flows: list[FlowLink] = field(default_factory=list)
 
+    # Interactions for network graph
+    interactions: list[Interaction] = field(default_factory=list)
+
+    # Activity feed items
+    activity_items: list[ActivityItem] = field(default_factory=list)
+
 
 class JSONLParser:
     """Parser for JSONL event log with incremental updates."""
@@ -129,6 +147,18 @@ class JSONLParser:
         """Parse only new events since last parse."""
         if not self.jsonl_path.exists():
             return self.state
+
+        # Check for file truncation (simulation restart)
+        file_size = self.jsonl_path.stat().st_size
+        if file_size < self.file_position:
+            # File was truncated, reset state and parse from beginning
+            self.file_position = 0
+            self.state = SimulationState()
+            self._current_tick_actions = 0
+            self._current_tick_compute = 0
+            self._current_tick_scrip_transfers = 0
+            self._current_tick_artifacts = 0
+            self._current_tick_mints = 0
 
         with open(self.jsonl_path, 'r') as f:
             f.seek(self.file_position)
@@ -244,6 +274,8 @@ class JSONLParser:
         if agent_id not in self.state.agents:
             self.state.agents[agent_id] = AgentState(agent_id=agent_id)
 
+        thought_process = event.get("thought_process", "")
+
         thinking = ThinkingEvent(
             tick=self.state.current_tick,
             timestamp=timestamp,
@@ -252,6 +284,7 @@ class JSONLParser:
             output_tokens=event.get("output_tokens", 0),
             thinking_cost=event.get("thinking_cost", 0),
             success=True,
+            thought_process=thought_process if thought_process else None,
         )
         self.state.agents[agent_id].thinking_history.append(thinking)
         self._current_tick_compute += event.get("thinking_cost", 0)
@@ -290,20 +323,50 @@ class JSONLParser:
             self._current_tick_artifacts += 1
             # Track artifact creation
             artifact_id = intent.get("artifact_id", "")
+            content = intent.get("content", "")
             if artifact_id:
+                is_new = artifact_id not in self.state.artifacts
                 self.state.artifacts[artifact_id] = ArtifactState(
                     artifact_id=artifact_id,
                     artifact_type=intent.get("artifact_type", "unknown"),
                     owner_id=agent_id,
                     executable=intent.get("executable", False),
                     price=intent.get("price", 0),
-                    size_bytes=len(intent.get("content", "")),
-                    created_at=timestamp,
+                    size_bytes=len(content),
+                    created_at=timestamp if is_new else self.state.artifacts.get(artifact_id, ArtifactState(artifact_id, "", "")).created_at,
                     updated_at=timestamp,
+                    content=content[:10000] if content else None,  # Cap at 10KB
                 )
-                self.state.agents[agent_id].artifacts_owned.append(artifact_id)
+                if artifact_id not in self.state.agents[agent_id].artifacts_owned:
+                    self.state.agents[agent_id].artifacts_owned.append(artifact_id)
+
+                # Add activity item
+                self.state.activity_items.append(ActivityItem(
+                    tick=self.state.current_tick,
+                    timestamp=timestamp,
+                    activity_type="artifact_created" if is_new else "artifact_updated",
+                    agent_id=agent_id,
+                    artifact_id=artifact_id,
+                    description=f"{agent_id} {'created' if is_new else 'updated'} artifact {artifact_id}",
+                    details={"type": intent.get("artifact_type", "unknown"), "executable": intent.get("executable", False)},
+                ))
         elif action_type == "invoke_artifact":
             target = intent.get("artifact_id")
+            invoked_artifact_id = intent.get("artifact_id", "")
+            if invoked_artifact_id and invoked_artifact_id in self.state.artifacts:
+                art = self.state.artifacts[invoked_artifact_id]
+                art.invocation_count += 1
+                # Track interaction if invoking another agent's artifact
+                if art.owner_id != agent_id and not art.owner_id.startswith("genesis_"):
+                    self.state.interactions.append(Interaction(
+                        tick=self.state.current_tick,
+                        timestamp=timestamp,
+                        from_id=agent_id,
+                        to_id=art.owner_id,
+                        interaction_type="artifact_invoke",
+                        artifact_id=invoked_artifact_id,
+                        details=f"{agent_id} invoked {invoked_artifact_id} owned by {art.owner_id}",
+                    ))
 
         action = ActionEvent(
             tick=self.state.current_tick,
@@ -347,22 +410,47 @@ class JSONLParser:
         if artifact_id == "genesis_ledger" and method == "transfer":
             args = intent.get("args", [])
             if len(args) >= 3:
+                from_id = str(args[0])
+                to_id = str(args[1])
+                amount = int(args[2])
                 transfer = LedgerTransfer(
-                    from_id=str(args[0]),
-                    to_id=str(args[1]),
-                    amount=int(args[2]),
+                    from_id=from_id,
+                    to_id=to_id,
+                    amount=amount,
                     timestamp=timestamp,
                     tick=self.state.current_tick,
                 )
                 self.state.ledger_transfers.append(transfer)
-                self._current_tick_scrip_transfers += int(args[2])
+                self._current_tick_scrip_transfers += amount
 
                 # Add flow link
                 self.state.scrip_flows.append(FlowLink(
-                    source=str(args[0]),
-                    target=str(args[1]),
-                    value=int(args[2]),
+                    source=from_id,
+                    target=to_id,
+                    value=amount,
                     tick=self.state.current_tick,
+                ))
+
+                # Track interaction
+                self.state.interactions.append(Interaction(
+                    tick=self.state.current_tick,
+                    timestamp=timestamp,
+                    from_id=from_id,
+                    to_id=to_id,
+                    interaction_type="scrip_transfer",
+                    amount=amount,
+                    details=f"{from_id} sent {amount} scrip to {to_id}",
+                ))
+
+                # Add activity item
+                self.state.activity_items.append(ActivityItem(
+                    tick=self.state.current_tick,
+                    timestamp=timestamp,
+                    activity_type="scrip_transfer",
+                    agent_id=from_id,
+                    target_id=to_id,
+                    amount=amount,
+                    description=f"{from_id} transferred {amount} scrip to {to_id}",
                 ))
 
         # Principal spawns
@@ -372,21 +460,55 @@ class JSONLParser:
                 self.state.ledger_spawns.append(new_id)
                 if new_id not in self.state.agents:
                     self.state.agents[new_id] = AgentState(agent_id=new_id)
+                # Add activity item
+                self.state.activity_items.append(ActivityItem(
+                    tick=self.state.current_tick,
+                    timestamp=timestamp,
+                    activity_type="principal_spawned",
+                    agent_id=agent_id,
+                    target_id=new_id,
+                    description=f"{agent_id} spawned new principal {new_id}",
+                ))
 
         # Ownership transfers
         elif artifact_id == "genesis_ledger" and method == "transfer_ownership":
             args = intent.get("args", [])
             if len(args) >= 2:
+                transferred_artifact = str(args[0])
+                to_id = str(args[1])
                 ownership_transfer = OwnershipTransfer(
-                    artifact_id=str(args[0]),
+                    artifact_id=transferred_artifact,
                     from_id=agent_id,
-                    to_id=str(args[1]),
+                    to_id=to_id,
                     timestamp=timestamp,
                 )
                 self.state.ownership_transfers.append(ownership_transfer)
-                # Update artifact owner
-                if args[0] in self.state.artifacts:
-                    self.state.artifacts[args[0]].owner_id = str(args[1])
+                # Update artifact owner and history
+                if transferred_artifact in self.state.artifacts:
+                    self.state.artifacts[transferred_artifact].owner_id = to_id
+                    self.state.artifacts[transferred_artifact].ownership_history.append(ownership_transfer)
+
+                # Track interaction
+                self.state.interactions.append(Interaction(
+                    tick=self.state.current_tick,
+                    timestamp=timestamp,
+                    from_id=agent_id,
+                    to_id=to_id,
+                    interaction_type="ownership_transfer",
+                    artifact_id=transferred_artifact,
+                    details=f"{agent_id} transferred ownership of {transferred_artifact} to {to_id}",
+                ))
+
+                # Add activity item
+                self.state.activity_items.append(ActivityItem(
+                    tick=self.state.current_tick,
+                    timestamp=timestamp,
+                    activity_type="ownership_transfer",
+                    agent_id=agent_id,
+                    target_id=to_id,
+                    artifact_id=transferred_artifact,
+                    description=f"{agent_id} transferred {transferred_artifact} to {to_id}",
+                ))
 
         # Oracle submissions
         elif artifact_id == "genesis_oracle" and method == "submit":
@@ -402,14 +524,26 @@ class JSONLParser:
         elif artifact_id == "genesis_escrow" and method == "deposit":
             args = intent.get("args", [])
             if len(args) >= 2:
+                listed_artifact = str(args[0])
+                price = int(args[1])
                 listing = EscrowListing(
-                    artifact_id=str(args[0]),
+                    artifact_id=listed_artifact,
                     seller_id=agent_id,
-                    price=int(args[1]),
+                    price=price,
                     buyer_id=str(args[2]) if len(args) > 2 else None,
                     status="active",
                 )
-                self.state.escrow_listings[str(args[0])] = listing
+                self.state.escrow_listings[listed_artifact] = listing
+                # Add activity item
+                self.state.activity_items.append(ActivityItem(
+                    tick=self.state.current_tick,
+                    timestamp=timestamp,
+                    activity_type="escrow_listed",
+                    agent_id=agent_id,
+                    artifact_id=listed_artifact,
+                    amount=price,
+                    description=f"{agent_id} listed {listed_artifact} for {price} scrip",
+                ))
 
         # Escrow purchases
         elif artifact_id == "genesis_escrow" and method == "purchase":
@@ -425,13 +559,48 @@ class JSONLParser:
                         "price": listing.price,
                         "timestamp": timestamp,
                     })
+
+                    # Track interaction (trade between buyer and seller)
+                    self.state.interactions.append(Interaction(
+                        tick=self.state.current_tick,
+                        timestamp=timestamp,
+                        from_id=agent_id,  # buyer
+                        to_id=listing.seller_id,
+                        interaction_type="escrow_trade",
+                        amount=listing.price,
+                        artifact_id=art_id,
+                        details=f"{agent_id} bought {art_id} from {listing.seller_id} for {listing.price} scrip",
+                    ))
+
+                    # Add activity item
+                    self.state.activity_items.append(ActivityItem(
+                        tick=self.state.current_tick,
+                        timestamp=timestamp,
+                        activity_type="escrow_purchased",
+                        agent_id=agent_id,
+                        target_id=listing.seller_id,
+                        artifact_id=art_id,
+                        amount=listing.price,
+                        description=f"{agent_id} purchased {art_id} from {listing.seller_id} for {listing.price} scrip",
+                    ))
+
                     del self.state.escrow_listings[art_id]
 
         # Escrow cancellations
         elif artifact_id == "genesis_escrow" and method == "cancel":
             args = intent.get("args", [])
             if args and str(args[0]) in self.state.escrow_listings:
-                del self.state.escrow_listings[str(args[0])]
+                cancelled_artifact = str(args[0])
+                # Add activity item
+                self.state.activity_items.append(ActivityItem(
+                    tick=self.state.current_tick,
+                    timestamp=timestamp,
+                    activity_type="escrow_cancelled",
+                    agent_id=agent_id,
+                    artifact_id=cancelled_artifact,
+                    description=f"{agent_id} cancelled listing for {cancelled_artifact}",
+                ))
+                del self.state.escrow_listings[cancelled_artifact]
 
     def _handle_mint(self, event: dict[str, Any], timestamp: str) -> None:
         """Handle oracle minting event."""
@@ -459,6 +628,18 @@ class JSONLParser:
         # Remove from pending
         if artifact_id in self.state.oracle_pending:
             self.state.oracle_pending.remove(artifact_id)
+
+        # Add activity item
+        self.state.activity_items.append(ActivityItem(
+            tick=self.state.current_tick,
+            timestamp=timestamp,
+            activity_type="oracle_mint",
+            agent_id=submitter,
+            artifact_id=artifact_id,
+            amount=scrip_minted,
+            description=f"Oracle scored {artifact_id} at {score:.1f}, minted {scrip_minted} scrip to {submitter}",
+            details={"score": score},
+        ))
 
     def _handle_intent_rejected(self, event: dict[str, Any], timestamp: str) -> None:
         """Handle rejected intent event."""
@@ -725,3 +906,111 @@ class JSONLParser:
 
         # Apply pagination
         return events[offset:offset + limit]
+
+    def get_network_graph_data(self, tick_max: int | None = None) -> NetworkGraphData:
+        """Get network graph data for visualization."""
+        # Filter interactions by tick if specified
+        interactions = self.state.interactions
+        if tick_max is not None:
+            interactions = [i for i in interactions if i.tick <= tick_max]
+
+        # Build nodes from agents
+        nodes: list[NetworkNode] = []
+        for agent_id, agent in self.state.agents.items():
+            status: Literal["active", "low_resources", "frozen"] = "active"
+            if agent.compute_used >= agent.compute_quota * 0.9:
+                status = "low_resources"
+            if agent.compute_used >= agent.compute_quota:
+                status = "frozen"
+
+            node_type: Literal["agent", "genesis", "artifact"] = "agent"
+            if agent_id.startswith("genesis_"):
+                node_type = "genesis"
+
+            nodes.append(NetworkNode(
+                id=agent_id,
+                label=agent_id,
+                node_type=node_type,
+                scrip=agent.scrip,
+                status=status,
+            ))
+
+        # Build edges from interactions
+        edges: list[NetworkEdge] = []
+        for interaction in interactions:
+            edges.append(NetworkEdge(
+                from_id=interaction.from_id,
+                to_id=interaction.to_id,
+                interaction_type=interaction.interaction_type,
+                tick=interaction.tick,
+                weight=interaction.amount if interaction.amount else 1,
+                label=interaction.details,
+            ))
+
+        # Calculate tick range
+        tick_range = (0, self.state.current_tick)
+        if interactions:
+            tick_range = (
+                min(i.tick for i in interactions),
+                max(i.tick for i in interactions),
+            )
+
+        return NetworkGraphData(
+            nodes=nodes,
+            edges=edges,
+            interactions=interactions,
+            tick_range=tick_range,
+        )
+
+    def get_activity_feed(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+        activity_types: list[str] | None = None,
+        agent_id: str | None = None,
+    ) -> ActivityFeed:
+        """Get activity feed with filtering."""
+        items = self.state.activity_items
+
+        # Filter by type
+        if activity_types:
+            items = [i for i in items if i.activity_type in activity_types]
+
+        # Filter by agent
+        if agent_id:
+            items = [
+                i for i in items
+                if i.agent_id == agent_id or i.target_id == agent_id
+            ]
+
+        # Sort by tick descending (most recent first)
+        items = sorted(items, key=lambda x: (x.tick, x.timestamp), reverse=True)
+
+        total = len(items)
+        items = items[offset:offset + limit]
+
+        return ActivityFeed(items=items, total_count=total)
+
+    def get_artifact_detail(self, artifact_id: str) -> ArtifactDetail | None:
+        """Get detailed information for an artifact."""
+        art = self.state.artifacts.get(artifact_id)
+        if not art:
+            return None
+
+        return ArtifactDetail(
+            artifact_id=art.artifact_id,
+            artifact_type=art.artifact_type,
+            owner_id=art.owner_id,
+            executable=art.executable,
+            price=art.price,
+            size_bytes=art.size_bytes,
+            created_at=art.created_at,
+            updated_at=art.updated_at,
+            content=art.content,
+            methods=art.methods,
+            oracle_score=art.oracle_score,
+            oracle_status=art.oracle_status,
+            invocation_count=art.invocation_count,
+            ownership_history=art.ownership_history,
+            invocation_history=art.invocation_history[-50:],  # Last 50
+        )

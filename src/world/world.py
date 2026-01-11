@@ -19,7 +19,7 @@ from .genesis import (
 )
 from .executor import get_executor
 
-from config import get as config_get, compute_per_agent_quota, PerAgentQuota
+from ..config import get as config_get, compute_per_agent_quota, PerAgentQuota
 
 
 class PrincipalConfig(TypedDict, total=False):
@@ -325,10 +325,17 @@ class World:
             resource_policy=intent.resource_policy,
         )
 
+        # Track resource consumption (disk bytes written)
+        resources_consumed: dict[str, float] = {}
+        if net_new_bytes > 0:
+            resources_consumed["disk_bytes"] = float(net_new_bytes)
+
         return ActionResult(
             success=write_result["success"],
             message=write_result["message"],
-            data=write_result["data"]
+            data=write_result["data"],
+            resources_consumed=resources_consumed if resources_consumed else None,
+            charged_to=intent.principal_id,
         )
 
     def _execute_invoke(self, intent: InvokeArtifactIntent) -> ActionResult:
@@ -365,8 +372,11 @@ class World:
                 )
 
             # Deduct compute cost FIRST (always paid, even on failure)
+            # Genesis methods always charge caller (system services)
+            resources_consumed: dict[str, float] = {}
             if method.cost > 0:
                 self.ledger.spend_compute(intent.principal_id, method.cost)
+                resources_consumed["llm_tokens"] = float(method.cost)
 
             # Execute the genesis method
             try:
@@ -376,17 +386,23 @@ class World:
                     return ActionResult(
                         success=True,
                         message=f"Invoked {artifact_id}.{method_name}",
-                        data=result_data
+                        data=result_data,
+                        resources_consumed=resources_consumed if resources_consumed else None,
+                        charged_to=intent.principal_id,
                     )
                 else:
                     return ActionResult(
                         success=False,
-                        message=result_data.get("error", "Method failed")
+                        message=result_data.get("error", "Method failed"),
+                        resources_consumed=resources_consumed if resources_consumed else None,
+                        charged_to=intent.principal_id,
                     )
             except Exception as e:
                 return ActionResult(
                     success=False,
-                    message=f"Method execution error: {str(e)}"
+                    message=f"Method execution error: {str(e)}",
+                    resources_consumed=resources_consumed if resources_consumed else None,
+                    charged_to=intent.principal_id,
                 )
 
         # Check regular artifacts for executable invocation

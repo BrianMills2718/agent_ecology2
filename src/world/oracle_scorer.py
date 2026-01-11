@@ -26,7 +26,7 @@ sys.path.insert(0, str(PROJECT_ROOT / 'llm_provider_standalone'))
 
 from llm_provider import LLMProvider
 
-from config import get
+from ..config import get
 
 
 SCORING_PROMPT: str = """You are evaluating executable code submitted to an agent marketplace.

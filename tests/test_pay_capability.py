@@ -1,13 +1,11 @@
 """Tests for pay() capability in artifact execution."""
 
 import pytest
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from world.executor import SafeExecutor
-from world.ledger import Ledger
+from src.world.executor import SafeExecutor
+from src.world.ledger import Ledger
 
 
 class TestPayCapability:

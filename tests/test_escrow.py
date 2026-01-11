@@ -1,14 +1,12 @@
 """Tests for genesis_escrow - trustless artifact trading."""
 
 import pytest
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from world.artifacts import ArtifactStore
-from world.ledger import Ledger
-from world.genesis import GenesisEscrow
+from src.world.artifacts import ArtifactStore
+from src.world.ledger import Ledger
+from src.world.genesis import GenesisEscrow
 
 
 class TestEscrowDeposit:
@@ -341,7 +339,7 @@ class TestEscrowIntegration:
 
     def test_escrow_created_in_world(self) -> None:
         """Escrow is created as part of genesis artifacts."""
-        from world.world import World
+        from src.world.world import World
 
         config = {
             'world': {'max_ticks': 10},
@@ -358,8 +356,8 @@ class TestEscrowIntegration:
 
     def test_full_trade_flow_via_world(self) -> None:
         """Complete trade flow through World actions."""
-        from world.world import World
-        from world.actions import WriteArtifactIntent, InvokeArtifactIntent
+        from src.world.world import World
+        from src.world.actions import WriteArtifactIntent, InvokeArtifactIntent
 
         config = {
             'world': {'max_ticks': 10},

@@ -14,11 +14,25 @@ const Dashboard = {
             ProgressPanel.init();
             AgentsPanel.init();
             ArtifactsPanel.init();
-            TimelinePanel.init();
             EventsPanel.init();
             ChartsPanel.init();
             GenesisPanel.init();
             ControlsPanel.init();
+
+            // Initialize new panels (check if they exist)
+            if (typeof NetworkPanel !== 'undefined') {
+                NetworkPanel.init();
+            }
+            if (typeof ActivityPanel !== 'undefined') {
+                ActivityPanel.init();
+            }
+            if (typeof ThinkingPanel !== 'undefined') {
+                this.thinkingPanel = new ThinkingPanel();
+                this.thinkingPanel.init();
+            }
+
+            // Set up charts panel toggle
+            this.setupChartsToggle();
 
             // Connect WebSocket
             window.wsManager.connect();
@@ -59,16 +73,43 @@ const Dashboard = {
             // Load chart data
             await ChartsPanel.loadAll();
 
-            // Load timeline
-            await TimelinePanel.load();
-
             // Load events
             await EventsPanel.load();
+
+            // Set up WebSocket handlers for live updates
+            this.setupWebSocketHandlers();
 
         } catch (error) {
             console.error('Failed to load initial data:', error);
             // Don't throw - WebSocket will update when simulation runs
         }
+    },
+
+    /**
+     * Set up WebSocket event handlers for live updates
+     */
+    setupWebSocketHandlers() {
+        // On new events, refresh relevant panels
+        window.wsManager.on('event', (event) => {
+            // Refresh network and activity panels on relevant events
+            if (typeof NetworkPanel !== 'undefined' && NetworkPanel.refresh) {
+                NetworkPanel.refresh();
+            }
+            if (typeof ActivityPanel !== 'undefined' && ActivityPanel.refresh) {
+                ActivityPanel.refresh();
+            }
+            // Refresh thinking panel on thinking events
+            if (this.thinkingPanel && event.event_type === 'thinking') {
+                this.thinkingPanel.refresh();
+            }
+        });
+
+        // On state updates
+        window.wsManager.on('state_update', (data) => {
+            if (data.progress) {
+                ProgressPanel.update(data.progress);
+            }
+        });
     },
 
     /**
@@ -84,6 +125,36 @@ const Dashboard = {
      */
     async refresh() {
         await this.loadInitialData();
+
+        // Refresh new panels
+        if (typeof NetworkPanel !== 'undefined' && NetworkPanel.refresh) {
+            NetworkPanel.refresh();
+        }
+        if (typeof ActivityPanel !== 'undefined' && ActivityPanel.refresh) {
+            ActivityPanel.refresh();
+        }
+        if (this.thinkingPanel) {
+            this.thinkingPanel.refresh();
+        }
+    },
+
+    /**
+     * Set up collapsible charts panel
+     */
+    setupChartsToggle() {
+        const toggle = document.getElementById('charts-toggle');
+        if (toggle) {
+            toggle.addEventListener('click', () => {
+                const panel = toggle.closest('.panel');
+                if (panel) {
+                    panel.classList.toggle('collapsed');
+                    const icon = panel.querySelector('.collapse-icon');
+                    if (icon) {
+                        icon.textContent = panel.classList.contains('collapsed') ? '+' : 'x';
+                    }
+                }
+            });
+        }
     }
 };
 
@@ -107,9 +178,14 @@ document.addEventListener('keydown', (e) => {
         Dashboard.refresh();
     }
 
-    // Escape to close modal
+    // Escape to close modals
     if (e.key === 'Escape') {
         AgentsPanel.closeModal();
+        // Also close artifact modal
+        const artifactModal = document.getElementById('artifact-modal');
+        if (artifactModal) {
+            artifactModal.classList.add('hidden');
+        }
     }
 });
 

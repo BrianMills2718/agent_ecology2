@@ -2,13 +2,13 @@
 
 You must respond with a single JSON object representing your action.
 
-## 1. read_artifact (cost: 2 credits + input token cost)
-Read an artifact's content. Increases your context on next turn.
+## 1. read_artifact (FREE)
+Read an artifact's content. The content is added to your context on the next turn.
 ```json
 {"action_type": "read_artifact", "artifact_id": "<id>"}
 ```
 
-## 2. write_artifact (cost: 5 credits + disk quota)
+## 2. write_artifact (FREE - uses disk quota)
 
 **Regular artifact:**
 ```json
@@ -31,7 +31,7 @@ Read an artifact's content. Increases your context on next turn.
 - Allowed imports: math, json, random, datetime only
 - Price is paid to you when others invoke your artifact
 
-## 3. invoke_artifact (cost: 1 credit + method cost + gas)
+## 3. invoke_artifact (FREE - method may have scrip fee)
 Call a method on an artifact.
 ```json
 {"action_type": "invoke_artifact", "artifact_id": "<id>", "method": "<method>", "args": [...]}
@@ -39,33 +39,39 @@ Call a method on an artifact.
 
 ### Genesis Artifacts (System)
 
-**genesis_ledger** - Manages scrip (credits):
-- `balance([agent_id])` [FREE]
-- `all_balances([])` [FREE]
-- `transfer([from_id, to_id, amount])` [1 credit] - USE THIS TO SEND CREDITS
+**genesis_ledger** - Manages scrip:
+- `balance([agent_id])` - Check balance
+- `all_balances([])` - See all balances
+- `transfer([from_id, to_id, amount])` [1 scrip fee] - USE THIS TO SEND SCRIP
 
 **genesis_rights_registry** - Manages quotas:
-- `check_quota([agent_id])` [FREE]
-- `all_quotas([])` [FREE]
-- `transfer_quota([from_id, to_id, "flow"|"stock", amount])` [1 credit]
+- `check_quota([agent_id])` - Check your quotas
+- `all_quotas([])` - See all quotas
+- `transfer_quota([from_id, to_id, "compute"|"disk", amount])` [1 scrip fee]
 
 **genesis_oracle** - External value creation (CODE ONLY):
-- `status([])` [FREE]
-- `submit([artifact_id])` [5 credits] - ONLY accepts executable artifacts!
-- `check([artifact_id])` [FREE]
-- `process([])` [FREE] - scores pending, mints credits (score/10)
+- `status([])` - Check oracle status
+- `submit([artifact_id, bid_amount])` - Submit artifact with bid (Vickrey auction)
+- `check([artifact_id])` - Check submission status
+- `process([])` - Process auction, score winner, mint scrip
 
 **genesis_event_log** - World events:
-- `read([offset, limit])` [FREE] - but you pay input token cost
+- `read([offset, limit])` - Read recent events
+
+**genesis_escrow** - Trustless artifact trading:
+- `deposit([artifact_id, price])` - List artifact for sale
+- `purchase([artifact_id])` - Buy listed artifact (pays owner)
+- `cancel([artifact_id])` - Cancel listing (owner only)
+- `check([artifact_id])` - Check listing status
+- `list_active([])` - See all active listings
 
 ### Executable Artifacts (Agent-Created)
 - Always invoke with method="run"
-- Gas: 2 credits (always paid, even on failure)
-- Price: set by owner (paid to owner on success)
+- Price: set by owner (paid to owner on invocation)
 
 ## Important Notes
-- To transfer credits: `invoke_artifact("genesis_ledger", "transfer", [your_id, target_id, amount])`
-- Oracle ONLY accepts code artifacts. Text submissions are REJECTED.
-- Reading costs input tokens on your NEXT turn (context tax).
+- To transfer scrip: `invoke_artifact("genesis_ledger", "transfer", [your_id, target_id, amount])`
+- Oracle ONLY accepts executable artifacts. Text submissions are REJECTED.
+- Reading adds content to your context (costs tokens on your NEXT turn).
 
 Respond with ONLY the JSON object, no other text.

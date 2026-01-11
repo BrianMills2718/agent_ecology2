@@ -301,6 +301,69 @@ def create_app(
         dashboard.parser.parse_incremental()
         return [t.model_dump() for t in dashboard.parser.state.tick_summaries]
 
+    @app.get("/api/network")
+    async def get_network_graph(
+        tick_max: int | None = Query(None, description="Max tick to include"),
+    ) -> dict[str, Any]:
+        """Get network graph data for agent interactions."""
+        dashboard.parser.parse_incremental()
+        return dashboard.parser.get_network_graph_data(tick_max).model_dump()
+
+    @app.get("/api/activity")
+    async def get_activity_feed(
+        limit: int = Query(100, ge=1, le=500),
+        offset: int = Query(0, ge=0),
+        types: str | None = Query(None, description="Comma-separated activity types"),
+        agent_id: str | None = Query(None),
+    ) -> dict[str, Any]:
+        """Get activity feed with filtering."""
+        dashboard.parser.parse_incremental()
+        types_list = types.split(",") if types else None
+        return dashboard.parser.get_activity_feed(
+            limit=limit,
+            offset=offset,
+            activity_types=types_list,
+            agent_id=agent_id,
+        ).model_dump()
+
+    @app.get("/api/artifacts/{artifact_id}/detail")
+    async def get_artifact_detail(artifact_id: str) -> dict[str, Any]:
+        """Get detailed info for a single artifact including content."""
+        dashboard.parser.parse_incremental()
+        detail = dashboard.parser.get_artifact_detail(artifact_id)
+        if detail:
+            return detail.model_dump()
+        return {"error": f"Artifact {artifact_id} not found"}
+
+    @app.get("/api/thinking")
+    async def get_thinking_history(
+        agent_id: str | None = Query(None, description="Filter by agent ID"),
+        tick_min: int | None = Query(None, description="Minimum tick"),
+        tick_max: int | None = Query(None, description="Maximum tick"),
+        limit: int = Query(100, ge=1, le=500),
+    ) -> dict[str, Any]:
+        """Get agent thinking history with reasoning content."""
+        dashboard.parser.parse_incremental()
+
+        all_thinking: list[dict[str, Any]] = []
+        for agent_state in dashboard.parser.state.agents.values():
+            for thinking in agent_state.thinking_history:
+                if agent_id and thinking.agent_id != agent_id:
+                    continue
+                if tick_min is not None and thinking.tick < tick_min:
+                    continue
+                if tick_max is not None and thinking.tick > tick_max:
+                    continue
+                all_thinking.append(thinking.model_dump())
+
+        # Sort by tick descending
+        all_thinking.sort(key=lambda x: (x["tick"], x["timestamp"]), reverse=True)
+
+        return {
+            "items": all_thinking[:limit],
+            "total_count": len(all_thinking),
+        }
+
     @app.get("/api/simulation/status")
     async def get_simulation_status() -> dict[str, Any]:
         """Get simulation runner status."""

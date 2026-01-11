@@ -1,14 +1,12 @@
 """Tests for artifact ownership transfer."""
 
 import pytest
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from world.artifacts import ArtifactStore
-from world.ledger import Ledger
-from world.genesis import GenesisLedger
+from src.world.artifacts import ArtifactStore
+from src.world.ledger import Ledger
+from src.world.genesis import GenesisLedger
 
 
 class TestArtifactStoreOwnershipTransfer:

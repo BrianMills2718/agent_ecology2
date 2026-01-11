@@ -29,6 +29,9 @@ The simulation is built on five core principles:
 # Install dependencies
 pip install -r requirements.txt
 
+# Install the package in editable mode (required for imports)
+pip install -e .
+
 # Set up API keys in .env
 cp .env.example .env
 # Edit .env with your LLM API credentials
@@ -39,6 +42,7 @@ python run.py --ticks 10         # Limit to 10 ticks
 python run.py --agents 1         # Run with only first agent
 python run.py --quiet            # Suppress output
 python run.py --delay 5          # 5 second delay between LLM calls
+python run.py --dashboard        # Run with HTML dashboard
 ```
 
 ## Configuration
@@ -58,12 +62,8 @@ resources:
 scrip:
   starting_amount: 100
 
-# Action costs (compute units)
+# Token costs (for thinking)
 costs:
-  actions:
-    read_artifact: 2
-    write_artifact: 5
-    invoke_artifact: 1
   per_1k_input_tokens: 1
   per_1k_output_tokens: 3
 
@@ -158,7 +158,7 @@ Read content from an artifact.
 ```json
 {"action_type": "read_artifact", "artifact_id": "<id>"}
 ```
-Cost: 2 compute + input token cost on next turn
+Cost: Free (content adds to context for next turn)
 
 ### write_artifact
 Create or update an artifact.
@@ -178,14 +178,14 @@ For executable artifacts:
   "code": "def run(*args): return args[0] * 2"
 }
 ```
-Cost: 5 compute + disk quota
+Cost: Free (uses disk quota for storage)
 
 ### invoke_artifact
 Call a method on an artifact.
 ```json
 {"action_type": "invoke_artifact", "artifact_id": "<id>", "method": "<method>", "args": [...]}
 ```
-Cost: 1 compute + method fee + 2 gas (for executables)
+Cost: Free (method may have scrip fee for genesis artifacts)
 
 Example - transfer scrip:
 ```json
@@ -194,16 +194,29 @@ Example - transfer scrip:
 
 ## Development
 
-### Type Checking
-
-The project uses strict type hints throughout.
+### Setup
 
 ```bash
-# Run mypy
-mypy --strict src/
+# Install in editable mode (required)
+pip install -e .
 
-# Or check specific files
-mypy --strict run.py src/world/
+# Run tests
+pytest tests/
+
+# Type checking
+python -m mypy src/ --ignore-missing-imports
+```
+
+### Type Checking
+
+The project uses strict type hints throughout. All code must pass mypy.
+
+```bash
+# Run mypy on entire src directory
+python -m mypy src/ --ignore-missing-imports
+
+# Check specific files
+python -m mypy src/world/ src/agents/ --ignore-missing-imports
 ```
 
 ### Code Standards
@@ -212,23 +225,33 @@ mypy --strict run.py src/world/
 - No magic numbers in code - all values come from config
 - Use modern Python typing: `dict[str, Any]` not `Dict[str, Any]`
 - Consistent terminology: `compute`, `disk`, `scrip` (not credits)
+- Use relative imports within `src/` package (e.g., `from ..config import get`)
+- Tests use `from src.module import` style
 
 ### Project Structure
 
 ```
 agent_ecology/
   run.py              # Main entry point
+  pyproject.toml      # Package configuration
   config/
     config.yaml       # Configuration values
     schema.yaml       # Config documentation
   src/
     world/            # World state and execution
     agents/           # Agent loading and LLM interaction
+    simulation/       # SimulationRunner and checkpoint
     config.py         # Config helpers
-  agents/             # Agent definitions (prompts, configs)
-  llm_logs/           # LLM interaction logs
+    config_schema.py  # Pydantic config validation
+    dashboard/        # HTML dashboard server
+  tests/              # Test suite (305 tests)
+  llm_logs/           # LLM interaction logs (by date)
 ```
 
 ### Logging
 
-Simulation events are logged to `run.jsonl`. LLM interactions are saved to `llm_logs/`.
+- **Simulation events**: Logged to `run.jsonl`
+- **LLM interactions**: Saved to `llm_logs/YYYYMMDD/` with metadata:
+  - `agent_id`: Which agent made the call
+  - `run_id`: Simulation run identifier
+  - `tick`: Current simulation tick

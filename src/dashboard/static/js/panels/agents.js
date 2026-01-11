@@ -186,6 +186,30 @@ const AgentsPanel = {
                 }
             }
 
+            // Update recent thinking
+            const thinkingEl = document.getElementById('modal-thinking');
+            if (thinkingEl) {
+                if (agent.thinking_history && agent.thinking_history.length > 0) {
+                    thinkingEl.innerHTML = agent.thinking_history.slice(-10).reverse().map(thought => {
+                        const preview = thought.thought_process
+                            ? this.escapeHtml(thought.thought_process.substring(0, 150)) + (thought.thought_process.length > 150 ? '...' : '')
+                            : '<em>No reasoning content</em>';
+                        return `
+                            <div class="modal-thinking-item">
+                                <div class="thinking-meta">
+                                    <span class="timeline-tick">T${thought.tick}</span>
+                                    <span class="thinking-tokens-small">${thought.input_tokens}in/${thought.output_tokens}out</span>
+                                    <span class="thinking-cost-small">${thought.thinking_cost} compute</span>
+                                </div>
+                                <div class="thinking-preview-modal">${preview}</div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    thinkingEl.innerHTML = '<div class="modal-list-item">No thinking recorded yet</div>';
+                }
+            }
+
             // Show modal
             this.elements.modal.classList.remove('hidden');
 

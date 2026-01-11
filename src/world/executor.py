@@ -18,11 +18,12 @@ import json
 import math
 import random
 import signal
+import time
 from datetime import datetime, timedelta
 from types import FrameType, ModuleType
 from typing import Any, TypedDict
 
-from config import get
+from ..config import get
 
 # Import Ledger type for type hints (avoid circular import at runtime)
 from typing import TYPE_CHECKING
@@ -39,10 +40,17 @@ class PaymentResult(TypedDict):
 
 
 class ExecutionResult(TypedDict, total=False):
-    """Result from code execution."""
+    """Result from code execution.
+
+    Includes resource consumption tracking for the two-layer model:
+    - resources_consumed: Physical resources used (compute based on execution time)
+    - execution_time_ms: Wall-clock time for execution
+    """
     success: bool
     result: Any
     error: str
+    resources_consumed: dict[str, float]
+    execution_time_ms: float
 
 
 class ValidationResult(TypedDict, total=False):
@@ -109,6 +117,18 @@ class TimeoutError(Exception):
 
 def _timeout_handler(signum: int, frame: FrameType | None) -> None:
     raise TimeoutError("Execution timed out")
+
+
+def _time_to_tokens(execution_time_ms: float) -> float:
+    """Convert execution time to token cost.
+
+    Uses a configurable rate (default: 0.1 tokens per ms = 1 token per 10ms).
+    Minimum cost is 1 token for any execution.
+
+    This is an approximation - actual resource consumption may vary.
+    """
+    cost_per_ms: float = get("executor.cost_per_ms") or 0.1
+    return max(1.0, execution_time_ms * cost_per_ms)
 
 
 def _make_controlled_import(
@@ -261,7 +281,10 @@ class SafeExecutor:
         if not callable(run_func):
             return {"success": False, "error": "run is not callable"}
 
-        # Call run() with args
+        # Call run() with args, measuring execution time
+        start_time = time.perf_counter()
+        execution_time_ms: float = 0.0
+
         try:
             # Set up timeout for run() call
             old_handler = None
@@ -274,6 +297,7 @@ class SafeExecutor:
             try:
                 result = run_func(*args)
             finally:
+                execution_time_ms = (time.perf_counter() - start_time) * 1000
                 try:
                     signal.alarm(0)
                     if old_handler:
@@ -282,13 +306,28 @@ class SafeExecutor:
                     pass
 
         except TimeoutError:
-            return {"success": False, "error": "Execution timed out"}
-        except TypeError as e:
-            return {"success": False, "error": f"Argument error: {e}"}
-        except Exception as e:
+            execution_time_ms = (time.perf_counter() - start_time) * 1000
             return {
                 "success": False,
-                "error": f"Runtime error: {type(e).__name__}: {e}"
+                "error": "Execution timed out",
+                "execution_time_ms": execution_time_ms,
+                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
+            }
+        except TypeError as e:
+            execution_time_ms = (time.perf_counter() - start_time) * 1000
+            return {
+                "success": False,
+                "error": f"Argument error: {e}",
+                "execution_time_ms": execution_time_ms,
+                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
+            }
+        except Exception as e:
+            execution_time_ms = (time.perf_counter() - start_time) * 1000
+            return {
+                "success": False,
+                "error": f"Runtime error: {type(e).__name__}: {e}",
+                "execution_time_ms": execution_time_ms,
+                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
             }
 
         # Ensure result is JSON-serializable
@@ -298,7 +337,15 @@ class SafeExecutor:
             # Convert to string if not serializable
             result = str(result)
 
-        return {"success": True, "result": result}
+        # Calculate resource consumption based on execution time
+        resources_consumed = {"llm_tokens": _time_to_tokens(execution_time_ms)}
+
+        return {
+            "success": True,
+            "result": result,
+            "execution_time_ms": execution_time_ms,
+            "resources_consumed": resources_consumed,
+        }
 
     def execute_with_wallet(
         self,
@@ -435,7 +482,10 @@ class SafeExecutor:
         if not callable(run_func):
             return {"success": False, "error": "run is not callable"}
 
-        # Call run() with args
+        # Call run() with args, measuring execution time
+        start_time = time.perf_counter()
+        execution_time_ms: float = 0.0
+
         try:
             old_handler = None
             try:
@@ -447,6 +497,7 @@ class SafeExecutor:
             try:
                 result = run_func(*args)
             finally:
+                execution_time_ms = (time.perf_counter() - start_time) * 1000
                 try:
                     signal.alarm(0)
                     if old_handler:
@@ -455,13 +506,28 @@ class SafeExecutor:
                     pass
 
         except TimeoutError:
-            return {"success": False, "error": "Execution timed out"}
-        except TypeError as e:
-            return {"success": False, "error": f"Argument error: {e}"}
-        except Exception as e:
+            execution_time_ms = (time.perf_counter() - start_time) * 1000
             return {
                 "success": False,
-                "error": f"Runtime error: {type(e).__name__}: {e}"
+                "error": "Execution timed out",
+                "execution_time_ms": execution_time_ms,
+                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
+            }
+        except TypeError as e:
+            execution_time_ms = (time.perf_counter() - start_time) * 1000
+            return {
+                "success": False,
+                "error": f"Argument error: {e}",
+                "execution_time_ms": execution_time_ms,
+                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
+            }
+        except Exception as e:
+            execution_time_ms = (time.perf_counter() - start_time) * 1000
+            return {
+                "success": False,
+                "error": f"Runtime error: {type(e).__name__}: {e}",
+                "execution_time_ms": execution_time_ms,
+                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
             }
 
         # Ensure result is JSON-serializable
@@ -470,7 +536,15 @@ class SafeExecutor:
         except (TypeError, ValueError):
             result = str(result)
 
-        return {"success": True, "result": result}
+        # Calculate resource consumption based on execution time
+        resources_consumed = {"llm_tokens": _time_to_tokens(execution_time_ms)}
+
+        return {
+            "success": True,
+            "result": result,
+            "execution_time_ms": execution_time_ms,
+            "resources_consumed": resources_consumed,
+        }
 
 
 # Singleton instance

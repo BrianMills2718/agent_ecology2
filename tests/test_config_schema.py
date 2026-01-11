@@ -3,12 +3,10 @@
 import pytest
 from pydantic import ValidationError
 
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from config_schema import (
+from src.config_schema import (
     AppConfig,
     validate_config_dict,
     load_validated_config,

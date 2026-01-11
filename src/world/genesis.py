@@ -15,8 +15,8 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Callable, TypedDict
 
-from config import get_genesis_config, get, get_validated_config
-from config_schema import GenesisConfig
+from ..config import get_genesis_config, get, get_validated_config
+from ..config_schema import GenesisConfig
 
 from .ledger import Ledger
 from .artifacts import ArtifactStore

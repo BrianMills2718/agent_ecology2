@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-from agents.schema import ActionType as ActionTypeLiteral
+from ..agents.schema import ActionType as ActionTypeLiteral
 
 
 class ActionType(str, Enum):

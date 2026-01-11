@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from world.ledger import Ledger
-from world.world import World
+from src.world.ledger import Ledger
+from src.world.world import World
 
 
 class TestFixtures:

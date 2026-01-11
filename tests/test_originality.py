@@ -6,17 +6,13 @@ of the oracle scorer module.
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Add src to path for imports
-src_path = Path(__file__).parent.parent / "src"
-sys.path.insert(0, str(src_path))
 
-from world.oracle_scorer import OracleScorer
+from src.world.oracle_scorer import OracleScorer
 
 
 @pytest.fixture
@@ -25,7 +21,7 @@ def scorer() -> OracleScorer:
 
     Uses mocked LLMProvider to avoid actual API calls.
     """
-    with patch("world.oracle_scorer.LLMProvider"):
+    with patch("src.world.oracle_scorer.LLMProvider"):
         scorer = OracleScorer(model="test-model", log_dir="/tmp/test_logs")
         # Clear any seen hashes from previous tests
         scorer._seen_hashes = set()
@@ -38,7 +34,7 @@ def scorer_with_mock_llm() -> tuple[OracleScorer, MagicMock]:
 
     Returns both the scorer and the mock LLM for verification.
     """
-    with patch("world.oracle_scorer.LLMProvider") as mock_llm_class:
+    with patch("src.world.oracle_scorer.LLMProvider") as mock_llm_class:
         mock_llm = MagicMock()
         mock_llm.generate.return_value = '{"score": 75, "reason": "Good content"}'
         mock_llm_class.return_value = mock_llm

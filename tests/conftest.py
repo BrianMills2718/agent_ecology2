@@ -5,19 +5,14 @@ Common fixtures for testing the agent ecology simulation.
 
 from __future__ import annotations
 
-import sys
 import tempfile
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-# Add src to path for imports
-src_path = Path(__file__).parent.parent / "src"
-sys.path.insert(0, str(src_path))
-
-from world.ledger import Ledger
-from world.world import World, ConfigDict
+from src.world.ledger import Ledger
+from src.world.world import World, ConfigDict
 
 
 @pytest.fixture

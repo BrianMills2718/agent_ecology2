@@ -2,14 +2,12 @@
 
 import pytest
 import asyncio
-import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from agents.agent import Agent
-from agents.models import FlatActionResponse, FlatAction
+from src.agents.agent import Agent
+from src.agents.models import FlatActionResponse, FlatAction
 
 
 class TestAgentAsyncMethod:

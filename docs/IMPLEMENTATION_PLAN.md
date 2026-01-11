@@ -1,5 +1,9 @@
 # Agent Ecology V1 - Implementation Plan
 
+> **Note**: This document is historical reference for completed work.
+> Some details (e.g., action costs, gas) have been simplified out.
+> See `docs/RESOURCE_MODEL.md` and `CLAUDE.md` for current design.
+
 ## Core Ontology: Rights & Reality
 
 This system implements a **physics-first** economic simulation with three distinct value layers:

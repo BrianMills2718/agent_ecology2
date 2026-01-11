@@ -2,7 +2,7 @@
 Agent Loader - Discovers and loads agents from directory structure
 
 Each agent lives in src/agents/<name>/ with:
-  - agent.yaml: config (id, model, credits, enabled)
+  - agent.yaml: config (id, model, scrip, enabled)
   - system_prompt.md: the agent's system prompt
 """
 
@@ -19,7 +19,7 @@ class AgentConfig(TypedDict, total=False):
     """Configuration for an agent."""
     id: str
     llm_model: str | None
-    starting_credits: int
+    starting_scrip: int
     system_prompt: str
     action_schema: str
     temperature: float | None
@@ -30,7 +30,7 @@ class AgentYamlConfig(TypedDict, total=False):
     """Configuration loaded from agent.yaml file."""
     id: str
     llm_model: str
-    starting_credits: int
+    starting_scrip: int
     enabled: bool
     temperature: float
     max_tokens: int
@@ -85,7 +85,7 @@ def load_agents(agents_dir: str | None = None, prompts_dir: str | None = None) -
         agent: AgentConfig = {
             "id": config.get("id", agent_dir.name),
             "llm_model": config.get("llm_model"),
-            "starting_credits": config.get("starting_credits", 100),
+            "starting_scrip": config.get("starting_scrip", 100),
             "system_prompt": system_prompt,
             "action_schema": action_schema,
             # Optional overrides
@@ -125,5 +125,5 @@ if __name__ == "__main__":
     agents: list[AgentConfig] = load_agents()
     print(f"Found {len(agents)} agents:")
     for a in agents:
-        print(f"  - {a['id']}: {a['starting_credits']} credits")
+        print(f"  - {a['id']}: {a['starting_scrip']} scrip")
         print(f"    prompt: {len(a['system_prompt'])} chars")

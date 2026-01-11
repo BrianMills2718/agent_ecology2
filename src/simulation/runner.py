@@ -13,14 +13,18 @@ from __future__ import annotations
 import asyncio
 import json
 import random
-from typing import Any
+from datetime import datetime
+from typing import Any, cast, get_args
 
-from world import World
-from world.actions import parse_intent_from_json, ActionIntent
-from world.simulation_engine import SimulationEngine
-from agents import Agent
-from agents.loader import load_agents
-from agents.schema import ActionType
+from ..world import World
+from ..world.actions import parse_intent_from_json, ActionIntent
+from ..world.simulation_engine import SimulationEngine
+from ..world.world import StateSummary, ConfigDict
+from ..world.genesis import GenesisOracle, AuctionResult
+from ..agents import Agent
+from ..agents.loader import load_agents, AgentConfig
+from ..agents.agent import ActionResult as AgentActionResult, TokenUsage
+from ..agents.schema import ActionType
 
 from .types import (
     PrincipalConfig,
@@ -77,32 +81,33 @@ class SimulationRunner:
         self.delay = delay if delay is not None else config.get("llm", {}).get("rate_limit_delay", 15.0)
         self.checkpoint = checkpoint
 
+        # Generate run ID for log organization
+        self.run_id = datetime.now().strftime("run_%Y%m%d_%H%M%S")
+
         # Initialize engine
         self.engine = SimulationEngine.from_config(config)
         if checkpoint:
             self.engine.reset_budget(checkpoint["cumulative_api_cost"])
 
         # Load agent configs
-        agent_configs: list[dict[str, Any]] = load_agents()
+        agent_configs: list[AgentConfig] = load_agents()
         if max_agents:
             agent_configs = agent_configs[:max_agents]
         self.agent_configs = agent_configs
 
         # Build principals list for world initialization
         default_starting_scrip: int = config.get("scrip", {}).get("starting_amount", 100)
-        principals: list[PrincipalConfig] = [
-            {
+        principals: list[PrincipalConfig] = []
+        for a in agent_configs:
+            scrip = a.get("starting_scrip") or a.get("starting_credits") or default_starting_scrip
+            principals.append({
                 "id": a["id"],
-                "starting_scrip": a.get(
-                    "starting_scrip", a.get("starting_credits", default_starting_scrip)
-                ),
-            }
-            for a in agent_configs
-        ]
+                "starting_scrip": scrip if isinstance(scrip, int) else default_starting_scrip,
+            })
         config["principals"] = principals
 
         # Initialize world
-        self.world = World(config)
+        self.world = World(cast(ConfigDict, config))
 
         # Restore checkpoint if provided
         if checkpoint:
@@ -148,7 +153,7 @@ class SimulationRunner:
             print(f"Restored artifacts: {len(checkpoint['artifacts'])}")
             print()
 
-    def _create_agents(self, agent_configs: list[dict[str, Any]]) -> list[Agent]:
+    def _create_agents(self, agent_configs: list[AgentConfig]) -> list[Agent]:
         """Create Agent instances from config."""
         agents: list[Agent] = []
         for a in agent_configs:
@@ -158,6 +163,7 @@ class SimulationRunner:
                 system_prompt=a.get("system_prompt", ""),
                 action_schema=a.get("action_schema", ""),
                 log_dir=self.config["logging"]["log_dir"],
+                run_id=self.run_id,
             )
             agents.append(agent)
         return agents
@@ -189,6 +195,7 @@ class SimulationRunner:
                 system_prompt=default_system_prompt,
                 action_schema="",
                 log_dir=log_dir,
+                run_id=self.run_id,
             )
             new_agents.append(new_agent)
 
@@ -197,7 +204,7 @@ class SimulationRunner:
 
         return new_agents
 
-    def _handle_oracle_tick(self) -> dict[str, Any] | None:
+    def _handle_oracle_tick(self) -> AuctionResult | None:
         """Handle oracle auction tick.
 
         Calls the oracle's on_tick method to:
@@ -216,7 +223,8 @@ class SimulationRunner:
         if not hasattr(oracle, "on_tick"):
             return None
 
-        result = oracle.on_tick(self.world.tick)
+        # Cast to GenesisOracle since we verified it has on_tick
+        result = cast(GenesisOracle, oracle).on_tick(self.world.tick)
 
         # Log auction result if there was one
         if result:
@@ -240,7 +248,7 @@ class SimulationRunner:
     async def _think_agent(
         self,
         agent: Agent,
-        tick_state: dict[str, Any],
+        tick_state: StateSummary,
     ) -> ThinkingResult:
         """Have a single agent think (async).
 
@@ -249,7 +257,7 @@ class SimulationRunner:
         compute_before: int = self.world.ledger.get_compute(agent.agent_id)
 
         try:
-            proposal: dict[str, Any] = await agent.propose_action_async(tick_state)
+            proposal: AgentActionResult = await agent.propose_action_async(cast(dict[str, Any], tick_state))
         except Exception as e:
             return {
                 "agent": agent,
@@ -259,7 +267,7 @@ class SimulationRunner:
             }
 
         # Extract token usage
-        usage: dict[str, Any] = proposal.get("usage", {})
+        usage = proposal.get("usage") or {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "cost": 0.0}
         api_cost: float = usage.get("cost", 0.0)
         input_tokens: int = usage.get("input_tokens", 0)
         output_tokens: int = usage.get("output_tokens", 0)
@@ -357,6 +365,9 @@ class SimulationRunner:
             output_tokens = result.get("output_tokens", 0)
             thinking_cost = result.get("thinking_cost", 0)
 
+            # Extract thought process from proposal if available
+            thought_process = result.get("proposal", {}).get("thought_process", "")
+
             self.world.logger.log(
                 "thinking",
                 {
@@ -366,6 +377,7 @@ class SimulationRunner:
                     "output_tokens": output_tokens,
                     "thinking_cost": thinking_cost,
                     "compute_after": self.world.ledger.get_compute(agent.agent_id),
+                    "thought_process": thought_process,
                 },
             )
 
@@ -417,10 +429,9 @@ class SimulationRunner:
                 status: str = "SUCCESS" if result.success else "FAILED"
                 print(f"    {agent.agent_id}: {status}: {result.message}")
 
-            raw_action_type: str = action_dict.get("action_type", "noop")
-            action_type: ActionType = raw_action_type if raw_action_type in (
-                "noop", "read_artifact", "write_artifact", "invoke_artifact", "transfer"
-            ) else "noop"
+            raw_action_type = action_dict.get("action_type", "noop")
+            valid_types = get_args(ActionType)
+            action_type: ActionType = raw_action_type if raw_action_type in valid_types else "noop"
             agent.set_last_result(action_type, result.success, result.message)
             agent.record_action(action_type, json.dumps(action_dict), result.success)
 
@@ -524,7 +535,7 @@ class SimulationRunner:
             self.agents.extend(new_agents)
 
             # Capture state snapshot (Two-Phase Commit: Observe)
-            tick_state: dict[str, Any] = self.world.get_state_summary()
+            tick_state: StateSummary = self.world.get_state_summary()
 
             # Check budget before thinking
             if self.engine.is_budget_exhausted():

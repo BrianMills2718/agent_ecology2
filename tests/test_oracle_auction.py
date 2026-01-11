@@ -9,9 +9,9 @@ Tests the new auction-based oracle with:
 """
 
 import pytest
-from world.ledger import Ledger
-from world.artifacts import ArtifactStore
-from world.genesis import GenesisOracle, create_genesis_artifacts
+from src.world.ledger import Ledger
+from src.world.artifacts import ArtifactStore
+from src.world.genesis import GenesisOracle, create_genesis_artifacts
 
 
 class TestOracleAuctionPhases:

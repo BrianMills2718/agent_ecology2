@@ -7,14 +7,11 @@ Note: The executor is now unrestricted (no RestrictedPython) and relies on
 Docker container isolation for security instead of Python-level sandboxing.
 """
 
-import sys
 from pathlib import Path
 
 import pytest
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-from world.executor import SafeExecutor
+from src.world.executor import SafeExecutor
 
 
 class TestUnrestrictedExecution:

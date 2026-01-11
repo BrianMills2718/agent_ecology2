@@ -4,16 +4,13 @@ Tests for the spawn_principal method in GenesisLedger, which allows
 agents to create new principals (child agents) in the system.
 """
 
-import sys
 from pathlib import Path
 
 import pytest
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from world.ledger import Ledger
-from world.genesis import GenesisLedger
+from src.world.ledger import Ledger
+from src.world.genesis import GenesisLedger
 
 
 @pytest.fixture

@@ -3,7 +3,8 @@
 from typing import Any, TypedDict, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from agents import Agent
+    from ..agents import Agent
+    from ..agents.agent import ActionResult as AgentActionResult
 
 
 class PrincipalConfig(TypedDict):
@@ -35,7 +36,7 @@ class ActionProposal(TypedDict):
     """Structure for an agent's action proposal during two-phase commit."""
 
     agent: "Agent"
-    proposal: dict[str, Any]
+    proposal: "AgentActionResult"
     thinking_cost: int
     api_cost: float
 
@@ -44,7 +45,7 @@ class ThinkingResult(TypedDict, total=False):
     """Result from parallel agent thinking."""
 
     agent: "Agent"
-    proposal: dict[str, Any]
+    proposal: "AgentActionResult"
     thinking_cost: int
     api_cost: float
     input_tokens: int

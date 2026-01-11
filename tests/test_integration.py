@@ -5,18 +5,14 @@ They directly test the World class by crafting ActionIntent objects
 and calling execute_action.
 """
 
-import sys
 import tempfile
 import os
 from pathlib import Path
 
 import pytest
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
-from world import World
-from world.actions import (
+from src.world import World
+from src.world.actions import (
     NoopIntent,
     ReadArtifactIntent,
     WriteArtifactIntent,

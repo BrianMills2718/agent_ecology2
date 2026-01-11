@@ -6,6 +6,7 @@
     <title>Agent Ecology Dashboard</title>
     <link rel="stylesheet" href="/static/css/dashboard.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js"></script>
 </head>
 <body>
     <div class="dashboard">
@@ -116,35 +117,76 @@
                 </section>
             </div>
 
-            <!-- Center Column: Charts and Timeline -->
+            <!-- Center Column: Network Graph and Activity Feed -->
             <div class="center-column">
-                <!-- Charts Panel -->
-                <section class="panel charts-panel">
+                <!-- Network Graph Panel -->
+                <section class="panel network-panel">
                     <div class="panel-header">
-                        <h2>Resource Utilization</h2>
-                        <div class="chart-tabs">
-                            <button class="tab-btn active" data-chart="compute">Compute</button>
-                            <button class="tab-btn" data-chart="scrip">Scrip</button>
-                            <button class="tab-btn" data-chart="flow">Flow</button>
+                        <h2>Agent Interactions</h2>
+                        <div class="network-controls">
+                            <input type="range" id="tick-slider" min="0" max="100" value="100" class="tick-slider">
+                            <span id="tick-slider-value">Tick: All</span>
                         </div>
                     </div>
-                    <div class="panel-content chart-container">
-                        <canvas id="resource-chart"></canvas>
+                    <div class="panel-content network-container" id="network-container">
+                        <!-- vis.js network renders here -->
+                    </div>
+                    <div class="network-legend">
+                        <span class="legend-item"><span class="legend-dot scrip-transfer"></span> Scrip Transfer</span>
+                        <span class="legend-item"><span class="legend-dot escrow-trade"></span> Trade</span>
+                        <span class="legend-item"><span class="legend-dot ownership-transfer"></span> Ownership</span>
+                        <span class="legend-item"><span class="legend-dot artifact-invoke"></span> Invoke</span>
                     </div>
                 </section>
 
-                <!-- Timeline Panel -->
-                <section class="panel timeline-panel">
+                <!-- Activity Feed Panel -->
+                <section class="panel activity-panel">
                     <div class="panel-header">
-                        <h2>Action Timeline</h2>
-                        <div class="timeline-controls">
-                            <select id="timeline-agent-filter" class="filter-select">
-                                <option value="">All Agents</option>
+                        <h2>Activity Feed</h2>
+                        <div class="activity-controls">
+                            <select id="activity-type-filter" class="filter-select">
+                                <option value="">All Activity</option>
+                                <option value="artifact_created,artifact_updated">Artifacts</option>
+                                <option value="scrip_transfer">Transfers</option>
+                                <option value="escrow_listed,escrow_purchased,escrow_cancelled">Trades</option>
+                                <option value="ownership_transfer">Ownership</option>
+                                <option value="oracle_mint">Mints</option>
                             </select>
                         </div>
                     </div>
-                    <div class="panel-content scrollable" id="timeline-content">
+                    <div class="panel-content scrollable" id="activity-content">
                         <!-- Populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Agent Thinking Panel -->
+                <section class="panel thinking-panel" id="thinking-panel">
+                    <div class="panel-header">
+                        <h2>Agent Thinking</h2>
+                        <div class="thinking-controls">
+                            <select id="thinking-agent-filter" class="filter-select">
+                                <option value="">All Agents</option>
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="panel-content scrollable" id="thinking-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </section>
+
+                <!-- Charts Panel (collapsed) -->
+                <section class="panel charts-panel collapsed">
+                    <div class="panel-header" id="charts-toggle">
+                        <h2>Resource Charts</h2>
+                        <span class="collapse-icon">+</span>
+                    </div>
+                    <div class="panel-content chart-container" id="charts-content">
+                        <div class="chart-tabs">
+                            <button class="tab-btn active" data-chart="compute">Compute</button>
+                            <button class="tab-btn" data-chart="scrip">Scrip</button>
+                        </div>
+                        <canvas id="resource-chart"></canvas>
                     </div>
                 </section>
             </div>
@@ -252,6 +294,42 @@
                             <!-- Populated by JS -->
                         </div>
                     </div>
+                    <div class="modal-section">
+                        <h3>Recent Thinking</h3>
+                        <div class="modal-list scrollable" id="modal-thinking">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Artifact Detail Modal -->
+        <div id="artifact-modal" class="modal hidden">
+            <div class="modal-content modal-wide">
+                <div class="modal-header">
+                    <h2 id="artifact-modal-title">Artifact Details</h2>
+                    <button class="modal-close" id="artifact-modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-section">
+                        <h3>Info</h3>
+                        <div class="modal-stats" id="artifact-modal-info">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                    <div class="modal-section">
+                        <h3>Content</h3>
+                        <pre class="code-block" id="artifact-modal-content">
+                            <!-- Populated by JS -->
+                        </pre>
+                    </div>
+                    <div class="modal-section">
+                        <h3>Ownership History</h3>
+                        <div class="modal-list" id="artifact-modal-ownership">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -263,11 +341,13 @@
     <script src="/static/js/panels/progress.js"></script>
     <script src="/static/js/panels/agents.js"></script>
     <script src="/static/js/panels/artifacts.js"></script>
-    <script src="/static/js/panels/timeline.js"></script>
     <script src="/static/js/panels/events.js"></script>
     <script src="/static/js/panels/charts.js"></script>
     <script src="/static/js/panels/genesis.js"></script>
     <script src="/static/js/panels/controls.js"></script>
+    <script src="/static/js/panels/network.js"></script>
+    <script src="/static/js/panels/activity.js"></script>
+    <script src="/static/js/panels/thinking.js"></script>
     <script src="/static/js/main.js"></script>
 </body>
 </html>

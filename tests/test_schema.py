@@ -1,10 +1,8 @@
 """Unit tests for action schema validation."""
 
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-from agents.schema import validate_action_json, ActionType
+from src.agents.schema import validate_action_json, ActionType
 
 
 class TestValidActions:

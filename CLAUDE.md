@@ -85,7 +85,7 @@ Scrip is NOT a resource. It's the medium of exchange.
 Each tick:
 1. Flow resources refresh (compute, bandwidth)
 2. Each agent thinks (costs from their llm_budget)
-3. Each agent acts (costs compute, may cost scrip)
+3. Each agent acts (actions are free, may cost scrip for trades)
 4. Stock resources don't refresh (llm_budget, disk)
 
 ## Failure States
@@ -104,7 +104,7 @@ Each tick:
 ### Configuration Rules
 
 1. **No magic numbers in code** - Every numeric value must come from config
-2. **Use `src/config.py` helpers** - `get()`, `get_genesis_config()`, `get_action_cost()`
+2. **Use `src/config.py` helpers** - `get()`, `get_genesis_config()`
 3. **Fallbacks must reference schema defaults** - Document why the fallback exists
 4. **New features need config entries** - Add to both `config.yaml` and `schema.yaml`
 
@@ -113,11 +113,14 @@ Each tick:
 timeout = 30
 limit = min(n, 100)
 
-# RIGHT
-from config import get
+# RIGHT (from within src/ package)
+from ..config import get
 timeout = get("oracle_scorer.timeout") or 30  # 30 is schema default
 max_limit = get("genesis.event_log.max_per_read") or 100
 limit = min(n, max_limit)
+
+# RIGHT (from run.py or tests)
+from src.config import get
 ```
 
 ### Pydantic Models
@@ -193,7 +196,7 @@ resources:        # Physical/financial scarcity
   flow:           # Per-tick refresh (compute, bandwidth)
 
 scrip:            # Economic currency settings
-costs:            # Action compute costs
+costs:            # Token costs for thinking (actions are free)
 genesis:          # Genesis artifact configuration
   artifacts:      # Which artifacts to create
   ledger:         # Ledger method costs
@@ -295,3 +298,7 @@ See [docs/DEFERRED_FEATURES.md](docs/DEFERRED_FEATURES.md) for features consider
 | Pay Capability | `pay()` and `get_balance()` functions in executor for artifacts |
 | Ownership Transfer | `genesis_ledger.transfer_ownership()` method for artifact trading |
 | genesis_escrow | Trustless escrow for artifact trading - demonstrates Gatekeeper pattern |
+| Package Structure | Proper Python package with relative imports, editable install via `pip install -e .` |
+| LLM Log Metadata | Logs include `agent_id`, `run_id`, `tick` for queryability |
+| mypy Compliance | All 28 source files pass mypy with 0 errors |
+| Test Suite | 305 tests passing with proper `src.` imports |

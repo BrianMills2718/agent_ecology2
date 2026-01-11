@@ -90,7 +90,8 @@ class Agent:
         llm_model: str = "gemini/gemini-3-flash-preview",
         system_prompt: str = "",
         action_schema: str = "",
-        log_dir: str = "llm_logs"
+        log_dir: str = "llm_logs",
+        run_id: str | None = None,
     ) -> None:
         self.agent_id = agent_id
         self.llm_model = llm_model
@@ -99,11 +100,15 @@ class Agent:
         self.memory = get_memory()
         self.last_action_result = None  # Track result of last action for feedback
 
-        # Initialize LLM provider
+        # Initialize LLM provider with agent metadata for logging
+        extra_metadata: dict[str, Any] = {"agent_id": agent_id}
+        if run_id:
+            extra_metadata["run_id"] = run_id
         self.llm = LLMProvider(
             model=llm_model,
             log_dir=log_dir,
-            timeout=60
+            timeout=60,
+            extra_metadata=extra_metadata,
         )
 
     def _is_gemini_model(self) -> bool:
@@ -157,7 +162,7 @@ class Agent:
                     oracle_lines.append(f"- {art_id}: {status.upper()} by {sub.get('submitter')}")
             oracle_info = "\n## Oracle Submissions\n" + "\n".join(oracle_lines)
         else:
-            oracle_info = "\n## Oracle Submissions\n(No submissions yet - submit code artifacts to mint credits!)"
+            oracle_info = "\n## Oracle Submissions\n(No submissions yet - submit code artifacts to mint scrip!)"
 
         # Format last action result feedback
         action_feedback: str
@@ -186,6 +191,22 @@ class Agent:
                     event_lines.append(f"[T{tick}] {agent}: {action} -> {success}")
                 elif event_type == 'tick':
                     event_lines.append(f"[T{tick}] --- tick {tick} started ---")
+                elif event_type == 'intent_rejected':
+                    agent = event.get('principal_id', '?')
+                    error = event.get('error', 'unknown error')[:50]
+                    event_lines.append(f"[T{tick}] {agent}: REJECTED - {error}")
+                elif event_type == 'oracle_auction':
+                    winner = event.get('winner_id')
+                    artifact = event.get('artifact_id', '?')
+                    score = event.get('score', 0)
+                    if winner:
+                        event_lines.append(f"[T{tick}] ORACLE: {winner} won with {artifact} (score={score})")
+                    else:
+                        event_lines.append(f"[T{tick}] ORACLE: no winner this tick")
+                elif event_type == 'thinking_failed':
+                    agent = event.get('principal_id', '?')
+                    reason = event.get('reason', 'unknown')
+                    event_lines.append(f"[T{tick}] {agent}: OUT OF COMPUTE ({reason})")
             recent_activity = "\n## Recent Activity\n" + "\n".join(event_lines) if event_lines else ""
         else:
             recent_activity = ""
@@ -199,7 +220,7 @@ class Agent:
 
 ## Current World State
 - Current tick: {world_state.get('tick', 0)}
-- Your balance: {world_state.get('balances', {}).get(self.agent_id, 0)} credits
+- Your balance: {world_state.get('balances', {}).get(self.agent_id, 0)} scrip
 - All balances: {json.dumps(world_state.get('balances', {}))}
 {quota_info}
 
@@ -230,6 +251,9 @@ Your response should include:
           - 'usage' (token usage: input_tokens, output_tokens, total_tokens, cost)
         """
         prompt: str = self.build_prompt(world_state)
+
+        # Update tick in log metadata
+        self.llm.extra_metadata["tick"] = world_state.get("tick", 0)
 
         try:
             # Use FlatActionResponse for Gemini (avoids anyOf/oneOf issues)
@@ -279,6 +303,9 @@ Your response should include:
           - 'usage' (token usage: input_tokens, output_tokens, total_tokens, cost)
         """
         prompt: str = self.build_prompt(world_state)
+
+        # Update tick in log metadata
+        self.llm.extra_metadata["tick"] = world_state.get("tick", 0)
 
         try:
             # Use FlatActionResponse for Gemini (avoids anyOf/oneOf issues)
