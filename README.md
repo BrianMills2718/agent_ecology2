@@ -1,48 +1,115 @@
 # Agent Ecology
 
-A simulation framework where LLM agents interact under real resource constraints.
+A mechanism design substrate where LLM agents coordinate under real resource constraints.
 
-## Overview
+## What This Is
 
-Agent Ecology creates an economic environment where multiple LLM agents operate within realistic resource limits. Agents can read, write, and invoke artifacts (code and data), trade resources, and earn scrip (currency) by creating valuable services.
+Agent Ecology is **not a simulation**. It's a substrate for studying how heterogeneous AI agents interact when actions have real costs and consequences.
 
-## Physics-First Philosophy
+The goal is **emergence**: we don't define how agents should coordinate, specialize, or organize. We define scarcity and cost. Structure emerges—or doesn't—based on what works.
 
-The simulation is built on five core principles:
+## The Problem
 
-1. **Time is scarce** - Every token consumes compute. Efficient agents preserve resources for future actions.
+How do you get useful collective behavior from multiple AI agents without prescribing it?
 
-2. **Resources are concrete** - Three distinct resource types with physical meaning:
-   - *Compute* (flow) - Refreshes each tick, models CPU/GPU cycles
-   - *Disk* (stock) - Finite storage, never refreshes
-   - *Scrip* (signal) - Economic currency, separate from physical constraints
+Traditional approaches define roles, permissions, workflows, and coordination protocols upfront. This works when you know what you want. But for open-ended AI agent systems, you don't know what structures will be useful until agents discover them.
 
-3. **Money is a signal** - Scrip is deliberately separated from physical resources. An agent can be rich in scrip but starved of compute, or vice versa.
+Agent Ecology takes a different approach: **constrain resources, not behavior**. Create real scarcity. Let agents figure out how to survive and thrive. Observe what emerges.
 
-4. **Identity is capital** - Agents can spawn new principals via `spawn_principal`. Each identity has its own resource accounts and reputation.
+## Core Philosophy
 
-5. **Trust is emergent** - The ledger is ground truth; agent descriptions can lie. Trust must be verified through behavior, not claimed.
+### Physics-First, Not Sociology-First
+
+Most multi-agent systems start with social structure: agent types, roles, organizations, permissions, coordination protocols. Then they simulate behavior within that structure.
+
+We start with physics:
+- **Scarcity** - Finite resources that don't refresh (or refresh slowly)
+- **Cost** - Every action consumes something
+- **Consequences** - Overspend and you freeze
+
+Social structure (specialization, trade, cooperation) emerges as a response to scarcity—or it doesn't, and that's informative too.
+
+### Emergence Over Prescription
+
+We deliberately avoid:
+- Predefined agent roles or types
+- Built-in coordination mechanisms
+- Special communication channels
+- Hard-coded "best practices"
+
+If agents need to coordinate, they must build coordination mechanisms from primitives (artifacts, contracts, transfers). If they need to specialize, the economics must reward it. Nothing is free.
+
+### Real Constraints, Not Proxies
+
+Resources in Agent Ecology map to real-world constraints:
+- **llm_budget** = Actual dollars spent on API calls
+- **disk** = Actual bytes stored
+- **compute** = Rate limit on actions per time window
+
+When the budget runs out, it's actually out. This grounds agent behavior in reality rather than abstract token economies.
+
+### Observability Over Control
+
+We don't try to make agents behave correctly. We make their behavior **observable**:
+- Every action is logged with full context
+- Every cost is attributed to a principal
+- Every failure is explicit and inspectable
+
+If agents behave badly, we see it. If they waste resources, we measure it. The system learns through visible failure, not hidden correction.
+
+## Resource Model
+
+Three types of scarcity create pressure:
+
+| Type | Resources | Behavior | Purpose |
+|------|-----------|----------|---------|
+| **Stock** | `llm_budget`, `disk` | Finite, never refreshes | Long-term constraint |
+| **Flow** | `compute` | Refreshes each tick | Short-term rate limit |
+| **Economic** | `scrip` | Transfers between agents | Coordination signal |
+
+**Key insight**: Scrip (money) is deliberately separated from physical resources. An agent can be rich in scrip but starved of compute, or vice versa. Money coordinates; physics constrains.
+
+## How Agents Interact
+
+Agents operate through three actions (the "narrow waist"):
+
+| Action | What it does | Cost |
+|--------|--------------|------|
+| `read_artifact` | Read content from storage | Free |
+| `write_artifact` | Create or update stored content | Disk quota |
+| `invoke_artifact` | Call a method on an artifact | Varies (scrip fee, compute) |
+
+Everything else—transfers, spawning agents, querying balances—happens via `invoke_artifact` on genesis artifacts. This keeps the action surface minimal and auditable.
+
+## Genesis Artifacts
+
+System-provided services available to all agents:
+
+| Artifact | Purpose | Key Methods |
+|----------|---------|-------------|
+| `genesis_ledger` | Scrip balances | `transfer`, `balance`, `spawn_principal` |
+| `genesis_rights_registry` | Resource quotas | `check_quota`, `transfer_quota` |
+| `genesis_oracle` | Score artifacts, mint scrip | `submit`, `process` |
+| `genesis_event_log` | World event history | `read` |
+| `genesis_escrow` | Trustless trading | `list`, `buy` |
+
+Genesis artifacts have no special mechanical privilege—they're just artifacts created at world initialization. Their authority comes from being the canonical interfaces to core infrastructure.
 
 ## Quick Start
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Install the package in editable mode (required for imports)
+# Install
 pip install -e .
 
-# Set up API keys in .env
+# Configure API keys
 cp .env.example .env
 # Edit .env with your LLM API credentials
 
-# Run the simulation
+# Run
 python run.py                    # Run with defaults
 python run.py --ticks 10         # Limit to 10 ticks
-python run.py --agents 1         # Run with only first agent
-python run.py --quiet            # Suppress output
-python run.py --delay 5          # 5 second delay between LLM calls
-python run.py --dashboard        # Run with HTML dashboard
+python run.py --agents 1         # Single agent
+python run.py --dashboard        # With HTML dashboard
 ```
 
 ## Configuration
@@ -50,213 +117,84 @@ python run.py --dashboard        # Run with HTML dashboard
 Key settings in `config/config.yaml`:
 
 ```yaml
-# Resource limits
 resources:
   stock:
     llm_budget: { total: 1.00 }    # $ for API calls
-    disk: { total: 50000 }         # bytes total
+    disk: { total: 50000 }         # bytes
   flow:
-    compute: { per_tick: 1000 }    # cycles per tick
+    compute: { per_tick: 1000 }    # actions per tick
 
-# Starting currency
 scrip:
-  starting_amount: 100
+  starting_amount: 100             # initial currency
 
-# Token costs (for thinking)
-costs:
-  per_1k_input_tokens: 1
-  per_1k_output_tokens: 3
-
-# World settings
 world:
   max_ticks: 100
-
-# Budget limits
-budget:
-  max_api_cost: 1.00              # $ total API spend
 ```
-
-## Key Features
-
-### Two-Phase Commit
-Each tick executes in two phases for fairness:
-1. **Collect phase** - All agents submit actions simultaneously
-2. **Execute phase** - Actions are applied atomically
-
-This prevents ordering advantages and enables true concurrency.
-
-### spawn_principal
-Agents can create new agents dynamically:
-```json
-{"action_type": "spawn_principal", "principal_id": "my_worker", "config": {...}}
-```
-Spawned principals inherit resources from their creator and can act independently.
-
-### Policy System
-Artifacts support access control policies:
-- **read_policy** - Who can read the artifact
-- **invoke_policy** - Who can call methods
-- Policies reference principal IDs or wildcards
-
-### Originality Oracle
-The `genesis_oracle` detects duplicate or derivative artifacts:
-- Compares new submissions against existing artifacts
-- Only novel contributions earn scrip rewards
-- Prevents copy-paste farming
-
-### Pydantic Structured Outputs
-Actions are parsed using Pydantic models for reliability:
-- Schema validation on all agent outputs
-- Clear error messages for malformed actions
-- Type-safe action handling throughout
 
 ## Architecture
 
-### Core Components
-
-- **World** - Manages simulation state, tick advancement, and action execution
-- **Agents** - LLM-powered actors loaded from `agents/` directory
-- **Ledger** - Tracks scrip balances and resource rights
-- **Artifacts** - Code and data objects agents can create and interact with
-
-### Genesis Artifacts
-
-System-provided services available to all agents:
-
-| Artifact | Purpose |
-|----------|---------|
-| `genesis_ledger` | Scrip balances and transfers |
-| `genesis_rights_registry` | Resource quota management |
-| `genesis_oracle` | Score code artifacts and mint scrip |
-| `genesis_event_log` | World event history |
-| `genesis_escrow` | Trustless artifact trading |
-
-### Resource Model
-
-| Type | Resources | Behavior |
-|------|-----------|----------|
-| Stock | `llm_budget`, `disk` | Finite, never refreshes |
-| Flow | `compute`, `bandwidth` | Refreshes each tick |
-
-When agents exhaust resources, they must acquire more from others via trading rights.
-
-## Security Model
-
-Agent code executes with minimal restrictions:
-
-- **Unrestricted executor** - No RestrictedPython sandbox. Agent code has full Python capabilities.
-- **Docker isolation** - Simulation runs as non-root user inside Docker container for process-level isolation.
-- **API key access** - Agent code can access environment variables including API keys. This is intentional - agents may need to call external services.
-
-The security boundary is the container, not the Python interpreter. Agents are trusted with full code execution within the container's constraints.
-
-## Actions
-
-Agents operate through three core verbs (narrow waist design):
-
-### read_artifact
-Read content from an artifact.
-```json
-{"action_type": "read_artifact", "artifact_id": "<id>"}
 ```
-Cost: Free (content adds to context when you next think)
-
-### write_artifact
-Create or update an artifact.
-```json
-{"action_type": "write_artifact", "artifact_id": "<id>", "artifact_type": "<type>", "content": "<content>"}
+agent_ecology/
+  run.py              # Entry point
+  config/
+    config.yaml       # Runtime values
+    schema.yaml       # Config documentation
+  src/
+    world/            # World state, ledger, executor
+    agents/           # Agent loading, LLM interaction
+    simulation/       # Runner, checkpointing
+    dashboard/        # HTML dashboard
+  tests/              # Test suite
+  docs/
+    architecture/     # Current and target architecture
 ```
 
-For executable artifacts:
-```json
-{
-  "action_type": "write_artifact",
-  "artifact_id": "<id>",
-  "artifact_type": "executable",
-  "content": "<description>",
-  "executable": true,
-  "price": 5,
-  "resource_policy": "caller_pays",
-  "code": "def run(*args): return args[0] * 2"
-}
-```
-- `price`: Scrip paid to owner when invoked
-- `resource_policy`: `"caller_pays"` (default) or `"owner_pays"` - who pays physical resources
+### Execution Model
 
-Cost: Free (uses disk quota for storage)
+Each tick:
+1. **Collect** - All agents submit actions simultaneously
+2. **Execute** - Actions applied atomically (two-phase commit)
 
-### invoke_artifact
-Call a method on an artifact.
-```json
-{"action_type": "invoke_artifact", "artifact_id": "<id>", "method": "<method>", "args": [...]}
-```
-Cost: Free (method may have scrip fee for genesis artifacts)
+This prevents ordering advantages and enables fair concurrency.
 
-Example - transfer scrip:
-```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_ledger", "method": "transfer", "args": ["agent_a", "agent_b", 10]}
-```
+### Security Model
+
+- **No Python sandbox** - Agent code has full Python capabilities
+- **Docker isolation** - Container is the security boundary
+- **Intentional API access** - Agents can call external services
+
+Agents are trusted within the container. The container is not trusted beyond its limits.
 
 ## Development
 
-### Setup
-
 ```bash
-# Install in editable mode (required)
-pip install -e .
-
-# Run tests
-pytest tests/
-
-# Type checking
-python -m mypy src/ --ignore-missing-imports
+pip install -e .                              # Install
+pytest tests/                                 # Run tests
+python -m mypy src/ --ignore-missing-imports  # Type check
 ```
 
-### Type Checking
+### Standards
 
-The project uses strict type hints throughout. All code must pass mypy.
+- All functions require type hints
+- No magic numbers—values come from config
+- Terminology: `compute`, `disk`, `scrip` (not "credits" or "tokens")
+- Relative imports within `src/`
 
-```bash
-# Run mypy on entire src directory
-python -m mypy src/ --ignore-missing-imports
+## What Success Looks Like
 
-# Check specific files
-python -m mypy src/world/ src/agents/ --ignore-missing-imports
-```
+Success is **not** agents behaving optimally. It's:
+- Assumptions surfaced early through failure
+- Failures explainable via logs
+- Structure emerging (or not) for observable reasons
+- The system remaining understandable even when agents behave badly
 
-### Code Standards
+We're building a pressure vessel for AI coordination, not a solution. The goal is to make intelligence pay for its actions and make the results legible.
 
-- All functions require type hints (parameters and return types)
-- No magic numbers in code - all values come from config
-- Use modern Python typing: `dict[str, Any]` not `Dict[str, Any]`
-- Consistent terminology: `compute`, `disk`, `scrip` (not credits)
-- Use relative imports within `src/` package (e.g., `from ..config import get`)
-- Tests use `from src.module import` style
+## Documentation
 
-### Project Structure
-
-```
-agent_ecology/
-  run.py              # Main entry point
-  pyproject.toml      # Package configuration
-  config/
-    config.yaml       # Configuration values
-    schema.yaml       # Config documentation
-  src/
-    world/            # World state and execution
-    agents/           # Agent loading and LLM interaction
-    simulation/       # SimulationRunner and checkpoint
-    config.py         # Config helpers
-    config_schema.py  # Pydantic config validation
-    dashboard/        # HTML dashboard server
-  tests/              # Test suite (319 tests)
-  llm_logs/           # LLM interaction logs (by date)
-```
-
-### Logging
-
-- **Simulation events**: Logged to `run.jsonl`
-- **LLM interactions**: Saved to `llm_logs/YYYYMMDD/` with metadata:
-  - `agent_id`: Which agent made the call
-  - `run_id`: Simulation run identifier
-  - `tick`: Current simulation tick
+| Document | Purpose |
+|----------|---------|
+| [Target Architecture](docs/architecture/target/README.md) | What we're building toward |
+| [Current Architecture](docs/architecture/current/README.md) | What exists today |
+| [Design Clarifications](docs/DESIGN_CLARIFICATIONS.md) | Decision rationale with certainty levels |
+| [Glossary](docs/GLOSSARY.md) | Canonical terminology |
