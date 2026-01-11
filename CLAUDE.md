@@ -115,6 +115,13 @@ from src.world import World
 | `principal` | `account` |
 | `tick` | `turn` |
 
+### Testing Philosophy
+
+1. **Prefer real tests over mocks** - Test actual behavior, not mocked interfaces
+2. **Mock only when necessary** - External APIs, network calls, time-sensitive operations
+3. **If mocking, document why** - Comment explaining why mock is required
+4. **Integration tests are valuable** - Test components working together
+
 ### Documentation Rules
 
 1. **Code is primary** - Make code self-explanatory, minimal comments
@@ -154,18 +161,15 @@ Multiple Claude Code instances may work simultaneously.
 
 | CC-ID | Task | Started |
 |-------|------|---------|
-| CC-1 | Available | - |
+| CC-1 | Align config defaults | 2025-01-11 |
 | CC-2 | Available | - |
 | CC-3 | Available | - |
-| CC-4 | Add SimulationRunner tests | 2025-01-11 |
+| CC-4 | Move hardcoded values to config | 2025-01-11 |
 
 ### Task Backlog
 
 | Task | Description | Priority |
 |------|-------------|----------|
-| Add AgentMemory tests | 234 lines, 0% coverage, Qdrant | High |
-| Move hardcoded values to config | Model names, timeouts | Medium |
-| Align config defaults | Dashboard port mismatches | Medium |
 | Add artifact ID length validation | Prevent DoS | Low |
 | Document Windows timeout limitation | signal.alarm Unix-only | Low |
 
@@ -173,7 +177,8 @@ Multiple Claude Code instances may work simultaneously.
 
 | Task | CC-ID | Started | Notes |
 |------|-------|---------|-------|
-| Add SimulationRunner tests | CC-4 | 2025-01-11 | 598 lines, critical path |
+| Move hardcoded values to config | CC-4 | 2025-01-11 | Model names, timeouts |
+| Align config defaults | CC-1 | 2025-01-11 | Dashboard port, compute unit mismatches |
 
 ### Awaiting Review
 

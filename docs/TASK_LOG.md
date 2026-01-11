@@ -19,6 +19,8 @@ Historical record of completed tasks. Moved here from CLAUDE.md to keep coordina
 | Remove deprecated transfer action | CC-4 | Removed from ActionType Literal, kept helpful error message |
 | Kernel simplification | CC-2 | Removed resource_policy from kernel, fixed world state bloat, seeded genesis_handbook, fixed turn->tick terminology |
 | Add Agent Loader tests | CC-4 | 22 tests for load_agents, list_agents, get_default_prompt |
+| Add SimulationRunner tests | CC-4 | 25 tests for init, checkpoint, principals, pause/resume, status. Reviewed by CC-1 |
+| Add AgentMemory tests | CC-4 | 23 tests for add, search, record_action, singleton, config. Mocks justified (external APIs). Reviewed by CC-1 |
 
 ---
 

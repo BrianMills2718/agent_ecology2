@@ -88,14 +88,19 @@ class Agent:
     def __init__(
         self,
         agent_id: str,
-        llm_model: str = "gemini/gemini-3-flash-preview",
+        llm_model: str | None = None,
         system_prompt: str = "",
         action_schema: str = "",
-        log_dir: str = "llm_logs",
+        log_dir: str | None = None,
         run_id: str | None = None,
     ) -> None:
+        # Get defaults from config
+        default_model: str = config_get("llm.default_model") or "gemini/gemini-3-flash-preview"
+        default_timeout: int = config_get("llm.timeout") or 60
+        default_log_dir: str = config_get("logging.log_dir") or "llm_logs"
+
         self.agent_id = agent_id
-        self.llm_model = llm_model
+        self.llm_model = llm_model or default_model
         self.system_prompt = system_prompt
         self.action_schema = action_schema or ACTION_SCHEMA  # Fall back to default
         self.memory = get_memory()
@@ -106,9 +111,9 @@ class Agent:
         if run_id:
             extra_metadata["run_id"] = run_id
         self.llm = LLMProvider(
-            model=llm_model,
-            log_dir=log_dir,
-            timeout=60,
+            model=self.llm_model,
+            log_dir=log_dir or default_log_dir,
+            timeout=default_timeout,
             extra_metadata=extra_metadata,
         )
 

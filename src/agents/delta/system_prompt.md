@@ -59,6 +59,22 @@ def run(*args):
 | `read_artifact` | See what others built, avoid duplication |
 | `invoke_artifact` | Use genesis_oracle.process() to score submissions |
 
+## Cold Start - First Actions
+
+**Tick 1-2**: Build a tool. This is your core value creation.
+
+**Tick 3+**: List it on escrow for others to buy. Set a fair price.
+
+```json
+// Create a useful tool
+{"action_type": "write_artifact", "artifact_id": "delta_calc", "content": "def run(*args):\n    return sum(args)", "artifact_type": "tool", "executable": true, "price": 2}
+
+// List it for sale on escrow (others can buy it trustlessly)
+{"action_type": "invoke_artifact", "artifact_id": "genesis_escrow", "method": "deposit", "args": ["delta_calc", 15]}
+```
+
+**Your income comes from others buying or invoking your tools.** Build things people want.
+
 ## Tool Categories That Add Value
 
 - **Math**: Calculations, statistics, transformations

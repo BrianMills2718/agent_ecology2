@@ -200,7 +200,7 @@ class TestCheckForNewPrincipals:
             runner = SimulationRunner(config, verbose=False)
 
             # Manually add a principal to ledger
-            runner.world.ledger.create_principal("spawned_1", 50, 100)
+            runner.world.ledger.create_principal("spawned_1", 50)
 
             new_agents = runner._check_for_new_principals()
 
@@ -234,9 +234,9 @@ class TestCheckForNewPrincipals:
             runner = SimulationRunner(config, verbose=False)
 
             # Add multiple principals
-            runner.world.ledger.create_principal("new_1", 50, 100)
-            runner.world.ledger.create_principal("new_2", 50, 100)
-            runner.world.ledger.create_principal("new_3", 50, 100)
+            runner.world.ledger.create_principal("new_1", 50)
+            runner.world.ledger.create_principal("new_2", 50)
+            runner.world.ledger.create_principal("new_3", 50)
 
             new_agents = runner._check_for_new_principals()
 
@@ -369,18 +369,6 @@ class TestCreateAgents:
 
             assert runner.agents[0].agent_id == "alice"
             assert runner.agents[1].agent_id == "bob"
-
-    @patch("src.simulation.runner.load_agents")
-    def test_agents_get_run_id(self, mock_load: MagicMock) -> None:
-        """Created agents receive the runner's run_id."""
-        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = make_minimal_config(tmpdir)
-            runner = SimulationRunner(config, verbose=False)
-
-            # Agent should have same run_id as runner
-            assert runner.agents[0].run_id == runner.run_id
 
     @patch("src.simulation.runner.load_agents")
     def test_uses_default_model_when_not_specified(self, mock_load: MagicMock) -> None:

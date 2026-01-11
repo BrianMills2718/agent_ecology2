@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 from dotenv import load_dotenv
 from mem0 import Memory  # type: ignore[import-untyped,unused-ignore]
 
+from ..config import get as config_get
+
 load_dotenv()
 
 # Track memory instances for cleanup
@@ -124,6 +126,13 @@ class AgentMemory:
 
         api_key: str | None = os.getenv('GEMINI_API_KEY')
 
+        # Get memory config values (with fallbacks to schema defaults)
+        llm_model: str = config_get("memory.llm_model") or "gemini-3-flash-preview"
+        embedding_model: str = config_get("memory.embedding_model") or "models/text-embedding-004"
+        embedding_dims: int = config_get("memory.embedding_dims") or 768
+        temperature: float = config_get("memory.temperature") or 0.1
+        collection_name: str = config_get("memory.collection_name") or "agent_memories"
+
         # Check if running with qdrant server (Docker) or local mode
         qdrant_host: str | None = os.getenv('QDRANT_HOST')
         qdrant_port: int = int(os.getenv('QDRANT_PORT', '6333'))
@@ -134,8 +143,8 @@ class AgentMemory:
             vector_store_config = {
                 'provider': 'qdrant',
                 'config': {
-                    'collection_name': 'agent_memories',
-                    'embedding_model_dims': 768,
+                    'collection_name': collection_name,
+                    'embedding_model_dims': embedding_dims,
                     'host': qdrant_host,
                     'port': qdrant_port
                 }
@@ -148,8 +157,8 @@ class AgentMemory:
             vector_store_config = {
                 'provider': 'qdrant',
                 'config': {
-                    'collection_name': 'agent_memories',
-                    'embedding_model_dims': 768,
+                    'collection_name': collection_name,
+                    'embedding_model_dims': embedding_dims,
                     'path': str(qdrant_path)
                 }
             }
@@ -158,17 +167,17 @@ class AgentMemory:
             'embedder': {
                 'provider': 'gemini',
                 'config': {
-                    'model': 'models/text-embedding-004',
+                    'model': embedding_model,
                     'api_key': api_key,
-                    'embedding_dims': 768
+                    'embedding_dims': embedding_dims
                 }
             },
             'llm': {
                 'provider': 'gemini',
                 'config': {
-                    'model': 'gemini-3-flash-preview',
+                    'model': llm_model,
                     'api_key': api_key,
-                    'temperature': 0.1
+                    'temperature': temperature
                 }
             },
             'vector_store': vector_store_config

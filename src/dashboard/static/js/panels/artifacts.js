@@ -110,16 +110,27 @@ const ArtifactsPanel = {
                 oracleTooltip = 'Not submitted: Artifact not yet submitted to oracle for scoring';
             }
 
-            // Price tooltip
-            const priceTooltip = artifact.price > 0
-                ? `Price: ${artifact.price} scrip to invoke this artifact`
-                : 'Free: No cost to invoke';
+            // Price display - show base price, indicate if potentially dynamic
+            let priceDisplay, priceTooltip;
+            const isGenesis = artifact.artifact_id.startsWith('genesis_');
+
+            if (artifact.executable && !isGenesis) {
+                // Executable user artifacts may have dynamic pricing via code
+                priceDisplay = artifact.price > 0 ? `${artifact.price}*` : '0*';
+                priceTooltip = `Base price: ${artifact.price} scrip\n* Executable artifacts may compute dynamic fees`;
+            } else if (artifact.price > 0) {
+                priceDisplay = artifact.price;
+                priceTooltip = `Price: ${artifact.price} scrip to invoke`;
+            } else {
+                priceDisplay = '0';
+                priceTooltip = 'Free: No base cost to invoke';
+            }
 
             row.innerHTML = `
                 <td title="Artifact ID: ${this.escapeHtml(artifact.artifact_id)}\nCreated: ${artifact.created_at || 'Unknown'}">${this.truncate(artifact.artifact_id, 15)}</td>
                 <td title="Type: ${artifact.artifact_type}">${this.escapeHtml(artifact.artifact_type)}</td>
                 <td title="Owner: ${artifact.owner_id}">${this.escapeHtml(artifact.owner_id)}</td>
-                <td title="${priceTooltip}">${artifact.price}</td>
+                <td title="${priceTooltip}">${priceDisplay}</td>
                 <td title="${execTooltip}">${execIcon}</td>
                 <td title="${oracleTooltip}">${oracleDisplay}</td>
             `;

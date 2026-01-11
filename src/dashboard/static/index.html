@@ -67,12 +67,12 @@
                         <table class="data-table" id="agents-table">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Scrip</th>
-                                    <th>Compute</th>
-                                    <th>Disk</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
+                                    <th title="Agent identifier">ID</th>
+                                    <th title="Economic currency - used to pay for artifacts and trade">Scrip</th>
+                                    <th title="Compute usage % this tick (refreshes each tick)">Compute</th>
+                                    <th title="Disk storage usage % (permanent, doesn't refresh)">Disk</th>
+                                    <th title="Agent status: active, low_resources, or frozen">Status</th>
+                                    <th title="Total actions taken by this agent">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="agents-tbody">
@@ -104,7 +104,7 @@
                                     <th title="Unique artifact identifier">ID</th>
                                     <th title="Artifact type (executable, data, etc.)">Type</th>
                                     <th title="Current owner (agent or contract)">Owner</th>
-                                    <th title="Scrip cost to invoke (paid to owner)">Price</th>
+                                    <th title="Base scrip cost to invoke (* = executable, may have dynamic fees)">Price</th>
                                     <th title="Executable: Can be invoked by agents">Exec</th>
                                     <th title="Oracle score: Quality rating from external LLM (0-10)">Oracle</th>
                                 </tr>

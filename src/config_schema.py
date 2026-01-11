@@ -69,7 +69,7 @@ class FlowResources(StrictModel):
     """All flow (rate-limited) resources."""
 
     compute: FlowResource = Field(
-        default_factory=lambda: FlowResource(per_tick=1000, unit="cycles")
+        default_factory=lambda: FlowResource(per_tick=1000, unit="token_units")
     )
     bandwidth: FlowResource = Field(
         default_factory=lambda: FlowResource(per_tick=0, unit="bytes")
@@ -644,6 +644,38 @@ class AgentConfig(StrictModel):
 
 
 # =============================================================================
+# MEMORY CONFIG
+# =============================================================================
+
+class MemoryConfigModel(StrictModel):
+    """Configuration for Mem0/Qdrant memory system."""
+
+    llm_model: str = Field(
+        default="gemini-3-flash-preview",
+        description="Model for Mem0's LLM (no provider prefix)"
+    )
+    embedding_model: str = Field(
+        default="models/text-embedding-004",
+        description="Embedding model for vector search"
+    )
+    embedding_dims: int = Field(
+        default=768,
+        gt=0,
+        description="Embedding dimensions"
+    )
+    temperature: float = Field(
+        default=0.1,
+        ge=0,
+        le=2,
+        description="Temperature for Mem0's LLM"
+    )
+    collection_name: str = Field(
+        default="agent_memories",
+        description="Qdrant collection name"
+    )
+
+
+# =============================================================================
 # ROOT CONFIG MODEL
 # =============================================================================
 
@@ -665,6 +697,7 @@ class AppConfig(StrictModel):
     budget: BudgetConfig = Field(default_factory=BudgetConfig)
     dashboard: DashboardConfig = Field(default_factory=DashboardConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
+    memory: MemoryConfigModel = Field(default_factory=MemoryConfigModel)
 
     # Dynamic fields set at runtime
     principals: list[dict[str, int | str]] = Field(

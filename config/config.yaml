@@ -214,6 +214,16 @@ agent:
     memory_limit: 5               # Max relevant memories to include
 
 # -----------------------------------------------------------------------------
+# MEMORY - Mem0/Qdrant configuration
+# -----------------------------------------------------------------------------
+memory:
+  llm_model: "gemini-3-flash-preview"      # Model for Mem0's LLM (no provider prefix)
+  embedding_model: "models/text-embedding-004"
+  embedding_dims: 768
+  temperature: 0.1
+  collection_name: "agent_memories"
+
+# -----------------------------------------------------------------------------
 # WORLD
 # -----------------------------------------------------------------------------
 world:
@@ -232,7 +242,7 @@ budget:
 dashboard:
   enabled: true
   host: "0.0.0.0"
-  port: 8081
+  port: 8080
   static_dir: "src/dashboard/static"
   jsonl_file: "run.jsonl"
   websocket_path: "/ws"
