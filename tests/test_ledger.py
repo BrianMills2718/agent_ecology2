@@ -124,14 +124,15 @@ class TestTransferScrip:
         assert ledger_with_agents.get_scrip("agent_a") == 100
         assert ledger_with_agents.get_scrip("agent_b") == 50
 
-    def test_transfer_scrip_to_nonexistent_recipient(
+    def test_transfer_scrip_to_nonexistent_recipient_creates_wallet(
         self, ledger_with_agents: Ledger
     ) -> None:
-        """Transfer fails when recipient doesn't exist."""
-        result = ledger_with_agents.transfer_scrip("agent_a", "nonexistent", 30)
+        """Transfer to non-existent recipient auto-creates their wallet (artifact wallets)."""
+        result = ledger_with_agents.transfer_scrip("agent_a", "new_contract", 30)
 
-        assert result is False
-        assert ledger_with_agents.get_scrip("agent_a") == 100
+        assert result is True  # Now succeeds - enables artifact wallets
+        assert ledger_with_agents.get_scrip("agent_a") == 70
+        assert ledger_with_agents.get_scrip("new_contract") == 30
 
 
 class TestDeductActionCost:

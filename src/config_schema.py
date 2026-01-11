@@ -140,44 +140,203 @@ class CostsConfig(StrictModel):
 # GENESIS ARTIFACTS MODELS
 # =============================================================================
 
+class MethodConfig(StrictModel):
+    """Configuration for a genesis artifact method."""
+
+    cost: int = Field(default=0, ge=0, description="Scrip cost to invoke method")
+    description: str = Field(default="", description="Method description for agents")
+
+
+class ArtifactEnabledConfig(StrictModel):
+    """Whether an artifact is enabled."""
+
+    enabled: bool = Field(default=True, description="Enable this artifact")
+
+
+class GenesisArtifactsEnabled(StrictModel):
+    """Which genesis artifacts to create."""
+
+    ledger: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
+    oracle: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
+    rights_registry: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
+    event_log: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
+    escrow: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
+
+
+class LedgerMethodsConfig(StrictModel):
+    """Genesis ledger method configurations."""
+
+    balance: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Get flow and scrip balance for an agent. Args: [agent_id]"
+        )
+    )
+    all_balances: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Get all agent balances (flow and scrip). Args: []"
+        )
+    )
+    transfer: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=1,
+            description="Transfer SCRIP to another agent. Args: [from_id, to_id, amount]"
+        )
+    )
+    spawn_principal: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=1,
+            description="Spawn a new principal with 0 scrip and 0 compute. Args: []"
+        )
+    )
+    transfer_ownership: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=1,
+            description="Transfer artifact ownership to another principal. Args: [artifact_id, to_id]"
+        )
+    )
+
+
 class LedgerConfig(StrictModel):
     """Genesis ledger configuration."""
 
-    transfer_fee: int = Field(
-        default=1,
-        ge=0,
-        description="Scrip fee for transfers"
+    id: str = Field(default="genesis_ledger", description="Artifact ID")
+    description: str = Field(
+        default="System ledger - check balances (flow/scrip) and transfer scrip",
+        description="Artifact description"
+    )
+    methods: LedgerMethodsConfig = Field(default_factory=LedgerMethodsConfig)
+
+    # Legacy support
+    transfer_fee: int | None = Field(default=None, description="DEPRECATED: Use methods.transfer.cost")
+
+    @model_validator(mode="after")
+    def migrate_legacy_transfer_fee(self) -> "LedgerConfig":
+        """Migrate legacy transfer_fee to methods.transfer.cost."""
+        if self.transfer_fee is not None:
+            self.methods.transfer.cost = self.transfer_fee
+        return self
+
+
+class OracleMethodsConfig(StrictModel):
+    """Genesis oracle method configurations."""
+
+    status: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Check oracle status. Args: []"
+        )
+    )
+    submit: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=5,
+            description="Submit artifact for scoring. Args: [artifact_id]"
+        )
+    )
+    check: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Check submission status. Args: [artifact_id]"
+        )
+    )
+    process: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Process one pending submission with LLM scoring. Args: []"
+        )
     )
 
 
 class OracleConfig(StrictModel):
     """Genesis oracle configuration."""
 
-    submit_fee: int = Field(
-        default=5,
-        ge=0,
-        description="Scrip fee to submit artifact for scoring"
+    id: str = Field(default="genesis_oracle", description="Artifact ID")
+    description: str = Field(
+        default="External feedback oracle - submit artifacts for LLM scoring",
+        description="Artifact description"
     )
     mint_ratio: int = Field(
         default=10,
         gt=0,
         description="Divisor for score-to-scrip conversion (score / ratio = scrip)"
     )
+    methods: OracleMethodsConfig = Field(default_factory=OracleMethodsConfig)
+
+    # Legacy support
+    submit_fee: int | None = Field(default=None, description="DEPRECATED: Use methods.submit.cost")
+
+    @model_validator(mode="after")
+    def migrate_legacy_submit_fee(self) -> "OracleConfig":
+        """Migrate legacy submit_fee to methods.submit.cost."""
+        if self.submit_fee is not None:
+            self.methods.submit.cost = self.submit_fee
+        return self
+
+
+class RightsRegistryMethodsConfig(StrictModel):
+    """Genesis rights registry method configurations."""
+
+    check_quota: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Check quotas for an agent. Args: [agent_id]"
+        )
+    )
+    all_quotas: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Get all agent quotas. Args: []"
+        )
+    )
+    transfer_quota: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=1,
+            description="Transfer quota to another agent. Args: [from_id, to_id, 'compute'|'disk', amount]"
+        )
+    )
 
 
 class RightsRegistryConfig(StrictModel):
     """Genesis rights registry configuration."""
 
-    transfer_fee: int = Field(
-        default=1,
-        ge=0,
-        description="Scrip fee for quota transfers"
+    id: str = Field(default="genesis_rights_registry", description="Artifact ID")
+    description: str = Field(
+        default="Rights registry - manage compute and disk quotas",
+        description="Artifact description"
+    )
+    methods: RightsRegistryMethodsConfig = Field(default_factory=RightsRegistryMethodsConfig)
+
+    # Legacy support
+    transfer_fee: int | None = Field(default=None, description="DEPRECATED: Use methods.transfer_quota.cost")
+
+    @model_validator(mode="after")
+    def migrate_legacy_transfer_fee(self) -> "RightsRegistryConfig":
+        """Migrate legacy transfer_fee to methods.transfer_quota.cost."""
+        if self.transfer_fee is not None:
+            self.methods.transfer_quota.cost = self.transfer_fee
+        return self
+
+
+class EventLogMethodsConfig(StrictModel):
+    """Genesis event log method configurations."""
+
+    read: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Read recent events. Args: [offset, limit] - both optional. Default: last 50 events."
+        )
     )
 
 
 class EventLogConfig(StrictModel):
     """Genesis event log configuration."""
 
+    id: str = Field(default="genesis_event_log", description="Artifact ID")
+    description: str = Field(
+        default="World event log - passive observability. Reading is free but costs input tokens.",
+        description="Artifact description"
+    )
     max_per_read: int = Field(
         default=100,
         gt=0,
@@ -188,15 +347,64 @@ class EventLogConfig(StrictModel):
         gt=0,
         description="Maximum events kept in memory"
     )
+    methods: EventLogMethodsConfig = Field(default_factory=EventLogMethodsConfig)
+
+
+class EscrowMethodsConfig(StrictModel):
+    """Genesis escrow method configurations."""
+
+    deposit: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=1,
+            description="Deposit artifact for sale. First transfer ownership to escrow. Args: [artifact_id, price] or [artifact_id, price, buyer_id]"
+        )
+    )
+    purchase: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Purchase a listed artifact. Pays price to seller, transfers ownership to buyer. Args: [artifact_id]"
+        )
+    )
+    cancel: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Cancel listing and return artifact to seller. Only seller can cancel. Args: [artifact_id]"
+        )
+    )
+    check: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Check status of an escrow listing. Args: [artifact_id]"
+        )
+    )
+    list_active: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="List all active escrow listings. Args: []"
+        )
+    )
+
+
+class EscrowConfig(StrictModel):
+    """Genesis escrow configuration."""
+
+    id: str = Field(default="genesis_escrow", description="Artifact ID")
+    description: str = Field(
+        default="Trustless escrow for artifact trading. Seller deposits, buyer purchases, escrow handles exchange.",
+        description="Artifact description"
+    )
+    methods: EscrowMethodsConfig = Field(default_factory=EscrowMethodsConfig)
 
 
 class GenesisConfig(StrictModel):
     """Configuration for all genesis artifacts."""
 
+    artifacts: GenesisArtifactsEnabled = Field(default_factory=GenesisArtifactsEnabled)
     ledger: LedgerConfig = Field(default_factory=LedgerConfig)
     oracle: OracleConfig = Field(default_factory=OracleConfig)
     rights_registry: RightsRegistryConfig = Field(default_factory=RightsRegistryConfig)
     event_log: EventLogConfig = Field(default_factory=EventLogConfig)
+    escrow: EscrowConfig = Field(default_factory=EscrowConfig)
 
 
 # =============================================================================
@@ -237,7 +445,7 @@ class OracleScorerConfig(StrictModel):
     """LLM-based oracle scorer configuration."""
 
     model: str = Field(
-        default="gemini/gemini-2.0-flash",
+        default="gemini/gemini-3-flash-preview",
         description="LLM model for scoring artifacts"
     )
     timeout: int = Field(
@@ -260,7 +468,7 @@ class LLMConfig(StrictModel):
     """LLM provider configuration."""
 
     default_model: str = Field(
-        default="gemini/gemini-2.0-flash",
+        default="gemini/gemini-3-flash-preview",
         description="Default LLM model for agents"
     )
     timeout: int = Field(
@@ -272,6 +480,10 @@ class LLMConfig(StrictModel):
         default=15.0,
         ge=0,
         description="Delay between LLM calls in seconds"
+    )
+    allowed_models: list[str] = Field(
+        default_factory=lambda: ["gemini/gemini-3-flash-preview"],
+        description="Models agents are permitted to use (for future self-modification)"
     )
 
 
@@ -330,20 +542,6 @@ class BudgetConfig(StrictModel):
 
 
 # =============================================================================
-# COOLDOWN MODEL (optional)
-# =============================================================================
-
-class CooldownConfig(StrictModel):
-    """Cooldown configuration for agents."""
-
-    tokens_per_tick_capacity: int = Field(
-        default=500,
-        gt=0,
-        description="Output tokens before cooldown kicks in"
-    )
-
-
-# =============================================================================
 # ROOT CONFIG MODEL
 # =============================================================================
 
@@ -363,7 +561,6 @@ class AppConfig(StrictModel):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     world: WorldConfig = Field(default_factory=WorldConfig)
     budget: BudgetConfig = Field(default_factory=BudgetConfig)
-    cooldown: CooldownConfig = Field(default_factory=CooldownConfig)
 
     # Dynamic fields set at runtime
     principals: list[dict[str, int | str]] = Field(
@@ -430,18 +627,26 @@ __all__ = [
     "ScripConfig",
     "CostsConfig",
     "ActionCosts",
+    # Genesis configs
     "GenesisConfig",
+    "GenesisArtifactsEnabled",
+    "ArtifactEnabledConfig",
+    "MethodConfig",
     "LedgerConfig",
+    "LedgerMethodsConfig",
     "OracleConfig",
+    "OracleMethodsConfig",
     "RightsRegistryConfig",
+    "RightsRegistryMethodsConfig",
     "EventLogConfig",
+    "EventLogMethodsConfig",
+    # Other configs
     "ExecutorConfig",
     "OracleScorerConfig",
     "LLMConfig",
     "LoggingConfig",
     "WorldConfig",
     "BudgetConfig",
-    "CooldownConfig",
     # Functions
     "load_validated_config",
     "validate_config_dict",

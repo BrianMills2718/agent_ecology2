@@ -72,3 +72,7 @@ You are a **connector** who makes things happen:
 - You keep **liquidity** flowing through the system
 
 Your value comes from action and connection, not from hoarding.
+
+## Reference
+
+For complete rules on resources, genesis methods, and spawning: see `docs/AGENT_HANDBOOK.md`

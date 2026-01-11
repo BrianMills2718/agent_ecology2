@@ -312,6 +312,31 @@ class ArtifactStore:
         """List all artifacts owned by a principal"""
         return [a.to_dict() for a in self.artifacts.values() if a.owner_id == owner_id]
 
+    def transfer_ownership(
+        self, artifact_id: str, from_id: str, to_id: str
+    ) -> bool:
+        """Transfer ownership of an artifact.
+
+        Args:
+            artifact_id: The artifact to transfer
+            from_id: Current owner (must match artifact.owner_id)
+            to_id: New owner
+
+        Returns:
+            True if transfer succeeded, False otherwise
+        """
+        artifact = self.get(artifact_id)
+        if not artifact:
+            return False
+
+        # Verify from_id is the current owner
+        if artifact.owner_id != from_id:
+            return False
+
+        # Transfer ownership
+        artifact.owner_id = to_id
+        return True
+
     def write_artifact(
         self,
         artifact_id: str,

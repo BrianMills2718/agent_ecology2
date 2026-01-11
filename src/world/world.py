@@ -87,6 +87,7 @@ class StateSummary(TypedDict):
     artifacts: list[dict[str, Any]]
     quotas: dict[str, QuotaInfo]
     oracle_submissions: dict[str, OracleSubmissionStatus]
+    recent_events: list[dict[str, Any]]
 
 
 class World:
@@ -118,10 +119,17 @@ class World:
         # Rights configuration (Layer 2: Means of Production)
         # See docs/RESOURCE_MODEL.md for design rationale
         # Values come from config via compute_per_agent_quota()
-        self.rights_config = config.get("rights", {
-            "default_compute_quota": quotas.get("compute_quota", config_get("resources.flow.compute.per_tick") or 50),
-            "default_disk_quota": quotas.get("disk_quota", config_get("resources.stock.disk.total") or 10000)
-        })
+        # Use new generic format with default_quotas dict
+        if "rights" in config and "default_quotas" in config["rights"]:
+            self.rights_config = config["rights"]
+        else:
+            # Build generic quotas from legacy format or computed values
+            self.rights_config = {
+                "default_quotas": {
+                    "compute": float(quotas.get("compute_quota", config_get("resources.flow.compute.per_tick") or 50)),
+                    "disk": float(quotas.get("disk_quota", config_get("resources.stock.disk.total") or 10000))
+                }
+            }
 
         # Core state
         self.ledger = Ledger()
@@ -155,6 +163,7 @@ class World:
                 self.rights_registry.ensure_agent(p["id"])
 
         # Log world init
+        default_quotas = self.rights_config.get("default_quotas", {})
         self.logger.log("world_init", {
             "max_ticks": self.max_ticks,
             "rights": self.rights_config,
@@ -163,7 +172,7 @@ class World:
                 {
                     "id": p["id"],
                     "starting_scrip": p.get("starting_scrip", p.get("starting_credits", default_starting_scrip)),
-                    "compute_quota": self.rights_config.get("default_compute_quota", quotas.get("compute_quota", 50))
+                    "compute_quota": int(default_quotas.get("compute", quotas.get("compute_quota", 50)))
                 }
                 for p in config["principals"]
             ]
@@ -499,10 +508,10 @@ class World:
 
     def advance_tick(self) -> bool:
         """
-        Advance to the next tick. Renews COMPUTE for all principals.
+        Advance to the next tick. Renews FLOW RESOURCES for all principals.
         Returns False if max_ticks reached.
 
-        COMPUTE (LLM tokens) resets each tick based on compute_quota.
+        FLOW RESOURCES (compute/llm_tokens) reset each tick based on quotas.
         SCRIP (economic currency) is NOT reset - it persists and accumulates.
 
         See docs/RESOURCE_MODEL.md for design rationale.
@@ -512,21 +521,27 @@ class World:
 
         self.tick += 1
 
-        # Reset COMPUTE for all principals (use it or lose it)
-        # Only compute resets - scrip is persistent economic currency
+        # Reset FLOW RESOURCES for all principals (use it or lose it)
+        # Only flow resources reset - scrip is persistent economic currency
         for pid in self.principal_ids:
             if self.rights_registry:
-                compute_quota = self.rights_registry.get_compute_quota(pid)
-                self.ledger.reset_compute(pid, compute_quota)
+                # Use generic quota API - get all quotas for this principal
+                all_quotas = self.rights_registry.get_all_quotas(pid)
+                # Reset flow resources to their quotas
+                # For now, only "compute" is a flow resource (resets each tick)
+                # Stock resources like "disk" don't reset
+                if "compute" in all_quotas:
+                    self.ledger.set_resource(pid, "llm_tokens", all_quotas["compute"])
             else:
                 # Fallback to config
                 config_compute: int | None = config_get("resources.flow.compute.per_tick")
-                default_compute: int = self.rights_config.get("default_compute_quota", config_compute or 50)
-                self.ledger.reset_compute(pid, default_compute)
+                default_quotas = self.rights_config.get("default_quotas", {})
+                default_compute = default_quotas.get("compute", config_compute or 50)
+                self.ledger.set_resource(pid, "llm_tokens", float(default_compute))
 
         self.logger.log("tick", {
             "tick": self.tick,
-            "compute": self.ledger.get_all_compute(),
+            "compute": self.ledger.get_all_compute(),  # Backward compat log format
             "scrip": self.ledger.get_all_scrip(),
             "artifact_count": self.artifacts.count()
         })
@@ -569,7 +584,8 @@ class World:
             "balances": self.ledger.get_all_balances(),
             "artifacts": all_artifacts,
             "quotas": quotas,
-            "oracle_submissions": oracle_status
+            "oracle_submissions": oracle_status,
+            "recent_events": self.get_recent_events(10)
         }
 
     def get_recent_events(self, n: int = 20) -> list[dict[str, Any]]:

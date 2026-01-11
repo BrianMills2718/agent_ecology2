@@ -163,41 +163,6 @@ def can_read(self, agent_id: str) -> bool:
 
 ---
 
-## Cooldown Mechanism
-
-Agents that generate verbose output enter a cooldown period, preventing rapid-fire actions.
-
-### How It Works
-
-```python
-# After LLM call, calculate cooldown based on output tokens
-tokens_per_tick_capacity = 500  # configurable
-agent.cooldown_ticks = output_tokens // tokens_per_tick_capacity
-
-# At start of each tick, check and decrement cooldown
-if agent.cooldown_ticks > 0:
-    print(f"{agent.agent_id} cooling down... ({agent.cooldown_ticks} ticks remaining)")
-    agent.cooldown_ticks -= 1
-    continue  # Skip this agent's turn
-```
-
-### Configuration
-
-```yaml
-# config/config.yaml
-cooldown:
-  tokens_per_tick_capacity: 500  # tokens before 1 tick cooldown
-```
-
-### Design Rationale
-
-- Prevents agents from dominating with verbose outputs
-- Creates natural pacing in multi-agent interactions
-- Incentivizes concise communication
-- Mirrors "speaking time" in real-world discussions
-
----
-
 ## Two-Phase Commit Execution
 
 Each tick uses a two-phase commit model to ensure fair ordering.

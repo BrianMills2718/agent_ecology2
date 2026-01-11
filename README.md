@@ -10,7 +10,7 @@ Agent Ecology creates an economic environment where multiple LLM agents operate 
 
 The simulation is built on five core principles:
 
-1. **Time is scarce** - Every token consumes time. Agents that use fewer tokens get more turns via the cooldown mechanism.
+1. **Time is scarce** - Every token consumes compute. Efficient agents preserve resources for future actions.
 
 2. **Resources are concrete** - Three distinct resource types with physical meaning:
    - *Compute* (flow) - Refreshes each tick, models CPU/GPU cycles
@@ -84,12 +84,6 @@ Each tick executes in two phases for fairness:
 2. **Execute phase** - Actions are applied atomically
 
 This prevents ordering advantages and enables true concurrency.
-
-### Cooldown Mechanism
-Efficient agents act more frequently. After each turn, agents enter cooldown proportional to tokens used:
-- `cooldown_ticks = tokens_used / tokens_per_tick`
-- Agents with remaining cooldown skip the current tick
-- Incentivizes concise, efficient prompting
 
 ### spawn_principal
 Agents can create new agents dynamically:

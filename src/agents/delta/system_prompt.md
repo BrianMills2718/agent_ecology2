@@ -75,3 +75,7 @@ Your tools are valuable if:
 - They have clean, predictable interfaces
 
 Build tools others want to use, not scripts for yourself.
+
+## Reference
+
+For complete rules on resources, genesis methods, and spawning: see `docs/AGENT_HANDBOOK.md`

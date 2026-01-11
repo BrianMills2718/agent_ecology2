@@ -17,13 +17,13 @@ class TestAgentAsyncMethod:
 
     def test_agent_has_async_method(self) -> None:
         """Agent should have propose_action_async method."""
-        agent = Agent(agent_id="test", llm_model="gemini/gemini-2.0-flash")
+        agent = Agent(agent_id="test", llm_model="gemini/gemini-3-flash-preview")
         assert hasattr(agent, "propose_action_async")
         assert asyncio.iscoroutinefunction(agent.propose_action_async)
 
     def test_agent_has_sync_method(self) -> None:
         """Agent should still have synchronous propose_action method."""
-        agent = Agent(agent_id="test", llm_model="gemini/gemini-2.0-flash")
+        agent = Agent(agent_id="test", llm_model="gemini/gemini-3-flash-preview")
         assert hasattr(agent, "propose_action")
         assert not asyncio.iscoroutinefunction(agent.propose_action)
 
@@ -34,7 +34,7 @@ class TestAsyncProposalBasics:
     @pytest.mark.asyncio
     async def test_async_method_returns_dict(self) -> None:
         """Async method should return ActionResult dict."""
-        agent = Agent(agent_id="test", llm_model="gemini/gemini-2.0-flash")
+        agent = Agent(agent_id="test", llm_model="gemini/gemini-3-flash-preview")
 
         # Mock the LLM provider's generate_async method
         mock_response = FlatActionResponse(
@@ -59,7 +59,7 @@ class TestAsyncProposalBasics:
     @pytest.mark.asyncio
     async def test_async_returns_usage_stats(self) -> None:
         """Async method should return token usage statistics."""
-        agent = Agent(agent_id="test", llm_model="gemini/gemini-2.0-flash")
+        agent = Agent(agent_id="test", llm_model="gemini/gemini-3-flash-preview")
 
         mock_response = FlatActionResponse(
             thought_process="test",
@@ -89,7 +89,7 @@ class TestParallelThinking:
     async def test_multiple_agents_parallel(self) -> None:
         """Multiple agents should be able to think concurrently."""
         agents = [
-            Agent(agent_id=f"agent_{i}", llm_model="gemini/gemini-2.0-flash")
+            Agent(agent_id=f"agent_{i}", llm_model="gemini/gemini-3-flash-preview")
             for i in range(3)
         ]
 
@@ -129,7 +129,7 @@ class TestAsyncErrorHandling:
     @pytest.mark.asyncio
     async def test_async_handles_llm_failure(self) -> None:
         """Async method should handle LLM failures gracefully."""
-        agent = Agent(agent_id="test", llm_model="gemini/gemini-2.0-flash")
+        agent = Agent(agent_id="test", llm_model="gemini/gemini-3-flash-preview")
 
         agent.llm.generate_async = AsyncMock(side_effect=Exception("LLM Error"))
 
@@ -142,7 +142,7 @@ class TestAsyncErrorHandling:
     @pytest.mark.asyncio
     async def test_async_handles_validation_error(self) -> None:
         """Async method should handle Pydantic validation errors."""
-        agent = Agent(agent_id="test", llm_model="gemini/gemini-2.0-flash")
+        agent = Agent(agent_id="test", llm_model="gemini/gemini-3-flash-preview")
 
         from pydantic import ValidationError
 

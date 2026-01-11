@@ -1,10 +1,11 @@
-"""Mock Oracle Scorer - Uses LLM to estimate engagement score
+"""Oracle Scorer - Uses LLM to evaluate executable code artifacts.
 
-Simulates external feedback (like Reddit upvotes) by having an LLM
-evaluate artifact quality and estimate likely engagement.
-
-This is a mock for testing the external minting mechanism without
-requiring actual Reddit API integration.
+Scores submitted code on quality and utility criteria:
+- Correctness and functionality
+- Usefulness (solves a real problem)
+- Code structure and readability
+- Error handling
+- Originality (duplicate detection via content hash)
 
 All configuration (model, timeout, max_content_length) comes from config.yaml.
 """
@@ -28,32 +29,33 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get
 
 
-SCORING_PROMPT: str = """You are evaluating content that was submitted to a community platform.
-Rate this content on how much engagement (upvotes) it would likely receive.
+SCORING_PROMPT: str = """You are evaluating executable code submitted to an agent marketplace.
+Rate this code on quality and utility.
 
 Consider:
-- Is it useful, interesting, or entertaining?
-- Is it well-written and clear?
-- Would people want to share or discuss it?
-- Is it original or creative?
+- Does it solve a real, useful problem?
+- Is the code correct and functional?
+- Is it well-structured and readable?
+- Does it handle errors appropriately?
+- Is it original (not trivial or boilerplate)?
 
-Content to evaluate:
+Code to evaluate:
 ---
-Title/ID: {artifact_id}
+Artifact ID: {artifact_id}
 Type: {artifact_type}
-Content: {content}
+Code: {content}
 ---
 
 Respond with ONLY a JSON object in this exact format:
 {{"score": <number 0-100>, "reason": "<brief explanation>"}}
 
 Score guidelines:
-- 0-10: Low quality, spam, or unhelpful
-- 11-30: Mediocre, nothing special
-- 31-50: Decent, some value
-- 51-70: Good, engaging content
-- 71-90: Excellent, high quality
-- 91-100: Exceptional, viral potential
+- 0-10: Broken, trivial, or useless (e.g., empty function, syntax errors)
+- 11-30: Minimal utility, poor quality
+- 31-50: Basic functionality, some utility
+- 51-70: Solid tool, good quality
+- 71-90: Excellent utility, well-crafted
+- 91-100: Exceptional - innovative, high-value tool
 
 Respond with ONLY the JSON object.
 """
@@ -79,7 +81,7 @@ class OracleScorer:
 
     def __init__(self, model: str | None = None, log_dir: str | None = None) -> None:
         # Get config values with fallbacks
-        model = model or get("oracle_scorer.model") or "gemini/gemini-2.0-flash"
+        model = model or get("oracle_scorer.model") or "gemini/gemini-3-flash-preview"
         log_dir = log_dir or get("logging.log_dir") or "llm_logs"
         timeout: int = get("oracle_scorer.timeout") or 30
 

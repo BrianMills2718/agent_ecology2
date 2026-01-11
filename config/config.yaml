@@ -51,19 +51,108 @@ costs:
   per_1k_output_tokens: 3
 
 # -----------------------------------------------------------------------------
-# GENESIS ARTIFACTS - System services and fees (scrip)
+# GENESIS ARTIFACTS - System services (fully configurable)
 # -----------------------------------------------------------------------------
 genesis:
+  # Which artifacts to create
+  artifacts:
+    ledger:
+      enabled: true
+    oracle:
+      enabled: true
+    rights_registry:
+      enabled: true
+    event_log:
+      enabled: true
+    escrow:
+      enabled: true
+
+  # Genesis Ledger - balance queries and transfers
   ledger:
-    transfer_fee: 1
+    id: "genesis_ledger"
+    description: "System ledger - check balances (flow/scrip) and transfer scrip"
+    methods:
+      balance:
+        cost: 0                 # Free - reading balance shouldn't cost
+        description: "Get flow and scrip balance for an agent. Args: [agent_id]"
+      all_balances:
+        cost: 0                 # Free - public information
+        description: "Get all agent balances (flow and scrip). Args: []"
+      transfer:
+        cost: 1                 # 1 scrip fee
+        description: "Transfer SCRIP to another agent. Args: [from_id, to_id, amount]"
+      spawn_principal:
+        cost: 1                 # 1 scrip processing fee
+        description: "Spawn a new principal with 0 scrip and 0 compute. Args: []"
+      transfer_ownership:
+        cost: 1                 # 1 scrip fee
+        description: "Transfer artifact ownership to another principal. Args: [artifact_id, to_id]"
+
+  # Genesis Oracle - external scoring and minting
   oracle:
-    submit_fee: 5
+    id: "genesis_oracle"
+    description: "External feedback oracle - submit artifacts for LLM scoring"
     mint_ratio: 10              # score / 10 = scrip minted
+    methods:
+      status:
+        cost: 0                 # Free status check
+        description: "Check oracle status. Args: []"
+      submit:
+        cost: 5                 # 5 scrip fee to submit
+        description: "Submit artifact for scoring. Args: [artifact_id]"
+      check:
+        cost: 0                 # Free to check
+        description: "Check submission status. Args: [artifact_id]"
+      process:
+        cost: 0                 # Free - encourages processing
+        description: "Process one pending submission with LLM scoring. Args: []"
+
+  # Genesis Rights Registry - quota management
   rights_registry:
-    transfer_fee: 1
+    id: "genesis_rights_registry"
+    description: "Rights registry - manage compute and disk quotas"
+    methods:
+      check_quota:
+        cost: 0                 # Free quota check
+        description: "Check quotas for an agent. Args: [agent_id]"
+      all_quotas:
+        cost: 0                 # Free - public information
+        description: "Get all agent quotas. Args: []"
+      transfer_quota:
+        cost: 1                 # 1 scrip fee
+        description: "Transfer quota to another agent. Args: [from_id, to_id, 'compute'|'disk', amount]"
+
+  # Genesis Event Log - passive observability
   event_log:
-    max_per_read: 100
-    buffer_size: 1000
+    id: "genesis_event_log"
+    description: "World event log - passive observability. Reading is free but costs input tokens."
+    max_per_read: 100           # Cap events returned per read
+    buffer_size: 1000           # Internal buffer size
+    methods:
+      read:
+        cost: 0                 # Free in scrip - but consumes input tokens
+        description: "Read recent events. Args: [offset, limit] - both optional. Default: last 50 events."
+
+  # Genesis Escrow - trustless artifact trading
+  escrow:
+    id: "genesis_escrow"
+    description: "Trustless escrow for artifact trading. Seller deposits, buyer purchases, escrow handles exchange."
+    methods:
+      deposit:
+        cost: 1                 # 1 scrip fee to list
+        description: "Deposit artifact for sale. First transfer ownership to escrow. Args: [artifact_id, price] or [artifact_id, price, buyer_id]"
+      purchase:
+        cost: 0                 # Free - buyer already pays the price
+        description: "Purchase a listed artifact. Pays price to seller, transfers ownership to buyer. Args: [artifact_id]"
+      cancel:
+        cost: 0                 # Free - encourage cleanup
+        description: "Cancel listing and return artifact to seller. Only seller can cancel. Args: [artifact_id]"
+      check:
+        cost: 0                 # Free status check
+        description: "Check status of an escrow listing. Args: [artifact_id]"
+      list_active:
+        cost: 0                 # Free - encourage discovery
+        description: "List all active escrow listings. Args: []"
 
 # -----------------------------------------------------------------------------
 # EXECUTOR
@@ -84,7 +173,7 @@ executor:
 # ORACLE SCORER
 # -----------------------------------------------------------------------------
 oracle_scorer:
-  model: "gemini/gemini-2.0-flash"
+  model: "gemini/gemini-3-flash-preview"
   timeout: 30
   max_content_length: 200000
 
@@ -92,9 +181,12 @@ oracle_scorer:
 # LLM
 # -----------------------------------------------------------------------------
 llm:
-  default_model: "gemini/gemini-2.0-flash"
+  default_model: "gemini/gemini-3-flash-preview"
   timeout: 60
   rate_limit_delay: 15
+  # Models that agents are allowed to use (for future self-modification)
+  allowed_models:
+    - "gemini/gemini-3-flash-preview"
 
 # -----------------------------------------------------------------------------
 # LOGGING

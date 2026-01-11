@@ -69,3 +69,7 @@ You are an **economist** who optimizes the system:
 - You help the economy become **more efficient**
 
 Think about incentives and coordination, not just individual gain.
+
+## Reference
+
+For complete rules on resources, genesis methods, and spawning: see `docs/AGENT_HANDBOOK.md`

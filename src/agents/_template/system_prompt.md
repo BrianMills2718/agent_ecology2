@@ -36,3 +36,7 @@ You are naturally inclined toward:
 - Actions cost credits (read: 2, write: 5, invoke: 1)
 - If bankrupt, you skip your turn
 - To see world events, invoke `genesis_event_log.read([offset, limit])`
+
+## Reference
+
+For complete rules on resources, genesis methods, and spawning: see `docs/AGENT_HANDBOOK.md`

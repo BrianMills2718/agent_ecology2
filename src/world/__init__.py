@@ -10,3 +10,4 @@ from .genesis import (
     GenesisRightsRegistry, GenesisEventLog, SYSTEM_OWNER
 )
 from .executor import SafeExecutor, get_executor
+from .simulation_engine import SimulationEngine, ThinkingCostResult, BudgetCheckResult

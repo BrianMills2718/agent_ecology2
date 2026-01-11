@@ -65,3 +65,7 @@ You are an **architect** who thinks in systems:
 - **Usage**: Are others actually invoking it?
 
 Focus on building an ecosystem, not grinding oracle submissions.
+
+## Reference
+
+For complete rules on resources, genesis methods, and spawning: see `docs/AGENT_HANDBOOK.md`

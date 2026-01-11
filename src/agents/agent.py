@@ -83,12 +83,11 @@ class Agent:
     last_action_result: str | None
     llm: LLMProvider
     llm_model: str
-    cooldown_ticks: int = 0
 
     def __init__(
         self,
         agent_id: str,
-        llm_model: str = "gemini/gemini-2.0-flash",
+        llm_model: str = "gemini/gemini-3-flash-preview",
         system_prompt: str = "",
         action_schema: str = "",
         log_dir: str = "llm_logs"
@@ -99,7 +98,6 @@ class Agent:
         self.action_schema = action_schema or ACTION_SCHEMA  # Fall back to default
         self.memory = get_memory()
         self.last_action_result = None  # Track result of last action for feedback
-        self.cooldown_ticks = 0  # Cooldown ticks set by run.py based on output tokens
 
         # Initialize LLM provider
         self.llm = LLMProvider(
@@ -171,6 +169,27 @@ class Agent:
         else:
             action_feedback = ""
 
+        # Format recent events (short-term history for situational awareness)
+        recent_events: list[dict[str, Any]] = world_state.get('recent_events', [])
+        recent_activity: str
+        if recent_events:
+            event_lines: list[str] = []
+            for event in recent_events[-5:]:  # Show last 5 events
+                event_type: str = event.get('type', 'unknown')
+                tick: int = event.get('tick', 0)
+                if event_type == 'action':
+                    intent: dict[str, Any] = event.get('intent', {})
+                    result: dict[str, Any] = event.get('result', {})
+                    agent: str = intent.get('principal_id', '?')
+                    action: str = intent.get('action_type', '?')
+                    success: str = 'OK' if result.get('success') else 'FAIL'
+                    event_lines.append(f"[T{tick}] {agent}: {action} -> {success}")
+                elif event_type == 'tick':
+                    event_lines.append(f"[T{tick}] --- tick {tick} started ---")
+            recent_activity = "\n## Recent Activity\n" + "\n".join(event_lines) if event_lines else ""
+        else:
+            recent_activity = ""
+
         prompt: str = f"""You are {self.agent_id} in a simulated world.
 
 {self.system_prompt}
@@ -187,6 +206,7 @@ class Agent:
 ## Artifacts in World
 {artifact_list}
 {oracle_info}
+{recent_activity}
 
 ## Available Actions
 {self.action_schema}
@@ -308,12 +328,3 @@ Your response should include:
     def record_observation(self, observation: str) -> None:
         """Record an observation to memory"""
         self.memory.record_observation(self.agent_id, observation)
-
-    def is_on_cooldown(self) -> bool:
-        """Check if the agent is currently on cooldown."""
-        return self.cooldown_ticks > 0
-
-    def decrement_cooldown(self) -> None:
-        """Decrement the cooldown counter if greater than zero."""
-        if self.cooldown_ticks > 0:
-            self.cooldown_ticks -= 1

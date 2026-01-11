@@ -130,9 +130,13 @@ class TestConfigDefaults:
     def test_default_genesis_fees(self) -> None:
         """Default genesis fees should match expected values."""
         config = AppConfig()
-        assert config.genesis.ledger.transfer_fee == 1
-        assert config.genesis.oracle.submit_fee == 5
+        # Method costs are now in the methods sub-config
+        assert config.genesis.ledger.methods.transfer.cost == 1
+        assert config.genesis.oracle.methods.submit.cost == 5
         assert config.genesis.oracle.mint_ratio == 10
+        # Check artifact enablement defaults
+        assert config.genesis.artifacts.ledger.enabled is True
+        assert config.genesis.artifacts.oracle.enabled is True
 
     def test_default_preloaded_imports(self) -> None:
         """Default preloaded imports should include common modules."""
@@ -167,7 +171,7 @@ class TestConfigFileLoading:
 
         # Check some expected values from the real config
         assert config.world.max_ticks == 100
-        assert config.llm.default_model == "gemini/gemini-2.0-flash"
+        assert config.llm.default_model == "gemini/gemini-3-flash-preview"
         assert config.budget.max_api_cost == 1.0
 
     def test_missing_file_raises_error(self) -> None:

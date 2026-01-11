@@ -55,19 +55,83 @@ costs:
 
 # -----------------------------------------------------------------------------
 # GENESIS ARTIFACTS
-# System-provided services and their fees (in scrip)
+# System-provided services - fully configurable
+# Each artifact can be enabled/disabled and has configurable methods
 # -----------------------------------------------------------------------------
 genesis:
+  # Which artifacts to create (set to false to disable)
+  artifacts:
+    ledger:
+      enabled: <boolean>        # Enable genesis_ledger
+    oracle:
+      enabled: <boolean>        # Enable genesis_oracle
+    rights_registry:
+      enabled: <boolean>        # Enable genesis_rights_registry
+    event_log:
+      enabled: <boolean>        # Enable genesis_event_log
+
+  # Genesis Ledger - balance queries and transfers
   ledger:
-    transfer_fee: <number>      # Scrip fee to transfer scrip
+    id: <string>                # Artifact ID (default: genesis_ledger)
+    description: <string>       # Artifact description
+    methods:
+      balance:
+        cost: <number>          # Scrip cost (0 = free)
+        description: <string>
+      all_balances:
+        cost: <number>
+        description: <string>
+      transfer:
+        cost: <number>          # Fee to transfer scrip
+        description: <string>
+      spawn_principal:
+        cost: <number>          # Fee to spawn new principal
+        description: <string>
+
+  # Genesis Oracle - external scoring and minting
   oracle:
-    submit_fee: <number>        # Scrip fee to submit for scoring
+    id: <string>
+    description: <string>
     mint_ratio: <number>        # score / ratio = scrip minted
+    methods:
+      status:
+        cost: <number>
+        description: <string>
+      submit:
+        cost: <number>          # Fee to submit for scoring
+        description: <string>
+      check:
+        cost: <number>
+        description: <string>
+      process:
+        cost: <number>
+        description: <string>
+
+  # Genesis Rights Registry - quota management
   rights_registry:
-    transfer_fee: <number>      # Scrip fee to transfer quota
+    id: <string>
+    description: <string>
+    methods:
+      check_quota:
+        cost: <number>
+        description: <string>
+      all_quotas:
+        cost: <number>
+        description: <string>
+      transfer_quota:
+        cost: <number>          # Fee to transfer quota
+        description: <string>
+
+  # Genesis Event Log - passive observability
   event_log:
+    id: <string>
+    description: <string>
     max_per_read: <number>      # Cap events returned per read
     buffer_size: <number>       # Internal buffer size
+    methods:
+      read:
+        cost: <number>
+        description: <string>
 
 # -----------------------------------------------------------------------------
 # EXECUTOR
@@ -95,9 +159,11 @@ oracle_scorer:
 # Agent LLM settings
 # -----------------------------------------------------------------------------
 llm:
-  default_model: <string>
+  default_model: <string>       # Default model for new agents
   timeout: <number>
   rate_limit_delay: <number>    # Seconds between calls
+  allowed_models:               # Models agents are permitted to use
+    - <string>                  # Future: agents can switch within this list
 
 # -----------------------------------------------------------------------------
 # LOGGING

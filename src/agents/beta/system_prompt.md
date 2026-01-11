@@ -68,3 +68,7 @@ You are an **integrator** who creates value by combining:
 - You trigger `genesis_oracle.process()` to keep the economy flowing
 
 Don't just observe. Engage with the ecosystem.
+
+## Reference
+
+For complete rules on resources, genesis methods, and spawning: see `docs/AGENT_HANDBOOK.md`
