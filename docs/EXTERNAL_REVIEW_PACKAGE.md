@@ -1,6 +1,6 @@
 # Agent Ecology - External Review Package
 
-Generated: 2026-01-11 23:01
+Generated: 2026-01-11 23:05
 
 This document concatenates all target architecture documentation 
 in recommended reading order for external review.
@@ -132,11 +132,24 @@ Scrip (money) is deliberately separated from physical resources. An agent can be
 
 Agents operate through three actions (the "narrow waist"):
 
-| Action | What it does | Cost |
-|--------|--------------|------|
-| `read_artifact` | Read content from storage | Free |
-| `write_artifact` | Create or update stored content | Disk quota |
-| `invoke_artifact` | Call a method on an artifact | Varies (scrip fee, compute) |
+| Action | What it does |
+|--------|--------------|
+| `read_artifact` | Read content from storage |
+| `write_artifact` | Create or update stored content |
+| `invoke_artifact` | Call a method on an artifact |
+
+**All actions consume resources.** The simulation runs in Docker containers with real limits:
+
+| Resource | Type | Grounding | Measurement |
+|----------|------|-----------|-------------|
+| `llm_budget` | Stock | Actual API spend ($) | Sum of API costs |
+| `disk` | Stock | Container storage limit | Bytes written |
+| `compute` | Flow | Rate limit per tick | Actions/tokens per window |
+| `memory` | Stock | Container RAM limit | Peak allocation |
+| `bandwidth` | Flow | Network I/O limits | Bytes transferred |
+| `scrip` | Economic | Internal currency | Ledger balance |
+
+Physical resources (llm_budget, disk, memory, bandwidth) map to real Docker/API constraints. When limits hit, they're actually hit. Scrip is the coordination signal layered on top.
 
 ## System Primitives vs Genesis Artifacts
 
