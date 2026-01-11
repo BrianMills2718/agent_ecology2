@@ -23,9 +23,12 @@ We draw on coordination principles from economics and cybernetics—not to simul
 Key influences:
 - **Hayek** - Information aggregation through price signals, spontaneous order
 - **Mises** - Capital structure, how production builds on prior production
-- **Coase** - Firms/coordination structures emerge to reduce transaction costs
+- **Coase** - Firms and hierarchies emerge to reduce transaction costs
 - **Ostrom** - Commons governance without central authority
 - **Cybernetics** - Self-organizing systems, feedback loops, emergence
+- **Sugarscape** (Epstein & Axtell) - Complex macro patterns from simple micro rules under scarcity
+- **Axelrod** - Cooperation emerges from repeated interaction without central enforcement
+- **VOYAGER** (Wang et al.) - Skill libraries as compounding capability in LLM agents
 
 The question isn't whether AI agents recreate human patterns. It's whether collective capability emerges when you combine capable agents with real scarcity and sound coordination primitives.
 
@@ -49,6 +52,16 @@ We deliberately avoid:
 - Hard-coded "best practices"
 
 If agents need to coordinate, they must build it. If specialization helps, the economics must reward it.
+
+### Organizational Freedom
+
+Agents can create any organizational structure:
+- **Hierarchies** - One agent controls others (via config ownership)
+- **Flat coordination** - Peers cooperating via contracts
+- **Markets** - Price-mediated exchange
+- **Firms** - Groups that coordinate internally to reduce transaction costs
+
+**Contracts can be executable or voluntary.** An executable contract enforces terms automatically (like escrow). A voluntary contract depends on parties choosing to comply—there's no government of last resort. Defection is possible; reputation and repeated interaction are the only enforcement.
 
 ### Capital Accumulation
 
@@ -100,21 +113,37 @@ Agents operate through three actions (the "narrow waist"):
 | `write_artifact` | Create or update stored content | Disk quota |
 | `invoke_artifact` | Call a method on an artifact | Varies (scrip fee, compute) |
 
-Everything else—transfers, spawning agents, querying balances—happens via `invoke_artifact` on genesis artifacts.
+## System Primitives vs Genesis Artifacts
 
-## Genesis Artifacts
+**System primitives** are part of the world itself—agents can't replace them:
+- Action execution (read, write, invoke)
+- Resource accounting (compute, disk, llm_budget balances)
+- Scrip balances
+- The artifact store
 
-System-provided services available to all agents:
+**Genesis artifacts** are bootstrapping helpers created at initialization. They provide convenient interfaces but are theoretically replaceable—agents could build alternatives:
 
 | Artifact | Purpose | Key Methods |
 |----------|---------|-------------|
-| `genesis_ledger` | Scrip balances | `transfer`, `balance`, `spawn_principal` |
-| `genesis_rights_registry` | Resource quotas | `check_quota`, `transfer_quota` |
 | `genesis_oracle` | Score artifacts, mint scrip | `submit`, `process` |
-| `genesis_event_log` | World event history | `read` |
 | `genesis_escrow` | Trustless trading | `list`, `buy` |
+| `genesis_event_log` | World event history | `read` |
+| `genesis_handbook` | Documentation for agents | `read` |
 
-Genesis artifacts have no special mechanical privilege—they're artifacts created at world initialization. Their authority comes from being canonical interfaces to infrastructure.
+Genesis artifacts solve the cold-start problem. They're not the only way to coordinate—just the initial way.
+
+## External Feedback and Minting
+
+The internal economy needs external value signals to avoid being a closed loop. Scrip enters the system through **external validation**:
+
+**Example sources:**
+- **Social media integration** - Agents bid for posting slots (e.g., Reddit), minting based on upvotes
+- **User bounties** - A human posts a task with reward; agents compete; human pays the winner
+- **External APIs** - Real-world outcomes (sales, clicks, completions) trigger minting
+
+This grounds the internal economy to external value. Without it, scrip just circulates. With it, agents that produce externally-valued work accumulate resources; those that don't, fade.
+
+The oracle is the interface for this—but the *source* of value judgments is external to the system.
 
 ## Quick Start
 
