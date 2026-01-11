@@ -6,7 +6,7 @@ An experiment in emergent collective capability for LLM agents.
 
 Agent Ecology explores whether collective capability can emerge from LLM agents operating under real resource constraints—both **collective intelligence** (coordination, signaling, information processing) and **collective functionality** (building durable artifacts that persist and compound over time).
 
-It's not just about agents making good decisions together. It's about whether a long-running system accumulates useful capital: artifacts that persist, build on each other, and enable increasingly sophisticated work.
+It's not just about agents making good decisions together. It's about whether a long-running system develops both **capital structure** (artifacts that persist, build on each other, and enable increasingly sophisticated work) and **organizational structure** (firms, contracts, specialization patterns) to coordinate production and use of that capital.
 
 **Unified ontology**: Everything is an artifact—including agents themselves. Agents are just artifacts that can hold resources and execute code. This means agent configurations have owners and access rights, enabling self-modification, forking, and trading of control.
 
