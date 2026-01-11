@@ -183,8 +183,7 @@ Multiple Claude Code instances may work simultaneously.
 
 | Task | CC-ID | Completed | Reviewer |
 |------|-------|-----------|----------|
-| Align config defaults | CC-1 | 2025-01-11 | Fixed port 8081→8080, unit cycles→token_units |
-| Move hardcoded values to config | CC-2 | 2025-01-11 | agent.py + memory.py now use config |
+| (none) | - | - | - |
 
 ### Coordination Rules
 

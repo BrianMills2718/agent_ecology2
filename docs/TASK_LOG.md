@@ -21,6 +21,8 @@ Historical record of completed tasks. Moved here from CLAUDE.md to keep coordina
 | Add Agent Loader tests | CC-4 | 22 tests for load_agents, list_agents, get_default_prompt |
 | Add SimulationRunner tests | CC-4 | 25 tests for init, checkpoint, principals, pause/resume, status. Reviewed by CC-1 |
 | Add AgentMemory tests | CC-4 | 23 tests for add, search, record_action, singleton, config. Mocks justified (external APIs). Reviewed by CC-1 |
+| Align config defaults | CC-1 | Fixed port 8081→8080, unit cycles→token_units. Reviewed by CC-1 (self, minor fix) |
+| Move hardcoded values to config | CC-2,CC-4 | memory.py uses config for llm_model, embedding_model, etc; oracle_scorer.py uses config for timeout. Reviewed by CC-1 |
 
 ---
 
