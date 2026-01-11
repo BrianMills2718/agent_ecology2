@@ -199,7 +199,7 @@ oracle_scorer:
 llm:
   default_model: "gemini/gemini-3-flash-preview"
   timeout: 60
-  rate_limit_delay: 15
+  rate_limit_delay: 5  # Reduced from 15s for faster iteration
   # Models that agents are allowed to use (for future self-modification)
   allowed_models:
     - "gemini/gemini-3-flash-preview"
@@ -219,6 +219,11 @@ agent:
   prompt:
     recent_events_count: 5        # Last N events shown in prompt
     memory_limit: 5               # Max relevant memories to include
+    # First-tick hint - shown only on tick 1 to help new agents
+    first_tick_enabled: true
+    first_tick_hint: |
+      TIP: New to this world? Read handbook_genesis to learn available methods,
+      or handbook_trading for how to buy/sell through escrow.
 
   # RAG (Retrieval-Augmented Generation) defaults
   # Per-agent overrides in src/agents/<name>/agent.yaml
@@ -232,6 +237,15 @@ agent:
       Other agents: {other_agents}.
       {last_action}
       What worked before? What should I try?
+
+  # Error messages - configurable with handbook references
+  # Use {placeholders} for dynamic values: {artifact_id}, {method}, {methods}, {escrow_id}
+  errors:
+    access_denied_read: "Access denied: you are not allowed to read {artifact_id}. See handbook_actions for permissions."
+    access_denied_write: "Access denied: you are not allowed to write to {artifact_id}. See handbook_actions for permissions."
+    access_denied_invoke: "Access denied: you are not allowed to invoke {artifact_id}. See handbook_actions for permissions."
+    method_not_found: "Method '{method}' not found on {artifact_id}. Available: {methods}. See handbook_genesis for method details."
+    escrow_not_owner: "Escrow does not own {artifact_id}. See handbook_trading for the 2-step process: 1) genesis_ledger.transfer_ownership([artifact_id, '{escrow_id}']), 2) deposit."
 
 # -----------------------------------------------------------------------------
 # MEMORY - Mem0/Qdrant configuration

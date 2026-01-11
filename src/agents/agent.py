@@ -276,10 +276,18 @@ class Agent:
         executable_count = sum(1 for a in artifacts if a.get('executable') and not a.get('methods'))
         data_count = len(artifacts) - genesis_count - executable_count
 
+        # First-tick hint (configurable)
+        first_tick_section: str = ""
+        first_tick_enabled: bool = config_get("agent.prompt.first_tick_enabled") or False
+        if first_tick_enabled and tick == 1:
+            first_tick_hint: str = config_get("agent.prompt.first_tick_hint") or ""
+            if first_tick_hint:
+                first_tick_section = f"\n## Getting Started\n{first_tick_hint}\n"
+
         prompt: str = f"""You are {self.agent_id} in a simulated world.
 
 {self.system_prompt}
-{action_feedback}
+{first_tick_section}{action_feedback}
 ## Your Memories
 {memories}
 
@@ -293,7 +301,7 @@ class Agent:
 - Use `read_artifact` to inspect any artifact
 - Use `genesis_ledger.all_balances([])` to see all agent balances
 - Use `genesis_event_log.read([])` for world history
-- Read `genesis_handbook` for complete rules and examples
+- Read handbooks for help: handbook_genesis, handbook_trading, handbook_actions
 {oracle_info}
 {recent_activity}
 
@@ -415,10 +423,21 @@ Your response should include:
         """Record an action to memory after execution"""
         return self.memory.record_action(self.agent_id, action_type, details, success)
 
-    def set_last_result(self, action_type: ActionType, success: bool, message: str) -> None:
+    def set_last_result(self, action_type: ActionType, success: bool, message: str, data: dict[str, Any] | None = None) -> None:
         """Set the result of the last action for feedback in next prompt"""
         status: str = "SUCCESS" if success else "FAILED"
         self.last_action_result = f"Action: {action_type}\nResult: {status}\nMessage: {message}"
+
+        # Include truncated data for important actions (so agent can see actual results)
+        if data and success:
+            try:
+                data_str: str = json.dumps(data, indent=2)
+                # Truncate long data to avoid huge prompts
+                if len(data_str) > 500:
+                    data_str = data_str[:500] + "\n... (truncated)"
+                self.last_action_result += f"\nData: {data_str}"
+            except (TypeError, ValueError):
+                pass  # Skip if data isn't JSON serializable
 
     def record_observation(self, observation: str) -> None:
         """Record an observation to memory"""

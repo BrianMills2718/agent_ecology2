@@ -2,6 +2,8 @@
 
 What we're building toward.
 
+**Last verified:** 2026-01-11
+
 **See current:** [../current/resources.md](../current/resources.md)
 
 ---
@@ -9,6 +11,8 @@ What we're building toward.
 ## Resource Terminology
 
 **Distinct resources - do not conflate:**
+
+> **Note:** Current implementation uses "compute" for LLM token tracking. Target terminology reserves "compute" for local CPU (future feature). See [Gap #11](../GAPS.md) for migration plan.
 
 | Resource | Type | What it is |
 |----------|------|------------|
@@ -133,6 +137,93 @@ These ARE the constraints. Not abstract numbers.
 
 ---
 
+## External Resources
+
+All external resources (LLM APIs, web search, external APIs) follow the same pattern.
+
+### Unified Model
+
+| Resource | Type | Constraints |
+|----------|------|-------------|
+| LLM API | Flow + Stock | Rate limit (TPM) + Budget ($) |
+| Web search | Flow + Stock | Queries/min + Budget ($) |
+| External APIs | Varies | Per-API limits + Budget ($) |
+
+### Core Principle
+
+**No artificial limitations.** LLM API calls are just like any other API call. Any artifact can make them as long as resource costs are accounted for.
+
+### Config Structure
+
+```yaml
+resources:
+  external_apis:
+    llm:
+      provider: gemini
+      tokens_per_minute: 100000
+      budget_usd: 10.00
+      input_cost_per_1k: 0.003
+      output_cost_per_1k: 0.015
+
+    web_search:
+      provider: google
+      queries_per_minute: 60
+      budget_usd: 5.00
+      cost_per_query: 0.01
+
+    github:
+      requests_per_minute: 100
+      budget_usd: 0  # Free tier
+```
+
+### Any Artifact Can Make External Calls
+
+```python
+def run(self, args):
+    # Any executable artifact can do this
+    llm_result = call_llm(prompt="...", model="gemini-2.0-flash")
+    search_result = call_web_search("query...")
+    api_result = call_external_api("https://...")
+    return process(llm_result, search_result, api_result)
+```
+
+### Who Pays
+
+- If invoked by an agent → invoking agent pays
+- If artifact has standing and acts autonomously → artifact pays from its balance
+
+### Implementation Pattern
+
+Artifacts wrap external services:
+
+```python
+{
+    "id": "genesis_web_search",
+    "can_execute": true,
+    "has_standing": false,  # Tool - invoker pays
+    "interface": {
+        "tools": [{
+            "name": "search",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "max_results": {"type": "integer"}
+                }
+            }
+        }]
+    }
+}
+```
+
+### Genesis vs Agent-Created
+
+- Genesis provides working defaults (`genesis_llm`, `genesis_web_search`)
+- Agents can create alternatives with different providers
+- No privileged access - genesis just bootstraps useful tools
+
+---
+
 ## System-Wide Throttling
 
 ### Flow Rate IS The Throttle
@@ -174,6 +265,81 @@ Enables:
 | Compute quota | Yes (TBD) |
 | Disk quota | Yes (TBD) |
 | Debt artifacts | Yes (tradeable) |
+
+---
+
+## System vs Per-Agent Rate Limits
+
+Two distinct rate limiting mechanisms operate independently.
+
+### Per-Agent Token Bucket
+
+Controls agent scheduling fairness:
+
+| Setting | Purpose |
+|---------|---------|
+| `rate` | Tokens accumulating per second |
+| `capacity` | Maximum tokens storable |
+
+Each agent has their own bucket. Limits how often each agent can act.
+
+### System-Wide API Rate Limit
+
+Reflects external provider constraints:
+
+| Setting | Purpose |
+|---------|---------|
+| `tokens_per_minute` | Provider's TPM limit |
+| `requests_per_minute` | Provider's RPM limit (future) |
+
+Shared across all agents. When exhausted, all agents blocked from that API.
+
+### How They Interact
+
+```
+Agent A wants to call LLM:
+  1. Check A's token bucket → has capacity? → proceed
+  2. Check system API rate limit → under limit? → proceed
+  3. Make API call
+  4. Deduct from both: A's bucket AND system rate tracker
+```
+
+If system rate limit exhausted but agent has bucket capacity:
+- Agent blocked from API
+- Agent can do other work (non-API actions)
+- Rate limit recovers over time
+
+---
+
+## Invocation Cost Model
+
+### Who Pays for What
+
+Payment follows the `has_standing` property:
+
+| Artifact Type | has_standing | Who Pays |
+|---------------|--------------|----------|
+| Agent | true | Agent pays its own costs |
+| Account/Treasury | true | Account pays its own costs |
+| Tool | false | Invoker pays |
+| Data | false | N/A (not executable) |
+
+### Nested Invocation Example
+
+```
+Agent A invokes Tool B → A pays for B
+  B invokes Agent C → C pays for C
+    C invokes Tool D → C pays for D
+```
+
+`has_standing` = "I bear my own costs"
+No standing = "Caller pays"
+
+### Permission Check Cost
+
+Requester pays for permission checks. Every action involves:
+1. Permission check (invoke access contract) → requester pays
+2. Action execution → follows standing rules above
 
 ---
 

@@ -433,7 +433,7 @@ class SimulationRunner:
             raw_action_type = action_dict.get("action_type", "noop")
             valid_types = get_args(ActionType)
             action_type: ActionType = raw_action_type if raw_action_type in valid_types else "noop"
-            agent.set_last_result(action_type, result.success, result.message)
+            agent.set_last_result(action_type, result.success, result.message, result.data)
             agent.record_action(action_type, json.dumps(action_dict), result.success)
 
             # Store artifact content in memory when successfully read

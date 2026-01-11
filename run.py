@@ -12,6 +12,15 @@ Usage:
 
 from __future__ import annotations
 
+# Suppress noisy warnings from dependencies BEFORE importing them
+import warnings
+import logging
+warnings.filterwarnings("ignore", message=".*Pydantic serializer warnings.*")
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
+logging.getLogger("mem0").setLevel(logging.WARNING)
+logging.getLogger("mem0.memory.main").setLevel(logging.WARNING)
+logging.getLogger("LiteLLM").setLevel(logging.WARNING)
+
 import sys
 import asyncio
 import webbrowser

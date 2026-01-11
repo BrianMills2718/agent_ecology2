@@ -2,6 +2,8 @@
 
 How agents work TODAY.
 
+**Last verified:** 2026-01-11
+
 **See target:** [../target/agents.md](../target/agents.md)
 
 ---
@@ -43,14 +45,14 @@ class Agent:
 
 ## Thinking Process
 
-### propose_action_async() (agent.py:334-384)
+### propose_action_async() (`Agent.propose_action_async()`)
 
 1. **Build prompt** via `build_prompt(world_state)`
 2. **Call LLM** with structured output schema
 3. **Parse response** into action + thought_process
 4. **Return** ActionResult or error
 
-### Prompt Building (agent.py:124-280)
+### Prompt Building (`Agent.build_prompt()`)
 
 Prompt includes:
 
@@ -165,13 +167,13 @@ Agent receives failure message in `last_action_result` for next tick.
 
 ## Key Files
 
-| File | Lines | Description |
-|------|-------|-------------|
-| agent.py | 124-280 | build_prompt() |
-| agent.py | 334-384 | propose_action_async() |
-| agent.py | 386-397 | record_action/observation |
-| memory.py | - | AgentMemory class |
-| load_agents.py | - | Agent loading from YAML |
+| File | Key Functions | Description |
+|------|---------------|-------------|
+| `src/agents/agent.py` | `Agent.build_prompt()` | Prompt construction |
+| `src/agents/agent.py` | `Agent.propose_action_async()` | LLM call and action parsing |
+| `src/agents/agent.py` | `Agent.record_action()`, `record_observation()` | Memory recording |
+| `src/agents/memory.py` | `AgentMemory` class | RAG-based memory |
+| `src/agents/load_agents.py` | `load_agents()` | Agent loading from config |
 
 ---
 

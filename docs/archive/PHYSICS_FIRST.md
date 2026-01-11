@@ -265,26 +265,26 @@ class OracleScorer:
         return {"success": True, "score": score, "reason": "..."}
 ```
 
-### Oracle API
+### Oracle API (Auction-Based)
 
 ```json
-// Submit artifact for scoring (5 scrip fee)
+// Check auction status (free)
 {
   "action_type": "invoke_artifact",
   "artifact_id": "genesis_oracle",
-  "method": "submit",
-  "args": ["my_artifact_id"]
-}
-
-// Process pending submissions (free)
-{
-  "action_type": "invoke_artifact",
-  "artifact_id": "genesis_oracle",
-  "method": "process",
+  "method": "status",
   "args": []
 }
 
-// Check submission status (free)
+// Bid on artifact during bidding window (free compute, bid amount in scrip)
+{
+  "action_type": "invoke_artifact",
+  "artifact_id": "genesis_oracle",
+  "method": "bid",
+  "args": ["my_artifact_id", 10]
+}
+
+// Check bid/submission status (free)
 {
   "action_type": "invoke_artifact",
   "artifact_id": "genesis_oracle",
@@ -292,6 +292,12 @@ class OracleScorer:
   "args": ["my_artifact_id"]
 }
 ```
+
+**Auction Flow:**
+1. `status()` - Check if bidding window is open
+2. `bid(artifact_id, amount)` - Submit sealed bid during window
+3. At resolution: highest bidder wins, pays second-highest bid (Vickrey)
+4. Winner's artifact scored by LLM, scrip minted based on score
 
 ### Important Constraints
 
@@ -322,28 +328,28 @@ Score ranges:
 System artifacts that provide core infrastructure:
 
 ### genesis_ledger
-- `balance([agent_id])` - Get flow/scrip balance [FREE]
+- `balance([agent_id])` - Get scrip balance [FREE]
 - `all_balances([])` - Get all balances [FREE]
-- `transfer([from, to, amount])` - Transfer scrip [1 scrip fee]
-- `spawn_principal([])` - Create new principal [1 scrip fee]
+- `transfer([from_id, to_id, amount])` - Transfer scrip (from_id must be you) [1 compute]
+- `spawn_principal([])` - Create new principal with 0 resources [1 compute]
+- `transfer_ownership([artifact_id, to_id])` - Transfer artifact ownership [1 compute]
 
 ### genesis_rights_registry
 - `check_quota([agent_id])` - Get compute/disk quotas [FREE]
 - `all_quotas([])` - Get all quotas [FREE]
-- `transfer_quota([from, to, type, amount])` - Transfer quota [1 scrip fee]
+- `transfer_quota([from_id, to_id, resource, amount])` - Transfer quota (from_id must be you) [1 compute]
 
 ### genesis_oracle
-- `status([])` - Oracle status [FREE]
-- `submit([artifact_id])` - Submit for scoring [5 scrip fee]
-- `check([artifact_id])` - Check submission [FREE]
-- `process([])` - Score pending submission [FREE]
+- `status([])` - Auction status (phase, tick, bids) [FREE]
+- `bid([artifact_id, amount])` - Place sealed bid during bidding window [FREE compute, bid in scrip]
+- `check([artifact_id])` - Check bid/submission status [FREE]
 
 ### genesis_event_log
 - `read([offset, limit])` - Read events [FREE in scrip, costs input tokens]
 
 ### genesis_escrow
-- `deposit([artifact_id, price])` - List artifact for sale [requires ownership transfer first]
-- `purchase([artifact_id])` - Buy listed artifact [pays price to seller]
-- `cancel([artifact_id])` - Cancel listing [seller only]
+- `deposit([artifact_id, price])` - List artifact for sale [1 compute, requires ownership transfer first]
+- `purchase([artifact_id])` - Buy listed artifact [FREE compute, pays price in scrip to seller]
+- `cancel([artifact_id])` - Cancel listing [FREE, seller only]
 - `check([artifact_id])` - Check listing status [FREE]
 - `list_active([])` - List all active listings [FREE]

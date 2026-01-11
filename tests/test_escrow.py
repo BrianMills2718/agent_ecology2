@@ -49,7 +49,7 @@ class TestEscrowDeposit:
 
         assert result["success"] is False
         assert "does not own" in result["error"]
-        assert "transfer ownership" in result["error"]
+        assert "transfer_ownership" in result["error"]
 
     def test_deposit_nonexistent_artifact(self) -> None:
         """Cannot deposit non-existent artifact."""

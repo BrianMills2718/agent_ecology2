@@ -26,10 +26,11 @@ from typing import Any, Generator, TypedDict
 
 from ..config import get
 
-# Import Ledger type for type hints (avoid circular import at runtime)
+# Import types for type hints (avoid circular import at runtime)
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .ledger import Ledger
+    from .artifacts import ArtifactStore
 
 
 class PaymentResult(TypedDict):
@@ -38,6 +39,18 @@ class PaymentResult(TypedDict):
     amount: int
     target: str
     error: str
+
+
+class InvokeResult(TypedDict):
+    """Result from an invoke() call within artifact execution."""
+    success: bool
+    result: Any
+    error: str
+    price_paid: int
+
+
+# Default max recursion depth for nested invoke() calls
+DEFAULT_MAX_INVOKE_DEPTH = 5
 
 
 class ExecutionResult(TypedDict, total=False):
@@ -448,6 +461,274 @@ class SafeExecutor:
             # Inject wallet functions into namespace
             controlled_globals["pay"] = pay
             controlled_globals["get_balance"] = get_balance
+
+        # Execute the code definition
+        try:
+            with _timeout_context(self.timeout):
+                exec(compiled, controlled_globals)
+        except TimeoutError:
+            return {"success": False, "error": "Code definition timed out"}
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Execution error: {type(e).__name__}: {e}"
+            }
+
+        # Check that run() was defined
+        if "run" not in controlled_globals:
+            return {"success": False, "error": "Code did not define a run() function"}
+
+        run_func = controlled_globals["run"]
+        if not callable(run_func):
+            return {"success": False, "error": "run is not callable"}
+
+        # Call run() with args, measuring execution time
+        start_time = time.perf_counter()
+        execution_time_ms: float = 0.0
+
+        try:
+            with _timeout_context(self.timeout):
+                result = run_func(*args)
+                execution_time_ms = (time.perf_counter() - start_time) * 1000
+        except TimeoutError:
+            execution_time_ms = (time.perf_counter() - start_time) * 1000
+            return {
+                "success": False,
+                "error": "Execution timed out",
+                "execution_time_ms": execution_time_ms,
+                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
+            }
+        except TypeError as e:
+            execution_time_ms = (time.perf_counter() - start_time) * 1000
+            return {
+                "success": False,
+                "error": f"Argument error: {e}",
+                "execution_time_ms": execution_time_ms,
+                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
+            }
+        except Exception as e:
+            execution_time_ms = (time.perf_counter() - start_time) * 1000
+            return {
+                "success": False,
+                "error": f"Runtime error: {type(e).__name__}: {e}",
+                "execution_time_ms": execution_time_ms,
+                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
+            }
+
+        # Ensure result is JSON-serializable
+        try:
+            json.dumps(result)
+        except (TypeError, ValueError):
+            result = str(result)
+
+        # Calculate resource consumption based on execution time
+        resources_consumed = {"llm_tokens": _time_to_tokens(execution_time_ms)}
+
+        return {
+            "success": True,
+            "result": result,
+            "execution_time_ms": execution_time_ms,
+            "resources_consumed": resources_consumed,
+        }
+
+    def execute_with_invoke(
+        self,
+        code: str,
+        args: list[Any] | None = None,
+        caller_id: str | None = None,
+        artifact_id: str | None = None,
+        ledger: "Ledger | None" = None,
+        artifact_store: "ArtifactStore | None" = None,
+        current_depth: int = 0,
+        max_depth: int = DEFAULT_MAX_INVOKE_DEPTH,
+    ) -> ExecutionResult:
+        """
+        Execute code with invoke() capability for artifact composition.
+
+        Injects invoke(artifact_id, *args) function that allows artifacts to
+        call other artifacts. Also includes pay() and get_balance() from
+        execute_with_wallet.
+
+        Args:
+            code: Python code defining a run() function
+            args: Arguments to pass to run()
+            caller_id: ID of the original caller (pays for nested invocations)
+            artifact_id: ID of this artifact (for wallet access)
+            ledger: Ledger instance for transfers
+            artifact_store: ArtifactStore for looking up artifacts
+            current_depth: Current recursion depth (for preventing infinite loops)
+            max_depth: Maximum allowed recursion depth
+
+        Returns:
+            Same as execute() - dict with success, result/error
+        """
+        args = args or []
+
+        # Validate first
+        valid, error = self.validate_code(code)
+        if not valid:
+            return {"success": False, "error": error}
+
+        # Compile with standard Python
+        try:
+            compiled = compile(code, '<agent_code>', 'exec')
+        except SyntaxError as e:
+            return {"success": False, "error": f"Syntax error: {e}"}
+        except Exception as e:
+            return {"success": False, "error": f"Compilation failed: {e}"}
+
+        # Build controlled globals with full builtins and allowed modules
+        controlled_builtins = dict(vars(builtins))
+        controlled_builtins["__import__"] = _make_controlled_import(
+            self.preloaded_modules
+        )
+
+        controlled_globals: dict[str, Any] = {
+            "__builtins__": controlled_builtins,
+            "__name__": "__main__",
+        }
+
+        # Add allowed modules to namespace
+        for name, module in self.preloaded_modules.items():
+            controlled_globals[name] = module
+
+        # Track payments made during execution
+        payments_made: list[PaymentResult] = []
+
+        # Create pay() and get_balance() if wallet context provided
+        if artifact_id and ledger:
+            def pay(target: str, amount: int) -> PaymentResult:
+                """Transfer scrip from this artifact's wallet to target."""
+                if amount <= 0:
+                    result: PaymentResult = {
+                        "success": False,
+                        "amount": amount,
+                        "target": target,
+                        "error": "Amount must be positive"
+                    }
+                    payments_made.append(result)
+                    return result
+
+                success = ledger.transfer_scrip(artifact_id, target, amount)
+                if success:
+                    result = {
+                        "success": True,
+                        "amount": amount,
+                        "target": target,
+                        "error": ""
+                    }
+                else:
+                    result = {
+                        "success": False,
+                        "amount": amount,
+                        "target": target,
+                        "error": "Insufficient funds in artifact wallet"
+                    }
+                payments_made.append(result)
+                return result
+
+            def get_balance() -> int:
+                """Get this artifact's current scrip balance."""
+                return ledger.get_scrip(artifact_id)
+
+            controlled_globals["pay"] = pay
+            controlled_globals["get_balance"] = get_balance
+
+        # Create invoke() function if full context provided
+        if caller_id and ledger and artifact_store:
+            def invoke(target_artifact_id: str, *invoke_args: Any) -> InvokeResult:
+                """Invoke another artifact from within this artifact's code.
+
+                The caller (original agent) pays for the invocation.
+                Recursion is limited to prevent infinite loops.
+
+                Args:
+                    target_artifact_id: ID of artifact to invoke
+                    *invoke_args: Arguments to pass to the artifact's run()
+
+                Returns:
+                    InvokeResult with success, result, error, and price_paid
+                """
+                # Check recursion depth
+                if current_depth >= max_depth:
+                    return {
+                        "success": False,
+                        "result": None,
+                        "error": f"Max invoke depth ({max_depth}) exceeded",
+                        "price_paid": 0
+                    }
+
+                # Look up the target artifact
+                target = artifact_store.get(target_artifact_id)
+                if not target:
+                    return {
+                        "success": False,
+                        "result": None,
+                        "error": f"Artifact {target_artifact_id} not found",
+                        "price_paid": 0
+                    }
+
+                if not target.executable:
+                    return {
+                        "success": False,
+                        "result": None,
+                        "error": f"Artifact {target_artifact_id} is not executable",
+                        "price_paid": 0
+                    }
+
+                # Check invoke permission (caller, not this artifact)
+                if not target.can_invoke(caller_id):
+                    return {
+                        "success": False,
+                        "result": None,
+                        "error": f"Caller {caller_id} not allowed to invoke {target_artifact_id}",
+                        "price_paid": 0
+                    }
+
+                # Check price affordability (caller pays)
+                price = target.price
+                owner_id = target.owner_id
+                if price > 0 and not ledger.can_afford_scrip(caller_id, price):
+                    return {
+                        "success": False,
+                        "result": None,
+                        "error": f"Caller has insufficient scrip for price {price}",
+                        "price_paid": 0
+                    }
+
+                # Recursively execute the target artifact
+                nested_result = self.execute_with_invoke(
+                    code=target.code,
+                    args=list(invoke_args),
+                    caller_id=caller_id,
+                    artifact_id=target_artifact_id,
+                    ledger=ledger,
+                    artifact_store=artifact_store,
+                    current_depth=current_depth + 1,
+                    max_depth=max_depth,
+                )
+
+                if nested_result.get("success"):
+                    # Pay price to owner (only on success)
+                    if price > 0 and owner_id != caller_id:
+                        ledger.deduct_scrip(caller_id, price)
+                        ledger.credit_scrip(owner_id, price)
+
+                    return {
+                        "success": True,
+                        "result": nested_result.get("result"),
+                        "error": "",
+                        "price_paid": price
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "result": None,
+                        "error": nested_result.get("error", "Unknown error"),
+                        "price_paid": 0
+                    }
+
+            controlled_globals["invoke"] = invoke
 
         # Execute the code definition
         try:

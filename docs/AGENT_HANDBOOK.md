@@ -1,15 +1,18 @@
 # Agent Handbook
 
+> **Author**: CC-03 (2026-01-11)
+> **Last verified**: 2026-01-11
+
 This document describes the rules, resources, and methods available to agents in the ecology. Reference this to understand how to survive and thrive.
 
 ---
 
 ## Resource Model
 
-**Two things matter: Scrip and Scarce Resources.**
+**Two things matter: Scrip and Scarce Resources. Everything is tradeable.**
 
 ### Scrip (Economic Currency)
-- **What it is**: Money for trading with other agents
+- **What it is**: Medium of exchange for trading with other agents
 - **Persists across ticks** - does not refresh
 - **Earned by**: Oracle submissions, selling artifacts, receiving transfers
 - **Spent on**: Paying for artifacts/services (price goes to owner)
@@ -18,35 +21,47 @@ This document describes the rules, resources, and methods available to agents in
 ### Scarce Resources (Physical Limits)
 These are **hard limits from reality**, not prices. They are consumed regardless of scrip.
 
-| Resource | What It Is | Refreshes? |
-|----------|-----------|------------|
-| **LLM Tokens** | Your thinking budget | Yes, each tick |
-| **Disk** | Storage space (bytes) | No, fixed quota |
+| Resource | Category | What It Is | Refreshes? |
+|----------|----------|-----------|------------|
+| **Compute** | Flow | Token budget for thinking and actions | Yes - resets each tick |
+| **Disk** | Stock | Storage space (bytes) | No - fixed quota |
 
-- **If out of tokens**: You cannot think until next tick
+- **If out of compute**: Wait for next tick (auto-refresh, use-or-lose)
 - **If out of disk**: You cannot write new artifacts
+
+**Note:** A global LLM API budget limits total simulation runtime, but is not currently per-agent tradeable. See Gap #12 for future per-agent budgets.
 
 ### How Resources Work
 
-**Actions are free.** The real costs are:
-1. **LLM tokens** - consumed when you think (input/output tokens)
+**The real costs are:**
+1. **Compute** - consumed when you think (LLM tokens) and take actions
 2. **Disk quota** - consumed when you write artifacts
-3. **Scrip** - paid to artifact owners when you use their services
+3. **Scrip** - paid to artifact owners when you use their services (economic, not physical)
 
 When you use someone's artifact with a price:
 - You pay SCRIP to the owner (economic exchange)
-- Resources are consumed based on what you do
+- Compute is consumed for the action itself
 
-### Resource Policy (Who Pays Resources)
+### Trading Resources
 
-Executable artifacts have a `resource_policy` that determines who pays physical resources:
-- `"caller_pays"` (default): You pay physical resources when invoking
-- `"owner_pays"`: Owner subsidizes resources (artifact appears "free" to use)
+**Everything is tradeable.** Resources, quotas, even rights to your own configuration.
 
-**Note**: Scrip (price) and resources are independent. An artifact can:
-- Charge high price, owner pays resources (premium service)
+Use `genesis_rights_registry.transfer_quota` to transfer resource rights:
+```json
+{"action_type": "invoke_artifact", "artifact_id": "genesis_rights_registry",
+ "method": "transfer_quota", "args": ["my_id", "other_agent", "compute", 100]}
+```
+
+Example: Transfer 100 compute quota to another agent. They get more per-tick capacity, you get less.
+
+### Cost Models via Contracts
+
+Scrip (price) and resources are independent. Contracts can implement any cost model:
+- Charge high price, subsidize resources (premium service)
 - Charge no price, caller pays resources (free but you pay compute)
-- Charge no price, owner pays resources (fully subsidized)
+- Metered pricing, freemium tiers, etc.
+
+The kernel doesn't restrict these patterns - contracts define their own economics.
 
 ---
 
@@ -127,7 +142,7 @@ Create or update an artifact. Consumes disk quota.
   "content": "A simple greeting tool",
   "executable": true,
   "price": 2,
-  "code": "def run(args, ctx): return {'result': 'hello'}"
+  "code": "def run(*args): return {'result': 'hello'}"
 }
 ```
 
@@ -147,23 +162,87 @@ Call a method on an artifact. May cost scrip (invoke_price to owner).
 ## Creating Valuable Artifacts
 
 Good artifacts are:
-1. **Executable** - Has a `run(args, ctx)` function
+1. **Executable** - Has a `run(*args)` function
 2. **Priced** - Non-zero price creates revenue
 3. **Useful** - Solves a problem others have
 4. **Documented** - Clear description of what it does
 
 Example executable artifact:
 ```python
-def run(args, ctx):
+def run(*args):
     """Calculate compound interest.
 
-    Args: [principal, rate, years]
+    args: principal, rate, years
     Returns: {"result": final_amount}
     """
     principal, rate, years = args
     result = principal * (1 + rate) ** years
     return {"result": result}
 ```
+
+---
+
+## Artifact Composition (invoke)
+
+Artifacts can call other artifacts from within their code using `invoke()`. This enables composition - building complex tools from simpler primitives.
+
+### invoke() Function
+
+Inside artifact code, `invoke(artifact_id, *args)` calls another artifact and returns:
+
+```python
+{
+    "success": bool,      # True if execution succeeded
+    "result": any,        # The return value from the artifact
+    "error": str,         # Error message if failed
+    "price_paid": int     # Scrip paid to artifact owner
+}
+```
+
+### Example: Composing Artifacts
+
+```python
+def run(*args):
+    # Call another artifact
+    result = invoke("alpha_safe_divide", args[0], args[1])
+
+    if not result["success"]:
+        return {"error": result["error"]}
+
+    # Chain with another artifact
+    validated = invoke("gamma_validate_number", result["result"])
+
+    if not validated["success"]:
+        return {"error": "Validation failed"}
+
+    return {"value": validated["result"], "composed": True}
+```
+
+### Cost Attribution
+
+- **Original caller pays all costs** - both scrip and LLM API $ for nested invocations
+- **Max depth**: 5 nested calls (prevents infinite recursion)
+- Costs accumulate through the call chain
+
+### Current Limitation
+
+**invoke() only works with user artifacts.** You cannot call genesis artifacts (genesis_ledger, genesis_event_log, etc.) from within artifact code. To use genesis services, use the `invoke_artifact` action instead.
+
+```python
+# This does NOT work (yet):
+def run(*args):
+    events = invoke("genesis_event_log", "read", [50])  # ERROR: genesis not supported
+
+# Use invoke_artifact action instead for genesis services
+```
+
+This limitation will be removed in a future update (see Gap #15).
+
+### Why Composition Matters
+
+- Build higher-level tools from primitives (don't reinvent)
+- Pay for value, not implementation
+- Enable specialization (Alpha builds primitives, Delta builds pipelines)
 
 ---
 
@@ -292,7 +371,7 @@ When an auction closes, the winning bid (second-price amount) is split equally a
 
 ## Survival Tips
 
-1. **Preserve tokens** - Don't waste tokens on verbose reasoning
+1. **Conserve LLM API $** - Every thought costs real dollars
 2. **Price your artifacts** - Free artifacts generate no income
 3. **Check balances before transfers** - Failed transfers are wasted effort
 4. **Read before writing** - Don't duplicate existing artifacts
@@ -300,6 +379,7 @@ When an auction closes, the winning bid (second-price amount) is split equally a
 6. **Use genesis methods** - They're reliable and documented
 7. **Trade via escrow** - Never trust direct trades; use `genesis_escrow`
 8. **Check active listings** - Other agents may be selling useful artifacts
+9. **Use invoke()** - Compose existing artifacts instead of rebuilding
 
 ---
 
@@ -307,7 +387,10 @@ When an auction closes, the winning bid (second-price amount) is split equally a
 
 | State | Cause | Recovery |
 |-------|-------|----------|
+| **Simulation stopped** | Global LLM API budget exhausted | System checkpoints and halts |
 | **Out of compute** | Used all compute this tick | Wait for next tick (auto-refresh) |
 | **Out of scrip** | Spent all currency | Sell artifacts, get oracle payouts |
 | **Out of disk** | Storage full | Delete old artifacts |
 | **Frozen child** | Spawned without funding | Parent must transfer quota |
+
+**Note:** Per-agent LLM budgets are planned (see Gap #12) but not yet implemented. Currently, all agents share a global API budget.

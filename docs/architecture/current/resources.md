@@ -2,6 +2,8 @@
 
 How resources work TODAY.
 
+**Last verified:** 2026-01-11
+
 **See target:** [../target/resources.md](../target/resources.md)
 
 ---
@@ -21,7 +23,7 @@ Resources and scrip are independent. Spending resources doesn't cost scrip (exce
 
 ### Discrete Per-Tick Refresh
 
-**world.py:603-619**
+**`World.advance_tick()`** in `src/world/world.py`
 
 Flow resources reset to quota at start of each tick:
 
@@ -45,7 +47,7 @@ for pid in self.principal_ids:
 - Thinking cost (LLM input/output tokens)
 - Genesis method costs
 
-**Thinking cost calculation (simulation_engine.py:97-121):**
+**Thinking cost calculation** - `SimulationEngine.calculate_thinking_cost()` in `src/world/simulation_engine.py`:
 ```python
 input_cost = ceil((input_tokens / 1000) * rate_input)   # rate_input = 1
 output_cost = ceil((output_tokens / 1000) * rate_output) # rate_output = 3
@@ -54,7 +56,7 @@ total_cost = input_cost + output_cost
 
 ### No Debt Allowed
 
-**ledger.py:can_spend_resource()**
+**`Ledger.can_spend_resource()`** in `src/world/ledger.py`
 
 If agent doesn't have enough compute:
 - Thinking proceeds (LLM already called)
@@ -84,8 +86,8 @@ if not self.ledger.can_spend_resource(agent_id, "llm_tokens", cost):
 - Decremented on successful write
 - Can reclaim by deleting/overwriting smaller content
 
+**`World._execute_write()`** in `src/world/world.py`:
 ```python
-# world.py:393
 if not self.rights_registry.can_write(agent_id, bytes_needed):
     return ActionResult(success=False, message="Insufficient disk quota")
 ```
@@ -103,10 +105,10 @@ if not self.rights_registry.can_write(agent_id, bytes_needed):
 - When exhausted: simulation stops
 - Checkpoint saved before stopping
 
+**`SimulationRunner.run()`** in `src/simulation/runner.py`:
 ```python
-# runner.py
 if self.engine.is_budget_exhausted():
-    self._save_checkpoint("budget_exhausted")
+    save_checkpoint(...)  # Checkpoint saved before stopping
     return
 ```
 
@@ -120,10 +122,9 @@ if self.engine.is_budget_exhausted():
 | Default | 100 per agent |
 | Reset | Never |
 
-**Cannot go negative:**
+**Cannot go negative** - `Ledger.can_afford_scrip()` in `src/world/ledger.py`:
 
 ```python
-# ledger.py
 def can_afford_scrip(self, principal_id: str, amount: float) -> bool:
     return self.get_scrip(principal_id) >= amount
 ```
@@ -178,13 +179,13 @@ Set by artifact owner:
 
 ## Key Files
 
-| File | Lines | Description |
-|------|-------|-------------|
-| ledger.py | 74-156 | Resource tracking |
-| ledger.py | 335-376 | Thinking cost calculation/deduction |
-| world.py | 603-619 | Tick resource reset |
-| simulation_engine.py | 97-121 | Cost calculation |
-| rights_registry (genesis.py) | - | Quota management |
+| File | Key Functions | Description |
+|------|---------------|-------------|
+| `src/world/ledger.py` | `Ledger`, `can_spend_resource()`, `can_afford_scrip()` | Resource tracking |
+| `src/world/ledger.py` | `calculate_thinking_cost()`, `deduct_thinking_cost()` | Thinking cost calculation |
+| `src/world/world.py` | `World.advance_tick()` | Tick resource reset |
+| `src/world/simulation_engine.py` | `calculate_thinking_cost()`, `is_budget_exhausted()` | Cost calculation, budget tracking |
+| `src/world/genesis.py` | `GenesisRightsRegistry` | Quota management |
 
 ---
 

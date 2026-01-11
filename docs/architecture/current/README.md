@@ -2,7 +2,7 @@
 
 Documentation of how the system works TODAY. Updated as code changes.
 
-Last verified: 2025-01-11
+Last verified: 2026-01-11
 
 ---
 

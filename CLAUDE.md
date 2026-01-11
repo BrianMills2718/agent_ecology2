@@ -41,24 +41,42 @@ python -m mypy src/ --ignore-missing-imports  # Type check (must pass)
 
 ### 1. Fail Loud, No Silent Fallbacks
 
-**Development must surface all errors immediately.**
+**All errors must fail immediately. No silent degradation. No graceful fallbacks.**
 
-- No `except: pass` - all exceptions handled explicitly with logging
-- No silent fallbacks - if something fails, raise an error
-- If fallback has production value: document in `docs/FALLBACKS.md` with feature flag (OFF in dev)
+- No `except: pass` - all exceptions must propagate or be handled explicitly
+- No fallback behavior - if something fails, the system fails
+- No "log and continue" - logging a warning and using a default is still a silent fallback
 - Use `raise RuntimeError()` not `assert` for runtime checks
 
 ```python
-# WRONG - hides bugs
+# WRONG - silent fallback
 except Exception:
     result = default
 
-# RIGHT - fail loud in dev, optional fallback in prod
+# WRONG - logged fallback is still a fallback
 except APIError as e:
-    if get("fallbacks.api_cache.enabled"):  # OFF in dev
-        logger.warning("API failed, using cache: %s", e)
-        return cached_value
-    raise
+    logger.warning("API failed, using cache: %s", e)
+    return cached_value
+
+# RIGHT - fail immediately
+result = do_the_thing()  # Raises exception on failure
+```
+
+**If fallback is genuinely needed for production:**
+1. It MUST be behind a feature flag
+2. Feature flag MUST be OFF by default
+3. Development ALWAYS uses the optimal path (flag off = exception on failure)
+4. Document in `docs/FALLBACKS.md` with explicit justification
+
+```python
+# Only if absolutely necessary for production resilience
+if get("feature_flags.enable_api_fallback"):  # OFF by default!
+    try:
+        result = api_call()
+    except APIError:
+        result = cached_fallback()
+else:
+    result = api_call()  # Fails loudly - this is the development path
 ```
 
 ### 2. Maximum Observability
@@ -70,13 +88,42 @@ except APIError as e:
 - Errors must include full context for debugging
 - Never swallow exceptions without logging
 
-### 3. High Configurability
+### 3. No Magic Numbers - All Config in Config Files
 
-**Everything from config, not code.**
+**Zero numeric literals in code. All values come from configuration files.**
 
-- No magic numbers in source files
-- All values in `config/config.yaml`, schema in `config/schema.yaml`
-- Use `src/config.py`: `get()`, `get_genesis_config()`
+```python
+# WRONG - magic number in code
+disk_quota = 10000
+
+# WRONG - default value in code
+disk_quota = config.get("disk") or 10000
+
+# WRONG - default in schema class
+class ResourceConfig(BaseModel):
+    disk: int = Field(default=10000)
+
+# RIGHT - value from config, fails if missing
+disk_quota = config.get("disk")  # Raises if not in config
+
+# RIGHT - defaults in schema, runtime values in config.yaml
+# config/schema.yaml documents structure and defaults
+# config/config.yaml contains actual values
+# code:
+disk_quota = config.get("disk")  # From config.yaml, validated by schema
+```
+
+**Configuration files:**
+```
+config/
+  schema.yaml      # Structure documentation and default reference
+  config.yaml      # Actual runtime values
+```
+
+- `schema.yaml` documents structure and expected types
+- `config.yaml` contains all runtime values
+- Code reads config via `src/config.py` helpers
+- Missing required values = immediate failure with clear error message
 
 ### 4. Strong Typing
 
@@ -127,10 +174,26 @@ See `docs/GLOSSARY.md` for full definitions. Quick reference:
 
 ### Documentation Rules
 
-1. **Code is primary** - Make code self-explanatory, minimal comments
-2. **Update docs with code** - Changed behavior = updated docs
-3. **Reference, don't duplicate** - Point to other docs
-4. **CLAUDE.md stays lean** - It's always in context window
+**Canonical Sources:**
+- `docs/architecture/current/` - What IS implemented (ground truth)
+- `docs/architecture/target/` - What we WANT (ground truth)
+- `docs/architecture/GAPS.md` - Delta between them
+
+**Staleness:**
+- Every `architecture/` doc must have `Last verified: YYYY-MM-DD`
+- Stale = not verified in 7+ days
+- Before code changes: check if relevant current/ doc is stale. If so, verify first.
+
+**Code Change Protocol:**
+1. Change code
+2. Update `architecture/current/` to match
+3. If gap closed, update `GAPS.md`
+4. Update "Last verified" date
+
+**Style:**
+- Reference by function name, not line number (lines go stale)
+- Keep CLAUDE.md lean (always in context)
+- Reference other docs, don't duplicate
 
 ---
 
@@ -204,14 +267,87 @@ Multiple Claude Code instances may work simultaneously.
 
 ---
 
+## Architecture Documentation
+
+### Canonical Sources
+
+| Directory | Purpose | Update When |
+|-----------|---------|-------------|
+| `docs/architecture/current/` | How system works TODAY | Code changes |
+| `docs/architecture/target/` | What we're building toward | Architecture decisions |
+| `docs/architecture/GAPS.md` | Prioritized gaps, links to plans | Gap identified/closed |
+| `docs/plans/` | HOW to close gaps (detailed steps) | Planning/completing work |
+| `docs/DESIGN_CLARIFICATIONS.md` | WHY decisions were made (rationale archive) | Architecture discussions |
+
+### Documentation Lifecycle
+
+```
+[Architecture Decision]
+        ↓
+   Update target/ + DESIGN_CLARIFICATIONS.md
+        ↓
+   Add gap to GAPS.md (if new)
+        ↓
+[Create Implementation Plan]
+        ↓
+   Write docs/plans/xxx.md
+        ↓
+[Implement]
+        ↓
+   Update docs/architecture/current/
+        ↓
+   Mark complete in GAPS.md
+```
+
+### Update Rules
+
+1. **Code change → Update current/**
+   - Any behavioral change must be reflected in current/ docs
+   - Update line number references if they shifted
+   - Update "Last verified" date in doc header
+
+2. **Architecture decision → Update target/ + rationale**
+   - Design decisions go in target/ docs
+   - Record WHY in DESIGN_CLARIFICATIONS.md
+   - Add to GAPS.md if creates new gap
+
+3. **Starting implementation → Link to plan**
+   - Ensure plan exists in docs/plans/
+   - Mark plan status 🚧 In Progress
+   - Add CC-ID to CLAUDE.md coordination section
+
+4. **Completing implementation → Sync all docs**
+   - Update current/ to match new reality
+   - Mark gap ✅ Complete in GAPS.md
+   - Update plan status
+
+### Conflict Resolution
+
+When multiple CCs update the same doc: **Last verified date wins.**
+
+- Always update "Last verified: YYYY-MM-DD" when modifying a doc
+- The most recent date is authoritative
+- This encourages frequent verification and avoids merge conflicts
+
+### Gap Status Key
+
+| Status | Meaning |
+|--------|---------|
+| 📋 Planned | Has implementation plan |
+| 🚧 In Progress | Being implemented |
+| ⏸️ Blocked | Waiting on dependency |
+| ❌ No Plan | Gap identified, no plan yet |
+| ✅ Complete | Implemented, docs updated |
+
+---
+
 ## References
 
 | Doc | Purpose |
 |-----|---------|
+| `docs/architecture/GAPS.md` | **Gap tracking** - current vs target |
 | `docs/GLOSSARY.md` | **Canonical terminology** - use these terms |
+| `docs/DESIGN_CLARIFICATIONS.md` | **Decision rationale** - why we decided things |
 | `docs/TASK_LOG.md` | Completed task history |
-| `docs/FALLBACKS.md` | Fallback registry with feature flags |
-| `docs/RESOURCE_MODEL.md` | Resource system design |
 | `docs/DEFERRED_FEATURES.md` | Features considered but deferred |
-| `docs/IMPLEMENTATION_PLAN.md` | Historical implementation notes |
 | `config/schema.yaml` | All config options documented |

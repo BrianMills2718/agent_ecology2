@@ -203,11 +203,15 @@ Passive observability - agents must READ to learn.
 
 ## Future Work
 
-Potential next phases:
-- **Phase 9**: Contract execution (implement `@contract` policy enforcement)
-- **Phase 10**: Multi-agent trading and negotiation protocols
-- **Phase 11**: Reputation systems based on oracle submissions
-- **Phase 12**: Real external integrations (replacing mock oracle)
+> **See [architecture/GAPS.md](architecture/GAPS.md)** for the current list of implementation gaps and their priorities.
+> **See [plans/README.md](plans/README.md)** for implementation plans for each gap.
+
+Key gaps being tracked:
+- **#1 Token Bucket**: Rolling window resource accumulation
+- **#2 Continuous Execution**: Autonomous agent loops (major refactor)
+- **#6 Unified Artifact Ontology**: Everything is an artifact (agents, contracts, data)
+- **#16 genesis_store**: Artifact discovery mechanism
+- **#20 Migration Strategy**: Phased transition from current to target architecture
 
 ---
 

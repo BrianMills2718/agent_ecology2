@@ -2,6 +2,8 @@
 
 How agent execution works TODAY.
 
+**Last verified:** 2026-01-11
+
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
 ---
@@ -10,7 +12,7 @@ How agent execution works TODAY.
 
 Agents do NOT act autonomously. The runner controls when agents think and act.
 
-### Main Loop (runner.py:514-620)
+### Main Loop (`SimulationRunner.run()`)
 
 ```python
 while self.world.advance_tick():
@@ -32,7 +34,7 @@ while self.world.advance_tick():
 
 ### Phase 1: Observe (Parallel)
 
-**runner.py:572-580**
+**`SimulationRunner._think_all_agents()`**
 
 1. Capture world state snapshot via `get_state_summary()`
 2. All agents see IDENTICAL state (snapshot consistency)
@@ -47,7 +49,7 @@ proposals = await asyncio.gather(*thinking_tasks)
 
 ### Phase 2: Execute (Sequential Randomized)
 
-**runner.py:585-586**
+**`SimulationRunner.run()` execution phase**
 
 1. Shuffle proposals randomly (prevents ordering exploits)
 2. Execute each action sequentially
@@ -64,7 +66,7 @@ for proposal in proposals:
 
 ## Tick Lifecycle
 
-### advance_tick() (world.py:588-628)
+### advance_tick() (`World.advance_tick()`)
 
 Called at start of each tick:
 
@@ -108,14 +110,13 @@ def advance_tick(self) -> bool:
 
 ## Key Files
 
-| File | Lines | Description |
-|------|-------|-------------|
-| runner.py | 514-620 | Main run() loop |
-| runner.py | 248-314 | _think_agent() - single agent thinking |
-| runner.py | 572-580 | Phase 1 parallel gather |
-| runner.py | 585-586 | Phase 2 sequential execution |
-| world.py | 588-628 | advance_tick() |
-| world.py | 285-350 | execute_action() dispatcher |
+| File | Key Functions | Description |
+|------|---------------|-------------|
+| `src/simulation/runner.py` | `SimulationRunner.run()` | Main run loop |
+| `src/simulation/runner.py` | `SimulationRunner._think_agent()` | Single agent thinking |
+| `src/simulation/runner.py` | `SimulationRunner._think_all_agents()` | Phase 1 parallel gather |
+| `src/world/world.py` | `World.advance_tick()` | Tick lifecycle |
+| `src/world/world.py` | `World.execute_action()` | Action dispatcher |
 
 ---
 

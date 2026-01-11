@@ -23,6 +23,37 @@ from .executor import get_executor
 from ..config import get as config_get, compute_per_agent_quota, PerAgentQuota
 
 
+def get_error_message(error_type: str, **kwargs: Any) -> str:
+    """Get a configurable error message with placeholders filled in.
+
+    Args:
+        error_type: One of 'access_denied_read', 'access_denied_write',
+                   'access_denied_invoke', 'method_not_found', 'escrow_not_owner'
+        **kwargs: Placeholder values (artifact_id, method, methods, escrow_id)
+
+    Returns:
+        Formatted error message from config (or default if not configured).
+    """
+    # Defaults (in case config not loaded)
+    defaults: dict[str, str] = {
+        "access_denied_read": "Access denied: you are not allowed to read {artifact_id}. See handbook_actions for permissions.",
+        "access_denied_write": "Access denied: you are not allowed to write to {artifact_id}. See handbook_actions for permissions.",
+        "access_denied_invoke": "Access denied: you are not allowed to invoke {artifact_id}. See handbook_actions for permissions.",
+        "method_not_found": "Method '{method}' not found on {artifact_id}. Available: {methods}. See handbook_genesis for method details.",
+        "escrow_not_owner": "Escrow does not own {artifact_id}. See handbook_trading for the 2-step process: 1) genesis_ledger.transfer_ownership([artifact_id, '{escrow_id}']), 2) deposit.",
+    }
+
+    # Get from config (or use default)
+    template: str = config_get(f"agent.errors.{error_type}") or defaults.get(error_type, f"Error: {error_type}")
+
+    # Fill in placeholders
+    try:
+        return template.format(**kwargs)
+    except KeyError:
+        # Missing placeholder - return template as-is
+        return template
+
+
 class PrincipalConfig(TypedDict, total=False):
     """Configuration for a principal."""
     id: str
@@ -240,7 +271,7 @@ class World:
                 if not artifact.can_read(intent.principal_id):
                     result = ActionResult(
                         success=False,
-                        message=f"Access denied: you are not allowed to read {intent.artifact_id}"
+                        message=get_error_message("access_denied_read", artifact_id=intent.artifact_id)
                     )
                 else:
                     # Check if can afford read_price (economic cost -> SCRIP)
@@ -317,7 +348,7 @@ class World:
         if existing and not existing.can_write(intent.principal_id):
             return ActionResult(
                 success=False,
-                message=f"Access denied: you are not allowed to write to {intent.artifact_id}"
+                message=get_error_message("access_denied_write", artifact_id=intent.artifact_id)
             )
 
         # Calculate disk bytes
@@ -393,7 +424,12 @@ class World:
             if not method:
                 return ActionResult(
                     success=False,
-                    message=f"Method '{method_name}' not found on {artifact_id}. Available: {[m['name'] for m in genesis.list_methods()]}"
+                    message=get_error_message(
+                        "method_not_found",
+                        method=method_name,
+                        artifact_id=artifact_id,
+                        methods=[m['name'] for m in genesis.list_methods()]
+                    )
                 )
 
             # Genesis method costs are COMPUTE (physical resource, not scrip)
@@ -450,7 +486,7 @@ class World:
             if not regular_artifact.can_invoke(intent.principal_id):
                 return ActionResult(
                     success=False,
-                    message=f"Access denied: you are not allowed to invoke {artifact_id}"
+                    message=get_error_message("access_denied_invoke", artifact_id=artifact_id)
                 )
 
             # Price (SCRIP) - economic payment to owner
@@ -467,9 +503,16 @@ class World:
                     message=f"Insufficient scrip for price: need {price}, have {self.ledger.get_scrip(intent.principal_id)}"
                 )
 
-            # Execute the code
+            # Execute the code with invoke() capability for composition
             executor = get_executor()
-            exec_result = executor.execute(regular_artifact.code, args)
+            exec_result = executor.execute_with_invoke(
+                code=regular_artifact.code,
+                args=args,
+                caller_id=intent.principal_id,
+                artifact_id=artifact_id,
+                ledger=self.ledger,
+                artifact_store=self.artifacts,
+            )
 
             # Extract resource consumption from executor
             resources_consumed = exec_result.get("resources_consumed", {})

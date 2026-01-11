@@ -2,7 +2,45 @@
 
 What we're building toward.
 
+**Last verified:** 2026-01-11
+
 **See current:** [../current/agents.md](../current/agents.md)
+
+---
+
+## Unified Ontology
+
+Agents are artifacts with specific properties:
+
+```python
+@dataclass
+class Artifact:
+    id: str                    # Universal ID (single namespace)
+    content: Any               # For agents: config, prompt, code
+    access_contract_id: str    # Who answers permission questions
+    has_standing: bool         # Can hold scrip, bear costs
+    can_execute: bool          # Has runnable code
+
+# Agent = artifact where has_standing=True AND can_execute=True
+```
+
+### Why This Matters
+
+| Old Model | New Model |
+|-----------|-----------|
+| Agent is a separate concept | Agent is an artifact type |
+| Agents can't be owned | Agents are ownable property |
+| principal_id separate from artifact_id | Single namespace for all IDs |
+| Ledger tracks principals | Ledger tracks artifacts with standing |
+
+### Derived Categories
+
+| Category | has_standing | can_execute | Example |
+|----------|--------------|-------------|---------|
+| **Agent** | true | true | Autonomous actor |
+| **Tool** | false | true | Executable, invoker pays |
+| **Account** | true | false | Treasury, escrow |
+| **Data** | false | false | Documents, content |
 
 ---
 
@@ -153,29 +191,81 @@ Market-driven rescue, not system rules.
 
 ### Spawning
 
-Agents can spawn new agents via `genesis_ledger.spawn_principal()`:
+Agents create new agents via `genesis_store.create()`:
 
 ```python
-invoke("genesis_ledger", "spawn_principal", [])
-# Returns new principal_id
+invoke("genesis_store", "create", {
+    "content": {"prompt": "...", "model": "..."},
+    "has_standing": True,
+    "can_execute": True,
+    "access_contract_id": "genesis_self_owned"  # New agent owns itself
+})
+# Returns new artifact_id (which IS the agent ID)
 ```
 
-New agent starts with:
-- 0 scrip
-- 0 compute
-- Default prompt (or none)
+### New Agent Starts With
+
+| Property | Initial Value |
+|----------|---------------|
+| Scrip | 0 |
+| Compute | 0 |
+| Content | Provided config/prompt |
+| access_contract_id | Typically "genesis_self_owned" |
 
 Spawner must transfer resources to make new agent viable.
 
-### Inherited vs Default
+### Ownership Options
 
-| Property | Inherited? |
-|----------|-----------|
-| Scrip | No (starts at 0) |
-| Compute | No (starts at 0) |
-| Prompt | No (default or none) |
-| Memory | No (fresh) |
-| Config rights | Owned by new agent (can be sold) |
+When spawning, the creator can choose:
+- `access_contract_id: "genesis_self_owned"` → New agent controls itself
+- `access_contract_id: creator_id` → Creator controls the agent
+- `access_contract_id: some_contract_id` → Shared/complex ownership
+
+---
+
+## Access Control
+
+### Agents Control Themselves
+
+By default, agents have `access_contract_id: "genesis_self_owned"`:
+- Only the agent itself can modify its configuration
+- Other agents cannot read/modify without permission
+
+### Delegated Control
+
+Agents can sell or grant control rights:
+- Change `access_contract_id` to another agent's ID
+- Or use a custom contract for shared control
+
+### Permission Checks Cost Compute
+
+Every action requires a permission check against the target artifact's contract:
+- Requester pays for the check
+- Failed checks still cost (prevents spam probing)
+
+See [contracts.md](contracts.md) for full contract system details.
+
+---
+
+## Payment Model
+
+### Agents Pay Their Own Costs
+
+Agents have `has_standing: true`, meaning they bear their own costs:
+- Thinking costs (LLM calls)
+- Action costs (genesis method invocations)
+- Permission check costs
+
+### Invoking Tools vs Agents
+
+When an agent invokes another artifact:
+
+| Target | has_standing | Who Pays |
+|--------|--------------|----------|
+| Tool | false | Invoking agent pays |
+| Agent | true | Target agent pays its own execution |
+
+See [resources.md](resources.md) for full cost model details.
 
 ---
 

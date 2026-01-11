@@ -663,6 +663,14 @@ class AgentPromptConfig(StrictModel):
         gt=0,
         description="Maximum number of relevant memories to include"
     )
+    first_tick_hint: str = Field(
+        default="TIP: New to this world? Read handbook_genesis to learn available methods, or handbook_trading for how to buy/sell.",
+        description="Hint shown on first tick (empty string to disable)"
+    )
+    first_tick_enabled: bool = Field(
+        default=True,
+        description="Whether to show first_tick_hint on tick 1"
+    )
 
 
 DEFAULT_RAG_QUERY_TEMPLATE: str = """Tick {tick}. I am {agent_id} with {balance} scrip.
@@ -693,11 +701,44 @@ class RAGConfig(StrictModel):
     )
 
 
+class ErrorMessagesConfig(StrictModel):
+    """Configurable error messages with handbook references.
+
+    Use {placeholders} for dynamic values:
+    - {artifact_id}: The artifact involved
+    - {method}: The method name
+    - {methods}: List of available methods
+    - {escrow_id}: The escrow artifact ID
+    """
+
+    access_denied_read: str = Field(
+        default="Access denied: you are not allowed to read {artifact_id}. See handbook_actions for permissions.",
+        description="Error when read access denied"
+    )
+    access_denied_write: str = Field(
+        default="Access denied: you are not allowed to write to {artifact_id}. See handbook_actions for permissions.",
+        description="Error when write access denied"
+    )
+    access_denied_invoke: str = Field(
+        default="Access denied: you are not allowed to invoke {artifact_id}. See handbook_actions for permissions.",
+        description="Error when invoke access denied"
+    )
+    method_not_found: str = Field(
+        default="Method '{method}' not found on {artifact_id}. Available: {methods}. See handbook_genesis for method details.",
+        description="Error when method doesn't exist"
+    )
+    escrow_not_owner: str = Field(
+        default="Escrow does not own {artifact_id}. See handbook_trading for the 2-step process: 1) genesis_ledger.transfer_ownership([artifact_id, '{escrow_id}']), 2) deposit.",
+        description="Error when trying to deposit artifact not owned by escrow"
+    )
+
+
 class AgentConfig(StrictModel):
     """Configuration for agent behavior."""
 
     prompt: AgentPromptConfig = Field(default_factory=AgentPromptConfig)
     rag: RAGConfig = Field(default_factory=RAGConfig)
+    errors: ErrorMessagesConfig = Field(default_factory=ErrorMessagesConfig)
 
 
 # =============================================================================
@@ -843,6 +884,10 @@ __all__ = [
     "WorldConfig",
     "BudgetConfig",
     "DashboardConfig",
+    "AgentConfig",
+    "AgentPromptConfig",
+    "RAGConfig",
+    "ErrorMessagesConfig",
     # Functions
     "load_validated_config",
     "validate_config_dict",

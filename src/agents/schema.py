@@ -36,7 +36,7 @@ You must respond with a single JSON object representing your action.
 
 | Artifact | Key Methods |
 |----------|-------------|
-| genesis_ledger | balance, all_balances, transfer |
+| genesis_ledger | balance, all_balances, transfer, transfer_ownership |
 | genesis_rights_registry | check_quota, all_quotas, transfer_quota |
 | genesis_oracle | status, bid, check |
 | genesis_event_log | read |

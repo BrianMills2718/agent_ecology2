@@ -2,6 +2,8 @@
 
 What we're building toward.
 
+**Last verified:** 2026-01-11
+
 **See current:** [../current/execution_model.md](../current/execution_model.md)
 
 ---
@@ -74,7 +76,7 @@ Agents own their sleep configuration. System provides primitives:
 # Agent can call these
 await sleep(duration_seconds)
 await sleep_until_event("escrow_listing")
-await sleep_until(lambda: self.scrip_balance > 100)
+await sleep_until(lambda: self.scrip > 100)
 ```
 
 ### Wake Conditions

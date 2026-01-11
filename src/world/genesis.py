@@ -27,6 +27,28 @@ from .logger import EventLogger
 SYSTEM_OWNER: str = "system"
 
 
+def _get_error_message(error_type: str, **kwargs: Any) -> str:
+    """Get a configurable error message with placeholders filled in.
+
+    Args:
+        error_type: One of 'escrow_not_owner', etc.
+        **kwargs: Placeholder values (artifact_id, escrow_id)
+
+    Returns:
+        Formatted error message from config (or default if not configured).
+    """
+    defaults: dict[str, str] = {
+        "escrow_not_owner": "Escrow does not own {artifact_id}. See handbook_trading for the 2-step process: 1) genesis_ledger.transfer_ownership([artifact_id, '{escrow_id}']), 2) deposit.",
+    }
+
+    template: str = get(f"agent.errors.{error_type}") or defaults.get(error_type, f"Error: {error_type}")
+
+    try:
+        return template.format(**kwargs)
+    except KeyError:
+        return template
+
+
 class MethodInfo(TypedDict):
     """Information about a genesis method for listing."""
     name: str
@@ -1331,8 +1353,7 @@ class GenesisEscrow(GenesisArtifact):
         if artifact.owner_id != self.id:
             return {
                 "success": False,
-                "error": f"Escrow does not own {artifact_id}. First transfer ownership: "
-                         f"invoke_artifact('genesis_ledger', 'transfer_ownership', ['{artifact_id}', '{self.id}'])"
+                "error": _get_error_message("escrow_not_owner", artifact_id=artifact_id, escrow_id=self.id)
             }
 
         # Check not already listed

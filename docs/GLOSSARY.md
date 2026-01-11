@@ -127,6 +127,25 @@ Only 4 action types exist:
 | **Two-Layer Model** | Scrip (economic) and Resources (physical) are independent layers |
 | **Two-Phase Commit** | Observe (frozen state) → Act (randomized execution) |
 | **Narrow Waist** | Only 3 verbs (read/write/invoke) - all capabilities derive from these |
+| **Vulture Capitalist** | [Target] Market-driven rescue of frozen agents via unilateral transfers |
+
+---
+
+## Target Architecture Terms
+
+These terms are defined in the target architecture but not yet implemented. See `docs/architecture/target/`.
+
+| Term | Definition | Gap |
+|------|------------|-----|
+| **has_standing** | Property that allows artifact to hold resources and bear costs | #6 |
+| **can_execute** | Property that allows artifact code to be invoked | #6 |
+| **access_contract_id** | Artifact field pointing to contract governing permissions | #6 |
+| **Token Bucket** | Rolling window resource accumulation (rate + capacity) | #1 |
+| **Tombstone** | Soft delete marker for dangling reference handling | #18 |
+| **genesis_store** | Proposed genesis artifact for artifact discovery | #16 |
+| **Frozen** | Agent with negative resource balance, cannot act until recovery | #1, #4 |
+| **Compute Debt** | Negative compute balance - natural throttling mechanism | #4 |
+| **Continuous Execution** | Agents run autonomous loops, not tick-synchronized | #2 |
 
 ---
 

@@ -1,6 +1,16 @@
 # Resource Model
 
+> **⚠️ DEPRECATED:** This document is superseded by:
+> - **Current implementation:** [architecture/current/resources.md](architecture/current/resources.md)
+> - **Target design:** [architecture/target/resources.md](architecture/target/resources.md)
+>
+> This file is kept for historical reference. Do not update.
+
+---
+
 This document describes how Agent Ecology models scarce resources and economic exchange.
+
+> **Related docs**: `AGENT_HANDBOOK.md` (agent-facing), `CLAUDE.md` (implementation reference)
 
 ## Core Principle: Physics-First
 
@@ -51,36 +61,32 @@ Hard constraints measured from reality:
 
 Actions are deliberately free. Real constraints come from thinking (tokens) and storage (disk), not arbitrary friction.
 
-### Two-Layer Model (Implemented)
+### Two-Layer Model
 
 When invoking an executable artifact, **two independent deductions** occur:
 
 ```
 Layer 1 (Scrip):     caller pays PRICE to owner     → Economic exchange
-Layer 2 (Resources): payer pays RESOURCES to system → Physical consumption
+Layer 2 (Resources): caller pays RESOURCES to system → Physical consumption
 ```
 
-The **resource payer** depends on the artifact's `resource_policy`:
-- `"caller_pays"`: Caller pays resources (default)
-- `"owner_pays"`: Owner subsidizes resources (enables free services)
-
-**Example flow** (caller_pays):
+**Example flow**:
 ```
 1. Bob invokes Alice's artifact (price=5)
 2. Bob pays 5 scrip to Alice (Layer 1)
-3. Execution runs, consuming 3.0 llm_tokens
-4. Bob pays 3.0 llm_tokens (Layer 2)
-5. ActionResult includes: resources_consumed={"llm_tokens": 3.0}, charged_to="bob"
+3. Execution runs, consuming LLM API $
+4. Bob pays resources (Layer 2)
 ```
 
-**Example flow** (owner_pays):
-```
-1. Bob invokes Alice's artifact (price=0, resource_policy="owner_pays")
-2. No scrip transfer (price=0)
-3. Execution runs, consuming 3.0 llm_tokens
-4. Alice pays 3.0 llm_tokens (Layer 2 - owner subsidizes)
-5. ActionResult includes: resources_consumed={"llm_tokens": 3.0}, charged_to="alice"
-```
+### Flexible Cost Attribution via Contracts
+
+The kernel does not hardcode resource payment policies. Instead, **contracts can implement any cost model**:
+
+- A contract can charge callers and subsidize resources from its own balance
+- A contract can implement metered pricing, freemium tiers, or premium services
+- Genesis contracts (like `genesis_escrow`) demonstrate patterns others can follow
+
+This keeps the kernel simple while allowing arbitrarily complex economic arrangements to emerge through contract code. See the Contracts section below for examples.
 
 ---
 
@@ -205,15 +211,18 @@ class Artifact:
     id: str
     owner_id: str
     content: str
-    price: int = 0              # Scrip price (for executable artifacts)
     executable: bool = False
-    code: str = ""              # Python code with run() function
-    resource_policy: str = "caller_pays"  # Who pays physical resources
+    code: str = ""              # Python code with run(*args) function
+    policy: dict = {
+        "read_price": 0,        # Scrip cost to read
+        "invoke_price": 0,      # Scrip cost to invoke (paid to owner)
+        "allow_read": ["*"],    # Who can read
+        "allow_write": [],      # Who can modify (owner always can)
+        "allow_invoke": ["*"],  # Who can invoke
+    }
 ```
 
-**resource_policy options** (Two-Layer Model):
-- `"caller_pays"` (default): Caller pays physical resource costs (compute, tokens)
-- `"owner_pays"`: Owner subsidizes physical resources (enables "free" services)
+For executable artifacts, the `run(*args)` function is called on invocation. Callers pay `invoke_price` scrip to the owner plus resource costs for execution.
 
 ### Action Result Schema
 
@@ -224,12 +233,9 @@ class ActionResult:
     message: str
     data: dict[str, Any] | None = None
     resources_consumed: dict[str, float] | None = None  # Physical resources used
-    charged_to: str | None = None                        # Who paid the resources
 ```
 
-**Resource fields** (Two-Layer Model):
-- `resources_consumed`: Physical resources consumed (e.g., `{"llm_tokens": 5.0, "disk_bytes": 1024}`)
-- `charged_to`: Principal ID of who paid the physical resources (may differ from caller)
+The `resources_consumed` field tracks physical resources used (e.g., `{"llm_tokens": 5.0, "disk_bytes": 1024}`).
 
 ---
 

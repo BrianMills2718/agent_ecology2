@@ -8,8 +8,17 @@ import logging
 import os
 import atexit
 import threading
+import warnings
 from pathlib import Path
 from typing import Any, TypedDict
+
+# Suppress noisy Pydantic serialization warnings from LiteLLM/mem0
+warnings.filterwarnings("ignore", message=".*Pydantic serializer warnings.*")
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
+
+# Reduce mem0 log level to WARNING to suppress JSON parse errors
+logging.getLogger("mem0").setLevel(logging.WARNING)
+logging.getLogger("mem0.memory.main").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 

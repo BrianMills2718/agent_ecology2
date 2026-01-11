@@ -2,6 +2,8 @@
 
 What we're building toward.
 
+**Last verified:** 2026-01-11
+
 **See current:** Genesis oracle in current system uses tick-based bidding windows.
 
 ---

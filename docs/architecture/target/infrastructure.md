@@ -2,6 +2,8 @@
 
 What we're building toward.
 
+**Last verified:** 2026-01-11
+
 ---
 
 ## Docker Resource Isolation
@@ -118,24 +120,13 @@ docker stats agent-ecology
 
 ---
 
-## Development Environment
-
-Reference specs for calibration:
-
-| Component | Spec |
-|-----------|------|
-| Machine | Surface Laptop 4 |
-| CPU | Intel i7-1185G7 (4 cores, 8 threads) |
-| RAM | 32GB (often ~17GB available) |
-| OS | Windows 11 |
-
-Note: Developer often runs many other programs (Claude Code instances, browsers, etc.). Docker isolation prevents agent ecology from competing with these.
-
----
-
 ## Calibration Process
 
+Token bucket rates must be calibrated to your container's capacity.
+
 ### Step 1: Baseline Container
+
+Start with conservative limits:
 
 ```bash
 docker run --memory=4g --cpus=2 agent-ecology
@@ -143,30 +134,51 @@ docker run --memory=4g --cpus=2 agent-ecology
 
 ### Step 2: Run Stress Test
 
-- Start 5 agents
-- Full continuous loops
-- Monitor container stats
+```bash
+# Start 5 agents in continuous mode
+# Monitor container stats in another terminal
+docker stats agent-ecology
+```
+
+Watch for:
+- CPU usage (target: 70-80% sustained)
+- Memory usage (target: <90% of limit)
+- Throttling indicators
 
 ### Step 3: Adjust Token Bucket Rate
 
-If container maxes out:
-- Reduce rate (fewer tokens/sec)
-- Or increase container resources
+**Calibration algorithm:**
 
-If container underutilized:
-- Increase rate
-- More throughput possible
+```
+1. Start with rate = 10 tokens/sec per agent
+2. Run 5 agents at full continuous loop for 5 minutes
+3. If CPU > 85%: reduce rate by 20% (rate = 8)
+4. If CPU < 50%: increase rate by 25% (rate = 12.5)
+5. Repeat until CPU stabilizes at 70-80%
+```
 
-### Step 4: Document Sweet Spot
+### Step 4: Document Configuration
 
 ```yaml
-# Calibrated for 4GB/2CPU container
+# Example: Calibrated for 4GB/2CPU container
 resources:
   flow:
-    compute:
+    llm_rate:           # Token bucket for LLM API access
       rate: 10          # tokens/sec per agent
-      capacity: 100     # max tokens
+      capacity: 100     # max tokens storable
 ```
+
+### Hardware Variability
+
+Different hardware will need different calibration:
+
+| Hardware Class | Suggested Starting Rate |
+|----------------|------------------------|
+| Laptop (4 cores) | 5-10 tokens/sec |
+| Desktop (8 cores) | 10-20 tokens/sec |
+| Server (16+ cores) | 20-50 tokens/sec |
+
+These are starting points only. Always calibrate with stress testing.
 
 ---
 
