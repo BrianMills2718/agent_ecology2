@@ -182,7 +182,7 @@ Multiple Claude Code instances may work simultaneously.
 
 | Task | CC-ID | Completed | Reviewer |
 |------|-------|-----------|----------|
-| Add artifact ID length validation | CC-4 | 2025-01-11 | Added to schema.py + config |
+| (none) | - | - | - |
 
 ### Coordination Rules
 
