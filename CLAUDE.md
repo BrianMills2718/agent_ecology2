@@ -170,7 +170,7 @@ Multiple Claude Code instances may work simultaneously.
 
 | Task | Description | Priority |
 |------|-------------|----------|
-| Document Windows timeout limitation | signal.alarm Unix-only | Low |
+| (none) | - | - |
 
 ### In Progress
 
