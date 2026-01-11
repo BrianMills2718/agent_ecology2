@@ -89,6 +89,7 @@ Full list of all architectural decisions with certainty levels, organized by top
 | | Spawned agents get 0 resources | 60% | OPEN |
 | | No agent death (frozen only) | 65% | OPEN |
 | | Zombie threshold | 40% | OPEN |
+| | Vulture failure modes: accept risk | 60% | OPEN |
 | **Oracle** | | | |
 | | Bids accepted anytime | 85% | DECIDED |
 | | Periodic resolution | 85% | DECIDED |
@@ -2374,6 +2375,49 @@ lifecycle:
 **Uncertainty (35%):** If zombies accumulate, this becomes technical debt. May regret not solving now.
 
 **Action:** Document as explicit non-decision in target/agents.md. Add to "Future Considerations" section.
+
+---
+
+#### Vulture Capitalist Failure Modes (DOCUMENTED 2026-01-11)
+
+The Vulture Capitalist pattern (unfreezing agents to extract value) has two potential failure modes identified by external review:
+
+**A. Spiteful Zombie (Holdout Problem)**
+
+```
+1. Agent A is frozen (in debt)
+2. Vulture V transfers compute to A, unfreezing them
+3. A realizes they're being "extorted" for assets
+4. A uses their 1 bit of compute to sleep(99999) or refuse
+5. V loses their investment
+```
+
+**Market Impact:** If common, vultures stop unfreezing agents. Market for frozen assets collapses.
+
+**Potential fix (deferred):** Collateralized Debt Artifact - agents must have a "default contract" allowing vultures to seize assets if frozen too long.
+
+**B. Brain Damage Problem**
+
+```
+1. Agent A is frozen with valuable assets
+2. A's prompt is corrupted or model outdated
+3. Vulture V unfreezes A
+4. A cannot successfully execute transfer_resource (broken logic)
+5. Assets trapped in "dead brain" forever
+```
+
+**Market Impact:** Valuable resources permanently locked in non-functional agents.
+
+**Potential fix (deferred):** Liquidation Rights - agent ownership (config artifact) can be bought/transferred even while agent is frozen, bypassing the need for agent cooperation.
+
+**Decision:** Accept both risks initially. Revisit if they become problems in practice.
+
+**Certainty:** 60% - We don't know how common these failures will be.
+
+**Revisit if:**
+- Vulture market fails to emerge
+- Significant resources get trapped in spiteful/broken agents
+- Community feedback suggests fixes are needed
 
 ---
 
