@@ -54,8 +54,9 @@ Simple permission checks (can_read, can_invoke, can_write) cost zero compute. Ra
 
 | Operation | Cost |
 |-----------|------|
-| Base check (pure function) | 0 |
-| Complex logic in contract | 0 (contract is pure) |
+| Base check (simple logic) | 0 |
+| Contract calls LLM | Invoker pays LLM cost |
+| Contract invokes artifacts | Invoker pays invoke cost |
 
 See DESIGN_CLARIFICATIONS.md for full cost model discussion.
 
@@ -194,42 +195,50 @@ def check_permission(artifact_id, action, requester_id):
 
 ---
 
-## Contract Constraints
+## Contract Capabilities
 
-**Contracts are pure functions.** (Certainty: 95%)
+**Contracts can do anything.** (Decision updated: 2026-01-11)
 
-Contracts cannot:
-- Call LLM (no `call_llm()`)
-- Invoke other artifacts (no `invoke()`)
-- Make external API calls
-- Modify any state
-
-Contracts receive all needed data via inputs and return a decision.
+Contracts are executable artifacts with full capabilities:
+- Call LLM (invoker pays)
+- Invoke other artifacts (invoker pays)
+- Make external API calls (invoker pays)
+- Cannot modify state directly (return decision, not mutate)
 
 ```python
-# Contract execution context - contracts only get these inputs
-def execute_contract(contract_code: str, inputs: dict) -> PermissionResult:
+# Contract execution context - full capabilities, invoker pays costs
+def execute_contract(contract_code: str, inputs: dict, invoker_id: str) -> PermissionResult:
     namespace = {
         "artifact_id": inputs["artifact_id"],
         "action": inputs["action"],
         "requester_id": inputs["requester_id"],
-        "artifact_content": inputs["artifact_content"],  # Full artifact data
-        "context": inputs["context"],  # Additional context (created_by, etc.)
+        "artifact_content": inputs["artifact_content"],
+        "context": inputs["context"],
 
-        # NOT available:
-        # "invoke": ...,
-        # "call_llm": ...,
-        # "pay": ...,
+        # Full capabilities - costs charged to invoker
+        "invoke": lambda *args: invoke_as(invoker_id, *args),
+        "call_llm": lambda *args: call_llm_as(invoker_id, *args),
     }
     exec(contract_code, namespace)
     return namespace["result"]
 ```
 
 **Rationale:**
-- Eliminates recursion (A.check → B.check → A.check)
-- Deterministic = testable, auditable
-- No cost tracking needed in permission checks
-- If you need intelligent access control, delegate to an agent with standing
+- LLMs are just API calls, not privileged - no reason to forbid
+- Agents choose complexity/cost tradeoff for their contracts
+- "Pure contracts with workarounds" adds complexity without preventing LLM usage
+- Non-determinism accepted (system is already non-deterministic via agents)
+- Invoker bears costs, preserving economic accountability
+
+**Cost Model:**
+| Operation | Who Pays |
+|-----------|----------|
+| Simple permission check | Free (pure logic) |
+| Contract calls LLM | Invoker |
+| Contract invokes other artifacts | Invoker |
+| Contract execution time | Invoker (compute) |
+
+**Note:** Contracts still cannot directly mutate world state - they return decisions. The kernel applies state changes.
 
 ---
 

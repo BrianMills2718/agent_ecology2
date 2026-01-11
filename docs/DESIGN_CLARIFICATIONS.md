@@ -38,8 +38,8 @@
 
 | Decision | Certainty | Summary |
 |----------|-----------|---------|
-| Contracts are pure functions | 95% | No LLM calls, deterministic only |
-| Contracts cannot invoke() | 92% | Eliminates recursion, simplifies model |
+| ~~Contracts are pure functions~~ | ~~95%~~ | **REVISED**: Contracts can do anything, invoker pays |
+| ~~Contracts cannot invoke()~~ | ~~92%~~ | **REVISED**: Contracts can invoke, invoker pays |
 | Memory: keep Qdrant separate (for now) | 90% | Defer artifact migration |
 | Single ID namespace | 90% | All IDs are artifact IDs |
 | Everything is an artifact | 90% | Agents, contracts, data - all artifacts |
@@ -66,8 +66,8 @@ Full list of all architectural decisions with certainty levels, organized by top
 | | has_standing = principal | 90% | DECIDED |
 | | can_execute + interface required | 90% | DECIDED |
 | **Contracts** | | | |
-| | Contracts are pure functions | 95% | DECIDED |
-| | Contracts cannot invoke() | 92% | DECIDED |
+| | Contracts can do anything, invoker pays | 100% | REVISED 2026-01-11 |
+| | Contracts can invoke(), invoker pays | 100% | REVISED 2026-01-11 |
 | | No owner bypass | 90% | DECIDED |
 | | Permission checks free | 85% | DECIDED |
 | | Contract caching for all | 80% | DECIDED |
@@ -1622,7 +1622,7 @@ Genesis contracts have hardcoded fast-path behavior. Custom contracts use invoke
 - Slow path could be very slow (every read = LLM call if contract thinks?)
 - How do you prevent permission check from costing more than the action?
 
-**Open question:** Should contracts be pure functions (no LLM, deterministic) or full artifacts (can think)?
+**RESOLVED (2026-01-11):** Contracts can do anything, invoker pays. Non-determinism accepted. See CC-4 Contract System Decisions for full rationale.
 
 ---
 
@@ -2511,40 +2511,56 @@ These decisions resolve remaining contract system ambiguities. Each includes cer
 
 ### Tier 1: High Certainty (90-95%)
 
-#### 1. Contracts Are Pure Functions Only (95%)
+#### 1. Contracts Can Do Anything, Invoker Pays (REVISED 2026-01-11)
 
-**Decision:** Contracts cannot call LLM. They are deterministic pure functions.
+**Decision:** Contracts have full capabilities. Invoker pays all costs. Non-determinism accepted.
+
+~~Previous decision (95% certainty): Contracts are pure functions, cannot call LLM.~~
+
+**Revised decision:** Contracts can:
+- Call LLM (invoker pays)
+- Invoke other artifacts (invoker pays)
+- Make external API calls (invoker pays)
+- Cannot directly mutate state (return decisions, kernel applies)
 
 ```python
-# Contract receives all inputs, returns boolean
-def check_permission(artifact_id: str, action: str, requester_id: str,
-                     artifact_content: Any, context: dict) -> PermissionResult:
-    # Pure logic only - no external calls
-    if action == "read":
-        return PermissionResult(allowed=True)
-    return PermissionResult(allowed=requester_id == context["created_by"])
+# Contract has full capabilities, costs charged to invoker
+def execute_contract(contract_code: str, inputs: dict, invoker_id: str) -> PermissionResult:
+    namespace = {
+        "artifact_id": inputs["artifact_id"],
+        "action": inputs["action"],
+        "requester_id": inputs["requester_id"],
+        "artifact_content": inputs["artifact_content"],
+        "context": inputs["context"],
+        "invoke": lambda *args: invoke_as(invoker_id, *args),
+        "call_llm": lambda *args: call_llm_as(invoker_id, *args),
+    }
+    exec(contract_code, namespace)
+    return namespace["result"]
 ```
 
-**Rationale:**
-- Every permission check calling LLM = system grinds to halt
-- Cost explosion (permission check costs more than the action itself)
-- Unpredictable latency breaks any real-time behavior
-- Deterministic = testable, auditable, predictable
+**Rationale for revision:**
+- LLMs are just API calls, not privileged - no reason to forbid
+- "Pure contracts + workaround via credentials" adds complexity without preventing LLM usage
+- Agents choose complexity/cost tradeoff for their own contracts
+- System is already non-deterministic via agent LLM calls
+- Invoker bears costs, preserving economic accountability
 
-**If you need intelligent access control:**
-Contract delegates to an agent (with standing) who pays for their own thinking. The agent returns a decision, contract enforces it.
-
-**Uncertainty (5%):** May be too limiting for advanced use cases. But can always add "thinking contracts" later if needed.
+**Simple contracts remain simple.** Most contracts will still be pure logic. But agents CAN create "smart contracts" that use LLM if they're willing to pay.
 
 ---
 
-#### 2. Contracts Cannot invoke() Other Artifacts (92%)
+#### 2. Contracts CAN invoke() Other Artifacts (REVISED 2026-01-11)
 
-**Decision:** Contracts do not have access to `invoke()`. They are isolated pure functions.
+**Decision:** Contracts have full invoke capability. Invoker pays costs.
+
+~~Previous decision (92% certainty): Contracts cannot invoke(), isolated pure functions.~~
+
+**Revised decision:** Same as #1 above - contracts have full capabilities, invoker pays.
 
 ```python
-# Contract execution context
-def execute_contract(contract_code: str, inputs: dict) -> PermissionResult:
+# Contract execution context - full capabilities
+def execute_contract(contract_code: str, inputs: dict, invoker_id: str) -> PermissionResult:
     namespace = {
         # Contracts get these:
         "artifact_id": inputs["artifact_id"],
@@ -2553,10 +2569,10 @@ def execute_contract(contract_code: str, inputs: dict) -> PermissionResult:
         "artifact_content": inputs["artifact_content"],
         "context": inputs["context"],
 
-        # Contracts do NOT get:
-        # "invoke": ...,  # No artifact invocation
-        # "call_llm": ...,  # No LLM access
-        # "pay": ...,  # No payment
+        # Contracts NOW get (invoker pays):
+        "invoke": lambda *args: invoke_as(invoker_id, *args),
+        "call_llm": lambda *args: call_llm_as(invoker_id, *args),
+        # "pay": ...,  # Still no direct payment - return decisions
     }
     exec(contract_code, namespace)
     return namespace["result"]
@@ -2907,8 +2923,8 @@ Agent A: think() → next action
 
 | # | Decision | Certainty | Key Uncertainty |
 |---|----------|-----------|-----------------|
-| 1 | Contracts are pure functions, no LLM | 95% | May limit advanced use cases |
-| 2 | Contracts cannot invoke() | 92% | Limits expressiveness |
+| 1 | ~~Contracts are pure functions, no LLM~~ **REVISED: Contracts can do anything, invoker pays** | 100% | None - decided 2026-01-11 |
+| 2 | ~~Contracts cannot invoke()~~ **REVISED: Contracts can invoke, invoker pays** | 100% | None - decided 2026-01-11 |
 | 3 | Memory: keep Qdrant separate | 90% | Two systems diverging |
 | 4 | Contract caching for all | 80% | Cache invalidation hard |
 | 5 | access_contract change: current contract only | 75% | Lock-out attacks possible |
