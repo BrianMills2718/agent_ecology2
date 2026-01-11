@@ -579,6 +579,9 @@ class GenesisOracle(GenesisArtifact):
         if self._auction_start_tick is None:
             return "WAITING"
         ticks_since_start = self._current_tick - self._auction_start_tick
+        # Negative means we're waiting for next auction (start tick is in future)
+        if ticks_since_start < 0:
+            return "CLOSED"
         if ticks_since_start < self._bidding_window:
             return "BIDDING"
         return "CLOSED"
@@ -773,7 +776,7 @@ class GenesisOracle(GenesisArtifact):
         """Resolve the current auction and distribute rewards."""
         if not self._bids:
             # No bids - auction passes
-            result: AuctionResult = {
+            empty_result: AuctionResult = {
                 "winner_id": None,
                 "artifact_id": None,
                 "winning_bid": 0,
@@ -783,8 +786,8 @@ class GenesisOracle(GenesisArtifact):
                 "ubi_distributed": {},
                 "error": "No bids received",
             }
-            self._auction_history.append(result)
-            return result
+            self._auction_history.append(empty_result)
+            return empty_result
 
         # Sort bids by amount (descending)
         sorted_bids = sorted(
