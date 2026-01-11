@@ -6,11 +6,15 @@ Usage:
     python run.py                    # Run with defaults from config/config.yaml
     python run.py --ticks 10         # Override max ticks
     python run.py --agents 1         # Run with only first N agents
+    python run.py --dashboard        # Run with HTML dashboard (opens browser)
+    python run.py --dashboard-only   # Only run dashboard (view existing run.jsonl)
 """
 
 from __future__ import annotations
 
 import sys
+import asyncio
+import webbrowser
 import yaml
 import argparse
 from pathlib import Path
@@ -93,6 +97,100 @@ async def run_simulation_async(
     return await runner.run()
 
 
+async def run_with_dashboard(
+    config: dict[str, Any],
+    max_agents: int | None = None,
+    verbose: bool = True,
+    delay: float | None = None,
+    checkpoint: CheckpointData | None = None,
+    open_browser: bool = True,
+) -> World:
+    """Run simulation with dashboard server in parallel."""
+    import uvicorn
+    from dashboard import create_app
+
+    # Get dashboard config
+    dashboard_config = config.get("dashboard", {})
+    host = dashboard_config.get("host", "0.0.0.0")
+    port = dashboard_config.get("port", 8080)
+    jsonl_file = dashboard_config.get("jsonl_file", "run.jsonl")
+
+    # Create dashboard app
+    app = create_app(jsonl_path=jsonl_file)
+
+    # Create uvicorn server config
+    server_config = uvicorn.Config(
+        app,
+        host=host,
+        port=port,
+        log_level="warning",
+    )
+    server = uvicorn.Server(server_config)
+
+    # Create simulation runner
+    runner = SimulationRunner(
+        config=config,
+        max_agents=max_agents,
+        verbose=verbose,
+        delay=delay,
+        checkpoint=checkpoint,
+    )
+
+    # Open browser after short delay
+    async def open_browser_delayed() -> None:
+        await asyncio.sleep(1.0)
+        url = f"http://localhost:{port}"
+        if verbose:
+            print(f"\nDashboard available at: {url}")
+        if open_browser:
+            webbrowser.open(url)
+
+    # Run both concurrently
+    if verbose:
+        print(f"Starting dashboard server on port {port}...")
+
+    async def run_server() -> None:
+        await server.serve()
+
+    async def run_sim() -> World:
+        # Small delay to let server start
+        await asyncio.sleep(0.5)
+        return await runner.run()
+
+    # Start all tasks
+    browser_task = asyncio.create_task(open_browser_delayed())
+    server_task = asyncio.create_task(run_server())
+    sim_task = asyncio.create_task(run_sim())
+
+    # Wait for simulation to complete
+    try:
+        world = await sim_task
+        # Give dashboard a moment to show final state
+        await asyncio.sleep(2.0)
+        return world
+    finally:
+        browser_task.cancel()
+        server.should_exit = True
+        await asyncio.sleep(0.5)
+
+
+def run_dashboard_only(config: dict[str, Any]) -> None:
+    """Run only the dashboard server (no simulation)."""
+    from dashboard import run_dashboard
+
+    dashboard_config = config.get("dashboard", {})
+    host = dashboard_config.get("host", "0.0.0.0")
+    port = dashboard_config.get("port", 8080)
+    jsonl_file = dashboard_config.get("jsonl_file", "run.jsonl")
+
+    print(f"Starting dashboard server on http://localhost:{port}")
+    print(f"Monitoring: {jsonl_file}")
+    print("Press Ctrl+C to stop")
+
+    webbrowser.open(f"http://localhost:{port}")
+    run_dashboard(host=host, port=port, jsonl_path=jsonl_file)
+
+
 def main() -> None:
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description="Run Agent Ecology simulation"
@@ -117,12 +215,32 @@ def main() -> None:
         default=None,
         help="Resume from checkpoint file (default: checkpoint.json)",
     )
+    parser.add_argument(
+        "--dashboard",
+        action="store_true",
+        help="Run with HTML dashboard (auto-opens browser)",
+    )
+    parser.add_argument(
+        "--dashboard-only",
+        action="store_true",
+        help="Only run dashboard server (view existing run.jsonl)",
+    )
+    parser.add_argument(
+        "--no-browser",
+        action="store_true",
+        help="Don't auto-open browser when using --dashboard",
+    )
     args: argparse.Namespace = parser.parse_args()
 
     config: dict[str, Any] = load_config(args.config)
 
     if args.ticks:
         config["world"]["max_ticks"] = args.ticks
+
+    # Dashboard-only mode
+    if args.dashboard_only:
+        run_dashboard_only(config)
+        return
 
     # Load checkpoint if resuming
     checkpoint: CheckpointData | None = None
@@ -131,13 +249,24 @@ def main() -> None:
         if checkpoint is None and not args.quiet:
             print(f"Warning: Checkpoint file '{args.resume}' not found. Starting fresh.")
 
-    run_simulation(
-        config,
-        max_agents=args.agents,
-        verbose=not args.quiet,
-        delay=args.delay,
-        checkpoint=checkpoint,
-    )
+    # Run with or without dashboard
+    if args.dashboard:
+        asyncio.run(run_with_dashboard(
+            config,
+            max_agents=args.agents,
+            verbose=not args.quiet,
+            delay=args.delay,
+            checkpoint=checkpoint,
+            open_browser=not args.no_browser,
+        ))
+    else:
+        run_simulation(
+            config,
+            max_agents=args.agents,
+            verbose=not args.quiet,
+            delay=args.delay,
+            checkpoint=checkpoint,
+        )
 
 
 if __name__ == "__main__":

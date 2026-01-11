@@ -132,7 +132,7 @@ class TestConfigDefaults:
         config = AppConfig()
         # Method costs are now in the methods sub-config
         assert config.genesis.ledger.methods.transfer.cost == 1
-        assert config.genesis.oracle.methods.submit.cost == 5
+        assert config.genesis.oracle.methods.bid.cost == 0  # Bidding is free
         assert config.genesis.oracle.mint_ratio == 10
         # Check artifact enablement defaults
         assert config.genesis.artifacts.ledger.enabled is True

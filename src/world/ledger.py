@@ -252,6 +252,55 @@ class Ledger:
         """Get snapshot of all scrip balances."""
         return dict(self.scrip)
 
+    def get_agent_principal_ids(self) -> list[str]:
+        """Get list of agent principal IDs (excludes genesis artifacts).
+
+        Used for UBI distribution - only real agents receive UBI, not
+        system artifacts like genesis_ledger, genesis_oracle, etc.
+        """
+        return [
+            pid for pid in self.scrip.keys()
+            if not pid.startswith("genesis_")
+        ]
+
+    def distribute_ubi(self, amount: int, exclude: str | None = None) -> dict[str, int]:
+        """Distribute scrip equally among all agent principals (UBI).
+
+        Used for oracle auction: winning bid is redistributed to all agents.
+
+        Args:
+            amount: Total scrip to distribute
+            exclude: Optional principal ID to exclude (e.g., don't give UBI to winner)
+
+        Returns:
+            Dict mapping principal_id to amount received
+
+        Note:
+            - Only distributes to agents (not genesis artifacts)
+            - Remainder from integer division goes to first recipients
+            - If amount is 0 or no recipients, returns empty dict
+        """
+        recipients = self.get_agent_principal_ids()
+        if exclude and exclude in recipients:
+            recipients = [r for r in recipients if r != exclude]
+
+        if not recipients or amount <= 0:
+            return {}
+
+        # Calculate per-recipient amount and remainder
+        per_recipient = amount // len(recipients)
+        remainder = amount % len(recipients)
+
+        distribution: dict[str, int] = {}
+        for i, pid in enumerate(recipients):
+            # First 'remainder' recipients get 1 extra
+            share = per_recipient + (1 if i < remainder else 0)
+            if share > 0:
+                self.credit_scrip(pid, share)
+                distribution[pid] = share
+
+        return distribution
+
     # ===== THINKING COST (LLM tokens) =====
 
     def calculate_thinking_cost(

@@ -6,23 +6,47 @@ This document describes the rules, resources, and methods available to agents in
 
 ## Resource Model
 
-### Compute (Flow Resource)
-- **What it is**: Your LLM token budget per tick
-- **Refreshes every tick** to your quota amount
-- **Consumed by**: Thinking (LLM tokens), actions, method invocations
-- **If exhausted**: You cannot think or act until next tick
-- **Cost formula**: `ceil(input_tokens/1000) * 1 + ceil(output_tokens/1000) * 3`
+**Two things matter: Scrip and Scarce Resources. Both are always required.**
 
-### Scrip (Currency)
+### Scrip (Economic Currency)
+- **What it is**: Money for trading with other agents
 - **Persists across ticks** - does not refresh
 - **Earned by**: Oracle submissions, selling artifacts, receiving transfers
-- **Spent on**: Reading priced artifacts, invoking methods, transfers
+- **Spent on**: Paying for artifacts/services (price goes to owner)
 - **If exhausted**: You cannot buy, but can still think and take free actions
 
-### Disk (Stock Resource)
-- **Fixed quota** - does not refresh
-- **Consumed by**: Writing artifacts (size in bytes)
-- **If exhausted**: You cannot write new artifacts until you delete old ones
+### Scarce Resources (Physical Limits)
+These are **hard limits from reality**, not prices. They are consumed regardless of scrip.
+
+| Resource | What It Is | Refreshes? |
+|----------|-----------|------------|
+| **LLM Tokens** | Your thinking budget | Yes, each tick |
+| **Disk** | Storage space (bytes) | No, fixed quota |
+
+- **If out of tokens**: You cannot think or act until next tick
+- **If out of disk**: You cannot write new artifacts
+
+### The Two-Layer Model
+
+When you use someone's artifact:
+```
+1. You pay SCRIP to the owner (price for value)
+2. Someone pays RESOURCES (actual consumption)
+```
+
+**Who pays resources?** Depends on the artifact's `resource_policy`:
+- `caller_pays` (default): Your resources are consumed
+- `owner_pays`: Owner absorbs resource costs (built into their price)
+
+### Example
+
+Agent A creates a tool with `price: 50, resource_policy: owner_pays`
+
+When you invoke it:
+- You pay: 50 scrip → Agent A
+- Resources consumed: From Agent A's budget (not yours!)
+
+Agent A priced high enough to cover their resource costs + profit.
 
 ---
 
@@ -30,53 +54,54 @@ This document describes the rules, resources, and methods available to agents in
 
 System-provided services. Invoke via `invoke_artifact`.
 
+**Note on costs**: Genesis methods cost **compute** (like all actions), not scrip. Scrip only flows for agent↔agent trades and oracle rewards.
+
 ### genesis_ledger
 Query and transfer scrip, manage ownership.
 
-| Method | Args | Cost | Description |
-|--------|------|------|-------------|
-| `balance` | `[principal_id]` | 0 | Check scrip and compute balance |
-| `all_balances` | `[]` | 0 | See all balances |
-| `transfer` | `[from_id, to_id, amount]` | 1 | Transfer scrip (from_id must be you) |
-| `spawn_principal` | `[]` | 1 | Create a new principal (see Spawning) |
-| `transfer_ownership` | `[artifact_id, to_id]` | 1 | Transfer artifact ownership |
+| Method | Args | Description |
+|--------|------|-------------|
+| `balance` | `[principal_id]` | Check scrip and compute balance |
+| `all_balances` | `[]` | See all balances |
+| `transfer` | `[from_id, to_id, amount]` | Transfer scrip (from_id must be you) |
+| `spawn_principal` | `[]` | Create a new principal (see Spawning) |
+| `transfer_ownership` | `[artifact_id, to_id]` | Transfer artifact ownership |
 
 ### genesis_oracle
-Submit artifacts for scoring and scrip minting.
+Auction-based artifact scoring and scrip minting.
 
-| Method | Args | Cost | Description |
-|--------|------|------|-------------|
-| `status` | `[]` | 0 | Check oracle status |
-| `submit` | `[artifact_id]` | 5 | Submit executable artifact for scoring |
-| `check` | `[artifact_id]` | 0 | Check submission status |
-| `process` | `[artifact_id]` | 0 | Process scored submission (mints scrip) |
+| Method | Args | Description |
+|--------|------|-------------|
+| `status` | `[]` | Check auction status (phase, tick, bid count) |
+| `bid` | `[artifact_id, amount]` | Submit sealed bid during bidding window |
+| `check` | `[artifact_id]` | Check your bid/submission status |
 
 ### genesis_rights_registry
 Manage compute and disk quotas.
 
-| Method | Args | Cost | Description |
-|--------|------|------|-------------|
-| `check_quota` | `[principal_id]` | 0 | Check quotas for a principal |
-| `all_quotas` | `[]` | 0 | See all quotas |
-| `transfer_quota` | `[from_id, to_id, resource, amount]` | 1 | Transfer quota (from_id must be you) |
+| Method | Args | Description |
+|--------|------|-------------|
+| `check_quota` | `[principal_id]` | Check quotas for a principal |
+| `all_quotas` | `[]` | See all quotas |
+| `transfer_quota` | `[from_id, to_id, resource, amount]` | Transfer quota (from_id must be you) |
 
 ### genesis_event_log
 Read simulation history.
 
-| Method | Args | Cost | Description |
-|--------|------|------|-------------|
-| `read` | `[count]` or `[]` | 0 | Read recent events (max 100) |
+| Method | Args | Description |
+|--------|------|-------------|
+| `read` | `[count]` or `[]` | Read recent events (max 100) |
 
 ### genesis_escrow
 Trustless artifact trading. Seller deposits, buyer purchases, escrow handles exchange.
 
-| Method | Args | Cost | Description |
-|--------|------|------|-------------|
-| `deposit` | `[artifact_id, price]` or `[artifact_id, price, buyer_id]` | 1 | List artifact for sale (must transfer ownership to escrow first) |
-| `purchase` | `[artifact_id]` | 0 | Buy a listed artifact (pays price to seller) |
-| `cancel` | `[artifact_id]` | 0 | Cancel listing, get artifact back (seller only) |
-| `check` | `[artifact_id]` | 0 | Check listing status |
-| `list_active` | `[]` | 0 | List all active listings |
+| Method | Args | Description |
+|--------|------|-------------|
+| `deposit` | `[artifact_id, price]` or `[artifact_id, price, buyer_id]` | List artifact for sale (must transfer ownership to escrow first) |
+| `purchase` | `[artifact_id]` | Buy a listed artifact (pays price to seller) |
+| `cancel` | `[artifact_id]` | Cancel listing, get artifact back (seller only) |
+| `check` | `[artifact_id]` | Check listing status |
+| `list_active` | `[]` | List all active listings |
 
 ---
 
@@ -229,16 +254,37 @@ Agents can communicate via artifacts:
 
 ---
 
-## Oracle Scoring
+## Oracle Auction
 
-The oracle evaluates executable artifacts and mints scrip based on quality.
+The oracle runs periodic auctions where agents bid scrip to submit artifacts for LLM scoring. Winning bids are redistributed as UBI to all agents.
 
-### Submission Flow
-1. Create an executable artifact with useful code
-2. Submit to oracle: `invoke genesis_oracle.submit([artifact_id])`
-3. Wait for scoring (automatic)
-4. Process result: `invoke genesis_oracle.process([artifact_id])`
-5. Receive scrip: `score * mint_ratio` (default: score * 10)
+### Auction Flow
+1. **Create** an executable artifact with useful code
+2. **Wait** for bidding window (check `genesis_oracle.status()`)
+3. **Bid**: `invoke genesis_oracle.bid([artifact_id, amount])`
+4. **Win**: Highest bidder wins (second-price: pays next-highest bid)
+5. **UBI**: Winning bid redistributed equally to all agents
+6. **Score**: Artifact scored by LLM
+7. **Mint**: Winner receives `score / mint_ratio` new scrip
+
+### Auction Mechanics
+- **Vickrey auction** (sealed-bid, second-price): Bid your true value
+- **Default timing**: Auctions every 50 ticks, 10-tick bidding window
+- **First auction**: Starts at tick 50 (configurable grace period)
+- **Ties**: Broken randomly
+
+### Auction Phases
+- **WAITING**: Before first auction (grace period)
+- **BIDDING**: Submit bids during this window
+- **CLOSED**: Auction resolved, next window scheduled
+
+### UBI Distribution
+When an auction closes, the winning bid (second-price amount) is split equally among all agents:
+```
+5 agents, winner pays 30 scrip
+→ Each agent receives 6 scrip (30 / 5)
+→ Winner net: -24 (paid 30, got 6 back) + minted scrip from score
+```
 
 ### What Gets Scored
 - Code quality and correctness

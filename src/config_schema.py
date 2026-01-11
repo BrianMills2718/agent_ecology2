@@ -143,7 +143,7 @@ class CostsConfig(StrictModel):
 class MethodConfig(StrictModel):
     """Configuration for a genesis artifact method."""
 
-    cost: int = Field(default=0, ge=0, description="Scrip cost to invoke method")
+    cost: int = Field(default=0, ge=0, description="Compute cost to invoke method (not scrip)")
     description: str = Field(default="", description="Method description for agents")
 
 
@@ -225,27 +225,74 @@ class OracleMethodsConfig(StrictModel):
     status: MethodConfig = Field(
         default_factory=lambda: MethodConfig(
             cost=0,
-            description="Check oracle status. Args: []"
+            description="Check auction status (phase, tick, bid count). Args: []"
         )
     )
-    submit: MethodConfig = Field(
+    bid: MethodConfig = Field(
         default_factory=lambda: MethodConfig(
-            cost=5,
-            description="Submit artifact for scoring. Args: [artifact_id]"
+            cost=0,
+            description="Submit sealed bid during bidding window. Args: [artifact_id, amount]"
         )
     )
     check: MethodConfig = Field(
         default_factory=lambda: MethodConfig(
             cost=0,
-            description="Check submission status. Args: [artifact_id]"
+            description="Check your bid/submission status. Args: [artifact_id]"
         )
     )
-    process: MethodConfig = Field(
-        default_factory=lambda: MethodConfig(
-            cost=0,
-            description="Process one pending submission with LLM scoring. Args: []"
-        )
+
+
+class OracleAuctionConfig(StrictModel):
+    """Oracle auction configuration."""
+
+    period: int = Field(
+        default=50,
+        gt=0,
+        description="Ticks between auctions"
     )
+    bidding_window: int = Field(
+        default=10,
+        gt=0,
+        description="Duration of bidding phase (ticks)"
+    )
+    first_auction_tick: int = Field(
+        default=50,
+        ge=0,
+        description="Grace period before first auction (0 = start immediately)"
+    )
+    slots_per_auction: int = Field(
+        default=1,
+        gt=0,
+        description="Number of winners per auction"
+    )
+    minimum_bid: int = Field(
+        default=1,
+        gt=0,
+        description="Floor bid amount"
+    )
+    tie_breaking: Literal["random", "first_bid"] = Field(
+        default="random",
+        description="How to break ties: 'random' or 'first_bid'"
+    )
+    show_bid_count: bool = Field(
+        default=True,
+        description="Show number of bids during bidding window"
+    )
+    allow_bid_updates: bool = Field(
+        default=True,
+        description="Allow agents to update their bid during window"
+    )
+    refund_on_scoring_failure: bool = Field(
+        default=True,
+        description="Refund winner's bid if LLM scoring fails"
+    )
+
+    @field_validator("bidding_window")
+    @classmethod
+    def bidding_window_less_than_period(cls, v: int, info) -> int:
+        """Ensure bidding window is less than period."""
+        # Note: Can't access period here easily, validated at runtime
+        return v
 
 
 class OracleConfig(StrictModel):
@@ -253,7 +300,7 @@ class OracleConfig(StrictModel):
 
     id: str = Field(default="genesis_oracle", description="Artifact ID")
     description: str = Field(
-        default="External feedback oracle - submit artifacts for LLM scoring",
+        default="Auction-based oracle - bid to submit artifacts for LLM scoring",
         description="Artifact description"
     )
     mint_ratio: int = Field(
@@ -261,16 +308,17 @@ class OracleConfig(StrictModel):
         gt=0,
         description="Divisor for score-to-scrip conversion (score / ratio = scrip)"
     )
+    auction: OracleAuctionConfig = Field(default_factory=OracleAuctionConfig)
     methods: OracleMethodsConfig = Field(default_factory=OracleMethodsConfig)
 
-    # Legacy support
-    submit_fee: int | None = Field(default=None, description="DEPRECATED: Use methods.submit.cost")
-
     @model_validator(mode="after")
-    def migrate_legacy_submit_fee(self) -> "OracleConfig":
-        """Migrate legacy submit_fee to methods.submit.cost."""
-        if self.submit_fee is not None:
-            self.methods.submit.cost = self.submit_fee
+    def validate_bidding_window(self) -> "OracleConfig":
+        """Ensure bidding window is less than period."""
+        if self.auction.bidding_window >= self.auction.period:
+            raise ValueError(
+                f"bidding_window ({self.auction.bidding_window}) must be less than "
+                f"period ({self.auction.period})"
+            )
         return self
 
 
@@ -542,6 +590,49 @@ class BudgetConfig(StrictModel):
 
 
 # =============================================================================
+# DASHBOARD MODEL
+# =============================================================================
+
+class DashboardConfig(StrictModel):
+    """Dashboard server configuration."""
+
+    enabled: bool = Field(
+        default=True,
+        description="Enable dashboard server"
+    )
+    host: str = Field(
+        default="0.0.0.0",
+        description="Host to bind (0.0.0.0 for all interfaces)"
+    )
+    port: int = Field(
+        default=8080,
+        gt=0,
+        description="Port number"
+    )
+    static_dir: str = Field(
+        default="src/dashboard/static",
+        description="Path to static files directory"
+    )
+    jsonl_file: str = Field(
+        default="run.jsonl",
+        description="Path to JSONL event log to monitor"
+    )
+    websocket_path: str = Field(
+        default="/ws",
+        description="WebSocket endpoint path"
+    )
+    cors_origins: list[str] = Field(
+        default_factory=lambda: ["*"],
+        description="Allowed CORS origins"
+    )
+    max_events_cache: int = Field(
+        default=10000,
+        gt=0,
+        description="Max events to cache in memory"
+    )
+
+
+# =============================================================================
 # ROOT CONFIG MODEL
 # =============================================================================
 
@@ -561,6 +652,7 @@ class AppConfig(StrictModel):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     world: WorldConfig = Field(default_factory=WorldConfig)
     budget: BudgetConfig = Field(default_factory=BudgetConfig)
+    dashboard: DashboardConfig = Field(default_factory=DashboardConfig)
 
     # Dynamic fields set at runtime
     principals: list[dict[str, int | str]] = Field(
@@ -636,6 +728,7 @@ __all__ = [
     "LedgerMethodsConfig",
     "OracleConfig",
     "OracleMethodsConfig",
+    "OracleAuctionConfig",
     "RightsRegistryConfig",
     "RightsRegistryMethodsConfig",
     "EventLogConfig",
@@ -647,6 +740,7 @@ __all__ = [
     "LoggingConfig",
     "WorldConfig",
     "BudgetConfig",
+    "DashboardConfig",
     # Functions
     "load_validated_config",
     "validate_config_dict",

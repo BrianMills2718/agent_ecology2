@@ -53,6 +53,9 @@ costs:
 # -----------------------------------------------------------------------------
 # GENESIS ARTIFACTS - System services (fully configurable)
 # -----------------------------------------------------------------------------
+# NOTE: All method "cost" values are COMPUTE costs, not scrip.
+# Scrip only flows via agent-to-agent trades and oracle auction.
+# -----------------------------------------------------------------------------
 genesis:
   # Which artifacts to create
   artifacts:
@@ -73,39 +76,49 @@ genesis:
     description: "System ledger - check balances (flow/scrip) and transfer scrip"
     methods:
       balance:
-        cost: 0                 # Free - reading balance shouldn't cost
+        cost: 0                 # 0 compute - reading balance is free
         description: "Get flow and scrip balance for an agent. Args: [agent_id]"
       all_balances:
-        cost: 0                 # Free - public information
+        cost: 0                 # 0 compute - public information
         description: "Get all agent balances (flow and scrip). Args: []"
       transfer:
-        cost: 1                 # 1 scrip fee
+        cost: 1                 # 1 compute
         description: "Transfer SCRIP to another agent. Args: [from_id, to_id, amount]"
       spawn_principal:
-        cost: 1                 # 1 scrip processing fee
+        cost: 1                 # 1 compute
         description: "Spawn a new principal with 0 scrip and 0 compute. Args: []"
       transfer_ownership:
-        cost: 1                 # 1 scrip fee
+        cost: 1                 # 1 compute
         description: "Transfer artifact ownership to another principal. Args: [artifact_id, to_id]"
 
-  # Genesis Oracle - external scoring and minting
+  # Genesis Oracle - auction-based scoring and minting
   oracle:
     id: "genesis_oracle"
-    description: "External feedback oracle - submit artifacts for LLM scoring"
+    description: "Auction-based oracle - bid to submit artifacts for LLM scoring"
     mint_ratio: 10              # score / 10 = scrip minted
+
+    # Auction configuration
+    auction:
+      period: 50                # Ticks between auctions
+      bidding_window: 10        # Duration of bidding phase (ticks)
+      first_auction_tick: 50    # Grace period before first auction
+      slots_per_auction: 1      # Winners per auction
+      minimum_bid: 1            # Floor bid amount
+      tie_breaking: "random"    # "random" or "first_bid"
+      show_bid_count: true      # Show number of bids during window
+      allow_bid_updates: true   # Can agents update their bid?
+      refund_on_scoring_failure: true  # Refund if LLM scoring fails
+
     methods:
       status:
-        cost: 0                 # Free status check
-        description: "Check oracle status. Args: []"
-      submit:
-        cost: 5                 # 5 scrip fee to submit
-        description: "Submit artifact for scoring. Args: [artifact_id]"
+        cost: 0                 # 0 compute
+        description: "Check auction status (phase, tick, bid count). Args: []"
+      bid:
+        cost: 0                 # 0 compute - bidding is free
+        description: "Submit sealed bid during bidding window. Args: [artifact_id, amount]"
       check:
-        cost: 0                 # Free to check
-        description: "Check submission status. Args: [artifact_id]"
-      process:
-        cost: 0                 # Free - encourages processing
-        description: "Process one pending submission with LLM scoring. Args: []"
+        cost: 0                 # 0 compute
+        description: "Check your bid/submission status. Args: [artifact_id]"
 
   # Genesis Rights Registry - quota management
   rights_registry:
@@ -113,13 +126,13 @@ genesis:
     description: "Rights registry - manage compute and disk quotas"
     methods:
       check_quota:
-        cost: 0                 # Free quota check
+        cost: 0                 # 0 compute
         description: "Check quotas for an agent. Args: [agent_id]"
       all_quotas:
-        cost: 0                 # Free - public information
+        cost: 0                 # 0 compute - public information
         description: "Get all agent quotas. Args: []"
       transfer_quota:
-        cost: 1                 # 1 scrip fee
+        cost: 1                 # 1 compute
         description: "Transfer quota to another agent. Args: [from_id, to_id, 'compute'|'disk', amount]"
 
   # Genesis Event Log - passive observability
@@ -130,7 +143,7 @@ genesis:
     buffer_size: 1000           # Internal buffer size
     methods:
       read:
-        cost: 0                 # Free in scrip - but consumes input tokens
+        cost: 0                 # 0 compute - but consumes input tokens
         description: "Read recent events. Args: [offset, limit] - both optional. Default: last 50 events."
 
   # Genesis Escrow - trustless artifact trading
@@ -139,19 +152,19 @@ genesis:
     description: "Trustless escrow for artifact trading. Seller deposits, buyer purchases, escrow handles exchange."
     methods:
       deposit:
-        cost: 1                 # 1 scrip fee to list
+        cost: 1                 # 1 compute
         description: "Deposit artifact for sale. First transfer ownership to escrow. Args: [artifact_id, price] or [artifact_id, price, buyer_id]"
       purchase:
-        cost: 0                 # Free - buyer already pays the price
+        cost: 0                 # 0 compute - buyer already pays the price
         description: "Purchase a listed artifact. Pays price to seller, transfers ownership to buyer. Args: [artifact_id]"
       cancel:
-        cost: 0                 # Free - encourage cleanup
+        cost: 0                 # 0 compute - encourage cleanup
         description: "Cancel listing and return artifact to seller. Only seller can cancel. Args: [artifact_id]"
       check:
-        cost: 0                 # Free status check
+        cost: 0                 # 0 compute
         description: "Check status of an escrow listing. Args: [artifact_id]"
       list_active:
-        cost: 0                 # Free - encourage discovery
+        cost: 0                 # 0 compute - encourage discovery
         description: "List all active escrow listings. Args: []"
 
 # -----------------------------------------------------------------------------
@@ -208,3 +221,16 @@ world:
 budget:
   max_api_cost: 1.00            # $ (0 = unlimited)
   checkpoint_file: "checkpoint.json"
+
+# -----------------------------------------------------------------------------
+# DASHBOARD - HTML visibility interface
+# -----------------------------------------------------------------------------
+dashboard:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8080
+  static_dir: "src/dashboard/static"
+  jsonl_file: "run.jsonl"
+  websocket_path: "/ws"
+  cors_origins: ["*"]
+  max_events_cache: 10000

@@ -400,28 +400,29 @@ class World:
                     message=f"Method '{method_name}' not found on {artifact_id}. Available: {[m['name'] for m in genesis.list_methods()]}"
                 )
 
-            # Genesis method costs are SCRIP (economic fees)
-            if method.cost > 0 and not self.ledger.can_afford_scrip(intent.principal_id, method.cost):
+            # Genesis method costs are COMPUTE (physical resource, not scrip)
+            if method.cost > 0 and not self.ledger.can_spend_compute(intent.principal_id, method.cost):
                 return ActionResult(
                     success=False,
-                    message=f"Cannot afford method fee: {method.cost} scrip (have {self.ledger.get_scrip(intent.principal_id)})"
+                    message=f"Cannot afford method cost: {method.cost} compute (have {self.ledger.get_compute(intent.principal_id)})"
                 )
+
+            # Deduct compute cost FIRST (always paid, even on failure)
+            if method.cost > 0:
+                self.ledger.spend_compute(intent.principal_id, method.cost)
 
             # Execute the genesis method
             try:
                 result_data: dict[str, Any] = method.handler(args, intent.principal_id)
 
                 if result_data.get("success"):
-                    # Deduct method cost on success (SCRIP)
-                    if method.cost > 0:
-                        self.ledger.deduct_scrip(intent.principal_id, method.cost)
                     return ActionResult(
                         success=True,
                         message=f"Invoked {artifact_id}.{method_name}",
                         data=result_data
                     )
                 else:
-                    # Method failed - no cost charged
+                    # Method failed - compute already paid
                     return ActionResult(
                         success=False,
                         message=result_data.get("error", "Method failed")

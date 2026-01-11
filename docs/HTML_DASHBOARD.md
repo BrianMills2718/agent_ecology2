@@ -202,11 +202,17 @@ src/dashboard/
 ### Starting the Dashboard
 
 ```bash
-# Start dashboard server (standalone)
-python -m src.dashboard.server
-
-# Or with simulation
+# Run simulation WITH dashboard (auto-opens browser)
 python run.py --dashboard
+
+# Run simulation with dashboard but don't auto-open browser
+python run.py --dashboard --no-browser
+
+# Dashboard-only mode (view existing run.jsonl, no simulation)
+python run.py --dashboard-only
+
+# Standalone dashboard server
+python -m src.dashboard.server
 
 # Custom port
 python -m src.dashboard.server --port 9000
@@ -214,7 +220,16 @@ python -m src.dashboard.server --port 9000
 
 ### Accessing the Dashboard
 
-Open browser to `http://localhost:8080`
+The dashboard automatically opens in your browser at `http://localhost:8080`
+
+### Controlling the Simulation
+
+When running with `--dashboard`, you can control the simulation from the browser:
+
+- **Pause** button (yellow): Pauses simulation after the current tick completes
+- **Resume** button (green): Resumes a paused simulation
+
+These controls appear in the header when a simulation is actively running. The pause/resume state syncs in real-time across all connected browser tabs via WebSocket.
 
 ### API Examples
 

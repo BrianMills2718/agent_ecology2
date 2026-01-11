@@ -435,35 +435,87 @@ class GenesisLedger(GenesisArtifact):
             return {"success": False, "error": "Transfer failed"}
 
 
+class BidInfo(TypedDict):
+    """Information about a bid in the oracle auction."""
+    agent_id: str
+    artifact_id: str
+    amount: int
+    tick_submitted: int
+
+
+class AuctionResult(TypedDict):
+    """Result of an auction resolution."""
+    winner_id: str | None
+    artifact_id: str | None
+    winning_bid: int
+    price_paid: int  # Second-price
+    score: int | None
+    scrip_minted: int
+    ubi_distributed: dict[str, int]
+    error: str | None
+
+
 class GenesisOracle(GenesisArtifact):
     """
-    Genesis artifact for external minting.
+    Genesis artifact for auction-based external minting.
 
-    Uses LLM to evaluate submitted artifacts and estimate engagement score.
-    Mints credits to submitters based on score.
+    Implements periodic auctions where agents bid scrip to submit artifacts
+    for LLM scoring. Winning bid is redistributed as UBI to all agents.
 
-    All method costs and descriptions are configurable via config.yaml.
+    Auction phases:
+    - WAITING: Before first_auction_tick
+    - BIDDING: Accepting bids (bidding_window ticks)
+    - After bidding window: Resolve auction, score artifact, distribute UBI
+
+    All configuration is in config.yaml under genesis.oracle.auction.
     """
 
     mint_callback: Callable[[str, int], None]
+    ubi_callback: Callable[[int, str | None], dict[str, int]]  # (amount, exclude) -> distribution
     artifact_store: ArtifactStore | None
-    submissions: dict[str, SubmissionInfo]
+    ledger: Any  # Ledger reference for bid escrow
+
+    # Auction state
+    _current_tick: int
+    _auction_start_tick: int | None
+    _bids: dict[str, BidInfo]  # agent_id -> bid info
+    _auction_history: list[AuctionResult]
+    _held_bids: dict[str, int]  # agent_id -> held amount (escrow)
+
+    # Config
+    _mint_ratio: int
+    _period: int
+    _bidding_window: int
+    _first_auction_tick: int
+    _slots_per_auction: int
+    _minimum_bid: int
+    _tie_breaking: str
+    _show_bid_count: bool
+    _allow_bid_updates: bool
+    _refund_on_scoring_failure: bool
+
     _scorer: Any  # OracleScorer, lazy-loaded
-    _mint_ratio: int  # Configurable mint ratio
 
     def __init__(
         self,
         mint_callback: Callable[[str, int], None],
+        ubi_callback: Callable[[int, str | None], dict[str, int]],
         artifact_store: ArtifactStore | None = None,
+        ledger: Any = None,
         genesis_config: GenesisConfig | None = None
     ) -> None:
         """
         Args:
-            mint_callback: Function(agent_id, amount) to mint credits
+            mint_callback: Function(agent_id, amount) to mint scrip
+            ubi_callback: Function(amount, exclude) to distribute UBI
             artifact_store: ArtifactStore to look up submitted artifacts
+            ledger: Ledger for bid escrow
             genesis_config: Optional genesis config (uses global if not provided)
         """
-        # Get config (use provided or load from global)
+        import random
+        self._random = random
+
+        # Get config
         cfg = genesis_config or get_validated_config().genesis
         oracle_cfg = cfg.oracle
 
@@ -471,13 +523,34 @@ class GenesisOracle(GenesisArtifact):
             artifact_id=oracle_cfg.id,
             description=oracle_cfg.description
         )
-        self.mint_callback = mint_callback
-        self.artifact_store = artifact_store
-        self.submissions = {}  # artifact_id -> submission info
-        self._scorer = None  # Lazy-loaded
-        self._mint_ratio = oracle_cfg.mint_ratio
 
-        # Register methods with costs/descriptions from config
+        self.mint_callback = mint_callback
+        self.ubi_callback = ubi_callback
+        self.artifact_store = artifact_store
+        self.ledger = ledger
+
+        # Auction state
+        self._current_tick = 0
+        self._auction_start_tick = None
+        self._bids = {}
+        self._auction_history = []
+        self._held_bids = {}
+
+        # Config
+        self._mint_ratio = oracle_cfg.mint_ratio
+        self._period = oracle_cfg.auction.period
+        self._bidding_window = oracle_cfg.auction.bidding_window
+        self._first_auction_tick = oracle_cfg.auction.first_auction_tick
+        self._slots_per_auction = oracle_cfg.auction.slots_per_auction
+        self._minimum_bid = oracle_cfg.auction.minimum_bid
+        self._tie_breaking = oracle_cfg.auction.tie_breaking
+        self._show_bid_count = oracle_cfg.auction.show_bid_count
+        self._allow_bid_updates = oracle_cfg.auction.allow_bid_updates
+        self._refund_on_scoring_failure = oracle_cfg.auction.refund_on_scoring_failure
+
+        self._scorer = None
+
+        # Register methods
         self.register_method(
             name="status",
             handler=self._status,
@@ -486,10 +559,10 @@ class GenesisOracle(GenesisArtifact):
         )
 
         self.register_method(
-            name="submit",
-            handler=self._submit,
-            cost=oracle_cfg.methods.submit.cost,
-            description=oracle_cfg.methods.submit.description
+            name="bid",
+            handler=self._bid,
+            cost=oracle_cfg.methods.bid.cost,
+            description=oracle_cfg.methods.bid.description
         )
 
         self.register_method(
@@ -499,167 +572,327 @@ class GenesisOracle(GenesisArtifact):
             description=oracle_cfg.methods.check.description
         )
 
-        self.register_method(
-            name="process",
-            handler=self._process,
-            cost=oracle_cfg.methods.process.cost,
-            description=oracle_cfg.methods.process.description
-        )
+    def _get_phase(self) -> str:
+        """Get current auction phase."""
+        if self._current_tick < self._first_auction_tick:
+            return "WAITING"
+        if self._auction_start_tick is None:
+            return "WAITING"
+        ticks_since_start = self._current_tick - self._auction_start_tick
+        if ticks_since_start < self._bidding_window:
+            return "BIDDING"
+        return "CLOSED"
 
     def _status(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
-        """Return oracle status"""
-        pending = sum(1 for s in self.submissions.values() if s["status"] == "pending")
-        scored = sum(1 for s in self.submissions.values() if s["status"] == "scored")
-        return {
+        """Return auction status."""
+        phase = self._get_phase()
+        result: dict[str, Any] = {
             "success": True,
             "oracle": "genesis_oracle",
-            "type": "llm_mock",
-            "pending_submissions": pending,
-            "scored_submissions": scored,
-            "total_submissions": len(self.submissions)
+            "type": "auction",
+            "phase": phase,
+            "current_tick": self._current_tick,
+            "period": self._period,
+            "bidding_window": self._bidding_window,
+            "first_auction_tick": self._first_auction_tick,
+            "minimum_bid": self._minimum_bid,
+            "slots_per_auction": self._slots_per_auction,
+            "auctions_completed": len(self._auction_history),
         }
 
-    def _submit(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
-        """Submit an artifact for external scoring.
+        if phase == "WAITING":
+            result["next_auction_tick"] = self._first_auction_tick
+        elif phase == "BIDDING":
+            result["auction_start_tick"] = self._auction_start_tick
+            result["bidding_ends_tick"] = (self._auction_start_tick or 0) + self._bidding_window
+            if self._show_bid_count:
+                result["bid_count"] = len(self._bids)
+            # Show agent's own bid if they have one
+            if invoker_id in self._bids:
+                result["your_bid"] = {
+                    "artifact_id": self._bids[invoker_id]["artifact_id"],
+                    "amount": self._bids[invoker_id]["amount"],
+                }
+        elif phase == "CLOSED":
+            result["next_auction_tick"] = (self._auction_start_tick or 0) + self._period
 
-        IMPORTANT: Only executable (code) artifacts are accepted.
-        Text-only submissions are rejected.
-        """
-        if not args or len(args) < 1:
-            return {"success": False, "error": "submit requires [artifact_id]"}
+        if self._auction_history:
+            last = self._auction_history[-1]
+            result["last_auction"] = {
+                "winner": last["winner_id"],
+                "artifact": last["artifact_id"],
+                "price_paid": last["price_paid"],
+                "score": last["score"],
+                "scrip_minted": last["scrip_minted"],
+            }
 
-        artifact_id: str = args[0]
+        return result
 
-        # Check if artifact exists
+    def _bid(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
+        """Submit a sealed bid during bidding window."""
+        if len(args) < 2:
+            return {"success": False, "error": "bid requires [artifact_id, amount]"}
+
+        artifact_id: str = str(args[0])
+        try:
+            amount: int = int(args[1])
+        except (TypeError, ValueError):
+            return {"success": False, "error": "bid amount must be an integer"}
+
+        # Check phase
+        phase = self._get_phase()
+        if phase == "WAITING":
+            return {
+                "success": False,
+                "error": f"Bidding not open yet. First auction at tick {self._first_auction_tick}"
+            }
+        if phase != "BIDDING":
+            return {
+                "success": False,
+                "error": f"Bidding window closed. Next auction at tick {(self._auction_start_tick or 0) + self._period}"
+            }
+
+        # Validate amount
+        if amount < self._minimum_bid:
+            return {"success": False, "error": f"Bid must be at least {self._minimum_bid} scrip"}
+
+        # Check if bid update is allowed
+        if invoker_id in self._bids and not self._allow_bid_updates:
+            return {"success": False, "error": "Bid updates not allowed. You already have a bid."}
+
+        # Check if artifact exists and is executable
         if self.artifact_store:
             artifact = self.artifact_store.get(artifact_id)
             if not artifact:
                 return {"success": False, "error": f"Artifact {artifact_id} not found"}
-
-            # CODE ONLY: Reject non-executable artifacts
             if not artifact.executable:
                 return {
                     "success": False,
-                    "error": f"Oracle only accepts executable (code) artifacts. '{artifact_id}' is not executable. Create an artifact with executable=true, price, and code fields."
+                    "error": f"Oracle only accepts executable artifacts. '{artifact_id}' is not executable."
                 }
 
-        # Check if already submitted
-        if artifact_id in self.submissions:
-            return {"success": False, "error": f"Artifact {artifact_id} already submitted"}
+        # Check if agent can afford the bid
+        if self.ledger:
+            current_held = self._held_bids.get(invoker_id, 0)
+            additional_needed = amount - current_held
+            if additional_needed > 0:
+                available = self.ledger.get_scrip(invoker_id)
+                if available < additional_needed:
+                    return {
+                        "success": False,
+                        "error": f"Insufficient scrip. Need {additional_needed} more (have {available})"
+                    }
+                # Hold the additional amount
+                self.ledger.deduct_scrip(invoker_id, additional_needed)
+                self._held_bids[invoker_id] = amount
+            elif additional_needed < 0:
+                # Refund the difference if lowering bid
+                refund = -additional_needed
+                self.ledger.credit_scrip(invoker_id, refund)
+                self._held_bids[invoker_id] = amount
 
-        # Record submission
-        self.submissions[artifact_id] = {
-            "submitter": invoker_id,
-            "status": "pending",
-            "score": None,
-            "reason": None
+        # Record bid
+        self._bids[invoker_id] = {
+            "agent_id": invoker_id,
+            "artifact_id": artifact_id,
+            "amount": amount,
+            "tick_submitted": self._current_tick,
         }
 
         return {
             "success": True,
-            "message": f"Artifact {artifact_id} submitted for scoring",
-            "receipt": artifact_id
+            "message": f"Bid of {amount} scrip recorded for {artifact_id}",
+            "artifact_id": artifact_id,
+            "amount": amount,
         }
 
     def _check(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
-        """Check status of a submission"""
-        if not args or len(args) < 1:
-            return {"success": False, "error": "check requires [artifact_id]"}
-
-        artifact_id: str = args[0]
-        submission = self.submissions.get(artifact_id)
-
-        if not submission:
-            return {"success": False, "error": f"No submission found for {artifact_id}"}
-
-        return {"success": True, "submission": submission}
-
-    def _process(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
-        """Process one pending submission using LLM scoring"""
-        # Find a pending submission
-        pending_id: str | None = None
-        for artifact_id, submission in self.submissions.items():
-            if submission["status"] == "pending":
-                pending_id = artifact_id
-                break
-
-        if not pending_id:
-            return {"success": True, "message": "No pending submissions to process"}
-
-        # Get the artifact content
-        if not self.artifact_store:
-            return {"success": False, "error": "Oracle not configured with artifact store"}
-
-        artifact = self.artifact_store.get(pending_id)
-        if not artifact:
-            # Artifact was deleted - mark as failed
-            self.submissions[pending_id]["status"] = "failed"
-            self.submissions[pending_id]["reason"] = "Artifact not found"
-            return {"success": False, "error": f"Artifact {pending_id} not found"}
-
-        # Lazy-load the scorer
-        if self._scorer is None:
-            from .oracle_scorer import get_scorer
-            self._scorer = get_scorer()
-
-        # Score the artifact
-        result: dict[str, Any] = self._scorer.score_artifact(
-            artifact_id=pending_id,
-            artifact_type=artifact.type,
-            content=artifact.content
-        )
-
-        submission = self.submissions[pending_id]
-
-        if result["success"]:
-            score: int = result["score"]
-            reason: str = result["reason"]
-
-            submission["status"] = "scored"
-            submission["score"] = score
-            submission["reason"] = reason
-
-            # Mint credits based on score (score 0-100 -> credits)
-            # Scale: score / mint_ratio (configurable via config.yaml)
-            credits_to_mint = score // self._mint_ratio
-            if credits_to_mint > 0:
-                self.mint_callback(submission["submitter"], credits_to_mint)
-
+        """Check bid or auction result status."""
+        # If agent has active bid, show it
+        if invoker_id in self._bids:
+            bid = self._bids[invoker_id]
             return {
                 "success": True,
-                "artifact_id": pending_id,
-                "score": score,
-                "reason": reason,
-                "credits_minted": credits_to_mint,
-                "submitter": submission["submitter"]
+                "has_active_bid": True,
+                "bid": {
+                    "artifact_id": bid["artifact_id"],
+                    "amount": bid["amount"],
+                    "tick_submitted": bid["tick_submitted"],
+                },
+                "phase": self._get_phase(),
             }
-        else:
-            submission["status"] = "failed"
-            submission["reason"] = result["error"]
+
+        # Check if agent won any recent auctions
+        won_auctions = [
+            a for a in self._auction_history
+            if a["winner_id"] == invoker_id
+        ]
+        if won_auctions:
             return {
-                "success": False,
-                "artifact_id": pending_id,
-                "error": result["error"]
+                "success": True,
+                "has_active_bid": False,
+                "auctions_won": len(won_auctions),
+                "last_win": won_auctions[-1],
             }
+
+        return {
+            "success": True,
+            "has_active_bid": False,
+            "message": "No active bid and no auction wins",
+        }
+
+    def on_tick(self, tick: int) -> AuctionResult | None:
+        """Called by simulation runner at each tick.
+
+        Handles:
+        - Starting bidding windows
+        - Resolving auctions at end of bidding window
+
+        Returns AuctionResult if an auction was resolved, None otherwise.
+        """
+        self._current_tick = tick
+
+        # Check if we should start a new bidding window
+        if self._auction_start_tick is None:
+            if tick >= self._first_auction_tick:
+                self._auction_start_tick = tick
+                return None
+        else:
+            # Check if bidding window just ended
+            ticks_since_start = tick - self._auction_start_tick
+            if ticks_since_start == self._bidding_window:
+                # Resolve the auction
+                result = self._resolve_auction()
+                # Start next auction period
+                self._auction_start_tick = self._auction_start_tick + self._period
+                return result
+
+        return None
+
+    def _resolve_auction(self) -> AuctionResult:
+        """Resolve the current auction and distribute rewards."""
+        if not self._bids:
+            # No bids - auction passes
+            result: AuctionResult = {
+                "winner_id": None,
+                "artifact_id": None,
+                "winning_bid": 0,
+                "price_paid": 0,
+                "score": None,
+                "scrip_minted": 0,
+                "ubi_distributed": {},
+                "error": "No bids received",
+            }
+            self._auction_history.append(result)
+            return result
+
+        # Sort bids by amount (descending)
+        sorted_bids = sorted(
+            self._bids.values(),
+            key=lambda b: b["amount"],
+            reverse=True
+        )
+
+        # Handle ties
+        top_amount = sorted_bids[0]["amount"]
+        top_bidders = [b for b in sorted_bids if b["amount"] == top_amount]
+
+        if len(top_bidders) > 1:
+            if self._tie_breaking == "random":
+                winner_bid = self._random.choice(top_bidders)
+            else:  # first_bid
+                winner_bid = min(top_bidders, key=lambda b: b["tick_submitted"])
+        else:
+            winner_bid = sorted_bids[0]
+
+        # Determine second-price
+        if len(sorted_bids) > 1:
+            # Find highest bid that isn't the winner's
+            second_price = self._minimum_bid
+            for b in sorted_bids:
+                if b["agent_id"] != winner_bid["agent_id"]:
+                    second_price = b["amount"]
+                    break
+        else:
+            second_price = self._minimum_bid
+
+        winner_id = winner_bid["agent_id"]
+        artifact_id = winner_bid["artifact_id"]
+        winning_bid = winner_bid["amount"]
+
+        # Refund losing bidders
+        for agent_id, held in self._held_bids.items():
+            if agent_id != winner_id and self.ledger:
+                self.ledger.credit_scrip(agent_id, held)
+
+        # Winner pays second price (refund difference)
+        if self.ledger:
+            refund = winning_bid - second_price
+            if refund > 0:
+                self.ledger.credit_scrip(winner_id, refund)
+
+        # Clear held bids
+        self._held_bids.clear()
+
+        # Distribute UBI from the price paid
+        ubi_distribution = self.ubi_callback(second_price, None)
+
+        # Score the artifact
+        score: int | None = None
+        scrip_minted = 0
+        error: str | None = None
+
+        if self.artifact_store:
+            artifact = self.artifact_store.get(artifact_id)
+            if artifact:
+                # Lazy-load scorer
+                if self._scorer is None:
+                    from .oracle_scorer import get_scorer
+                    self._scorer = get_scorer()
+
+                try:
+                    score_result = self._scorer.score_artifact(
+                        artifact_id=artifact_id,
+                        artifact_type=artifact.type,
+                        content=artifact.content
+                    )
+                    if score_result["success"]:
+                        score = score_result["score"]
+                        scrip_minted = score // self._mint_ratio
+                        if scrip_minted > 0:
+                            self.mint_callback(winner_id, scrip_minted)
+                    else:
+                        error = score_result.get("error", "Scoring failed")
+                        if self._refund_on_scoring_failure and self.ledger:
+                            self.ledger.credit_scrip(winner_id, second_price)
+                except Exception as e:
+                    error = f"Scoring error: {str(e)}"
+                    if self._refund_on_scoring_failure and self.ledger:
+                        self.ledger.credit_scrip(winner_id, second_price)
+            else:
+                error = f"Artifact {artifact_id} not found"
+
+        result: AuctionResult = {
+            "winner_id": winner_id,
+            "artifact_id": artifact_id,
+            "winning_bid": winning_bid,
+            "price_paid": second_price,
+            "score": score,
+            "scrip_minted": scrip_minted,
+            "ubi_distributed": ubi_distribution,
+            "error": error,
+        }
+        self._auction_history.append(result)
+
+        # Clear bids for next auction
+        self._bids.clear()
+
+        return result
 
     def mock_score(self, artifact_id: str, score: int) -> bool:
-        """
-        Mock scoring - for testing without LLM.
-        Mints credits to the submitter based on score.
-        """
-        if artifact_id not in self.submissions:
-            return False
-
-        submission = self.submissions[artifact_id]
-        submission["status"] = "scored"
-        submission["score"] = score
-        submission["reason"] = "Mock score for testing"
-
-        # Mint credits based on score (configurable via config.yaml)
-        credits_to_mint = score // self._mint_ratio
-        if credits_to_mint > 0:
-            self.mint_callback(submission["submitter"], credits_to_mint)
-
+        """Mock scoring - for testing without LLM."""
+        # This is a simplified mock for backward compat in tests
+        # In auction mode, scoring happens automatically during resolution
         return True
 
 
@@ -1311,9 +1544,15 @@ def create_genesis_artifacts(
 
     # Create oracle if enabled
     if cfg.artifacts.oracle.enabled:
+        # Create UBI callback using ledger
+        def ubi_callback(amount: int, exclude: str | None) -> dict[str, int]:
+            return ledger.distribute_ubi(amount, exclude)
+
         genesis_oracle = GenesisOracle(
             mint_callback,
+            ubi_callback=ubi_callback,
             artifact_store=artifact_store,
+            ledger=ledger,
             genesis_config=cfg
         )
         artifacts[genesis_oracle.id] = genesis_oracle

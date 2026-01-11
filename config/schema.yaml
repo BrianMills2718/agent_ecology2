@@ -187,3 +187,18 @@ world:
 budget:
   max_api_cost: <number>        # $ limit (0 = unlimited)
   checkpoint_file: <string>     # Where to save state on pause
+
+# -----------------------------------------------------------------------------
+# DASHBOARD
+# HTML visibility interface for monitoring simulation
+# -----------------------------------------------------------------------------
+dashboard:
+  enabled: <boolean>            # Enable dashboard server
+  host: <string>                # Host to bind (0.0.0.0 for all interfaces)
+  port: <number>                # Port number (default: 8080)
+  static_dir: <string>          # Path to static files directory
+  jsonl_file: <string>          # Path to JSONL event log to monitor
+  websocket_path: <string>      # WebSocket endpoint path
+  cors_origins:                 # Allowed CORS origins
+    - <string>
+  max_events_cache: <number>    # Max events to cache in memory

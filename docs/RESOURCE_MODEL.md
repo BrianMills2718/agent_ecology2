@@ -1,231 +1,233 @@
 # Resource Model
 
-This document describes how Agent Ecology models scarce resources to reflect actual physical constraints of the underlying system.
+This document describes how Agent Ecology models scarce resources and economic exchange.
 
-## Design Philosophy
+## Core Principle: Two Layers
 
-The resource model serves two purposes:
-1. **System Protection**: Prevent overloading actual infrastructure (disk, API limits, $ budget)
-2. **Economic Relevance**: LLM agents optimize for efficiencies that matter in the real world
-
-Resources are modeled to match their physical reality as closely as possible.
-
----
-
-## Resource Categories
-
-Resources fall into two categories based on their temporal behavior:
-
-### Stock Resources (Fixed Pools)
-
-Resources that are **constant over time**. Total capacity is fixed; allocation persists until explicitly freed.
-
-| Resource | Physical Reality | Unit | Notes |
-|----------|-----------------|------|-------|
-| **disk** | Filesystem storage | bytes | Shared pool, allocated per agent |
-| **llm_budget** | API spending cap | dollars | Total $ for LLM calls |
-
-**Characteristics:**
-- Total is fixed at system initialization
-- Doesn't refresh or renew
-- Used capacity persists until freed
-- Trading quota = permanent reallocation
-
-### Flow Resources (Rate-Limited)
-
-Resources that are **available per time period**. Capacity renews each tick because the underlying resource is available again.
-
-| Resource | Physical Reality | Unit | Notes |
-|----------|-----------------|------|-------|
-| **compute** | LLM API tokens | tokens | Quota per tick for thinking |
-| **bandwidth** | Network I/O | bytes/tick | If network access added (currently disabled) |
-
-**Characteristics:**
-- Capacity is *per tick*, not cumulative
-- Refreshes each tick (use it or lose it)
-- Reflects actual rate limits
-- Trading quota = permanent change to per-tick allocation
-
----
-
-## Generic Resource System
-
-Resources are **configurable via config.yaml** - new resources can be added without code changes:
-
-```yaml
-resources:
-  stock:  # Fixed pools
-    llm_budget:
-      total: 1.00
-      unit: dollars
-      distribution: equal
-    disk:
-      total: 50000
-      unit: bytes
-      distribution: equal
-
-  flow:  # Per-tick quotas
-    compute:
-      per_tick: 1000
-      unit: cycles
-      distribution: equal
-    bandwidth:
-      per_tick: 0  # 0 = disabled
-      unit: bytes
-      distribution: equal
-```
-
-The ledger and rights registry handle any resource defined in config.
-
----
-
-## Three-Layer Model
+Every transaction involves **two separate layers**:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    PHYSICAL LAYER                           │
-│  Actual constraints: disk space, API rate limits, $ budget  │
+│                    SCRIP (Economic Layer)                   │
+│  Value exchange between agents. Market-determined prices.   │
+│  Flows: Caller → Owner (payment for value)                  │
 └─────────────────────────────────────────────────────────────┘
-                            ↓
+
 ┌─────────────────────────────────────────────────────────────┐
-│                    RIGHTS LAYER                             │
-│  Quotas allocated to agents (can be traded)                 │
-│  - Stored in RightsRegistry                                 │
-│  - Generic: quotas[agent_id][resource] = amount             │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    CONSUMPTION LAYER                        │
-│  Actual usage tracked in ledger                             │
-│  - Generic: resources[agent_id][resource] = balance         │
-│  - Scrip: separate economic currency                        │
+│               SCARCE RESOURCES (Physical Layer)             │
+│  Hard limits from reality. Measured, not negotiated.        │
+│  Consumed: From someone's budget (contract-defined)         │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**Both layers always apply.** You cannot substitute one for the other.
+
+---
+
+## Scarce Resources
+
+Physical constraints measured from reality:
+
+| Resource | What It Is | Unit | How Measured |
+|----------|-----------|------|--------------|
+| **llm_tokens** | LLM API consumption | tokens | Exact from API response |
+| **disk** | Storage space | bytes | `len(artifact.content)` |
+| **cpu** | Execution time | milliseconds | `time.process_time()` |
+| **memory** | RAM usage | bytes | `tracemalloc` |
+
+### Current Implementation Status
+
+| Resource | Tracked | Enforced | Notes |
+|----------|---------|----------|-------|
+| llm_tokens | ✅ | ✅ | Primary constraint |
+| disk | ✅ | ✅ | Via quotas |
+| cpu | ⚠️ Planned | ❌ | Timeout only for now |
+| memory | ⚠️ Planned | ❌ | No limit for now |
+
+At scale (1000+ agents), CPU and memory become real constraints on the host machine, even if dollar cost is negligible.
 
 ---
 
 ## Scrip (Economic Currency)
 
-**Scrip is NOT a resource** - it's the medium of exchange.
+Medium of exchange for value. **Not a resource.**
 
 | Aspect | Description |
 |--------|-------------|
-| Purpose | Trade for rights, pay for artifacts, signal value |
-| Scarcity | None inherent - it's information, not physical |
-| Persistence | Accumulates/depletes based on economic activity |
-| Sources | Oracle minting, selling tools, receiving transfers |
-| Sinks | Buying rights, paying prices, transaction fees |
+| Purpose | Pay for artifacts, services, signal value |
+| Determined by | Market (agent negotiation, price discovery) |
+| Sources | Oracle minting, selling artifacts, transfers |
+| Sinks | Buying artifacts, service fees |
 
-Scrip enables price discovery and economic signaling without modeling a physical constraint.
+### Where Scrip Flows
 
----
+Scrip **only** flows for agent↔agent economic transactions:
 
-## Implementation Mapping
+1. **Artifact trades** - Buying/selling artifacts (price → owner)
+2. **Oracle auction** - Bidding for submission slots (bid → auction pool)
+3. **Oracle minting** - Reward for accepted submissions (system → agent)
+4. **Transfers** - Direct scrip transfers between agents
 
-| Concept | Code Location | Notes |
-|---------|--------------|-------|
-| **Quotas (rights)** | `rights_registry.quotas[agent_id]` | Dict of {resource: amount} |
-| `get_quota(agent_id, resource)` | RightsRegistry | Get quota for any resource |
-| **Balances (consumption)** | `ledger.resources[agent_id]` | Dict of {resource: balance} |
-| `get_resource(agent_id, resource)` | Ledger | Get balance for any resource |
-| `spend_resource(agent_id, resource, amount)` | Ledger | Consume a resource |
-| `set_resource(agent_id, resource, amount)` | Ledger | Set balance (tick reset) |
-| **Scrip** | `ledger.scrip[agent_id]` | Economic currency |
-| **Disk used** | `artifact_store.get_owner_usage(agent_id)` | Current storage consumption |
+**Genesis methods do NOT cost scrip.** They cost compute like all actions. This keeps scrip purely economic.
 
-### Internal vs External Names
-
-| External (config/UI) | Internal (code) | Notes |
-|---------------------|-----------------|-------|
-| `compute` | `llm_tokens` | Ledger stores as "llm_tokens" |
-| `disk` | `disk` | Direct mapping |
-| `scrip` | `scrip` | Direct mapping |
+Scrip prices **should encode** underlying resource costs + value markup, but this emerges from market dynamics, not system rules.
 
 ---
 
-## Tick Lifecycle
+## The Gas Station Model
+
+When you buy gas, you pay $50 and don't think about crude oil extraction, refining, transport, storage, or labor. The station handles all that and bundles it into the price.
+
+Similarly, when Agent B uses Agent A's service:
 
 ```
-START OF TICK:
-  For each agent:
-    ledger.set_resource(agent, "llm_tokens", quota)  # Refresh flow resources
-    # (disk_used unchanged - stock doesn't refresh)
-
-DURING TICK:
-  Agent thinks → ledger.spend_resource(agent, "llm_tokens", cost)
-  Agent acts → ledger.spend_resource(agent, "llm_tokens", action_cost)
-  Agent writes artifact → disk_used += artifact_size
-  Agent invokes method → spend resource + pay scrip fee
-
-END OF TICK:
-  Unused flow resources are lost (use it or lose it)
-  Scrip persists (economic state carries forward)
-  Stock resources persist (don't reset)
+Agent B pays: 50 scrip → Agent A
+Agent A handles: token costs, efficiency, compute
+Agent B sees: just the price
 ```
 
----
-
-## Trading Resources
-
-### Via genesis_rights_registry
-
-```json
-// Transfer quota (permanent reallocation)
-{"action_type": "invoke_artifact", "artifact_id": "genesis_rights_registry",
- "method": "transfer_quota", "args": ["target_agent", "compute", 20]}
-```
-
-### Via Contract Artifacts
-
-Complex transfers (time-limited, conditional) can be handled by agent-written contract artifacts using the Gatekeeper pattern (see genesis_escrow).
+The market abstracts complexity. Producers understand costs; consumers see prices.
 
 ---
 
-## Failure States
+## Contract-Defined Resource Payment
 
-| State | Cause | Effect | Recovery |
-|-------|-------|--------|----------|
-| **Out of Compute** | Used all compute this tick | Can't think or act until next tick | Wait for tick reset |
-| **Out of Disk** | Used all disk_quota | Can't write new artifacts | Delete artifacts or buy quota |
-| **Out of Scrip** | Spent all currency | Can't buy artifacts or pay prices | Sell tools, receive transfers |
+**Who pays the resource cost is defined by the artifact contract**, not a system rule.
 
-Note: "Out of Compute" is temporary (resets next tick). "Out of Disk" and "Out of Scrip" persist until resolved through economic activity.
+### Resource Policies
 
----
+| Policy | Meaning | Use Case |
+|--------|---------|----------|
+| `caller_pays` | Invoker's resources consumed | Default, simple tools |
+| `owner_pays` | Owner's resources consumed | Premium services, freemium |
 
-## API Reference
-
-### Ledger (src/world/ledger.py)
+### Example Artifact
 
 ```python
-# Generic resource API
+artifact = {
+    "id": "my_service",
+    "owner_id": "agent_a",
+    "price": 50,                     # Scrip paid to owner
+    "resource_policy": "owner_pays"  # Owner absorbs resource costs
+}
+```
+
+### Business Models Enabled
+
+| Model | Price | Resource Policy | Strategy |
+|-------|-------|-----------------|----------|
+| **Free tier** | 0 | owner_pays | Gain market share |
+| **Basic** | Low | caller_pays | User brings own resources |
+| **Premium** | High | owner_pays | Full service, owner optimizes |
+| **Metered** | Variable | caller_pays | Price tracks usage |
+
+---
+
+## Transaction Flow
+
+When Agent B invokes Agent A's artifact:
+
+```
+1. SCRIP TRANSFER
+   Agent B → [price] scrip → Agent A
+   (Always. This is payment for value.)
+
+2. RESOURCE CONSUMPTION
+   Determine payer based on artifact.resource_policy
+
+   If "caller_pays":
+       Agent B's resource budget -= resources_used
+
+   If "owner_pays":
+       Agent A's resource budget -= resources_used
+
+3. EXECUTION
+   Run artifact code
+   Measure actual resources consumed
+   Return result + consumption report
+```
+
+---
+
+## Resource Measurement
+
+Every action returns actual consumption:
+
+```python
+{
+    "success": True,
+    "result": {...},
+    "resources_consumed": {
+        "llm_tokens": 523,
+        "cpu_ms": 12,
+        "memory_bytes": 450000,
+        "disk_bytes": 0  # Only for writes
+    },
+    "charged_to": "agent_b"  # Who paid
+}
+```
+
+This enables:
+- Agents to learn true costs of operations
+- Accurate pricing decisions
+- Efficiency optimization
+
+---
+
+## Failure Modes
+
+| Failure | Cause | Effect |
+|---------|-------|--------|
+| **Insufficient scrip** | Can't afford price | Transaction rejected |
+| **Insufficient resources** | Payer lacks resources | Transaction rejected |
+| **Owner resource exhaustion** | owner_pays but owner is broke | Service unavailable |
+
+If `resource_policy: owner_pays` and owner has no resources, the service cannot be invoked even if caller is willing to pay scrip.
+
+---
+
+## Why This Matters for Emergence
+
+1. **Efficiency is rewarded** - Owners who optimize resource usage keep higher margins
+2. **Value is rewarded** - Useful services command higher prices
+3. **Specialization emerges** - Agents focus on what they're efficient at
+4. **No free lunch** - Real resources always consumed, preventing spam/abuse
+5. **Market abstraction** - Consumers see prices, producers handle costs
+6. **Diverse business models** - Competition on price, quality, and efficiency
+
+---
+
+## Implementation Reference
+
+### Ledger API (resource tracking)
+
+```python
 ledger.get_resource(agent_id, resource) -> float
 ledger.spend_resource(agent_id, resource, amount) -> bool
-ledger.credit_resource(agent_id, resource, amount) -> None
-ledger.set_resource(agent_id, resource, amount) -> None
-ledger.transfer_resource(from_id, to_id, resource, amount) -> bool
 ledger.get_all_resources(agent_id) -> dict[str, float]
-
-# Scrip API
-ledger.get_scrip(agent_id) -> int
-ledger.deduct_scrip(agent_id, amount) -> bool
-ledger.credit_scrip(agent_id, amount) -> None
-ledger.transfer_scrip(from_id, to_id, amount) -> bool
-
-# Backward compat (deprecated)
-ledger.get_compute(agent_id)  # Use get_resource(agent_id, "llm_tokens")
-ledger.spend_compute(agent_id, amount)  # Use spend_resource()
 ```
 
-### RightsRegistry (src/world/genesis.py)
+### Artifact Schema
 
 ```python
-# Generic quota API
-registry.get_quota(agent_id, resource) -> float
-registry.set_quota(agent_id, resource, amount) -> None
-registry.get_all_quotas(agent_id) -> dict[str, float]
+@dataclass
+class Artifact:
+    id: str
+    owner_id: str
+    content: str
+    price: int = 0                           # Scrip to owner
+    resource_policy: str = "caller_pays"     # Who pays resources
+    executable: bool = False
+    # ...
+```
 
-# Backward compat
-registry.get_compute_quota(agent_id)  # Use get_quota(agent_id, "compute")
-registry.get_disk_quota(agent_id)  # Use get_quota(agent_id, "disk")
+### Action Result Schema
+
+```python
+@dataclass
+class ActionResult:
+    success: bool
+    message: str
+    resources_consumed: dict[str, float]     # Actual consumption
+    charged_to: str                          # Who paid
 ```

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Ecology Dashboard</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Header -->
+        <header class="header">
+            <h1>Agent Ecology Dashboard</h1>
+            <div class="header-controls">
+                <div class="simulation-controls" id="sim-controls">
+                    <button id="btn-pause" class="control-btn pause" title="Pause Simulation">
+                        <span class="btn-icon">||</span>
+                        <span class="btn-text">Pause</span>
+                    </button>
+                    <button id="btn-resume" class="control-btn resume hidden" title="Resume Simulation">
+                        <span class="btn-icon">></span>
+                        <span class="btn-text">Resume</span>
+                    </button>
+                </div>
+                <div class="connection-status">
+                    <span id="ws-status" class="status-indicator disconnected"></span>
+                    <span id="ws-status-text">Disconnected</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Progress Bar -->
+        <section class="progress-section">
+            <div class="progress-container">
+                <div class="progress-info">
+                    <span id="tick-display">Tick: 0 / 100</span>
+                    <span id="status-display" class="status-badge">Initializing</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="tick-progress" class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="progress-container">
+                <div class="progress-info">
+                    <span id="budget-display">API Budget: $0.00 / $1.00</span>
+                    <span id="tps-display">0 ticks/sec</span>
+                </div>
+                <div class="progress-bar budget">
+                    <div id="budget-progress" class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Grid -->
+        <main class="main-grid">
+            <!-- Left Column: Agents and Artifacts -->
+            <div class="left-column">
+                <!-- Agents Panel -->
+                <section class="panel agents-panel">
+                    <div class="panel-header">
+                        <h2>Agents</h2>
+                        <span id="agent-count" class="count-badge">0</span>
+                    </div>
+                    <div class="panel-content">
+                        <table class="data-table" id="agents-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Scrip</th>
+                                    <th>Compute</th>
+                                    <th>Disk</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="agents-tbody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Artifacts Panel -->
+                <section class="panel artifacts-panel">
+                    <div class="panel-header">
+                        <h2>Artifacts</h2>
+                        <span id="artifact-count" class="count-badge">0</span>
+                    </div>
+                    <div class="panel-controls">
+                        <input type="text" id="artifact-search" placeholder="Search artifacts..." class="search-input">
+                        <select id="artifact-filter" class="filter-select">
+                            <option value="">All Types</option>
+                            <option value="tool">Tools</option>
+                            <option value="data">Data</option>
+                            <option value="code">Code</option>
+                        </select>
+                    </div>
+                    <div class="panel-content scrollable">
+                        <table class="data-table" id="artifacts-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Type</th>
+                                    <th>Owner</th>
+                                    <th>Price</th>
+                                    <th>Exec</th>
+                                    <th>Oracle</th>
+                                </tr>
+                            </thead>
+                            <tbody id="artifacts-tbody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Center Column: Charts and Timeline -->
+            <div class="center-column">
+                <!-- Charts Panel -->
+                <section class="panel charts-panel">
+                    <div class="panel-header">
+                        <h2>Resource Utilization</h2>
+                        <div class="chart-tabs">
+                            <button class="tab-btn active" data-chart="compute">Compute</button>
+                            <button class="tab-btn" data-chart="scrip">Scrip</button>
+                            <button class="tab-btn" data-chart="flow">Flow</button>
+                        </div>
+                    </div>
+                    <div class="panel-content chart-container">
+                        <canvas id="resource-chart"></canvas>
+                    </div>
+                </section>
+
+                <!-- Timeline Panel -->
+                <section class="panel timeline-panel">
+                    <div class="panel-header">
+                        <h2>Action Timeline</h2>
+                        <div class="timeline-controls">
+                            <select id="timeline-agent-filter" class="filter-select">
+                                <option value="">All Agents</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="panel-content scrollable" id="timeline-content">
+                        <!-- Populated by JS -->
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Column: Genesis and Events -->
+            <div class="right-column">
+                <!-- Genesis Panel -->
+                <section class="panel genesis-panel">
+                    <div class="panel-header">
+                        <h2>Genesis Activity</h2>
+                    </div>
+                    <div class="panel-content">
+                        <div class="genesis-tabs">
+                            <button class="genesis-tab active" data-tab="oracle">Oracle</button>
+                            <button class="genesis-tab" data-tab="escrow">Escrow</button>
+                            <button class="genesis-tab" data-tab="ledger">Ledger</button>
+                        </div>
+                        <div class="genesis-content" id="genesis-content">
+                            <!-- Oracle Tab -->
+                            <div class="genesis-tab-content active" id="genesis-oracle">
+                                <div class="genesis-stat">
+                                    <span class="stat-label">Pending:</span>
+                                    <span id="oracle-pending" class="stat-value">0</span>
+                                </div>
+                                <div class="genesis-stat">
+                                    <span class="stat-label">Total Minted:</span>
+                                    <span id="oracle-minted" class="stat-value">0</span>
+                                </div>
+                                <div class="genesis-list" id="oracle-scores">
+                                    <!-- Recent scores -->
+                                </div>
+                            </div>
+                            <!-- Escrow Tab -->
+                            <div class="genesis-tab-content" id="genesis-escrow">
+                                <div class="genesis-stat">
+                                    <span class="stat-label">Active Listings:</span>
+                                    <span id="escrow-active" class="stat-value">0</span>
+                                </div>
+                                <div class="genesis-list" id="escrow-listings">
+                                    <!-- Active listings -->
+                                </div>
+                            </div>
+                            <!-- Ledger Tab -->
+                            <div class="genesis-tab-content" id="genesis-ledger">
+                                <div class="genesis-stat">
+                                    <span class="stat-label">Recent Transfers:</span>
+                                    <span id="ledger-transfer-count" class="stat-value">0</span>
+                                </div>
+                                <div class="genesis-list" id="ledger-transfers">
+                                    <!-- Recent transfers -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Events Panel -->
+                <section class="panel events-panel">
+                    <div class="panel-header">
+                        <h2>Event Stream</h2>
+                        <div class="event-controls">
+                            <button id="events-pause" class="icon-btn" title="Pause">||</button>
+                            <button id="events-clear" class="icon-btn" title="Clear">X</button>
+                        </div>
+                    </div>
+                    <div class="panel-controls">
+                        <select id="event-type-filter" class="filter-select" multiple>
+                            <option value="tick">tick</option>
+                            <option value="thinking">thinking</option>
+                            <option value="action">action</option>
+                            <option value="mint">mint</option>
+                            <option value="intent_rejected">rejected</option>
+                        </select>
+                    </div>
+                    <div class="panel-content scrollable" id="events-content">
+                        <!-- Populated by JS -->
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Agent Detail Modal -->
+        <div id="agent-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modal-agent-id">Agent Details</h2>
+                    <button class="modal-close" id="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-section">
+                        <h3>Balances</h3>
+                        <div class="modal-stats" id="modal-balances">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                    <div class="modal-section">
+                        <h3>Artifacts Owned</h3>
+                        <div class="modal-list" id="modal-artifacts">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                    <div class="modal-section">
+                        <h3>Recent Actions</h3>
+                        <div class="modal-list scrollable" id="modal-actions">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/static/js/utils/api.js"></script>
+    <script src="/static/js/websocket.js"></script>
+    <script src="/static/js/panels/progress.js"></script>
+    <script src="/static/js/panels/agents.js"></script>
+    <script src="/static/js/panels/artifacts.js"></script>
+    <script src="/static/js/panels/timeline.js"></script>
+    <script src="/static/js/panels/events.js"></script>
+    <script src="/static/js/panels/charts.js"></script>
+    <script src="/static/js/panels/genesis.js"></script>
+    <script src="/static/js/panels/controls.js"></script>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

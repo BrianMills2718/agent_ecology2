@@ -443,15 +443,14 @@ class TestTransferVieLedger:
         assert result.data.get("success") is True
         assert result.data.get("transferred") == 25
 
-        # Verify balances changed (minus transfer fee of 1 scrip)
-        # Transfer costs 1 scrip fee, so agent_1 loses 25 + 1 = 26 total (but fee is checked before)
-        # Actually checking the world.ledger directly
+        # Verify balances changed
+        # Transfer method costs COMPUTE (not scrip), so no scrip fee
         final_agent1 = world.ledger.get_scrip("agent_1")
         final_agent2 = world.ledger.get_scrip("agent_2")
 
-        # agent_1: started with 100, transferred 25, paid 1 fee = 74
+        # agent_1: started with 100, transferred 25 = 75
         # agent_2: started with 100, received 25 = 125
-        assert final_agent1 == initial_agent1 - 25 - 1  # -25 transfer, -1 fee
+        assert final_agent1 == initial_agent1 - 25  # -25 transfer, no scrip fee
         assert final_agent2 == initial_agent2 + 25
 
     def test_cannot_transfer_from_other_agent(self, world_with_temp_log):

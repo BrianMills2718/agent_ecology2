@@ -407,5 +407,6 @@ class TestEscrowIntegration:
         assert world.artifacts.get_owner("tool_1") == "buyer"
         # Buyer: 200 - 100 (purchase) = 100
         assert world.ledger.get_scrip("buyer") == 100
-        # Seller: 50 - 1 (transfer_ownership) - 1 (deposit) + 100 (sale) = 148
-        assert world.ledger.get_scrip("seller") == 148
+        # Seller: 50 + 100 (sale) = 150
+        # Note: Genesis method fees are compute (resources), not scrip
+        assert world.ledger.get_scrip("seller") == 150

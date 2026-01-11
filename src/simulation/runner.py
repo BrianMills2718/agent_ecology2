@@ -39,11 +39,20 @@ class SimulationRunner:
     - Two-phase commit tick execution
     - Budget tracking and checkpointing
     - Dynamic agent creation for spawned principals
+    - Pause/resume control for dashboard integration
 
     Usage:
         runner = SimulationRunner(config)
         world = await runner.run()  # or runner.run_sync()
     """
+
+    # Class-level reference for dashboard access
+    _active_runner: "SimulationRunner | None" = None
+
+    @classmethod
+    def get_active(cls) -> "SimulationRunner | None":
+        """Get the currently running simulation runner."""
+        return cls._active_runner
 
     def __init__(
         self,
@@ -101,6 +110,12 @@ class SimulationRunner:
 
         # Initialize agents
         self.agents = self._create_agents(agent_configs)
+
+        # Pause/resume state
+        self._paused = False
+        self._pause_event = asyncio.Event()
+        self._pause_event.set()  # Start unpaused
+        self._running = False
 
     def _restore_checkpoint(self, checkpoint: CheckpointData) -> None:
         """Restore world state from checkpoint."""
@@ -181,6 +196,46 @@ class SimulationRunner:
                 print(f"  [NEW AGENT] Created agent for principal: {principal_id}")
 
         return new_agents
+
+    def _handle_oracle_tick(self) -> dict[str, Any] | None:
+        """Handle oracle auction tick.
+
+        Calls the oracle's on_tick method to:
+        - Start new bidding windows
+        - Resolve completed auctions
+        - Distribute UBI from winning bids
+
+        Returns:
+            AuctionResult dict if an auction was resolved, None otherwise.
+        """
+        oracle = self.world.genesis_artifacts.get("genesis_oracle")
+        if oracle is None:
+            return None
+
+        # Check if oracle has on_tick method (auction-based oracle)
+        if not hasattr(oracle, "on_tick"):
+            return None
+
+        result = oracle.on_tick(self.world.tick)
+
+        # Log auction result if there was one
+        if result:
+            self.world.logger.log(
+                "oracle_auction",
+                {
+                    "tick": self.world.tick,
+                    "winner_id": result.get("winner_id"),
+                    "artifact_id": result.get("artifact_id"),
+                    "winning_bid": result.get("winning_bid"),
+                    "price_paid": result.get("price_paid"),
+                    "score": result.get("score"),
+                    "scrip_minted": result.get("scrip_minted"),
+                    "ubi_distributed": result.get("ubi_distributed"),
+                    "error": result.get("error"),
+                },
+            )
+
+        return result
 
     async def _think_agent(
         self,
@@ -398,6 +453,42 @@ class SimulationRunner:
         print(f"Total artifacts: {self.world.artifacts.count()}")
         print(f"Log file: {self.config['logging']['output_file']}")
 
+    def pause(self) -> None:
+        """Pause the simulation after the current tick completes."""
+        self._paused = True
+        self._pause_event.clear()
+        if self.verbose:
+            print("\n[PAUSED] Simulation paused. Use resume() to continue.")
+
+    def resume(self) -> None:
+        """Resume a paused simulation."""
+        self._paused = False
+        self._pause_event.set()
+        if self.verbose:
+            print("[RESUMED] Simulation resumed.")
+
+    @property
+    def is_paused(self) -> bool:
+        """Check if the simulation is paused."""
+        return self._paused
+
+    @property
+    def is_running(self) -> bool:
+        """Check if the simulation is currently running."""
+        return self._running
+
+    def get_status(self) -> dict[str, Any]:
+        """Get current simulation status for dashboard."""
+        return {
+            "running": self._running,
+            "paused": self._paused,
+            "tick": self.world.tick,
+            "max_ticks": self.world.max_ticks,
+            "agent_count": len(self.agents),
+            "api_cost": self.engine.cumulative_api_cost,
+            "max_api_cost": self.engine.max_api_cost,
+        }
+
     async def run(self) -> World:
         """Run the simulation asynchronously.
 
@@ -406,11 +497,27 @@ class SimulationRunner:
         Returns:
             The World instance after simulation completes.
         """
+        SimulationRunner._active_runner = self
+        self._running = True
         self._print_startup_info()
 
         while self.world.advance_tick():
+            # Wait if paused
+            await self._pause_event.wait()
+
             if self.verbose:
                 print(f"--- Tick {self.world.tick} ---")
+
+            # Handle oracle auction tick (resolve auctions, start bidding windows)
+            oracle_result = self._handle_oracle_tick()
+            if oracle_result and self.verbose:
+                if oracle_result.get("winner_id"):
+                    print(f"  [AUCTION] Winner: {oracle_result['winner_id']}, "
+                          f"paid {oracle_result['price_paid']} scrip, "
+                          f"score: {oracle_result.get('score')}, "
+                          f"minted: {oracle_result['scrip_minted']}")
+                elif oracle_result.get("error"):
+                    print(f"  [AUCTION] {oracle_result['error']}")
 
             # Check for spawned principals
             new_agents = self._check_for_new_principals()
@@ -464,6 +571,8 @@ class SimulationRunner:
                 print(f"  End of tick. Scrip: {self.world.ledger.get_all_scrip()}")
                 print()
 
+        self._running = False
+        SimulationRunner._active_runner = None
         self._print_final_summary()
         return self.world
 

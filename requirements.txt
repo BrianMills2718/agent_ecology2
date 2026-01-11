@@ -13,3 +13,10 @@ qdrant-client>=1.7.0
 
 # Templates
 jinja2>=3.0.0
+
+# Dashboard
+fastapi>=0.104.0
+uvicorn>=0.24.0
+websockets>=12.0
+watchdog>=3.0.0
+aiofiles>=23.0.0

@@ -1,0 +1,260 @@
+"""Pydantic models for dashboard API responses."""
+
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
+from typing import Any, Literal
+
+
+class ResourceBalance(BaseModel):
+    """Balance for a single resource."""
+    current: float
+    quota: float
+    used: float = 0
+
+
+class AgentBalance(BaseModel):
+    """Complete balance info for an agent."""
+    agent_id: str
+    scrip: int = 0
+    compute: ResourceBalance
+    disk: ResourceBalance
+    status: Literal["active", "low_resources", "frozen"] = "active"
+
+
+class AgentSummary(BaseModel):
+    """Summary of agent for list view."""
+    agent_id: str
+    scrip: int = 0
+    compute_used: float = 0
+    compute_quota: float = 0
+    disk_used: float = 0
+    disk_quota: float = 0
+    status: Literal["active", "low_resources", "frozen"] = "active"
+    action_count: int = 0
+    last_action_tick: int | None = None
+
+
+class AgentDetail(BaseModel):
+    """Full agent detail with history."""
+    agent_id: str
+    scrip: int = 0
+    compute: ResourceBalance
+    disk: ResourceBalance
+    status: Literal["active", "low_resources", "frozen"] = "active"
+    actions: list[ActionEvent] = Field(default_factory=list)
+    artifacts_owned: list[str] = Field(default_factory=list)
+    thinking_history: list[ThinkingEvent] = Field(default_factory=list)
+
+
+class ArtifactInfo(BaseModel):
+    """Artifact information."""
+    artifact_id: str
+    artifact_type: str
+    owner_id: str
+    executable: bool = False
+    price: int = 0
+    size_bytes: int = 0
+    created_at: str
+    updated_at: str
+    oracle_score: float | None = None
+    oracle_status: Literal["pending", "scored", "none"] = "none"
+
+
+class ActionEvent(BaseModel):
+    """Action event from the timeline."""
+    tick: int
+    timestamp: str
+    agent_id: str
+    action_type: str
+    target: str | None = None
+    compute_cost: float = 0
+    scrip_cost: int = 0
+    success: bool = True
+    error: str | None = None
+    result: Any = None
+
+
+class ThinkingEvent(BaseModel):
+    """Agent thinking event."""
+    tick: int
+    timestamp: str
+    agent_id: str
+    input_tokens: int = 0
+    output_tokens: int = 0
+    thinking_cost: float = 0
+    success: bool = True
+    error: str | None = None
+
+
+class TickSummary(BaseModel):
+    """Summary of a single tick."""
+    tick: int
+    timestamp: str
+    agent_count: int = 0
+    action_count: int = 0
+    total_compute_used: float = 0
+    total_scrip_transferred: int = 0
+    artifacts_created: int = 0
+    oracle_mints: int = 0
+
+
+class GenesisOracleStatus(BaseModel):
+    """Oracle submission status."""
+    pending_count: int = 0
+    pending_artifacts: list[str] = Field(default_factory=list)
+    recent_scores: list[OracleScore] = Field(default_factory=list)
+    total_scrip_minted: int = 0
+
+
+class OracleScore(BaseModel):
+    """Single oracle score."""
+    artifact_id: str
+    submitter: str
+    score: float
+    scrip_minted: int
+    timestamp: str
+
+
+class EscrowListing(BaseModel):
+    """Escrow listing info."""
+    artifact_id: str
+    seller_id: str
+    price: int
+    buyer_id: str | None = None
+    status: Literal["active", "sold", "cancelled"] = "active"
+
+
+class GenesisEscrowStatus(BaseModel):
+    """Escrow status summary."""
+    active_listings: list[EscrowListing] = Field(default_factory=list)
+    recent_trades: list[EscrowTrade] = Field(default_factory=list)
+
+
+class EscrowTrade(BaseModel):
+    """Completed escrow trade."""
+    artifact_id: str
+    seller_id: str
+    buyer_id: str
+    price: int
+    timestamp: str
+
+
+class LedgerTransfer(BaseModel):
+    """Ledger transfer event."""
+    from_id: str
+    to_id: str
+    amount: int
+    timestamp: str
+    tick: int
+
+
+class GenesisLedgerStatus(BaseModel):
+    """Ledger activity summary."""
+    recent_transfers: list[LedgerTransfer] = Field(default_factory=list)
+    recent_spawns: list[str] = Field(default_factory=list)
+    recent_ownership_transfers: list[OwnershipTransfer] = Field(default_factory=list)
+
+
+class OwnershipTransfer(BaseModel):
+    """Artifact ownership transfer."""
+    artifact_id: str
+    from_id: str
+    to_id: str
+    timestamp: str
+
+
+class GenesisActivitySummary(BaseModel):
+    """Combined genesis artifact activity."""
+    oracle: GenesisOracleStatus
+    escrow: GenesisEscrowStatus
+    ledger: GenesisLedgerStatus
+
+
+class SimulationProgress(BaseModel):
+    """Overall simulation progress."""
+    current_tick: int = 0
+    max_ticks: int = 100
+    api_cost_spent: float = 0
+    api_cost_limit: float = 1.0
+    start_time: str | None = None
+    elapsed_seconds: float = 0
+    ticks_per_second: float = 0
+    status: Literal["running", "paused", "completed", "budget_exhausted"] = "running"
+
+
+class SimulationState(BaseModel):
+    """Complete simulation state snapshot."""
+    progress: SimulationProgress
+    agents: list[AgentSummary] = Field(default_factory=list)
+    artifacts: list[ArtifactInfo] = Field(default_factory=list)
+    genesis: GenesisActivitySummary | None = None
+    recent_events: list[RawEvent] = Field(default_factory=list)
+
+
+class RawEvent(BaseModel):
+    """Raw event from JSONL log."""
+    timestamp: str
+    event_type: str
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
+class EventFilter(BaseModel):
+    """Filter for querying events."""
+    event_types: list[str] | None = None
+    agent_id: str | None = None
+    artifact_id: str | None = None
+    tick_min: int | None = None
+    tick_max: int | None = None
+    limit: int = 100
+    offset: int = 0
+
+
+class ConfigInfo(BaseModel):
+    """Configuration information for display."""
+    resources: dict[str, Any]
+    costs: dict[str, Any]
+    genesis: dict[str, Any]
+    world: dict[str, Any]
+    budget: dict[str, Any]
+
+
+class ChartDataPoint(BaseModel):
+    """Single data point for charts."""
+    tick: int
+    value: float
+    label: str | None = None
+
+
+class AgentChartData(BaseModel):
+    """Chart data for a single agent."""
+    agent_id: str
+    data: list[ChartDataPoint] = Field(default_factory=list)
+
+
+class ResourceChartData(BaseModel):
+    """Resource utilization chart data."""
+    resource_name: str
+    agents: list[AgentChartData] = Field(default_factory=list)
+    totals: list[ChartDataPoint] = Field(default_factory=list)
+
+
+class EconomicFlowData(BaseModel):
+    """Data for economic flow visualization."""
+    nodes: list[FlowNode] = Field(default_factory=list)
+    links: list[FlowLink] = Field(default_factory=list)
+
+
+class FlowNode(BaseModel):
+    """Node in flow diagram."""
+    id: str
+    name: str
+    type: Literal["agent", "artifact", "genesis"] = "agent"
+
+
+class FlowLink(BaseModel):
+    """Link in flow diagram."""
+    source: str
+    target: str
+    value: int
+    tick: int | None = None
