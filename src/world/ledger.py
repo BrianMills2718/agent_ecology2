@@ -15,7 +15,33 @@ See docs/RESOURCE_MODEL.md for full design rationale.
 from __future__ import annotations
 
 import math
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, TypedDict
+
+
+def _to_decimal(value: float) -> Decimal:
+    """Convert float to Decimal using string conversion for precision.
+
+    Using str() avoids float representation issues like:
+    >>> Decimal(0.1)  # Bad: Decimal('0.1000000000000000055511151231...')
+    >>> Decimal(str(0.1))  # Good: Decimal('0.1')
+    """
+    return Decimal(str(value))
+
+
+def _from_decimal(value: Decimal) -> float:
+    """Convert Decimal back to float for API compatibility."""
+    return float(value)
+
+
+def _decimal_add(a: float, b: float) -> float:
+    """Add two floats using Decimal arithmetic for precision."""
+    return _from_decimal(_to_decimal(a) + _to_decimal(b))
+
+
+def _decimal_sub(a: float, b: float) -> float:
+    """Subtract two floats using Decimal arithmetic for precision."""
+    return _from_decimal(_to_decimal(a) - _to_decimal(b))
 
 
 class BalanceInfo(TypedDict):
@@ -83,7 +109,8 @@ class Ledger:
             return False
         if principal_id not in self.resources:
             self.resources[principal_id] = {}
-        self.resources[principal_id][resource] = self.get_resource(principal_id, resource) - amount
+        current = self.get_resource(principal_id, resource)
+        self.resources[principal_id][resource] = _decimal_sub(current, amount)
         return True
 
     def credit_resource(self, principal_id: str, resource: str, amount: float) -> None:
@@ -91,7 +118,7 @@ class Ledger:
         if principal_id not in self.resources:
             self.resources[principal_id] = {}
         current = self.resources[principal_id].get(resource, 0.0)
-        self.resources[principal_id][resource] = current + amount
+        self.resources[principal_id][resource] = _decimal_add(current, amount)
 
     def set_resource(self, principal_id: str, resource: str, amount: float) -> None:
         """Set a resource to a specific value (used for tick reset)."""
@@ -110,8 +137,10 @@ class Ledger:
         # Ensure recipient exists
         if to_id not in self.resources:
             self.resources[to_id] = {}
-        self.resources[from_id][resource] = self.get_resource(from_id, resource) - amount
-        self.resources[to_id][resource] = self.get_resource(to_id, resource) + amount
+        from_current = self.get_resource(from_id, resource)
+        to_current = self.get_resource(to_id, resource)
+        self.resources[from_id][resource] = _decimal_sub(from_current, amount)
+        self.resources[to_id][resource] = _decimal_add(to_current, amount)
         return True
 
     def get_all_resources(self, principal_id: str) -> dict[str, float]:

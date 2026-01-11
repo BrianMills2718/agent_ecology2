@@ -68,8 +68,6 @@ class WriteArtifactIntent(ActionIntent):
     code: str = ""
     # Policy for access control and pricing
     policy: dict[str, Any] | None = None
-    # Resource payment policy: who pays physical resource costs
-    resource_policy: str = "caller_pays"
 
     def __init__(
         self,
@@ -81,7 +79,6 @@ class WriteArtifactIntent(ActionIntent):
         price: int = 0,
         code: str = "",
         policy: dict[str, Any] | None = None,
-        resource_policy: str = "caller_pays",
     ) -> None:
         super().__init__(ActionType.WRITE_ARTIFACT, principal_id)
         self.artifact_id = artifact_id
@@ -91,7 +88,6 @@ class WriteArtifactIntent(ActionIntent):
         self.price = price
         self.code = code
         self.policy = policy
-        self.resource_policy = resource_policy
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
@@ -104,8 +100,6 @@ class WriteArtifactIntent(ActionIntent):
             d["code"] = self.code[:100] + "..." if len(self.code) > 100 else self.code
         if self.policy is not None:
             d["policy"] = self.policy
-        if self.resource_policy != "caller_pays":
-            d["resource_policy"] = self.resource_policy
         return d
 
 
@@ -196,7 +190,6 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
         price = data.get("price", 0)
         code = data.get("code", "")
         policy: dict[str, Any] | None = data.get("policy")  # Can be None or a dict
-        resource_policy = data.get("resource_policy", "caller_pays")
 
         if not artifact_id:
             return "write_artifact requires 'artifact_id'"
@@ -212,12 +205,6 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
         # Validate policy if provided
         if policy is not None and not isinstance(policy, dict):
             return "policy must be a dict or null"
-
-        # Validate resource_policy
-        if not isinstance(resource_policy, str):
-            resource_policy = "caller_pays"
-        if resource_policy not in ("caller_pays", "owner_pays"):
-            return "resource_policy must be 'caller_pays' or 'owner_pays'"
 
         # Validate executable artifact fields
         if executable:
@@ -238,7 +225,6 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
             price=price,
             code=code,
             policy=policy,
-            resource_policy=resource_policy,
         )
 
     elif action_type == "transfer":

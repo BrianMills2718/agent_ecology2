@@ -51,6 +51,37 @@ Hard constraints measured from reality:
 
 Actions are deliberately free. Real constraints come from thinking (tokens) and storage (disk), not arbitrary friction.
 
+### Two-Layer Model (Implemented)
+
+When invoking an executable artifact, **two independent deductions** occur:
+
+```
+Layer 1 (Scrip):     caller pays PRICE to owner     → Economic exchange
+Layer 2 (Resources): payer pays RESOURCES to system → Physical consumption
+```
+
+The **resource payer** depends on the artifact's `resource_policy`:
+- `"caller_pays"`: Caller pays resources (default)
+- `"owner_pays"`: Owner subsidizes resources (enables free services)
+
+**Example flow** (caller_pays):
+```
+1. Bob invokes Alice's artifact (price=5)
+2. Bob pays 5 scrip to Alice (Layer 1)
+3. Execution runs, consuming 3.0 llm_tokens
+4. Bob pays 3.0 llm_tokens (Layer 2)
+5. ActionResult includes: resources_consumed={"llm_tokens": 3.0}, charged_to="bob"
+```
+
+**Example flow** (owner_pays):
+```
+1. Bob invokes Alice's artifact (price=0, resource_policy="owner_pays")
+2. No scrip transfer (price=0)
+3. Execution runs, consuming 3.0 llm_tokens
+4. Alice pays 3.0 llm_tokens (Layer 2 - owner subsidizes)
+5. ActionResult includes: resources_consumed={"llm_tokens": 3.0}, charged_to="alice"
+```
+
 ---
 
 ## Scrip (Economic Currency)
@@ -174,10 +205,15 @@ class Artifact:
     id: str
     owner_id: str
     content: str
-    price: int = 0           # Scrip price (for executable artifacts)
+    price: int = 0              # Scrip price (for executable artifacts)
     executable: bool = False
-    code: str = ""           # Python code with run() function
+    code: str = ""              # Python code with run() function
+    resource_policy: str = "caller_pays"  # Who pays physical resources
 ```
+
+**resource_policy options** (Two-Layer Model):
+- `"caller_pays"` (default): Caller pays physical resource costs (compute, tokens)
+- `"owner_pays"`: Owner subsidizes physical resources (enables "free" services)
 
 ### Action Result Schema
 
@@ -187,7 +223,13 @@ class ActionResult:
     success: bool
     message: str
     data: dict[str, Any] | None = None
+    resources_consumed: dict[str, float] | None = None  # Physical resources used
+    charged_to: str | None = None                        # Who paid the resources
 ```
+
+**Resource fields** (Two-Layer Model):
+- `resources_consumed`: Physical resources consumed (e.g., `{"llm_tokens": 5.0, "disk_bytes": 1024}`)
+- `charged_to`: Principal ID of who paid the physical resources (may differ from caller)
 
 ---
 

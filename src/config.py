@@ -87,7 +87,8 @@ def get_config() -> dict[str, Any]:
     global _config
     if _config is None:
         load_config()
-    assert _config is not None
+    if _config is None:
+        raise RuntimeError("Config failed to load. Call load_config() first.")
     return _config
 
 
@@ -100,7 +101,8 @@ def get_validated_config() -> AppConfig:
     global _validated_config
     if _validated_config is None:
         load_config()
-    assert _validated_config is not None
+    if _validated_config is None:
+        raise RuntimeError("Validated config failed to load. Call load_config() first.")
     return _validated_config
 
 
@@ -134,13 +136,6 @@ def get_stock_resource(name: str, field: str = "total") -> Any:
 def get_flow_resource(name: str, field: str = "per_tick") -> Any:
     """Get a flow resource config value."""
     return get(f"resources.flow.{name}.{field}")
-
-
-# Cost helpers
-def get_action_cost(action: str) -> int:
-    """Get the cost for an action type."""
-    cost: Any = get(f"costs.actions.{action}", get("costs.default", 1))
-    return int(cost) if cost is not None else 1
 
 
 def get_genesis_config(artifact: str, field: str) -> Any:
@@ -194,7 +189,8 @@ def set_config_value(key: str, value: Any) -> None:
     if _config is None:
         load_config()
 
-    assert _config is not None
+    if _config is None:
+        raise RuntimeError("Config failed to load. Call load_config() first.")
 
     keys = key.split(".")
     target = _config

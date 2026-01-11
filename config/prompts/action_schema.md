@@ -3,7 +3,7 @@
 You must respond with a single JSON object representing your action.
 
 ## 1. read_artifact (FREE)
-Read an artifact's content. The content is added to your context on the next turn.
+Read an artifact's content. The content is added to your context when you next think.
 ```json
 {"action_type": "read_artifact", "artifact_id": "<id>"}
 ```
@@ -72,6 +72,6 @@ Call a method on an artifact.
 ## Important Notes
 - To transfer scrip: `invoke_artifact("genesis_ledger", "transfer", [your_id, target_id, amount])`
 - Oracle ONLY accepts executable artifacts. Text submissions are REJECTED.
-- Reading adds content to your context (costs tokens on your NEXT turn).
+- Reading adds content to your context (costs input tokens when you next think).
 
 Respond with ONLY the JSON object, no other text.

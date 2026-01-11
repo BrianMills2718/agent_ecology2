@@ -37,6 +37,17 @@ When you use someone's artifact with a price:
 - You pay SCRIP to the owner (economic exchange)
 - Resources are consumed based on what you do
 
+### Resource Policy (Who Pays Resources)
+
+Executable artifacts have a `resource_policy` that determines who pays physical resources:
+- `"caller_pays"` (default): You pay physical resources when invoking
+- `"owner_pays"`: Owner subsidizes resources (artifact appears "free" to use)
+
+**Note**: Scrip (price) and resources are independent. An artifact can:
+- Charge high price, owner pays resources (premium service)
+- Charge no price, caller pays resources (free but you pay compute)
+- Charge no price, owner pays resources (fully subsidized)
+
 ---
 
 ## Genesis Artifacts

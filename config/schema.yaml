@@ -87,23 +87,33 @@ genesis:
         cost: <number>          # Fee to spawn new principal
         description: <string>
 
-  # Genesis Oracle - external scoring and minting
+  # Genesis Oracle - auction-based scoring and minting
   oracle:
     id: <string>
     description: <string>
     mint_ratio: <number>        # score / ratio = scrip minted
+
+    # Auction configuration (Vickrey auction for scoring slots)
+    auction:
+      period: <number>          # Ticks between auctions
+      bidding_window: <number>  # Duration of bidding phase (ticks)
+      first_auction_tick: <number>  # Grace period before first auction
+      slots_per_auction: <number>   # Winners per auction
+      minimum_bid: <number>     # Floor bid amount
+      tie_breaking: <string>    # "random" or "first_bid"
+      show_bid_count: <boolean> # Show number of bids during window
+      allow_bid_updates: <boolean>  # Can agents update their bid?
+      refund_on_scoring_failure: <boolean>  # Refund if LLM scoring fails
+
     methods:
       status:
-        cost: <number>
+        cost: <number>          # Check auction status (phase, tick, bid count)
         description: <string>
-      submit:
-        cost: <number>          # Fee to submit for scoring
+      bid:
+        cost: <number>          # Submit sealed bid during bidding window
         description: <string>
       check:
-        cost: <number>
-        description: <string>
-      process:
-        cost: <number>
+        cost: <number>          # Check scoring result for an artifact
         description: <string>
 
   # Genesis Rights Registry - quota management

@@ -103,6 +103,23 @@ class PolicyDict(TypedDict, total=False):
     allow_invoke: list[str] | str # Who can invoke
 ```
 
+### Resource Policy (Two-Layer Model)
+
+Executable artifacts have a separate `resource_policy` field that controls who pays physical resources:
+
+```python
+resource_policy: str  # "caller_pays" (default) or "owner_pays"
+```
+
+**Two-Layer Separation:**
+- **Layer 1 (Scrip)**: Caller pays `price` to owner → Economic exchange
+- **Layer 2 (Resources)**: Payer pays physical resources → Based on `resource_policy`
+
+This allows artifacts to offer different pricing models:
+- `price=5, resource_policy="caller_pays"`: Caller pays both scrip and resources
+- `price=0, resource_policy="owner_pays"`: Owner subsidizes everything (free service)
+- `price=10, resource_policy="owner_pays"`: Premium pricing, owner absorbs resource costs
+
 ### Access Control Lists
 
 **Static Lists (V1 - implemented)**:
@@ -323,3 +340,10 @@ System artifacts that provide core infrastructure:
 
 ### genesis_event_log
 - `read([offset, limit])` - Read events [FREE in scrip, costs input tokens]
+
+### genesis_escrow
+- `deposit([artifact_id, price])` - List artifact for sale [requires ownership transfer first]
+- `purchase([artifact_id])` - Buy listed artifact [pays price to seller]
+- `cancel([artifact_id])` - Cancel listing [seller only]
+- `check([artifact_id])` - Check listing status [FREE]
+- `list_active([])` - List all active listings [FREE]

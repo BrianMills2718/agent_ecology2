@@ -3,13 +3,12 @@
 import json
 from typing import Any, Literal
 
-# Literal type for valid action types
+# Literal type for valid action types (narrow waist: only 4 verbs)
 ActionType = Literal[
     "noop",
     "read_artifact",
     "write_artifact",
     "invoke_artifact",
-    "transfer",  # Deprecated - returns error message
 ]
 
 # Type alias for action validation result

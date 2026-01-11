@@ -211,6 +211,11 @@ class Agent:
         else:
             recent_activity = ""
 
+        # Count artifacts by type for summary
+        genesis_count = sum(1 for a in artifacts if a.get('methods'))
+        executable_count = sum(1 for a in artifacts if a.get('executable') and not a.get('methods'))
+        data_count = len(artifacts) - genesis_count - executable_count
+
         prompt: str = f"""You are {self.agent_id} in a simulated world.
 
 {self.system_prompt}
@@ -218,14 +223,17 @@ class Agent:
 ## Your Memories
 {memories}
 
-## Current World State
-- Current tick: {world_state.get('tick', 0)}
-- Your balance: {world_state.get('balances', {}).get(self.agent_id, 0)} scrip
-- All balances: {json.dumps(world_state.get('balances', {}))}
+## Current State
+- Tick: {world_state.get('tick', 0)}
+- Your scrip: {world_state.get('balances', {}).get(self.agent_id, 0)}
 {quota_info}
 
-## Artifacts in World
-{artifact_list}
+## World Summary
+- Artifacts: {len(artifacts)} total ({genesis_count} genesis, {executable_count} executable, {data_count} data)
+- Use `read_artifact` to inspect any artifact
+- Use `genesis_ledger.all_balances([])` to see all agent balances
+- Use `genesis_event_log.read([])` for world history
+- Read `genesis_handbook` for complete rules and examples
 {oracle_info}
 {recent_activity}
 

@@ -63,7 +63,7 @@ const ProgressPanel = {
         const budgetPercent = (progress.api_cost_spent / progress.api_cost_limit) * 100;
         if (this.elements.budgetDisplay) {
             this.elements.budgetDisplay.textContent =
-                `API Budget: $${progress.api_cost_spent.toFixed(2)} / $${progress.api_cost_limit.toFixed(2)}`;
+                `API Budget: $${progress.api_cost_spent.toFixed(4)} / $${progress.api_cost_limit.toFixed(2)}`;
         }
         if (this.elements.budgetProgress) {
             this.elements.budgetProgress.style.width = `${Math.min(budgetPercent, 100)}%`;

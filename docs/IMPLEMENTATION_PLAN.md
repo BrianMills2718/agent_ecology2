@@ -82,7 +82,7 @@ Passive observability - agents must READ to learn.
 - Token usage captured from LiteLLM (input + output separately)
 - Thinking cost = `(input_tokens/1000 * rate_in) + (output_tokens/1000 * rate_out)`
 - Agents pay for thinking BEFORE action execution
-- Bankrupt agents skip their turn
+- Bankrupt agents cannot think (no LLM call until they acquire budget)
 - **Context Tax**: Reading artifacts increases future input costs
 
 ### Phase 2: Genesis Artifacts ✓
@@ -161,13 +161,53 @@ Passive observability - agents must READ to learn.
 
 ---
 
+---
+
+### Phase 7: Code Quality & Infrastructure ✓
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Package Structure | Proper Python package with relative imports | ✓ |
+| Editable Install | `pip install -e .` for development | ✓ |
+| mypy Compliance | All 28 source files pass with 0 errors | ✓ |
+| Test Suite | 319 tests passing with proper imports | ✓ |
+| LLM Log Metadata | Logs include agent_id, run_id, tick | ✓ |
+| HTML Dashboard | Real-time visualization with WebSocket | ✓ |
+| Oracle Auction | Vickrey auction with UBI distribution | ✓ |
+
+---
+
+### Phase 8: Two-Layer Resource Model ✓
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Executor Resource Measurement | Track execution time, convert to token cost | ✓ |
+| ExecutionResult Schema | Add resources_consumed, execution_time_ms fields | ✓ |
+| ActionResult Schema | Add resources_consumed, charged_to fields | ✓ |
+| _execute_write Resources | Track disk_bytes consumed | ✓ |
+| _execute_invoke Resources | Track llm_tokens for genesis methods | ✓ |
+| resource_policy Enforcement | caller_pays vs owner_pays for executables | ✓ |
+| Resource Tracking Tests | 14 tests for resource logic | ✓ |
+| SimulationEngine Tests | 36 tests for physics calculations | ✓ |
+| Agent Event Display | 5 event types (action, tick, intent_rejected, oracle_auction, thinking_failed) | ✓ |
+| SimulationEngine | Physics calculations extracted to dedicated class | ✓ |
+| SimulationRunner Integration | Engine used for rates, budget tracking, exhaustion checks | ✓ |
+
+**Key Implementation:**
+- `_time_to_tokens()`: Converts execution time to token cost (configurable rate)
+- Scrip and resources deducted independently (two-layer separation)
+- Owner can subsidize resources via `resource_policy: "owner_pays"`
+- Different error messages for caller vs owner insufficient resources
+
+---
+
 ## Future Work
 
 Potential next phases:
-- **Phase 7**: Contract execution (implement `@contract` policy enforcement)
-- **Phase 8**: Multi-agent trading and negotiation protocols
-- **Phase 9**: Reputation systems based on oracle submissions
-- **Phase 10**: Real external integrations (replacing mock oracle)
+- **Phase 9**: Contract execution (implement `@contract` policy enforcement)
+- **Phase 10**: Multi-agent trading and negotiation protocols
+- **Phase 11**: Reputation systems based on oracle submissions
+- **Phase 12**: Real external integrations (replacing mock oracle)
 
 ---
 
@@ -210,7 +250,8 @@ budget:
 
    Executable: {"action_type": "write_artifact", "artifact_id": "<id>",
                 "artifact_type": "executable", "content": "<description>",
-                "executable": true, "price": <credits>, "code": "<python>"}
+                "executable": true, "price": <credits>, "code": "<python>",
+                "resource_policy": "caller_pays"|"owner_pays"}
    Cost: 5 credits + disk quota consumed
 
 3. invoke_artifact - Call artifact method

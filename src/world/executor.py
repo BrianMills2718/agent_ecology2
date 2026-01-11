@@ -19,9 +19,10 @@ import math
 import random
 import signal
 import time
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from types import FrameType, ModuleType
-from typing import Any, TypedDict
+from typing import Any, Generator, TypedDict
 
 from ..config import get
 
@@ -117,6 +118,41 @@ class TimeoutError(Exception):
 
 def _timeout_handler(signum: int, frame: FrameType | None) -> None:
     raise TimeoutError("Execution timed out")
+
+
+@contextmanager
+def _timeout_context(timeout: int) -> Generator[None, None, None]:
+    """Context manager for Unix signal-based timeout.
+
+    On Windows/platforms without signal.alarm, silently does nothing.
+    Properly restores the previous signal handler on exit.
+
+    Args:
+        timeout: Timeout in seconds
+
+    Yields:
+        None - just provides timeout protection for the block
+
+    Raises:
+        TimeoutError: If the block takes longer than timeout seconds
+    """
+    old_handler: Any = None
+    try:
+        old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
+        signal.alarm(timeout)
+    except (ValueError, AttributeError):
+        # signal.alarm not available (Windows) - skip timeout
+        pass
+
+    try:
+        yield
+    finally:
+        try:
+            signal.alarm(0)
+            if old_handler:
+                signal.signal(signal.SIGALRM, old_handler)
+        except (ValueError, AttributeError):
+            pass
 
 
 def _time_to_tokens(execution_time_ms: float) -> float:
@@ -245,26 +281,8 @@ class SafeExecutor:
         # Execute the code definition (creates the run function)
         # Use single namespace so imports work correctly
         try:
-            # Set up timeout (Unix only)
-            old_handler: Any = None
-            try:
-                old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
-                signal.alarm(self.timeout)
-            except (ValueError, AttributeError):
-                # signal.alarm not available (Windows) - skip timeout
-                pass
-
-            try:
+            with _timeout_context(self.timeout):
                 exec(compiled, controlled_globals)
-            finally:
-                # Disable alarm
-                try:
-                    signal.alarm(0)
-                    if old_handler:
-                        signal.signal(signal.SIGALRM, old_handler)
-                except (ValueError, AttributeError):
-                    pass
-
         except TimeoutError:
             return {"success": False, "error": "Code definition timed out"}
         except Exception as e:
@@ -286,25 +304,9 @@ class SafeExecutor:
         execution_time_ms: float = 0.0
 
         try:
-            # Set up timeout for run() call
-            old_handler = None
-            try:
-                old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
-                signal.alarm(self.timeout)
-            except (ValueError, AttributeError):
-                pass
-
-            try:
+            with _timeout_context(self.timeout):
                 result = run_func(*args)
-            finally:
                 execution_time_ms = (time.perf_counter() - start_time) * 1000
-                try:
-                    signal.alarm(0)
-                    if old_handler:
-                        signal.signal(signal.SIGALRM, old_handler)
-                except (ValueError, AttributeError):
-                    pass
-
         except TimeoutError:
             execution_time_ms = (time.perf_counter() - start_time) * 1000
             return {
@@ -449,23 +451,8 @@ class SafeExecutor:
 
         # Execute the code definition
         try:
-            old_handler: Any = None
-            try:
-                old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
-                signal.alarm(self.timeout)
-            except (ValueError, AttributeError):
-                pass
-
-            try:
+            with _timeout_context(self.timeout):
                 exec(compiled, controlled_globals)
-            finally:
-                try:
-                    signal.alarm(0)
-                    if old_handler:
-                        signal.signal(signal.SIGALRM, old_handler)
-                except (ValueError, AttributeError):
-                    pass
-
         except TimeoutError:
             return {"success": False, "error": "Code definition timed out"}
         except Exception as e:
@@ -487,24 +474,9 @@ class SafeExecutor:
         execution_time_ms: float = 0.0
 
         try:
-            old_handler = None
-            try:
-                old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
-                signal.alarm(self.timeout)
-            except (ValueError, AttributeError):
-                pass
-
-            try:
+            with _timeout_context(self.timeout):
                 result = run_func(*args)
-            finally:
                 execution_time_ms = (time.perf_counter() - start_time) * 1000
-                try:
-                    signal.alarm(0)
-                    if old_handler:
-                        signal.signal(signal.SIGALRM, old_handler)
-                except (ValueError, AttributeError):
-                    pass
-
         except TimeoutError:
             execution_time_ms = (time.perf_counter() - start_time) * 1000
             return {

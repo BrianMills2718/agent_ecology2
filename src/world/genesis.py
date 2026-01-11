@@ -1191,7 +1191,7 @@ class GenesisEventLog(GenesisArtifact):
             "events": events,
             "count": len(events),
             "total_available": len(all_events),
-            "warning": "Reading events costs input tokens on your next turn. Be strategic about what you read."
+            "warning": "Reading events costs input tokens when you next think. Be strategic about what you read."
         }
 
 

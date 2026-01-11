@@ -4,10 +4,14 @@ Agent Memory using Mem0
 Provides persistent memory for each agent across ticks.
 """
 
+import logging
 import os
 import atexit
+import threading
 from pathlib import Path
 from typing import Any, TypedDict
+
+logger = logging.getLogger(__name__)
 
 from dotenv import load_dotenv
 from mem0 import Memory  # type: ignore[import-untyped,unused-ignore]
@@ -90,8 +94,8 @@ def _cleanup_memories() -> None:
         try:
             if hasattr(mem, 'memory') and hasattr(mem.memory, '_client'):
                 mem.memory._client.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Error closing qdrant client during cleanup: %s", e)
 
 atexit.register(_cleanup_memories)
 
@@ -100,13 +104,18 @@ class AgentMemory:
     """Shared memory manager for all agents using Mem0"""
 
     _instance: "AgentMemory | None" = None
+    _lock: threading.Lock = threading.Lock()
     _initialized: bool
     memory: Memory
 
     def __new__(cls) -> "AgentMemory":
+        # Double-checked locking pattern for thread-safe singleton
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialized = False
+            with cls._lock:
+                # Re-check after acquiring lock
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance._initialized = False
         return cls._instance
 
     def __init__(self) -> None:
@@ -182,7 +191,8 @@ class AgentMemory:
         try:
             results: Any = self.memory.search(query, user_id=agent_id, limit=limit)
             return results.get('results', [])  # type: ignore[no-any-return]
-        except Exception:
+        except Exception as e:
+            logger.warning("Memory search failed for agent %s: %s", agent_id, e)
             return []
 
     def get_relevant_memories(self, agent_id: str, context: str, limit: int = 5) -> str:

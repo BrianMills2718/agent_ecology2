@@ -129,6 +129,7 @@ System-provided services available to all agents:
 | `genesis_rights_registry` | Resource quota management |
 | `genesis_oracle` | Score code artifacts and mint scrip |
 | `genesis_event_log` | World event history |
+| `genesis_escrow` | Trustless artifact trading |
 
 ### Resource Model
 
@@ -158,7 +159,7 @@ Read content from an artifact.
 ```json
 {"action_type": "read_artifact", "artifact_id": "<id>"}
 ```
-Cost: Free (content adds to context for next turn)
+Cost: Free (content adds to context when you next think)
 
 ### write_artifact
 Create or update an artifact.
@@ -175,9 +176,13 @@ For executable artifacts:
   "content": "<description>",
   "executable": true,
   "price": 5,
+  "resource_policy": "caller_pays",
   "code": "def run(*args): return args[0] * 2"
 }
 ```
+- `price`: Scrip paid to owner when invoked
+- `resource_policy`: `"caller_pays"` (default) or `"owner_pays"` - who pays physical resources
+
 Cost: Free (uses disk quota for storage)
 
 ### invoke_artifact
@@ -244,7 +249,7 @@ agent_ecology/
     config.py         # Config helpers
     config_schema.py  # Pydantic config validation
     dashboard/        # HTML dashboard server
-  tests/              # Test suite (305 tests)
+  tests/              # Test suite (319 tests)
   llm_logs/           # LLM interaction logs (by date)
 ```
 
