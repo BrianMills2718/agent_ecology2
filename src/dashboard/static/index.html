@@ -101,12 +101,12 @@
                         <table class="data-table" id="artifacts-table">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Type</th>
-                                    <th>Owner</th>
-                                    <th>Price</th>
-                                    <th>Exec</th>
-                                    <th>Oracle</th>
+                                    <th title="Unique artifact identifier">ID</th>
+                                    <th title="Artifact type (executable, data, etc.)">Type</th>
+                                    <th title="Current owner (agent or contract)">Owner</th>
+                                    <th title="Scrip cost to invoke (paid to owner)">Price</th>
+                                    <th title="Executable: Can be invoked by agents">Exec</th>
+                                    <th title="Oracle score: Quality rating from external LLM (0-10)">Oracle</th>
                                 </tr>
                             </thead>
                             <tbody id="artifacts-tbody">

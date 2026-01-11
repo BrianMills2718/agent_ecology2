@@ -619,6 +619,31 @@ class DashboardConfig(StrictModel):
 
 
 # =============================================================================
+# AGENT CONFIG
+# =============================================================================
+
+class AgentPromptConfig(StrictModel):
+    """Configuration for what agents see in their prompts."""
+
+    recent_events_count: int = Field(
+        default=5,
+        gt=0,
+        description="Number of recent events to show in agent prompt"
+    )
+    memory_limit: int = Field(
+        default=5,
+        gt=0,
+        description="Maximum number of relevant memories to include"
+    )
+
+
+class AgentConfig(StrictModel):
+    """Configuration for agent behavior."""
+
+    prompt: AgentPromptConfig = Field(default_factory=AgentPromptConfig)
+
+
+# =============================================================================
 # ROOT CONFIG MODEL
 # =============================================================================
 
@@ -639,6 +664,7 @@ class AppConfig(StrictModel):
     world: WorldConfig = Field(default_factory=WorldConfig)
     budget: BudgetConfig = Field(default_factory=BudgetConfig)
     dashboard: DashboardConfig = Field(default_factory=DashboardConfig)
+    agent: AgentConfig = Field(default_factory=AgentConfig)
 
     # Dynamic fields set at runtime
     principals: list[dict[str, int | str]] = Field(

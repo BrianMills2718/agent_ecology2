@@ -90,22 +90,42 @@ const ArtifactsPanel = {
 
         filtered.forEach(artifact => {
             const row = document.createElement('tr');
+            row.style.cursor = 'pointer';
 
-            const execIcon = artifact.executable ? '&#9889;' : '';  // Lightning bolt
-            const oracleDisplay = artifact.oracle_status === 'scored'
-                ? artifact.oracle_score?.toFixed(1) || '-'
-                : artifact.oracle_status === 'pending'
-                ? '...'
-                : '-';
+            const execIcon = artifact.executable ? '&#9889;' : '';
+            const execTooltip = artifact.executable
+                ? 'Executable: Can be invoked by other agents'
+                : 'Not executable';
+
+            // Oracle status with better tooltips
+            let oracleDisplay, oracleTooltip;
+            if (artifact.oracle_status === 'scored') {
+                oracleDisplay = artifact.oracle_score?.toFixed(1) || '-';
+                oracleTooltip = `Oracle Score: ${artifact.oracle_score?.toFixed(2) || 'N/A'} - Quality rating from external LLM`;
+            } else if (artifact.oracle_status === 'pending') {
+                oracleDisplay = '⏳';
+                oracleTooltip = 'Pending: Submitted to oracle, awaiting scoring';
+            } else {
+                oracleDisplay = '-';
+                oracleTooltip = 'Not submitted: Artifact not yet submitted to oracle for scoring';
+            }
+
+            // Price tooltip
+            const priceTooltip = artifact.price > 0
+                ? `Price: ${artifact.price} scrip to invoke this artifact`
+                : 'Free: No cost to invoke';
 
             row.innerHTML = `
-                <td title="${this.escapeHtml(artifact.artifact_id)}">${this.truncate(artifact.artifact_id, 15)}</td>
-                <td>${this.escapeHtml(artifact.artifact_type)}</td>
-                <td>${this.escapeHtml(artifact.owner_id)}</td>
-                <td>${artifact.price}</td>
-                <td>${execIcon}</td>
-                <td>${oracleDisplay}</td>
+                <td title="Artifact ID: ${this.escapeHtml(artifact.artifact_id)}\nCreated: ${artifact.created_at || 'Unknown'}">${this.truncate(artifact.artifact_id, 15)}</td>
+                <td title="Type: ${artifact.artifact_type}">${this.escapeHtml(artifact.artifact_type)}</td>
+                <td title="Owner: ${artifact.owner_id}">${this.escapeHtml(artifact.owner_id)}</td>
+                <td title="${priceTooltip}">${artifact.price}</td>
+                <td title="${execTooltip}">${execIcon}</td>
+                <td title="${oracleTooltip}">${oracleDisplay}</td>
             `;
+
+            // Click to show detail
+            row.addEventListener('click', () => this.showArtifactDetail(artifact.artifact_id));
 
             this.elements.tbody.appendChild(row);
         });
@@ -138,6 +158,93 @@ const ArtifactsPanel = {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    },
+
+    /**
+     * Show artifact detail modal
+     */
+    async showArtifactDetail(artifactId) {
+        try {
+            const response = await fetch(`/api/artifacts/${encodeURIComponent(artifactId)}/detail`);
+            const detail = await response.json();
+
+            if (detail.error) {
+                console.error(detail.error);
+                return;
+            }
+
+            // Update modal
+            const modal = document.getElementById('artifact-modal');
+            const title = document.getElementById('artifact-modal-title');
+            const info = document.getElementById('artifact-modal-info');
+            const content = document.getElementById('artifact-modal-content');
+            const ownership = document.getElementById('artifact-modal-ownership');
+
+            if (title) title.textContent = detail.artifact_id;
+
+            if (info) {
+                info.innerHTML = `
+                    <div class="artifact-info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Type</span>
+                            <span class="info-value">${this.escapeHtml(detail.artifact_type)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Owner</span>
+                            <span class="info-value">${this.escapeHtml(detail.owner_id)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Price</span>
+                            <span class="info-value">${detail.price} scrip</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Executable</span>
+                            <span class="info-value">${detail.executable ? 'Yes' : 'No'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Oracle</span>
+                            <span class="info-value">${detail.oracle_status} ${detail.oracle_score ? `(${detail.oracle_score.toFixed(2)})` : ''}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Size</span>
+                            <span class="info-value">${detail.size_bytes} bytes</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (content) {
+                const code = detail.content || '(No content)';
+                content.textContent = code;
+            }
+
+            if (ownership && detail.ownership_history) {
+                if (detail.ownership_history.length > 0) {
+                    ownership.innerHTML = detail.ownership_history.map(h =>
+                        `<div class="modal-list-item">Tick ${h.tick}: ${h.from_id || '(created)'} → ${h.to_id}</div>`
+                    ).join('');
+                } else {
+                    ownership.innerHTML = '<div class="modal-list-item">Original owner</div>';
+                }
+            }
+
+            // Show modal
+            if (modal) modal.classList.remove('hidden');
+
+            // Close button handler
+            const closeBtn = document.getElementById('artifact-modal-close');
+            if (closeBtn) {
+                closeBtn.onclick = () => modal.classList.add('hidden');
+            }
+
+            // Click outside to close
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.classList.add('hidden');
+            };
+
+        } catch (error) {
+            console.error('Failed to load artifact detail:', error);
+        }
     }
 };
 

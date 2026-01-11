@@ -206,6 +206,14 @@ logging:
   default_recent: 50
 
 # -----------------------------------------------------------------------------
+# AGENT PROMPTS - What agents see in their context
+# -----------------------------------------------------------------------------
+agent:
+  prompt:
+    recent_events_count: 5        # Last N events shown in prompt
+    memory_limit: 5               # Max relevant memories to include
+
+# -----------------------------------------------------------------------------
 # WORLD
 # -----------------------------------------------------------------------------
 world:

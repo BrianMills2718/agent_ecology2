@@ -20,6 +20,7 @@ from llm_provider import LLMProvider
 from .schema import ACTION_SCHEMA, ActionType
 from .memory import AgentMemory, get_memory
 from .models import ActionResponse, FlatActionResponse
+from ..config import get as config_get
 
 
 class TokenUsage(TypedDict):
@@ -118,8 +119,9 @@ class Agent:
     def build_prompt(self, world_state: dict[str, Any]) -> str:
         """Build the prompt for the LLM (events require genesis_event_log)"""
         # Get relevant memories based on current context
+        memory_limit: int = config_get("agent.prompt.memory_limit") or 5
         context: str = f"tick {world_state.get('tick', 0)}, balance {world_state.get('balances', {}).get(self.agent_id, 0)}"
-        memories: str = self.memory.get_relevant_memories(self.agent_id, context, limit=5)
+        memories: str = self.memory.get_relevant_memories(self.agent_id, context, limit=memory_limit)
 
         # Format artifact list with more detail for executables
         artifacts: list[dict[str, Any]] = world_state.get('artifacts', [])
@@ -176,10 +178,11 @@ class Agent:
 
         # Format recent events (short-term history for situational awareness)
         recent_events: list[dict[str, Any]] = world_state.get('recent_events', [])
+        recent_events_count: int = config_get("agent.prompt.recent_events_count") or 5
         recent_activity: str
         if recent_events:
             event_lines: list[str] = []
-            for event in recent_events[-5:]:  # Show last 5 events
+            for event in recent_events[-recent_events_count:]:
                 event_type: str = event.get('type', 'unknown')
                 tick: int = event.get('tick', 0)
                 if event_type == 'action':
