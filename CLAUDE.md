@@ -161,10 +161,10 @@ Multiple Claude Code instances may work simultaneously.
 
 | CC-ID | Task | Started |
 |-------|------|---------|
-| CC-1 | Align config defaults | 2025-01-11 |
+| CC-1 | Available | - |
 | CC-2 | Available | - |
 | CC-3 | Available | - |
-| CC-4 | Move hardcoded values to config | 2025-01-11 |
+| CC-4 | Available | - |
 
 ### Task Backlog
 
@@ -177,14 +177,14 @@ Multiple Claude Code instances may work simultaneously.
 
 | Task | CC-ID | Started | Notes |
 |------|-------|---------|-------|
-| Move hardcoded values to config | CC-4 | 2025-01-11 | Model names, timeouts |
-| Align config defaults | CC-1 | 2025-01-11 | Dashboard port, compute unit mismatches |
+| (none) | - | - | - |
 
 ### Awaiting Review
 
 | Task | CC-ID | Completed | Reviewer |
 |------|-------|-----------|----------|
-| (none) | - | - | - |
+| Align config defaults | CC-1 | 2025-01-11 | Fixed port 8081→8080, unit cycles→token_units |
+| Move hardcoded values to config | CC-2 | 2025-01-11 | agent.py + memory.py now use config |
 
 ### Coordination Rules
 
