@@ -7,9 +7,12 @@ import json
 from pathlib import Path
 from typing import Any
 
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from .parser import JSONLParser
@@ -165,15 +168,15 @@ def create_app(
     # Dashboard app state
     dashboard = DashboardApp(jsonl_path, static_dir, config_path)
 
-    @app.on_event("startup")
-    async def startup() -> None:
-        """Start file watcher on app startup."""
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+        """Lifespan context manager for startup/shutdown."""
         await dashboard.start()
-
-    @app.on_event("shutdown")
-    async def shutdown() -> None:
-        """Stop file watcher on app shutdown."""
+        yield
         dashboard.stop()
+
+    # Attach lifespan to app
+    app.router.lifespan_context = lifespan
 
     # Static files
     if dashboard.static_dir.exists():
@@ -181,12 +184,13 @@ def create_app(
 
     # Routes
 
-    @app.get("/", response_class=HTMLResponse)
-    async def index() -> FileResponse | HTMLResponse:
+    @app.get("/", response_class=HTMLResponse, response_model=None)
+    async def index() -> HTMLResponse:
         """Serve the main dashboard page."""
         index_path = dashboard.static_dir / "index.html"
         if index_path.exists():
-            return FileResponse(index_path)
+            with open(index_path) as f:
+                return HTMLResponse(content=f.read())
         return HTMLResponse("<h1>Dashboard static files not found</h1>")
 
     @app.get("/api/state")

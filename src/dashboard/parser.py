@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from .models import (
     AgentSummary,
@@ -62,7 +62,7 @@ class ArtifactState:
     created_at: str = ""
     updated_at: str = ""
     oracle_score: float | None = None
-    oracle_status: str = "none"
+    oracle_status: Literal["pending", "scored", "none"] = "none"
 
 
 @dataclass
@@ -74,7 +74,7 @@ class SimulationState:
     api_cost_spent: float = 0
     api_cost_limit: float = 1.0
     start_time: str | None = None
-    status: str = "running"
+    status: Literal["running", "paused", "completed", "budget_exhausted"] = "running"
 
     # Agents
     agents: dict[str, AgentState] = field(default_factory=dict)
@@ -377,13 +377,13 @@ class JSONLParser:
         elif artifact_id == "genesis_ledger" and method == "transfer_ownership":
             args = intent.get("args", [])
             if len(args) >= 2:
-                transfer = OwnershipTransfer(
+                ownership_transfer = OwnershipTransfer(
                     artifact_id=str(args[0]),
                     from_id=agent_id,
                     to_id=str(args[1]),
                     timestamp=timestamp,
                 )
-                self.state.ownership_transfers.append(transfer)
+                self.state.ownership_transfers.append(ownership_transfer)
                 # Update artifact owner
                 if args[0] in self.state.artifacts:
                     self.state.artifacts[args[0]].owner_id = str(args[1])
@@ -490,7 +490,7 @@ class JSONLParser:
         if not agent:
             return None
 
-        status = "active"
+        status: Literal["active", "low_resources", "frozen"] = "active"
         if agent.compute_used >= agent.compute_quota * 0.9:
             status = "low_resources"
         if agent.compute_used >= agent.compute_quota:
@@ -510,11 +510,12 @@ class JSONLParser:
 
     def get_all_agent_summaries(self) -> list[AgentSummary]:
         """Get summaries for all agents."""
-        return [
-            self.get_agent_summary(agent_id)
-            for agent_id in self.state.agents
-            if self.get_agent_summary(agent_id) is not None
-        ]
+        summaries: list[AgentSummary] = []
+        for agent_id in self.state.agents:
+            summary = self.get_agent_summary(agent_id)
+            if summary is not None:
+                summaries.append(summary)
+        return summaries
 
     def get_agent_detail(self, agent_id: str) -> AgentDetail | None:
         """Get full detail for an agent."""
@@ -522,7 +523,7 @@ class JSONLParser:
         if not agent:
             return None
 
-        status = "active"
+        status: Literal["active", "low_resources", "frozen"] = "active"
         if agent.compute_used >= agent.compute_quota * 0.9:
             status = "low_resources"
         if agent.compute_used >= agent.compute_quota:
@@ -668,7 +669,7 @@ class JSONLParser:
         # Create nodes
         nodes = []
         for node_id in node_ids:
-            node_type = "agent"
+            node_type: Literal["agent", "artifact", "genesis"] = "agent"
             if node_id.startswith("genesis_"):
                 node_type = "genesis"
             elif node_id in self.state.artifacts:

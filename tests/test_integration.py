@@ -470,3 +470,124 @@ class TestTransferVieLedger:
         # When genesis method returns error, it's wrapped in ActionResult
         assert result.success is False
         assert "Cannot transfer from" in result.message
+
+
+class TestResourcePolicy:
+    """Tests for artifact resource_policy field."""
+
+    def test_default_resource_policy_is_caller_pays(self, world_with_temp_log):
+        """Default resource_policy should be 'caller_pays'."""
+        world = world_with_temp_log
+        world.advance_tick()
+
+        intent = WriteArtifactIntent(
+            principal_id="agent_1",
+            artifact_id="test_artifact",
+            artifact_type="code",
+            content="Test content",
+            executable=True,
+            price=10,
+            code="def run(args, ctx): return {'result': 'ok'}"
+        )
+        result = world.execute_action(intent)
+        assert result.success is True
+
+        artifact = world.artifacts.get("test_artifact")
+        assert artifact is not None
+        assert artifact.resource_policy == "caller_pays"
+
+    def test_can_set_owner_pays_resource_policy(self, world_with_temp_log):
+        """Can create artifact with 'owner_pays' resource policy."""
+        world = world_with_temp_log
+        world.advance_tick()
+
+        intent = WriteArtifactIntent(
+            principal_id="agent_1",
+            artifact_id="premium_service",
+            artifact_type="code",
+            content="Premium service with owner-paid resources",
+            executable=True,
+            price=50,
+            code="def run(args, ctx): return {'result': 'premium'}",
+            resource_policy="owner_pays"
+        )
+        result = world.execute_action(intent)
+        assert result.success is True
+
+        artifact = world.artifacts.get("premium_service")
+        assert artifact is not None
+        assert artifact.resource_policy == "owner_pays"
+
+    def test_resource_policy_in_to_dict_when_not_default(self, world_with_temp_log):
+        """resource_policy should appear in to_dict() only when not default."""
+        world = world_with_temp_log
+        world.advance_tick()
+
+        # Create artifact with default policy
+        intent1 = WriteArtifactIntent(
+            principal_id="agent_1",
+            artifact_id="default_policy",
+            artifact_type="code",
+            content="Default policy artifact",
+            executable=True,
+            price=10,
+            code="def run(args, ctx): return {'result': 'ok'}"
+        )
+        world.execute_action(intent1)
+
+        # Create artifact with owner_pays
+        intent2 = WriteArtifactIntent(
+            principal_id="agent_1",
+            artifact_id="owner_pays_artifact",
+            artifact_type="code",
+            content="Owner pays artifact",
+            executable=True,
+            price=50,
+            code="def run(args, ctx): return {'result': 'ok'}",
+            resource_policy="owner_pays"
+        )
+        world.execute_action(intent2)
+
+        # Check to_dict output
+        default_dict = world.artifacts.get("default_policy").to_dict()
+        owner_pays_dict = world.artifacts.get("owner_pays_artifact").to_dict()
+
+        # Default policy should NOT include resource_policy in output
+        assert "resource_policy" not in default_dict
+
+        # Non-default policy SHOULD include resource_policy
+        assert "resource_policy" in owner_pays_dict
+        assert owner_pays_dict["resource_policy"] == "owner_pays"
+
+    def test_can_update_resource_policy(self, world_with_temp_log):
+        """Can update an artifact's resource_policy."""
+        world = world_with_temp_log
+        world.advance_tick()
+
+        # Create with caller_pays
+        intent1 = WriteArtifactIntent(
+            principal_id="agent_1",
+            artifact_id="changeable",
+            artifact_type="code",
+            content="Changeable policy",
+            executable=True,
+            price=10,
+            code="def run(args, ctx): return {'result': 'ok'}",
+            resource_policy="caller_pays"
+        )
+        world.execute_action(intent1)
+        assert world.artifacts.get("changeable").resource_policy == "caller_pays"
+
+        # Update to owner_pays
+        intent2 = WriteArtifactIntent(
+            principal_id="agent_1",
+            artifact_id="changeable",
+            artifact_type="code",
+            content="Changeable policy - updated",
+            executable=True,
+            price=20,
+            code="def run(args, ctx): return {'result': 'updated'}",
+            resource_policy="owner_pays"
+        )
+        world.execute_action(intent2)
+        assert world.artifacts.get("changeable").resource_policy == "owner_pays"

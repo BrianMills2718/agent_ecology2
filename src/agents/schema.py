@@ -21,51 +21,52 @@ You must respond with a single JSON object representing your action.
 
 ## Available Actions (Narrow Waist - only 3 verbs)
 
-1. read_artifact - Read artifact content (costs 2 credits + input token cost)
+1. read_artifact - Read artifact content (costs compute + input tokens)
    {"action_type": "read_artifact", "artifact_id": "<id>"}
 
-2. write_artifact - Create/update artifact (costs 5 credits + disk quota)
+2. write_artifact - Create/update artifact (costs compute + disk quota)
    Regular: {"action_type": "write_artifact", "artifact_id": "<id>", "artifact_type": "<type>", "content": "<content>"}
 
    Executable: {"action_type": "write_artifact", "artifact_id": "<id>", "artifact_type": "executable",
-                "content": "<description>", "executable": true, "price": <credits>, "code": "<python_code>"}
+                "content": "<description>", "executable": true, "price": <scrip>,
+                "code": "<python_code>", "resource_policy": "caller_pays"|"owner_pays"}
    - Code must define a run(*args) function
-   - Only allowed imports: math, json, random, datetime
-   - Price is paid to you when others invoke your artifact
+   - Price (scrip) is paid to you when others invoke your artifact
+   - resource_policy: who pays physical resource costs
+     - "caller_pays" (default): invoker's compute consumed
+     - "owner_pays": your compute consumed (premium service model)
 
-3. invoke_artifact - Call artifact method (costs 1 credit + method cost + gas)
+3. invoke_artifact - Call artifact method (costs compute + gas)
    {"action_type": "invoke_artifact", "artifact_id": "<id>", "method": "<method>", "args": [...]}
 
-## Genesis Artifacts (System)
+## Genesis Artifacts (System) - cost compute, not scrip
 
 genesis_ledger - Manages scrip (internal currency):
-- balance([agent_id]) [FREE]
-- all_balances([]) [FREE]
-- transfer([from, to, amount]) [1 credit] - USE THIS TO SEND CREDITS
+- balance([agent_id]) - Check balance
+- all_balances([]) - See all balances
+- transfer([from, to, amount]) - Transfer scrip
 
 genesis_rights_registry - Manages quotas (compute/storage rights):
-- check_quota([agent_id]) [FREE]
-- all_quotas([]) [FREE]
-- transfer_quota([from, to, "flow"|"stock", amount]) [1 credit]
+- check_quota([agent_id]) - Check quotas
+- all_quotas([]) - See all quotas
+- transfer_quota([from, to, "compute"|"disk", amount]) - Transfer quota
 
-genesis_oracle - External value creation (CODE ARTIFACTS ONLY):
-- status([]) [FREE]
-- submit([artifact_id]) [5 credits] - ONLY accepts executable artifacts
-- check([artifact_id]) [FREE]
-- process([]) [FREE] - scores pending, mints credits (score/10)
+genesis_oracle - Auction-based scoring (CODE ARTIFACTS ONLY):
+- status([]) - Check auction phase
+- bid([artifact_id, amount]) - Bid scrip for scoring slot
+- check([artifact_id]) - Check bid status
 
 genesis_event_log - World events (passive observability):
-- read([offset, limit]) [FREE] - but you pay input token cost
+- read([offset, limit]) - Read events (costs input tokens)
 
-## Executable Artifacts (Agent-Created)
-- Always use method="run"
-- Gas: 2 credits (always paid, even on failure)
-- Price: set by owner (paid to owner on success)
+## Two-Layer Model
+- SCRIP: Economic currency (prices, payments between agents)
+- RESOURCES: Physical limits (compute, disk) - always consumed
 
 ## Important Notes
-- To transfer credits: invoke_artifact("genesis_ledger", "transfer", [your_id, target_id, amount])
-- Oracle ONLY accepts code artifacts (executable=true). Text submissions are rejected.
-- Reading costs input tokens on your NEXT turn (context tax).
+- To transfer scrip: invoke_artifact("genesis_ledger", "transfer", [your_id, target_id, amount])
+- Oracle runs periodic auctions - bid to submit artifacts for scoring
+- Winning bid redistributed as UBI to all agents
 
 Respond with ONLY the JSON object, no other text.
 """

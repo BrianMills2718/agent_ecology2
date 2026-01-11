@@ -60,12 +60,13 @@ Implement the separation of **scarce resources** (physical limits) from **scrip*
 
 ## Implementation Phases
 
-### Phase 1: Artifact Resource Policy
+### Phase 1: Artifact Resource Policy ✅ COMPLETE
 
-1. Add `resource_policy: str = "caller_pays"` to Artifact dataclass
-2. Update `write_artifact` action to accept resource_policy
-3. Update artifact serialization/deserialization
-4. Tests
+1. ✅ Added `resource_policy: str = "caller_pays"` to Artifact dataclass
+2. ✅ Updated `write_artifact` action to accept resource_policy
+3. ✅ Updated artifact serialization/deserialization (to_dict, write methods)
+4. ✅ Added tests (TestResourcePolicy, TestResourcePolicyParseIntent)
+5. ✅ Updated agent schema (ACTION_SCHEMA) to document resource_policy
 
 ### Phase 2: Resource Consumption Tracking
 
@@ -90,22 +91,22 @@ Implement the separation of **scarce resources** (physical limits) from **scrip*
 3. Thinking cost remains (this IS real resource consumption)
 4. Update tests
 
-### Phase 5: Genesis Artifacts (DECISION MADE)
+### Phase 5: Genesis Artifacts ✅ ALREADY IMPLEMENTED
 
-Genesis method costs should be **compute (resources)**, not scrip. This is cleaner:
+Genesis method costs are **compute (resources)**, not scrip. This is cleaner:
 - **Compute** = cost of doing anything (physical constraint)
 - **Scrip** = purely economic, only flows agent↔agent
 
 **Scrip only flows for:**
 1. Agent↔agent trades (artifact prices, transfers)
-2. Oracle auction bids (bidding for submission slots)
-3. Oracle minting (reward for accepted submissions)
+2. Oracle auction bids (Vickrey second-price)
+3. Oracle UBI (winning bid redistributed to all agents)
+4. Oracle minting (reward for accepted submissions)
 
-**Implementation:**
-1. Remove scrip costs from genesis method configs (transfer: 0, submit: 0, etc.)
-2. Genesis invocations consume compute like all other actions
-3. Update genesis.py to NOT deduct scrip for method calls
-4. Tests
+**Already in place:**
+- `world.py:403-412`: Genesis method costs deduct from compute, not scrip
+- `config.yaml`: All genesis method costs documented as "compute"
+- Oracle uses Vickrey auction with UBI redistribution
 
 ### Phase 6: CPU/Memory Measurement (Deferred)
 

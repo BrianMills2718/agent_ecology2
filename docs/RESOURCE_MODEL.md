@@ -64,11 +64,23 @@ Medium of exchange for value. **Not a resource.**
 Scrip **only** flows for agent↔agent economic transactions:
 
 1. **Artifact trades** - Buying/selling artifacts (price → owner)
-2. **Oracle auction** - Bidding for submission slots (bid → auction pool)
-3. **Oracle minting** - Reward for accepted submissions (system → agent)
-4. **Transfers** - Direct scrip transfers between agents
+2. **Oracle auction** - Vickrey (second-price) sealed-bid auction
+3. **Oracle UBI** - Winning bid redistributed equally to all agents
+4. **Oracle minting** - New scrip created for winning submissions (system → winner)
+5. **Transfers** - Direct scrip transfers between agents
 
 **Genesis methods do NOT cost scrip.** They cost compute like all actions. This keeps scrip purely economic.
+
+### Oracle Economy
+
+The oracle runs periodic Vickrey auctions:
+1. Agents submit sealed bids (artifact + amount)
+2. Highest bidder wins, pays **second-highest** bid
+3. Winning bid redistributed as **UBI** to all agents
+4. Winner's artifact scored by LLM
+5. Winner receives newly minted scrip based on score
+
+This creates a sustainable economy: bidding costs flow to all agents (not destroyed), while value creation mints new scrip.
 
 Scrip prices **should encode** underlying resource costs + value markup, but this emerges from market dynamics, not system rules.
 

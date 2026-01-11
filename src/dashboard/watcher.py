@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Callable, Awaitable
+from typing import Callable, Awaitable, Any, TYPE_CHECKING
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler, FileModifiedEvent
+from watchdog.events import FileSystemEventHandler, FileModifiedEvent, FileSystemEvent
+
+if TYPE_CHECKING:
+    from watchdog.observers import Observer as ObserverType
 
 
 class JSONLFileHandler(FileSystemEventHandler):
@@ -24,12 +27,13 @@ class JSONLFileHandler(FileSystemEventHandler):
         self._debounce_task: asyncio.Task[None] | None = None
         self._debounce_delay = 0.1  # 100ms debounce
 
-    def on_modified(self, event: FileModifiedEvent) -> None:
+    def on_modified(self, event: FileSystemEvent) -> None:
         """Handle file modification event."""
         if not isinstance(event, FileModifiedEvent):
             return
 
-        event_path = Path(event.src_path)
+        src_path = event.src_path if isinstance(event.src_path, str) else event.src_path.decode()
+        event_path = Path(src_path)
         if event_path.name != self.file_path.name:
             return
 
@@ -60,7 +64,7 @@ class JSONLWatcher:
 
     def __init__(self, jsonl_path: str | Path) -> None:
         self.jsonl_path = Path(jsonl_path).resolve()
-        self.observer: Observer | None = None
+        self.observer: Any = None  # watchdog Observer - type not recognized by mypy
         self.handler: JSONLFileHandler | None = None
         self._callbacks: list[Callable[[], Awaitable[None]]] = []
         self._running = False

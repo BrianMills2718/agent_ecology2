@@ -6,6 +6,9 @@ import sys
 from pathlib import Path
 from typing import Any, TypedDict
 
+# Add src to path for absolute imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from .ledger import Ledger
 from .artifacts import ArtifactStore, Artifact, WriteResult
 from .logger import EventLogger
@@ -21,8 +24,6 @@ from .genesis import (
 )
 from .executor import get_executor
 
-# Add src to path for absolute imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import get as config_get, compute_per_agent_quota, PerAgentQuota
 
 
@@ -203,6 +204,10 @@ class World:
         Cost model:
         - Action cost (compute): Real resource cost - deducted from compute budget
         - Economic cost (scrip): Prices, fees - deducted from scrip balance
+
+        Resource tracking:
+        - resources_consumed: Dict of resource type -> amount consumed
+        - charged_to: Principal who paid the resource cost
         """
         compute_cost = self.get_cost(intent.action_type)
 
@@ -210,14 +215,24 @@ class World:
         if not self.ledger.can_spend_compute(intent.principal_id, compute_cost):
             result = ActionResult(
                 success=False,
-                message=f"Insufficient compute. Need {compute_cost}, have {self.ledger.get_compute(intent.principal_id)}"
+                message=f"Insufficient compute. Need {compute_cost}, have {self.ledger.get_compute(intent.principal_id)}",
+                resources_consumed={"compute": 0},
+                charged_to=intent.principal_id
             )
             self._log_action(intent, result, compute_cost, False)
             return result
 
+        # Track resources consumed
+        resources: dict[str, float] = {"compute": float(compute_cost)}
+
         # Execute based on action type
         if isinstance(intent, NoopIntent):
-            result = ActionResult(success=True, message="Noop executed")
+            result = ActionResult(
+                success=True,
+                message="Noop executed",
+                resources_consumed=resources,
+                charged_to=intent.principal_id
+            )
 
         elif isinstance(intent, ReadArtifactIntent):
             # Check regular artifacts first
@@ -227,7 +242,9 @@ class World:
                 if not artifact.can_read(intent.principal_id):
                     result = ActionResult(
                         success=False,
-                        message=f"Access denied: you are not allowed to read {intent.artifact_id}"
+                        message=f"Access denied: you are not allowed to read {intent.artifact_id}",
+                        resources_consumed={"compute": 0},
+                        charged_to=intent.principal_id
                     )
                 else:
                     # Check if can afford read_price (economic cost -> SCRIP)
@@ -235,7 +252,9 @@ class World:
                     if read_price > 0 and not self.ledger.can_afford_scrip(intent.principal_id, read_price):
                         result = ActionResult(
                             success=False,
-                            message=f"Cannot afford read price: {read_price} scrip (have {self.ledger.get_scrip(intent.principal_id)})"
+                            message=f"Cannot afford read price: {read_price} scrip (have {self.ledger.get_scrip(intent.principal_id)})",
+                            resources_consumed={"compute": 0},
+                            charged_to=intent.principal_id
                         )
                     else:
                         # Pay read_price to owner (economic transfer -> SCRIP)
@@ -245,7 +264,9 @@ class World:
                         result = ActionResult(
                             success=True,
                             message=f"Read artifact {intent.artifact_id}" + (f" (paid {read_price} scrip to {artifact.owner_id})" if read_price > 0 else ""),
-                            data={"artifact": artifact.to_dict(), "read_price_paid": read_price}
+                            data={"artifact": artifact.to_dict(), "read_price_paid": read_price},
+                            resources_consumed=resources,
+                            charged_to=intent.principal_id
                         )
             # Check genesis artifacts (always public, free)
             elif intent.artifact_id in self.genesis_artifacts:
@@ -253,22 +274,31 @@ class World:
                 result = ActionResult(
                     success=True,
                     message=f"Read genesis artifact {intent.artifact_id}",
-                    data={"artifact": genesis.to_dict()}
+                    data={"artifact": genesis.to_dict()},
+                    resources_consumed=resources,
+                    charged_to=intent.principal_id
                 )
             else:
                 result = ActionResult(
                     success=False,
-                    message=f"Artifact {intent.artifact_id} not found"
+                    message=f"Artifact {intent.artifact_id} not found",
+                    resources_consumed={"compute": 0},
+                    charged_to=intent.principal_id
                 )
 
         elif isinstance(intent, WriteArtifactIntent):
-            result = self._execute_write(intent)
+            result = self._execute_write(intent, resources)
 
         elif isinstance(intent, InvokeArtifactIntent):
-            result = self._execute_invoke(intent, compute_cost=compute_cost)
+            result = self._execute_invoke(intent, compute_cost=compute_cost, resources=resources)
 
         else:
-            result = ActionResult(success=False, message="Unknown action type")
+            result = ActionResult(
+                success=False,
+                message="Unknown action type",
+                resources_consumed={"compute": 0},
+                charged_to=intent.principal_id
+            )
 
         # Deduct FLOW cost only if action succeeded (real resource consumption)
         if result.success:
@@ -357,6 +387,7 @@ class World:
             price=intent.price,
             code=intent.code,
             policy=intent.policy,
+            resource_policy=intent.resource_policy,
         )
 
         return ActionResult(

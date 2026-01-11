@@ -27,7 +27,6 @@ import yaml
 from pathlib import Path
 from typing import Any, TypedDict
 
-# Handle both relative and absolute imports
 try:
     from .config_schema import AppConfig, load_validated_config, validate_config_dict
 except ImportError:

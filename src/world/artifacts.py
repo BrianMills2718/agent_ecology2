@@ -34,6 +34,7 @@ class ArtifactDict(TypedDict, total=False):
     price: int
     has_code: bool
     policy: PolicyDict
+    resource_policy: str  # "caller_pays" or "owner_pays"
 
 
 class WriteResult(TypedDict):
@@ -106,6 +107,10 @@ class Artifact:
     code: str = ""  # Python code (must define run() function)
     # Policy for access control and pricing
     policy: dict[str, Any] = field(default_factory=default_policy)
+    # Resource payment policy: who pays physical resource costs on invocation
+    # - "caller_pays": Invoker's resources consumed (default)
+    # - "owner_pays": Owner's resources consumed (enables "full service" pricing)
+    resource_policy: str = "caller_pays"
 
     @property
     def price(self) -> int:
@@ -199,6 +204,9 @@ class Artifact:
         # Include policy if non-default
         if self.policy != default_policy():
             result["policy"] = self.policy
+        # Include resource_policy if non-default
+        if self.resource_policy != "caller_pays":
+            result["resource_policy"] = self.resource_policy
         return result
 
 
@@ -228,6 +236,7 @@ class ArtifactStore:
         price: int = 0,
         code: str = "",
         policy: dict[str, Any] | None = None,
+        resource_policy: str = "caller_pays",
     ) -> Artifact:
         """Create or update an artifact. Returns the artifact.
 
@@ -239,6 +248,10 @@ class ArtifactStore:
         - read_price: cost to read
         - invoke_price: cost to invoke (overrides price param)
         - allow_read, allow_write, allow_invoke: access lists
+
+        Resource policy controls who pays physical resource costs:
+        - "caller_pays": Invoker's resources consumed (default)
+        - "owner_pays": Owner's resources consumed
         """
         now = datetime.utcnow().isoformat()
 
@@ -259,6 +272,7 @@ class ArtifactStore:
             artifact.executable = executable
             artifact.code = code
             artifact.policy = artifact_policy
+            artifact.resource_policy = resource_policy
         else:
             # Create new
             artifact = Artifact(
@@ -271,6 +285,7 @@ class ArtifactStore:
                 executable=executable,
                 code=code,
                 policy=artifact_policy,
+                resource_policy=resource_policy,
             )
             self.artifacts[artifact_id] = artifact
 
@@ -347,6 +362,7 @@ class ArtifactStore:
         price: int = 0,
         code: str = "",
         policy: dict[str, Any] | None = None,
+        resource_policy: str = "caller_pays",
     ) -> WriteResult:
         """Write an artifact and return a standardized result.
 
@@ -363,6 +379,7 @@ class ArtifactStore:
             price: Service fee for invocation (for executables)
             code: Python code with run() function (for executables)
             policy: Optional access control policy
+            resource_policy: Who pays resource costs ("caller_pays" or "owner_pays")
 
         Returns:
             WriteResult with success=True and artifact data, or success=False on error
@@ -376,6 +393,7 @@ class ArtifactStore:
             price=price,
             code=code,
             policy=policy,
+            resource_policy=resource_policy,
         )
 
         if executable:
