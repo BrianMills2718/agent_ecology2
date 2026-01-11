@@ -3,6 +3,8 @@
 import json
 from typing import Any, Literal
 
+from ..config import get
+
 # Literal type for valid action types (narrow waist: only 4 verbs)
 ActionType = Literal[
     "noop",
@@ -114,20 +116,36 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
             return "transfer is not a kernel action. Use: invoke_artifact('genesis_ledger', 'transfer', [from_id, to_id, amount])"
         return f"Invalid action_type: {action_type}"
 
-    # Validate required fields
+    # Get validation limits from config
+    max_artifact_id_length: int = get("validation.max_artifact_id_length") or 128
+    max_method_name_length: int = get("validation.max_method_name_length") or 64
+
+    # Validate required fields and length limits
     if action_type == "read_artifact":
         if not data.get("artifact_id"):
             return "read_artifact requires 'artifact_id'"
+        artifact_id: str = str(data.get("artifact_id", ""))
+        if len(artifact_id) > max_artifact_id_length:
+            return f"artifact_id exceeds max length ({max_artifact_id_length} chars)"
 
     elif action_type == "write_artifact":
         if not data.get("artifact_id"):
             return "write_artifact requires 'artifact_id'"
+        artifact_id = str(data.get("artifact_id", ""))
+        if len(artifact_id) > max_artifact_id_length:
+            return f"artifact_id exceeds max length ({max_artifact_id_length} chars)"
 
     elif action_type == "invoke_artifact":
         if not data.get("artifact_id"):
             return "invoke_artifact requires 'artifact_id'"
+        artifact_id = str(data.get("artifact_id", ""))
+        if len(artifact_id) > max_artifact_id_length:
+            return f"artifact_id exceeds max length ({max_artifact_id_length} chars)"
         if not data.get("method"):
             return "invoke_artifact requires 'method'"
+        method_name: str = str(data.get("method", ""))
+        if len(method_name) > max_method_name_length:
+            return f"method name exceeds max length ({max_method_name_length} chars)"
         args: Any = data.get("args", [])
         if not isinstance(args, list):
             return "invoke_artifact 'args' must be a list"

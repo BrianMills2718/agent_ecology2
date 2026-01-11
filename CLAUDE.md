@@ -164,7 +164,7 @@ Multiple Claude Code instances may work simultaneously.
 | CC-1 | Available | - |
 | CC-2 | Available | - |
 | CC-3 | Available | - |
-| CC-4 | Add artifact ID length validation | 2025-01-11 |
+| CC-4 | Available | - |
 
 ### Task Backlog
 
@@ -176,13 +176,13 @@ Multiple Claude Code instances may work simultaneously.
 
 | Task | CC-ID | Started | Notes |
 |------|-------|---------|-------|
-| Add artifact ID length validation | CC-4 | 2025-01-11 | Prevent DoS via huge IDs |
+| (none) | - | - | - |
 
 ### Awaiting Review
 
 | Task | CC-ID | Completed | Reviewer |
 |------|-------|-----------|----------|
-| (none) | - | - | - |
+| Add artifact ID length validation | CC-4 | 2025-01-11 | Added to schema.py + config |
 
 ### Coordination Rules
 

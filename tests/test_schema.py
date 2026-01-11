@@ -173,3 +173,65 @@ class TestEdgeCases:
         assert isinstance(result, dict)
         # The function lowercases action_type for comparison but returns original data
         assert result["action_type"] == "NOOP"
+
+
+class TestLengthValidation:
+    """Tests for artifact_id and method name length validation."""
+
+    def test_artifact_id_at_max_length(self) -> None:
+        """artifact_id at exactly max length (128) passes validation."""
+        artifact_id = "a" * 128
+        json_str = f'{{"action_type": "read_artifact", "artifact_id": "{artifact_id}"}}'
+        result = validate_action_json(json_str)
+        assert isinstance(result, dict)
+        assert result["artifact_id"] == artifact_id
+
+    def test_artifact_id_exceeds_max_length_read(self) -> None:
+        """artifact_id exceeding max length returns error for read_artifact."""
+        artifact_id = "a" * 129
+        json_str = f'{{"action_type": "read_artifact", "artifact_id": "{artifact_id}"}}'
+        result = validate_action_json(json_str)
+        assert isinstance(result, str)
+        assert "exceeds max length" in result
+        assert "128" in result
+
+    def test_artifact_id_exceeds_max_length_write(self) -> None:
+        """artifact_id exceeding max length returns error for write_artifact."""
+        artifact_id = "a" * 200
+        json_str = f'{{"action_type": "write_artifact", "artifact_id": "{artifact_id}", "content": "test"}}'
+        result = validate_action_json(json_str)
+        assert isinstance(result, str)
+        assert "exceeds max length" in result
+
+    def test_artifact_id_exceeds_max_length_invoke(self) -> None:
+        """artifact_id exceeding max length returns error for invoke_artifact."""
+        artifact_id = "b" * 500
+        json_str = f'{{"action_type": "invoke_artifact", "artifact_id": "{artifact_id}", "method": "test", "args": []}}'
+        result = validate_action_json(json_str)
+        assert isinstance(result, str)
+        assert "exceeds max length" in result
+
+    def test_method_name_at_max_length(self) -> None:
+        """method name at exactly max length (64) passes validation."""
+        method_name = "m" * 64
+        json_str = f'{{"action_type": "invoke_artifact", "artifact_id": "test", "method": "{method_name}", "args": []}}'
+        result = validate_action_json(json_str)
+        assert isinstance(result, dict)
+        assert result["method"] == method_name
+
+    def test_method_name_exceeds_max_length(self) -> None:
+        """method name exceeding max length returns error."""
+        method_name = "m" * 65
+        json_str = f'{{"action_type": "invoke_artifact", "artifact_id": "test", "method": "{method_name}", "args": []}}'
+        result = validate_action_json(json_str)
+        assert isinstance(result, str)
+        assert "method name exceeds max length" in result
+        assert "64" in result
+
+    def test_very_long_artifact_id_dos_prevention(self) -> None:
+        """Very long artifact_id (potential DoS) is rejected."""
+        artifact_id = "x" * 10000
+        json_str = f'{{"action_type": "read_artifact", "artifact_id": "{artifact_id}"}}'
+        result = validate_action_json(json_str)
+        assert isinstance(result, str)
+        assert "exceeds max length" in result
