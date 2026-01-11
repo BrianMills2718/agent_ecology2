@@ -472,6 +472,25 @@ class ExecutorConfig(StrictModel):
 
 
 # =============================================================================
+# VALIDATION MODEL
+# =============================================================================
+
+class ValidationConfig(StrictModel):
+    """Input validation limits to prevent DoS attacks."""
+
+    max_artifact_id_length: int = Field(
+        default=128,
+        gt=0,
+        description="Maximum characters for artifact IDs"
+    )
+    max_method_name_length: int = Field(
+        default=64,
+        gt=0,
+        description="Maximum characters for method names"
+    )
+
+
+# =============================================================================
 # ORACLE SCORER MODEL
 # =============================================================================
 
@@ -699,6 +718,7 @@ class AppConfig(StrictModel):
     costs: CostsConfig = Field(default_factory=CostsConfig)
     genesis: GenesisConfig = Field(default_factory=GenesisConfig)
     executor: ExecutorConfig = Field(default_factory=ExecutorConfig)
+    validation: ValidationConfig = Field(default_factory=ValidationConfig)
     oracle_scorer: OracleScorerConfig = Field(default_factory=OracleScorerConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)

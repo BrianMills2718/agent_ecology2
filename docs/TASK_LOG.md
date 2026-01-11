@@ -23,6 +23,9 @@ Historical record of completed tasks. Moved here from CLAUDE.md to keep coordina
 | Add AgentMemory tests | CC-4 | 23 tests for add, search, record_action, singleton, config. Mocks justified (external APIs). Reviewed by CC-1 |
 | Align config defaults | CC-1 | Fixed port 8081→8080, unit cycles→token_units. Reviewed by CC-1 (self, minor fix) |
 | Move hardcoded values to config | CC-2,CC-4 | memory.py uses config for llm_model, embedding_model, etc; oracle_scorer.py uses config for timeout. Reviewed by CC-1 |
+| Add artifact ID length validation | CC-4 | Validates artifact_id (128 chars) and method name (64 chars) in schema.py. Config-driven. Reviewed by CC-2 |
+| Automatic checkpoint saving | CC-2 | Periodic saves every N ticks + final save on completion. Preserves artifacts. |
+| Store artifact content in memory | CC-2 | Agents now remember what they read via record_observation(). RAG improvement. |
 
 ---
 
