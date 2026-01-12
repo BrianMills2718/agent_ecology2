@@ -51,9 +51,27 @@ world = checkpoint.load("checkpoint.json")
 
 Changes to `runner.py` MUST update `docs/architecture/current/execution_model.md`.
 
-## Future: Continuous Execution
+## Autonomous Execution Mode (Phase 2)
 
-See `docs/plans/02_continuous_execution.md` for the target model where agents run autonomously instead of tick-synchronized.
+When `execution.use_autonomous_loops: true`, agents run independently instead of tick-synchronized.
+
+```python
+# Autonomous mode: Each agent runs via AgentLoop
+from src.world.agent_loop import AgentLoopManager
+
+manager = AgentLoopManager(config)
+for agent in agents:
+    manager.start_loop(agent)
+
+# Loops run continuously, RateTracker replaces tick-based resource reset
+```
+
+Key differences from tick-based:
+- Agents run independently (no synchronization)
+- `RateTracker` for rolling-window rate limiting
+- Resource exhaustion pauses agent (doesn't crash)
+
+See `docs/architecture/current/execution_model.md` for full details.
 
 ## Testing
 

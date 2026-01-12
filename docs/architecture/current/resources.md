@@ -2,7 +2,7 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-01-12
+**Last verified:** 2026-01-12 (Phase 2 integration)
 
 **See target:** [../target/resources.md](../target/resources.md)
 
@@ -211,3 +211,27 @@ Set by artifact owner:
 - All agents share $1.00 total
 - One expensive agent affects all
 - No per-agent API budgets
+
+---
+
+## RateTracker Integration (Phase 2)
+
+When `rate_limiting.enabled: true`, `Ledger` integrates with `RateTracker` for rolling-window rate limiting.
+
+```python
+# Ledger now accepts optional RateTracker
+ledger = Ledger.from_config(config, agent_ids)  # Creates RateTracker if enabled
+
+# Record resource usage (replaces tick-based reset)
+ledger.rate_tracker.record("llm_calls", agent_id, 1)
+
+# Check if within limits
+can_proceed = ledger.rate_tracker.can_consume("llm_calls", agent_id, 1)
+```
+
+**Key differences from tick-based:**
+- Rolling time window instead of discrete tick reset
+- No use-or-lose: capacity replenishes continuously
+- Async-safe: uses `asyncio.Lock` for concurrent access
+
+See `docs/architecture/current/configuration.md` for rate limiting config options.

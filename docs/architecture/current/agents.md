@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-12
+**Last verified:** 2026-01-12 (Phase 2 integration)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -205,3 +205,45 @@ Agent receives failure message in `last_action_result` for next tick.
 - Stored after actions
 - Retrieved during prompt building
 - No active memory management by agent
+
+---
+
+## Artifact-Backed Agents (Phase 2)
+
+Agents can be backed by artifacts in the artifact store, enabling persistent state and agent trading.
+
+### From Artifact
+
+```python
+from src.agents.agent import Agent
+
+# Create agent from artifact
+artifact = store.get("agent_001")
+agent = Agent.from_artifact(artifact, store=store)
+
+# Serialize back to artifact
+updated_artifact = agent.to_artifact()
+```
+
+### Artifact Fields
+
+| Field | Description |
+|-------|-------------|
+| `has_standing: True` | Agent is a principal (can own things) |
+| `can_execute: True` | Agent can execute code autonomously |
+| `memory_artifact_id` | Link to memory artifact |
+| `content` | JSON-encoded agent config |
+
+### ArtifactMemory
+
+When artifact-backed, agents can use `ArtifactMemory` instead of Mem0:
+
+```python
+# Memory stored as artifact content
+memory = ArtifactMemory(agent_id, store)
+memory.add("Learned trading strategies")
+```
+
+This enables checkpointing agent memory with the artifact store.
+
+See `docs/architecture/current/artifacts_executor.md` for principal capabilities.
