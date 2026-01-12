@@ -150,19 +150,21 @@ resources:
 
 ## Required Tests
 
-### New Tests (TDD)
+> **Note:** Implementation used RateTracker (rolling window) instead of TokenBucket. Tests are in `tests/test_rate_tracker.py`.
 
-Create these tests FIRST, before implementing:
+### Implemented Tests
+
+The following tests exist in `tests/test_rate_tracker.py`:
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/test_token_bucket.py` | `test_accumulation_over_time` | Tokens accumulate based on rate |
-| `tests/test_token_bucket.py` | `test_spending_reduces_balance` | spend() decreases balance |
-| `tests/test_token_bucket.py` | `test_spending_creates_debt` | Balance can go negative |
-| `tests/test_token_bucket.py` | `test_capacity_capping` | Balance cannot exceed capacity |
-| `tests/test_token_bucket.py` | `test_can_afford_check` | can_afford() doesn't spend |
-| `tests/test_token_bucket.py` | `test_is_in_debt` | is_in_debt() returns True when negative |
-| `tests/test_token_bucket.py` | `test_multiple_principals` | Each principal has own bucket |
+| `tests/test_rate_tracker.py` | `test_consume_success` | Basic consumption works |
+| `tests/test_rate_tracker.py` | `test_consume_reduces_remaining` | Consuming reduces available capacity |
+| `tests/test_rate_tracker.py` | `test_consume_over_limit_fails` | Cannot exceed rate limit |
+| `tests/test_rate_tracker.py` | `test_has_capacity_under_limit` | Capacity check works |
+| `tests/test_rate_tracker.py` | `test_records_expire_after_window` | Rolling window expiry |
+| `tests/test_rate_tracker.py` | `test_agents_have_independent_limits` | Per-agent tracking |
+| `tests/test_rate_tracker.py` | `test_resources_tracked_separately` | Per-resource tracking |
 
 ### Existing Tests (Must Pass)
 
