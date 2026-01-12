@@ -587,3 +587,308 @@ def run():
         result = self.executor.execute(code)
         assert result["success"] is True
         assert result["result"] is True
+
+
+class TestContractIntegration:
+    """Tests for Executor + Contracts integration."""
+
+    def setup_method(self) -> None:
+        """Create a fresh executor for each test."""
+        self.executor = SafeExecutor(timeout=5, use_contracts=True)
+        self.executor_legacy = SafeExecutor(timeout=5, use_contracts=False)
+
+    def _make_artifact(
+        self,
+        artifact_id: str = "test_artifact",
+        owner_id: str = "owner1",
+        access_contract_id: str = "genesis_contract_freeware",
+    ) -> "Artifact":
+        """Create a test artifact with specified properties."""
+        from src.world.artifacts import Artifact
+        from datetime import datetime
+
+        artifact = Artifact(
+            id=artifact_id,
+            type="test",
+            content="test content",
+            owner_id=owner_id,
+            created_at=datetime.utcnow().isoformat(),
+            updated_at=datetime.utcnow().isoformat(),
+        )
+        # Set the access_contract_id attribute
+        artifact.access_contract_id = access_contract_id  # type: ignore[attr-defined]
+        return artifact
+
+    def test_contracts_enabled_by_default(self) -> None:
+        """Contracts are used by default."""
+        executor = SafeExecutor(timeout=5)
+        assert executor.use_contracts is True
+
+    def test_contracts_can_be_disabled(self) -> None:
+        """Contracts can be disabled via constructor."""
+        executor = SafeExecutor(timeout=5, use_contracts=False)
+        assert executor.use_contracts is False
+
+    def test_contract_cache_initialized(self) -> None:
+        """Contract cache is initialized as empty dict."""
+        executor = SafeExecutor(timeout=5)
+        assert executor._contract_cache == {}
+
+    def test_freeware_allows_read(self) -> None:
+        """Freeware contract allows anyone to read."""
+        artifact = self._make_artifact(access_contract_id="genesis_contract_freeware")
+        allowed, _ = self.executor._check_permission("stranger", "read", artifact)
+        assert allowed is True
+
+    def test_freeware_allows_invoke(self) -> None:
+        """Freeware contract allows anyone to invoke."""
+        artifact = self._make_artifact(access_contract_id="genesis_contract_freeware")
+        allowed, _ = self.executor._check_permission("stranger", "invoke", artifact)
+        assert allowed is True
+
+    def test_freeware_allows_execute(self) -> None:
+        """Freeware contract allows anyone to execute."""
+        artifact = self._make_artifact(access_contract_id="genesis_contract_freeware")
+        allowed, _ = self.executor._check_permission("stranger", "execute", artifact)
+        assert allowed is True
+
+    def test_freeware_denies_write_non_owner(self) -> None:
+        """Freeware contract denies write to non-owner."""
+        artifact = self._make_artifact(
+            access_contract_id="genesis_contract_freeware",
+            owner_id="owner1",
+        )
+        allowed, reason = self.executor._check_permission("stranger", "write", artifact)
+        assert allowed is False
+        assert "owner" in reason.lower()
+
+    def test_freeware_allows_write_owner(self) -> None:
+        """Freeware contract allows owner to write."""
+        artifact = self._make_artifact(
+            access_contract_id="genesis_contract_freeware",
+            owner_id="owner1",
+        )
+        allowed, _ = self.executor._check_permission("owner1", "write", artifact)
+        assert allowed is True
+
+    def test_private_denies_all_non_owner(self) -> None:
+        """Private contract denies all access to non-owner."""
+        artifact = self._make_artifact(
+            access_contract_id="genesis_contract_private",
+            owner_id="owner1",
+        )
+
+        for action in ["read", "write", "invoke", "execute", "delete", "transfer"]:
+            allowed, _ = self.executor._check_permission("stranger", action, artifact)
+            assert allowed is False, f"Private contract should deny {action} to non-owner"
+
+    def test_private_allows_owner(self) -> None:
+        """Private contract allows owner full access."""
+        artifact = self._make_artifact(
+            access_contract_id="genesis_contract_private",
+            owner_id="owner1",
+        )
+
+        for action in ["read", "write", "invoke", "execute", "delete", "transfer"]:
+            allowed, _ = self.executor._check_permission("owner1", action, artifact)
+            assert allowed is True, f"Private contract should allow {action} to owner"
+
+    def test_public_allows_everything(self) -> None:
+        """Public contract allows all actions to anyone."""
+        artifact = self._make_artifact(access_contract_id="genesis_contract_public")
+
+        for action in ["read", "write", "invoke", "execute", "delete", "transfer"]:
+            allowed, _ = self.executor._check_permission("anyone", action, artifact)
+            assert allowed is True, f"Public contract should allow {action} to anyone"
+
+    def test_self_owned_allows_self(self) -> None:
+        """Self-owned contract allows artifact to access itself."""
+        artifact = self._make_artifact(
+            artifact_id="artifact1",
+            access_contract_id="genesis_contract_self_owned",
+            owner_id="owner1",
+        )
+
+        # Self access
+        allowed, _ = self.executor._check_permission("artifact1", "read", artifact)
+        assert allowed is True
+
+    def test_self_owned_allows_owner(self) -> None:
+        """Self-owned contract allows owner to access."""
+        artifact = self._make_artifact(
+            artifact_id="artifact1",
+            access_contract_id="genesis_contract_self_owned",
+            owner_id="owner1",
+        )
+
+        # Owner access
+        allowed, _ = self.executor._check_permission("owner1", "read", artifact)
+        assert allowed is True
+
+    def test_self_owned_denies_stranger(self) -> None:
+        """Self-owned contract denies access to strangers."""
+        artifact = self._make_artifact(
+            artifact_id="artifact1",
+            access_contract_id="genesis_contract_self_owned",
+            owner_id="owner1",
+        )
+
+        # Stranger denied
+        allowed, _ = self.executor._check_permission("stranger", "read", artifact)
+        assert allowed is False
+
+    def test_legacy_mode_uses_freeware_contract(self) -> None:
+        """Legacy policy mode now delegates to freeware contract (CAP-003).
+
+        Before CAP-003: Owner had hardcoded bypass in _check_permission_legacy().
+        After CAP-003: Legacy mode uses freeware contract semantics.
+
+        Freeware contract:
+        - READ, EXECUTE, INVOKE: Anyone can access (open access)
+        - WRITE, DELETE, TRANSFER: Only owner can access
+
+        This test verifies owner gets write access via freeware contract,
+        not via special bypass.
+        """
+        import warnings
+        from src.world.artifacts import Artifact
+        from datetime import datetime
+
+        artifact = Artifact(
+            id="test",
+            type="test",
+            content="test",
+            owner_id="owner1",
+            created_at=datetime.utcnow().isoformat(),
+            updated_at=datetime.utcnow().isoformat(),
+            policy={"allow_read": [], "allow_write": []},  # Empty lists - ignored now
+        )
+
+        # Legacy mode should emit deprecation warning
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            # Owner still has write access, but via freeware contract
+            allowed, reason = self.executor_legacy._check_permission("owner1", "write", artifact)
+            assert allowed is True
+            assert "freeware" in reason.lower()  # Shows it's using freeware contract
+            assert "owner access" in reason.lower()  # Freeware grants owner access
+
+            # Verify deprecation warning was issued
+            assert len(w) == 1
+            assert issubclass(w[0].category, DeprecationWarning)
+            assert "deprecated" in str(w[0].message).lower()
+
+    def test_legacy_mode_ignores_policy_uses_freeware(self) -> None:
+        """Legacy policy mode ignores inline policy, uses freeware contract (CAP-003).
+
+        Before CAP-003: Legacy mode respected allow_read, allow_write lists.
+        After CAP-003: Legacy mode delegates to freeware contract which:
+        - Allows anyone to READ (freeware: open access)
+        - Only allows owner to WRITE (freeware: owner-only)
+
+        The inline policy dict is ignored in favor of consistent contract behavior.
+        """
+        import warnings
+        from src.world.artifacts import Artifact
+        from datetime import datetime
+
+        artifact = Artifact(
+            id="test",
+            type="test",
+            content="test",
+            owner_id="owner1",
+            created_at=datetime.utcnow().isoformat(),
+            updated_at=datetime.utcnow().isoformat(),
+            # These policy lists are now ignored - freeware contract takes over
+            policy={"allow_read": [], "allow_write": ["alice"]},
+        )
+
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+
+            # Freeware: anyone can read (open access)
+            allowed, _ = self.executor_legacy._check_permission("stranger", "read", artifact)
+            assert allowed is True
+
+            # Freeware: only owner can write (alice is NOT allowed despite policy)
+            allowed, _ = self.executor_legacy._check_permission("alice", "write", artifact)
+            assert allowed is False  # Changed: freeware doesn't respect allow_write list
+
+            # Freeware: owner can write
+            allowed, _ = self.executor_legacy._check_permission("owner1", "write", artifact)
+            assert allowed is True
+
+            # Freeware: non-owner bob cannot write
+            allowed, _ = self.executor_legacy._check_permission("bob", "write", artifact)
+            assert allowed is False
+
+    def test_missing_contract_falls_back_to_freeware(self) -> None:
+        """Unknown contract_id falls back to freeware."""
+        artifact = self._make_artifact(access_contract_id="nonexistent_contract")
+
+        # Should allow read (freeware default)
+        allowed, _ = self.executor._check_permission("anyone", "read", artifact)
+        assert allowed is True
+
+        # Should deny write to non-owner (freeware default)
+        allowed, _ = self.executor._check_permission("anyone", "write", artifact)
+        assert allowed is False
+
+    def test_unknown_action_denied(self) -> None:
+        """Unknown action type is denied."""
+        artifact = self._make_artifact(access_contract_id="genesis_contract_freeware")
+
+        allowed, reason = self.executor._check_permission("anyone", "unknown_action", artifact)
+        assert allowed is False
+        assert "unknown" in reason.lower()
+
+    def test_contract_caching(self) -> None:
+        """Contracts are cached after first lookup."""
+        artifact = self._make_artifact(access_contract_id="genesis_contract_freeware")
+
+        # First call - should populate cache
+        assert "genesis_contract_freeware" not in self.executor._contract_cache
+        self.executor._check_permission("anyone", "read", artifact)
+        assert "genesis_contract_freeware" in self.executor._contract_cache
+
+        # Verify same contract is returned from cache
+        contract1 = self.executor._get_contract("genesis_contract_freeware")
+        contract2 = self.executor._get_contract("genesis_contract_freeware")
+        assert contract1 is contract2
+
+    def test_permission_result_includes_reason(self) -> None:
+        """Permission denial includes contract's reason."""
+        artifact = self._make_artifact(
+            access_contract_id="genesis_contract_private",
+            owner_id="owner1",
+        )
+
+        allowed, reason = self.executor._check_permission("stranger", "read", artifact)
+        assert allowed is False
+        assert len(reason) > 0  # Reason should not be empty
+        assert "denied" in reason.lower() or "private" in reason.lower()
+
+    def test_artifact_without_access_contract_id_defaults_to_freeware(self) -> None:
+        """Artifacts without access_contract_id attribute use freeware."""
+        from src.world.artifacts import Artifact
+        from datetime import datetime
+
+        # Create artifact WITHOUT setting access_contract_id
+        artifact = Artifact(
+            id="test",
+            type="test",
+            content="test",
+            owner_id="owner1",
+            created_at=datetime.utcnow().isoformat(),
+            updated_at=datetime.utcnow().isoformat(),
+        )
+
+        # Should use freeware default (allows read)
+        allowed, _ = self.executor._check_permission("anyone", "read", artifact)
+        assert allowed is True
+
+
+# Import Artifact type for type hints
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from src.world.artifacts import Artifact

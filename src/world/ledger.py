@@ -14,9 +14,13 @@ See docs/RESOURCE_MODEL.md for full design rationale.
 
 from __future__ import annotations
 
+import asyncio
 import math
+import warnings
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, TypedDict
+
+from src.world.rate_tracker import RateTracker
 
 
 def _to_decimal(value: float) -> Decimal:
@@ -66,16 +70,64 @@ class Ledger:
     Resources can be:
     - Flow: Reset each tick (llm_tokens, bandwidth)
     - Stock: Never reset (disk, api_budget)
+
+    Optionally integrates with RateTracker for rolling-window rate limiting
+    when rate_limiting.enabled is True in config.
     """
 
     resources: dict[str, dict[str, float]]
     scrip: dict[str, int]
+    rate_tracker: RateTracker | None
+    use_rate_tracker: bool
+    _scrip_lock: asyncio.Lock
+    _resource_lock: asyncio.Lock
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        rate_tracker: RateTracker | None = None,
+        use_rate_tracker: bool = False,
+    ) -> None:
         # Generic resources: {principal_id: {resource_name: amount}}
         self.resources = {}
         # Scrip: persistent currency (accumulates/depletes)
         self.scrip = {}
+        # Rate tracker for rolling-window rate limiting
+        self.rate_tracker = rate_tracker
+        self.use_rate_tracker = use_rate_tracker
+        # Async locks for thread-safe concurrent access
+        self._scrip_lock = asyncio.Lock()
+        self._resource_lock = asyncio.Lock()
+
+    @classmethod
+    def from_config(cls, config: dict[str, Any], agent_ids: list[str]) -> "Ledger":
+        """Create Ledger from config with optional RateTracker.
+
+        Args:
+            config: Configuration dict, may contain 'rate_limiting' section
+            agent_ids: List of agent IDs to initialize (currently unused,
+                       but kept for future extension)
+
+        Returns:
+            Configured Ledger instance
+        """
+        rate_limiting_config = config.get("rate_limiting", {})
+        use_rate_tracker = rate_limiting_config.get("enabled", False)
+
+        rate_tracker = None
+        if use_rate_tracker:
+            rate_tracker = RateTracker(
+                window_seconds=rate_limiting_config.get("window_seconds", 60.0)
+            )
+            # Configure limits from config
+            resources = rate_limiting_config.get("resources", {})
+            for resource_name, resource_config in resources.items():
+                max_per_window = resource_config.get("max_per_window", float("inf"))
+                rate_tracker.configure_limit(resource_name, max_per_window)
+
+        return cls(
+            rate_tracker=rate_tracker,
+            use_rate_tracker=use_rate_tracker,
+        )
 
     def create_principal(
         self,
@@ -154,6 +206,82 @@ class Ledger:
         for resource, quota in quotas.items():
             self.resources[principal_id][resource] = quota
 
+    # ===== ASYNC RESOURCE OPERATIONS (Thread-Safe) =====
+
+    async def spend_resource_async(
+        self, principal_id: str, resource: str, amount: float
+    ) -> bool:
+        """Async thread-safe spend a resource.
+
+        Uses asyncio.Lock to ensure atomicity of check-then-spend pattern.
+        Returns False if insufficient resources.
+
+        Args:
+            principal_id: ID of the principal
+            resource: Name of the resource
+            amount: Amount to spend
+
+        Returns:
+            True if successful, False if insufficient resources
+        """
+        async with self._resource_lock:
+            if not self.can_spend_resource(principal_id, resource, amount):
+                return False
+            if principal_id not in self.resources:
+                self.resources[principal_id] = {}
+            current = self.get_resource(principal_id, resource)
+            self.resources[principal_id][resource] = _decimal_sub(current, amount)
+            return True
+
+    async def credit_resource_async(
+        self, principal_id: str, resource: str, amount: float
+    ) -> None:
+        """Async thread-safe add to a resource balance.
+
+        Uses asyncio.Lock to ensure atomicity.
+
+        Args:
+            principal_id: ID of the principal
+            resource: Name of the resource
+            amount: Amount to add
+        """
+        async with self._resource_lock:
+            if principal_id not in self.resources:
+                self.resources[principal_id] = {}
+            current = self.resources[principal_id].get(resource, 0.0)
+            self.resources[principal_id][resource] = _decimal_add(current, amount)
+
+    async def transfer_resource_async(
+        self, from_id: str, to_id: str, resource: str, amount: float
+    ) -> bool:
+        """Async thread-safe transfer a resource between principals.
+
+        Uses asyncio.Lock to ensure atomicity of check-then-transfer pattern.
+        Returns False if insufficient resources.
+
+        Args:
+            from_id: ID of the source principal
+            to_id: ID of the destination principal
+            resource: Name of the resource
+            amount: Amount to transfer
+
+        Returns:
+            True if successful, False if insufficient resources or invalid amount
+        """
+        async with self._resource_lock:
+            if amount <= 0:
+                return False
+            if not self.can_spend_resource(from_id, resource, amount):
+                return False
+            # Ensure recipient exists
+            if to_id not in self.resources:
+                self.resources[to_id] = {}
+            from_current = self.get_resource(from_id, resource)
+            to_current = self.get_resource(to_id, resource)
+            self.resources[from_id][resource] = _decimal_sub(from_current, amount)
+            self.resources[to_id][resource] = _decimal_add(to_current, amount)
+            return True
+
     # ===== SCRIP (Economic Currency) =====
 
     def get_scrip(self, principal_id: str) -> int:
@@ -208,6 +336,68 @@ class Ledger:
         if principal_id not in self.resources:
             self.resources[principal_id] = {}
 
+    # ===== ASYNC SCRIP OPERATIONS (Thread-Safe) =====
+
+    async def deduct_scrip_async(self, principal_id: str, amount: int) -> bool:
+        """Async thread-safe deduct scrip from principal.
+
+        Uses asyncio.Lock to ensure atomicity of check-then-deduct pattern.
+        Returns False if insufficient funds.
+
+        Args:
+            principal_id: ID of the principal to deduct from
+            amount: Amount of scrip to deduct
+
+        Returns:
+            True if successful, False if insufficient funds
+        """
+        async with self._scrip_lock:
+            if not self.can_afford_scrip(principal_id, amount):
+                return False
+            self.scrip[principal_id] -= amount
+            return True
+
+    async def credit_scrip_async(self, principal_id: str, amount: int) -> None:
+        """Async thread-safe add scrip to principal.
+
+        Uses asyncio.Lock to ensure atomicity.
+
+        Args:
+            principal_id: ID of the principal to credit
+            amount: Amount of scrip to add
+        """
+        async with self._scrip_lock:
+            if principal_id not in self.scrip:
+                self.scrip[principal_id] = 0
+            self.scrip[principal_id] += amount
+
+    async def transfer_scrip_async(self, from_id: str, to_id: str, amount: int) -> bool:
+        """Async thread-safe transfer scrip between principals.
+
+        Uses asyncio.Lock to ensure atomicity of check-then-transfer pattern.
+        Auto-creates recipient with 0 balance if not exists.
+        Returns False if insufficient funds.
+
+        Args:
+            from_id: ID of the source principal
+            to_id: ID of the destination principal
+            amount: Amount of scrip to transfer
+
+        Returns:
+            True if successful, False if insufficient funds or invalid amount
+        """
+        async with self._scrip_lock:
+            if amount <= 0:
+                return False
+            if not self.can_afford_scrip(from_id, amount):
+                return False
+            # Auto-create recipient if not exists (enables artifact wallets)
+            if to_id not in self.scrip:
+                self.scrip[to_id] = 0
+            self.scrip[from_id] -= amount
+            self.scrip[to_id] += amount
+            return True
+
     # ===== BACKWARD COMPATIBILITY (compute = llm_tokens) =====
 
     def get_compute(self, principal_id: str) -> int:
@@ -223,7 +413,21 @@ class Ledger:
         return self.spend_resource(principal_id, "llm_tokens", float(amount))
 
     def reset_compute(self, principal_id: str, compute_quota: int) -> None:
-        """DEPRECATED: Use set_resource(principal_id, 'llm_tokens', quota)."""
+        """DEPRECATED: Use set_resource(principal_id, 'llm_tokens', quota).
+
+        Note: When rate limiting is enabled (use_rate_tracker=True), tick-based
+        resource resets should not be used. Resources flow continuously via
+        RateTracker instead. This method will emit a warning if called when
+        rate tracking is enabled.
+        """
+        if self.use_rate_tracker:
+            warnings.warn(
+                "reset_compute() called with rate limiting enabled. "
+                "Tick-based resource resets are deprecated when using RateTracker. "
+                "Resources should flow continuously via rolling windows instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self.set_resource(principal_id, "llm_tokens", float(compute_quota))
 
     def get_flow(self, principal_id: str) -> int:
@@ -329,6 +533,124 @@ class Ledger:
                 distribution[pid] = share
 
         return distribution
+
+    # ===== RATE LIMITING (Rolling Window) =====
+
+    def check_resource_capacity(
+        self,
+        agent_id: str,
+        resource: str,
+        amount: float = 1.0,
+    ) -> bool:
+        """Check if agent has capacity for resource consumption.
+
+        Uses RateTracker if enabled, otherwise always returns True
+        (legacy tick-based mode manages resources differently).
+
+        Args:
+            agent_id: ID of the agent
+            resource: Name of the resource
+            amount: Amount to check (default: 1.0)
+
+        Returns:
+            True if the agent can use the requested amount
+        """
+        if self.use_rate_tracker and self.rate_tracker:
+            return self.rate_tracker.has_capacity(agent_id, resource, amount)
+        return True  # Legacy mode: no pre-check
+
+    def consume_resource(
+        self,
+        agent_id: str,
+        resource: str,
+        amount: float = 1.0,
+    ) -> bool:
+        """Consume resource capacity.
+
+        Uses RateTracker if enabled.
+        Returns True if successful, False if insufficient capacity.
+
+        Args:
+            agent_id: ID of the agent
+            resource: Name of the resource
+            amount: Amount to consume (default: 1.0)
+
+        Returns:
+            True if successful, False if insufficient capacity
+        """
+        if self.use_rate_tracker and self.rate_tracker:
+            return self.rate_tracker.consume(agent_id, resource, amount)
+        return True  # Legacy mode: no rate limiting
+
+    def get_resource_remaining(
+        self,
+        agent_id: str,
+        resource: str,
+    ) -> float:
+        """Get remaining capacity for a resource.
+
+        Args:
+            agent_id: ID of the agent
+            resource: Name of the resource
+
+        Returns:
+            Amount of resource still available in the current window
+        """
+        if self.use_rate_tracker and self.rate_tracker:
+            return self.rate_tracker.get_remaining(agent_id, resource)
+        return float("inf")  # Legacy mode: unlimited
+
+    async def wait_for_resource(
+        self,
+        agent_id: str,
+        resource: str,
+        amount: float = 1.0,
+        timeout: float | None = None,
+    ) -> bool:
+        """Wait until resource capacity is available.
+
+        Only works with RateTracker enabled.
+        Returns True if capacity acquired, False if timeout.
+
+        Args:
+            agent_id: ID of the agent
+            resource: Name of the resource
+            amount: Amount needed (default: 1.0)
+            timeout: Maximum seconds to wait (None = wait indefinitely)
+
+        Returns:
+            True if capacity was acquired, False if timeout occurred
+        """
+        if self.use_rate_tracker and self.rate_tracker:
+            return await self.rate_tracker.wait_for_capacity(
+                agent_id, resource, amount, timeout
+            )
+        return True  # Legacy mode: immediate success
+
+    async def consume_resource_async(
+        self,
+        agent_id: str,
+        resource: str,
+        amount: float = 1.0,
+    ) -> bool:
+        """Async thread-safe consume resource capacity.
+
+        Uses asyncio.Lock to ensure atomicity of check-then-consume pattern.
+        Uses RateTracker if enabled.
+        Returns True if successful, False if insufficient capacity.
+
+        Args:
+            agent_id: ID of the agent
+            resource: Name of the resource
+            amount: Amount to consume (default: 1.0)
+
+        Returns:
+            True if successful, False if insufficient capacity
+        """
+        async with self._resource_lock:
+            if self.use_rate_tracker and self.rate_tracker:
+                return self.rate_tracker.consume(agent_id, resource, amount)
+            return True  # Legacy mode: no rate limiting
 
     # ===== THINKING COST (LLM tokens) =====
 

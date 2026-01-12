@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-12
+**Last verified:** 2026-01-12 (Phase 2 integration complete)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
@@ -153,3 +153,60 @@ def advance_tick(self) -> bool:
 - All N agents think in parallel
 - All N agents get one action per tick
 - No way for "fast" agents to do more
+
+---
+
+## Autonomous Execution Mode (Optional)
+
+When `execution.use_autonomous_loops: true`, agents run independently instead of tick-synchronized.
+
+### Configuration
+
+```yaml
+execution:
+  use_autonomous_loops: false  # Default: tick-based
+rate_limiting:
+  enabled: false  # Enable RateTracker
+  window_seconds: 60.0
+  resources:
+    llm_calls:
+      max_per_window: 100
+```
+
+### How It Works
+
+1. Each agent gets an `AgentLoop` from `AgentLoopManager`
+2. Loops run continuously via `asyncio.create_task()`
+3. Resource exhaustion pauses agent (doesn't crash)
+4. `RateTracker` replaces tick-based resource reset
+
+### AgentLoop States
+
+| State | Description |
+|-------|-------------|
+| `RUNNING` | Actively deciding/executing |
+| `SLEEPING` | Waiting for wake condition |
+| `PAUSED` | Resource exhausted or error limit |
+| `STOPPED` | Loop terminated |
+
+### Resource Exhaustion Policy
+
+```yaml
+execution:
+  resource_exhaustion_policy: skip  # or "block"
+```
+
+- `skip`: Agent skips iteration, continues next cycle
+- `block`: Agent waits until resources available
+
+---
+
+## Differences from Target
+
+| Current | Target |
+|---------|--------|
+| Tick-based default | Autonomous default |
+| Optional RateTracker | RateTracker always on |
+| Tick resets flow resources | Rolling window only |
+
+See `docs/architecture/target/02_execution_model.md` for target architecture.

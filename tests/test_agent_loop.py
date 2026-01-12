@@ -160,6 +160,7 @@ class TestAgentLoopConfig:
         assert config.resource_check_interval == 1.0
         assert config.max_consecutive_errors == 5
         assert "llm_calls" in config.resources_to_check
+        assert config.resource_exhaustion_policy == "skip"
 
     def test_custom_values(self) -> None:
         """Can set custom config values."""
@@ -195,6 +196,21 @@ class TestAgentLoopConfig:
         """Zero max_consecutive_errors raises ValueError."""
         with pytest.raises(ValueError, match="max_consecutive_errors must be at least 1"):
             AgentLoopConfig(max_consecutive_errors=0)
+
+    def test_invalid_resource_exhaustion_policy_raises(self) -> None:
+        """Invalid resource_exhaustion_policy raises ValueError."""
+        with pytest.raises(ValueError, match="resource_exhaustion_policy must be 'skip' or 'block'"):
+            AgentLoopConfig(resource_exhaustion_policy="invalid")  # type: ignore[arg-type]
+
+    def test_valid_resource_exhaustion_policy_skip(self) -> None:
+        """Can set resource_exhaustion_policy to 'skip'."""
+        config = AgentLoopConfig(resource_exhaustion_policy="skip")
+        assert config.resource_exhaustion_policy == "skip"
+
+    def test_valid_resource_exhaustion_policy_block(self) -> None:
+        """Can set resource_exhaustion_policy to 'block'."""
+        config = AgentLoopConfig(resource_exhaustion_policy="block")
+        assert config.resource_exhaustion_policy == "block"
 
 
 # =============================================================================
@@ -512,6 +528,198 @@ class TestAgentLoopResourceGating:
         assert loop.state == AgentState.RUNNING
 
         await loop.stop()
+
+
+# =============================================================================
+# AgentLoop Resource Exhaustion Policy Tests
+# =============================================================================
+
+
+class TestResourceExhaustionPolicy:
+    """Tests for resource_exhaustion_policy (skip/block) behavior."""
+
+    @pytest.mark.asyncio
+    async def test_skip_policy_pauses_immediately(
+        self,
+        rate_tracker: RateTracker,
+        mock_decide_action: AsyncMock,
+        mock_execute_action: AsyncMock,
+    ) -> None:
+        """With skip policy, loop pauses immediately when resources exhausted."""
+        # Consume all resources
+        rate_tracker.consume("skip_agent", "llm_calls", 100.0)
+
+        loop = AgentLoop(
+            agent_id="skip_agent",
+            decide_action=mock_decide_action,
+            execute_action=mock_execute_action,
+            rate_tracker=rate_tracker,
+            config=AgentLoopConfig(
+                min_loop_delay=0.01,
+                resource_check_interval=0.02,
+                resource_exhaustion_policy="skip",
+            ),
+        )
+
+        await loop.start()
+        await asyncio.sleep(0.05)
+
+        # Should be paused, not blocked
+        assert loop.state == AgentState.PAUSED
+        # No actions should have been executed
+        mock_execute_action.assert_not_called()
+
+        await loop.stop()
+
+    @pytest.mark.asyncio
+    async def test_block_policy_waits_for_resources(
+        self,
+        rate_tracker: RateTracker,
+        mock_decide_action: AsyncMock,
+        mock_execute_action: AsyncMock,
+    ) -> None:
+        """With block policy, loop waits until resources become available."""
+        # Consume all resources
+        rate_tracker.consume("block_agent", "llm_calls", 100.0)
+
+        loop = AgentLoop(
+            agent_id="block_agent",
+            decide_action=mock_decide_action,
+            execute_action=mock_execute_action,
+            rate_tracker=rate_tracker,
+            config=AgentLoopConfig(
+                min_loop_delay=0.01,
+                resource_check_interval=0.05,
+                resource_exhaustion_policy="block",
+            ),
+        )
+
+        await loop.start()
+        await asyncio.sleep(0.02)
+
+        # Should still be running (blocking), not paused
+        assert loop.state == AgentState.RUNNING
+        # No actions yet since blocked
+        mock_execute_action.assert_not_called()
+
+        # Reset resources to unblock
+        rate_tracker.reset(agent_id="block_agent", resource="llm_calls")
+
+        await asyncio.sleep(0.1)
+
+        # Should have executed now
+        assert mock_execute_action.called
+
+        await loop.stop()
+
+    @pytest.mark.asyncio
+    async def test_block_policy_executes_after_resources_available(
+        self,
+        rate_tracker: RateTracker,
+    ) -> None:
+        """With block policy, loop continues executing after resources become available."""
+        execution_count = 0
+
+        async def counting_decide() -> dict[str, Any]:
+            nonlocal execution_count
+            execution_count += 1
+            return {"action_type": "noop"}
+
+        async def execute(action: dict[str, Any]) -> dict[str, Any]:
+            return {"success": True}
+
+        # Consume all resources initially
+        rate_tracker.consume("block_exec_agent", "llm_calls", 100.0)
+
+        loop = AgentLoop(
+            agent_id="block_exec_agent",
+            decide_action=counting_decide,
+            execute_action=execute,
+            rate_tracker=rate_tracker,
+            config=AgentLoopConfig(
+                min_loop_delay=0.01,
+                resource_check_interval=0.02,
+                resource_exhaustion_policy="block",
+            ),
+        )
+
+        await loop.start()
+        await asyncio.sleep(0.03)
+
+        # No executions while blocked
+        assert execution_count == 0
+
+        # Reset resources
+        rate_tracker.reset(agent_id="block_exec_agent", resource="llm_calls")
+
+        await asyncio.sleep(0.1)
+
+        # Should have executed multiple times now
+        assert execution_count > 0
+
+        await loop.stop()
+
+    @pytest.mark.asyncio
+    async def test_skip_policy_is_default(
+        self,
+        rate_tracker: RateTracker,
+        mock_decide_action: AsyncMock,
+        mock_execute_action: AsyncMock,
+    ) -> None:
+        """Default policy is 'skip'."""
+        # Consume all resources
+        rate_tracker.consume("default_policy_agent", "llm_calls", 100.0)
+
+        # Don't specify resource_exhaustion_policy - should default to skip
+        loop = AgentLoop(
+            agent_id="default_policy_agent",
+            decide_action=mock_decide_action,
+            execute_action=mock_execute_action,
+            rate_tracker=rate_tracker,
+            config=AgentLoopConfig(
+                min_loop_delay=0.01,
+                resource_check_interval=0.02,
+            ),
+        )
+
+        await loop.start()
+        await asyncio.sleep(0.05)
+
+        # With default skip policy, should be paused
+        assert loop.state == AgentState.PAUSED
+
+        await loop.stop()
+
+    @pytest.mark.asyncio
+    async def test_block_policy_can_be_stopped_while_waiting(
+        self,
+        rate_tracker: RateTracker,
+        mock_decide_action: AsyncMock,
+        mock_execute_action: AsyncMock,
+    ) -> None:
+        """Loop with block policy can be stopped while waiting for resources."""
+        # Consume all resources
+        rate_tracker.consume("stop_while_block_agent", "llm_calls", 100.0)
+
+        loop = AgentLoop(
+            agent_id="stop_while_block_agent",
+            decide_action=mock_decide_action,
+            execute_action=mock_execute_action,
+            rate_tracker=rate_tracker,
+            config=AgentLoopConfig(
+                min_loop_delay=0.01,
+                resource_check_interval=0.5,  # Long interval to ensure we're blocking
+                resource_exhaustion_policy="block",
+            ),
+        )
+
+        await loop.start()
+        await asyncio.sleep(0.02)
+
+        # Stop while blocked
+        await loop.stop(timeout=0.1)
+
+        assert loop.state == AgentState.STOPPED
 
 
 # =============================================================================

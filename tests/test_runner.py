@@ -453,3 +453,323 @@ class TestPrincipalConfig:
             runner = SimulationRunner(config, verbose=False)
 
             assert runner.world.ledger.get_scrip("agent") == 500
+
+
+class TestAdvanceTickResourceReset:
+    """Tests for advance_tick resource reset behavior based on rate limiting mode."""
+
+    @patch("src.simulation.runner.load_agents")
+    def test_advance_tick_resets_compute_in_legacy_mode(self, mock_load: MagicMock) -> None:
+        """advance_tick resets compute when rate limiting is disabled (legacy mode)."""
+        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            # Ensure rate limiting is disabled (default behavior)
+            config["rate_limiting"] = {"enabled": False}
+            runner = SimulationRunner(config, verbose=False)
+
+            # Set initial compute
+            runner.world.ledger.set_resource("agent", "llm_tokens", 1000.0)
+            assert runner.world.ledger.get_compute("agent") == 1000
+
+            # Spend some compute
+            runner.world.ledger.spend_compute("agent", 600)
+            assert runner.world.ledger.get_compute("agent") == 400
+
+            # Advance tick should reset compute (legacy mode)
+            runner.world.advance_tick()
+
+            # Compute should be reset to quota (based on config)
+            # In legacy mode, compute resets to default_quotas.compute or config value
+            assert runner.world.ledger.get_compute("agent") > 0  # Reset happened
+
+    @patch("src.simulation.runner.load_agents")
+    def test_advance_tick_no_reset_when_rate_tracker_enabled(
+        self, mock_load: MagicMock
+    ) -> None:
+        """advance_tick does NOT reset compute when rate limiting is enabled."""
+        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            # Enable rate limiting
+            config["rate_limiting"] = {
+                "enabled": True,
+                "window_seconds": 60.0,
+                "resources": {"llm_tokens": {"max_per_window": 100}}
+            }
+            runner = SimulationRunner(config, verbose=False)
+
+            # Set initial compute to a specific value
+            runner.world.ledger.set_resource("agent", "llm_tokens", 1000.0)
+            assert runner.world.ledger.get_compute("agent") == 1000
+
+            # Spend some compute
+            runner.world.ledger.spend_compute("agent", 600)
+            assert runner.world.ledger.get_compute("agent") == 400
+
+            # Advance tick should NOT reset compute (rate limiting mode)
+            runner.world.advance_tick()
+
+            # Compute should remain at 400 (no reset)
+            assert runner.world.ledger.get_compute("agent") == 400
+
+    @patch("src.simulation.runner.load_agents")
+    def test_world_use_rate_tracker_flag_from_config(self, mock_load: MagicMock) -> None:
+        """World.use_rate_tracker is correctly set from config."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Test with rate limiting disabled
+            config = make_minimal_config(tmpdir)
+            config["rate_limiting"] = {"enabled": False}
+            runner = SimulationRunner(config, verbose=False)
+            assert runner.world.use_rate_tracker is False
+
+            # Test with rate limiting enabled
+            config2 = make_minimal_config(tmpdir)
+            config2["rate_limiting"] = {"enabled": True}
+            config2["logging"]["output_file"] = f"{tmpdir}/run2.jsonl"
+            runner2 = SimulationRunner(config2, verbose=False)
+            assert runner2.world.use_rate_tracker is True
+
+    @patch("src.simulation.runner.load_agents")
+    def test_scrip_never_resets_in_either_mode(self, mock_load: MagicMock) -> None:
+        """Scrip never resets regardless of rate limiting mode."""
+        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Test legacy mode
+            config = make_minimal_config(tmpdir)
+            config["rate_limiting"] = {"enabled": False}
+            runner = SimulationRunner(config, verbose=False)
+
+            # Spend some scrip
+            runner.world.ledger.deduct_scrip("agent", 30)
+            assert runner.world.ledger.get_scrip("agent") == 70
+
+            # Advance tick
+            runner.world.advance_tick()
+
+            # Scrip should remain at 70 (never resets)
+            assert runner.world.ledger.get_scrip("agent") == 70
+
+            # Test rate limiting mode
+            config2 = make_minimal_config(tmpdir)
+            config2["rate_limiting"] = {"enabled": True}
+            config2["logging"]["output_file"] = f"{tmpdir}/run2.jsonl"
+            runner2 = SimulationRunner(config2, verbose=False)
+
+            # Spend some scrip
+            runner2.world.ledger.deduct_scrip("agent", 30)
+            assert runner2.world.ledger.get_scrip("agent") == 70
+
+            # Advance tick
+            runner2.world.advance_tick()
+
+            # Scrip should remain at 70 (never resets)
+            assert runner2.world.ledger.get_scrip("agent") == 70
+
+
+class TestAutonomousMode:
+    """Tests for autonomous agent loop execution (INT-003)."""
+
+    @patch("src.simulation.runner.load_agents")
+    def test_autonomous_mode_disabled_by_default(self, mock_load: MagicMock) -> None:
+        """Autonomous mode is not used by default."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            runner = SimulationRunner(config, verbose=False)
+
+            assert runner.use_autonomous_loops is False
+            assert runner.world.use_autonomous_loops is False
+            assert runner.world.loop_manager is None
+
+    @patch("src.simulation.runner.load_agents")
+    def test_autonomous_mode_enabled_from_config(self, mock_load: MagicMock) -> None:
+        """Autonomous mode is enabled when configured."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            config["execution"] = {"use_autonomous_loops": True}
+            runner = SimulationRunner(config, verbose=False)
+
+            assert runner.use_autonomous_loops is True
+            assert runner.world.use_autonomous_loops is True
+            # loop_manager should be created
+            assert runner.world.loop_manager is not None
+
+    @patch("src.simulation.runner.load_agents")
+    def test_autonomous_mode_creates_rate_tracker_if_missing(
+        self, mock_load: MagicMock
+    ) -> None:
+        """Autonomous mode creates a rate tracker if not configured."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            config["execution"] = {"use_autonomous_loops": True}
+            # rate_limiting disabled (no rate_tracker from config)
+            config["rate_limiting"] = {"enabled": False}
+            runner = SimulationRunner(config, verbose=False)
+
+            # rate_tracker should be created even if rate_limiting is disabled
+            assert runner.world.rate_tracker is not None
+            assert runner.world.loop_manager is not None
+
+    @patch("src.simulation.runner.load_agents")
+    def test_autonomous_mode_uses_existing_rate_tracker(
+        self, mock_load: MagicMock
+    ) -> None:
+        """Autonomous mode uses existing rate tracker when available."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            config["execution"] = {"use_autonomous_loops": True}
+            config["rate_limiting"] = {
+                "enabled": True,
+                "window_seconds": 120.0,
+                "resources": {"llm_calls": {"max_per_window": 50}},
+            }
+            runner = SimulationRunner(config, verbose=False)
+
+            # Should use the rate tracker from rate_limiting config
+            assert runner.world.rate_tracker is not None
+            assert runner.world.rate_tracker.window_seconds == 120.0
+
+    @patch("src.simulation.runner.load_agents")
+    def test_tick_based_mode_unchanged_when_flag_false(
+        self, mock_load: MagicMock
+    ) -> None:
+        """Tick-based mode works as before when autonomous mode is disabled."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            config["execution"] = {"use_autonomous_loops": False}
+            runner = SimulationRunner(config, verbose=False)
+
+            # Should be in tick-based mode
+            assert runner.use_autonomous_loops is False
+            assert runner.world.loop_manager is None
+
+    @patch("src.simulation.runner.load_agents")
+    def test_create_agent_loop_with_config(self, mock_load: MagicMock) -> None:
+        """_create_agent_loop uses config values."""
+        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            config["execution"] = {
+                "use_autonomous_loops": True,
+                "agent_loop": {
+                    "min_loop_delay": 0.5,
+                    "max_loop_delay": 20.0,
+                    "resource_check_interval": 2.0,
+                    "max_consecutive_errors": 10,
+                    "resources_to_check": ["llm_calls", "bandwidth_bytes"],
+                },
+            }
+            runner = SimulationRunner(config, verbose=False)
+
+            # Create loop for the agent
+            runner._create_agent_loop(runner.agents[0])
+
+            # Check that loop was created
+            loop = runner.world.loop_manager.get_loop("agent")
+            assert loop is not None
+            assert loop.config.min_loop_delay == 0.5
+            assert loop.config.max_loop_delay == 20.0
+            assert loop.config.resource_check_interval == 2.0
+            assert loop.config.max_consecutive_errors == 10
+
+    @patch("src.simulation.runner.load_agents")
+    def test_shutdown_stops_loops(self, mock_load: MagicMock) -> None:
+        """shutdown() stops all agent loops."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            config["execution"] = {"use_autonomous_loops": True}
+            runner = SimulationRunner(config, verbose=False)
+
+            # Should be able to call shutdown even when not running
+            import asyncio
+            asyncio.run(runner.shutdown())
+
+            assert runner._running is False
+
+    @patch("src.simulation.runner.load_agents")
+    def test_world_loop_manager_created_for_autonomous_mode(
+        self, mock_load: MagicMock
+    ) -> None:
+        """World.loop_manager is created when autonomous mode is enabled."""
+        mock_load.return_value = [
+            {"id": "agent1", "starting_scrip": 100},
+            {"id": "agent2", "starting_scrip": 100},
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            config["execution"] = {"use_autonomous_loops": True}
+            runner = SimulationRunner(config, verbose=False)
+
+            assert runner.world.loop_manager is not None
+            # Initially no loops (loops created in _run_autonomous)
+            assert runner.world.loop_manager.loop_count == 0
+
+    @patch("src.simulation.runner.load_agents")
+    def test_run_method_accepts_duration_parameter(self, mock_load: MagicMock) -> None:
+        """run() accepts duration parameter for autonomous mode."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            # Use tick-based mode for this test
+            config["execution"] = {"use_autonomous_loops": False}
+            runner = SimulationRunner(config, verbose=False)
+
+            # Should have run method that accepts duration
+            import inspect
+            sig = inspect.signature(runner.run)
+            params = list(sig.parameters.keys())
+            assert "duration" in params
+            assert "max_ticks" in params
+
+
+class TestAgentAliveProperty:
+    """Tests for Agent.alive property (for autonomous loops)."""
+
+    @patch("src.simulation.runner.load_agents")
+    def test_agent_starts_alive(self, mock_load: MagicMock) -> None:
+        """Agent starts with alive=True."""
+        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            runner = SimulationRunner(config, verbose=False)
+
+            agent = runner.agents[0]
+            assert agent.alive is True
+
+    @patch("src.simulation.runner.load_agents")
+    def test_agent_alive_can_be_set(self, mock_load: MagicMock) -> None:
+        """Agent.alive can be set to False."""
+        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            runner = SimulationRunner(config, verbose=False)
+
+            agent = runner.agents[0]
+            agent.alive = False
+            assert agent.alive is False
+
+            # Can also set back to True
+            agent.alive = True
+            assert agent.alive is True

@@ -33,7 +33,12 @@ if TYPE_CHECKING:
     from .artifacts import Artifact, ArtifactStore
 
 # Import contracts module for permission checking
-from .contracts import AccessContract, PermissionAction, PermissionResult
+from .contracts import (
+    AccessContract,
+    ExecutableContract,
+    PermissionAction,
+    PermissionResult,
+)
 from .genesis_contracts import get_contract_by_id, get_genesis_contract
 
 
@@ -224,22 +229,41 @@ class SafeExecutor:
     timeout: int
     preloaded_modules: dict[str, ModuleType | _DatetimeModule]
     use_contracts: bool
-    _contract_cache: dict[str, AccessContract]
+    _contract_cache: dict[str, AccessContract | ExecutableContract]
+    _ledger: "Ledger | None"
 
     def __init__(
-        self, timeout: int | None = None, use_contracts: bool = True
+        self,
+        timeout: int | None = None,
+        use_contracts: bool = True,
+        ledger: "Ledger | None" = None,
     ) -> None:
         default_timeout: int = get("executor.timeout_seconds") or 5
         self.timeout = timeout or default_timeout
         self.preloaded_modules = get_preloaded_modules()
         self.use_contracts = use_contracts
         self._contract_cache = {}
+        self._ledger = ledger
 
-    def _get_contract(self, contract_id: str) -> AccessContract:
+    def set_ledger(self, ledger: "Ledger") -> None:
+        """Set the ledger for executable contract permission checks.
+
+        Executable contracts may need read-only ledger access to check
+        balances for pay-per-use or balance-gated access patterns.
+
+        Args:
+            ledger: The ledger instance to use
+        """
+        self._ledger = ledger
+
+    def _get_contract(
+        self, contract_id: str
+    ) -> AccessContract | ExecutableContract:
         """Get contract by ID, with caching.
 
         Checks genesis contracts first, then falls back to freeware
-        if not found.
+        if not found. Also supports ExecutableContracts registered
+        via register_executable_contract().
 
         Args:
             contract_id: The contract ID to look up
@@ -261,6 +285,18 @@ class SafeExecutor:
         self._contract_cache[contract_id] = contract
         return contract
 
+    def register_executable_contract(self, contract: ExecutableContract) -> None:
+        """Register an executable contract for use in permission checks.
+
+        Executable contracts have dynamic code that runs in a sandbox to
+        determine permissions. They can access ledger balances (read-only)
+        for pay-per-use or balance-gated access patterns.
+
+        Args:
+            contract: The ExecutableContract to register
+        """
+        self._contract_cache[contract.contract_id] = contract
+
     def _check_permission_via_contract(
         self,
         caller: str,
@@ -268,6 +304,10 @@ class SafeExecutor:
         artifact: "Artifact",
     ) -> PermissionResult:
         """Check permission using artifact's access contract.
+
+        Supports both genesis contracts (static logic) and executable
+        contracts (dynamic code). Executable contracts receive read-only
+        ledger access for balance checks.
 
         Args:
             caller: The principal requesting access
@@ -297,6 +337,17 @@ class SafeExecutor:
             "artifact_id": artifact.id,
         }
 
+        # ExecutableContracts need ledger access for balance checks
+        if isinstance(contract, ExecutableContract):
+            return contract.check_permission(
+                caller=caller,
+                action=perm_action,
+                target=artifact.id,
+                context=context,
+                ledger=self._ledger,
+            )
+
+        # Genesis/static contracts use standard interface
         return contract.check_permission(
             caller=caller,
             action=perm_action,
@@ -312,7 +363,14 @@ class SafeExecutor:
     ) -> tuple[bool, str]:
         """Legacy permission check using inline policy dict.
 
-        DEPRECATED: Use contract-based checking when possible.
+        DEPRECATED: Legacy mode is deprecated. All artifacts should use
+        access_contract_id for permission checking. When an artifact lacks
+        a contract, the executor falls back to freeware contract semantics:
+        - READ, EXECUTE, INVOKE: Anyone can access
+        - WRITE, DELETE, TRANSFER: Only owner can access
+
+        This function now delegates to freeware contract instead of
+        implementing custom logic. Owner bypass has been removed per CAP-003.
 
         Args:
             caller: The principal requesting access
@@ -322,22 +380,37 @@ class SafeExecutor:
         Returns:
             Tuple of (allowed, reason)
         """
-        policy = getattr(artifact, "policy", None) or {}
+        import warnings
+        warnings.warn(
+            "Legacy permission checking is deprecated. Set access_contract_id "
+            "on artifacts to use contract-based permissions.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
 
-        # Owner always has access in legacy mode
-        if caller == artifact.owner_id:
-            return (True, "owner access")
+        # CAP-003: No special owner bypass. Delegate to freeware contract
+        # which properly handles owner access for write/delete/transfer actions.
+        freeware = get_genesis_contract("freeware")
 
-        # Check allow lists
-        allow_key = f"allow_{action}"
-        allow_list = policy.get(allow_key, [])
+        # Convert action string to PermissionAction
+        try:
+            perm_action = PermissionAction(action)
+        except ValueError:
+            return (False, f"legacy: unknown action {action}")
 
-        # Handle list-based policy
-        if isinstance(allow_list, list):
-            if "*" in allow_list or caller in allow_list:
-                return (True, f"in {allow_key} list")
+        context: dict[str, object] = {
+            "owner": artifact.owner_id,
+            "artifact_type": artifact.type,
+            "artifact_id": artifact.id,
+        }
 
-        return (False, f"not in {allow_key} list")
+        result = freeware.check_permission(
+            caller=caller,
+            action=perm_action,
+            target=artifact.id,
+            context=context,
+        )
+        return (result.allowed, f"legacy (freeware): {result.reason}")
 
     def _check_permission(
         self,

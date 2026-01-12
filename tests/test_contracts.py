@@ -4,6 +4,8 @@ Tests the core interfaces defined in src/world/contracts.py:
 - PermissionAction enum
 - PermissionResult dataclass
 - AccessContract protocol
+- ExecutableContract with dynamic code execution
+- ReadOnlyLedger wrapper for sandbox safety
 
 These tests verify the interfaces work correctly and that custom
 implementations can be created that satisfy the protocol.
@@ -18,9 +20,14 @@ import pytest
 
 from src.world.contracts import (
     AccessContract,
+    ContractExecutionError,
+    ContractTimeoutError,
+    ExecutableContract,
     PermissionAction,
     PermissionResult,
+    ReadOnlyLedger,
 )
+from src.world.ledger import Ledger
 
 
 class TestPermissionAction:
@@ -419,3 +426,721 @@ class TestPermissionResultUsagePatterns:
             [PermissionAction.READ, PermissionAction.WRITE],
             "artifact",
         )
+
+
+class TestReadOnlyLedger:
+    """Tests for the ReadOnlyLedger wrapper."""
+
+    def test_get_scrip(self) -> None:
+        """Verify get_scrip returns correct balance."""
+        ledger = Ledger()
+        ledger.create_principal("alice", starting_scrip=100)
+
+        readonly = ReadOnlyLedger(ledger)
+        assert readonly.get_scrip("alice") == 100
+        assert readonly.get_scrip("nonexistent") == 0
+
+    def test_can_afford_scrip(self) -> None:
+        """Verify can_afford_scrip checks correctly."""
+        ledger = Ledger()
+        ledger.create_principal("alice", starting_scrip=100)
+
+        readonly = ReadOnlyLedger(ledger)
+        assert readonly.can_afford_scrip("alice", 50) is True
+        assert readonly.can_afford_scrip("alice", 100) is True
+        assert readonly.can_afford_scrip("alice", 150) is False
+
+    def test_get_resource(self) -> None:
+        """Verify get_resource returns correct balance."""
+        ledger = Ledger()
+        ledger.create_principal("alice", starting_scrip=0, starting_resources={"compute": 500.0})
+
+        readonly = ReadOnlyLedger(ledger)
+        assert readonly.get_resource("alice", "compute") == 500.0
+        assert readonly.get_resource("alice", "nonexistent") == 0.0
+
+    def test_can_spend_resource(self) -> None:
+        """Verify can_spend_resource checks correctly."""
+        ledger = Ledger()
+        ledger.create_principal("alice", starting_scrip=0, starting_resources={"compute": 500.0})
+
+        readonly = ReadOnlyLedger(ledger)
+        assert readonly.can_spend_resource("alice", "compute", 250.0) is True
+        assert readonly.can_spend_resource("alice", "compute", 600.0) is False
+
+    def test_get_all_resources(self) -> None:
+        """Verify get_all_resources returns all resources."""
+        ledger = Ledger()
+        ledger.create_principal(
+            "alice",
+            starting_scrip=0,
+            starting_resources={"compute": 500.0, "disk": 1000.0}
+        )
+
+        readonly = ReadOnlyLedger(ledger)
+        resources = readonly.get_all_resources("alice")
+        assert resources == {"compute": 500.0, "disk": 1000.0}
+
+    def test_principal_exists(self) -> None:
+        """Verify principal_exists checks correctly."""
+        ledger = Ledger()
+        ledger.create_principal("alice", starting_scrip=100)
+
+        readonly = ReadOnlyLedger(ledger)
+        assert readonly.principal_exists("alice") is True
+        assert readonly.principal_exists("bob") is False
+
+    def test_no_write_methods(self) -> None:
+        """Verify ReadOnlyLedger has no write methods."""
+        ledger = Ledger()
+        readonly = ReadOnlyLedger(ledger)
+
+        # These methods should not exist on ReadOnlyLedger
+        assert not hasattr(readonly, "deduct_scrip")
+        assert not hasattr(readonly, "credit_scrip")
+        assert not hasattr(readonly, "transfer_scrip")
+        assert not hasattr(readonly, "spend_resource")
+        assert not hasattr(readonly, "credit_resource")
+
+
+class TestExecutableContract:
+    """Tests for ExecutableContract with dynamic code."""
+
+    def test_basic_allow_all(self) -> None:
+        """Test a simple contract that allows everything."""
+        contract = ExecutableContract(
+            contract_id="allow_all",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": True, "reason": "All access allowed", "cost": 0}
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+
+        assert result.allowed is True
+        assert result.reason == "All access allowed"
+        assert result.cost == 0
+
+    def test_basic_deny_all(self) -> None:
+        """Test a simple contract that denies everything."""
+        contract = ExecutableContract(
+            contract_id="deny_all",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": False, "reason": "No access allowed", "cost": 0}
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+
+        assert result.allowed is False
+        assert result.reason == "No access allowed"
+
+    def test_owner_only_access(self) -> None:
+        """Test a contract that allows only owner access."""
+        contract = ExecutableContract(
+            contract_id="owner_only",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    owner = context.get("owner")
+    if caller == owner:
+        return {"allowed": True, "reason": "Owner access", "cost": 0}
+    return {"allowed": False, "reason": "Only owner can access", "cost": 0}
+'''
+        )
+
+        # Owner access
+        result = contract.check_permission(
+            caller="alice",
+            action=PermissionAction.READ,
+            target="artifact_1",
+            context={"owner": "alice"},
+        )
+        assert result.allowed is True
+
+        # Non-owner access
+        result = contract.check_permission(
+            caller="bob",
+            action=PermissionAction.READ,
+            target="artifact_1",
+            context={"owner": "alice"},
+        )
+        assert result.allowed is False
+
+    def test_action_based_access(self) -> None:
+        """Test a contract with different rules per action."""
+        contract = ExecutableContract(
+            contract_id="action_based",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    if action in ("read", "execute", "invoke"):
+        return {"allowed": True, "reason": "Read access allowed", "cost": 0}
+    return {"allowed": False, "reason": "Write access denied", "cost": 0}
+'''
+        )
+
+        # Read should be allowed
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        assert result.allowed is True
+
+        # Write should be denied
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.WRITE,
+            target="artifact_1",
+        )
+        assert result.allowed is False
+
+    def test_pay_per_use_with_ledger(self) -> None:
+        """Test a pay-per-use contract that checks ledger balance."""
+        ledger = Ledger()
+        ledger.create_principal("rich_user", starting_scrip=100)
+        ledger.create_principal("poor_user", starting_scrip=5)
+
+        contract = ExecutableContract(
+            contract_id="pay_per_use",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    price = 10
+    if ledger is None:
+        return {"allowed": False, "reason": "Ledger required", "cost": 0}
+    if not ledger.can_afford_scrip(caller, price):
+        return {"allowed": False, "reason": "Insufficient scrip", "cost": 0}
+    return {"allowed": True, "reason": "Paid access", "cost": price}
+'''
+        )
+
+        # Rich user can afford
+        result = contract.check_permission(
+            caller="rich_user",
+            action=PermissionAction.INVOKE,
+            target="service_1",
+            ledger=ledger,
+        )
+        assert result.allowed is True
+        assert result.cost == 10
+
+        # Poor user cannot afford
+        result = contract.check_permission(
+            caller="poor_user",
+            action=PermissionAction.INVOKE,
+            target="service_1",
+            ledger=ledger,
+        )
+        assert result.allowed is False
+        assert "Insufficient" in result.reason
+
+    def test_time_based_access(self) -> None:
+        """Test a contract using time module."""
+        contract = ExecutableContract(
+            contract_id="time_based",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    # time module is pre-loaded in CONTRACT_ALLOWED_MODULES
+    current_time = time.time()
+    if current_time > 0:
+        return {"allowed": True, "reason": "Time check passed", "cost": 0}
+    return {"allowed": False, "reason": "Time check failed", "cost": 0}
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        assert result.allowed is True
+        assert "Time check passed" in result.reason
+
+    def test_math_module_available(self) -> None:
+        """Test that math module is available in contract code."""
+        contract = ExecutableContract(
+            contract_id="math_user",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    # Use math module
+    value = math.sqrt(16)
+    return {"allowed": value == 4.0, "reason": f"sqrt(16) = {value}", "cost": 0}
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        assert result.allowed is True
+
+    def test_json_module_available(self) -> None:
+        """Test that json module is available in contract code."""
+        contract = ExecutableContract(
+            contract_id="json_user",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    data = json.dumps({"key": "value"})
+    parsed = json.loads(data)
+    return {"allowed": parsed["key"] == "value", "reason": "JSON works", "cost": 0}
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        assert result.allowed is True
+
+    def test_random_module_available(self) -> None:
+        """Test that random module is available in contract code."""
+        contract = ExecutableContract(
+            contract_id="random_user",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    random.seed(42)
+    value = random.randint(1, 100)
+    return {"allowed": 1 <= value <= 100, "reason": f"Random: {value}", "cost": 0}
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        assert result.allowed is True
+
+    def test_empty_code_fails(self) -> None:
+        """Test that empty code fails validation."""
+        contract = ExecutableContract(
+            contract_id="empty",
+            code=""
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        assert result.allowed is False
+        assert "Empty" in result.reason or "Invalid" in result.reason
+
+    def test_missing_check_permission_fails(self) -> None:
+        """Test that code without check_permission fails."""
+        contract = ExecutableContract(
+            contract_id="no_check",
+            code='''
+def some_other_function():
+    return True
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        assert result.allowed is False
+        assert "check_permission" in result.reason
+
+    def test_syntax_error_fails(self) -> None:
+        """Test that syntax errors are caught."""
+        contract = ExecutableContract(
+            contract_id="syntax_error",
+            code='''
+def check_permission(caller, action, target, context, ledger
+    return {"allowed": True}
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        assert result.allowed is False
+        assert "Syntax" in result.reason or "syntax" in result.reason
+
+    def test_runtime_error_caught(self) -> None:
+        """Test that runtime errors are caught gracefully."""
+        contract = ExecutableContract(
+            contract_id="runtime_error",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    x = 1 / 0  # Division by zero
+    return {"allowed": True, "reason": "ok", "cost": 0}
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        assert result.allowed is False
+        assert "ZeroDivision" in result.reason or "error" in result.reason.lower()
+
+    def test_invalid_return_type_handled(self) -> None:
+        """Test that invalid return types are handled."""
+        contract = ExecutableContract(
+            contract_id="bad_return",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return "not a dict"
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        assert result.allowed is False
+        assert "invalid" in result.reason.lower() or "type" in result.reason.lower()
+
+    def test_invalid_allowed_type_handled(self) -> None:
+        """Test that invalid allowed type is handled."""
+        contract = ExecutableContract(
+            contract_id="bad_allowed",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": "yes", "reason": "test", "cost": 0}
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        assert result.allowed is False
+        assert "bool" in result.reason.lower()
+
+    def test_cost_conversion(self) -> None:
+        """Test that cost is properly converted to int."""
+        contract = ExecutableContract(
+            contract_id="float_cost",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": True, "reason": "test", "cost": 10.5}
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        assert result.allowed is True
+        assert result.cost == 10
+        assert isinstance(result.cost, int)
+
+    def test_negative_cost_becomes_zero(self) -> None:
+        """Test that negative cost becomes zero."""
+        contract = ExecutableContract(
+            contract_id="negative_cost",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": True, "reason": "test", "cost": -5}
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        assert result.allowed is True
+        assert result.cost == 0
+
+    def test_dangerous_builtins_removed(self) -> None:
+        """Test that dangerous builtins are not available."""
+        # Test open
+        contract = ExecutableContract(
+            contract_id="try_open",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    try:
+        f = open("/etc/passwd")
+        return {"allowed": True, "reason": "opened file", "cost": 0}
+    except NameError:
+        return {"allowed": False, "reason": "open not available", "cost": 0}
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        # open should not be available
+        assert result.allowed is False
+        assert "open not available" in result.reason
+
+    def test_eval_not_available(self) -> None:
+        """Test that eval is not available in contract code."""
+        contract = ExecutableContract(
+            contract_id="try_eval",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    try:
+        result = eval("1 + 1")
+        return {"allowed": True, "reason": "eval works", "cost": 0}
+    except NameError:
+        return {"allowed": False, "reason": "eval not available", "cost": 0}
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        assert result.allowed is False
+        assert "eval not available" in result.reason
+
+    def test_exec_not_available(self) -> None:
+        """Test that exec is not available in contract code."""
+        contract = ExecutableContract(
+            contract_id="try_exec",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    try:
+        exec("x = 1")
+        return {"allowed": True, "reason": "exec works", "cost": 0}
+    except NameError:
+        return {"allowed": False, "reason": "exec not available", "cost": 0}
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        assert result.allowed is False
+        assert "exec not available" in result.reason
+
+    def test_import_not_available(self) -> None:
+        """Test that __import__ is not available in contract code."""
+        contract = ExecutableContract(
+            contract_id="try_import",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    try:
+        os = __import__("os")
+        return {"allowed": True, "reason": "import works", "cost": 0}
+    except NameError:
+        return {"allowed": False, "reason": "import not available", "cost": 0}
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+        assert result.allowed is False
+        assert "import not available" in result.reason
+
+    def test_context_passed_correctly(self) -> None:
+        """Test that context is passed correctly to contract code."""
+        contract = ExecutableContract(
+            contract_id="context_check",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    owner = context.get("owner", "unknown")
+    artifact_type = context.get("artifact_type", "unknown")
+    tick = context.get("tick", -1)
+    return {
+        "allowed": True,
+        "reason": f"owner={owner}, type={artifact_type}, tick={tick}",
+        "cost": 0
+    }
+'''
+        )
+
+        result = contract.check_permission(
+            caller="alice",
+            action=PermissionAction.READ,
+            target="artifact_1",
+            context={"owner": "bob", "artifact_type": "code", "tick": 42},
+        )
+        assert result.allowed is True
+        assert "owner=bob" in result.reason
+        assert "type=code" in result.reason
+        assert "tick=42" in result.reason
+
+    def test_contract_type_is_executable(self) -> None:
+        """Test that contract_type is 'executable'."""
+        contract = ExecutableContract(
+            contract_id="test",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": True, "reason": "ok", "cost": 0}
+'''
+        )
+
+        assert contract.contract_type == "executable"
+
+    def test_contract_id_stored(self) -> None:
+        """Test that contract_id is stored correctly."""
+        contract = ExecutableContract(
+            contract_id="my_custom_contract",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": True, "reason": "ok", "cost": 0}
+'''
+        )
+
+        assert contract.contract_id == "my_custom_contract"
+
+    def test_ledger_none_handled(self) -> None:
+        """Test that None ledger is handled gracefully."""
+        contract = ExecutableContract(
+            contract_id="ledger_check",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    if ledger is None:
+        return {"allowed": True, "reason": "No ledger, free access", "cost": 0}
+    return {"allowed": True, "reason": "Ledger present", "cost": 0}
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+            ledger=None,
+        )
+        assert result.allowed is True
+        assert "No ledger" in result.reason
+
+
+class TestExecutableContractWithExecutor:
+    """Tests for ExecutableContract integration with SafeExecutor."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        from src.world.executor import SafeExecutor
+        from src.world.artifacts import Artifact
+        from datetime import datetime
+
+        self.ledger = Ledger()
+        self.ledger.create_principal("rich_user", starting_scrip=100)
+        self.ledger.create_principal("poor_user", starting_scrip=5)
+        self.ledger.create_principal("owner", starting_scrip=50)
+
+        self.executor = SafeExecutor(timeout=5, use_contracts=True, ledger=self.ledger)
+
+        # Create test artifact
+        self.artifact = Artifact(
+            id="test_artifact",
+            type="test",
+            content="test content",
+            owner_id="owner",
+            created_at=datetime.utcnow().isoformat(),
+            updated_at=datetime.utcnow().isoformat(),
+        )
+
+    def test_register_executable_contract(self) -> None:
+        """Test registering an executable contract with executor."""
+        contract = ExecutableContract(
+            contract_id="custom_pay_per_use",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    price = 10
+    if ledger and not ledger.can_afford_scrip(caller, price):
+        return {"allowed": False, "reason": "Insufficient scrip", "cost": 0}
+    return {"allowed": True, "reason": "Paid access", "cost": price}
+'''
+        )
+
+        self.executor.register_executable_contract(contract)
+
+        # Verify contract is cached
+        assert "custom_pay_per_use" in self.executor._contract_cache
+        assert self.executor._contract_cache["custom_pay_per_use"] is contract
+
+    def test_executable_contract_permission_check(self) -> None:
+        """Test permission check via executable contract."""
+        contract = ExecutableContract(
+            contract_id="custom_contract",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    price = 10
+    if ledger and not ledger.can_afford_scrip(caller, price):
+        return {"allowed": False, "reason": "Insufficient scrip", "cost": 0}
+    return {"allowed": True, "reason": "Paid access", "cost": price}
+'''
+        )
+
+        self.executor.register_executable_contract(contract)
+
+        # Set artifact to use this contract
+        self.artifact.access_contract_id = "custom_contract"  # type: ignore[attr-defined]
+
+        # Rich user should be allowed
+        result = self.executor._check_permission_via_contract(
+            "rich_user", "read", self.artifact
+        )
+        assert result.allowed is True
+        assert result.cost == 10
+
+        # Poor user should be denied
+        result = self.executor._check_permission_via_contract(
+            "poor_user", "read", self.artifact
+        )
+        assert result.allowed is False
+        assert "Insufficient" in result.reason
+
+    def test_set_ledger(self) -> None:
+        """Test setting ledger on executor."""
+        from src.world.executor import SafeExecutor
+
+        executor = SafeExecutor(timeout=5)
+        assert executor._ledger is None
+
+        executor.set_ledger(self.ledger)
+        assert executor._ledger is self.ledger
+
+    def test_fallback_to_genesis_contracts(self) -> None:
+        """Test that unknown contracts fall back to freeware."""
+        # Set artifact to use unknown contract
+        self.artifact.access_contract_id = "nonexistent_contract"  # type: ignore[attr-defined]
+
+        # Should fall back to freeware (allow read)
+        result = self.executor._check_permission_via_contract(
+            "anyone", "read", self.artifact
+        )
+        assert result.allowed is True
+        assert "freeware" in result.reason.lower()
+
+    def test_genesis_contracts_still_work(self) -> None:
+        """Test that genesis contracts still work with executable contract support."""
+        # Use private contract
+        self.artifact.access_contract_id = "genesis_contract_private"  # type: ignore[attr-defined]
+
+        # Owner should have access
+        result = self.executor._check_permission_via_contract(
+            "owner", "read", self.artifact
+        )
+        assert result.allowed is True
+
+        # Non-owner should be denied
+        result = self.executor._check_permission_via_contract(
+            "stranger", "read", self.artifact
+        )
+        assert result.allowed is False

@@ -143,6 +143,38 @@ genesis:
         description: <string>
 
 # -----------------------------------------------------------------------------
+# RATE LIMITING
+# Rolling window rate limiting (time-based, not tick-based)
+# -----------------------------------------------------------------------------
+rate_limiting:
+  enabled: <boolean>              # Enable rate limiting (default: false)
+  window_seconds: <number>        # Rolling window duration (default: 60.0)
+  resources:                      # Per-resource limits
+    llm_calls:
+      max_per_window: <number>    # Max LLM API calls per window
+    disk_writes:
+      max_per_window: <number>    # Max disk write operations per window
+    bandwidth_bytes:
+      max_per_window: <number>    # Max bytes transferred per window
+
+# -----------------------------------------------------------------------------
+# EXECUTION
+# Agent execution model settings
+# -----------------------------------------------------------------------------
+execution:
+  use_autonomous_loops: <boolean>  # Enable continuous autonomous loops (default: false)
+  agent_loop:
+    min_loop_delay: <number>       # Minimum seconds between actions (default: 0.1)
+    max_loop_delay: <number>       # Maximum backoff delay on errors (default: 10.0)
+    resource_check_interval: <number>  # Seconds between resource checks when paused (default: 1.0)
+    max_consecutive_errors: <number>   # Errors before forced pause (default: 5)
+    resources_to_check:            # Resource types to check before each iteration
+      - <string>                   # e.g., "llm_calls", "disk_writes", "bandwidth_bytes"
+    resource_exhaustion_policy: <string>  # Policy when resources exhausted: "skip" or "block" (default: "skip")
+                                          # - "skip": Skip action, sleep briefly, try again next iteration
+                                          # - "block": Block until capacity available using wait_for_capacity
+
+# -----------------------------------------------------------------------------
 # EXECUTOR
 # Code execution settings
 # -----------------------------------------------------------------------------

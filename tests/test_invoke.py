@@ -260,7 +260,11 @@ class TestInvokePermissions:
         self.ledger.create_principal("allowed", starting_scrip=50, starting_compute=50)
 
     def test_invoke_permission_denied(self) -> None:
-        """Test invoke() when caller not in allow_invoke list."""
+        """Test invoke() when caller doesn't have permission.
+
+        Per CAP-003, permissions are contract-based. This test uses the
+        'private' contract which only allows owner access.
+        """
         target_code = """
 def run(*args):
     return "secret"
@@ -268,8 +272,10 @@ def run(*args):
         target = make_artifact(
             "restricted",
             target_code,
-            allow_invoke=["allowed"],  # Only 'allowed' can invoke
+            owner_id="owner",  # Only owner can invoke
         )
+        # Use private contract - only owner can access
+        target.access_contract_id = "genesis_contract_private"  # type: ignore[attr-defined]
         self.store.artifacts["restricted"] = target
 
         caller_code = """
@@ -280,7 +286,7 @@ def run(*args):
         result = self.executor.execute_with_invoke(
             code=caller_code,
             args=[],
-            caller_id="caller",  # Not in allow_invoke
+            caller_id="caller",  # Not the owner
             artifact_id="caller_artifact",
             ledger=self.ledger,
             artifact_store=self.store,
@@ -288,7 +294,8 @@ def run(*args):
 
         assert result["success"] is True
         assert result["result"]["success"] is False
-        assert "not allowed" in result["result"]["error"]
+        # Private contract denies access with "access denied" or "private"
+        assert "denied" in result["result"]["error"].lower() or "private" in result["result"]["error"].lower()
 
     def test_invoke_insufficient_scrip(self) -> None:
         """Test invoke() when caller can't afford price."""

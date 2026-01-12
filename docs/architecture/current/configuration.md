@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-12
+**Last verified:** 2026-01-12 (Phase 2 integration)
 
 ---
 
@@ -85,6 +85,35 @@ scrip:
 costs:
   per_1k_input_tokens: 1    # Compute cost per 1K input
   per_1k_output_tokens: 3   # Compute cost per 1K output
+```
+
+### Execution (Phase 2)
+
+```yaml
+execution:
+  use_autonomous_loops: false     # Enable autonomous agent loops
+  resource_exhaustion_policy: skip  # "skip" or "block"
+```
+
+### Rate Limiting (Phase 2)
+
+```yaml
+rate_limiting:
+  enabled: false                  # Enable RateTracker
+  window_seconds: 60.0            # Rolling window duration
+  resources:
+    llm_calls:
+      max_per_window: 100
+    disk_writes:
+      max_per_window: 50
+```
+
+### Executor (Phase 2)
+
+```yaml
+executor:
+  use_contracts: false            # Enable contract-based permissions
+  timeout_seconds: 5              # Code execution timeout
 ```
 
 ### Genesis Artifacts

@@ -1,0 +1,213 @@
+# Consolidated Gap Analysis Summary
+# Generated: 2026-01-12
+# Methodology: docs/architecture/GAP_IDENTIFICATION_METHODOLOGY.md
+
+metadata:
+  created: 2026-01-12
+  total_gaps: 142
+  sources:
+    current: docs/architecture/current/
+    target: docs/architecture/target/
+  workstream_files:
+    - ws1_execution_model.yaml
+    - ws2_agents.yaml
+    - ws3_resources.yaml
+    - ws4_genesis.yaml
+    - ws5_artifacts.yaml
+    - ws6_infrastructure.yaml
+
+# =============================================================================
+# GAP SUMMARY BY WORKSTREAM
+# =============================================================================
+
+workstream_summary:
+  - id: WS-1
+    name: "Execution Model"
+    file: ws1_execution_model.yaml
+    gap_count: 23
+    key_gaps:
+      - GAP-EXEC-001: "Continuous autonomous agent loops (XL, high risk)"
+      - GAP-EXEC-002: "Agent sleep system with wake conditions"
+      - GAP-EXEC-017: "Worker process isolation pattern (XL)"
+    description: |
+      Transform from tick-synchronized execution to continuous autonomous agent loops.
+      The most fundamental architectural change - agents become self-driving.
+
+  - id: WS-2
+    name: "Agents"
+    file: ws2_agents.yaml
+    gap_count: 22
+    key_gaps:
+      - GAP-AGENT-001: "Unified ontology - agents as artifacts (XL)"
+      - GAP-AGENT-002: "Autonomous agent execution loop"
+      - GAP-AGENT-006: "Memory as separate tradeable artifact"
+      - GAP-AGENT-009: "Event bus for agent wake triggers"
+    description: |
+      Agents become artifacts with has_standing=true. Memory becomes independently
+      tradeable. Agents own their execution loop and can be bought/sold.
+
+  - id: WS-3
+    name: "Resources"
+    file: ws3_resources.yaml
+    gap_count: 30
+    key_gaps:
+      - GAP-RES-001: "RateTracker class - rolling window rate limiting"
+      - GAP-RES-008: "ProcessPoolExecutor for action execution"
+      - GAP-RES-018: "Remove tick-based reset behavior"
+      - GAP-RES-019: "Action blocking vs skip on resource exhaustion"
+    description: |
+      Three-category resource model (depletable/allocatable/renewable).
+      Rolling window rate limiting replaces tick-based refresh.
+      All quotas become tradeable.
+
+  - id: WS-4
+    name: "Genesis Artifacts"
+    file: ws4_genesis.yaml
+    gap_count: 27
+    key_gaps:
+      - GAP-GEN-001: "Contract-based access control system (XL)"
+      - GAP-GEN-003: "Genesis contracts (freeware, self_owned, private, public)"
+      - GAP-GEN-020: "Anytime bidding replaces tick-based windows"
+      - GAP-GEN-034: "Custom contract support"
+    description: |
+      Access control moves from inline policies to contract artifacts.
+      Oracle shifts from tick-based to time-based resolution.
+      Four genesis contracts provide default access patterns.
+
+  - id: WS-5
+    name: "Artifacts & Executor"
+    file: ws5_artifacts.yaml
+    gap_count: 22
+    key_gaps:
+      - GAP-ART-001: "access_contract_id field replaces policy dict"
+      - GAP-ART-006: "Genesis contracts creation"
+      - GAP-ART-008: "Remove owner bypass (high risk)"
+      - GAP-ART-010: "check_permission interface standard"
+    description: |
+      Policy dicts replaced by contract references. Owner bypass removed.
+      Contracts become the ONLY authority for permissions.
+      New action types: delete, transfer.
+
+  - id: WS-6
+    name: "Infrastructure"
+    file: ws6_infrastructure.yaml
+    gap_count: 18
+    key_gaps:
+      - GAP-INFRA-001: "Docker containerization"
+      - GAP-INFRA-006: "PostgreSQL for distributed ledger"
+      - GAP-INFRA-007: "Redis event bus"
+      - GAP-INFRA-011: "Local LLM support (XL)"
+    description: |
+      Docker isolation, multi-container scaling with PostgreSQL/Redis,
+      Git-backed artifact store, local LLM support.
+
+# =============================================================================
+# COMPLEXITY DISTRIBUTION
+# =============================================================================
+
+complexity_summary:
+  S: 41   # < 50 lines
+  M: 60   # 50-200 lines
+  L: 31   # 200-500 lines
+  XL: 10  # > 500 lines, cross-component
+
+# =============================================================================
+# RISK DISTRIBUTION
+# =============================================================================
+
+risk_summary:
+  low: 48
+  medium: 68
+  high: 26
+
+# =============================================================================
+# CRITICAL PATH - FOUNDATIONAL GAPS
+# =============================================================================
+
+critical_path:
+  description: |
+    These gaps must be addressed first as they are foundational.
+    Other gaps depend on these being complete.
+
+  phase_1_foundations:
+    - GAP-EXEC-001: "Continuous autonomous agent loops"
+    - GAP-AGENT-001: "Unified ontology - agents as artifacts"
+    - GAP-GEN-001: "Contract-based access control system"
+    - GAP-RES-001: "RateTracker class"
+
+  phase_2_core_systems:
+    - GAP-EXEC-002: "Agent sleep system"
+    - GAP-GEN-003: "Genesis contracts"
+    - GAP-ART-001: "access_contract_id field"
+    - GAP-RES-008: "ProcessPoolExecutor"
+
+  phase_3_integration:
+    - GAP-AGENT-009: "Event bus for wake triggers"
+    - GAP-ART-008: "Remove owner bypass"
+    - GAP-RES-018: "Remove tick-based reset"
+    - GAP-INFRA-001: "Docker containerization"
+
+# =============================================================================
+# PARALLELIZABLE WORKSTREAMS
+# =============================================================================
+
+parallel_workstreams:
+  description: |
+    Groups of gaps that can be worked on simultaneously because they
+    don't have dependencies on each other.
+
+  stream_A_execution:
+    name: "Execution Model Transformation"
+    gaps_from: [WS-1, WS-2]
+    key_changes:
+      - Autonomous agent loops
+      - Agent sleep system
+      - Agents as artifacts
+    can_parallel_with: [stream_C_infrastructure]
+
+  stream_B_access_control:
+    name: "Contract-Based Access Control"
+    gaps_from: [WS-4, WS-5]
+    key_changes:
+      - Contract system
+      - Genesis contracts
+      - Remove owner bypass
+    can_parallel_with: [stream_C_infrastructure]
+
+  stream_C_infrastructure:
+    name: "Infrastructure & Resources"
+    gaps_from: [WS-3, WS-6]
+    key_changes:
+      - RateTracker
+      - Docker isolation
+      - Distributed storage
+    can_parallel_with: [stream_A_execution, stream_B_access_control]
+
+# =============================================================================
+# IMPLEMENTATION RECOMMENDATIONS
+# =============================================================================
+
+recommendations:
+  - title: "Start with foundations"
+    description: |
+      Phase 1 gaps (4 items) must complete before major progress elsewhere.
+      These are: autonomous loops, unified ontology, contract system, rate tracker.
+
+  - title: "Parallel workstreams after Phase 1"
+    description: |
+      After Phase 1, three parallel workstreams can proceed:
+      - Stream A: Execution model (WS-1 + WS-2)
+      - Stream B: Access control (WS-4 + WS-5)
+      - Stream C: Infrastructure (WS-3 + WS-6)
+
+  - title: "High-risk gaps need careful review"
+    description: |
+      26 high-risk gaps identified. Key ones:
+      - GAP-EXEC-001: Core execution model change
+      - GAP-ART-008: Removing owner bypass (security implications)
+      - GAP-INFRA-011: Local LLM support (complexity)
+
+  - title: "Some gaps may be deferrable"
+    description: |
+      Infrastructure gaps (WS-6) are largely additive and can be done last.
+      Focus on execution model and access control first.

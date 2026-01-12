@@ -1,0 +1,799 @@
+# WS-2: Agents Gap Analysis
+# Generated: 2026-01-12
+# Methodology: GAP_IDENTIFICATION_METHODOLOGY.md
+# Current: docs/architecture/current/agents.md
+# Target: docs/architecture/target/03_agents.md
+
+metadata:
+  workstream: WS-2
+  component: agents
+  current_doc: docs/architecture/current/agents.md
+  target_doc: docs/architecture/target/03_agents.md
+  created: 2026-01-12
+
+gaps:
+  # =============================================================================
+  # CAPABILITIES GAPS
+  # =============================================================================
+
+  - id: GAP-AGENT-001
+    component: agents
+    dimension: capabilities
+    title: "Unified ontology - agents as artifacts"
+    current_state: |
+      Agents are a separate concept from artifacts. Agent class has its own
+      structure (agent_id, system_prompt, llm_model, etc.) distinct from artifacts.
+      Agents cannot be owned or traded.
+    target_state: |
+      Agents are artifacts with specific properties:
+      - id: Universal ID in single namespace
+      - content: Config, prompt, code
+      - access_contract_id: Who answers permission questions
+      - has_standing: true (can hold scrip, bear costs)
+      - can_execute: true (has runnable code)
+
+      This enables agents to be ownable property in a single namespace.
+    delta: |
+      - Refactor Agent class to extend/implement Artifact
+      - Add has_standing and can_execute properties
+      - Move agent_id to unified artifact id namespace
+      - Make agents discoverable via genesis_store
+      - Enable agent ownership and trading
+    dependencies: []
+    complexity: XL
+    risk: high
+    files_affected:
+      - src/agents/agent.py
+      - src/world/artifacts.py
+      - src/world/genesis.py
+      - src/agents/loader.py
+    acceptance_criteria:
+      - Agents implement Artifact interface
+      - Agent IDs are in unified namespace with artifacts
+      - genesis_store can list agents
+      - Agents can be owned by other principals
+
+  - id: GAP-AGENT-002
+    component: agents
+    dimension: capabilities
+    title: "Autonomous agent execution loop"
+    current_state: |
+      Agents are passive. The system controls execution:
+      1. System calls agent.propose_action_async(world_state)
+      2. Agent builds prompt, calls LLM, returns action
+      3. System executes action and provides result
+
+      Agents get exactly one action per tick.
+    target_state: |
+      Agents control their own execution via async run() loop:
+      - while self.alive: observe -> think -> act
+      - Actions whenever resources allow (not tick-bound)
+      - Self-managed sleep and wake
+      - Optional self-imposed think_delay
+    delta: |
+      - Add async run() method to Agent class
+      - Remove propose_action_async() system-driven approach
+      - Implement resource-based execution gating
+      - Add self.alive flag and lifecycle management
+      - Integrate with event loop for async execution
+    dependencies:
+      - GAP-AGENT-001
+    complexity: XL
+    risk: high
+    files_affected:
+      - src/agents/agent.py
+      - src/simulation/runner.py
+      - src/world/world.py
+    acceptance_criteria:
+      - Agents run their own async loop
+      - Multiple actions per "tick" when resources allow
+      - Agents can self-terminate loop
+      - Runner orchestrates agent loops, not individual actions
+
+  - id: GAP-AGENT-003
+    component: agents
+    dimension: capabilities
+    title: "Agent sleep mechanics"
+    current_state: |
+      Agents cannot sleep. They are always asked to act every tick.
+      No sleep primitives exist.
+    target_state: |
+      Agents choose when to sleep via multiple mechanisms:
+      - Duration-based: await self.sleep(seconds=60)
+      - Event-based: await self.sleep_until_event("escrow_listing")
+      - Condition-based: await self.sleep_until(lambda: self.scrip > 100)
+
+      Benefits: conserve compute, wait for conditions, strategic timing.
+    delta: |
+      - Add sleep() method with duration parameter
+      - Add sleep_until_event() method with event type
+      - Add sleep_until() method with condition lambda
+      - Implement wake condition checking
+      - Track is_sleeping state in agent
+    dependencies:
+      - GAP-AGENT-002
+      - GAP-AGENT-006
+    complexity: L
+    risk: medium
+    files_affected:
+      - src/agents/agent.py
+    acceptance_criteria:
+      - Agent can sleep for specified duration
+      - Agent can sleep until specific event type
+      - Agent can sleep until condition is met
+      - Sleeping agent does not consume compute
+
+  - id: GAP-AGENT-004
+    component: agents
+    dimension: capabilities
+    title: "Agent configuration rights trading"
+    current_state: |
+      Agent configuration is static, loaded from agent.yaml.
+      Agents cannot modify their own config.
+      Agents cannot trade or sell configuration rights.
+    target_state: |
+      Agents own their configuration and can:
+      - Modify: LLM model, system prompt, sleep behavior, think delay
+      - Sell config rights to other agents
+      - Enable delegation, subsidiary agents, employment relationships
+
+      New owner can modify prompt, model, etc. while agent continues running.
+    delta: |
+      - Create config rights as tradeable artifacts
+      - Add config modification API to agents
+      - Implement access_contract_id for config control
+      - Enable ownership transfer of config rights
+      - Handle identity continuity during ownership change
+    dependencies:
+      - GAP-AGENT-001
+    complexity: L
+    risk: medium
+    files_affected:
+      - src/agents/agent.py
+      - src/world/genesis.py
+      - src/agents/loader.py
+    acceptance_criteria:
+      - Agent can modify its own configuration
+      - Config rights can be sold via escrow
+      - New owner can modify agent's prompt/model
+      - Agent continues running under new ownership
+
+  - id: GAP-AGENT-005
+    component: agents
+    dimension: capabilities
+    title: "Agent spawning via genesis_store"
+    current_state: |
+      Agents are loaded from agents/ directory at startup.
+      No dynamic agent creation during simulation.
+      Agents cannot create other agents.
+    target_state: |
+      Agents create new agents via genesis_store.create():
+      - invoke("genesis_store", "create", {content, has_standing, can_execute, ...})
+      - New agent starts with 0 scrip, 0 compute
+      - Spawner must transfer resources to make viable
+      - Ownership configurable: self-owned, creator-owned, or contract-based
+    delta: |
+      - Add agent creation to genesis_store
+      - Implement artifact creation with has_standing=True, can_execute=True
+      - Add resource transfer from spawner to new agent
+      - Support different ownership models via access_contract_id
+      - Start new agent's async loop after creation
+    dependencies:
+      - GAP-AGENT-001
+      - GAP-AGENT-002
+    complexity: L
+    risk: medium
+    files_affected:
+      - src/world/genesis.py
+      - src/agents/agent.py
+      - src/simulation/runner.py
+    acceptance_criteria:
+      - Agent can invoke genesis_store to create new agent
+      - New agent starts with zero resources
+      - Spawner can transfer resources to new agent
+      - New agent begins executing in its own loop
+
+  # =============================================================================
+  # DATA MODEL GAPS
+  # =============================================================================
+
+  - id: GAP-AGENT-006
+    component: agents
+    dimension: data_model
+    title: "Memory as separate artifact"
+    current_state: |
+      Agent has memory field pointing to shared AgentMemory singleton.
+      Memory is implicitly tied to agent, not a separate entity.
+      Memory cannot be traded or owned separately.
+    target_state: |
+      Each agent has memory_artifact_id pointing to separate memory artifact:
+      - Memory artifact: {id, has_standing: false, can_execute: false, content: {storage_type, collection_id, embedding_model, vector_size}}
+      - Memory has own access_contract_id for independent access control
+      - Enables: sell config only (factory reset), sell both (full transfer), sell memory only (knowledge transfer)
+    delta: |
+      - Create memory artifact type
+      - Add memory_artifact_id field to agent
+      - Separate memory ownership from agent ownership
+      - Implement memory artifact creation during agent spawn
+      - Support memory artifact trading scenarios
+    dependencies:
+      - GAP-AGENT-001
+    complexity: L
+    risk: medium
+    files_affected:
+      - src/agents/agent.py
+      - src/agents/memory.py
+      - src/world/artifacts.py
+    acceptance_criteria:
+      - Agent has memory_artifact_id field
+      - Memory artifact is separate from agent artifact
+      - Memory artifact has own access_contract_id
+      - Memory can be traded independently
+
+  - id: GAP-AGENT-007
+    component: agents
+    dimension: data_model
+    title: "Agent state machine (active/blocked/dormant)"
+    current_state: |
+      No explicit agent state tracking.
+      Agents are always active (asked to act each tick).
+      No concept of blocked or dormant states.
+    target_state: |
+      Agents have explicit states:
+      - Active: Running normally
+      - Blocked: Insufficient rate capacity, waiting for window or quota transfer
+      - Dormant: No actions for extended period, any stimulus can wake
+
+      State transitions are observable and affect behavior.
+    delta: |
+      - Add state field to Agent (active/blocked/dormant)
+      - Implement state transition logic
+      - Block on insufficient rate capacity
+      - Transition to dormant after inactivity period
+      - Implement wake-from-dormant triggers
+    dependencies:
+      - GAP-AGENT-002
+    complexity: M
+    risk: low
+    files_affected:
+      - src/agents/agent.py
+    acceptance_criteria:
+      - Agent has explicit state field
+      - Agent transitions to blocked on resource exhaustion
+      - Agent transitions to dormant after inactivity
+      - State transitions are logged
+
+  - id: GAP-AGENT-008
+    component: agents
+    dimension: data_model
+    title: "Agent subscriptions persistence"
+    current_state: |
+      No event subscription system.
+      Agents cannot subscribe to events.
+    target_state: |
+      Subscriptions stored in agent state:
+      - agent.subscriptions = ["escrow_listing", "transfer_received"]
+      - Subscriptions restored on agent restart
+      - Subscriptions persist across checkpoints
+    delta: |
+      - Add subscriptions list to Agent
+      - Persist subscriptions in checkpoint
+      - Restore subscriptions on agent reload
+      - Integrate with event bus subscription API
+    dependencies:
+      - GAP-AGENT-006
+    complexity: S
+    risk: low
+    files_affected:
+      - src/agents/agent.py
+      - src/simulation/checkpoint.py
+    acceptance_criteria:
+      - Agent has subscriptions field
+      - Subscriptions survive checkpoint/restore
+      - Agent re-subscribes on restart
+
+  # =============================================================================
+  # INTERFACES GAPS
+  # =============================================================================
+
+  - id: GAP-AGENT-009
+    component: agents
+    dimension: interfaces
+    title: "Event bus for agent wake triggers"
+    current_state: |
+      No event bus exists.
+      Agents cannot subscribe to or wait for events.
+      No publish/subscribe mechanism.
+    target_state: |
+      EventBus class with methods:
+      - subscribe(agent_id, event_type)
+      - unsubscribe(agent_id, event_type)
+      - wait_for(agent_id, event_type, filter_fn) - blocks until event
+      - publish(event) - notifies all subscribers
+
+      Event types: escrow_listing, escrow_sale, oracle_resolution,
+      transfer_received, artifact_created, agent_blocked, agent_unblocked
+    delta: |
+      - Create EventBus class
+      - Implement subscribe/unsubscribe methods
+      - Implement blocking wait_for method
+      - Implement publish with subscriber notification
+      - Define standard event types and payloads
+      - Integrate with sleep mechanics
+    dependencies: []
+    complexity: L
+    risk: medium
+    files_affected:
+      - src/world/event_bus.py (new)
+      - src/world/world.py
+      - src/agents/agent.py
+    acceptance_criteria:
+      - EventBus class exists with all methods
+      - Agents can subscribe to event types
+      - wait_for blocks until matching event
+      - Standard events are published by system
+
+  - id: GAP-AGENT-010
+    component: agents
+    dimension: interfaces
+    title: "Enhanced AgentMemory interface with quota tracking"
+    current_state: |
+      AgentMemory methods:
+      - record_action(agent_id, action_type, details, success)
+      - get_relevant_memories(agent_id, context, limit=5)
+
+      Uses Mem0 + Qdrant. No quota tracking.
+    target_state: |
+      AgentMemory methods:
+      - store(text, metadata) -> memory_id (with quota check)
+      - recall(query, limit) -> list[dict] with scores
+      - clear() - wipe all memories (requires owner permission)
+
+      Memory quota tracked: len(text.encode()) + EMBEDDING_SIZE per memory.
+      QuotaExceeded exception if memory quota exceeded.
+    delta: |
+      - Refactor record_action to store()
+      - Add recall() method with scores
+      - Add clear() method with permission check
+      - Implement memory quota tracking
+      - Raise QuotaExceeded on exceeded quota
+      - Track memory usage against allocatable memory resource
+    dependencies:
+      - GAP-AGENT-006
+    complexity: M
+    risk: low
+    files_affected:
+      - src/agents/memory.py
+    acceptance_criteria:
+      - store() method exists with quota check
+      - recall() returns memories with scores
+      - clear() wipes memories with permission check
+      - Memory usage tracked against quota
+
+  - id: GAP-AGENT-011
+    component: agents
+    dimension: interfaces
+    title: "Agent observe/think/act methods"
+    current_state: |
+      Agent has:
+      - build_prompt(world_state)
+      - propose_action_async(world_state) - called by system
+
+      World state passed in by runner.
+    target_state: |
+      Agent has autonomous methods:
+      - observe() - agent fetches world state
+      - think(world_state) -> action (async LLM call)
+      - act(action) -> result (executes action)
+
+      Agent controls when to call each method.
+    delta: |
+      - Add observe() method that fetches world state
+      - Rename/refactor propose_action_async to think()
+      - Add act() method that executes action
+      - Remove runner-driven propose_action_async pattern
+    dependencies:
+      - GAP-AGENT-002
+    complexity: M
+    risk: medium
+    files_affected:
+      - src/agents/agent.py
+      - src/simulation/runner.py
+    acceptance_criteria:
+      - Agent has observe(), think(), act() methods
+      - observe() returns current world state
+      - Agent controls invocation of these methods
+
+  # =============================================================================
+  # BEHAVIORS GAPS
+  # =============================================================================
+
+  - id: GAP-AGENT-012
+    component: agents
+    dimension: behaviors
+    title: "No death policy - identity persistence"
+    current_state: |
+      No explicit death or lifecycle policy.
+      Agents exist as long as simulation runs.
+      No blocked/dormant state handling.
+    target_state: |
+      Agents never die, only states change:
+      - Active: Running normally
+      - Blocked: Waiting for rate capacity (vulture rescue possible)
+      - Dormant: Extended inactivity, any stimulus wakes
+
+      Identity persists forever: audit trail preserved, shell remains in registry,
+      enables future resurrection if funded.
+    delta: |
+      - Implement no-death policy
+      - Ensure agent IDs never recycled
+      - Keep agent shell in registry even if all resources gone
+      - Preserve complete audit trail
+      - Enable resurrection via resource transfer
+    dependencies:
+      - GAP-AGENT-007
+    complexity: M
+    risk: low
+    files_affected:
+      - src/agents/agent.py
+      - src/world/ledger.py
+    acceptance_criteria:
+      - Agents cannot be deleted
+      - Agent IDs are never recycled
+      - Zero-resource agents remain in registry
+      - Historical data preserved for all agents
+
+  - id: GAP-AGENT-013
+    component: agents
+    dimension: behaviors
+    title: "Vulture capitalist rescue pattern"
+    current_state: |
+      No mechanism for agents to rescue blocked agents.
+      No unilateral resource transfer to blocked agents.
+    target_state: |
+      When agent A is blocked:
+      1. A's artifacts still exist
+      2. Agent B notices A is blocked
+      3. B transfers rate quota to A (unilateral, no permission needed)
+      4. A unblocks, can think again
+      5. B hopes A reciprocates (reputation matters)
+
+      Market-driven rescue, not system rules.
+    delta: |
+      - Enable unilateral rate quota transfer to blocked agents
+      - Make blocked state observable to other agents
+      - Allow resource transfer without target's permission
+      - Implement automatic unblock when resources received
+    dependencies:
+      - GAP-AGENT-007
+      - GAP-AGENT-009
+    complexity: M
+    risk: low
+    files_affected:
+      - src/world/ledger.py
+      - src/agents/agent.py
+    acceptance_criteria:
+      - Blocked state visible to other agents
+      - Agents can transfer resources to blocked agents
+      - Blocked agent auto-unblocks when resources received
+      - No permission required for rescue transfers
+
+  - id: GAP-AGENT-014
+    component: agents
+    dimension: behaviors
+    title: "Agents pay their own costs (has_standing)"
+    current_state: |
+      Agents pay thinking costs via runner deduction.
+      Cost model exists but not formally tied to has_standing property.
+    target_state: |
+      Agents have has_standing: true meaning:
+      - Pay thinking costs (LLM calls)
+      - Pay action costs (genesis method invocations)
+      - Pay permission check costs
+
+      When invoking another artifact:
+      - Tool (has_standing: false): Invoking agent pays
+      - Agent (has_standing: true): Target agent pays its own execution
+    delta: |
+      - Add has_standing property to agents
+      - Implement cost bearing based on has_standing
+      - Differentiate tool vs agent invocation costs
+      - Ensure permission checks cost compute
+    dependencies:
+      - GAP-AGENT-001
+    complexity: M
+    risk: medium
+    files_affected:
+      - src/agents/agent.py
+      - src/world/executor.py
+      - src/world/ledger.py
+    acceptance_criteria:
+      - has_standing property exists on agents
+      - Agents pay all their own costs
+      - Tool invocations charged to invoker
+      - Permission check costs deducted
+
+  # =============================================================================
+  # CONFIGURATION GAPS
+  # =============================================================================
+
+  - id: GAP-AGENT-015
+    component: agents
+    dimension: configuration
+    title: "Agent think_delay configuration"
+    current_state: |
+      No self-imposed delay between actions.
+      Agents act as fast as system allows (once per tick).
+    target_state: |
+      Agent config includes optional think_delay:
+      - if self.config.get("think_delay"): await asyncio.sleep(...)
+      - Allows agents to pace themselves
+      - Configurable per-agent
+    delta: |
+      - Add think_delay to agent.yaml schema
+      - Implement delay in agent run loop
+      - Make delay configurable via agent config
+    dependencies:
+      - GAP-AGENT-002
+    complexity: S
+    risk: low
+    files_affected:
+      - src/agents/agent.py
+      - agents/*/agent.yaml
+    acceptance_criteria:
+      - think_delay in agent config schema
+      - Agent respects think_delay in run loop
+      - Delay is optional (default no delay)
+
+  - id: GAP-AGENT-016
+    component: agents
+    dimension: configuration
+    title: "Memory artifact configuration in agent"
+    current_state: |
+      RAG config in agent.yaml:
+      - rag.enabled, rag.limit, rag.query_template
+
+      Memory is implicit, not configurable as artifact.
+    target_state: |
+      Memory artifact has full configuration:
+      - storage_type: "qdrant"
+      - collection_id: unique per agent
+      - embedding_model: "text-embedding-3-small" or local
+      - vector_size: 1536
+
+      Memory artifact is separate and independently configurable.
+    delta: |
+      - Move memory config to memory artifact
+      - Add embedding_model and vector_size config
+      - Create memory artifact on agent creation
+      - Link agent to memory artifact via memory_artifact_id
+    dependencies:
+      - GAP-AGENT-006
+    complexity: M
+    risk: low
+    files_affected:
+      - src/agents/memory.py
+      - src/agents/loader.py
+      - config/schema.yaml
+    acceptance_criteria:
+      - Memory artifact has storage_type, collection_id, embedding_model, vector_size
+      - Agent links to memory artifact
+      - Memory config separate from agent config
+
+  # =============================================================================
+  # CONSTRAINTS GAPS
+  # =============================================================================
+
+  - id: GAP-AGENT-017
+    component: agents
+    dimension: constraints
+    title: "Resource-gated execution instead of tick-gated"
+    current_state: |
+      Agents constrained by tick system:
+      - One action per tick
+      - All agents get same thinking opportunity
+      - No fast/slow agent differentiation
+    target_state: |
+      Agents constrained by resources:
+      - Actions whenever resources allow
+      - if self.compute_balance < 0: await self.wait_for_accumulation()
+      - Agents can act multiple times if resources permit
+      - Natural fast/slow differentiation via resource holdings
+    delta: |
+      - Remove tick-based action limiting
+      - Implement resource checking in agent loop
+      - Add wait_for_accumulation() method
+      - Allow multiple actions when resources available
+    dependencies:
+      - GAP-AGENT-002
+    complexity: M
+    risk: medium
+    files_affected:
+      - src/agents/agent.py
+      - src/simulation/runner.py
+    acceptance_criteria:
+      - Agents not limited to one action per tick
+      - Resource check gates action execution
+      - Agents wait when resources insufficient
+      - Higher-resource agents can act more frequently
+
+  - id: GAP-AGENT-018
+    component: agents
+    dimension: constraints
+    title: "Memory quota enforcement"
+    current_state: |
+      No memory quota tracking.
+      Agents can store unlimited memories.
+    target_state: |
+      Memory usage counted against allocatable memory quota:
+      - memory_bytes = len(text.encode()) + EMBEDDING_SIZE (~6KB per memory)
+      - quota_check(agent_id, "memory", memory_bytes)
+      - QuotaExceeded raised if memory quota exceeded
+    delta: |
+      - Add memory quota to resource model
+      - Track memory bytes per agent
+      - Enforce quota on memory store operations
+      - Raise QuotaExceeded when exceeded
+    dependencies:
+      - GAP-AGENT-010
+    complexity: M
+    risk: low
+    files_affected:
+      - src/agents/memory.py
+      - src/world/ledger.py
+      - config/schema.yaml
+    acceptance_criteria:
+      - Memory quota defined in resource model
+      - Memory operations check quota
+      - QuotaExceeded raised when exceeded
+      - Memory bytes tracked per agent
+
+  - id: GAP-AGENT-019
+    component: agents
+    dimension: constraints
+    title: "Access control via access_contract_id"
+    current_state: |
+      No access control on agent configuration.
+      Agents cannot grant or restrict access to themselves.
+    target_state: |
+      Agents have access_contract_id determining who can modify:
+      - "genesis_self_owned": Only agent itself can modify
+      - another_agent_id: That agent controls configuration
+      - contract_id: Contract determines access
+
+      Permission checks cost compute. Failed checks still cost.
+    delta: |
+      - Add access_contract_id to agent
+      - Implement permission check before config modification
+      - Support self-owned, delegated, and contract-based access
+      - Charge compute for permission checks
+    dependencies:
+      - GAP-AGENT-001
+      - GAP-AGENT-004
+    complexity: L
+    risk: medium
+    files_affected:
+      - src/agents/agent.py
+      - src/world/executor.py
+      - src/world/genesis.py
+    acceptance_criteria:
+      - access_contract_id field on agents
+      - Permission check before config changes
+      - Multiple access control modes work
+      - Permission checks charged to requester
+
+  # =============================================================================
+  # INFRASTRUCTURE GAPS
+  # =============================================================================
+
+  - id: GAP-AGENT-020
+    component: agents
+    dimension: behaviors
+    title: "Qdrant fallback behavior"
+    current_state: |
+      Mem0 + Qdrant used but no explicit fallback behavior documented.
+      Unclear what happens if Qdrant unavailable.
+    target_state: |
+      If Qdrant unavailable:
+      - Memory operations fail with clear error
+      - Agent continues running (degraded mode)
+      - System logs Qdrant connectivity issues
+      - No silent fallback to local storage
+    delta: |
+      - Implement explicit Qdrant connection checking
+      - Fail memory operations with clear error on disconnect
+      - Allow agent to continue without memory
+      - Log Qdrant issues at appropriate level
+      - Ensure no silent fallback
+    dependencies: []
+    complexity: S
+    risk: low
+    files_affected:
+      - src/agents/memory.py
+    acceptance_criteria:
+      - Memory operations fail clearly when Qdrant down
+      - Agent continues running without memory
+      - Qdrant issues logged
+      - No silent fallback to local storage
+
+  - id: GAP-AGENT-021
+    component: agents
+    dimension: behaviors
+    title: "Time injection in LLM context"
+    current_state: |
+      No explicit time injection in prompt.
+      Agents may not know current time.
+    target_state: |
+      Every LLM context includes current time:
+      - "Current time: 2025-01-11T14:30:00Z"
+
+      Enables: oracle resolution calculation, time-based coordination,
+      "wake me at 3pm" strategies, rate limiting own actions.
+    delta: |
+      - Add current timestamp to prompt building
+      - Use ISO 8601 format
+      - Include in every LLM call
+    dependencies: []
+    complexity: S
+    risk: low
+    files_affected:
+      - src/agents/agent.py
+    acceptance_criteria:
+      - Current time in every LLM prompt
+      - Time in ISO 8601 format
+      - Time accurate to second
+
+  - id: GAP-AGENT-022
+    component: agents
+    dimension: interfaces
+    title: "Missed events handling after restart"
+    current_state: |
+      No event system exists.
+      N/A for missed events.
+    target_state: |
+      Events NOT queued per-agent (too expensive):
+      - Agent must poll for state changes after restart
+      - Sleep conditions should be re-checked after wake
+      - No guaranteed event delivery during restart
+    delta: |
+      - Document missed event policy
+      - Implement state polling after agent restart
+      - Re-check sleep conditions on wake
+      - Do not implement per-agent event queuing
+    dependencies:
+      - GAP-AGENT-009
+    complexity: S
+    risk: low
+    files_affected:
+      - src/agents/agent.py
+      - src/world/event_bus.py (new)
+    acceptance_criteria:
+      - Events not queued per-agent
+      - Agent polls state after restart
+      - Sleep conditions re-checked on wake
+      - Policy documented
+
+# Summary Statistics
+summary:
+  total_gaps: 22
+  by_dimension:
+    capabilities: 5
+    data_model: 3
+    interfaces: 4
+    behaviors: 5
+    configuration: 2
+    constraints: 3
+  by_complexity:
+    S: 5
+    M: 9
+    L: 5
+    XL: 3
+  by_risk:
+    low: 11
+    medium: 9
+    high: 2
+  critical_path:
+    - GAP-AGENT-001  # Unified ontology (foundation)
+    - GAP-AGENT-002  # Autonomous execution
+    - GAP-AGENT-006  # Memory as artifact
+    - GAP-AGENT-009  # Event bus

@@ -521,6 +521,10 @@ class AgentLoopExecutionConfig(StrictModel):
         default_factory=lambda: ["llm_calls", "disk_writes", "bandwidth_bytes"],
         description="Resource types to check before each iteration"
     )
+    resource_exhaustion_policy: Literal["skip", "block"] = Field(
+        default="skip",
+        description="Policy when resources exhausted: 'skip' (try again next iteration) or 'block' (wait for capacity)"
+    )
 
 
 class ExecutionConfig(StrictModel):

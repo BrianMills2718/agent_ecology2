@@ -458,3 +458,476 @@ class TestCleanupMemories:
         # Restore original list
         memory_module._cleanup_list.clear()
         memory_module._cleanup_list.extend(original_list)
+
+
+# =============================================================================
+# CAP-004: ArtifactMemory Tests
+# =============================================================================
+
+
+class TestArtifactMemoryBasics:
+    """Tests for ArtifactMemory basic operations."""
+
+    @pytest.fixture
+    def store(self) -> Any:
+        """Create a fresh artifact store."""
+        from src.world.artifacts import ArtifactStore
+        return ArtifactStore()
+
+    @pytest.fixture
+    def artifact_memory(self, store: Any) -> Any:
+        """Create an ArtifactMemory instance."""
+        from src.agents.memory import ArtifactMemory
+        return ArtifactMemory(store)
+
+    def test_add_creates_memory_artifact(self, store: Any, artifact_memory: Any) -> None:
+        """add() creates memory artifact if it doesn't exist."""
+        result = artifact_memory.add("agent_1", "I learned something")
+
+        assert "error" not in result
+        assert "results" in result
+        # Memory artifact should be created
+        assert store.exists("agent_1_memory")
+
+    def test_add_stores_content(self, store: Any, artifact_memory: Any) -> None:
+        """add() stores memory content in artifact."""
+        import json
+
+        artifact_memory.add("agent_1", "First memory")
+        artifact_memory.add("agent_1", "Second memory")
+
+        artifact = store.get("agent_1_memory")
+        assert artifact is not None
+        content = json.loads(artifact.content)
+        assert len(content["history"]) == 2
+        assert content["history"][0]["content"] == "First memory"
+        assert content["history"][1]["content"] == "Second memory"
+
+    def test_add_sets_memory_type(self, store: Any, artifact_memory: Any) -> None:
+        """add() sets memory_type to 'custom'."""
+        import json
+
+        artifact_memory.add("agent_1", "Custom memory")
+
+        artifact = store.get("agent_1_memory")
+        content = json.loads(artifact.content)
+        assert content["history"][0]["memory_type"] == "custom"
+
+
+class TestArtifactMemorySearch:
+    """Tests for ArtifactMemory search operations."""
+
+    @pytest.fixture
+    def store(self) -> Any:
+        """Create a fresh artifact store."""
+        from src.world.artifacts import ArtifactStore
+        return ArtifactStore()
+
+    @pytest.fixture
+    def artifact_memory(self, store: Any) -> Any:
+        """Create an ArtifactMemory instance."""
+        from src.agents.memory import ArtifactMemory
+        return ArtifactMemory(store)
+
+    def test_search_returns_recent_memories(self, artifact_memory: Any) -> None:
+        """search() returns most recent memories."""
+        # Add several memories
+        for i in range(10):
+            artifact_memory.add("agent_1", f"Memory {i}")
+
+        results = artifact_memory.search("agent_1", "query", limit=3)
+
+        assert len(results) == 3
+        # Should return most recent first
+        assert results[0]["memory"] == "Memory 9"
+        assert results[1]["memory"] == "Memory 8"
+        assert results[2]["memory"] == "Memory 7"
+
+    def test_search_with_no_memories(self, artifact_memory: Any) -> None:
+        """search() returns empty list for agent with no memories."""
+        results = artifact_memory.search("new_agent", "query")
+        assert results == []
+
+    def test_search_default_limit(self, artifact_memory: Any) -> None:
+        """search() defaults to limit=5."""
+        for i in range(10):
+            artifact_memory.add("agent_1", f"Memory {i}")
+
+        results = artifact_memory.search("agent_1", "query")
+        assert len(results) == 5
+
+
+class TestArtifactMemoryGetRelevant:
+    """Tests for ArtifactMemory.get_relevant_memories method."""
+
+    @pytest.fixture
+    def store(self) -> Any:
+        """Create a fresh artifact store."""
+        from src.world.artifacts import ArtifactStore
+        return ArtifactStore()
+
+    @pytest.fixture
+    def artifact_memory(self, store: Any) -> Any:
+        """Create an ArtifactMemory instance."""
+        from src.agents.memory import ArtifactMemory
+        return ArtifactMemory(store)
+
+    def test_formats_as_bullet_list(self, artifact_memory: Any) -> None:
+        """get_relevant_memories() formats memories as bullet list."""
+        artifact_memory.add("agent_1", "First memory")
+        artifact_memory.add("agent_1", "Second memory")
+
+        result = artifact_memory.get_relevant_memories("agent_1", "context")
+
+        assert "- Second memory" in result
+        assert "- First memory" in result
+
+    def test_returns_no_memories_message(self, artifact_memory: Any) -> None:
+        """get_relevant_memories() returns placeholder when empty."""
+        result = artifact_memory.get_relevant_memories("empty_agent", "context")
+        assert result == "(No relevant memories)"
+
+
+class TestArtifactMemoryRecordAction:
+    """Tests for ArtifactMemory.record_action method."""
+
+    @pytest.fixture
+    def store(self) -> Any:
+        """Create a fresh artifact store."""
+        from src.world.artifacts import ArtifactStore
+        return ArtifactStore()
+
+    @pytest.fixture
+    def artifact_memory(self, store: Any) -> Any:
+        """Create an ArtifactMemory instance."""
+        from src.agents.memory import ArtifactMemory
+        return ArtifactMemory(store)
+
+    def test_records_write_artifact_success(self, store: Any, artifact_memory: Any) -> None:
+        """record_action() formats write_artifact success correctly."""
+        import json
+
+        artifact_memory.record_action("agent_1", "write_artifact", "created tool.py", True)
+
+        artifact = store.get("agent_1_memory")
+        content = json.loads(artifact.content)
+        assert "I created an artifact" in content["history"][0]["content"]
+        assert content["history"][0]["memory_type"] == "action"
+
+    def test_records_failed_action(self, store: Any, artifact_memory: Any) -> None:
+        """record_action() formats failed actions correctly."""
+        import json
+
+        artifact_memory.record_action("agent_1", "transfer", "no funds", False)
+
+        artifact = store.get("agent_1_memory")
+        content = json.loads(artifact.content)
+        assert "I tried to transfer but failed" in content["history"][0]["content"]
+
+    def test_records_with_tick(self, store: Any, artifact_memory: Any) -> None:
+        """record_action() stores tick number."""
+        import json
+
+        artifact_memory.record_action("agent_1", "noop", "did nothing", True, tick=42)
+
+        artifact = store.get("agent_1_memory")
+        content = json.loads(artifact.content)
+        assert content["history"][0]["tick"] == 42
+
+
+class TestArtifactMemoryRecordObservation:
+    """Tests for ArtifactMemory.record_observation method."""
+
+    @pytest.fixture
+    def store(self) -> Any:
+        """Create a fresh artifact store."""
+        from src.world.artifacts import ArtifactStore
+        return ArtifactStore()
+
+    @pytest.fixture
+    def artifact_memory(self, store: Any) -> Any:
+        """Create an ArtifactMemory instance."""
+        from src.agents.memory import ArtifactMemory
+        return ArtifactMemory(store)
+
+    def test_records_observation(self, store: Any, artifact_memory: Any) -> None:
+        """record_observation() formats observation correctly."""
+        import json
+
+        artifact_memory.record_observation("agent_1", "agent_2 created a tool")
+
+        artifact = store.get("agent_1_memory")
+        content = json.loads(artifact.content)
+        assert content["history"][0]["content"] == "I observed: agent_2 created a tool"
+        assert content["history"][0]["memory_type"] == "observation"
+
+
+class TestArtifactMemoryKnowledge:
+    """Tests for ArtifactMemory knowledge storage."""
+
+    @pytest.fixture
+    def store(self) -> Any:
+        """Create a fresh artifact store."""
+        from src.world.artifacts import ArtifactStore
+        return ArtifactStore()
+
+    @pytest.fixture
+    def artifact_memory(self, store: Any) -> Any:
+        """Create an ArtifactMemory instance."""
+        from src.agents.memory import ArtifactMemory
+        return ArtifactMemory(store)
+
+    def test_set_and_get_knowledge(self, artifact_memory: Any) -> None:
+        """set_knowledge() and get_knowledge() work correctly."""
+        artifact_memory.set_knowledge("agent_1", "favorite_color", "blue")
+
+        result = artifact_memory.get_knowledge("agent_1", "favorite_color")
+        assert result == "blue"
+
+    def test_get_knowledge_default(self, artifact_memory: Any) -> None:
+        """get_knowledge() returns default for missing keys."""
+        result = artifact_memory.get_knowledge("agent_1", "missing_key", default="unknown")
+        assert result == "unknown"
+
+    def test_knowledge_survives_history_add(self, artifact_memory: Any) -> None:
+        """Knowledge persists after adding history entries."""
+        artifact_memory.set_knowledge("agent_1", "key", "value")
+        artifact_memory.add("agent_1", "New memory")
+
+        result = artifact_memory.get_knowledge("agent_1", "key")
+        assert result == "value"
+
+
+class TestArtifactMemoryWithAgentArtifact:
+    """Tests for ArtifactMemory linked to agent artifacts."""
+
+    @pytest.fixture
+    def store(self) -> Any:
+        """Create a fresh artifact store with agent and memory artifacts."""
+        from src.world.artifacts import (
+            ArtifactStore,
+            create_agent_artifact,
+            create_memory_artifact,
+        )
+
+        store = ArtifactStore()
+
+        # Create memory artifact first
+        memory = create_memory_artifact(
+            memory_id="agent_1_memory",
+            owner_id="agent_1",
+        )
+        store.artifacts[memory.id] = memory
+
+        # Create agent artifact with memory link
+        agent = create_agent_artifact(
+            agent_id="agent_1",
+            owner_id="agent_1",
+            agent_config={},
+            memory_artifact_id="agent_1_memory",
+        )
+        store.artifacts[agent.id] = agent
+
+        return store
+
+    @pytest.fixture
+    def artifact_memory(self, store: Any) -> Any:
+        """Create an ArtifactMemory instance."""
+        from src.agents.memory import ArtifactMemory
+        return ArtifactMemory(store)
+
+    def test_uses_linked_memory_artifact(self, store: Any, artifact_memory: Any) -> None:
+        """ArtifactMemory uses memory_artifact_id from agent artifact."""
+        import json
+
+        artifact_memory.add("agent_1", "Memory via link")
+
+        # Should use the linked memory artifact, not create a new one
+        memory = store.get("agent_1_memory")
+        assert memory is not None
+        content = json.loads(memory.content)
+        assert len(content["history"]) == 1
+        assert content["history"][0]["content"] == "Memory via link"
+
+    def test_memory_owned_by_agent(self, store: Any) -> None:
+        """Memory artifact is owned by the agent."""
+        memory = store.get("agent_1_memory")
+        assert memory is not None
+        assert memory.owner_id == "agent_1"
+
+
+class TestArtifactMemoryHistoryLimit:
+    """Tests for ArtifactMemory history limiting."""
+
+    @pytest.fixture
+    def store(self) -> Any:
+        """Create a fresh artifact store."""
+        from src.world.artifacts import ArtifactStore
+        return ArtifactStore()
+
+    def test_trims_history_to_max(self, store: Any) -> None:
+        """History is trimmed to max_history entries."""
+        import json
+        from src.agents.memory import ArtifactMemory
+
+        memory = ArtifactMemory(store, max_history=5)
+
+        # Add more than max_history entries
+        for i in range(10):
+            memory.add("agent_1", f"Memory {i}")
+
+        artifact = store.get("agent_1_memory")
+        content = json.loads(artifact.content)
+
+        # Should only have the last 5 entries
+        assert len(content["history"]) == 5
+        assert content["history"][0]["content"] == "Memory 5"
+        assert content["history"][4]["content"] == "Memory 9"
+
+
+class TestArtifactMemoryClear:
+    """Tests for ArtifactMemory.clear_memories method."""
+
+    @pytest.fixture
+    def store(self) -> Any:
+        """Create a fresh artifact store."""
+        from src.world.artifacts import ArtifactStore
+        return ArtifactStore()
+
+    @pytest.fixture
+    def artifact_memory(self, store: Any) -> Any:
+        """Create an ArtifactMemory instance."""
+        from src.agents.memory import ArtifactMemory
+        return ArtifactMemory(store)
+
+    def test_clear_removes_all_history(self, store: Any, artifact_memory: Any) -> None:
+        """clear_memories() removes all history entries."""
+        import json
+
+        artifact_memory.add("agent_1", "Memory 1")
+        artifact_memory.add("agent_1", "Memory 2")
+
+        result = artifact_memory.clear_memories("agent_1")
+
+        assert result is True
+        artifact = store.get("agent_1_memory")
+        content = json.loads(artifact.content)
+        assert content["history"] == []
+
+    def test_clear_preserves_knowledge(self, store: Any, artifact_memory: Any) -> None:
+        """clear_memories() preserves knowledge."""
+        artifact_memory.add("agent_1", "Memory")
+        artifact_memory.set_knowledge("agent_1", "key", "value")
+
+        artifact_memory.clear_memories("agent_1")
+
+        result = artifact_memory.get_knowledge("agent_1", "key")
+        assert result == "value"
+
+
+class TestAgentWithArtifactMemory:
+    """Tests for Agent using artifact-backed memory.
+
+    These tests need to mock config_get since Agent.__init__ calls it.
+    """
+
+    @pytest.fixture
+    def store(self) -> Any:
+        """Create a fresh artifact store."""
+        from src.world.artifacts import ArtifactStore
+        return ArtifactStore()
+
+    @pytest.fixture
+    def mock_config(self) -> Any:
+        """Mock config_get to avoid loading config.yaml."""
+        with patch("src.agents.agent.config_get") as mock:
+            mock.return_value = None  # Use defaults
+            yield mock
+
+    @pytest.fixture
+    def mock_mem0(self) -> Any:
+        """Mock Mem0 Memory to avoid external dependencies."""
+        with patch("src.agents.memory.Memory") as mock:
+            mock.from_config.return_value = MagicMock()
+            yield mock
+
+    def test_agent_uses_artifact_memory_when_store_provided(
+        self, store: Any, mock_config: Any, mock_mem0: Any
+    ) -> None:
+        """Agent uses ArtifactMemory when artifact_store is provided."""
+        from src.agents.agent import Agent
+        from src.agents.memory import ArtifactMemory
+
+        agent = Agent(
+            agent_id="test_agent",
+            llm_model="test-model",
+            artifact_store=store,
+        )
+
+        assert agent.uses_artifact_memory is True
+        assert isinstance(agent.memory, ArtifactMemory)
+
+    def test_agent_uses_mem0_when_no_store(
+        self, mock_config: Any, mock_mem0: Any
+    ) -> None:
+        """Agent uses AgentMemory (Mem0) when no artifact_store."""
+        # Reset singleton for fresh test
+        from src.agents import memory as memory_module
+        memory_module.AgentMemory._instance = None
+        memory_module._memory = None
+
+        from src.agents.agent import Agent
+
+        agent = Agent(
+            agent_id="test_agent",
+            llm_model="test-model",
+        )
+
+        assert agent.uses_artifact_memory is False
+
+    def test_agent_memory_artifact_created(
+        self, store: Any, mock_config: Any, mock_mem0: Any
+    ) -> None:
+        """Agent's memory artifact is created on first use."""
+        from src.agents.agent import Agent
+
+        agent = Agent(
+            agent_id="test_agent",
+            llm_model="test-model",
+            artifact_store=store,
+        )
+
+        # Trigger memory creation
+        agent.memory.add("test_agent", "Test memory")
+
+        assert store.exists("test_agent_memory")
+
+    def test_agent_from_artifact_uses_artifact_memory(
+        self, store: Any, mock_config: Any, mock_mem0: Any
+    ) -> None:
+        """Agent.from_artifact uses ArtifactMemory when store provided."""
+        from src.agents.agent import Agent
+        from src.agents.memory import ArtifactMemory
+        from src.world.artifacts import create_agent_artifact, create_memory_artifact
+
+        # Create memory first
+        memory = create_memory_artifact(
+            memory_id="linked_agent_memory",
+            owner_id="linked_agent",
+        )
+        store.artifacts[memory.id] = memory
+
+        # Create agent with memory link
+        artifact = create_agent_artifact(
+            agent_id="linked_agent",
+            owner_id="linked_agent",
+            agent_config={"llm_model": "test-model"},
+            memory_artifact_id="linked_agent_memory",
+        )
+        store.artifacts[artifact.id] = artifact
+
+        agent = Agent.from_artifact(artifact, store=store)
+
+        assert agent.uses_artifact_memory is True
+        assert isinstance(agent.memory, ArtifactMemory)
+        assert agent.memory_artifact_id == "linked_agent_memory"

@@ -4,12 +4,24 @@ Agent Loader - Discovers and loads agents from directory structure
 Each agent lives in src/agents/<name>/ with:
   - agent.yaml: config (id, model, scrip, enabled)
   - system_prompt.md: the agent's system prompt
+
+Artifact-Backed Agents (INT-004):
+Agents can be created directly in the artifact store using create_agent_artifacts().
+This enables:
+- Persistent agent state across simulation restarts
+- Agents as tradeable principals
+- Memory artifacts linked to agents
 """
+
+from __future__ import annotations
 
 import yaml
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, TypedDict, TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from ..world.artifacts import ArtifactStore, Artifact
+    from .agent import Agent
 
 # Resolve paths relative to project root
 PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
@@ -129,6 +141,116 @@ def get_default_prompt() -> str:
             f"Default prompt not found at {default_prompt_path}"
         )
     return default_prompt_path.read_text()
+
+
+def create_agent_artifacts(
+    store: ArtifactStore,
+    agent_configs: list[AgentConfig] | None = None,
+    create_memory: bool = True,
+) -> list[Artifact]:
+    """Create agent artifacts in the artifact store.
+
+    This function loads agent configs (or uses provided ones) and creates
+    artifact representations for each agent in the store. This enables
+    persistent agent state and artifact-backed agents.
+
+    Args:
+        store: Artifact store to create agents in
+        agent_configs: Optional list of agent configs. If None, loads from disk.
+        create_memory: Whether to create memory artifacts for each agent (default True)
+
+    Returns:
+        List of created agent artifacts
+
+    Example:
+        >>> store = ArtifactStore()
+        >>> artifacts = create_agent_artifacts(store)
+        >>> artifacts[0].is_agent
+        True
+    """
+    from ..world.artifacts import create_agent_artifact, create_memory_artifact
+
+    # Load configs if not provided
+    if agent_configs is None:
+        agent_configs = load_agents()
+
+    created_artifacts: list[Artifact] = []
+
+    for config in agent_configs:
+        agent_id = config["id"]
+
+        # Create memory artifact first if requested
+        memory_artifact_id: str | None = None
+        if create_memory:
+            memory_id = f"{agent_id}_memory"
+            memory_artifact = create_memory_artifact(
+                memory_id=memory_id,
+                owner_id=agent_id,  # Agent owns its memory
+            )
+            store.artifacts[memory_id] = memory_artifact
+            memory_artifact_id = memory_id
+
+        # Build agent config dict for artifact content
+        agent_config_dict: dict[str, Any] = {
+            "llm_model": config.get("llm_model"),
+            "system_prompt": config.get("system_prompt", ""),
+            "action_schema": config.get("action_schema", ""),
+        }
+        if config.get("rag"):
+            agent_config_dict["rag"] = config["rag"]
+
+        # Create agent artifact (self-owned)
+        agent_artifact = create_agent_artifact(
+            agent_id=agent_id,
+            owner_id=agent_id,  # Self-owned
+            agent_config=agent_config_dict,
+            memory_artifact_id=memory_artifact_id,
+        )
+        store.artifacts[agent_id] = agent_artifact
+        created_artifacts.append(agent_artifact)
+
+    return created_artifacts
+
+
+def load_agents_from_store(
+    store: ArtifactStore,
+    log_dir: str | None = None,
+    run_id: str | None = None,
+) -> list["Agent"]:
+    """Load agents from artifact store.
+
+    Creates Agent instances from all artifacts with is_agent=True in the store.
+
+    Args:
+        store: Artifact store containing agent artifacts
+        log_dir: Directory for LLM logs
+        run_id: Run ID for log organization
+
+    Returns:
+        List of Agent instances
+
+    Example:
+        >>> store = ArtifactStore()
+        >>> create_agent_artifacts(store)
+        >>> agents = load_agents_from_store(store)
+        >>> agents[0].is_artifact_backed
+        True
+    """
+    from .agent import Agent
+
+    agents: list[Agent] = []
+
+    for artifact in store.artifacts.values():
+        if artifact.is_agent:
+            agent = Agent.from_artifact(
+                artifact,
+                store=store,
+                log_dir=log_dir,
+                run_id=run_id,
+            )
+            agents.append(agent)
+
+    return agents
 
 
 if __name__ == "__main__":

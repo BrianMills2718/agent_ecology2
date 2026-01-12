@@ -3,12 +3,32 @@
 Supports both synchronous and asynchronous action proposal:
 - propose_action(): Synchronous, for single-agent or sequential use
 - propose_action_async(): Async, for parallel agent thinking with asyncio.gather()
+
+Artifact-Backed Agents (INT-004):
+Agents can be backed by artifacts in the artifact store. This enables:
+- Persistent agent state across simulation restarts
+- Agent properties stored as artifact content
+- Memory stored in separate linked memory artifact
+- Agents as first-class tradeable principals
+
+Usage:
+    # Create agent directly (backward compatible)
+    agent = Agent(agent_id="agent_001", ...)
+
+    # Create from artifact
+    artifact = store.get("agent_001")
+    agent = Agent.from_artifact(artifact, store=store)
+
+    # Serialize back to artifact
+    artifact = agent.to_artifact()
 """
+
+from __future__ import annotations
 
 import sys
 import json
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, TypedDict, TYPE_CHECKING
 
 # Add llm_provider_standalone to path
 PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
@@ -18,9 +38,12 @@ from pydantic import ValidationError
 
 from llm_provider import LLMProvider
 from .schema import ACTION_SCHEMA, ActionType
-from .memory import AgentMemory, get_memory
+from .memory import AgentMemory, ArtifactMemory, get_memory
 from .models import ActionResponse, FlatActionResponse
 from ..config import get as config_get
+
+if TYPE_CHECKING:
+    from ..world.artifacts import Artifact, ArtifactStore
 
 
 class TokenUsage(TypedDict):
@@ -81,17 +104,47 @@ class RAGConfigDict(TypedDict, total=False):
     query_template: str
 
 
-class Agent:
-    """An LLM-powered agent that proposes actions"""
-
-    agent_id: str
+class AgentConfigDict(TypedDict, total=False):
+    """Agent configuration stored in artifact content."""
+    llm_model: str
     system_prompt: str
     action_schema: str
-    memory: AgentMemory
+    rag: RAGConfigDict
+
+
+class Agent:
+    """An LLM-powered agent that proposes actions.
+
+    Agents can be backed by artifacts (INT-004), enabling:
+    - Persistent state in artifact store
+    - Memory linked via memory_artifact_id
+    - Trading agents as first-class principals
+
+    When artifact-backed:
+    - agent_id delegates to artifact.id
+    - Config (llm_model, system_prompt, etc.) loaded from artifact.content
+    - Memory artifact linked via artifact.memory_artifact_id
+
+    Backward compatible: agents still work without artifact backing.
+    """
+
+    # Core attributes (may delegate to artifact when backed)
+    _agent_id: str
+    _system_prompt: str
+    _action_schema: str
+    _llm_model: str
+    _rag_config: RAGConfigDict
+
+    # Runtime state (always local)
+    memory: AgentMemory | ArtifactMemory
+    _artifact_memory: ArtifactMemory | None  # CAP-004: Artifact-backed memory
     last_action_result: str | None
     llm: LLMProvider
-    llm_model: str
-    rag_config: RAGConfigDict
+    _alive: bool  # Whether agent should continue running (for autonomous loops)
+
+    # Artifact backing (INT-004)
+    _artifact: Artifact | None
+    _artifact_store: ArtifactStore | None
 
     def __init__(
         self,
@@ -102,29 +155,63 @@ class Agent:
         log_dir: str | None = None,
         run_id: str | None = None,
         rag_config: RAGConfigDict | None = None,
+        *,
+        artifact: Artifact | None = None,
+        artifact_store: ArtifactStore | None = None,
     ) -> None:
+        """Initialize an agent.
+
+        Args:
+            agent_id: Unique identifier for the agent
+            llm_model: LLM model to use (default from config)
+            system_prompt: System prompt for the agent
+            action_schema: Action schema for the agent
+            log_dir: Directory for LLM logs
+            run_id: Run ID for log organization
+            rag_config: RAG configuration overrides
+            artifact: Optional artifact backing this agent (INT-004)
+            artifact_store: Optional artifact store for memory access (INT-004)
+        """
         # Get defaults from config
         default_model: str = config_get("llm.default_model") or "gemini/gemini-3-flash-preview"
         default_timeout: int = config_get("llm.timeout") or 60
         default_log_dir: str = config_get("logging.log_dir") or "llm_logs"
 
-        self.agent_id = agent_id
-        self.llm_model = llm_model or default_model
-        self.system_prompt = system_prompt
-        self.action_schema = action_schema or ACTION_SCHEMA  # Fall back to default
-        self.memory = get_memory()
+        # Store artifact backing (INT-004)
+        self._artifact = artifact
+        self._artifact_store = artifact_store
+
+        # Store core config (may be overridden by artifact)
+        self._agent_id = agent_id
+        self._llm_model = llm_model or default_model
+        self._system_prompt = system_prompt
+        self._action_schema = action_schema or ACTION_SCHEMA  # Fall back to default
+
+        # If artifact-backed, load config from artifact content
+        if artifact is not None:
+            self._load_from_artifact(artifact)
+
+        # Runtime state (always local)
+        # CAP-004: Use ArtifactMemory when artifact_store is available
+        self._artifact_memory = None
+        if artifact_store is not None:
+            self._artifact_memory = ArtifactMemory(artifact_store)
+            self.memory = self._artifact_memory
+        else:
+            self.memory = get_memory()
         self.last_action_result = None  # Track result of last action for feedback
+        self._alive = True  # Agent starts alive (for autonomous loops)
 
         # RAG config: per-agent overrides merged with global defaults
         global_rag: dict[str, Any] = config_get("agent.rag") or {}
-        self.rag_config: RAGConfigDict = {
+        self._rag_config: RAGConfigDict = {
             "enabled": (rag_config or {}).get("enabled", global_rag.get("enabled", True)),
             "limit": (rag_config or {}).get("limit", global_rag.get("limit", 5)),
             "query_template": (rag_config or {}).get("query_template", global_rag.get("query_template", "")),
         }
 
         # Initialize LLM provider with agent metadata for logging
-        extra_metadata: dict[str, Any] = {"agent_id": agent_id}
+        extra_metadata: dict[str, Any] = {"agent_id": self.agent_id}
         if run_id:
             extra_metadata["run_id"] = run_id
         self.llm = LLMProvider(
@@ -133,6 +220,190 @@ class Agent:
             timeout=default_timeout,
             extra_metadata=extra_metadata,
         )
+
+    def _load_from_artifact(self, artifact: Artifact) -> None:
+        """Load agent configuration from artifact content."""
+        # Parse config from artifact content (JSON)
+        try:
+            config: AgentConfigDict = json.loads(artifact.content)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+
+        # Override local values with artifact config
+        self._agent_id = artifact.id
+        if "llm_model" in config:
+            self._llm_model = config["llm_model"]
+        if "system_prompt" in config:
+            self._system_prompt = config["system_prompt"]
+        if "action_schema" in config:
+            self._action_schema = config["action_schema"]
+
+    @classmethod
+    def from_artifact(
+        cls,
+        artifact: Artifact,
+        *,
+        store: ArtifactStore | None = None,
+        log_dir: str | None = None,
+        run_id: str | None = None,
+    ) -> Agent:
+        """Create an Agent from an artifact.
+
+        This factory method creates a runtime Agent wrapper around an artifact
+        with is_agent=True. The agent's configuration is loaded from the artifact's
+        content field.
+
+        Args:
+            artifact: Artifact with is_agent=True
+            store: Optional artifact store for memory access
+            log_dir: Directory for LLM logs
+            run_id: Run ID for log organization
+
+        Returns:
+            Agent instance wrapping the artifact
+
+        Raises:
+            ValueError: If artifact is not an agent artifact
+        """
+        if not artifact.is_agent:
+            raise ValueError(
+                f"Cannot create Agent from non-agent artifact '{artifact.id}'. "
+                f"Artifact must have is_agent=True (has_standing=True and can_execute=True)."
+            )
+
+        # Parse config from artifact content
+        try:
+            config: AgentConfigDict = json.loads(artifact.content)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+
+        return cls(
+            agent_id=artifact.id,
+            llm_model=config.get("llm_model"),
+            system_prompt=config.get("system_prompt", ""),
+            action_schema=config.get("action_schema", ""),
+            log_dir=log_dir,
+            run_id=run_id,
+            rag_config=config.get("rag"),
+            artifact=artifact,
+            artifact_store=store,
+        )
+
+    def to_artifact(self) -> Artifact:
+        """Serialize agent state to an artifact.
+
+        Creates or updates the artifact representation of this agent.
+        If the agent is already artifact-backed, updates the backing artifact.
+        Otherwise, creates a new agent artifact.
+
+        Returns:
+            Artifact with agent configuration
+        """
+        from ..world.artifacts import create_agent_artifact
+
+        # Build config dict (use dict[str, Any] for compatibility)
+        config: dict[str, Any] = {
+            "llm_model": self._llm_model,
+            "system_prompt": self._system_prompt,
+            "action_schema": self._action_schema,
+            "rag": self._rag_config,
+        }
+
+        # Get memory artifact ID from backing artifact if present
+        memory_artifact_id: str | None = None
+        if self._artifact is not None:
+            memory_artifact_id = self._artifact.memory_artifact_id
+
+        # Create agent artifact (self-owned by default)
+        artifact = create_agent_artifact(
+            agent_id=self.agent_id,
+            owner_id=self._artifact.owner_id if self._artifact else self.agent_id,
+            agent_config=config,
+            memory_artifact_id=memory_artifact_id,
+        )
+
+        return artifact
+
+    # Properties that delegate to artifact when backed
+
+    @property
+    def agent_id(self) -> str:
+        """Agent's unique identifier."""
+        if self._artifact is not None:
+            return self._artifact.id
+        return self._agent_id
+
+    @property
+    def system_prompt(self) -> str:
+        """Agent's system prompt."""
+        return self._system_prompt
+
+    @system_prompt.setter
+    def system_prompt(self, value: str) -> None:
+        """Set system prompt (updates local copy, not artifact)."""
+        self._system_prompt = value
+
+    @property
+    def action_schema(self) -> str:
+        """Agent's action schema."""
+        return self._action_schema
+
+    @action_schema.setter
+    def action_schema(self, value: str) -> None:
+        """Set action schema (updates local copy, not artifact)."""
+        self._action_schema = value
+
+    @property
+    def llm_model(self) -> str:
+        """Agent's LLM model."""
+        return self._llm_model
+
+    @property
+    def rag_config(self) -> RAGConfigDict:
+        """Agent's RAG configuration."""
+        return self._rag_config
+
+    @property
+    def artifact(self) -> Artifact | None:
+        """Backing artifact, or None if not artifact-backed."""
+        return self._artifact
+
+    @property
+    def artifact_store(self) -> ArtifactStore | None:
+        """Artifact store for memory access, or None."""
+        return self._artifact_store
+
+    @property
+    def memory_artifact_id(self) -> str | None:
+        """ID of linked memory artifact, or None."""
+        if self._artifact is not None:
+            return self._artifact.memory_artifact_id
+        return None
+
+    @property
+    def is_artifact_backed(self) -> bool:
+        """Whether this agent is backed by an artifact."""
+        return self._artifact is not None
+
+    @property
+    def uses_artifact_memory(self) -> bool:
+        """Whether this agent uses artifact-backed memory (CAP-004)."""
+        return self._artifact_memory is not None
+
+    @property
+    def artifact_memory(self) -> ArtifactMemory | None:
+        """Get artifact-backed memory, or None if using Mem0."""
+        return self._artifact_memory
+
+    @property
+    def alive(self) -> bool:
+        """Whether agent should continue running in autonomous loops."""
+        return self._alive
+
+    @alive.setter
+    def alive(self, value: bool) -> None:
+        """Set whether agent should continue running."""
+        self._alive = value
 
     def _is_gemini_model(self) -> bool:
         """Check if using a Gemini model (requires flat action schema)."""

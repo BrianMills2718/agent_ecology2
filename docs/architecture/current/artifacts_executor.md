@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-12
+**Last verified:** 2026-01-12 (Phase 2 integration)
 
 ---
 
@@ -209,3 +209,80 @@ cost = max(1.0, execution_time_ms * cost_per_ms)
 - Access control stored in artifact
 - Can be modified by owner
 - V2 will enable dynamic policies via contracts
+
+---
+
+## Principal Capabilities (Phase 2)
+
+Artifacts can now represent principals (agents, DAOs, contracts).
+
+### New Fields on Artifact
+
+```python
+@dataclass
+class Artifact:
+    # ... existing fields ...
+    has_standing: bool = False   # Can own things, enter contracts
+    can_execute: bool = False    # Can execute code autonomously
+    memory_artifact_id: str | None = None  # Link to memory artifact
+```
+
+### Convenience Properties
+
+| Property | Condition | Description |
+|----------|-----------|-------------|
+| `is_principal` | `has_standing == True` | Can own artifacts, hold scrip |
+| `is_agent` | `has_standing and can_execute` | Autonomous agent |
+
+### Factory Functions
+
+- `create_agent_artifact(agent_id, owner_id, config)` - Create agent artifact
+- `create_memory_artifact(memory_id, owner_id)` - Create memory artifact
+
+---
+
+## Contract-Based Permission Checks (Phase 2)
+
+When `executor.use_contracts: true`, permission checks use contract system.
+
+### Configuration
+
+```yaml
+executor:
+  use_contracts: false  # Enable contract-based permissions
+```
+
+### Check Flow
+
+1. Executor calls `_check_permission_via_contract(caller, action, artifact)`
+2. Looks up contract via `artifact.access_contract_id`
+3. Contract returns `PermissionResult(allowed, reason, cost)`
+4. Executor enforces decision
+
+### ExecutableContract
+
+Contracts can be executable artifacts with dynamic logic:
+
+```python
+# Contract code
+def check_permission(caller, action, target, context):
+    if action == "invoke" and context.get("tick", 0) > 100:
+        return {"allowed": True, "reason": "Time-gated access"}
+    return {"allowed": False, "reason": "Too early"}
+```
+
+### ReadOnlyLedger
+
+Contracts execute with `ReadOnlyLedger` - can read balances but not modify.
+
+---
+
+## Differences from Target
+
+| Current | Target |
+|---------|--------|
+| Contracts optional | Contracts always on |
+| In-memory store | Git-backed store |
+| Static policy lists | Contract-first |
+
+See `docs/architecture/target/` for target architecture.

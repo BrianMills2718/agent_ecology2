@@ -25,7 +25,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Awaitable, Protocol
+from typing import TYPE_CHECKING, Any, Callable, Awaitable, Literal, Protocol
 
 if TYPE_CHECKING:
     from ..world.rate_tracker import RateTracker
@@ -79,6 +79,9 @@ class AgentLoopConfig:
         resource_check_interval: How often to check resources when paused (default: 1.0)
         max_consecutive_errors: Errors before forced pause (default: 5)
         resources_to_check: List of resource types to check capacity for
+        resource_exhaustion_policy: Policy when resources exhausted - "skip" or "block"
+            - "skip": Skip action, sleep briefly, try again next iteration (default)
+            - "block": Block until capacity available using wait_for_capacity
     """
 
     min_loop_delay: float = 0.1
@@ -88,6 +91,7 @@ class AgentLoopConfig:
     resources_to_check: list[str] = field(
         default_factory=lambda: ["llm_calls", "disk_writes", "bandwidth_bytes"]
     )
+    resource_exhaustion_policy: Literal["skip", "block"] = "skip"
 
     def __post_init__(self) -> None:
         """Validate configuration values."""
@@ -105,6 +109,11 @@ class AgentLoopConfig:
         if self.max_consecutive_errors < 1:
             raise ValueError(
                 f"max_consecutive_errors must be at least 1: {self.max_consecutive_errors}"
+            )
+        if self.resource_exhaustion_policy not in ("skip", "block"):
+            raise ValueError(
+                f"resource_exhaustion_policy must be 'skip' or 'block': "
+                f"{self.resource_exhaustion_policy}"
             )
 
 
@@ -311,11 +320,23 @@ class AgentLoop:
 
                 # Check resource capacity
                 if not self._has_resources():
-                    if self._state != AgentState.PAUSED:
-                        self._state = AgentState.PAUSED
-                        logger.debug(f"Agent {self.agent_id} paused (no resources)")
-                    await asyncio.sleep(self.config.resource_check_interval)
-                    continue
+                    if self.config.resource_exhaustion_policy == "block":
+                        # Block: wait for resources to become available
+                        logger.debug(
+                            f"Agent {self.agent_id} blocking until resources available"
+                        )
+                        acquired = await self._wait_for_resources()
+                        if not acquired:
+                            # Timeout or stop requested, continue to check loop condition
+                            continue
+                        logger.debug(f"Agent {self.agent_id} resources acquired, continuing")
+                    else:
+                        # Skip: pause and try again next iteration
+                        if self._state != AgentState.PAUSED:
+                            self._state = AgentState.PAUSED
+                            logger.debug(f"Agent {self.agent_id} paused (no resources)")
+                        await asyncio.sleep(self.config.resource_check_interval)
+                        continue
 
                 # Unpause if we were paused and now have resources
                 if self._state == AgentState.PAUSED:
@@ -362,6 +383,33 @@ class AgentLoop:
         for resource in self.config.resources_to_check:
             if not self.rate_tracker.has_capacity(self.agent_id, resource):
                 return False
+        return True
+
+    async def _wait_for_resources(self) -> bool:
+        """Wait until all required resources have capacity.
+
+        Used when resource_exhaustion_policy is "block".
+        Waits for each resource in sequence using wait_for_capacity.
+
+        Returns:
+            True if all resources acquired, False if timeout or stop requested.
+        """
+        for resource in self.config.resources_to_check:
+            if not self.rate_tracker.has_capacity(self.agent_id, resource):
+                # Check if we should stop before waiting
+                if self._state in (AgentState.STOPPING, AgentState.STOPPED):
+                    return False
+
+                # Wait for this resource with a periodic check interval
+                acquired = await self.rate_tracker.wait_for_capacity(
+                    self.agent_id,
+                    resource,
+                    amount=1.0,
+                    timeout=self.config.resource_check_interval,
+                )
+                if not acquired:
+                    # Timeout - let loop check state and try again
+                    return False
         return True
 
     async def _check_wake_condition(self) -> bool:

@@ -8,11 +8,13 @@ All production code lives here. Tests are in `tests/`.
 src/
 ├── config.py           # Config loading helpers
 ├── config_schema.py    # Pydantic validation (all config options)
-├── world/              # Core simulation kernel
-├── agents/             # LLM-powered agents
-├── simulation/         # Runner, checkpoint
-└── dashboard/          # HTML visualization server
+├── world/              # Core simulation kernel (see world/CLAUDE.md)
+├── agents/             # LLM-powered agents (see agents/CLAUDE.md)
+├── simulation/         # Runner, checkpoint (see simulation/CLAUDE.md)
+└── dashboard/          # HTML visualization server (see dashboard/CLAUDE.md)
 ```
+
+Each subdirectory has its own CLAUDE.md with module-specific details.
 
 ## Key Entry Points
 

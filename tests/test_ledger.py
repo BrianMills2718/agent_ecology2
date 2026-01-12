@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from src.world.ledger import Ledger
-
 import pytest
+
+from src.world.ledger import Ledger
 
 
 @pytest.fixture
@@ -302,3 +302,640 @@ class TestGetAllBalances:
         compute = ledger_with_agents.get_all_compute()
 
         assert compute == {"agent_a": 500, "agent_b": 300}
+
+
+class TestRateTrackerIntegration:
+    """Tests for Ledger + RateTracker integration."""
+
+    def test_rate_tracker_disabled_by_default(self) -> None:
+        """Rate tracker not used when disabled."""
+        ledger = Ledger()
+        assert ledger.use_rate_tracker is False
+        assert ledger.rate_tracker is None
+        # Legacy mode: check_resource_capacity always returns True
+        assert ledger.check_resource_capacity("agent1", "llm_calls") is True
+
+    def test_rate_tracker_enabled_from_config(self) -> None:
+        """Rate tracker initialized from config."""
+        config = {
+            "rate_limiting": {
+                "enabled": True,
+                "window_seconds": 60.0,
+                "resources": {
+                    "llm_calls": {"max_per_window": 100}
+                }
+            }
+        }
+        ledger = Ledger.from_config(config, ["agent1"])
+        assert ledger.use_rate_tracker is True
+        assert ledger.rate_tracker is not None
+
+    def test_rate_tracker_disabled_from_config(self) -> None:
+        """Rate tracker not initialized when disabled in config."""
+        config = {
+            "rate_limiting": {
+                "enabled": False,
+            }
+        }
+        ledger = Ledger.from_config(config, ["agent1"])
+        assert ledger.use_rate_tracker is False
+        assert ledger.rate_tracker is None
+
+    def test_rate_tracker_empty_config(self) -> None:
+        """Rate tracker disabled when config section missing."""
+        config: dict[str, object] = {}
+        ledger = Ledger.from_config(config, ["agent1"])
+        assert ledger.use_rate_tracker is False
+        assert ledger.rate_tracker is None
+
+    def test_check_capacity_uses_rate_tracker(self) -> None:
+        """check_resource_capacity delegates to RateTracker."""
+        config = {
+            "rate_limiting": {
+                "enabled": True,
+                "resources": {"llm_calls": {"max_per_window": 10}}
+            }
+        }
+        ledger = Ledger.from_config(config, ["agent1"])
+
+        # Should have capacity initially
+        assert ledger.check_resource_capacity("agent1", "llm_calls", 5) is True
+
+        # Consume all capacity
+        ledger.consume_resource("agent1", "llm_calls", 10)
+
+        # Should not have capacity anymore
+        assert ledger.check_resource_capacity("agent1", "llm_calls", 1) is False
+
+    def test_consume_resource_uses_rate_tracker(self) -> None:
+        """consume_resource delegates to RateTracker."""
+        config = {
+            "rate_limiting": {
+                "enabled": True,
+                "resources": {"llm_calls": {"max_per_window": 10}}
+            }
+        }
+        ledger = Ledger.from_config(config, ["agent1"])
+
+        # First consumption should succeed
+        assert ledger.consume_resource("agent1", "llm_calls", 5) is True
+
+        # Should have 5 remaining
+        assert ledger.get_resource_remaining("agent1", "llm_calls") == 5
+
+        # Consuming 6 should fail
+        assert ledger.consume_resource("agent1", "llm_calls", 6) is False
+
+        # Consuming 5 should succeed
+        assert ledger.consume_resource("agent1", "llm_calls", 5) is True
+
+        # No capacity remaining
+        assert ledger.get_resource_remaining("agent1", "llm_calls") == 0
+
+    def test_get_resource_remaining_uses_rate_tracker(self) -> None:
+        """get_resource_remaining delegates to RateTracker."""
+        config = {
+            "rate_limiting": {
+                "enabled": True,
+                "resources": {"llm_calls": {"max_per_window": 100}}
+            }
+        }
+        ledger = Ledger.from_config(config, ["agent1"])
+
+        # Initially should have full capacity
+        assert ledger.get_resource_remaining("agent1", "llm_calls") == 100
+
+        # Consume some
+        ledger.consume_resource("agent1", "llm_calls", 30)
+
+        # Should have 70 remaining
+        assert ledger.get_resource_remaining("agent1", "llm_calls") == 70
+
+    def test_legacy_mode_check_capacity_always_true(self) -> None:
+        """Legacy mode: check_resource_capacity always returns True."""
+        ledger = Ledger()
+        # Even with high amount, should return True (legacy mode)
+        assert ledger.check_resource_capacity("agent1", "any_resource", 999999) is True
+
+    def test_legacy_mode_consume_always_true(self) -> None:
+        """Legacy mode: consume_resource always returns True."""
+        ledger = Ledger()
+        # Should always succeed in legacy mode
+        assert ledger.consume_resource("agent1", "any_resource", 999999) is True
+
+    def test_legacy_mode_remaining_is_infinite(self) -> None:
+        """Legacy mode: get_resource_remaining returns infinity."""
+        ledger = Ledger()
+        assert ledger.get_resource_remaining("agent1", "any_resource") == float("inf")
+
+    def test_legacy_reset_compute_still_works(self) -> None:
+        """Legacy tick-based mode unchanged when disabled."""
+        ledger = Ledger()
+        ledger.create_principal("agent1", starting_scrip=100, starting_compute=500)
+
+        # Spend some compute
+        ledger.spend_compute("agent1", 200)
+        assert ledger.get_compute("agent1") == 300
+
+        # Reset should work
+        ledger.reset_compute("agent1", 1000)
+        assert ledger.get_compute("agent1") == 1000
+
+    def test_reset_compute_with_rate_tracker_enabled(self) -> None:
+        """reset_compute still works when rate_tracker is enabled."""
+        config = {
+            "rate_limiting": {
+                "enabled": True,
+                "resources": {"llm_tokens": {"max_per_window": 100}}
+            }
+        }
+        ledger = Ledger.from_config(config, ["agent1"])
+        ledger.create_principal("agent1", starting_scrip=100, starting_compute=500)
+
+        # Reset compute should still set the llm_tokens resource
+        ledger.reset_compute("agent1", 1000)
+        assert ledger.get_compute("agent1") == 1000
+
+    @pytest.mark.asyncio
+    async def test_wait_for_resource_immediate_success(self) -> None:
+        """wait_for_resource returns immediately when capacity available."""
+        config = {
+            "rate_limiting": {
+                "enabled": True,
+                "window_seconds": 60.0,
+                "resources": {"test": {"max_per_window": 10}}
+            }
+        }
+        ledger = Ledger.from_config(config, ["agent1"])
+
+        # Should succeed immediately
+        result = await ledger.wait_for_resource("agent1", "test", 5, timeout=1.0)
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_wait_for_resource_timeout(self) -> None:
+        """wait_for_resource times out when capacity not available."""
+        config = {
+            "rate_limiting": {
+                "enabled": True,
+                "window_seconds": 60.0,  # Long window
+                "resources": {"test": {"max_per_window": 1}}
+            }
+        }
+        ledger = Ledger.from_config(config, ["agent1"])
+
+        # Consume all capacity
+        ledger.consume_resource("agent1", "test", 1)
+
+        # Wait should timeout quickly
+        result = await ledger.wait_for_resource("agent1", "test", 1, timeout=0.1)
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_wait_for_resource_succeeds_after_window_expires(self) -> None:
+        """wait_for_resource blocks until capacity available."""
+        config = {
+            "rate_limiting": {
+                "enabled": True,
+                "window_seconds": 0.1,  # Short window for test
+                "resources": {"test": {"max_per_window": 1}}
+            }
+        }
+        ledger = Ledger.from_config(config, ["agent1"])
+
+        # Consume all capacity
+        ledger.consume_resource("agent1", "test", 1)
+
+        # Wait should succeed after window expires
+        result = await ledger.wait_for_resource("agent1", "test", 1, timeout=0.5)
+        assert result is True
+
+    @pytest.mark.asyncio
+    async def test_wait_for_resource_legacy_mode_immediate(self) -> None:
+        """wait_for_resource returns immediately in legacy mode."""
+        ledger = Ledger()
+
+        # Should succeed immediately in legacy mode
+        result = await ledger.wait_for_resource("agent1", "any_resource", 999999)
+        assert result is True
+
+    def test_unconfigured_resource_has_infinite_capacity(self) -> None:
+        """Resources not configured in rate_limiting have infinite capacity."""
+        config = {
+            "rate_limiting": {
+                "enabled": True,
+                "resources": {"llm_calls": {"max_per_window": 10}}
+            }
+        }
+        ledger = Ledger.from_config(config, ["agent1"])
+
+        # Unconfigured resource should have infinite capacity
+        assert ledger.get_resource_remaining("agent1", "unconfigured") == float("inf")
+        assert ledger.check_resource_capacity("agent1", "unconfigured", 999999) is True
+        assert ledger.consume_resource("agent1", "unconfigured", 999999) is True
+
+    def test_reset_compute_warns_when_rate_tracker_enabled(self) -> None:
+        """reset_compute emits deprecation warning when rate limiting enabled."""
+        import warnings
+
+        config = {
+            "rate_limiting": {
+                "enabled": True,
+                "resources": {"llm_tokens": {"max_per_window": 100}}
+            }
+        }
+        ledger = Ledger.from_config(config, ["agent1"])
+        ledger.create_principal("agent1", starting_scrip=100, starting_compute=500)
+
+        # Should emit a deprecation warning
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            ledger.reset_compute("agent1", 1000)
+            assert len(w) == 1
+            assert issubclass(w[0].category, DeprecationWarning)
+            assert "rate limiting enabled" in str(w[0].message)
+
+        # But the operation should still work
+        assert ledger.get_compute("agent1") == 1000
+
+    def test_reset_compute_no_warning_when_rate_tracker_disabled(self) -> None:
+        """reset_compute does NOT warn when rate limiting is disabled (legacy mode)."""
+        import warnings
+
+        ledger = Ledger()
+        ledger.create_principal("agent1", starting_scrip=100, starting_compute=500)
+
+        # Should NOT emit a deprecation warning in legacy mode
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            ledger.reset_compute("agent1", 1000)
+            # Filter for DeprecationWarnings only
+            dep_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
+            assert len(dep_warnings) == 0
+
+        assert ledger.get_compute("agent1") == 1000
+
+
+class TestAsyncScripOperations:
+    """Tests for async thread-safe scrip operations."""
+
+    @pytest.mark.asyncio
+    async def test_transfer_scrip_async_success(self) -> None:
+        """Async transfer scrip succeeds with sufficient funds."""
+        ledger = Ledger()
+        ledger.create_principal("agent_a", starting_scrip=100)
+        ledger.create_principal("agent_b", starting_scrip=50)
+
+        result = await ledger.transfer_scrip_async("agent_a", "agent_b", 30)
+
+        assert result is True
+        assert ledger.get_scrip("agent_a") == 70
+        assert ledger.get_scrip("agent_b") == 80
+
+    @pytest.mark.asyncio
+    async def test_transfer_scrip_async_insufficient_funds(self) -> None:
+        """Async transfer fails with insufficient funds."""
+        ledger = Ledger()
+        ledger.create_principal("agent_a", starting_scrip=100)
+        ledger.create_principal("agent_b", starting_scrip=50)
+
+        result = await ledger.transfer_scrip_async("agent_a", "agent_b", 150)
+
+        assert result is False
+        assert ledger.get_scrip("agent_a") == 100
+        assert ledger.get_scrip("agent_b") == 50
+
+    @pytest.mark.asyncio
+    async def test_transfer_scrip_async_zero_amount(self) -> None:
+        """Async transfer fails with zero amount."""
+        ledger = Ledger()
+        ledger.create_principal("agent_a", starting_scrip=100)
+        ledger.create_principal("agent_b", starting_scrip=50)
+
+        result = await ledger.transfer_scrip_async("agent_a", "agent_b", 0)
+
+        assert result is False
+        assert ledger.get_scrip("agent_a") == 100
+        assert ledger.get_scrip("agent_b") == 50
+
+    @pytest.mark.asyncio
+    async def test_transfer_scrip_async_negative_amount(self) -> None:
+        """Async transfer fails with negative amount."""
+        ledger = Ledger()
+        ledger.create_principal("agent_a", starting_scrip=100)
+        ledger.create_principal("agent_b", starting_scrip=50)
+
+        result = await ledger.transfer_scrip_async("agent_a", "agent_b", -10)
+
+        assert result is False
+        assert ledger.get_scrip("agent_a") == 100
+        assert ledger.get_scrip("agent_b") == 50
+
+    @pytest.mark.asyncio
+    async def test_deduct_scrip_async_success(self) -> None:
+        """Async deduct scrip succeeds with sufficient funds."""
+        ledger = Ledger()
+        ledger.create_principal("agent_a", starting_scrip=100)
+
+        result = await ledger.deduct_scrip_async("agent_a", 30)
+
+        assert result is True
+        assert ledger.get_scrip("agent_a") == 70
+
+    @pytest.mark.asyncio
+    async def test_deduct_scrip_async_insufficient_funds(self) -> None:
+        """Async deduct fails with insufficient funds."""
+        ledger = Ledger()
+        ledger.create_principal("agent_a", starting_scrip=100)
+
+        result = await ledger.deduct_scrip_async("agent_a", 150)
+
+        assert result is False
+        assert ledger.get_scrip("agent_a") == 100
+
+    @pytest.mark.asyncio
+    async def test_credit_scrip_async(self) -> None:
+        """Async credit scrip adds to balance."""
+        ledger = Ledger()
+        ledger.create_principal("agent_a", starting_scrip=100)
+
+        await ledger.credit_scrip_async("agent_a", 50)
+
+        assert ledger.get_scrip("agent_a") == 150
+
+    @pytest.mark.asyncio
+    async def test_credit_scrip_async_creates_principal(self) -> None:
+        """Async credit scrip creates principal if not exists."""
+        ledger = Ledger()
+
+        await ledger.credit_scrip_async("new_agent", 100)
+
+        assert ledger.get_scrip("new_agent") == 100
+
+
+class TestAsyncResourceOperations:
+    """Tests for async thread-safe resource operations."""
+
+    @pytest.mark.asyncio
+    async def test_spend_resource_async_success(self) -> None:
+        """Async spend resource succeeds with sufficient balance."""
+        ledger = Ledger()
+        ledger.create_principal("agent_a", starting_scrip=0)
+        ledger.set_resource("agent_a", "llm_tokens", 500.0)
+
+        result = await ledger.spend_resource_async("agent_a", "llm_tokens", 100.0)
+
+        assert result is True
+        assert ledger.get_resource("agent_a", "llm_tokens") == 400.0
+
+    @pytest.mark.asyncio
+    async def test_spend_resource_async_insufficient(self) -> None:
+        """Async spend resource fails with insufficient balance."""
+        ledger = Ledger()
+        ledger.create_principal("agent_a", starting_scrip=0)
+        ledger.set_resource("agent_a", "llm_tokens", 100.0)
+
+        result = await ledger.spend_resource_async("agent_a", "llm_tokens", 200.0)
+
+        assert result is False
+        assert ledger.get_resource("agent_a", "llm_tokens") == 100.0
+
+    @pytest.mark.asyncio
+    async def test_credit_resource_async(self) -> None:
+        """Async credit resource adds to balance."""
+        ledger = Ledger()
+        ledger.create_principal("agent_a", starting_scrip=0)
+        ledger.set_resource("agent_a", "llm_tokens", 100.0)
+
+        await ledger.credit_resource_async("agent_a", "llm_tokens", 50.0)
+
+        assert ledger.get_resource("agent_a", "llm_tokens") == 150.0
+
+    @pytest.mark.asyncio
+    async def test_transfer_resource_async_success(self) -> None:
+        """Async transfer resource succeeds with sufficient balance."""
+        ledger = Ledger()
+        ledger.create_principal("agent_a", starting_scrip=0)
+        ledger.create_principal("agent_b", starting_scrip=0)
+        ledger.set_resource("agent_a", "llm_tokens", 500.0)
+        ledger.set_resource("agent_b", "llm_tokens", 100.0)
+
+        result = await ledger.transfer_resource_async(
+            "agent_a", "agent_b", "llm_tokens", 200.0
+        )
+
+        assert result is True
+        assert ledger.get_resource("agent_a", "llm_tokens") == 300.0
+        assert ledger.get_resource("agent_b", "llm_tokens") == 300.0
+
+    @pytest.mark.asyncio
+    async def test_transfer_resource_async_insufficient(self) -> None:
+        """Async transfer resource fails with insufficient balance."""
+        ledger = Ledger()
+        ledger.create_principal("agent_a", starting_scrip=0)
+        ledger.create_principal("agent_b", starting_scrip=0)
+        ledger.set_resource("agent_a", "llm_tokens", 100.0)
+        ledger.set_resource("agent_b", "llm_tokens", 50.0)
+
+        result = await ledger.transfer_resource_async(
+            "agent_a", "agent_b", "llm_tokens", 200.0
+        )
+
+        assert result is False
+        assert ledger.get_resource("agent_a", "llm_tokens") == 100.0
+        assert ledger.get_resource("agent_b", "llm_tokens") == 50.0
+
+    @pytest.mark.asyncio
+    async def test_consume_resource_async_with_rate_tracker(self) -> None:
+        """Async consume resource uses rate tracker when enabled."""
+        config = {
+            "rate_limiting": {
+                "enabled": True,
+                "resources": {"llm_calls": {"max_per_window": 10}}
+            }
+        }
+        ledger = Ledger.from_config(config, ["agent1"])
+
+        # First consumption should succeed
+        result = await ledger.consume_resource_async("agent1", "llm_calls", 5)
+        assert result is True
+
+        # Should have 5 remaining
+        assert ledger.get_resource_remaining("agent1", "llm_calls") == 5
+
+    @pytest.mark.asyncio
+    async def test_consume_resource_async_legacy_mode(self) -> None:
+        """Async consume resource always succeeds in legacy mode."""
+        ledger = Ledger()
+
+        result = await ledger.consume_resource_async("agent1", "any_resource", 999999)
+        assert result is True
+
+
+class TestConcurrentAccess:
+    """Tests for concurrent access scenarios - race condition prevention."""
+
+    @pytest.mark.asyncio
+    async def test_concurrent_scrip_transfers_preserve_total(self) -> None:
+        """Concurrent transfers preserve total scrip in system."""
+        import asyncio
+
+        ledger = Ledger()
+        # Two agents with 1000 scrip each = 2000 total
+        ledger.create_principal("agent_a", starting_scrip=1000)
+        ledger.create_principal("agent_b", starting_scrip=1000)
+
+        async def transfer_a_to_b() -> int:
+            """Transfer 1 scrip from A to B, count successes."""
+            successes = 0
+            for _ in range(100):
+                if await ledger.transfer_scrip_async("agent_a", "agent_b", 1):
+                    successes += 1
+            return successes
+
+        async def transfer_b_to_a() -> int:
+            """Transfer 1 scrip from B to A, count successes."""
+            successes = 0
+            for _ in range(100):
+                if await ledger.transfer_scrip_async("agent_b", "agent_a", 1):
+                    successes += 1
+            return successes
+
+        # Run transfers concurrently
+        results = await asyncio.gather(transfer_a_to_b(), transfer_b_to_a())
+
+        # Total scrip must remain 2000
+        total = ledger.get_scrip("agent_a") + ledger.get_scrip("agent_b")
+        assert total == 2000, f"Total scrip changed from 2000 to {total}"
+
+    @pytest.mark.asyncio
+    async def test_concurrent_deduct_prevents_overdraft(self) -> None:
+        """Concurrent deducts cannot overdraft an account."""
+        import asyncio
+
+        ledger = Ledger()
+        ledger.create_principal("agent_a", starting_scrip=100)
+
+        async def deduct_50() -> bool:
+            """Try to deduct 50 scrip."""
+            return await ledger.deduct_scrip_async("agent_a", 50)
+
+        # Try to deduct 50 three times concurrently (only 2 should succeed)
+        results = await asyncio.gather(
+            deduct_50(), deduct_50(), deduct_50()
+        )
+
+        # At most 2 should succeed (100 / 50 = 2)
+        successes = sum(1 for r in results if r)
+        assert successes <= 2, f"More than 2 deductions succeeded: {successes}"
+
+        # Balance must be non-negative
+        balance = ledger.get_scrip("agent_a")
+        assert balance >= 0, f"Balance went negative: {balance}"
+
+    @pytest.mark.asyncio
+    async def test_concurrent_resource_spend_prevents_overdraft(self) -> None:
+        """Concurrent resource spends cannot overdraft."""
+        import asyncio
+
+        ledger = Ledger()
+        ledger.create_principal("agent_a", starting_scrip=0)
+        ledger.set_resource("agent_a", "llm_tokens", 100.0)
+
+        async def spend_50() -> bool:
+            """Try to spend 50 tokens."""
+            return await ledger.spend_resource_async("agent_a", "llm_tokens", 50.0)
+
+        # Try to spend 50 three times concurrently (only 2 should succeed)
+        results = await asyncio.gather(
+            spend_50(), spend_50(), spend_50()
+        )
+
+        # At most 2 should succeed (100 / 50 = 2)
+        successes = sum(1 for r in results if r)
+        assert successes <= 2, f"More than 2 spends succeeded: {successes}"
+
+        # Balance must be non-negative
+        balance = ledger.get_resource("agent_a", "llm_tokens")
+        assert balance >= 0, f"Balance went negative: {balance}"
+
+    @pytest.mark.asyncio
+    async def test_concurrent_resource_transfers_preserve_total(self) -> None:
+        """Concurrent resource transfers preserve total in system."""
+        import asyncio
+
+        ledger = Ledger()
+        ledger.create_principal("agent_a", starting_scrip=0)
+        ledger.create_principal("agent_b", starting_scrip=0)
+        ledger.set_resource("agent_a", "llm_tokens", 1000.0)
+        ledger.set_resource("agent_b", "llm_tokens", 1000.0)
+
+        async def transfer_a_to_b() -> int:
+            """Transfer 1 token from A to B, count successes."""
+            successes = 0
+            for _ in range(100):
+                if await ledger.transfer_resource_async(
+                    "agent_a", "agent_b", "llm_tokens", 1.0
+                ):
+                    successes += 1
+            return successes
+
+        async def transfer_b_to_a() -> int:
+            """Transfer 1 token from B to A, count successes."""
+            successes = 0
+            for _ in range(100):
+                if await ledger.transfer_resource_async(
+                    "agent_b", "agent_a", "llm_tokens", 1.0
+                ):
+                    successes += 1
+            return successes
+
+        # Run transfers concurrently
+        await asyncio.gather(transfer_a_to_b(), transfer_b_to_a())
+
+        # Total tokens must remain 2000
+        total = (
+            ledger.get_resource("agent_a", "llm_tokens")
+            + ledger.get_resource("agent_b", "llm_tokens")
+        )
+        assert total == 2000.0, f"Total tokens changed from 2000 to {total}"
+
+    @pytest.mark.asyncio
+    async def test_high_contention_scrip_operations(self) -> None:
+        """Many concurrent scrip operations maintain consistency."""
+        import asyncio
+
+        ledger = Ledger()
+        ledger.create_principal("agent_a", starting_scrip=10000)
+        ledger.create_principal("agent_b", starting_scrip=10000)
+
+        async def random_operation(agent: str, other: str) -> None:
+            """Perform random credit, deduct, or transfer."""
+            import random
+            for _ in range(50):
+                op = random.randint(0, 2)
+                if op == 0:
+                    await ledger.credit_scrip_async(agent, 1)
+                elif op == 1:
+                    await ledger.deduct_scrip_async(agent, 1)
+                else:
+                    await ledger.transfer_scrip_async(agent, other, 1)
+
+        # Run 10 concurrent tasks
+        tasks = [
+            random_operation("agent_a", "agent_b"),
+            random_operation("agent_a", "agent_b"),
+            random_operation("agent_a", "agent_b"),
+            random_operation("agent_a", "agent_b"),
+            random_operation("agent_a", "agent_b"),
+            random_operation("agent_b", "agent_a"),
+            random_operation("agent_b", "agent_a"),
+            random_operation("agent_b", "agent_a"),
+            random_operation("agent_b", "agent_a"),
+            random_operation("agent_b", "agent_a"),
+        ]
+        await asyncio.gather(*tasks)
+
+        # Balances must be non-negative
+        assert ledger.get_scrip("agent_a") >= 0
+        assert ledger.get_scrip("agent_b") >= 0

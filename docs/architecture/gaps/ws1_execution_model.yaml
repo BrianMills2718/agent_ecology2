@@ -1,0 +1,871 @@
+# Workstream 1: Execution Model Gap Analysis
+# Generated: 2026-01-12
+# Compares: current/execution_model.md vs target/02_execution_model.md
+
+metadata:
+  workstream: WS-1
+  component: execution_model
+  current_doc: docs/architecture/current/execution_model.md
+  target_doc: docs/architecture/target/02_execution_model.md
+  methodology: docs/architecture/GAP_IDENTIFICATION_METHODOLOGY.md
+
+gaps:
+  # =============================================================================
+  # CAPABILITIES DIMENSION
+  # =============================================================================
+
+  - id: GAP-EXEC-001
+    component: execution_model
+    dimension: capabilities
+    title: "Continuous autonomous agent loops replacing tick-synchronized execution"
+    current_state: |
+      Agents are passive and do NOT act autonomously. The SimulationRunner controls
+      when agents think and act via a tick-synchronized loop:
+      - while self.world.advance_tick()
+      - Phase 1: Parallel thinking via asyncio.gather()
+      - Phase 2: Sequential randomized execution
+      All agents are triggered simultaneously each tick.
+    target_state: |
+      Agents act independently via continuous autonomous loops:
+      - async def agent_loop(agent): while agent.alive
+      - Agents self-trigger, not system-triggered
+      - Each agent acts at its own pace (resource-limited)
+      - Variable action rate based on resource consumption
+    delta: |
+      Complete redesign of execution model:
+      - Remove SimulationRunner.run() tick-based loop
+      - Implement per-agent async loops with while agent.alive
+      - Remove Phase 1/Phase 2 two-phase commit pattern
+      - Remove asyncio.gather() for thinking
+      - Add agent.alive flag for loop termination
+    dependencies: []
+    complexity: XL
+    risk: high
+    files_affected:
+      - src/simulation/runner.py
+      - src/agents/agent.py
+      - src/world/world.py
+    acceptance_criteria:
+      - Each agent runs in its own async loop
+      - Agents can execute at different rates
+      - No centralized tick-based triggering
+      - System can handle agents starting/stopping independently
+
+  - id: GAP-EXEC-002
+    component: execution_model
+    dimension: capabilities
+    title: "Agent sleep system with self-managed wake conditions"
+    current_state: |
+      No sleeping mechanism exists. All agents are triggered every tick.
+      Agents cannot choose to skip ticks or wait for conditions.
+    target_state: |
+      Agents own their sleep configuration with system primitives:
+      - await sleep(duration_seconds)
+      - await sleep_until_event("escrow_listing")
+      - await sleep_until(lambda: self.scrip > 100)
+      Wake condition types: Duration, Event, Predicate
+      Benefits: Conserve compute, wait for conditions, strategic timing
+    delta: |
+      Implement sleep primitives:
+      - Add agent.is_sleeping flag
+      - Add agent.wait_for_wake_condition() method
+      - Implement duration-based sleep
+      - Implement event-based wake (needs event subscription system)
+      - Implement predicate-based wake (needs condition evaluation)
+    dependencies:
+      - GAP-EXEC-001
+    complexity: L
+    risk: medium
+    files_affected:
+      - src/agents/agent.py
+      - src/simulation/runner.py
+      - src/world/event_system.py (new)
+    acceptance_criteria:
+      - Agents can sleep for specified duration
+      - Agents can wake on specific events
+      - Agents can wake when predicate becomes true
+      - Sleeping agents consume no compute resources
+
+  - id: GAP-EXEC-003
+    component: execution_model
+    dimension: capabilities
+    title: "Rate limiting with capacity checking and wait-for-capacity"
+    current_state: |
+      Rate limiting exists only as inter-tick delay:
+      - config.llm.rate_limit_delay: 15 seconds between ticks
+      - Purpose: Avoid hitting LLM API rate limits
+      No per-agent rate tracking or capacity waiting.
+    target_state: |
+      No-debt rate limiting with capacity checking:
+      - rate_tracker.has_capacity(agent.id, "cpu")
+      - rate_tracker.wait_for_capacity(agent.id, "cpu")
+      - Agents wait for capacity instead of accumulating debt
+      - Each agent has own rate window
+    delta: |
+      Implement rate_tracker system:
+      - Add RateTracker class with per-agent capacity tracking
+      - Add has_capacity() method
+      - Add wait_for_capacity() async method
+      - Integrate with agent loop (check before think)
+    dependencies:
+      - GAP-EXEC-001
+    complexity: M
+    risk: medium
+    files_affected:
+      - src/world/rate_tracker.py (new)
+      - src/simulation/runner.py
+      - src/agents/agent.py
+    acceptance_criteria:
+      - Agents cannot exceed rate limits
+      - Agents wait when rate limit reached
+      - No debt accumulation for renewable resources
+      - Rate windows reset appropriately
+
+  - id: GAP-EXEC-004
+    component: execution_model
+    dimension: capabilities
+    title: "Context hash verification for think-act atomicity"
+    current_state: |
+      No context hash verification. If agent's prompt changes during thinking,
+      the action based on old prompt executes anyway. No detection of identity
+      mismatch between thinking and acting.
+    target_state: |
+      Context hash check prevents stale-thought execution:
+      - Capture context_hash = hash(agent.prompt) before thinking
+      - After thinking, verify hash(agent.prompt) == context_hash
+      - If changed, void the action and log warning
+      - Ensures agents act consistently with current identity
+    delta: |
+      Implement context hash verification:
+      - Add prompt hashing before think()
+      - Add hash comparison after think()
+      - Add action voiding logic when mismatch detected
+      - Add logging for voided actions
+    dependencies:
+      - GAP-EXEC-001
+    complexity: S
+    risk: low
+    files_affected:
+      - src/simulation/runner.py
+      - src/agents/agent.py
+    acceptance_criteria:
+      - Prompt hash captured before thinking
+      - Hash verified before action execution
+      - Mismatched actions are voided
+      - Warning logged on void
+
+  - id: GAP-EXEC-005
+    component: execution_model
+    dimension: capabilities
+    title: "Time injection into LLM context"
+    current_state: |
+      No mention of time injection in current execution model.
+      Agents may not know current time during thinking.
+    target_state: |
+      System injects current timestamp into every LLM context:
+      - Format: "Current time: 2025-01-11T14:30:00Z"
+      - Enables calculating oracle resolution schedule
+      - Enables coordinating with other agents
+      - Enables time-based strategies
+    delta: |
+      Add time injection to agent context:
+      - Inject timestamp into prompt before LLM call
+      - Use ISO 8601 format
+      - Update context building in agent thinking
+    dependencies: []
+    complexity: S
+    risk: low
+    files_affected:
+      - src/agents/agent.py
+      - src/agents/llm.py
+    acceptance_criteria:
+      - Every LLM call includes current timestamp
+      - Timestamp is in ISO 8601 format
+      - Agents can parse and use the time
+
+  # =============================================================================
+  # DATA MODEL DIMENSION
+  # =============================================================================
+
+  - id: GAP-EXEC-006
+    component: execution_model
+    dimension: data_model
+    title: "Agent alive flag for loop termination"
+    current_state: |
+      No agent.alive flag. Agent lifecycle controlled entirely by
+      SimulationRunner via tick count (max_ticks).
+    target_state: |
+      Agent has alive flag:
+      - agent.alive: bool
+      - Loop condition: while agent.alive
+      - Allows individual agent termination
+    delta: |
+      Add alive flag to Agent:
+      - Add alive: bool field to Agent class
+      - Initialize to True on creation
+      - Set to False for termination
+      - Use in loop condition
+    dependencies: []
+    complexity: S
+    risk: low
+    files_affected:
+      - src/agents/agent.py
+    acceptance_criteria:
+      - Agent has alive flag
+      - Flag controls loop execution
+      - Individual agents can be terminated
+
+  - id: GAP-EXEC-007
+    component: execution_model
+    dimension: data_model
+    title: "Agent sleep state and wake condition tracking"
+    current_state: |
+      No sleep state in Agent. All agents are always "awake".
+    target_state: |
+      Agent tracks sleep state:
+      - agent.is_sleeping: bool
+      - Wake conditions stored per agent
+      - Types: duration, event, predicate
+    delta: |
+      Add sleep tracking to Agent:
+      - Add is_sleeping: bool field
+      - Add wake_condition field (union type)
+      - Add methods to set/clear sleep state
+    dependencies:
+      - GAP-EXEC-002
+    complexity: S
+    risk: low
+    files_affected:
+      - src/agents/agent.py
+    acceptance_criteria:
+      - Agent has is_sleeping flag
+      - Wake conditions can be stored
+      - Sleep state can be queried and modified
+
+  - id: GAP-EXEC-008
+    component: execution_model
+    dimension: data_model
+    title: "Async lock on Ledger for concurrent operations"
+    current_state: |
+      Current model assumes sequential execution within a tick.
+      Ledger operations are not explicitly protected with async locks.
+      No mention of asyncio.Lock() in current docs.
+    target_state: |
+      Ledger has async lock for concurrent safety:
+      - self._lock = asyncio.Lock()
+      - All mutations use: async with self._lock
+      - Consistency guarantees:
+        * Single async lock serializes mutations
+        * No double-spending (balance checked under lock)
+        * Reads can happen concurrently (eventually consistent)
+        * All transfers are atomic
+    delta: |
+      Add async lock to Ledger:
+      - Add asyncio.Lock to Ledger.__init__()
+      - Wrap all mutations in async with self._lock
+      - Ensure transfer is async and uses lock
+    dependencies:
+      - GAP-EXEC-001
+    complexity: M
+    risk: high
+    files_affected:
+      - src/world/ledger.py
+    acceptance_criteria:
+      - Ledger has asyncio.Lock
+      - All mutations protected by lock
+      - No double-spending possible
+      - Concurrent reads work correctly
+
+  # =============================================================================
+  # INTERFACES DIMENSION
+  # =============================================================================
+
+  - id: GAP-EXEC-009
+    component: execution_model
+    dimension: interfaces
+    title: "agent_loop() async function for continuous execution"
+    current_state: |
+      No agent_loop() function. Agents are invoked via:
+      - SimulationRunner._think_agent(agent, tick_state)
+      - SimulationRunner._execute_proposals()
+      External control, not self-looping.
+    target_state: |
+      Each agent has continuous loop:
+      async def agent_loop(agent):
+          while agent.alive:
+              # Check sleep
+              # Check rate limits
+              # Snapshot context
+              # Think
+              # Verify context
+              # Act
+    delta: |
+      Implement agent_loop():
+      - Create async function for per-agent execution
+      - Integrate sleep checking
+      - Integrate rate limit checking
+      - Integrate context hash verification
+      - Loop until agent.alive is False
+    dependencies:
+      - GAP-EXEC-001
+      - GAP-EXEC-002
+      - GAP-EXEC-003
+      - GAP-EXEC-004
+      - GAP-EXEC-006
+    complexity: L
+    risk: medium
+    files_affected:
+      - src/simulation/runner.py
+      - src/agents/agent.py
+    acceptance_criteria:
+      - agent_loop() is async and continuous
+      - Integrates all new capabilities
+      - Handles termination gracefully
+      - Properly sequences check/think/act
+
+  - id: GAP-EXEC-010
+    component: execution_model
+    dimension: interfaces
+    title: "Ledger.transfer() becomes async with lock"
+    current_state: |
+      Ledger.transfer() is synchronous (implied by sequential execution model).
+      No async/await in current transfer interface.
+    target_state: |
+      Ledger.transfer() is async with lock:
+      async def transfer(self, from_id, to_id, amount, resource) -> bool:
+          async with self._lock:
+              if balance < amount:
+                  return False
+              # atomic update
+              return True
+    delta: |
+      Make transfer async:
+      - Change transfer() to async def
+      - Add async with self._lock wrapper
+      - Update all callers to await transfer()
+    dependencies:
+      - GAP-EXEC-008
+    complexity: M
+    risk: medium
+    files_affected:
+      - src/world/ledger.py
+      - All files calling ledger.transfer()
+    acceptance_criteria:
+      - transfer() is async
+      - Uses lock for atomicity
+      - All callers updated to await
+
+  - id: GAP-EXEC-011
+    component: execution_model
+    dimension: interfaces
+    title: "Sleep primitives interface"
+    current_state: |
+      No sleep interface exists.
+    target_state: |
+      Agent can call:
+      - await sleep(duration_seconds)
+      - await sleep_until_event("escrow_listing")
+      - await sleep_until(lambda: self.scrip > 100)
+    delta: |
+      Add sleep methods to Agent:
+      - sleep(duration_seconds) - simple timer
+      - sleep_until_event(event_name) - event subscription
+      - sleep_until(predicate) - condition polling
+    dependencies:
+      - GAP-EXEC-002
+      - GAP-EXEC-007
+    complexity: M
+    risk: low
+    files_affected:
+      - src/agents/agent.py
+    acceptance_criteria:
+      - All three sleep variants implemented
+      - Duration sleep uses asyncio.sleep
+      - Event sleep subscribes to event system
+      - Predicate sleep checks condition periodically
+
+  - id: GAP-EXEC-012
+    component: execution_model
+    dimension: interfaces
+    title: "RateTracker interface for capacity management"
+    current_state: |
+      No RateTracker. Rate limiting is global inter-tick delay only.
+    target_state: |
+      RateTracker provides:
+      - has_capacity(agent_id, resource_type) -> bool
+      - wait_for_capacity(agent_id, resource_type) -> awaitable
+    delta: |
+      Create RateTracker class:
+      - has_capacity() checks current window
+      - wait_for_capacity() blocks until capacity available
+      - Track per-agent, per-resource usage
+    dependencies:
+      - GAP-EXEC-003
+    complexity: M
+    risk: medium
+    files_affected:
+      - src/world/rate_tracker.py (new)
+    acceptance_criteria:
+      - RateTracker class exists
+      - has_capacity() returns bool correctly
+      - wait_for_capacity() blocks appropriately
+      - Window-based tracking works
+
+  # =============================================================================
+  # BEHAVIORS DIMENSION
+  # =============================================================================
+
+  - id: GAP-EXEC-013
+    component: execution_model
+    dimension: behaviors
+    title: "Ticks become metrics windows, not execution triggers"
+    current_state: |
+      Ticks are execution triggers:
+      - advance_tick() increments tick counter
+      - Resets flow resources for all principals
+      - Returns False if tick >= max_ticks
+      - Triggers agent thinking and execution
+    target_state: |
+      Ticks become passive reference:
+      1. Metrics aggregation windows - reporting/monitoring
+      2. Flow accumulation reference - token bucket uses time
+      3. Oracle resolution schedule - periodic auction resolution
+      Background clock runs independently; agents ignore it.
+    delta: |
+      Repurpose advance_tick():
+      - Remove execution triggering from tick
+      - Keep tick as metrics window
+      - Keep tick for oracle resolution timing
+      - Agents act based on own loops, not ticks
+    dependencies:
+      - GAP-EXEC-001
+    complexity: L
+    risk: medium
+    files_affected:
+      - src/world/world.py
+      - src/simulation/runner.py
+    acceptance_criteria:
+      - Ticks no longer trigger agent execution
+      - Ticks still used for metrics aggregation
+      - Ticks still used for oracle scheduling
+      - Agents run independently of tick clock
+
+  - id: GAP-EXEC-014
+    component: execution_model
+    dimension: behaviors
+    title: "Race conditions handled by artifacts, not orchestration"
+    current_state: |
+      Race conditions prevented by Phase 2 sequential randomized execution:
+      - Shuffle proposals randomly (prevents ordering exploits)
+      - Execute each action sequentially
+      - Later actions see effects of earlier ones
+      Orchestration prevents races.
+    target_state: |
+      Race conditions resolved by genesis artifacts:
+      - genesis_ledger: Transfer atomicity, balance checks
+      - genesis_escrow: Purchase race resolution
+      - genesis_rights_registry: Quota enforcement
+      Agents must handle failures gracefully and retry.
+    delta: |
+      Shift race resolution to artifacts:
+      - Remove sequential execution guarantee
+      - Ensure artifacts handle concurrent access
+      - Document agent responsibility for failure handling
+      - Test concurrent access scenarios
+    dependencies:
+      - GAP-EXEC-001
+      - GAP-EXEC-008
+    complexity: L
+    risk: high
+    files_affected:
+      - src/world/genesis.py
+      - src/simulation/runner.py
+      - src/world/ledger.py
+    acceptance_criteria:
+      - Artifacts handle concurrent access safely
+      - No double-spending or race conditions
+      - Agents receive clear success/failure results
+      - System stable under concurrent load
+
+  - id: GAP-EXEC-015
+    component: execution_model
+    dimension: behaviors
+    title: "No snapshot consistency - agents see real-time state"
+    current_state: |
+      Snapshot consistency within tick:
+      - All agents see same world state within a tick
+      - tick_state = self.world.get_state_summary()
+      - No races during thinking phase
+      - State frozen during parallel thinking
+    target_state: |
+      No snapshot consistency:
+      - Agents see real-time state
+      - State may change between read and action
+      - Must handle stale reads
+      - Race conditions possible
+    delta: |
+      Remove snapshot mechanism:
+      - Remove tick_state capture
+      - Agents read directly from world state
+      - Document stale read handling requirement
+      - Test behavior under concurrent modifications
+    dependencies:
+      - GAP-EXEC-001
+    complexity: M
+    risk: medium
+    files_affected:
+      - src/simulation/runner.py
+      - src/world/world.py
+    acceptance_criteria:
+      - No pre-captured state snapshot
+      - Agents read live world state
+      - Documentation for stale read handling
+      - Tests verify behavior under concurrency
+
+  - id: GAP-EXEC-016
+    component: execution_model
+    dimension: behaviors
+    title: "Variable agent productivity based on efficiency"
+    current_state: |
+      Fixed parallelism:
+      - All N agents think in parallel
+      - All N agents get one action per tick
+      - No way for "fast" agents to do more
+      Equal opportunity per tick.
+    target_state: |
+      Variable productivity:
+      - Fast/efficient agents can do more
+      - Expensive thinkers fall into debt, slow down
+      - Natural differentiation emerges
+      - Emergent throttling based on resource consumption
+    delta: |
+      Allow variable action rates:
+      - Remove one-action-per-tick constraint
+      - Faster agents loop more frequently
+      - Resource consumption determines pace
+      - Track and observe productivity variance
+    dependencies:
+      - GAP-EXEC-001
+      - GAP-EXEC-003
+    complexity: M
+    risk: medium
+    files_affected:
+      - src/simulation/runner.py
+      - src/agents/agent.py
+    acceptance_criteria:
+      - Agents can have different action rates
+      - Resource consumption affects pace
+      - Metrics track productivity variance
+      - Efficient agents observably faster
+
+  - id: GAP-EXEC-017
+    component: execution_model
+    dimension: behaviors
+    title: "Worker process pattern for ledger safety"
+    current_state: |
+      No worker process pattern mentioned. Actions executed directly
+      in main loop context.
+    target_state: |
+      Worker processes execute actions but don't mutate ledger:
+      - Workers execute actions
+      - Workers measure CPU/memory
+      - Workers return (result, usage)
+      - Main process updates ledger (under lock)
+      Single point of mutation in main process.
+    delta: |
+      Implement worker pattern:
+      - Create worker process pool
+      - Workers execute and measure
+      - Main process receives results
+      - Main process updates ledger atomically
+    dependencies:
+      - GAP-EXEC-008
+    complexity: XL
+    risk: high
+    files_affected:
+      - src/simulation/runner.py
+      - src/world/worker.py (new)
+      - src/world/ledger.py
+    acceptance_criteria:
+      - Actions execute in worker processes
+      - Workers return usage measurements
+      - Only main process mutates ledger
+      - Clean process boundary
+
+  # =============================================================================
+  # CONFIGURATION DIMENSION
+  # =============================================================================
+
+  - id: GAP-EXEC-018
+    component: execution_model
+    dimension: configuration
+    title: "Tick duration for metrics/oracle (not execution)"
+    current_state: |
+      Inter-tick delay configurable:
+      - config.llm.rate_limit_delay: 15 seconds
+      - Controls pause between ticks
+      Tick duration tied to execution.
+    target_state: |
+      Tick duration for background clock:
+      - Used for metrics aggregation windows
+      - Used for oracle resolution schedule
+      - Independent of agent execution
+    delta: |
+      Repurpose tick timing config:
+      - Change config purpose from execution delay
+      - Use for metrics window duration
+      - Use for oracle scheduling
+      - Document new meaning
+    dependencies:
+      - GAP-EXEC-013
+    complexity: S
+    risk: low
+    files_affected:
+      - config/config.yaml
+      - config/schema.yaml
+      - src/world/world.py
+    acceptance_criteria:
+      - Tick duration configurable for new purpose
+      - Clear config documentation
+      - Metrics use tick windows correctly
+
+  - id: GAP-EXEC-019
+    component: execution_model
+    dimension: configuration
+    title: "Rate window configuration per resource type"
+    current_state: |
+      No rate window configuration. Only global tick delay.
+    target_state: |
+      Rate windows configurable:
+      - Per resource type (cpu, memory, etc.)
+      - Window duration
+      - Capacity limits
+      - Enables token bucket implementation
+    delta: |
+      Add rate window config:
+      - Add rate_windows section to config
+      - Specify window duration per resource
+      - Specify capacity per window
+    dependencies:
+      - GAP-EXEC-003
+      - GAP-EXEC-012
+    complexity: S
+    risk: low
+    files_affected:
+      - config/config.yaml
+      - config/schema.yaml
+    acceptance_criteria:
+      - Rate window config exists
+      - Per-resource configuration possible
+      - RateTracker uses config values
+
+  # =============================================================================
+  # CONSTRAINTS DIMENSION
+  # =============================================================================
+
+  - id: GAP-EXEC-020
+    component: execution_model
+    dimension: constraints
+    title: "Removal of tick count limit as termination condition"
+    current_state: |
+      Simulation terminates when tick >= max_ticks:
+      - advance_tick() returns False at max
+      - Hard stop after N ticks
+    target_state: |
+      Tick count no longer terminates simulation.
+      Other termination conditions needed:
+      - All agents terminated
+      - Explicit shutdown
+      - Resource exhaustion
+    delta: |
+      Change termination conditions:
+      - Remove max_ticks as termination
+      - Add alternative termination checks
+      - Could keep max_ticks as safety limit
+    dependencies:
+      - GAP-EXEC-001
+    complexity: S
+    risk: low
+    files_affected:
+      - src/world/world.py
+      - src/simulation/runner.py
+    acceptance_criteria:
+      - Simulation doesn't stop purely on tick count
+      - Alternative termination conditions work
+      - Graceful shutdown possible
+
+  - id: GAP-EXEC-021
+    component: execution_model
+    dimension: constraints
+    title: "No debt for renewable resources (wait instead)"
+    current_state: |
+      Resource handling via quota reset each tick.
+      No explicit debt or wait-for-capacity mechanism.
+    target_state: |
+      No debt for renewable resources:
+      - Agents don't accumulate negative balances
+      - They simply wait until rate window has capacity
+      - Wait is blocking, not debt accumulation
+    delta: |
+      Implement no-debt constraint:
+      - Block on capacity exhaustion
+      - No negative balance tracking
+      - Clear capacity = can proceed
+    dependencies:
+      - GAP-EXEC-003
+    complexity: S
+    risk: low
+    files_affected:
+      - src/world/rate_tracker.py (new)
+      - src/world/ledger.py
+    acceptance_criteria:
+      - No negative balances for renewable resources
+      - Agents wait when exhausted
+      - Clear differentiation from stock resources
+
+  # =============================================================================
+  # INFRASTRUCTURE DIMENSION (implied by behaviors)
+  # =============================================================================
+
+  - id: GAP-EXEC-022
+    component: execution_model
+    dimension: data_model
+    title: "SQLite-backed ledger with WAL mode for crash recovery"
+    current_state: |
+      No mention of SQLite or persistence in current execution model.
+      Ledger persistence assumed to be checkpoint-based.
+    target_state: |
+      Ledger backed by SQLite with transaction semantics:
+      - sqlite3.connect(db_path)
+      - PRAGMA journal_mode=WAL
+      - Transaction context for atomic updates
+      - Auto-rollback on crash or exception
+      Crash guarantees: ACID, WAL for concurrent reads.
+    delta: |
+      Implement SQLite-backed ledger:
+      - Replace in-memory ledger with SQLite
+      - Configure WAL mode
+      - Use transaction context for transfers
+      - Handle crash recovery
+    dependencies:
+      - GAP-EXEC-008
+    complexity: L
+    risk: medium
+    files_affected:
+      - src/world/ledger.py
+    acceptance_criteria:
+      - Ledger persisted to SQLite
+      - WAL mode enabled
+      - Transactions are ACID
+      - Crash recovery works correctly
+
+  - id: GAP-EXEC-023
+    component: execution_model
+    dimension: behaviors
+    title: "Background metrics loop independent of agent execution"
+    current_state: |
+      Metrics tied to tick execution. No independent metrics loop.
+    target_state: |
+      Background metrics loop:
+      async def metrics_loop():
+          while running:
+              await asyncio.sleep(tick_duration)
+              log_metrics(current_tick)
+              current_tick += 1
+      Runs independently of agent execution.
+    delta: |
+      Implement background metrics:
+      - Create separate async loop for metrics
+      - Aggregate per tick window
+      - Independent of agent activity
+    dependencies:
+      - GAP-EXEC-013
+    complexity: M
+    risk: low
+    files_affected:
+      - src/simulation/runner.py
+      - src/dashboard/metrics.py (possibly new)
+    acceptance_criteria:
+      - Metrics loop runs independently
+      - Aggregates data per tick window
+      - Doesn't interfere with agent loops
+
+# Summary Statistics
+summary:
+  total_gaps: 23
+  by_dimension:
+    capabilities: 5
+    data_model: 4
+    interfaces: 4
+    behaviors: 6
+    configuration: 2
+    constraints: 2
+  by_complexity:
+    S: 8
+    M: 8
+    L: 5
+    XL: 2
+  by_risk:
+    low: 9
+    medium: 10
+    high: 4
+
+# Suggested Implementation Order (based on dependencies)
+implementation_phases:
+  phase_1:
+    name: "Foundation - Continuous Execution"
+    gaps:
+      - GAP-EXEC-001  # Core loop change (XL, foundation for everything)
+      - GAP-EXEC-006  # Agent alive flag (S, needed for loop)
+      - GAP-EXEC-005  # Time injection (S, independent)
+    rationale: "Must convert to continuous execution before other features make sense"
+
+  phase_2:
+    name: "Concurrency Safety"
+    gaps:
+      - GAP-EXEC-008  # Async lock on ledger (M)
+      - GAP-EXEC-010  # Async transfer (M)
+      - GAP-EXEC-014  # Artifact-based race resolution (L)
+      - GAP-EXEC-022  # SQLite backing (L)
+    rationale: "Concurrent execution requires ledger safety"
+
+  phase_3:
+    name: "Rate Limiting"
+    gaps:
+      - GAP-EXEC-003  # Rate limiting capability (M)
+      - GAP-EXEC-012  # RateTracker interface (M)
+      - GAP-EXEC-019  # Rate window config (S)
+      - GAP-EXEC-021  # No-debt constraint (S)
+    rationale: "Need rate limiting before agents can run freely"
+
+  phase_4:
+    name: "Agent Loop Integration"
+    gaps:
+      - GAP-EXEC-009  # agent_loop() function (L)
+      - GAP-EXEC-004  # Context hash verification (S)
+      - GAP-EXEC-015  # No snapshot consistency (M)
+      - GAP-EXEC-016  # Variable productivity (M)
+    rationale: "Build full agent loop with all safety features"
+
+  phase_5:
+    name: "Sleep System"
+    gaps:
+      - GAP-EXEC-002  # Sleep capability (L)
+      - GAP-EXEC-007  # Sleep state tracking (S)
+      - GAP-EXEC-011  # Sleep primitives interface (M)
+    rationale: "Sleep is optional enhancement after core works"
+
+  phase_6:
+    name: "Tick Repurposing"
+    gaps:
+      - GAP-EXEC-013  # Ticks as metrics windows (L)
+      - GAP-EXEC-018  # Tick duration config (S)
+      - GAP-EXEC-020  # Remove tick termination (S)
+      - GAP-EXEC-023  # Background metrics loop (M)
+    rationale: "Can repurpose ticks once agents run independently"
+
+  phase_7:
+    name: "Worker Process Isolation"
+    gaps:
+      - GAP-EXEC-017  # Worker process pattern (XL)
+    rationale: "Major infrastructure change, do last"

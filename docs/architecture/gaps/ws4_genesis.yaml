@@ -1,0 +1,828 @@
+# WS-4 Genesis Artifacts Gap Analysis
+# Compares: current/genesis_artifacts.md vs target/05_contracts.md and target/06_oracle.md
+# Generated: 2026-01-12
+
+metadata:
+  workstream: WS-4
+  component: genesis_artifacts
+  current_doc: docs/architecture/current/genesis_artifacts.md
+  target_docs:
+    - docs/architecture/target/05_contracts.md
+    - docs/architecture/target/06_oracle.md
+  methodology: docs/architecture/GAP_IDENTIFICATION_METHODOLOGY.md
+
+gaps:
+  # ============================================================================
+  # CONTRACT SYSTEM GAPS
+  # ============================================================================
+
+  - id: GAP-GEN-001
+    component: genesis_artifacts
+    dimension: capabilities
+    title: "No contract-based access control system"
+    current_state: |
+      Access control is hardcoded via policy fields on artifacts (allow_read, read_price, etc.).
+      Genesis artifacts have hardcoded behavior that is not user-modifiable.
+      No executable contracts exist.
+    target_state: |
+      Contracts are executable artifacts that answer permission questions.
+      Every artifact has an access_contract_id pointing to the contract that governs its permissions.
+      Permission checks become contract invocations.
+    delta: |
+      - Implement contract artifact type with can_execute=true
+      - Add check_permission tool interface to contracts
+      - Add access_contract_id field to all artifacts
+      - Remove policy field from Artifact model
+      - Implement permission check flow through contracts
+    dependencies: []
+    complexity: XL
+    risk: high
+    files_affected:
+      - src/world/artifacts.py
+      - src/world/actions.py
+      - src/world/genesis.py
+      - src/world/world.py
+      - config/config.yaml
+    acceptance_criteria:
+      - All artifacts have access_contract_id field
+      - Permission checks invoke contract's check_permission method
+      - Policy field removed from artifacts
+      - Tests validate permission flow through contracts
+
+  - id: GAP-GEN-002
+    component: genesis_artifacts
+    dimension: interfaces
+    title: "Missing check_permission interface standard"
+    current_state: |
+      No standardized interface for permission checking.
+      Genesis artifacts have ad-hoc method signatures.
+    target_state: |
+      All contracts must implement check_permission with standard schema:
+      - Input: artifact_id, action (read/write/invoke/delete/transfer), requester_id
+      - Output: {allowed: bool, reason: string}
+    delta: |
+      - Define check_permission interface schema
+      - Implement interface validation for contracts
+      - All permission checks use standardized request/response format
+    dependencies:
+      - GAP-GEN-001
+    complexity: M
+    risk: medium
+    files_affected:
+      - src/world/genesis.py
+      - src/world/executor.py
+    acceptance_criteria:
+      - check_permission interface schema defined in config
+      - Contracts validated against interface at creation
+      - Standard response format enforced
+
+  - id: GAP-GEN-003
+    component: genesis_artifacts
+    dimension: capabilities
+    title: "Missing genesis contracts (freeware, self_owned, private, public)"
+    current_state: |
+      No genesis contracts exist.
+      Only genesis_ledger, genesis_oracle, genesis_rights_registry, genesis_event_log, genesis_escrow.
+    target_state: |
+      Four genesis contracts provided at system initialization:
+      - genesis_freeware: Anyone reads/invokes, only creator writes/deletes
+      - genesis_self_owned: Only the artifact itself can access
+      - genesis_private: Only creator has any access
+      - genesis_public: Anyone can do anything
+    delta: |
+      - Create GenesisContract base class
+      - Implement genesis_freeware contract
+      - Implement genesis_self_owned contract
+      - Implement genesis_private contract
+      - Implement genesis_public contract
+      - Add to genesis artifact initialization
+    dependencies:
+      - GAP-GEN-001
+      - GAP-GEN-002
+    complexity: L
+    risk: medium
+    files_affected:
+      - src/world/genesis.py
+      - src/world/world.py
+      - config/config.yaml
+    acceptance_criteria:
+      - All four genesis contracts created at world init
+      - genesis_freeware is default access_contract_id
+      - Contracts implement check_permission correctly
+      - Tests validate each contract's permission logic
+
+  - id: GAP-GEN-004
+    component: genesis_artifacts
+    dimension: behaviors
+    title: "No contract execution environment"
+    current_state: |
+      Genesis artifacts have hardcoded Python class behavior.
+      No sandboxed execution for user-created contracts.
+    target_state: |
+      Contracts execute in sandboxed environment with:
+      - Full capabilities: invoke artifacts, call LLM, charge principals
+      - Time limit: 30 second timeout
+      - No filesystem/process access
+      - Available APIs: invoke, call_llm, charge, get_artifact_info, get_balance, now()
+      - Unavailable: open, os.*, subprocess.*, socket.*, urllib.*, __import__, eval, compile
+    delta: |
+      - Implement contract execution sandbox
+      - Implement timeout enforcement (30s)
+      - Provide safe namespace with allowed functions
+      - Block dangerous builtins
+      - Implement error handling (fail closed)
+    dependencies:
+      - GAP-GEN-001
+    complexity: L
+    risk: high
+    files_affected:
+      - src/world/executor.py
+      - src/world/genesis.py
+    acceptance_criteria:
+      - Contract code executes in restricted namespace
+      - Timeout kills long-running contracts
+      - Dangerous operations blocked
+      - Errors result in permission denial
+
+  - id: GAP-GEN-005
+    component: genesis_artifacts
+    dimension: configuration
+    title: "Missing contract cost model configuration"
+    current_state: |
+      Genesis artifacts have fixed compute costs per method defined in config.
+      No concept of contract-specified cost models.
+    target_state: |
+      Contracts specify their own cost model:
+      - cost_model field: invoker_pays, owner_pays, artifact_pays, split, or custom
+      - Base permission checks cost 0 (to avoid infinite regress)
+      - LLM calls and artifact invocations charged per contract logic
+      - charge() function available for dynamic charging
+    delta: |
+      - Add cost_model field to contract schema
+      - Implement invoker_pays, owner_pays, artifact_pays, split modes
+      - Base checks remain free (0 cost)
+      - charge() function for custom payment logic
+    dependencies:
+      - GAP-GEN-001
+      - GAP-GEN-004
+    complexity: M
+    risk: medium
+    files_affected:
+      - src/world/genesis.py
+      - src/world/executor.py
+      - config/config.yaml
+    acceptance_criteria:
+      - Contracts can declare cost_model
+      - Each cost model implemented correctly
+      - charge() available in contract namespace
+      - Base permission checks are free
+
+  - id: GAP-GEN-006
+    component: genesis_artifacts
+    dimension: constraints
+    title: "Missing contract execution depth limit"
+    current_state: |
+      No depth tracking for permission checks.
+      Potential for infinite recursion if contract A checks contract B which checks A.
+    target_state: |
+      MAX_PERMISSION_DEPTH = 10
+      Each permission check increments depth counter.
+      Exceeding limit returns {allowed: false, reason: "Permission check depth exceeded"}.
+    delta: |
+      - Add depth parameter to permission check flow
+      - Increment depth on recursive checks
+      - Enforce MAX_PERMISSION_DEPTH limit
+      - Return denial when exceeded
+    dependencies:
+      - GAP-GEN-001
+    complexity: S
+    risk: medium
+    files_affected:
+      - src/world/executor.py
+      - src/world/genesis.py
+    acceptance_criteria:
+      - Depth tracked across permission checks
+      - Circular permission chains fail gracefully
+      - Depth limit configurable
+
+  - id: GAP-GEN-007
+    component: genesis_artifacts
+    dimension: behaviors
+    title: "No owner bypass removal - kernel knows about owners"
+    current_state: |
+      Ownership checks likely exist at kernel level.
+      Ownership transfer requires caller to be current owner (genesis_ledger).
+    target_state: |
+      The access_contract_id is the ONLY authority.
+      No kernel-level owner bypass.
+      If owner-based access needed, contract implements it.
+      Kernel doesn't know what an "owner" is.
+    delta: |
+      - Audit all kernel-level permission checks
+      - Remove any owner bypass logic
+      - Route all permission decisions through contracts
+      - Update ownership to be contract-defined
+    dependencies:
+      - GAP-GEN-001
+      - GAP-GEN-003
+    complexity: M
+    risk: high
+    files_affected:
+      - src/world/actions.py
+      - src/world/executor.py
+      - src/world/genesis.py
+    acceptance_criteria:
+      - No permission checks outside contract invocation
+      - Ownership concept exists only in contracts
+      - Tests verify no kernel bypass
+
+  - id: GAP-GEN-008
+    component: genesis_artifacts
+    dimension: configuration
+    title: "Missing contract cache policy"
+    current_state: |
+      No caching for permission checks.
+      Each check executes contract fresh.
+    target_state: |
+      Contracts can opt into fast-path caching:
+      - cache_policy field: cacheable, ttl_seconds, cache_key
+      - Cache invalidation on artifact content change
+      - Cache invalidation on contract change
+      - TTL expiry
+    delta: |
+      - Add cache_policy field to contract schema
+      - Implement permission result caching
+      - Cache key generation from policy
+      - Invalidation on content/contract changes
+      - TTL-based expiry
+    dependencies:
+      - GAP-GEN-001
+    complexity: M
+    risk: medium
+    files_affected:
+      - src/world/executor.py
+      - src/world/genesis.py
+      - config/config.yaml
+    acceptance_criteria:
+      - Contracts can declare cache_policy
+      - Cacheable contracts use cache
+      - Invalidation works correctly
+      - Non-cacheable contracts always execute
+
+  - id: GAP-GEN-009
+    component: genesis_artifacts
+    dimension: behaviors
+    title: "No contract composition support"
+    current_state: |
+      No composition mechanism for access checks.
+      Single policy per artifact.
+    target_state: |
+      Two composition patterns supported:
+      1. Caller-side: Artifact has access_contracts (list), caller evaluates each (AND composition)
+      2. Meta-contract: Single contract encodes composition logic internally
+    delta: |
+      - Support access_contracts list on artifacts (optional)
+      - Implement AND composition in caller
+      - Document meta-contract pattern
+    dependencies:
+      - GAP-GEN-001
+    complexity: M
+    risk: low
+    files_affected:
+      - src/world/artifacts.py
+      - src/world/executor.py
+    acceptance_criteria:
+      - Artifacts can have multiple access contracts
+      - AND composition: first failure stops
+      - Single contract still works (backward compatible)
+
+  - id: GAP-GEN-010
+    component: genesis_artifacts
+    dimension: data_model
+    title: "Artifact policy field still exists"
+    current_state: |
+      Artifacts have policy fields (allow_read, read_price, etc.) for access control.
+      Genesis artifacts controlled by hardcoded behavior.
+    target_state: |
+      Policy field removed from Artifact model.
+      Only access_contract_id exists for access control.
+    delta: |
+      - Remove policy field from Artifact model
+      - Remove allow_read, read_price, etc. fields
+      - Migrate existing artifacts to use contracts
+      - Update artifact creation to require access_contract_id
+    dependencies:
+      - GAP-GEN-001
+      - GAP-GEN-003
+    complexity: M
+    risk: medium
+    files_affected:
+      - src/world/artifacts.py
+      - src/world/actions.py
+    acceptance_criteria:
+      - Artifact model has no policy field
+      - All artifacts require access_contract_id
+      - Migration path documented
+
+  - id: GAP-GEN-011
+    component: genesis_artifacts
+    dimension: behaviors
+    title: "No handling for dangling contracts"
+    current_state: |
+      No mechanism to handle when access_contract_id points to deleted contract.
+    target_state: |
+      Decision needed (currently undecided in target):
+      - Option A: Fail-open (security risk)
+      - Option B: Fail-closed (artifact locked forever)
+      - Option C: Prevent deletion of referenced contracts
+    delta: |
+      - Make architectural decision on dangling contracts
+      - Implement chosen behavior
+      - Add referential integrity if Option C chosen
+    dependencies:
+      - GAP-GEN-001
+    complexity: M
+    risk: medium
+    files_affected:
+      - src/world/artifacts.py
+      - src/world/actions.py
+    acceptance_criteria:
+      - Dangling contract scenario handled
+      - Behavior documented
+      - Tests cover edge case
+
+  # ============================================================================
+  # ORACLE GAPS
+  # ============================================================================
+
+  - id: GAP-GEN-020
+    component: genesis_oracle
+    dimension: behaviors
+    title: "Tick-based bidding windows vs anytime bidding"
+    current_state: |
+      Oracle has explicit bidding windows:
+      - bidding_window config defines window length
+      - Bidding opens/closes at specific ticks
+      - Agents must poll for window status
+    target_state: |
+      Bids accepted anytime:
+      - No bidding windows
+      - Bids accumulate until resolution
+      - Agents bid whenever ready
+    delta: |
+      - Remove bidding window concept
+      - Remove bid phase tracking (open/closed)
+      - Accept bids continuously
+      - Accumulate bids until resolution
+    dependencies: []
+    complexity: M
+    risk: medium
+    files_affected:
+      - src/world/genesis.py
+      - config/config.yaml
+    acceptance_criteria:
+      - bid() method always accepts
+      - No window status checks
+      - status() returns only resolution info
+      - Bids queue until resolution
+
+  - id: GAP-GEN-021
+    component: genesis_oracle
+    dimension: behaviors
+    title: "Tick-based resolution vs time-based resolution"
+    current_state: |
+      Oracle resolves on tick-based schedule:
+      - first_auction_tick config
+      - Resolution triggered by tick advancement
+    target_state: |
+      Time-based resolution:
+      - resolution_interval (seconds) or resolution_schedule (cron)
+      - Deterministic schedule independent of ticks
+      - Agents can calculate next resolution time
+    delta: |
+      - Replace tick-based resolution with time-based
+      - Implement resolution_interval or cron schedule
+      - Remove first_auction_tick config
+      - Add time-based scheduler
+    dependencies: []
+    complexity: L
+    risk: medium
+    files_affected:
+      - src/world/genesis.py
+      - src/simulation/runner.py
+      - config/config.yaml
+    acceptance_criteria:
+      - Resolution on fixed time schedule
+      - No tick dependency for resolution
+      - Agents can query next resolution time
+      - Cron or interval config supported
+
+  - id: GAP-GEN-022
+    component: genesis_oracle
+    dimension: capabilities
+    title: "Missing multiple winner support with uniform pricing"
+    current_state: |
+      Oracle appears to support single winner per auction.
+      Winner pays second-highest bid (Vickrey).
+    target_state: |
+      Multiple winners supported:
+      - slots_per_resolution config (e.g., top 3 bids win)
+      - Uniform price mechanism: all winners pay (N+1)th highest bid
+      - Edge case: fewer bids than slots = all win, pay 0
+    delta: |
+      - Add slots_per_resolution config
+      - Implement uniform price mechanism
+      - Handle edge case of insufficient bids
+      - Update scoring to handle multiple winners
+    dependencies: []
+    complexity: M
+    risk: low
+    files_affected:
+      - src/world/genesis.py
+      - config/config.yaml
+    acceptance_criteria:
+      - Multiple winners selected per resolution
+      - All winners pay same price (N+1 highest bid)
+      - Edge cases handled correctly
+      - Config for slot count
+
+  - id: GAP-GEN-023
+    component: genesis_oracle
+    dimension: configuration
+    title: "Missing resolution schedule configuration"
+    current_state: |
+      Config: bidding_window, min_bid under genesis.oracle.auction.
+      Tick-based scheduling.
+    target_state: |
+      Config: resolution_interval (seconds) or resolution_schedule (cron).
+      Time-based scheduling.
+    delta: |
+      - Add resolution_interval config option
+      - Add resolution_schedule (cron) config option
+      - Remove bidding_window config
+      - Remove first_auction_tick config
+    dependencies:
+      - GAP-GEN-021
+    complexity: S
+    risk: low
+    files_affected:
+      - config/config.yaml
+      - config/schema.yaml
+    acceptance_criteria:
+      - resolution_interval or resolution_schedule in config
+      - bidding_window removed
+      - Config validated by schema
+
+  - id: GAP-GEN-024
+    component: genesis_oracle
+    dimension: configuration
+    title: "Missing slots_per_resolution configuration"
+    current_state: |
+      No configuration for multiple winner slots.
+    target_state: |
+      slots_per_resolution config under oracle section.
+      Default: 1 for backward compatibility.
+    delta: |
+      - Add slots_per_resolution to config
+      - Default to 1
+      - Update oracle logic to use config
+    dependencies:
+      - GAP-GEN-022
+    complexity: S
+    risk: low
+    files_affected:
+      - config/config.yaml
+      - config/schema.yaml
+    acceptance_criteria:
+      - slots_per_resolution in config
+      - Default value of 1
+      - Oracle reads config correctly
+
+  - id: GAP-GEN-025
+    component: genesis_oracle
+    dimension: interfaces
+    title: "status() method needs schedule info"
+    current_state: |
+      status() returns: phase, tick, bid count.
+    target_state: |
+      status() should return:
+      - Next resolution time
+      - Current bid count
+      - No phase (always accepting bids)
+    delta: |
+      - Add next_resolution_time to status response
+      - Remove phase from response
+      - Keep bid count
+    dependencies:
+      - GAP-GEN-020
+      - GAP-GEN-021
+    complexity: S
+    risk: low
+    files_affected:
+      - src/world/genesis.py
+    acceptance_criteria:
+      - status() returns next resolution time
+      - No phase field in response
+      - Agents can calculate time until resolution
+
+  - id: GAP-GEN-026
+    component: genesis_oracle
+    dimension: data_model
+    title: "Missing initial_balances configuration documentation"
+    current_state: |
+      Initial agent balances set somewhere, not clearly documented in genesis_artifacts.md.
+    target_state: |
+      Explicit genesis.initial_balances config:
+      - Per-agent initial scrip allocation
+      - New agents spawn with 0 scrip
+      - Total initial supply calculable from config
+    delta: |
+      - Document initial_balances config
+      - Ensure new agents start with 0
+      - Make initial allocation configurable per agent
+    dependencies: []
+    complexity: S
+    risk: low
+    files_affected:
+      - config/config.yaml
+      - docs/architecture/current/genesis_artifacts.md
+    acceptance_criteria:
+      - initial_balances documented
+      - Config supports per-agent allocation
+      - New spawned agents get 0 scrip
+
+  - id: GAP-GEN-027
+    component: genesis_oracle
+    dimension: behaviors
+    title: "UBI calculation from losing bids"
+    current_state: |
+      UBI distributed to all principals (mentioned in current doc).
+      Formula not clearly specified.
+    target_state: |
+      UBI formula specified:
+      - total_losing_bids = sum(all bids) - winning_bid(s)
+      - ubi_per_agent = total_losing_bids / num_agents
+      - Losing bids flow to winners as UBI (redistributes, not creates scrip)
+    delta: |
+      - Verify/implement correct UBI formula
+      - Ensure losing bids redistributed, not destroyed
+      - Document UBI calculation clearly
+    dependencies: []
+    complexity: S
+    risk: low
+    files_affected:
+      - src/world/genesis.py
+    acceptance_criteria:
+      - UBI formula matches target spec
+      - Losing bids redistributed to all agents
+      - No scrip destroyed in process
+
+  # ============================================================================
+  # GENERAL GENESIS GAPS
+  # ============================================================================
+
+  - id: GAP-GEN-030
+    component: genesis_artifacts
+    dimension: data_model
+    title: "Missing has_standing field for contracts"
+    current_state: |
+      Artifacts don't have has_standing field.
+    target_state: |
+      Contracts have has_standing: false by default.
+      Contracts don't need standing to function.
+    delta: |
+      - Add has_standing field to artifact model
+      - Set false for contracts
+      - Document field purpose
+    dependencies:
+      - GAP-GEN-001
+    complexity: S
+    risk: low
+    files_affected:
+      - src/world/artifacts.py
+    acceptance_criteria:
+      - has_standing field exists
+      - Contracts have has_standing=false
+      - Field documented
+
+  - id: GAP-GEN-031
+    component: genesis_artifacts
+    dimension: interfaces
+    title: "Missing can_execute field on artifacts"
+    current_state: |
+      Genesis artifacts are executable but no can_execute field on artifact model.
+      Executability determined by artifact type/class.
+    target_state: |
+      Explicit can_execute: true field on artifacts.
+      Contracts are artifacts with can_execute=true.
+    delta: |
+      - Add can_execute field to artifact model
+      - Set true for executable artifacts (contracts)
+      - Set false for data artifacts
+      - Validate before execution attempts
+    dependencies:
+      - GAP-GEN-001
+    complexity: S
+    risk: low
+    files_affected:
+      - src/world/artifacts.py
+      - src/world/executor.py
+    acceptance_criteria:
+      - can_execute field on all artifacts
+      - Execution checks field before running
+      - Field required at creation
+
+  - id: GAP-GEN-032
+    component: genesis_artifacts
+    dimension: interfaces
+    title: "Missing interface field with tools schema"
+    current_state: |
+      Genesis artifacts have methods defined in Python classes.
+      No formal interface/tools schema on artifact.
+    target_state: |
+      Artifacts have interface field with tools array:
+      - Each tool has name, description, inputSchema
+      - Contracts must have check_permission tool
+      - Interface enables discovery of artifact capabilities
+    delta: |
+      - Add interface field to artifact model
+      - Define tools array schema
+      - Populate interface for genesis artifacts
+      - Validate contracts have check_permission tool
+    dependencies:
+      - GAP-GEN-001
+    complexity: M
+    risk: medium
+    files_affected:
+      - src/world/artifacts.py
+      - src/world/genesis.py
+    acceptance_criteria:
+      - interface.tools field on artifacts
+      - Genesis artifacts have populated interfaces
+      - Contract validation for check_permission
+
+  - id: GAP-GEN-033
+    component: genesis_artifacts
+    dimension: capabilities
+    title: "Missing genesis_store mentioned in CLAUDE.md"
+    current_state: |
+      CLAUDE.md references genesis_store for "Artifact discovery and creation".
+      Not documented in genesis_artifacts.md.
+      Unclear if implemented.
+    target_state: |
+      genesis_store should be documented if it exists, or implemented if it doesn't:
+      - Purpose: Artifact discovery and creation
+      - Methods: TBD based on target architecture
+    delta: |
+      - Verify if genesis_store is implemented
+      - If yes: document in genesis_artifacts.md
+      - If no: implement or remove from CLAUDE.md
+    dependencies: []
+    complexity: M
+    risk: low
+    files_affected:
+      - src/world/genesis.py
+      - docs/architecture/current/genesis_artifacts.md
+      - CLAUDE.md
+    acceptance_criteria:
+      - genesis_store either documented or removed from CLAUDE.md
+      - Consistency between docs and implementation
+
+  - id: GAP-GEN-034
+    component: genesis_artifacts
+    dimension: capabilities
+    title: "Custom contracts not supported"
+    current_state: |
+      Only genesis (hardcoded) contracts exist.
+      Agents cannot create their own contracts.
+    target_state: |
+      Agents can create contracts for any access pattern:
+      - Paid read access contracts
+      - Multi-sig access contracts
+      - Time-based access contracts
+      - Any custom permission logic
+    delta: |
+      - Enable contract creation by agents
+      - Validate contracts implement required interface
+      - Support LLM-based permission decisions
+      - Support external API calls in contracts
+    dependencies:
+      - GAP-GEN-001
+      - GAP-GEN-002
+      - GAP-GEN-004
+    complexity: L
+    risk: medium
+    files_affected:
+      - src/world/actions.py
+      - src/world/artifacts.py
+      - src/world/executor.py
+    acceptance_criteria:
+      - Agents can create_artifact with can_execute=true
+      - Created contracts validated for interface
+      - Custom contracts execute correctly
+      - Examples work (paid read, multi-sig)
+
+  - id: GAP-GEN-035
+    component: genesis_artifacts
+    dimension: behaviors
+    title: "Orphan artifacts not documented as accepted risk"
+    current_state: |
+      No documentation about orphan artifacts in current docs.
+    target_state: |
+      Orphan artifacts are accepted risk:
+      - Artifacts can become permanently inaccessible
+      - No automatic rescue mechanism
+      - Many loops are valuable (mutual interdependence)
+      - Detection is impossible (external state, time, LLM)
+      - Adding backdoors breaks security model
+      - Creators responsible for careful design
+    delta: |
+      - Document orphan artifact risk in current docs
+      - Ensure no kernel-level rescue mechanisms
+      - Accept as system behavior
+    dependencies:
+      - GAP-GEN-001
+    complexity: S
+    risk: low
+    files_affected:
+      - docs/architecture/current/genesis_artifacts.md
+    acceptance_criteria:
+      - Orphan risk documented
+      - No automatic rescue implemented
+      - Behavior matches philosophy
+
+  - id: GAP-GEN-036
+    component: genesis_oracle
+    dimension: behaviors
+    title: "No scrip destruction - lost agent scrip persists"
+    current_state: |
+      Unclear what happens to scrip when agents are lost/defunct.
+    target_state: |
+      No scrip destruction:
+      - Scrip circulates forever
+      - Lost agents' scrip remains in system
+      - Can be recovered by vulture capitalists if agent rescued
+    delta: |
+      - Verify no scrip destruction occurs
+      - Document scrip permanence
+      - Ensure vulture recovery possible
+    dependencies: []
+    complexity: S
+    risk: low
+    files_affected:
+      - src/world/genesis.py
+      - docs/architecture/current/genesis_artifacts.md
+    acceptance_criteria:
+      - Scrip never destroyed
+      - Lost agent balances persist
+      - Recovery mechanism exists
+
+  - id: GAP-GEN-037
+    component: genesis_oracle
+    dimension: configuration
+    title: "Missing mint_ratio configuration documentation"
+    current_state: |
+      Minting based on score mentioned, formula not documented.
+    target_state: |
+      mint_ratio config:
+      - scrip_minted = score / mint_ratio
+      - Example: mint_ratio=10, score 80 = 8 scrip
+      - Only source of NEW scrip in system
+    delta: |
+      - Document mint_ratio in current docs
+      - Verify formula matches target
+      - Ensure config exists
+    dependencies: []
+    complexity: S
+    risk: low
+    files_affected:
+      - config/config.yaml
+      - docs/architecture/current/genesis_artifacts.md
+    acceptance_criteria:
+      - mint_ratio documented
+      - Formula specified
+      - Config value present
+
+workstream_summary:
+  name: "WS-4 Genesis Artifacts"
+  description: "Transform genesis artifacts to contract-based access control, update oracle to time-based resolution"
+  total_gaps: 28
+  by_complexity:
+    S: 11
+    M: 11
+    L: 4
+    XL: 1
+  by_risk:
+    low: 11
+    medium: 14
+    high: 3
+  critical_path:
+    - GAP-GEN-001  # Foundation: contract-based access control
+    - GAP-GEN-002  # check_permission interface
+    - GAP-GEN-003  # genesis contracts
+    - GAP-GEN-004  # execution environment
+    - GAP-GEN-034  # custom contracts
+  parallel_work:
+    - GAP-GEN-020 through GAP-GEN-027  # Oracle changes independent of contracts
+    - GAP-GEN-033  # genesis_store verification
+    - GAP-GEN-026, GAP-GEN-027, GAP-GEN-036, GAP-GEN-037  # Documentation gaps
