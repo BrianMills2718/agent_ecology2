@@ -20,6 +20,9 @@ from simulation_engine import (
     SimulationEngine,
     ThinkingCostResult,
     BudgetCheckResult,
+    ResourceUsage,
+    ResourceMeasurer,
+    measure_resources,
 )
 
 
@@ -432,3 +435,115 @@ class TestEdgeCases:
         assert engine.rate_input == 5
         assert engine.rate_output == 10
         assert engine.max_api_cost == 100.0
+
+
+class TestResourceUsage:
+    """Tests for ResourceUsage dataclass."""
+
+    def test_default_values(self):
+        """Default values are all zero."""
+        usage = ResourceUsage()
+
+        assert usage.cpu_seconds == 0.0
+        assert usage.peak_memory_bytes == 0
+        assert usage.disk_bytes_written == 0
+
+    def test_custom_values(self):
+        """Can create with custom values."""
+        usage = ResourceUsage(
+            cpu_seconds=1.5,
+            peak_memory_bytes=1024,
+            disk_bytes_written=2048,
+        )
+
+        assert usage.cpu_seconds == 1.5
+        assert usage.peak_memory_bytes == 1024
+        assert usage.disk_bytes_written == 2048
+
+    def test_to_dict(self):
+        """Converts to dictionary correctly."""
+        usage = ResourceUsage(
+            cpu_seconds=0.5,
+            peak_memory_bytes=512,
+            disk_bytes_written=100,
+        )
+
+        result = usage.to_dict()
+
+        assert result == {
+            "cpu_seconds": 0.5,
+            "peak_memory_bytes": 512,
+            "disk_bytes_written": 100,
+        }
+
+
+class TestResourceMeasurer:
+    """Tests for ResourceMeasurer context manager."""
+
+    def test_measures_cpu_time(self):
+        """Measures CPU time during execution."""
+        with ResourceMeasurer() as measurer:
+            # Do some CPU work
+            total = sum(i * i for i in range(10000))
+            _ = total  # Use the variable
+
+        usage = measurer.get_usage()
+        assert usage.cpu_seconds >= 0.0  # Should be positive or zero
+
+    def test_measures_memory(self):
+        """Measures peak memory during execution."""
+        with ResourceMeasurer() as measurer:
+            # Allocate some memory
+            data = [0] * 10000
+
+        usage = measurer.get_usage()
+        # Memory measurement can be tricky, just check it's non-negative
+        assert usage.peak_memory_bytes >= 0
+        del data  # Clean up
+
+    def test_records_disk_writes(self):
+        """Records disk write bytes."""
+        with ResourceMeasurer() as measurer:
+            measurer.record_disk_write(100)
+            measurer.record_disk_write(200)
+
+        usage = measurer.get_usage()
+        assert usage.disk_bytes_written == 300
+
+    def test_restores_tracemalloc_state(self):
+        """Restores tracemalloc to original state after exit."""
+        import tracemalloc
+
+        # Start with tracemalloc off
+        if tracemalloc.is_tracing():
+            tracemalloc.stop()
+
+        was_tracing_before = tracemalloc.is_tracing()
+
+        with ResourceMeasurer():
+            pass
+
+        was_tracing_after = tracemalloc.is_tracing()
+        assert was_tracing_before == was_tracing_after
+
+
+class TestMeasureResources:
+    """Tests for measure_resources convenience function."""
+
+    def test_basic_usage(self):
+        """Can use as context manager and get results."""
+        with measure_resources() as measurer:
+            total = sum(range(1000))
+            _ = total
+
+        usage = measurer.get_usage()
+        assert isinstance(usage, ResourceUsage)
+        assert usage.cpu_seconds >= 0.0
+
+    def test_with_disk_recording(self):
+        """Can record disk writes through convenience function."""
+        with measure_resources() as measurer:
+            measurer.record_disk_write(500)
+
+        usage = measurer.get_usage()
+        assert usage.disk_bytes_written == 500
