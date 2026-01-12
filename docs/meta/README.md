@@ -6,7 +6,10 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 
 | Pattern | Problem Solved | Complexity |
 |---------|----------------|------------|
+| [CLAUDE.md Authoring](claude-md-authoring.md) | AI assistants lack project context | Low |
+| [ADR](adr.md) | Architectural decisions get lost | Medium |
 | [ADR Governance](adr-governance.md) | AI assistants ignoring architectural decisions | Medium |
+| [Handoff Protocol](handoff-protocol.md) | Context lost between sessions | Low |
 | [Mock Enforcement](mock-enforcement.md) | Green CI, broken production | Low |
 | [Doc-Code Coupling](doc-code-coupling.md) | Documentation drift | Medium |
 | [PR Coordination](pr-coordination.md) | Lost review requests | Low |
@@ -17,11 +20,14 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 ## When to Use
 
 **Start with these (low overhead):**
+- CLAUDE.md Authoring - any project using AI coding assistants
+- Handoff Protocol - when sessions end frequently or context is limited
 - Mock Enforcement - if using pytest with mocks
 - Git Hooks - any project with CI
 - PR Coordination - if multiple people/instances work in parallel
 
 **Add these when needed (more setup):**
+- ADR - when architectural decisions need to be preserved long-term
 - ADR Governance - when AI assistants drift from architectural decisions
 - Doc-Code Coupling - when docs exist and must stay accurate
 - Plan Workflow - for larger features with multiple steps
