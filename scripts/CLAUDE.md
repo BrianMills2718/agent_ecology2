@@ -10,9 +10,11 @@ Utility scripts for development and CI.
 | `check_plan_tests.py` | Verify plan test requirements | `python scripts/check_plan_tests.py` |
 | `check_claims.py` | Manage active work claims (YAML-backed) | `python scripts/check_claims.py` |
 | `sync_plan_status.py` | Sync plan status across files | `python scripts/sync_plan_status.py` |
+| `sync_governance.py` | Sync ADR governance headers in source files | `python scripts/sync_governance.py` |
 | `validate_plan_completion.py` | Validate plan completion criteria | `python scripts/validate_plan_completion.py` |
 | `plan_progress.py` | Show plan implementation progress | `python scripts/plan_progress.py` |
 | `doc_coupling.yaml` | Source-to-doc mappings | Config file, not executable |
+| `governance.yaml` | File-to-ADR mappings | Config file, not executable |
 | `view_log.py` | Parse and view run.jsonl events | `python scripts/view_log.py` |
 | `concat_for_review.py` | Concatenate files for external review | `python scripts/concat_for_review.py` |
 | `setup_hooks.sh` | Install git hooks | `bash scripts/setup_hooks.sh` |
@@ -89,6 +91,49 @@ couplings:
 Then validate:
 ```bash
 python scripts/check_doc_coupling.py --validate-config
+```
+
+## Governance Sync Commands
+
+Sync ADR governance headers in source files:
+
+```bash
+# Dry-run (default) - see what would change
+python scripts/sync_governance.py
+
+# Check mode - exit 1 if out of sync (used in CI)
+python scripts/sync_governance.py --check
+
+# Apply changes (requires clean git tree)
+python scripts/sync_governance.py --apply
+
+# Apply with force (skip git dirty check)
+python scripts/sync_governance.py --apply --force
+
+# Apply with backup files
+python scripts/sync_governance.py --apply --backup
+```
+
+## Adding ADR Governance
+
+Edit `governance.yaml` to map files to ADRs:
+
+```yaml
+files:
+  src/world/example.py:
+    adrs: [1, 3]
+    context: |
+      Important context shown in generated header.
+
+adrs:
+  1:
+    title: "Everything is an artifact"
+    file: "0001-everything-is-artifact.md"
+```
+
+Then sync:
+```bash
+python scripts/sync_governance.py --apply
 ```
 
 ## Plan Test Commands
