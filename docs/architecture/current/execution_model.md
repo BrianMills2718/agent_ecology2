@@ -160,11 +160,24 @@ def advance_tick(self) -> bool:
 
 When `execution.use_autonomous_loops: true`, agents run independently instead of tick-synchronized.
 
+### CLI Usage
+
+```bash
+# Run autonomous mode for 60 seconds
+python run.py --duration 60
+
+# Enable autonomous mode (runs until all agents stop)
+python run.py --autonomous
+
+# Combine with dashboard
+python run.py --duration 120 --dashboard
+```
+
 ### Configuration
 
 ```yaml
 execution:
-  use_autonomous_loops: false  # Default: tick-based
+  use_autonomous_loops: false  # Enable via --duration or --autonomous CLI flags
 rate_limiting:
   enabled: false  # Enable RateTracker
   window_seconds: 60.0

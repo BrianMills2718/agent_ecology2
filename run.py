@@ -51,6 +51,7 @@ def run_simulation(
     verbose: bool = True,
     delay: float | None = None,
     checkpoint: CheckpointData | None = None,
+    duration: float | None = None,
 ) -> World:
     """Run the simulation.
 
@@ -60,6 +61,7 @@ def run_simulation(
         verbose: Print progress (default True)
         delay: Seconds between ticks (defaults to config value)
         checkpoint: Checkpoint data to resume from (optional)
+        duration: Seconds to run in autonomous mode (optional)
 
     Returns:
         The World instance after simulation completes.
@@ -71,7 +73,7 @@ def run_simulation(
         delay=delay,
         checkpoint=checkpoint,
     )
-    return runner.run_sync()
+    return asyncio.run(runner.run(duration=duration))
 
 
 async def run_simulation_async(
@@ -80,6 +82,7 @@ async def run_simulation_async(
     verbose: bool = True,
     delay: float | None = None,
     checkpoint: CheckpointData | None = None,
+    duration: float | None = None,
 ) -> World:
     """Run the simulation asynchronously.
 
@@ -89,6 +92,7 @@ async def run_simulation_async(
         verbose: Print progress (default True)
         delay: Seconds between ticks (defaults to config value)
         checkpoint: Checkpoint data to resume from (optional)
+        duration: Seconds to run in autonomous mode (optional)
 
     Returns:
         The World instance after simulation completes.
@@ -100,7 +104,7 @@ async def run_simulation_async(
         delay=delay,
         checkpoint=checkpoint,
     )
-    return await runner.run()
+    return await runner.run(duration=duration)
 
 
 async def run_with_dashboard(
@@ -110,6 +114,7 @@ async def run_with_dashboard(
     delay: float | None = None,
     checkpoint: CheckpointData | None = None,
     open_browser: bool = True,
+    duration: float | None = None,
 ) -> World:
     """Run simulation with dashboard server in parallel."""
     import uvicorn
@@ -161,7 +166,7 @@ async def run_with_dashboard(
     async def run_sim() -> World:
         # Small delay to let server start
         await asyncio.sleep(0.5)
-        return await runner.run()
+        return await runner.run(duration=duration)
 
     # Start all tasks
     browser_task = asyncio.create_task(open_browser_delayed())
@@ -236,12 +241,31 @@ def main() -> None:
         action="store_true",
         help="Don't auto-open browser when using --dashboard",
     )
+    parser.add_argument(
+        "--duration",
+        type=float,
+        help="Run in autonomous mode for N seconds (enables continuous agent loops)",
+    )
+    parser.add_argument(
+        "--autonomous",
+        action="store_true",
+        help="Enable autonomous mode (agents run continuously). Use with --duration.",
+    )
     args: argparse.Namespace = parser.parse_args()
 
     config: dict[str, Any] = load_config(args.config)
 
     if args.ticks:
         config["world"]["max_ticks"] = args.ticks
+
+    # Enable autonomous mode if --duration or --autonomous specified
+    if args.duration or args.autonomous:
+        if "execution" not in config:
+            config["execution"] = {}
+        config["execution"]["use_autonomous_loops"] = True
+        if "rate_limiting" not in config:
+            config["rate_limiting"] = {}
+        config["rate_limiting"]["enabled"] = True
 
     # Dashboard-only mode
     if args.dashboard_only:
@@ -264,6 +288,7 @@ def main() -> None:
             delay=args.delay,
             checkpoint=checkpoint,
             open_browser=not args.no_browser,
+            duration=args.duration,
         ))
     else:
         run_simulation(
@@ -272,6 +297,7 @@ def main() -> None:
             verbose=not args.quiet,
             delay=args.delay,
             checkpoint=checkpoint,
+            duration=args.duration,
         )
 
 
