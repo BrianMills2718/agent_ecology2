@@ -11,10 +11,12 @@ Utility scripts for development and CI.
 | `check_claims.py` | Manage active work claims (YAML-backed) | `python scripts/check_claims.py` |
 | `sync_plan_status.py` | Sync plan status across files | `python scripts/sync_plan_status.py` |
 | `sync_governance.py` | Sync ADR governance headers in source files | `python scripts/sync_governance.py` |
+| `validate_plan.py` | Validate plan before implementation (the "gate") | `python scripts/validate_plan.py --plan N` |
 | `validate_plan_completion.py` | Validate plan completion criteria | `python scripts/validate_plan_completion.py` |
 | `plan_progress.py` | Show plan implementation progress | `python scripts/plan_progress.py` |
-| `doc_coupling.yaml` | Source-to-doc mappings | Config file, not executable |
-| `governance.yaml` | File-to-ADR mappings | Config file, not executable |
+| `relationships.yaml` | Unified doc graph (ADR-0005) | Config file, not executable |
+| `doc_coupling.yaml` | Source-to-doc mappings (legacy) | Config file, not executable |
+| `governance.yaml` | File-to-ADR mappings (legacy) | Config file, not executable |
 | `view_log.py` | Parse and view run.jsonl events | `python scripts/view_log.py` |
 | `concat_for_review.py` | Concatenate files for external review | `python scripts/concat_for_review.py` |
 | `setup_hooks.sh` | Install git hooks | `bash scripts/setup_hooks.sh` |
@@ -135,6 +137,29 @@ Then sync:
 ```bash
 python scripts/sync_governance.py --apply
 ```
+
+## Plan Validation Gate
+
+Before implementing a plan, validate it against the documentation graph:
+
+```bash
+# Validate a plan - shows ADRs, docs to update, uncertainties
+python scripts/validate_plan.py --plan 28
+
+# Output as JSON
+python scripts/validate_plan.py --plan 28 --json
+
+# List ADRs governing a specific file
+python scripts/validate_plan.py --list-adrs src/world/ledger.py
+```
+
+The validation gate surfaces:
+- **ADRs** that govern affected files (read these first)
+- **Docs** that need updating (strict couplings)
+- **Uncertainties** from DESIGN_CLARIFICATIONS.md (<70% certainty)
+- **Warnings** about plan state
+
+See ADR-0005 for the unified documentation graph design.
 
 ## Plan Test Commands
 
