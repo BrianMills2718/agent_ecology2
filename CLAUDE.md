@@ -1,5 +1,8 @@
 # Agent Ecology - Claude Code Context
 
+> **🚨 BEFORE DOING ANYTHING:** Run `pwd`. If you're in `agent_ecology/` (main) and plan to edit files, **STOP**.
+> Create a worktree first: `make worktree BRANCH=plan-NN-xxx`. Multiple instances in main = corrupted work.
+
 **Parallel work?** `python scripts/check_claims.py --list` then `--claim --task "..."`
 
 This file is always loaded. Keep it lean. Reference other docs for details.
@@ -152,25 +155,50 @@ git checkout -b plan-01-token-bucket
 git checkout -b plan-03-docker
 ```
 
-### Worktree Requirement
+### CRITICAL: One Instance Per Directory
 
-**All PR work MUST use worktrees.** This ensures:
-- Clean separation between author and reviewer
-- No conflicts when multiple CC instances work simultaneously
-- Main directory stays clean for reviews
+> **⚠️ MULTIPLE CC INSTANCES IN THE SAME DIRECTORY WILL CORRUPT EACH OTHER'S WORK.**
+>
+> If you're in `/home/azureuser/brian_misc/agent_ecology` (main), other instances may be here too.
+> Your edits will be overwritten. Their edits will be overwritten. Commits will be reset.
 
+**FIRST THING - Check your directory:**
 ```bash
-# REQUIRED: Create worktree for any PR work
+pwd  # Should be a worktree path like ../ecology-plan-NN-xxx, NOT main
+git worktree list  # See all worktrees
+```
+
+**If you're in main and doing implementation work: STOP and create a worktree.**
+
+### Worktree Rules
+
+| Directory | Allowed Activities | Why |
+|-----------|-------------------|-----|
+| Main (`agent_ecology/`) | Reviews, quick reads, coordination only | Multiple instances share this |
+| Worktree (`ecology-plan-NN-xxx/`) | Implementation, commits, PRs | Isolated per-instance |
+
+**Each CC instance doing implementation MUST have its own worktree:**
+```bash
+# REQUIRED: Create worktree BEFORE starting work
 make worktree BRANCH=plan-03-docker
 cd ../ecology-plan-03-docker && claude
 
+# Now you're isolated - safe to edit files
 # Do work, create PR, then cleanup
 git worktree remove ../ecology-plan-03-docker
 ```
 
+**What happens without worktrees (BAD):**
+```
+Instance 1: edits file.py     → saved
+Instance 2: edits file.py     → overwrites Instance 1
+Instance 3: runs git reset    → destroys both
+Instance 1: commits           → wrong content, missing changes
+```
+
 **Review pattern:**
 1. Claude A creates PR from worktree
-2. Claude B reviews in main directory (or different worktree)
+2. Claude B reviews in main directory (read-only) or different worktree
 3. Claude B approves/requests changes
 4. After merge, remove worktree
 
