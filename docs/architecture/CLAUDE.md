@@ -26,10 +26,10 @@ Two levels of gap documentation:
 
 | Location | Gaps | Purpose |
 |----------|------|---------|
-| `docs/plans/` | 31 high-level | Active tracking (status, CC-IDs) |
+| `docs/plans/` | 34 high-level | Active tracking (status, CC-IDs) |
 | `gaps/` | 142 detailed | Comprehensive analysis (reference) |
 
-The 142 gaps are a finer breakdown of the 31 in `docs/plans/`.
+The 142 gaps are a finer breakdown of the 34 in `docs/plans/`.
 
 ## Working on Architecture
 

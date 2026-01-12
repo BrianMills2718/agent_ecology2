@@ -37,7 +37,7 @@ pytest tests/ --cov=src --cov-report=html
 
 1. **Use fixtures** from `conftest.py` for common setup
 2. **Test edge cases** - empty inputs, max values, error conditions
-3. **No external dependencies** - Tests use mocks for LLM calls
+3. **Real tests preferred** - Avoid mocks; accept time/cost of real calls (see root CLAUDE.md #5)
 4. **Fast execution** - Full suite runs in ~5-10 seconds
 
 ## Adding New Tests
