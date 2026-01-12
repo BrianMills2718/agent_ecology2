@@ -341,12 +341,25 @@ def main() -> int:
 
     if args.all:
         exit_code = 0
+        # Only check plans that are "In Progress" or "Complete"
+        # Plans in "Planned", "Needs Plan", or "Blocked" status shouldn't
+        # have their tests enforced yet (TDD tests written when work starts)
+        active_statuses = ["In Progress", "Complete", "🚧", "✅"]
+
         for plan_file in find_plan_files(plans_dir):
             plan = parse_plan_file(plan_file)
-            if plan and (plan.new_tests or plan.existing_tests):
-                result = check_plan(plan, project_root, args.tdd)
-                if result != 0:
-                    exit_code = 1
+            if not plan or not (plan.new_tests or plan.existing_tests):
+                continue
+
+            # Check if plan is in an active status
+            is_active = any(status in plan.status for status in active_statuses)
+            if not is_active:
+                print(f"Skipping Plan #{plan.plan_number} ({plan.plan_name}) - status: {plan.status}")
+                continue
+
+            result = check_plan(plan, project_root, args.tdd)
+            if result != 0:
+                exit_code = 1
         return exit_code
 
     # Default: show help

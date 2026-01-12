@@ -64,14 +64,14 @@ Without enforcement, we accumulate technical debt through untested "complete" wo
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/e2e/test_smoke.py` | `test_simulation_starts` | Runner can be instantiated |
-| `tests/e2e/test_smoke.py` | `test_tick_mode_completes` | Basic tick simulation works |
-| `tests/e2e/test_smoke.py` | `test_tick_mode_creates_artifacts` | Genesis artifacts created |
-| `tests/e2e/test_smoke.py` | `test_tick_mode_tracks_balances` | Balances tracked |
-| `tests/e2e/test_smoke.py` | `test_autonomous_mode_starts` | Autonomous mode can start |
-| `tests/e2e/test_smoke.py` | `test_autonomous_mode_runs_briefly` | Autonomous runs without crash |
-| `tests/e2e/test_smoke.py` | `test_world_state_summary` | State summary works |
-| `tests/e2e/test_smoke.py` | `test_no_unhandled_exceptions` | No crashes |
+| `tests/e2e/test_smoke.py` | `TestTickModeSmoke::test_simulation_starts` | Runner can be instantiated |
+| `tests/e2e/test_smoke.py` | `TestTickModeSmoke::test_tick_mode_completes` | Basic tick simulation works |
+| `tests/e2e/test_smoke.py` | `TestTickModeSmoke::test_tick_mode_creates_artifacts` | Genesis artifacts created |
+| `tests/e2e/test_smoke.py` | `TestTickModeSmoke::test_tick_mode_tracks_balances` | Balances tracked |
+| `tests/e2e/test_smoke.py` | `TestAutonomousModeSmoke::test_autonomous_mode_starts` | Autonomous mode can start |
+| `tests/e2e/test_smoke.py` | `TestAutonomousModeSmoke::test_autonomous_mode_runs_briefly` | Autonomous runs without crash |
+| `tests/e2e/test_smoke.py` | `TestIntegrationSmoke::test_world_state_summary` | State summary works |
+| `tests/e2e/test_smoke.py` | `TestIntegrationSmoke::test_no_unhandled_exceptions` | No crashes |
 
 ### Existing Tests (Must Pass)
 
