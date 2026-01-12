@@ -250,7 +250,7 @@ def migrate_legacy_transfer_fee(self) -> "LedgerConfig":
 | File | Purpose |
 |------|---------|
 | `src/config.py` | Loader with `get()` and `get_validated_config()` |
-| `src/config_schema.py` | Pydantic models (895 lines) |
+| `src/config_schema.py` | Pydantic models (894 lines) |
 | `config/config.yaml` | Runtime values |
 | `config/schema.yaml` | Human-readable structure docs |
 

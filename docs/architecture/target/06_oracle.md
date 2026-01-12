@@ -2,7 +2,7 @@
 
 What we're building toward.
 
-**Last verified:** 2026-01-11
+**Last verified:** 2026-01-12
 
 **See current:** Genesis oracle in current system uses tick-based bidding windows.
 
@@ -121,6 +121,46 @@ Losing bids flow to winners as UBI:
 total_losing_bids = sum(all bids) - winning_bid
 ubi_per_agent = total_losing_bids / num_agents
 ```
+
+---
+
+## Scrip Supply
+
+### How Scrip Enters the System
+
+| Source | Mechanism | Notes |
+|--------|-----------|-------|
+| Genesis allocation | Initial agent balances | Configurable per agent |
+| Oracle minting | Score-based on winning artifacts | Only source of NEW scrip |
+| UBI distribution | Redistributes existing scrip | Doesn't create new scrip |
+
+### Monetary Policy
+
+```yaml
+oracle:
+  mint_ratio: 10           # Score 100 = 10 new scrip
+  resolution_interval: 60  # Mint opportunity every 60 seconds
+```
+
+**Inflation rate:** Depends on:
+- How often oracle resolves (resolution_interval)
+- Quality of submissions (higher scores = more minting)
+- Number of submissions (more winners = more minting)
+
+**No scrip destruction:** Scrip circulates forever. Lost agents' scrip remains in system (can be recovered by vulture capitalists if agent is rescued).
+
+### Initial Distribution
+
+```yaml
+genesis:
+  initial_balances:
+    agent_a: 100
+    agent_b: 100
+    agent_c: 50
+    # Total initial supply: 250 scrip
+```
+
+New agents spawn with 0 scrip. Must earn or receive transfers.
 
 ---
 

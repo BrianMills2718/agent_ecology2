@@ -89,25 +89,24 @@ couplings:
   - sources:
       - "docs/architecture/current/*.md"
     docs:
-      - "docs/architecture/GAPS.md"
-    description: "Gap closure tracking - did you close a gap?"
-    soft: true
-
-  # When GAPS.md changes, consider if plans need updating
-  - sources:
-      - "docs/architecture/GAPS.md"
-    docs:
       - "docs/plans/README.md"
-    description: "Plan status sync - update plan status if gap closed"
+    description: "Gap closure tracking - update plan status if gap closed"
     soft: true
 
-  # When implementing a planned feature, check the plan
+  # When implementing token bucket, update its plan
   - sources:
-      - "src/world/rate_tracker.py"  # Token bucket implementation
+      - "src/world/rate_tracker.py"
     docs:
-      - "docs/plans/token_bucket.md"
-      - "docs/architecture/GAPS.md"
-    description: "Token bucket implementation - update plan and gaps"
+      - "docs/plans/01_rate_allocation.md"
+    description: "Token bucket implementation - update plan status"
+    soft: true
+
+  # When implementing continuous execution, update its plan
+  - sources:
+      - "src/simulation/continuous_runner.py"
+    docs:
+      - "docs/plans/02_continuous_execution.md"
+    description: "Continuous execution - update plan status"
     soft: true
 
   # Terminology changes affect multiple docs
@@ -117,4 +116,12 @@ couplings:
     docs:
       - "docs/GLOSSARY.md"
     description: "Terminology - new terms or renamed concepts?"
+    soft: true
+
+  # Plan changes should sync with README index
+  - sources:
+      - "docs/plans/*.md"
+    docs:
+      - "docs/plans/README.md"
+    description: "Plan index sync - update README if plan status changes"
     soft: true

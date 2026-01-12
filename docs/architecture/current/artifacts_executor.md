@@ -142,7 +142,7 @@ Executes agent-created code with timeout protection.
 
 ```python
 result = executor.execute(code, args=[1, 2, 3])
-# Returns: {"success": True, "result": ..., "execution_time_ms": ...}
+# Returns: {"success": bool, "result": Any, "error": str, "execution_time_ms": float, "resources_consumed": dict}
 ```
 
 #### `execute_with_wallet(code, args, artifact_id, ledger)` - With pay()
@@ -162,7 +162,7 @@ Adds `invoke()` for artifact-to-artifact calls:
 ```python
 def run():
     result = invoke("other_artifact", arg1, arg2)
-    # result: {"success": bool, "result": ..., "price_paid": int}
+    # result: {"success": bool, "result": Any, "error": str, "price_paid": int}
 ```
 
 ### Recursion Protection

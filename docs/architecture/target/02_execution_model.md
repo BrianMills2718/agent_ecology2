@@ -2,7 +2,7 @@
 
 What we're building toward.
 
-**Last verified:** 2026-01-11
+**Last verified:** 2026-01-12
 
 **See current:** [../current/execution_model.md](../current/execution_model.md)
 
@@ -150,6 +150,44 @@ Agents always know what time it is. Enables:
 - Agents see real-time state
 - State may change between read and action
 - Must handle stale reads
+
+### Ledger Consistency
+
+With concurrent async agents, ledger operations must be atomic:
+
+```python
+class Ledger:
+    def __init__(self):
+        self._lock = asyncio.Lock()
+
+    async def transfer(self, from_id: str, to_id: str, amount: int, resource: str) -> bool:
+        async with self._lock:
+            if self.balances[from_id][resource] < amount:
+                return False  # Insufficient funds
+            self.balances[from_id][resource] -= amount
+            self.balances[to_id][resource] += amount
+            return True
+```
+
+**Consistency guarantees:**
+- Single async lock serializes all ledger mutations
+- No double-spending (balance checked under lock)
+- Reads can happen concurrently (eventually consistent)
+- All transfers are atomic (both sides update or neither)
+
+**Worker processes and ledger:**
+- Workers execute actions, but DON'T mutate ledger directly
+- Workers return resource usage measurements
+- Main process updates ledger (single point of mutation)
+
+```
+Worker Process              Main Process
+     │                           │
+     ├─ Execute action           │
+     ├─ Measure CPU/memory       │
+     ├─ Return (result, usage) ──┼─> Update ledger (under lock)
+     │                           │
+```
 
 ### Emergent Throttling
 - Total flow rate limits system throughput

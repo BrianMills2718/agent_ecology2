@@ -157,6 +157,7 @@ When multiple instances work on related tasks:
 
 - [ ] `pytest tests/` passes
 - [ ] `python -m mypy src/ --ignore-missing-imports` passes
+- [ ] `python scripts/check_doc_coupling.py` passes (or warnings addressed)
 - [ ] Code matches task description
 - [ ] No new silent fallbacks
 - [ ] Relevant docs updated
@@ -169,13 +170,38 @@ When multiple instances work on related tasks:
 |-----|---------|----------------|
 | `docs/architecture/current/` | What IS implemented | After code changes |
 | `docs/architecture/target/` | What we WANT | Architecture decisions |
-| `docs/architecture/GAPS.md` | Delta + priorities | Gap identified/closed |
+| `docs/plans/` | Gaps + implementation plans | Gap identified/closed |
 | `docs/DESIGN_CLARIFICATIONS.md` | WHY decisions made | Architecture discussions |
 | `docs/GLOSSARY.md` | Canonical terms | New concepts added |
 
-**Protocol:** Code change → update current/ → update GAPS.md if gap closed → update "Last verified" date.
+**Protocol:** Code change → update `current/` → update plan in `docs/plans/` if gap closed → update "Last verified" date.
 
-**CI Enforcement:** `scripts/doc_coupling.yaml` maps source files to required docs. CI fails if source changes without doc updates. See `docs/architecture/current/ci.md`.
+### Doc-Code Coupling (CI Enforced)
+
+Source-to-doc mappings in `scripts/doc_coupling.yaml`. **Two types:**
+
+| Type | Behavior | Example |
+|------|----------|---------|
+| **Strict** | CI fails if source changes without doc update | `src/world/ledger.py` → `current/resources.md` |
+| **Soft** | CI warns but doesn't fail | `current/*.md` → `plans/README.md` |
+
+**Useful commands:**
+```bash
+python scripts/check_doc_coupling.py --suggest      # Show which docs to update
+python scripts/check_doc_coupling.py --validate-config  # Verify config paths exist
+```
+
+**Escape hatch:** If docs are already accurate, update "Last verified" date to satisfy coupling.
+
+### Plans Workflow
+
+Each gap has a plan file in `docs/plans/NN_name.md`. When implementing:
+
+1. **Start work** → Update plan status to `🚧 In Progress`
+2. **Write code** → CI enforces `current/` doc updates
+3. **Complete** → Update plan status to `✅ Complete`, update `plans/README.md` index
+
+See `docs/plans/README.md` for plan template and full gap list.
 
 ---
 
@@ -184,7 +210,7 @@ When multiple instances work on related tasks:
 | Doc | Purpose |
 |-----|---------|
 | `README.md` | Full philosophy, theoretical grounding |
-| `docs/architecture/GAPS.md` | Gap tracking - what to build next |
+| `docs/plans/README.md` | Gap tracking + implementation plans |
 | `docs/GLOSSARY.md` | Canonical terminology |
 | `docs/DESIGN_CLARIFICATIONS.md` | Decision rationale archive |
 | `config/schema.yaml` | All config options |

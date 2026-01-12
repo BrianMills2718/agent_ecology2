@@ -1,8 +1,12 @@
 # Architecture Gaps
 
+> **Note:** This file is superseded by [`docs/plans/README.md`](../plans/README.md).
+> Each gap now has its own plan file in `docs/plans/`. This file is kept for historical reference
+> and will be moved to `docs/archive/` once all references are updated.
+
 Prioritized gaps between current implementation and target architecture.
 
-**Last verified:** 2026-01-11
+**Last verified:** 2026-01-11 (Superseded: 2026-01-12)
 
 ---
 

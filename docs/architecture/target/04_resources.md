@@ -115,6 +115,40 @@ genesis_ledger.transfer("agent_b", "agent_a", 10000, "llm_rate")
 genesis_ledger.transfer("agent_a", "agent_b", 100, "scrip")
 ```
 
+### Rate Enforcement
+
+Rate limits are checked before action execution:
+
+```python
+async def run_action(agent_id: str, action: Action) -> Result:
+    # Estimate resource cost
+    estimated_cost = estimate_cost(action)
+
+    # Check rate limits
+    if not rate_tracker.can_use(agent_id, "llm_rate", estimated_cost.llm_tokens):
+        # Queue the action, agent waits
+        await rate_tracker.wait_for_capacity(agent_id, "llm_rate", estimated_cost.llm_tokens)
+
+    if not rate_tracker.can_use(agent_id, "cpu", estimated_cost.cpu_seconds):
+        await rate_tracker.wait_for_capacity(agent_id, "cpu", estimated_cost.cpu_seconds)
+
+    # Execute and measure actual usage
+    result, actual_usage = await execute_action(agent_id, action)
+
+    # Record actual usage (may differ from estimate)
+    rate_tracker.record_usage(agent_id, "llm_rate", actual_usage.llm_tokens)
+    rate_tracker.record_usage(agent_id, "cpu", actual_usage.cpu_seconds)
+
+    return result
+```
+
+**Enforcement points:**
+- **Pre-execution:** Check if agent has capacity, queue if not
+- **Post-execution:** Record actual usage for rate window
+- **Over-limit:** Agent's next action waits until window rolls
+
+**No penalty for estimation errors:** We estimate before, measure after. Actual usage is what counts for the rate window.
+
 ### Per-Agent Resources (CPU)
 
 CPU doesn't have a shared provider limit. Each agent's rate is independent:
@@ -227,41 +261,71 @@ Agent action uses 52,428,800 bytes (50MB) peak memory
 → Docker --memory limit enforces actual constraint
 ```
 
-### Per-Agent CPU Tracking
+### Per-Agent CPU and Memory Tracking
 
-CPU measurement requires capturing ALL threads spawned by an action (including PyTorch, NumPy internal threads). Single-thread `time.thread_time()` misses these.
+CPU and memory measurement requires capturing ALL resource usage in worker processes, including multi-threaded libraries (PyTorch, NumPy).
 
-**Solution: Worker pool + `resource.getrusage()`**
+**Solution: ProcessPoolExecutor with asyncio**
 
 ```python
+import asyncio
 import resource
-import multiprocessing
+import tracemalloc
+from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass
 
-def execute_in_worker(agent_id: str, action: Action) -> tuple[Result, float]:
+@dataclass
+class ResourceUsage:
+    cpu_seconds: float
+    memory_bytes: int
+
+def execute_in_worker(action: Action) -> tuple[Result, ResourceUsage]:
+    """Runs in worker process. Measures ALL resources used."""
+    # Memory tracking (in worker process)
+    tracemalloc.start()
+
+    # CPU tracking
     before = resource.getrusage(resource.RUSAGE_SELF)
+
     result = execute(action)
+
     after = resource.getrusage(resource.RUSAGE_SELF)
+    _, peak_memory = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
 
-    # Captures ALL CPU: main thread + library threads (PyTorch, etc.)
-    cpu_user = after.ru_utime - before.ru_utime
-    cpu_system = after.ru_stime - before.ru_stime
-    cpu_seconds = cpu_user + cpu_system
+    cpu_seconds = (after.ru_utime - before.ru_utime) +
+                  (after.ru_stime - before.ru_stime)
 
-    return result, cpu_seconds
+    return result, ResourceUsage(cpu_seconds, peak_memory)
 
-# Pool of worker processes (reused, not per-agent)
-pool = multiprocessing.Pool(processes=8)
+# ProcessPoolExecutor works with asyncio (not multiprocessing.Pool)
+executor = ProcessPoolExecutor(max_workers=8)
 
-# Submit action to worker, get accurate CPU measurement
-result, cpu_seconds = pool.apply(execute_in_worker, (agent_id, action))
-ledger.deduct(agent_id, "cpu_seconds", cpu_seconds)
+async def run_action(agent_id: str, action: Action) -> Result:
+    """Non-blocking action execution with resource tracking."""
+    loop = asyncio.get_event_loop()
+
+    # Run in worker process, non-blocking
+    result, usage = await loop.run_in_executor(
+        executor, execute_in_worker, action
+    )
+
+    # Deduct measured resources
+    ledger.deduct(agent_id, "cpu_seconds", usage.cpu_seconds)
+    ledger.deduct(agent_id, "memory_bytes", usage.memory_bytes)
+
+    return result
 ```
 
-**Why worker pool + getrusage:**
-- `getrusage(RUSAGE_SELF)` measures entire process including all threads
-- Captures PyTorch/NumPy multi-threaded operations accurately
-- Not gameable - kernel tracks all CPU cycles
-- Pool size is fixed (8-16 workers), not per-agent
+**Why ProcessPoolExecutor (not multiprocessing.Pool):**
+- Works with asyncio event loop (non-blocking)
+- Multiple agents can have actions in flight concurrently
+- `pool.apply()` blocks; `run_in_executor()` awaits
+
+**Why measure in worker:**
+- `tracemalloc` only sees memory in its own process
+- `getrusage(RUSAGE_SELF)` only sees CPU in its own process
+- Worker isolation = accurate per-action measurement
 
 **Scalability:**
 
@@ -280,8 +344,32 @@ Pool size is independent of agent count. Agents queue for workers.
 | Python code | ✅ |
 | Multi-threaded libraries (PyTorch CPU, NumPy) | ✅ |
 | Any spawned threads | ✅ |
+| Memory allocations | ✅ |
 | I/O wait | ❌ (correctly not charged) |
 | GPU compute | ❌ (separate resource) |
+
+### Action Serialization
+
+Actions must be picklable to send to worker processes.
+
+**Actions are pure data:**
+
+```python
+@dataclass
+class Action:
+    action_type: str           # "invoke", "transfer", "create", etc.
+    target_id: str             # Artifact/agent ID
+    method: str                # Method name
+    args: dict[str, Any]       # JSON-serializable arguments
+
+    # NOT allowed:
+    # - Lambda functions
+    # - Open file handles
+    # - Database connections
+    # - Closures capturing local state
+```
+
+If an action needs complex state, reference it by ID and let the worker load it.
 
 ---
 
