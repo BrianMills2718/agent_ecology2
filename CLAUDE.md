@@ -228,24 +228,19 @@ python scripts/check_claims.py --release --validate
 
 **After PR merged:** Remove from Awaiting Review table.
 
-### Before /clear - Handoff Protocol
+### Session Continuity
 
-**CRITICAL:** Before ending a session (running `/clear`, closing terminal, or switching tasks), write a handoff file:
-
-```bash
-# Copy template and fill in
-cp .claude/handoff_template.md .claude/handoff.md
-# Edit .claude/handoff.md with session details
+When a session continues after compaction, the system message includes a path to the full transcript:
+```
+read the full transcript at: ~/.claude/projects/.../[session-id].jsonl
 ```
 
-The template (`.claude/handoff_template.md`) includes:
-- Session summary and changes made
-- Current state (file + line number)
-- Context and blockers
-- Next steps for continuation
-- Commands to resume
+**If you're uncertain about prior context:**
+1. Use the Read tool on that jsonl file path
+2. Search for relevant `"type": "summary"` entries or specific keywords
+3. The log contains all messages, tool calls, and file snapshots from before compaction
 
-This enables smooth continuation in the next session.
+Don't guess or assume - check the log if you need details the summary didn't capture.
 
 ### Review Checklist
 
