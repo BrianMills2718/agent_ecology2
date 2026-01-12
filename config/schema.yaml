@@ -142,6 +142,36 @@ genesis:
         cost: <number>
         description: <string>
 
+  # Genesis Store - artifact discovery and registry
+  store:
+    id: <string>
+    description: <string>
+    methods:
+      list:
+        cost: <number>          # List artifacts with optional filter
+        description: <string>
+      get:
+        cost: <number>          # Get single artifact details
+        description: <string>
+      search:
+        cost: <number>          # Search by content match
+        description: <string>
+      list_by_type:
+        cost: <number>          # Filter by artifact type
+        description: <string>
+      list_by_owner:
+        cost: <number>          # Filter by owner
+        description: <string>
+      list_agents:
+        cost: <number>          # List agent artifacts only
+        description: <string>
+      list_principals:
+        cost: <number>          # List principals (has_standing=True)
+        description: <string>
+      count:
+        cost: <number>          # Count artifacts matching filter
+        description: <string>
+
 # -----------------------------------------------------------------------------
 # RATE LIMITING
 # Rolling window rate limiting (time-based, not tick-based)

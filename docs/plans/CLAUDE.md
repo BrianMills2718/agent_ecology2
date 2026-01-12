@@ -61,8 +61,8 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 13 | [Doc Line Number Refs](13_doc_line_refs.md) | Low | ❌ Needs Plan | - |
 | 14 | [MCP-Style Artifact Interface](14_mcp_interface.md) | Medium | ⏸️ Blocked | - |
 | 15 | [invoke() Genesis Support](15_invoke_genesis.md) | Medium | ❌ Needs Plan | - |
-| 16 | [Artifact Discovery](16_artifact_discovery.md) | **High** | ⏸️ Blocked | #17,#22 |
-| 17 | [Agent Discovery](17_agent_discovery.md) | Medium | ⏸️ Blocked | - |
+| 16 | [Artifact Discovery](16_artifact_discovery.md) | **High** | ✅ Complete | #17,#22 |
+| 17 | [Agent Discovery](17_agent_discovery.md) | Medium | ✅ Complete | - |
 | 18 | [Dangling Reference Handling](18_dangling_refs.md) | Medium | ❌ Needs Plan | - |
 | 19 | [Agent-to-Agent Threat Model](19_threat_model.md) | Medium | ❌ Needs Plan | - |
 | 20 | [Migration Strategy](20_migration_strategy.md) | **High** | 📋 Planned | - |
@@ -150,6 +150,8 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 33 | ADR Governance | 2026-01-12 | ✅ Complete |
 | 2 | Continuous Execution | 2026-01-12 | ✅ Complete |
 | 6 | Unified Artifact Ontology | 2026-01-12 | ✅ Complete |
+| 16 | Artifact Discovery | 2026-01-12 | PR #30 |
+| 17 | Agent Discovery | 2026-01-12 | Included in Gap #16 |
 
 ---
 

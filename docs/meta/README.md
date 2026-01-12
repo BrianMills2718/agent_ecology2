@@ -8,28 +8,33 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 |---------|----------------|------------|
 | [CLAUDE.md Authoring](claude-md-authoring.md) | AI assistants lack project context | Low |
 | [ADR](adr.md) | Architectural decisions get lost | Medium |
-| [ADR Governance](adr-governance.md) | AI assistants ignoring architectural decisions | Medium |
-| [Handoff Protocol](handoff-protocol.md) | Context lost between sessions | Low |
+| [Documentation Graph](documentation-graph.md) | Can't trace decisions → code | Medium |
 | [Mock Enforcement](mock-enforcement.md) | Green CI, broken production | Low |
-| [Doc-Code Coupling](doc-code-coupling.md) | Documentation drift | Medium |
 | [PR Coordination](pr-coordination.md) | Lost review requests | Low |
 | [Git Hooks](git-hooks.md) | CI failures caught late | Low |
 | [Plan Workflow](plan-workflow.md) | Untracked work, scope creep | Medium |
 | [Claim System](claim-system.md) | Parallel work conflicts | Medium |
 
+### Subsumed Patterns
+
+These patterns are now implementation details of [Documentation Graph](documentation-graph.md):
+
+| Pattern | Status |
+|---------|--------|
+| [ADR Governance](adr-governance.md) | `governs` edges in relationships.yaml |
+| [Doc-Code Coupling](doc-code-coupling.md) | `documented_by` edges in relationships.yaml |
+
 ## When to Use
 
 **Start with these (low overhead):**
 - CLAUDE.md Authoring - any project using AI coding assistants
-- Handoff Protocol - when sessions end frequently or context is limited
 - Mock Enforcement - if using pytest with mocks
 - Git Hooks - any project with CI
 - PR Coordination - if multiple people/instances work in parallel
 
 **Add these when needed (more setup):**
 - ADR - when architectural decisions need to be preserved long-term
-- ADR Governance - when AI assistants drift from architectural decisions
-- Doc-Code Coupling - when docs exist and must stay accurate
+- Documentation Graph - when you need to trace ADR → target → current → code
 - Plan Workflow - for larger features with multiple steps
 - Claim System - for explicit parallel work coordination
 
@@ -63,6 +68,11 @@ What to change for different projects.
 ## Limitations
 What this pattern doesn't solve.
 ```
+
+## Archive
+
+Deprecated patterns are in `archive/`:
+- `handoff-protocol.md` - Superseded by automatic context compaction
 
 ## Origin
 
