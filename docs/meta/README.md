@@ -6,6 +6,7 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 
 | Pattern | Problem Solved | Complexity |
 |---------|----------------|------------|
+| [ADR Governance](adr-governance.md) | AI assistants ignoring architectural decisions | Medium |
 | [Mock Enforcement](mock-enforcement.md) | Green CI, broken production | Low |
 | [Doc-Code Coupling](doc-code-coupling.md) | Documentation drift | Medium |
 | [PR Coordination](pr-coordination.md) | Lost review requests | Low |
@@ -21,6 +22,7 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 - PR Coordination - if multiple people/instances work in parallel
 
 **Add these when needed (more setup):**
+- ADR Governance - when AI assistants drift from architectural decisions
 - Doc-Code Coupling - when docs exist and must stay accurate
 - Plan Workflow - for larger features with multiple steps
 - Claim System - for explicit parallel work coordination

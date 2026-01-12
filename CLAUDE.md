@@ -218,7 +218,7 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| plan-11-terminology | 11 | Terminology cleanup - config restructure | 2026-01-12T08:03 | Active |
+| - | - | - | - | - |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->
@@ -320,7 +320,8 @@ Add/Fix/Update: Short description
 |-----|---------|----------------|
 | `docs/architecture/current/` | What IS implemented | After code changes |
 | `docs/architecture/target/` | What we WANT | Architecture decisions |
-| `docs/plans/` | Active gap tracking (31 gaps) | Gap status changes |
+| `docs/plans/` | Active gap tracking (33 gaps) | Gap status changes |
+| `docs/adr/` | Architecture Decision Records | New architectural decisions |
 | `docs/architecture/gaps/` | Comprehensive analysis (142 gaps) | Gap identification |
 | `docs/DESIGN_CLARIFICATIONS.md` | WHY decisions made | Architecture discussions |
 | `docs/GLOSSARY.md` | Canonical terms | New concepts added |
@@ -329,7 +330,7 @@ Add/Fix/Update: Short description
 
 | Directory | Granularity | Use For |
 |-----------|-------------|---------|
-| `docs/plans/` | 31 high-level gaps | Implementation tracking, status, CC-IDs |
+| `docs/plans/` | 33 high-level gaps | Implementation tracking, status, CC-IDs |
 | `docs/architecture/gaps/` | 142 detailed gaps | Reference, dependency analysis, scope |
 
 **Protocol:** Code change → update `current/` → update plan in `docs/plans/` if gap closed → update "Last verified" date.
@@ -350,6 +351,28 @@ python scripts/check_doc_coupling.py --validate-config  # Verify config paths ex
 ```
 
 **Escape hatch:** If docs are already accurate, update "Last verified" date to satisfy coupling.
+
+### ADR Governance (CI Enforced)
+
+Architecture Decision Records in `docs/adr/` are linked to source files via `scripts/governance.yaml`. Governed files have headers showing which ADRs apply:
+
+```python
+# --- GOVERNANCE START (do not edit) ---
+# ADR-0001: Everything is an artifact
+# ADR-0003: Contracts can do anything
+# --- GOVERNANCE END ---
+```
+
+**Commands:**
+```bash
+python scripts/sync_governance.py              # Dry-run (see what would change)
+python scripts/sync_governance.py --check      # CI mode (exit 1 if out of sync)
+python scripts/sync_governance.py --apply      # Apply changes (requires clean git)
+```
+
+**Adding governance:** Edit `scripts/governance.yaml`, then run `--apply`.
+
+See `docs/adr/README.md` for ADR format and `docs/meta/adr-governance.md` for the pattern.
 
 ### Plans Workflow (TDD)
 
@@ -380,6 +403,8 @@ See `docs/plans/CLAUDE.md` for plan template and full gap list.
 |-----|---------|
 | `README.md` | Full philosophy, theoretical grounding |
 | `docs/plans/CLAUDE.md` | Gap tracking + implementation plans |
+| `docs/adr/` | Architecture Decision Records |
+| `docs/meta/` | Reusable process patterns |
 | `docs/GLOSSARY.md` | Canonical terminology |
 | `docs/DESIGN_CLARIFICATIONS.md` | Decision rationale archive |
 | `config/schema.yaml` | All config options |
