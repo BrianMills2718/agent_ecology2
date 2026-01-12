@@ -2,7 +2,7 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-01-12 (Phase 3 - llm_tokens rename)
+**Last verified:** 2026-01-12 (Plan #31 - ResourceMeasurer added)
 
 **See target:** [../target/resources.md](../target/resources.md)
 
@@ -185,6 +185,7 @@ Set by artifact owner:
 | `src/world/ledger.py` | `calculate_thinking_cost()`, `deduct_thinking_cost()` | Thinking cost calculation |
 | `src/world/world.py` | `World.advance_tick()` | Tick resource reset |
 | `src/world/simulation_engine.py` | `calculate_thinking_cost()`, `is_budget_exhausted()` | Cost calculation, budget tracking |
+| `src/world/simulation_engine.py` | `ResourceUsage`, `ResourceMeasurer`, `measure_resources()` | Action resource measurement |
 | `src/world/genesis.py` | `GenesisRightsRegistry` | Quota management |
 
 ### Implementation Notes
