@@ -131,9 +131,12 @@ def advance_tick(self) -> bool:
 | `src/simulation/runner.py` | `SimulationRunner.run()` | Main run loop (includes Phase 1 parallel gather) |
 | `src/simulation/runner.py` | `SimulationRunner._think_agent()` | Single agent thinking |
 | `src/simulation/runner.py` | `SimulationRunner._execute_proposals()` | Phase 2 sequential execution |
+| `src/simulation/agent_loop.py` | `AgentLoop`, `AgentLoopManager` | Autonomous agent execution loops |
+| `src/simulation/agent_loop.py` | `AgentState`, `AgentLoopConfig`, `WakeCondition` | Loop configuration and state |
 | `src/world/world.py` | `World.advance_tick()` | Tick lifecycle |
 | `src/world/world.py` | `World.execute_action()` | Action dispatcher |
 | `src/world/actions.py` | `parse_intent_from_json()` | Action parsing (the "narrow waist") |
+| `src/world/rate_tracker.py` | `RateTracker` | Rolling window rate limiting for autonomous mode |
 
 ---
 

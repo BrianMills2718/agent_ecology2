@@ -185,6 +185,8 @@ Set by artifact owner:
 | `src/world/ledger.py` | `calculate_thinking_cost()`, `deduct_thinking_cost()` | Thinking cost calculation |
 | `src/world/world.py` | `World.advance_tick()` | Tick resource reset |
 | `src/world/simulation_engine.py` | `calculate_thinking_cost()`, `is_budget_exhausted()` | Cost calculation, budget tracking |
+| `src/world/simulation_engine.py` | `ResourceUsage`, `ResourceMeasurer`, `measure_resources()` | Action resource measurement |
+| `src/world/rate_tracker.py` | `RateTracker`, `has_capacity()`, `consume()`, `wait_for_capacity()` | Rolling window rate limiting |
 | `src/world/simulation_engine.py` | `ResourceUsage`, `ResourceMeasurer`, `measure_resources()` | Resource measurement |
 | `src/world/genesis.py` | `GenesisRightsRegistry` | Quota management |
 

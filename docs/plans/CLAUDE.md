@@ -35,7 +35,7 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 | Status | Meaning |
 |--------|---------|
 | 📋 Planned | Has implementation plan, ready to start |
-| ✅ Complete | Being implemented (see CLAUDE.md for CC-ID) |
+| 🚧 In Progress | Being implemented (see CLAUDE.md for CC-ID) |
 | ⏸️ Blocked | Waiting on dependency |
 | ❌ Needs Plan | Gap identified, needs design work |
 | ✅ Complete | Implemented, docs updated |
@@ -47,11 +47,11 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 | # | Gap | Priority | Status | Blocks |
 |---|-----|----------|--------|--------|
 | 1 | [Rate Allocation](01_rate_allocation.md) | **High** | ✅ Complete | #2, #31 |
-| 2 | [Continuous Execution](02_continuous_execution.md) | **High** | ⏸️ In Progress | #21 |
+| 2 | [Continuous Execution](02_continuous_execution.md) | **High** | 🚧 In Progress | #21 |
 | 3 | [Docker Isolation](03_docker_isolation.md) | Medium | 📋 Planned | - |
 | 4 | ~~Compute Debt Model~~ | - | ✅ Superseded | - |
 | 5 | [Oracle Anytime Bidding](05_oracle_anytime.md) | Medium | ❌ Needs Plan | - |
-| 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | ❌ In Progress | #7,#8,#14,#16 |
+| 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | 🚧 In Progress | #7,#8,#14,#16 |
 | 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | ⏸️ Blocked | - |
 | 8 | [Agent Rights Trading](08_agent_rights.md) | Low | ⏸️ Blocked | - |
 | 9 | [Scrip Debt Contracts](09_scrip_debt.md) | Low | ❌ Needs Plan | - |
@@ -76,7 +76,7 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 | 28 | [Pre-seeded MCP Servers](28_mcp_servers.md) | **High** | ❌ Needs Plan | - |
 | 29 | [Library Installation](29_package_manager.md) | Medium | ❌ Needs Plan | - |
 | 30 | [Capability Request System](30_capability_requests.md) | Medium | ❌ Needs Plan | - |
-| 31 | [Resource Measurement](31_resource_measurement.md) | **High** | ⏸️ Blocked | - |
+| 31 | [Resource Measurement](31_resource_measurement.md) | **High** | 🚧 In Progress | - |
 | 32 | [Developer Tooling](32_developer_tooling.md) | **High** | ✅ Complete | - |
 
 ---
@@ -143,6 +143,8 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 | - | Contract System (GAP-GEN-001) | 2026-01-12 | Phase 1 |
 | - | Autonomous Loops (GAP-EXEC-001) | 2026-01-12 | Phase 1 |
 | - | Unified Ontology Fields (GAP-AGENT-001) | 2026-01-12 | Phase 1 |
+| - | ResourceUsage/ResourceMeasurer | 2026-01-12 | Epic 31 Phase 1 |
+| 32 | Developer Tooling | 2026-01-12 | PR #2 |
 
 ---
 
@@ -178,11 +180,11 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 
 Deferred from Phase 1 review (2026-01-12). Address when integrating new modules into run.py:
 
-| Item | Description | Location |
+| Item | Description | Location | Status |
 |------|-------------|----------|
-| AgentProtocol asymmetry | `AgentProtocol.alive` is property but `AgentLoop.is_alive` is Callable | `src/simulation/agent_loop.py` |
-| Architecture docs for new files | Add current/ docs for rate_tracker.py, agent_loop.py | `docs/architecture/current/` |
-| Gap status updates | Update #1, #2, #6 statuses in table above | This file |
+| AgentProtocol asymmetry | `AgentProtocol.alive` is property but `AgentLoop.is_alive` is Callable | `src/simulation/agent_loop.py` | ✅ By design |
+| Architecture docs for new files | Add current/ docs for rate_tracker.py, agent_loop.py | `docs/architecture/current/` | ✅ Done |
+| Gap status updates | Update #1, #2, #6, #31 statuses in table above | This file | ✅ Done |
 
 ---
 
