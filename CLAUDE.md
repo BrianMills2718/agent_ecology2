@@ -346,6 +346,24 @@ git diff main..origin/plan-03-docker
 python scripts/check_claims.py --release --validate
 ```
 
+### Review vs. Ownership
+
+**Review ≠ PR Creation.** Any instance can review another's work, but ownership stays with the claimant.
+
+| Action | Who Can Do It |
+|--------|---------------|
+| Read/review code | Any instance |
+| Run tests, provide feedback | Any instance |
+| Create PR, merge | Only the claiming instance |
+| Complete/release claim | Only the claiming instance |
+
+**Why:** The claiming instance knows:
+- What's complete vs. work-in-progress
+- Whether uncommitted files are ready or still being refined
+- The full context and intent of the changes
+
+**Handoff:** If original instance can't complete, they must explicitly note handoff in Active Work table with context for the new owner.
+
 ### Commit Message Convention
 
 Link commits to plans when applicable:
