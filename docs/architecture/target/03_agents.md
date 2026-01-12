@@ -284,6 +284,27 @@ If Qdrant is unavailable:
 - System logs Qdrant connectivity issues
 - No silent fallback to local storage
 
+**Checkpoint synchronization:**
+
+Qdrant must be snapshotted atomically with world state checkpoints:
+
+```
+Checkpoint = {
+    world_state: artifact_store + ledger at tick N,
+    qdrant_snapshot: memory collections at tick N
+}
+```
+
+On restore, both are restored together. This prevents "split-brain" where agents have memories of events that haven't happened in the restored world state.
+
+**Implementation:** Qdrant supports snapshots via API. Checkpoint process:
+1. Pause agent loops
+2. Snapshot artifact store + ledger
+3. Snapshot Qdrant collections
+4. Resume agent loops
+
+Restore reverses this atomically.
+
 ---
 
 ## Sleep Mechanics

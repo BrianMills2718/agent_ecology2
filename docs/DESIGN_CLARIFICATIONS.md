@@ -4881,3 +4881,22 @@ def check_permission(...):
 6. Rest can be deferred
 
 ---
+
+## Deferred Concerns (V-n)
+
+External review raised these concerns. Documented for future consideration, not blocking V1.
+
+| Concern | Summary | Why Deferred |
+|---------|---------|--------------|
+| Identity-Reputation | Prompt changes while ID constant breaks trust | Observable via event log; agents build reputation systems |
+| Involuntary Liquidation | Frozen agents can refuse rescue reciprocation | Salvage rights V-n; market solutions preferred |
+| 429 Cascade Failures | API outage could bankrupt all agents | Operational tuning; monitor in practice |
+| Side-Channel Attacks | Shared container allows /proc inspection | V1 agents competitive, not malware |
+| Storage Rent | Dead artifacts bloat discovery | Opportunity cost + finite quotas should suffice |
+| Token Bucket Burst | Strict allocation wastes capacity | Design choice; strict creates trade incentive |
+| Contract Grief | Malicious contracts drain requesters | Timeout + depth limits exist |
+| Labor Bonds | No commitment primitives for future work | Agents can build as artifacts |
+
+**Source:** Gemini external review (2026-01-11)
+
+---
