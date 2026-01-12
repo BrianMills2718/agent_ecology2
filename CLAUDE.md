@@ -1,5 +1,8 @@
 # Agent Ecology - Claude Code Context
 
+> **🚨 BEFORE DOING ANYTHING:** Run `pwd`. If you're in `agent_ecology/` (main) and plan to edit files, **STOP**.
+> Create a worktree first: `make worktree BRANCH=plan-NN-xxx`. Multiple instances in main = corrupted work.
+
 **Parallel work?** `python scripts/check_claims.py --list` then `--claim --task "..."`
 
 This file is always loaded. Keep it lean. Reference other docs for details.
@@ -58,6 +61,12 @@ python scripts/check_doc_coupling.py          # Doc-code coupling (must pass)
 python scripts/check_mock_usage.py --strict   # No unjustified mocks (must pass)
 python scripts/plan_progress.py --summary     # Plan implementation status
 python scripts/check_claims.py                # Check for stale claims
+python scripts/validate_plan.py --plan N      # Pre-implementation validation gate
+```
+
+**gh CLI fix:** If `gh` fails with "unable to access /etc/gitconfig", use:
+```bash
+GIT_CONFIG_NOSYSTEM=1 gh pr create ...
 ```
 
 ---
@@ -143,6 +152,32 @@ See `docs/GLOSSARY.md` for full definitions. Quick reference:
 
 Multiple Claude Code instances can work simultaneously on this codebase.
 
+### CRITICAL: Never Commit Directly to Main
+
+**All work MUST be on feature branches.** Commits directly to main will be orphaned when other instances push.
+
+```bash
+# WRONG - commits will be lost
+git checkout main
+# ... make changes ...
+git commit -m "My work"  # ORPHANED when someone else pushes!
+
+# RIGHT - work is preserved
+git checkout -b work/my-feature
+# ... make changes ...
+git commit -m "My work"
+git push -u origin work/my-feature
+# Create PR to merge
+```
+
+**Why this happens:** When multiple CC instances work on main simultaneously:
+1. Instance A commits to local main
+2. Instance B pushes to origin/main
+3. Instance A pulls → merge creates orphaned side branch
+4. Instance A's commits become unreachable and lost
+
+**Feature branches prevent this:** Even if orphaned, branches are named and findable.
+
 ### Branch Naming Convention
 
 Always link branches to plans: `plan-NN-short-description`
@@ -152,25 +187,50 @@ git checkout -b plan-01-token-bucket
 git checkout -b plan-03-docker
 ```
 
-### Worktree Requirement
+### CRITICAL: One Instance Per Directory
 
-**All PR work MUST use worktrees.** This ensures:
-- Clean separation between author and reviewer
-- No conflicts when multiple CC instances work simultaneously
-- Main directory stays clean for reviews
+> **⚠️ MULTIPLE CC INSTANCES IN THE SAME DIRECTORY WILL CORRUPT EACH OTHER'S WORK.**
+>
+> If you're in `/home/azureuser/brian_misc/agent_ecology` (main), other instances may be here too.
+> Your edits will be overwritten. Their edits will be overwritten. Commits will be reset.
 
+**FIRST THING - Check your directory:**
 ```bash
-# REQUIRED: Create worktree for any PR work
+pwd  # Should be a worktree path like ../ecology-plan-NN-xxx, NOT main
+git worktree list  # See all worktrees
+```
+
+**If you're in main and doing implementation work: STOP and create a worktree.**
+
+### Worktree Rules
+
+| Directory | Allowed Activities | Why |
+|-----------|-------------------|-----|
+| Main (`agent_ecology/`) | Reviews, quick reads, coordination only | Multiple instances share this |
+| Worktree (`ecology-plan-NN-xxx/`) | Implementation, commits, PRs | Isolated per-instance |
+
+**Each CC instance doing implementation MUST have its own worktree:**
+```bash
+# REQUIRED: Create worktree BEFORE starting work
 make worktree BRANCH=plan-03-docker
 cd ../ecology-plan-03-docker && claude
 
+# Now you're isolated - safe to edit files
 # Do work, create PR, then cleanup
 git worktree remove ../ecology-plan-03-docker
 ```
 
+**What happens without worktrees (BAD):**
+```
+Instance 1: edits file.py     → saved
+Instance 2: edits file.py     → overwrites Instance 1
+Instance 3: runs git reset    → destroys both
+Instance 1: commits           → wrong content, missing changes
+```
+
 **Review pattern:**
 1. Claude A creates PR from worktree
-2. Claude B reviews in main directory (or different worktree)
+2. Claude B reviews in main directory (read-only) or different worktree
 3. Claude B approves/requests changes
 4. After merge, remove worktree
 
@@ -220,13 +280,13 @@ python scripts/check_claims.py --release --validate
 |-------|------|------|---------|--------|
 | plan-11-terminology | 11 | Terminology cleanup - config restructure | 2026-01-12T08:03 | Active |
 | plan-20-migration | 20 | Write migration strategy plan | 2026-01-12T08:18 | Active |
-| plan-35-verification | 35 | Implement verification enforcement | 2026-01-12T09:27 | Active |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->
 | PR | Branch | Title | Created |
 |----|--------|-------|---------|
-| - | - | - | - |
+| #35 | fix-plan-test-check | Plan test script fix (needs doc-coupling) | 2026-01-12 |
+| #36 | plan-28-mcp-servers | [Plan #28] MCP Servers Integration Plan | 2026-01-12 |
 
 **After PR merged:** Remove from Awaiting Review table.
 
@@ -287,6 +347,24 @@ git diff main..origin/plan-03-docker
 python scripts/check_claims.py --release --validate
 ```
 
+### Review vs. Ownership
+
+**Review ≠ PR Creation.** Any instance can review another's work, but ownership stays with the claimant.
+
+| Action | Who Can Do It |
+|--------|---------------|
+| Read/review code | Any instance |
+| Run tests, provide feedback | Any instance |
+| Create PR, merge | Only the claiming instance |
+| Complete/release claim | Only the claiming instance |
+
+**Why:** The claiming instance knows:
+- What's complete vs. work-in-progress
+- Whether uncommitted files are ready or still being refined
+- The full context and intent of the changes
+
+**Handoff:** If original instance can't complete, they must explicitly note handoff in Active Work table with context for the new owner.
+
 ### Commit Message Convention
 
 Link commits to plans when applicable:
@@ -317,7 +395,7 @@ Add/Fix/Update: Short description
 |-----|---------|----------------|
 | `docs/architecture/current/` | What IS implemented | After code changes |
 | `docs/architecture/target/` | What we WANT | Architecture decisions |
-| `docs/plans/` | Active gap tracking (33 gaps) | Gap status changes |
+| `docs/plans/` | Active gap tracking (34 gaps) | Gap status changes |
 | `docs/adr/` | Architecture Decision Records | New architectural decisions |
 | `docs/architecture/gaps/` | Comprehensive analysis (142 gaps) | Gap identification |
 | `docs/DESIGN_CLARIFICATIONS.md` | WHY decisions made | Architecture discussions |
@@ -327,7 +405,7 @@ Add/Fix/Update: Short description
 
 | Directory | Granularity | Use For |
 |-----------|-------------|---------|
-| `docs/plans/` | 33 high-level gaps | Implementation tracking, status, CC-IDs |
+| `docs/plans/` | 34 high-level gaps | Implementation tracking, status, CC-IDs |
 | `docs/architecture/gaps/` | 142 detailed gaps | Reference, dependency analysis, scope |
 
 **Protocol:** Code change → update `current/` → update plan in `docs/plans/` if gap closed → update "Last verified" date.

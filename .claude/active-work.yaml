@@ -11,8 +11,4 @@ claims:
   task: Write migration strategy plan
   claimed_at: '2026-01-12T08:18:33Z'
   plan: 20
-- cc_id: plan-35-verification
-  task: Implement verification enforcement
-  claimed_at: '2026-01-12T09:27:52Z'
-  plan: 35
 completed: []

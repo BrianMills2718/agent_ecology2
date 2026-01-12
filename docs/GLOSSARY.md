@@ -2,7 +2,33 @@
 
 Canonical terminology for Agent Ecology. Use these terms consistently across code and documentation.
 
-**Last updated:** 2026-01-11
+**Last updated:** 2026-01-12
+
+---
+
+## Current vs Target
+
+This project has terminology differences between current implementation and target architecture:
+
+| Glossary | Purpose | When to Use |
+|----------|---------|-------------|
+| [GLOSSARY_CURRENT.md](GLOSSARY_CURRENT.md) | What IS implemented | Reading/modifying existing code |
+| [GLOSSARY_TARGET.md](GLOSSARY_TARGET.md) | What we're BUILDING TOWARD | Architecture discussions, new design |
+
+**Key difference:** `genesis_oracle` (current code) → `genesis_mint` (target) per ADR-0004.
+
+---
+
+## Quick Reference (Stable Terms)
+
+These terms are the same in both current and target:
+
+| Use | Not | Why |
+|-----|-----|-----|
+| `scrip` | `credits` | Consistency |
+| `principal` | `account` | Principals include artifacts/contracts |
+| `tick` | `turn` | Consistency |
+| `artifact` | `object/entity` | Everything is an artifact |
 
 ---
 
@@ -134,7 +160,7 @@ System-provided artifacts for bootstrapping. Theoretically replaceable—agents 
 
 | Artifact | Purpose | Key Methods |
 |----------|---------|-------------|
-| **genesis_oracle** | Score artifacts, mint scrip | `submit`, `bid`, `process` |
+| **genesis_mint** | Score artifacts, create scrip | `submit`, `bid`, `process` |
 | **genesis_escrow** | Trustless artifact trading | `deposit`, `purchase`, `cancel` |
 | **genesis_event_log** | Simulation history | `read` |
 | **genesis_handbook** | Documentation for agents | `read` |
@@ -149,13 +175,17 @@ System-provided artifacts for bootstrapping. Theoretically replaceable—agents 
 
 Part of the world itself—agents cannot replace these:
 
-- Action execution (read, write, invoke)
-- Resource accounting (balances for all resource types)
-- Scrip ledger
-- Artifact store
-- Tick/time progression
+| Primitive | Type | Description |
+|-----------|------|-------------|
+| **Ledger** | State | Scrip and resource balances |
+| **Artifact store** | State | All artifacts and metadata |
+| **Event log** | State | Immutable audit trail |
+| **Rights registry** | State | Resource quotas per principal |
+| **Mint** | Capability | Creates new scrip (developer-configured rules) |
+| **Execution engine** | Capability | Runs agent loops, action dispatch |
+| **Rate tracker** | Capability | Enforces rolling window limits |
 
-Genesis artifacts provide *interfaces* to some primitives, but the underlying state is system-level.
+Genesis artifacts provide *interfaces* to some primitives, but the underlying state/capability is system-level. Per ADR-0004, the mint is a system primitive—agents cannot create or modify minters.
 
 ---
 
@@ -169,7 +199,7 @@ How value enters the system from outside:
 | **External validation** | Value judgments from outside the system (upvotes, bounties, API outcomes) |
 | **User bounty** | Human posts task with reward; pays winner if satisfied |
 
-The oracle is the interface for minting—but the *source* of value judgments is external.
+The mint is the interface for scrip creation—but the *source* of value judgments is external.
 
 ---
 
@@ -238,6 +268,8 @@ Both are artifacts. Both have `access_contract_id`. Both can be traded. This ena
 
 | Don't Use | Use Instead | Reason |
 |-----------|-------------|--------|
+| oracle | mint | "Mint" describes function (creating scrip) not oracle's "reveals truth" connotation |
+| genesis_oracle | genesis_mint | Terminology migration per ADR-0004 |
 | credits | scrip | Consistency |
 | account | principal | Principals include non-agents |
 | turn | tick | Consistency |

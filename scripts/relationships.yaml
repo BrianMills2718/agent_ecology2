@@ -1,0 +1,128 @@
+# Unified Documentation Graph
+#
+# Single source of truth for all documentation relationships.
+# Replaces: governance.yaml, doc_coupling.yaml
+# See: ADR-0005 (docs/adr/0005-unified-documentation-graph.md)
+
+version: 1
+
+# =============================================================================
+# NODE NAMESPACES
+# =============================================================================
+
+nodes:
+  adr: docs/adr/*.md
+  target: docs/architecture/target/*.md
+  current: docs/architecture/current/*.md
+  plans: docs/plans/*.md
+  gaps: docs/architecture/gaps/*.yaml
+  source: src/**/*.py
+
+# =============================================================================
+# EDGE TYPES
+# =============================================================================
+
+edge_types:
+  governs:
+    description: "ADR that governs implementation"
+    actions: [embed_header]
+  documented_by:
+    description: "Code documented by architecture doc"
+    actions: [ci_enforce]
+  implements:
+    description: "Plan that implements functionality"
+    actions: [validate_links]
+  affects:
+    description: "Source changes may affect this doc"
+    actions: [ci_warn]
+
+# =============================================================================
+# ADR DEFINITIONS
+# =============================================================================
+
+adrs:
+  1:
+    title: "Everything is an artifact"
+    file: "0001-everything-is-artifact.md"
+  2:
+    title: "No compute debt"
+    file: "0002-no-compute-debt.md"
+  3:
+    title: "Contracts can do anything"
+    file: "0003-contracts-can-do-anything.md"
+
+# =============================================================================
+# EDGES
+# =============================================================================
+
+edges:
+  # GOVERNANCE: ADR -> Code
+  - from: adr/0001
+    to: source/src/world/artifacts.py
+    type: governs
+    context: "Everything is an artifact - agents, contracts, data."
+
+  - from: adr/0001
+    to: [source/src/world/contracts.py, source/src/world/genesis.py]
+    type: governs
+
+  - from: adr/0002
+    to: source/src/world/ledger.py
+    type: governs
+    context: "Never allow negative balances - fail loud."
+
+  - from: adr/0003
+    to: source/src/world/contracts.py
+    type: governs
+    context: "Permission checks are the hot path."
+
+  - from: adr/0003
+    to: [source/src/world/genesis_contracts.py, source/src/world/genesis.py]
+    type: governs
+
+  # STRICT COUPLINGS: Code -> Docs
+  - from: [source/src/simulation/runner.py, source/src/world/world.py]
+    to: current/execution_model
+    type: documented_by
+    coupling: strict
+
+  - from: [source/src/world/ledger.py, source/src/world/simulation_engine.py]
+    to: current/resources
+    type: documented_by
+    coupling: strict
+
+  - from: source/src/world/genesis.py
+    to: current/genesis_artifacts
+    type: documented_by
+    coupling: strict
+
+  - from: [source/src/agents/agent.py, source/src/agents/memory.py, source/src/agents/loader.py]
+    to: current/agents
+    type: documented_by
+    coupling: strict
+
+  - from: [source/src/world/artifacts.py, source/src/world/executor.py, source/src/world/actions.py]
+    to: current/artifacts_executor
+    type: documented_by
+    coupling: strict
+
+  - from: [source/src/config.py, source/src/config_schema.py]
+    to: current/configuration
+    type: documented_by
+    coupling: strict
+
+  - from: plans/*
+    to: plans/CLAUDE
+    type: documented_by
+    coupling: strict
+
+  # SOFT COUPLINGS
+  - from: current/*
+    to: plans/CLAUDE
+    type: affects
+    coupling: soft
+
+  - from: source/src/world/rate_tracker.py
+    to: plans/01_rate_allocation
+    type: affects
+    coupling: soft

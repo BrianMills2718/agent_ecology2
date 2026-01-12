@@ -2,20 +2,20 @@
 
 Master index of all gaps and their implementation plans.
 
-**Last verified:** 2026-01-12 (test requirements updated for Plans #1, #32)
+**Last verified:** 2026-01-12 (Plan #6 test names fixed)
 
 ---
 
 ## Relationship to Gap Analysis
 
-This directory tracks **33 high-level gaps** for active implementation.
+This directory tracks **34 high-level gaps** for active implementation.
 
 For the **comprehensive 142-gap analysis**, see `docs/architecture/gaps/`.
 
 | This Directory | Gap Analysis Directory |
 |----------------|------------------------|
 | Active tracking (status, CC-IDs) | Reference analysis |
-| 33 high-level gaps | 142 detailed gaps |
+| 34 high-level gaps | 142 detailed gaps |
 | Implementation steps | Gap definitions |
 
 The 142 gaps are a finer breakdown of these 33. Both track the same work at different granularities.
@@ -61,24 +61,25 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 13 | [Doc Line Number Refs](13_doc_line_refs.md) | Low | ❌ Needs Plan | - |
 | 14 | [MCP-Style Artifact Interface](14_mcp_interface.md) | Medium | ⏸️ Blocked | - |
 | 15 | [invoke() Genesis Support](15_invoke_genesis.md) | Medium | ❌ Needs Plan | - |
-| 16 | [Artifact Discovery](16_artifact_discovery.md) | **High** | ⏸️ Blocked | #17,#22 |
-| 17 | [Agent Discovery](17_agent_discovery.md) | Medium | ⏸️ Blocked | - |
+| 16 | [Artifact Discovery](16_artifact_discovery.md) | **High** | ✅ Complete | #17,#22 |
+| 17 | [Agent Discovery](17_agent_discovery.md) | Medium | ✅ Complete | - |
 | 18 | [Dangling Reference Handling](18_dangling_refs.md) | Medium | ❌ Needs Plan | - |
 | 19 | [Agent-to-Agent Threat Model](19_threat_model.md) | Medium | ❌ Needs Plan | - |
-| 20 | [Migration Strategy](20_migration_strategy.md) | **High** | 📋 Needs Plan | - |
-| 21 | [Testing for Continuous](21_continuous_testing.md) | Medium | ⏸️ Blocked | - |
+| 20 | [Migration Strategy](20_migration_strategy.md) | **High** | 📋 Planned | - |
+| 21 | [Testing for Continuous](21_continuous_testing.md) | Medium | 📋 Planned | - |
 | 22 | [Coordination Primitives](22_coordination.md) | Medium | ⏸️ Blocked | - |
 | 23 | [Error Response Conventions](23_error_conventions.md) | Low | ❌ Needs Plan | - |
 | 24 | [Ecosystem Health KPIs](24_health_kpis.md) | Medium | ❌ Needs Plan | #25 |
 | 25 | [System Auditor Agent](25_system_auditor.md) | Low | ⏸️ Blocked | - |
 | 26 | [Vulture Observability](26_vulture_observability.md) | Medium | ❌ Needs Plan | - |
 | 27 | [Invocation Registry](27_invocation_registry.md) | Medium | ❌ Needs Plan | - |
-| 28 | [Pre-seeded MCP Servers](28_mcp_servers.md) | **High** | ❌ Needs Plan | - |
+| 28 | [Pre-seeded MCP Servers](28_mcp_servers.md) | **High** | 📋 Planned | - |
 | 29 | [Library Installation](29_package_manager.md) | Medium | ❌ Needs Plan | - |
 | 30 | [Capability Request System](30_capability_requests.md) | Medium | ❌ Needs Plan | - |
 | 31 | [Resource Measurement](31_resource_measurement.md) | **High** | ✅ Complete | - |
 | 32 | [Developer Tooling](32_developer_tooling.md) | **High** | ✅ Complete | - |
 | 33 | [ADR Governance](33_adr_governance.md) | **High** | ✅ Complete | - |
+| 34 | [Oracle to Mint Rename](34_oracle_mint_rename.md) | Medium | 📋 Planned | - |
 | 35 | [Verification Enforcement](35_verification_enforcement.md) | **High** | ✅ Complete | - |
 
 ---
@@ -150,6 +151,8 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 33 | ADR Governance | 2026-01-12 | ✅ Complete |
 | 2 | Continuous Execution | 2026-01-12 | ✅ Complete |
 | 6 | Unified Artifact Ontology | 2026-01-12 | ✅ Complete |
+| 16 | Artifact Discovery | 2026-01-12 | PR #30 |
+| 17 | Agent Discovery | 2026-01-12 | Included in Gap #16 |
 
 ---
 

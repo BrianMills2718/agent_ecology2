@@ -22,6 +22,7 @@ The Agent Ecology is a tick-synchronized multi-agent system where LLM-powered ag
 
 | Document | Description |
 |----------|-------------|
+| [running.md](running.md) | How to run and observe simulations |
 | [execution_model.md](execution_model.md) | Tick loop, two-phase commit, timing |
 | [agents.md](agents.md) | Agent lifecycle, thinking, memory |
 | [resources.md](resources.md) | Flow/stock resources, scrip, costs |
