@@ -76,12 +76,11 @@ Create these tests FIRST, before implementing:
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/test_unified_ontology.py` | `TestRunnerCreatesAgentArtifacts::test_runner_creates_agent_artifacts` | SimulationRunner populates artifact store with agent artifacts |
-| `tests/test_unified_ontology.py` | `TestAgentsAreArtifactBacked::test_agents_are_artifact_backed` | All agents from runner have `is_artifact_backed=True` |
-| `tests/test_unified_ontology.py` | `TestAgentArtifactProperties::test_agent_artifacts_have_correct_properties` | Agent artifacts have `has_standing=True`, `can_execute=True` |
-| `tests/test_unified_ontology.py` | `TestMemoryArtifactsCreated::test_memory_artifacts_created` | Each agent has a linked memory artifact |
-| `tests/test_unified_ontology.py` | `TestSpawnedAgentsArtifactBacked::test_spawned_agents_are_artifact_backed` | Dynamically created agents are also artifact-backed |
-| `tests/test_unified_ontology.py` | `TestCheckpointPreservesAgentArtifacts::test_checkpoint_preserves_agent_artifacts` | Checkpoint save/restore maintains agent artifacts |
+| `tests/test_unified_ontology.py` | `TestSimulationRunnerIntegration::test_runner_creates_agent_artifacts` | SimulationRunner populates artifact store with agent artifacts |
+| `tests/test_unified_ontology.py` | `TestSimulationRunnerIntegration::test_runner_agents_are_artifact_backed` | All agents from runner have `is_artifact_backed=True` |
+| `tests/test_unified_ontology.py` | `TestArtifactOntologyProperties::test_agent_artifact_has_correct_properties` | Agent artifacts have `has_standing=True`, `can_execute=True` |
+| `tests/test_unified_ontology.py` | `TestSimulationRunnerIntegration::test_runner_creates_memory_artifacts` | Each agent has a linked memory artifact |
+| `tests/test_unified_ontology.py` | `TestCheckpointPreservesArtifacts::test_checkpoint_includes_agent_artifacts` | Checkpoint save/restore maintains agent artifacts |
 
 ### Existing Tests (Must Pass)
 
