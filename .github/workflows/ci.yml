@@ -141,3 +141,24 @@ jobs:
 
       - name: Check governance headers in sync
         run: python scripts/sync_governance.py --check
+
+  coordination-tables:
+    runs-on: ubuntu-latest
+    # Ensures coordination tables in CLAUDE.md match generated output
+    # Blocks PRs that manually edit these tables
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Check coordination tables are auto-generated
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/generate_coordination_tables.py --check

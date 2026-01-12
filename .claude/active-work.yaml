@@ -2,5 +2,8 @@
 # Machine-readable tracking for multi-CC coordination.
 # Use: python scripts/check_claims.py --help
 
-claims: []
+claims:
+- cc_id: coordination-table-automation
+  task: Coordination table auto-generation
+  claimed_at: '2026-01-12T10:41:41Z'
 completed: []

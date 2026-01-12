@@ -1,0 +1,49 @@
+name: Sync Coordination Tables
+
+# Auto-update coordination tables after any merge to main
+# This ensures tables always reflect current state without manual PRs
+
+on:
+  push:
+    branches: [main]
+  # Also allow manual trigger for recovery
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # Only run if not already a sync commit (prevent loops)
+    if: "!contains(github.event.head_commit.message, '[Auto] Sync coordination tables')"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Generate coordination tables
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/generate_coordination_tables.py --apply
+
+      - name: Check for changes
+        id: check
+        run: |
+          git diff --quiet CLAUDE.md || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit and push if changed
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CLAUDE.md
+          git commit -m "[Auto] Sync coordination tables"
+          git push

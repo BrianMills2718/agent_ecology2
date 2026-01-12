@@ -17,6 +17,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `view_log.py` | Parse run.jsonl events |
 | `concat_for_review.py` | Concatenate files for review |
 | `setup_hooks.sh` | Install git hooks |
+| `generate_coordination_tables.py` | Auto-generate CLAUDE.md coordination tables |
 
 Config files: `relationships.yaml`, `doc_coupling.yaml`, `governance.yaml`
 
@@ -52,6 +53,11 @@ python scripts/check_plan_tests.py --plan N        # Run tests
 python scripts/check_claims.py --list              # See claims
 python scripts/check_claims.py --claim --task "X"  # Claim work
 python scripts/check_claims.py --release --validate # Done + verify
+
+# Coordination tables (auto-generated)
+python scripts/generate_coordination_tables.py          # Preview
+python scripts/generate_coordination_tables.py --check  # CI mode
+python scripts/generate_coordination_tables.py --apply  # Update CLAUDE.md
 ```
 
 ## Configuration

@@ -250,20 +250,27 @@ python scripts/check_claims.py --release --validate
 ```
 
 **Active Work:**
-<!-- Auto-synced from .claude/active-work.yaml -->
+<!-- AUTO-GENERATED from .claude/active-work.yaml - Do not edit manually -->
+<!-- Run: python scripts/generate_coordination_tables.py --apply -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| - | - | - | - | - |
+| coordination-table-automation | - | Coordination table auto-generation | 2026-01-12T10:41 | Active |
+
 
 **Awaiting Review:**
-<!-- PRs needing review. Update manually or via script. -->
+<!-- AUTO-GENERATED from `gh pr list` - Do not edit manually -->
+<!-- Run: python scripts/generate_coordination_tables.py --apply -->
 | PR | Branch | Title | Created |
 |----|--------|-------|---------|
-| #39 | plan-21-continuous-testing | [Plan #21] Testing strategy (needs rebase) | 2026-01-12 |
-| #42 | claude-md-compendious | CLAUDE.md simplification | 2026-01-12 |
-| #43 | worktree-enforcement | Worktree enforcement hook (needs rebase) | 2026-01-12 |
+| #39 | plan-21-continuous-testing | [Plan #21] Testing Strategy for Continuous Execution | 2026-01-12 |
+| #46 | plan-34-oracle-mint-rename | [Plan #34] Rename Oracle to Mint throughout codebase | 2026-01-12 |
+| #47 | update-claude-md-pr46 | [Unplanned] Update CLAUDE.md with PR #46 | 2026-01-12 |
+| #49 | test-reorganization | Reorganize tests and add real E2E tests | 2026-01-12 |
+| #50 | fix-hook-whitelist | [Unplanned] Whitelist coordination files in worktree hook | 2026-01-12 |
+| #51 | fix-awaiting-review-table-v2 | [Unplanned] Update Awaiting Review table | 2026-01-12 |
+| #52 | worktree-rebase-fix | Add auto-rebase workflow to prevent PR conflicts | 2026-01-12 |
 
-**After PR merged:** Remove from Awaiting Review table.
+**After PR merged:** Remove happens automatically on next sync.
 
 ### Session Continuity
 
