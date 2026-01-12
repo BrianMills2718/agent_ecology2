@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-12 (added --staged mode for pre-commit)
+Last verified: 2026-01-12 (Epic 31 - API key secrets for tests)
 
 ---
 

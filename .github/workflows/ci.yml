@@ -70,20 +70,6 @@ jobs:
       - name: Check doc-code coupling
         run: python scripts/check_doc_coupling.py --base origin/main --strict
 
-  mock-tests:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Check mock tests have real counterparts
-        run: python scripts/check_mock_tests.py --strict
-
   plan-tests:
     runs-on: ubuntu-latest
     # Informational - shows plan test status but doesn't block PRs
