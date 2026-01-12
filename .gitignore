@@ -70,3 +70,5 @@ Thumbs.db
 # But track coordination files for multi-CC
 !.claude/active-work.yaml
 !.claude/handoff_template.md
+!.claude/settings.json
+!.claude/hooks/

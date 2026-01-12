@@ -15,6 +15,7 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 | [Plan Workflow](plan-workflow.md) | Untracked work, scope creep | Medium |
 | [Claim System](claim-system.md) | Parallel work conflicts | Medium |
 | [Verification Enforcement](verification-enforcement.md) | Untested "complete" work | Medium |
+| [Worktree Enforcement](worktree-enforcement.md) | Main directory corruption from parallel edits | Low |
 
 ### Subsumed Patterns
 
@@ -32,6 +33,7 @@ These patterns are now implementation details of [Documentation Graph](documenta
 - Mock Enforcement - if using pytest with mocks
 - Git Hooks - any project with CI
 - PR Coordination - if multiple people/instances work in parallel
+- Worktree Enforcement - if multiple Claude Code instances share a repo
 
 **Add these when needed (more setup):**
 - ADR - when architectural decisions need to be preserved long-term
