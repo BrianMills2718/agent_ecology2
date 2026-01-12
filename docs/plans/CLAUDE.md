@@ -76,7 +76,7 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 | 28 | [Pre-seeded MCP Servers](28_mcp_servers.md) | **High** | ❌ Needs Plan | - |
 | 29 | [Library Installation](29_package_manager.md) | Medium | ❌ Needs Plan | - |
 | 30 | [Capability Request System](30_capability_requests.md) | Medium | ❌ Needs Plan | - |
-| 31 | [Resource Measurement](31_resource_measurement.md) | **High** | ⏸️ Blocked | - |
+| 31 | [Resource Measurement](31_resource_measurement.md) | **High** | ✅ Complete | - |
 | 32 | [Developer Tooling](32_developer_tooling.md) | **High** | ✅ Complete | - |
 
 ---
@@ -143,6 +143,7 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 | - | Contract System (GAP-GEN-001) | 2026-01-12 | Phase 1 |
 | - | Autonomous Loops (GAP-EXEC-001) | 2026-01-12 | Phase 1 |
 | - | Unified Ontology Fields (GAP-AGENT-001) | 2026-01-12 | Phase 1 |
+| 31 | Resource Measurement | 2026-01-12 | PR #10 |
 
 ---
 
