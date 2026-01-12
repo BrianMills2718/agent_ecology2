@@ -284,8 +284,9 @@ python scripts/check_claims.py --release --validate
 <!-- PRs needing review. Update manually or via script. -->
 | PR | Branch | Title | Created |
 |----|--------|-------|---------|
-| #35 | fix-plan-test-check | Plan test script fix (needs doc-coupling) | 2026-01-12 |
-| #36 | plan-28-mcp-servers | [Plan #28] MCP Servers Integration Plan | 2026-01-12 |
+| #35 | fix-plan-test-check | Plan test script fix | 2026-01-12 |
+| #38 | plan-35-verification | [Plan #35] Verification enforcement | 2026-01-12 |
+| #39 | plan-21-continuous-testing | [Plan #21] Testing strategy | 2026-01-12 |
 
 **After PR merged:** Remove from Awaiting Review table.
 
