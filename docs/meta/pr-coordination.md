@@ -249,7 +249,7 @@ STALE_HOURS = 4  # Claims older than this are flagged
 ## Limitations
 
 - **GitHub-specific** - Uses GitHub Actions. Adapt for GitLab CI, etc.
-- **Race conditions** - If two PRs merge simultaneously, coordination file may conflict.
+- **Race conditions** - If two PRs merge simultaneously, coordination file may conflict. **Mitigated by [Coordination Table Automation](coordination-table-automation.md)**.
 - **Token permissions** - Needs `contents: write` to push updates.
 - **Branch protection** - May conflict with protected branches requiring reviews.
 
@@ -257,3 +257,4 @@ STALE_HOURS = 4  # Claims older than this are flagged
 
 - [Claim system pattern](claim-system.md) - More detailed claim management
 - [Plan workflow pattern](plan-workflow.md) - How plans integrate with PRs
+- [Coordination Table Automation](coordination-table-automation.md) - Auto-generates tables to prevent conflicts

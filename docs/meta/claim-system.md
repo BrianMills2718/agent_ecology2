@@ -350,7 +350,7 @@ def get_instance_id():
 ## Limitations
 
 - **Honor system** - Nothing stops someone from ignoring claims.
-- **Git conflicts** - If two instances claim simultaneously, YAML may conflict.
+- **Git conflicts** - If two instances claim simultaneously, YAML may conflict. **Mitigated by [Coordination Table Automation](coordination-table-automation.md)** for table display.
 - **Stale detection is passive** - Only flagged when script runs, not proactively.
 - **No lock** - Claim is advisory, not a mutex.
 
@@ -367,3 +367,4 @@ def get_instance_id():
 - [PR coordination pattern](pr-coordination.md) - Auto-claims on PR open
 - [Plan workflow pattern](plan-workflow.md) - Plans that claims reference
 - [Git hooks pattern](git-hooks.md) - Can check for claim before commit
+- [Coordination Table Automation](coordination-table-automation.md) - Auto-generates tables from claims

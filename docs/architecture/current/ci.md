@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-12
+Last verified: 2026-01-12 (updated for coordination-tables job)
 
 ---
 
@@ -129,6 +129,40 @@ def test_memory_error_handling():
     ...
 ```
 
+### 7. governance-sync
+
+Ensures source files have correct governance headers matching `governance.yaml`.
+
+```yaml
+- uses: actions/checkout@v4
+- uses: actions/setup-python@v5 (Python 3.11)
+- pip install pyyaml
+- python scripts/sync_governance.py --check
+```
+
+**What it catches:**
+- Source files missing required ADR governance headers
+- Stale or incorrect governance headers
+
+### 8. coordination-tables
+
+Ensures coordination tables in CLAUDE.md are auto-generated, not manually edited.
+
+```yaml
+- uses: actions/checkout@v4
+- uses: actions/setup-python@v5 (Python 3.11)
+- pip install pyyaml
+- python scripts/generate_coordination_tables.py --check
+```
+
+**What it catches:**
+- Manual edits to Active Work or Awaiting Review tables
+- Tables out of sync with source data
+
+**Why:** Prevents merge conflict cascades when multiple PRs try to update the same tables. Tables are auto-generated from `.claude/active-work.yaml` and `gh pr list`.
+
+See [Coordination Table Automation](../../meta/coordination-table-automation.md) pattern for details.
+
 ---
 
 ## Doc-Code Coupling
@@ -212,6 +246,29 @@ All jobs must pass for PRs to be mergeable (when branch protection is enabled):
 - doc-coupling
 - plan-status-sync
 - mock-usage
+- governance-sync
+- coordination-tables
+
+---
+
+## Auto-Sync Workflows
+
+### sync-coordination-tables
+
+Located at `.github/workflows/sync-coordination-tables.yml`
+
+**Triggers:**
+- Push to `main` branch
+- Manual dispatch (for recovery)
+
+**What it does:**
+1. Runs after any merge to main
+2. Regenerates coordination tables from source data
+3. Commits and pushes if tables changed
+
+**Why:** Keeps coordination tables accurate without manual PRs. Tables auto-update after every merge.
+
+**Loop prevention:** Skips if commit message contains `[Auto] Sync coordination tables`.
 
 ---
 
