@@ -1,9 +1,9 @@
-# Terminology Cleanup Plan
+# Gap 11: Terminology Cleanup
 
-**Gap:** #11 in [GAPS.md](../architecture/GAPS.md)
+**Status:** 📋 Planned
 **Priority:** Medium
-**Status:** Planned
-**Author:** CC-4 (2026-01-11)
+**Blocked By:** None
+**Blocks:** #12 Per-Agent LLM Budget
 
 ---
 

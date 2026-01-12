@@ -1,8 +1,9 @@
-# Plan: Continuous Agent Execution
+# Gap 2: Continuous Agent Execution
 
-**Priority:** High (core architecture change)
-
-**Depends on:** [token_bucket.md](token_bucket.md)
+**Status:** ⏸️ Blocked
+**Priority:** High
+**Blocked By:** #1 Rate Allocation
+**Blocks:** #21 Testing for Continuous
 
 ---
 

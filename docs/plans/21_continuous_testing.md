@@ -1,0 +1,34 @@
+# Gap 21: Testing for Continuous Execution
+
+**Status:** ⏸️ Blocked
+**Priority:** Medium
+**Blocked By:** #2
+**Blocks:** None
+
+---
+
+## Gap
+
+**Current:** Tests assume tick model
+
+**Target:** Testing strategy for autonomous agents
+
+---
+
+## Plan
+
+*Needs design work.*
+
+---
+
+## Verification
+
+- [ ] Tests pass
+- [ ] Docs updated
+- [ ] Implementation matches target
+
+---
+
+## Notes
+
+See GAPS.md archive for detailed context.

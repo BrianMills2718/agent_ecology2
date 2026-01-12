@@ -1,6 +1,9 @@
-# Plan: Token Bucket for Flow Resources
+# Gap 1: Rate Allocation (Token Bucket)
 
-**Priority:** High (blocks continuous execution)
+**Status:** 📋 Planned
+**Priority:** High
+**Blocked By:** None
+**Blocks:** #2 Continuous Execution, #31 Resource Measurement
 
 ---
 

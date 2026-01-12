@@ -1696,6 +1696,89 @@ resources:
 
 ---
 
+### CPU Measurement via Worker Pool (DECIDED 2026-01-12)
+
+How to accurately measure CPU usage per agent, including multi-threaded libraries.
+
+**The problem:**
+
+`time.thread_time()` only measures the calling thread. If an agent uses PyTorch/NumPy (which spawn internal threads), those CPU cycles are missed. This creates a gameable system where agents can hide CPU usage.
+
+**Options considered:**
+
+| Approach | Accuracy | Overhead | Gameable? |
+|----------|----------|----------|-----------|
+| `thread_time()` per action | Partial | Low | Yes - misses library threads |
+| Subprocess per agent | Exact | High (30-50MB/agent) | No |
+| Worker pool + `getrusage()` | Exact | Medium (fixed pool) | No |
+| Estimate from wall-clock | Approximate | Low | Yes |
+
+**Decision: Worker pool + `resource.getrusage()`**
+
+```python
+import resource
+import multiprocessing
+
+def execute_in_worker(action):
+    before = resource.getrusage(resource.RUSAGE_SELF)
+    result = execute(action)
+    after = resource.getrusage(resource.RUSAGE_SELF)
+    cpu_seconds = (after.ru_utime - before.ru_utime) + (after.ru_stime - before.ru_stime)
+    return result, cpu_seconds
+
+pool = multiprocessing.Pool(processes=8)
+```
+
+**Rationale:**
+1. **Accurate** - `getrusage(RUSAGE_SELF)` captures ALL threads in the worker process
+2. **Not gameable** - Kernel tracks every CPU cycle, can't hide usage
+3. **Scalable** - Pool size fixed (8-16 workers), independent of agent count
+4. **Reasonable overhead** - 400-800MB for pool, not per-agent
+
+**Scalability:**
+- 1000 agents with 8 workers = agents queue for CPU time
+- LLM rate limit is the real bottleneck anyway
+- Pool size tunable based on observed demand
+
+**What's NOT captured:**
+- GPU compute (separate resource, needs nvidia-smi/pynvml)
+- I/O wait (correctly not charged)
+
+**Certainty:** 85% - Best balance of accuracy, incentive alignment, and complexity.
+
+---
+
+### Local LLM Support (DECIDED 2026-01-12)
+
+The system supports both API-based and local LLM models.
+
+**CPU-only local LLMs (llama.cpp):**
+
+Worker pool + `getrusage()` captures inference automatically. No special handling needed - the LLM inference runs in the worker process, all CPU is measured.
+
+**GPU-based local LLMs (vLLM, TGI, Ollama):**
+
+Requires model server pattern:
+- Model server loads weights once (too large to load per-worker)
+- Workers call model server via HTTP (like an API)
+- GPU tracked as separate resource via nvidia-smi/pynvml
+
+**GPU as tradeable resource:**
+
+```yaml
+resources:
+  gpu:
+    initial_allocation:
+      agent_a: 0.5   # GPU-seconds per wall-clock second
+      agent_b: 0.5
+```
+
+Same strict allocation model as CPU and LLM rate.
+
+**Certainty:** 80% - GPU tracking adds complexity, may need refinement.
+
+---
+
 ## CC-4 Architectural Decisions (2026-01-11)
 
 *Author: CC-4 (Claude Code instance)*

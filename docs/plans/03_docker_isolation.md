@@ -1,6 +1,9 @@
-# Plan: Docker Resource Isolation
+# Gap 3: Docker Resource Isolation
 
+**Status:** 📋 Planned
 **Priority:** Medium
+**Blocked By:** None
+**Blocks:** None
 
 ---
 

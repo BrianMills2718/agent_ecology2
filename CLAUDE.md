@@ -52,6 +52,7 @@ pip install -e .                              # Required for imports
 python run.py --ticks 10 --agents 1           # Run simulation
 pytest tests/                                 # Run tests (must pass)
 python -m mypy src/ --ignore-missing-imports  # Type check (must pass)
+python scripts/check_doc_coupling.py          # Doc-code coupling (must pass)
 ```
 
 ---
@@ -173,6 +174,8 @@ When multiple instances work on related tasks:
 | `docs/GLOSSARY.md` | Canonical terms | New concepts added |
 
 **Protocol:** Code change → update current/ → update GAPS.md if gap closed → update "Last verified" date.
+
+**CI Enforcement:** `scripts/doc_coupling.yaml` maps source files to required docs. CI fails if source changes without doc updates. See `docs/architecture/current/ci.md`.
 
 ---
 

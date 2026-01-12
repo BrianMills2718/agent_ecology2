@@ -901,17 +901,47 @@ def execute_action(agent_id: str, action: Action) -> Result:
     return result
 ```
 
+**Per-Agent CPU Tracking:**
+
+```python
+import resource
+import multiprocessing
+
+def execute_in_worker(agent_id: str, action: Action) -> tuple[Result, float]:
+    before = resource.getrusage(resource.RUSAGE_SELF)
+    result = execute(action)
+    after = resource.getrusage(resource.RUSAGE_SELF)
+    cpu_seconds = (after.ru_utime - before.ru_utime) + (after.ru_stime - before.ru_stime)
+    return result, cpu_seconds
+
+# Fixed pool size (8-16 workers), not per-agent
+pool = multiprocessing.Pool(processes=8)
+result, cpu_seconds = pool.apply(execute_in_worker, (agent_id, action))
+```
+
+**Why worker pool + getrusage:**
+- Captures ALL threads (PyTorch, NumPy internal threads)
+- Not gameable - kernel tracks every CPU cycle
+- Scalable - pool size independent of agent count
+
+**Local LLM Support:**
+- CPU-only (llama.cpp): Captured by worker pool automatically
+- GPU-based (vLLM): Model server pattern + GPU tracking via nvidia-smi
+
 **Why High Priority:**
 - Can't enforce scarcity without measurement
 - Agents can't make economic decisions without knowing costs
 - Foundation for all resource-based behavior
 
-**Depends On:** #1 Token Bucket (for flow resource tracking)
+**Depends On:** #1 Rate Allocation (for renewable resource tracking)
 
 **No Plan Yet.** Changes needed:
-- Add `tracemalloc` to executor for per-agent memory tracking
-- Ledger support for bytes-based resource tracking
+- Implement worker pool with `multiprocessing.Pool`
+- Wrap action execution with `resource.getrusage()` measurement
+- Add `tracemalloc` for per-agent memory tracking
+- Ledger support for CPU-seconds and memory bytes
 - Docker compose config for resource limits
+- (Future) GPU tracking via nvidia-smi/pynvml for local GPU LLMs
 
 ---
 

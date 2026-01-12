@@ -2,14 +2,14 @@
 """Check that documentation is updated when coupled source files change.
 
 Usage:
-    python scripts/check_doc_coupling.py [--base BASE_REF]
+    python scripts/check_doc_coupling.py [--base BASE_REF] [--suggest]
 
 Compares current branch against BASE_REF (default: origin/main) to find
 changed files, then checks if coupled docs were also updated.
 
 Exit codes:
     0 - All couplings satisfied (or no coupled changes)
-    1 - Missing doc updates (warnings printed)
+    1 - Missing doc updates (strict violations)
 """
 
 import argparse
@@ -52,6 +52,20 @@ def load_couplings(config_path: Path) -> list[dict]:
     return data.get("couplings", [])
 
 
+def validate_config(couplings: list[dict]) -> list[str]:
+    """Validate that all referenced files in config exist.
+
+    Returns list of warnings for missing files.
+    """
+    warnings = []
+    for coupling in couplings:
+        for doc in coupling.get("docs", []):
+            if not Path(doc).exists():
+                warnings.append(f"Coupled doc doesn't exist: {doc}")
+        # Don't validate source patterns - they're globs
+    return warnings
+
+
 def matches_any_pattern(filepath: str, patterns: list[str]) -> bool:
     """Check if filepath matches any glob pattern."""
     for pattern in patterns:
@@ -63,17 +77,21 @@ def matches_any_pattern(filepath: str, patterns: list[str]) -> bool:
     return False
 
 
-def check_couplings(changed_files: set[str], couplings: list[dict]) -> list[dict]:
+def check_couplings(
+    changed_files: set[str], couplings: list[dict]
+) -> tuple[list[dict], list[dict]]:
     """Check which couplings have source changes without doc changes.
 
-    Returns list of violated couplings with details.
+    Returns tuple of (strict_violations, soft_warnings).
     """
-    violations = []
+    strict_violations = []
+    soft_warnings = []
 
     for coupling in couplings:
         sources = coupling.get("sources", [])
         docs = coupling.get("docs", [])
         description = coupling.get("description", "")
+        is_soft = coupling.get("soft", False)
 
         # Find which source patterns matched
         matched_sources = []
@@ -88,13 +106,50 @@ def check_couplings(changed_files: set[str], couplings: list[dict]) -> list[dict
         docs_updated = any(doc in changed_files for doc in docs)
 
         if not docs_updated:
-            violations.append({
+            violation = {
                 "description": description,
                 "changed_sources": matched_sources,
                 "expected_docs": docs,
-            })
+                "soft": is_soft,
+            }
+            if is_soft:
+                soft_warnings.append(violation)
+            else:
+                strict_violations.append(violation)
 
-    return violations
+    return strict_violations, soft_warnings
+
+
+def print_suggestions(changed_files: set[str], couplings: list[dict]) -> None:
+    """Print which docs should be updated based on changed files."""
+    print("Based on your changes, consider updating:\n")
+
+    suggestions: dict[str, list[str]] = {}  # doc -> [reasons]
+
+    for coupling in couplings:
+        sources = coupling.get("sources", [])
+        docs = coupling.get("docs", [])
+        description = coupling.get("description", "")
+
+        for changed in changed_files:
+            if matches_any_pattern(changed, sources):
+                for doc in docs:
+                    if doc not in changed_files:
+                        if doc not in suggestions:
+                            suggestions[doc] = []
+                        suggestions[doc].append(f"{changed} ({description})")
+
+    if not suggestions:
+        print("  No documentation updates needed.")
+        return
+
+    for doc, reasons in sorted(suggestions.items()):
+        print(f"  {doc}")
+        for reason in reasons[:3]:  # Limit to 3 reasons
+            print(f"    <- {reason}")
+        if len(reasons) > 3:
+            print(f"    ... and {len(reasons) - 3} more")
+        print()
 
 
 def main() -> int:
@@ -112,7 +167,17 @@ def main() -> int:
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="Exit with error code on violations (default: warn only)",
+        help="Exit with error code on strict violations (default: warn only)",
+    )
+    parser.add_argument(
+        "--suggest",
+        action="store_true",
+        help="Show which docs to update based on changes",
+    )
+    parser.add_argument(
+        "--validate-config",
+        action="store_true",
+        help="Validate that all docs in config exist",
     )
     args = parser.parse_args()
 
@@ -121,37 +186,67 @@ def main() -> int:
         print(f"Config not found: {config_path}")
         return 1
 
+    couplings = load_couplings(config_path)
+
+    # Validate config if requested
+    if args.validate_config:
+        warnings = validate_config(couplings)
+        if warnings:
+            print("Config validation warnings:")
+            for w in warnings:
+                print(f"  - {w}")
+            return 1
+        print("Config validation passed.")
+        return 0
+
     changed_files = get_changed_files(args.base)
     if not changed_files:
         print("No changed files detected.")
         return 0
 
-    couplings = load_couplings(config_path)
-    violations = check_couplings(changed_files, couplings)
+    # Suggest mode
+    if args.suggest:
+        print_suggestions(changed_files, couplings)
+        return 0
 
-    if not violations:
+    strict_violations, soft_warnings = check_couplings(changed_files, couplings)
+
+    if not strict_violations and not soft_warnings:
         print("Doc-code coupling check passed.")
         return 0
 
     # Print violations
-    print("=" * 60)
-    print("DOC-CODE COUPLING WARNINGS")
-    print("=" * 60)
-    print()
-    print("The following source files changed without corresponding doc updates:")
-    print()
-
-    for v in violations:
-        print(f"  {v['description']}")
-        print(f"    Changed: {', '.join(v['changed_sources'])}")
-        print(f"    Expected doc update: {', '.join(v['expected_docs'])}")
+    if strict_violations:
+        print("=" * 60)
+        print("DOC-CODE COUPLING VIOLATIONS (must fix)")
+        print("=" * 60)
         print()
+        for v in strict_violations:
+            print(f"  {v['description']}")
+            print(f"    Changed: {', '.join(v['changed_sources'][:3])}")
+            if len(v['changed_sources']) > 3:
+                print(f"             ... and {len(v['changed_sources']) - 3} more")
+            print(f"    Update:  {', '.join(v['expected_docs'])}")
+            print()
+
+    if soft_warnings:
+        print("=" * 60)
+        print("DOC-CODE COUPLING WARNINGS (consider updating)")
+        print("=" * 60)
+        print()
+        for v in soft_warnings:
+            print(f"  {v['description']}")
+            print(f"    Changed: {', '.join(v['changed_sources'][:3])}")
+            if len(v['changed_sources']) > 3:
+                print(f"             ... and {len(v['changed_sources']) - 3} more")
+            print(f"    Consider: {', '.join(v['expected_docs'])}")
+            print()
 
     print("=" * 60)
-    print("If the docs are already accurate, update 'Last verified' date.")
+    print("If docs are already accurate, update 'Last verified' date.")
     print("=" * 60)
 
-    return 1 if args.strict else 0
+    return 1 if (args.strict and strict_violations) else 0
 
 
 if __name__ == "__main__":

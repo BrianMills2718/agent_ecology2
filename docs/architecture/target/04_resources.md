@@ -128,7 +128,9 @@ resources:
       # No provider limit - Docker enforces container total
 ```
 
-Agents can still trade CPU allocation rights.
+Agents can trade CPU allocation rights.
+
+**Measurement:** See [Per-Agent CPU Tracking](#per-agent-cpu-tracking) for how CPU-seconds are measured accurately using worker pool + `resource.getrusage()`.
 
 ---
 
@@ -224,6 +226,125 @@ Agent action uses 52,428,800 bytes (50MB) peak memory
 → Per-agent memory usage visible in metrics
 → Docker --memory limit enforces actual constraint
 ```
+
+### Per-Agent CPU Tracking
+
+CPU measurement requires capturing ALL threads spawned by an action (including PyTorch, NumPy internal threads). Single-thread `time.thread_time()` misses these.
+
+**Solution: Worker pool + `resource.getrusage()`**
+
+```python
+import resource
+import multiprocessing
+
+def execute_in_worker(agent_id: str, action: Action) -> tuple[Result, float]:
+    before = resource.getrusage(resource.RUSAGE_SELF)
+    result = execute(action)
+    after = resource.getrusage(resource.RUSAGE_SELF)
+
+    # Captures ALL CPU: main thread + library threads (PyTorch, etc.)
+    cpu_user = after.ru_utime - before.ru_utime
+    cpu_system = after.ru_stime - before.ru_stime
+    cpu_seconds = cpu_user + cpu_system
+
+    return result, cpu_seconds
+
+# Pool of worker processes (reused, not per-agent)
+pool = multiprocessing.Pool(processes=8)
+
+# Submit action to worker, get accurate CPU measurement
+result, cpu_seconds = pool.apply(execute_in_worker, (agent_id, action))
+ledger.deduct(agent_id, "cpu_seconds", cpu_seconds)
+```
+
+**Why worker pool + getrusage:**
+- `getrusage(RUSAGE_SELF)` measures entire process including all threads
+- Captures PyTorch/NumPy multi-threaded operations accurately
+- Not gameable - kernel tracks all CPU cycles
+- Pool size is fixed (8-16 workers), not per-agent
+
+**Scalability:**
+
+| Agents | Worker processes | Memory overhead |
+|--------|------------------|-----------------|
+| 10 | 8 | 400MB |
+| 100 | 8 | 400MB |
+| 1000 | 8-16 | 400-800MB |
+
+Pool size is independent of agent count. Agents queue for workers.
+
+**What's captured:**
+
+| Activity | Measured? |
+|----------|-----------|
+| Python code | ✅ |
+| Multi-threaded libraries (PyTorch CPU, NumPy) | ✅ |
+| Any spawned threads | ✅ |
+| I/O wait | ❌ (correctly not charged) |
+| GPU compute | ❌ (separate resource) |
+
+---
+
+## Local LLM Support
+
+The system supports both API-based and local LLM models.
+
+### API-Based LLMs (Default)
+
+- Bottleneck: Rate limit (TPM), budget ($)
+- Measurement: Tokens from API response
+- Mostly I/O wait, minimal CPU
+
+### Local CPU LLMs (llama.cpp, etc.)
+
+Worker pool + `getrusage()` captures local LLM inference automatically:
+
+```python
+def agent_action():
+    # llama.cpp runs in worker process
+    # ALL CPU threads captured by getrusage()
+    response = llama_generate("prompt...")
+    return parse(response)
+```
+
+No special handling needed - CPU measurement includes inference.
+
+### Local GPU LLMs (vLLM, TGI, Ollama)
+
+GPU-based models require a model server pattern:
+
+```
+┌─────────────────────────────────────────────┐
+│  Model Server (vLLM, TGI, Ollama)           │
+│  - Loads model weights once (7B = 14GB)     │
+│  - Handles request batching                 │
+│  - Reports GPU-seconds per request          │
+└─────────────────────────────────────────────┘
+              ↑ Local HTTP/gRPC
+              ↓
+┌─────────────────────────────────────────────┐
+│  Worker Pool                                │
+│  - Calls model server (like API)            │
+│  - getrusage() captures non-LLM CPU work    │
+└─────────────────────────────────────────────┘
+```
+
+**Why model server:**
+- Model weights too large to load per-worker
+- Efficient batching for throughput
+- GPU scheduling handled centrally
+
+**GPU as separate resource:**
+
+```yaml
+resources:
+  gpu:
+    initial_allocation:
+      agent_a: 0.5   # GPU-seconds per wall-clock second
+      agent_b: 0.5
+```
+
+Tracked via `nvidia-smi` or `pynvml`. Traded like CPU allocation.
 
 ---
 

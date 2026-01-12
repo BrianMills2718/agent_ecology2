@@ -70,9 +70,32 @@ Checks that documentation is updated when coupled source files change.
 **Configuration:** `scripts/doc_coupling.yaml` defines source-to-doc mappings:
 ```yaml
 couplings:
+  # Strict: CI fails if violated
   - sources: ["src/world/ledger.py"]
     docs: ["docs/architecture/current/resources.md"]
     description: "Resource accounting"
+
+  # Soft: CI warns but doesn't fail
+  - sources: ["docs/architecture/current/*.md"]
+    docs: ["docs/architecture/GAPS.md"]
+    description: "Gap closure tracking"
+    soft: true
+```
+
+**Coupling types:**
+- **Strict** (default): CI fails if source changes without doc update
+- **Soft** (`soft: true`): CI warns but doesn't fail - for reminder couplings
+
+**Soft couplings include:**
+- `current/` changes → GAPS.md (did you close a gap?)
+- GAPS.md changes → plans/README.md (update plan status)
+- Terminology files → GLOSSARY.md (new terms?)
+
+**Script options:**
+```bash
+--suggest         # Show which docs to update
+--validate-config # Check all docs in config exist
+--strict          # Fail on strict violations (used in CI)
 ```
 
 ---
@@ -90,6 +113,12 @@ python -m mypy --strict --ignore-missing-imports --exclude '__pycache__' --no-na
 
 # Check doc-code coupling
 python scripts/check_doc_coupling.py --base origin/main
+
+# See which docs you should update
+python scripts/check_doc_coupling.py --suggest --base origin/main
+
+# Validate coupling config (check all doc paths exist)
+python scripts/check_doc_coupling.py --validate-config
 ```
 
 ---

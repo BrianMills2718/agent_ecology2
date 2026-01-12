@@ -1,14 +1,19 @@
 # Doc-Code Coupling Map
 #
 # Defines which docs must be reviewed when source files change.
-# CI will warn (not fail) if source changes without corresponding doc changes.
+# CI will fail on strict couplings, warn on soft couplings.
 #
 # Format:
 #   - sources: [glob patterns for source files]
 #     docs: [paths to docs that should be updated]
 #     description: what this coupling represents
+#     soft: true  # Optional: warn instead of fail
 
 couplings:
+  # ===========================================================================
+  # STRICT COUPLINGS (CI fails if violated)
+  # ===========================================================================
+
   # Core execution model
   - sources:
       - "src/simulation/runner.py"
@@ -70,6 +75,46 @@ couplings:
   # CI itself
   - sources:
       - ".github/workflows/ci.yml"
+      - "scripts/check_doc_coupling.py"
+      - "scripts/doc_coupling.yaml"
     docs:
       - "docs/architecture/current/ci.md"
     description: "CI pipeline"
+
+  # ===========================================================================
+  # SOFT COUPLINGS (CI warns but doesn't fail)
+  # ===========================================================================
+
+  # When current/ docs change, consider if a gap was closed
+  - sources:
+      - "docs/architecture/current/*.md"
+    docs:
+      - "docs/architecture/GAPS.md"
+    description: "Gap closure tracking - did you close a gap?"
+    soft: true
+
+  # When GAPS.md changes, consider if plans need updating
+  - sources:
+      - "docs/architecture/GAPS.md"
+    docs:
+      - "docs/plans/README.md"
+    description: "Plan status sync - update plan status if gap closed"
+    soft: true
+
+  # When implementing a planned feature, check the plan
+  - sources:
+      - "src/world/rate_tracker.py"  # Token bucket implementation
+    docs:
+      - "docs/plans/token_bucket.md"
+      - "docs/architecture/GAPS.md"
+    description: "Token bucket implementation - update plan and gaps"
+    soft: true
+
+  # Terminology changes affect multiple docs
+  - sources:
+      - "src/world/ledger.py"
+      - "src/config_schema.py"
+    docs:
+      - "docs/GLOSSARY.md"
+    description: "Terminology - new terms or renamed concepts?"
+    soft: true

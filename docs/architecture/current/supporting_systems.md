@@ -67,8 +67,8 @@ if checkpoint:
 | Trigger | Reason | Config |
 |---------|--------|--------|
 | Budget exhausted | `"budget_exhausted"` | Always |
-| Periodic interval | `"periodic"` | `budget.checkpoint_interval` |
-| Simulation end | `"completed"` | `budget.checkpoint_on_end` |
+| Periodic interval | `"periodic_tick_{N}"` | `budget.checkpoint_interval` |
+| Simulation end | `"simulation_complete"` | `budget.checkpoint_on_end` |
 
 ---
 
@@ -102,15 +102,17 @@ class EventLogger:
 
 ### Event Types
 
-| Event Type | When Logged |
-|------------|-------------|
-| `tick_started` | Start of each tick |
-| `tick_completed` | End of each tick |
-| `action_executed` | Agent action completed |
-| `thinking_completed` | Agent thinking finished |
-| `transfer` | Scrip/resource transfer |
-| `oracle_auction` | Oracle auction resolved |
-| `error` | Any error occurred |
+| Event Type | When Logged | Source |
+|------------|-------------|--------|
+| `tick` | Start of each tick | `world.py` |
+| `action` | Agent action executed | `world.py` |
+| `thinking` | Agent thinking completed | `runner.py` |
+| `thinking_failed` | Agent ran out of compute | `runner.py` |
+| `intent_rejected` | Invalid action rejected | `runner.py` |
+| `oracle_auction` | Auction resolved | `runner.py` |
+| `mint` | Scrip minted | `world.py` |
+| `world_init` | World initialized | `world.py` |
+| `budget_pause` | API budget exhausted | `runner.py` |
 
 ### Configuration
 
@@ -133,7 +135,7 @@ Real-time web UI for monitoring simulation.
 |------|---------|
 | `server.py` | FastAPI server with WebSocket |
 | `parser.py` | JSONL parsing and state extraction |
-| `watcher.py` | File change polling |
+| `watcher.py` | File change detection (watchdog + polling fallback) |
 | `models.py` | Pydantic models for API responses |
 | `static/` | HTML/CSS/JS frontend |
 
@@ -166,11 +168,25 @@ Real-time web UI for monitoring simulation.
 |----------|--------|-------------|
 | `/` | GET | Dashboard HTML |
 | `/ws` | WebSocket | Real-time updates |
-| `/api/state` | GET | Current simulation state |
+| `/api/state` | GET | Complete simulation state |
+| `/api/progress` | GET | Simulation progress only |
 | `/api/agents` | GET | Agent summaries |
 | `/api/agents/{id}` | GET | Agent details |
 | `/api/artifacts` | GET | All artifacts |
-| `/api/events` | GET | Recent events (filterable) |
+| `/api/artifacts/{id}/detail` | GET | Artifact details with content |
+| `/api/events` | GET | Filtered events |
+| `/api/genesis` | GET | Genesis artifact activity |
+| `/api/charts/compute` | GET | Compute utilization chart data |
+| `/api/charts/scrip` | GET | Scrip balance chart data |
+| `/api/charts/flow` | GET | Economic flow visualization |
+| `/api/config` | GET | Simulation configuration |
+| `/api/ticks` | GET | Tick summary history |
+| `/api/network` | GET | Agent interaction graph |
+| `/api/activity` | GET | Activity feed with filtering |
+| `/api/thinking` | GET | Agent thinking history |
+| `/api/simulation/status` | GET | Runner status |
+| `/api/simulation/pause` | POST | Pause simulation |
+| `/api/simulation/resume` | POST | Resume simulation |
 
 ### WebSocket Messages
 

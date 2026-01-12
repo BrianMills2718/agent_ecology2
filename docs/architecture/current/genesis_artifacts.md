@@ -97,8 +97,11 @@ All genesis artifacts:
 - `tick` - Tick started
 - `action` - Agent action executed
 - `thinking` - Agent thinking completed
+- `thinking_failed` - Agent ran out of compute
 - `intent_rejected` - Invalid action rejected
 - `oracle_auction` - Auction resolved
+- `mint` - Scrip minted
+- `world_init` - World initialized
 
 **Config:** `max_per_read` limits returned events (default: 100)
 
