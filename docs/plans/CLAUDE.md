@@ -65,8 +65,8 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 17 | [Agent Discovery](17_agent_discovery.md) | Medium | ⏸️ Blocked | - |
 | 18 | [Dangling Reference Handling](18_dangling_refs.md) | Medium | ❌ Needs Plan | - |
 | 19 | [Agent-to-Agent Threat Model](19_threat_model.md) | Medium | ❌ Needs Plan | - |
-| 20 | [Migration Strategy](20_migration_strategy.md) | **High** | ❌ Needs Plan | - |
-| 21 | [Testing for Continuous](21_continuous_testing.md) | Medium | 📋 Planned | - |
+| 20 | [Migration Strategy](20_migration_strategy.md) | **High** | 📋 Needs Plan | - |
+| 21 | [Testing for Continuous](21_continuous_testing.md) | Medium | ⏸️ Blocked | - |
 | 22 | [Coordination Primitives](22_coordination.md) | Medium | ⏸️ Blocked | - |
 | 23 | [Error Response Conventions](23_error_conventions.md) | Low | ❌ Needs Plan | - |
 | 24 | [Ecosystem Health KPIs](24_health_kpis.md) | Medium | ❌ Needs Plan | #25 |
@@ -144,10 +144,10 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | - | Contract System (GAP-GEN-001) | 2026-01-12 | Phase 1 |
 | - | Autonomous Loops (GAP-EXEC-001) | 2026-01-12 | Phase 1 |
 | - | Unified Ontology Fields (GAP-AGENT-001) | 2026-01-12 | Phase 1 |
-| 31 | Resource Measurement | 2026-01-12 | PR #10 |
-| 3 | Docker Isolation | 2026-01-12 | PR #15 |
-| 33 | ADR Governance | 2026-01-12 | Branch plan-33-adr-governance |
-| 2 | Continuous Execution | 2026-01-12 | PR #20 |
+| 31 | Resource Measurement | 2026-01-12 | ✅ Complete |
+| 3 | Docker Isolation | 2026-01-12 | ✅ Complete |
+| 33 | ADR Governance | 2026-01-12 | ✅ Complete |
+| 2 | Continuous Execution | 2026-01-12 | ✅ Complete |
 
 ---
 

@@ -7,4 +7,8 @@ claims:
   task: Terminology cleanup - config restructure and code cleanup
   claimed_at: '2026-01-12T08:03:40Z'
   plan: 11
+- cc_id: plan-20-migration
+  task: Write migration strategy plan
+  claimed_at: '2026-01-12T08:18:33Z'
+  plan: 20
 completed: []
