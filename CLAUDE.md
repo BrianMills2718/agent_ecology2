@@ -61,6 +61,12 @@ python scripts/check_doc_coupling.py          # Doc-code coupling (must pass)
 python scripts/check_mock_usage.py --strict   # No unjustified mocks (must pass)
 python scripts/plan_progress.py --summary     # Plan implementation status
 python scripts/check_claims.py                # Check for stale claims
+python scripts/validate_plan.py --plan N      # Pre-implementation validation gate
+```
+
+**gh CLI fix:** If `gh` fails with "unable to access /etc/gitconfig", use:
+```bash
+GIT_CONFIG_NOSYSTEM=1 gh pr create ...
 ```
 
 ---
@@ -145,6 +151,32 @@ See `docs/GLOSSARY.md` for full definitions. Quick reference:
 ## Multi-Claude Coordination
 
 Multiple Claude Code instances can work simultaneously on this codebase.
+
+### CRITICAL: Never Commit Directly to Main
+
+**All work MUST be on feature branches.** Commits directly to main will be orphaned when other instances push.
+
+```bash
+# WRONG - commits will be lost
+git checkout main
+# ... make changes ...
+git commit -m "My work"  # ORPHANED when someone else pushes!
+
+# RIGHT - work is preserved
+git checkout -b work/my-feature
+# ... make changes ...
+git commit -m "My work"
+git push -u origin work/my-feature
+# Create PR to merge
+```
+
+**Why this happens:** When multiple CC instances work on main simultaneously:
+1. Instance A commits to local main
+2. Instance B pushes to origin/main
+3. Instance A pulls → merge creates orphaned side branch
+4. Instance A's commits become unreachable and lost
+
+**Feature branches prevent this:** Even if orphaned, branches are named and findable.
 
 ### Branch Naming Convention
 
