@@ -107,3 +107,19 @@ jobs:
 
       - name: Check plan tests
         run: python scripts/check_plan_tests.py --all
+
+  mock-usage:
+    runs-on: ubuntu-latest
+    # Detect suspicious mock patterns that may hide real failures
+    # Uses --strict to fail if mocking internal code without justification
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check for suspicious mock patterns
+        run: python scripts/check_mock_usage.py --strict

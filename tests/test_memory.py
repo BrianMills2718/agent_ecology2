@@ -4,6 +4,8 @@ Tests the memory wrapper around Mem0. Mocks required because:
 - mem0.Memory connects to external Qdrant vector database
 - mem0.Memory uses Gemini API for embeddings and LLM operations
 - Tests must run without network access or API keys
+
+# mock-ok: Mocking Memory class avoids Gemini/Qdrant API calls - tests focus on AgentMemory wrapper logic
 """
 
 import threading

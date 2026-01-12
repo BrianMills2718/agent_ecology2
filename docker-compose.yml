@@ -1,17 +1,30 @@
-version: '3.3'
+# Agent Ecology Docker Compose
+# Run with: docker-compose up -d
+#
+# Resource limits enforce real scarcity (physics-first principle)
 
 services:
   qdrant:
     image: qdrant/qdrant:latest
+    container_name: agent-qdrant
     ports:
       - "6333:6333"
       - "6334:6334"
     volumes:
       - ./qdrant_storage:/qdrant/storage
     restart: unless-stopped
+    # Resource limits for Qdrant
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+        reservations:
+          memory: 512M
 
   simulation:
     build: .
+    container_name: agent-ecology
     depends_on:
       - qdrant
     environment:
@@ -20,6 +33,37 @@ services:
     env_file:
       - .env
     volumes:
+      - ./config:/app/config:ro
       - ./logs:/app/logs
       - ./llm_logs:/app/llm_logs
+      - ./data:/app/data
+    # Resource limits for simulation
+    # These enforce real scarcity - agents compete for limited resources
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'
+        reservations:
+          memory: 1G
     command: ["python", "run.py"]
+
+  # Dashboard for monitoring (optional, start with: docker-compose up dashboard)
+  dashboard:
+    build: .
+    container_name: agent-dashboard
+    depends_on:
+      - simulation
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./logs:/app/logs:ro
+      - ./llm_logs:/app/llm_logs:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+    command: ["python", "-m", "uvicorn", "src.dashboard.server:app", "--host", "0.0.0.0", "--port", "8080"]
+    profiles:
+      - dashboard

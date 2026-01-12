@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-12 (added plan-status-sync, GEMINI_API_KEY secret)
+Last verified: 2026-01-12 (added mock-usage check)
 
 ---
 
@@ -102,6 +102,33 @@ Checks test requirements for implementation plans. Runs with `continue-on-error:
 
 **Configuration:** Test requirements defined in each plan file's `## Required Tests` section.
 
+### 6. mock-usage
+
+Detects suspicious mock patterns that may hide real failures ("green CI, broken production").
+
+```yaml
+- uses: actions/checkout@v4
+- uses: actions/setup-python@v5 (Python 3.11)
+- python scripts/check_mock_usage.py --strict
+```
+
+**What it catches:**
+- Mocking internal `src.` code instead of testing it
+- Mocking Memory, Agent, or other core classes
+- Using MagicMock return values for internal code
+
+**Allowed patterns (not flagged):**
+- Mocking `time.`, `datetime`, `sleep` (timing)
+- Mocking `requests.`, `httpx.`, `aiohttp.` (external HTTP)
+
+**Justifying a mock:** Add `# mock-ok: <reason>` comment:
+```python
+# mock-ok: Testing error handling when memory unavailable
+@patch("src.agents.memory.Memory.search")
+def test_memory_error_handling():
+    ...
+```
+
 ---
 
 ## Doc-Code Coupling
@@ -167,13 +194,24 @@ python scripts/check_plan_tests.py --plan 1 --tdd
 
 # Run all required tests for a plan
 python scripts/check_plan_tests.py --plan 1
+
+# Check for suspicious mock patterns
+python scripts/check_mock_usage.py
+
+# Fail on suspicious mocks (as in CI)
+python scripts/check_mock_usage.py --strict
 ```
 
 ---
 
 ## Required for Merge
 
-All three jobs must pass for PRs to be mergeable (when branch protection is enabled).
+All jobs must pass for PRs to be mergeable (when branch protection is enabled):
+- test
+- mypy
+- doc-coupling
+- plan-status-sync
+- mock-usage
 
 ---
 
