@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-12 (Phase 2 integration)
+**Last verified: 2026-01-12
 
 ---
 

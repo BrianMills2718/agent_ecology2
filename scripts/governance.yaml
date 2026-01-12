@@ -1,0 +1,59 @@
+# Governance Configuration
+#
+# Maps source files to the ADRs that govern them.
+# Used by sync_governance.py to generate code headers.
+#
+# Format:
+#   files:
+#     <path>:
+#       adrs: [list of ADR numbers]
+#       context: |
+#         Optional context shown in generated header.
+#         Multi-line strings supported.
+#
+#   adrs:
+#     <number>:
+#       title: "Short title"
+#       file: "NNNN-filename.md"
+
+files:
+  src/world/contracts.py:
+    adrs: [1, 3]
+    context: |
+      Permission checks are the hot path - keep them fast.
+      Contracts return decisions; kernel applies state changes.
+
+  src/world/genesis_contracts.py:
+    adrs: [1, 3]
+    context: |
+      Four built-in contracts: freeware, self_owned, private, public.
+      These are Python classes, not artifacts (current implementation).
+
+  src/world/ledger.py:
+    adrs: [1, 2]
+    context: |
+      All balance mutations go through here.
+      Never allow negative balances - fail loud.
+
+  src/world/artifacts.py:
+    adrs: [1]
+    context: |
+      Core artifact storage and management.
+      Everything is an artifact - agents, contracts, data.
+
+  src/world/genesis.py:
+    adrs: [1, 3]
+    context: |
+      Genesis artifacts: ledger, oracle, escrow, event_log, rights_registry.
+      System-provided, solve cold-start problem.
+
+adrs:
+  1:
+    title: "Everything is an artifact"
+    file: "0001-everything-is-artifact.md"
+  2:
+    title: "No compute debt"
+    file: "0002-no-compute-debt.md"
+  3:
+    title: "Contracts can do anything"
+    file: "0003-contracts-can-do-anything.md"

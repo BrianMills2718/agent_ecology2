@@ -1,5 +1,11 @@
 """Simple artifact store - in-memory dict of artifacts"""
 
+# --- GOVERNANCE START (do not edit) ---
+# ADR-0001: Everything is an artifact
+#
+# Core artifact storage and management.
+# Everything is an artifact - agents, contracts, data.
+# --- GOVERNANCE END ---
 from __future__ import annotations
 
 import json

@@ -218,7 +218,7 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| - | - | - | - | - |
+| plan-11-terminology | 11 | Terminology cleanup - config restructure | 2026-01-12T08:03 | Active |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->

@@ -20,6 +20,13 @@ See also:
 - GAP-GEN-001: Implementation plan for the contract system
 """
 
+# --- GOVERNANCE START (do not edit) ---
+# ADR-0001: Everything is an artifact
+# ADR-0003: Contracts can do anything
+#
+# Four built-in contracts: freeware, self_owned, private, public.
+# These are Python classes, not artifacts (current implementation).
+# --- GOVERNANCE END ---
 from __future__ import annotations
 
 from dataclasses import dataclass

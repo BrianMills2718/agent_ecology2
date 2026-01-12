@@ -1,9 +1,11 @@
 # Gap 11: Terminology Cleanup
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete (Phase 1 - Documentation)
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** #12 Per-Agent LLM Budget
+
+**Note:** Phase 1 (documentation clarity) complete. Code refactor (removing deprecated `get_compute`, `spend_compute`, `reset_compute` methods) deferred - 17 files use these methods. The terminology is now clearly documented, which was the primary goal.
 
 ---
 

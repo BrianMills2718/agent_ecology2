@@ -2,9 +2,22 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-01-12 (Plan #31 - ResourceMeasurer added)
+**Last verified:** 2026-01-12 (Plan #11 - Terminology cleanup)
 
 **See target:** [../target/resources.md](../target/resources.md)
+
+---
+
+## Terminology
+
+| Term | Meaning | Internal Name |
+|------|---------|---------------|
+| **llm_tokens** | Rate-limited LLM API access | `llm_tokens` |
+| **llm_budget** | Real $ for API calls | `max_api_cost` |
+| **disk** | Storage quota | `disk` |
+| **scrip** | Internal currency | `scrip` |
+
+**Note:** Legacy config uses `resources.flow.compute` which maps to `llm_tokens`. The term "compute" is reserved for future local CPU tracking.
 
 ---
 
@@ -34,14 +47,14 @@ for pid in self.principal_ids:
     self.ledger.set_resource(pid, "llm_tokens", quota)
 ```
 
-### Compute (llm_tokens)
+### LLM Tokens
 
 | Property | Value |
 |----------|-------|
-| Config key | `resources.flow.compute.per_tick` |
-| Code name | `llm_tokens` |
-| Default | 1000 per tick |
-| Reset | Each tick (use-or-lose) |
+| Config key (rate limiting) | `rate_limiting.resources.llm_tokens.max_per_window` |
+| Config key (legacy tick) | `resources.flow.compute.per_tick` |
+| Internal name | `llm_tokens` |
+| Default | 1000 per window (or per tick in legacy mode) |
 
 **Used for:**
 - Thinking cost (LLM input/output tokens)
@@ -58,15 +71,15 @@ total_cost = input_cost + output_cost
 
 **`Ledger.can_spend_resource()`** in `src/world/ledger.py`
 
-If agent doesn't have enough compute:
+If agent doesn't have enough LLM tokens:
 - Thinking proceeds (LLM already called)
 - Cost deduction fails
-- Agent marked as `insufficient_compute`
+- Agent marked as `insufficient_llm_tokens`
 - Action not executed
 
 ```python
 if not self.ledger.can_spend_resource(agent_id, "llm_tokens", cost):
-    return SkipResult(reason="insufficient_compute")
+    return SkipResult(reason="insufficient_llm_tokens")
 ```
 
 ---
@@ -144,7 +157,7 @@ def can_afford_scrip(self, principal_id: str, amount: int) -> bool:
 
 ## Cost Types
 
-### Thinking Cost (Compute)
+### Thinking Cost (LLM Tokens)
 
 Paid for every LLM call, regardless of action success.
 
@@ -152,7 +165,7 @@ Paid for every LLM call, regardless of action success.
 Cost = ceil(input_tokens/1000 * 1) + ceil(output_tokens/1000 * 3)
 ```
 
-### Genesis Method Cost (Compute)
+### Genesis Method Cost (LLM Tokens)
 
 Configurable per method in config.yaml:
 
@@ -163,7 +176,7 @@ genesis:
       balance:
         cost: 0        # Free
       transfer:
-        cost: 1        # 1 compute
+        cost: 1        # 1 llm_token unit
 ```
 
 ### Artifact Prices (Scrip)
@@ -191,8 +204,9 @@ Set by artifact owner:
 ### Implementation Notes
 
 - **Precision:** Ledger uses `Decimal` arithmetic for float operations to avoid floating-point precision issues
-- **Naming:** LLM token consumption is called "llm_tokens" in RateTracker (rate_limiting.resources.llm_tokens). Legacy tick-based config uses "compute" (resources.flow.compute) which maps to internal "llm_tokens"
+- **Naming:** Internal resource name is `llm_tokens`. Config uses `rate_limiting.resources.llm_tokens` (preferred) or legacy `resources.flow.compute`. The term "compute" in legacy config maps to `llm_tokens` internally.
 - **Artifact wallets:** `Ledger.transfer_scrip()` auto-creates recipient principals with 0 balance, enabling transfers to contracts/artifacts
+- **Future:** True local CPU tracking (actual "compute") will use separate resource type when implemented
 
 ---
 

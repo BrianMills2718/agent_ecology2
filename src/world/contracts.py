@@ -23,6 +23,13 @@ See also:
 - GAP-GEN-001: Implementation plan for this system
 """
 
+# --- GOVERNANCE START (do not edit) ---
+# ADR-0001: Everything is an artifact
+# ADR-0003: Contracts can do anything
+#
+# Permission checks are the hot path - keep them fast.
+# Contracts return decisions; kernel applies state changes.
+# --- GOVERNANCE END ---
 from __future__ import annotations
 
 import builtins
