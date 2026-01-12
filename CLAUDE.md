@@ -285,7 +285,7 @@ python scripts/check_claims.py --release --validate
 <!-- PRs needing review. Update manually or via script. -->
 | PR | Branch | Title | Created |
 |----|--------|-------|---------|
-| - | - | - | - |
+| #36 | plan-28-mcp-servers | [Plan #28] MCP Servers Integration Plan | 2026-01-12 |
 
 **After PR merged:** Remove from Awaiting Review table.
 
