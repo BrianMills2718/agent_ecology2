@@ -1,6 +1,6 @@
 # Gap 32: Developer Tooling
 
-**Status:** 🚧 In Progress
+**Status:** ✅ Complete
 **Priority:** High
 **Blocked By:** -
 **Blocks:** -

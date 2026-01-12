@@ -35,7 +35,7 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 | Status | Meaning |
 |--------|---------|
 | 📋 Planned | Has implementation plan, ready to start |
-| 🚧 In Progress | Being implemented (see CLAUDE.md for CC-ID) |
+| ✅ Complete | Being implemented (see CLAUDE.md for CC-ID) |
 | ⏸️ Blocked | Waiting on dependency |
 | ❌ Needs Plan | Gap identified, needs design work |
 | ✅ Complete | Implemented, docs updated |
@@ -77,7 +77,7 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 | 29 | [Library Installation](29_package_manager.md) | Medium | ❌ Needs Plan | - |
 | 30 | [Capability Request System](30_capability_requests.md) | Medium | ❌ Needs Plan | - |
 | 31 | [Resource Measurement](31_resource_measurement.md) | **High** | ⏸️ Blocked | - |
-| 32 | [Developer Tooling](32_developer_tooling.md) | **High** | 🚧 In Progress | - |
+| 32 | [Developer Tooling](32_developer_tooling.md) | **High** | ✅ Complete | - |
 
 ---
 
@@ -155,7 +155,7 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 
 **Claim protocol:**
 1. Add row with your CC-ID/branch name
-2. Update plan status to 🚧 In Progress
+2. Update plan status to ✅ Complete
 3. Create feature branch: `plan-NN-description`
 
 ---
