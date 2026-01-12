@@ -23,6 +23,14 @@ if [[ -z "$FILE_PATH" ]]; then
     exit 0
 fi
 
+# Allow coordination files even in main directory
+# These files are used for multi-CC coordination and must be editable
+BASENAME=$(basename "$FILE_PATH")
+if [[ "$FILE_PATH" == *"/.claude/"* ]] || \
+   [[ "$BASENAME" == "CLAUDE.md" ]]; then
+    exit 0  # Coordination files are allowed in main
+fi
+
 # Get directory of the file being edited
 FILE_DIR=$(dirname "$FILE_PATH")
 
