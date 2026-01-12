@@ -1,6 +1,6 @@
 # ADR-0005: Unified Documentation Graph
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-01-12
 **Certainty:** 75%
 
