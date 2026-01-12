@@ -2,9 +2,33 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-12 (Phase 3 - RateTracker integration complete)
+**Last verified:** 2026-01-12 (Plan #6 - Artifact-backed agents)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
+
+---
+
+## Agent Initialization
+
+SimulationRunner creates artifact-backed agents by default (Plan #6: Unified Ontology).
+
+```python
+# 1. Load agent configs from disk
+agent_configs = load_agents()
+
+# 2. Create artifact representations in world.artifacts
+create_agent_artifacts(world.artifacts, agent_configs, create_memory=True)
+
+# 3. Load Agent instances from artifacts
+agents = load_agents_from_store(world.artifacts, log_dir, run_id, default_model)
+```
+
+Each agent gets:
+- An agent artifact with `has_standing=True`, `can_execute=True`
+- A linked memory artifact with `is_memory=True`
+- Properties set via `_load_from_artifact()`
+
+See `docs/architecture/current/agents.md` for artifact-backed agent details.
 
 ---
 
