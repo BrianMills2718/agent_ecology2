@@ -1,5 +1,7 @@
 # Agent Ecology - Claude Code Context
 
+**Parallel work?** `python scripts/check_claims.py --list` then `--claim --task "..."`
+
 This file is always loaded. Keep it lean. Reference other docs for details.
 
 ## Philosophy & Goals

@@ -1,29 +1,6 @@
 # Active Work Lock File
-#
-# Machine-readable tracking of which CC instances are working on what.
-# This prevents conflicts when multiple Claude Code instances work in parallel.
-#
-# Usage:
-#   - Before starting work: Add your claim below
-#   - After completing work: Remove your claim
-#   - Check for conflicts: python scripts/check_claims.py
-#
-# Claims older than 4 hours are considered stale and can be cleared.
+# Machine-readable tracking for multi-CC coordination.
+# Use: python scripts/check_claims.py --help
 
 claims: []
-  # Example claim format:
-  # - cc_id: "CC-1"
-  #   plan: 1
-  #   task: "Implement token bucket"
-  #   branch: "plan-01-token-bucket"
-  #   claimed_at: "2026-01-12T10:30:00Z"
-  #   files:
-  #     - "src/world/rate_tracker.py"
-  #     - "tests/test_rate_tracker.py"
-
-# History of recent completions (auto-managed by scripts)
 completed: []
-  # - cc_id: "CC-1"
-  #   plan: 1
-  #   completed_at: "2026-01-12T14:30:00Z"
-  #   commit: "abc123"

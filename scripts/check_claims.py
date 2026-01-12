@@ -8,21 +8,25 @@ Usage:
     # List all claims
     python scripts/check_claims.py --list
 
-    # Claim work on a plan
-    python scripts/check_claims.py --claim CC-1 --plan 3 --task "Implement docker isolation"
+    # Claim work (auto-detects branch as ID)
+    python scripts/check_claims.py --claim --task "Implement docker isolation"
 
-    # Release a claim
-    python scripts/check_claims.py --release CC-1
+    # Claim with explicit ID (if not using branches)
+    python scripts/check_claims.py --claim --id my-instance --task "..."
+
+    # Release current branch's claim
+    python scripts/check_claims.py --release
 
     # Sync YAML to CLAUDE.md table
     python scripts/check_claims.py --sync
 
+Branch name is used as instance identity by default.
 Primary data store: .claude/active-work.yaml
-Display: CLAUDE.md Active Work table (synced from YAML)
 """
 
 import argparse
 import re
+import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -33,6 +37,20 @@ import yaml
 
 YAML_PATH = Path(".claude/active-work.yaml")
 CLAUDE_MD_PATH = Path("CLAUDE.md")
+
+
+def get_current_branch() -> str:
+    """Get current git branch name."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return "unknown"
 
 
 def load_yaml() -> dict[str, Any]:
@@ -137,40 +155,44 @@ def list_claims(claims: list[dict]) -> None:
 def add_claim(
     data: dict[str, Any],
     cc_id: str,
-    plan: int,
+    plan: int | None,
     task: str,
-    branch: str | None = None,
     files: list[str] | None = None,
 ) -> bool:
     """Add a new claim."""
-    # Check for existing claim by this CC
+    # Check for existing claim by this instance
     for claim in data["claims"]:
         if claim.get("cc_id") == cc_id:
-            print(f"Error: {cc_id} already has an active claim on Plan #{claim.get('plan')}")
-            print("Release the existing claim first with --release")
+            existing_task = claim.get("task", "unknown")
+            print(f"Error: {cc_id} already has an active claim: {existing_task}")
+            print("Release it first with: python scripts/check_claims.py --release")
             return False
 
-    # Check for conflicting claim on same plan
-    for claim in data["claims"]:
-        if claim.get("plan") == plan:
-            print(f"Warning: Plan #{plan} already claimed by {claim.get('cc_id')}")
-            print("Proceed with caution to avoid conflicts.")
+    # Check for conflicting claim on same plan (if plan specified)
+    if plan:
+        for claim in data["claims"]:
+            if claim.get("plan") == plan:
+                print(f"Warning: Plan #{plan} already claimed by {claim.get('cc_id')}")
+                print("Proceed with caution to avoid conflicts.")
 
     new_claim = {
         "cc_id": cc_id,
-        "plan": plan,
         "task": task,
         "claimed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
-    if branch:
-        new_claim["branch"] = branch
+    if plan:
+        new_claim["plan"] = plan
     if files:
         new_claim["files"] = files
 
     data["claims"].append(new_claim)
     save_yaml(data)
-    print(f"Claimed: {cc_id} -> Plan #{plan}: {task}")
+
+    if plan:
+        print(f"Claimed: {cc_id} -> Plan #{plan}: {task}")
+    else:
+        print(f"Claimed: {cc_id} -> {task}")
     return True
 
 
@@ -224,19 +246,22 @@ def sync_to_claude_md(claims: list[dict]) -> bool:
         rows = ""
         for claim in claims:
             cc_id = claim.get("cc_id", "?")
-            plan = claim.get("plan", "?")
+            plan = claim.get("plan", "-")
+            if plan is None:
+                plan = "-"
             task = claim.get("task", "")[:40]
             claimed = claim.get("claimed_at", "")[:16]  # Truncate to minute
             status = "Active"
             rows += f"| {cc_id} | {plan} | {task} | {claimed} | {status} |\n"
 
-    # Replace table content (everything after header row until next section)
+    # Replace table content - match the header and separator, then all following rows
+    # Separator row is distinguished by having only dashes and pipes, no spaces between pipes
     pattern = (
         r"(\*\*Active Work:\*\*\n"
-        r"<!-- [^>]+ -->\n"
-        r"\| CC-ID \| Plan \| Task \| Claimed \| Status \|\n"
-        r"\|[-\s|]+\n)"
-        r"(?:\|[^\n]+\n)*"
+        r"<!--.*?-->\n"  # Comment (non-greedy, handles > in content)
+        r"\|[^\n]+\|\n"  # Header row
+        r"\|[-|]+\|\n)"  # Separator row (only dashes and pipes)
+        r"(?:\|[^\n]+\|\n)*"  # Data rows (to be replaced)
     )
 
     replacement = r"\1" + rows
@@ -271,26 +296,26 @@ def main() -> int:
     )
     parser.add_argument(
         "--claim",
-        metavar="CC_ID",
-        help="Claim work (requires --plan and --task)"
+        action="store_true",
+        help="Claim work (uses current branch as ID)"
+    )
+    parser.add_argument(
+        "--id",
+        help="Explicit instance ID (default: current branch)"
     )
     parser.add_argument(
         "--plan", "-p",
         type=int,
-        help="Plan number to claim"
+        help="Plan number (optional)"
     )
     parser.add_argument(
         "--task", "-t",
         help="Task description"
     )
     parser.add_argument(
-        "--branch", "-b",
-        help="Git branch name (optional)"
-    )
-    parser.add_argument(
         "--release", "-r",
-        metavar="CC_ID",
-        help="Release a claim"
+        action="store_true",
+        help="Release current branch's claim"
     )
     parser.add_argument(
         "--commit",
@@ -307,19 +332,25 @@ def main() -> int:
     data = load_yaml()
     claims = data.get("claims", [])
 
+    # Determine instance ID (explicit or from branch)
+    instance_id = args.id or get_current_branch()
+
     # Handle claim
     if args.claim:
-        if not args.plan or not args.task:
-            print("Error: --claim requires --plan and --task")
+        if not args.task:
+            print("Error: --claim requires --task")
+            print(f"Example: python scripts/check_claims.py --claim --task 'Implement feature X'")
             return 1
-        success = add_claim(data, args.claim, args.plan, args.task, args.branch)
+        if instance_id == "main":
+            print("Warning: Claiming on 'main' branch. Consider using a feature branch.")
+        success = add_claim(data, instance_id, args.plan, args.task)
         if success:
             sync_to_claude_md(data["claims"])
         return 0 if success else 1
 
     # Handle release
     if args.release:
-        success = release_claim(data, args.release, args.commit)
+        success = release_claim(data, instance_id, args.commit)
         if success:
             sync_to_claude_md(data["claims"])
         return 0 if success else 1
