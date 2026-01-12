@@ -87,7 +87,12 @@ See `docs/GLOSSARY.md` for full definitions. Quick reference:
 | `tick` | `turn` | Consistency |
 | `artifact` | `object/entity` | Everything is an artifact |
 
-**Resource types:** Depletable (llm_budget), Allocatable (disk, memory), Renewable (compute, bandwidth). Scrip is economic signal, not physical resource.
+**Resource model:**
+- **Stock** (deplete forever): LLM budget ($), disk (bytes)
+- **Flow** (renewable, rate-limited): CPU (CPU-seconds), LLM rate (tokens/min)
+- Docker enforces container-level limits; we track per-agent for fair sharing
+- Each resource tracked in natural units (no "compute" conversion)
+- Scrip is economic signal, not physical resource
 
 ---
 
