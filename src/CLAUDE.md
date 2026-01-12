@@ -32,14 +32,39 @@ Each subdirectory has its own CLAUDE.md with module-specific details.
 3. **Strong Typing** - `mypy --strict` compliance, Pydantic models
 4. **Maximum Observability** - Log all state changes with context
 
-## Import Pattern
+## Import Conventions
+
+### Within src/ - Use Relative Imports
 
 ```python
-# Always use src. prefix
-from src.config import get
-from src.world.world import World
-from src.world.ledger import Ledger
+# From src/world/ledger.py importing from src/world/world.py
+from .world import World
+
+# From src/world/ledger.py importing from src/config.py
+from ..config import get
+
+# From src/agents/agent.py importing from src/world/
+from ..world.world import World
+from ..world.ledger import Ledger
 ```
+
+### From run.py or tests/ - Use Absolute Imports
+
+```python
+# From run.py
+from src.world import World
+from src.config import get
+
+# From tests/
+from src.world.ledger import Ledger
+from src.agents.agent import Agent
+```
+
+### Why This Matters
+
+- **Relative imports in src/** make the package self-contained and portable
+- **Absolute imports outside src/** are explicit about the src package boundary
+- **Mixing styles causes import errors** when running as module vs script
 
 ## Before Committing
 
