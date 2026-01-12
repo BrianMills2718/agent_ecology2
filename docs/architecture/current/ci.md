@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-12 (Epic 31 - API key secrets for tests)
+Last verified: 2026-01-12 (Epic 31 - API keys, plan-status-sync)
 
 ---
 
