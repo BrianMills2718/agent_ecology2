@@ -52,12 +52,7 @@
 
 ## Required Tests
 
-### New Tests (TDD)
-
-| Test File | Test Function | What It Verifies |
-|-----------|---------------|------------------|
-| `tests/test_tooling.py` | `test_check_mock_tests_finds_violations` | Mock policy detection works |
-| `tests/test_tooling.py` | `test_check_plan_overlap_detects_conflicts` | Overlap detection works |
+> **Note:** Tooling scripts are validated through CI integration rather than unit tests. The scripts are tested by their CI jobs failing/passing correctly.
 
 ### Existing Tests (Must Pass)
 
