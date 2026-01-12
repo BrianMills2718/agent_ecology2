@@ -285,8 +285,9 @@ python scripts/check_claims.py --release --validate
 | PR | Branch | Title | Created |
 |----|--------|-------|---------|
 | #39 | plan-21-continuous-testing | [Plan #21] Testing strategy (needs rebase) | 2026-01-12 |
-| #42 | claude-md-compendious | CLAUDE.md simplification | 2026-01-12 |
-| #43 | worktree-enforcement | Worktree enforcement hook (needs rebase) | 2026-01-12 |
+| #42 | claude-md-compendious | CLAUDE.md simplification (mock policy change - discuss) | 2026-01-12 |
+| #46 | plan-34-oracle-mint-rename | [Plan #34] Oracle to Mint rename | 2026-01-12 |
+| #47 | update-claude-md-pr46 | Update Genesis table for #46 | 2026-01-12 |
 
 **After PR merged:** Remove from Awaiting Review table.
 
