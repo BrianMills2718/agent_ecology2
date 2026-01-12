@@ -1,0 +1,40 @@
+#!/bin/bash
+# Commit-msg hook for agent_ecology
+# Enforces that all commits reference a plan
+
+COMMIT_MSG_FILE="$1"
+FIRST_LINE=$(head -n1 "$COMMIT_MSG_FILE")
+
+# Allow merge commits
+if [[ "$FIRST_LINE" =~ ^Merge ]]; then
+    exit 0
+fi
+
+# Allow fixup/squash commits
+if [[ "$FIRST_LINE" =~ ^(fixup!|squash!) ]]; then
+    exit 0
+fi
+
+# Check for plan reference: [Plan #N] or [Unplanned]
+if [[ "$FIRST_LINE" =~ ^\[Plan\ \#[0-9]+\] ]]; then
+    exit 0
+fi
+
+if [[ "$FIRST_LINE" =~ ^\[Unplanned\] ]]; then
+    echo ""
+    echo "WARNING: Unplanned work detected."
+    echo "Create a plan entry in docs/plans/ before merging."
+    echo ""
+    exit 0
+fi
+
+# Reject commits without plan reference
+echo ""
+echo "ERROR: Commit message must reference a plan!"
+echo ""
+echo "Format: [Plan #N] Short description"
+echo "   e.g. [Plan #3] Implement docker isolation"
+echo ""
+echo "Or for unplanned work: [Unplanned] Short description"
+echo ""
+exit 1

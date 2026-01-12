@@ -77,6 +77,7 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 | 29 | [Library Installation](29_package_manager.md) | Medium | ❌ Needs Plan | - |
 | 30 | [Capability Request System](30_capability_requests.md) | Medium | ❌ Needs Plan | - |
 | 31 | [Resource Measurement](31_resource_measurement.md) | **High** | ⏸️ Blocked | - |
+| 32 | [Developer Tooling](32_developer_tooling.md) | **High** | 🚧 In Progress | - |
 
 ---
 
