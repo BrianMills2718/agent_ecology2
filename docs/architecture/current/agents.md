@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-12 (Phase 2 integration)
+**Last verified:** 2026-01-12 (Plan #34 - Oracle→Mint rename)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -66,7 +66,7 @@ Prompt includes:
 | Balances | world_state["balances"] |
 | Quotas | world_state["quotas"] |
 | Available artifacts | world_state["artifacts"] |
-| Oracle submissions | world_state["oracle_submissions"] |
+| Mint submissions | world_state["mint_submissions"] |
 | Recent events | world_state["recent_events"] |
 | Relevant memories | RAG search on current context |
 | Last action result | self.last_action_result |

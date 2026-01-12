@@ -13,7 +13,7 @@ the same invoke_artifact mechanism they use for agent-created artifacts.
 # ADR-0001: Everything is an artifact
 # ADR-0003: Contracts can do anything
 #
-# Genesis artifacts: ledger, mint, escrow, event_log, rights_registry.
+# Genesis artifacts: ledger, oracle, escrow, event_log, rights_registry.
 # System-provided, solve cold-start problem.
 # --- GOVERNANCE END ---
 from __future__ import annotations

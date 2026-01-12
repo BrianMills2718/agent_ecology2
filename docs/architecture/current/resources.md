@@ -2,7 +2,7 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-01-12 (Plan #11 - Terminology cleanup)
+**Last verified:** 2026-01-12 (Plan #34 - Oracle→Mint rename)
 
 **See target:** [../target/resources.md](../target/resources.md)
 
@@ -144,13 +144,13 @@ def can_afford_scrip(self, principal_id: str, amount: int) -> bool:
 
 **Sources of scrip:**
 - Starting allocation
-- Oracle minting (artifact scores)
+- Mint awards (artifact scores)
 - Transfers from other agents
 - Artifact sales (read_price, invoke_price)
 
 **Sinks of scrip:**
 - Transfers to other agents
-- Oracle bids (redistributed as UBI to all agents)
+- Mint bids (redistributed as UBI to all agents)
 - Artifact prices (read_price, invoke_price to owner)
 
 ---

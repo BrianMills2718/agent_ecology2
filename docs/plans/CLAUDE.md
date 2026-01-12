@@ -79,7 +79,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 31 | [Resource Measurement](31_resource_measurement.md) | **High** | ✅ Complete | - |
 | 32 | [Developer Tooling](32_developer_tooling.md) | **High** | ✅ Complete | - |
 | 33 | [ADR Governance](33_adr_governance.md) | **High** | ✅ Complete | - |
-| 34 | [Oracle to Mint Rename](34_oracle_mint_rename.md) | Medium | 📋 Planned | - |
+| 34 | [Oracle to Mint Rename](34_oracle_mint_rename.md) | Medium | 🚧 In Progress | - |
 | 35 | [Verification Enforcement](35_verification_enforcement.md) | **High** | ✅ Complete | - |
 
 ---
@@ -151,8 +151,8 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 33 | ADR Governance | 2026-01-12 | ✅ Complete |
 | 2 | Continuous Execution | 2026-01-12 | ✅ Complete |
 | 6 | Unified Artifact Ontology | 2026-01-12 | ✅ Complete |
-| 16 | Artifact Discovery | 2026-01-12 | PR #30 |
-| 17 | Agent Discovery | 2026-01-12 | Included in Gap #16 |
+| 16 | Artifact Discovery | 2026-01-12 | ✅ Complete |
+| 17 | Agent Discovery | 2026-01-12 | ✅ Complete |
 
 ---
 
