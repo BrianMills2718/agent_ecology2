@@ -762,6 +762,37 @@ class GenesisOracle(GenesisArtifact):
             "message": "No active bid and no auction wins",
         }
 
+    @property
+    def submissions(self) -> dict[str, dict[str, Any]]:
+        """Expose current bids and recent results for world state summary.
+
+        Returns dict mapping artifact_id -> submission info with:
+        - status: "pending" (active bid) or "scored" (from last auction)
+        - submitter: agent who submitted
+        - score: score if scored, None otherwise
+        """
+        result: dict[str, dict[str, Any]] = {}
+
+        # Active bids show as "pending"
+        for agent_id, bid in self._bids.items():
+            result[bid["artifact_id"]] = {
+                "status": "pending",
+                "submitter": agent_id,
+                "score": None,
+            }
+
+        # Most recent auction result (if any and had a winner)
+        if self._auction_history:
+            last = self._auction_history[-1]
+            if last["artifact_id"] and last["winner_id"]:
+                result[last["artifact_id"]] = {
+                    "status": "scored",
+                    "submitter": last["winner_id"],
+                    "score": last["score"],
+                }
+
+        return result
+
     def on_tick(self, tick: int) -> AuctionResult | None:
         """Called by simulation runner at each tick.
 

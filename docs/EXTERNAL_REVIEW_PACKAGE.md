@@ -1,6 +1,6 @@
 # Agent Ecology - External Review Package
 
-Generated: 2026-01-12 00:22
+Generated: 2026-01-12 00:27
 
 This document concatenates all target architecture documentation 
 in recommended reading order for external review.
@@ -1890,6 +1890,104 @@ There is no separate "private communication" mechanism. Agents communicate by wr
     # But system CAN read (for observability)
 }
 ```
+
+---
+
+### Resource Measurement Model (DECIDED 2026-01-12)
+
+How each constrained resource is measured in the target architecture.
+
+**Measurement Strategies:**
+
+| Resource | Strategy | Tool/Method | Unit |
+|----------|----------|-------------|------|
+| **LLM API $** | Exact | Tokens from API response × price | USD |
+| **LLM rate** | Exact | Token count from API | tokens/min |
+| **Disk** | Exact | Bytes on write/delete | bytes |
+| **Scrip** | Exact | Ledger transfers | scrip |
+| **Memory** | Per-action | tracemalloc peak | bytes |
+| **Bandwidth** | Size-based | HTTP response size | bytes |
+| **MCP ops** | Fixed cost | Config per operation type | compute |
+| **Library install** | Fixed cost | Config | compute |
+| **Local execution** | Time-based | Wall-clock × rate | compute |
+
+**Per-Agent Memory Tracking:**
+
+Using Python's built-in `tracemalloc`:
+
+```python
+import tracemalloc
+
+def execute_action(agent_id: str, action: Action) -> Result:
+    tracemalloc.start()
+    try:
+        result = execute(action)
+    finally:
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+
+    # Charge agent for peak memory used
+    ledger.deduct(agent_id, "memory", peak)
+    return result
+```
+
+**Why tracemalloc:**
+- Built into Python (no dependencies)
+- Measures delta per action (fair attribution)
+- Low overhead
+- Works within single process
+
+**Config Structure:**
+
+```yaml
+costs:
+  # Exact metering (real money)
+  llm:
+    input_per_1k_tokens: 0.003    # USD
+    output_per_1k_tokens: 0.015   # USD
+
+  # Fixed costs (compute units)
+  mcp_operations:
+    web_search: 5
+    context7_lookup: 2
+    puppeteer_action: 10
+    playwright_action: 10
+    fetch_request: 3
+    filesystem_read: 1
+    filesystem_write: 2
+    sqlite_query: 2
+    github_request: 3
+    sequential_thinking: 5
+
+  library_install: 10
+
+  # Size-based
+  memory:
+    per_mb: 1                     # compute per MB peak
+  bandwidth:
+    per_kb: 0.1                   # compute per KB transferred
+
+  # Time-based
+  execution:
+    per_second: 10                # compute per second of execution
+```
+
+**Example Cost Calculation:**
+
+```
+Agent calls genesis_web_search.search("pandas tutorial")
+  → Fixed cost: 5 compute (mcp_operations.web_search)
+  → Bandwidth: 50KB response × 0.1 = 5 compute
+  → Memory: 10MB peak × 1 = 10 compute
+  → Total: 20 compute deducted from agent
+```
+
+**Key Principle:** We don't need perfect measurement. We need:
+1. Exact tracking for real money (LLM $)
+2. Reasonable proxies for physical resources
+3. Configurable costs so we can tune based on observation
+
+**Certainty:** 85% - This model is practical and tunable.
 
 ---
 
@@ -5062,6 +5160,7 @@ Prioritized gaps between current implementation and target architecture.
 | 28 | Pre-seeded MCP Servers | **High** | ❌ No Plan | - | - |
 | 29 | Library Installation (genesis_package_manager) | Medium | ❌ No Plan | - | - |
 | 30 | Capability Request System | Medium | ❌ No Plan | - | - |
+| 31 | Resource Measurement Implementation | **High** | ❌ No Plan | - | #1 |
 
 ---
 
@@ -5851,6 +5950,56 @@ invoke("genesis_capability_requests", "request", {
 - Request storage and listing
 - Dashboard/CLI for human review
 - Event log integration
+
+---
+
+### 31. Resource Measurement Implementation
+
+**Current:** Only LLM tokens and disk are tracked. Memory, bandwidth, execution time not measured.
+
+**Target:** Comprehensive resource measurement for all constrained resources.
+
+**Measurement Strategy:**
+
+| Resource | Method | Implementation |
+|----------|--------|----------------|
+| LLM API $ | Exact | Tokens × price from API response |
+| Disk | Exact | Track bytes on write/delete |
+| Memory | Per-action | `tracemalloc` peak measurement |
+| Bandwidth | Size-based | HTTP response size tracking |
+| MCP ops | Fixed cost | Config lookup per operation type |
+| Execution time | Time-based | Wall-clock × rate |
+
+**Per-Agent Memory Tracking:**
+
+```python
+import tracemalloc
+
+def execute_action(agent_id: str, action: Action) -> Result:
+    tracemalloc.start()
+    try:
+        result = execute(action)
+    finally:
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+
+    ledger.deduct(agent_id, "memory", peak)
+    return result
+```
+
+**Why High Priority:**
+- Can't enforce scarcity without measurement
+- Agents can't make economic decisions without knowing costs
+- Foundation for all resource-based behavior
+
+**Depends On:** #1 Token Bucket (for flow resource tracking)
+
+**No Plan Yet.** Changes needed:
+- Add `tracemalloc` to executor for memory tracking
+- Add bandwidth tracking to HTTP/MCP calls
+- Add execution time tracking
+- Config structure for cost multipliers
+- Ledger support for new resource types
 
 ---
 

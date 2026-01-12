@@ -58,6 +58,7 @@ Prioritized gaps between current implementation and target architecture.
 | 28 | Pre-seeded MCP Servers | **High** | ❌ No Plan | - | - |
 | 29 | Library Installation (genesis_package_manager) | Medium | ❌ No Plan | - | - |
 | 30 | Capability Request System | Medium | ❌ No Plan | - | - |
+| 31 | Resource Measurement Implementation | **High** | ❌ No Plan | - | #1 |
 
 ---
 
@@ -847,6 +848,56 @@ invoke("genesis_capability_requests", "request", {
 - Request storage and listing
 - Dashboard/CLI for human review
 - Event log integration
+
+---
+
+### 31. Resource Measurement Implementation
+
+**Current:** Only LLM tokens and disk are tracked. Memory, bandwidth, execution time not measured.
+
+**Target:** Comprehensive resource measurement for all constrained resources.
+
+**Measurement Strategy:**
+
+| Resource | Method | Implementation |
+|----------|--------|----------------|
+| LLM API $ | Exact | Tokens × price from API response |
+| Disk | Exact | Track bytes on write/delete |
+| Memory | Per-action | `tracemalloc` peak measurement |
+| Bandwidth | Size-based | HTTP response size tracking |
+| MCP ops | Fixed cost | Config lookup per operation type |
+| Execution time | Time-based | Wall-clock × rate |
+
+**Per-Agent Memory Tracking:**
+
+```python
+import tracemalloc
+
+def execute_action(agent_id: str, action: Action) -> Result:
+    tracemalloc.start()
+    try:
+        result = execute(action)
+    finally:
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+
+    ledger.deduct(agent_id, "memory", peak)
+    return result
+```
+
+**Why High Priority:**
+- Can't enforce scarcity without measurement
+- Agents can't make economic decisions without knowing costs
+- Foundation for all resource-based behavior
+
+**Depends On:** #1 Token Bucket (for flow resource tracking)
+
+**No Plan Yet.** Changes needed:
+- Add `tracemalloc` to executor for memory tracking
+- Add bandwidth tracking to HTTP/MCP calls
+- Add execution time tracking
+- Config structure for cost multipliers
+- Ledger support for new resource types
 
 ---
 

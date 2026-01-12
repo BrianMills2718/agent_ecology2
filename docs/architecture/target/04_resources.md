@@ -117,13 +117,11 @@ Like M1 vs M2 money - debt instruments are separate from base currency.
 
 ## Stock Resources
 
-### Unchanged from Current
-
-| Resource | Behavior |
-|----------|----------|
-| Disk | Quota decreases on write, reclaimable via delete |
-| LLM Budget | System-wide $, stops all when exhausted |
-| Memory | Docker container limit (new) |
+| Resource | Behavior | Measurement |
+|----------|----------|-------------|
+| Disk | Quota decreases on write, reclaimable via delete | Bytes written/deleted |
+| LLM Budget | System-wide $, stops all when exhausted | Tokens × price from API |
+| Memory | Per-agent tracking via tracemalloc | Peak bytes per action |
 
 ### Docker as Real Constraint
 
@@ -134,6 +132,48 @@ docker run --memory=4g --cpus=2 agent-ecology
 ```
 
 These ARE the constraints. Not abstract numbers.
+
+### Per-Agent Memory Tracking
+
+Memory is tracked per-agent using Python's `tracemalloc`:
+
+```python
+import tracemalloc
+
+def execute_action(agent_id: str, action: Action) -> Result:
+    tracemalloc.start()
+    try:
+        result = execute(action)
+    finally:
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+
+    # Charge agent for peak memory used during this action
+    memory_bytes = peak
+    ledger.deduct(agent_id, "memory", memory_bytes)
+
+    return result
+```
+
+**Why tracemalloc:**
+- Built into Python (no dependencies)
+- Measures delta per action (fair attribution)
+- Low overhead
+- Works within single process (no subprocess needed)
+
+**Cost model:**
+
+```yaml
+costs:
+  memory:
+    per_mb: 1  # compute units per MB used
+```
+
+**Example:**
+```
+Agent action uses 50MB peak memory
+Cost = 50 × 1 = 50 compute units deducted
+```
 
 ---
 
