@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-12 (Phase 2 integration)
+**Last verified:** 2026-01-12 (Gap #16 genesis_store)
 
 ---
 
@@ -131,7 +131,14 @@ genesis:
       enabled: true
     oracle:
       enabled: true
-    # ...
+    rights_registry:
+      enabled: true
+    event_log:
+      enabled: true
+    escrow:
+      enabled: true
+    store:
+      enabled: true         # Artifact discovery (Gap #16)
 
   ledger:                   # Per-artifact config
     id: genesis_ledger
