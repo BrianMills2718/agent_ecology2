@@ -63,6 +63,21 @@ status:  ## Show git and claim status
 branch:  ## Create plan branch (usage: make branch PLAN=3 NAME=docker)
 	git checkout -b plan-$(PLAN)-$(NAME)
 
+worktree:  ## Create worktree for parallel CC work (usage: make worktree BRANCH=feature-name)
+	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree BRANCH=feature-name"; exit 1; fi
+	git worktree add ../ecology-$(BRANCH) -b $(BRANCH)
+	@echo ""
+	@echo "Worktree created at ../ecology-$(BRANCH)"
+	@echo "To use: cd ../ecology-$(BRANCH) && claude"
+	@echo "To remove when done: git worktree remove ../ecology-$(BRANCH)"
+
+worktree-list:  ## List active worktrees
+	git worktree list
+
+worktree-remove:  ## Remove a worktree (usage: make worktree-remove BRANCH=feature-name)
+	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree-remove BRANCH=feature-name"; exit 1; fi
+	git worktree remove ../ecology-$(BRANCH)
+
 pr:  ## Create PR (opens browser)
 	gh pr create --web
 

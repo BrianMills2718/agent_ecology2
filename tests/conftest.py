@@ -5,44 +5,14 @@ Common fixtures for testing the agent ecology simulation.
 
 from __future__ import annotations
 
-import os
 import tempfile
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.world.ledger import Ledger
 from src.world.world import World, ConfigDict
-
-
-# =============================================================================
-# Auto-mock memory when API key unavailable
-# =============================================================================
-
-@pytest.fixture(autouse=True)
-def mock_memory_without_api_key() -> Any:
-    """Auto-mock AgentMemory when GEMINI_API_KEY is not available.
-
-    This allows tests that create Agent objects to run in CI without
-    requiring real API credentials. Tests that specifically need real
-    memory should use a real API key.
-    """
-    if os.getenv("GEMINI_API_KEY"):
-        # Real API key available, don't mock
-        yield None
-        return
-
-    # Create a mock memory that does nothing
-    mock_memory = MagicMock()
-    mock_memory.add.return_value = {"id": "mock-memory-id"}
-    mock_memory.search.return_value = []
-    mock_memory.get_all.return_value = []
-
-    # Patch the get_memory function to return our mock
-    with patch("src.agents.agent.get_memory", return_value=mock_memory):
-        yield mock_memory
 
 
 @pytest.fixture
