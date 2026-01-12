@@ -23,7 +23,19 @@ import asyncio
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Deque
+from typing import Any, Deque, Protocol
+
+
+class ClockProtocol(Protocol):
+    """Protocol for clock implementations (VirtualClock or RealClock)."""
+
+    def time(self) -> float:
+        """Get current time in seconds."""
+        ...
+
+    async def sleep(self, seconds: float) -> None:
+        """Sleep for the given duration."""
+        ...
 
 
 @dataclass
@@ -44,9 +56,11 @@ class RateTracker:
 
     Attributes:
         window_seconds: Duration of the rolling window (default: 60.0)
+        clock: Optional clock for time operations (for testing with VirtualClock)
     """
 
     window_seconds: float = 60.0
+    clock: Any = None  # ClockProtocol, but Any for dataclass compatibility
 
     # resource_type -> agent_id -> deque of UsageRecords
     _usage: dict[str, dict[str, Deque[UsageRecord]]] = field(default_factory=dict)
@@ -88,14 +102,24 @@ class RateTracker:
         if agent_id not in self._usage[resource]:
             return
 
-        cutoff = time.time() - self.window_seconds
+        cutoff = self._get_current_time() - self.window_seconds
         records = self._usage[resource][agent_id]
         while records and records[0].timestamp < cutoff:
             records.popleft()
 
     def _get_current_time(self) -> float:
-        """Get current time. Separated for testing."""
+        """Get current time. Uses injected clock if available."""
+        if self.clock is not None:
+            result: float = self.clock.time()
+            return result
         return time.time()
+
+    async def _sleep(self, seconds: float) -> None:
+        """Async sleep. Uses injected clock if available."""
+        if self.clock is not None:
+            await self.clock.sleep(seconds)
+        else:
+            await asyncio.sleep(seconds)
 
     def get_usage(self, agent_id: str, resource: str) -> float:
         """Get current usage within the rolling window.
@@ -260,10 +284,10 @@ class RateTracker:
         if amount <= 0:
             return True
 
-        start = time.time()
+        start = self._get_current_time()
 
         while not self.has_capacity(agent_id, resource, amount):
-            if timeout is not None and (time.time() - start) >= timeout:
+            if timeout is not None and (self._get_current_time() - start) >= timeout:
                 return False
 
             # Calculate intelligent sleep time
@@ -274,7 +298,7 @@ class RateTracker:
             else:
                 sleep_time = poll_interval
 
-            await asyncio.sleep(sleep_time)
+            await self._sleep(sleep_time)
 
         # Consume the capacity
         return self.consume(agent_id, resource, amount)
