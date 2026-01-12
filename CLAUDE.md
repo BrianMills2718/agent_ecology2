@@ -129,21 +129,27 @@ git checkout -b plan-01-token-bucket
 git checkout -b plan-03-docker
 ```
 
-### Recommended Patterns
+### Worktree Requirement
 
-**Git worktrees (preferred for parallel work):**
+**All PR work MUST use worktrees.** This ensures:
+- Clean separation between author and reviewer
+- No conflicts when multiple CC instances work simultaneously
+- Main directory stays clean for reviews
+
 ```bash
-git worktree add ../ecology-plan-01 plan-01-token-bucket
-cd ../ecology-plan-01 && claude
-# Separate worktree = separate Claude = no conflicts
-git worktree remove ../ecology-plan-01  # cleanup
+# REQUIRED: Create worktree for any PR work
+make worktree BRANCH=plan-03-docker
+cd ../ecology-plan-03-docker && claude
+
+# Do work, create PR, then cleanup
+git worktree remove ../ecology-plan-03-docker
 ```
 
-**One writes, another reviews:**
-1. Claude A writes code
-2. `/clear` or new terminal
-3. Claude B reviews Claude A's work
-4. Claude C (or `/clear`) edits based on feedback
+**Review pattern:**
+1. Claude A creates PR from worktree
+2. Claude B reviews in main directory (or different worktree)
+3. Claude B approves/requests changes
+4. After merge, remove worktree
 
 **Headless fan-out (batch operations):**
 ```bash
@@ -155,11 +161,13 @@ claude -p "migrate foo.py..." --allowedTools Edit Bash
 When multiple instances work on related tasks:
 
 1. **Claim** - Update Active Work table below (with timestamp)
-2. **Branch** - Create branch: `plan-NN-description`
+2. **Worktree** - `make worktree BRANCH=plan-NN-description`
 3. **Update plan status** - Mark "In Progress" in plan file AND index
 4. **Implement** - Do work, write tests first (TDD)
 5. **Verify** - Run all checks (see Review Checklist)
-6. **Complete** - Update plan to "Complete", release claim, merge
+6. **PR** - Create PR from worktree
+7. **Review** - Another CC instance reviews (from main or separate worktree)
+8. **Complete** - Update plan to "Complete", release claim, merge, remove worktree
 
 **Active Work:**
 <!-- Update with timestamp when claiming. Clear stale claims (>24h). -->
