@@ -1560,18 +1560,26 @@ There is no separate "private communication" mechanism. Agents communicate by wr
 
 Each resource tracked in its natural unit. No artificial conversion to common currency.
 
+**Three Resource Categories:**
+
+| Category | Behavior | Examples |
+|----------|----------|----------|
+| **Depletable** | Once spent, gone forever | LLM API budget ($) |
+| **Allocatable** | Quota, reclaimable (delete/free) | Disk (bytes), Memory (bytes) |
+| **Renewable** | Rate-limited via token bucket | CPU (CPU-seconds), LLM rate (TPM) |
+
 **Resources and Natural Units:**
 
-| Resource | Type | Unit | Constraint |
-|----------|------|------|------------|
-| **LLM API $** | Stock | USD | Budget exhaustion stops all |
-| **LLM rate limit** | Flow | tokens/min | Provider's TPM limit |
-| **Memory** | Stock | bytes | Docker --memory limit |
-| **Disk** | Stock | bytes | Docker --storage-opt |
-| **Local CPU** | Flow | CPU-seconds | Docker --cpus limit |
+| Resource | Category | Unit | Constraint |
+|----------|----------|------|------------|
+| **LLM API $** | Depletable | USD | Budget exhaustion stops all |
+| **LLM rate limit** | Renewable | tokens/min | Provider's TPM limit |
+| **CPU** | Renewable | CPU-seconds | Docker --cpus limit |
+| **Memory** | Allocatable | bytes | Docker --memory limit |
+| **Disk** | Allocatable | bytes | Docker --storage-opt |
 | **Scrip** | Currency | scrip | Internal economy |
 
-**Key Insight:** Docker enforces real limits. These ARE the constraints, not abstract numbers.
+**Key Insight:** Docker enforces container-level limits. We track per-agent for fair sharing. Initial quota distribution is configurable; quotas are tradeable.
 
 ```bash
 docker run --memory=4g --cpus=2 --storage-opt size=10G agent-ecology

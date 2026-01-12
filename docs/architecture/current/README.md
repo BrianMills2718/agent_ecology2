@@ -2,7 +2,7 @@
 
 Documentation of how the system works TODAY. Updated as code changes.
 
-Last verified: 2026-01-11
+Last verified: 2026-01-12
 
 ---
 
@@ -44,11 +44,14 @@ The Agent Ecology is a tick-synchronized multi-agent system where LLM-powered ag
 ```
 
 ### Resource Types
-| Type | Examples | Behavior |
-|------|----------|----------|
-| Flow | compute (llm_tokens) | Reset each tick to quota |
-| Stock | disk, llm_budget | Never reset, persistent |
-| Currency | scrip | Transfers only, never reset |
+| Type | Examples | Tracked By | Behavior |
+|------|----------|------------|----------|
+| Flow | llm_tokens | Ledger | Reset each tick to quota |
+| Stock | disk | ArtifactStore | Quota-based, cumulative usage |
+| Stock | llm_budget | SimulationEngine | Global API budget (not per-agent) |
+| Currency | scrip | Ledger | Persistent, transfers only |
+
+**Note:** Config uses "compute" as the flow resource name, internally stored as "llm_tokens".
 
 ### Key Constraints
 - No negative balances (resources or scrip)

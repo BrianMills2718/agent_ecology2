@@ -10,28 +10,38 @@ What we're building toward.
 
 ## Resource Terminology
 
+**Three resource categories:**
+
+| Category | Behavior | Examples |
+|----------|----------|----------|
+| **Depletable** | Once spent, gone forever | LLM API budget ($) |
+| **Allocatable** | Quota, reclaimable (delete/free) | Disk (bytes), Memory (bytes) |
+| **Renewable** | Rate-limited via token bucket | CPU (CPU-seconds), LLM rate (TPM) |
+
 **Distinct resources - do not conflate:**
 
-> **Note:** Current implementation uses "compute" for LLM token tracking. Target terminology reserves "compute" for local CPU (future feature). See [Gap #11](../GAPS.md) for migration plan.
+> **Note:** Current implementation uses "compute" for LLM token tracking. Target terminology reserves "compute" for local CPU. See [Gap #11](../GAPS.md) for migration plan.
 
-| Resource | Type | What it is |
-|----------|------|------------|
-| LLM API $ | Stock | Real dollars spent on API calls |
-| LLM rate limit | Flow | Provider limits (TPM, RPM) |
-| Compute | Flow | Local CPU capacity |
-| Memory | Stock | Local RAM |
-| Disk | Stock | Storage quota (reclaimable via delete) |
-| Scrip | Currency | Internal economy, not a "resource" |
+| Resource | Category | Unit | What it is |
+|----------|----------|------|------------|
+| LLM API $ | Depletable | USD | Real dollars spent on API calls |
+| LLM rate limit | Renewable | tokens/min | Provider limits (TPM, RPM) |
+| CPU | Renewable | CPU-seconds | Local compute capacity |
+| Memory | Allocatable | bytes | Local RAM (reclaimable when freed) |
+| Disk | Allocatable | bytes | Storage quota (reclaimable via delete) |
+| Scrip | Currency | scrip | Internal economy, not a "resource" |
 
-**LLM tokens ≠ Compute.** LLM tokens are API cost ($), compute is local machine capacity.
+**LLM tokens ≠ CPU.** LLM tokens are API cost ($), CPU is local machine capacity.
+
+**Quota ownership:** Initial distribution is configurable. Quotas are tradeable like any other asset.
 
 ---
 
-## Flow Resources: Token Bucket
+## Renewable Resources: Token Bucket
 
 ### Rolling Window (NOT Discrete Refresh)
 
-Flow accumulates continuously. No "tick reset" moments.
+Rate-limited resources replenish continuously. No "tick reset" moments.
 
 ```python
 class TokenBucket:
@@ -115,13 +125,13 @@ Like M1 vs M2 money - debt instruments are separate from base currency.
 
 ---
 
-## Stock Resources
+## Depletable and Allocatable Resources
 
-| Resource | Behavior | Measurement |
-|----------|----------|-------------|
-| Disk | Quota decreases on write, reclaimable via delete | Bytes written/deleted |
-| LLM Budget | System-wide $, stops all when exhausted | Tokens × price from API |
-| Memory | Per-agent tracking via tracemalloc | Peak bytes per action |
+| Resource | Category | Behavior | Measurement |
+|----------|----------|----------|-------------|
+| LLM Budget | Depletable | System-wide $, stops all when exhausted | Tokens × price from API |
+| Disk | Allocatable | Quota decreases on write, reclaimable via delete | Bytes written/deleted |
+| Memory | Allocatable | Per-agent tracking, reclaimable when freed | Peak bytes per action (tracemalloc) |
 
 ### Docker as Real Constraint
 

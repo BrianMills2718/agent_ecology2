@@ -88,10 +88,12 @@ See `docs/GLOSSARY.md` for full definitions. Quick reference:
 | `artifact` | `object/entity` | Everything is an artifact |
 
 **Resource model:**
-- **Stock** (deplete forever): LLM budget ($), disk (bytes)
-- **Flow** (renewable, rate-limited): CPU (CPU-seconds), LLM rate (tokens/min)
-- Docker enforces container-level limits; we track per-agent for fair sharing
-- Each resource tracked in natural units (no "compute" conversion)
+- **Depletable**: LLM budget ($) - once spent, gone forever
+- **Allocatable**: Disk (bytes), memory (bytes) - quota, reclaimable (delete/free)
+- **Renewable**: CPU (CPU-seconds), LLM rate (tokens/min) - rate-limited via token bucket
+- Docker limits container-level; we track per-agent attribution
+- Initial quota distribution is configurable; quotas are tradeable
+- Each resource in natural units (no "compute" conversion)
 - Scrip is economic signal, not physical resource
 
 ---

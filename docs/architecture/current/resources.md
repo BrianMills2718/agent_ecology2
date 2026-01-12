@@ -187,6 +187,12 @@ Set by artifact owner:
 | `src/world/simulation_engine.py` | `calculate_thinking_cost()`, `is_budget_exhausted()` | Cost calculation, budget tracking |
 | `src/world/genesis.py` | `GenesisRightsRegistry` | Quota management |
 
+### Implementation Notes
+
+- **Precision:** Ledger uses `Decimal` arithmetic for float operations to avoid floating-point precision issues
+- **Naming:** Config uses "compute" as the flow resource name; internally stored as "llm_tokens" in Ledger
+- **Artifact wallets:** `Ledger.transfer_scrip()` auto-creates recipient principals with 0 balance, enabling transfers to contracts/artifacts
+
 ---
 
 ## Implications

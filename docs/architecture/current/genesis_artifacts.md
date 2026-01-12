@@ -37,6 +37,7 @@ All genesis artifacts:
 - Transfers deduct from caller, credit to recipient
 - spawn_principal creates principal with 0 resources (parent must fund)
 - Ownership transfer requires caller to be current owner
+- **Artifact wallets:** Transfers auto-create recipients with 0 balance, enabling scrip transfers to contracts/artifacts
 
 ---
 

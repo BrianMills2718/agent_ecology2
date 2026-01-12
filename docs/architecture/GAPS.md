@@ -857,17 +857,25 @@ invoke("genesis_capability_requests", "request", {
 
 **Target:** Each resource tracked in its natural unit. Docker enforces real limits.
 
+**Resource Categories:**
+
+| Category | Behavior | Examples |
+|----------|----------|----------|
+| Depletable | Once spent, gone forever | LLM API budget ($) |
+| Allocatable | Quota, reclaimable | Disk (bytes), Memory (bytes) |
+| Renewable | Rate-limited via token bucket | CPU (CPU-seconds), LLM rate (TPM) |
+
 **Resources and Natural Units:**
 
-| Resource | Type | Unit | Constraint |
-|----------|------|------|------------|
-| LLM API $ | Stock | USD | Budget exhaustion stops LLM calls |
-| LLM rate limit | Flow | tokens/min | Provider's TPM limit |
-| Memory | Stock | bytes | Docker --memory limit |
-| Disk | Stock | bytes | Docker --storage-opt |
-| Local CPU | Flow | CPU-seconds | Docker --cpus limit |
+| Resource | Category | Unit | Constraint |
+|----------|----------|------|------------|
+| LLM API $ | Depletable | USD | Budget exhaustion stops LLM calls |
+| LLM rate limit | Renewable | tokens/min | Provider's TPM limit |
+| CPU | Renewable | CPU-seconds | Docker --cpus limit |
+| Memory | Allocatable | bytes | Docker --memory limit |
+| Disk | Allocatable | bytes | Docker --storage-opt |
 
-**Key Insight:** No artificial "compute" conversions. Docker limits ARE the constraints.
+**Key Insight:** Docker limits container-level; we track per-agent. Quotas are tradeable.
 
 **Per-Agent Memory Tracking:**
 
