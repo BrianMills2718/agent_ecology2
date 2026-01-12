@@ -215,6 +215,34 @@ python scripts/check_claims.py --cleanup
 Fix typo in readme             # No tracking (discouraged)
 ```
 
+## Merging PRs
+
+### Check if approval is required
+
+```bash
+# Check branch protection
+gh api repos/OWNER/REPO/branches/main/protection 2>&1 | grep -q "not protected" && echo "No approval required"
+```
+
+### Merge workflow
+
+| Branch Protection | Review Process | Merge Command |
+|-------------------|----------------|---------------|
+| None | Comment review, then merge | `gh pr merge N --squash --delete-branch` |
+| Requires approval | Need different user to approve | `gh pr review N --approve` (then merge) |
+| Requires CI | Wait for checks to pass | `gh pr merge N --auto --squash` |
+
+**Common pattern (no branch protection):**
+```bash
+# 1. Review with comment (can't approve own PR)
+gh pr review 46 --comment --body "LGTM - reviewed changes"
+
+# 2. Merge directly
+gh pr merge 46 --squash --delete-branch
+```
+
+**Note:** GitHub always blocks self-approval (`--approve` on your own PR), but if branch protection doesn't require approval, you can still merge directly.
+
 ## Customization
 
 ### Change stale threshold
