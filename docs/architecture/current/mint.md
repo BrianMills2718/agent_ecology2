@@ -1,16 +1,16 @@
-# Current Oracle System
+# Current Mint System
 
 How artifact scoring and scrip minting works today.
 
-**Last verified:** 2026-01-12
+**Last verified:** 2026-01-12 (oracle→mint rename)
 
-**Source:** `src/world/genesis.py` (GenesisOracle), `src/world/oracle_scorer.py`
+**Source:** `src/world/genesis.py` (GenesisMint), `src/world/mint_scorer.py`
 
 ---
 
 ## Overview
 
-The oracle runs periodic auctions where agents bid scrip to submit artifacts for LLM scoring. Winners get scrip minted based on score; losing bids are redistributed as UBI.
+The mint runs periodic auctions where agents bid scrip to submit artifacts for LLM scoring. Winners get scrip minted based on score; losing bids are redistributed as UBI.
 
 ## Auction Phases
 
@@ -22,7 +22,7 @@ The oracle runs periodic auctions where agents bid scrip to submit artifacts for
 
 ## Configuration
 
-From `config.yaml` under `genesis.oracle.auction`:
+From `config.yaml` under `genesis.mint.auction`:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
@@ -35,7 +35,7 @@ From `config.yaml` under `genesis.oracle.auction`:
 
 ## Methods
 
-### `genesis_oracle.status()`
+### `genesis_mint.status()`
 Returns auction state:
 ```json
 {
@@ -48,13 +48,13 @@ Returns auction state:
 }
 ```
 
-### `genesis_oracle.bid(artifact_id, amount)`
+### `genesis_mint.bid(artifact_id, amount)`
 Submit bid for artifact scoring:
 - Bid amount held in escrow
 - Must be ≥ `minimum_bid`
 - Only during BIDDING phase
 
-### `genesis_oracle.check(artifact_id)`
+### `genesis_mint.check(artifact_id)`
 Check submission status:
 ```json
 {
@@ -69,7 +69,7 @@ Check submission status:
 
 ---
 
-## Scoring (OracleScorer)
+## Scoring (MintScorer)
 
 LLM evaluates submitted artifacts on:
 - Correctness and functionality
@@ -110,6 +110,6 @@ When bidding window closes:
 |---------|--------|
 | Tick-based auction phases | Bids anytime, periodic resolution |
 | Bidding window required | No bidding window |
-| Single oracle | Multiple oracles possible |
+| Single mint | Multiple mints possible |
 
-See `docs/architecture/target/06_oracle.md` for target architecture.
+See `docs/architecture/target/06_mint.md` for target architecture.

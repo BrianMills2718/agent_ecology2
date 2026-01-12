@@ -1,6 +1,6 @@
 # Gap 34: Oracle to Mint Rename
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress (PR #46)
 **Priority:** Medium
 **Blocked By:** -
 **Blocks:** -
@@ -110,8 +110,8 @@ After refactoring, verify:
 - [ ] No "oracle" references in code: `grep -ri oracle src/ config/ --include="*.py" --include="*.yaml"`
 
 ### Documentation
-- [ ] `docs/architecture/current/oracle.md` → `mint.md`
-- [ ] All current/ docs updated
+- [x] `docs/architecture/current/oracle.md` → `mint.md`
+- [x] All current/ docs updated (genesis_artifacts.md, configuration.md, running.md, supporting_systems.md)
 - [ ] Doc-coupling check passes: `python scripts/check_doc_coupling.py`
 
 ### Completion Ceremony

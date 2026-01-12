@@ -41,11 +41,11 @@ All genesis artifacts:
 
 ---
 
-### genesis_oracle
+### genesis_mint
 
 **Purpose:** Auction-based artifact scoring and scrip minting
 
-**File:** `src/world/genesis.py` (`GenesisOracle` class)
+**File:** `src/world/genesis.py` (`GenesisMint` class)
 
 | Method | Cost (compute) | Description |
 |--------|----------------|-------------|
@@ -55,13 +55,13 @@ All genesis artifacts:
 
 **Auction Flow:**
 1. Agent bids on their artifact
-2. Oracle collects bids during bidding window
+2. Mint collects bids during bidding window
 3. At resolution: scores artifacts via external LLM
 4. Winner pays second-highest bid (Vickrey auction)
 5. Scrip minted based on score
 6. UBI distributed to all principals
 
-**Config:** `config/config.yaml` under `genesis.oracle`
+**Config:** `config/config.yaml` under `genesis.mint`
 
 ---
 
@@ -99,7 +99,7 @@ All genesis artifacts:
 - `thinking` - Agent thinking completed
 - `thinking_failed` - Agent ran out of compute
 - `intent_rejected` - Invalid action rejected
-- `oracle_auction` - Auction resolved
+- `mint_auction` - Auction resolved
 - `mint` - Scrip minted
 - `world_init` - World initialized
 
@@ -180,7 +180,7 @@ All genesis artifacts:
 - `handbook_genesis` - Genesis artifact method reference
 - `handbook_resources` - Resource system documentation
 - `handbook_trading` - Escrow trading guide
-- `handbook_oracle` - Oracle bidding guide
+- `handbook_mint` - Mint bidding guide
 
 **Source:** `src/agents/_handbook/*.md` files
 
@@ -197,7 +197,7 @@ genesis:
   artifacts:
     ledger:
       enabled: true
-    oracle:
+    mint:
       enabled: true
     rights_registry:
       enabled: true
@@ -215,7 +215,7 @@ genesis:
       transfer: { cost: 1, description: "Transfer scrip" }
       # ...
 
-  oracle:
+  mint:
     methods:
       status: { cost: 0, description: "Get auction status" }
       # ...

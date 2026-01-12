@@ -138,7 +138,7 @@ python scripts/view_log.py run.jsonl --artifacts
 | `thinking_failed` | Agent ran out of compute |
 | `action_result` | Action executed |
 | `intent_rejected` | Invalid action rejected |
-| `oracle_auction` | Auction resolved |
+| `mint_auction` | Auction resolved |
 | `budget_pause` | API budget exhausted |
 
 ---

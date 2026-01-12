@@ -1,8 +1,8 @@
-# Oracle Auction Design
+# Mint Auction Design
 
 ## Overview
 
-This document describes the redesign of the oracle submission system from fixed-cost to auction-based, along with related changes to genesis method costs and UBI distribution.
+This document describes the redesign of the mint submission system from fixed-cost to auction-based, along with related changes to genesis method costs and UBI distribution.
 
 ## Design Goals
 

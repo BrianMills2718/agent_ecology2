@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-12 (server.py type cleanup)
+**Last verified:** 2026-01-12 (oracle→mint rename)
 
 ---
 
@@ -109,7 +109,7 @@ class EventLogger:
 | `thinking` | Agent thinking completed | `runner.py` |
 | `thinking_failed` | Agent ran out of compute | `runner.py` |
 | `intent_rejected` | Invalid action rejected | `runner.py` |
-| `oracle_auction` | Auction resolved | `runner.py` |
+| `mint_auction` | Auction resolved | `runner.py` |
 | `mint` | Scrip minted | `world.py` |
 | `world_init` | World initialized | `world.py` |
 | `budget_pause` | API budget exhausted | `runner.py` |

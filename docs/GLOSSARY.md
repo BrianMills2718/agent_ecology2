@@ -15,7 +15,7 @@ This project has terminology differences between current implementation and targ
 | [GLOSSARY_CURRENT.md](GLOSSARY_CURRENT.md) | What IS implemented | Reading/modifying existing code |
 | [GLOSSARY_TARGET.md](GLOSSARY_TARGET.md) | What we're BUILDING TOWARD | Architecture discussions, new design |
 
-**Key difference:** `genesis_oracle` (current code) → `genesis_mint` (target) per ADR-0004.
+**Key difference:** `genesis_mint` (per ADR-0004, Gap #34 complete).
 
 ---
 
