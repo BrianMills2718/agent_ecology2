@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-12 (Phase 3 - RateTracker integration complete)
+**Last verified:** 2026-01-12 (Added --duration CLI flag for autonomous mode)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
@@ -164,13 +164,29 @@ When `execution.use_autonomous_loops: true`, agents run independently instead of
 
 ```yaml
 execution:
-  use_autonomous_loops: false  # Default: tick-based
+  use_autonomous_loops: true   # Now enabled by default
 rate_limiting:
-  enabled: false  # Enable RateTracker
+  enabled: true   # RateTracker enabled by default
   window_seconds: 60.0
   resources:
+    llm_tokens:
+      max_per_window: 1000
     llm_calls:
       max_per_window: 100
+```
+
+### CLI Usage
+
+```bash
+# Run autonomous mode for 60 seconds
+python run.py --duration 60
+
+# Run autonomous mode with limited agents
+python run.py --duration 60 --agents 1
+
+# Run tick-based mode (ignores --duration)
+# Set use_autonomous_loops: false in config
+python run.py --ticks 50
 ```
 
 ### How It Works
@@ -205,8 +221,9 @@ execution:
 
 | Current | Target |
 |---------|--------|
-| Tick-based default | Autonomous default |
-| Optional RateTracker | RateTracker always on |
-| Tick resets flow resources | Rolling window only |
+| Autonomous mode enabled by default | Same |
+| RateTracker enabled by default | Same |
+| Tick-based mode still available | May be removed |
+| --duration CLI flag for time limit | Event-driven termination |
 
 See `docs/architecture/target/02_execution_model.md` for target architecture.

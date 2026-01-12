@@ -4,7 +4,8 @@ Agent Ecology - Main runner script
 
 Usage:
     python run.py                    # Run with defaults from config/config.yaml
-    python run.py --ticks 10         # Override max ticks
+    python run.py --ticks 10         # Override max ticks (tick-based mode)
+    python run.py --duration 60      # Run for 60 seconds (autonomous mode)
     python run.py --agents 1         # Run with only first N agents
     python run.py --dashboard        # Run with HTML dashboard (opens browser)
     python run.py --dashboard-only   # Only run dashboard (view existing run.jsonl)
@@ -82,6 +83,7 @@ async def run_simulation_async(
     verbose: bool = True,
     delay: float | None = None,
     checkpoint: CheckpointData | None = None,
+    duration: float | None = None,
 ) -> World:
     """Run the simulation asynchronously.
 
@@ -91,6 +93,7 @@ async def run_simulation_async(
         verbose: Print progress (default True)
         delay: Seconds between ticks (defaults to config value)
         checkpoint: Checkpoint data to resume from (optional)
+        duration: Max seconds to run in autonomous mode (optional)
 
     Returns:
         The World instance after simulation completes.
@@ -102,7 +105,7 @@ async def run_simulation_async(
         delay=delay,
         checkpoint=checkpoint,
     )
-    return await runner.run()
+    return await runner.run(duration=duration)
 
 
 async def run_with_dashboard(
@@ -238,6 +241,12 @@ def main() -> None:
         action="store_true",
         help="Don't auto-open browser when using --dashboard",
     )
+    parser.add_argument(
+        "--duration",
+        type=float,
+        default=None,
+        help="Max seconds to run (autonomous mode only, overrides --ticks)",
+    )
     args: argparse.Namespace = parser.parse_args()
 
     config: dict[str, Any] = load_config(args.config)
@@ -274,6 +283,7 @@ def main() -> None:
             verbose=not args.quiet,
             delay=args.delay,
             checkpoint=checkpoint,
+            duration=args.duration,
         )
 
 

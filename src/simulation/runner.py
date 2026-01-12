@@ -820,12 +820,20 @@ class SimulationRunner:
             await self.world.loop_manager.stop_all(timeout=timeout)
         self._running = False
 
-    def run_sync(self) -> World:
+    def run_sync(
+        self,
+        max_ticks: int | None = None,
+        duration: float | None = None,
+    ) -> World:
         """Run the simulation synchronously.
 
         Wrapper around run() using asyncio.run().
 
+        Args:
+            max_ticks: Maximum ticks to run (tick-based mode, optional)
+            duration: Maximum seconds to run (autonomous mode, optional)
+
         Returns:
             The World instance after simulation completes.
         """
-        return asyncio.run(self.run())
+        return asyncio.run(self.run(max_ticks=max_ticks, duration=duration))

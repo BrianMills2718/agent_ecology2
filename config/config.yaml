@@ -183,7 +183,7 @@ rate_limiting:
 # EXECUTION - Agent execution model settings
 # -----------------------------------------------------------------------------
 execution:
-  use_autonomous_loops: false     # TODO: Enable after adding --duration CLI flag
+  use_autonomous_loops: true      # Autonomous agent loops (use --duration flag)
   agent_loop:
     min_loop_delay: 0.1           # Minimum seconds between actions
     max_loop_delay: 10.0          # Maximum backoff delay on errors
