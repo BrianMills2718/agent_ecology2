@@ -21,10 +21,10 @@ For active implementation tracking, see `docs/plans/CLAUDE.md`.
 
 | Directory | Purpose | Granularity |
 |-----------|---------|-------------|
-| `docs/plans/` | Active implementation tracking | 31 high-level gaps |
+| `docs/plans/` | Active implementation tracking | 34 high-level gaps |
 | `docs/architecture/gaps/` | Comprehensive analysis | 142 detailed gaps |
 
-The 142 gaps here are a finer breakdown of the 31 gaps in `docs/plans/`. Use this directory to:
+The 142 gaps here are a finer breakdown of the 34 gaps in `docs/plans/`. Use this directory to:
 - Understand the full scope of work
 - Find detailed gap definitions
 - See dependency relationships

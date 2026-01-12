@@ -3,7 +3,7 @@
 > **🚨 BEFORE DOING ANYTHING:** Run `pwd`. If you're in `agent_ecology/` (main) and plan to edit files, **STOP**.
 > Create a worktree first: `make worktree BRANCH=plan-NN-xxx`. Multiple instances in main = corrupted work.
 
-**Parallel work?** `python scripts/check_claims.py --list` then `--claim --task "..."`
+**First:** `python scripts/check_claims.py --list` then `--claim --task "..."` (always check/claim before starting)
 
 This file is always loaded. Keep it lean. Reference other docs for details.
 
@@ -18,15 +18,6 @@ This file is always loaded. Keep it lean. Reference other docs for details.
 - **Emergence over prescription** - No predefined roles, coordination mechanisms, or "best practices." If agents need it, they build it.
 - **Observability over control** - We don't make agents behave correctly. We make behavior observable.
 - **Accept risk, observe outcomes** - Many edge cases (orphan artifacts, lying interfaces, vulture failures) are accepted risks. We learn from what happens.
-
-**What this is NOT:**
-- NOT a multi-agent framework or platform for others to use
-- NOT testing different mechanism designs (we have ONE design, observing emergence within it)
-- NOT simulating human institutions (we apply useful principles from economics/cybernetics, not replicate)
-- NOT prescribing agent behavior (no roles, no forced coordination)
-- NOT optimizing for "good" outcomes (observing what happens under pressure)
-
-**Mental model:** A pressure vessel for AI collective capability. We create conditions, then watch.
 
 See `README.md` for full theoretical grounding (Hayek, Coase, Ostrom, Sugarscape, etc.)
 
@@ -77,13 +68,13 @@ GIT_CONFIG_NOSYSTEM=1 gh pr create ...
 
 All errors fail immediately. No `except: pass`. No "log warning and use default." If fallback genuinely needed, it MUST be behind a feature flag (OFF by default).
 
-### 2. Maximum Observability
+### 2. Maximum Observability, Understandability, Traceability
 
-Log all state changes with context (agent_id, tick, action). Structured logging. Never swallow exceptions.
+Log all state changes with context (agent_id, tick, action). Structured logging. Never swallow exceptions. Make behavior traceable and debuggable.
 
-### 3. No Magic Numbers
+### 3. Maximum Configurability
 
-Zero numeric literals in code. All values from `config/config.yaml`. Missing config = immediate failure.
+Zero magic numbers in code. All values from `config/config.yaml`. Missing config = immediate failure.
 
 ### 4. Strong Typing
 
@@ -91,25 +82,9 @@ Zero numeric literals in code. All values from `config/config.yaml`. Missing con
 
 ### 5. Real Tests, Not Mocks
 
-**Mock policy:** CI detects suspicious mock patterns. Mocking internal code (anything in `src.`) hides real failures.
+**No mocks by default.** Real external calls (APIs, LLM) are preferred - we accept time and monetary costs for realistic tests.
 
-**Allowed mocks:**
-- External APIs: `requests`, `httpx`, `aiohttp`
-- Time: `time.sleep`, `datetime`
-
-**NOT allowed without justification:**
-- `@patch("src.anything")` - test the real code
-- Mocking Memory, Agent, or core classes
-
-**To justify a necessary mock:** Add `# mock-ok: <reason>` comment:
-```python
-# mock-ok: Testing error path when memory service unavailable
-@patch("src.agents.memory.Memory.search")
-def test_handles_memory_failure():
-    ...
-```
-
-**CI enforces this:** `python scripts/check_mock_usage.py --strict`
+**If a mock is truly necessary:** Add `# mock-ok: <reason>` comment. CI enforces this (`python scripts/check_mock_usage.py --strict`).
 
 ---
 
