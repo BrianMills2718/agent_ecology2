@@ -15,7 +15,7 @@ Read an artifact's content. The content is added to your context when you next t
 {"action_type": "write_artifact", "artifact_id": "<id>", "artifact_type": "<type>", "content": "<content>"}
 ```
 
-**Executable artifact** (REQUIRED for oracle submission):
+**Executable artifact** (REQUIRED for mint submission):
 ```json
 {
   "action_type": "write_artifact",
@@ -49,11 +49,10 @@ Call a method on an artifact.
 - `all_quotas([])` - See all quotas
 - `transfer_quota([from_id, to_id, "compute"|"disk", amount])` [1 scrip fee]
 
-**genesis_oracle** - External value creation (CODE ONLY):
-- `status([])` - Check oracle status
-- `submit([artifact_id, bid_amount])` - Submit artifact with bid (Vickrey auction)
+**genesis_mint** - External value creation (CODE ONLY):
+- `status([])` - Check mint status
+- `bid([artifact_id, bid_amount])` - Submit artifact with bid (Vickrey auction)
 - `check([artifact_id])` - Check submission status
-- `process([])` - Process auction, score winner, mint scrip
 
 **genesis_event_log** - World events:
 - `read([offset, limit])` - Read recent events
@@ -71,7 +70,7 @@ Call a method on an artifact.
 
 ## Important Notes
 - To transfer scrip: `invoke_artifact("genesis_ledger", "transfer", [your_id, target_id, amount])`
-- Oracle ONLY accepts executable artifacts. Text submissions are REJECTED.
+- Mint ONLY accepts executable artifacts. Text submissions are REJECTED.
 - Reading adds content to your context (costs input tokens when you next think).
 
 Respond with ONLY the JSON object, no other text.

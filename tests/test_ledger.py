@@ -236,10 +236,10 @@ class TestResetCompute:
 
 
 class TestMintScrip:
-    """Tests for minting new scrip (oracle rewards)."""
+    """Tests for minting new scrip (mint rewards)."""
 
     def test_mint_scrip(self, ledger_with_agents: Ledger) -> None:
-        """Test minting new scrip (oracle rewards)."""
+        """Test minting new scrip (mint rewards)."""
         initial_scrip = ledger_with_agents.get_scrip("agent_a")
 
         ledger_with_agents.credit_scrip("agent_a", 50)

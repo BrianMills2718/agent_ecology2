@@ -38,7 +38,7 @@ resources:
 # -----------------------------------------------------------------------------
 scrip:
   starting_amount: <number>     # Each agent starts with this much
-  # Note: scrip has no "total" - it's created via oracle minting and destroyed via fees
+  # Note: scrip has no "total" - it's created via mint and destroyed via fees
 
 # -----------------------------------------------------------------------------
 # COSTS
@@ -62,8 +62,8 @@ genesis:
   artifacts:
     ledger:
       enabled: <boolean>        # Enable genesis_ledger
-    oracle:
-      enabled: <boolean>        # Enable genesis_oracle
+    mint:
+      enabled: <boolean>        # Enable genesis_mint
     rights_registry:
       enabled: <boolean>        # Enable genesis_rights_registry
     event_log:
@@ -87,8 +87,8 @@ genesis:
         cost: <number>          # Fee to spawn new principal
         description: <string>
 
-  # Genesis Oracle - auction-based scoring and minting
-  oracle:
+  # Genesis Mint - auction-based scoring and minting
+  mint:
     id: <string>
     description: <string>
     mint_ratio: <number>        # score / ratio = scrip minted
@@ -225,10 +225,10 @@ validation:
   max_method_name_length: <number>  # Max chars for method names (default: 64)
 
 # -----------------------------------------------------------------------------
-# ORACLE SCORER
+# MINT SCORER
 # External LLM scoring settings
 # -----------------------------------------------------------------------------
-oracle_scorer:
+mint_scorer:
   model: <string>               # LLM model for scoring
   timeout: <number>             # Seconds
   max_content_length: <number>  # Truncate content beyond this

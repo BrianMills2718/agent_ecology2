@@ -16,7 +16,7 @@ from .actions import (
 # NOTE: TransferIntent removed - all transfers via genesis_ledger.transfer()
 from .genesis import (
     create_genesis_artifacts, GenesisArtifact, GenesisRightsRegistry,
-    GenesisOracle, RightsConfig, SubmissionInfo
+    GenesisMint, RightsConfig, SubmissionInfo
 )
 from .executor import get_executor
 from .rate_tracker import RateTracker
@@ -104,8 +104,8 @@ class QuotaInfo(TypedDict):
     disk_available: int
 
 
-class OracleSubmissionStatus(TypedDict, total=False):
-    """Status of an oracle submission."""
+class MintSubmissionStatus(TypedDict, total=False):
+    """Status of a mint submission."""
     status: str
     submitter: str
     score: int | None
@@ -117,7 +117,7 @@ class StateSummary(TypedDict):
     balances: dict[str, BalanceInfo]
     artifacts: list[dict[str, Any]]
     quotas: dict[str, QuotaInfo]
-    oracle_submissions: dict[str, OracleSubmissionStatus]
+    mint_submissions: dict[str, MintSubmissionStatus]
     recent_events: list[dict[str, Any]]
 
 
@@ -260,7 +260,7 @@ class World:
             "genesis": "handbook_genesis",
             "resources": "handbook_resources",
             "trading": "handbook_trading",
-            "oracle": "handbook_oracle",
+            "mint": "handbook_mint",
         }
 
         for section_name, artifact_id in handbook_sections.items():
@@ -276,7 +276,7 @@ class World:
                 )
 
     def _mint_scrip(self, principal_id: str, amount: int) -> None:
-        """Mint new scrip for a principal (used by oracle).
+        """Mint new scrip for a principal (used by genesis_mint).
 
         Scrip is the economic currency - minting adds purchasing power.
         """
@@ -443,7 +443,7 @@ class World:
         """Execute an invoke_artifact action.
 
         Handles both:
-        - Genesis artifacts (system proxies to ledger, oracle, etc.)
+        - Genesis artifacts (system proxies to ledger, mint, etc.)
         - Executable artifacts (agent-created code)
 
         Cost model:
@@ -672,12 +672,12 @@ class World:
                     "disk_available": self.rights_registry.get_disk_quota(pid) - self.rights_registry.get_disk_used(pid)
                 }
 
-        # Get oracle submission status
-        oracle_status: dict[str, OracleSubmissionStatus] = {}
-        oracle = self.genesis_artifacts.get("genesis_oracle")
-        if oracle and isinstance(oracle, GenesisOracle) and hasattr(oracle, 'submissions'):
-            for artifact_id, sub in oracle.submissions.items():
-                oracle_status[artifact_id] = {
+        # Get mint submission status
+        mint_status: dict[str, MintSubmissionStatus] = {}
+        mint = self.genesis_artifacts.get("genesis_mint")
+        if mint and isinstance(mint, GenesisMint) and hasattr(mint, 'submissions'):
+            for artifact_id, sub in mint.submissions.items():
+                mint_status[artifact_id] = {
                     "status": sub.get("status", "unknown"),
                     "submitter": sub.get("submitter", "unknown"),
                     "score": sub.get("score") if sub.get("status") == "scored" else None
@@ -688,7 +688,7 @@ class World:
             "balances": self.ledger.get_all_balances(),
             "artifacts": all_artifacts,
             "quotas": quotas,
-            "oracle_submissions": oracle_status,
+            "mint_submissions": mint_status,
             "recent_events": self.get_recent_events(10)
         }
 

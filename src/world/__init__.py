@@ -6,7 +6,7 @@ from .ledger import Ledger
 from .artifacts import ArtifactStore, Artifact, WriteResult
 from .logger import EventLogger
 from .genesis import (
-    GenesisArtifact, GenesisLedger, GenesisOracle,
+    GenesisArtifact, GenesisLedger, GenesisMint,
     GenesisRightsRegistry, GenesisEventLog, SYSTEM_OWNER
 )
 from .executor import SafeExecutor, get_executor
@@ -24,7 +24,7 @@ __all__ = [
     "Ledger",
     "ArtifactStore", "Artifact", "WriteResult",
     "EventLogger",
-    "GenesisArtifact", "GenesisLedger", "GenesisOracle", "GenesisRightsRegistry", "GenesisEventLog", "SYSTEM_OWNER",
+    "GenesisArtifact", "GenesisLedger", "GenesisMint", "GenesisRightsRegistry", "GenesisEventLog", "SYSTEM_OWNER",
     "SafeExecutor", "get_executor",
     "SimulationEngine", "ThinkingCostResult", "BudgetCheckResult",
     "RateTracker", "UsageRecord",

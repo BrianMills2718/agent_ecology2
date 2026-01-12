@@ -6,9 +6,9 @@ const GenesisPanel = {
     elements: {
         tabs: null,
         tabContents: null,
-        oraclePending: null,
-        oracleMinted: null,
-        oracleScores: null,
+        mintPending: null,
+        mintMinted: null,
+        mintScores: null,
         escrowActive: null,
         escrowListings: null,
         ledgerTransferCount: null,
@@ -23,9 +23,9 @@ const GenesisPanel = {
     init() {
         this.elements.tabs = document.querySelectorAll('.genesis-tab');
         this.elements.tabContents = document.querySelectorAll('.genesis-tab-content');
-        this.elements.oraclePending = document.getElementById('oracle-pending');
-        this.elements.oracleMinted = document.getElementById('oracle-minted');
-        this.elements.oracleScores = document.getElementById('oracle-scores');
+        this.elements.mintPending = document.getElementById('mint-pending');
+        this.elements.mintMinted = document.getElementById('mint-minted');
+        this.elements.mintScores = document.getElementById('mint-scores');
         this.elements.escrowActive = document.getElementById('escrow-active');
         this.elements.escrowListings = document.getElementById('escrow-listings');
         this.elements.ledgerTransferCount = document.getElementById('ledger-transfer-count');
@@ -74,16 +74,16 @@ const GenesisPanel = {
     update(data) {
         this.genesisData = data;
 
-        // Oracle tab
-        if (data.oracle) {
-            if (this.elements.oraclePending) {
-                this.elements.oraclePending.textContent = data.oracle.pending_count;
+        // Mint tab
+        if (data.mint) {
+            if (this.elements.mintPending) {
+                this.elements.mintPending.textContent = data.mint.pending_count;
             }
-            if (this.elements.oracleMinted) {
-                this.elements.oracleMinted.textContent = data.oracle.total_scrip_minted;
+            if (this.elements.mintMinted) {
+                this.elements.mintMinted.textContent = data.mint.total_scrip_minted;
             }
-            if (this.elements.oracleScores) {
-                this.renderOracleScores(data.oracle.recent_scores);
+            if (this.elements.mintScores) {
+                this.renderMintScores(data.mint.recent_scores);
             }
         }
 
@@ -109,17 +109,17 @@ const GenesisPanel = {
     },
 
     /**
-     * Render oracle scores list
+     * Render mint scores list
      */
-    renderOracleScores(scores) {
-        if (!this.elements.oracleScores) return;
+    renderMintScores(scores) {
+        if (!this.elements.mintScores) return;
 
         if (!scores || scores.length === 0) {
-            this.elements.oracleScores.innerHTML = '<div class="genesis-list-item">No scores yet</div>';
+            this.elements.mintScores.innerHTML = '<div class="genesis-list-item">No scores yet</div>';
             return;
         }
 
-        this.elements.oracleScores.innerHTML = scores.slice(-10).reverse().map(score => `
+        this.elements.mintScores.innerHTML = scores.slice(-10).reverse().map(score => `
             <div class="genesis-list-item">
                 <strong>${this.escapeHtml(score.artifact_id)}</strong>:
                 ${score.score.toFixed(1)} -> ${score.scrip_minted} scrip

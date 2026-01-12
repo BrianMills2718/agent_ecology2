@@ -106,7 +106,7 @@
                                     <th title="Current owner (agent or contract)">Owner</th>
                                     <th title="Base scrip cost to invoke (* = executable, may have dynamic fees)">Price</th>
                                     <th title="Executable: Can be invoked by agents">Exec</th>
-                                    <th title="Oracle score: Quality rating from external LLM (0-10)">Oracle</th>
+                                    <th title="Mint score: Quality rating from external LLM (0-10)">Mint</th>
                                 </tr>
                             </thead>
                             <tbody id="artifacts-tbody">
@@ -150,7 +150,7 @@
                                 <option value="scrip_transfer">Transfers</option>
                                 <option value="escrow_listed,escrow_purchased,escrow_cancelled">Trades</option>
                                 <option value="ownership_transfer">Ownership</option>
-                                <option value="oracle_mint">Mints</option>
+                                <option value="mint_result">Mints</option>
                             </select>
                         </div>
                     </div>
@@ -200,22 +200,22 @@
                     </div>
                     <div class="panel-content">
                         <div class="genesis-tabs">
-                            <button class="genesis-tab active" data-tab="oracle">Oracle</button>
+                            <button class="genesis-tab active" data-tab="mint">Mint</button>
                             <button class="genesis-tab" data-tab="escrow">Escrow</button>
                             <button class="genesis-tab" data-tab="ledger">Ledger</button>
                         </div>
                         <div class="genesis-content" id="genesis-content">
-                            <!-- Oracle Tab -->
-                            <div class="genesis-tab-content active" id="genesis-oracle">
+                            <!-- Mint Tab -->
+                            <div class="genesis-tab-content active" id="genesis-mint">
                                 <div class="genesis-stat">
                                     <span class="stat-label">Pending:</span>
-                                    <span id="oracle-pending" class="stat-value">0</span>
+                                    <span id="mint-pending" class="stat-value">0</span>
                                 </div>
                                 <div class="genesis-stat">
                                     <span class="stat-label">Total Minted:</span>
-                                    <span id="oracle-minted" class="stat-value">0</span>
+                                    <span id="mint-minted" class="stat-value">0</span>
                                 </div>
-                                <div class="genesis-list" id="oracle-scores">
+                                <div class="genesis-list" id="mint-scores">
                                     <!-- Recent scores -->
                                 </div>
                             </div>

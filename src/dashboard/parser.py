@@ -14,11 +14,11 @@ from .models import (
     ThinkingEvent,
     RawEvent,
     SimulationProgress,
-    GenesisOracleStatus,
+    GenesisMintStatus,
     GenesisEscrowStatus,
     GenesisLedgerStatus,
     GenesisActivitySummary,
-    OracleScore,
+    MintScore,
     EscrowListing,
     LedgerTransfer,
     OwnershipTransfer,
@@ -68,8 +68,8 @@ class ArtifactState:
     size_bytes: int = 0
     created_at: str = ""
     updated_at: str = ""
-    oracle_score: float | None = None
-    oracle_status: Literal["pending", "scored", "none"] = "none"
+    mint_score: float | None = None
+    mint_status: Literal["pending", "scored", "none"] = "none"
     content: str | None = None
     methods: list[str] = field(default_factory=list)
     invocation_count: int = 0
@@ -95,8 +95,8 @@ class SimulationState:
     artifacts: dict[str, ArtifactState] = field(default_factory=dict)
 
     # Genesis activity
-    oracle_pending: list[str] = field(default_factory=list)
-    oracle_scores: list[OracleScore] = field(default_factory=list)
+    mint_pending: list[str] = field(default_factory=list)
+    mint_scores: list[MintScore] = field(default_factory=list)
     total_scrip_minted: int = 0
 
     escrow_listings: dict[str, EscrowListing] = field(default_factory=dict)
@@ -234,7 +234,7 @@ class JSONLParser:
                 total_compute_used=self._current_tick_compute,
                 total_scrip_transferred=self._current_tick_scrip_transfers,
                 artifacts_created=self._current_tick_artifacts,
-                oracle_mints=self._current_tick_mints,
+                mint_results=self._current_tick_mints,
             )
             self.state.tick_summaries.append(summary)
 
@@ -510,15 +510,15 @@ class JSONLParser:
                     description=f"{agent_id} transferred {transferred_artifact} to {to_id}",
                 ))
 
-        # Oracle submissions
-        elif artifact_id == "genesis_oracle" and method == "submit":
+        # Mint submissions
+        elif artifact_id == "genesis_mint" and method == "submit":
             args = intent.get("args", [])
             if args:
                 submitted_id = str(args[0])
-                if submitted_id not in self.state.oracle_pending:
-                    self.state.oracle_pending.append(submitted_id)
+                if submitted_id not in self.state.mint_pending:
+                    self.state.mint_pending.append(submitted_id)
                 if submitted_id in self.state.artifacts:
-                    self.state.artifacts[submitted_id].oracle_status = "pending"
+                    self.state.artifacts[submitted_id].mint_status = "pending"
 
         # Escrow deposits
         elif artifact_id == "genesis_escrow" and method == "deposit":
@@ -603,41 +603,41 @@ class JSONLParser:
                 del self.state.escrow_listings[cancelled_artifact]
 
     def _handle_mint(self, event: dict[str, Any], timestamp: str) -> None:
-        """Handle oracle minting event."""
+        """Handle mint scoring event."""
         artifact_id = event.get("artifact_id", "")
         score = event.get("score", 0)
         scrip_minted = event.get("scrip_minted", 0)
         submitter = event.get("submitter", "")
 
-        oracle_score = OracleScore(
+        mint_score = MintScore(
             artifact_id=artifact_id,
             submitter=submitter,
             score=score,
             scrip_minted=scrip_minted,
             timestamp=timestamp,
         )
-        self.state.oracle_scores.append(oracle_score)
+        self.state.mint_scores.append(mint_score)
         self.state.total_scrip_minted += scrip_minted
         self._current_tick_mints += 1
 
-        # Update artifact oracle status
+        # Update artifact mint status
         if artifact_id in self.state.artifacts:
-            self.state.artifacts[artifact_id].oracle_score = score
-            self.state.artifacts[artifact_id].oracle_status = "scored"
+            self.state.artifacts[artifact_id].mint_score = score
+            self.state.artifacts[artifact_id].mint_status = "scored"
 
         # Remove from pending
-        if artifact_id in self.state.oracle_pending:
-            self.state.oracle_pending.remove(artifact_id)
+        if artifact_id in self.state.mint_pending:
+            self.state.mint_pending.remove(artifact_id)
 
         # Add activity item
         self.state.activity_items.append(ActivityItem(
             tick=self.state.current_tick,
             timestamp=timestamp,
-            activity_type="oracle_mint",
+            activity_type="mint_result",
             agent_id=submitter,
             artifact_id=artifact_id,
             amount=scrip_minted,
-            description=f"Oracle scored {artifact_id} at {score:.1f}, minted {scrip_minted} scrip to {submitter}",
+            description=f"Mint scored {artifact_id} at {score:.1f}, minted {scrip_minted} scrip to {submitter}",
             details={"score": score},
         ))
 
@@ -741,8 +741,8 @@ class JSONLParser:
                 size_bytes=art.size_bytes,
                 created_at=art.created_at,
                 updated_at=art.updated_at,
-                oracle_score=art.oracle_score,
-                oracle_status=art.oracle_status,
+                mint_score=art.mint_score,
+                mint_status=art.mint_status,
             )
             for art in self.state.artifacts.values()
         ]
@@ -750,10 +750,10 @@ class JSONLParser:
     def get_genesis_activity(self) -> GenesisActivitySummary:
         """Get combined genesis artifact activity."""
         return GenesisActivitySummary(
-            oracle=GenesisOracleStatus(
-                pending_count=len(self.state.oracle_pending),
-                pending_artifacts=self.state.oracle_pending[:20],
-                recent_scores=self.state.oracle_scores[-20:],
+            mint=GenesisMintStatus(
+                pending_count=len(self.state.mint_pending),
+                pending_artifacts=self.state.mint_pending[:20],
+                recent_scores=self.state.mint_scores[-20:],
                 total_scrip_minted=self.state.total_scrip_minted,
             ),
             escrow=GenesisEscrowStatus(
@@ -1008,8 +1008,8 @@ class JSONLParser:
             updated_at=art.updated_at,
             content=art.content,
             methods=art.methods,
-            oracle_score=art.oracle_score,
-            oracle_status=art.oracle_status,
+            mint_score=art.mint_score,
+            mint_status=art.mint_status,
             invocation_count=art.invocation_count,
             ownership_history=art.ownership_history,
             invocation_history=art.invocation_history[-50:],  # Last 50
