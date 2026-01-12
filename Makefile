@@ -1,7 +1,7 @@
 # Agent Ecology - Common Commands
 # Usage: make <target>
 
-.PHONY: help install test mypy lint check validate clean claim release gaps status pr
+.PHONY: help install test mypy lint check validate clean claim release gaps status pr pr-create pr-merge pr-merge-admin pr-list pr-view
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -79,7 +79,24 @@ worktree-remove:  ## Remove a worktree (usage: make worktree-remove BRANCH=featu
 	git worktree remove ../ecology-$(BRANCH)
 
 pr:  ## Create PR (opens browser)
-	gh pr create --web
+	GIT_CONFIG_NOSYSTEM=1 gh pr create --web
+
+pr-create:  ## Create PR from CLI (usage: make pr-create TITLE="Fix bug" BODY="Description")
+	GIT_CONFIG_NOSYSTEM=1 gh pr create --title "$(TITLE)" --body "$(BODY)"
+
+pr-merge:  ## Merge PR (usage: make pr-merge PR=5)
+	@if [ -z "$(PR)" ]; then echo "Usage: make pr-merge PR=5"; exit 1; fi
+	GIT_CONFIG_NOSYSTEM=1 gh pr merge $(PR) --squash --delete-branch
+
+pr-merge-admin:  ## Merge PR bypassing checks (usage: make pr-merge-admin PR=5)
+	@if [ -z "$(PR)" ]; then echo "Usage: make pr-merge-admin PR=5"; exit 1; fi
+	GIT_CONFIG_NOSYSTEM=1 gh pr merge $(PR) --squash --admin --delete-branch
+
+pr-list:  ## List open PRs
+	GIT_CONFIG_NOSYSTEM=1 gh pr list
+
+pr-view:  ## View PR details (usage: make pr-view PR=5)
+	@if [ -z "$(PR)" ]; then GIT_CONFIG_NOSYSTEM=1 gh pr view; else GIT_CONFIG_NOSYSTEM=1 gh pr view $(PR); fi
 
 # Simulation
 run:  ## Run simulation (usage: make run TICKS=10 AGENTS=2)
