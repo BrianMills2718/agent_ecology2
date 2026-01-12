@@ -208,11 +208,28 @@ Agent receives failure message in `last_action_result` for next tick.
 
 ---
 
-## Artifact-Backed Agents (Phase 2)
+## Artifact-Backed Agents (Default)
 
-Agents can be backed by artifacts in the artifact store, enabling persistent state and agent trading.
+**SimulationRunner creates artifact-backed agents by default.** This implements the unified ontology (Gap #6): agents are artifacts with `has_standing=True` and `can_execute=True`.
 
-### From Artifact
+### How It Works
+
+When SimulationRunner initializes:
+
+1. `create_agent_artifacts()` creates agent and memory artifacts in the world's artifact store
+2. `load_agents_from_store()` creates Agent instances backed by those artifacts
+3. Each agent has `is_artifact_backed=True` and links to its artifact
+
+```python
+# SimulationRunner creates artifact-backed agents automatically
+runner = SimulationRunner(config)
+assert runner.agents[0].is_artifact_backed is True
+assert "agent_id" in runner.world.artifacts.artifacts
+```
+
+### Manual Creation
+
+Agents can also be created manually from artifacts:
 
 ```python
 from src.agents.agent import Agent
@@ -231,8 +248,36 @@ updated_artifact = agent.to_artifact()
 |-------|-------------|
 | `has_standing: True` | Agent is a principal (can own things) |
 | `can_execute: True` | Agent can execute code autonomously |
-| `memory_artifact_id` | Link to memory artifact |
-| `content` | JSON-encoded agent config |
+| `memory_artifact_id` | Link to memory artifact (e.g., "alice_memory") |
+| `content` | JSON-encoded agent config (prompt, model, etc.) |
+
+### Memory Artifacts
+
+Each agent automatically gets a linked memory artifact:
+
+| Agent Artifact | Memory Artifact |
+|---------------|-----------------|
+| `alice` | `alice_memory` |
+| `bob` | `bob_memory` |
+
+Memory artifacts have `has_standing=False` and `can_execute=False`.
+
+### Spawned Agents
+
+Dynamically created agents (via ledger principal creation) are also artifact-backed. When `_check_for_new_principals()` detects a new principal:
+
+1. Creates memory artifact for the new agent
+2. Creates agent artifact with default config
+3. Creates Agent instance from the artifact
+
+### Benefits
+
+| Benefit | Description |
+|---------|-------------|
+| Persistence | Agent state survives checkpoint/restore |
+| Trading | Agents can be bought/sold via escrow |
+| Single ID namespace | Agent IDs are artifact IDs |
+| Unified queries | `is_agent` property finds all agents in store |
 
 ### ArtifactMemory
 
