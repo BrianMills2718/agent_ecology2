@@ -124,6 +124,7 @@ Adjust the error message to match your branch naming convention.
 
 ## Related Patterns
 
+- [Rebase Workflow](rebase-workflow.md) - Keeps worktrees up-to-date before creating PRs
 - [Claim System](claim-system.md) - Coordinates which instance works on what
 - [Git Hooks](git-hooks.md) - Pre-commit validation before pushing
 - [PR Coordination](pr-coordination.md) - Tracks review requests across instances
