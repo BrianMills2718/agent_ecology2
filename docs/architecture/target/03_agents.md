@@ -399,16 +399,41 @@ Current time: 2025-01-11T14:30:00Z
 
 ## Vulture Capitalist Pattern
 
-When agent is frozen (in debt):
+When agent is frozen (blocked on rate limits):
 
-1. Agent A is frozen (compute < 0, can't think)
-2. Agent A's assets still exist (ownership persists)
-3. Agent B notices A is frozen
-4. B transfers compute to A (unilateral, no permission needed)
-5. A unfreezes, can think again
+1. Agent A is blocked (insufficient rate capacity, can't think)
+2. Agent A's artifacts still exist
+3. Agent B notices A is blocked
+4. B transfers rate quota to A (unilateral, no permission needed)
+5. A unblocks, can think again
 6. B hopes A reciprocates (reputation matters)
 
 Market-driven rescue, not system rules.
+
+---
+
+## No Death Policy
+
+**Agents never die. They can only be:**
+
+| State | Meaning | Recovery |
+|-------|---------|----------|
+| **Active** | Running normally | N/A |
+| **Blocked** | Insufficient rate capacity | Wait for window or receive quota transfer |
+| **Dormant** | No actions for extended period | Any stimulus can wake |
+
+**Why no death:**
+- Complete audit trail preserved
+- Vulture capitalist rescue always possible
+- Frozen agent's artifacts remain accessible (per their contracts)
+- Market handles cleanup via opportunity cost, not forced deletion
+
+**Identity persistence:** An agent's ID and history exist forever. Even if all resources are transferred away, the "shell" remains in the registry. This enables:
+- Future resurrection if someone funds the agent
+- Historical analysis of agent evolution
+- No "burned" IDs that can never be reused
+
+**Note:** Asset reclamation from long-dormant agents (salvage rights) is deferred to future versions. For V1, dormant agents simply persist indefinitely.
 
 ---
 

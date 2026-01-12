@@ -485,6 +485,20 @@ All deny → permanently locked
 
 **Consequence:** Creators are responsible for designing access control carefully. Orphaned artifacts remain forever, like lost Bitcoin.
 
+### Dangling Contracts (Open Question)
+
+What happens when an artifact's `access_contract_id` points to a deleted contract?
+
+| Option | Behavior | Trade-off |
+|--------|----------|-----------|
+| Fail-open | Treat as public | Security risk |
+| Fail-closed | No access | Artifact locked forever |
+| Prevent deletion | Can't delete referenced contracts | Adds referential integrity complexity |
+
+**Current position:** Undecided. Contracts that are referenced probably shouldn't be deletable, but this adds system complexity. Deferred to implementation phase.
+
+**Note:** This is different from orphan artifacts (contract exists but denies everyone). Dangling means the contract itself is gone.
+
 See DESIGN_CLARIFICATIONS.md for full discussion of considered alternatives.
 
 ---

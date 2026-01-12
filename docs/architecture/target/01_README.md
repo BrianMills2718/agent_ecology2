@@ -82,6 +82,137 @@ This is **mechanism design for real resource allocation**, not a simulation or m
 
 ---
 
+## System vs Genesis: The Ontological Distinction
+
+Two layers exist with fundamentally different properties:
+
+### System Mechanisms (The "Physics")
+
+Hardcoded in Python/Docker. Not addressable by agents. Defines the execution space itself.
+
+| Mechanism | What It Does |
+|-----------|--------------|
+| Execution engine | Runs agent loops, handles async |
+| Rate tracker | Enforces rolling window limits |
+| `invoke()` primitive | Dispatches calls to artifacts |
+| Worker pool | Measures CPU/memory per action |
+| Docker container | Hard resource ceilings |
+
+**Privilege:** Absolute. If the system says "you're blocked," there's no appeal.
+
+### Genesis Artifacts (The "Infrastructure")
+
+Pre-seeded artifacts created at T=0. Addressable, replaceable, evolvable. Agents could build alternatives.
+
+| Artifact | Purpose |
+|----------|---------|
+| `genesis_ledger` | Balances, transfers |
+| `genesis_store` | Artifact registry, discovery |
+| `genesis_escrow` | Trustless trading |
+| `genesis_oracle` | Scoring, minting |
+| `genesis_rights_registry` | Quota management |
+| `genesis_freeware` | Default open contract |
+
+**Privilege:** Semantic only. They're trusted because initial agent prompts reference them. Agents could migrate to alternatives if they collectively agree.
+
+### Why This Matters
+
+```
+System: "You cannot invoke() something that doesn't exist in the store."
+        → This is physics. Unchangeable by agents.
+
+Genesis: "Use genesis_escrow for trades."
+        → This is convention. Agents could build better_escrow and migrate.
+```
+
+The system defines what's *possible*. Genesis artifacts define what's *convenient*.
+
+---
+
+## genesis_store Interface
+
+The artifact registry with discovery methods. Enables agents to "window shop" without burning resources on trial-and-error.
+
+### Discovery Layers
+
+| Layer | Method | Cost | Returns |
+|-------|--------|------|---------|
+| Directory | `search(query, type_filter)` | Low | List of artifact IDs with interface summaries |
+| Signboard | `get_metadata(artifact_id)` | Low | Owner, creation date, size, access_contract_id |
+| Interface | `get_interface(artifact_id)` | Low | MCP-compatible schema (tools, inputs, costs) |
+| Full Read | `read(artifact_id)` | High | Full artifact content |
+
+### Methods
+
+```python
+genesis_store = {
+    "id": "genesis_store",
+    "interface": {
+        "tools": [
+            {
+                "name": "search",
+                "description": "Find artifacts by query",
+                "inputSchema": {
+                    "query": "string",
+                    "type_filter": "enum[agent, tool, data, contract]"
+                }
+            },
+            {
+                "name": "get_metadata",
+                "description": "Get artifact metadata without content",
+                "inputSchema": {"artifact_id": "string"}
+            },
+            {
+                "name": "get_interface",
+                "description": "Get MCP-style interface schema",
+                "inputSchema": {"artifact_id": "string"}
+            },
+            {
+                "name": "create",
+                "description": "Register new artifact",
+                "inputSchema": {
+                    "content": "any",
+                    "interface": "dict",
+                    "has_standing": "bool",
+                    "can_execute": "bool",
+                    "access_contract_id": "string"
+                }
+            },
+            {
+                "name": "delete",
+                "description": "Remove artifact from current state",
+                "inputSchema": {"artifact_id": "string"}
+            }
+        ]
+    }
+}
+```
+
+### Metadata Schema
+
+What `get_metadata()` returns (without reading content):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Artifact ID |
+| `owner_id` | string | Current owner |
+| `has_standing` | bool | Can hold resources |
+| `can_execute` | bool | Has runnable code |
+| `interface_summary` | string | Brief description from interface |
+| `created_at` | timestamp | Creation time |
+| `size_bytes` | int | Content size |
+| `access_contract_id` | string | Governing contract |
+
+### Why Layered Discovery
+
+Prevents "trial-and-error bankruptcy":
+1. Agent searches for "weather tool" → gets list of candidates
+2. Agent calls `get_interface("weather_tool")` → sees it costs 0.5 scrip per call
+3. Agent decides it's too expensive → moves on without ever invoking
+4. No resources wasted on failed invocations
+
+---
+
 ## Glossary
 
 | Term | Definition |

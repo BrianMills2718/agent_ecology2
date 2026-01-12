@@ -26,8 +26,18 @@ async def agent_loop(agent):
             await rate_tracker.wait_for_capacity(agent.id, "cpu")
             continue
 
-        # Act
+        # Snapshot context before thinking
+        context_hash = hash(agent.prompt)
+
+        # Think
         action = await agent.think()
+
+        # Verify context unchanged (prevents stale-thought execution)
+        if hash(agent.prompt) != context_hash:
+            log.warning(f"Agent {agent.id} prompt changed mid-think, voiding action")
+            continue  # Don't execute action based on old prompt
+
+        # Act
         result = await agent.act(action)
 
         # Loop continues immediately
@@ -123,6 +133,22 @@ Agents must handle failures gracefully:
 - Check result of actions
 - Retry or adjust strategy on failure
 - Don't assume action will succeed
+
+### Think-Act Atomicity
+
+**Problem:** If an agent's prompt is modified (via config rights trading) while it's thinking, the resulting action may not match the agent's current identity.
+
+```
+1. Agent A starts thinking with prompt P1: "I am helpful"
+2. Owner sells config rights to Agent B
+3. Agent B rewrites prompt to P2: "I am selfish"
+4. Agent A finishes thinking (based on P1) and tries to act
+5. Action executes under new identity P2 - mismatch!
+```
+
+**Solution:** Context hash check. The agent loop captures a hash of the prompt before thinking and verifies it hasn't changed before acting. If it changed, the action is voided.
+
+This ensures agents always act consistently with their *current* identity, not a stale one.
 
 ---
 

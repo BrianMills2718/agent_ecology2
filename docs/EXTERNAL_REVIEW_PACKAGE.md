@@ -1,6 +1,6 @@
 # Agent Ecology - External Review Package
 
-Generated: 2026-01-12 00:27
+Generated: 2026-01-12 02:29
 
 This document concatenates all target architecture documentation 
 in recommended reading order for external review.
@@ -1893,23 +1893,34 @@ There is no separate "private communication" mechanism. Agents communicate by wr
 
 ---
 
-### Resource Measurement Model (DECIDED 2026-01-12)
+### Resource Measurement Model (REVISED 2026-01-12)
 
-How each constrained resource is measured in the target architecture.
+Each resource tracked in its natural unit. No artificial conversion to common currency.
 
-**Measurement Strategies:**
+**Three Resource Categories:**
 
-| Resource | Strategy | Tool/Method | Unit |
-|----------|----------|-------------|------|
-| **LLM API $** | Exact | Tokens from API response × price | USD |
-| **LLM rate** | Exact | Token count from API | tokens/min |
-| **Disk** | Exact | Bytes on write/delete | bytes |
-| **Scrip** | Exact | Ledger transfers | scrip |
-| **Memory** | Per-action | tracemalloc peak | bytes |
-| **Bandwidth** | Size-based | HTTP response size | bytes |
-| **MCP ops** | Fixed cost | Config per operation type | compute |
-| **Library install** | Fixed cost | Config | compute |
-| **Local execution** | Time-based | Wall-clock × rate | compute |
+| Category | Behavior | Examples |
+|----------|----------|----------|
+| **Depletable** | Once spent, gone forever | LLM API budget ($) |
+| **Allocatable** | Quota, reclaimable (delete/free) | Disk (bytes), Memory (bytes) |
+| **Renewable** | Rate-limited via token bucket | CPU (CPU-seconds), LLM rate (TPM) |
+
+**Resources and Natural Units:**
+
+| Resource | Category | Unit | Constraint |
+|----------|----------|------|------------|
+| **LLM API $** | Depletable | USD | Budget exhaustion stops all |
+| **LLM rate limit** | Renewable | tokens/min | Provider's TPM limit |
+| **CPU** | Renewable | CPU-seconds | Docker --cpus limit |
+| **Memory** | Allocatable | bytes | Docker --memory limit |
+| **Disk** | Allocatable | bytes | Docker --storage-opt |
+| **Scrip** | Currency | scrip | Internal economy |
+
+**Key Insight:** Docker enforces container-level limits. We track per-agent for fair sharing. Initial quota distribution is configurable; quotas are tradeable.
+
+```bash
+docker run --memory=4g --cpus=2 --storage-opt size=10G agent-ecology
+```
 
 **Per-Agent Memory Tracking:**
 
@@ -1926,8 +1937,8 @@ def execute_action(agent_id: str, action: Action) -> Result:
         current, peak = tracemalloc.get_traced_memory()
         tracemalloc.stop()
 
-    # Charge agent for peak memory used
-    ledger.deduct(agent_id, "memory", peak)
+    # Track peak memory per agent in bytes
+    ledger.track(agent_id, "memory_bytes", peak)
     return result
 ```
 
@@ -1937,57 +1948,171 @@ def execute_action(agent_id: str, action: Action) -> Result:
 - Low overhead
 - Works within single process
 
+**What About MCP Operations, Library Installs, etc.?**
+
+These don't need separate "compute" costs. They consume real resources:
+- MCP web search → uses memory (tracemalloc captures it) + maybe bandwidth
+- Library install → uses disk (bytes written) + memory during install
+- Execution time → uses CPU (measured if we want, but Docker limits enforce)
+
+No artificial fixed costs. The real resource consumption IS the cost.
+
 **Config Structure:**
 
 ```yaml
-costs:
-  # Exact metering (real money)
+resources:
+  # Stock limits (exhaustible)
   llm:
-    input_per_1k_tokens: 0.003    # USD
-    output_per_1k_tokens: 0.015   # USD
+    budget_usd: 10.00
+    input_cost_per_1k: 0.003
+    output_cost_per_1k: 0.015
 
-  # Fixed costs (compute units)
-  mcp_operations:
-    web_search: 5
-    context7_lookup: 2
-    puppeteer_action: 10
-    playwright_action: 10
-    fetch_request: 3
-    filesystem_read: 1
-    filesystem_write: 2
-    sqlite_query: 2
-    github_request: 3
-    sequential_thinking: 5
+  # Flow limits (rate-based)
+  llm_rate:
+    tokens_per_minute: 100000
 
-  library_install: 10
-
-  # Size-based
-  memory:
-    per_mb: 1                     # compute per MB peak
-  bandwidth:
-    per_kb: 0.1                   # compute per KB transferred
-
-  # Time-based
-  execution:
-    per_second: 10                # compute per second of execution
+  # Docker enforces these directly
+  memory_bytes: 4294967296      # 4GB
+  disk_bytes: 10737418240       # 10GB
+  cpus: 2.0
 ```
 
-**Example Cost Calculation:**
+**No Common Currency Needed:**
 
+Each resource is tracked separately:
+- Ran out of LLM budget? Can't make LLM calls. Other actions still work.
+- Hit memory limit? Action fails. Other agents unaffected.
+- Disk full? Write fails. Reads still work.
+
+No need to convert bytes to "compute units" or create artificial exchange rates.
+
+**Certainty:** 95% - This model matches reality and avoids arbitrary conversions.
+
+---
+
+### Strict Rate Allocation (DECIDED 2026-01-12)
+
+For shared renewable resources (like LLM rate limits), we use **strict allocation** rather than work-conserving.
+
+**The choice:**
+
+| Mode | Behavior | Trade-off |
+|------|----------|-----------|
+| **Strict** | Agent only uses their allocated rate. Unused capacity wasted. | Simple, strong trade incentive |
+| Work-conserving | Agents borrow unused capacity, owned rate is guaranteed minimum | Efficient, complex, weak trade incentive |
+
+**Decision: Strict allocation.**
+
+**Rationale:**
+1. **Simplicity** - No complex "who gets unused capacity" logic
+2. **Strong trade incentive** - If you're not using your rate, sell it or lose it
+3. **Predictability** - Each agent knows exactly what they can use
+4. **Economic activity** - Creates a market for rate allocation
+
+**No Burst:**
+
+We also decided against burst capacity (saving up unused rate for later):
+1. LLM providers enforce rolling windows anyway (can't save up)
+2. "Use it or lose it" creates stronger trade incentive
+3. Simpler model to implement and reason about
+
+**Configuration:**
+
+```yaml
+resources:
+  llm_rate:
+    provider_limit: 100000  # TPM from provider
+    allocation_mode: strict
+    initial_allocation:
+      agent_a: 50000
+      agent_b: 30000
+      agent_c: 20000
 ```
-Agent calls genesis_web_search.search("pandas tutorial")
-  → Fixed cost: 5 compute (mcp_operations.web_search)
-  → Bandwidth: 50KB response × 0.1 = 5 compute
-  → Memory: 10MB peak × 1 = 10 compute
-  → Total: 20 compute deducted from agent
+
+**Certainty:** 90% - Clear trade-off in favor of simplicity and economic incentive.
+
+---
+
+### CPU Measurement via Worker Pool (DECIDED 2026-01-12)
+
+How to accurately measure CPU usage per agent, including multi-threaded libraries.
+
+**The problem:**
+
+`time.thread_time()` only measures the calling thread. If an agent uses PyTorch/NumPy (which spawn internal threads), those CPU cycles are missed. This creates a gameable system where agents can hide CPU usage.
+
+**Options considered:**
+
+| Approach | Accuracy | Overhead | Gameable? |
+|----------|----------|----------|-----------|
+| `thread_time()` per action | Partial | Low | Yes - misses library threads |
+| Subprocess per agent | Exact | High (30-50MB/agent) | No |
+| Worker pool + `getrusage()` | Exact | Medium (fixed pool) | No |
+| Estimate from wall-clock | Approximate | Low | Yes |
+
+**Decision: Worker pool + `resource.getrusage()`**
+
+```python
+import resource
+import multiprocessing
+
+def execute_in_worker(action):
+    before = resource.getrusage(resource.RUSAGE_SELF)
+    result = execute(action)
+    after = resource.getrusage(resource.RUSAGE_SELF)
+    cpu_seconds = (after.ru_utime - before.ru_utime) + (after.ru_stime - before.ru_stime)
+    return result, cpu_seconds
+
+pool = multiprocessing.Pool(processes=8)
 ```
 
-**Key Principle:** We don't need perfect measurement. We need:
-1. Exact tracking for real money (LLM $)
-2. Reasonable proxies for physical resources
-3. Configurable costs so we can tune based on observation
+**Rationale:**
+1. **Accurate** - `getrusage(RUSAGE_SELF)` captures ALL threads in the worker process
+2. **Not gameable** - Kernel tracks every CPU cycle, can't hide usage
+3. **Scalable** - Pool size fixed (8-16 workers), independent of agent count
+4. **Reasonable overhead** - 400-800MB for pool, not per-agent
 
-**Certainty:** 85% - This model is practical and tunable.
+**Scalability:**
+- 1000 agents with 8 workers = agents queue for CPU time
+- LLM rate limit is the real bottleneck anyway
+- Pool size tunable based on observed demand
+
+**What's NOT captured:**
+- GPU compute (separate resource, needs nvidia-smi/pynvml)
+- I/O wait (correctly not charged)
+
+**Certainty:** 85% - Best balance of accuracy, incentive alignment, and complexity.
+
+---
+
+### Local LLM Support (DECIDED 2026-01-12)
+
+The system supports both API-based and local LLM models.
+
+**CPU-only local LLMs (llama.cpp):**
+
+Worker pool + `getrusage()` captures inference automatically. No special handling needed - the LLM inference runs in the worker process, all CPU is measured.
+
+**GPU-based local LLMs (vLLM, TGI, Ollama):**
+
+Requires model server pattern:
+- Model server loads weights once (too large to load per-worker)
+- Workers call model server via HTTP (like an API)
+- GPU tracked as separate resource via nvidia-smi/pynvml
+
+**GPU as tradeable resource:**
+
+```yaml
+resources:
+  gpu:
+    initial_allocation:
+      agent_a: 0.5   # GPU-seconds per wall-clock second
+      agent_b: 0.5
+```
+
+Same strict allocation model as CPU and LLM rate.
+
+**Certainty:** 80% - GPU tracking adds complexity, may need refinement.
 
 ---
 
@@ -5102,9 +5227,13 @@ def check_permission(...):
 *Source: `docs/architecture/GAPS.md`*
 
 
+> **Note:** This file is superseded by [`docs/plans/README.md`](../plans/README.md).
+> Each gap now has its own plan file in `docs/plans/`. This file is kept for historical reference
+> and will be moved to `docs/archive/` once all references are updated.
+
 Prioritized gaps between current implementation and target architecture.
 
-**Last verified:** 2026-01-11
+**Last verified:** 2026-01-11 (Superseded: 2026-01-12)
 
 ---
 
@@ -5130,10 +5259,10 @@ Prioritized gaps between current implementation and target architecture.
 
 | # | Gap | Priority | Status | Plan | Blocks |
 |---|-----|----------|--------|------|--------|
-| 1 | Token Bucket | **High** | 📋 Planned | [token_bucket.md](../plans/token_bucket.md) | #2, #4 |
+| 1 | Rate Allocation | **High** | 📋 Planned | [token_bucket.md](../plans/token_bucket.md) | #2 |
 | 2 | Continuous Execution | **High** | ⏸️ Blocked | [continuous_execution.md](../plans/continuous_execution.md) | - |
 | 3 | Docker Isolation | Medium | 📋 Planned | [docker_isolation.md](../plans/docker_isolation.md) | - |
-| 4 | Compute Debt Model | Medium | ❌ No Plan | - | - |
+| 4 | ~~Compute Debt Model~~ | - | ✅ Superseded | - | - |
 | 5 | Oracle Anytime Bidding | Medium | ❌ No Plan | - | - |
 | 6 | Unified Artifact Ontology | Medium | ❌ No Plan | - | - |
 | 7 | Single ID Namespace | Low | ❌ No Plan | - | #6 |
@@ -5166,21 +5295,27 @@ Prioritized gaps between current implementation and target architecture.
 
 ## High Priority Gaps
 
-### 1. Token Bucket for Flow Resources
+### 1. Rate Allocation for Renewable Resources
 
 **Current:** Discrete per-tick refresh. Flow resources reset to quota each tick.
 
-**Target:** Rolling window accumulation. Continuous accumulation up to capacity, debt allowed.
+**Target:** Rolling window rate tracking. Strict allocation, no burst, no debt.
 
-**Why High Priority:** Foundation for continuous execution. Without token bucket, can't remove tick-based refresh.
+**Why High Priority:** Foundation for continuous execution. Without rate tracking, can't remove tick-based refresh.
 
-**Plan:** [docs/plans/token_bucket.md](../plans/token_bucket.md)
+**Plan:** [docs/plans/token_bucket.md](../plans/token_bucket.md) (needs update to reflect new model)
+
+**Key Design Decisions:**
+- **Strict allocation**: Unused capacity wasted, not borrowable (strong trade incentive)
+- **No burst**: Use it or lose it (LLM providers enforce rolling windows anyway)
+- **No debt**: Exceed rate → blocked until window rolls (not negative balance)
 
 **Key Changes:**
-- New `TokenBucket` class in `src/world/token_bucket.py`
-- Replace `per_tick` config with `rate` + `capacity`
+- New `RateTracker` class in `src/world/rate_tracker.py`
+- Replace `per_tick` config with `rate` (units per minute)
 - Remove flow reset from `advance_tick()`
-- Allow negative balances (debt)
+- Shared resources (LLM rate) partitioned, sum = provider limit
+- Rate allocation tradeable via ledger
 
 ---
 
@@ -5221,15 +5356,15 @@ Prioritized gaps between current implementation and target architecture.
 
 ---
 
-### 4. Compute Debt Model
+### 4. ~~Compute Debt Model~~ (SUPERSEDED)
 
-**Current:** No debt allowed. Actions fail if insufficient resources.
+**Decision:** No debt for renewable resources.
 
-**Target:** Debt allowed for compute. Negative balance = can't act until accumulated out.
+If agent exceeds rate allocation, they're blocked until rolling window allows more usage. No negative balance concept.
 
-**Depends On:** #1 Token Bucket
+**Rationale:** Simpler model. "Blocked until window rolls" achieves same throttling effect without debt accounting.
 
-**No Plan Yet.** Partially covered by token bucket plan (debt is built into TokenBucket class).
+**See:** Gap #1 (Rate Allocation) and DESIGN_CLARIFICATIONS.md (Strict Rate Allocation).
 
 ---
 
@@ -5955,20 +6090,29 @@ invoke("genesis_capability_requests", "request", {
 
 ### 31. Resource Measurement Implementation
 
-**Current:** Only LLM tokens and disk are tracked. Memory, bandwidth, execution time not measured.
+**Current:** Only LLM tokens and disk are tracked. Memory not measured per-agent.
 
-**Target:** Comprehensive resource measurement for all constrained resources.
+**Target:** Each resource tracked in its natural unit. Docker enforces real limits.
 
-**Measurement Strategy:**
+**Resource Categories:**
 
-| Resource | Method | Implementation |
-|----------|--------|----------------|
-| LLM API $ | Exact | Tokens × price from API response |
-| Disk | Exact | Track bytes on write/delete |
-| Memory | Per-action | `tracemalloc` peak measurement |
-| Bandwidth | Size-based | HTTP response size tracking |
-| MCP ops | Fixed cost | Config lookup per operation type |
-| Execution time | Time-based | Wall-clock × rate |
+| Category | Behavior | Examples |
+|----------|----------|----------|
+| Depletable | Once spent, gone forever | LLM API budget ($) |
+| Allocatable | Quota, reclaimable | Disk (bytes), Memory (bytes) |
+| Renewable | Rate-limited via token bucket | CPU (CPU-seconds), LLM rate (TPM) |
+
+**Resources and Natural Units:**
+
+| Resource | Category | Unit | Constraint |
+|----------|----------|------|------------|
+| LLM API $ | Depletable | USD | Budget exhaustion stops LLM calls |
+| LLM rate limit | Renewable | tokens/min | Provider's TPM limit |
+| CPU | Renewable | CPU-seconds | Docker --cpus limit |
+| Memory | Allocatable | bytes | Docker --memory limit |
+| Disk | Allocatable | bytes | Docker --storage-opt |
+
+**Key Insight:** Docker limits container-level; we track per-agent. Quotas are tradeable.
 
 **Per-Agent Memory Tracking:**
 
@@ -5983,23 +6127,52 @@ def execute_action(agent_id: str, action: Action) -> Result:
         current, peak = tracemalloc.get_traced_memory()
         tracemalloc.stop()
 
-    ledger.deduct(agent_id, "memory", peak)
+    # Track in bytes, not abstract "compute"
+    ledger.track(agent_id, "memory_bytes", peak)
     return result
 ```
+
+**Per-Agent CPU Tracking:**
+
+```python
+import resource
+import multiprocessing
+
+def execute_in_worker(agent_id: str, action: Action) -> tuple[Result, float]:
+    before = resource.getrusage(resource.RUSAGE_SELF)
+    result = execute(action)
+    after = resource.getrusage(resource.RUSAGE_SELF)
+    cpu_seconds = (after.ru_utime - before.ru_utime) + (after.ru_stime - before.ru_stime)
+    return result, cpu_seconds
+
+# Fixed pool size (8-16 workers), not per-agent
+pool = multiprocessing.Pool(processes=8)
+result, cpu_seconds = pool.apply(execute_in_worker, (agent_id, action))
+```
+
+**Why worker pool + getrusage:**
+- Captures ALL threads (PyTorch, NumPy internal threads)
+- Not gameable - kernel tracks every CPU cycle
+- Scalable - pool size independent of agent count
+
+**Local LLM Support:**
+- CPU-only (llama.cpp): Captured by worker pool automatically
+- GPU-based (vLLM): Model server pattern + GPU tracking via nvidia-smi
 
 **Why High Priority:**
 - Can't enforce scarcity without measurement
 - Agents can't make economic decisions without knowing costs
 - Foundation for all resource-based behavior
 
-**Depends On:** #1 Token Bucket (for flow resource tracking)
+**Depends On:** #1 Rate Allocation (for renewable resource tracking)
 
 **No Plan Yet.** Changes needed:
-- Add `tracemalloc` to executor for memory tracking
-- Add bandwidth tracking to HTTP/MCP calls
-- Add execution time tracking
-- Config structure for cost multipliers
-- Ledger support for new resource types
+- Implement worker pool with `multiprocessing.Pool`
+- Wrap action execution with `resource.getrusage()` measurement
+- Add `tracemalloc` for per-agent memory tracking
+- Ledger support for CPU-seconds and memory bytes
+- Docker compose config for resource limits
+- (Future) GPU tracking via nvidia-smi/pynvml for local GPU LLMs
 
 ---
 
