@@ -130,6 +130,43 @@ All genesis artifacts:
 
 ---
 
+### genesis_store
+
+**Purpose:** Artifact discovery and registry (Gap #16)
+
+**File:** `src/world/genesis.py` (`GenesisStore` class)
+
+| Method | Cost (compute) | Description |
+|--------|----------------|-------------|
+| `list(filter?)` | 0 | List artifacts with optional filter |
+| `get(artifact_id)` | 0 | Get single artifact details |
+| `search(query, field?, limit?)` | 0 | Search artifacts by content match |
+| `list_by_type(type)` | 0 | List artifacts of specific type |
+| `list_by_owner(owner_id)` | 0 | List artifacts by owner |
+| `list_agents()` | 0 | List all agent artifacts |
+| `list_principals()` | 0 | List all principals (has_standing=True) |
+| `count(filter?)` | 0 | Count artifacts matching filter |
+
+**Filter object (for `list` and `count`):**
+```python
+{
+    "type": "agent" | "memory" | "data" | "executable" | "genesis",
+    "owner": "owner_id",
+    "has_standing": True | False,
+    "can_execute": True | False,
+    "limit": 100,
+    "offset": 0
+}
+```
+
+**Design decisions:**
+- All methods cost 0 (system-subsidized) to encourage market formation and discovery
+- Simple string search (no vector/semantic search - agents can build that capability)
+- Returns dicts, not Artifact objects (consistent with other genesis methods)
+- Pagination via limit/offset for large artifact counts
+
+---
+
 ### Handbook Artifacts
 
 **Purpose:** Seeded documentation for agents
@@ -167,6 +204,8 @@ genesis:
     event_log:
       enabled: true
     escrow:
+      enabled: true
+    store:
       enabled: true
   # Note: handbook_* artifacts are seeded separately from _handbook/*.md files
 
