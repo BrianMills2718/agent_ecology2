@@ -69,6 +69,11 @@ What to change for different projects.
 What this pattern doesn't solve.
 ```
 
+## Archive
+
+Deprecated patterns are in `archive/`:
+- `handoff-protocol.md` - Superseded by automatic context compaction
+
 ## Origin
 
 These patterns emerged from the [agent_ecology](https://github.com/BrianMills2718/agent_ecology2) project while coordinating multiple Claude Code instances on a shared codebase.
