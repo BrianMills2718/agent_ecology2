@@ -1,0 +1,102 @@
+name: PR Coordination
+
+on:
+  pull_request:
+    types: [opened, closed, reopened]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  update-coordination:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Extract plan number from PR
+        id: plan
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          if [[ "$TITLE" =~ \[Plan\ \#([0-9]+)\] ]]; then
+            echo "number=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+            echo "Found plan #${BASH_REMATCH[1]}"
+          else
+            echo "number=" >> $GITHUB_OUTPUT
+            echo "No plan reference in title"
+          fi
+
+      - name: Update coordination on PR open
+        if: github.event.action == 'opened' || github.event.action == 'reopened'
+        run: |
+          python scripts/check_claims.py --claim \
+            --id "pr-${{ github.event.pull_request.number }}" \
+            --task "${{ github.event.pull_request.title }}" \
+            ${{ steps.plan.outputs.number && format('--plan {0}', steps.plan.outputs.number) || '' }} \
+            --force || true
+
+          python scripts/check_claims.py --sync
+
+      - name: Update coordination on PR merge
+        if: github.event.action == 'closed' && github.event.pull_request.merged == true
+        run: |
+          # Release the claim
+          python scripts/check_claims.py --release \
+            --id "pr-${{ github.event.pull_request.number }}" \
+            --force || true
+
+          # If linked to a plan, mark it complete
+          PLAN_NUM="${{ steps.plan.outputs.number }}"
+          if [ -n "$PLAN_NUM" ]; then
+            PLAN_FILE="docs/plans/${PLAN_NUM}_*.md"
+            if ls $PLAN_FILE 1> /dev/null 2>&1; then
+              # Update plan status to Complete
+              sed -i 's/\*\*Status:\*\* 🚧 In Progress/**Status:** ✅ Complete/' $PLAN_FILE
+              sed -i 's/\*\*Status:\*\* 📋 Planned/**Status:** ✅ Complete/' $PLAN_FILE
+
+              # Update index
+              sed -i "s/| ${PLAN_NUM} |.*| 🚧 In Progress |/| ${PLAN_NUM} | [^|]* | [^|]* | ✅ Complete |/" docs/plans/CLAUDE.md
+              sed -i "s/| ${PLAN_NUM} |.*| 📋 Planned |/| ${PLAN_NUM} | [^|]* | [^|]* | ✅ Complete |/" docs/plans/CLAUDE.md
+            fi
+          fi
+
+          python scripts/check_claims.py --sync
+          python scripts/check_claims.py --cleanup
+
+      - name: Update coordination on PR close (not merged)
+        if: github.event.action == 'closed' && github.event.pull_request.merged == false
+        run: |
+          # Just release the claim, don't mark complete
+          python scripts/check_claims.py --release \
+            --id "pr-${{ github.event.pull_request.number }}" \
+            --force || true
+
+          python scripts/check_claims.py --sync
+
+      - name: Commit coordination updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add .claude/active-work.yaml CLAUDE.md docs/plans/ || true
+
+          if git diff --staged --quiet; then
+            echo "No coordination changes to commit"
+          else
+            git commit -m "[Automated] Update coordination for PR #${{ github.event.pull_request.number }}
+
+            Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+            git push origin main
+          fi

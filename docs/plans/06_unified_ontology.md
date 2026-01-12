@@ -1,6 +1,6 @@
 # Gap 6: Unified Artifact Ontology
 
-**Status:** ❌ Needs Plan
+**Status:** 🚧 In Progress
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** #7, #8, #14, #16

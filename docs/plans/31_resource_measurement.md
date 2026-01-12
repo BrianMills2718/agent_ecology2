@@ -1,6 +1,6 @@
 # Gap 31: Resource Measurement
 
-**Status:** ⏸️ Blocked
+**Status:** 🚧 In Progress
 **Priority:** High
 **Blocked By:** #1
 **Blocks:** None
