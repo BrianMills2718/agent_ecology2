@@ -51,3 +51,18 @@ Schema has sensible defaults for everything. You only need to specify overrides:
 world:
   max_ticks: 50
 ```
+
+## Doc Coupling
+
+Changes to `src/config.py` or `src/config_schema.py` require updating:
+- `docs/architecture/current/configuration.md`
+
+## Environment Variables
+
+API keys should be in `.env` (gitignored):
+
+```bash
+GEMINI_API_KEY=your_key_here
+# or
+OPENAI_API_KEY=your_key_here
+```

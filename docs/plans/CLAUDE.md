@@ -6,6 +6,22 @@ Master index of all gaps and their implementation plans.
 
 ---
 
+## Relationship to Gap Analysis
+
+This directory tracks **31 high-level gaps** for active implementation.
+
+For the **comprehensive 142-gap analysis**, see `docs/architecture/gaps/`.
+
+| This Directory | Gap Analysis Directory |
+|----------------|------------------------|
+| Active tracking (status, CC-IDs) | Reference analysis |
+| 31 high-level gaps | 142 detailed gaps |
+| Implementation steps | Gap definitions |
+
+The 142 gaps are a finer breakdown of these 31. Both track the same work at different granularities.
+
+---
+
 ## How to Use
 
 1. **Find a gap** - Browse the summary table below

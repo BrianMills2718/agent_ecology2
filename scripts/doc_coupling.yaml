@@ -82,6 +82,17 @@ couplings:
     description: "CI pipeline"
 
   # ===========================================================================
+  # PLAN STATUS COUPLINGS (Strict - ensures plan index stays in sync)
+  # ===========================================================================
+
+  # Plan files must sync with index
+  - sources:
+      - "docs/plans/[0-9]*.md"
+    docs:
+      - "docs/plans/CLAUDE.md"
+    description: "Plan status change - update index in CLAUDE.md"
+
+  # ===========================================================================
   # SOFT COUPLINGS (CI warns but doesn't fail)
   # ===========================================================================
 
@@ -118,10 +129,4 @@ couplings:
     description: "Terminology - new terms or renamed concepts?"
     soft: true
 
-  # Plan changes should sync with README index
-  - sources:
-      - "docs/plans/*.md"
-    docs:
-      - "docs/plans/CLAUDE.md"
-    description: "Plan index sync - update README if plan status changes"
-    soft: true
+  # NOTE: Plan-to-index coupling is now strict (above), not soft

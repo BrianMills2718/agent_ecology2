@@ -53,6 +53,8 @@ python run.py --ticks 10 --agents 1           # Run simulation
 pytest tests/                                 # Run tests (must pass)
 python -m mypy src/ --ignore-missing-imports  # Type check (must pass)
 python scripts/check_doc_coupling.py          # Doc-code coupling (must pass)
+python scripts/plan_progress.py --summary     # Plan implementation status
+python scripts/check_claims.py                # Check for stale claims
 ```
 
 ---
@@ -116,14 +118,23 @@ See `docs/GLOSSARY.md` for full definitions. Quick reference:
 
 Multiple Claude Code instances can work simultaneously on this codebase.
 
+### Branch Naming Convention
+
+Always link branches to plans: `plan-NN-short-description`
+
+```bash
+git checkout -b plan-01-token-bucket
+git checkout -b plan-03-docker
+```
+
 ### Recommended Patterns
 
 **Git worktrees (preferred for parallel work):**
 ```bash
-git worktree add ../ecology-feature-a feature-a
-cd ../ecology-feature-a && claude
+git worktree add ../ecology-plan-01 plan-01-token-bucket
+cd ../ecology-plan-01 && claude
 # Separate worktree = separate Claude = no conflicts
-git worktree remove ../ecology-feature-a  # cleanup
+git worktree remove ../ecology-plan-01  # cleanup
 ```
 
 **One writes, another reviews:**
@@ -141,26 +152,70 @@ claude -p "migrate foo.py..." --allowedTools Edit Bash
 
 When multiple instances work on related tasks:
 
-1. **Claim** - Note your task in this section before starting
-2. **Plan** - Document approach in `temp_plan/` if complex
-3. **Implement** - Do work, update docs
-4. **Verify** - `pytest tests/` and `mypy` must pass
-5. **Review** - Another instance verifies before merging
+1. **Claim** - Update Active Work table below (with timestamp)
+2. **Branch** - Create branch: `plan-NN-description`
+3. **Update plan status** - Mark "In Progress" in plan file AND index
+4. **Implement** - Do work, write tests first (TDD)
+5. **Verify** - Run all checks (see Review Checklist)
+6. **Complete** - Update plan to "Complete", release claim, merge
 
 **Active Work:**
-<!-- Update this when claiming/completing tasks -->
-| CC-ID | Task | Status |
-|-------|------|--------|
-| - | - | - |
+<!-- Update with timestamp when claiming. Clear stale claims (>24h). -->
+| CC-ID | Plan | Task | Claimed | Status |
+|-------|------|------|---------|--------|
+| - | - | - | - | - |
+
+### Before /clear - Handoff Protocol
+
+**CRITICAL:** Before ending a session (running `/clear`, closing terminal, or switching tasks), write a handoff file:
+
+```bash
+# Copy template and fill in
+cp .claude/handoff_template.md .claude/handoff.md
+# Edit .claude/handoff.md with session details
+```
+
+The template (`.claude/handoff_template.md`) includes:
+- Session summary and changes made
+- Current state (file + line number)
+- Context and blockers
+- Next steps for continuation
+- Commands to resume
+
+This enables smooth continuation in the next session.
 
 ### Review Checklist
 
 - [ ] `pytest tests/` passes
 - [ ] `python -m mypy src/ --ignore-missing-imports` passes
-- [ ] `python scripts/check_doc_coupling.py` passes (or warnings addressed)
+- [ ] `python scripts/check_doc_coupling.py` passes (strict) or warnings addressed (soft)
+- [ ] `python scripts/check_plan_tests.py --plan N` passes (if plan has tests)
 - [ ] Code matches task description
 - [ ] No new silent fallbacks
-- [ ] Relevant docs updated
+- [ ] Plan status updated (file AND index)
+- [ ] Claim released from Active Work table
+
+### Commit Message Convention
+
+Link commits to plans when applicable:
+
+```
+[Plan #N] Short description
+
+- Detail 1
+- Detail 2
+
+Part of: docs/plans/NN_name.md
+```
+
+For non-plan work, use conventional format:
+
+```
+Add/Fix/Update: Short description
+
+- Detail 1
+- Detail 2
+```
 
 ---
 
@@ -183,7 +238,7 @@ Source-to-doc mappings in `scripts/doc_coupling.yaml`. **Two types:**
 | Type | Behavior | Example |
 |------|----------|---------|
 | **Strict** | CI fails if source changes without doc update | `src/world/ledger.py` → `current/resources.md` |
-| **Soft** | CI warns but doesn't fail | `current/*.md` → `plans/README.md` |
+| **Soft** | CI warns but doesn't fail | `current/*.md` → `plans/CLAUDE.md` |
 
 **Useful commands:**
 ```bash

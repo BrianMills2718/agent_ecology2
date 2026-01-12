@@ -176,17 +176,21 @@ These tests must still pass after changes:
 
 ## Verification
 
-```bash
-# Check all required tests for this plan
-python scripts/check_plan_tests.py --plan 1
+### Tests & Quality
+- [ ] All required tests pass: `python scripts/check_plan_tests.py --plan 1`
+- [ ] Full test suite passes: `pytest tests/`
+- [ ] Type check passes: `python -m mypy src/ --ignore-missing-imports`
 
-# TDD mode - see what tests to write first
-python scripts/check_plan_tests.py --plan 1 --tdd
-```
-
-- [ ] All required tests pass
+### Documentation
 - [ ] `docs/architecture/current/resources.md` updated
+- [ ] Doc-coupling check passes: `python scripts/check_doc_coupling.py`
 - [ ] Config schema migration documented
+
+### Completion Ceremony
+- [ ] Plan file status → `✅ Complete`
+- [ ] `plans/CLAUDE.md` index → `✅ Complete`
+- [ ] Claim released from Active Work table (root CLAUDE.md)
+- [ ] Branch merged or PR created
 
 ### Manual Test
 ```bash

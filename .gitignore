@@ -64,3 +64,6 @@ specs_critique.txt
 # OS files
 .DS_Store
 Thumbs.db
+
+# Claude Code session files (handoffs, temp context)
+.claude/
