@@ -54,6 +54,7 @@ Prioritized gaps between current implementation and target architecture.
 | 24 | Ecosystem Health KPIs | Medium | ❌ No Plan | - | - |
 | 25 | System Auditor Agent | Low | ❌ No Plan | - | #24 |
 | 26 | Vulture Observability | Medium | ❌ No Plan | - | - |
+| 27 | Successful Invocation Registry | Medium | ❌ No Plan | - | - |
 
 ---
 
@@ -341,8 +342,26 @@ class Artifact:
 | `list_all()` | 0 | List all artifact IDs |
 | `list_by_owner(owner_id)` | 0 | List artifacts owned by principal |
 | `get_metadata(artifact_id)` | 0 | Get artifact metadata (not content) |
+| `get_artifact_info(artifact_id)` | 0 | **Atomic Discovery:** metadata + interface bundled |
 | `search(query)` | 1 | Search artifacts by description/interface |
 | `create(config)` | 5 | Create new artifact (for spawning agents) |
+
+**Atomic Discovery (from external review 2026-01-12):**
+
+Bundle metadata and interface in one call to reduce discovery cost from 3 calls to 2:
+
+```python
+# Returns everything needed to decide whether/how to invoke
+info = invoke("genesis_store", "get_artifact_info", {id: X})
+# {
+#     "id": X,
+#     "owner": "agent_bob",
+#     "interface": {"tools": [...]},
+#     "access_contract_id": "genesis_freeware",
+#     "created_at": 1500,
+#     "invoke_count": 42  # For reputation signal
+# }
+```
 
 **Depends On:** #6 Unified Artifact Ontology
 
@@ -351,6 +370,7 @@ class Artifact:
 - Add discovery methods
 - Define metadata schema (what's queryable without reading content)
 - Consider privacy (some artifacts may not want to be discoverable)
+- Add `get_artifact_info()` for atomic discovery
 
 ---
 
@@ -684,6 +704,54 @@ class EcosystemMetrics:
 - Add `last_action_tick` to agent state
 - Emit AGENT_FROZEN with asset summary
 - Emit AGENT_UNFROZEN with rescuer info
+
+---
+
+### 27. Successful Invocation Registry
+
+**Current:** Event log tracks actions but not invoke success/failure by artifact.
+
+**Target:** Track successful invocations per artifact for emergent reputation.
+
+**Why This Matters (from external review 2026-01-12):**
+
+MCP interfaces are declarative, not verifiable. An artifact can claim to do "risk calculation" but actually do something else. Tracking what artifacts *actually succeed* at creates reputation from usage.
+
+**Event log should emit:**
+
+```python
+{
+    "type": "INVOKE_SUCCESS",
+    "artifact_id": "risk_calculator",
+    "method": "calculate_risk",
+    "invoker_id": "agent_alice",
+    "tick": 1500
+}
+
+{
+    "type": "INVOKE_FAILURE",
+    "artifact_id": "risk_calculator",
+    "method": "calculate_risk",
+    "invoker_id": "agent_alice",
+    "error_code": "EXECUTION_ERROR",
+    "tick": 1501
+}
+```
+
+**Agents can query:**
+- "Which artifacts successfully handled 'calculate_risk' in last 100 ticks?"
+- "What's the success rate for artifact X?"
+- "Who has successfully invoked artifact X?" (social proof)
+
+**Why it's better than interface alone:**
+- Harder to game than JSON Schema
+- Reputation emerges from actual usage
+- Agents can discover working tools by observing ecosystem
+
+**No Plan Yet.** Changes needed:
+- Emit INVOKE_SUCCESS/INVOKE_FAILURE events from executor
+- Include method name and invoker in events
+- Consider aggregation (invoke_count on artifact metadata)
 
 ---
 
