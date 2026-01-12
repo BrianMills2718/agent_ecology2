@@ -82,15 +82,15 @@ couplings:
     description: "CI pipeline"
 
   # ===========================================================================
-  # PLAN STATUS COUPLINGS (Strict - ensures plan index stays in sync)
+  # GAP STATUS COUPLINGS (Strict - ensures gap index stays in sync)
   # ===========================================================================
 
-  # Plan files must sync with index
+  # Gap plans must sync with index
   - sources:
-      - "docs/plans/[0-9]*.md"
+      - "docs/architecture/gaps/plans/*.md"
     docs:
-      - "docs/plans/CLAUDE.md"
-    description: "Plan status change - update index in CLAUDE.md"
+      - "docs/architecture/gaps/CLAUDE.md"
+    description: "Gap plan status change - update index in CLAUDE.md"
 
   # ===========================================================================
   # SOFT COUPLINGS (CI warns but doesn't fail)
@@ -100,24 +100,24 @@ couplings:
   - sources:
       - "docs/architecture/current/*.md"
     docs:
-      - "docs/plans/CLAUDE.md"
-    description: "Gap closure tracking - update plan status if gap closed"
+      - "docs/architecture/gaps/CLAUDE.md"
+    description: "Gap closure tracking - update gap status if gap closed"
     soft: true
 
-  # When implementing token bucket, update its plan
+  # When implementing rate tracker, update epic 1
   - sources:
       - "src/world/rate_tracker.py"
     docs:
-      - "docs/plans/01_rate_allocation.md"
-    description: "Token bucket implementation - update plan status"
+      - "docs/architecture/gaps/CLAUDE.md"
+    description: "Rate tracker implementation - update Epic 1 status"
     soft: true
 
-  # When implementing continuous execution, update its plan
+  # When implementing agent loops, update epic 2
   - sources:
-      - "src/simulation/continuous_runner.py"
+      - "src/simulation/agent_loop.py"
     docs:
-      - "docs/plans/02_continuous_execution.md"
-    description: "Continuous execution - update plan status"
+      - "docs/architecture/gaps/CLAUDE.md"
+    description: "Agent loop implementation - update Epic 2 status"
     soft: true
 
   # Terminology changes affect multiple docs
@@ -128,5 +128,3 @@ couplings:
       - "docs/GLOSSARY.md"
     description: "Terminology - new terms or renamed concepts?"
     soft: true
-
-  # NOTE: Plan-to-index coupling is now strict (above), not soft

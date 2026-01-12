@@ -8,8 +8,11 @@ Structured documentation of system architecture.
 architecture/
 ├── current/    # What IS implemented (source of truth)
 ├── target/     # What we WANT (aspirational)
-├── gaps/       # Comprehensive gap analysis (142 gaps)
-└── GAPS.md     # DEPRECATED - see docs/plans/CLAUDE.md
+└── gaps/       # Gap tracking system (single source of truth)
+    ├── CLAUDE.md           # Master index with epics and status
+    ├── GAPS_SUMMARY.yaml   # Overview and metrics
+    ├── ws*.yaml            # Detailed gap definitions by workstream
+    └── plans/              # Implementation plans
 ```
 
 ## Current vs Target
@@ -18,35 +21,37 @@ architecture/
 |-----------|---------|-------------|
 | `current/` | Describes actual implementation | High - should match code |
 | `target/` | Describes desired future state | Reference only - verify before using |
-| `gaps/` | Comprehensive gap analysis | Reference - 142 detailed gaps |
+| `gaps/` | Gap tracking and implementation | **Single source of truth for gaps** |
 
 ## Gap Tracking
 
-Two levels of gap documentation:
+**Single source:** `gaps/CLAUDE.md`
 
-| Location | Gaps | Purpose |
-|----------|------|---------|
-| `docs/plans/` | 31 high-level | Active tracking (status, CC-IDs) |
-| `gaps/` | 142 detailed | Comprehensive analysis (reference) |
-
-The 142 gaps are a finer breakdown of the 31 in `docs/plans/`.
+| Content | Location |
+|---------|----------|
+| Epic status (31 high-level features) | `gaps/CLAUDE.md` |
+| Sub-gap status (142 detailed gaps) | `gaps/CLAUDE.md` |
+| Gap definitions | `gaps/ws*.yaml` |
+| Implementation plans | `gaps/plans/*.md` |
+| CC coordination | `gaps/CLAUDE.md` |
 
 ## Working on Architecture
 
 1. **Implementing a feature?**
    - Read `current/` for how things work now
    - Read `target/` for the vision
-   - Check `gaps/` for detailed gap definition
-   - Follow plan in `docs/plans/`
+   - Check `gaps/CLAUDE.md` for epic and sub-gap status
+   - Check `gaps/ws*.yaml` for detailed gap definition
+   - Check `gaps/plans/` for implementation plan
 
 2. **Finished implementing?**
    - Update `current/` to reflect new reality
-   - Update plan status in `docs/plans/`
+   - Update gap status in `gaps/CLAUDE.md`
 
 3. **Making architecture decisions?**
    - Update `target/` with new vision
    - Document rationale in `docs/DESIGN_CLARIFICATIONS.md`
 
-## GAPS.md Status
+## Archived
 
-`GAPS.md` is superseded by `docs/plans/CLAUDE.md`. It remains for historical reference and will be archived.
+`docs/plans_archived/` contains the old 31-gap tracking system. It has been merged into `gaps/`. Do not update those files.

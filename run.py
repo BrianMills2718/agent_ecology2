@@ -51,6 +51,7 @@ def run_simulation(
     verbose: bool = True,
     delay: float | None = None,
     checkpoint: CheckpointData | None = None,
+    duration: float | None = None,
 ) -> World:
     """Run the simulation.
 
@@ -60,6 +61,7 @@ def run_simulation(
         verbose: Print progress (default True)
         delay: Seconds between ticks (defaults to config value)
         checkpoint: Checkpoint data to resume from (optional)
+        duration: Max seconds to run in autonomous mode (optional)
 
     Returns:
         The World instance after simulation completes.
@@ -71,7 +73,7 @@ def run_simulation(
         delay=delay,
         checkpoint=checkpoint,
     )
-    return runner.run_sync()
+    return runner.run_sync(duration=duration)
 
 
 async def run_simulation_async(

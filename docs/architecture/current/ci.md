@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-12 (added --staged mode for pre-commit)
+Last verified: 2026-01-12 (added plan-status-sync, PR template)
 
 ---
 
@@ -67,7 +67,21 @@ Checks that documentation is updated when coupled source files change.
 - Source file changes without corresponding doc updates
 - Documentation drift from implementation
 
-### 4. plan-tests (Informational)
+### 4. plan-status-sync
+
+Checks that plan statuses are consistent between plan files and the index.
+
+```yaml
+- uses: actions/checkout@v4
+- uses: actions/setup-python@v5 (Python 3.11)
+- python scripts/sync_plan_status.py --check
+```
+
+**What it catches:**
+- Plan file says "Complete" but index says "In Progress"
+- Drift between plan files and gaps/CLAUDE.md index
+
+### 5. plan-tests (Informational)
 
 Checks test requirements for implementation plans. Runs with `continue-on-error: true` - does not block PRs.
 
@@ -100,7 +114,7 @@ couplings:
 
   # Soft: CI warns but doesn't fail
   - sources: ["docs/architecture/current/*.md"]
-    docs: ["docs/plans/CLAUDE.md"]
+    docs: ["docs/architecture/gaps/CLAUDE.md"]
     description: "Gap closure tracking"
     soft: true
 ```
@@ -110,8 +124,8 @@ couplings:
 - **Soft** (`soft: true`): CI warns but doesn't fail - for reminder couplings
 
 **Soft couplings include:**
-- `current/` changes → `plans/CLAUDE.md` (did you close a gap?)
-- Plan file changes → `plans/CLAUDE.md` index (sync status)
+- `current/` changes → `gaps/CLAUDE.md` (did you close a gap?)
+- Gap changes → `gaps/CLAUDE.md` index (sync status)
 - Terminology files → GLOSSARY.md (new terms?)
 
 **Script options:**
@@ -157,7 +171,11 @@ python scripts/check_plan_tests.py --plan 1
 
 ## Required for Merge
 
-All three jobs must pass for PRs to be mergeable (when branch protection is enabled).
+These jobs must pass for PRs to be mergeable (when branch protection is enabled):
+- `test` - pytest suite
+- `mypy` - type checking
+- `doc-coupling` - documentation consistency
+- `plan-status-sync` - plan index consistency
 
 ---
 

@@ -167,25 +167,6 @@ When multiple instances work on related tasks:
 |-------|------|------|---------|--------|
 | - | - | - | - | - |
 
-### Before /clear - Handoff Protocol
-
-**CRITICAL:** Before ending a session (running `/clear`, closing terminal, or switching tasks), write a handoff file:
-
-```bash
-# Copy template and fill in
-cp .claude/handoff_template.md .claude/handoff.md
-# Edit .claude/handoff.md with session details
-```
-
-The template (`.claude/handoff_template.md`) includes:
-- Session summary and changes made
-- Current state (file + line number)
-- Context and blockers
-- Next steps for continuation
-- Commands to resume
-
-This enables smooth continuation in the next session.
-
 ### Review Checklist
 
 - [ ] `pytest tests/` passes
@@ -238,7 +219,7 @@ Link commits to plans when applicable:
 - Detail 1
 - Detail 2
 
-Part of: docs/plans/NN_name.md
+Part of: docs/architecture/gaps/CLAUDE.md (Epic #N)
 ```
 
 For non-plan work, use conventional format:
@@ -258,19 +239,20 @@ Add/Fix/Update: Short description
 |-----|---------|----------------|
 | `docs/architecture/current/` | What IS implemented | After code changes |
 | `docs/architecture/target/` | What we WANT | Architecture decisions |
-| `docs/plans/` | Active gap tracking (31 gaps) | Gap status changes |
-| `docs/architecture/gaps/` | Comprehensive analysis (142 gaps) | Gap identification |
+| `docs/architecture/gaps/` | **Gap tracking (142 gaps, 31 epics)** | Gap status changes |
 | `docs/DESIGN_CLARIFICATIONS.md` | WHY decisions made | Architecture discussions |
 | `docs/GLOSSARY.md` | Canonical terms | New concepts added |
 
-### Gap Tracking: Two Levels
+### Gap Tracking
 
-| Directory | Granularity | Use For |
-|-----------|-------------|---------|
-| `docs/plans/` | 31 high-level gaps | Implementation tracking, status, CC-IDs |
-| `docs/architecture/gaps/` | 142 detailed gaps | Reference, dependency analysis, scope |
+**Single source of truth:** `docs/architecture/gaps/CLAUDE.md`
 
-**Protocol:** Code change → update `current/` → update plan in `docs/plans/` if gap closed → update "Last verified" date.
+- 142 detailed gaps organized by workstream
+- 31 epics (high-level features) grouping related gaps
+- Implementation plans in `gaps/plans/`
+- CC coordination and status tracking
+
+**Protocol:** Code change → update `current/` → update gap status in `gaps/CLAUDE.md` → update "Last verified" date.
 
 ### Doc-Code Coupling (CI Enforced)
 
@@ -289,26 +271,17 @@ python scripts/check_doc_coupling.py --validate-config  # Verify config paths ex
 
 **Escape hatch:** If docs are already accurate, update "Last verified" date to satisfy coupling.
 
-### Plans Workflow (TDD)
+### Implementation Workflow (TDD)
 
-Each gap has a plan file in `docs/plans/NN_name.md`. When implementing:
+When implementing a gap:
 
-1. **Define tests** → Add `## Required Tests` section to plan file
-2. **Write tests** → Create test stubs (TDD - they fail initially)
-3. **Start work** → Update plan status to `🚧 In Progress`
+1. **Read gap definition** → Check workstream YAML in `docs/architecture/gaps/`
+2. **Write tests first** → TDD - tests fail initially
+3. **Claim work** → Update `gaps/CLAUDE.md` status to 🚧, add CC-ID
 4. **Implement** → Code until tests pass
-5. **Verify** → `python scripts/check_plan_tests.py --plan N`
-6. **Complete** → Update status to `✅ Complete`, update `current/` docs
+5. **Complete** → Update status to ✅, update `current/` docs
 
-```bash
-# See what tests a plan needs
-python scripts/check_plan_tests.py --plan 1 --tdd
-
-# Run all required tests for a plan
-python scripts/check_plan_tests.py --plan 1
-```
-
-See `docs/plans/CLAUDE.md` for plan template and full gap list.
+See `docs/architecture/gaps/CLAUDE.md` for full gap list and workflow details.
 
 ---
 
@@ -317,7 +290,7 @@ See `docs/plans/CLAUDE.md` for plan template and full gap list.
 | Doc | Purpose |
 |-----|---------|
 | `README.md` | Full philosophy, theoretical grounding |
-| `docs/plans/CLAUDE.md` | Gap tracking + implementation plans |
+| `docs/architecture/gaps/CLAUDE.md` | **Gap tracking + implementation plans** |
 | `docs/GLOSSARY.md` | Canonical terminology |
 | `docs/DESIGN_CLARIFICATIONS.md` | Decision rationale archive |
 | `config/schema.yaml` | All config options |
