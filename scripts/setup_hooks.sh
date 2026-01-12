@@ -73,7 +73,65 @@ EOF
 
 chmod +x "$HOOKS_DIR/pre-commit"
 
+# Create commit-msg hook (enforces plan references)
+cat > "$HOOKS_DIR/commit-msg" << 'EOF'
+#!/bin/bash
+# Commit-msg hook for agent_ecology
+# Enforces that all commits reference a plan
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+FIRST_LINE=$(head -n1 "$COMMIT_MSG_FILE")
+
+# Allow merge commits
+if [[ "$FIRST_LINE" =~ ^Merge ]]; then
+    exit 0
+fi
+
+# Allow fixup/squash commits
+if [[ "$FIRST_LINE" =~ ^(fixup!|squash!) ]]; then
+    exit 0
+fi
+
+# Allow amend commits (usually fixing previous)
+if [[ "$FIRST_LINE" =~ ^(amend|Amend) ]]; then
+    exit 0
+fi
+
+# Check for plan reference: [Plan #N] or [Unplanned]
+if [[ "$FIRST_LINE" =~ ^\[Plan\ \#[0-9]+\] ]]; then
+    exit 0
+fi
+
+if [[ "$FIRST_LINE" =~ ^\[Unplanned\] ]]; then
+    echo ""
+    echo "WARNING: Unplanned work detected."
+    echo "Before merging, create a plan entry in docs/plans/"
+    echo ""
+    exit 0
+fi
+
+# Reject commits without plan reference
+echo ""
+echo "ERROR: Commit message must reference a plan!"
+echo ""
+echo "Format: [Plan #N] Short description"
+echo "   e.g. [Plan #3] Implement docker isolation"
+echo ""
+echo "For unplanned work: [Unplanned] Short description"
+echo "   (You must create a plan entry before merging)"
+echo ""
+echo "Your message: $FIRST_LINE"
+echo ""
+exit 1
+EOF
+
+chmod +x "$HOOKS_DIR/commit-msg"
+
 echo "Git hooks installed successfully!"
 echo ""
-echo "The pre-commit hook will now run automatically before each commit."
+echo "Hooks installed:"
+echo "  - pre-commit: doc-coupling, mypy, config validation"
+echo "  - commit-msg: plan reference enforcement"
+echo ""
 echo "To bypass (not recommended): git commit --no-verify"

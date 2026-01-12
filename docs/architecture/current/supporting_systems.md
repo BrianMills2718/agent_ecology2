@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-12
+**Last verified:** 2026-01-12 (server.py type cleanup)
 
 ---
 

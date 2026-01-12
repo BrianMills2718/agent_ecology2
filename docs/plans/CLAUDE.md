@@ -145,6 +145,34 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 
 ---
 
+## Active Work
+
+<!-- Update when claiming work. Format: CC-ID or branch name -->
+| CC-ID | Plan | Task | Started | Branch |
+|-------|------|------|---------|--------|
+| - | - | - | - | - |
+
+**Claim protocol:**
+1. Add row with your CC-ID/branch name
+2. Update plan status to 🚧 In Progress
+3. Create feature branch: `plan-NN-description`
+
+---
+
+## Awaiting Review
+
+<!-- PRs that need review from another CC instance -->
+| PR | Plan | Author | Created | Reviewer |
+|----|------|--------|---------|----------|
+| - | - | - | - | - |
+
+**Review protocol:**
+1. Author adds PR here after pushing
+2. Reviewer claims by adding their CC-ID
+3. After merge, move to Completed Gaps and remove from here
+
+---
+
 ## Phase 2 Integration Cleanup
 
 Deferred from Phase 1 review (2026-01-12). Address when integrating new modules into run.py:

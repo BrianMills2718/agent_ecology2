@@ -15,26 +15,40 @@ Utility scripts for development and CI.
 | `doc_coupling.yaml` | Source-to-doc mappings | Config file, not executable |
 | `view_log.py` | Parse and view run.jsonl events | `python scripts/view_log.py` |
 | `concat_for_review.py` | Concatenate files for external review | `python scripts/concat_for_review.py` |
-| `setup_hooks.sh` | Install git pre-commit hook | `bash scripts/setup_hooks.sh` |
+| `setup_hooks.sh` | Install git hooks | `bash scripts/setup_hooks.sh` |
 
 ## Git Hooks
 
-Pre-commit hook catches issues before they reach CI:
+Two hooks catch issues before they reach CI:
 
 ```bash
 # Install (run once after cloning)
 bash scripts/setup_hooks.sh
 
-# What it checks:
-# 1. Doc-coupling on STAGED files (source + doc must be staged together)
-# 2. Mypy on changed src/ files
-# 3. Coupling config validity
-
 # Bypass (not recommended)
 git commit --no-verify
 ```
 
-The hook uses `--staged` mode for doc-coupling, so commits that include both source changes AND their required doc updates will pass.
+### pre-commit hook
+Runs before commit is created:
+1. Doc-coupling on staged files (source + doc must be staged together)
+2. Mypy on changed src/ files
+3. Coupling config validity
+
+### commit-msg hook
+Validates commit message format:
+- **Required:** `[Plan #N] Description` or `[Unplanned] Description`
+- **Allowed:** Merge commits, fixup/squash commits
+- **Warning:** `[Unplanned]` commits warn that a plan entry is needed before merge
+
+```bash
+# Valid commit messages
+git commit -m "[Plan #3] Implement docker isolation"
+git commit -m "[Unplanned] Fix typo in readme"  # Warning shown
+
+# Invalid - will be rejected
+git commit -m "Fixed stuff"
+```
 
 ## Doc Coupling Commands
 
