@@ -14,6 +14,7 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 | [Git Hooks](git-hooks.md) | CI failures caught late | Low |
 | [Plan Workflow](plan-workflow.md) | Untracked work, scope creep | Medium |
 | [Claim System](claim-system.md) | Parallel work conflicts | Medium |
+| [Verification Enforcement](verification-enforcement.md) | Untested "complete" work | Medium |
 
 ### Subsumed Patterns
 

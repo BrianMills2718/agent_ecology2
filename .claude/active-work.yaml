@@ -2,5 +2,13 @@
 # Machine-readable tracking for multi-CC coordination.
 # Use: python scripts/check_claims.py --help
 
-claims: []
+claims:
+- cc_id: plan-11-terminology
+  task: Terminology cleanup - config restructure and code cleanup
+  claimed_at: '2026-01-12T08:03:40Z'
+  plan: 11
+- cc_id: plan-20-migration
+  task: Write migration strategy plan
+  claimed_at: '2026-01-12T08:18:33Z'
+  plan: 20
 completed: []
