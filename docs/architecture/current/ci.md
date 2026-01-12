@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-12 (added --staged mode for pre-commit)
+Last verified: 2026-01-12 (added plan-status-sync, GEMINI_API_KEY secret)
 
 ---
 
@@ -28,6 +28,8 @@ Runs the full pytest suite.
 - pip install -e . && pip install -r requirements.txt
 - pytest tests/ -v --tb=short
 ```
+
+**Environment:** `GEMINI_API_KEY` from GitHub secrets (for memory/embedding tests).
 
 **What it catches:**
 - Runtime errors
@@ -67,7 +69,21 @@ Checks that documentation is updated when coupled source files change.
 - Source file changes without corresponding doc updates
 - Documentation drift from implementation
 
-### 4. plan-tests (Informational)
+### 4. plan-status-sync
+
+Verifies plan statuses are consistent between individual plan files and the index.
+
+```yaml
+- uses: actions/checkout@v4
+- uses: actions/setup-python@v5 (Python 3.11)
+- python scripts/sync_plan_status.py --check
+```
+
+**What it catches:**
+- Plan file status doesn't match index in `docs/plans/CLAUDE.md`
+- Status drift after plan updates
+
+### 5. plan-tests (Informational)
 
 Checks test requirements for implementation plans. Runs with `continue-on-error: true` - does not block PRs.
 
