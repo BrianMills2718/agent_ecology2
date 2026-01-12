@@ -148,31 +148,16 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 
 ---
 
-## Active Work
+## Coordination
 
-<!-- Update when claiming work. Format: CC-ID or branch name -->
-| CC-ID | Plan | Task | Started | Branch |
-|-------|------|------|---------|--------|
-| - | - | - | - | - |
+**All coordination tables (Active Work, Awaiting Review) are in root `CLAUDE.md`.**
 
-**Claim protocol:**
-1. Add row with your CC-ID/branch name
-2. Update plan status to ✅ Complete
-3. Create feature branch: `plan-NN-description`
+This is the single source of truth for:
+- Who is working on what
+- Which PRs need review
+- Claim/release protocol
 
----
-
-## Awaiting Review
-
-<!-- PRs that need review from another CC instance -->
-| PR | Plan | Author | Created | Reviewer |
-|----|------|--------|---------|----------|
-| - | - | - | - | - |
-
-**Review protocol:**
-1. Author adds PR here after pushing
-2. Reviewer claims by adding their CC-ID
-3. After merge, move to Completed Gaps and remove from here
+See root `CLAUDE.md` → "Multi-Claude Coordination" section.
 
 ---
 

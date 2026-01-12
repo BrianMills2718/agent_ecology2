@@ -198,6 +198,17 @@ When multiple instances work on related tasks:
 |-------|------|------|---------|--------|
 | - | - | - | - | - |
 
+**Awaiting Review:**
+<!-- PRs that need review from another CC instance -->
+| PR | Branch | Author | Created | Reviewer |
+|----|--------|--------|---------|----------|
+| - | - | - | - | - |
+
+**Review protocol:**
+1. Author adds PR here after creating it
+2. Reviewer claims by adding their CC-ID
+3. After merge, remove row
+
 ### Before /clear - Handoff Protocol
 
 **CRITICAL:** Before ending a session (running `/clear`, closing terminal, or switching tasks), write a handoff file:
