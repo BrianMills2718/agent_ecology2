@@ -61,6 +61,7 @@ To update governance:
 | [0001](0001-everything-is-artifact.md) | Everything is an artifact | Accepted |
 | [0002](0002-no-compute-debt.md) | No compute debt | Accepted |
 | [0003](0003-contracts-can-do-anything.md) | Contracts can do anything | Accepted |
+| [0005](0005-unified-documentation-graph.md) | Unified documentation graph | Proposed |
 
 ---
 
