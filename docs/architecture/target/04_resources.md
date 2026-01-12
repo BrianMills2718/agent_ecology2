@@ -161,18 +161,15 @@ def execute_action(agent_id: str, action: Action) -> Result:
 - Low overhead
 - Works within single process (no subprocess needed)
 
-**Cost model:**
+**Tracking model:**
 
-```yaml
-costs:
-  memory:
-    per_mb: 1  # compute units per MB used
-```
+Memory tracked in bytes (natural unit). No conversion to "compute units".
 
-**Example:**
 ```
-Agent action uses 50MB peak memory
-Cost = 50 × 1 = 50 compute units deducted
+Agent action uses 52,428,800 bytes (50MB) peak memory
+→ ledger.track(agent_id, "memory_bytes", 52428800)
+→ Per-agent memory usage visible in metrics
+→ Docker --memory limit enforces actual constraint
 ```
 
 ---

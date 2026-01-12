@@ -126,18 +126,24 @@ All genesis artifacts:
 
 ---
 
-### genesis_handbook
+### Handbook Artifacts
 
 **Purpose:** Seeded documentation for agents
 
-**File:** `src/world/world.py` (`World._create_genesis_artifacts()`, seeded during init)
+**File:** `src/world/world.py` (`World._seed_handbook()`, seeded during init)
 
-**Content:** Read-only documentation artifact containing:
-- Action format examples
-- Genesis artifact method reference
-- Economic rules summary
+**Note:** These are regular data artifacts (not genesis artifacts), but documented here as they are system-provided.
 
-Agents can `read_artifact("genesis_handbook")` to learn the rules.
+**Artifacts created:**
+- `handbook_actions` - Action format examples and permissions
+- `handbook_genesis` - Genesis artifact method reference
+- `handbook_resources` - Resource system documentation
+- `handbook_trading` - Escrow trading guide
+- `handbook_oracle` - Oracle bidding guide
+
+**Source:** `src/agents/_handbook/*.md` files
+
+Agents can `read_artifact("handbook_genesis")` to learn the genesis methods, or other handbooks for specific topics.
 
 ---
 
@@ -148,12 +154,17 @@ All genesis artifacts are configured in `config/config.yaml`:
 ```yaml
 genesis:
   artifacts:
-    - genesis_ledger
-    - genesis_oracle
-    - genesis_rights_registry
-    - genesis_event_log
-    - genesis_escrow
-    - genesis_handbook
+    ledger:
+      enabled: true
+    oracle:
+      enabled: true
+    rights_registry:
+      enabled: true
+    event_log:
+      enabled: true
+    escrow:
+      enabled: true
+  # Note: handbook_* artifacts are seeded separately from _handbook/*.md files
 
   ledger:
     methods:

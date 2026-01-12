@@ -853,20 +853,21 @@ invoke("genesis_capability_requests", "request", {
 
 ### 31. Resource Measurement Implementation
 
-**Current:** Only LLM tokens and disk are tracked. Memory, bandwidth, execution time not measured.
+**Current:** Only LLM tokens and disk are tracked. Memory not measured per-agent.
 
-**Target:** Comprehensive resource measurement for all constrained resources.
+**Target:** Each resource tracked in its natural unit. Docker enforces real limits.
 
-**Measurement Strategy:**
+**Resources and Natural Units:**
 
-| Resource | Method | Implementation |
-|----------|--------|----------------|
-| LLM API $ | Exact | Tokens × price from API response |
-| Disk | Exact | Track bytes on write/delete |
-| Memory | Per-action | `tracemalloc` peak measurement |
-| Bandwidth | Size-based | HTTP response size tracking |
-| MCP ops | Fixed cost | Config lookup per operation type |
-| Execution time | Time-based | Wall-clock × rate |
+| Resource | Type | Unit | Constraint |
+|----------|------|------|------------|
+| LLM API $ | Stock | USD | Budget exhaustion stops LLM calls |
+| LLM rate limit | Flow | tokens/min | Provider's TPM limit |
+| Memory | Stock | bytes | Docker --memory limit |
+| Disk | Stock | bytes | Docker --storage-opt |
+| Local CPU | Flow | CPU-seconds | Docker --cpus limit |
+
+**Key Insight:** No artificial "compute" conversions. Docker limits ARE the constraints.
 
 **Per-Agent Memory Tracking:**
 
@@ -881,7 +882,8 @@ def execute_action(agent_id: str, action: Action) -> Result:
         current, peak = tracemalloc.get_traced_memory()
         tracemalloc.stop()
 
-    ledger.deduct(agent_id, "memory", peak)
+    # Track in bytes, not abstract "compute"
+    ledger.track(agent_id, "memory_bytes", peak)
     return result
 ```
 
@@ -893,11 +895,9 @@ def execute_action(agent_id: str, action: Action) -> Result:
 **Depends On:** #1 Token Bucket (for flow resource tracking)
 
 **No Plan Yet.** Changes needed:
-- Add `tracemalloc` to executor for memory tracking
-- Add bandwidth tracking to HTTP/MCP calls
-- Add execution time tracking
-- Config structure for cost multipliers
-- Ledger support for new resource types
+- Add `tracemalloc` to executor for per-agent memory tracking
+- Ledger support for bytes-based resource tracking
+- Docker compose config for resource limits
 
 ---
 
