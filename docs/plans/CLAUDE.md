@@ -46,7 +46,7 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 
 | # | Gap | Priority | Status | Blocks |
 |---|-----|----------|--------|--------|
-| 1 | [Rate Allocation](01_rate_allocation.md) | **High** | 🚧 In Progress | #2, #31 |
+| 1 | [Rate Allocation](01_rate_allocation.md) | **High** | ✅ Complete | #2, #31 |
 | 2 | [Continuous Execution](02_continuous_execution.md) | **High** | 🚧 In Progress | #21 |
 | 3 | [Docker Isolation](03_docker_isolation.md) | Medium | 📋 Planned | - |
 | 4 | ~~Compute Debt Model~~ | - | ✅ Superseded | - |

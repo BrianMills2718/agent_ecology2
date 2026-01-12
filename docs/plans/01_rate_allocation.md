@@ -1,6 +1,8 @@
 # Gap 1: Rate Allocation (Token Bucket)
 
-**Status:** 📋 Planned
+> **Note:** Implemented in Phase 1 as `RateTracker` (rolling-window rate limiting) rather than the token bucket design below. See `src/world/rate_tracker.py` for actual implementation.
+
+**Status:** ✅ Complete (implemented as RateTracker)
 **Priority:** High
 **Blocked By:** None
 **Blocks:** #2 Continuous Execution, #31 Resource Measurement
