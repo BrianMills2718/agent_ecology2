@@ -278,14 +278,15 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| plan-11-terminology | 11 | Terminology cleanup - config restructure | 2026-01-12T08:03 | Active |
-| plan-20-migration | 20 | Write migration strategy plan | 2026-01-12T08:18 | Active |
+| - | - | - | - | - |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->
 | PR | Branch | Title | Created |
 |----|--------|-------|---------|
-| #39 | plan-21-continuous-testing | [Plan #21] Testing strategy | 2026-01-12 |
+| #39 | plan-21-continuous-testing | [Plan #21] Testing strategy (needs rebase) | 2026-01-12 |
+| #42 | claude-md-compendious | CLAUDE.md simplification | 2026-01-12 |
+| #43 | worktree-enforcement | Worktree enforcement hook (needs rebase) | 2026-01-12 |
 
 **After PR merged:** Remove from Awaiting Review table.
 
