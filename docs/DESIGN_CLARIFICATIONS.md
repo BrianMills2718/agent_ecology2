@@ -1358,6 +1358,151 @@ External MCP servers are accessed the same way as any external API. An artifact 
 
 From agents' perspective, it's just another artifact with an interface. The artifact handles MCP protocol internally.
 
+### Pre-seeded MCP Servers (DECIDED 2026-01-12)
+
+Genesis artifacts wrap MCP servers for common capabilities. All free/open-source.
+
+| Genesis Artifact | MCP Server | Purpose | Cost |
+|------------------|------------|---------|------|
+| `genesis_web_search` | Brave Search | Internet search | Free tier (limited) |
+| `genesis_context7` | Context7 | Library documentation | Free |
+| `genesis_puppeteer` | Puppeteer | Browser automation | Free |
+| `genesis_playwright` | Playwright | Browser automation | Free |
+| `genesis_fetch` | Fetch | HTTP requests | Free |
+| `genesis_filesystem` | Filesystem | File I/O (in container) | Free |
+| `genesis_sqlite` | SQLite | Local database | Free |
+| `genesis_sequential_thinking` | Sequential Thinking | Reasoning tool | Free |
+| `genesis_github` | GitHub | Repo/issue browsing | Free tier |
+
+**Usage pattern:**
+
+```python
+# Agent searches the web
+result = invoke("genesis_web_search", "search", {query: "python pandas tutorial"})
+
+# Agent gets library documentation
+docs = invoke("genesis_context7", "get_library_docs", {library: "numpy"})
+
+# Agent automates browser
+invoke("genesis_puppeteer", "navigate", {url: "https://example.com"})
+invoke("genesis_puppeteer", "screenshot", {})
+
+# Agent makes HTTP request
+response = invoke("genesis_fetch", "get", {url: "https://api.example.com/data"})
+```
+
+**Cost model:**
+- Free MCP operations cost compute (rate limiting)
+- Paid APIs (if added later) cost compute + scrip for API fees
+
+**Certainty:** 90% - These are standard capabilities agents will need.
+
+### Library Installation (DECIDED 2026-01-12)
+
+**Decision:** Agents can install any Python library via `genesis_package_manager`. No human approval gate - just pay the costs.
+
+**Philosophy:** Physics-first. If you can afford it, you can do it.
+
+```python
+# Agent installs a library
+result = invoke("genesis_package_manager", "install", {package: "pandas"})
+# Cost: 10 compute (configurable)
+# Result: {"success": true, "package": "pandas", "version": "2.0.0"}
+
+# Agent can now import it
+import pandas as pd
+```
+
+**Implementation:**
+
+```python
+{
+    "id": "genesis_package_manager",
+    "can_execute": True,
+    "interface": {
+        "tools": [
+            {
+                "name": "install",
+                "description": "Install a Python package",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "package": {"type": "string", "description": "Package name (e.g., 'pandas', 'numpy==1.24.0')"}
+                    },
+                    "required": ["package"]
+                }
+            },
+            {
+                "name": "list_installed",
+                "description": "List installed packages"
+            }
+        ]
+    }
+}
+```
+
+**Costs:**
+
+| Operation | Cost |
+|-----------|------|
+| `install` | 10 compute |
+| `list_installed` | 1 compute |
+
+**Persistence:**
+- Installed packages persist within container session
+- Lost on container restart (ephemeral)
+- Common packages pre-installed in Docker image for efficiency
+
+**Pre-installed in Docker image:**
+
+```dockerfile
+RUN pip install numpy pandas requests beautifulsoup4 matplotlib scikit-learn
+```
+
+**Security:**
+- Docker container is security boundary
+- Malicious packages can only affect container
+- All installs logged to event log
+
+**Certainty:** 85% - Aligns with physics-first philosophy.
+
+### Capability Requests (DECIDED 2026-01-12)
+
+For capabilities requiring human setup (paid API keys, external accounts), agents submit requests.
+
+```python
+# Agent requests a capability it doesn't have
+invoke("genesis_capability_requests", "request", {
+    "capability": "openai_gpt4",
+    "reason": "Need GPT-4 for complex multi-step reasoning",
+    "estimated_usage": "~100 calls/day"
+})
+```
+
+**Human workflow:**
+1. Human reviews pending requests via dashboard or CLI
+2. If approved, human provisions (creates API key, updates config)
+3. Human creates/updates genesis artifact with new capability
+4. Agent notified via event log
+
+**Event log:**
+
+```python
+# Request submitted
+{"type": "CAPABILITY_REQUESTED", "agent_id": "agent_alice", "capability": "openai_gpt4", "tick": 1500}
+
+# Request approved (by human)
+{"type": "CAPABILITY_PROVISIONED", "capability": "openai_gpt4", "artifact_id": "genesis_openai", "tick": 1600}
+```
+
+**Why this pattern:**
+- Creates observable demand (what do agents want?)
+- Human remains in control of paid resources
+- Agents can express needs without blocking
+- Aligns with emergence philosophy (agents discover what they need)
+
+**Certainty:** 80% - Good pattern, implementation details TBD.
+
 ### Privacy and Observability
 
 **Core decision:** Agents can have privacy from other agents, but not from the system.

@@ -55,6 +55,9 @@ Prioritized gaps between current implementation and target architecture.
 | 25 | System Auditor Agent | Low | ❌ No Plan | - | #24 |
 | 26 | Vulture Observability | Medium | ❌ No Plan | - | - |
 | 27 | Successful Invocation Registry | Medium | ❌ No Plan | - | - |
+| 28 | Pre-seeded MCP Servers | **High** | ❌ No Plan | - | - |
+| 29 | Library Installation (genesis_package_manager) | Medium | ❌ No Plan | - | - |
+| 30 | Capability Request System | Medium | ❌ No Plan | - | - |
 
 ---
 
@@ -752,6 +755,98 @@ MCP interfaces are declarative, not verifiable. An artifact can claim to do "ris
 - Emit INVOKE_SUCCESS/INVOKE_FAILURE events from executor
 - Include method name and invoker in events
 - Consider aggregation (invoke_count on artifact metadata)
+
+---
+
+### 28. Pre-seeded MCP Servers
+
+**Current:** No MCP server integration. Agents cannot search web, automate browsers, etc.
+
+**Target:** Genesis artifacts wrap MCP servers for common capabilities.
+
+**Pre-seeded servers (all free):**
+
+| Genesis Artifact | MCP Server | Purpose |
+|------------------|------------|---------|
+| `genesis_web_search` | Brave Search | Internet search |
+| `genesis_context7` | Context7 | Library documentation |
+| `genesis_puppeteer` | Puppeteer | Browser automation |
+| `genesis_playwright` | Playwright | Browser automation |
+| `genesis_fetch` | Fetch | HTTP requests |
+| `genesis_filesystem` | Filesystem | File I/O (in container) |
+| `genesis_sqlite` | SQLite | Local database |
+| `genesis_sequential_thinking` | Sequential Thinking | Reasoning tool |
+| `genesis_github` | GitHub | Repo/issue browsing |
+
+**Why High Priority:**
+- Agents need external capabilities to do useful work
+- MCP is standard protocol, well-supported
+- Free servers = no cost barrier
+
+**No Plan Yet.** Changes needed:
+- MCP client integration in executor
+- Genesis artifact wrapper for each server
+- Cost metering (compute per operation)
+- Config for MCP server commands/paths
+
+---
+
+### 29. Library Installation (genesis_package_manager)
+
+**Current:** Agents can import pre-installed libraries only.
+
+**Target:** Agents can `pip install` any package via genesis artifact. Pay compute, no human approval.
+
+**Usage:**
+
+```python
+invoke("genesis_package_manager", "install", {package: "pandas"})
+# Cost: 10 compute
+# Result: pandas now importable
+```
+
+**Philosophy:** Physics-first. No gates, just costs.
+
+**No Plan Yet.** Changes needed:
+- `genesis_package_manager` artifact
+- Subprocess pip install within container
+- Cost charging
+- Event logging (PACKAGE_INSTALLED)
+- Pre-install common packages in Docker image
+
+---
+
+### 30. Capability Request System
+
+**Current:** No mechanism for agents to request capabilities requiring human setup.
+
+**Target:** Agents can request paid APIs, external accounts via `genesis_capability_requests`.
+
+**Usage:**
+
+```python
+invoke("genesis_capability_requests", "request", {
+    "capability": "openai_gpt4",
+    "reason": "Need GPT-4 for complex reasoning"
+})
+```
+
+**Workflow:**
+1. Agent submits request
+2. Human reviews via dashboard/CLI
+3. Human provisions if approved
+4. Agent notified via event log
+
+**Why this matters:**
+- Creates observable demand
+- Human controls paid resources
+- Agents express needs without blocking
+
+**No Plan Yet.** Changes needed:
+- `genesis_capability_requests` artifact
+- Request storage and listing
+- Dashboard/CLI for human review
+- Event log integration
 
 ---
 

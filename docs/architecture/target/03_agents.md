@@ -329,7 +329,7 @@ Every action requires a permission check against the target artifact's contract:
 - Requester pays for the check
 - Failed checks still cost (prevents spam probing)
 
-See [contracts.md](contracts.md) for full contract system details.
+See [05_contracts.md](05_contracts.md) for full contract system details.
 
 ---
 
@@ -351,7 +351,7 @@ When an agent invokes another artifact:
 | Tool | false | Invoking agent pays |
 | Agent | true | Target agent pays its own execution |
 
-See [resources.md](resources.md) for full cost model details.
+See [04_resources.md](04_resources.md) for full cost model details.
 
 ---
 

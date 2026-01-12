@@ -35,12 +35,12 @@ This is **mechanism design for real resource allocation**, not a simulation or m
 
 | Document | Description |
 |----------|-------------|
-| [execution_model.md](execution_model.md) | Continuous autonomous loops |
-| [agents.md](agents.md) | Self-managed agents, rights tradability |
-| [resources.md](resources.md) | Token bucket, debt model |
-| [contracts.md](contracts.md) | Access control via contract artifacts |
-| [oracle.md](oracle.md) | Bids anytime, periodic resolution |
-| [infrastructure.md](infrastructure.md) | Docker isolation, real constraints |
+| [02_execution_model.md](02_execution_model.md) | Continuous autonomous loops |
+| [03_agents.md](03_agents.md) | Self-managed agents, rights tradability |
+| [04_resources.md](04_resources.md) | Token bucket, debt model |
+| [05_contracts.md](05_contracts.md) | Access control via contract artifacts |
+| [06_oracle.md](06_oracle.md) | Bids anytime, periodic resolution |
+| [07_infrastructure.md](07_infrastructure.md) | Docker isolation, real constraints |
 
 ---
 
