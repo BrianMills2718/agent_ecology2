@@ -2,7 +2,7 @@
 
 Genesis artifacts are special artifacts that:
 1. Are owned by "system" (cannot be modified by agents)
-2. Act as proxies to kernel functions (ledger, oracle)
+2. Act as proxies to kernel functions (ledger, mint)
 3. Have special cost rules (some functions are free)
 
 These enable agents to interact with core infrastructure through
@@ -95,10 +95,10 @@ class SpawnPrincipalResult(TypedDict, total=False):
     principal_id: str
 
 
-class OracleStatusResult(TypedDict):
-    """Result from oracle status query."""
+class MintStatusResult(TypedDict):
+    """Result from mint status query."""
     success: bool
-    oracle: str
+    mint: str
     type: str
     pending_submissions: int
     scored_submissions: int
@@ -461,7 +461,7 @@ class GenesisLedger(GenesisArtifact):
 
 
 class BidInfo(TypedDict):
-    """Information about a bid in the oracle auction."""
+    """Information about a bid in the mint auction."""
     agent_id: str
     artifact_id: str
     amount: int
@@ -480,7 +480,7 @@ class AuctionResult(TypedDict):
     error: str | None
 
 
-class GenesisOracle(GenesisArtifact):
+class GenesisMint(GenesisArtifact):
     """
     Genesis artifact for auction-based external minting.
 
@@ -492,7 +492,7 @@ class GenesisOracle(GenesisArtifact):
     - BIDDING: Accepting bids (bidding_window ticks)
     - After bidding window: Resolve auction, score artifact, distribute UBI
 
-    All configuration is in config.yaml under genesis.oracle.auction.
+    All configuration is in config.yaml under genesis.mint.auction.
     """
 
     mint_callback: Callable[[str, int], None]
@@ -519,7 +519,7 @@ class GenesisOracle(GenesisArtifact):
     _allow_bid_updates: bool
     _refund_on_scoring_failure: bool
 
-    _scorer: Any  # OracleScorer, lazy-loaded
+    _scorer: Any  # MintScorer, lazy-loaded
 
     def __init__(
         self,
@@ -542,11 +542,11 @@ class GenesisOracle(GenesisArtifact):
 
         # Get config
         cfg = genesis_config or get_validated_config().genesis
-        oracle_cfg = cfg.oracle
+        mint_cfg = cfg.mint
 
         super().__init__(
-            artifact_id=oracle_cfg.id,
-            description=oracle_cfg.description
+            artifact_id=mint_cfg.id,
+            description=mint_cfg.description
         )
 
         self.mint_callback = mint_callback
@@ -562,16 +562,16 @@ class GenesisOracle(GenesisArtifact):
         self._held_bids = {}
 
         # Config
-        self._mint_ratio = oracle_cfg.mint_ratio
-        self._period = oracle_cfg.auction.period
-        self._bidding_window = oracle_cfg.auction.bidding_window
-        self._first_auction_tick = oracle_cfg.auction.first_auction_tick
-        self._slots_per_auction = oracle_cfg.auction.slots_per_auction
-        self._minimum_bid = oracle_cfg.auction.minimum_bid
-        self._tie_breaking = oracle_cfg.auction.tie_breaking
-        self._show_bid_count = oracle_cfg.auction.show_bid_count
-        self._allow_bid_updates = oracle_cfg.auction.allow_bid_updates
-        self._refund_on_scoring_failure = oracle_cfg.auction.refund_on_scoring_failure
+        self._mint_ratio = mint_cfg.mint_ratio
+        self._period = mint_cfg.auction.period
+        self._bidding_window = mint_cfg.auction.bidding_window
+        self._first_auction_tick = mint_cfg.auction.first_auction_tick
+        self._slots_per_auction = mint_cfg.auction.slots_per_auction
+        self._minimum_bid = mint_cfg.auction.minimum_bid
+        self._tie_breaking = mint_cfg.auction.tie_breaking
+        self._show_bid_count = mint_cfg.auction.show_bid_count
+        self._allow_bid_updates = mint_cfg.auction.allow_bid_updates
+        self._refund_on_scoring_failure = mint_cfg.auction.refund_on_scoring_failure
 
         self._scorer = None
 
@@ -579,22 +579,22 @@ class GenesisOracle(GenesisArtifact):
         self.register_method(
             name="status",
             handler=self._status,
-            cost=oracle_cfg.methods.status.cost,
-            description=oracle_cfg.methods.status.description
+            cost=mint_cfg.methods.status.cost,
+            description=mint_cfg.methods.status.description
         )
 
         self.register_method(
             name="bid",
             handler=self._bid,
-            cost=oracle_cfg.methods.bid.cost,
-            description=oracle_cfg.methods.bid.description
+            cost=mint_cfg.methods.bid.cost,
+            description=mint_cfg.methods.bid.description
         )
 
         self.register_method(
             name="check",
             handler=self._check,
-            cost=oracle_cfg.methods.check.cost,
-            description=oracle_cfg.methods.check.description
+            cost=mint_cfg.methods.check.cost,
+            description=mint_cfg.methods.check.description
         )
 
     def _get_phase(self) -> str:
@@ -616,7 +616,7 @@ class GenesisOracle(GenesisArtifact):
         phase = self._get_phase()
         result: dict[str, Any] = {
             "success": True,
-            "oracle": "genesis_oracle",
+            "mint": "genesis_mint",
             "type": "auction",
             "phase": phase,
             "current_tick": self._current_tick,
@@ -696,7 +696,7 @@ class GenesisOracle(GenesisArtifact):
             if not artifact.executable:
                 return {
                     "success": False,
-                    "error": f"Oracle only accepts executable artifacts. '{artifact_id}' is not executable."
+                    "error": f"Mint only accepts executable artifacts. '{artifact_id}' is not executable."
                 }
 
         # Check if agent can afford the bid
@@ -906,7 +906,7 @@ class GenesisOracle(GenesisArtifact):
             if artifact:
                 # Lazy-load scorer
                 if self._scorer is None:
-                    from .oracle_scorer import get_scorer
+                    from .mint_scorer import get_scorer
                     self._scorer = get_scorer()
 
                 try:
@@ -1913,7 +1913,7 @@ def create_genesis_artifacts(
     Args:
         ledger: The world's Ledger instance
         mint_callback: Function(agent_id, amount) to mint new scrip
-        artifact_store: ArtifactStore for oracle to look up artifacts
+        artifact_store: ArtifactStore for mint to look up artifacts
         logger: EventLogger for genesis_event_log
         rights_config: Dict with 'default_quotas' (preferred) or legacy keys
                        'default_compute_quota', 'default_disk_quota'
@@ -1936,20 +1936,20 @@ def create_genesis_artifacts(
         )
         artifacts[genesis_ledger.id] = genesis_ledger
 
-    # Create oracle if enabled
-    if cfg.artifacts.oracle.enabled:
+    # Create mint if enabled
+    if cfg.artifacts.mint.enabled:
         # Create UBI callback using ledger
         def ubi_callback(amount: int, exclude: str | None) -> dict[str, int]:
             return ledger.distribute_ubi(amount, exclude)
 
-        genesis_oracle = GenesisOracle(
+        genesis_mint = GenesisMint(
             mint_callback,
             ubi_callback=ubi_callback,
             artifact_store=artifact_store,
             ledger=ledger,
             genesis_config=cfg
         )
-        artifacts[genesis_oracle.id] = genesis_oracle
+        artifacts[genesis_mint.id] = genesis_mint
 
     # Add event log if enabled and logger provided
     if cfg.artifacts.event_log.enabled and logger:

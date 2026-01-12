@@ -81,8 +81,8 @@ class QuotaInfo(TypedDict, total=False):
     disk_available: int
 
 
-class OracleSubmission(TypedDict, total=False):
-    """Oracle submission status."""
+class MintSubmission(TypedDict, total=False):
+    """Mint submission status."""
     status: str
     score: float
     submitter: str
@@ -94,7 +94,7 @@ class WorldState(TypedDict, total=False):
     balances: dict[str, int]
     artifacts: list[ArtifactInfo]
     quotas: dict[str, QuotaInfo]
-    oracle_submissions: dict[str, OracleSubmission]
+    mint_submissions: dict[str, MintSubmission]
 
 
 class RAGConfigDict(TypedDict, total=False):
@@ -479,20 +479,20 @@ class Agent:
 - Disk used: {quotas.get('disk_used', 0)} bytes
 - Disk available: {quotas.get('disk_available', 10000)} bytes"""
 
-        # Format oracle submissions
-        oracle_subs: dict[str, Any] = world_state.get('oracle_submissions', {})
-        oracle_info: str
-        if oracle_subs:
-            oracle_lines: list[str] = []
-            for art_id, sub in oracle_subs.items():
+        # Format mint submissions
+        mint_subs: dict[str, Any] = world_state.get('mint_submissions', {})
+        mint_info: str
+        if mint_subs:
+            mint_lines: list[str] = []
+            for art_id, sub in mint_subs.items():
                 status: str = sub.get('status', 'unknown')
                 if status == 'scored':
-                    oracle_lines.append(f"- {art_id}: SCORED (score: {sub.get('score')}) by {sub.get('submitter')}")
+                    mint_lines.append(f"- {art_id}: SCORED (score: {sub.get('score')}) by {sub.get('submitter')}")
                 else:
-                    oracle_lines.append(f"- {art_id}: {status.upper()} by {sub.get('submitter')}")
-            oracle_info = "\n## Oracle Submissions\n" + "\n".join(oracle_lines)
+                    mint_lines.append(f"- {art_id}: {status.upper()} by {sub.get('submitter')}")
+            mint_info = "\n## Mint Submissions\n" + "\n".join(mint_lines)
         else:
-            oracle_info = "\n## Oracle Submissions\n(No submissions yet - submit code artifacts to mint scrip!)"
+            mint_info = "\n## Mint Submissions\n(No submissions yet - submit code artifacts to mint scrip!)"
 
         # Format last action result feedback
         action_feedback: str
@@ -526,14 +526,14 @@ class Agent:
                     agent = event.get('principal_id', '?')
                     error = event.get('error', 'unknown error')[:50]
                     event_lines.append(f"[T{event_tick}] {agent}: REJECTED - {error}")
-                elif event_type == 'oracle_auction':
+                elif event_type == 'mint_auction':
                     winner = event.get('winner_id')
                     artifact = event.get('artifact_id', '?')
                     score = event.get('score', 0)
                     if winner:
-                        event_lines.append(f"[T{event_tick}] ORACLE: {winner} won with {artifact} (score={score})")
+                        event_lines.append(f"[T{event_tick}] MINT: {winner} won with {artifact} (score={score})")
                     else:
-                        event_lines.append(f"[T{event_tick}] ORACLE: no winner this tick")
+                        event_lines.append(f"[T{event_tick}] MINT: no winner this tick")
                 elif event_type == 'thinking_failed':
                     agent = event.get('principal_id', '?')
                     reason = event.get('reason', 'unknown')
@@ -573,7 +573,7 @@ class Agent:
 - Use `genesis_ledger.all_balances([])` to see all agent balances
 - Use `genesis_event_log.read([])` for world history
 - Read handbooks for help: handbook_genesis, handbook_trading, handbook_actions
-{oracle_info}
+{mint_info}
 {recent_activity}
 
 ## Available Actions

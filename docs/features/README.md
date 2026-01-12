@@ -7,7 +7,7 @@ Documentation for specific features of the Agent Ecology system.
 | Feature | File | Description |
 |---------|------|-------------|
 | Dashboard | `dashboard.md` | Real-time HTML dashboard with WebSocket updates |
-| Oracle Auction | `oracle_auction.md` | Vickrey auction system for artifact scoring |
+| Mint Auction | `mint_auction.md` | Vickrey auction system for artifact scoring |
 
 ## Related Documentation
 

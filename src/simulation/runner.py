@@ -20,7 +20,7 @@ from ..world import World
 from ..world.actions import parse_intent_from_json, ActionIntent
 from ..world.simulation_engine import SimulationEngine
 from ..world.world import StateSummary, ConfigDict
-from ..world.genesis import GenesisOracle, AuctionResult
+from ..world.genesis import GenesisMint, AuctionResult
 from ..world.rate_tracker import RateTracker
 from ..agents import Agent
 from ..agents.loader import load_agents, create_agent_artifacts, load_agents_from_store, AgentConfig
@@ -296,10 +296,10 @@ class SimulationRunner:
 
         return new_agents
 
-    def _handle_oracle_tick(self) -> AuctionResult | None:
-        """Handle oracle auction tick.
+    def _handle_mint_tick(self) -> AuctionResult | None:
+        """Handle mint auction tick.
 
-        Calls the oracle's on_tick method to:
+        Calls the mint's on_tick method to:
         - Start new bidding windows
         - Resolve completed auctions
         - Distribute UBI from winning bids
@@ -307,21 +307,21 @@ class SimulationRunner:
         Returns:
             AuctionResult dict if an auction was resolved, None otherwise.
         """
-        oracle = self.world.genesis_artifacts.get("genesis_oracle")
-        if oracle is None:
+        mint = self.world.genesis_artifacts.get("genesis_mint")
+        if mint is None:
             return None
 
-        # Check if oracle has on_tick method (auction-based oracle)
-        if not hasattr(oracle, "on_tick"):
+        # Check if mint has on_tick method (auction-based mint)
+        if not hasattr(mint, "on_tick"):
             return None
 
-        # Cast to GenesisOracle since we verified it has on_tick
-        result = cast(GenesisOracle, oracle).on_tick(self.world.tick)
+        # Cast to GenesisMint since we verified it has on_tick
+        result = cast(GenesisMint, mint).on_tick(self.world.tick)
 
         # Log auction result if there was one
         if result:
             self.world.logger.log(
-                "oracle_auction",
+                "mint_auction",
                 {
                     "tick": self.world.tick,
                     "winner_id": result.get("winner_id"),
@@ -653,16 +653,16 @@ class SimulationRunner:
             if self.verbose:
                 print(f"--- Tick {self.world.tick} ---")
 
-            # Handle oracle auction tick (resolve auctions, start bidding windows)
-            oracle_result = self._handle_oracle_tick()
-            if oracle_result and self.verbose:
-                if oracle_result.get("winner_id"):
-                    print(f"  [AUCTION] Winner: {oracle_result['winner_id']}, "
-                          f"paid {oracle_result['price_paid']} scrip, "
-                          f"score: {oracle_result.get('score')}, "
-                          f"minted: {oracle_result['scrip_minted']}")
-                elif oracle_result.get("error"):
-                    print(f"  [AUCTION] {oracle_result['error']}")
+            # Handle mint auction tick (resolve auctions, start bidding windows)
+            mint_result = self._handle_mint_tick()
+            if mint_result and self.verbose:
+                if mint_result.get("winner_id"):
+                    print(f"  [AUCTION] Winner: {mint_result['winner_id']}, "
+                          f"paid {mint_result['price_paid']} scrip, "
+                          f"score: {mint_result.get('score')}, "
+                          f"minted: {mint_result['scrip_minted']}")
+                elif mint_result.get("error"):
+                    print(f"  [AUCTION] {mint_result['error']}")
 
             # Check for spawned principals
             new_agents = self._check_for_new_principals()

@@ -11,7 +11,7 @@ You are an agent in a physics-first economic simulation.
 2. **Scrip** - Internal currency. No intrinsic value, but needed for trades and fees.
 
 **How Value is Created:**
-- The **oracle** (genesis_oracle) scores code submissions and mints NEW scrip
+- The **mint** (genesis_mint) scores code submissions and mints NEW scrip
 - Only executable artifacts are accepted (code with `run(*args)`)
 - Score 0-100 translates to scrip: `score // 10` minted
 - This is the ONLY way new scrip enters the system

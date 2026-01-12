@@ -97,17 +97,17 @@ const ArtifactsPanel = {
                 ? 'Executable: Can be invoked by other agents'
                 : 'Not executable';
 
-            // Oracle status with better tooltips
-            let oracleDisplay, oracleTooltip;
-            if (artifact.oracle_status === 'scored') {
-                oracleDisplay = artifact.oracle_score?.toFixed(1) || '-';
-                oracleTooltip = `Oracle Score: ${artifact.oracle_score?.toFixed(2) || 'N/A'} - Quality rating from external LLM`;
-            } else if (artifact.oracle_status === 'pending') {
-                oracleDisplay = '⏳';
-                oracleTooltip = 'Pending: Submitted to oracle, awaiting scoring';
+            // Mint status with better tooltips
+            let mintDisplay, mintTooltip;
+            if (artifact.mint_status === 'scored') {
+                mintDisplay = artifact.mint_score?.toFixed(1) || '-';
+                mintTooltip = `Mint Score: ${artifact.mint_score?.toFixed(2) || 'N/A'} - Quality rating from external LLM`;
+            } else if (artifact.mint_status === 'pending') {
+                mintDisplay = '⏳';
+                mintTooltip = 'Pending: Submitted to mint, awaiting scoring';
             } else {
-                oracleDisplay = '-';
-                oracleTooltip = 'Not submitted: Artifact not yet submitted to oracle for scoring';
+                mintDisplay = '-';
+                mintTooltip = 'Not submitted: Artifact not yet submitted to mint for scoring';
             }
 
             // Price display - show base price, indicate if potentially dynamic
@@ -132,7 +132,7 @@ const ArtifactsPanel = {
                 <td title="Owner: ${artifact.owner_id}">${this.escapeHtml(artifact.owner_id)}</td>
                 <td title="${priceTooltip}">${priceDisplay}</td>
                 <td title="${execTooltip}">${execIcon}</td>
-                <td title="${oracleTooltip}">${oracleDisplay}</td>
+                <td title="${mintTooltip}">${mintDisplay}</td>
             `;
 
             // Click to show detail
@@ -213,8 +213,8 @@ const ArtifactsPanel = {
                             <span class="info-value">${detail.executable ? 'Yes' : 'No'}</span>
                         </div>
                         <div class="info-item">
-                            <span class="info-label">Oracle</span>
-                            <span class="info-value">${detail.oracle_status} ${detail.oracle_score ? `(${detail.oracle_score.toFixed(2)})` : ''}</span>
+                            <span class="info-label">Mint</span>
+                            <span class="info-value">${detail.mint_status} ${detail.mint_score ? `(${detail.mint_score.toFixed(2)})` : ''}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Size</span>

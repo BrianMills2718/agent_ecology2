@@ -85,7 +85,7 @@ class TestArtifactWallets:
         """credit_scrip (minting) works for artifacts."""
         ledger = Ledger()
 
-        # Mint scrip directly to an artifact (e.g., oracle reward)
+        # Mint scrip directly to an artifact (e.g., mint reward)
         ledger.credit_scrip("winning_contract", 100)
 
         assert ledger.get_scrip("winning_contract") == 100

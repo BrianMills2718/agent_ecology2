@@ -15,7 +15,7 @@ const ActivityPanel = {
         escrow_cancelled: '❌',
         scrip_transfer: '💰',
         ownership_transfer: '🔑',
-        oracle_mint: '⭐',
+        mint_result: '⭐',
         principal_spawned: '👤',
         thinking: '💭',
         action: '⚡',
@@ -178,10 +178,10 @@ const ActivityPanel = {
                         <span class="info-label">Invocations</span>
                         <span class="info-value">${artifact.invocation_count}</span>
                     </div>
-                    ${artifact.oracle_score !== null ? `
+                    ${artifact.mint_score !== null ? `
                     <div class="info-item">
-                        <span class="info-label">Oracle Score</span>
-                        <span class="info-value">${artifact.oracle_score.toFixed(1)}</span>
+                        <span class="info-label">Mint Score</span>
+                        <span class="info-value">${artifact.mint_score.toFixed(1)}</span>
                     </div>
                     ` : ''}
                 </div>

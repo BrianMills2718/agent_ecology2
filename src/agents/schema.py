@@ -38,7 +38,7 @@ You must respond with a single JSON object representing your action.
 |----------|-------------|
 | genesis_ledger | balance, all_balances, transfer, transfer_ownership |
 | genesis_rights_registry | check_quota, all_quotas, transfer_quota |
-| genesis_oracle | status, bid, check |
+| genesis_mint | status, bid, check |
 | genesis_event_log | read |
 | genesis_escrow | list_active, deposit, purchase, cancel |
 
@@ -52,7 +52,7 @@ Read these for detailed information (use read_artifact):
 | handbook_genesis | All genesis methods and costs |
 | handbook_resources | Scrip, compute, disk explained |
 | handbook_trading | Escrow, transfers, buying/selling |
-| handbook_oracle | Auction system and minting |
+| handbook_mint | Auction system and minting |
 
 ## Quick Reference
 - SCRIP: Economic currency (persistent, tradeable)

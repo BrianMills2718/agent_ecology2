@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-12 (Gap #16 genesis_store)
+**Last verified:** 2026-01-12 (oracle→mint rename)
 
 ---
 
@@ -129,7 +129,7 @@ genesis:
   artifacts:                # Enable/disable each artifact
     ledger:
       enabled: true
-    oracle:
+    mint:
       enabled: true
     rights_registry:
       enabled: true
@@ -151,8 +151,8 @@ genesis:
         cost: 1
         description: "Transfer scrip..."
 
-  oracle:
-    id: genesis_oracle
+  mint:
+    id: genesis_mint
     mint_ratio: 10          # score / ratio = scrip minted
     auction:
       period: 50            # Ticks between auctions
@@ -267,7 +267,7 @@ world:
   max_ticks: "hundred"  # Should be int
 
 # This will FAIL - constraint violation
-oracle:
+mint:
   auction:
     bidding_window: 100  # Must be less than period (50)
     period: 50
@@ -306,7 +306,7 @@ from config import (
     get_validated_config,   # Returns typed AppConfig
     get_stock_resource,     # get_stock_resource("disk", "total")
     get_flow_resource,      # get_flow_resource("compute", "per_tick")
-    get_genesis_config,     # get_genesis_config("oracle", "mint_ratio")
+    get_genesis_config,     # get_genesis_config("mint", "mint_ratio")
     compute_per_agent_quota # Computes quotas based on num_agents
 )
 ```

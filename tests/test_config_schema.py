@@ -127,11 +127,11 @@ class TestConfigDefaults:
         config = AppConfig()
         # Method costs are now in the methods sub-config
         assert config.genesis.ledger.methods.transfer.cost == 1
-        assert config.genesis.oracle.methods.bid.cost == 0  # Bidding is free
-        assert config.genesis.oracle.mint_ratio == 10
+        assert config.genesis.mint.methods.bid.cost == 0  # Bidding is free
+        assert config.genesis.mint.mint_ratio == 10
         # Check artifact enablement defaults
         assert config.genesis.artifacts.ledger.enabled is True
-        assert config.genesis.artifacts.oracle.enabled is True
+        assert config.genesis.artifacts.mint.enabled is True
 
     def test_default_preloaded_imports(self) -> None:
         """Default preloaded imports should include common modules."""
@@ -186,7 +186,7 @@ class TestTypedAccess:
         _ = config.world.max_ticks
         _ = config.costs.per_1k_input_tokens
         _ = config.resources.stock.disk.total
-        _ = config.genesis.oracle.mint_ratio
+        _ = config.genesis.mint.mint_ratio
         _ = config.executor.preloaded_imports
 
         # All accessed without errors

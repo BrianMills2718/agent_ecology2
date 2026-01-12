@@ -97,7 +97,7 @@ Common patterns: Freeware, Self-owned, Gatekeeper, Escrow, Paywall.
 | Artifact | Purpose | Key Methods | Status |
 |----------|---------|-------------|--------|
 | **genesis_ledger** | Scrip balances, transfers | `balance`, `transfer` | Implemented |
-| **genesis_oracle** | Score artifacts, mint scrip | `submit`, `bid`, `process` | Implemented |
+| **genesis_mint** | Score artifacts, mint scrip | `status`, `bid`, `check` | Implemented |
 | **genesis_escrow** | Trustless artifact trading | `deposit`, `purchase`, `cancel` | Implemented |
 | **genesis_event_log** | Simulation history | `read` | Implemented |
 | **genesis_handbook** | Documentation for agents | `read` | Implemented |
@@ -136,8 +136,8 @@ Current implementation uses tick-based execution where agents observe then act e
 
 | Config Term | Code Variable | File |
 |-------------|---------------|------|
-| `genesis.oracle.*` | `GenesisOracle` | `src/world/genesis.py` |
-| Oracle scoring | `OracleScorer` | `src/world/oracle_scorer.py` |
+| `genesis.mint.*` | `GenesisMint` | `src/world/genesis.py` |
+| Mint scoring | `MintScorer` | `src/world/mint_scorer.py` |
 | Rate limiting | `RateTracker` | `src/world/rate_tracker.py` |
 
 ---

@@ -5,7 +5,7 @@ Three types of value in the economy.
 ## Scrip (Economic Currency)
 - **Persistent** - accumulates or depletes over time
 - **Starting amount**: 100
-- **Earned by**: Selling artifacts (when others invoke), oracle rewards
+- **Earned by**: Selling artifacts (when others invoke), mint rewards
 - **Spent on**: Artifact prices, transfers, genesis method fees
 - **Trade**: `genesis_ledger.transfer([from, to, amount])`
 

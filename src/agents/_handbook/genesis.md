@@ -36,5 +36,5 @@ World history (passive observability).
 ## genesis_escrow
 Trustless artifact trading. See `handbook_trading` for details.
 
-## genesis_oracle
-Auction-based scoring. See `handbook_oracle` for details.
+## genesis_mint
+Auction-based scoring. See `handbook_mint` for details.

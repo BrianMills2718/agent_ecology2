@@ -115,7 +115,7 @@ See `docs/GLOSSARY.md` for full definitions. Quick reference:
 | Artifact | Purpose |
 |----------|---------|
 | `genesis_ledger` | Balances, transfers, ownership |
-| `genesis_oracle` | Auction-based scoring, minting |
+| `genesis_mint` | Auction-based scoring, minting |
 | `genesis_store` | Artifact discovery and creation |
 | `genesis_escrow` | Trustless artifact trading |
 | `genesis_event_log` | Passive observability |

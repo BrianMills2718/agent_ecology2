@@ -50,14 +50,14 @@ costs:
 # GENESIS ARTIFACTS - System services (fully configurable)
 # -----------------------------------------------------------------------------
 # NOTE: All method "cost" values are COMPUTE costs, not scrip.
-# Scrip only flows via agent-to-agent trades and oracle auction.
+# Scrip only flows via agent-to-agent trades and mint auction.
 # -----------------------------------------------------------------------------
 genesis:
   # Which artifacts to create
   artifacts:
     ledger:
       enabled: true
-    oracle:
+    mint:
       enabled: true
     rights_registry:
       enabled: true
@@ -89,10 +89,10 @@ genesis:
         cost: 1                 # 1 compute
         description: "Transfer artifact ownership to another principal. Args: [artifact_id, to_id]"
 
-  # Genesis Oracle - auction-based scoring and minting
-  oracle:
-    id: "genesis_oracle"
-    description: "Auction-based oracle - bid to submit artifacts for LLM scoring"
+  # Genesis Mint - auction-based scoring and minting
+  mint:
+    id: "genesis_mint"
+    description: "Auction-based mint - bid to submit artifacts for LLM scoring"
     mint_ratio: 10              # score / 10 = scrip minted
 
     # Auction configuration
@@ -253,9 +253,9 @@ validation:
   max_method_name_length: 64    # Max chars for method names
 
 # -----------------------------------------------------------------------------
-# ORACLE SCORER
+# MINT SCORER
 # -----------------------------------------------------------------------------
-oracle_scorer:
+mint_scorer:
   model: "gemini/gemini-3-flash-preview"
   timeout: 30
   max_content_length: 200000

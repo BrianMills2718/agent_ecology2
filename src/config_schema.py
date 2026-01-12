@@ -143,7 +143,7 @@ class GenesisArtifactsEnabled(StrictModel):
     """Which genesis artifacts to create."""
 
     ledger: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
-    oracle: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
+    mint: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
     rights_registry: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
     event_log: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
     escrow: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
@@ -206,8 +206,8 @@ class LedgerConfig(StrictModel):
         return self
 
 
-class OracleMethodsConfig(StrictModel):
-    """Genesis oracle method configurations."""
+class MintMethodsConfig(StrictModel):
+    """Genesis mint method configurations."""
 
     status: MethodConfig = Field(
         default_factory=lambda: MethodConfig(
@@ -229,8 +229,8 @@ class OracleMethodsConfig(StrictModel):
     )
 
 
-class OracleAuctionConfig(StrictModel):
-    """Oracle auction configuration."""
+class MintAuctionConfig(StrictModel):
+    """Mint auction configuration."""
 
     period: int = Field(
         default=50,
@@ -282,12 +282,12 @@ class OracleAuctionConfig(StrictModel):
         return v
 
 
-class OracleConfig(StrictModel):
-    """Genesis oracle configuration."""
+class MintConfig(StrictModel):
+    """Genesis mint configuration."""
 
-    id: str = Field(default="genesis_oracle", description="Artifact ID")
+    id: str = Field(default="genesis_mint", description="Artifact ID")
     description: str = Field(
-        default="Auction-based oracle - bid to submit artifacts for LLM scoring",
+        default="Auction-based mint - bid to submit artifacts for LLM scoring",
         description="Artifact description"
     )
     mint_ratio: int = Field(
@@ -295,11 +295,11 @@ class OracleConfig(StrictModel):
         gt=0,
         description="Divisor for score-to-scrip conversion (score / ratio = scrip)"
     )
-    auction: OracleAuctionConfig = Field(default_factory=OracleAuctionConfig)
-    methods: OracleMethodsConfig = Field(default_factory=OracleMethodsConfig)
+    auction: MintAuctionConfig = Field(default_factory=MintAuctionConfig)
+    methods: MintMethodsConfig = Field(default_factory=MintMethodsConfig)
 
     @model_validator(mode="after")
-    def validate_bidding_window(self) -> "OracleConfig":
+    def validate_bidding_window(self) -> "MintConfig":
         """Ensure bidding window is less than period."""
         if self.auction.bidding_window >= self.auction.period:
             raise ValueError(
@@ -500,7 +500,7 @@ class GenesisConfig(StrictModel):
 
     artifacts: GenesisArtifactsEnabled = Field(default_factory=GenesisArtifactsEnabled)
     ledger: LedgerConfig = Field(default_factory=LedgerConfig)
-    oracle: OracleConfig = Field(default_factory=OracleConfig)
+    mint: MintConfig = Field(default_factory=MintConfig)
     rights_registry: RightsRegistryConfig = Field(default_factory=RightsRegistryConfig)
     event_log: EventLogConfig = Field(default_factory=EventLogConfig)
     escrow: EscrowConfig = Field(default_factory=EscrowConfig)
@@ -658,11 +658,11 @@ class RateLimitingConfig(StrictModel):
 
 
 # =============================================================================
-# ORACLE SCORER MODEL
+# MINT SCORER MODEL
 # =============================================================================
 
-class OracleScorerConfig(StrictModel):
-    """LLM-based oracle scorer configuration."""
+class MintScorerConfig(StrictModel):
+    """LLM-based mint scorer configuration."""
 
     model: str = Field(
         default="gemini/gemini-3-flash-preview",
@@ -958,7 +958,7 @@ class AppConfig(StrictModel):
     validation: ValidationConfig = Field(default_factory=ValidationConfig)
     rate_limiting: RateLimitingConfig = Field(default_factory=RateLimitingConfig)
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
-    oracle_scorer: OracleScorerConfig = Field(default_factory=OracleScorerConfig)
+    mint_scorer: MintScorerConfig = Field(default_factory=MintScorerConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     world: WorldConfig = Field(default_factory=WorldConfig)
@@ -1038,9 +1038,9 @@ __all__ = [
     "MethodConfig",
     "LedgerConfig",
     "LedgerMethodsConfig",
-    "OracleConfig",
-    "OracleMethodsConfig",
-    "OracleAuctionConfig",
+    "MintConfig",
+    "MintMethodsConfig",
+    "MintAuctionConfig",
     "RightsRegistryConfig",
     "RightsRegistryMethodsConfig",
     "EventLogConfig",
@@ -1058,7 +1058,7 @@ __all__ = [
     "AgentLoopExecutionConfig",
     # Other configs
     "ExecutorConfig",
-    "OracleScorerConfig",
+    "MintScorerConfig",
     "LLMConfig",
     "LoggingConfig",
     "WorldConfig",

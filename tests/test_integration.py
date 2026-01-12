@@ -80,12 +80,12 @@ class TestGenesisArtifacts:
     """Tests for genesis artifacts existence and basic functionality."""
 
     def test_genesis_artifacts_exist(self, world_with_temp_log):
-        """Verify genesis_ledger, genesis_oracle etc. exist after init."""
+        """Verify genesis_ledger, genesis_mint etc. exist after init."""
         world = world_with_temp_log
 
         # Check genesis artifacts exist
         assert "genesis_ledger" in world.genesis_artifacts
-        assert "genesis_oracle" in world.genesis_artifacts
+        assert "genesis_mint" in world.genesis_artifacts
         assert "genesis_event_log" in world.genesis_artifacts
         assert "genesis_rights_registry" in world.genesis_artifacts
 
@@ -372,7 +372,7 @@ class TestFullTickCycle:
 
         # Genesis artifacts should also be in the list
         assert "genesis_ledger" in artifact_ids
-        assert "genesis_oracle" in artifact_ids
+        assert "genesis_mint" in artifact_ids
 
 
 class TestComputeAndScripSeparation:

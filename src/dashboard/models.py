@@ -57,8 +57,8 @@ class ArtifactInfo(BaseModel):
     size_bytes: int = 0
     created_at: str
     updated_at: str
-    oracle_score: float | None = None
-    oracle_status: Literal["pending", "scored", "none"] = "none"
+    mint_score: float | None = None
+    mint_status: Literal["pending", "scored", "none"] = "none"
 
 
 class ActionEvent(BaseModel):
@@ -97,19 +97,19 @@ class TickSummary(BaseModel):
     total_compute_used: float = 0
     total_scrip_transferred: int = 0
     artifacts_created: int = 0
-    oracle_mints: int = 0
+    mint_results: int = 0
 
 
-class GenesisOracleStatus(BaseModel):
-    """Oracle submission status."""
+class GenesisMintStatus(BaseModel):
+    """Mint submission status."""
     pending_count: int = 0
     pending_artifacts: list[str] = Field(default_factory=list)
-    recent_scores: list[OracleScore] = Field(default_factory=list)
+    recent_scores: list[MintScore] = Field(default_factory=list)
     total_scrip_minted: int = 0
 
 
-class OracleScore(BaseModel):
-    """Single oracle score."""
+class MintScore(BaseModel):
+    """Single mint score."""
     artifact_id: str
     submitter: str
     score: float
@@ -167,7 +167,7 @@ class OwnershipTransfer(BaseModel):
 
 class GenesisActivitySummary(BaseModel):
     """Combined genesis artifact activity."""
-    oracle: GenesisOracleStatus
+    mint: GenesisMintStatus
     escrow: GenesisEscrowStatus
     ledger: GenesisLedgerStatus
 
@@ -310,7 +310,7 @@ class ActivityItem(BaseModel):
     timestamp: str
     activity_type: Literal[
         "artifact_created", "artifact_updated", "escrow_listed", "escrow_purchased",
-        "escrow_cancelled", "scrip_transfer", "ownership_transfer", "oracle_mint",
+        "escrow_cancelled", "scrip_transfer", "ownership_transfer", "mint_result",
         "principal_spawned", "thinking", "action"
     ]
     agent_id: str | None = None
@@ -341,8 +341,8 @@ class ArtifactDetail(BaseModel):
     updated_at: str
     content: str | None = None  # The actual code/data
     methods: list[str] = Field(default_factory=list)  # For executable artifacts
-    oracle_score: float | None = None
-    oracle_status: Literal["pending", "scored", "none"] = "none"
+    mint_score: float | None = None
+    mint_status: Literal["pending", "scored", "none"] = "none"
     invocation_count: int = 0
     ownership_history: list[OwnershipTransfer] = Field(default_factory=list)
     invocation_history: list[ActionEvent] = Field(default_factory=list)

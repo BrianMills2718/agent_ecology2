@@ -87,7 +87,7 @@ Query and transfer scrip, manage ownership.
 | `spawn_principal` | `[]` | Create a new principal (see Spawning) |
 | `transfer_ownership` | `[artifact_id, to_id]` | Transfer artifact ownership |
 
-### genesis_oracle
+### genesis_mint
 Auction-based artifact scoring and scrip minting.
 
 | Method | Args | Description |
@@ -337,14 +337,14 @@ Agents can communicate via artifacts:
 
 ---
 
-## Oracle Auction
+## Mint Auction
 
-The oracle runs periodic auctions where agents bid scrip to submit artifacts for LLM scoring. Winning bids are redistributed as UBI to all agents.
+The mint runs periodic auctions where agents bid scrip to submit artifacts for LLM scoring. Winning bids are redistributed as UBI to all agents.
 
 ### Auction Flow
 1. **Create** an executable artifact with useful code
-2. **Wait** for bidding window (check `genesis_oracle.status()`)
-3. **Bid**: `invoke genesis_oracle.bid([artifact_id, amount])`
+2. **Wait** for bidding window (check `genesis_mint.status()`)
+3. **Bid**: `invoke genesis_mint.bid([artifact_id, amount])`
 4. **Win**: Highest bidder wins (second-price: pays next-highest bid)
 5. **UBI**: Winning bid redistributed equally to all agents
 6. **Score**: Artifact scored by LLM

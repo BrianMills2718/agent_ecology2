@@ -518,7 +518,7 @@ class Ledger:
         """Get list of agent principal IDs (excludes genesis artifacts).
 
         Used for UBI distribution - only real agents receive UBI, not
-        system artifacts like genesis_ledger, genesis_oracle, etc.
+        system artifacts like genesis_ledger, genesis_mint, etc.
         """
         return [
             pid for pid in self.scrip.keys()

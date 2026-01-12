@@ -1,4 +1,4 @@
-"""Oracle Scorer - Uses LLM to evaluate executable code artifacts.
+"""Mint Scorer - Uses LLM to evaluate executable code artifacts.
 
 Scores submitted code on quality and utility criteria:
 - Correctness and functionality
@@ -69,8 +69,8 @@ class ScoringResult(TypedDict, total=False):
     error: str
 
 
-class OracleScorer:
-    """Uses an LLM to score artifacts for the mock oracle.
+class MintScorer:
+    """Uses an LLM to score artifacts for the mint.
 
     All settings (model, timeout, max_content_length) come from config.yaml.
     """
@@ -81,16 +81,16 @@ class OracleScorer:
 
     def __init__(self, model: str | None = None, log_dir: str | None = None) -> None:
         # Get config values with fallbacks
-        model = model or get("oracle_scorer.model") or "gemini/gemini-3-flash-preview"
+        model = model or get("mint_scorer.model") or "gemini/gemini-3-flash-preview"
         log_dir = log_dir or get("logging.log_dir") or "llm_logs"
-        timeout: int = get("oracle_scorer.timeout") or 30
+        timeout: int = get("mint_scorer.timeout") or 30
 
         self.llm = LLMProvider(
             model=model,
             log_dir=log_dir,
             timeout=timeout
         )
-        self.max_content_length: int = get("oracle_scorer.max_content_length") or 2000
+        self.max_content_length: int = get("mint_scorer.max_content_length") or 2000
 
     def _compute_content_hash(self, content: str) -> str:
         """Compute MD5 hash of content for duplicate detection."""
@@ -214,15 +214,15 @@ class OracleScorer:
 
 
 # Singleton instance
-_scorer: OracleScorer | None = None
+_scorer: MintScorer | None = None
 
 
-def get_scorer(model: str | None = None, log_dir: str | None = None) -> OracleScorer:
-    """Get or create the OracleScorer singleton.
+def get_scorer(model: str | None = None, log_dir: str | None = None) -> MintScorer:
+    """Get or create the MintScorer singleton.
 
     Model and log_dir default to config values if not specified.
     """
     global _scorer
     if _scorer is None:
-        _scorer = OracleScorer(model=model, log_dir=log_dir)
+        _scorer = MintScorer(model=model, log_dir=log_dir)
     return _scorer
