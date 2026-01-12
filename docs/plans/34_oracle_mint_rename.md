@@ -86,8 +86,9 @@ All existing oracle-related tests must pass after renaming:
 
 | Test Pattern | Why |
 |--------------|-----|
-| `tests/test_genesis.py` | Genesis artifacts still work |
-| `tests/test_oracle*.py` (if any) | Scoring/minting still works |
+| `tests/test_genesis_contracts.py` | Genesis contracts still work |
+| `tests/test_genesis_store.py` | Genesis store still works |
+| `tests/test_mint_auction.py` | Scoring/minting still works (renamed from test_oracle_auction.py) |
 | `tests/test_runner.py` | Integration unchanged |
 
 ### Verification Tests
