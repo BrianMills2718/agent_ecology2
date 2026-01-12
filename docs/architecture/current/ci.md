@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-12
+Last verified: 2026-01-12 (doc-coupling rules updated)
 
 ---
 
