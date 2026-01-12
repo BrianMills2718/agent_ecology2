@@ -442,19 +442,31 @@ class TestRateTrackerIntegration:
         assert ledger.get_compute("agent1") == 1000
 
     def test_reset_compute_with_rate_tracker_enabled(self) -> None:
-        """reset_compute still works when rate_tracker is enabled."""
+        """reset_compute sets tick balance but get_compute returns RateTracker capacity.
+
+        When rate_limiting is enabled, get_compute is mode-aware and returns
+        the RateTracker remaining capacity, not the tick-based balance.
+        """
         config = {
             "rate_limiting": {
                 "enabled": True,
-                "resources": {"llm_tokens": {"max_per_window": 100}}
+                "resources": {"compute": {"max_per_window": 1000}}
             }
         }
         ledger = Ledger.from_config(config, ["agent1"])
         ledger.create_principal("agent1", starting_scrip=100, starting_compute=500)
 
-        # Reset compute should still set the llm_tokens resource
-        ledger.reset_compute("agent1", 1000)
+        # get_compute returns RateTracker capacity, not tick-based balance
+        assert ledger.get_compute("agent1") == 1000  # Full RateTracker capacity
+
+        # Reset compute sets the tick-based balance (legacy API)
+        ledger.reset_compute("agent1", 2000)
+        # But get_compute still returns RateTracker capacity
         assert ledger.get_compute("agent1") == 1000
+
+        # Consuming via RateTracker reduces capacity
+        ledger.spend_compute("agent1", 100)
+        assert ledger.get_compute("agent1") == 900
 
     @pytest.mark.asyncio
     async def test_wait_for_resource_immediate_success(self) -> None:
@@ -541,7 +553,7 @@ class TestRateTrackerIntegration:
         config = {
             "rate_limiting": {
                 "enabled": True,
-                "resources": {"llm_tokens": {"max_per_window": 100}}
+                "resources": {"compute": {"max_per_window": 500}}
             }
         }
         ledger = Ledger.from_config(config, ["agent1"])
@@ -555,8 +567,8 @@ class TestRateTrackerIntegration:
             assert issubclass(w[0].category, DeprecationWarning)
             assert "rate limiting enabled" in str(w[0].message)
 
-        # But the operation should still work
-        assert ledger.get_compute("agent1") == 1000
+        # get_compute returns RateTracker capacity (500), not tick balance (1000)
+        assert ledger.get_compute("agent1") == 500
 
     def test_reset_compute_no_warning_when_rate_tracker_disabled(self) -> None:
         """reset_compute does NOT warn when rate limiting is disabled (legacy mode)."""

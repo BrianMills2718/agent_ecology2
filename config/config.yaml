@@ -167,7 +167,7 @@ genesis:
 # RATE LIMITING - Rolling window rate limiting (time-based, not tick-based)
 # -----------------------------------------------------------------------------
 rate_limiting:
-  enabled: false                  # TODO: Needs integration with genesis method costs
+  enabled: true                   # RateTracker-based rolling window rate limiting
   window_seconds: 60.0            # 60 second rolling window
   resources:
     compute:

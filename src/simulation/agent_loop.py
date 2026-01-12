@@ -89,7 +89,7 @@ class AgentLoopConfig:
     resource_check_interval: float = 1.0
     max_consecutive_errors: int = 5
     resources_to_check: list[str] = field(
-        default_factory=lambda: ["llm_calls", "disk_writes", "bandwidth_bytes"]
+        default_factory=lambda: ["compute", "llm_calls", "disk_writes", "bandwidth_bytes"]
     )
     resource_exhaustion_policy: Literal["skip", "block"] = "skip"
 

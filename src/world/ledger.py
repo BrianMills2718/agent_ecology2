@@ -401,15 +401,37 @@ class Ledger:
     # ===== BACKWARD COMPATIBILITY (compute = llm_tokens) =====
 
     def get_compute(self, principal_id: str) -> int:
-        """DEPRECATED: Use get_resource(principal_id, 'llm_tokens')."""
+        """Get available compute for a principal.
+
+        Mode-aware: Uses RateTracker remaining capacity when rate limiting
+        is enabled, otherwise uses tick-based balance.
+        """
+        if self.use_rate_tracker and self.rate_tracker:
+            remaining = self.get_resource_remaining(principal_id, "compute")
+            # Handle infinity (unconfigured resource = unlimited)
+            if remaining == float("inf"):
+                return 999999  # Large value indicating unlimited
+            return int(remaining)
         return int(self.get_resource(principal_id, "llm_tokens"))
 
     def can_spend_compute(self, principal_id: str, amount: int) -> bool:
-        """DEPRECATED: Use can_spend_resource(principal_id, 'llm_tokens', amount)."""
+        """Check if principal can spend compute.
+
+        Mode-aware: Uses RateTracker capacity check when rate limiting
+        is enabled, otherwise uses tick-based balance check.
+        """
+        if self.use_rate_tracker and self.rate_tracker:
+            return self.check_resource_capacity(principal_id, "compute", float(amount))
         return self.can_spend_resource(principal_id, "llm_tokens", float(amount))
 
     def spend_compute(self, principal_id: str, amount: int) -> bool:
-        """DEPRECATED: Use spend_resource(principal_id, 'llm_tokens', amount)."""
+        """Spend compute from a principal.
+
+        Mode-aware: Uses RateTracker consumption when rate limiting
+        is enabled, otherwise uses tick-based balance deduction.
+        """
+        if self.use_rate_tracker and self.rate_tracker:
+            return self.consume_resource(principal_id, "compute", float(amount))
         return self.spend_resource(principal_id, "llm_tokens", float(amount))
 
     def reset_compute(self, principal_id: str, compute_quota: int) -> None:
@@ -686,7 +708,10 @@ class Ledger:
         rate_input: float,
         rate_output: float,
     ) -> tuple[bool, int]:
-        """Calculate and deduct thinking cost from principal's llm_tokens.
+        """Calculate and deduct thinking cost from principal's compute.
+
+        Mode-aware: Uses RateTracker consumption when rate limiting is enabled,
+        otherwise uses tick-based balance deduction.
 
         Returns:
             (success, cost): Whether deduction succeeded and the cost amount
@@ -694,5 +719,6 @@ class Ledger:
         cost = self.calculate_thinking_cost(
             input_tokens, output_tokens, rate_input, rate_output
         )
-        success = self.spend_resource(principal_id, "llm_tokens", float(cost))
+        # Use mode-aware spend_compute (RateTracker or tick-based)
+        success = self.spend_compute(principal_id, cost)
         return success, cost
