@@ -61,6 +61,12 @@ python scripts/check_doc_coupling.py          # Doc-code coupling (must pass)
 python scripts/check_mock_usage.py --strict   # No unjustified mocks (must pass)
 python scripts/plan_progress.py --summary     # Plan implementation status
 python scripts/check_claims.py                # Check for stale claims
+python scripts/validate_plan.py --plan N      # Pre-implementation validation gate
+```
+
+**gh CLI fix:** If `gh` fails with "unable to access /etc/gitconfig", use:
+```bash
+GIT_CONFIG_NOSYSTEM=1 gh pr create ...
 ```
 
 ---
