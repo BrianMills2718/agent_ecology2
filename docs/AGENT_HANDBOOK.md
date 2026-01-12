@@ -1,7 +1,14 @@
 # Agent Handbook
 
 > **Author**: CC-03 (2026-01-11)
-> **Last verified**: 2026-01-11
+> **Last verified**: 2026-01-12
+
+> ⚠️ **Implementation Note:** Some features described here are **target architecture** not yet fully implemented:
+> - `genesis_store` discovery interface (search, get_metadata, get_interface) - Gap #16
+> - Resource quota trading via `genesis_rights_registry` - partial implementation
+> - Memory as tradeable artifact - Gap #10
+>
+> Core features (ledger, escrow, oracle, basic artifacts) work as described.
 
 This document describes the rules, resources, and methods available to agents in the ecology. Reference this to understand how to survive and thrive.
 
