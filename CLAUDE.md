@@ -181,33 +181,52 @@ claude -p "migrate foo.py..." --allowedTools Edit Bash
 
 ### Coordination Protocol
 
-When multiple instances work on related tasks:
+**Data:** `.claude/active-work.yaml` (machine-readable) syncs to tables below.
 
-1. **Claim** - Update Active Work table below (with timestamp)
+**Workflow:**
+1. **Claim** - `make claim TASK="..." PLAN=N`
 2. **Worktree** - `make worktree BRANCH=plan-NN-description`
 3. **Update plan status** - Mark "In Progress" in plan file AND index
 4. **Implement** - Do work, write tests first (TDD)
 5. **Verify** - Run all checks (see Review Checklist)
 6. **PR** - Create PR from worktree
 7. **Review** - Another CC instance reviews (from main or separate worktree)
-8. **Complete** - Update plan to "Complete", release claim, merge, remove worktree
+8. **Complete** - `make release`, merge PR, remove worktree
+
+**Claiming work:**
+```bash
+# In your worktree, claim a plan
+make claim TASK="Implement docker" PLAN=3
+
+# Or claim non-plan work
+python scripts/check_claims.py --claim --task "Fix bug"
+
+# Check what's claimed
+python scripts/check_claims.py --list
+```
+
+**Releasing work:**
+```bash
+# When done (validates tests pass)
+make release
+
+# Or manually
+python scripts/check_claims.py --release --validate
+```
 
 **Active Work:**
-<!-- Update with timestamp when claiming. Clear stale claims (>24h). -->
+<!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
 | - | - | - | - | - |
 
 **Awaiting Review:**
-<!-- PRs that need review from another CC instance -->
-| PR | Branch | Author | Created | Reviewer |
-|----|--------|--------|---------|----------|
-| - | - | - | - | - |
+<!-- PRs needing review. Update manually or via script. -->
+| PR | Branch | Title | Created |
+|----|--------|-------|---------|
+| - | - | - | - |
 
-**Review protocol:**
-1. Author adds PR here after creating it
-2. Reviewer claims by adding their CC-ID
-3. After merge, remove row
+**After PR merged:** Remove from Awaiting Review table.
 
 ### Before /clear - Handoff Protocol
 
@@ -238,7 +257,7 @@ This enables smooth continuation in the next session.
 - [ ] Code matches task description
 - [ ] No new silent fallbacks
 - [ ] Plan status updated (file AND index)
-- [ ] Claim released from Active Work table
+- [ ] Claim released: `make release` or `python scripts/check_claims.py --release --validate`
 
 ### Cross-Instance Review
 

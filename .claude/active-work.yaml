@@ -3,4 +3,23 @@
 # Use: python scripts/check_claims.py --help
 
 claims: []
+
 completed: []
+
+# Awaiting review (PRs that need another CC instance to review)
+awaiting_review:
+  - pr: 11
+    branch: update-worktree-rules
+    title: "Require worktrees for all PR work"
+    author: consolidate-coordination
+    created: "2026-01-12T07:24:57Z"
+  - pr: 12
+    branch: plan-31-complete
+    title: "[Plan #31] Mark complete - Resource Measurement"
+    author: plan-31-complete
+    created: "2026-01-12T07:28:08Z"
+  - pr: 13
+    branch: consolidate-coordination
+    title: "Consolidate coordination tables to root CLAUDE.md"
+    author: consolidate-coordination
+    created: "2026-01-12T07:45:00Z"
