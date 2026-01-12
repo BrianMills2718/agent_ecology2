@@ -8,17 +8,17 @@ Master index of all gaps and their implementation plans.
 
 ## Relationship to Gap Analysis
 
-This directory tracks **31 high-level gaps** for active implementation.
+This directory tracks **33 high-level gaps** for active implementation.
 
 For the **comprehensive 142-gap analysis**, see `docs/architecture/gaps/`.
 
 | This Directory | Gap Analysis Directory |
 |----------------|------------------------|
 | Active tracking (status, CC-IDs) | Reference analysis |
-| 31 high-level gaps | 142 detailed gaps |
+| 33 high-level gaps | 142 detailed gaps |
 | Implementation steps | Gap definitions |
 
-The 142 gaps are a finer breakdown of these 31. Both track the same work at different granularities.
+The 142 gaps are a finer breakdown of these 33. Both track the same work at different granularities.
 
 ---
 
@@ -78,6 +78,7 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 | 30 | [Capability Request System](30_capability_requests.md) | Medium | ❌ Needs Plan | - |
 | 31 | [Resource Measurement](31_resource_measurement.md) | **High** | ✅ Complete | - |
 | 32 | [Developer Tooling](32_developer_tooling.md) | **High** | ✅ Complete | - |
+| 33 | [ADR Governance](33_adr_governance.md) | **High** | ✅ Complete | - |
 
 ---
 
@@ -145,6 +146,7 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 | - | Unified Ontology Fields (GAP-AGENT-001) | 2026-01-12 | Phase 1 |
 | 31 | Resource Measurement | 2026-01-12 | PR #10 |
 | 3 | Docker Isolation | 2026-01-12 | PR #15 |
+| 33 | ADR Governance | 2026-01-12 | Branch plan-33-adr-governance |
 
 ---
 

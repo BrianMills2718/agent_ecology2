@@ -9,6 +9,13 @@ These enable agents to interact with core infrastructure through
 the same invoke_artifact mechanism they use for agent-created artifacts.
 """
 
+# --- GOVERNANCE START (do not edit) ---
+# ADR-0001: Everything is an artifact
+# ADR-0003: Contracts can do anything
+#
+# Genesis artifacts: ledger, oracle, escrow, event_log, rights_registry.
+# System-provided, solve cold-start problem.
+# --- GOVERNANCE END ---
 from __future__ import annotations
 
 import uuid

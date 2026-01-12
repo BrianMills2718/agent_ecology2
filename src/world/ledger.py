@@ -12,6 +12,13 @@ Principals can be any string ID - agents OR artifacts.
 See docs/RESOURCE_MODEL.md for full design rationale.
 """
 
+# --- GOVERNANCE START (do not edit) ---
+# ADR-0001: Everything is an artifact
+# ADR-0002: No compute debt
+#
+# All balance mutations go through here.
+# Never allow negative balances - fail loud.
+# --- GOVERNANCE END ---
 from __future__ import annotations
 
 import asyncio

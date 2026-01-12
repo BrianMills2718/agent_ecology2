@@ -123,3 +123,21 @@ jobs:
 
       - name: Check for suspicious mock patterns
         run: python scripts/check_mock_usage.py --strict
+
+  governance-sync:
+    runs-on: ubuntu-latest
+    # Ensures source files have correct governance headers matching governance.yaml
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Check governance headers in sync
+        run: python scripts/sync_governance.py --check
