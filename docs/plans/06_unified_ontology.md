@@ -76,11 +76,11 @@ Create these tests FIRST, before implementing:
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/test_unified_ontology.py` | `TestSimulationRunnerIntegration::test_runner_creates_agent_artifacts` | SimulationRunner populates artifact store with agent artifacts |
-| `tests/test_unified_ontology.py` | `TestSimulationRunnerIntegration::test_runner_agents_are_artifact_backed` | All agents from runner have `is_artifact_backed=True` |
-| `tests/test_unified_ontology.py` | `TestArtifactOntologyProperties::test_agent_artifact_has_correct_properties` | Agent artifacts have `has_standing=True`, `can_execute=True` |
-| `tests/test_unified_ontology.py` | `TestSimulationRunnerIntegration::test_runner_creates_memory_artifacts` | Each agent has a linked memory artifact |
-| `tests/test_unified_ontology.py` | `TestCheckpointPreservesArtifacts::test_checkpoint_includes_agent_artifacts` | Checkpoint save/restore maintains agent artifacts |
+| `tests/integration/test_unified_ontology.py` | `TestSimulationRunnerIntegration::test_runner_creates_agent_artifacts` | SimulationRunner populates artifact store with agent artifacts |
+| `tests/integration/test_unified_ontology.py` | `TestSimulationRunnerIntegration::test_runner_agents_are_artifact_backed` | All agents from runner have `is_artifact_backed=True` |
+| `tests/integration/test_unified_ontology.py` | `TestArtifactOntologyProperties::test_agent_artifact_has_correct_properties` | Agent artifacts have `has_standing=True`, `can_execute=True` |
+| `tests/integration/test_unified_ontology.py` | `TestSimulationRunnerIntegration::test_runner_creates_memory_artifacts` | Each agent has a linked memory artifact |
+| `tests/integration/test_unified_ontology.py` | `TestCheckpointPreservesArtifacts::test_checkpoint_includes_agent_artifacts` | Checkpoint save/restore maintains agent artifacts |
 
 ### Existing Tests (Must Pass)
 
@@ -88,10 +88,10 @@ These tests must still pass after changes:
 
 | Test Pattern | Why |
 |--------------|-----|
-| `tests/test_runner.py` | Runner behavior unchanged |
-| `tests/test_loader.py` | Agent loading still works |
-| `tests/test_checkpoint.py` | Checkpoint round-trip preserved |
-| `tests/test_async_agent.py` | Agent behavior unchanged |
+| `tests/integration/test_runner.py` | Runner behavior unchanged |
+| `tests/integration/test_loader.py` | Agent loading still works |
+| `tests/integration/test_checkpoint.py` | Checkpoint round-trip preserved |
+| `tests/unit/test_async_agent.py` | Agent behavior unchanged |
 
 ---
 

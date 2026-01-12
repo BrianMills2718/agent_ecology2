@@ -100,7 +100,7 @@ def sample_function():
 def run_sync(cwd: Path, *args: str) -> subprocess.CompletedProcess:
     """Run sync_governance.py with given args."""
     # Copy the sync script to the temp directory
-    script_src = Path(__file__).parent.parent / "scripts" / "sync_governance.py"
+    script_src = Path(__file__).parent.parent.parent / "scripts" / "sync_governance.py"
     script_dst = cwd / "scripts" / "sync_governance.py"
     script_dst.write_text(script_src.read_text())
 

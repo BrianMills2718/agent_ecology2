@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 # Add src/world to path for direct imports (avoids package import issues)
-sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "world"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src" / "world"))
 
 from simulation_engine import (
     SimulationEngine,

@@ -77,8 +77,8 @@ Without enforcement, we accumulate technical debt through untested "complete" wo
 
 | Test Pattern | Why |
 |--------------|-----|
-| `tests/test_runner.py` | Runner still works |
-| `tests/test_agent_loop.py` | Autonomous loops work |
+| `tests/integration/test_runner.py` | Runner still works |
+| `tests/unit/test_agent_loop.py` | Autonomous loops work |
 
 ---
 

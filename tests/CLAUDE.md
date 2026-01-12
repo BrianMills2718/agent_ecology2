@@ -1,70 +1,76 @@
 # Tests Directory
 
-pytest test suite. All tests must pass before committing.
+pytest test suite organized by test type.
+
+## Structure
+
+```
+tests/
+├── unit/           # Single component, no external deps (19 files, ~500 tests)
+├── integration/    # Multiple components together (12 files, ~400 tests)
+└── e2e/            # Full system tests (2 files)
+    ├── test_smoke.py      # Mocked LLM (fast, CI)
+    └── test_real_e2e.py   # Real LLM (slow, $$$, --run-external)
+```
 
 ## Running Tests
 
 ```bash
-# All tests
+# All tests (fast, CI default)
 pytest tests/ -v
 
-# Single file
-pytest tests/test_ledger.py -v
+# By type
+pytest tests/unit/ -v              # Unit tests only
+pytest tests/integration/ -v       # Integration tests only
+pytest tests/e2e/test_smoke.py -v  # E2E with mocked LLM
+
+# Real E2E (actual LLM calls, costs ~$0.01-0.05)
+pytest tests/e2e/test_real_e2e.py -v --run-external
 
 # Single test
-pytest tests/test_ledger.py::TestTransfer::test_basic_transfer -v
-
-# With coverage
-pytest tests/ --cov=src --cov-report=html
+pytest tests/unit/test_ledger.py::TestTransfer::test_basic_transfer -v
 ```
 
-## Test Organization
+## Test Types
 
-| File | Tests |
-|------|-------|
-| `test_ledger.py` | Resource tracking, scrip transfers |
-| `test_executor.py` | Code execution, safety, invoke() |
-| `test_escrow.py` | Trustless trading, atomic operations |
-| `test_oracle_auction.py` | Bidding, resolution, minting |
-| `test_checkpoint.py` | Save/load round-trip |
-| `test_runner.py` | Tick loop, phase execution |
-| `test_invoke.py` | Recursive invocation, depth limits |
-| `test_async_agent.py` | Parallel agent thinking |
-| `test_memory.py` | Mem0 integration |
-| `test_policy.py` | Access control policies |
+| Type | Purpose | Speed | Mocks |
+|------|---------|-------|-------|
+| **Unit** | Single class/function in isolation | Fast | None ideally |
+| **Integration** | Multiple components together | Medium | External APIs only |
+| **E2E (smoke)** | Full simulation, mocked LLM | Fast | LLM mocked |
+| **E2E (real)** | Full simulation, real LLM | Slow | None |
+
+## When to Use Each
+
+- **Unit**: Testing logic in isolation (ledger math, policy checks)
+- **Integration**: Testing components work together (executor + ledger + artifacts)
+- **E2E smoke**: CI - verify simulation runs without crashing
+- **E2E real**: Pre-release - verify real LLM integration works
+
+## Key Files
+
+| Directory | Key Files |
+|-----------|-----------|
+| `unit/` | test_ledger.py, test_executor.py, test_contracts.py, test_agent_loop.py |
+| `integration/` | test_runner.py, test_escrow.py, test_invoke.py, test_genesis_store.py |
+| `e2e/` | test_smoke.py (mocked), test_real_e2e.py (real LLM) |
 
 ## Test Conventions
 
 1. **Use fixtures** from `conftest.py` for common setup
-2. **Test edge cases** - empty inputs, max values, error conditions
-3. **Real tests preferred** - Avoid mocks; accept time/cost of real calls (see root CLAUDE.md #5)
-4. **Fast execution** - Full suite runs in ~5-10 seconds
+2. **Real tests preferred** - Avoid mocks; accept time/cost of real calls (see root CLAUDE.md #5)
+3. **Fast execution** - Unit + integration suite runs in ~15 seconds
 
-## Adding New Tests
+## Adding Tests
 
-When adding new functionality:
-1. Add tests FIRST (TDD preferred)
-2. Cover happy path AND error cases
-3. Use descriptive test names: `test_transfer_fails_with_insufficient_balance`
+When adding functionality:
+1. Add unit tests for new logic
+2. Add integration test if multiple components involved
+3. Add E2E test if new user-facing feature
+4. Real E2E test required before marking feature complete
 
 ## CI Integration
 
-GitHub Actions runs `pytest tests/ -v --tb=short` on every PR.
+GitHub Actions runs `pytest tests/ -v --tb=short` on every PR (excludes real E2E).
 
-## Plan Test Integration
-
-Plans in `docs/plans/` can define required tests in their `## Required Tests` section. Use:
-
-```bash
-# See what tests a plan needs
-python scripts/check_plan_tests.py --plan 1 --tdd
-
-# Run all required tests for a plan
-python scripts/check_plan_tests.py --plan 1
-```
-
-When implementing a plan:
-1. Define tests in plan's `## Required Tests` section
-2. Write test stubs here (TDD - they fail initially)
-3. Implement feature
-4. Tests pass, plan complete
+For releases: `pytest tests/ -v --run-external` (includes real E2E).

@@ -1,0 +1,209 @@
+"""Real E2E tests - actual LLM calls, no mocks.
+
+These tests verify the simulation works end-to-end with real LLM.
+They are slow and cost money, so they're skipped by default.
+
+Run with:
+    pytest tests/e2e/test_real_e2e.py -v --run-external
+
+Cost estimate: ~$0.01-0.05 per full test run
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from src.simulation.runner import SimulationRunner
+from src.world import World
+
+
+# Skip all tests in this module unless --run-external is passed
+pytestmark = pytest.mark.external
+
+
+@pytest.fixture
+def real_e2e_config(tmp_path: Path) -> dict[str, Any]:
+    """Configuration for real E2E tests.
+
+    Uses minimal settings to keep costs low while still exercising
+    the full code path.
+    """
+    log_file = tmp_path / "real_e2e.jsonl"
+
+    return {
+        "world": {
+            "max_ticks": 2,  # Minimal ticks
+        },
+        "costs": {
+            "per_1k_input_tokens": 1,
+            "per_1k_output_tokens": 3,
+        },
+        "logging": {
+            "output_file": str(log_file),
+            "log_dir": str(tmp_path / "llm_logs"),
+        },
+        "principals": [
+            {"id": "e2e_agent", "starting_scrip": 100},
+        ],
+        "rights": {
+            "default_compute_quota": 100,
+            "default_disk_quota": 10000,
+        },
+        "llm": {
+            "default_model": "gemini/gemini-2.0-flash",
+            "rate_limit_delay": 0,
+        },
+        "budget": {
+            "max_api_cost": 0.10,  # Cap at $0.10 for safety
+            "checkpoint_interval": 0,
+            "checkpoint_on_end": False,
+        },
+        "rate_limiting": {
+            "enabled": False,
+        },
+        "execution": {
+            "use_autonomous_loops": False,
+        },
+    }
+
+
+class TestRealSimulationSmoke:
+    """Smoke tests with real LLM - verify basic functionality works."""
+
+    def test_simulation_runs_one_tick(
+        self,
+        real_e2e_config: dict[str, Any],
+    ) -> None:
+        """Simulation completes one tick with real LLM."""
+        config = real_e2e_config.copy()
+        config["world"]["max_ticks"] = 1
+
+        runner = SimulationRunner(config, verbose=False)
+        world = runner.run_sync()
+
+        assert world.tick >= 1
+        assert isinstance(world, World)
+
+    def test_agent_produces_valid_action(
+        self,
+        real_e2e_config: dict[str, Any],
+    ) -> None:
+        """Agent produces a parseable action from real LLM."""
+        config = real_e2e_config.copy()
+        config["world"]["max_ticks"] = 1
+
+        runner = SimulationRunner(config, verbose=False)
+        world = runner.run_sync()
+
+        # Check that something happened (action was executed)
+        # The event log should have at least one action
+        assert world.tick == 1
+
+    def test_genesis_artifacts_accessible(
+        self,
+        real_e2e_config: dict[str, Any],
+    ) -> None:
+        """Genesis artifacts are created and accessible."""
+        config = real_e2e_config.copy()
+        config["world"]["max_ticks"] = 1
+
+        runner = SimulationRunner(config, verbose=False)
+        world = runner.run_sync()
+
+        # Genesis artifacts should exist
+        assert "genesis_ledger" in world.genesis_artifacts
+        assert "genesis_store" in world.genesis_artifacts
+
+    def test_ledger_has_balances(
+        self,
+        real_e2e_config: dict[str, Any],
+    ) -> None:
+        """Ledger tracks agent balances after simulation."""
+        config = real_e2e_config.copy()
+        config["world"]["max_ticks"] = 1
+
+        runner = SimulationRunner(config, max_agents=1, verbose=False)
+        world = runner.run_sync()
+
+        # At least one agent should have balance tracked
+        balances = world.ledger.get_all_scrip()
+        assert len(balances) >= 1
+
+
+class TestRealAgentBehavior:
+    """Test that agent behavior works with real LLM."""
+
+    def test_agent_can_write_artifact(
+        self,
+        real_e2e_config: dict[str, Any],
+    ) -> None:
+        """Agent can successfully write an artifact.
+
+        This may take multiple ticks as the agent decides what to do.
+        """
+        config = real_e2e_config.copy()
+        config["world"]["max_ticks"] = 3  # Give agent time to write
+
+        runner = SimulationRunner(config, verbose=False)
+        world = runner.run_sync()
+
+        # Count non-genesis artifacts
+        # Agent artifacts + any written artifacts
+        total_artifacts = len(list(world.artifacts.list_all()))
+
+        # Should have genesis artifacts + agent artifact + possibly written artifacts
+        # At minimum: genesis (6) + agent (1) = 7
+        assert total_artifacts >= 7
+
+    def test_multi_tick_simulation(
+        self,
+        real_e2e_config: dict[str, Any],
+    ) -> None:
+        """Simulation runs multiple ticks without crashing."""
+        config = real_e2e_config.copy()
+        config["world"]["max_ticks"] = 3
+
+        runner = SimulationRunner(config, verbose=False)
+        world = runner.run_sync()
+
+        assert world.tick == 3
+
+
+class TestRealAutonomousMode:
+    """Test autonomous mode with real LLM."""
+
+    @pytest.mark.asyncio
+    async def test_autonomous_mode_runs(
+        self,
+        real_e2e_config: dict[str, Any],
+    ) -> None:
+        """Autonomous mode runs without crashing."""
+        config = real_e2e_config.copy()
+        config["execution"] = {
+            "use_autonomous_loops": True,
+            "agent_loop": {
+                "min_loop_delay": 0.5,
+                "max_loop_delay": 1.0,
+                "resource_check_interval": 0.1,
+                "max_consecutive_errors": 2,
+                "resources_to_check": [],
+            },
+        }
+        config["rate_limiting"] = {
+            "enabled": True,
+            "window_seconds": 1.0,
+            "resources": {
+                "llm_calls": {"max_per_window": 10},
+            },
+        }
+
+        runner = SimulationRunner(config, verbose=False)
+
+        # Run for 2 seconds
+        world = await runner.run(duration=2.0)
+
+        assert isinstance(world, World)

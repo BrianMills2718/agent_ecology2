@@ -150,21 +150,21 @@ resources:
 
 ## Required Tests
 
-> **Note:** Implementation used RateTracker (rolling window) instead of TokenBucket. Tests are in `tests/test_rate_tracker.py`.
+> **Note:** Implementation used RateTracker (rolling window) instead of TokenBucket. Tests are in `tests/unit/test_rate_tracker.py`.
 
 ### Implemented Tests
 
-The following tests exist in `tests/test_rate_tracker.py`:
+The following tests exist in `tests/unit/test_rate_tracker.py`:
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/test_rate_tracker.py` | `test_consume_success` | Basic consumption works |
-| `tests/test_rate_tracker.py` | `test_consume_reduces_remaining` | Consuming reduces available capacity |
-| `tests/test_rate_tracker.py` | `test_consume_over_limit_fails` | Cannot exceed rate limit |
-| `tests/test_rate_tracker.py` | `test_has_capacity_under_limit` | Capacity check works |
-| `tests/test_rate_tracker.py` | `test_records_expire_after_window` | Rolling window expiry |
-| `tests/test_rate_tracker.py` | `test_agents_have_independent_limits` | Per-agent tracking |
-| `tests/test_rate_tracker.py` | `test_resources_tracked_separately` | Per-resource tracking |
+| `tests/unit/test_rate_tracker.py` | `test_consume_success` | Basic consumption works |
+| `tests/unit/test_rate_tracker.py` | `test_consume_reduces_remaining` | Consuming reduces available capacity |
+| `tests/unit/test_rate_tracker.py` | `test_consume_over_limit_fails` | Cannot exceed rate limit |
+| `tests/unit/test_rate_tracker.py` | `test_has_capacity_under_limit` | Capacity check works |
+| `tests/unit/test_rate_tracker.py` | `test_records_expire_after_window` | Rolling window expiry |
+| `tests/unit/test_rate_tracker.py` | `test_agents_have_independent_limits` | Per-agent tracking |
+| `tests/unit/test_rate_tracker.py` | `test_resources_tracked_separately` | Per-resource tracking |
 
 ### Existing Tests (Must Pass)
 
@@ -172,9 +172,9 @@ These tests must still pass after changes:
 
 | Test Pattern | Why |
 |--------------|-----|
-| `tests/test_ledger.py` | Resource accounting API unchanged |
-| `tests/test_resource_tracking.py` | Integration with resource system |
-| `tests/test_runner.py` | Tick execution unaffected |
+| `tests/unit/test_ledger.py` | Resource accounting API unchanged |
+| `tests/unit/test_resource_tracking.py` | Integration with resource system |
+| `tests/integration/test_runner.py` | Tick execution unaffected |
 
 ---
 
