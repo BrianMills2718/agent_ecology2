@@ -40,6 +40,7 @@ These patterns are now implementation details of [Documentation Graph](documenta
 - Documentation Graph - when you need to trace ADR → target → current → code
 - Plan Workflow - for larger features with multiple steps
 - Claim System - for explicit parallel work coordination
+- Verification Enforcement - when plans need proof of completion
 
 ## Pattern Template
 
