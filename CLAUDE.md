@@ -143,6 +143,32 @@ See `docs/GLOSSARY.md` for full definitions. Quick reference:
 
 Multiple Claude Code instances can work simultaneously on this codebase.
 
+### CRITICAL: Never Commit Directly to Main
+
+**All work MUST be on feature branches.** Commits directly to main will be orphaned when other instances push.
+
+```bash
+# WRONG - commits will be lost
+git checkout main
+# ... make changes ...
+git commit -m "My work"  # ORPHANED when someone else pushes!
+
+# RIGHT - work is preserved
+git checkout -b work/my-feature
+# ... make changes ...
+git commit -m "My work"
+git push -u origin work/my-feature
+# Create PR to merge
+```
+
+**Why this happens:** When multiple CC instances work on main simultaneously:
+1. Instance A commits to local main
+2. Instance B pushes to origin/main
+3. Instance A pulls → merge creates orphaned side branch
+4. Instance A's commits become unreachable and lost
+
+**Feature branches prevent this:** Even if orphaned, branches are named and findable.
+
 ### Branch Naming Convention
 
 Always link branches to plans: `plan-NN-short-description`
