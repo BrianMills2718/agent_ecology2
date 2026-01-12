@@ -169,14 +169,25 @@ See root `CLAUDE.md` → "Multi-Claude Coordination" section.
 
 ---
 
-## TDD Workflow
+## TDD Workflow (Thin Slice)
 
-Plans support TDD-style test requirements. Before implementing:
+Plans require both unit/integration tests AND E2E verification. **No feature is complete until it runs E2E.**
 
-1. **Define tests** - Add `## Required Tests` section to plan
-2. **Write tests** - Create test stubs (they will fail)
-3. **Implement** - Code until tests pass
-4. **Verify** - Run `python scripts/check_plan_tests.py --plan N`
+1. **Define tests** - Add `## Required Tests` section to plan (unit + integration)
+2. **Define E2E criteria** - Add `## E2E Verification` section with specific E2E scenario
+3. **Write tests** - Create test stubs (they will fail)
+4. **Implement** - Code until tests pass
+5. **E2E verify** - Run `pytest tests/e2e/test_real_e2e.py -v --run-external`
+6. **Complete** - Only after E2E passes
+
+### Why E2E Required
+
+Without E2E verification, we risk the "big bang" problem:
+- All unit tests pass ✅
+- All integration tests pass ✅
+- Real system doesn't work ❌
+
+**Thin slice approach:** Every feature must prove it works end-to-end before declaring success.
 
 ### Check Commands
 

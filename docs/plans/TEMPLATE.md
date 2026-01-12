@@ -52,12 +52,28 @@ These tests must still pass after changes:
 
 ---
 
+## E2E Verification
+
+**Required:** Every feature must work end-to-end with real LLM before completion.
+
+| Scenario | Steps | Expected Outcome |
+|----------|-------|------------------|
+| [Describe E2E scenario] | 1. Run simulation with feature enabled 2. ... | [What should happen] |
+
+```bash
+# Run E2E verification
+pytest tests/e2e/test_real_e2e.py -v --run-external
+```
+
+---
+
 ## Verification
 
 ### Tests & Quality
 - [ ] All required tests pass: `python scripts/check_plan_tests.py --plan N`
 - [ ] Full test suite passes: `pytest tests/`
 - [ ] Type check passes: `python -m mypy src/ --ignore-missing-imports`
+- [ ] **E2E verification passes:** `pytest tests/e2e/test_real_e2e.py -v --run-external`
 
 ### Documentation
 - [ ] `docs/architecture/current/` updated

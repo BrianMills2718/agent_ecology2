@@ -17,8 +17,8 @@ from pathlib import Path
 import pytest
 
 # Add src paths for direct module imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "world"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src" / "world"))
 
 
 class TestTimeToTokensCalculation:
@@ -114,7 +114,7 @@ class TestLedgerDirect:
         """Create a fresh Ledger with isolated import."""
         # Import directly from file
         import importlib.util
-        ledger_path = Path(__file__).parent.parent / "src" / "world" / "ledger.py"
+        ledger_path = Path(__file__).parent.parent.parent / "src" / "world" / "ledger.py"
         spec = importlib.util.spec_from_file_location("ledger", ledger_path)
         if spec and spec.loader:
             module = importlib.util.module_from_spec(spec)
