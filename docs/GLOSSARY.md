@@ -6,6 +6,32 @@ Canonical terminology for Agent Ecology. Use these terms consistently across cod
 
 ---
 
+## Current vs Target
+
+This project has terminology differences between current implementation and target architecture:
+
+| Glossary | Purpose | When to Use |
+|----------|---------|-------------|
+| [GLOSSARY_CURRENT.md](GLOSSARY_CURRENT.md) | What IS implemented | Reading/modifying existing code |
+| [GLOSSARY_TARGET.md](GLOSSARY_TARGET.md) | What we're BUILDING TOWARD | Architecture discussions, new design |
+
+**Key difference:** `genesis_oracle` (current code) → `genesis_mint` (target) per ADR-0004.
+
+---
+
+## Quick Reference (Stable Terms)
+
+These terms are the same in both current and target:
+
+| Use | Not | Why |
+|-----|-----|-----|
+| `scrip` | `credits` | Consistency |
+| `principal` | `account` | Principals include artifacts/contracts |
+| `tick` | `turn` | Consistency |
+| `artifact` | `object/entity` | Everything is an artifact |
+
+---
+
 ## Core Ontology
 
 Everything is an artifact. Other entity types are artifacts with specific properties.
