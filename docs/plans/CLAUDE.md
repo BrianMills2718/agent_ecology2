@@ -77,6 +77,7 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 | 29 | [Library Installation](29_package_manager.md) | Medium | ❌ Needs Plan | - |
 | 30 | [Capability Request System](30_capability_requests.md) | Medium | ❌ Needs Plan | - |
 | 31 | [Resource Measurement](31_resource_measurement.md) | **High** | ⏸️ Blocked | - |
+| 32 | [Developer Tooling](32_developer_tooling.md) | **High** | 🚧 In Progress | - |
 
 ---
 
@@ -142,6 +143,34 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 | - | Contract System (GAP-GEN-001) | 2026-01-12 | Phase 1 |
 | - | Autonomous Loops (GAP-EXEC-001) | 2026-01-12 | Phase 1 |
 | - | Unified Ontology Fields (GAP-AGENT-001) | 2026-01-12 | Phase 1 |
+
+---
+
+## Active Work
+
+<!-- Update when claiming work. Format: CC-ID or branch name -->
+| CC-ID | Plan | Task | Started | Branch |
+|-------|------|------|---------|--------|
+| - | - | - | - | - |
+
+**Claim protocol:**
+1. Add row with your CC-ID/branch name
+2. Update plan status to 🚧 In Progress
+3. Create feature branch: `plan-NN-description`
+
+---
+
+## Awaiting Review
+
+<!-- PRs that need review from another CC instance -->
+| PR | Plan | Author | Created | Reviewer |
+|----|------|--------|---------|----------|
+| - | - | - | - | - |
+
+**Review protocol:**
+1. Author adds PR here after pushing
+2. Reviewer claims by adding their CC-ID
+3. After merge, move to Completed Gaps and remove from here
 
 ---
 

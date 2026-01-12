@@ -15,6 +15,28 @@ from src.world.ledger import Ledger
 from src.world.world import World, ConfigDict
 
 
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Add --run-external option for running external tests."""
+    parser.addoption(
+        "--run-external",
+        action="store_true",
+        default=False,
+        help="Run tests marked as external (real API calls, slow)",
+    )
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    """Skip external tests unless --run-external is passed."""
+    if config.getoption("--run-external"):
+        return
+    skip_external = pytest.mark.skip(reason="need --run-external option to run")
+    for item in items:
+        if "external" in item.keywords:
+            item.add_marker(skip_external)
+
+
 @pytest.fixture
 def minimal_config() -> ConfigDict:
     """Create a minimal configuration dict for testing.

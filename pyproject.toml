@@ -24,6 +24,9 @@ addopts = [
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
+markers = [
+    "external: marks tests as external (real API calls, slow) - skipped by default, run with --run-external",
+]
 
 [tool.coverage.run]
 source = ["src"]

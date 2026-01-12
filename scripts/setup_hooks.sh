@@ -1,79 +1,31 @@
 #!/bin/bash
-# Install git hooks for agent_ecology
+# Configure git to use tracked hooks directory
 # Run this once after cloning the repo
 
 set -e
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
-HOOKS_DIR="$REPO_ROOT/.git/hooks"
+HOOKS_DIR="$REPO_ROOT/hooks"
 
-echo "Installing git hooks..."
+echo "Configuring git hooks..."
 
-# Create pre-commit hook
-cat > "$HOOKS_DIR/pre-commit" << 'EOF'
-#!/bin/bash
-# Pre-commit hook for agent_ecology
-# Catches issues before they reach CI
-
-set -e
-
-echo "Running pre-commit checks..."
-
-# Get the repo root
-REPO_ROOT=$(git rev-parse --show-toplevel)
-cd "$REPO_ROOT"
-
-# Get staged Python files
-STAGED_PY=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$' || true)
-
-# 1. Doc-coupling check (strict violations only)
-echo "Checking doc-code coupling..."
-if ! python scripts/check_doc_coupling.py --strict 2>/dev/null; then
-    echo ""
-    echo "ERROR: Doc-coupling violation detected!"
-    echo "Run 'python scripts/check_doc_coupling.py --suggest' to see which docs to update."
-    echo ""
+# Verify hooks directory exists
+if [ ! -d "$HOOKS_DIR" ]; then
+    echo "ERROR: hooks/ directory not found"
+    echo "This should be tracked in the repo"
     exit 1
 fi
 
-# 2. Mypy on changed src/ files
-STAGED_SRC=$(echo "$STAGED_PY" | grep '^src/' || true)
-if [ -n "$STAGED_SRC" ]; then
-    echo "Running mypy on changed files..."
-    MYPY_FILES=""
-    for f in $STAGED_SRC; do
-        case "$f" in
-            src/config.py|src/world/*.py|src/agents/*.py)
-                MYPY_FILES="$MYPY_FILES $f"
-                ;;
-        esac
-    done
+# Make hooks executable
+chmod +x "$HOOKS_DIR"/*
 
-    if [ -n "$MYPY_FILES" ]; then
-        if ! python -m mypy --strict --ignore-missing-imports $MYPY_FILES 2>/dev/null; then
-            echo ""
-            echo "ERROR: mypy type check failed!"
-            echo ""
-            exit 1
-        fi
-    fi
-fi
+# Configure git to use tracked hooks directory
+git config core.hooksPath hooks
 
-# 3. Validate coupling config
-echo "Validating coupling config..."
-if ! python scripts/check_doc_coupling.py --validate-config 2>/dev/null; then
-    echo ""
-    echo "ERROR: Invalid doc-coupling config"
-    echo ""
-    exit 1
-fi
-
-echo "Pre-commit checks passed!"
-EOF
-
-chmod +x "$HOOKS_DIR/pre-commit"
-
-echo "Git hooks installed successfully!"
+echo "Git hooks configured successfully!"
 echo ""
-echo "The pre-commit hook will now run automatically before each commit."
+echo "Using tracked hooks from: $HOOKS_DIR"
+echo "  - commit-msg: Enforces plan references"
+echo "  - pre-commit: Doc-coupling and mypy checks"
+echo ""
 echo "To bypass (not recommended): git commit --no-verify"
