@@ -3,9 +3,13 @@
 
 Usage:
     python scripts/check_doc_coupling.py [--base BASE_REF] [--suggest]
+    python scripts/check_doc_coupling.py --staged  # For pre-commit hook
 
 Compares current branch against BASE_REF (default: origin/main) to find
 changed files, then checks if coupled docs were also updated.
+
+The --staged option checks only staged files, suitable for pre-commit hooks.
+If source files are staged AND their coupled docs are also staged, it passes.
 
 Exit codes:
     0 - All couplings satisfied (or no coupled changes)
@@ -43,6 +47,20 @@ def get_changed_files(base_ref: str) -> set[str]:
             return set(result.stdout.strip().split("\n")) - {""}
         except subprocess.CalledProcessError:
             return set()
+
+
+def get_staged_files() -> set[str]:
+    """Get files staged for commit."""
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return set(result.stdout.strip().split("\n")) - {""}
+    except subprocess.CalledProcessError:
+        return set()
 
 
 def load_couplings(config_path: Path) -> list[dict]:
@@ -179,6 +197,11 @@ def main() -> int:
         action="store_true",
         help="Validate that all docs in config exist",
     )
+    parser.add_argument(
+        "--staged",
+        action="store_true",
+        help="Check staged files only (for pre-commit hook)",
+    )
     args = parser.parse_args()
 
     config_path = Path(args.config)
@@ -199,10 +222,17 @@ def main() -> int:
         print("Config validation passed.")
         return 0
 
-    changed_files = get_changed_files(args.base)
-    if not changed_files:
-        print("No changed files detected.")
-        return 0
+    # Get changed files based on mode
+    if args.staged:
+        changed_files = get_staged_files()
+        if not changed_files:
+            # No staged files = nothing to check
+            return 0
+    else:
+        changed_files = get_changed_files(args.base)
+        if not changed_files:
+            print("No changed files detected.")
+            return 0
 
     # Suggest mode
     if args.suggest:

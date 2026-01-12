@@ -8,7 +8,8 @@ Utility scripts for development and CI.
 |--------|---------|-------|
 | `check_doc_coupling.py` | Verify docs updated when source changes | `python scripts/check_doc_coupling.py` |
 | `check_plan_tests.py` | Verify plan test requirements | `python scripts/check_plan_tests.py` |
-| `check_claims.py` | Detect stale claims in Active Work table | `python scripts/check_claims.py` |
+| `check_claims.py` | Manage active work claims (YAML-backed) | `python scripts/check_claims.py` |
+| `sync_plan_status.py` | Sync plan status across files | `python scripts/sync_plan_status.py` |
 | `validate_plan_completion.py` | Validate plan completion criteria | `python scripts/validate_plan_completion.py` |
 | `plan_progress.py` | Show plan implementation progress | `python scripts/plan_progress.py` |
 | `doc_coupling.yaml` | Source-to-doc mappings | Config file, not executable |
@@ -25,13 +26,15 @@ Pre-commit hook catches issues before they reach CI:
 bash scripts/setup_hooks.sh
 
 # What it checks:
-# 1. Doc-coupling violations (strict)
+# 1. Doc-coupling on STAGED files (source + doc must be staged together)
 # 2. Mypy on changed src/ files
 # 3. Coupling config validity
 
 # Bypass (not recommended)
 git commit --no-verify
 ```
+
+The hook uses `--staged` mode for doc-coupling, so commits that include both source changes AND their required doc updates will pass.
 
 ## Doc Coupling Commands
 
@@ -100,6 +103,8 @@ python scripts/check_plan_tests.py --all
 
 ## Claim Management
 
+Claims are stored in `.claude/active-work.yaml` and synced to the CLAUDE.md table.
+
 ```bash
 # Check for stale claims (default >4 hours)
 python scripts/check_claims.py
@@ -107,8 +112,29 @@ python scripts/check_claims.py
 # List all active claims
 python scripts/check_claims.py --list
 
-# Clear a stale claim
-python scripts/check_claims.py --clear CC-5
+# Claim work on a plan
+python scripts/check_claims.py --claim CC-1 --plan 3 --task "Implement docker"
+
+# Release a claim (when done)
+python scripts/check_claims.py --release CC-1
+
+# Sync YAML to CLAUDE.md table
+python scripts/check_claims.py --sync
+```
+
+## Plan Status Sync
+
+Ensures plan status is consistent across plan files and index.
+
+```bash
+# Check for inconsistencies
+python scripts/sync_plan_status.py --check
+
+# Sync index to match plan files
+python scripts/sync_plan_status.py --sync
+
+# List all plan statuses
+python scripts/sync_plan_status.py --list
 ```
 
 ## Plan Progress

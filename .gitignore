@@ -67,3 +67,6 @@ Thumbs.db
 
 # Claude Code session files (handoffs, temp context)
 .claude/
+# But track coordination files for multi-CC
+!.claude/active-work.yaml
+!.claude/handoff_template.md

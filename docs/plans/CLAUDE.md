@@ -47,11 +47,11 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 | # | Gap | Priority | Status | Blocks |
 |---|-----|----------|--------|--------|
 | 1 | [Rate Allocation](01_rate_allocation.md) | **High** | ✅ Complete | #2, #31 |
-| 2 | [Continuous Execution](02_continuous_execution.md) | **High** | 🚧 In Progress | #21 |
+| 2 | [Continuous Execution](02_continuous_execution.md) | **High** | ⏸️ In Progress | #21 |
 | 3 | [Docker Isolation](03_docker_isolation.md) | Medium | 📋 Planned | - |
 | 4 | ~~Compute Debt Model~~ | - | ✅ Superseded | - |
 | 5 | [Oracle Anytime Bidding](05_oracle_anytime.md) | Medium | ❌ Needs Plan | - |
-| 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | 🚧 In Progress | #7,#8,#14,#16 |
+| 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | ❌ In Progress | #7,#8,#14,#16 |
 | 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | ⏸️ Blocked | - |
 | 8 | [Agent Rights Trading](08_agent_rights.md) | Low | ⏸️ Blocked | - |
 | 9 | [Scrip Debt Contracts](09_scrip_debt.md) | Low | ❌ Needs Plan | - |
