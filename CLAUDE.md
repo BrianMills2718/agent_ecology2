@@ -282,11 +282,13 @@ python scripts/check_claims.py --release --validate
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->
-| PR | Branch | Title | Created |
-|----|--------|-------|---------|
-| #39 | plan-21-continuous-testing | [Plan #21] Testing strategy (needs rebase) | 2026-01-12 |
-| #42 | claude-md-compendious | CLAUDE.md simplification | 2026-01-12 |
-| #43 | worktree-enforcement | Worktree enforcement hook (needs rebase) | 2026-01-12 |
+| PR | Branch | Title | Created | Status |
+|----|--------|-------|---------|--------|
+| #39 | plan-21-continuous-testing | [Plan #21] Testing strategy | 2026-01-12 | Conflicting |
+| #46 | plan-34-oracle-mint-rename | [Plan #34] Oracle to Mint rename | 2026-01-12 | Conflicting |
+| #47 | update-claude-md-pr46 | Update Genesis table for #46 | 2026-01-12 | Conflicting |
+| #49 | test-reorganization | Reorganize tests and add E2E | 2026-01-12 | Conflicting |
+| #50 | fix-hook-whitelist | Whitelist coordination files in hook | 2026-01-12 | Mergeable |
 
 **After PR merged:** Remove from Awaiting Review table.
 
