@@ -4,10 +4,22 @@ LLM agents operating under real resource constraints (compute, disk, API budget)
 
 ---
 
+## About This File
+
+**This file is automatically loaded by Claude Code for every conversation in this repo.**
+
+Keep it minimal. This file should contain ONLY:
+- Commands you need frequently (not setup/install - that's README)
+- Design principles that apply to ALL code changes
+- Pointers to detailed docs (not the details themselves)
+
+Domain-specific context belongs in subdir CLAUDE.md files (e.g., `src/world/CLAUDE.md`).
+
+---
+
 ## Quick Start
 
 ```bash
-pip install -e .          # Install package
 ./check                   # Run all CI checks locally
 make help                 # Show all available commands
 ```
@@ -100,6 +112,43 @@ All values come from `config/config.yaml`. Missing config = immediate failure.
 ### 4. Observability
 
 Log state changes with context (agent_id, tick, action). Never swallow exceptions.
+
+---
+
+## Code Style
+
+### Edits
+- **Prefer editing existing files** over creating new ones
+- **Don't add to unchanged code**: no new comments, docstrings, or type annotations to code you didn't modify
+- **Avoid over-engineering**: don't add abstractions, helpers, or configurability beyond what's requested
+- **Delete unused code completely**: no `_unused` renames, no `# removed` comments
+
+### Imports
+```python
+# Within src/ - use relative imports
+from ..config import get
+from .ledger import Ledger
+
+# From run.py or tests/ - use absolute imports
+from src.world import World
+```
+
+### Commits
+```bash
+# Link to plan when applicable
+git commit -m "[Plan #3] Implement docker isolation
+
+- Added Dockerfile
+- Added docker-compose.yml
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# For non-plan work
+git commit -m "Fix: Correct rate limit calculation
+
+- Fixed off-by-one in window expiry
+- Added test for edge case"
+```
 
 ---
 

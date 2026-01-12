@@ -23,7 +23,7 @@ try:
     HAS_SIMULATION = True
 except ImportError:
     HAS_SIMULATION = False
-    SimulationRunner = None  # type: ignore
+    SimulationRunner = None
 from .watcher import PollingWatcher
 from .models import (
     SimulationState as SimulationStateModel,
