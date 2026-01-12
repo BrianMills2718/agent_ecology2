@@ -77,9 +77,9 @@ Full list of all architectural decisions with certainty levels, organized by top
 | | access_contract change: current only | 75% | DECIDED |
 | | Genesis contracts mutable | 75% | DECIDED |
 | **Resources** | | | |
-| | Token bucket for flow | 90% | DECIDED |
+| | Rolling window for rate limits | 90% | DECIDED |
 | | Scrip cannot go negative | 90% | DECIDED |
-| | Compute debt allowed | 90% | DECIDED |
+| | No debt for renewable resources | 90% | REVISED 2026-01-12 |
 | | Standing pays own costs | 90% | DECIDED |
 | | No 429 refunds | 60% | OPEN |
 | | Rate limit sync via 429 adaptation | 50% | OPEN |

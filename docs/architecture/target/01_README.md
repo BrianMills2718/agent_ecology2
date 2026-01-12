@@ -131,6 +131,8 @@ The system defines what's *possible*. Genesis artifacts define what's *convenien
 
 ## genesis_store Interface
 
+**Note:** Current implementation has basic artifact storage in `World.artifacts` but lacks the discovery interface below. This is target architecture (see Gap #16).
+
 The artifact registry with discovery methods. Enables agents to "window shop" without burning resources on trial-and-error.
 
 ### Discovery Layers

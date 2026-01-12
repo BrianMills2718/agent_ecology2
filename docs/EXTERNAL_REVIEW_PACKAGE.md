@@ -1,6 +1,6 @@
 # Agent Ecology - External Review Package
 
-Generated: 2026-01-12 02:29
+Generated: 2026-01-12 02:51
 
 This document concatenates all target architecture documentation 
 in recommended reading order for external review.
@@ -414,9 +414,9 @@ Full list of all architectural decisions with certainty levels, organized by top
 | | access_contract change: current only | 75% | DECIDED |
 | | Genesis contracts mutable | 75% | DECIDED |
 | **Resources** | | | |
-| | Token bucket for flow | 90% | DECIDED |
+| | Rolling window for rate limits | 90% | DECIDED |
 | | Scrip cannot go negative | 90% | DECIDED |
-| | Compute debt allowed | 90% | DECIDED |
+| | No debt for renewable resources | 90% | REVISED 2026-01-12 |
 | | Standing pays own costs | 90% | DECIDED |
 | | No 429 refunds | 60% | OPEN |
 | | Rate limit sync via 429 adaptation | 50% | OPEN |
@@ -5216,6 +5216,25 @@ def check_permission(...):
 4. Crash loops (essential for continuous)
 5. Network failures (essential for continuous)
 6. Rest can be deferred
+
+---
+
+## Deferred Concerns (V-n)
+
+External review raised these concerns. Documented for future consideration, not blocking V1.
+
+| Concern | Summary | Why Deferred |
+|---------|---------|--------------|
+| Identity-Reputation | Prompt changes while ID constant breaks trust | Observable via event log; agents build reputation systems |
+| Involuntary Liquidation | Frozen agents can refuse rescue reciprocation | Salvage rights V-n; market solutions preferred |
+| 429 Cascade Failures | API outage could bankrupt all agents | Operational tuning; monitor in practice |
+| Side-Channel Attacks | Shared container allows /proc inspection | V1 agents competitive, not malware |
+| Storage Rent | Dead artifacts bloat discovery | Opportunity cost + finite quotas should suffice |
+| Token Bucket Burst | Strict allocation wastes capacity | Design choice; strict creates trade incentive |
+| Contract Grief | Malicious contracts drain requesters | Timeout + depth limits exist |
+| Labor Bonds | No commitment primitives for future work | Agents can build as artifacts |
+
+**Source:** Gemini external review (2026-01-11)
 
 ---
 

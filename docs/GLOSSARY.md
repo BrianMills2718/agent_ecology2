@@ -50,10 +50,10 @@ Allocatable resources are finite but can be reclaimed. Deleting an artifact free
 
 | Resource | What It Is | Unit | Notes |
 |----------|------------|------|-------|
-| **compute** | Rate limit on actions/tokens | token_units | Token bucket model: accumulates to capacity |
-| **bandwidth** | Network I/O | bytes/tick | Rate limited per time window |
+| **cpu_rate** | CPU-seconds per rolling window | CPU-seconds | Per-agent rate limit |
+| **llm_rate** | LLM tokens per rolling window | tokens/min | Per-agent rate limit |
 
-Renewable resources use a **token bucket model**: accumulate at a fixed rate up to a capacity limit. Can go into debt (negative balance = frozen until recovery).
+Renewable resources use a **rolling window rate tracker**: usage tracked over time window. **No debt** - agents are blocked until window has capacity. No burst, no borrowing.
 
 ---
 
