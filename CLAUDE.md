@@ -140,7 +140,7 @@ See `docs/GLOSSARY.md` for full definitions. Quick reference:
 | Artifact | Purpose |
 |----------|---------|
 | `genesis_ledger` | Balances, transfers, ownership |
-| `genesis_oracle` | Auction-based scoring, minting |
+| `genesis_mint` | Auction-based scoring, minting |
 | `genesis_store` | Artifact discovery and creation |
 | `genesis_escrow` | Trustless artifact trading |
 | `genesis_event_log` | Passive observability |
@@ -285,7 +285,9 @@ python scripts/check_claims.py --release --validate
 <!-- PRs needing review. Update manually or via script. -->
 | PR | Branch | Title | Created |
 |----|--------|-------|---------|
-| #39 | plan-21-continuous-testing | [Plan #21] Testing strategy | 2026-01-12 |
+| #39 | plan-21-continuous-testing | [Plan #21] Testing strategy (needs rebase) | 2026-01-12 |
+| #42 | claude-md-compendious | CLAUDE.md simplification (has concerns) | 2026-01-12 |
+| #46 | plan-34-oracle-mint-rename | [Plan #34] Rename Oracle to Mint | 2026-01-12 |
 
 **After PR merged:** Remove from Awaiting Review table.
 
