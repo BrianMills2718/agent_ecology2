@@ -225,9 +225,17 @@ Add/Fix/Update: Short description
 |-----|---------|----------------|
 | `docs/architecture/current/` | What IS implemented | After code changes |
 | `docs/architecture/target/` | What we WANT | Architecture decisions |
-| `docs/plans/` | Gaps + implementation plans | Gap identified/closed |
+| `docs/plans/` | Active gap tracking (31 gaps) | Gap status changes |
+| `docs/architecture/gaps/` | Comprehensive analysis (142 gaps) | Gap identification |
 | `docs/DESIGN_CLARIFICATIONS.md` | WHY decisions made | Architecture discussions |
 | `docs/GLOSSARY.md` | Canonical terms | New concepts added |
+
+### Gap Tracking: Two Levels
+
+| Directory | Granularity | Use For |
+|-----------|-------------|---------|
+| `docs/plans/` | 31 high-level gaps | Implementation tracking, status, CC-IDs |
+| `docs/architecture/gaps/` | 142 detailed gaps | Reference, dependency analysis, scope |
 
 **Protocol:** Code change → update `current/` → update plan in `docs/plans/` if gap closed → update "Last verified" date.
 

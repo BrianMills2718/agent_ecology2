@@ -8,6 +8,7 @@ Structured documentation of system architecture.
 architecture/
 ├── current/    # What IS implemented (source of truth)
 ├── target/     # What we WANT (aspirational)
+├── gaps/       # Comprehensive gap analysis (142 gaps)
 └── GAPS.md     # DEPRECATED - see docs/plans/CLAUDE.md
 ```
 
@@ -17,12 +18,25 @@ architecture/
 |-----------|---------|-------------|
 | `current/` | Describes actual implementation | High - should match code |
 | `target/` | Describes desired future state | Reference only - verify before using |
+| `gaps/` | Comprehensive gap analysis | Reference - 142 detailed gaps |
+
+## Gap Tracking
+
+Two levels of gap documentation:
+
+| Location | Gaps | Purpose |
+|----------|------|---------|
+| `docs/plans/` | 31 high-level | Active tracking (status, CC-IDs) |
+| `gaps/` | 142 detailed | Comprehensive analysis (reference) |
+
+The 142 gaps are a finer breakdown of the 31 in `docs/plans/`.
 
 ## Working on Architecture
 
 1. **Implementing a feature?**
    - Read `current/` for how things work now
    - Read `target/` for the vision
+   - Check `gaps/` for detailed gap definition
    - Follow plan in `docs/plans/`
 
 2. **Finished implementing?**
