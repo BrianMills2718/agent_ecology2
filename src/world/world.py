@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, TypedDict, TYPE_CHECKING, cast
 
 from .ledger import Ledger
 from .artifacts import ArtifactStore, Artifact, WriteResult
@@ -19,8 +19,12 @@ from .genesis import (
     GenesisOracle, RightsConfig, SubmissionInfo
 )
 from .executor import get_executor
+from .rate_tracker import RateTracker
 
 from ..config import get as config_get, compute_per_agent_quota, PerAgentQuota
+
+if TYPE_CHECKING:
+    from ..simulation.agent_loop import AgentLoopManager
 
 
 def get_error_message(error_type: str, **kwargs: Any) -> str:
@@ -131,6 +135,13 @@ class World:
     genesis_artifacts: dict[str, GenesisArtifact]
     rights_registry: GenesisRightsRegistry | None
     principal_ids: list[str]
+    # Rate limiting mode: when True, resources use rolling windows (RateTracker)
+    # instead of tick-based reset
+    use_rate_tracker: bool
+    # Autonomous loop support
+    use_autonomous_loops: bool
+    rate_tracker: RateTracker | None
+    loop_manager: "AgentLoopManager | None"
 
     def __init__(self, config: ConfigDict) -> None:
         self.config = config
@@ -157,6 +168,11 @@ class World:
                     "disk": float(quotas.get("disk_quota", config_get("resources.stock.disk.total") or 10000))
                 }
             }
+
+        # Check if rate limiting (rolling windows) is enabled
+        # When enabled, resources use RateTracker instead of tick-based reset
+        rate_limiting_config = cast(dict[str, Any], config.get("rate_limiting", {}))
+        self.use_rate_tracker = rate_limiting_config.get("enabled", False)
 
         # Core state
         self.ledger = Ledger()
@@ -191,6 +207,28 @@ class World:
             # Initialize agent in rights registry
             if self.rights_registry:
                 self.rights_registry.ensure_agent(p["id"])
+
+        # Autonomous loop support (INT-003)
+        # Check if autonomous mode is enabled via config
+        execution_config = cast(dict[str, Any], config.get("execution", {}))
+        self.use_autonomous_loops = execution_config.get("use_autonomous_loops", False)
+
+        # Create rate tracker if rate limiting is enabled (rate_limiting_config defined above)
+        if self.use_rate_tracker:
+            window_seconds = rate_limiting_config.get("window_seconds", 60.0)
+            self.rate_tracker = RateTracker(window_seconds=window_seconds)
+            # Configure limits for each resource
+            resources_config = rate_limiting_config.get("resources", {})
+            for resource_name, resource_cfg in resources_config.items():
+                if isinstance(resource_cfg, dict):
+                    max_per_window = resource_cfg.get("max_per_window", float("inf"))
+                    self.rate_tracker.configure_limit(resource_name, max_per_window)
+        else:
+            self.rate_tracker = None
+
+        # AgentLoopManager will be created by SimulationRunner when autonomous mode is enabled
+        # We store it here so it's accessible to components that need it
+        self.loop_manager = None
 
         # Log world init
         default_quotas = self.rights_config.get("default_quotas", {})
@@ -567,11 +605,14 @@ class World:
 
     def advance_tick(self) -> bool:
         """
-        Advance to the next tick. Renews FLOW RESOURCES for all principals.
+        Advance to the next tick. Optionally renews FLOW RESOURCES for all principals.
         Returns False if max_ticks reached.
 
-        FLOW RESOURCES (compute/llm_tokens) reset each tick based on quotas.
-        SCRIP (economic currency) is NOT reset - it persists and accumulates.
+        Resource reset behavior depends on use_rate_tracker:
+        - When use_rate_tracker=False (legacy): FLOW RESOURCES reset each tick based on quotas.
+        - When use_rate_tracker=True: Resources flow continuously via RateTracker, NO tick-based reset.
+
+        SCRIP (economic currency) is NEVER reset - it persists and accumulates.
 
         See docs/RESOURCE_MODEL.md for design rationale.
         """
@@ -580,29 +621,33 @@ class World:
 
         self.tick += 1
 
-        # Reset FLOW RESOURCES for all principals (use it or lose it)
-        # Only flow resources reset - scrip is persistent economic currency
-        for pid in self.principal_ids:
-            if self.rights_registry:
-                # Use generic quota API - get all quotas for this principal
-                all_quotas = self.rights_registry.get_all_quotas(pid)
-                # Reset flow resources to their quotas
-                # For now, only "compute" is a flow resource (resets each tick)
-                # Stock resources like "disk" don't reset
-                if "compute" in all_quotas:
-                    self.ledger.set_resource(pid, "llm_tokens", all_quotas["compute"])
-            else:
-                # Fallback to config
-                config_compute: int | None = config_get("resources.flow.compute.per_tick")
-                default_quotas = self.rights_config.get("default_quotas", {})
-                default_compute = default_quotas.get("compute", config_compute or 50)
-                self.ledger.set_resource(pid, "llm_tokens", float(default_compute))
+        # Only reset FLOW RESOURCES when NOT using rate tracker (legacy tick-based mode)
+        # When rate limiting is enabled, resources flow continuously via RateTracker
+        if not self.use_rate_tracker:
+            # Reset FLOW RESOURCES for all principals (use it or lose it)
+            # Only flow resources reset - scrip is persistent economic currency
+            for pid in self.principal_ids:
+                if self.rights_registry:
+                    # Use generic quota API - get all quotas for this principal
+                    all_quotas = self.rights_registry.get_all_quotas(pid)
+                    # Reset flow resources to their quotas
+                    # For now, only "compute" is a flow resource (resets each tick)
+                    # Stock resources like "disk" don't reset
+                    if "compute" in all_quotas:
+                        self.ledger.set_resource(pid, "llm_tokens", all_quotas["compute"])
+                else:
+                    # Fallback to config
+                    config_compute: int | None = config_get("resources.flow.compute.per_tick")
+                    default_quotas = self.rights_config.get("default_quotas", {})
+                    default_compute = default_quotas.get("compute", config_compute or 50)
+                    self.ledger.set_resource(pid, "llm_tokens", float(default_compute))
 
         self.logger.log("tick", {
             "tick": self.tick,
             "compute": self.ledger.get_all_compute(),  # Backward compat log format
             "scrip": self.ledger.get_all_scrip(),
-            "artifact_count": self.artifacts.count()
+            "artifact_count": self.artifacts.count(),
+            "rate_tracker_mode": self.use_rate_tracker,
         })
 
         return True

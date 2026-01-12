@@ -12,10 +12,10 @@ Usage:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator, ValidationInfo
 
 
 # =============================================================================
@@ -275,7 +275,7 @@ class OracleAuctionConfig(StrictModel):
 
     @field_validator("bidding_window")
     @classmethod
-    def bidding_window_less_than_period(cls, v: int, info) -> int:
+    def bidding_window_less_than_period(cls, v: int, info: ValidationInfo) -> int:
         """Ensure bidding window is less than period."""
         # Note: Can't access period here easily, validated at runtime
         return v
@@ -487,6 +487,99 @@ class ValidationConfig(StrictModel):
         default=64,
         gt=0,
         description="Maximum characters for method names"
+    )
+
+
+# =============================================================================
+# EXECUTION MODEL (Agent Loop Configuration)
+# =============================================================================
+
+class AgentLoopExecutionConfig(StrictModel):
+    """Configuration for agent autonomous loop execution."""
+
+    min_loop_delay: float = Field(
+        default=0.1,
+        ge=0,
+        description="Minimum seconds between actions"
+    )
+    max_loop_delay: float = Field(
+        default=10.0,
+        gt=0,
+        description="Maximum backoff delay on errors"
+    )
+    resource_check_interval: float = Field(
+        default=1.0,
+        gt=0,
+        description="Seconds between resource checks when paused"
+    )
+    max_consecutive_errors: int = Field(
+        default=5,
+        gt=0,
+        description="Errors before forced pause"
+    )
+    resources_to_check: list[str] = Field(
+        default_factory=lambda: ["llm_calls", "disk_writes", "bandwidth_bytes"],
+        description="Resource types to check before each iteration"
+    )
+
+
+class ExecutionConfig(StrictModel):
+    """Configuration for agent execution model."""
+
+    use_autonomous_loops: bool = Field(
+        default=False,
+        description="Enable continuous autonomous agent loops (default: tick-based)"
+    )
+    agent_loop: AgentLoopExecutionConfig = Field(
+        default_factory=AgentLoopExecutionConfig
+    )
+
+
+# =============================================================================
+# RATE LIMITING MODEL
+# =============================================================================
+
+class RateLimitResourceConfig(StrictModel):
+    """Configuration for a single rate-limited resource."""
+
+    max_per_window: float = Field(
+        gt=0,
+        description="Maximum amount allowed within the rolling window"
+    )
+
+
+class RateLimitingResourcesConfig(StrictModel):
+    """Per-resource rate limit configurations."""
+
+    llm_calls: RateLimitResourceConfig = Field(
+        default_factory=lambda: RateLimitResourceConfig(max_per_window=100)
+    )
+    disk_writes: RateLimitResourceConfig = Field(
+        default_factory=lambda: RateLimitResourceConfig(max_per_window=1000)
+    )
+    bandwidth_bytes: RateLimitResourceConfig = Field(
+        default_factory=lambda: RateLimitResourceConfig(max_per_window=10485760)  # 10MB
+    )
+
+
+class RateLimitingConfig(StrictModel):
+    """Rolling window rate limiting configuration.
+
+    Time-based rate limiting independent of simulation ticks.
+    Tracks usage within a sliding time window and enforces configurable limits.
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable rate limiting (disabled by default during migration)"
+    )
+    window_seconds: float = Field(
+        default=60.0,
+        gt=0,
+        description="Rolling window duration in seconds"
+    )
+    resources: RateLimitingResourcesConfig = Field(
+        default_factory=RateLimitingResourcesConfig
     )
 
 
@@ -789,6 +882,8 @@ class AppConfig(StrictModel):
     genesis: GenesisConfig = Field(default_factory=GenesisConfig)
     executor: ExecutorConfig = Field(default_factory=ExecutorConfig)
     validation: ValidationConfig = Field(default_factory=ValidationConfig)
+    rate_limiting: RateLimitingConfig = Field(default_factory=RateLimitingConfig)
+    execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
     oracle_scorer: OracleScorerConfig = Field(default_factory=OracleScorerConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
@@ -832,7 +927,7 @@ def load_validated_config(config_path: str | Path = "config/config.yaml") -> App
     return AppConfig.model_validate(raw_config)
 
 
-def validate_config_dict(config_dict: dict) -> AppConfig:
+def validate_config_dict(config_dict: dict[str, Any]) -> AppConfig:
     """Validate a configuration dictionary.
 
     Args:
@@ -876,6 +971,13 @@ __all__ = [
     "RightsRegistryMethodsConfig",
     "EventLogConfig",
     "EventLogMethodsConfig",
+    # Rate limiting configs
+    "RateLimitingConfig",
+    "RateLimitingResourcesConfig",
+    "RateLimitResourceConfig",
+    # Execution configs
+    "ExecutionConfig",
+    "AgentLoopExecutionConfig",
     # Other configs
     "ExecutorConfig",
     "OracleScorerConfig",

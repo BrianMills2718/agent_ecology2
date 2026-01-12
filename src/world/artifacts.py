@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, TypedDict
@@ -93,6 +94,14 @@ class Artifact:
     Hybrid Policy Schema:
     - Static lists (["*"], ["alice"]) are enforced by kernel (fast path)
     - Contract refs ("@dao_vote") defer to executable artifact (slow path, V2)
+
+    Principal capabilities (GAP-AGENT-001 Unified Ontology):
+    - has_standing=True: Can own things, be party to contracts (principals)
+    - can_execute=True: Can execute code autonomously (agents)
+    - memory_artifact_id: Link to separate memory artifact (for agents)
+
+    Use is_principal property to check if artifact can own things.
+    Use is_agent property to check if artifact is an autonomous agent.
     """
 
     id: str
@@ -106,6 +115,11 @@ class Artifact:
     code: str = ""  # Python code (must define run() function)
     # Policy for access control and pricing
     policy: dict[str, Any] = field(default_factory=default_policy)
+    # Principal capabilities (GAP-AGENT-001)
+    has_standing: bool = False  # Can own things, be party to contracts
+    can_execute: bool = False  # Can execute code autonomously
+    # For agents: link to memory artifact
+    memory_artifact_id: str | None = None
 
     @property
     def price(self) -> int:
@@ -114,6 +128,35 @@ class Artifact:
         if isinstance(invoke_price, int):
             return invoke_price
         return 0
+
+    @property
+    def is_principal(self) -> bool:
+        """Can this artifact own things and enter contracts?
+
+        Principals are artifacts with has_standing=True. They can:
+        - Own other artifacts
+        - Hold scrip balances
+        - Be party to contracts
+        - Have ledger entries
+
+        Examples: agents, DAOs, escrow contracts
+        """
+        return self.has_standing
+
+    @property
+    def is_agent(self) -> bool:
+        """Is this an autonomous agent?
+
+        Agents are artifacts with both has_standing=True AND can_execute=True.
+        They are principals that can also:
+        - Execute code autonomously
+        - Make decisions via LLM
+        - Take actions in the world
+
+        A principal without can_execute (e.g., a DAO) can own things but
+        cannot act autonomously - it requires external invocation.
+        """
+        return self.has_standing and self.can_execute
 
     def can_read(self, agent_id: str) -> bool:
         """Check if agent can read this artifact
@@ -199,7 +242,158 @@ class Artifact:
         # Include policy if non-default
         if self.policy != default_policy():
             result["policy"] = self.policy
+        # Include principal capabilities if set (GAP-AGENT-001)
+        if self.has_standing:
+            result["has_standing"] = True
+        if self.can_execute:
+            result["can_execute"] = True
+        if self.memory_artifact_id is not None:
+            result["memory_artifact_id"] = self.memory_artifact_id
         return result
+
+
+def create_agent_artifact(
+    agent_id: str,
+    owner_id: str,
+    agent_config: dict[str, Any],
+    memory_artifact_id: str | None = None,
+    access_contract_id: str = "genesis_contract_self_owned",
+) -> Artifact:
+    """Factory function to create an agent artifact.
+
+    Creates an artifact configured as an autonomous agent with:
+    - has_standing=True: Can own things, enter contracts
+    - can_execute=True: Can execute code autonomously
+    - artifact_type="agent"
+    - Self-owned access contract by default
+
+    Args:
+        agent_id: Unique ID for the agent
+        owner_id: Who owns this agent (can be self-owned: owner_id == agent_id)
+        agent_config: Agent configuration stored as content (model, prompt, etc.)
+        memory_artifact_id: Optional linked memory artifact
+        access_contract_id: Access control contract (default: self_owned)
+
+    Returns:
+        Artifact configured as an agent
+
+    Example:
+        >>> agent = create_agent_artifact(
+        ...     agent_id="agent_001",
+        ...     owner_id="agent_001",  # Self-owned
+        ...     agent_config={"model": "gpt-4", "system_prompt": "You are helpful."}
+        ... )
+        >>> agent.is_agent
+        True
+        >>> agent.is_principal
+        True
+    """
+    now = datetime.utcnow().isoformat()
+
+    # Build policy based on access contract
+    # Note: This is a simple mapping - full contract integration comes later
+    artifact_policy = default_policy()
+    if access_contract_id == "genesis_contract_self_owned":
+        # Self-owned: only owner/self can access
+        artifact_policy["allow_read"] = []
+        artifact_policy["allow_write"] = []
+        artifact_policy["allow_invoke"] = []
+    elif access_contract_id == "genesis_contract_private":
+        # Private: only owner can access
+        artifact_policy["allow_read"] = []
+        artifact_policy["allow_write"] = []
+        artifact_policy["allow_invoke"] = []
+    elif access_contract_id == "genesis_contract_public":
+        # Public: anyone can access
+        artifact_policy["allow_read"] = ["*"]
+        artifact_policy["allow_write"] = ["*"]
+        artifact_policy["allow_invoke"] = ["*"]
+    # freeware is default: read/invoke open, write owner-only
+
+    # Serialize config to string for content field
+    content = json.dumps(agent_config)
+
+    return Artifact(
+        id=agent_id,
+        type="agent",
+        content=content,
+        owner_id=owner_id,
+        created_at=now,
+        updated_at=now,
+        executable=False,  # Agents don't use the executable code path
+        code="",
+        policy=artifact_policy,
+        has_standing=True,
+        can_execute=True,
+        memory_artifact_id=memory_artifact_id,
+    )
+
+
+def create_memory_artifact(
+    memory_id: str,
+    owner_id: str,
+    initial_content: dict[str, Any] | None = None,
+) -> Artifact:
+    """Factory function to create a memory artifact.
+
+    Creates an artifact for storing agent memory with:
+    - artifact_type="memory"
+    - Self-owned access contract (private by default)
+    - has_standing=False: Memory cannot own things
+    - can_execute=False: Memory is passive storage
+
+    Memory is private by default because it often contains:
+    - Agent reasoning traces
+    - Private knowledge
+    - Internal state
+
+    Args:
+        memory_id: Unique ID for the memory artifact
+        owner_id: Who owns this memory (usually the agent)
+        initial_content: Initial memory content (default: empty history/knowledge)
+
+    Returns:
+        Artifact configured as memory storage
+
+    Example:
+        >>> memory = create_memory_artifact(
+        ...     memory_id="agent_001_memory",
+        ...     owner_id="agent_001",
+        ... )
+        >>> memory.is_agent
+        False
+        >>> memory.is_principal
+        False
+    """
+    now = datetime.utcnow().isoformat()
+
+    # Default memory structure
+    if initial_content is None:
+        initial_content = {"history": [], "knowledge": {}}
+
+    # Self-owned policy: only owner can access
+    artifact_policy = default_policy()
+    artifact_policy["allow_read"] = []
+    artifact_policy["allow_write"] = []
+    artifact_policy["allow_invoke"] = []
+
+    # Serialize content to string
+    content = json.dumps(initial_content)
+
+    return Artifact(
+        id=memory_id,
+        type="memory",
+        content=content,
+        owner_id=owner_id,
+        created_at=now,
+        updated_at=now,
+        executable=False,
+        code="",
+        policy=artifact_policy,
+        has_standing=False,
+        can_execute=False,
+        memory_artifact_id=None,
+    )
 
 
 class ArtifactStore:

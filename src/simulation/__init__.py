@@ -9,6 +9,10 @@ from .types import (
     ActionProposal,
     ThinkingResult,
 )
+from .agent_loop import (
+    AgentLoop, AgentLoopManager, AgentLoopConfig,
+    AgentState, WakeCondition, AgentProtocol
+)
 
 __all__ = [
     "SimulationRunner",
@@ -19,4 +23,10 @@ __all__ = [
     "CheckpointData",
     "ActionProposal",
     "ThinkingResult",
+    "AgentLoop",
+    "AgentLoopManager",
+    "AgentLoopConfig",
+    "AgentState",
+    "WakeCondition",
+    "AgentProtocol",
 ]

@@ -14,13 +14,14 @@ import asyncio
 import json
 import random
 from datetime import datetime
-from typing import Any, cast, get_args
+from typing import Any, cast, get_args, TYPE_CHECKING
 
 from ..world import World
 from ..world.actions import parse_intent_from_json, ActionIntent
 from ..world.simulation_engine import SimulationEngine
 from ..world.world import StateSummary, ConfigDict
 from ..world.genesis import GenesisOracle, AuctionResult
+from ..world.rate_tracker import RateTracker
 from ..agents import Agent
 from ..agents.loader import load_agents, AgentConfig
 from ..agents.agent import ActionResult as AgentActionResult, TokenUsage
@@ -33,6 +34,7 @@ from .types import (
     ThinkingResult,
 )
 from .checkpoint import save_checkpoint
+from .agent_loop import AgentLoopManager, AgentLoopConfig
 
 
 class SimulationRunner:
@@ -115,6 +117,21 @@ class SimulationRunner:
 
         # Initialize agents
         self.agents = self._create_agents(agent_configs)
+
+        # Autonomous loop support (INT-003)
+        # Store reference to the flag for convenience
+        self.use_autonomous_loops = self.world.use_autonomous_loops
+
+        # Create AgentLoopManager if autonomous mode is enabled
+        if self.use_autonomous_loops:
+            # Need a RateTracker for resource gating
+            # Use world's rate_tracker if available, otherwise create one
+            rate_tracker = self.world.rate_tracker
+            if rate_tracker is None:
+                # Create a default rate tracker for autonomous mode
+                rate_tracker = RateTracker(window_seconds=60.0)
+                self.world.rate_tracker = rate_tracker
+            self.world.loop_manager = AgentLoopManager(rate_tracker)
 
         # Pause/resume state
         self._paused = False
@@ -512,10 +529,18 @@ class SimulationRunner:
             "max_api_cost": self.engine.max_api_cost,
         }
 
-    async def run(self) -> World:
+    async def run(
+        self,
+        max_ticks: int | None = None,
+        duration: float | None = None,
+    ) -> World:
         """Run the simulation asynchronously.
 
-        Uses parallel agent thinking via asyncio.gather().
+        Dispatches to either autonomous or tick-based mode based on config.
+
+        Args:
+            max_ticks: Maximum ticks to run (tick-based mode, optional)
+            duration: Maximum seconds to run (autonomous mode, optional)
 
         Returns:
             The World instance after simulation completes.
@@ -524,7 +549,30 @@ class SimulationRunner:
         self._running = True
         self._print_startup_info()
 
-        while self.world.advance_tick():
+        try:
+            if self.use_autonomous_loops:
+                await self._run_autonomous(duration)
+            else:
+                await self._run_tick_based(max_ticks)
+        finally:
+            self._running = False
+            SimulationRunner._active_runner = None
+
+        self._print_final_summary()
+        return self.world
+
+    async def _run_tick_based(self, max_ticks: int | None = None) -> None:
+        """Run simulation in tick-based mode (legacy).
+
+        Uses parallel agent thinking via asyncio.gather().
+
+        Args:
+            max_ticks: Maximum ticks to run (optional, uses config value if not provided)
+        """
+        # Use provided max_ticks or fall back to world's max_ticks
+        target_max_ticks = max_ticks or self.world.max_ticks
+
+        while self.world.tick < target_max_ticks and self.world.advance_tick():
             # Wait if paused
             await self._pause_event.wait()
 
@@ -568,7 +616,7 @@ class SimulationRunner:
                         "checkpoint_file": checkpoint_file,
                     },
                 )
-                return self.world
+                return
 
             # PHASE 1: Parallel thinking
             if self.verbose:
@@ -615,10 +663,162 @@ class SimulationRunner:
                 print(f"\n=== SIMULATION COMPLETE ===")
                 print(f"Checkpoint saved to: {checkpoint_file}")
 
+    async def _run_autonomous(self, duration: float | None = None) -> None:
+        """Run simulation in autonomous mode with independent agent loops.
+
+        Agents run continuously in their own loops, resource-gated by RateTracker.
+
+        Args:
+            duration: Maximum seconds to run (optional, runs until stopped if not provided)
+        """
+        if not self.world.loop_manager:
+            raise RuntimeError(
+                "loop_manager not initialized. Ensure use_autonomous_loops=True in config "
+                "and rate_limiting.enabled=True"
+            )
+
+        if self.verbose:
+            print(f"  [AUTONOMOUS] Creating loops for {len(self.agents)} agents...")
+
+        # Create loops for all agents
+        for agent in self.agents:
+            self._create_agent_loop(agent)
+
+        if self.verbose:
+            print(f"  [AUTONOMOUS] Starting all agent loops...")
+
+        # Start all loops
+        await self.world.loop_manager.start_all()
+
+        try:
+            if duration is not None:
+                # Run for specified duration
+                if self.verbose:
+                    print(f"  [AUTONOMOUS] Running for {duration} seconds...")
+                await asyncio.sleep(duration)
+            else:
+                # Run until all agents stop or interrupted
+                if self.verbose:
+                    print(f"  [AUTONOMOUS] Running until all agents stop...")
+                while self.world.loop_manager.running_count > 0:
+                    # Wait if paused
+                    await self._pause_event.wait()
+                    await asyncio.sleep(1.0)
+        except asyncio.CancelledError:
+            if self.verbose:
+                print(f"  [AUTONOMOUS] Cancelled, stopping loops...")
+        finally:
+            # Graceful shutdown
+            await self.world.loop_manager.stop_all()
+            if self.verbose:
+                print(f"  [AUTONOMOUS] All loops stopped.")
+
+    def _create_agent_loop(self, agent: Agent) -> None:
+        """Create an agent loop with appropriate config and callbacks.
+
+        Args:
+            agent: The agent to create a loop for.
+        """
+        if not self.world.loop_manager:
+            raise RuntimeError("loop_manager not initialized")
+
+        # Get loop config from execution config
+        execution_config = self.config.get("execution", {})
+        loop_config_dict = execution_config.get("agent_loop", {})
+
+        config = AgentLoopConfig(
+            min_loop_delay=loop_config_dict.get("min_loop_delay", 0.1),
+            max_loop_delay=loop_config_dict.get("max_loop_delay", 10.0),
+            resource_check_interval=loop_config_dict.get("resource_check_interval", 1.0),
+            max_consecutive_errors=loop_config_dict.get("max_consecutive_errors", 5),
+            resources_to_check=loop_config_dict.get("resources_to_check", ["llm_calls"]),
+        )
+
+        # Create the loop using callbacks that adapt the Agent to AgentProtocol
+        # Note: lambdas with default args to capture agent reference
+        self.world.loop_manager.create_loop(
+            agent_id=agent.agent_id,
+            decide_action=lambda a=agent: self._agent_decide_action(a),  # type: ignore[misc]
+            execute_action=lambda action, a=agent: self._agent_execute_action(a, action),  # type: ignore[misc]
+            config=config,
+            is_alive=lambda a=agent: getattr(a, "alive", True),  # type: ignore[misc]
+        )
+
+    async def _agent_decide_action(self, agent: Agent) -> dict[str, Any] | None:
+        """Decide callback for agent loop.
+
+        Calls the agent's propose_action_async and returns the action dict.
+
+        Args:
+            agent: The agent making the decision.
+
+        Returns:
+            Action dict or None if agent chose to skip.
+        """
+        # Get current world state
+        tick_state = self.world.get_state_summary()
+
+        # Call the agent's propose method
+        result = await agent.propose_action_async(cast(dict[str, Any], tick_state))
+
+        # Track API cost
+        usage = result.get("usage") or {"cost": 0.0}
+        api_cost = usage.get("cost", 0.0)
+        self.engine.track_api_cost(api_cost)
+
+        # Check for error
+        if "error" in result:
+            return None
+
+        # Return the action dict
+        return result.get("action")
+
+    async def _agent_execute_action(
+        self, agent: Agent, action: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Execute callback for agent loop.
+
+        Parses the action and executes it via the world.
+
+        Args:
+            agent: The agent executing the action.
+            action: The action dict to execute.
+
+        Returns:
+            Result dict with success flag and other info.
+        """
+        # Parse the action intent
+        intent = parse_intent_from_json(agent.agent_id, json.dumps(action))
+
+        if isinstance(intent, str):
+            # Parse error
+            return {"success": False, "error": intent}
+
+        # Execute via world
+        result = self.world.execute_action(intent)
+
+        # Record the action for the agent
+        action_type = action.get("action_type", "noop")
+        agent.set_last_result(action_type, result.success, result.message, result.data)
+        agent.record_action(action_type, json.dumps(action), result.success)
+
+        return {
+            "success": result.success,
+            "message": result.message,
+            "data": result.data,
+        }
+
+    async def shutdown(self, timeout: float = 5.0) -> None:
+        """Gracefully stop the simulation.
+
+        Stops all agent loops if in autonomous mode.
+
+        Args:
+            timeout: Maximum seconds to wait for loops to stop.
+        """
+        if self.use_autonomous_loops and self.world.loop_manager:
+            await self.world.loop_manager.stop_all(timeout=timeout)
         self._running = False
-        SimulationRunner._active_runner = None
-        self._print_final_summary()
-        return self.world
 
     def run_sync(self) -> World:
         """Run the simulation synchronously.

@@ -30,7 +30,11 @@ from ..config import get
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .ledger import Ledger
-    from .artifacts import ArtifactStore
+    from .artifacts import Artifact, ArtifactStore
+
+# Import contracts module for permission checking
+from .contracts import AccessContract, PermissionAction, PermissionResult
+from .genesis_contracts import get_contract_by_id, get_genesis_contract
 
 
 class PaymentResult(TypedDict):
@@ -210,6 +214,7 @@ class SafeExecutor:
     - Common modules pre-loaded (configurable via preloaded_imports)
     - Execution timeout (configurable)
     - Full Python capability - agents CAN import any stdlib module
+    - Contract-based permission checking (when use_contracts=True)
 
     NOTE: This is NOT a security sandbox. Security boundary is the
     container (Docker non-root user), not code-level restrictions.
@@ -218,11 +223,153 @@ class SafeExecutor:
 
     timeout: int
     preloaded_modules: dict[str, ModuleType | _DatetimeModule]
+    use_contracts: bool
+    _contract_cache: dict[str, AccessContract]
 
-    def __init__(self, timeout: int | None = None) -> None:
+    def __init__(
+        self, timeout: int | None = None, use_contracts: bool = True
+    ) -> None:
         default_timeout: int = get("executor.timeout_seconds") or 5
         self.timeout = timeout or default_timeout
         self.preloaded_modules = get_preloaded_modules()
+        self.use_contracts = use_contracts
+        self._contract_cache = {}
+
+    def _get_contract(self, contract_id: str) -> AccessContract:
+        """Get contract by ID, with caching.
+
+        Checks genesis contracts first, then falls back to freeware
+        if not found.
+
+        Args:
+            contract_id: The contract ID to look up
+
+        Returns:
+            The contract instance (never None - falls back to freeware)
+        """
+        if contract_id in self._contract_cache:
+            return self._contract_cache[contract_id]
+
+        # Check genesis contracts
+        contract = get_contract_by_id(contract_id)
+        if contract:
+            self._contract_cache[contract_id] = contract
+            return contract
+
+        # Fall back to freeware if not found
+        contract = get_genesis_contract("freeware")
+        self._contract_cache[contract_id] = contract
+        return contract
+
+    def _check_permission_via_contract(
+        self,
+        caller: str,
+        action: str,
+        artifact: "Artifact",
+    ) -> PermissionResult:
+        """Check permission using artifact's access contract.
+
+        Args:
+            caller: The principal requesting access
+            action: The action being attempted (read, write, invoke, etc.)
+            artifact: The artifact being accessed
+
+        Returns:
+            PermissionResult with allowed, reason, and optional cost
+        """
+        # Get contract ID from artifact (default to freeware)
+        contract_id = getattr(artifact, "access_contract_id", "genesis_contract_freeware")
+        contract = self._get_contract(contract_id)
+
+        # Convert action string to PermissionAction
+        try:
+            perm_action = PermissionAction(action)
+        except ValueError:
+            return PermissionResult(
+                allowed=False,
+                reason=f"Unknown action: {action}"
+            )
+
+        # Build context for contract
+        context: dict[str, object] = {
+            "owner": artifact.owner_id,
+            "artifact_type": artifact.type,
+            "artifact_id": artifact.id,
+        }
+
+        return contract.check_permission(
+            caller=caller,
+            action=perm_action,
+            target=artifact.id,
+            context=context,
+        )
+
+    def _check_permission_legacy(
+        self,
+        caller: str,
+        action: str,
+        artifact: "Artifact",
+    ) -> tuple[bool, str]:
+        """Legacy permission check using inline policy dict.
+
+        DEPRECATED: Use contract-based checking when possible.
+
+        Args:
+            caller: The principal requesting access
+            action: The action being attempted
+            artifact: The artifact being accessed
+
+        Returns:
+            Tuple of (allowed, reason)
+        """
+        policy = getattr(artifact, "policy", None) or {}
+
+        # Owner always has access in legacy mode
+        if caller == artifact.owner_id:
+            return (True, "owner access")
+
+        # Check allow lists
+        allow_key = f"allow_{action}"
+        allow_list = policy.get(allow_key, [])
+
+        # Handle list-based policy
+        if isinstance(allow_list, list):
+            if "*" in allow_list or caller in allow_list:
+                return (True, f"in {allow_key} list")
+
+        return (False, f"not in {allow_key} list")
+
+    def _check_permission(
+        self,
+        caller: str,
+        action: str,
+        artifact: "Artifact",
+    ) -> tuple[bool, str]:
+        """Check if caller has permission for action on artifact.
+
+        Uses contracts when use_contracts=True AND the artifact has an
+        access_contract_id attribute. Otherwise falls back to legacy policy.
+        This provides backward compatibility for artifacts without contracts.
+
+        Args:
+            caller: The principal requesting access
+            action: The action being attempted
+            artifact: The artifact being accessed
+
+        Returns:
+            Tuple of (allowed, reason)
+        """
+        # Only use contract-based checking if:
+        # 1. use_contracts is enabled
+        # 2. The artifact has an explicit access_contract_id attribute
+        has_contract = hasattr(artifact, "access_contract_id") and artifact.access_contract_id is not None
+
+        if self.use_contracts and has_contract:
+            result = self._check_permission_via_contract(caller, action, artifact)
+            return (result.allowed, result.reason)
+
+        # Legacy policy-based check (for backward compatibility)
+        return self._check_permission_legacy(caller, action, artifact)
 
     def validate_code(self, code: str) -> tuple[bool, str]:
         """
@@ -677,22 +824,35 @@ class SafeExecutor:
                     }
 
                 # Check invoke permission (caller, not this artifact)
-                if not target.can_invoke(caller_id):
+                # _check_permission handles contract vs legacy decision internally
+                allowed, reason = self._check_permission(caller_id, "invoke", target)
+                if not allowed:
                     return {
                         "success": False,
                         "result": None,
-                        "error": f"Caller {caller_id} not allowed to invoke {target_artifact_id}",
+                        "error": f"Caller {caller_id} not allowed to invoke {target_artifact_id}: {reason}",
                         "price_paid": 0
                     }
 
-                # Check price affordability (caller pays)
+                # Determine price: contract cost (if any) + artifact price
                 price = target.price
                 owner_id = target.owner_id
-                if price > 0 and not ledger.can_afford_scrip(caller_id, price):
+
+                # If using contracts and target has a contract, check for additional cost
+                contract_cost = 0
+                has_contract = hasattr(target, "access_contract_id") and target.access_contract_id is not None
+                if self.use_contracts and has_contract:
+                    perm_result = self._check_permission_via_contract(
+                        caller_id, "invoke", target
+                    )
+                    contract_cost = perm_result.cost
+
+                total_cost = price + contract_cost
+                if total_cost > 0 and not ledger.can_afford_scrip(caller_id, total_cost):
                     return {
                         "success": False,
                         "result": None,
-                        "error": f"Caller has insufficient scrip for price {price}",
+                        "error": f"Caller has insufficient scrip for total cost {total_cost}",
                         "price_paid": 0
                     }
 
@@ -709,16 +869,16 @@ class SafeExecutor:
                 )
 
                 if nested_result.get("success"):
-                    # Pay price to owner (only on success)
-                    if price > 0 and owner_id != caller_id:
-                        ledger.deduct_scrip(caller_id, price)
-                        ledger.credit_scrip(owner_id, price)
+                    # Pay total cost to owner (only on success)
+                    if total_cost > 0 and owner_id != caller_id:
+                        ledger.deduct_scrip(caller_id, total_cost)
+                        ledger.credit_scrip(owner_id, total_cost)
 
                     return {
                         "success": True,
                         "result": nested_result.get("result"),
                         "error": "",
-                        "price_paid": price
+                        "price_paid": total_cost
                     }
                 else:
                     return {

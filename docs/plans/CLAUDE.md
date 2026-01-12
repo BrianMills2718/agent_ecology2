@@ -30,12 +30,12 @@ Master index of all gaps and their implementation plans.
 
 | # | Gap | Priority | Status | Blocks |
 |---|-----|----------|--------|--------|
-| 1 | [Rate Allocation](01_rate_allocation.md) | **High** | 📋 Planned | #2, #31 |
-| 2 | [Continuous Execution](02_continuous_execution.md) | **High** | ⏸️ Blocked | #21 |
+| 1 | [Rate Allocation](01_rate_allocation.md) | **High** | 🚧 In Progress | #2, #31 |
+| 2 | [Continuous Execution](02_continuous_execution.md) | **High** | 🚧 In Progress | #21 |
 | 3 | [Docker Isolation](03_docker_isolation.md) | Medium | 📋 Planned | - |
 | 4 | ~~Compute Debt Model~~ | - | ✅ Superseded | - |
 | 5 | [Oracle Anytime Bidding](05_oracle_anytime.md) | Medium | ❌ Needs Plan | - |
-| 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | ❌ Needs Plan | #7,#8,#14,#16 |
+| 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | 🚧 In Progress | #7,#8,#14,#16 |
 | 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | ⏸️ Blocked | - |
 | 8 | [Agent Rights Trading](08_agent_rights.md) | Low | ⏸️ Blocked | - |
 | 9 | [Scrip Debt Contracts](09_scrip_debt.md) | Low | ❌ Needs Plan | - |
@@ -122,6 +122,22 @@ Master index of all gaps and their implementation plans.
 | 4 | Compute Debt Model | 2026-01-11 | Superseded by #1 |
 | - | invoke() in Executor | 2026-01-11 | CC-3 |
 | - | AGENT_HANDBOOK Fixes | 2026-01-11 | CC-3 |
+| - | RateTracker (GAP-RES-001) | 2026-01-12 | Phase 1 |
+| - | Contract System (GAP-GEN-001) | 2026-01-12 | Phase 1 |
+| - | Autonomous Loops (GAP-EXEC-001) | 2026-01-12 | Phase 1 |
+| - | Unified Ontology Fields (GAP-AGENT-001) | 2026-01-12 | Phase 1 |
+
+---
+
+## Phase 2 Integration Cleanup
+
+Deferred from Phase 1 review (2026-01-12). Address when integrating new modules into run.py:
+
+| Item | Description | Location |
+|------|-------------|----------|
+| AgentProtocol asymmetry | `AgentProtocol.alive` is property but `AgentLoop.is_alive` is Callable | `src/simulation/agent_loop.py` |
+| Architecture docs for new files | Add current/ docs for rate_tracker.py, agent_loop.py | `docs/architecture/current/` |
+| Gap status updates | Update #1, #2, #6 statuses in table above | This file |
 
 ---
 
@@ -212,9 +228,22 @@ These tests must still pass after changes:
 ---
 
 ## Verification
-- [ ] All required tests pass (`python scripts/check_plan_tests.py --plan N`)
-- [ ] Docs updated in `current/`
-- [ ] [Specific criteria]
+
+### Tests & Quality
+- [ ] All required tests pass: `python scripts/check_plan_tests.py --plan N`
+- [ ] Full test suite passes: `pytest tests/`
+- [ ] Type check passes: `python -m mypy src/ --ignore-missing-imports`
+
+### Documentation
+- [ ] `docs/architecture/current/` updated
+- [ ] Doc-coupling check passes: `python scripts/check_doc_coupling.py`
+- [ ] [Plan-specific criteria]
+
+### Completion Ceremony
+- [ ] Plan file status → `✅ Complete`
+- [ ] `plans/CLAUDE.md` index → `✅ Complete`
+- [ ] Claim released from Active Work table (root CLAUDE.md)
+- [ ] Branch merged or PR created
 
 ---
 
