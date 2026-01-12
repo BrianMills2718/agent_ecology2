@@ -97,16 +97,27 @@ Or use an existing worktree:
 
 The Edit/Write operation will be blocked, forcing the instance to use a worktree.
 
+## Coordination Files (Whitelisted)
+
+The hook allows editing **coordination files** even in main directory:
+
+| Pattern | Files | Why Allowed |
+|---------|-------|-------------|
+| `*/.claude/*` | `.claude/active-work.yaml` | Claims tracking |
+| `CLAUDE.md` | All `CLAUDE.md` files | Coordination tables, plan status |
+
+This enables the "Reviews, quick reads, coordination only" workflow in main while blocking implementation work.
+
 ## Customization
 
 **Change the main directory path:**
 Edit `MAIN_DIR` in `protect-main.sh` to match your repository location.
 
-**Allow exceptions:**
+**Add more exceptions:**
 Add patterns to skip enforcement for specific files:
 ```bash
-# Allow editing .claude files even in main
-if [[ "$FILE_PATH" == *".claude/"* ]]; then
+# Example: Allow a specific config file
+if [[ "$BASENAME" == "special-config.yaml" ]]; then
     exit 0
 fi
 ```
