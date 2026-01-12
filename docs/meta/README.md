@@ -16,6 +16,7 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 | [Claim System](claim-system.md) | Parallel work conflicts | Medium |
 | [Verification Enforcement](verification-enforcement.md) | Untested "complete" work | Medium |
 | [Worktree Enforcement](worktree-enforcement.md) | Main directory corruption from parallel edits | Low |
+| [Rebase Workflow](rebase-workflow.md) | Stale worktrees causing "reverted" changes | Low |
 
 ### Subsumed Patterns
 
@@ -34,6 +35,7 @@ These patterns are now implementation details of [Documentation Graph](documenta
 - Git Hooks - any project with CI
 - PR Coordination - if multiple people/instances work in parallel
 - Worktree Enforcement - if multiple Claude Code instances share a repo
+- Rebase Workflow - when using worktrees for parallel work (prevents "reverted" changes)
 
 **Add these when needed (more setup):**
 - ADR - when architectural decisions need to be preserved long-term

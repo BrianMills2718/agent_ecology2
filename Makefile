@@ -1,7 +1,7 @@
 # Agent Ecology - Common Commands
 # Usage: make <target>
 
-.PHONY: help install test mypy lint check validate clean claim release gaps status pr pr-create pr-merge pr-merge-admin pr-list pr-view
+.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create pr-merge pr-merge-admin pr-list pr-view
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -65,9 +65,10 @@ branch:  ## Create plan branch (usage: make branch PLAN=3 NAME=docker)
 
 worktree:  ## Create worktree for parallel CC work (usage: make worktree BRANCH=feature-name)
 	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree BRANCH=feature-name"; exit 1; fi
-	git worktree add ../ecology-$(BRANCH) -b $(BRANCH)
+	git fetch origin
+	git worktree add ../ecology-$(BRANCH) -b $(BRANCH) origin/main
 	@echo ""
-	@echo "Worktree created at ../ecology-$(BRANCH)"
+	@echo "Worktree created at ../ecology-$(BRANCH) (based on latest origin/main)"
 	@echo "To use: cd ../ecology-$(BRANCH) && claude"
 	@echo "To remove when done: git worktree remove ../ecology-$(BRANCH)"
 
@@ -77,6 +78,15 @@ worktree-list:  ## List active worktrees
 worktree-remove:  ## Remove a worktree (usage: make worktree-remove BRANCH=feature-name)
 	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree-remove BRANCH=feature-name"; exit 1; fi
 	git worktree remove ../ecology-$(BRANCH)
+
+rebase:  ## Rebase current branch onto latest origin/main
+	git fetch origin
+	git rebase origin/main
+
+pr-ready:  ## Rebase and push (run before creating PR)
+	git fetch origin
+	git rebase origin/main
+	git push --force-with-lease
 
 pr:  ## Create PR (opens browser)
 	GIT_CONFIG_NOSYSTEM=1 gh pr create --web
