@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-12
+Last verified: 2026-01-12 (plan-tests API key and active-plan filtering)
 
 ---
 
@@ -95,10 +95,14 @@ Checks test requirements for implementation plans. Runs with `continue-on-error:
 - python scripts/check_plan_tests.py --all
 ```
 
+**Environment:** `GEMINI_API_KEY` from GitHub secrets (for memory/embedding tests).
+
 **What it catches:**
 - Plans with missing required tests
 - TDD workflow status (which tests need to be written)
 - Test failures for plans with defined requirements
+
+**Only checks active plans:** Plans in "In Progress" (`🚧`) or "Complete" (`✅`) status. Plans that are "Planned", "Needs Plan", or "Blocked" are skipped (TDD tests should be written when work starts, not when plan is created).
 
 **Configuration:** Test requirements defined in each plan file's `## Required Tests` section.
 
