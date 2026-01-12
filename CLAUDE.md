@@ -220,13 +220,19 @@ claude -p "migrate foo.py..." --allowedTools Edit Bash
 
 **Workflow:**
 1. **Claim** - `make claim TASK="..." PLAN=N`
-2. **Worktree** - `make worktree BRANCH=plan-NN-description`
+2. **Worktree** - `make worktree BRANCH=plan-NN-description` (auto-fetches latest main)
 3. **Update plan status** - Mark "In Progress" in plan file AND index
 4. **Implement** - Do work, write tests first (TDD)
 5. **Verify** - Run all checks (see Review Checklist)
-6. **PR** - Create PR from worktree
-7. **Review** - Another CC instance reviews (from main or separate worktree)
-8. **Complete** - `make release`, merge PR, remove worktree
+6. **Rebase** - `make pr-ready` (rebase onto latest main, push)
+7. **PR** - Create PR from worktree
+8. **Review** - Another CC instance reviews (from main or separate worktree)
+9. **Complete** - `make release`, merge PR, remove worktree
+
+**Why rebase before PR?** Multiple CC instances work in parallel. Your worktree may be days old. Without rebasing:
+- Your PR may conflict with recent changes
+- Merging may accidentally revert others' work
+- `make pr-ready` rebases onto latest main and pushes safely
 
 **Claiming work:**
 ```bash
