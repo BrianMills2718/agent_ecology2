@@ -331,6 +331,32 @@ async def run_action(agent_id: str, action: Action) -> Result:
 
 Pool size is independent of agent count. Agents queue for workers.
 
+**Pool sizing guidance:**
+
+```yaml
+# config.yaml
+resources:
+  worker_pool:
+    max_workers: null  # null = os.cpu_count() (default)
+    # Or set explicitly:
+    # max_workers: 8
+```
+
+```python
+import os
+
+def get_pool_size(config: dict) -> int:
+    configured = config.get("resources", {}).get("worker_pool", {}).get("max_workers")
+    if configured is not None:
+        return configured
+    return os.cpu_count() or 4  # Fallback to 4 if cpu_count() returns None
+```
+
+**Rules of thumb:**
+- CPU-bound work: `max_workers = cpu_count()`
+- Mixed I/O and CPU: `max_workers = cpu_count() * 2`
+- Memory-constrained: Reduce workers (each uses ~50MB)
+
 **What's captured:**
 
 | Activity | Measured? |
@@ -607,12 +633,18 @@ Enables:
 
 ### What Can Be Transferred
 
+All quotas are tradeable (consistent with economic design):
+
 | Resource | Transferable? |
 |----------|---------------|
 | Scrip | Yes |
-| Compute quota | Yes (TBD) |
-| Disk quota | Yes (TBD) |
-| Debt artifacts | Yes (tradeable) |
+| CPU rate allocation | Yes |
+| LLM rate allocation | Yes |
+| Disk quota | Yes |
+| Memory quota | Yes |
+| Debt artifacts | Yes |
+
+Transfers via `genesis_ledger.transfer(from, to, amount, resource_type)`.
 
 ---
 

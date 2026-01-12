@@ -74,14 +74,31 @@ Time until resolution: 15 minutes
 - Winner pays second-highest bid
 - Incentivizes truthful bidding
 
-### Multiple Winners (Optional)
+### Multiple Winners: Uniform Price
+
+When multiple slots are available, all winners pay the same price:
 
 ```yaml
 oracle:
   slots_per_resolution: 3  # Top 3 bids win
 ```
 
-Multiple artifacts can be scored per resolution.
+**Uniform price mechanism:**
+- N winners (top N bids) all pay the (N+1)th highest bid
+- Standard mechanism in ad auctions
+- Preserves incentive compatibility (truthful bidding optimal)
+
+**Example:**
+```
+Bids: [100, 80, 60, 40, 20]
+Slots: 3
+
+Winners: bids of 100, 80, 60
+Price paid: 40 (the 4th highest bid)
+Each winner pays 40 scrip
+```
+
+**Edge case:** If fewer bids than slots, all bidders win and pay 0.
 
 ### Bid Structure
 

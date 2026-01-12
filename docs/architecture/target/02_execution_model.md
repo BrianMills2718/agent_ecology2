@@ -191,6 +191,51 @@ Worker Process              Main Process
      │                           │
 ```
 
+### Crash Recovery
+
+Ledger backed by SQLite with transaction semantics:
+
+```python
+class Ledger:
+    def __init__(self, db_path: str):
+        self.conn = sqlite3.connect(db_path)
+        self.conn.execute("PRAGMA journal_mode=WAL")  # Write-ahead logging
+        self._lock = asyncio.Lock()
+
+    async def transfer(self, from_id: str, to_id: str, amount: int, resource: str) -> bool:
+        async with self._lock:
+            try:
+                with self.conn:  # Transaction context
+                    # Check balance
+                    balance = self.conn.execute(
+                        "SELECT amount FROM balances WHERE principal=? AND resource=?",
+                        (from_id, resource)
+                    ).fetchone()[0]
+
+                    if balance < amount:
+                        return False
+
+                    # Update both sides atomically
+                    self.conn.execute(
+                        "UPDATE balances SET amount = amount - ? WHERE principal=? AND resource=?",
+                        (amount, from_id, resource)
+                    )
+                    self.conn.execute(
+                        "UPDATE balances SET amount = amount + ? WHERE principal=? AND resource=?",
+                        (amount, to_id, resource)
+                    )
+                return True
+            except Exception:
+                # Transaction auto-rollbacks on exception
+                return False
+```
+
+**Crash guarantees:**
+- SQLite transactions are ACID
+- If crash mid-transfer, transaction rolls back
+- WAL mode allows concurrent reads during writes
+- On restart, incomplete transactions are automatically rolled back
+
 ### Emergent Throttling
 - Rate limits naturally throttle system throughput
 - Expensive agents exhaust their rate window, must wait
