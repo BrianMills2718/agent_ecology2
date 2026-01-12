@@ -394,7 +394,7 @@ Add/Fix/Update: Short description
 |-----|---------|----------------|
 | `docs/architecture/current/` | What IS implemented | After code changes |
 | `docs/architecture/target/` | What we WANT | Architecture decisions |
-| `docs/plans/` | Active gap tracking (33 gaps) | Gap status changes |
+| `docs/plans/` | Active gap tracking (34 gaps) | Gap status changes |
 | `docs/adr/` | Architecture Decision Records | New architectural decisions |
 | `docs/architecture/gaps/` | Comprehensive analysis (142 gaps) | Gap identification |
 | `docs/DESIGN_CLARIFICATIONS.md` | WHY decisions made | Architecture discussions |
@@ -404,7 +404,7 @@ Add/Fix/Update: Short description
 
 | Directory | Granularity | Use For |
 |-----------|-------------|---------|
-| `docs/plans/` | 33 high-level gaps | Implementation tracking, status, CC-IDs |
+| `docs/plans/` | 34 high-level gaps | Implementation tracking, status, CC-IDs |
 | `docs/architecture/gaps/` | 142 detailed gaps | Reference, dependency analysis, scope |
 
 **Protocol:** Code change → update `current/` → update plan in `docs/plans/` if gap closed → update "Last verified" date.
