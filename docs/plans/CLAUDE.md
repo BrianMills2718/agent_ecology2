@@ -2,7 +2,7 @@
 
 Master index of all gaps and their implementation plans.
 
-**Last verified:** 2026-01-12 (Plan #6 test names and script fixed)
+**Last verified:** 2026-01-12 (Plan #35 test names fixed, check_plan_tests.py skips inactive plans)
 
 ---
 
