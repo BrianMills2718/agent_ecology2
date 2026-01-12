@@ -148,8 +148,16 @@ def check_test_exists(req: TestRequirement, project_root: Path) -> bool:
     if req.function:
         # Check if function exists in file
         content = test_file.read_text()
-        pattern = rf"def\s+{re.escape(req.function)}\s*\("
-        return bool(re.search(pattern, content))
+        # Handle TestClass::test_function format
+        if "::" in req.function:
+            class_name, func_name = req.function.split("::", 1)
+            # Check both class and function exist
+            class_pattern = rf"class\s+{re.escape(class_name)}\s*[:\(]"
+            func_pattern = rf"def\s+{re.escape(func_name)}\s*\("
+            return bool(re.search(class_pattern, content) and re.search(func_pattern, content))
+        else:
+            pattern = rf"def\s+{re.escape(req.function)}\s*\("
+            return bool(re.search(pattern, content))
 
     return True
 
