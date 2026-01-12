@@ -51,6 +51,9 @@ Prioritized gaps between current implementation and target architecture.
 | 21 | Testing/Debugging for Continuous | Medium | ❌ No Plan | - | #2 |
 | 22 | Coordination Primitives | Medium | ❌ No Plan | - | #16 |
 | 23 | Error Response Conventions | Low | ❌ No Plan | - | - |
+| 24 | Ecosystem Health KPIs | Medium | ❌ No Plan | - | - |
+| 25 | System Auditor Agent | Low | ❌ No Plan | - | #24 |
+| 26 | Vulture Observability | Medium | ❌ No Plan | - | - |
 
 ---
 
@@ -588,6 +591,99 @@ class ErrorResponse:
 - Not blocking any other gap
 
 **No Plan Yet.**
+
+---
+
+### 24. Ecosystem Health KPIs
+
+**Current:** No metrics for ecosystem health. Only raw event logs.
+
+**Target:** Dashboard showing key health indicators.
+
+**Metrics (from DESIGN_CLARIFICATIONS.md 2026-01-11):**
+
+| Metric | What It Measures | High = Good | Low = Concern |
+|--------|------------------|-------------|---------------|
+| Capital Density | Quality artifacts accumulating | Artifacts being reused | System full of junk |
+| Resource Velocity | Scrip/compute circulation | Active economy | Hoarding/deflation |
+| Recovery Rate | Frozen → unfrozen ratio | Vulture market works | Dead hand problem |
+| Specialization Index | Role diversity | Distinct specialists | All generalists |
+
+**Implementation:**
+
+```python
+@dataclass
+class EcosystemMetrics:
+    capital_density: float      # avg invoke_count of top 10% artifacts
+    resource_velocity: float    # transfers_last_100_ticks / total_scrip
+    recovery_rate: float        # unfrozen / frozen (rolling window)
+    specialization_index: float # 1 - avg_pairwise_action_similarity
+```
+
+**No Plan Yet.** Changes needed:
+- Add `EcosystemMetrics` calculation in `src/world/`
+- Track required data (invoke counts, transfer history, freeze/unfreeze events)
+- Expose in dashboard
+
+---
+
+### 25. System Auditor Agent
+
+**Current:** Human must read raw logs to understand ecosystem behavior.
+
+**Target:** Read-only observer agent that generates natural language reports.
+
+**Properties:**
+
+| Property | Value |
+|----------|-------|
+| `id` | `system_auditor` |
+| `has_standing` | `false` (no costs) |
+| `can_execute` | `true` |
+| Read access | All artifacts, ledger, event log |
+| Write access | None (except own reports) |
+
+**Output:** Periodic "Economic Report" with narrative explanation of ecosystem health.
+
+**Depends On:** #24 Ecosystem Health KPIs (needs metrics to report on)
+
+**No Plan Yet.**
+
+---
+
+### 26. Vulture Observability
+
+**Current:** Limited visibility for vulture capitalists to assess rescue opportunities.
+
+**Target:** Full observability for market-based rescue mechanism.
+
+**Requirements (from DESIGN_CLARIFICATIONS.md 2026-01-11):**
+
+| Requirement | Implementation | Purpose |
+|-------------|----------------|---------|
+| Public ledger | `genesis_ledger.get_balance(id)` readable by all | Assess asset value |
+| Heartbeat | `last_action_tick` on agents | Detect inactive agents |
+| Freeze events | `SystemEvent.AGENT_FROZEN` | "Dinner bell" for vultures |
+| Asset inventory | Query artifacts owned by agent | Assess profitability |
+
+**Event log should emit:**
+
+```python
+{
+    "type": "AGENT_FROZEN",
+    "agent_id": "agent_alice",
+    "tick": 1500,
+    "compute_balance": -50,
+    "scrip_balance": 200,
+    "owned_artifacts": ["art_1", "art_2"]
+}
+```
+
+**No Plan Yet.** Changes needed:
+- Verify public ledger read access
+- Add `last_action_tick` to agent state
+- Emit AGENT_FROZEN with asset summary
+- Emit AGENT_UNFROZEN with rescuer info
 
 ---
 

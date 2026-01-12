@@ -105,6 +105,12 @@ Full list of all architectural decisions with certainty levels, organized by top
 | **Events** | | | |
 | | Minimal fixed events | 70% | DECIDED |
 | | Event subscription mechanism | 40% | OPEN |
+| | AGENT_FROZEN/UNFROZEN events | 90% | DECIDED |
+| **Observability** | | | |
+| | Vulture observability (public ledger, heartbeat) | 90% | DECIDED |
+| | Ecosystem health KPIs | 80% | DECIDED |
+| | System Auditor agent | 75% | DECIDED |
+| | Rescue atomicity: observe emergence | 85% | DECIDED |
 
 ---
 
@@ -2418,6 +2424,159 @@ The Vulture Capitalist pattern (unfreezing agents to extract value) has two pote
 - Vulture market fails to emerge
 - Significant resources get trapped in spiteful/broken agents
 - Community feedback suggests fixes are needed
+
+---
+
+#### Vulture Observability Requirements (DECIDED 2026-01-11)
+
+For vulture capitalists to function, they need data to assess risk and opportunity.
+
+**Required observability:**
+
+| Requirement | Implementation | Purpose |
+|-------------|----------------|---------|
+| Public ledger | `genesis_ledger.get_balance(artifact_id)` readable by all | Vultures assess asset value |
+| Heartbeat/activity | `last_action_tick` field on agents | Vultures detect inactive agents |
+| Freeze events | `SystemEvent.AGENT_FROZEN` emitted | "Dinner bell" for vultures |
+| Asset inventory | Query what artifacts an agent owns | Assess rescue profitability |
+
+**Event log should emit:**
+```python
+# When agent freezes (compute goes negative)
+{
+    "type": "AGENT_FROZEN",
+    "agent_id": "agent_alice",
+    "tick": 1500,
+    "compute_balance": -50,
+    "scrip_balance": 200,      # Vultures see what's available
+    "owned_artifacts": ["art_1", "art_2"]  # What can be acquired
+}
+
+# When agent is unfrozen
+{
+    "type": "AGENT_UNFROZEN",
+    "agent_id": "agent_alice",
+    "tick": 1520,
+    "unfrozen_by": "vulture_bob",
+    "compute_transferred": 100
+}
+```
+
+**Certainty:** 90% - This is just observability, low risk.
+
+---
+
+#### Rescue Atomicity: Observe Emergence (DECIDED 2026-01-11)
+
+**The Risk:**
+
+```
+1. Vulture sends compute to frozen agent
+2. Network error / system restart
+3. Agent unfreezes but transaction incomplete
+4. Vulture loses investment with no recourse
+```
+
+**The Solution:** Conditional transfers via escrow.
+
+```python
+# Safe rescue pattern
+invoke("genesis_escrow", "conditional_rescue", {
+    "target": "frozen_alice",
+    "offer": {"compute": 100},
+    "demand": {"artifact": "alice_valuable_tool"},
+    "timeout_ticks": 10
+})
+# Either both sides complete, or neither does
+```
+
+**Decision:** Don't require escrow. Observe if agents invent it.
+
+- genesis_escrow already exists as a tool
+- If vultures get burned by non-atomic rescues, they'll learn to use escrow
+- If they invent their own escrow pattern, that's emergence
+- If the market fails, we have data on why
+
+**Certainty:** 85% - Aligned with emergence observation philosophy.
+
+---
+
+#### Ecosystem Health KPIs (DECIDED 2026-01-11)
+
+Metrics to determine if the system is "healthy":
+
+| Metric | High Value Means | Low Value Means | How to Measure |
+|--------|------------------|-----------------|----------------|
+| **Capital Density** | Quality artifacts accumulating, reuse | System full of junk | Artifacts with invoke_count > N |
+| **Resource Velocity** | Scrip/compute moving frequently | Hoarding/deflation | Transfers per tick |
+| **Recovery Rate** | Frozen agents being rescued | "Dead hand" locking system | unfrozen_events / frozen_events |
+| **Specialization Index** | Distinct non-overlapping roles | All generalist loners | Entropy of action types per agent |
+
+**Implementation:**
+
+```python
+@dataclass
+class EcosystemMetrics:
+    capital_density: float      # avg invoke_count of top 10% artifacts
+    resource_velocity: float    # transfers_last_100_ticks / total_scrip
+    recovery_rate: float        # unfrozen / frozen (rolling window)
+    specialization_index: float # 1 - avg_pairwise_action_similarity
+
+def calculate_metrics(world: World, window: int = 100) -> EcosystemMetrics:
+    # ... implementation
+```
+
+**Dashboard integration:** These should be visible in the HTML dashboard.
+
+**Certainty:** 80% - Good starting metrics, may need refinement.
+
+---
+
+#### System Auditor Agent (DECIDED 2026-01-11)
+
+A read-only observer agent that generates natural language reports.
+
+**Properties:**
+
+| Property | Value |
+|----------|-------|
+| `id` | `system_auditor` |
+| `has_standing` | `false` (no costs) |
+| `can_execute` | `true` |
+| Read access | All artifacts, ledger, event log |
+| Write access | None (except its own reports) |
+
+**Purpose:**
+- Generate periodic "Economic Report" (every N ticks or hours)
+- High-level narrative of why ecology is succeeding/failing
+- Better than digging through raw logs
+
+**Example output:**
+```
+=== Ecosystem Report (Tick 5000) ===
+
+Health: MODERATE
+
+Capital Density: 0.73 (good)
+- Top artifact: "weather_oracle" (892 invokes)
+- 12 artifacts created this period, 3 with reuse
+
+Resource Velocity: 0.45 (concerning)
+- Scrip circulation slowing
+- 3 agents hoarding >50% of scrip
+
+Recovery Rate: 0.80 (good)
+- 4 agents frozen, 3 rescued by vultures
+- 1 agent appears permanently stuck (broken prompt)
+
+Specialization: 0.62 (moderate)
+- Emerging specialist: "data_curator" (90% read actions)
+- Most agents still generalist
+```
+
+**Not a rescue tool:** System auditor cannot modify anything. Just observes and reports.
+
+**Certainty:** 75% - Useful but implementation details TBD.
 
 ---
 
