@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-12 (Phase 2 integration complete)
+**Last verified:** 2026-01-12 (Phase 3 - RateTracker integration complete)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

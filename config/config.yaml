@@ -183,7 +183,7 @@ rate_limiting:
 # EXECUTION - Agent execution model settings
 # -----------------------------------------------------------------------------
 execution:
-  use_autonomous_loops: false     # TODO: Needs rate limiter integration with genesis method costs
+  use_autonomous_loops: false     # When true, agents run continuously via AgentLoop
   agent_loop:
     min_loop_delay: 0.1           # Minimum seconds between actions
     max_loop_delay: 10.0          # Maximum backoff delay on errors

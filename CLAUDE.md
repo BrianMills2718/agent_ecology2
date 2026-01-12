@@ -197,6 +197,37 @@ This enables smooth continuation in the next session.
 - [ ] Plan status updated (file AND index)
 - [ ] Claim released from Active Work table
 
+### Cross-Instance Review
+
+For significant changes, get review from a different CC instance before merging:
+
+**Pattern 1: Different worktrees (recommended)**
+```bash
+# Instance A completes work on plan-03-docker branch
+# Instance B in main worktree reviews:
+git fetch origin
+git diff main..origin/plan-03-docker
+# Review files, run tests, then approve
+```
+
+**Pattern 2: Same worktree, /clear between**
+```bash
+# Instance A completes work, writes handoff
+/clear
+# Instance B starts fresh, reads handoff, reviews
+```
+
+**Review focus areas:**
+- Does the implementation match the plan?
+- Are tests meaningful (not just passing)?
+- Any security concerns or silent failures introduced?
+- Documentation updated appropriately?
+
+**Lightweight for small changes:** For trivial fixes, self-review with `--validate` is sufficient:
+```bash
+python scripts/check_claims.py --release --validate
+```
+
 ### Commit Message Convention
 
 Link commits to plans when applicable:

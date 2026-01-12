@@ -11,6 +11,9 @@ Usage:
     # Claim work (auto-detects branch as ID)
     python scripts/check_claims.py --claim --task "Implement docker isolation"
 
+    # Claim a plan (checks dependencies first)
+    python scripts/check_claims.py --claim --plan 3 --task "Docker isolation"
+
     # Claim with explicit ID (if not using branches)
     python scripts/check_claims.py --claim --id my-instance --task "..."
 
@@ -19,6 +22,9 @@ Usage:
 
     # Sync YAML to CLAUDE.md table
     python scripts/check_claims.py --sync
+
+    # Clean up old completed entries (>24h)
+    python scripts/check_claims.py --cleanup
 
 Branch name is used as instance identity by default.
 Primary data store: .claude/active-work.yaml
@@ -37,6 +43,99 @@ import yaml
 
 YAML_PATH = Path(".claude/active-work.yaml")
 CLAUDE_MD_PATH = Path("CLAUDE.md")
+PLANS_DIR = Path("docs/plans")
+
+
+def get_plan_status(plan_number: int) -> tuple[str, list[int]]:
+    """Get plan status and its blockers.
+
+    Returns (status, blocked_by_list).
+    Status is one of: 'complete', 'in_progress', 'blocked', 'planned', 'needs_plan', 'unknown'
+    """
+    plan_file = None
+    for f in PLANS_DIR.glob(f"{plan_number:02d}_*.md"):
+        plan_file = f
+        break
+    if not plan_file:
+        for f in PLANS_DIR.glob(f"{plan_number}_*.md"):
+            plan_file = f
+            break
+
+    if not plan_file or not plan_file.exists():
+        return ("unknown", [])
+
+    content = plan_file.read_text()
+
+    # Parse status
+    status = "unknown"
+    status_match = re.search(r"\*\*Status:\*\*\s*(.+)", content)
+    if status_match:
+        raw_status = status_match.group(1).strip().lower()
+        if "✅" in raw_status or "complete" in raw_status:
+            status = "complete"
+        elif "🚧" in raw_status or "in progress" in raw_status:
+            status = "in_progress"
+        elif "⏸️" in raw_status or "blocked" in raw_status:
+            status = "blocked"
+        elif "📋" in raw_status or "planned" in raw_status:
+            status = "planned"
+        elif "❌" in raw_status or "needs plan" in raw_status:
+            status = "needs_plan"
+
+    # Parse blockers
+    blockers: list[int] = []
+    blocked_match = re.search(r"\*\*Blocked By:\*\*\s*(.+)", content)
+    if blocked_match:
+        blocked_raw = blocked_match.group(1).strip()
+        # Extract numbers from patterns like "#1", "#2, #3", "None"
+        blocker_numbers = re.findall(r"#(\d+)", blocked_raw)
+        blockers = [int(n) for n in blocker_numbers]
+
+    return (status, blockers)
+
+
+def check_plan_dependencies(plan_number: int) -> tuple[bool, list[str]]:
+    """Check if all dependencies for a plan are complete.
+
+    Returns (all_ok, list_of_issues).
+    """
+    status, blockers = get_plan_status(plan_number)
+    issues: list[str] = []
+
+    if not blockers:
+        return (True, [])
+
+    for blocker in blockers:
+        blocker_status, _ = get_plan_status(blocker)
+        if blocker_status != "complete":
+            issues.append(f"Plan #{blocker} is not complete (status: {blocker_status})")
+
+    return (len(issues) == 0, issues)
+
+
+def cleanup_old_completed(data: dict[str, Any], hours: int = 24) -> int:
+    """Remove completed entries older than threshold.
+
+    Returns number of entries removed.
+    """
+    now = datetime.now()
+    threshold = timedelta(hours=hours)
+
+    completed = data.get("completed", [])
+    original_count = len(completed)
+
+    # Keep only recent completions
+    data["completed"] = [
+        c for c in completed
+        if (ts := parse_timestamp(c.get("completed_at", ""))) is None
+        or (now - ts) <= threshold
+    ]
+
+    removed = original_count - len(data["completed"])
+    if removed > 0:
+        save_yaml(data)
+
+    return removed
 
 
 def get_current_branch() -> str:
@@ -158,6 +257,7 @@ def add_claim(
     plan: int | None,
     task: str,
     files: list[str] | None = None,
+    force: bool = False,
 ) -> bool:
     """Add a new claim."""
     # Check for existing claim by this instance
@@ -167,6 +267,18 @@ def add_claim(
             print(f"Error: {cc_id} already has an active claim: {existing_task}")
             print("Release it first with: python scripts/check_claims.py --release")
             return False
+
+    # Check plan dependencies (if plan specified)
+    if plan:
+        deps_ok, dep_issues = check_plan_dependencies(plan)
+        if not deps_ok:
+            print(f"DEPENDENCY CHECK FAILED for Plan #{plan}:")
+            for issue in dep_issues:
+                print(f"  - {issue}")
+            if not force:
+                print("\nUse --force to claim anyway (not recommended).")
+                return False
+            print("\n--force specified, proceeding despite dependency issues.\n")
 
     # Check for conflicting claim on same plan (if plan specified)
     if plan:
@@ -196,7 +308,49 @@ def add_claim(
     return True
 
 
-def release_claim(data: dict[str, Any], cc_id: str, commit: str | None = None) -> bool:
+def validate_plan_for_completion(plan_number: int) -> tuple[bool, list[str]]:
+    """Run TDD and other validation checks for a plan.
+
+    Returns (passed, list_of_issues).
+    """
+    issues: list[str] = []
+
+    # Check required tests pass
+    result = subprocess.run(
+        ["python", "scripts/check_plan_tests.py", "--plan", str(plan_number)],
+        capture_output=True,
+        text=True
+    )
+
+    if result.returncode != 0:
+        if "MISSING" in result.stdout:
+            missing_count = result.stdout.count("[MISSING]")
+            issues.append(f"{missing_count} required test(s) missing")
+        elif "No test requirements defined" not in result.stdout:
+            issues.append("Required tests failing")
+
+    # Check full test suite
+    result = subprocess.run(
+        ["pytest", "tests/", "-q", "--tb=no"],
+        capture_output=True,
+        text=True
+    )
+
+    if result.returncode != 0:
+        match = re.search(r"(\d+) failed", result.stdout)
+        fail_count = match.group(1) if match else "some"
+        issues.append(f"Test suite: {fail_count} test(s) failing")
+
+    return (len(issues) == 0, issues)
+
+
+def release_claim(
+    data: dict[str, Any],
+    cc_id: str,
+    commit: str | None = None,
+    validate: bool = False,
+    force: bool = False,
+) -> bool:
     """Release a claim and move to completed."""
     claim_to_remove = None
 
@@ -208,6 +362,22 @@ def release_claim(data: dict[str, Any], cc_id: str, commit: str | None = None) -
     if not claim_to_remove:
         print(f"No active claim found for {cc_id}")
         return False
+
+    # Run validation if requested
+    plan = claim_to_remove.get("plan")
+    if validate and plan:
+        print(f"Validating Plan #{plan} before release...")
+        valid, issues = validate_plan_for_completion(plan)
+        if not valid:
+            print("VALIDATION FAILED:")
+            for issue in issues:
+                print(f"  - {issue}")
+            if not force:
+                print("\nUse --force to release anyway (not recommended).")
+                return False
+            print("\n--force specified, releasing despite validation failures.\n")
+    elif plan and not validate:
+        print(f"Tip: Use --validate to check TDD requirements before release.")
 
     data["claims"].remove(claim_to_remove)
 
@@ -326,6 +496,27 @@ def main() -> int:
         action="store_true",
         help="Sync YAML claims to CLAUDE.md table"
     )
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="Remove completed entries older than 24h"
+    )
+    parser.add_argument(
+        "--force", "-f",
+        action="store_true",
+        help="Force claim even if dependencies not met"
+    )
+    parser.add_argument(
+        "--check-deps",
+        type=int,
+        metavar="PLAN",
+        help="Check dependencies for a plan (without claiming)"
+    )
+    parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="Run TDD validation when releasing (recommended for plan claims)"
+    )
 
     args = parser.parse_args()
 
@@ -335,6 +526,27 @@ def main() -> int:
     # Determine instance ID (explicit or from branch)
     instance_id = args.id or get_current_branch()
 
+    # Handle check-deps
+    if args.check_deps:
+        deps_ok, issues = check_plan_dependencies(args.check_deps)
+        if deps_ok:
+            print(f"Plan #{args.check_deps}: All dependencies satisfied ✓")
+            return 0
+        else:
+            print(f"Plan #{args.check_deps}: Dependencies NOT satisfied:")
+            for issue in issues:
+                print(f"  - {issue}")
+            return 1
+
+    # Handle cleanup
+    if args.cleanup:
+        removed = cleanup_old_completed(data)
+        if removed > 0:
+            print(f"Cleaned up {removed} completed entries older than 24h")
+        else:
+            print("No old completed entries to clean up")
+        return 0
+
     # Handle claim
     if args.claim:
         if not args.task:
@@ -343,14 +555,17 @@ def main() -> int:
             return 1
         if instance_id == "main":
             print("Warning: Claiming on 'main' branch. Consider using a feature branch.")
-        success = add_claim(data, instance_id, args.plan, args.task)
+        success = add_claim(data, instance_id, args.plan, args.task, force=args.force)
         if success:
             sync_to_claude_md(data["claims"])
         return 0 if success else 1
 
     # Handle release
     if args.release:
-        success = release_claim(data, instance_id, args.commit)
+        success = release_claim(
+            data, instance_id, args.commit,
+            validate=args.validate, force=args.force
+        )
         if success:
             sync_to_claude_md(data["claims"])
         return 0 if success else 1

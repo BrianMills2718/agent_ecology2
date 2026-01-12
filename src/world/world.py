@@ -174,8 +174,8 @@ class World:
         rate_limiting_config = cast(dict[str, Any], config.get("rate_limiting", {}))
         self.use_rate_tracker = rate_limiting_config.get("enabled", False)
 
-        # Core state
-        self.ledger = Ledger()
+        # Core state - create ledger with rate_limiting config
+        self.ledger = Ledger.from_config(cast(dict[str, Any], config), [])
         self.artifacts = ArtifactStore()
         self.logger = EventLogger(config["logging"]["output_file"])
 

@@ -89,20 +89,21 @@ Wave 4: CAP-003 + CAP-004 + CAP-005 + CAP-006 (parallel)
 
 | Task ID | Name | Status | Description |
 |---------|------|--------|-------------|
-| INT-005 | Genesis methods → RateTracker | Pending | Genesis artifact method costs need to use RateTracker instead of old compute balance |
-| INT-006 | Autonomous loops + compute | Pending | Autonomous execution requires compute to flow from RateTracker, not tick-based quotas |
+| INT-005 | Genesis methods → RateTracker | **COMPLETE** | Genesis artifact method costs use RateTracker when enabled |
+| INT-006 | Autonomous loops + compute | **COMPLETE** | AgentLoop checks compute capacity via RateTracker |
 
-### Issue Details
+**Phase 3 Status:** ALL COMPLETE (2026-01-12)
 
-**Problem:** When `rate_limiting.enabled=true`, tick-based compute reset is disabled. But genesis artifact methods still check the old compute balance system. This means:
-1. Agent consumes compute on first action
-2. Compute never refreshes (no tick reset)
-3. All subsequent actions fail with "Cannot afford method cost"
+### Implementation Summary
 
-**Required Fix:** Genesis methods should check `ledger.check_capacity()` which delegates to RateTracker when enabled, instead of checking the old compute balance directly.
+**INT-005 Changes:**
+- `src/world/ledger.py` - Made `get_compute()`, `can_spend_compute()`, `spend_compute()`, and `deduct_thinking_cost()` mode-aware (use RateTracker when enabled)
+- `src/world/world.py` - Use `Ledger.from_config()` to initialize ledger with rate_limiting config
 
-**Files Affected:**
-- `src/world/genesis.py` - Method cost checking
-- `src/world/ledger.py` - Compute consumption flow
+**INT-006 Changes:**
+- `src/simulation/agent_loop.py` - Added "compute" to default `resources_to_check` list
 
-**Current Workaround:** Keep `rate_limiting.enabled: false` and `use_autonomous_loops: false` until INT-005/INT-006 are complete.
+**Validation:**
+- rate_limiting.enabled=true works correctly
+- Agents consume compute from RateTracker rolling window
+- Genesis methods check RateTracker capacity instead of tick-based balance

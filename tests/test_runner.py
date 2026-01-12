@@ -488,31 +488,34 @@ class TestAdvanceTickResourceReset:
     def test_advance_tick_no_reset_when_rate_tracker_enabled(
         self, mock_load: MagicMock
     ) -> None:
-        """advance_tick does NOT reset compute when rate limiting is enabled."""
+        """advance_tick does NOT reset compute when rate limiting is enabled.
+
+        With rate_limiting enabled, get_compute and spend_compute use RateTracker
+        instead of tick-based balance. advance_tick should not affect RateTracker.
+        """
         mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
-            # Enable rate limiting
+            # Enable rate limiting with "compute" resource configured
             config["rate_limiting"] = {
                 "enabled": True,
                 "window_seconds": 60.0,
-                "resources": {"llm_tokens": {"max_per_window": 100}}
+                "resources": {"compute": {"max_per_window": 1000}}
             }
             runner = SimulationRunner(config, verbose=False)
 
-            # Set initial compute to a specific value
-            runner.world.ledger.set_resource("agent", "llm_tokens", 1000.0)
+            # get_compute returns RateTracker remaining (full capacity initially)
             assert runner.world.ledger.get_compute("agent") == 1000
 
-            # Spend some compute
+            # Spend some compute (consumes from RateTracker)
             runner.world.ledger.spend_compute("agent", 600)
             assert runner.world.ledger.get_compute("agent") == 400
 
-            # Advance tick should NOT reset compute (rate limiting mode)
+            # Advance tick should NOT affect RateTracker (no reset)
             runner.world.advance_tick()
 
-            # Compute should remain at 400 (no reset)
+            # Compute should remain at 400 (RateTracker, not tick-based)
             assert runner.world.ledger.get_compute("agent") == 400
 
     @patch("src.simulation.runner.load_agents")

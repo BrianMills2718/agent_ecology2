@@ -104,6 +104,7 @@ python scripts/check_plan_tests.py --all
 ## Claim Management
 
 Claims are stored in `.claude/active-work.yaml` and synced to the CLAUDE.md table.
+Branch name is used as instance identity by default.
 
 ```bash
 # Check for stale claims (default >4 hours)
@@ -112,15 +113,43 @@ python scripts/check_claims.py
 # List all active claims
 python scripts/check_claims.py --list
 
-# Claim work on a plan
-python scripts/check_claims.py --claim CC-1 --plan 3 --task "Implement docker"
+# Claim work on a plan (checks dependencies first)
+python scripts/check_claims.py --claim --plan 3 --task "Implement docker"
+
+# Claim work (no plan)
+python scripts/check_claims.py --claim --task "Fix bug in executor"
+
+# Check plan dependencies without claiming
+python scripts/check_claims.py --check-deps 7
+
+# Force claim even if dependencies not met (not recommended)
+python scripts/check_claims.py --claim --plan 7 --task "..." --force
 
 # Release a claim (when done)
-python scripts/check_claims.py --release CC-1
+python scripts/check_claims.py --release
+
+# Release with TDD validation (recommended for plan work)
+python scripts/check_claims.py --release --validate
+
+# Clean up old completed entries (>24h)
+python scripts/check_claims.py --cleanup
 
 # Sync YAML to CLAUDE.md table
 python scripts/check_claims.py --sync
 ```
+
+### Dependency Enforcement
+
+When claiming a plan, the script checks if all blockers are complete:
+- If dependencies not met, claim is blocked (use `--force` to override)
+- Use `--check-deps N` to check dependencies without claiming
+
+### TDD Enforcement
+
+When releasing with `--validate`:
+- Runs required tests for the plan
+- Runs full test suite
+- Blocks release if tests fail (use `--force` to override)
 
 ## Plan Status Sync
 
