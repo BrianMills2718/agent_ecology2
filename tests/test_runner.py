@@ -1,6 +1,8 @@
 """Tests for SimulationRunner.
 
 Tests the core orchestration logic without running full async simulations.
+
+# mock-ok: Mocking load_agents avoids LLM API calls - tests focus on runner orchestration, not agent behavior
 """
 
 import tempfile

@@ -55,6 +55,7 @@ python run.py --ticks 10 --agents 1           # Run simulation
 pytest tests/                                 # Run tests (must pass)
 python -m mypy src/ --ignore-missing-imports  # Type check (must pass)
 python scripts/check_doc_coupling.py          # Doc-code coupling (must pass)
+python scripts/check_mock_usage.py --strict   # No unjustified mocks (must pass)
 python scripts/plan_progress.py --summary     # Plan implementation status
 python scripts/check_claims.py                # Check for stale claims
 ```
@@ -78,6 +79,28 @@ Zero numeric literals in code. All values from `config/config.yaml`. Missing con
 ### 4. Strong Typing
 
 `mypy --strict` compliance. Pydantic models for structured data. No `Any` without justification.
+
+### 5. Real Tests, Not Mocks
+
+**Mock policy:** CI detects suspicious mock patterns. Mocking internal code (anything in `src.`) hides real failures.
+
+**Allowed mocks:**
+- External APIs: `requests`, `httpx`, `aiohttp`
+- Time: `time.sleep`, `datetime`
+
+**NOT allowed without justification:**
+- `@patch("src.anything")` - test the real code
+- Mocking Memory, Agent, or core classes
+
+**To justify a necessary mock:** Add `# mock-ok: <reason>` comment:
+```python
+# mock-ok: Testing error path when memory service unavailable
+@patch("src.agents.memory.Memory.search")
+def test_handles_memory_failure():
+    ...
+```
+
+**CI enforces this:** `python scripts/check_mock_usage.py --strict`
 
 ---
 
@@ -191,6 +214,7 @@ This enables smooth continuation in the next session.
 - [ ] `pytest tests/` passes
 - [ ] `python -m mypy src/ --ignore-missing-imports` passes
 - [ ] `python scripts/check_doc_coupling.py` passes (strict) or warnings addressed (soft)
+- [ ] `python scripts/check_mock_usage.py --strict` passes (no unjustified mocks)
 - [ ] `python scripts/check_plan_tests.py --plan N` passes (if plan has tests)
 - [ ] Code matches task description
 - [ ] No new silent fallbacks
