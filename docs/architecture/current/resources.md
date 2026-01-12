@@ -2,7 +2,7 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-01-12 (Phase 3 - llm_tokens rename)
+**Last verified:** 2026-01-12 (Epic 31 - Resource Measurement)
 
 **See target:** [../target/resources.md](../target/resources.md)
 
@@ -185,6 +185,7 @@ Set by artifact owner:
 | `src/world/ledger.py` | `calculate_thinking_cost()`, `deduct_thinking_cost()` | Thinking cost calculation |
 | `src/world/world.py` | `World.advance_tick()` | Tick resource reset |
 | `src/world/simulation_engine.py` | `calculate_thinking_cost()`, `is_budget_exhausted()` | Cost calculation, budget tracking |
+| `src/world/simulation_engine.py` | `ResourceUsage`, `ResourceMeasurer`, `measure_resources()` | Resource measurement |
 | `src/world/genesis.py` | `GenesisRightsRegistry` | Quota management |
 
 ### Implementation Notes
@@ -235,3 +236,55 @@ can_proceed = ledger.rate_tracker.can_consume("llm_calls", agent_id, 1)
 - Async-safe: uses `asyncio.Lock` for concurrent access
 
 See `docs/architecture/current/configuration.md` for rate limiting config options.
+
+---
+
+## Resource Measurement (Epic 31)
+
+Process-level resource measurement for observability and future resource accounting.
+
+### ResourceUsage
+
+Captures measured resource consumption:
+
+```python
+@dataclass
+class ResourceUsage:
+    cpu_seconds: float = 0.0        # CPU time consumed
+    peak_memory_bytes: int = 0      # Peak memory during execution
+    disk_bytes_written: int = 0     # Total bytes written
+```
+
+### ResourceMeasurer
+
+Context manager for measuring resource usage:
+
+```python
+with ResourceMeasurer() as measurer:
+    # Do work...
+    measurer.record_disk_write(1024)  # Manual disk tracking
+usage = measurer.get_usage()
+```
+
+**Measurement methods:**
+- **CPU:** `time.process_time()` - process-level, not per-action isolated
+- **Memory:** `tracemalloc` - captures peak memory during context
+- **Disk:** Manual recording via `record_disk_write()`
+
+### Convenience Function
+
+```python
+with measure_resources() as measurer:
+    # Do work...
+usage = measurer.get_usage()
+```
+
+### Limitations
+
+- **Process-level measurement:** CPU and memory are measured at process level, not isolated per action
+- **No automatic disk tracking:** Disk writes must be explicitly recorded
+- **Shared process:** In async execution, measurements include all concurrent work
+
+### Future Enhancement
+
+For true per-action isolation, `ProcessPoolExecutor` could be used to run each action in a separate process. This would enable accurate per-action resource accounting but adds overhead.
