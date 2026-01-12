@@ -26,6 +26,7 @@ jobs:
 
       - name: Run pytest
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
         run: pytest tests/ -v --tb=short
 
@@ -107,5 +108,6 @@ jobs:
 
       - name: Check plan tests
         env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
         run: python scripts/check_plan_tests.py --all
