@@ -12,6 +12,8 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 | [Git Hooks](git-hooks.md) | CI failures caught late | Low |
 | [Plan Workflow](plan-workflow.md) | Untracked work, scope creep | Medium |
 | [Claim System](claim-system.md) | Parallel work conflicts | Medium |
+| [Worktree Workflow](worktree-workflow.md) | Branch conflicts, dirty directories | Low |
+| [Handoff Protocol](handoff-protocol.md) | Lost context between sessions | Low |
 
 ## When to Use
 
@@ -19,6 +21,8 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 - Mock Enforcement - if using pytest with mocks
 - Git Hooks - any project with CI
 - PR Coordination - if multiple people/instances work in parallel
+- Worktree Workflow - if multiple instances work simultaneously
+- Handoff Protocol - if sessions end before work completes
 
 **Add these when needed (more setup):**
 - Doc-Code Coupling - when docs exist and must stay accurate
