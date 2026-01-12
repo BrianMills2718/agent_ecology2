@@ -23,7 +23,7 @@ These docs describe what we WANT to build. They are aspirational, not current re
 | `03_agents.md` | Autonomous agents, agents-as-artifacts |
 | `04_resources.md` | Token bucket, rate limiting |
 | `05_contracts.md` | Contract-based access control |
-| `06_oracle.md` | Anytime bidding, continuous scoring |
+| `06_mint.md` | Anytime bidding, continuous scoring, minting |
 | `07_infrastructure.md` | Docker isolation, real resource limits |
 
 ## Warning

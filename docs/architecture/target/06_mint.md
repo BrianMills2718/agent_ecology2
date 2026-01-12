@@ -1,10 +1,23 @@
-# Target Oracle Design
+# Target Mint Design
 
-What we're building toward.
+What we're building toward for the minting system.
 
 **Last verified:** 2026-01-12
 
-**See current:** Genesis oracle in current system uses tick-based bidding windows.
+**See current:** Genesis mint in current system uses tick-based bidding windows.
+
+**ADR:** [ADR-0004](../../adr/0004-mint-system-primitive.md)
+
+---
+
+## Overview
+
+The **mint** is a system primitive that creates new scrip based on external validation of agent work. Unlike genesis artifacts (which agents could theoretically replace), the minting capability is developer-controlled - agents cannot create or modify minters.
+
+Key terminology:
+- **Mint** - The system primitive that creates new scrip
+- **genesis_mint** - The genesis artifact interface for agents to submit work for scoring
+- **Mint scorer** - The evaluation component that scores submitted artifacts
 
 ---
 
@@ -35,13 +48,14 @@ Just: bid whenever you have something to submit.
 
 ### Deterministic Schedule
 
-Oracle resolves on a fixed schedule:
+Mint resolves on a fixed schedule:
 
 ```yaml
-oracle:
-  resolution_interval: 3600  # seconds (every hour)
-  # OR
-  resolution_schedule: "0 * * * *"  # cron: top of every hour
+genesis:
+  mint:
+    resolution_interval: 3600  # seconds (every hour)
+    # OR
+    resolution_schedule: "0 * * * *"  # cron: top of every hour
 ```
 
 ### What Happens at Resolution
@@ -79,8 +93,9 @@ Time until resolution: 15 minutes
 When multiple slots are available, all winners pay the same price:
 
 ```yaml
-oracle:
-  slots_per_resolution: 3  # Top 3 bids win
+genesis:
+  mint:
+    slots_per_resolution: 3  # Top 3 bids win
 ```
 
 **Uniform price mechanism:**
@@ -148,19 +163,20 @@ ubi_per_agent = total_losing_bids / num_agents
 | Source | Mechanism | Notes |
 |--------|-----------|-------|
 | Genesis allocation | Initial agent balances | Configurable per agent |
-| Oracle minting | Score-based on winning artifacts | Only source of NEW scrip |
+| Mint | Score-based on winning artifacts | Only source of NEW scrip |
 | UBI distribution | Redistributes existing scrip | Doesn't create new scrip |
 
 ### Monetary Policy
 
 ```yaml
-oracle:
-  mint_ratio: 10           # Score 100 = 10 new scrip
-  resolution_interval: 60  # Mint opportunity every 60 seconds
+genesis:
+  mint:
+    mint_ratio: 10           # Score 100 = 10 new scrip
+    resolution_interval: 60  # Mint opportunity every 60 seconds
 ```
 
 **Inflation rate:** Depends on:
-- How often oracle resolves (resolution_interval)
+- How often mint resolves (resolution_interval)
 - Quality of submissions (higher scores = more minting)
 - Number of submissions (more winners = more minting)
 
@@ -181,6 +197,22 @@ New agents spawn with 0 scrip. Must earn or receive transfers.
 
 ---
 
+## System vs Genesis Distinction
+
+Per ADR-0004, the **minting capability** is a system primitive:
+
+| Layer | Example | Agent Control |
+|-------|---------|---------------|
+| System Primitive | Mint capability, Ledger, Event log | None - developer controlled |
+| Genesis Artifact | genesis_mint, genesis_ledger | Interface only |
+
+Agents interact with `genesis_mint` to submit artifacts for scoring, but they cannot:
+- Create new minters
+- Modify minting rules (scoring criteria, amounts, timing)
+- Bypass the scoring process
+
+---
+
 ## Migration Notes
 
 ### Breaking Changes
@@ -188,6 +220,7 @@ New agents spawn with 0 scrip. Must earn or receive transfers.
 - Remove `first_auction_tick` (time-based, not tick-based)
 - Remove bid phases (always accepting)
 - `on_tick()` becomes time-triggered, not tick-triggered
+- Rename `oracle` → `mint` throughout config and code
 
 ### Preserved
 - Vickrey auction mechanics
