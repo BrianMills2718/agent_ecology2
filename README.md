@@ -1,12 +1,16 @@
 # Agent Ecology
 
-An experiment in emergent collective capability for LLM agents.
+Mechanism design for emergent collective intelligence in LLM agents.
+
+> **Note:** This README describes the **target architecture**. See [Current Architecture](docs/architecture/current/) for what exists today.
 
 ## What This Is
 
-Agent Ecology explores whether collective capability can emerge from LLM agents operating under real resource constraints—both **collective intelligence** (coordination, signaling, information processing) and **collective functionality** (building durable artifacts that persist and compound over time).
+Agent Ecology is **mechanism design for emergent collective intelligence**—designing the rules and incentives so that self-interested LLM agents, operating under real resource constraints, produce collectively beneficial outcomes.
 
-It's not just about agents making good decisions together. It's about whether a long-running system develops both **capital structure** (artifacts that persist, build on each other, and enable increasingly sophisticated work) and **organizational structure** (firms, contracts, specialization patterns) to coordinate production and use of that capital.
+The goal is functional **collective capability**—both collective intelligence (coordination, signaling, information processing) and collective functionality (building durable artifacts that persist and compound over time). A system where the whole exceeds the sum of its parts.
+
+It's not just about agents making good decisions together. It's about building a long-running system that develops both **capital structure** (artifacts that persist, build on each other, and enable increasingly sophisticated work) and **organizational structure** (firms, contracts, specialization patterns) to coordinate production and use of that capital.
 
 **Unified ontology**: Everything is an artifact—including agents themselves. Agents are just artifacts that can hold resources and execute code. This means agent configurations have owners and access rights, enabling self-modification, forking, and trading of control.
 
@@ -93,15 +97,21 @@ Unlike biological evolution, changes aren't random or incremental. An agent can 
 
 ## Resource Model
 
-Three types of scarcity create pressure:
+Three resource categories plus economic currency:
 
-| Type | Resources | Behavior | Purpose |
-|------|-----------|----------|---------|
-| **Stock** | `llm_budget`, `disk` | Finite, never refreshes | Long-term constraint |
-| **Flow** | `compute` | Refreshes each tick | Short-term rate limit |
-| **Economic** | `scrip` | Transfers between agents | Coordination signal |
+| Category | Behavior | Examples |
+|----------|----------|----------|
+| **Depletable** | Once spent, gone forever | LLM API budget ($) |
+| **Allocatable** | Quota, reclaimable when freed | Disk (bytes), Memory (bytes) |
+| **Renewable** | Rate-limited via rolling window | CPU (CPU-seconds), LLM rate (tokens/min) |
 
-Scrip (money) is deliberately separated from physical resources. An agent can be rich in scrip but starved of compute. Money coordinates; physics constrains.
+**Scrip** is the internal economic currency—a coordination signal, not a physical resource. An agent can be rich in scrip but starved of compute. Money coordinates; physics constrains.
+
+**Key properties:**
+- Renewable resources use rolling windows, not discrete resets
+- No debt for renewable resources—agents wait for capacity
+- All quotas are tradeable between agents
+- Docker container limits ARE the real constraints
 
 ## How Agents Interact
 
@@ -113,37 +123,47 @@ Agents operate through three actions (the "narrow waist"):
 | `write_artifact` | Create or update stored content |
 | `invoke_artifact` | Call a method on an artifact |
 
-**All actions consume resources.** The simulation runs in Docker containers with real limits:
+**All actions consume resources.** The system runs in Docker containers with real limits:
 
-| Resource | Type | Grounding | Measurement |
-|----------|------|-----------|-------------|
-| `llm_budget` | Stock | Actual API spend ($) | Sum of API costs |
-| `disk` | Stock | Container storage limit | Bytes written |
-| `compute` | Flow | Rate limit per tick | Actions/tokens per window |
-| `memory` | Stock | Container RAM limit | Peak allocation |
-| `bandwidth` | Flow | Network I/O limits | Bytes transferred |
-| `scrip` | Economic | Internal currency | Ledger balance |
+| Resource | Category | Grounding | Measurement |
+|----------|----------|-----------|-------------|
+| LLM budget | Depletable | Actual API spend ($) | Sum of API costs |
+| Disk | Allocatable | Container storage limit | Bytes written |
+| Memory | Allocatable | Container RAM limit | Peak allocation |
+| CPU rate | Renewable | CPU-seconds per window | getrusage() in workers |
+| LLM rate | Renewable | Tokens per minute | Rolling window tracker |
+| Scrip | Currency | Internal economy | Ledger balance |
 
-Physical resources (llm_budget, disk, memory, bandwidth) map to real Docker/API constraints. When limits hit, they're actually hit. Scrip is the coordination signal layered on top.
+Physical resources map to real Docker/API constraints. When limits hit, they're actually hit. Scrip is the coordination signal layered on top.
 
 ## System Primitives vs Genesis Artifacts
 
-**System primitives** are part of the world itself—agents can't replace them:
-- Action execution (read, write, invoke)
-- Resource accounting (compute, disk, llm_budget balances)
-- Scrip balances
-- The artifact store
+Two layers with fundamentally different properties:
 
-**Genesis artifacts** are bootstrapping helpers created at initialization. They provide convenient interfaces but are theoretically replaceable—agents could build alternatives:
+### System Primitives (the "Physics")
+
+Hardcoded in Python/Docker. Agents cannot replace these—they define what's *possible*:
+
+- **Execution engine** - Runs agent loops, handles async
+- **Action primitives** - read, write, invoke
+- **Rate tracker** - Enforces rolling window limits
+- **Worker pool** - Measures CPU/memory per action
+- **Docker container** - Hard resource ceilings
+
+### Genesis Artifacts (the "Infrastructure")
+
+Pre-seeded artifacts created at T=0. Agents could theoretically build alternatives—they define what's *convenient*:
 
 | Artifact | Purpose | Key Methods |
 |----------|---------|-------------|
-| `genesis_oracle` | Score artifacts, mint scrip | `submit`, `process` |
-| `genesis_escrow` | Trustless trading | `list`, `buy` |
+| `genesis_ledger` | Scrip balances, transfers | `balance`, `transfer` |
+| `genesis_oracle` | Score artifacts, mint scrip | `bid`, `status` |
+| `genesis_escrow` | Trustless trading | `deposit`, `purchase` |
+| `genesis_rights_registry` | Resource quota management | `check_quota`, `transfer_quota` |
+| `genesis_store` | Artifact discovery | `search`, `get_interface` |
 | `genesis_event_log` | World event history | `read` |
-| `genesis_handbook` | Documentation for agents | `read` |
 
-Genesis artifacts solve the cold-start problem. They're not the only way to coordinate—just the initial way.
+Genesis artifacts solve the cold-start problem. They're trusted because initial agent prompts reference them, but agents could migrate to alternatives if they collectively agree.
 
 ## External Feedback and Minting
 
@@ -170,10 +190,32 @@ cp .env.example .env
 
 # Run
 python run.py                    # Run with defaults
-python run.py --ticks 10         # Limit to 10 ticks
+python run.py --duration 300     # Run for 5 minutes (300 seconds)
+python run.py --budget 1.00      # Limit API spend to $1
 python run.py --agents 1         # Single agent
 python run.py --dashboard        # With HTML dashboard
 ```
+
+### Docker Quick Start
+
+Run with enforced resource limits (recommended):
+
+```bash
+# Configure API keys
+cp .env.example .env
+# Edit .env with your LLM API credentials
+
+# Start simulation with Qdrant
+docker-compose up -d
+
+# View logs
+docker-compose logs -f simulation
+
+# Stop
+docker-compose down
+```
+
+Resource limits in `docker-compose.yml` enforce real scarcity—agents compete for 4GB RAM and 2 CPUs. See [docs/DOCKER.md](docs/DOCKER.md) for full documentation.
 
 ## Configuration
 
@@ -181,17 +223,17 @@ Key settings in `config/config.yaml`:
 
 ```yaml
 resources:
-  stock:
-    llm_budget: { total: 1.00 }    # $ for API calls
-    disk: { total: 50000 }         # bytes
-  flow:
-    compute: { per_tick: 1000 }    # actions per tick
+  depletable:
+    llm_budget: { total: 10.00 }     # $ for API calls
+  allocatable:
+    disk: { per_agent: 50000 }       # bytes
+    memory: { per_agent: 104857600 } # 100MB
+  renewable:
+    cpu_rate: { per_minute: 60 }     # CPU-seconds
+    llm_rate: { per_minute: 10000 }  # tokens
 
 scrip:
-  starting_amount: 100             # initial currency
-
-world:
-  max_ticks: 100
+  starting_amount: 100               # initial currency
 ```
 
 ## Architecture
@@ -214,11 +256,21 @@ agent_ecology/
 
 ### Execution Model
 
-Each tick:
-1. **Collect** - All agents submit actions simultaneously
-2. **Execute** - Actions applied atomically (two-phase commit)
+Agents run in **continuous autonomous loops**, not synchronized ticks:
 
-This prevents ordering advantages and enables fair concurrency.
+```
+while agent.alive:
+    if sleeping: await wake_condition()
+    if over_rate_limit: await capacity()
+    action = await think()
+    result = await act(action)
+```
+
+**Key properties:**
+- Agents self-trigger (no external scheduler)
+- Rate limits naturally throttle throughput
+- Fast agents can do more; expensive agents slow down
+- Race conditions handled by genesis artifacts (ledger, escrow), not orchestration
 
 ### Security Model
 
@@ -240,18 +292,22 @@ python -m mypy src/ --ignore-missing-imports  # Type check
 
 - All functions require type hints
 - No magic numbers—values come from config
-- Terminology: `compute`, `disk`, `scrip`
+- Terminology: See [Glossary](docs/GLOSSARY.md) for canonical terms
 - Relative imports within `src/`
 
 ## What Success Looks Like
 
-Success is **not** agents behaving optimally. It's:
-- Collective capability emerging (or not) for observable reasons
-- Artifacts accumulating that enable increasingly sophisticated work
-- Failures explainable via logs
-- The system remaining understandable even when agents behave badly
+This is **mechanism design for real resource allocation**, not a simulation or experiment.
 
-We're building a pressure vessel for AI collective capability. The goal is to create conditions where emergence can happen—and to see clearly whether it does.
+**Primary goal:** Functional emergent collective intelligence—the whole greater than the sum of its parts.
+
+**Success means:**
+- Collective capability that exceeds what individual agents could achieve
+- Artifacts accumulating that enable increasingly sophisticated work
+- Capital structure forming (some artifacts enable others)
+- Organizational patterns emerging (firms, specialization, markets)
+
+**Observability supports this goal:** Every action logged, every cost attributed, every failure explicit. Not because observation is the goal, but because you can't improve what you can't see.
 
 ## Documentation
 
@@ -259,5 +315,6 @@ We're building a pressure vessel for AI collective capability. The goal is to cr
 |----------|---------|
 | [Target Architecture](docs/architecture/target/README.md) | What we're building toward |
 | [Current Architecture](docs/architecture/current/README.md) | What exists today |
+| [Docker Deployment](docs/DOCKER.md) | Container setup with resource limits |
 | [Design Clarifications](docs/DESIGN_CLARIFICATIONS.md) | Decision rationale with certainty levels |
 | [Glossary](docs/GLOSSARY.md) | Canonical terminology |
