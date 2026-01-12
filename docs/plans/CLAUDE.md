@@ -51,7 +51,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 3 | [Docker Isolation](03_docker_isolation.md) | Medium | ✅ Complete | - |
 | 4 | ~~Compute Debt Model~~ | - | ✅ Superseded | - |
 | 5 | [Oracle Anytime Bidding](05_oracle_anytime.md) | Medium | ❌ Needs Plan | - |
-| 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | ❌ In Progress | #7,#8,#14,#16 |
+| 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | ✅ Complete | #7,#8,#14,#16 |
 | 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | ⏸️ Blocked | - |
 | 8 | [Agent Rights Trading](08_agent_rights.md) | Low | ⏸️ Blocked | - |
 | 9 | [Scrip Debt Contracts](09_scrip_debt.md) | Low | ❌ Needs Plan | - |
@@ -148,6 +148,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 3 | Docker Isolation | 2026-01-12 | ✅ Complete |
 | 33 | ADR Governance | 2026-01-12 | ✅ Complete |
 | 2 | Continuous Execution | 2026-01-12 | ✅ Complete |
+| 6 | Unified Artifact Ontology | 2026-01-12 | ✅ Complete |
 
 ---
 
