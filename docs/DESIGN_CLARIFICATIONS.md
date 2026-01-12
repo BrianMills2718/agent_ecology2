@@ -1653,6 +1653,49 @@ No need to convert bytes to "compute units" or create artificial exchange rates.
 
 ---
 
+### Strict Rate Allocation (DECIDED 2026-01-12)
+
+For shared renewable resources (like LLM rate limits), we use **strict allocation** rather than work-conserving.
+
+**The choice:**
+
+| Mode | Behavior | Trade-off |
+|------|----------|-----------|
+| **Strict** | Agent only uses their allocated rate. Unused capacity wasted. | Simple, strong trade incentive |
+| Work-conserving | Agents borrow unused capacity, owned rate is guaranteed minimum | Efficient, complex, weak trade incentive |
+
+**Decision: Strict allocation.**
+
+**Rationale:**
+1. **Simplicity** - No complex "who gets unused capacity" logic
+2. **Strong trade incentive** - If you're not using your rate, sell it or lose it
+3. **Predictability** - Each agent knows exactly what they can use
+4. **Economic activity** - Creates a market for rate allocation
+
+**No Burst:**
+
+We also decided against burst capacity (saving up unused rate for later):
+1. LLM providers enforce rolling windows anyway (can't save up)
+2. "Use it or lose it" creates stronger trade incentive
+3. Simpler model to implement and reason about
+
+**Configuration:**
+
+```yaml
+resources:
+  llm_rate:
+    provider_limit: 100000  # TPM from provider
+    allocation_mode: strict
+    initial_allocation:
+      agent_a: 50000
+      agent_b: 30000
+      agent_c: 20000
+```
+
+**Certainty:** 90% - Clear trade-off in favor of simplicity and economic incentive.
+
+---
+
 ## CC-4 Architectural Decisions (2026-01-11)
 
 *Author: CC-4 (Claude Code instance)*

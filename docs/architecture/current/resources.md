@@ -2,7 +2,7 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-01-11
+**Last verified:** 2026-01-12
 
 **See target:** [../target/resources.md](../target/resources.md)
 
@@ -82,9 +82,9 @@ if not self.ledger.can_spend_resource(agent_id, "llm_tokens", cost):
 | Reset | Never |
 
 **Behavior:**
-- Checked before write_artifact
-- Decremented on successful write
-- Can reclaim by deleting/overwriting smaller content
+- Quota checked before write_artifact
+- Usage calculated from total artifact sizes (not a balance)
+- Can reclaim space by overwriting with smaller content
 
 **`World._execute_write()`** in `src/world/world.py`:
 ```python
@@ -125,7 +125,7 @@ if self.engine.is_budget_exhausted():
 **Cannot go negative** - `Ledger.can_afford_scrip()` in `src/world/ledger.py`:
 
 ```python
-def can_afford_scrip(self, principal_id: str, amount: float) -> bool:
+def can_afford_scrip(self, principal_id: str, amount: int) -> bool:
     return self.get_scrip(principal_id) >= amount
 ```
 
@@ -137,8 +137,8 @@ def can_afford_scrip(self, principal_id: str, amount: float) -> bool:
 
 **Sinks of scrip:**
 - Transfers to other agents
-- Oracle bids (paid to winner's UBI pool)
-- Artifact purchases
+- Oracle bids (redistributed as UBI to all agents)
+- Artifact prices (read_price, invoke_price to owner)
 
 ---
 

@@ -28,10 +28,10 @@ Prioritized gaps between current implementation and target architecture.
 
 | # | Gap | Priority | Status | Plan | Blocks |
 |---|-----|----------|--------|------|--------|
-| 1 | Token Bucket | **High** | 📋 Planned | [token_bucket.md](../plans/token_bucket.md) | #2, #4 |
+| 1 | Rate Allocation | **High** | 📋 Planned | [token_bucket.md](../plans/token_bucket.md) | #2 |
 | 2 | Continuous Execution | **High** | ⏸️ Blocked | [continuous_execution.md](../plans/continuous_execution.md) | - |
 | 3 | Docker Isolation | Medium | 📋 Planned | [docker_isolation.md](../plans/docker_isolation.md) | - |
-| 4 | Compute Debt Model | Medium | ❌ No Plan | - | - |
+| 4 | ~~Compute Debt Model~~ | - | ✅ Superseded | - | - |
 | 5 | Oracle Anytime Bidding | Medium | ❌ No Plan | - | - |
 | 6 | Unified Artifact Ontology | Medium | ❌ No Plan | - | - |
 | 7 | Single ID Namespace | Low | ❌ No Plan | - | #6 |
@@ -64,21 +64,27 @@ Prioritized gaps between current implementation and target architecture.
 
 ## High Priority Gaps
 
-### 1. Token Bucket for Flow Resources
+### 1. Rate Allocation for Renewable Resources
 
 **Current:** Discrete per-tick refresh. Flow resources reset to quota each tick.
 
-**Target:** Rolling window accumulation. Continuous accumulation up to capacity, debt allowed.
+**Target:** Rolling window rate tracking. Strict allocation, no burst, no debt.
 
-**Why High Priority:** Foundation for continuous execution. Without token bucket, can't remove tick-based refresh.
+**Why High Priority:** Foundation for continuous execution. Without rate tracking, can't remove tick-based refresh.
 
-**Plan:** [docs/plans/token_bucket.md](../plans/token_bucket.md)
+**Plan:** [docs/plans/token_bucket.md](../plans/token_bucket.md) (needs update to reflect new model)
+
+**Key Design Decisions:**
+- **Strict allocation**: Unused capacity wasted, not borrowable (strong trade incentive)
+- **No burst**: Use it or lose it (LLM providers enforce rolling windows anyway)
+- **No debt**: Exceed rate → blocked until window rolls (not negative balance)
 
 **Key Changes:**
-- New `TokenBucket` class in `src/world/token_bucket.py`
-- Replace `per_tick` config with `rate` + `capacity`
+- New `RateTracker` class in `src/world/rate_tracker.py`
+- Replace `per_tick` config with `rate` (units per minute)
 - Remove flow reset from `advance_tick()`
-- Allow negative balances (debt)
+- Shared resources (LLM rate) partitioned, sum = provider limit
+- Rate allocation tradeable via ledger
 
 ---
 
@@ -119,15 +125,15 @@ Prioritized gaps between current implementation and target architecture.
 
 ---
 
-### 4. Compute Debt Model
+### 4. ~~Compute Debt Model~~ (SUPERSEDED)
 
-**Current:** No debt allowed. Actions fail if insufficient resources.
+**Decision:** No debt for renewable resources.
 
-**Target:** Debt allowed for compute. Negative balance = can't act until accumulated out.
+If agent exceeds rate allocation, they're blocked until rolling window allows more usage. No negative balance concept.
 
-**Depends On:** #1 Token Bucket
+**Rationale:** Simpler model. "Blocked until window rolls" achieves same throttling effect without debt accounting.
 
-**No Plan Yet.** Partially covered by token bucket plan (debt is built into TokenBucket class).
+**See:** Gap #1 (Rate Allocation) and DESIGN_CLARIFICATIONS.md (Strict Rate Allocation).
 
 ---
 

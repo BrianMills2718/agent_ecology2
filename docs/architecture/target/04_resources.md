@@ -2,7 +2,7 @@
 
 What we're building toward.
 
-**Last verified:** 2026-01-11
+**Last verified:** 2026-01-12
 
 **See current:** [../current/resources.md](../current/resources.md)
 
@@ -37,75 +37,118 @@ What we're building toward.
 
 ---
 
-## Renewable Resources: Token Bucket
+## Renewable Resources: Rate Allocation
 
-### Rolling Window (NOT Discrete Refresh)
+### Strict Allocation Model
 
-Rate-limited resources replenish continuously. No "tick reset" moments.
+Each agent gets an allocated rate. Unused capacity is wasted (not borrowable by others).
+
+**Why strict (not work-conserving):**
+- Simple to implement and reason about
+- Strong incentive to trade unused allocation
+- Predictable resource usage
+
+### No Burst
+
+Renewable resources enforce rate only, no burst capacity:
+- You get X units per time period
+- Use it or lose it
+- No "saving up" for later
+
+**Why no burst:**
+- LLM providers enforce rolling windows anyway (can't save up)
+- Creates stronger trade incentive
+- Simpler model
+
+### Rate Tracking
 
 ```python
-class TokenBucket:
-    rate: float      # Tokens per second
-    capacity: float  # Max tokens
-    balance: float   # Current tokens
-    last_update: float
+@dataclass
+class RateTracker:
+    rate: float           # Units per minute (allocated)
+    window_seconds: int   # Rolling window size (e.g., 60)
+    usage_log: list       # (timestamp, amount) entries
 
-    def available(self) -> float:
-        elapsed = now() - self.last_update
-        self.balance = min(self.capacity, self.balance + elapsed * self.rate)
-        self.last_update = now()
-        return self.balance
+    def usage_in_window(self) -> float:
+        cutoff = now() - self.window_seconds
+        return sum(amt for ts, amt in self.usage_log if ts > cutoff)
 
-    def spend(self, amount: float) -> bool:
-        if self.available() >= amount:
-            self.balance -= amount
-            return True
-        self.balance -= amount  # Go into debt
-        return False
+    def can_use(self, amount: float) -> bool:
+        return self.usage_in_window() + amount <= self.rate
+
+    def use(self, amount: float) -> bool:
+        if not self.can_use(amount):
+            return False  # Blocked until window rolls
+        self.usage_log.append((now(), amount))
+        self._prune_old_entries()
+        return True
 ```
 
-### Why Not Discrete Refresh
+### Shared Resource Allocation (LLM Rate)
 
-| Discrete (Current) | Rolling (Target) |
-|--------------------|------------------|
-| "Spend before reset" pressure | No artificial urgency |
-| Wasteful end-of-tick spending | Smooth resource usage |
-| Gaming reset boundaries | No boundaries to game |
+Provider limit is partitioned across agents:
 
-### Examples
-
+```yaml
+resources:
+  llm_rate:
+    provider_limit: 100000  # TPM from provider
+    allocation_mode: strict
+    initial_allocation:
+      agent_a: 50000
+      agent_b: 30000
+      agent_c: 20000
+      # Total = 100000 (must equal provider_limit)
 ```
-Rate = 10 tokens/sec, Capacity = 100
 
-T=0:  balance = 100
-T=5:  spend 60 → balance = 40
-T=10: balance = min(100, 40 + 5*10) = 90
-T=12: spend 100 → balance = -10 (debt!)
-T=15: balance = -10 + 3*10 = 20 (recovering)
+**Rules:**
+- Sum of allocations must equal provider limit
+- Unallocated rate is wasted (no one can use it)
+- New agents start with 0, must acquire via trade
+
+### Trading Rate Allocation
+
+Rate allocation stored in ledger, traded like any asset:
+
+```python
+# Agent B sells 10,000 TPM to Agent A for 100 scrip
+genesis_ledger.transfer("agent_b", "agent_a", 10000, "llm_rate")
+genesis_ledger.transfer("agent_a", "agent_b", 100, "scrip")
 ```
+
+### Per-Agent Resources (CPU)
+
+CPU doesn't have a shared provider limit. Each agent's rate is independent:
+
+```yaml
+resources:
+  cpu:
+    initial_allocation:
+      agent_a: 0.5   # CPU-seconds per wall-clock second
+      agent_b: 0.5
+      # No provider limit - Docker enforces container total
+```
+
+Agents can still trade CPU allocation rights.
 
 ---
 
 ## Debt Model
 
-### Compute Debt Allowed
+### Renewable Resources: No Debt
 
-Unlike current system, agents CAN go into debt for compute:
+For rate-limited resources (LLM rate, CPU), there's no debt concept:
+- If you exceed your rate, you're blocked until window rolls
+- No negative balance, just "wait until you have capacity"
 
-- Negative balance = cannot initiate new actions
-- Accumulation continues in background
-- Must wait until balance >= 0 to act again
+### Allocatable Resources: No Debt
 
-### Natural Throttling
+For disk and memory:
+- If you exceed quota, operation fails
+- No borrowing against future - just hard limit
 
-```
-Agent spends 150 compute (has 100):
-  → balance = -50
-  → Cannot act
-  → Accumulates at 10/sec
-  → After 5 seconds: balance = 0
-  → Can act again
-```
+### Scrip Debt = Contracts (NOT Negative Balance)
+
+Scrip balance stays >= 0. Debt is handled via artifacts:
 
 Expensive operations → debt → forced wait → fewer concurrent actions.
 

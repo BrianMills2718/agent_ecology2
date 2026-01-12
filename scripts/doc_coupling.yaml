@@ -1,0 +1,75 @@
+# Doc-Code Coupling Map
+#
+# Defines which docs must be reviewed when source files change.
+# CI will warn (not fail) if source changes without corresponding doc changes.
+#
+# Format:
+#   - sources: [glob patterns for source files]
+#     docs: [paths to docs that should be updated]
+#     description: what this coupling represents
+
+couplings:
+  # Core execution model
+  - sources:
+      - "src/simulation/runner.py"
+      - "src/world/world.py"
+    docs:
+      - "docs/architecture/current/execution_model.md"
+    description: "Tick loop and two-phase execution"
+
+  # Resource accounting
+  - sources:
+      - "src/world/ledger.py"
+      - "src/world/simulation_engine.py"
+    docs:
+      - "docs/architecture/current/resources.md"
+    description: "Flow/stock resources, scrip, budget tracking"
+
+  # Genesis artifacts
+  - sources:
+      - "src/world/genesis.py"
+    docs:
+      - "docs/architecture/current/genesis_artifacts.md"
+    description: "System services (ledger, oracle, escrow, etc.)"
+
+  # Agent system
+  - sources:
+      - "src/agents/agent.py"
+      - "src/agents/memory.py"
+      - "src/agents/loader.py"
+    docs:
+      - "docs/architecture/current/agents.md"
+    description: "Agent lifecycle, thinking, memory"
+
+  # Artifacts and execution
+  - sources:
+      - "src/world/artifacts.py"
+      - "src/world/executor.py"
+      - "src/world/actions.py"
+    docs:
+      - "docs/architecture/current/artifacts_executor.md"
+    description: "Artifact storage, policies, code execution"
+
+  # Configuration
+  - sources:
+      - "src/config.py"
+      - "src/config_schema.py"
+    docs:
+      - "docs/architecture/current/configuration.md"
+    description: "Config loading and validation"
+
+  # Supporting systems
+  - sources:
+      - "src/simulation/checkpoint.py"
+      - "src/world/logger.py"
+      - "src/dashboard/*.py"
+    docs:
+      - "docs/architecture/current/supporting_systems.md"
+    description: "Checkpoint, logging, dashboard"
+
+  # CI itself
+  - sources:
+      - ".github/workflows/ci.yml"
+    docs:
+      - "docs/architecture/current/ci.md"
+    description: "CI pipeline"

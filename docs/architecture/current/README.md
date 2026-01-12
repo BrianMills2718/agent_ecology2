@@ -26,6 +26,10 @@ The Agent Ecology is a tick-synchronized multi-agent system where LLM-powered ag
 | [agents.md](agents.md) | Agent lifecycle, thinking, memory |
 | [resources.md](resources.md) | Flow/stock resources, scrip, costs |
 | [genesis_artifacts.md](genesis_artifacts.md) | System services (ledger, oracle, etc.) |
+| [artifacts_executor.md](artifacts_executor.md) | Artifact storage, policies, code execution |
+| [configuration.md](configuration.md) | Config loading, validation, Pydantic schema |
+| [supporting_systems.md](supporting_systems.md) | Checkpoint, logging, dashboard |
+| [ci.md](ci.md) | GitHub Actions CI (pytest, mypy) |
 
 ---
 

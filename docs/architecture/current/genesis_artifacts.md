@@ -2,7 +2,7 @@
 
 System-provided artifacts that exist at world initialization.
 
-**Last verified:** 2026-01-11 (costs updated to match config)
+**Last verified:** 2026-01-12
 
 ---
 

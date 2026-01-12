@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-11
+**Last verified:** 2026-01-12
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
@@ -34,7 +34,7 @@ while self.world.advance_tick():
 
 ### Phase 1: Observe (Parallel)
 
-**`SimulationRunner._think_all_agents()`**
+**`SimulationRunner.run()` thinking phase**
 
 1. Capture world state snapshot via `get_state_summary()`
 2. All agents see IDENTICAL state (snapshot consistency)
@@ -43,8 +43,9 @@ while self.world.advance_tick():
 5. Thinking cost deducted immediately from compute
 
 ```python
-world_state = self.world.get_state_summary(agent_id)
-proposals = await asyncio.gather(*thinking_tasks)
+tick_state = self.world.get_state_summary()
+thinking_tasks = [self._think_agent(agent, tick_state) for agent in self.agents]
+thinking_results = await asyncio.gather(*thinking_tasks)
 ```
 
 ### Phase 2: Execute (Sequential Randomized)
@@ -64,6 +65,21 @@ for proposal in proposals:
 
 ---
 
+## The Narrow Waist: 4 Action Types
+
+All agent actions must be one of these 4 types (`src/world/actions.py`):
+
+| Action Type | Purpose |
+|-------------|---------|
+| `noop` | Do nothing |
+| `read_artifact` | Read artifact content |
+| `write_artifact` | Create/update artifact |
+| `invoke_artifact` | Call method on artifact |
+
+**Note:** There is no `transfer` action. All transfers go through `genesis_ledger.transfer()`.
+
+---
+
 ## Tick Lifecycle
 
 ### advance_tick() (`World.advance_tick()`)
@@ -77,13 +93,13 @@ Called at start of each tick:
 
 ```python
 def advance_tick(self) -> bool:
-    self.tick += 1
     if self.tick >= self.max_ticks:
         return False
+    self.tick += 1
 
     # Reset flow resources to quota
     for pid in self.principal_ids:
-        quota = self.rights_registry.get_quota(pid, "compute")
+        quota = self.rights_registry.get_all_quotas(pid).get("compute", 50)
         self.ledger.set_resource(pid, "llm_tokens", quota)
 
     return True
@@ -112,11 +128,12 @@ def advance_tick(self) -> bool:
 
 | File | Key Functions | Description |
 |------|---------------|-------------|
-| `src/simulation/runner.py` | `SimulationRunner.run()` | Main run loop |
+| `src/simulation/runner.py` | `SimulationRunner.run()` | Main run loop (includes Phase 1 parallel gather) |
 | `src/simulation/runner.py` | `SimulationRunner._think_agent()` | Single agent thinking |
-| `src/simulation/runner.py` | `SimulationRunner._think_all_agents()` | Phase 1 parallel gather |
+| `src/simulation/runner.py` | `SimulationRunner._execute_proposals()` | Phase 2 sequential execution |
 | `src/world/world.py` | `World.advance_tick()` | Tick lifecycle |
 | `src/world/world.py` | `World.execute_action()` | Action dispatcher |
+| `src/world/actions.py` | `parse_intent_from_json()` | Action parsing (the "narrow waist") |
 
 ---
 

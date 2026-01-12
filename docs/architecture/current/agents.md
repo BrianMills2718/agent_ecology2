@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-11
+**Last verified:** 2026-01-12
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -34,11 +34,14 @@ Tick N+1:
 
 ```python
 class Agent:
-    agent_id: str           # Unique identifier
-    system_prompt: str      # Base instructions
-    llm_model: str          # Model to use (e.g., "gemini/gemini-3-flash-preview")
-    memory: AgentMemory     # RAG-based memory (Mem0/Qdrant)
-    last_action_result: str # Feedback from previous action
+    agent_id: str              # Unique identifier
+    system_prompt: str         # Base instructions
+    llm_model: str             # Model to use (e.g., "gemini/gemini-3-flash-preview")
+    action_schema: str         # Action schema shown to LLM
+    memory: AgentMemory        # RAG-based memory (Mem0/Qdrant)
+    llm: LLMProvider           # LLM provider instance
+    rag_config: RAGConfigDict  # Per-agent RAG settings
+    last_action_result: str    # Feedback from previous action
 ```
 
 ---
@@ -82,17 +85,18 @@ class AgentResponse(BaseModel):
 
 ### AgentMemory (memory.py)
 
-Uses Mem0 + Qdrant for persistent vector-based memory.
+Uses Mem0 + Qdrant for persistent vector-based memory. Singleton shared by all agents.
 
-**Recording:**
+**Agent wrapper methods** (hide agent_id):
 ```python
-memory.record_action(action_type, details, success)
-memory.record_observation(observation)
+agent.record_action(action_type, details, success)
+agent.record_observation(observation)
 ```
 
-**Retrieval:**
+**Direct AgentMemory API** (requires agent_id):
 ```python
-memories = memory.get_relevant_memories(context, limit=5)
+memory.record_action(agent_id, action_type, details, success)
+memory.get_relevant_memories(agent_id, context, limit=5)
 ```
 
 ### What Gets Stored
@@ -109,15 +113,23 @@ memories = memory.get_relevant_memories(context, limit=5)
 
 ### From agents/ directory (load_agents.py)
 
-Each agent is a YAML file:
+Each agent is a directory with `agent.yaml` and `system_prompt.md`:
 
 ```yaml
+# agent.yaml
 id: alice
-system_prompt: |
-  You are Alice, a helpful agent...
 starting_scrip: 100
-llm_model: gemini/gemini-3-flash-preview  # Optional, uses default
+enabled: true                              # Optional, default true
+llm_model: gemini/gemini-3-flash-preview   # Optional, uses default
+temperature: 0.7                           # Optional LLM override
+max_tokens: 1000                           # Optional LLM override
+rag:                                       # Optional per-agent RAG config
+  enabled: true
+  limit: 5
+  query_template: "Tick {tick}. What should I do?"
 ```
+
+System prompt is in separate `system_prompt.md` file.
 
 ### What Agents CAN'T Configure
 
@@ -173,7 +185,7 @@ Agent receives failure message in `last_action_result` for next tick.
 | `src/agents/agent.py` | `Agent.propose_action_async()` | LLM call and action parsing |
 | `src/agents/agent.py` | `Agent.record_action()`, `record_observation()` | Memory recording |
 | `src/agents/memory.py` | `AgentMemory` class | RAG-based memory |
-| `src/agents/load_agents.py` | `load_agents()` | Agent loading from config |
+| `src/agents/loader.py` | `load_agents()` | Agent loading from config |
 
 ---
 
