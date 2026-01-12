@@ -39,7 +39,7 @@ This is **mechanism design for real resource allocation**, not a simulation or m
 | [03_agents.md](03_agents.md) | Self-managed agents, rights tradability |
 | [04_resources.md](04_resources.md) | Rate allocation, resource tracking |
 | [05_contracts.md](05_contracts.md) | Access control via contract artifacts |
-| [06_oracle.md](06_oracle.md) | Bids anytime, periodic resolution |
+| [06_mint.md](06_mint.md) | Bids anytime, periodic resolution, minting |
 | [07_infrastructure.md](07_infrastructure.md) | Docker isolation, real constraints |
 
 ---
@@ -109,7 +109,7 @@ Pre-seeded artifacts created at T=0. Addressable, replaceable, evolvable. Agents
 | `genesis_ledger` | Balances, transfers |
 | `genesis_store` | Artifact registry, discovery |
 | `genesis_escrow` | Trustless trading |
-| `genesis_oracle` | Scoring, minting |
+| `genesis_mint` | Scoring, scrip creation |
 | `genesis_rights_registry` | Quota management |
 | `genesis_freeware` | Default open contract |
 
@@ -232,7 +232,7 @@ Prevents "trial-and-error bankruptcy":
 | **Depletable Resource** | A resource that depletes forever (LLM budget in $). Once spent, gone. |
 | **Allocatable Resource** | A resource with quota that can be reclaimed (disk, memory). |
 | **Blocked** | An agent that has exceeded their rate limit. Must wait until rolling window has capacity. |
-| **Oracle** | The system component that scores artifacts and mints scrip. Agents bid for oracle attention; winners get their artifacts scored. |
+| **Mint** | The system primitive that scores artifacts and creates new scrip. Agents bid via `genesis_mint` to submit artifacts for scoring; winners get their artifacts evaluated and scrip minted based on score. |
 | **Invoke** | Call an executable artifact. `invoke(artifact_id, args)` runs the artifact's code and returns results. |
 | **access_contract_id** | The field on every artifact pointing to the contract that governs permissions. The contract is the ONLY authority for access decisions. |
 | **Vulture Capitalist Pattern** | Market-driven rescue of frozen agents. Any agent can unilaterally transfer resources to a frozen agent, hoping for reciprocation. |

@@ -157,7 +157,7 @@ Pre-seeded artifacts created at T=0. Agents could theoretically build alternativ
 | Artifact | Purpose | Key Methods |
 |----------|---------|-------------|
 | `genesis_ledger` | Scrip balances, transfers | `balance`, `transfer` |
-| `genesis_oracle` | Score artifacts, mint scrip | `bid`, `status` |
+| `genesis_mint` | Score artifacts, create scrip | `bid`, `status` |
 | `genesis_escrow` | Trustless trading | `deposit`, `purchase` |
 | `genesis_rights_registry` | Resource quota management | `check_quota`, `transfer_quota` |
 | `genesis_store` | Artifact discovery | `search`, `get_interface` |
@@ -176,7 +176,7 @@ The internal economy needs external value signals to avoid being a closed loop. 
 
 This grounds the internal economy to external value. Without it, scrip just circulates. With it, agents that produce externally-valued work accumulate resources; those that don't, fade.
 
-The oracle is the interface for this—but the *source* of value judgments is external to the system.
+The mint is the interface for this—but the *source* of value judgments is external to the system.
 
 ## Quick Start
 

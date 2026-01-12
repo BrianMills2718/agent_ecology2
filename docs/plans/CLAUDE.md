@@ -8,14 +8,14 @@ Master index of all gaps and their implementation plans.
 
 ## Relationship to Gap Analysis
 
-This directory tracks **33 high-level gaps** for active implementation.
+This directory tracks **34 high-level gaps** for active implementation.
 
 For the **comprehensive 142-gap analysis**, see `docs/architecture/gaps/`.
 
 | This Directory | Gap Analysis Directory |
 |----------------|------------------------|
 | Active tracking (status, CC-IDs) | Reference analysis |
-| 33 high-level gaps | 142 detailed gaps |
+| 34 high-level gaps | 142 detailed gaps |
 | Implementation steps | Gap definitions |
 
 The 142 gaps are a finer breakdown of these 33. Both track the same work at different granularities.
@@ -79,6 +79,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 31 | [Resource Measurement](31_resource_measurement.md) | **High** | ✅ Complete | - |
 | 32 | [Developer Tooling](32_developer_tooling.md) | **High** | ✅ Complete | - |
 | 33 | [ADR Governance](33_adr_governance.md) | **High** | ✅ Complete | - |
+| 34 | [Oracle to Mint Rename](34_oracle_mint_rename.md) | Medium | 📋 Planned | - |
 
 ---
 
