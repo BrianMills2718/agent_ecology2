@@ -297,7 +297,7 @@ def main() -> int:
     parser.add_argument(
         "--plans-dir",
         type=Path,
-        default=Path("docs/plans"),
+        default=Path("docs/plans_archived"),
         help="Plans directory (default: docs/plans)"
     )
 

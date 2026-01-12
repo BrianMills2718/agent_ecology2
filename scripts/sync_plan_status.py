@@ -24,7 +24,7 @@ import sys
 from pathlib import Path
 
 
-PLANS_DIR = Path("docs/plans")
+PLANS_DIR = Path("docs/plans_archived")
 INDEX_FILE = PLANS_DIR / "CLAUDE.md"
 
 # Status emoji mapping

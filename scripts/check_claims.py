@@ -43,7 +43,7 @@ import yaml
 
 YAML_PATH = Path(".claude/active-work.yaml")
 CLAUDE_MD_PATH = Path("CLAUDE.md")
-PLANS_DIR = Path("docs/plans")
+PLANS_DIR = Path("docs/plans_archived")
 
 
 def get_plan_status(plan_number: int) -> tuple[str, list[int]]:
