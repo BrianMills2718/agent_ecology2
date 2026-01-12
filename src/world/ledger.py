@@ -401,13 +401,13 @@ class Ledger:
     # ===== BACKWARD COMPATIBILITY (compute = llm_tokens) =====
 
     def get_compute(self, principal_id: str) -> int:
-        """Get available compute for a principal.
+        """Get available LLM tokens for a principal.
 
         Mode-aware: Uses RateTracker remaining capacity when rate limiting
         is enabled, otherwise uses tick-based balance.
         """
         if self.use_rate_tracker and self.rate_tracker:
-            remaining = self.get_resource_remaining(principal_id, "compute")
+            remaining = self.get_resource_remaining(principal_id, "llm_tokens")
             # Handle infinity (unconfigured resource = unlimited)
             if remaining == float("inf"):
                 return 999999  # Large value indicating unlimited
@@ -415,23 +415,23 @@ class Ledger:
         return int(self.get_resource(principal_id, "llm_tokens"))
 
     def can_spend_compute(self, principal_id: str, amount: int) -> bool:
-        """Check if principal can spend compute.
+        """Check if principal can spend LLM tokens.
 
         Mode-aware: Uses RateTracker capacity check when rate limiting
         is enabled, otherwise uses tick-based balance check.
         """
         if self.use_rate_tracker and self.rate_tracker:
-            return self.check_resource_capacity(principal_id, "compute", float(amount))
+            return self.check_resource_capacity(principal_id, "llm_tokens", float(amount))
         return self.can_spend_resource(principal_id, "llm_tokens", float(amount))
 
     def spend_compute(self, principal_id: str, amount: int) -> bool:
-        """Spend compute from a principal.
+        """Spend LLM tokens from a principal.
 
         Mode-aware: Uses RateTracker consumption when rate limiting
         is enabled, otherwise uses tick-based balance deduction.
         """
         if self.use_rate_tracker and self.rate_tracker:
-            return self.consume_resource(principal_id, "compute", float(amount))
+            return self.consume_resource(principal_id, "llm_tokens", float(amount))
         return self.spend_resource(principal_id, "llm_tokens", float(amount))
 
     def reset_compute(self, principal_id: str, compute_quota: int) -> None:

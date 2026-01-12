@@ -19,8 +19,8 @@ resources:
       unit: bytes
       distribution: equal
 
-  flow:  # Rate-limited, refresh per tick
-    compute:                    # LLM token budget (called "llm_tokens" internally)
+  flow:  # Rate-limited, refresh per tick (LEGACY - used when rate_limiting.enabled=false)
+    compute:                    # LLM token budget (legacy name, see rate_limiting.resources.llm_tokens)
       per_tick: 1000            # token-units available per tick
       unit: token_units         # 1 token_unit = ~1K tokens at base rate
       distribution: equal
@@ -170,8 +170,8 @@ rate_limiting:
   enabled: true                   # RateTracker-based rolling window rate limiting
   window_seconds: 60.0            # 60 second rolling window
   resources:
-    compute:
-      max_per_window: 1000        # Max 1000 compute units per 60 seconds
+    llm_tokens:
+      max_per_window: 1000        # Max 1000 LLM tokens per 60 seconds
     llm_calls:
       max_per_window: 100         # Max 100 LLM calls per 60 seconds
     disk_writes:
@@ -183,13 +183,14 @@ rate_limiting:
 # EXECUTION - Agent execution model settings
 # -----------------------------------------------------------------------------
 execution:
-  use_autonomous_loops: false     # When true, agents run continuously via AgentLoop
+  use_autonomous_loops: true      # Agents run continuously via AgentLoop (not tick-synchronized)
   agent_loop:
     min_loop_delay: 0.1           # Minimum seconds between actions
     max_loop_delay: 10.0          # Maximum backoff delay on errors
     resource_check_interval: 1.0  # Seconds between resource checks when paused
     max_consecutive_errors: 5     # Errors before forced pause
     resources_to_check:           # Resource types to check before each iteration
+      - llm_tokens
       - llm_calls
       - disk_writes
       - bandwidth_bytes

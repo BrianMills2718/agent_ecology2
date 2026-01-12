@@ -450,7 +450,7 @@ class TestRateTrackerIntegration:
         config = {
             "rate_limiting": {
                 "enabled": True,
-                "resources": {"compute": {"max_per_window": 1000}}
+                "resources": {"llm_tokens": {"max_per_window": 1000}}
             }
         }
         ledger = Ledger.from_config(config, ["agent1"])
@@ -553,7 +553,7 @@ class TestRateTrackerIntegration:
         config = {
             "rate_limiting": {
                 "enabled": True,
-                "resources": {"compute": {"max_per_window": 500}}
+                "resources": {"llm_tokens": {"max_per_window": 500}}
             }
         }
         ledger = Ledger.from_config(config, ["agent1"])

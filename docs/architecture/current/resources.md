@@ -2,7 +2,7 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-01-12 (Phase 2 integration)
+**Last verified:** 2026-01-12 (Phase 3 - llm_tokens rename)
 
 **See target:** [../target/resources.md](../target/resources.md)
 
@@ -190,17 +190,17 @@ Set by artifact owner:
 ### Implementation Notes
 
 - **Precision:** Ledger uses `Decimal` arithmetic for float operations to avoid floating-point precision issues
-- **Naming:** Config uses "compute" as the flow resource name; internally stored as "llm_tokens" in Ledger
+- **Naming:** LLM token consumption is called "llm_tokens" in RateTracker (rate_limiting.resources.llm_tokens). Legacy tick-based config uses "compute" (resources.flow.compute) which maps to internal "llm_tokens"
 - **Artifact wallets:** `Ledger.transfer_scrip()` auto-creates recipient principals with 0 balance, enabling transfers to contracts/artifacts
 
 ---
 
 ## Implications
 
-### Use-or-Lose Creates Pressure
-- Unused compute vanishes at tick end
-- Agents should use full allocation
-- No strategic saving for later
+### Use-or-Lose (Legacy Tick Mode Only)
+- When `rate_limiting.enabled=false`, unused tokens vanish at tick end
+- When `rate_limiting.enabled=true`, tokens use rolling window (no tick reset)
+- RateTracker mode allows more natural consumption patterns
 
 ### Strict Constraints = No Speculation
 - Cannot spend what you don't have

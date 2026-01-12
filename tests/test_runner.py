@@ -497,11 +497,11 @@ class TestAdvanceTickResourceReset:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
-            # Enable rate limiting with "compute" resource configured
+            # Enable rate limiting with "llm_tokens" resource configured
             config["rate_limiting"] = {
                 "enabled": True,
                 "window_seconds": 60.0,
-                "resources": {"compute": {"max_per_window": 1000}}
+                "resources": {"llm_tokens": {"max_per_window": 1000}}
             }
             runner = SimulationRunner(config, verbose=False)
 

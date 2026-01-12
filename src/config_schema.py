@@ -555,8 +555,9 @@ class RateLimitResourceConfig(StrictModel):
 class RateLimitingResourcesConfig(StrictModel):
     """Per-resource rate limit configurations."""
 
-    compute: RateLimitResourceConfig = Field(
-        default_factory=lambda: RateLimitResourceConfig(max_per_window=1000)
+    llm_tokens: RateLimitResourceConfig = Field(
+        default_factory=lambda: RateLimitResourceConfig(max_per_window=1000),
+        description="LLM token consumption per rolling window"
     )
     llm_calls: RateLimitResourceConfig = Field(
         default_factory=lambda: RateLimitResourceConfig(max_per_window=100)

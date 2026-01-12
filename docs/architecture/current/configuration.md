@@ -95,15 +95,15 @@ execution:
   resource_exhaustion_policy: skip  # "skip" or "block"
 ```
 
-### Rate Limiting (Phase 2)
+### Rate Limiting (Phase 3)
 
 ```yaml
 rate_limiting:
-  enabled: false                  # Enable RateTracker (see INT-005/INT-006)
+  enabled: true                   # RateTracker-based rolling window rate limiting
   window_seconds: 60.0            # Rolling window duration
   resources:
-    compute:
-      max_per_window: 1000        # Compute units per window
+    llm_tokens:
+      max_per_window: 1000        # LLM tokens per window
     llm_calls:
       max_per_window: 100
     disk_writes:
@@ -112,7 +112,7 @@ rate_limiting:
       max_per_window: 10485760    # 10MB
 ```
 
-**Note:** Rate limiting is currently disabled. Enabling it requires INT-005 (genesis methods integration) to be complete. See `docs/architecture/gaps/plans/README.md` for details.
+**Note:** Rate limiting replaces tick-based resource reset. When enabled, resources flow continuously via RateTracker rolling windows instead of resetting each tick.
 
 ### Executor (Phase 2)
 
