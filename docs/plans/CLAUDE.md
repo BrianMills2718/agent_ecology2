@@ -125,6 +125,33 @@ Master index of all gaps and their implementation plans.
 
 ---
 
+## TDD Workflow
+
+Plans support TDD-style test requirements. Before implementing:
+
+1. **Define tests** - Add `## Required Tests` section to plan
+2. **Write tests** - Create test stubs (they will fail)
+3. **Implement** - Code until tests pass
+4. **Verify** - Run `python scripts/check_plan_tests.py --plan N`
+
+### Check Commands
+
+```bash
+# List all plans and test counts
+python scripts/check_plan_tests.py --list
+
+# TDD mode - see what tests to write
+python scripts/check_plan_tests.py --plan 1 --tdd
+
+# Run all required tests for plan
+python scripts/check_plan_tests.py --plan 1
+
+# Check all plans with tests
+python scripts/check_plan_tests.py --all
+```
+
+---
+
 ## Plan Template
 
 When creating a new plan file:
@@ -162,9 +189,31 @@ When creating a new plan file:
 
 ---
 
+## Required Tests
+
+### New Tests (TDD)
+
+Create these tests FIRST, before implementing:
+
+| Test File | Test Function | What It Verifies |
+|-----------|---------------|------------------|
+| `tests/test_feature.py` | `test_happy_path` | Basic functionality works |
+| `tests/test_feature.py` | `test_edge_case` | Handles edge case |
+
+### Existing Tests (Must Pass)
+
+These tests must still pass after changes:
+
+| Test Pattern | Why |
+|--------------|-----|
+| `tests/test_related.py` | Integration unchanged |
+| `tests/test_other.py::test_specific` | Specific behavior preserved |
+
+---
+
 ## Verification
-- [ ] Tests pass
-- [ ] Docs updated
+- [ ] All required tests pass (`python scripts/check_plan_tests.py --plan N`)
+- [ ] Docs updated in `current/`
 - [ ] [Specific criteria]
 
 ---

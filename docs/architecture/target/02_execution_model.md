@@ -21,9 +21,9 @@ async def agent_loop(agent):
         if agent.is_sleeping:
             await agent.wait_for_wake_condition()
 
-        # Check resource availability
-        if agent.compute_balance < 0:
-            await wait_for_accumulation()
+        # Check rate limits (no debt - just wait for capacity)
+        if not rate_tracker.has_capacity(agent.id, "cpu"):
+            await rate_tracker.wait_for_capacity(agent.id, "cpu")
             continue
 
         # Act
@@ -32,6 +32,8 @@ async def agent_loop(agent):
 
         # Loop continues immediately
 ```
+
+**No debt for renewable resources.** Agents don't accumulate negative balances. They simply wait until their rate window has capacity.
 
 ### Key Differences from Current
 
@@ -190,8 +192,8 @@ Worker Process              Main Process
 ```
 
 ### Emergent Throttling
-- Total flow rate limits system throughput
-- Debt mechanism naturally throttles expensive agents
+- Rate limits naturally throttle system throughput
+- Expensive agents exhaust their rate window, must wait
 - No hardcoded "max N agents"
 
 ---

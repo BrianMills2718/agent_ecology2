@@ -2,7 +2,7 @@
 
 What we're building toward. Design decisions from clarification discussions.
 
-**Last verified:** 2026-01-11
+**Last verified:** 2026-01-12
 
 **See current:** [../current/README.md](../current/README.md)
 
@@ -37,7 +37,7 @@ This is **mechanism design for real resource allocation**, not a simulation or m
 |----------|-------------|
 | [02_execution_model.md](02_execution_model.md) | Continuous autonomous loops |
 | [03_agents.md](03_agents.md) | Self-managed agents, rights tradability |
-| [04_resources.md](04_resources.md) | Token bucket, debt model |
+| [04_resources.md](04_resources.md) | Rate allocation, resource tracking |
 | [05_contracts.md](05_contracts.md) | Access control via contract artifacts |
 | [06_oracle.md](06_oracle.md) | Bids anytime, periodic resolution |
 | [07_infrastructure.md](07_infrastructure.md) | Docker isolation, real constraints |
@@ -49,8 +49,8 @@ This is **mechanism design for real resource allocation**, not a simulation or m
 | Aspect | Current | Target |
 |--------|---------|--------|
 | Execution | Tick-synchronized | Continuous autonomous loops |
-| Flow resources | Discrete per-tick refresh | Rolling window (token bucket) |
-| Debt | Not allowed | Allowed (compute), contract-based (scrip) |
+| Renewable resources | Discrete per-tick refresh | Rolling window rate tracking |
+| Rate limiting | Discrete per-tick | Rolling window, wait for capacity |
 | Agent control | System-triggered | Self-triggered with sleep |
 | Ticks | Execution trigger | Metrics window only |
 | Resource limits | Configured abstract numbers | Docker container limits |
@@ -94,10 +94,11 @@ This is **mechanism design for real resource allocation**, not a simulation or m
 | **Contract** | An artifact that answers permission questions. Every artifact has an `access_contract_id` pointing to the contract that governs access to it. |
 | **Genesis Artifact** | Artifacts created at system initialization (before agents). Examples: `genesis_ledger`, `genesis_store`, `genesis_freeware`, `genesis_rights_registry`. They bootstrap the system but have no special mechanical privileges. |
 | **genesis_rights_registry** | Genesis artifact that manages resource quotas. Provides `check_quota`, `transfer_quota` methods. Enforces per-agent resource limits. |
-| **Token Bucket** | The flow resource model. Resources accumulate continuously at a fixed rate up to a capacity limit. Allows debt (negative balance). |
-| **Flow Resource** | A resource that accumulates over time (like API rate limits). Contrast with stock resources. |
-| **Stock Resource** | A resource that doesn't accumulate (like disk space or $ budget). Depletes until refilled or reclaimed. |
-| **Frozen** | An agent with negative resource balance. Cannot act until balance recovers through accumulation or transfer. |
+| **Rate Tracker** | The renewable resource model. Tracks usage in a rolling time window. No burst, no debt - agents wait when over limit. |
+| **Renewable Resource** | A resource with a rate limit (CPU-seconds, LLM tokens/min). Usage tracked in rolling window. |
+| **Depletable Resource** | A resource that depletes forever (LLM budget in $). Once spent, gone. |
+| **Allocatable Resource** | A resource with quota that can be reclaimed (disk, memory). |
+| **Blocked** | An agent that has exceeded their rate limit. Must wait until rolling window has capacity. |
 | **Oracle** | The system component that scores artifacts and mints scrip. Agents bid for oracle attention; winners get their artifacts scored. |
 | **Invoke** | Call an executable artifact. `invoke(artifact_id, args)` runs the artifact's code and returns results. |
 | **access_contract_id** | The field on every artifact pointing to the contract that governs permissions. The contract is the ONLY authority for access decisions. |

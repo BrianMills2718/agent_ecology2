@@ -2,7 +2,7 @@
 
 What we're building toward.
 
-**Last verified:** 2026-01-11
+**Last verified:** 2026-01-12
 
 **See current:** Access control is currently hardcoded policy fields on artifacts.
 
@@ -273,6 +273,63 @@ def check_permission(artifact, action, requester, depth=0):
 ```
 
 This prevents: Contract A invokes B → B's check invokes C → C's check invokes A → infinite loop.
+
+### Sandbox Limits
+
+Contract execution is sandboxed to prevent abuse:
+
+**Time limit:**
+```python
+CONTRACT_TIMEOUT_SECONDS = 30  # Max execution time
+
+async def execute_contract_sandboxed(contract_code: str, inputs: dict) -> PermissionResult:
+    try:
+        result = await asyncio.wait_for(
+            execute_contract(contract_code, inputs),
+            timeout=CONTRACT_TIMEOUT_SECONDS
+        )
+        return result
+    except asyncio.TimeoutError:
+        return {"allowed": False, "reason": "Contract execution timeout"}
+```
+
+**Resource limits:**
+- CPU: Contracts run in worker pool, subject to rate limits
+- Memory: Worker process memory limits apply
+- No disk access: Contracts cannot write to filesystem
+- No network access except through provided APIs
+
+**Available APIs in contract namespace:**
+
+| Function | Purpose | Cost |
+|----------|---------|------|
+| `invoke(artifact_id, args)` | Call another artifact | Artifact's cost model |
+| `call_llm(prompt, model)` | Query LLM | LLM token cost |
+| `charge(principal, amount)` | Charge scrip | 0 (accounting only) |
+| `get_artifact_info(id)` | Read artifact metadata | 0 |
+| `get_balance(principal, resource)` | Check balance | 0 |
+| `now()` | Current timestamp | 0 |
+
+**NOT available in contracts:**
+- `open()`, `os.*`, `subprocess.*` - No filesystem/process access
+- `socket.*`, `urllib.*` - No direct network (use `invoke` for APIs)
+- `__import__` - No dynamic imports
+- `eval()`, `compile()` - No nested code execution
+
+**Error handling:**
+
+```python
+def execute_contract(contract_code: str, inputs: dict) -> PermissionResult:
+    try:
+        exec(contract_code, namespace)
+        return namespace.get("result", {"allowed": False, "reason": "No result returned"})
+    except Exception as e:
+        # Log error but don't expose to requester
+        log_contract_error(contract_id, e)
+        return {"allowed": False, "reason": "Contract execution error"}
+```
+
+Contracts that error out deny permission by default (fail closed).
 
 ---
 

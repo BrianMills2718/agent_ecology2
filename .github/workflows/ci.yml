@@ -66,3 +66,28 @@ jobs:
 
       - name: Check doc-code coupling
         run: python scripts/check_doc_coupling.py --base origin/main --strict
+
+  plan-tests:
+    runs-on: ubuntu-latest
+    # Informational - shows plan test status but doesn't block PRs
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install -r requirements.txt
+
+      - name: List plan test status
+        run: python scripts/check_plan_tests.py --list
+
+      - name: Check plan tests
+        run: python scripts/check_plan_tests.py --all

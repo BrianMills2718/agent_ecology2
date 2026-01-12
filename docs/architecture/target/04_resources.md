@@ -16,7 +16,7 @@ What we're building toward.
 |----------|----------|----------|
 | **Depletable** | Once spent, gone forever | LLM API budget ($) |
 | **Allocatable** | Quota, reclaimable (delete/free) | Disk (bytes), Memory (bytes) |
-| **Renewable** | Rate-limited via token bucket | CPU (CPU-seconds), LLM rate (TPM) |
+| **Renewable** | Rate-limited via rolling window | CPU (CPU-seconds), LLM rate (TPM) |
 
 **Distinct resources - do not conflate:**
 
@@ -184,13 +184,7 @@ For disk and memory:
 
 ### Scrip Debt = Contracts (NOT Negative Balance)
 
-Scrip balance stays >= 0. Debt is handled via artifacts:
-
-Expensive operations → debt → forced wait → fewer concurrent actions.
-
-### Scrip Debt = Contracts (NOT Negative Balance)
-
-Scrip balance stays >= 0. Debt is handled differently:
+Scrip balance stays >= 0. Debt is handled via debt artifacts:
 
 ```
 Agent A borrows 50 scrip from Agent B:
@@ -370,6 +364,61 @@ class Action:
 ```
 
 If an action needs complex state, reference it by ID and let the worker load it.
+
+### Worker Execution Environment
+
+Workers are separate processes. They cannot directly access the main process's world state.
+
+**Worker receives:**
+- Action data (picklable)
+- Read-only snapshot of relevant artifacts
+
+**Worker does NOT have:**
+- Direct ledger access (main process updates ledger)
+- Write access to artifact store
+- Access to other agents' state
+
+**How workers access artifacts:**
+
+```python
+def execute_in_worker(action: Action, artifact_snapshot: dict) -> tuple[Result, ResourceUsage]:
+    """
+    Worker receives:
+    - action: The action to execute
+    - artifact_snapshot: Read-only copy of artifacts needed for this action
+    """
+    # Worker can read from snapshot
+    artifact = artifact_snapshot[action.target_id]
+
+    # Execute the action
+    result = artifact.execute(action.method, action.args)
+
+    # Measure resources
+    return result, measure_usage()
+```
+
+**Main process orchestrates:**
+
+```python
+async def run_action(agent_id: str, action: Action) -> Result:
+    # 1. Gather artifacts needed for action
+    snapshot = gather_artifact_snapshot(action)
+
+    # 2. Send to worker with snapshot
+    result, usage = await loop.run_in_executor(
+        executor, execute_in_worker, action, snapshot
+    )
+
+    # 3. Main process updates ledger (not worker)
+    ledger.deduct(agent_id, "cpu_seconds", usage.cpu_seconds)
+
+    # 4. If action creates/modifies artifacts, apply to world
+    apply_mutations(result.mutations)
+
+    return result.value
+```
+
+**Key principle:** Workers compute, main process mutates world state.
 
 ---
 
@@ -571,16 +620,15 @@ Enables:
 
 Two distinct rate limiting mechanisms operate independently.
 
-### Per-Agent Token Bucket
+### Per-Agent Rate Allocation
 
 Controls agent scheduling fairness:
 
 | Setting | Purpose |
 |---------|---------|
-| `rate` | Tokens accumulating per second |
-| `capacity` | Maximum tokens storable |
+| `rate` | Units per minute allocated to this agent |
 
-Each agent has their own bucket. Limits how often each agent can act.
+Each agent has their own allocation. Limits how often each agent can act.
 
 ### System-Wide API Rate Limit
 
@@ -591,22 +639,22 @@ Reflects external provider constraints:
 | `tokens_per_minute` | Provider's TPM limit |
 | `requests_per_minute` | Provider's RPM limit (future) |
 
-Shared across all agents. When exhausted, all agents blocked from that API.
+Shared across all agents. Sum of per-agent allocations equals provider limit.
 
 ### How They Interact
 
 ```
 Agent A wants to call LLM:
-  1. Check A's token bucket → has capacity? → proceed
-  2. Check system API rate limit → under limit? → proceed
+  1. Check A's rate allocation → has capacity in window? → proceed
+  2. Check system total → under provider limit? → proceed
   3. Make API call
-  4. Deduct from both: A's bucket AND system rate tracker
+  4. Record usage in both: A's window AND system tracker
 ```
 
-If system rate limit exhausted but agent has bucket capacity:
-- Agent blocked from API
-- Agent can do other work (non-API actions)
-- Rate limit recovers over time
+If agent exceeds their allocation:
+- Agent blocked from that resource
+- Agent can do other work (non-rate-limited actions)
+- Rolling window recovers over time
 
 ---
 
@@ -645,18 +693,18 @@ Requester pays for permission checks. Every action involves:
 ## Migration Notes
 
 ### Breaking Changes
-- `advance_tick()` no longer resets flow resources
-- `ledger.set_resource()` replaced with token bucket
-- Negative compute balances allowed
-- New debt artifact type for scrip borrowing
+- `advance_tick()` no longer resets renewable resources
+- `ledger.set_resource()` replaced with rate tracker
+- No debt for renewable resources (wait for capacity instead)
+- Scrip debt via contract artifacts (not negative balance)
 
 ### Preserved
-- Stock resource behavior (disk)
+- Allocatable resource behavior (disk)
 - Scrip transfer mechanics
 - Genesis artifact cost model
 - Thinking cost calculation (input/output tokens)
 
 ### New Components
-- TokenBucket class
-- Debt artifact type
-- Docker integration for limits
+- RateTracker class (rolling window)
+- ProcessPoolExecutor for action execution
+- Docker integration for real limits

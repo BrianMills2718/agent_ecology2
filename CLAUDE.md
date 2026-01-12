@@ -193,15 +193,26 @@ python scripts/check_doc_coupling.py --validate-config  # Verify config paths ex
 
 **Escape hatch:** If docs are already accurate, update "Last verified" date to satisfy coupling.
 
-### Plans Workflow
+### Plans Workflow (TDD)
 
 Each gap has a plan file in `docs/plans/NN_name.md`. When implementing:
 
-1. **Start work** → Update plan status to `🚧 In Progress`
-2. **Write code** → CI enforces `current/` doc updates
-3. **Complete** → Update plan status to `✅ Complete`, update `plans/README.md` index
+1. **Define tests** → Add `## Required Tests` section to plan file
+2. **Write tests** → Create test stubs (TDD - they fail initially)
+3. **Start work** → Update plan status to `🚧 In Progress`
+4. **Implement** → Code until tests pass
+5. **Verify** → `python scripts/check_plan_tests.py --plan N`
+6. **Complete** → Update status to `✅ Complete`, update `current/` docs
 
-See `docs/plans/README.md` for plan template and full gap list.
+```bash
+# See what tests a plan needs
+python scripts/check_plan_tests.py --plan 1 --tdd
+
+# Run all required tests for a plan
+python scripts/check_plan_tests.py --plan 1
+```
+
+See `docs/plans/CLAUDE.md` for plan template and full gap list.
 
 ---
 
@@ -210,7 +221,7 @@ See `docs/plans/README.md` for plan template and full gap list.
 | Doc | Purpose |
 |-----|---------|
 | `README.md` | Full philosophy, theoretical grounding |
-| `docs/plans/README.md` | Gap tracking + implementation plans |
+| `docs/plans/CLAUDE.md` | Gap tracking + implementation plans |
 | `docs/GLOSSARY.md` | Canonical terminology |
 | `docs/DESIGN_CLARIFICATIONS.md` | Decision rationale archive |
 | `config/schema.yaml` | All config options |

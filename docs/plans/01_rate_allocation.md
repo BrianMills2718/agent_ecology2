@@ -146,18 +146,47 @@ resources:
 
 ---
 
+## Required Tests
+
+### New Tests (TDD)
+
+Create these tests FIRST, before implementing:
+
+| Test File | Test Function | What It Verifies |
+|-----------|---------------|------------------|
+| `tests/test_token_bucket.py` | `test_accumulation_over_time` | Tokens accumulate based on rate |
+| `tests/test_token_bucket.py` | `test_spending_reduces_balance` | spend() decreases balance |
+| `tests/test_token_bucket.py` | `test_spending_creates_debt` | Balance can go negative |
+| `tests/test_token_bucket.py` | `test_capacity_capping` | Balance cannot exceed capacity |
+| `tests/test_token_bucket.py` | `test_can_afford_check` | can_afford() doesn't spend |
+| `tests/test_token_bucket.py` | `test_is_in_debt` | is_in_debt() returns True when negative |
+| `tests/test_token_bucket.py` | `test_multiple_principals` | Each principal has own bucket |
+
+### Existing Tests (Must Pass)
+
+These tests must still pass after changes:
+
+| Test Pattern | Why |
+|--------------|-----|
+| `tests/test_ledger.py` | Resource accounting API unchanged |
+| `tests/test_resource_tracking.py` | Integration with resource system |
+| `tests/test_runner.py` | Tick execution unaffected |
+
+---
+
 ## Verification
 
-### Unit Tests
-- Token accumulation over time
-- Spending and debt
-- Capacity capping
-- Multiple principals
+```bash
+# Check all required tests for this plan
+python scripts/check_plan_tests.py --plan 1
 
-### Integration Tests
-- Agent thinking with token bucket
-- Debt blocking actions
-- Recovery from debt
+# TDD mode - see what tests to write first
+python scripts/check_plan_tests.py --plan 1 --tdd
+```
+
+- [ ] All required tests pass
+- [ ] `docs/architecture/current/resources.md` updated
+- [ ] Config schema migration documented
 
 ### Manual Test
 ```bash

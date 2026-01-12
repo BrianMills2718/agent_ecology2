@@ -67,6 +67,29 @@ Checks that documentation is updated when coupled source files change.
 - Source file changes without corresponding doc updates
 - Documentation drift from implementation
 
+### 4. plan-tests (Informational)
+
+Checks test requirements for implementation plans. Runs with `continue-on-error: true` - does not block PRs.
+
+```yaml
+- uses: actions/checkout@v4
+- uses: actions/setup-python@v5 (Python 3.11)
+- pip install -e . && pip install -r requirements.txt
+- python scripts/check_plan_tests.py --list
+- python scripts/check_plan_tests.py --all
+```
+
+**What it catches:**
+- Plans with missing required tests
+- TDD workflow status (which tests need to be written)
+- Test failures for plans with defined requirements
+
+**Configuration:** Test requirements defined in each plan file's `## Required Tests` section.
+
+---
+
+## Doc-Code Coupling
+
 **Configuration:** `scripts/doc_coupling.yaml` defines source-to-doc mappings:
 ```yaml
 couplings:
@@ -77,7 +100,7 @@ couplings:
 
   # Soft: CI warns but doesn't fail
   - sources: ["docs/architecture/current/*.md"]
-    docs: ["docs/architecture/GAPS.md"]
+    docs: ["docs/plans/CLAUDE.md"]
     description: "Gap closure tracking"
     soft: true
 ```
@@ -87,8 +110,8 @@ couplings:
 - **Soft** (`soft: true`): CI warns but doesn't fail - for reminder couplings
 
 **Soft couplings include:**
-- `current/` changes → GAPS.md (did you close a gap?)
-- GAPS.md changes → plans/README.md (update plan status)
+- `current/` changes → `plans/CLAUDE.md` (did you close a gap?)
+- Plan file changes → `plans/CLAUDE.md` index (sync status)
 - Terminology files → GLOSSARY.md (new terms?)
 
 **Script options:**
@@ -119,6 +142,15 @@ python scripts/check_doc_coupling.py --suggest --base origin/main
 
 # Validate coupling config (check all doc paths exist)
 python scripts/check_doc_coupling.py --validate-config
+
+# List plan test status
+python scripts/check_plan_tests.py --list
+
+# TDD mode - see what tests to write for a plan
+python scripts/check_plan_tests.py --plan 1 --tdd
+
+# Run all required tests for a plan
+python scripts/check_plan_tests.py --plan 1
 ```
 
 ---

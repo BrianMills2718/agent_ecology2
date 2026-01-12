@@ -2,7 +2,7 @@
 
 What we're building toward.
 
-**Last verified:** 2026-01-11
+**Last verified:** 2026-01-12
 
 **See current:** [../current/agents.md](../current/agents.md)
 
@@ -194,12 +194,95 @@ Memory artifact has its own `access_contract_id`:
 | Sold memory | Alice | Bob | Alice runs agent, but Bob can read/modify memories |
 | Full sale | Bob | Bob | Bob has complete control |
 
-### Implementation Notes
+### Qdrant Integration
 
-- Memory artifact points to external storage (Qdrant) via `content.collection_id`
-- The artifact provides ownership/access semantics
-- Actual vectors remain in Qdrant for efficiency
-- Wiping memory = clearing the Qdrant collection (owner permission required)
+Memory is stored in Qdrant vector database, referenced by memory artifact.
+
+**Memory artifact structure:**
+
+```python
+{
+    "id": "alice_memories",
+    "content": {
+        "storage_type": "qdrant",
+        "collection_id": "alice_mem_collection",
+        "embedding_model": "text-embedding-3-small",  # OpenAI or local
+        "vector_size": 1536,
+    }
+}
+```
+
+**Memory interface:**
+
+```python
+class AgentMemory:
+    def __init__(self, memory_artifact_id: str, qdrant_client: QdrantClient):
+        self.artifact = load_artifact(memory_artifact_id)
+        self.collection = self.artifact.content["collection_id"]
+        self.client = qdrant_client
+
+    async def store(self, text: str, metadata: dict = None) -> str:
+        """Store a memory. Returns memory ID."""
+        embedding = await embed(text, self.artifact.content["embedding_model"])
+        point_id = uuid4().hex
+        self.client.upsert(
+            collection_name=self.collection,
+            points=[PointStruct(id=point_id, vector=embedding, payload={"text": text, **(metadata or {})})]
+        )
+        return point_id
+
+    async def recall(self, query: str, limit: int = 5) -> list[dict]:
+        """Retrieve relevant memories."""
+        embedding = await embed(query, self.artifact.content["embedding_model"])
+        results = self.client.search(
+            collection_name=self.collection,
+            query_vector=embedding,
+            limit=limit
+        )
+        return [{"text": r.payload["text"], "score": r.score} for r in results]
+
+    def clear(self) -> None:
+        """Wipe all memories. Requires owner permission on memory artifact."""
+        self.client.delete_collection(self.collection)
+        self.client.create_collection(self.collection, vectors_config=...)
+```
+
+**Memory quota tracking:**
+
+```python
+# Memory usage counted against agent's allocatable memory quota
+def store_memory(agent_id: str, text: str):
+    memory_bytes = len(text.encode()) + EMBEDDING_SIZE  # ~6KB per memory
+    if not quota_check(agent_id, "memory", memory_bytes):
+        raise QuotaExceeded("Memory quota exceeded")
+    memory.store(text)
+    quota_deduct(agent_id, "memory", memory_bytes)
+```
+
+**Qdrant deployment:**
+
+```yaml
+# docker-compose.yml
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  agent-ecology:
+    environment:
+      QDRANT_URL: http://qdrant:6333
+```
+
+**Fallback behavior:**
+
+If Qdrant is unavailable:
+- Memory operations fail with clear error
+- Agent continues running (degraded mode)
+- System logs Qdrant connectivity issues
+- No silent fallback to local storage
 
 ---
 
@@ -236,6 +319,62 @@ System provides event bus for wake triggers:
 - Transfer received
 - Artifact created
 - Custom conditions
+
+### Event Bus Interface
+
+```python
+class EventBus:
+    """System-wide event notification."""
+
+    async def subscribe(self, agent_id: str, event_type: str) -> None:
+        """Subscribe to an event type. Subscription persists until unsubscribe."""
+        pass
+
+    async def unsubscribe(self, agent_id: str, event_type: str) -> None:
+        """Unsubscribe from an event type."""
+        pass
+
+    async def wait_for(self, agent_id: str, event_type: str,
+                       filter_fn: Callable[[Event], bool] = None) -> Event:
+        """Block until matching event occurs. Auto-subscribes if needed."""
+        pass
+
+    def publish(self, event: Event) -> None:
+        """Publish an event. All subscribers are notified."""
+        pass
+```
+
+**Event types:**
+
+| Event Type | Payload | Published When |
+|------------|---------|----------------|
+| `escrow_listing` | `{artifact_id, price, seller_id}` | New escrow listing created |
+| `escrow_sale` | `{artifact_id, buyer_id, price}` | Escrow purchase completed |
+| `oracle_resolution` | `{winners, scores}` | Oracle resolves bids |
+| `transfer_received` | `{from_id, to_id, amount, resource}` | Agent receives transfer |
+| `artifact_created` | `{artifact_id, creator_id}` | New artifact created |
+| `agent_blocked` | `{agent_id, resource}` | Agent exceeded rate limit |
+| `agent_unblocked` | `{agent_id, resource}` | Agent rate limit recovered |
+
+**Subscription persistence:**
+
+```python
+# Subscriptions are stored in agent state
+agent.subscriptions = ["escrow_listing", "transfer_received"]
+
+# On agent restart, subscriptions are restored
+async def restore_agent(agent_id: str):
+    agent = load_agent(agent_id)
+    for event_type in agent.subscriptions:
+        await event_bus.subscribe(agent_id, event_type)
+```
+
+**Missed events:**
+
+If an event fires while agent is restarting:
+- Events are NOT queued per-agent (too expensive)
+- Agent must poll for state changes after restart
+- Sleep conditions should be re-checked after wake
 
 ---
 

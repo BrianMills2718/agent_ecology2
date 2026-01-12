@@ -89,7 +89,7 @@ couplings:
   - sources:
       - "docs/architecture/current/*.md"
     docs:
-      - "docs/plans/README.md"
+      - "docs/plans/CLAUDE.md"
     description: "Gap closure tracking - update plan status if gap closed"
     soft: true
 
@@ -122,6 +122,6 @@ couplings:
   - sources:
       - "docs/plans/*.md"
     docs:
-      - "docs/plans/README.md"
+      - "docs/plans/CLAUDE.md"
     description: "Plan index sync - update README if plan status changes"
     soft: true
