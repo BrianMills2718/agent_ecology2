@@ -46,6 +46,64 @@ CLAUDE_MD_PATH = Path("CLAUDE.md")
 PLANS_DIR = Path("docs/plans")
 
 
+def get_plan_files(plan_number: int) -> set[str]:
+    """Extract files affected by a plan from its markdown."""
+    plan_file = None
+    for f in PLANS_DIR.glob(f"{plan_number:02d}_*.md"):
+        plan_file = f
+        break
+    if not plan_file:
+        for f in PLANS_DIR.glob(f"{plan_number}_*.md"):
+            plan_file = f
+            break
+
+    if not plan_file or not plan_file.exists():
+        return set()
+
+    content = plan_file.read_text()
+    files = set()
+
+    # Match file paths in markdown table cells
+    patterns = [
+        r'\|\s*`([^`]+\.(py|yaml|yml|md|json))`\s*\|',
+        r'\|\s*([a-zA-Z_][a-zA-Z0-9_/]*\.(py|yaml|yml|md|json))\s*\|',
+    ]
+
+    for pattern in patterns:
+        for match in re.finditer(pattern, content):
+            filepath = match.group(1)
+            if any(filepath.startswith(p) for p in ['src/', 'config/', 'docs/', 'tests/', 'scripts/']):
+                files.add(filepath)
+            elif filepath in ['Dockerfile', 'docker-compose.yml', 'README.md', 'Makefile']:
+                files.add(filepath)
+
+    return files
+
+
+def check_file_overlaps_with_active(
+    plan_number: int,
+    active_claims: list[dict],
+) -> list[tuple[str, int, set[str]]]:
+    """Check if plan's files overlap with any active claims.
+
+    Returns list of (cc_id, conflicting_plan, overlapping_files) tuples.
+    """
+    my_files = get_plan_files(plan_number)
+    if not my_files:
+        return []
+
+    conflicts = []
+    for claim in active_claims:
+        other_plan = claim.get("plan")
+        if other_plan and other_plan != plan_number:
+            other_files = get_plan_files(other_plan)
+            overlap = my_files & other_files
+            if overlap:
+                conflicts.append((claim.get("cc_id", "unknown"), other_plan, overlap))
+
+    return conflicts
+
+
 def get_plan_status(plan_number: int) -> tuple[str, list[int]]:
     """Get plan status and its blockers.
 
@@ -284,8 +342,27 @@ def add_claim(
     if plan:
         for claim in data["claims"]:
             if claim.get("plan") == plan:
-                print(f"Warning: Plan #{plan} already claimed by {claim.get('cc_id')}")
-                print("Proceed with caution to avoid conflicts.")
+                print(f"Error: Plan #{plan} already claimed by {claim.get('cc_id')}")
+                if not force:
+                    print("Use --force to claim anyway (not recommended).")
+                    return False
+                print("--force specified, proceeding despite same-plan conflict.\n")
+
+    # Check for file overlaps with active claims (if plan specified)
+    if plan:
+        conflicts = check_file_overlaps_with_active(plan, data["claims"])
+        if conflicts:
+            print(f"FILE OVERLAP DETECTED for Plan #{plan}:")
+            for cc_id_other, other_plan, overlap_files in conflicts:
+                print(f"  Conflicts with Plan #{other_plan} (claimed by {cc_id_other}):")
+                for f in sorted(overlap_files)[:5]:
+                    print(f"    - {f}")
+                if len(overlap_files) > 5:
+                    print(f"    ... and {len(overlap_files) - 5} more files")
+            if not force:
+                print("\nUse --force to claim anyway (coordinate with other CC first).")
+                return False
+            print("\n--force specified, proceeding despite file overlaps.\n")
 
     new_claim = {
         "cc_id": cc_id,

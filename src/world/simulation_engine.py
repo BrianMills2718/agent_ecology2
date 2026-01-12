@@ -22,8 +22,11 @@ Usage:
 from __future__ import annotations
 
 import math
+import time
+import tracemalloc
+from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, TypedDict
+from typing import Any, Generator, TypedDict
 
 
 class ThinkingCostResult(TypedDict):
@@ -193,8 +196,140 @@ class SimulationEngine:
         return (self.rate_input, self.rate_output)
 
 
+@dataclass
+class ResourceUsage:
+    """
+    Measured resource usage from action execution.
+
+    Captures CPU time, memory, and disk usage for observability
+    and resource accounting.
+
+    Attributes:
+        cpu_seconds: CPU time consumed (process-level measurement)
+        peak_memory_bytes: Peak memory usage during execution
+        disk_bytes_written: Total bytes written to disk
+    """
+
+    cpu_seconds: float = 0.0
+    peak_memory_bytes: int = 0
+    disk_bytes_written: int = 0
+
+    def to_dict(self) -> dict[str, float | int]:
+        """Convert to dictionary for serialization."""
+        return {
+            "cpu_seconds": self.cpu_seconds,
+            "peak_memory_bytes": self.peak_memory_bytes,
+            "disk_bytes_written": self.disk_bytes_written,
+        }
+
+
+class ResourceMeasurer:
+    """
+    Context manager for measuring resource usage during execution.
+
+    Measures:
+    - CPU time via time.process_time() (process-level, not isolated)
+    - Peak memory via tracemalloc
+    - Disk writes via explicit recording
+
+    Usage:
+        with ResourceMeasurer() as measurer:
+            # ... do work ...
+            measurer.record_disk_write(1024)
+        usage = measurer.get_usage()
+
+    Note: This provides process-level measurement. For true per-action
+    isolation, ProcessPoolExecutor would be needed (future enhancement).
+    """
+
+    def __init__(self) -> None:
+        self._start_cpu: float = 0.0
+        self._end_cpu: float = 0.0
+        self._start_memory: int = 0
+        self._peak_memory: int = 0
+        self._disk_bytes: int = 0
+        self._tracemalloc_was_running: bool = False
+
+    def __enter__(self) -> "ResourceMeasurer":
+        """Start measuring resources."""
+        self._start_cpu = time.process_time()
+
+        # Handle tracemalloc state carefully
+        self._tracemalloc_was_running = tracemalloc.is_tracing()
+        if not self._tracemalloc_was_running:
+            tracemalloc.start()
+
+        # Reset peak and get baseline
+        tracemalloc.reset_peak()
+        current, _ = tracemalloc.get_traced_memory()
+        self._start_memory = current
+
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
+        """Stop measuring and capture final values."""
+        self._end_cpu = time.process_time()
+        _, self._peak_memory = tracemalloc.get_traced_memory()
+
+        # Restore original tracemalloc state
+        if not self._tracemalloc_was_running:
+            tracemalloc.stop()
+
+    def record_disk_write(self, bytes_written: int) -> None:
+        """
+        Record bytes written to disk.
+
+        Call this when performing disk writes to track total I/O.
+
+        Args:
+            bytes_written: Number of bytes written
+        """
+        self._disk_bytes += bytes_written
+
+    def get_usage(self) -> ResourceUsage:
+        """
+        Get the measured resource usage.
+
+        Call after exiting the context manager.
+
+        Returns:
+            ResourceUsage with measured values
+        """
+        return ResourceUsage(
+            cpu_seconds=max(0.0, self._end_cpu - self._start_cpu),
+            peak_memory_bytes=max(0, self._peak_memory - self._start_memory),
+            disk_bytes_written=self._disk_bytes,
+        )
+
+
+@contextmanager
+def measure_resources() -> Generator[ResourceMeasurer, None, None]:
+    """
+    Convenience context manager for resource measurement.
+
+    Usage:
+        with measure_resources() as measurer:
+            # ... do work ...
+        usage = measurer.get_usage()
+
+    Yields:
+        ResourceMeasurer instance for recording disk writes and getting results
+    """
+    measurer = ResourceMeasurer()
+    with measurer:
+        yield measurer
+
+
 __all__ = [
     "SimulationEngine",
     "ThinkingCostResult",
     "BudgetCheckResult",
+    "ResourceUsage",
+    "ResourceMeasurer",
+    "measure_resources",
 ]
