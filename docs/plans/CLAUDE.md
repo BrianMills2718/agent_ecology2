@@ -48,7 +48,7 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 |---|-----|----------|--------|--------|
 | 1 | [Rate Allocation](01_rate_allocation.md) | **High** | ✅ Complete | #2, #31 |
 | 2 | [Continuous Execution](02_continuous_execution.md) | **High** | ⏸️ In Progress | #21 |
-| 3 | [Docker Isolation](03_docker_isolation.md) | Medium | 📋 Planned | - |
+| 3 | [Docker Isolation](03_docker_isolation.md) | Medium | ✅ Complete | - |
 | 4 | ~~Compute Debt Model~~ | - | ✅ Superseded | - |
 | 5 | [Oracle Anytime Bidding](05_oracle_anytime.md) | Medium | ❌ Needs Plan | - |
 | 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | ❌ In Progress | #7,#8,#14,#16 |
@@ -144,6 +144,7 @@ The 142 gaps are a finer breakdown of these 31. Both track the same work at diff
 | - | Autonomous Loops (GAP-EXEC-001) | 2026-01-12 | Phase 1 |
 | - | Unified Ontology Fields (GAP-AGENT-001) | 2026-01-12 | Phase 1 |
 | 31 | Resource Measurement | 2026-01-12 | PR #10 |
+| 3 | Docker Isolation | 2026-01-12 | PR #15 |
 
 ---
 
