@@ -99,14 +99,20 @@ execution:
 
 ```yaml
 rate_limiting:
-  enabled: false                  # Enable RateTracker
+  enabled: false                  # Enable RateTracker (see INT-005/INT-006)
   window_seconds: 60.0            # Rolling window duration
   resources:
+    compute:
+      max_per_window: 1000        # Compute units per window
     llm_calls:
       max_per_window: 100
     disk_writes:
-      max_per_window: 50
+      max_per_window: 1000
+    bandwidth_bytes:
+      max_per_window: 10485760    # 10MB
 ```
+
+**Note:** Rate limiting is currently disabled. Enabling it requires INT-005 (genesis methods integration) to be complete. See `docs/architecture/gaps/plans/README.md` for details.
 
 ### Executor (Phase 2)
 

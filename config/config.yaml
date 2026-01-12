@@ -167,9 +167,11 @@ genesis:
 # RATE LIMITING - Rolling window rate limiting (time-based, not tick-based)
 # -----------------------------------------------------------------------------
 rate_limiting:
-  enabled: false                  # Disabled by default, enable when ready
+  enabled: false                  # TODO: Needs integration with genesis method costs
   window_seconds: 60.0            # 60 second rolling window
   resources:
+    compute:
+      max_per_window: 1000        # Max 1000 compute units per 60 seconds
     llm_calls:
       max_per_window: 100         # Max 100 LLM calls per 60 seconds
     disk_writes:
@@ -181,7 +183,7 @@ rate_limiting:
 # EXECUTION - Agent execution model settings
 # -----------------------------------------------------------------------------
 execution:
-  use_autonomous_loops: false     # Disabled by default, enable for continuous execution
+  use_autonomous_loops: false     # TODO: Needs rate limiter integration with genesis method costs
   agent_loop:
     min_loop_delay: 0.1           # Minimum seconds between actions
     max_loop_delay: 10.0          # Maximum backoff delay on errors

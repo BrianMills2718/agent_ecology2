@@ -80,3 +80,29 @@ Wave 4: CAP-003 + CAP-004 + CAP-005 + CAP-006 (parallel)
 - [phase2_int_001_rate_tracker_integration.md](./phase2_int_001_rate_tracker_integration.md)
 - [phase2_int_002_contracts_executor.md](./phase2_int_002_contracts_executor.md)
 - [phase2_int_003_agent_loop_runner.md](./phase2_int_003_agent_loop_runner.md)
+
+---
+
+# Phase 3: Extended Integration
+
+## Identified During Phase 2 Validation
+
+| Task ID | Name | Status | Description |
+|---------|------|--------|-------------|
+| INT-005 | Genesis methods → RateTracker | Pending | Genesis artifact method costs need to use RateTracker instead of old compute balance |
+| INT-006 | Autonomous loops + compute | Pending | Autonomous execution requires compute to flow from RateTracker, not tick-based quotas |
+
+### Issue Details
+
+**Problem:** When `rate_limiting.enabled=true`, tick-based compute reset is disabled. But genesis artifact methods still check the old compute balance system. This means:
+1. Agent consumes compute on first action
+2. Compute never refreshes (no tick reset)
+3. All subsequent actions fail with "Cannot afford method cost"
+
+**Required Fix:** Genesis methods should check `ledger.check_capacity()` which delegates to RateTracker when enabled, instead of checking the old compute balance directly.
+
+**Files Affected:**
+- `src/world/genesis.py` - Method cost checking
+- `src/world/ledger.py` - Compute consumption flow
+
+**Current Workaround:** Keep `rate_limiting.enabled: false` and `use_autonomous_loops: false` until INT-005/INT-006 are complete.
