@@ -220,6 +220,7 @@ python scripts/check_claims.py --release --validate
 |-------|------|------|---------|--------|
 | plan-11-terminology | 11 | Terminology cleanup - config restructure | 2026-01-12T08:03 | Active |
 | plan-20-migration | 20 | Write migration strategy plan | 2026-01-12T08:18 | Active |
+| plan-35-verification | 35 | Implement verification enforcement | 2026-01-12T09:27 | Active |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->
@@ -370,7 +371,7 @@ python scripts/sync_governance.py --apply      # Apply changes (requires clean g
 
 See `docs/adr/README.md` for ADR format and `docs/meta/adr-governance.md` for the pattern.
 
-### Plans Workflow (TDD)
+### Plans Workflow (TDD + Verification)
 
 Each gap has a plan file in `docs/plans/NN_name.md`. When implementing:
 
@@ -379,7 +380,7 @@ Each gap has a plan file in `docs/plans/NN_name.md`. When implementing:
 3. **Start work** → Update plan status to `🚧 In Progress`
 4. **Implement** → Code until tests pass
 5. **Verify** → `python scripts/check_plan_tests.py --plan N`
-6. **Complete** → Update status to `✅ Complete`, update `current/` docs
+6. **Complete** → **MUST use:** `python scripts/complete_plan.py --plan N`
 
 ```bash
 # See what tests a plan needs
@@ -389,7 +390,28 @@ python scripts/check_plan_tests.py --plan 1 --tdd
 python scripts/check_plan_tests.py --plan 1
 ```
 
-See `docs/plans/CLAUDE.md` for plan template and full gap list.
+### Plan Completion (MANDATORY)
+
+> **⚠️ NEVER manually set a plan status to Complete.**
+> Always use the verification script which runs E2E tests and records evidence.
+
+```bash
+# Complete a plan (runs tests, records evidence, updates status)
+python scripts/complete_plan.py --plan N
+
+# Dry run - check without updating
+python scripts/complete_plan.py --plan N --dry-run
+```
+
+The script:
+1. Runs unit/component tests (`pytest tests/ --ignore=tests/e2e/`)
+2. Runs E2E smoke tests (`pytest tests/e2e/test_smoke.py`)
+3. Records verification evidence in the plan file
+4. Updates plan status to Complete
+
+**Why:** Prevents "big bang" failures where work accumulates without integration testing.
+
+See `docs/meta/verification-enforcement.md` for the full pattern and `docs/plans/CLAUDE.md` for plan template.
 
 ---
 
