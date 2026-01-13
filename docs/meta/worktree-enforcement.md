@@ -12,9 +12,33 @@ Git worktrees solve this by giving each instance its own working directory, but 
 
 ## Solution
 
-A PreToolUse hook that blocks Edit/Write operations when the target file is in the main repository directory (not a worktree).
+Two-part enforcement:
 
-## Files
+1. **`make worktree` requires claiming** - The worktree creation script prompts for task description and plan number, creating a claim before the worktree. This ensures all instances can see what others are working on.
+
+2. **PreToolUse hook blocks edits in main** - A hook blocks Edit/Write operations when the target file is in the main repository directory (not a worktree).
+
+## Creating a Worktree (with mandatory claim)
+
+```bash
+make worktree
+```
+
+This runs an interactive script that:
+1. Shows existing claims
+2. Prompts for task description (required)
+3. Prompts for plan number (optional)
+4. Suggests branch name based on plan
+5. Creates the claim
+6. Creates the worktree
+
+See [claim-system.md](claim-system.md) for details on the claim system.
+
+## Hook-Based Enforcement
+
+The PreToolUse hook blocks Edit/Write operations in the main directory.
+
+### Files
 
 | File | Purpose |
 |------|---------|
