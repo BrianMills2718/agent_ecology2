@@ -16,6 +16,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from .parser import JSONLParser
+from .kpis import calculate_kpis, EcosystemKPIs
 
 # Import simulation runner for control (may not be available)
 try:
@@ -37,6 +38,7 @@ from .models import (
     EconomicFlowData,
     ConfigInfo,
     EventFilter,
+    EcosystemKPIsResponse,
 )
 
 # Default paths
@@ -282,6 +284,39 @@ def create_app(
         """Get economic flow visualization data."""
         dashboard.parser.parse_incremental()
         return dashboard.parser.get_economic_flow_data().model_dump()
+
+    @app.get("/api/kpis")
+    async def get_kpis() -> dict[str, Any]:
+        """Get ecosystem health KPIs.
+
+        Returns computed metrics indicating overall ecosystem health,
+        capital flow, and emergence patterns.
+        """
+        dashboard.parser.parse_incremental()
+        kpis = calculate_kpis(dashboard.parser.state)
+
+        # Convert dataclass to dict for response
+        return {
+            "total_scrip": kpis.total_scrip,
+            "scrip_velocity": kpis.scrip_velocity,
+            "gini_coefficient": kpis.gini_coefficient,
+            "median_scrip": kpis.median_scrip,
+            "active_agent_ratio": kpis.active_agent_ratio,
+            "frozen_agent_count": kpis.frozen_agent_count,
+            "actions_per_tick": kpis.actions_per_tick,
+            "thinking_cost_rate": kpis.thinking_cost_rate,
+            "escrow_volume": kpis.escrow_volume,
+            "escrow_active_listings": kpis.escrow_active_listings,
+            "mint_scrip_rate": kpis.mint_scrip_rate,
+            "artifact_creation_rate": kpis.artifact_creation_rate,
+            "llm_budget_remaining": kpis.llm_budget_remaining,
+            "llm_budget_burn_rate": kpis.llm_budget_burn_rate,
+            "agent_spawn_rate": kpis.agent_spawn_rate,
+            "coordination_events": kpis.coordination_events,
+            "artifact_diversity": kpis.artifact_diversity,
+            "scrip_velocity_trend": kpis.scrip_velocity_trend,
+            "activity_trend": kpis.activity_trend,
+        }
 
     @app.get("/api/config")
     async def get_config() -> dict[str, Any]:
