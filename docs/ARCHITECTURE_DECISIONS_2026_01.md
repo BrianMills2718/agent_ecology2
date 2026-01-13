@@ -794,56 +794,75 @@ Naming: Services use `_api` suffix, contracts use `_contract` suffix
 
 #### 2. How Do Flexible Rights Work?
 
-**Status:** Decided "strings not enum" but semantics unclear
+**Status:** RESOLVED (2026-01-13)
 
-**Questions to answer:**
-- Actions are arbitrary strings - who defines valid actions for an artifact?
-- Does the artifact declare its actions? Or caller just tries anything?
-- How does an agent discover what actions are possible?
-- Are there ANY reserved/standard actions, or truly freeform?
+**Decisions made:**
 
-**Options:**
+Actions are arbitrary strings. Contracts define semantics.
 
-| Option | Pros | Cons |
-|--------|------|------|
-| **Artifact declares actions in interface** | Discoverable | Adds schema requirement |
-| **Caller tries, contract decides** | Maximum flexibility | No discoverability |
-| **Standard actions + custom** | Balance | Which are standard? |
+**Common actions (conventions, not reserved):**
+- `read`, `write`, `invoke`, `delete`, `transfer`
+- Documented in genesis_handbook and interface schemas
+- Pre-seeded contracts use consistently
+- NOT reserved - any artifact can redefine
+- NOT enforced - kernel doesn't check semantics
 
-**Decision needed:** Choose model and document.
+**Discovery model:**
+- Caller tries action, contract decides (maximum flexibility)
+- Interface discovery via genesis_store (MCP-style JSON or freeform)
+- Artifacts advertise supported actions in their interface if they want discoverability
+- No requirement to publish interface
+
+**Edge cases resolved:**
+- Case-sensitive (strings are strings, convention: lowercase)
+- No reserved action names (common actions are conventions only)
+- Action name length: configurable soft limit (default ~256 chars)
+- Action arguments: kwargs passed in context to check_permission
+
+**Risk accepted:** Lying interfaces (artifact says "read" but deletes). Observable in action log, reputation forms from behavior.
 
 ---
 
 #### 3. Event System Design
 
-**Status:** 40% certainty, underspecified
+**Status:** RESOLVED (2026-01-13) - Hybrid model
 
-**Questions to answer:**
-- What is an event? (Schema)
-- Who can publish events?
-- Namespacing - how to prevent spoofing?
-- Filtering - what query language?
-- Spam prevention - rate limits? costs?
-- Delivery guarantees - at-least-once? at-most-once?
-- Persistence - how long are events stored?
+**Decision: System events (kernel) + User events (genesis)**
 
-**Proposed model (draft):**
+| Event Type | Where | Examples | Guarantees |
+|------------|-------|----------|------------|
+| System facts | Kernel (action log) | artifact created, balance changed, invocation completed | Kernel-enforced, immutable, reliable |
+| User communication | genesis_event_log | proposal submitted, weather updated, custom | Genesis artifact, can be replaced |
+
+**Rationale (incentive analysis):**
+- Kernel-enforced events = monopoly, no competition, no innovation
+- Genesis artifact events = must provide value, can charge, alternatives can emerge
+- Action log already provides kernel-level observability
+- Coordination/messaging should be emergent, not prescribed
+
+**User event schema:**
 ```
 Event = {
-  source: artifact_id,      # Who published (verified by kernel)
-  type: string,             # Event type (artifact-defined)
-  data: any,                # Payload
+  source: string,        # Claimed source (artifact sets this)
+  publisher: string,     # Actual caller (kernel-verified via action log)
+  type: string,          # Event type (artifact-defined)
+  data: any,             # Payload
   timestamp: time
 }
-
-Rules:
-- Only artifact owner can publish with that artifact as source
-- Subscribers filter by source and/or type
-- Events persisted for N hours (configurable)
-- Rate limit per source (configurable)
 ```
 
-**Decision needed:** Finalize event schema and rules.
+**Spoofing model:** Observable, not prevented.
+- If source ≠ publisher, that's visible
+- Creates demand for verification/reputation services
+- Consistent with "observe what happens" philosophy
+
+**Wake scheduling:** Kernel can subscribe to genesis_event_log for event-based wake conditions. If genesis_event_log is unreliable, agents use alternatives or time-based polling.
+
+**Still flexible (genesis_event_log decides):**
+- Filtering syntax
+- Persistence duration
+- Delivery guarantees
+- Pricing/rate limits
 
 ---
 
@@ -1116,3 +1135,6 @@ Lower stakes, can iterate.
 - **2026-01-13:** Initial document created from design discussion
 - **2026-01-13:** Added Section 15 (Remaining Unresolved Issues) and Section 16 (Prioritized Resolution Plan)
 - **2026-01-13:** Resolved Tier 1 Item 1 (Kernel Primitives) - created architecture/target/08_kernel.md
+- **2026-01-13:** Resolved Tier 1 Item 2 (Flexible Rights) - common actions as conventions, not reserved
+- **2026-01-13:** Clarified owner vs creator - owner is NOT kernel metadata, tracked by genesis_store; creator IS kernel metadata (immutable fact)
+- **2026-01-13:** Resolved Tier 1 Item 3 (Event System) - hybrid model: system events in kernel/action log, user events in genesis_event_log

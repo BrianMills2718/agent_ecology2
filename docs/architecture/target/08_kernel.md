@@ -48,11 +48,14 @@ The kernel automatically tracks:
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `creator` | string | Who made the create call (immutable fact) |
 | `created_at` | timestamp | When first stored |
 | `updated_at` | timestamp | When last modified |
 | `size_bytes` | int | Current data size |
 
-**Rationale:** Observability doesn't restrict flexibility. Valuable for developers and agents.
+**NOT kernel-tracked:** `owner`. Ownership is tracked by genesis_store as a service, not kernel metadata. See [Creator vs Owner](#creator-vs-owner).
+
+**Rationale:** Observability doesn't restrict flexibility. Creator is immutable fact; owner is mutable social concept.
 
 ### Resource Costs
 
@@ -193,16 +196,21 @@ Genesis artifacts have `creator: "genesis"` - a reserved value no agent can impe
 
 ## Creator vs Owner
 
-Two distinct concepts:
+Two distinct concepts with different homes:
 
-| Field | Managed By | Mutable? | Purpose |
-|-------|------------|----------|---------|
-| `creator` | Kernel | No | Who actually made the create call |
-| `owner` | Artifact data | Yes (via contracts) | Contracts interpret as they wish |
+| Field | Where | Mutable? | Purpose |
+|-------|-------|----------|---------|
+| `creator` | Kernel metadata | No | Who actually made the create call (fact of history) |
+| `owner` | genesis_store data | Yes (via contracts) | Social/economic concept, contracts interpret |
 
-**Rationale:** "Owner is data, not privilege" (established principle). The kernel enforces creator; contracts decide what owner means.
+**Key decision:** Owner is NOT kernel metadata. Genesis_store tracks ownership as a service.
 
-**Open question (70% certainty):** Could simplify to just `owner`. Kernel may not need to track creator separately.
+**Rationale:**
+- Creator is a fact the kernel observes at creation time (immutable history)
+- Owner is a social concept with no privileged kernel meaning
+- Keeping owner out of kernel maintains "maximum flexibility" principle
+- Genesis_store can provide ownership tracking; contracts query when needed
+- Alternative ownership models can emerge without kernel changes
 
 ---
 
@@ -316,10 +324,11 @@ The kernel is minimal. These are NOT kernel concerns:
 
 | Issue | Certainty | Notes |
 |-------|-----------|-------|
-| Creator vs Owner distinction | 70% | Might simplify to just "owner" |
 | Drop `genesis_` prefix | 50% | Need to decide |
 | Depth limit vs cycle detection | 70% | Cycle detection more precise but complex |
 | Expensive contract pre-detection | 60% | No good solution for knowing cost before check |
+
+**Resolved:** Creator vs Owner distinction - creator is kernel metadata (immutable fact), owner is genesis_store data (mutable social concept).
 
 ---
 
@@ -337,10 +346,13 @@ _delete(id: str) -> void
 ### Metadata (kernel-tracked automatically)
 
 ```
+creator: string        # Who created (immutable)
 created_at: timestamp
 updated_at: timestamp
 size_bytes: int
 ```
+
+**NOT kernel-tracked:** `owner` (tracked by genesis_store)
 
 ### Not Yet Specified
 
