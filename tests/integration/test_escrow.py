@@ -1,6 +1,7 @@
 """Tests for genesis_escrow - trustless artifact trading."""
 
 import pytest
+import tempfile
 from pathlib import Path
 
 
@@ -341,10 +342,13 @@ class TestEscrowIntegration:
         """Escrow is created as part of genesis artifacts."""
         from src.world.world import World
 
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+            log_file = f.name
+
         config = {
             'world': {'max_ticks': 10},
             'costs': {'actions': {}, 'default': 1},
-            'logging': {'output_file': '/tmp/test.jsonl'},
+            'logging': {'output_file': log_file},
             'principals': [{'id': 'alice', 'starting_scrip': 100}]
         }
 
@@ -359,10 +363,13 @@ class TestEscrowIntegration:
         from src.world.world import World
         from src.world.actions import WriteArtifactIntent, InvokeArtifactIntent
 
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+            log_file = f.name
+
         config = {
             'world': {'max_ticks': 10},
             'costs': {'actions': {}, 'default': 1},
-            'logging': {'output_file': '/tmp/test.jsonl'},
+            'logging': {'output_file': log_file},
             'principals': [
                 {'id': 'seller', 'starting_scrip': 50},
                 {'id': 'buyer', 'starting_scrip': 200}
