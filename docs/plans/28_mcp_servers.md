@@ -265,9 +265,9 @@ Create these tests FIRST, before implementing:
 
 | Test Pattern | Why |
 |--------------|-----|
-| `tests/test_genesis.py` | Genesis artifact registration unchanged |
-| `tests/test_genesis_store.py` | Store still discovers artifacts |
-| `tests/test_invoke.py` | Invoke mechanism unchanged |
+| `tests/integration/test_genesis_store.py` | Store still discovers artifacts |
+| `tests/integration/test_invoke.py` | Invoke mechanism unchanged |
+| `tests/unit/test_genesis_contracts.py` | Genesis contracts unchanged |
 
 ---
 
