@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-13 (added validate-specs, locked-sections, feature-coverage, plan-blockers jobs)
+Last verified: 2026-01-13 (added validate-specs, locked-sections, feature-coverage, plan-blockers, new-code-tests, unplanned-work jobs)
 
 ---
 
@@ -216,6 +216,39 @@ Reports source files not assigned to features. Runs with `continue-on-error: tru
 - Source files in `src/` and `scripts/` not listed in any feature's `code:` section
 - Coverage percentage across the codebase
 
+### 11. new-code-tests
+
+Ensures new source files have corresponding tests.
+
+```yaml
+- uses: actions/checkout@v4 (with fetch-depth: 0)
+- uses: actions/setup-python@v5 (Python 3.11)
+- python scripts/check_new_code_tests.py --base origin/main --strict --suggest
+```
+
+**What it catches:**
+- New files in `src/` or `scripts/` without tests
+- Code added without test coverage
+
+**Exemptions:**
+- `__init__.py` files
+- `conftest.py` files
+- Template directories (`_template/`)
+- `CLAUDE.md` files
+
+### 12. unplanned-work (Informational)
+
+Flags PRs containing `[Unplanned]` commits. Does not block, but warns.
+
+```yaml
+- uses: actions/checkout@v4 (with fetch-depth: 0)
+- Check for [Unplanned] in commit messages
+```
+
+**What it catches:**
+- Work that bypassed the planning process
+- Commits without plan references
+
 ---
 
 ## Doc-Code Coupling
@@ -304,6 +337,11 @@ All jobs must pass for PRs to be mergeable (when branch protection is enabled):
 - governance-sync
 - validate-specs
 - locked-sections (on PRs only)
+- new-code-tests
+
+**Informational (doesn't block):**
+- feature-coverage (warns about unassigned files)
+- unplanned-work (warns about unplanned commits)
 
 ---
 
