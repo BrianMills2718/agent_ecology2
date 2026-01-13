@@ -79,7 +79,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 31 | [Resource Measurement](31_resource_measurement.md) | **High** | ✅ Complete | - |
 | 32 | [Developer Tooling](32_developer_tooling.md) | **High** | ✅ Complete | - |
 | 33 | [ADR Governance](33_adr_governance.md) | **High** | ✅ Complete | - |
-| 34 | [Oracle to Mint Rename](34_oracle_mint_rename.md) | Medium | 🚧 In Progress | - |
+| 34 | [Oracle to Mint Rename](34_oracle_mint_rename.md) | Medium | ✅ Complete | - |
 | 35 | [Verification Enforcement](35_verification_enforcement.md) | **High** | ✅ Complete | - |
 
 ---
