@@ -1142,81 +1142,219 @@ These shape agent behavior and emergence.
 
 #### 8. Bootstrap Economics
 
-**Questions:**
-- New agents start with 0 resources
-- How do they acquire initial resources?
-- Who funds them and why (incentive)?
+**Status:** RESOLVED (2026-01-13)
 
-**Options:**
+**Decision: Genesis equal distribution + empty agent creation**
 
-| Option | Description |
-|--------|-------------|
-| **Genesis endowment** | System gives initial stake |
-| **Sponsor model** | Existing agents fund new ones (investment) |
-| **Work-first** | Agents can do limited work to earn |
-| **Emergent philanthropy** | Hope someone helps (risky) |
+**Genesis agents (T=0):**
+- Equal distribution of all scarce resources among genesis agents
+- Resources: disk_bytes, memory_bytes, llm_budget, cpu_rate, llm_rate, scrip
+- Configurable total pool and number of genesis agents
+- Formula: `total_resources / num_genesis_agents`
+
+**Runtime agent creation:**
+- Agents are artifacts with `can_execute=true`
+- Can create with 0 resources (empty artifact)
+- No minimum funding requirement
+- No special sponsorship mechanism required
+
+**Use cases for empty agents:**
+- Pre-create for later use
+- Pass to evaluator (fund if approved)
+- Sell agent configs as tradeable artifacts
+- Speculative creation
+
+**What happens to unfunded agents:**
+- Can't be scheduled (no resources to pay for execution)
+- Can receive funding anytime via transfer
+- Just wait until funded
+- Natural selection: unfunded agents don't run
+
+**No special cases needed:**
+- Disk cost to store agent config = natural spam limit
+- Agent runs out mid-execution = stops, can be funded to resume
 
 ---
 
 #### 9. Reputation Mechanism
 
-**Questions:**
-- How does reputation form?
-- Is it explicit (stored) or implicit (compute from history)?
-- Tradeable? Transferable?
-- Who can see it?
+**Status:** RESOLVED (2026-01-13)
 
-**Options:**
+**Decision: No kernel-level reputation + genesis_reputation_service**
 
-| Option | Description |
-|--------|-------------|
-| **Implicit from action log** | Agents compute from observable history |
-| **Explicit rating system** | Agents rate each other |
-| **Stake-based** | Reputation = resources at risk |
-| **No system, emergent** | Let agents figure it out |
+**Kernel level:**
+- No reputation system
+- Action log provides raw observability (already decided)
+
+**Genesis level:**
+- Pre-seed `genesis_reputation_service` artifact (configurable)
+- Not privileged - competes with alternatives
+
+**genesis_reputation_service could:**
+- Index action log for fast queries
+- Compute common metrics (success rate, fulfillment rate, etc.)
+- Charge for queries (self-sustaining)
+- Be replaced by competing services
+
+**Configuration:**
+```yaml
+genesis_artifacts:
+  genesis_reputation_service:
+    enabled: true  # Can disable
+    initial_disk_bytes: 10000
+    initial_scrip: 500
+```
+
+**Why no kernel-level:**
+- "Reputation" is interpretation - different agents value different things
+- Violates minimal kernel heuristic
+- Let market discover what reputation means
 
 ---
 
 #### 10. Payment Destination Flexibility
 
-**Questions:**
-- Currently cost goes to owner
-- Should contract be able to specify destination?
-- Can payments be split?
-- Can destination be a DAO/treasury?
+**Status:** RESOLVED (2026-01-13)
 
-**Proposed extension:**
+**Decision: Contracts specify destination and splits**
+
 ```python
-PermissionResult = {
+{
     "allowed": True,
     "cost": 50,
-    "payment_destination": "treasury_dao",  # Optional, defaults to owner
-    "payment_split": [                       # Optional, for splits
+    "payment_destination": "treasury_dao",  # Optional, default = owner
+    "payment_split": [                       # Optional
         {"destination": "creator", "percent": 70},
         {"destination": "maintainer", "percent": 30}
     ]
 }
 ```
 
+**Use cases:**
+- DAO treasuries
+- Revenue sharing (creator + maintainers)
+- Charity/public goods funding
+- Referral fees
+
+**Kernel responsibility:**
+- Execute the payment distribution
+- Validate percentages sum to 100
+- No opinion on semantics
+
 ---
 
 #### 11. Zombie Cleanup Policy
 
-**Questions:**
-- When is an agent considered "zombie"?
-- What happens to its resources/artifacts?
-- Who can trigger cleanup?
-- Is there a grace period?
+**Status:** RESOLVED (2026-01-13)
 
-**Options:**
+**Decision: No kernel-level cleanup + emergent salvage + configurable storage rent**
 
-| Option | Description |
-|--------|-------------|
-| **No cleanup (current)** | Zombies accumulate forever |
-| **Inactivity timeout** | N ticks/time without action = zombie |
-| **Balance threshold** | Can't afford to act = zombie |
-| **Explicit abandon** | Agent declares itself done |
-| **Salvage auction** | Others can bid on zombie assets |
+**No kernel-level zombie cleanup:**
+- "Zombie" is subjective - kernel shouldn't decide
+- Some agents intentionally go dormant
+- Forced cleanup could destroy value
+
+**Emergent salvage pattern:**
+1. Salvager identifies zombie (has resources but frozen)
+2. Salvager sends minimal resources to unfreeze
+3. Zombie wakes, receives contract offer: "sell me your rights for X"
+4. Zombie accepts (voluntary transfer) or rejects
+5. No kernel privilege required - just market exchange
+
+**Storage sponsorship model:**
+- Every artifact has a `disk_bytes_principal` (who pays for storage)
+- Default: creator
+- Can be transferred (requires recipient consent + capacity)
+- Zombie's artifacts persist, charged to zombie's balance
+
+**Configurable storage rent:**
+```yaml
+resource_rates:
+  storage_rent_per_byte_per_tick: 0  # Default: no rent
+```
+
+- If > 0: ongoing scrip cost for storage creates pressure to release unused space
+- Rent destination: configurable (burn, treasury, etc.)
+- Default 0 = pure scarcity model
+
+**Rate allocation handling:**
+
+| Aspect | Resolution |
+|--------|------------|
+| When trades take effect | Immediately |
+| Minimum allocation floor | None - trade to zero, you freeze |
+| Over-commitment | Kernel rejects (validates total ≤ available) |
+| Escrow of rate allocation | Allocation held, neither party uses |
+
+---
+
+#### Genesis Artifacts: Economic Model
+
+**Status:** RESOLVED (2026-01-13)
+
+**Genesis artifacts are self-sustaining services (no subsidy):**
+
+- Have `has_standing=true` (can hold resources)
+- Own their disk_bytes (self-sponsor)
+- Charge callers for actual resource cost
+- Must earn to sustain/grow after initial bootstrap allocation
+
+**Initial allocation (one-time bootstrap, not ongoing subsidy):**
+```yaml
+genesis_artifacts:
+  genesis_ledger:
+    enabled: true
+    initial_disk_bytes: 10000
+    initial_scrip: 1000
+    initial_llm_budget: 0
+```
+
+**Charging model (configurable per-artifact):**
+
+Artifacts choose their pricing:
+```python
+# Pure resources (passthrough + margin)
+charge = {"disk_bytes": 110}  # 100 actual + 10 margin
+
+# Pure scrip
+charge = {"scrip": 50}
+
+# Hybrid
+charge = {"disk_bytes": 100, "scrip": 10}
+
+# Multi-resource
+charge = {"disk_bytes": 50, "llm_budget": 0.001, "scrip": 5}
+```
+
+**Accumulated resources destination (configurable):**
+```yaml
+genesis_artifacts:
+  genesis_ledger:
+    revenue_destination: "self"  # or "burn" | "treasury" | <principal_id>
+```
+
+**Resource types and charging:**
+
+| Resource | Type | Transferable | Can Charge |
+|----------|------|--------------|------------|
+| scrip | Currency | Yes | Yes |
+| disk_bytes | Allocatable | Yes | Yes |
+| llm_budget | Depletable | Yes | Yes |
+| memory_bytes | Allocatable | Yes | Yes |
+| cpu_rate | Renewable | Yes (allocation rights) | Rate rights only |
+| llm_rate | Renewable | Yes (allocation rights) | Rate rights only |
+
+**Renewable resources (cpu_rate, llm_rate):**
+- Cannot charge per-operation (they refill)
+- Rate allocation rights ARE transferable
+- "Cost" is time/waiting when rate-limited
+- Trade rate allocations to increase/decrease bandwidth
+
+**Competition is fair:**
+- Anyone can build competing services
+- Genesis artifacts have initial allocation, not ongoing subsidy
+- Better services win market share
+- Genesis artifacts can fade if outcompeted
 
 ---
 
@@ -1343,3 +1481,8 @@ Lower stakes, can iterate.
 - **2026-01-13:** Resolved Tier 2 Item 6 (Contract-Governs-Itself) - contracts CAN self-govern (access_contract_id points to itself)
 - **2026-01-13:** Resolved Tier 2 Item 7 (Predicate/Filter Syntax) - separate triggers (kernel) from predicates (artifacts), genesis predicates for common patterns
 - **2026-01-13:** Documented Architecture Decision Heuristics in CLAUDE.md and README.md
+- **2026-01-13:** Resolved Tier 3 Item 8 (Bootstrap Economics) - genesis equal distribution + empty agent creation allowed
+- **2026-01-13:** Resolved Tier 3 Item 9 (Reputation Mechanism) - no kernel-level, genesis_reputation_service artifact
+- **2026-01-13:** Resolved Tier 3 Item 10 (Payment Destination) - contracts specify destination and splits
+- **2026-01-13:** Resolved Tier 3 Item 11 (Zombie Cleanup) - no kernel cleanup, emergent salvage pattern, configurable storage rent
+- **2026-01-13:** Added Genesis Artifacts Economic Model - self-sustaining services, configurable charging (resources/scrip/hybrid), rate allocation trading
