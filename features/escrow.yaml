@@ -1,0 +1,104 @@
+# Feature: Escrow
+# Trustless artifact trading via gatekeeper pattern
+
+feature: escrow
+planning_mode: autonomous  # Mature feature, well-understood
+
+# === PRD SECTION (What/Why) ===
+problem: |
+  Agents need to trade artifacts (data, code, rights) without trusting counterparties.
+  Without escrow:
+  - Buyer sends payment, seller doesn't deliver artifact
+  - Seller transfers artifact, buyer doesn't pay
+  - Partial trades leave both parties at risk
+
+  Escrow implements a gatekeeper pattern: seller deposits artifact into escrow,
+  buyer pays escrow, escrow atomically transfers artifact and payment.
+
+out_of_scope:
+  - "Complex multi-party trades (handled by custom contracts)"
+  - "Partial payments or installments (handled by custom contracts)"
+  - "Auction-style sales (handled by genesis_mint)"
+  - "Price discovery or market making"
+
+# === ACCEPTANCE CRITERIA ===
+acceptance_criteria:
+  - id: AC-1
+    scenario: "Successful artifact sale via escrow"
+    category: happy_path
+    given:
+      - "Seller owns artifact X"
+      - "Seller has transferred ownership to genesis_escrow"
+      - "Seller deposits artifact X at price 100 scrip"
+      - "Buyer has 150 scrip"
+    when: "Buyer purchases artifact X"
+    then:
+      - "Buyer now owns artifact X"
+      - "Buyer's balance reduced by 100 scrip"
+      - "Seller's balance increased by 100 scrip"
+      - "Listing removed from escrow"
+    locked: true
+
+  - id: AC-2
+    scenario: "Purchase fails when buyer has insufficient funds"
+    category: error_case
+    given:
+      - "Artifact X listed at price 100 scrip"
+      - "Buyer has only 50 scrip"
+    when: "Buyer attempts to purchase"
+    then:
+      - "Purchase returns error (insufficient funds)"
+      - "Artifact ownership unchanged (still escrow)"
+      - "Listing remains active"
+      - "No scrip transferred"
+    locked: true
+
+  - id: AC-3
+    scenario: "Seller cancels listing and reclaims artifact"
+    category: happy_path
+    given:
+      - "Seller has deposited artifact X into escrow"
+      - "No purchase has occurred"
+    when: "Seller cancels the listing"
+    then:
+      - "Artifact ownership returned to seller"
+      - "Listing removed from escrow"
+      - "Seller can re-list or use artifact"
+    locked: true
+
+  - id: AC-4
+    scenario: "Cannot purchase artifact not in escrow"
+    category: error_case
+    given:
+      - "Artifact X exists but is not deposited in escrow"
+    when: "Buyer attempts to purchase artifact X"
+    then:
+      - "Purchase fails with 'listing not found' error"
+      - "No state changes occur"
+    locked: true
+
+  - id: AC-5
+    scenario: "Restricted buyer listing only allows designated buyer"
+    category: edge_case
+    given:
+      - "Seller deposits artifact X with buyer restriction to Agent B"
+      - "Agent C has sufficient funds"
+    when: "Agent C attempts to purchase artifact X"
+    then:
+      - "Purchase fails (restricted to Agent B)"
+      - "Agent B can still purchase successfully"
+    locked: true
+
+# === IMPLEMENTATION SECTION ===
+adrs:
+  - ADR-0001  # Everything is an artifact (traded items are artifacts)
+
+code:
+  - src/world/genesis.py  # GenesisEscrow class
+
+tests:
+  - tests/integration/test_escrow.py
+  - tests/unit/test_ledger.py  # Scrip transfer tests used by escrow
+
+docs:
+  - docs/architecture/current/genesis_artifacts.md
