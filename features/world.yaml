@@ -109,6 +109,7 @@ code:
   - src/world/simulation_engine.py
   - src/world/logger.py
   - src/world/mcp_bridge.py
+  - src/world/errors.py
 
 tests:
   - tests/unit/test_simulation_engine.py

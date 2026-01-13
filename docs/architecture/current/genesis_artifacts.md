@@ -2,7 +2,7 @@
 
 System-provided artifacts that exist at world initialization.
 
-**Last verified:** 2026-01-13 (MCP server artifacts added)
+**Last verified:** 2026-01-13 (Error response conventions added to genesis_ledger)
 
 ---
 
