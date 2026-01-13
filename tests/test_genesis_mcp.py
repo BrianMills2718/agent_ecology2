@@ -86,6 +86,8 @@ class TestMcpBridgeLifecycle:
                 "id": 1,
                 "result": {"content": [{"type": "text", "text": "Hello"}]}
             }
+            # Set _process to mock so call_tool doesn't try to start server
+            bridge._process = Mock()  # type: ignore[assignment]
 
             result = bridge.call_tool("test_tool", {"arg": "value"})
 
