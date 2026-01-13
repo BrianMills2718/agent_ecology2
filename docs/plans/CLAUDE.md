@@ -70,7 +70,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 22 | [Coordination Primitives](22_coordination.md) | Medium | ❌ Needs Plan | - |
 | 23 | [Error Response Conventions](23_error_conventions.md) | Low | ❌ Needs Plan | - |
 | 24 | [Ecosystem Health KPIs](24_health_kpis.md) | Medium | ✅ Complete | #25 |
-| 25 | [System Auditor Agent](25_system_auditor.md) | Low | ❌ Needs Plan | - |
+| 25 | [System Auditor Agent](25_system_auditor.md) | Low | ✅ Complete | - |
 | 26 | [Vulture Observability](26_vulture_observability.md) | Medium | ❌ Needs Plan | - |
 | 27 | [Invocation Registry](27_invocation_registry.md) | Medium | ❌ Needs Plan | - |
 | 28 | [Pre-seeded MCP Servers](28_mcp_servers.md) | **High** | ✅ Complete | - |

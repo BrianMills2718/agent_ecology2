@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .parser import JSONLParser
 from .kpis import calculate_kpis, EcosystemKPIs
+from .auditor import assess_health, AuditorThresholds, HealthReport
 
 # Import simulation runner for control (may not be available)
 try:
@@ -316,6 +317,57 @@ def create_app(
             "artifact_diversity": kpis.artifact_diversity,
             "scrip_velocity_trend": kpis.scrip_velocity_trend,
             "activity_trend": kpis.activity_trend,
+        }
+
+    # Store previous KPIs for trend calculation
+    _prev_kpis: EcosystemKPIs | None = None
+
+    @app.get("/api/health")
+    async def get_health() -> dict[str, Any]:
+        """Get ecosystem health report.
+
+        Returns health assessment based on KPIs with threshold-based
+        status (healthy/warning/critical), concerns, and trends.
+        """
+        nonlocal _prev_kpis
+
+        dashboard.parser.parse_incremental()
+        kpis = calculate_kpis(dashboard.parser.state)
+
+        # Get default thresholds (could be made configurable via config.yaml)
+        thresholds = AuditorThresholds()
+
+        # Count total agents for ratio calculations
+        total_agents = len(dashboard.parser.state.agents)
+
+        report = assess_health(kpis, _prev_kpis, thresholds, total_agents=max(1, total_agents))
+
+        # Update previous KPIs for next trend calculation
+        _prev_kpis = kpis
+
+        return {
+            "timestamp": report.timestamp,
+            "overall_status": report.overall_status,
+            "health_score": report.health_score,
+            "trend": report.trend,
+            "concerns": [
+                {
+                    "metric": c.metric,
+                    "value": c.value,
+                    "threshold": c.threshold,
+                    "severity": c.severity,
+                    "message": c.message,
+                }
+                for c in report.concerns
+            ],
+            "kpis": {
+                "total_scrip": kpis.total_scrip,
+                "gini_coefficient": kpis.gini_coefficient,
+                "active_agent_ratio": kpis.active_agent_ratio,
+                "frozen_agent_count": kpis.frozen_agent_count,
+                "llm_budget_burn_rate": kpis.llm_budget_burn_rate,
+                "scrip_velocity": kpis.scrip_velocity,
+            },
         }
 
     @app.get("/api/config")
