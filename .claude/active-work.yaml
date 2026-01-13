@@ -3,7 +3,11 @@
 # Use: python scripts/check_claims.py --help
 
 claims:
+- cc_id: plan-28-mcp-servers
+  plan: 28
+  task: Implement MCP server integration
+  claimed_at: '2026-01-13T10:43:00Z'
+completed:
 - cc_id: tier2-architecture-decisions
   task: Tier 2 architecture decisions (Items 4-7)
-  claimed_at: '2026-01-13T10:36:26Z'
-completed: []
+  completed_at: '2026-01-13T10:44:39Z'
