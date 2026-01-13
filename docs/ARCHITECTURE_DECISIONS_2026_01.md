@@ -26,6 +26,8 @@ This document captures architectural decisions, tradeoffs, and open questions fr
 15. [Remaining Unresolved Issues](#15-remaining-unresolved-issues)
 16. [Prioritized Resolution Plan](#16-prioritized-resolution-plan)
 17. [Edge Case Decisions](#17-edge-case-decisions)
+18. [Resource Model Decisions](#18-resource-model-decisions-approved-2026-01-13)
+19. [Implementation Gap Analysis](#19-implementation-gap-analysis)
 
 ---
 
@@ -1364,35 +1366,74 @@ Lower stakes, can iterate.
 
 #### 12. Interface Schema Convention
 
-**Question:** Should we recommend a schema format for artifact interfaces?
+**Status:** RESOLVED (2026-01-13)
 
-**Options:**
-- Recommend MCP for function-like interfaces
-- Recommend nothing, let conventions emerge
-- Define our own minimal schema
+**Decision: No recommendation, let conventions emerge**
+
+| Aspect | Decision |
+|--------|----------|
+| Recommended format | None - let agents decide |
+| genesis_store accepts | Any valid JSON |
+| MCP compatibility | Optional - agents can use if they want |
+| Enforcement | None - market pressure for discoverability |
+
+**Rationale:**
+- Emergence is the goal - don't prescribe conventions
+- Different artifact types may need different schemas
+- MCP is function-oriented; not all artifacts are functions
+- Agents that publish clear interfaces get more use (natural selection)
 
 ---
 
 #### 13. Genesis Artifact Prompting
 
-**Question:** How much do we tell agents about genesis artifacts?
+**Status:** RESOLVED (2026-01-13)
 
-**Options:**
-- Full documentation in prompt (easy start, unfair)
-- Just "use kernel.list_artifacts()" (fair, hard start)
-- Middle ground: mention categories exist but not specifics
+**Decision: Middle ground - mention discovery mechanism, not specific artifacts**
+
+| Aspect | Decision |
+|--------|----------|
+| Agent prompts contain | Discovery mechanism (how to find things) |
+| NOT in prompts | Specific artifact names or interfaces |
+| Fair competition | Genesis artifacts discovered same way as others |
+
+**Agent prompt includes:**
+```
+You can discover artifacts using genesis_store.list_artifacts() and
+genesis_store.get_interface(artifact_id). Artifacts provide services
+you can invoke.
+```
+
+**Why middle ground:**
+- Pure discovery (no hints) = very hard cold start
+- Full documentation = unfair advantage to genesis
+- Mentioning discovery mechanism is factual, not promotional
 
 ---
 
 #### 14. ReadOnlyLedger Scope
 
-**Question:** Who gets read-only ledger access?
+**Status:** RESOLVED (2026-01-13)
 
-**Options:**
-- Only contract code (current)
-- All artifact code
-- All agents
-- Available via genesis_ledger only
+**Decision: Kernel primitive - any artifact can query balances**
+
+| Aspect | Decision |
+|--------|----------|
+| Balance queries | Kernel primitive (physics) |
+| Who can query | Any artifact code |
+| Exposed via | Kernel context or direct primitive |
+| NOT via | genesis_ledger only (that would privilege genesis) |
+
+**Why kernel primitive:**
+- Balance information is factual (like time)
+- Querying doesn't modify state
+- Contracts NEED this for permission decisions
+- Making it genesis_ledger-only would make genesis irreplaceable
+
+**What ReadOnlyLedger exposes:**
+- `get_scrip(principal_id) -> Decimal`
+- `get_resource(principal_id, resource_type) -> Decimal`
+- `can_afford(principal_id, cost_dict) -> bool`
 
 ---
 
@@ -1400,36 +1441,90 @@ Lower stakes, can iterate.
 
 #### 15. Artifact Auto-Detection
 
-**Question:** Can kernel auto-detect artifact creation instead of explicit write?
+**Status:** RESOLVED (2026-01-13)
 
-**Needs:** Prototype to understand permission/timing implications
+**Decision: Explicit write required - no auto-detection**
+
+| Aspect | Decision |
+|--------|----------|
+| Artifact creation | Explicit via genesis_store.create() or equivalent |
+| Auto-detection | No - kernel doesn't infer intent |
+| Transient data | NOT automatically persisted |
+
+**Clarification: "Everything is an artifact" is about ontology, not persistence**
+
+The principle means: all entities that *exist* in the world (agents, tools, contracts, data stores) share a unified representation as artifacts. This gives them consistent properties - ownership, rights, invocability, discoverability.
+
+**Explicit creation is about the decision to persist, not the form.**
+
+When an agent does computation, intermediate values exist transiently in memory. These aren't artifacts - they're just computation. When the agent *chooses* to persist something (via `genesis_store.create()`), it becomes an artifact.
+
+**Why explicit creation:**
+- Clear cost attribution (who pays for storage)
+- Clear ownership (who created it)
+- Clear permissions (set at creation time)
+- No spam/pollution from transient data
+- Agent controls their storage footprint
 
 ---
 
 #### 16. Sandbox Approach
 
-**Question:** What's the best contract sandbox?
+**Status:** RESOLVED (2026-01-13)
 
-**Options to evaluate:**
-- RestrictedPython
-- WASM (wasmer-python)
-- Subprocess isolation
-- Firecracker microVMs
+**Decision: Implementation choice, not architecture decision - document options**
 
-**Needs:** Security evaluation of each
+| Aspect | Decision |
+|--------|----------|
+| Architecture level | "Artifacts execute in isolation" (what) |
+| Implementation level | Sandbox technology (how) |
+| Decision scope | Per-deployment configurable |
+
+**Security research findings:**
+
+| Approach | Security Level | Overhead | Maturity |
+|----------|---------------|----------|----------|
+| RestrictedPython | **UNSAFE** - known escapes | Low | Don't use |
+| WASM (wasmtime/wasmer) | Memory-safe, no syscalls | Low | Production-ready |
+| Firecracker | microVM isolation | Medium | Production (AWS Lambda) |
+| gVisor | User-space kernel | Medium | Production (GCP) |
+| subprocess + seccomp | Process isolation + syscall filter | Low | Mature |
+
+**Critical finding:** Python cannot be safely sandboxed in-process. All in-process approaches have known escapes.
+
+**Recommendation:** Start with subprocess + seccomp, evaluate WASM for compute-intensive artifacts.
 
 ---
 
 #### 17. Qdrant/Memory Integration
 
-**Question:** How does vector store fit the artifact model?
+**Status:** RESOLVED (2026-01-13)
 
-**Sub-questions:**
-- Is memory content stored in Qdrant or artifact store?
-- How are they synchronized?
-- Checkpoint atomicity?
+**Decision: Memory is an artifact agents can have rights over**
 
-**Needs:** Design spike
+| Aspect | Decision |
+|--------|----------|
+| Memory representation | Artifact with type="memory" |
+| Ownership model | Ostrom-style rights (not just ownership) |
+| Storage backend | Qdrant for vectors, standard store for metadata |
+| Access control | Via artifact's access_contract |
+
+**Key insight: Rights, not ownership**
+
+Memory is something agents "can have rights over," not necessarily "own." This fits the Ostrom-style rights model:
+
+| Right | Example |
+|-------|---------|
+| Access | Read memories |
+| Withdrawal | Extract specific memories |
+| Management | Organize, index, prune |
+| Exclusion | Control who accesses |
+| Alienation | Transfer rights to others |
+
+**Checkpoint atomicity:**
+- Memory artifact metadata in standard checkpoint
+- Qdrant collection snapshot triggered alongside
+- Acceptable risk: slight desync in crash recovery
 
 ---
 
@@ -1717,6 +1812,152 @@ These are accepted risks that should be understood:
 
 ---
 
+## 18. Resource Model Decisions (APPROVED 2026-01-13)
+
+Four interconnected decisions forming the resource accounting model.
+
+### 18.1 Explicit Artifact Creation
+
+**Decision:** Agents explicitly call `genesis_store.create()` to persist artifacts. No auto-detection.
+
+**Rationale:**
+- "Everything is artifact" is ontology (what persisted entities ARE), not persistence (what MUST be saved)
+- Clear cost attribution (who pays for storage)
+- No spam from transient computation
+- Agent controls their footprint
+- Conventions about persistence can emerge
+
+### 18.2 Charge at Computation Time
+
+**Decision:** Resources charged when consumed, not when artifacts are created.
+
+```python
+# In executor (kernel)
+with ResourceMeasurer() as measurer:
+    result = execute_artifact_code(...)
+
+usage = measurer.get_usage()
+ledger.deduct_resource(billing_principal, "cpu_seconds", usage.cpu_seconds)
+```
+
+**Rationale:**
+- Charging is physics (conservation law), not policy
+- Direct feedback: use resources → pay for resources
+- No free riders
+- Creates demand for efficient artifacts
+
+**Overdraft policy (configurable):**
+```yaml
+resources:
+  overdraft_policy: "complete_and_freeze"  # or "kill_at_zero"
+```
+
+### 18.3 ResourceMeasurer + Ledger Integration
+
+**Decision:** Wire existing components together for accurate charging.
+
+**Implementation:**
+- `ResourceMeasurer` produces `ResourceUsage(cpu_seconds, memory_bytes, disk_bytes)`
+- After measurement, call `ledger.deduct_resource()` for each resource type
+- Straightforward ~20 lines of integration code
+
+**Accepted approximations:**
+- Process-level measurement (not perfectly isolated per-operation)
+- Includes minimal kernel overhead
+- Docker limits provide hard safety; measurement provides fairness
+
+### 18.4 billing_principal Tracking
+
+**Decision:** Track chain originator in invocation context for billing attribution.
+
+```python
+context = {
+    "caller": "tool_b",           # Immediate caller (for permission checks)
+    "billing_principal": "alice", # Chain originator (for billing)
+}
+```
+
+**Rules:**
+- Set when agent initiates action
+- Propagated unchanged through all nested calls
+- Used to determine who gets charged (unless contract overrides)
+
+**Contract override:**
+```python
+{
+    "allowed": True,
+    "resource_payer": "billing_principal"  # default - originator pays
+    # or
+    "resource_payer": "self"  # artifact pays (subscriptions, sponsorship)
+}
+```
+
+**Patterns enabled:**
+- Pay-per-use (default): billing_principal pays
+- Subscription: artifact checks subscriber status, returns resource_payer: "self"
+- Sponsorship: artifact funds itself, serves callers free
+
+### 18.5 Philosophy Alignment
+
+| Mechanism | Emergence | Minimal Kernel | Physics | Observe |
+|-----------|-----------|----------------|---------|---------|
+| Explicit creation | ✅ Conventions emerge | ✅ No inference | ✅ Possible, not forced | ✅ Actions logged |
+| Charge at computation | ✅ Efficiency pressure | ✅ Just physics | ✅ Conservation law | ✅ Measured |
+| Measurer+Ledger | ✅ Accurate pricing | ✅ Wire existing | ✅ Direct causation | ✅ Recorded |
+| billing_principal | ✅ Business models | ✅ One field | ✅ Tracks causation | ✅ Attributable |
+
+---
+
+## 19. Implementation Gap Analysis
+
+This section identifies gaps between the architecture decisions documented above and the current implementation.
+
+### 19.1 Gap Summary
+
+| Decision Area | Decision | Current State | Gap Severity |
+|--------------|----------|---------------|--------------|
+| billing_principal | Track originator in context | Not implemented | **High** |
+| resource_payer | Contract field for who pays | Not implemented | **High** |
+| Charge at computation | Measurer → Ledger | Not wired | **High** |
+| disk_bytes_principal | Per-artifact storage attribution | Not implemented | Medium |
+| Rate allocation trading | Transferable rate rights | Not implemented | Medium |
+| Flexible rights (string actions) | Action should be string | Still uses enum | Medium |
+| Payment destination | Contract specifies destination | Hardcoded to owner | Medium |
+
+### 19.2 High Priority Implementation Gaps
+
+#### billing_principal + resource_payer
+
+**Current:** Context only has `caller_id`, no billing_principal tracking, no resource_payer in contract response.
+
+**Required:**
+- Add `billing_principal` to invocation context
+- Set at chain start (when agent invokes)
+- Propagate unchanged through nested invocations
+- Add `resource_payer` field to PermissionResult
+- Kernel routes billing based on resource_payer value
+
+#### ResourceMeasurer → Ledger Integration
+
+**Current:** ResourceMeasurer captures usage but doesn't deduct from Ledger.
+
+**Required:**
+- After execution, call `ledger.deduct_resource()` for each measured resource
+- Handle overdraft per configured policy
+- ~20 lines of integration code
+
+### 19.3 Migration Approach
+
+**Recommended implementation order:**
+
+1. **Phase A:** billing_principal + resource_payer (foundational)
+2. **Phase B:** ResourceMeasurer → Ledger integration
+3. **Phase C:** Flexible rights (string actions)
+4. **Phase D:** Payment destination + disk_bytes_principal
+5. **Phase E:** Rate allocation trading
+
+---
+
 ## Appendix: Terminology
 
 | Term | Definition |
@@ -1772,3 +2013,4 @@ These are accepted risks that should be understood:
 - **2026-01-13:** Added Genesis Artifacts Economic Model - self-sustaining services, configurable charging (resources/scrip/hybrid), rate allocation trading
 - **2026-01-13:** Added Section 17 (Edge Case Decisions) - 25 edge case decisions covering reentrancy, race conditions, contract upgrades, kernel primitives, flexible rights, resource attribution, contracts, predicates, payments, storage, and security concerns
 - **2026-01-13:** Document cleanup: updated Section 15.4 migration status, linked Section 2 uncertainties to Section 14, marked appendix inconsistencies, renumbered Section 14 items (removed resolved item 4)
+- **2026-01-13:** Merged PR #73 (Edge Case Decisions) and reconciled: restored Tier 4 resolutions (Items 12-14), Tier 5 resolutions (Items 15-17), Section 18 (Resource Model Decisions), and Section 19 (Implementation Gap Analysis). Fixed section numbering (Sections 17-19).

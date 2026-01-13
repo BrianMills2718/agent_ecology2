@@ -2,7 +2,7 @@
 
 Master index of all gaps and their implementation plans.
 
-**Last verified:** 2026-01-13 (Updated #20 to In Progress, refreshed migration strategy phases)
+**Last verified:** 2026-01-13 (Migration strategy updated with architecture gap cross-references)
 
 ---
 
