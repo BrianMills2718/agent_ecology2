@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-13 (added claim-verification job documentation)
+Last verified: 2026-01-13 (plan-required now blocks, unplanned-work removed)
 
 ---
 
@@ -236,18 +236,26 @@ Ensures new source files have corresponding tests.
 - Template directories (`_template/`)
 - `CLAUDE.md` files
 
-### 12. unplanned-work (Informational)
+### 12. plan-required (Strict)
 
-Flags PRs containing `[Unplanned]` commits. Does not block, but warns.
+**All work requires a plan.** Blocks PRs containing `[Unplanned]` commits.
 
 ```yaml
 - uses: actions/checkout@v4 (with fetch-depth: 0)
 - Check for [Unplanned] in commit messages
+- exit 1 if found
 ```
 
 **What it catches:**
 - Work that bypassed the planning process
-- Commits without plan references
+- Commits without `[Plan #N]` prefix
+
+**To fix:**
+1. Create a plan file: `docs/plans/NN_your_feature.md`
+2. Amend commits to use `[Plan #NN]` prefix
+3. Or rebase and squash with proper prefix
+
+Plans can be lightweight for trivial work - see `docs/plans/TEMPLATE.md`.
 
 ### 13. claim-verification (PRs only, Informational)
 
@@ -366,10 +374,10 @@ All jobs must pass for PRs to be mergeable (when branch protection is enabled):
 - validate-specs
 - locked-sections (on PRs only)
 - new-code-tests
+- plan-required (all work needs a plan)
 
 **Informational (doesn't block):**
 - feature-coverage (warns about unassigned files)
-- unplanned-work (warns about unplanned commits)
 - claim-verification (warns about unclaimed branches)
 
 ---

@@ -2,7 +2,10 @@
 # Machine-readable tracking for multi-CC coordination.
 # Use: python scripts/check_claims.py --help
 
-claims: []
+claims:
+- cc_id: main
+  task: 'Phase 3: Create per-feature E2E tests'
+  claimed_at: '2026-01-13T19:30:32Z'
 completed:
 - cc_id: tier2-architecture-decisions
   task: Tier 2 architecture decisions (Items 4-7)
@@ -24,5 +27,5 @@ completed:
   task: Implement testing strategy for continuous execution
   completed_at: '2026-01-13T12:24:22Z'
 - cc_id: edge-case-decisions
-  task: Add edge case decisions from architecture review (PR #73 merged)
+  task: Add edge case decisions from architecture review (PR
   completed_at: '2026-01-13T21:00:00Z'

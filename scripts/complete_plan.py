@@ -17,6 +17,14 @@ Usage:
     # Re-verify an already-complete plan
     python scripts/complete_plan.py --plan 35 --force
 
+    # Complete a plan that requires human review
+    # (after manual verification of checklist items)
+    python scripts/complete_plan.py --plan 40 --human-verified
+
+Plans with a "## Human Review Required" section cannot be completed
+without the --human-verified flag. This ensures humans verify things
+that automated tests cannot check (visual correctness, UX, etc.).
+
 See docs/meta/verification-enforcement.md for the full pattern.
 """
 
@@ -46,6 +54,44 @@ def get_plan_status(plan_file: Path) -> str:
     content = plan_file.read_text()
     match = re.search(r"\*\*Status:\*\*\s*(.+)", content)
     return match.group(1).strip() if match else "Unknown"
+
+
+def get_human_review_section(plan_file: Path) -> str | None:
+    """Extract the Human Review Required section from plan file.
+
+    Returns the section content if present, None otherwise.
+    """
+    content = plan_file.read_text()
+
+    # Look for ## Human Review Required section
+    match = re.search(
+        r"##\s*Human Review Required\s*\n(.*?)(?=\n##|\Z)",
+        content,
+        re.DOTALL | re.IGNORECASE
+    )
+
+    if match:
+        return match.group(1).strip()
+    return None
+
+
+def print_human_review_instructions(
+    plan_number: int,
+    section_content: str,
+    plan_file: Path,
+) -> None:
+    """Print human review instructions and checklist."""
+    print(f"\n{'='*60}")
+    print("HUMAN REVIEW REQUIRED")
+    print(f"{'='*60}")
+    print(f"\nPlan #{plan_number} requires manual verification before completion.")
+    print(f"\nFrom {plan_file.name}:")
+    print(f"\n{'-'*40}")
+    print(section_content)
+    print(f"{'-'*40}")
+    print(f"\nAfter verifying all items above, run:")
+    print(f"\n  python scripts/complete_plan.py --plan {plan_number} --human-verified")
+    print(f"\nThis confirms a human has checked things automated tests cannot verify.")
 
 
 def run_unit_tests(project_root: Path, verbose: bool = True) -> tuple[bool, str]:
@@ -286,6 +332,7 @@ def complete_plan(
     dry_run: bool = False,
     skip_e2e: bool = False,
     force: bool = False,
+    human_verified: bool = False,
     verbose: bool = True,
 ) -> bool:
     """Complete a plan with full verification.
@@ -315,6 +362,17 @@ def complete_plan(
 
     if force and verbose:
         print(f"  (--force: re-verifying already-complete plan)")
+
+    # Check for human review requirements
+    human_review_section = get_human_review_section(plan_file)
+    if human_review_section and not human_verified:
+        # Human review required but not confirmed
+        print_human_review_instructions(plan_number, human_review_section, plan_file)
+        print(f"\n❌ Cannot complete: human review required but --human-verified not provided")
+        return False
+
+    if human_review_section and human_verified and verbose:
+        print(f"  (--human-verified: human review confirmed)")
 
     # Run verification steps
     all_passed = True
@@ -409,6 +467,11 @@ def main() -> int:
         help="Re-verify and update evidence for already-complete plans"
     )
     parser.add_argument(
+        "--human-verified",
+        action="store_true",
+        help="Confirm human review has been done (for plans with '## Human Review Required')"
+    )
+    parser.add_argument(
         "--quiet", "-q",
         action="store_true",
         help="Minimal output"
@@ -424,6 +487,7 @@ def main() -> int:
         dry_run=args.dry_run,
         skip_e2e=args.skip_e2e,
         force=args.force,
+        human_verified=args.human_verified,
         verbose=not args.quiet,
     )
 
