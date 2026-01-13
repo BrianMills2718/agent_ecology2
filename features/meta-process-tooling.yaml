@@ -42,7 +42,8 @@ design:
 # === ACCEPTANCE CRITERIA ===
 acceptance_criteria:
   - id: AC-1
-    scenario: "Validate spec completeness"
+    scenario: "Successful validation of complete spec"
+    category: happy_path
     given:
       - "A feature file exists in features/"
       - "The feature has acceptance_criteria section"
@@ -55,7 +56,8 @@ acceptance_criteria:
     locked: true
 
   - id: AC-2
-    scenario: "Detect locked file modifications"
+    scenario: "Error when locked file is modified"
+    category: error_case
     given:
       - "A feature file has acceptance_criteria with locked: true"
       - "A PR modifies lines within that locked section"
@@ -67,7 +69,8 @@ acceptance_criteria:
     locked: true
 
   - id: AC-3
-    scenario: "Check feature coverage"
+    scenario: "Check feature coverage edge case with no features"
+    category: edge_case
     given:
       - "Features are defined in features/*.yaml with code: sections"
       - "Source files exist in src/"
@@ -80,6 +83,7 @@ acceptance_criteria:
 
   - id: AC-4
     scenario: "Allow autonomous mode without design"
+    category: happy_path
     given:
       - "A feature file has planning_mode: autonomous"
       - "The feature has no design section"
@@ -91,6 +95,7 @@ acceptance_criteria:
 
   - id: AC-5
     scenario: "Require design for detailed mode"
+    category: error_case
     given:
       - "A feature file has planning_mode: detailed"
       - "The feature has no design section"
