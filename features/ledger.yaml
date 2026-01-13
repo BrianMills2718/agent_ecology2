@@ -1,0 +1,101 @@
+# Feature: Ledger
+# Core balance and transfer functionality for resources and scrip
+
+feature: ledger
+planning_mode: autonomous  # Mature feature, well-understood
+
+# === PRD SECTION (What/Why) ===
+problem: |
+  Agents need to track and exchange resources and currency (scrip) to participate
+  in the economy. Without a ledger:
+  - No way to know how many resources an agent has
+  - No way to transfer resources between agents
+  - No way to prevent overspending (going negative)
+
+  The ledger provides the accounting foundation for the entire economy.
+
+out_of_scope:
+  - "Debt tracking (handled by contract artifacts, not ledger)"
+  - "Resource quotas and rate limiting (handled by RateTracker)"
+  - "Resource pricing and markets (handled by escrow/contracts)"
+
+# === ACCEPTANCE CRITERIA ===
+acceptance_criteria:
+  - id: AC-1
+    scenario: "Successful scrip transfer between principals"
+    category: happy_path
+    given:
+      - "Principal A has 100 scrip"
+      - "Principal B has 50 scrip"
+    when: "A transfers 30 scrip to B"
+    then:
+      - "A's balance becomes 70 scrip"
+      - "B's balance becomes 80 scrip"
+      - "Transfer returns True"
+    locked: true
+
+  - id: AC-2
+    scenario: "Transfer fails when insufficient balance"
+    category: error_case
+    given:
+      - "Principal A has 20 scrip"
+    when: "A attempts to transfer 50 scrip"
+    then:
+      - "Transfer returns False"
+      - "A's balance remains 20 scrip"
+      - "No partial transfer occurs"
+    locked: true
+
+  - id: AC-3
+    scenario: "Resource deduction respects type constraints"
+    category: edge_case
+    given:
+      - "Principal has 100 units of resource X"
+      - "Resource X is defined in config"
+    when: "Deduct 150 units of resource X"
+    then:
+      - "Deduction fails (returns False or raises)"
+      - "Balance remains 100 units"
+      - "No negative balance allowed"
+    locked: true
+
+  - id: AC-4
+    scenario: "Concurrent transfers maintain consistency"
+    category: edge_case
+    given:
+      - "Principal A has 100 scrip"
+      - "Two concurrent requests each try to transfer 60 scrip from A"
+    when: "Both transfers execute"
+    then:
+      - "Only one transfer succeeds"
+      - "A's balance is exactly 40 (not negative)"
+      - "Lock prevents race condition"
+    locked: true
+
+  - id: AC-5
+    scenario: "Decimal precision preserved"
+    category: happy_path
+    given:
+      - "Resource balance is 1.1 units"
+    when: "Add 2.2 units"
+    then:
+      - "Balance is exactly 3.3 units"
+      - "No floating point errors (0.1 + 0.2 != 0.30000000000000004)"
+    locked: true
+
+# === IMPLEMENTATION SECTION ===
+adrs:
+  - ADR-0001  # Everything is an artifact (principals can be artifacts)
+  - ADR-0002  # No compute debt (ledger enforces no negative)
+
+code:
+  - src/world/ledger.py
+  - src/world/rate_tracker.py
+
+tests:
+  - tests/unit/test_ledger.py
+  - tests/unit/test_resource_tracking.py
+  - tests/integration/test_integration.py
+
+docs:
+  - docs/architecture/current/resources.md
