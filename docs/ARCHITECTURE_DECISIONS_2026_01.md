@@ -348,34 +348,64 @@ def pay(target: str, amount: int) -> PaymentResult:
 
 ## 7. Resource Attribution
 
-### Question
+### Decision: billing_principal + resource_payer (RESOLVED 2026-01-13)
 
-When artifact A invokes artifact B which makes LLM calls, who pays?
+When artifact A invokes artifact B which makes LLM calls, the payment depends on the contract's `resource_payer` field.
 
-### Current Implementation
+### Key Concept: billing_principal
 
-Not fully defined. Invocation compute cost paid by invoker. Internal artifact costs unclear.
+The kernel tracks a `billing_principal` in the invocation context - the principal who originated the call chain.
 
-### Target Architecture
+```python
+context = {
+    "caller": "tool_b",            # Immediate caller (for permissions)
+    "billing_principal": "alice",  # Who started chain (for billing)
+}
+```
 
-Contract-defined. Contract returns resource budget:
+This is minimal tracking (one ID) rather than full call stack (O(n) overhead).
+
+### Contract Response
 
 ```python
 {
     "allowed": True,
-    "cost": 50,
-    "resource_budget": {
-        "compute": "caller",    # Caller pays compute
-        "llm_tokens": "owner"   # Owner pays LLM
-    }
+    "scrip_cost": 10,
+    "resource_payer": "billing_principal"  # or "self"
 }
 ```
 
-### Uncertainty
+### Who Pays?
 
-- How is this enforced?
-- What if artifact exceeds declared budget?
-- Can contracts lie about resource usage?
+| `resource_payer` | Who Pays | Use Case |
+|------------------|----------|----------|
+| `"billing_principal"` (default) | Originator of call chain | Normal pay-per-use |
+| `"self"` | Artifact itself | Freemium, subscriptions, sponsorship |
+
+### Example Patterns
+
+**Subscription service:**
+- Subscriber transfers scrip to artifact upfront
+- Contract checks `is_subscriber(caller)`
+- Returns `resource_payer: "self"` for subscribers
+- Artifact pays from its own balance
+
+**Sponsored public good:**
+- Sponsor funds artifact directly
+- Artifact uses `resource_payer: "self"` for everyone
+- Provides free service until funds depleted
+
+### Accepted Risks
+
+- Artifacts must maintain resource buffer (LLM costs unpredictable)
+- Artifact can be drained if no rate limits (artifact's responsibility)
+- Liquidity locked in artifact accounts (tradeoff for self-funding model)
+
+### Design Principle
+
+"Defaults are fine if configurable" - The default (billing_principal pays) handles 90% of cases. The `resource_payer: "self"` option handles subscriptions and sponsorship without complex machinery.
+
+See Tier 2 Item 4 in Section 16 for full decision rationale.
 
 ---
 
@@ -659,9 +689,8 @@ In-memory Python dict.
    - Who can publish under what namespaces?
    - How to prevent event flooding?
 
-4. **Resource attribution in nested invocations**
-   - How enforced?
-   - What if artifact exceeds declared budget?
+4. **Resource attribution in nested invocations** - RESOLVED
+   - See Section 7 and Tier 2 Item 4 for billing_principal + resource_payer model
 
 ### Medium Priority
 
@@ -700,9 +729,9 @@ In-memory Python dict.
 |-------|--------|-------|
 | Flexible rights implementation | Decided but not implemented | Action should be string not enum - current code has enum |
 | Payment destination | Decided but not implemented | Should be contract-defined, currently hardcoded to owner |
-| Resource attribution in nested calls | Undecided | Who pays when A invokes B which calls LLM? |
+| Resource attribution in nested calls | **Resolved** | billing_principal tracking + resource_payer option (see Tier 2 Item 4) |
 | Artifact auto-detection vs explicit write | Undecided | Kernel auto-detecting artifact creation - no resolution |
-| Action discovery | Undecided | How do agents discover valid actions for an artifact? |
+| Action discovery | **Resolved** | Optional interface publishing via genesis_store, flexible format (see Tier 2 Item 5) |
 | Predicate syntax for wake conditions | Undecided | What's the query language for predicates? |
 | Event filter query language | Undecided | Rich filtering mentioned but not specified |
 | Complete kernel primitive list | Undecided | Not fully enumerated with signatures |
@@ -725,7 +754,7 @@ In-memory Python dict.
 | Genesis artifact prompting | How much to tell agents? No decision |
 | ReadOnlyLedger scope | Only contracts get it, or all artifact code? |
 | Memory/Qdrant integration | How does vector store integrate with artifact model? |
-| Contract-governs-itself | What governs access to a contract artifact? |
+| Contract-governs-itself | **Resolved** - Contracts can self-govern (access_contract_id = self). See Tier 2 Item 6. |
 
 ### 15.4 Risks Without Mitigation
 
@@ -794,56 +823,75 @@ Naming: Services use `_api` suffix, contracts use `_contract` suffix
 
 #### 2. How Do Flexible Rights Work?
 
-**Status:** Decided "strings not enum" but semantics unclear
+**Status:** RESOLVED (2026-01-13)
 
-**Questions to answer:**
-- Actions are arbitrary strings - who defines valid actions for an artifact?
-- Does the artifact declare its actions? Or caller just tries anything?
-- How does an agent discover what actions are possible?
-- Are there ANY reserved/standard actions, or truly freeform?
+**Decisions made:**
 
-**Options:**
+Actions are arbitrary strings. Contracts define semantics.
 
-| Option | Pros | Cons |
-|--------|------|------|
-| **Artifact declares actions in interface** | Discoverable | Adds schema requirement |
-| **Caller tries, contract decides** | Maximum flexibility | No discoverability |
-| **Standard actions + custom** | Balance | Which are standard? |
+**Common actions (conventions, not reserved):**
+- `read`, `write`, `invoke`, `delete`, `transfer`
+- Documented in genesis_handbook and interface schemas
+- Pre-seeded contracts use consistently
+- NOT reserved - any artifact can redefine
+- NOT enforced - kernel doesn't check semantics
 
-**Decision needed:** Choose model and document.
+**Discovery model:**
+- Caller tries action, contract decides (maximum flexibility)
+- Interface discovery via genesis_store (MCP-style JSON or freeform)
+- Artifacts advertise supported actions in their interface if they want discoverability
+- No requirement to publish interface
+
+**Edge cases resolved:**
+- Case-sensitive (strings are strings, convention: lowercase)
+- No reserved action names (common actions are conventions only)
+- Action name length: configurable soft limit (default ~256 chars)
+- Action arguments: kwargs passed in context to check_permission
+
+**Risk accepted:** Lying interfaces (artifact says "read" but deletes). Observable in action log, reputation forms from behavior.
 
 ---
 
 #### 3. Event System Design
 
-**Status:** 40% certainty, underspecified
+**Status:** RESOLVED (2026-01-13) - Hybrid model
 
-**Questions to answer:**
-- What is an event? (Schema)
-- Who can publish events?
-- Namespacing - how to prevent spoofing?
-- Filtering - what query language?
-- Spam prevention - rate limits? costs?
-- Delivery guarantees - at-least-once? at-most-once?
-- Persistence - how long are events stored?
+**Decision: System events (kernel) + User events (genesis)**
 
-**Proposed model (draft):**
+| Event Type | Where | Examples | Guarantees |
+|------------|-------|----------|------------|
+| System facts | Kernel (action log) | artifact created, balance changed, invocation completed | Kernel-enforced, immutable, reliable |
+| User communication | genesis_event_log | proposal submitted, weather updated, custom | Genesis artifact, can be replaced |
+
+**Rationale (incentive analysis):**
+- Kernel-enforced events = monopoly, no competition, no innovation
+- Genesis artifact events = must provide value, can charge, alternatives can emerge
+- Action log already provides kernel-level observability
+- Coordination/messaging should be emergent, not prescribed
+
+**User event schema:**
 ```
 Event = {
-  source: artifact_id,      # Who published (verified by kernel)
-  type: string,             # Event type (artifact-defined)
-  data: any,                # Payload
+  source: string,        # Claimed source (artifact sets this)
+  publisher: string,     # Actual caller (kernel-verified via action log)
+  type: string,          # Event type (artifact-defined)
+  data: any,             # Payload
   timestamp: time
 }
-
-Rules:
-- Only artifact owner can publish with that artifact as source
-- Subscribers filter by source and/or type
-- Events persisted for N hours (configurable)
-- Rate limit per source (configurable)
 ```
 
-**Decision needed:** Finalize event schema and rules.
+**Spoofing model:** Observable, not prevented.
+- If source ≠ publisher, that's visible
+- Creates demand for verification/reputation services
+- Consistent with "observe what happens" philosophy
+
+**Wake scheduling:** Kernel can subscribe to genesis_event_log for event-based wake conditions. If genesis_event_log is unreliable, agents use alternatives or time-based polling.
+
+**Still flexible (genesis_event_log decides):**
+- Filtering syntax
+- Persistence duration
+- Delivery guarantees
+- Pricing/rate limits
 
 ---
 
@@ -853,49 +901,167 @@ These depend on Tier 1 but block significant design work.
 
 #### 4. Resource Attribution Model
 
-**Questions:**
-- When A invokes B which calls LLM, who pays?
-- Can contracts specify resource budgets?
-- What happens if artifact exceeds declared budget?
-- Is this per-invocation or cumulative?
+**Status:** RESOLVED (2026-01-13)
 
-**Options:**
+**Decision: billing_principal tracking + resource_payer option**
 
-| Model | Description |
-|-------|-------------|
-| **Caller pays all** | Simple but enables griefing |
-| **Owner pays internal** | Fair but owner can be drained |
-| **Contract-specified** | Flexible but complex |
-| **Declared budget with escrow** | Safe but overhead |
+The model tracks a single `billing_principal` in the invocation context and lets contracts choose who pays for resources.
+
+**Context structure:**
+```python
+context = {
+    "caller": "tool_b",            # Immediate caller (for permission checks)
+    "billing_principal": "alice",  # Principal who started the chain (for billing)
+}
+```
+
+**Contract response extension:**
+```python
+{
+    "allowed": True,
+    "scrip_cost": 10,                      # Paid by billing_principal
+    "resource_payer": "billing_principal"  # or "self"
+}
+```
+
+**`resource_payer` options:**
+
+| Value | Behavior | Use Case |
+|-------|----------|----------|
+| `"billing_principal"` (default) | Caller's originator pays | Normal pay-per-use |
+| `"self"` | Artifact pays from own balance | Freemium, subscriptions |
+
+**Subscription/freemium pattern:**
+1. Subscriber pays upfront to artifact (via genesis_ledger transfer or escrow)
+2. Contract checks subscriber status (e.g., `is_subscriber(caller)`)
+3. If subscriber: returns `resource_payer: "self"`, artifact pays for resources
+4. Artifact must maintain buffer to cover LLM costs (can't predict exact amounts)
+
+**Third-party sponsorship pattern:**
+1. Sponsor funds artifact directly (transfer scrip/resources to artifact)
+2. Artifact uses `resource_payer: "self"` for all callers (or specific callers)
+3. Sponsor's capital locked in artifact, provides free service
+
+**Why billing_principal, not full call stack:**
+- Minimal tracking (one ID, not unbounded list)
+- Full stack would be O(n) space per context
+- Only the originator matters for billing (intermediate artifacts don't pay)
+
+**Kernel responsibility:**
+- Set `billing_principal` at invocation start
+- Pass unchanged through entire call chain
+- Deduct resources from `billing_principal` or artifact based on `resource_payer`
+
+**No authorization at kernel level:**
+- Artifacts protect themselves via contract logic (rate limits, caps, subscriber checks)
+- If artifact allows draining, that's the artifact's problem
+- Consistent with "physics-first" - kernel provides mechanism, not policy
+
+**Uncertainties and accepted risks:**
+
+| Concern | Resolution |
+|---------|------------|
+| Artifact can't predict exact LLM costs | Must maintain resource buffer; accept variance |
+| Subscribers could drain artifact | Contract-level rate limits (per-subscriber caps) |
+| Requires `has_standing=true` for self-paying artifacts | Already true for any artifact holding resources |
+| Liquidity locked in artifact accounts | Accepted tradeoff; sponsors can withdraw via contract if designed |
+| No refunds if artifact service fails | Out of scope; contract can define refund policy |
+
+**Design principle applied:** "Defaults are fine if configurable" + "Pragmatism over purity"
+- Default (`billing_principal` pays) covers 90% of cases
+- `resource_payer: "self"` handles remaining patterns
+- No complex authorization or escrow machinery
 
 ---
 
 #### 5. Action Discovery
 
-**Questions:**
-- How does an agent learn what actions artifact X supports?
-- Is interface mandatory or optional?
-- What format? (MCP? Freeform JSON? Introspection?)
+**Status:** RESOLVED (2026-01-13) - Addressed by Tier 1 Item 2 (Flexible Rights)
 
-**Relates to:** Decision #2 (flexible rights)
+**Decision:** Optional interface publishing, flexible format
+
+The discovery model was resolved as part of the Flexible Rights decision:
+
+| Aspect | Decision |
+|--------|----------|
+| Mandatory interface? | No - artifacts can operate without publishing |
+| Discovery mechanism | genesis_store.get_interface(artifact_id) |
+| Format | Flexible JSON (MCP-style or freeform) |
+| Fallback | "Try action, contract decides" pattern |
+
+**How agents discover actions:**
+1. **Query genesis_store** - `get_interface(artifact_id)` returns published interface (if any)
+2. **Inspect interface** - Extract action names from schema
+3. **Try action** - Call and see if contract allows (maximum flexibility)
+4. **Learn from errors** - Contract returns denial reasons
+
+**Why no mandatory interface:**
+- Maximum flexibility (consistent with Ostrom principles)
+- Artifacts can be private/undocumented intentionally
+- Market pressure: discoverable artifacts get more use
+- Lying interfaces are observable (action log shows actual behavior)
+
+See Tier 1 Item 2 for full Flexible Rights decision.
 
 ---
 
 #### 6. Contract-Governs-Itself Problem
 
-**Questions:**
-- Contract C governs artifact A
-- What governs access to contract C?
-- If another contract D, what governs D? (Infinite regress)
+**Status:** RESOLVED (2026-01-13)
 
-**Options:**
+**Decision: Contracts CAN self-govern (access_contract_id points to itself)**
 
-| Option | Description |
-|--------|-------------|
-| **Contracts always use freeware** | Simple, limits flexibility |
-| **Contracts govern themselves** | Circular but maybe OK? |
-| **Special kernel rule for contracts** | Breaks "everything is artifact" |
-| **Meta-contract pattern** | Complex |
+A contract can set its own `access_contract_id` to point to itself. This is circular but intentional and useful.
+
+**How it works:**
+
+```python
+# Self-governing contract example
+members_only_contract = {
+    "id": "members_only_contract",
+    "access_contract_id": "members_only_contract",  # Points to itself
+    "code": """
+        def check_permission(caller, action, target, context, ledger):
+            # Contract defines its own access rules
+            members = ["alice", "bob", "charlie"]
+            if caller in members:
+                return {"allowed": True, "reason": "member"}
+            return {"allowed": False, "reason": "not a member"}
+    """
+}
+```
+
+**Kernel behavior:**
+1. Agent calls `invoke(members_only_contract, "read", ...)`
+2. Kernel looks up `access_contract_id` → `members_only_contract`
+3. Kernel calls `members_only_contract.check_permission(caller, "read", ...)`
+4. Contract returns allowed/denied
+5. No infinite regress because contract evaluates its own rule directly
+
+**Why this works:**
+- Contract IS the authority - no need to ask another contract
+- The check_permission call is direct execution, not another permission check
+- Breaks the regress because the contract's code runs without checking permission on itself
+
+**Default for contracts:**
+- Genesis contracts bootstrap with self-governance (access_contract_id = self)
+- Agent-created contracts can use any contract (self, freeware, custom)
+- No special kernel rule needed - contracts are artifacts like any other
+
+**Flexibility preserved:**
+- Contracts can use `freeware` if they want public access
+- Contracts can use a DAO contract for group governance
+- Contracts can use `private` for owner-only modification
+- Self-governance is an option, not a requirement
+
+**Example patterns:**
+
+| Pattern | access_contract_id | Use Case |
+|---------|-------------------|----------|
+| Public contract | `freeware` | Anyone can read/invoke |
+| Self-governing | `self` | Contract defines its own members |
+| DAO-governed | `dao_contract` | Group controls contract changes |
+| Owner-controlled | `private` | Only creator can modify |
 
 ---
 
@@ -1116,3 +1282,9 @@ Lower stakes, can iterate.
 - **2026-01-13:** Initial document created from design discussion
 - **2026-01-13:** Added Section 15 (Remaining Unresolved Issues) and Section 16 (Prioritized Resolution Plan)
 - **2026-01-13:** Resolved Tier 1 Item 1 (Kernel Primitives) - created architecture/target/08_kernel.md
+- **2026-01-13:** Resolved Tier 1 Item 2 (Flexible Rights) - common actions as conventions, not reserved
+- **2026-01-13:** Clarified owner vs creator - owner is NOT kernel metadata, tracked by genesis_store; creator IS kernel metadata (immutable fact)
+- **2026-01-13:** Resolved Tier 1 Item 3 (Event System) - hybrid model: system events in kernel/action log, user events in genesis_event_log
+- **2026-01-13:** Resolved Tier 2 Item 4 (Resource Attribution) - billing_principal tracking + resource_payer: "billing_principal" | "self"
+- **2026-01-13:** Resolved Tier 2 Item 5 (Action Discovery) - addressed by Tier 1 Item 2 (optional interface, flexible format)
+- **2026-01-13:** Resolved Tier 2 Item 6 (Contract-Governs-Itself) - contracts CAN self-govern (access_contract_id points to itself)

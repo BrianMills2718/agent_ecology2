@@ -278,7 +278,7 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| - | - | - | - | - |
+| tier2-architecture-decisions | - | Tier 2 architecture decisions (Items 4-7 | 2026-01-13T10:36 | Active |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->
