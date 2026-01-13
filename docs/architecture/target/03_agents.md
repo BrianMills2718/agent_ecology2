@@ -390,12 +390,43 @@ async def restore_agent(agent_id: str):
         await event_bus.subscribe(agent_id, event_type)
 ```
 
-**Missed events:**
+**Event Catch-Up Mechanism (Hybrid Approach):**
 
-If an event fires while agent is restarting:
-- Events are NOT queued per-agent (too expensive)
-- Agent must poll for state changes after restart
-- Sleep conditions should be re-checked after wake
+If an event fires while agent is sleeping or restarting:
+- Events are NOT queued per-agent (too expensive, unbounded growth)
+- Agent uses hybrid catch-up: query event log + condition re-verification
+
+```python
+async def wake_and_catch_up(self):
+    """Hybrid approach to event catch-up after sleep/restart."""
+    # 1. Query event log for events since last wake time
+    events_since = await event_bus.query_log(
+        since=self.last_wake_time,
+        event_types=self.subscriptions
+    )
+
+    # 2. Process each event, but re-verify conditions
+    for event in events_since:
+        # Don't trust stale events blindly
+        if self.condition_still_valid(event):
+            await self.handle_event(event)
+
+    # 3. Update last wake time
+    self.last_wake_time = now()
+```
+
+**Why hybrid?**
+- Event log provides history (what happened while sleeping)
+- Condition re-verification ensures freshness (world may have changed)
+- No per-agent queue = bounded memory
+- Handles restart, checkpoint restore, long sleeps
+
+**Trade-offs:**
+- Agents may re-process events already handled before sleep
+- Duplicate handling must be idempotent
+- Log queries add some latency on wake
+
+See `genesis_event_log` in [../current/genesis_artifacts.md](../current/genesis_artifacts.md) for log retention policy.
 
 ---
 
