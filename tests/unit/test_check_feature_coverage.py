@@ -190,9 +190,10 @@ class TestCheckCoverage:
         (src / "foo.py").touch()
         (src / "bar.py").touch()
 
+        # Use absolute paths to match what find_source_files returns
         feature_file = {
             "feature": "test",
-            "code": ["src/foo.py", "src/bar.py"],
+            "code": [str(src / "foo.py"), str(src / "bar.py")],
         }
         (features / "test.yaml").write_text(yaml.dump(feature_file))
 
@@ -216,9 +217,10 @@ class TestCheckCoverage:
         (src / "assigned.py").touch()
         (src / "unassigned.py").touch()
 
+        # Use absolute path to match what find_source_files returns
         feature_file = {
             "feature": "test",
-            "code": ["src/assigned.py"],
+            "code": [str(src / "assigned.py")],
         }
         (features / "test.yaml").write_text(yaml.dump(feature_file))
 
