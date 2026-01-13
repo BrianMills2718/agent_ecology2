@@ -344,8 +344,8 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| plan-25-system-auditor | 25 | Create plan and implement System Auditor | 2026-01-13T20:02 | Active |
-| plan-37-completion | 37 | Complete Plan #37 and housekeeping | 2026-01-13T20:03 | Active |
+| main | - | Phase 3: Create per-feature E2E tests | 2026-01-13T19:30 | Active |
+| plan-23-error-conventions | 23 | Plan #23: Implement Error Response Conve | 2026-01-13T20:31 | Active |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->

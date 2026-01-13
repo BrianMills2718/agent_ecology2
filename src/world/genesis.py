@@ -28,6 +28,12 @@ from ..config_schema import GenesisConfig
 from .ledger import Ledger
 from .artifacts import ArtifactStore
 from .logger import EventLogger
+from .errors import (
+    ErrorCode,
+    permission_error,
+    resource_error,
+    validation_error,
+)
 
 
 # System owner ID - cannot be modified by agents
@@ -342,7 +348,11 @@ class GenesisLedger(GenesisArtifact):
     def _balance(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Get balance for an agent (resources and scrip)."""
         if not args or len(args) < 1:
-            return {"success": False, "error": "balance requires [agent_id]"}
+            return validation_error(
+                "balance requires [agent_id]",
+                code=ErrorCode.MISSING_ARGUMENT,
+                required=["agent_id"],
+            )
         agent_id: str = args[0]
         compute = self.ledger.get_compute(agent_id)
         return {
@@ -368,7 +378,11 @@ class GenesisLedger(GenesisArtifact):
     def _transfer(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Transfer SCRIP between agents (not flow - flow is non-transferable)"""
         if not args or len(args) < 3:
-            return {"success": False, "error": "transfer requires [from_id, to_id, amount]"}
+            return validation_error(
+                "transfer requires [from_id, to_id, amount]",
+                code=ErrorCode.MISSING_ARGUMENT,
+                required=["from_id", "to_id", "amount"],
+            )
 
         from_id: str = args[0]
         to_id: str = args[1]
@@ -376,10 +390,19 @@ class GenesisLedger(GenesisArtifact):
 
         # Security check: invoker can only transfer FROM themselves
         if from_id != invoker_id:
-            return {"success": False, "error": f"Cannot transfer from {from_id} - you are {invoker_id}"}
+            return permission_error(
+                f"Cannot transfer from {from_id} - you are {invoker_id}",
+                code=ErrorCode.NOT_AUTHORIZED,
+                invoker=invoker_id,
+                target=from_id,
+            )
 
         if not isinstance(amount, int) or amount <= 0:
-            return {"success": False, "error": "Amount must be positive integer"}
+            return validation_error(
+                "Amount must be positive integer",
+                code=ErrorCode.INVALID_ARGUMENT,
+                provided=amount,
+            )
 
         success = self.ledger.transfer_scrip(from_id, to_id, amount)
         if success:
@@ -393,7 +416,13 @@ class GenesisLedger(GenesisArtifact):
                 "to_scrip_after": self.ledger.get_scrip(to_id)
             }
         else:
-            return {"success": False, "error": "Transfer failed (insufficient scrip or invalid recipient)"}
+            return permission_error(
+                "Transfer failed (insufficient scrip or invalid recipient)",
+                code=ErrorCode.INSUFFICIENT_FUNDS,
+                from_id=from_id,
+                to_id=to_id,
+                amount=amount,
+            )
 
     def _spawn_principal(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Spawn a new principal with 0 scrip and 0 compute.
@@ -427,25 +456,39 @@ class GenesisLedger(GenesisArtifact):
             {"success": True, "artifact_id": ..., "from_owner": ..., "to_owner": ...}
         """
         if not args or len(args) < 2:
-            return {"success": False, "error": "transfer_ownership requires [artifact_id, to_id]"}
+            return validation_error(
+                "transfer_ownership requires [artifact_id, to_id]",
+                code=ErrorCode.MISSING_ARGUMENT,
+                required=["artifact_id", "to_id"],
+            )
 
         artifact_id: str = args[0]
         to_id: str = args[1]
 
         if not self.artifact_store:
-            return {"success": False, "error": "Artifact store not configured"}
+            return resource_error(
+                "Artifact store not configured",
+                code=ErrorCode.NOT_FOUND,
+            )
 
         # Get the artifact to verify ownership
         artifact = self.artifact_store.get(artifact_id)
         if not artifact:
-            return {"success": False, "error": f"Artifact {artifact_id} not found"}
+            return resource_error(
+                f"Artifact {artifact_id} not found",
+                code=ErrorCode.NOT_FOUND,
+                artifact_id=artifact_id,
+            )
 
         # Security check: can only transfer artifacts you own
         if artifact.owner_id != invoker_id:
-            return {
-                "success": False,
-                "error": f"Cannot transfer {artifact_id} - you are not the owner (owner is {artifact.owner_id})"
-            }
+            return permission_error(
+                f"Cannot transfer {artifact_id} - you are not the owner (owner is {artifact.owner_id})",
+                code=ErrorCode.NOT_OWNER,
+                artifact_id=artifact_id,
+                owner=artifact.owner_id,
+                invoker=invoker_id,
+            )
 
         # Perform the transfer
         success = self.artifact_store.transfer_ownership(artifact_id, invoker_id, to_id)
@@ -457,7 +500,11 @@ class GenesisLedger(GenesisArtifact):
                 "to_owner": to_id
             }
         else:
-            return {"success": False, "error": "Transfer failed"}
+            return resource_error(
+                "Transfer failed",
+                code=ErrorCode.NOT_FOUND,
+                artifact_id=artifact_id,
+            )
 
 
 class BidInfo(TypedDict):
