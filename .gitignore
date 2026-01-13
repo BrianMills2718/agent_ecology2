@@ -31,6 +31,9 @@ ENV/
 env/
 .venv/
 
+# Git worktrees (for parallel CC instances)
+worktrees/
+
 # IDE
 .idea/
 .vscode/

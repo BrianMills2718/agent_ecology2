@@ -166,12 +166,12 @@ git checkout -b plan-03-docker
 
 > **⚠️ MULTIPLE CC INSTANCES IN THE SAME DIRECTORY WILL CORRUPT EACH OTHER'S WORK.**
 >
-> If you're in `/home/azureuser/brian_misc/agent_ecology` (main), other instances may be here too.
+> If you're in `agent_ecology/` (main), other instances may be here too.
 > Your edits will be overwritten. Their edits will be overwritten. Commits will be reset.
 
 **FIRST THING - Check your directory:**
 ```bash
-pwd  # Should be a worktree path like ../ecology-plan-NN-xxx, NOT main
+pwd  # Should be a worktree path like worktrees/plan-NN-xxx, NOT main
 git worktree list  # See all worktrees
 ```
 
@@ -182,17 +182,17 @@ git worktree list  # See all worktrees
 | Directory | Allowed Activities | Why |
 |-----------|-------------------|-----|
 | Main (`agent_ecology/`) | Reviews, quick reads, coordination only | Multiple instances share this |
-| Worktree (`ecology-plan-NN-xxx/`) | Implementation, commits, PRs | Isolated per-instance |
+| Worktree (`worktrees/plan-NN-xxx/`) | Implementation, commits, PRs | Isolated per-instance |
 
 **Each CC instance doing implementation MUST have its own worktree:**
 ```bash
 # REQUIRED: Create worktree BEFORE starting work
 make worktree BRANCH=plan-03-docker
-cd ../ecology-plan-03-docker && claude
+cd worktrees/plan-03-docker && claude
 
 # Now you're isolated - safe to edit files
 # Do work, create PR, then cleanup
-git worktree remove ../ecology-plan-03-docker
+git worktree remove worktrees/plan-03-docker
 ```
 
 **What happens without worktrees (BAD):**

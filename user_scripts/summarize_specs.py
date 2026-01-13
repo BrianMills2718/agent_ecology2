@@ -7,11 +7,12 @@ import sys
 import asyncio
 from pathlib import Path
 
-sys.path.insert(0, '/home/azureuser/brian_misc/agent_ecology/llm_provider_standalone')
+REPO_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(REPO_ROOT / "llm_provider_standalone"))
 from llm_provider import LLMProvider
 
-SPECS_FILE = "/home/azureuser/brian_misc/agent_ecology/agent_ecology_v2_specs.txt"
-OUTPUT_FILE = "/home/azureuser/brian_misc/agent_ecology/specs_summary.md"
+SPECS_FILE = REPO_ROOT / "agent_ecology_v2_specs.txt"
+OUTPUT_FILE = REPO_ROOT / "specs_summary.md"
 
 # Define chunks by line ranges and expected content
 CHUNKS = [
