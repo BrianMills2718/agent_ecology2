@@ -1,8 +1,8 @@
 # Gap 25: System Auditor Agent
 
-**Status:** ⏸️ Blocked
+**Status:** ❌ Needs Plan
 **Priority:** Low
-**Blocked By:** #24
+**Blocked By:** None (was #24, now complete)
 **Blocks:** None
 
 ---
