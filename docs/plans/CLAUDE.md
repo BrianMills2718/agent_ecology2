@@ -73,7 +73,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 25 | [System Auditor Agent](25_system_auditor.md) | Low | ⏸️ Blocked | - |
 | 26 | [Vulture Observability](26_vulture_observability.md) | Medium | ❌ Needs Plan | - |
 | 27 | [Invocation Registry](27_invocation_registry.md) | Medium | ❌ Needs Plan | - |
-| 28 | [Pre-seeded MCP Servers](28_mcp_servers.md) | **High** | 📋 Planned | - |
+| 28 | [Pre-seeded MCP Servers](28_mcp_servers.md) | **High** | 🚧 In Progress | - |
 | 29 | [Library Installation](29_package_manager.md) | Medium | ❌ Needs Plan | - |
 | 30 | [Capability Request System](30_capability_requests.md) | Medium | ❌ Needs Plan | - |
 | 31 | [Resource Measurement](31_resource_measurement.md) | **High** | ✅ Complete | - |

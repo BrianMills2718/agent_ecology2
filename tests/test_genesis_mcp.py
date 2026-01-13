@@ -5,12 +5,7 @@ TDD: Tests written first, then implementation.
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-import subprocess
-import json
-
-# These imports will fail until implementation exists
-# That's expected in TDD - tests fail first
+from unittest.mock import Mock, patch
 
 
 class TestMcpBridgeLifecycle:

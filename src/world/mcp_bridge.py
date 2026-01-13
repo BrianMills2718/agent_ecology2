@@ -19,7 +19,8 @@ import threading
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from .genesis import GenesisArtifact, GenesisMethod
+from .genesis import GenesisArtifact
+from ..config_schema import McpConfig
 
 
 @dataclass
@@ -453,7 +454,7 @@ class GenesisWebSearch(GenesisMcpBridge):
 
 
 def create_mcp_artifacts(
-    mcp_config: "McpConfig",
+    mcp_config: McpConfig,
 ) -> dict[str, GenesisMcpBridge]:
     """Factory function to create enabled MCP artifacts.
 
@@ -463,8 +464,6 @@ def create_mcp_artifacts(
     Returns:
         Dict mapping artifact_id -> GenesisMcpBridge
     """
-    from ..config_schema import McpConfig
-
     artifacts: dict[str, GenesisMcpBridge] = {}
 
     # Create fetch if enabled
