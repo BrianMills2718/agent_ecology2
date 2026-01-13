@@ -94,11 +94,11 @@ class ErrorResponse:
     code: str = ""  # Machine-readable error code
     category: str = ""  # Error category (validation, permission, etc.)
     retriable: bool = False  # Whether the operation should be retried
-    details: dict | None = None  # Optional additional context
+    details: dict[str, object] | None = None  # Optional additional context
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, object]:
         """Convert to dictionary for serialization."""
-        result: dict = {
+        result: dict[str, object] = {
             "success": self.success,
             "error": self.error,
             "code": self.code,
@@ -117,7 +117,7 @@ def validation_error(
     message: str,
     code: ErrorCode = ErrorCode.INVALID_ARGUMENT,
     **details: object,
-) -> dict:
+) -> dict[str, object]:
     """Create a validation error response.
 
     Use when the agent provided invalid input.
@@ -143,7 +143,7 @@ def permission_error(
     message: str,
     code: ErrorCode = ErrorCode.NOT_AUTHORIZED,
     **details: object,
-) -> dict:
+) -> dict[str, object]:
     """Create a permission error response.
 
     Use when the agent is not authorized for the operation.
@@ -169,7 +169,7 @@ def resource_error(
     message: str,
     code: ErrorCode = ErrorCode.NOT_FOUND,
     **details: object,
-) -> dict:
+) -> dict[str, object]:
     """Create a resource error response.
 
     Use for resource not found, already exists, etc.
@@ -196,7 +196,7 @@ def execution_error(
     code: ErrorCode = ErrorCode.RUNTIME_ERROR,
     retriable: bool = False,
     **details: object,
-) -> dict:
+) -> dict[str, object]:
     """Create an execution error response.
 
     Use for runtime errors, timeouts, etc.
@@ -224,7 +224,7 @@ def system_error(
     code: ErrorCode = ErrorCode.INTERNAL_ERROR,
     retriable: bool = True,
     **details: object,
-) -> dict:
+) -> dict[str, object]:
     """Create a system error response.
 
     Use for internal errors, unexpected conditions.
