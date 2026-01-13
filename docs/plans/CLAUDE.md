@@ -67,7 +67,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 19 | [Agent-to-Agent Threat Model](19_threat_model.md) | Medium | ❌ Needs Plan | - |
 | 20 | [Migration Strategy](20_migration_strategy.md) | **High** | ✅ Complete | - |
 | 21 | [Testing for Continuous](21_continuous_testing.md) | Medium | ✅ Complete | - |
-| 22 | [Coordination Primitives](22_coordination.md) | Medium | 📋 Needs Plan | - |
+| 22 | [Coordination Primitives](22_coordination.md) | Medium | ❌ Needs Plan | - |
 | 23 | [Error Response Conventions](23_error_conventions.md) | Low | ❌ Needs Plan | - |
 | 24 | [Ecosystem Health KPIs](24_health_kpis.md) | Medium | ✅ Complete | #25 |
 | 25 | [System Auditor Agent](25_system_auditor.md) | Low | ✅ Complete | - |
