@@ -214,6 +214,25 @@ Instance 1: commits           → wrong content, missing changes
 claude -p "migrate foo.py..." --allowedTools Edit Bash
 ```
 
+### Work Priorities
+
+When starting a session, address these in rough order:
+
+| Priority | Why |
+|----------|-----|
+| 1. Check claims | Avoid colliding with other CC instances |
+| 2. Surface uncertainties | Wasted work is expensive - ask early |
+| 3. Review PRs / resolve conflicts | Unblocks others; stale PRs accumulate debt |
+| 4. Update documentation | Clarifies thinking, often reveals issues |
+| 5. New implementation | Only after above are addressed |
+
+**These are guidelines, not rigid rules.** Use judgment:
+- A PR conflict might be a doc issue requiring research first
+- An uncertainty might require reading code to even articulate
+- Sometimes implementation is blocking everything else
+
+**The principle:** Minimize wasted work and unblock others before creating new work.
+
 ### Coordination Protocol
 
 **Data:** `.claude/active-work.yaml` (machine-readable) syncs to tables below.
