@@ -30,7 +30,7 @@ git commit --no-verify        # Bypass (not recommended)
 ```
 
 - **pre-commit**: Doc-coupling + mypy on staged files
-- **commit-msg**: Requires `[Plan #N]` or `[Unplanned]` prefix
+- **commit-msg**: Requires `[Plan #N]` prefix (all work needs a plan)
 
 ## Common Commands
 
@@ -59,14 +59,17 @@ pytest --plan N tests/                             # Run tests for plan N
 # Plan completion
 python scripts/complete_plan.py --plan N           # Complete with verification
 python scripts/complete_plan.py --plan N --dry-run # Check without updating
+python scripts/complete_plan.py --plan N --human-verified  # For plans with human review
 
 # Mock usage
 python scripts/check_mock_usage.py                 # Report mocks
 python scripts/check_mock_usage.py --strict        # CI mode (fails on suspicious)
 
-# Claims
-python scripts/check_claims.py --list              # See claims
-python scripts/check_claims.py --claim --task "X"  # Claim work
+# Claims (scope-based)
+python scripts/check_claims.py --list              # See active claims
+python scripts/check_claims.py --list-features     # See available features
+python scripts/check_claims.py --claim --plan N --task "X"     # Claim plan
+python scripts/check_claims.py --claim --feature NAME --task "X"  # Claim feature
 python scripts/check_claims.py --release --validate # Done + verify
 ```
 

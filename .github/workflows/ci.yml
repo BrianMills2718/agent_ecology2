@@ -235,41 +235,47 @@ jobs:
       - name: Check new files have tests
         run: python scripts/check_new_code_tests.py --base origin/main --strict --suggest
 
-  unplanned-work:
+  plan-required:
     runs-on: ubuntu-latest
-    # Flags PRs containing [Unplanned] commits
-    # Does not block, but requires justification in PR description
+    # STRICT: All work must have a plan
+    # Blocks PRs containing [Unplanned] commits
+    # See: docs/plans/37_mandatory_planning_human_review.md
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Check for unplanned work
+      - name: Verify all commits have plan references
         run: |
           # Check if any commit in PR has [Unplanned]
           UNPLANNED=$(git log origin/main..HEAD --oneline | grep -c '\[Unplanned\]' || true)
 
           if [ "$UNPLANNED" -gt 0 ]; then
-            echo "========================================"
-            echo "WARNING: This PR contains unplanned work"
-            echo "========================================"
+            echo "============================================"
+            echo "ERROR: This PR contains unplanned work"
+            echo "============================================"
             echo ""
-            echo "Commits with [Unplanned]:"
+            echo "Commits without plan references:"
             git log origin/main..HEAD --oneline | grep '\[Unplanned\]'
             echo ""
-            echo "Unplanned work bypasses the planning process."
-            echo "Before merging, ensure:"
-            echo "  1. Tests are added for all new code"
-            echo "  2. Documentation is updated"
-            echo "  3. PR description explains why this was unplanned"
+            echo "All work requires a plan. To fix:"
             echo ""
-            echo "Consider creating a plan file (docs/plans/NN_*.md)"
-            echo "for substantial work."
+            echo "  1. Create a plan file: docs/plans/NN_your_feature.md"
+            echo "  2. Amend commits to use [Plan #NN] prefix"
+            echo "  3. Or rebase and squash with proper prefix"
             echo ""
-            # Don't fail - just warn
+            echo "Plans ensure:"
+            echo "  - Clear rationale for all changes"
+            echo "  - TDD workflow (tests defined before code)"
+            echo "  - Traceability and audit trail"
+            echo ""
+            echo "Even small fixes need a plan (can be lightweight)."
+            echo "See: docs/plans/TEMPLATE.md"
+            echo ""
+            exit 1
           else
-            echo "No unplanned work detected."
+            echo "✓ All commits have plan references."
           fi
 
   claim-verification:

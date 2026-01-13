@@ -264,7 +264,7 @@ claude -p "migrate foo.py..." --allowedTools Edit Bash
 
 When starting or continuing a session, first run:
 ```bash
-python scripts/check_claims.py --list && gh pr list
+python scripts/check_claims.py --list && python scripts/check_claims.py --list-features && gh pr list
 ```
 
 Then address these in rough order (use judgment):
@@ -276,9 +276,21 @@ Then address these in rough order (use judgment):
 | 3. Resolve PR conflicts | Keeps work mergeable |
 | 4. Review pending PRs | Unblocks other instances |
 | 5. Update stale documentation | Low risk, high value |
-| 6. New implementation | Use `make worktree` (handles claiming) |
+| 6. New implementation | Requires a plan first (see below) |
 
 **If finishing work:** `make release`, verify PR created, check CI status.
+
+**Starting ANY implementation:**
+1. Find existing plan or create new one (`docs/plans/NN_*.md`)
+2. Define required tests in the plan (TDD workflow)
+3. `make worktree BRANCH=plan-NN-description` (claims work)
+4. Write tests first, then implement
+5. If plan has `## Human Review Required`, flag human before completing
+
+**All work requires a plan. No exceptions.**
+
+Commits must use `[Plan #NN]` prefix. CI blocks `[Unplanned]` commits.
+Plans can be lightweight for trivial work - see `docs/plans/TEMPLATE.md`.
 
 **These are guidelines, not rigid rules.** Use judgment:
 - A PR conflict might be a doc issue requiring research first
@@ -332,7 +344,9 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| claim-enforcement | - | Implement claim overlap detection and CI | 2026-01-13T18:52 | Active |
+| main | - | Phase 3: Create per-feature E2E tests | 2026-01-13T19:30 | Active |
+| plan-24-kpis-impl | 24 | Implement Gap #24 Ecosystem Health KPIs | 2026-01-13T19:31 | Active |
+| plan-37-mandatory-planning | 37 | Mandatory planning and human review | 2026-01-13T19:31 | Active |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->
