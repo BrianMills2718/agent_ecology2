@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-12 (oracle→mint rename)
+**Last verified:** 2026-01-13 (Added /api/kpis endpoint)
 
 ---
 
@@ -179,6 +179,7 @@ Real-time web UI for monitoring simulation.
 | `/api/charts/compute` | GET | Compute utilization chart data |
 | `/api/charts/scrip` | GET | Scrip balance chart data |
 | `/api/charts/flow` | GET | Economic flow visualization |
+| `/api/kpis` | GET | Ecosystem health KPIs |
 | `/api/config` | GET | Simulation configuration |
 | `/api/ticks` | GET | Tick summary history |
 | `/api/network` | GET | Agent interaction graph |

@@ -346,3 +346,40 @@ class ArtifactDetail(BaseModel):
     invocation_count: int = 0
     ownership_history: list[OwnershipTransfer] = Field(default_factory=list)
     invocation_history: list[ActionEvent] = Field(default_factory=list)
+
+
+# Ecosystem Health KPIs
+
+class EcosystemKPIsResponse(BaseModel):
+    """Ecosystem health KPIs for API response."""
+
+    # Capital metrics
+    total_scrip: int = 0
+    scrip_velocity: float = 0.0
+    gini_coefficient: float = 0.0
+    median_scrip: int = 0
+
+    # Activity metrics
+    active_agent_ratio: float = 0.0
+    frozen_agent_count: int = 0
+    actions_per_tick: float = 0.0
+    thinking_cost_rate: float = 0.0
+
+    # Market metrics
+    escrow_volume: int = 0
+    escrow_active_listings: int = 0
+    mint_scrip_rate: float = 0.0
+    artifact_creation_rate: float = 0.0
+
+    # Resource metrics
+    llm_budget_remaining: float = 0.0
+    llm_budget_burn_rate: float = 0.0
+
+    # Emergence metrics
+    agent_spawn_rate: float = 0.0
+    coordination_events: int = 0
+    artifact_diversity: int = 0
+
+    # Trends (last N ticks)
+    scrip_velocity_trend: list[float] = Field(default_factory=list)
+    activity_trend: list[float] = Field(default_factory=list)
