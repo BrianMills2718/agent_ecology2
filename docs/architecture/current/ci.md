@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-13 (added mcp_bridge.py to genesis coupling in doc_coupling.yaml)
+Last verified: 2026-01-13 (added claim-verification job documentation)
 
 ---
 
@@ -249,6 +249,34 @@ Flags PRs containing `[Unplanned]` commits. Does not block, but warns.
 - Work that bypassed the planning process
 - Commits without plan references
 
+### 13. claim-verification (PRs only, Informational)
+
+Verifies PR branches were claimed before work started. Prevents duplicate work between Claude instances.
+
+```yaml
+- uses: actions/checkout@v4 (with fetch-depth: 0)
+- uses: actions/setup-python@v5 (Python 3.11)
+- pip install pyyaml
+- python scripts/check_claims.py (inline verification)
+```
+
+**What it catches:**
+- PRs from branches without corresponding claims
+- Work started without coordination
+
+**Scope-based claims:**
+Claims should specify a scope (`--plan N` and/or `--feature NAME`):
+```bash
+python scripts/check_claims.py --list-features    # See available features
+python scripts/check_claims.py --claim --feature ledger --task "..."
+```
+
+Features are defined in `features/*.yaml` with their code files. Same plan number or same feature name blocks duplicate claims.
+
+**Status:** Currently informational (`continue-on-error: true`). Will become strict once workflow is established.
+
+See `docs/meta/claim-system.md` for full workflow.
+
 ---
 
 ## Doc-Code Coupling
@@ -342,6 +370,7 @@ All jobs must pass for PRs to be mergeable (when branch protection is enabled):
 **Informational (doesn't block):**
 - feature-coverage (warns about unassigned files)
 - unplanned-work (warns about unplanned commits)
+- claim-verification (warns about unclaimed branches)
 
 ---
 

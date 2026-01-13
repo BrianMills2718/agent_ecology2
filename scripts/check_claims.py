@@ -8,17 +8,26 @@ Usage:
     # List all claims
     python scripts/check_claims.py --list
 
-    # Claim work (auto-detects branch as ID)
-    python scripts/check_claims.py --claim --task "Implement docker isolation"
+    # List available features
+    python scripts/check_claims.py --list-features
 
-    # Claim a plan (checks dependencies first)
+    # Claim a feature (recommended)
+    python scripts/check_claims.py --claim --feature ledger --task "Fix transfer bug"
+
+    # Claim a plan
     python scripts/check_claims.py --claim --plan 3 --task "Docker isolation"
 
-    # Claim with explicit ID (if not using branches)
-    python scripts/check_claims.py --claim --id my-instance --task "..."
+    # Claim both feature and plan
+    python scripts/check_claims.py --claim --feature escrow --plan 8 --task "Agent rights"
+
+    # Check if files are covered by claims (CI mode)
+    python scripts/check_claims.py --check-files src/world/ledger.py src/world/executor.py
 
     # Release current branch's claim
     python scripts/check_claims.py --release
+
+    # Verify current branch has a claim (CI mode)
+    python scripts/check_claims.py --verify-claim
 
     # Sync YAML to CLAUDE.md table
     python scripts/check_claims.py --sync
@@ -28,6 +37,13 @@ Usage:
 
 Branch name is used as instance identity by default.
 Primary data store: .claude/active-work.yaml
+
+Scope-Based Claims:
+    Claims should specify a scope (--plan and/or --feature).
+    - Plans are defined in docs/plans/*.md
+    - Features are defined in features/*.yaml
+    Each scope can only be claimed by one instance at a time.
+    Use --force to override (NOT recommended).
 """
 
 import argparse
@@ -44,6 +60,122 @@ import yaml
 YAML_PATH = Path(".claude/active-work.yaml")
 CLAUDE_MD_PATH = Path("CLAUDE.md")
 PLANS_DIR = Path("docs/plans")
+
+FEATURES_DIR = Path("features")
+
+
+def load_all_features() -> dict[str, dict[str, Any]]:
+    """Load all feature definitions from features/*.yaml.
+
+    Returns dict mapping feature name to feature data.
+    """
+    features: dict[str, dict[str, Any]] = {}
+
+    if not FEATURES_DIR.exists():
+        return features
+
+    for path in list(FEATURES_DIR.glob("*.yaml")) + list(FEATURES_DIR.glob("*.yml")):
+        try:
+            with open(path) as f:
+                data = yaml.safe_load(f)
+                if data and "feature" in data:
+                    features[data["feature"]] = data
+        except (yaml.YAMLError, FileNotFoundError):
+            continue
+
+    return features
+
+
+def get_feature_names() -> list[str]:
+    """Get list of valid feature names."""
+    features = load_all_features()
+    return sorted(features.keys())
+
+
+def build_file_to_feature_map() -> dict[str, str]:
+    """Build mapping from file paths to feature names.
+
+    Uses the 'code:' section in each feature definition.
+    """
+    file_map: dict[str, str] = {}
+    features = load_all_features()
+
+    for feature_name, data in features.items():
+        code_files = data.get("code", [])
+        for filepath in code_files:
+            # Normalize path
+            normalized = str(Path(filepath))
+            file_map[normalized] = feature_name
+
+    return file_map
+
+
+def check_scope_conflict(
+    new_plan: int | None,
+    new_feature: str | None,
+    existing_claims: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Check if new claim conflicts with existing claims.
+
+    Conflicts occur when:
+    - Same plan number is claimed
+    - Same feature is claimed
+
+    Returns list of conflicting claims.
+    """
+    conflicts: list[dict[str, Any]] = []
+
+    for claim in existing_claims:
+        existing_plan = claim.get("plan")
+        existing_feature = claim.get("feature")
+
+        # Exact plan match
+        if new_plan and existing_plan and new_plan == existing_plan:
+            conflicts.append(claim)
+            continue
+
+        # Exact feature match
+        if new_feature and existing_feature and new_feature == existing_feature:
+            conflicts.append(claim)
+            continue
+
+    return conflicts
+
+
+def check_files_claimed(
+    modified_files: list[str],
+    claims: list[dict[str, Any]],
+) -> tuple[list[str], list[str]]:
+    """Check if modified files are covered by claims.
+
+    Returns (claimed_files, unclaimed_files).
+    """
+    file_map = build_file_to_feature_map()
+
+    # Get all claimed features and plans
+    claimed_features: set[str] = set()
+    claimed_plans: set[int] = set()
+
+    for claim in claims:
+        if claim.get("feature"):
+            claimed_features.add(claim["feature"])
+        if claim.get("plan"):
+            claimed_plans.add(claim["plan"])
+
+    claimed: list[str] = []
+    unclaimed: list[str] = []
+
+    for filepath in modified_files:
+        normalized = str(Path(filepath))
+        feature = file_map.get(normalized)
+
+        if feature and feature in claimed_features:
+            claimed.append(filepath)
+        else:
+            # File is not in any feature's code section, or feature not claimed
+            unclaimed.append(filepath)
+
+    return claimed, unclaimed
 
 
 def get_plan_status(plan_number: int) -> tuple[str, list[int]]:
@@ -152,6 +284,26 @@ def get_current_branch() -> str:
         return "unknown"
 
 
+def verify_has_claim(data: dict[str, Any], branch: str) -> tuple[bool, str]:
+    """Verify the current branch has an active claim.
+
+    Returns (has_claim, message).
+    """
+    claims = data.get("claims", [])
+
+    # Check if this branch has a claim
+    for claim in claims:
+        if claim.get("cc_id") == branch:
+            task = claim.get("task", "")
+            return (True, f"Active claim: {task}")
+
+    # Special case: main branch with no active PRs is allowed for reviews
+    if branch == "main":
+        return (False, "No claim on main branch (use worktree for implementation)")
+
+    return (False, f"No active claim for branch '{branch}'")
+
+
 def load_yaml() -> dict[str, Any]:
     """Load claims from YAML file."""
     if not YAML_PATH.exists():
@@ -240,26 +392,43 @@ def list_claims(claims: list[dict]) -> None:
         age = get_age_string(ts) if ts else "unknown"
 
         cc_id = claim.get("cc_id", "?")
-        plan = claim.get("plan", "?")
+        plan = claim.get("plan")
+        feature = claim.get("feature")
         task = claim.get("task", "")[:35]
-        branch = claim.get("branch", "")
 
-        print(f"  {cc_id:8} | Plan #{plan:<3} | {task:35} | {age}")
-        if branch:
-            print(f"           Branch: {branch}")
+        # Build scope string
+        scope_parts = []
+        if plan:
+            scope_parts.append(f"Plan #{plan}")
+        if feature:
+            scope_parts.append(f"'{feature}'")
+        scope_str = " + ".join(scope_parts) if scope_parts else "unscoped"
+
+        print(f"  {cc_id:15} | {scope_str:20} | {task:30} | {age}")
         if claim.get("files"):
-            print(f"           Files: {', '.join(claim['files'][:3])}")
+            print(f"                   Files: {', '.join(claim['files'][:3])}")
 
 
 def add_claim(
     data: dict[str, Any],
     cc_id: str,
     plan: int | None,
+    feature: str | None,
     task: str,
     files: list[str] | None = None,
     force: bool = False,
 ) -> bool:
-    """Add a new claim."""
+    """Add a new claim.
+
+    Args:
+        data: Claims data structure
+        cc_id: Instance identifier (usually branch name)
+        plan: Plan number to claim (optional)
+        feature: Feature name to claim (optional)
+        task: Task description
+        files: Specific files being worked on (optional)
+        force: Force claim despite conflicts
+    """
     # Check for existing claim by this instance
     for claim in data["claims"]:
         if claim.get("cc_id") == cc_id:
@@ -280,12 +449,40 @@ def add_claim(
                 return False
             print("\n--force specified, proceeding despite dependency issues.\n")
 
-    # Check for conflicting claim on same plan (if plan specified)
-    if plan:
-        for claim in data["claims"]:
-            if claim.get("plan") == plan:
-                print(f"Warning: Plan #{plan} already claimed by {claim.get('cc_id')}")
-                print("Proceed with caution to avoid conflicts.")
+    # Validate feature name if provided
+    if feature:
+        valid_features = get_feature_names()
+        if feature not in valid_features:
+            print(f"Error: Unknown feature '{feature}'")
+            print(f"Valid features: {', '.join(valid_features)}")
+            return False
+
+    # Check for scope conflicts (exact match on plan or feature)
+    conflicts = check_scope_conflict(plan, feature, data["claims"])
+    if conflicts:
+        print("=" * 60)
+        print("❌ SCOPE CONFLICT - CLAIM BLOCKED")
+        print("=" * 60)
+        for conflict in conflicts:
+            existing_cc = conflict.get("cc_id", "?")
+            existing_plan = conflict.get("plan")
+            existing_feature = conflict.get("feature")
+            existing_task = conflict.get("task", "")[:50]
+
+            if existing_plan and plan and existing_plan == plan:
+                print(f"\n  Plan #{plan} already claimed by: {existing_cc}")
+            if existing_feature and feature and existing_feature == feature:
+                print(f"\n  Feature '{feature}' already claimed by: {existing_cc}")
+            print(f"  Their task: {existing_task}")
+
+        print("\n" + "-" * 60)
+        print("Each plan/feature can only be claimed by one instance.")
+        print("Coordinate with the other instance before proceeding.")
+
+        if not force:
+            print("\nUse --force to claim anyway (NOT recommended).")
+            return False
+        print("\n--force specified, proceeding despite conflict.\n")
 
     new_claim = {
         "cc_id": cc_id,
@@ -295,16 +492,23 @@ def add_claim(
 
     if plan:
         new_claim["plan"] = plan
+    if feature:
+        new_claim["feature"] = feature
     if files:
         new_claim["files"] = files
 
     data["claims"].append(new_claim)
     save_yaml(data)
 
+    # Build output message
+    scope_parts = []
     if plan:
-        print(f"Claimed: {cc_id} -> Plan #{plan}: {task}")
-    else:
-        print(f"Claimed: {cc_id} -> {task}")
+        scope_parts.append(f"Plan #{plan}")
+    if feature:
+        scope_parts.append(f"Feature '{feature}'")
+    scope_str = " + ".join(scope_parts) if scope_parts else "unscoped"
+
+    print(f"Claimed: {cc_id} -> {scope_str}: {task}")
     return True
 
 
@@ -517,6 +721,28 @@ def main() -> int:
         action="store_true",
         help="Run TDD validation when releasing (recommended for plan claims)"
     )
+    parser.add_argument(
+        "--verify-claim",
+        action="store_true",
+        help="CI mode: verify current branch has an active claim (exit 1 if not)"
+    )
+    parser.add_argument(
+        "--feature", "-F",
+        type=str,
+        help="Feature name to claim (from features/*.yaml)"
+    )
+    parser.add_argument(
+        "--list-features",
+        action="store_true",
+        help="List all available feature names"
+    )
+    parser.add_argument(
+        "--check-files",
+        type=str,
+        nargs="+",
+        metavar="FILE",
+        help="Check if files are covered by current claims"
+    )
 
     args = parser.parse_args()
 
@@ -538,6 +764,63 @@ def main() -> int:
                 print(f"  - {issue}")
             return 1
 
+    # Handle verify-claim (CI mode)
+    if args.verify_claim:
+        has_claim, message = verify_has_claim(data, instance_id)
+        if has_claim:
+            print(f"✓ {message}")
+            return 0
+        else:
+            print("=" * 60)
+            print("❌ CLAIM VERIFICATION FAILED")
+            print("=" * 60)
+            print(f"\n{message}")
+            print("\nAll implementation work requires an active claim.")
+            print("This ensures coordination between Claude instances.")
+            print("\nTo fix:")
+            print("  1. Create a worktree: make worktree BRANCH=my-feature")
+            print("  2. Claim work: python scripts/check_claims.py --claim --task 'My task'")
+            print("  3. Then commit your changes")
+            return 1
+
+    # Handle list-features
+    if args.list_features:
+        features = get_feature_names()
+        if not features:
+            print("No features defined in features/*.yaml")
+            return 0
+        print("Available features:")
+        for f in features:
+            print(f"  - {f}")
+
+        # Show file mapping
+        file_map = build_file_to_feature_map()
+        if file_map:
+            print(f"\nFiles mapped to features: {len(file_map)}")
+        return 0
+
+    # Handle check-files (CI mode)
+    if args.check_files:
+        claimed, unclaimed = check_files_claimed(args.check_files, claims)
+        if unclaimed:
+            print("❌ Files not covered by claims:")
+            for f in unclaimed:
+                print(f"  - {f}")
+
+            print("\nTo fix, claim the feature that owns these files:")
+            file_map = build_file_to_feature_map()
+            suggested_features: set[str] = set()
+            for f in unclaimed:
+                feature = file_map.get(str(Path(f)))
+                if feature:
+                    suggested_features.add(feature)
+            if suggested_features:
+                print(f"  python scripts/check_claims.py --claim --feature {list(suggested_features)[0]} --task '...'")
+            return 1
+        else:
+            print(f"✓ All {len(claimed)} file(s) covered by claims")
+            return 0
+
     # Handle cleanup
     if args.cleanup:
         removed = cleanup_old_completed(data)
@@ -551,11 +834,16 @@ def main() -> int:
     if args.claim:
         if not args.task:
             print("Error: --claim requires --task")
-            print(f"Example: python scripts/check_claims.py --claim --task 'Implement feature X'")
+            print("Example: python scripts/check_claims.py --claim --feature ledger --task 'Fix transfer bug'")
             return 1
+        if not args.plan and not args.feature:
+            print("Warning: No --plan or --feature specified. Consider scoping your claim.")
+            print("  Use --plan N for plan-based work")
+            print("  Use --feature NAME for feature-based work")
+            print("  Use --list-features to see available features")
         if instance_id == "main":
             print("Warning: Claiming on 'main' branch. Consider using a feature branch.")
-        success = add_claim(data, instance_id, args.plan, args.task, force=args.force)
+        success = add_claim(data, instance_id, args.plan, args.feature, args.task, force=args.force)
         if success:
             sync_to_claude_md(data["claims"])
         return 0 if success else 1
