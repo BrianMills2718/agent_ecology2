@@ -1,0 +1,130 @@
+# Feature: Simulation Runner
+# Orchestrates agent execution with tick synchronization and checkpointing
+
+feature: simulation
+planning_mode: autonomous  # Mature feature, well-understood
+
+# === PRD SECTION (What/Why) ===
+problem: |
+  The system needs a way to orchestrate multiple agents, control execution timing,
+  and provide reproducibility. Without a simulation runner:
+  - No coordination between agent execution
+  - No state snapshotting for consistent observation
+  - No checkpoint/resume for long-running simulations
+  - No deterministic ordering control
+
+  The SimulationRunner provides tick-based execution, two-phase commit semantics,
+  and checkpoint/resume capabilities.
+
+out_of_scope:
+  - "Continuous agent loops (handled by agent_loop feature)"
+  - "Agent decision making (handled by agents feature)"
+  - "World state management (handled by world feature)"
+  - "Resource accounting (handled by ledger feature)"
+
+# === ACCEPTANCE CRITERIA ===
+acceptance_criteria:
+  - id: AC-1
+    scenario: "Run simulation for specified ticks"
+    category: happy_path
+    given:
+      - "SimulationRunner is initialized with agents and world"
+      - "max_ticks is set to 10"
+    when: "runner.run() is called"
+    then:
+      - "Simulation runs for exactly 10 ticks"
+      - "Each tick executes observe then execute phase"
+      - "Tick counter advances correctly"
+    locked: true
+
+  - id: AC-2
+    scenario: "All agents see consistent state snapshot"
+    category: happy_path
+    given:
+      - "Multiple agents are running"
+      - "Tick N begins"
+    when: "Agents observe world state"
+    then:
+      - "All agents receive identical state snapshot"
+      - "Snapshot reflects state at tick start"
+      - "No agent sees mid-tick changes from others"
+    locked: true
+
+  - id: AC-3
+    scenario: "Sequential execution prevents race conditions"
+    category: happy_path
+    given:
+      - "Multiple agents propose actions in parallel"
+      - "Actions may conflict (e.g., both want same resource)"
+    when: "Execution phase runs"
+    then:
+      - "Actions execute sequentially (not parallel)"
+      - "Order is randomized per tick"
+      - "First valid action wins, conflicts fail cleanly"
+    locked: true
+
+  - id: AC-4
+    scenario: "Checkpoint saves simulation state"
+    category: happy_path
+    given:
+      - "Simulation has run for N ticks"
+      - "Checkpoint is requested"
+    when: "checkpoint.save() is called"
+    then:
+      - "Current tick number is saved"
+      - "World state (ledger, artifacts) is saved"
+      - "Agent states are saved"
+      - "Checkpoint file is written"
+    locked: true
+
+  - id: AC-5
+    scenario: "Resume from checkpoint restores state"
+    category: happy_path
+    given:
+      - "Valid checkpoint file exists"
+    when: "checkpoint.load() is called"
+    then:
+      - "Tick counter restored to checkpoint value"
+      - "World state matches checkpoint"
+      - "Agents restored with correct state"
+      - "Simulation can continue from checkpoint"
+    locked: true
+
+  - id: AC-6
+    scenario: "Rate limit delay between ticks"
+    category: edge_case
+    given:
+      - "rate_limit_delay is configured to 15 seconds"
+    when: "Tick completes"
+    then:
+      - "Runner waits for configured delay"
+      - "Prevents API rate limit exhaustion"
+      - "Delay is configurable per simulation"
+    locked: true
+
+  - id: AC-7
+    scenario: "Corrupted checkpoint fails gracefully"
+    category: error_case
+    given:
+      - "Checkpoint file exists but is corrupted/invalid"
+    when: "checkpoint.load() is called"
+    then:
+      - "Error is raised with clear message"
+      - "No partial state restoration"
+      - "Simulation can start fresh instead"
+    locked: true
+
+# === IMPLEMENTATION SECTION ===
+adrs: []  # No specific ADRs govern simulation runner
+
+code:
+  - src/simulation/runner.py
+  - src/simulation/checkpoint.py
+  - src/simulation/types.py
+
+tests:
+  - tests/integration/test_runner.py
+  - tests/integration/test_checkpoint.py
+
+docs:
+  - docs/architecture/current/execution_model.md
