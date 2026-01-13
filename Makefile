@@ -1,7 +1,7 @@
 # Agent Ecology - Common Commands
 # Usage: make <target>
 
-.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create pr-merge pr-merge-admin pr-list pr-view
+.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create pr-merge pr-merge-admin pr-list pr-view worktree worktree-quick
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -63,15 +63,20 @@ status:  ## Show git and claim status
 branch:  ## Create plan branch (usage: make branch PLAN=3 NAME=docker)
 	git checkout -b plan-$(PLAN)-$(NAME)
 
-worktree:  ## Create worktree for parallel CC work (usage: make worktree BRANCH=feature-name)
-	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree BRANCH=feature-name"; exit 1; fi
+worktree:  ## Create worktree with mandatory claim (interactive)
+	@./scripts/create_worktree.sh
+
+worktree-quick:  ## Create worktree without claim (usage: make worktree-quick BRANCH=name) - use only if already claimed
+	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree-quick BRANCH=feature-name"; exit 1; fi
+	@echo "WARNING: Ensure you have already claimed this work!"
+	@python scripts/check_claims.py --list
+	@echo ""
 	@mkdir -p worktrees
 	git fetch origin
 	git worktree add worktrees/$(BRANCH) -b $(BRANCH) origin/main
 	@echo ""
 	@echo "Worktree created at worktrees/$(BRANCH) (based on latest origin/main)"
 	@echo "To use: cd worktrees/$(BRANCH) && claude"
-	@echo "To remove when done: git worktree remove worktrees/$(BRANCH)"
 
 worktree-list:  ## List active worktrees
 	git worktree list

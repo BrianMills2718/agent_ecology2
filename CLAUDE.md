@@ -238,31 +238,31 @@ When starting a session, address these in rough order:
 **Data:** `.claude/active-work.yaml` (machine-readable) syncs to tables below.
 
 **Workflow:**
-1. **Claim** - `make claim TASK="..." PLAN=N`
-2. **Worktree** - `make worktree BRANCH=plan-NN-description` (auto-fetches latest main)
-3. **Update plan status** - Mark "In Progress" in plan file AND index
-4. **Implement** - Do work, write tests first (TDD)
-5. **Verify** - Run all checks (see Review Checklist)
-6. **Rebase** - `make pr-ready` (rebase onto latest main, push)
-7. **PR** - Create PR from worktree
-8. **Review** - Another CC instance reviews (from main or separate worktree)
-9. **Complete** - `make release`, merge PR, remove worktree
+1. **Worktree + Claim** - `make worktree` (interactive - claims AND creates worktree)
+2. **Update plan status** - Mark "In Progress" in plan file AND index
+3. **Implement** - Do work, write tests first (TDD)
+4. **Verify** - Run all checks (see Review Checklist)
+5. **Rebase** - `make pr-ready` (rebase onto latest main, push)
+6. **PR** - Create PR from worktree
+7. **Review** - Another CC instance reviews (from main or separate worktree)
+8. **Complete** - `make release`, merge PR, remove worktree
+
+> **CRITICAL: `make worktree` is mandatory for implementation work.**
+> It prompts for task description and plan number, then claims the work before creating the worktree.
+> This ensures all CC instances can see what others are working on.
 
 **Why rebase before PR?** Multiple CC instances work in parallel. Your worktree may be days old. Without rebasing:
 - Your PR may conflict with recent changes
 - Merging may accidentally revert others' work
 - `make pr-ready` rebases onto latest main and pushes safely
 
-**Claiming work:**
+**Checking claims:**
 ```bash
-# In your worktree, claim a plan
-make claim TASK="Implement docker" PLAN=3
-
-# Or claim non-plan work
-python scripts/check_claims.py --claim --task "Fix bug"
-
-# Check what's claimed
+# See what's currently claimed
 python scripts/check_claims.py --list
+
+# Or use make
+make claims
 ```
 
 **Releasing work:**

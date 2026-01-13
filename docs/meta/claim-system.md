@@ -15,6 +15,22 @@ When multiple AI instances (or developers) work in parallel:
 4. Stale claims (>4 hours) flagged for cleanup
 5. Plan dependencies checked before claiming
 
+## Enforcement
+
+**Claims are mandatory when creating worktrees.** The `make worktree` command runs an interactive script that:
+1. Shows existing claims
+2. Prompts for task description and plan number
+3. Creates the claim in `.claude/active-work.yaml`
+4. Only then creates the worktree
+
+This prevents the common failure mode where developers forget to claim work.
+
+```bash
+make worktree  # Interactive - prompts for claim info
+```
+
+See [worktree-enforcement.md](worktree-enforcement.md) for the full worktree workflow.
+
 ## Files
 
 | File | Purpose |
