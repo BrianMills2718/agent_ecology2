@@ -57,7 +57,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 9 | [Scrip Debt Contracts](09_scrip_debt.md) | Low | ❌ Needs Plan | - |
 | 10 | [Memory Persistence](10_memory_persistence.md) | Low | ❌ Needs Plan | - |
 | 11 | [Terminology Cleanup](11_terminology.md) | Medium | ✅ Complete | #12 |
-| 12 | [Per-Agent LLM Budget](12_per_agent_budget.md) | Medium | ❌ Needs Plan | - |
+| 12 | [Per-Agent LLM Budget](12_per_agent_budget.md) | Medium | 📋 Planned | - |
 | 13 | [Doc Line Number Refs](13_doc_line_refs.md) | Low | ❌ Needs Plan | - |
 | 14 | [MCP-Style Artifact Interface](14_mcp_interface.md) | Medium | ❌ Needs Plan | - |
 | 15 | [invoke() Genesis Support](15_invoke_genesis.md) | Medium | ❌ Needs Plan | - |
@@ -67,8 +67,8 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 19 | [Agent-to-Agent Threat Model](19_threat_model.md) | Medium | ❌ Needs Plan | - |
 | 20 | [Migration Strategy](20_migration_strategy.md) | **High** | ✅ Complete | - |
 | 21 | [Testing for Continuous](21_continuous_testing.md) | Medium | ✅ Complete | - |
-| 22 | [Coordination Primitives](22_coordination.md) | Medium | ❌ Needs Plan | - |
-| 23 | [Error Response Conventions](23_error_conventions.md) | Low | 📋 Planned | - |
+| 22 | [Coordination Primitives](22_coordination.md) | Medium | 📋 Needs Plan | - |
+| 23 | [Error Response Conventions](23_error_conventions.md) | Low | ❌ Needs Plan | - |
 | 24 | [Ecosystem Health KPIs](24_health_kpis.md) | Medium | ✅ Complete | #25 |
 | 25 | [System Auditor Agent](25_system_auditor.md) | Low | ✅ Complete | - |
 | 26 | [Vulture Observability](26_vulture_observability.md) | Medium | ❌ Needs Plan | - |
