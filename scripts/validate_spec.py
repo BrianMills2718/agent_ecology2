@@ -68,6 +68,37 @@ def validate_acceptance_criteria(
             )
         )
 
+    # Check for category coverage (AC-1: happy_path, error_case, edge_case)
+    # Categories can be specified via 'category' field or inferred from scenario name
+    categories_found: set[str] = set()
+    required_categories = {"happy_path", "error_case", "edge_case"}
+
+    for criterion in ac:
+        category = criterion.get("category", "").lower()
+        scenario = criterion.get("scenario", "").lower()
+
+        # Check explicit category
+        if category:
+            categories_found.add(category)
+        # Infer from scenario name
+        if "happy" in scenario or "success" in scenario or "valid" in scenario:
+            categories_found.add("happy_path")
+        if "error" in scenario or "fail" in scenario or "invalid" in scenario:
+            categories_found.add("error_case")
+        if "edge" in scenario or "boundary" in scenario or "limit" in scenario:
+            categories_found.add("edge_case")
+
+    missing_categories = required_categories - categories_found
+    if missing_categories:
+        errors.append(
+            ValidationError(
+                feature_name,
+                f"Missing scenario categories: {', '.join(sorted(missing_categories))}. "
+                "Consider adding scenarios for happy_path, error_case, and edge_case coverage.",
+                severity="warning",
+            )
+        )
+
     # Check Given/When/Then format for each scenario (AC-1)
     for i, criterion in enumerate(ac):
         ac_id = criterion.get("id", f"AC-{i+1}")

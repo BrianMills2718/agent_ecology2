@@ -88,6 +88,47 @@ class TestValidateAcceptanceCriteria:
         empty_then_errors = [e for e in errors if "no assertions" in e.message]
         assert len(empty_then_errors) == 3
 
+    def test_category_coverage_warning(self) -> None:
+        """Should warn if category coverage is incomplete."""
+        data = {
+            "acceptance_criteria": [
+                {"id": "AC-1", "scenario": "s1", "given": ["g"], "when": "w", "then": ["t"]},
+                {"id": "AC-2", "scenario": "s2", "given": ["g"], "when": "w", "then": ["t"]},
+                {"id": "AC-3", "scenario": "s3", "given": ["g"], "when": "w", "then": ["t"]},
+            ]
+        }
+        errors = validate_acceptance_criteria("test", data)
+        category_warnings = [e for e in errors if "categories" in e.message.lower()]
+        assert len(category_warnings) == 1
+        assert category_warnings[0].severity == "warning"
+
+    def test_category_coverage_inferred_from_scenario(self) -> None:
+        """Should infer categories from scenario names."""
+        data = {
+            "acceptance_criteria": [
+                {"id": "AC-1", "scenario": "Success case", "given": ["g"], "when": "w", "then": ["t"]},
+                {"id": "AC-2", "scenario": "Error handling", "given": ["g"], "when": "w", "then": ["t"]},
+                {"id": "AC-3", "scenario": "Edge case boundary", "given": ["g"], "when": "w", "then": ["t"]},
+            ]
+        }
+        errors = validate_acceptance_criteria("test", data)
+        category_warnings = [e for e in errors if "categories" in e.message.lower()]
+        # Should not warn because categories are inferred
+        assert len(category_warnings) == 0
+
+    def test_category_coverage_explicit(self) -> None:
+        """Should accept explicit category field."""
+        data = {
+            "acceptance_criteria": [
+                {"id": "AC-1", "scenario": "s1", "category": "happy_path", "given": ["g"], "when": "w", "then": ["t"]},
+                {"id": "AC-2", "scenario": "s2", "category": "error_case", "given": ["g"], "when": "w", "then": ["t"]},
+                {"id": "AC-3", "scenario": "s3", "category": "edge_case", "given": ["g"], "when": "w", "then": ["t"]},
+            ]
+        }
+        errors = validate_acceptance_criteria("test", data)
+        category_warnings = [e for e in errors if "categories" in e.message.lower()]
+        assert len(category_warnings) == 0
+
 
 class TestValidateDesignSection:
     """Tests for AC-4 and AC-5: Design section requirements."""
