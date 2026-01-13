@@ -1,0 +1,108 @@
+# Feature: Contracts
+# Contract-based access control system
+
+feature: contracts
+planning_mode: autonomous  # Mature feature, well-understood
+
+# === PRD SECTION (What/Why) ===
+problem: |
+  Agents and artifacts need flexible, customizable access control. Without contracts:
+  - Access rules hardcoded per-artifact (inflexible)
+  - No reusable access patterns
+  - No way to implement complex logic (voting, time-based, conditional)
+  - No way to trade access rights
+
+  Contracts provide a uniform interface for access control decisions. Each artifact
+  references a contract by ID, and the contract's check_permission() determines access.
+
+out_of_scope:
+  - "Specific contract implementations (genesis contracts in genesis_contracts.py)"
+  - "Contract deployment and storage (handled by artifact store)"
+  - "Contract sandboxing (handled by executor with process isolation)"
+
+# === ACCEPTANCE CRITERIA ===
+acceptance_criteria:
+  - id: AC-1
+    scenario: "Contract allows action based on caller"
+    category: happy_path
+    given:
+      - "Artifact X has access_contract_id pointing to contract C"
+      - "Contract C allows read for any caller"
+      - "Agent A attempts to read artifact X"
+    when: "Permission check is invoked"
+    then:
+      - "Contract C's check_permission() is called"
+      - "Returns PermissionResult(allowed=True)"
+      - "Action proceeds"
+    locked: true
+
+  - id: AC-2
+    scenario: "Contract denies action with reason"
+    category: error_case
+    given:
+      - "Artifact X uses 'private' contract (owner-only access)"
+      - "Agent A is NOT the owner"
+    when: "Agent A attempts to read artifact X"
+    then:
+      - "Contract returns PermissionResult(allowed=False, reason='...')"
+      - "Action is blocked"
+      - "Caller receives the denial reason"
+    locked: true
+
+  - id: AC-3
+    scenario: "Contract specifies cost for action"
+    category: happy_path
+    given:
+      - "Contract C returns PermissionResult(allowed=True, cost=10)"
+      - "Agent A has 100 scrip"
+    when: "Agent A performs the action"
+    then:
+      - "Action is allowed"
+      - "Agent A is charged 10 scrip"
+      - "Cost deducted before action executes"
+    locked: true
+
+  - id: AC-4
+    scenario: "Contract execution timeout prevents infinite loops"
+    category: edge_case
+    given:
+      - "Custom contract has infinite loop in check_permission()"
+      - "Timeout configured at 5 seconds"
+    when: "Permission check is invoked"
+    then:
+      - "Contract execution times out after 5 seconds"
+      - "Returns PermissionResult(allowed=False, reason='timeout')"
+      - "System remains responsive"
+    locked: true
+
+  - id: AC-5
+    scenario: "ReadOnlyLedger prevents contract state mutation"
+    category: edge_case
+    given:
+      - "Contract code attempts to call ledger.transfer_scrip()"
+      - "Contract only has ReadOnlyLedger access"
+    when: "Contract check_permission() executes"
+    then:
+      - "Mutation attempt fails (AttributeError or similar)"
+      - "Ledger state unchanged"
+      - "Contract cannot steal funds"
+    locked: true
+
+# === IMPLEMENTATION SECTION ===
+adrs:
+  - ADR-0001  # Everything is an artifact (contracts are artifacts)
+  - ADR-0003  # Contracts can do anything (flexible logic)
+
+code:
+  - src/world/contracts.py        # Core interfaces
+  - src/world/genesis_contracts.py # Built-in genesis contracts
+  - src/world/executor.py          # Contract execution
+
+tests:
+  - tests/unit/test_contracts.py
+  - tests/unit/test_policy.py
+  - tests/integration/test_invoke.py
+
+docs:
+  - docs/architecture/current/artifacts_executor.md
+  - docs/architecture/target/05_contracts.md
