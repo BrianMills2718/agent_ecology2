@@ -1,6 +1,6 @@
 # Gap 34: Oracle to Mint Rename
 
-**Status:** 🚧 In Progress (PR #46)
+**Status:** ✅ Complete (PR #46 merged)
 **Priority:** Medium
 **Blocked By:** -
 **Blocks:** -
@@ -86,10 +86,10 @@ All existing oracle-related tests must pass after renaming:
 
 | Test Pattern | Why |
 |--------------|-----|
-| `tests/test_genesis_contracts.py` | Genesis contracts still work |
-| `tests/test_genesis_store.py` | Genesis store still works |
-| `tests/test_mint_auction.py` | Scoring/minting still works (renamed from test_oracle_auction.py) |
-| `tests/test_runner.py` | Integration unchanged |
+| `tests/unit/test_genesis_contracts.py` | Genesis contracts still work |
+| `tests/integration/test_genesis_store.py` | Genesis store still works |
+| `tests/integration/test_mint_auction.py` | Scoring/minting still works (renamed from test_oracle_auction.py) |
+| `tests/integration/test_runner.py` | Integration unchanged |
 
 ### Verification Tests
 
