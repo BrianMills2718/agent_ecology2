@@ -1,0 +1,132 @@
+# Feature: Artifacts (Everything is an Artifact)
+# Core ontology: agents, contracts, data, tools - all artifacts
+
+feature: artifacts
+planning_mode: detailed  # Architectural foundation, affects everything
+
+# === PRD SECTION (What/Why) ===
+problem: |
+  The system needs a unified way to represent all entities - agents, contracts,
+  data, and tools. Without a unified artifact model:
+  - Different code paths for different entity types
+  - Inconsistent ownership and permission models
+  - Hard to build generic tools (discovery, trading, governance)
+
+  The artifact ontology provides a common structure for everything in the system,
+  enabling uniform ownership, access control, and trading.
+
+out_of_scope:
+  - "Content validation (artifacts can contain anything)"
+  - "Versioning or history (artifacts are mutable)"
+  - "Complex schema enforcement (beyond basic fields)"
+  - "Artifact migration between stores"
+
+# === DESIGN SECTION (How) ===
+design:
+  approach: |
+    All artifacts share a common structure with id, type, content, owner_id,
+    created_at, policy fields. The executor treats all artifacts uniformly
+    for permission checks and invocation.
+  key_decisions:
+    - "Artifacts are mutable (content and policy can change)"
+    - "Owner can transfer ownership"
+    - "Policy controls read/write/invoke permissions"
+    - "Contract references in policy defer to executable artifacts"
+  risks:
+    - "Lying interfaces - artifacts can claim false capabilities (accepted, observe outcomes)"
+    - "Orphan artifacts if owner is deleted (accepted, emergent salvage)"
+
+# === ACCEPTANCE CRITERIA ===
+acceptance_criteria:
+  - id: AC-1
+    scenario: "Create artifact with required fields"
+    category: happy_path
+    given:
+      - "A principal wants to create an artifact"
+    when: "Artifact is created with id, type, content, owner_id"
+    then:
+      - "Artifact is stored in artifact store"
+      - "created_at is set to current time"
+      - "Default policy is applied"
+      - "Artifact is retrievable by id"
+    locked: true
+
+  - id: AC-2
+    scenario: "Read artifact respects policy"
+    category: happy_path
+    given:
+      - "Artifact exists with allow_read: ['alice', 'bob']"
+      - "Principal 'charlie' is not in allow list"
+    when: "Charlie attempts to read artifact"
+    then:
+      - "Read is denied"
+      - "No content is returned"
+      - "Policy enforcement logged"
+    locked: true
+
+  - id: AC-3
+    scenario: "Invoke executable artifact"
+    category: happy_path
+    given:
+      - "Artifact has executable: true"
+      - "Artifact has valid Python code in content"
+      - "Caller has invoke permission"
+    when: "Artifact is invoked with arguments"
+    then:
+      - "Code executes in sandbox"
+      - "Result is returned to caller"
+      - "invoke_price is deducted from caller"
+    locked: true
+
+  - id: AC-4
+    scenario: "Non-executable artifact cannot be invoked"
+    category: error_case
+    given:
+      - "Artifact has executable: false"
+    when: "Caller attempts to invoke"
+    then:
+      - "Invocation fails with error"
+      - "No code execution occurs"
+    locked: true
+
+  - id: AC-5
+    scenario: "Owner can modify artifact"
+    category: happy_path
+    given:
+      - "Principal owns an artifact"
+    when: "Owner updates content or policy"
+    then:
+      - "Update succeeds"
+      - "updated_at is refreshed"
+      - "New content/policy takes effect immediately"
+    locked: true
+
+  - id: AC-6
+    scenario: "Non-owner cannot modify without permission"
+    category: error_case
+    given:
+      - "Artifact owned by Alice"
+      - "allow_write: [] (owner only)"
+    when: "Bob attempts to modify"
+    then:
+      - "Modification denied"
+      - "Content unchanged"
+    locked: true
+
+# === IMPLEMENTATION SECTION ===
+adrs:
+  - ADR-0001  # Everything is an artifact
+
+code:
+  - src/world/artifacts.py
+  - src/world/executor.py
+  - src/world/actions.py
+
+tests:
+  - tests/unit/test_executor.py
+  - tests/unit/test_policy.py
+  - tests/integration/test_invoke.py
+  - tests/integration/test_unified_ontology.py
+
+docs:
+  - docs/architecture/current/artifacts_executor.md
