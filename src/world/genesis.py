@@ -1998,4 +1998,10 @@ def create_genesis_artifacts(
         )
         artifacts[genesis_store.id] = genesis_store
 
+    # Add MCP artifacts if any are enabled
+    from .mcp_bridge import create_mcp_artifacts
+    mcp_artifacts = create_mcp_artifacts(cfg.mcp)
+    for artifact_id, mcp_artifact in mcp_artifacts.items():
+        artifacts[artifact_id] = mcp_artifact
+
     return artifacts

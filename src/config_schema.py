@@ -495,6 +495,67 @@ class StoreConfig(StrictModel):
     methods: StoreMethodsConfig = Field(default_factory=StoreMethodsConfig)
 
 
+# =============================================================================
+# MCP SERVER MODELS
+# =============================================================================
+
+class McpServerConfig(StrictModel):
+    """Configuration for a single MCP server.
+
+    MCP servers run as subprocesses and communicate via JSON-RPC over stdio.
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable this MCP server"
+    )
+    command: str = Field(
+        default="npx",
+        description="Command to start the MCP server"
+    )
+    args: list[str] = Field(
+        default_factory=list,
+        description="Arguments to pass to the command"
+    )
+    env: dict[str, str] = Field(
+        default_factory=dict,
+        description="Environment variables for the server process"
+    )
+
+
+class McpConfig(StrictModel):
+    """MCP server configurations.
+
+    Phase 1 (MVP): fetch, filesystem, web_search
+    Phase 2+: puppeteer, sqlite, context7, etc.
+    """
+
+    fetch: McpServerConfig = Field(
+        default_factory=lambda: McpServerConfig(
+            enabled=False,
+            command="npx",
+            args=["@anthropic/mcp-server-fetch"]
+        ),
+        description="HTTP fetch capability"
+    )
+    filesystem: McpServerConfig = Field(
+        default_factory=lambda: McpServerConfig(
+            enabled=False,
+            command="npx",
+            args=["@anthropic/mcp-server-filesystem", "/tmp/agent_sandbox"]
+        ),
+        description="Sandboxed file I/O"
+    )
+    web_search: McpServerConfig = Field(
+        default_factory=lambda: McpServerConfig(
+            enabled=False,
+            command="npx",
+            args=["@anthropic/mcp-server-brave-search"]
+        ),
+        description="Internet search via Brave Search"
+    )
+
+
 class GenesisConfig(StrictModel):
     """Configuration for all genesis artifacts."""
 
@@ -505,6 +566,7 @@ class GenesisConfig(StrictModel):
     event_log: EventLogConfig = Field(default_factory=EventLogConfig)
     escrow: EscrowConfig = Field(default_factory=EscrowConfig)
     store: StoreConfig = Field(default_factory=StoreConfig)
+    mcp: McpConfig = Field(default_factory=McpConfig)
 
 
 # =============================================================================
@@ -1049,6 +1111,9 @@ __all__ = [
     "EscrowMethodsConfig",
     "StoreConfig",
     "StoreMethodsConfig",
+    # MCP configs
+    "McpConfig",
+    "McpServerConfig",
     # Rate limiting configs
     "RateLimitingConfig",
     "RateLimitingResourcesConfig",

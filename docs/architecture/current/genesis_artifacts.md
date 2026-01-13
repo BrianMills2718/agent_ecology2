@@ -2,7 +2,7 @@
 
 System-provided artifacts that exist at world initialization.
 
-**Last verified: 2026-01-12
+**Last verified:** 2026-01-13 (MCP server artifacts added)
 
 ---
 
@@ -164,6 +164,74 @@ All genesis artifacts:
 - Simple string search (no vector/semantic search - agents can build that capability)
 - Returns dicts, not Artifact objects (consistent with other genesis methods)
 - Pagination via limit/offset for large artifact counts
+
+---
+
+## MCP Server Artifacts (Plan #28)
+
+Genesis artifacts that wrap MCP (Model Context Protocol) servers, providing external capabilities to agents.
+
+**File:** `src/world/mcp_bridge.py`
+
+### genesis_fetch
+
+**Purpose:** HTTP fetch capability
+
+| Method | Cost (compute) | Description |
+|--------|----------------|-------------|
+| `fetch(url, method?, headers?)` | 0 | Fetch URL and return content |
+
+**MCP Server:** `@anthropic/mcp-server-fetch`
+
+---
+
+### genesis_filesystem
+
+**Purpose:** Sandboxed file I/O
+
+| Method | Cost (compute) | Description |
+|--------|----------------|-------------|
+| `read_file(path)` | 0 | Read file contents from sandbox |
+| `write_file(path, content)` | 0 | Write content to file in sandbox |
+| `list_directory(path)` | 0 | List directory contents in sandbox |
+
+**MCP Server:** `@anthropic/mcp-server-filesystem`
+
+**Security:** All paths are validated to be within the configured sandbox directory.
+
+---
+
+### genesis_web_search
+
+**Purpose:** Internet search via Brave Search
+
+| Method | Cost (compute) | Description |
+|--------|----------------|-------------|
+| `search(query, limit?)` | 0 | Search the web |
+
+**MCP Server:** `@anthropic/mcp-server-brave-search`
+
+**Requires:** `BRAVE_API_KEY` environment variable
+
+---
+
+### MCP Architecture
+
+```
+Agent
+  └── invoke_artifact("genesis_fetch", "fetch", [...])
+        └── GenesisFetch (GenesisMcpBridge subclass)
+              └── JSON-RPC over stdio
+                    └── MCP Server subprocess (npx @anthropic/mcp-server-*)
+```
+
+**Design decisions:**
+- All MCP methods cost 0 (rate-limited by compute, not scrip)
+- Servers start lazily on first invocation
+- Servers are stopped on artifact cleanup
+- JSON-RPC 2.0 protocol over stdin/stdout
+
+**Config:** `config/config.yaml` under `genesis.mcp`
 
 ---
 
