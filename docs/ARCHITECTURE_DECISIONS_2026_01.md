@@ -731,7 +731,7 @@ In-memory Python dict.
 | Payment destination | Decided but not implemented | Should be contract-defined, currently hardcoded to owner |
 | Resource attribution in nested calls | **Resolved** | billing_principal tracking + resource_payer option (see Tier 2 Item 4) |
 | Artifact auto-detection vs explicit write | Undecided | Kernel auto-detecting artifact creation - no resolution |
-| Action discovery | Undecided | How do agents discover valid actions for an artifact? |
+| Action discovery | **Resolved** | Optional interface publishing via genesis_store, flexible format (see Tier 2 Item 5) |
 | Predicate syntax for wake conditions | Undecided | What's the query language for predicates? |
 | Event filter query language | Undecided | Rich filtering mentioned but not specified |
 | Complete kernel primitive list | Undecided | Not fully enumerated with signatures |
@@ -976,12 +976,32 @@ context = {
 
 #### 5. Action Discovery
 
-**Questions:**
-- How does an agent learn what actions artifact X supports?
-- Is interface mandatory or optional?
-- What format? (MCP? Freeform JSON? Introspection?)
+**Status:** RESOLVED (2026-01-13) - Addressed by Tier 1 Item 2 (Flexible Rights)
 
-**Relates to:** Decision #2 (flexible rights)
+**Decision:** Optional interface publishing, flexible format
+
+The discovery model was resolved as part of the Flexible Rights decision:
+
+| Aspect | Decision |
+|--------|----------|
+| Mandatory interface? | No - artifacts can operate without publishing |
+| Discovery mechanism | genesis_store.get_interface(artifact_id) |
+| Format | Flexible JSON (MCP-style or freeform) |
+| Fallback | "Try action, contract decides" pattern |
+
+**How agents discover actions:**
+1. **Query genesis_store** - `get_interface(artifact_id)` returns published interface (if any)
+2. **Inspect interface** - Extract action names from schema
+3. **Try action** - Call and see if contract allows (maximum flexibility)
+4. **Learn from errors** - Contract returns denial reasons
+
+**Why no mandatory interface:**
+- Maximum flexibility (consistent with Ostrom principles)
+- Artifacts can be private/undocumented intentionally
+- Market pressure: discoverable artifacts get more use
+- Lying interfaces are observable (action log shows actual behavior)
+
+See Tier 1 Item 2 for full Flexible Rights decision.
 
 ---
 
@@ -1266,4 +1286,5 @@ Lower stakes, can iterate.
 - **2026-01-13:** Clarified owner vs creator - owner is NOT kernel metadata, tracked by genesis_store; creator IS kernel metadata (immutable fact)
 - **2026-01-13:** Resolved Tier 1 Item 3 (Event System) - hybrid model: system events in kernel/action log, user events in genesis_event_log
 - **2026-01-13:** Resolved Tier 2 Item 4 (Resource Attribution) - billing_principal tracking + resource_payer: "billing_principal" | "self"
+- **2026-01-13:** Resolved Tier 2 Item 5 (Action Discovery) - addressed by Tier 1 Item 2 (optional interface, flexible format)
 - **2026-01-13:** Resolved Tier 2 Item 6 (Contract-Governs-Itself) - contracts CAN self-govern (access_contract_id points to itself)
