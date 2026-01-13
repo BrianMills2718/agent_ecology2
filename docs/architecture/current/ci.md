@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-12 (plan-tests API key and active-plan filtering)
+Last verified: 2026-01-13 (added validate-specs, locked-sections, feature-coverage jobs)
 
 ---
 
@@ -133,6 +133,69 @@ def test_memory_error_handling():
     ...
 ```
 
+### 7. governance-sync
+
+Ensures source files have correct governance headers matching governance.yaml.
+
+```yaml
+- uses: actions/checkout@v4
+- uses: actions/setup-python@v5 (Python 3.11)
+- pip install pyyaml
+- python scripts/sync_governance.py --check
+```
+
+**What it catches:**
+- Source files missing required ADR governance headers
+- Governance headers out of sync with governance.yaml
+
+### 8. validate-specs
+
+Validates feature specification files in `features/*.yaml`.
+
+```yaml
+- uses: actions/checkout@v4
+- uses: actions/setup-python@v5 (Python 3.11)
+- pip install pyyaml
+- python scripts/validate_spec.py --all
+```
+
+**What it catches:**
+- Feature specs with fewer than 3 acceptance criteria
+- Missing Given/When/Then format
+- Missing category coverage (happy_path, error_case, edge_case)
+- Missing design section when planning_mode is "detailed"
+
+### 9. locked-sections (PRs only)
+
+Detects modifications to locked acceptance criteria. Only runs on pull requests.
+
+```yaml
+- uses: actions/checkout@v4 (with fetch-depth: 0)
+- uses: actions/setup-python@v5 (Python 3.11)
+- pip install pyyaml
+- python scripts/check_locked_files.py --base origin/main
+```
+
+**What it catches:**
+- Modifications to acceptance criteria marked with `locked: true`
+- Deletion of locked criteria
+- Changes to locked scenario, given, when, or then fields
+
+### 10. feature-coverage (Informational)
+
+Reports source files not assigned to features. Runs with `continue-on-error: true` - does not block PRs.
+
+```yaml
+- uses: actions/checkout@v4
+- uses: actions/setup-python@v5 (Python 3.11)
+- pip install pyyaml
+- python scripts/check_feature_coverage.py --warn-only
+```
+
+**What it catches:**
+- Source files in `src/` and `scripts/` not listed in any feature's `code:` section
+- Coverage percentage across the codebase
+
 ---
 
 ## Doc-Code Coupling
@@ -216,6 +279,9 @@ All jobs must pass for PRs to be mergeable (when branch protection is enabled):
 - doc-coupling
 - plan-status-sync
 - mock-usage
+- governance-sync
+- validate-specs
+- locked-sections (on PRs only)
 
 ---
 

@@ -143,3 +143,61 @@ jobs:
 
       - name: Check governance headers in sync
         run: python scripts/sync_governance.py --check
+
+  validate-specs:
+    runs-on: ubuntu-latest
+    # Validates feature specification files meet minimum requirements
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Validate feature specs
+        run: python scripts/validate_spec.py --all
+
+  locked-sections:
+    runs-on: ubuntu-latest
+    # Detects modifications to locked acceptance criteria (AC-2)
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for git diff
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Check locked sections
+        run: python scripts/check_locked_files.py --base origin/main
+
+  feature-coverage:
+    runs-on: ubuntu-latest
+    # Checks that source files are assigned to features (informational)
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Check feature coverage
+        run: python scripts/check_feature_coverage.py --warn-only

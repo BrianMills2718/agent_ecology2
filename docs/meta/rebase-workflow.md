@@ -16,10 +16,33 @@ This isn't actually a revert - it's that A's branch never had B's changes.
 
 ## Solution
 
-Two-part solution via Makefile automation:
+Three-part solution:
 
 1. **Start fresh**: `make worktree` auto-fetches and bases on latest `origin/main`
 2. **Before PR**: `make pr-ready` rebases onto current `origin/main` and pushes safely
+3. **GitHub enforcement**: Branch protection requires PRs to be up-to-date before merge
+
+### GitHub Branch Protection (Enforcement)
+
+Branch protection on `main` with `strict: true` means GitHub will **block merge** if your branch is behind `origin/main`. This catches cases where developers forget to run `make pr-ready`.
+
+```bash
+# Check current protection settings
+gh api repos/OWNER/REPO/branches/main/protection --jq '.required_status_checks.strict'
+# Should return: true
+
+# Enable if not set (requires admin)
+gh api repos/OWNER/REPO/branches/main/protection -X PUT --input - <<'EOF'
+{
+  "required_status_checks": {"strict": true, "contexts": ["test"]},
+  "enforce_admins": false,
+  "required_pull_request_reviews": null,
+  "restrictions": null
+}
+EOF
+```
+
+When strict mode is enabled, GitHub shows "This branch is out-of-date with the base branch" and the merge button is disabled until you rebase.
 
 ## Files
 
