@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-13 (Added /api/kpis endpoint)
+**Last verified:** 2026-01-13 (Added /api/health endpoint for System Auditor)
 
 ---
 
@@ -180,6 +180,7 @@ Real-time web UI for monitoring simulation.
 | `/api/charts/scrip` | GET | Scrip balance chart data |
 | `/api/charts/flow` | GET | Economic flow visualization |
 | `/api/kpis` | GET | Ecosystem health KPIs |
+| `/api/health` | GET | Health assessment with concerns and trends |
 | `/api/config` | GET | Simulation configuration |
 | `/api/ticks` | GET | Tick summary history |
 | `/api/network` | GET | Agent interaction graph |
@@ -229,6 +230,8 @@ dashboard:
 | `src/dashboard/parser.py` | `JSONLParser` | Event parsing |
 | `src/dashboard/watcher.py` | `PollingWatcher` | File change detection |
 | `src/dashboard/models.py` | Pydantic models | API response types |
+| `src/dashboard/auditor.py` | `HealthReport`, `assess_health()` | Health assessment |
+| `src/dashboard/kpis.py` | `EcosystemKPIs`, `calculate_kpis()` | KPI calculations |
 
 ---
 
