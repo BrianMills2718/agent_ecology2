@@ -17,7 +17,7 @@ import json
 import subprocess
 import threading
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from .genesis import GenesisArtifact
 from ..config_schema import McpConfig
@@ -155,7 +155,8 @@ class GenesisMcpBridge(GenesisArtifact):
             if not response_line:
                 raise RuntimeError("No response from MCP server")
 
-            return json.loads(response_line.decode("utf-8"))
+            result: dict[str, Any] = json.loads(response_line.decode("utf-8"))
+            return result
 
     def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         """Call a tool on the MCP server.
