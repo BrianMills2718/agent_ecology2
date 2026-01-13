@@ -267,3 +267,24 @@ Meta-plan completion criteria:
 - Update this document as phases complete
 - Feature flags enable safe experimentation
 - ~~Prioritize Phase 2 to unblock downstream work~~ (Phase 2 done)
+
+---
+
+## Additional Architecture Gaps (2026-01-13)
+
+The Architecture Decisions document (`docs/ARCHITECTURE_DECISIONS_2026_01.md`) identifies additional implementation gaps not covered in this migration plan:
+
+| Gap | Priority | Description |
+|-----|----------|-------------|
+| billing_principal | **High** | Track originator in invocation context for billing |
+| resource_payer | **High** | Contract field specifying who pays (billing_principal vs self) |
+| disk_bytes_principal | Medium | Per-artifact storage attribution |
+| Rate allocation trading | Medium | Transferable rate rights (cpu_rate, llm_rate) |
+| Flexible rights (string actions) | Medium | Change action from enum to string |
+| Payment destination | Medium | Contract specifies payment recipient(s) |
+
+These gaps are orthogonal to the execution model migration tracked here. They represent the **economic/billing model** migration needed to implement the target architecture.
+
+See `docs/ARCHITECTURE_DECISIONS_2026_01.md` → "Implementation Gap Analysis" for details.
+
+**Recommended action:** Create new plan files for high-priority gaps (billing_principal, resource_payer).

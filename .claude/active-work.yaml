@@ -2,15 +2,7 @@
 # Machine-readable tracking for multi-CC coordination.
 # Use: python scripts/check_claims.py --help
 
-claims:
-- cc_id: plan-28-mcp-servers
-  plan: 28
-  task: Implement MCP server integration
-  claimed_at: '2026-01-13T10:43:00Z'
-- cc_id: plan-20-migration
-  task: Update migration strategy - reflect current phase status
-  claimed_at: '2026-01-13T10:49:28Z'
-  plan: 20
+claims: []
 completed:
 - cc_id: tier2-architecture-decisions
   task: Tier 2 architecture decisions (Items 4-7)
@@ -19,3 +11,18 @@ completed:
   plan: 20
   task: Update migration strategy - reflect current phase status
   completed_at: '2026-01-13T10:49:28Z'
+- cc_id: plan-28-mcp-servers
+  plan: 28
+  task: Implement MCP server integration
+  completed_at: '2026-01-13T12:19:02Z'
+- cc_id: plan-20-migration
+  plan: 20
+  task: Update migration strategy - reflect current phase status
+  completed_at: '2026-01-13T12:19:02Z'
+- cc_id: plan-21-testing
+  plan: 21
+  task: Implement testing strategy for continuous execution
+  completed_at: '2026-01-13T12:24:22Z'
+- cc_id: edge-case-decisions
+  task: Add edge case decisions from architecture review (PR #73 merged)
+  completed_at: '2026-01-13T21:00:00Z'
