@@ -15,17 +15,35 @@ if [[ "$FIRST_LINE" =~ ^(fixup!|squash!) ]]; then
     exit 0
 fi
 
-# Check for plan reference: [Plan #N] or [Unplanned]
+# Check for plan reference: [Plan #N]
 if [[ "$FIRST_LINE" =~ ^\[Plan\ \#[0-9]+\] ]]; then
     exit 0
 fi
 
+# [Unplanned] requires explicit opt-in via environment variable
 if [[ "$FIRST_LINE" =~ ^\[Unplanned\] ]]; then
-    echo ""
-    echo "WARNING: Unplanned work detected."
-    echo "Create a plan entry in docs/plans/ before merging."
-    echo ""
-    exit 0
+    if [[ "$ALLOW_UNPLANNED" == "1" ]]; then
+        echo ""
+        echo "WARNING: Unplanned work - ALLOW_UNPLANNED=1 set"
+        echo "Remember: Create a plan entry before merging to main."
+        echo ""
+        exit 0
+    else
+        echo ""
+        echo "ERROR: Unplanned work requires explicit opt-in!"
+        echo ""
+        echo "If this is truly unplanned work (quick fix, typo, etc.):"
+        echo "  ALLOW_UNPLANNED=1 git commit -m \"[Unplanned] ...\""
+        echo ""
+        echo "For substantial work, create a plan first:"
+        echo "  1. Create docs/plans/NN_description.md"
+        echo "  2. Use [Plan #NN] prefix in commit"
+        echo ""
+        echo "Why? Unplanned work skips TDD, testing requirements, and review."
+        echo "Most 'quick fixes' benefit from the planning process."
+        echo ""
+        exit 1
+    fi
 fi
 
 # Reject commits without plan reference
@@ -35,6 +53,7 @@ echo ""
 echo "Format: [Plan #N] Short description"
 echo "   e.g. [Plan #3] Implement docker isolation"
 echo ""
-echo "Or for unplanned work: [Unplanned] Short description"
+echo "For truly unplanned work (requires explicit opt-in):"
+echo "   ALLOW_UNPLANNED=1 git commit -m \"[Unplanned] ...\""
 echo ""
 exit 1

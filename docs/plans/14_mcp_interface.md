@@ -1,8 +1,8 @@
 # Gap 14: MCP-Style Artifact Interface
 
-**Status:** ⏸️ Blocked
+**Status:** ❌ Needs Plan
 **Priority:** Medium
-**Blocked By:** #6
+**Blocked By:** None
 **Blocks:** None
 
 ---

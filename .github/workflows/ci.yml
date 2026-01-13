@@ -83,10 +83,25 @@ jobs:
       - name: Check plan status consistency
         run: python scripts/sync_plan_status.py --check
 
+  plan-blockers:
+    runs-on: ubuntu-latest
+    # Ensures no plan is blocked by an already-completed plan
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check for stale blockers
+        run: python scripts/check_plan_blockers.py --strict
+
   plan-tests:
     runs-on: ubuntu-latest
-    # Informational - shows plan test status but doesn't block PRs
-    continue-on-error: true
+    # Validates that plans with defined tests have passing tests
+    # STRICT: Fails if required tests don't pass
 
     steps:
       - uses: actions/checkout@v4
@@ -201,3 +216,58 @@ jobs:
 
       - name: Check feature coverage
         run: python scripts/check_feature_coverage.py --warn-only
+
+  new-code-tests:
+    runs-on: ubuntu-latest
+    # Ensures new source files have corresponding tests
+    # Prevents adding code without tests
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for git diff
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check new files have tests
+        run: python scripts/check_new_code_tests.py --base origin/main --strict --suggest
+
+  unplanned-work:
+    runs-on: ubuntu-latest
+    # Flags PRs containing [Unplanned] commits
+    # Does not block, but requires justification in PR description
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for unplanned work
+        run: |
+          # Check if any commit in PR has [Unplanned]
+          UNPLANNED=$(git log origin/main..HEAD --oneline | grep -c '\[Unplanned\]' || true)
+
+          if [ "$UNPLANNED" -gt 0 ]; then
+            echo "========================================"
+            echo "WARNING: This PR contains unplanned work"
+            echo "========================================"
+            echo ""
+            echo "Commits with [Unplanned]:"
+            git log origin/main..HEAD --oneline | grep '\[Unplanned\]'
+            echo ""
+            echo "Unplanned work bypasses the planning process."
+            echo "Before merging, ensure:"
+            echo "  1. Tests are added for all new code"
+            echo "  2. Documentation is updated"
+            echo "  3. PR description explains why this was unplanned"
+            echo ""
+            echo "Consider creating a plan file (docs/plans/NN_*.md)"
+            echo "for substantial work."
+            echo ""
+            # Don't fail - just warn
+          else
+            echo "No unplanned work detected."
+          fi

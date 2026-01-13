@@ -1,8 +1,8 @@
 # Gap 7: Single ID Namespace
 
-**Status:** ⏸️ Blocked
+**Status:** ❌ Needs Plan
 **Priority:** Low
-**Blocked By:** #6
+**Blocked By:** None
 **Blocks:** None
 
 ---

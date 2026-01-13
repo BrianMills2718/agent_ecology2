@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-13 (added validate-specs, locked-sections, feature-coverage jobs)
+Last verified: 2026-01-13 (added validate-specs, locked-sections, feature-coverage, plan-blockers, new-code-tests, unplanned-work jobs)
 
 ---
 
@@ -83,9 +83,29 @@ Verifies plan statuses are consistent between individual plan files and the inde
 - Plan file status doesn't match index in `docs/plans/CLAUDE.md`
 - Status drift after plan updates
 
-### 5. plan-tests (Informational)
+### 5. plan-blockers
 
-Checks test requirements for implementation plans. Runs with `continue-on-error: true` - does not block PRs.
+Checks for stale blockers - plans marked "Blocked" but whose blockers are already complete.
+
+```yaml
+- uses: actions/checkout@v4
+- uses: actions/setup-python@v5 (Python 3.11)
+- python scripts/check_plan_blockers.py --strict
+```
+
+**What it catches:**
+- Plans blocked by completed plans (stale dependency chains)
+- Blockers not updated when work completes
+
+**Fixing stale blockers:**
+```bash
+python scripts/check_plan_blockers.py --apply  # Auto-fix
+python scripts/sync_plan_status.py --sync       # Update index
+```
+
+### 6. plan-tests
+
+Checks test requirements for implementation plans. **Strict** - blocks PRs if tests fail.
 
 ```yaml
 - uses: actions/checkout@v4
@@ -106,7 +126,7 @@ Checks test requirements for implementation plans. Runs with `continue-on-error:
 
 **Configuration:** Test requirements defined in each plan file's `## Required Tests` section.
 
-### 6. mock-usage
+### 7. mock-usage
 
 Detects suspicious mock patterns that may hide real failures ("green CI, broken production").
 
@@ -196,6 +216,39 @@ Reports source files not assigned to features. Runs with `continue-on-error: tru
 - Source files in `src/` and `scripts/` not listed in any feature's `code:` section
 - Coverage percentage across the codebase
 
+### 11. new-code-tests
+
+Ensures new source files have corresponding tests.
+
+```yaml
+- uses: actions/checkout@v4 (with fetch-depth: 0)
+- uses: actions/setup-python@v5 (Python 3.11)
+- python scripts/check_new_code_tests.py --base origin/main --strict --suggest
+```
+
+**What it catches:**
+- New files in `src/` or `scripts/` without tests
+- Code added without test coverage
+
+**Exemptions:**
+- `__init__.py` files
+- `conftest.py` files
+- Template directories (`_template/`)
+- `CLAUDE.md` files
+
+### 12. unplanned-work (Informational)
+
+Flags PRs containing `[Unplanned]` commits. Does not block, but warns.
+
+```yaml
+- uses: actions/checkout@v4 (with fetch-depth: 0)
+- Check for [Unplanned] in commit messages
+```
+
+**What it catches:**
+- Work that bypassed the planning process
+- Commits without plan references
+
 ---
 
 ## Doc-Code Coupling
@@ -278,10 +331,17 @@ All jobs must pass for PRs to be mergeable (when branch protection is enabled):
 - mypy
 - doc-coupling
 - plan-status-sync
+- plan-blockers
+- plan-tests
 - mock-usage
 - governance-sync
 - validate-specs
 - locked-sections (on PRs only)
+- new-code-tests
+
+**Informational (doesn't block):**
+- feature-coverage (warns about unassigned files)
+- unplanned-work (warns about unplanned commits)
 
 ---
 
