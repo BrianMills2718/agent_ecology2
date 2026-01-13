@@ -1,0 +1,117 @@
+# Feature: Dashboard (Real-Time Visualization)
+# Web UI for observing simulation state and events
+
+feature: dashboard
+planning_mode: autonomous  # Well-defined UI feature
+
+# === PRD SECTION (What/Why) ===
+problem: |
+  Observing a running simulation requires visibility into agent actions,
+  resource flows, and system state. Without a dashboard:
+  - Must read raw JSONL logs to understand what happened
+  - No real-time view during simulation
+  - Difficult to debug agent behavior
+  - No visual representation of economic activity
+
+  The dashboard provides a FastAPI-based web UI with WebSocket streaming
+  for real-time observation of simulation state.
+
+out_of_scope:
+  - "Simulation control (start/stop/pause from UI)"
+  - "Historical analysis across multiple runs"
+  - "Agent code editing or injection"
+  - "Authentication or multi-user support"
+
+# === ACCEPTANCE CRITERIA ===
+acceptance_criteria:
+  - id: AC-1
+    scenario: "Dashboard serves web UI"
+    category: happy_path
+    given:
+      - "Dashboard is enabled in config"
+      - "Server is started"
+    when: "User navigates to dashboard URL"
+    then:
+      - "HTML page is served"
+      - "Static assets (CSS, JS) load correctly"
+      - "Initial state is displayed"
+    locked: true
+
+  - id: AC-2
+    scenario: "WebSocket streams live events"
+    category: happy_path
+    given:
+      - "Dashboard is connected via WebSocket"
+      - "Simulation is running"
+    when: "Events occur (actions, thinking, ticks)"
+    then:
+      - "Events are pushed to connected clients"
+      - "Events contain type, tick, agent_id"
+      - "UI updates in real-time"
+    locked: true
+
+  - id: AC-3
+    scenario: "Parser reads historical JSONL"
+    category: happy_path
+    given:
+      - "run.jsonl exists with past events"
+    when: "Dashboard loads initial state"
+    then:
+      - "Historical events are parsed"
+      - "Agent summaries are computed"
+      - "Artifact inventory is reconstructed"
+    locked: true
+
+  - id: AC-4
+    scenario: "Dashboard works with --dashboard-only mode"
+    category: happy_path
+    given:
+      - "Existing run.jsonl file"
+      - "No active simulation"
+    when: "Dashboard started with --dashboard-only"
+    then:
+      - "Historical data is displayed"
+      - "No errors from missing simulation"
+      - "Can browse past events"
+    locked: true
+
+  - id: AC-5
+    scenario: "Watcher detects file changes"
+    category: edge_case
+    given:
+      - "Dashboard is watching run.jsonl"
+      - "Simulation appends new events"
+    when: "File modification detected"
+    then:
+      - "New events are parsed"
+      - "WebSocket clients receive updates"
+      - "No duplicate events sent"
+    locked: true
+
+  - id: AC-6
+    scenario: "Dashboard handles missing JSONL gracefully"
+    category: error_case
+    given:
+      - "Dashboard is started"
+      - "run.jsonl does not exist"
+    when: "Dashboard attempts to load"
+    then:
+      - "Error message displayed (not crash)"
+      - "Dashboard waits for file to appear"
+      - "Starts working when file is created"
+    locked: true
+
+# === IMPLEMENTATION SECTION ===
+adrs: []  # Dashboard predates ADR system
+
+code:
+  - src/dashboard/server.py
+  - src/dashboard/models.py
+  - src/dashboard/parser.py
+  - src/dashboard/watcher.py
+
+tests:
+  - tests/e2e/test_smoke.py  # Dashboard tested as part of E2E smoke
+
+docs:
+  - docs/architecture/current/supporting_systems.md
