@@ -1,0 +1,119 @@
+# Feature: World State Management
+# Central state container and physics calculations
+
+feature: world
+planning_mode: autonomous  # Mature feature, well-understood
+
+# === PRD SECTION (What/Why) ===
+problem: |
+  The simulation needs a central container for all state (ledger, artifacts, agents)
+  and physics calculations (token costs, budget tracking, resource measurement).
+  Without world state management:
+  - No unified access to simulation state
+  - Cost calculations scattered throughout codebase
+  - No centralized event logging for observability
+  - No way to track API budget exhaustion
+
+  The World class aggregates all state, and SimulationEngine provides physics
+  calculations without modifying state.
+
+out_of_scope:
+  - "Ledger accounting (handled by ledger feature)"
+  - "Artifact storage (handled by artifacts feature)"
+  - "Agent execution (handled by simulation feature)"
+  - "Genesis artifacts (handled by separate genesis features)"
+
+# === ACCEPTANCE CRITERIA ===
+acceptance_criteria:
+  - id: AC-1
+    scenario: "World provides unified state access"
+    category: happy_path
+    given:
+      - "World is initialized with config"
+    when: "Components access world state"
+    then:
+      - "world.ledger provides resource accounting"
+      - "world.artifacts provides artifact store"
+      - "world.tick returns current tick number"
+      - "All state accessible through single object"
+    locked: true
+
+  - id: AC-2
+    scenario: "SimulationEngine calculates thinking cost"
+    category: happy_path
+    given:
+      - "SimulationEngine configured with token costs"
+      - "Agent made LLM call with 1000 input, 500 output tokens"
+    when: "calculate_thinking_cost() is called"
+    then:
+      - "Returns input_cost, output_cost, total_cost"
+      - "Costs calculated from configured rates"
+      - "No state modification occurs"
+    locked: true
+
+  - id: AC-3
+    scenario: "API budget tracking detects exhaustion"
+    category: happy_path
+    given:
+      - "Total API budget is $1.00"
+      - "Cumulative spending is $0.95"
+    when: "track_api_cost($0.10) is called"
+    then:
+      - "is_budget_exhausted() returns True"
+      - "Remaining budget is calculated"
+      - "Simulation can checkpoint and pause"
+    locked: true
+
+  - id: AC-4
+    scenario: "Event logger records to JSONL"
+    category: happy_path
+    given:
+      - "EventLogger initialized with output file"
+    when: "Events are logged (action, result, error)"
+    then:
+      - "Events written to JSONL file"
+      - "Each event has timestamp, tick, agent_id"
+      - "Events are queryable for debugging"
+    locked: true
+
+  - id: AC-5
+    scenario: "Resource measurement tracks usage"
+    category: edge_case
+    given:
+      - "ResourceMeasurer context is active"
+    when: "Agent performs work (disk writes, memory allocation)"
+    then:
+      - "Disk usage is tracked"
+      - "Memory usage is measured"
+      - "CPU time is recorded"
+      - "Usage returned when context exits"
+    locked: true
+
+  - id: AC-6
+    scenario: "MCP bridge forwards to external servers"
+    category: error_case
+    given:
+      - "MCP server is configured but unavailable"
+    when: "Agent invokes MCP tool"
+    then:
+      - "Error is returned gracefully"
+      - "No crash or hang"
+      - "Error message indicates MCP failure"
+    locked: true
+
+# === IMPLEMENTATION SECTION ===
+adrs: []  # World state management predates ADR system
+
+code:
+  - src/world/world.py
+  - src/world/simulation_engine.py
+  - src/world/logger.py
+  - src/world/mcp_bridge.py
+
+tests:
+  - tests/unit/test_simulation_engine.py
+  - tests/integration/test_integration.py
+
+docs:
+  - docs/architecture/current/execution_model.md
+  - docs/architecture/current/resources.md
