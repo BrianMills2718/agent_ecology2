@@ -2,5 +2,8 @@
 # Machine-readable tracking for multi-CC coordination.
 # Use: python scripts/check_claims.py --help
 
-claims: []
+claims:
+- cc_id: tier2-architecture-decisions
+  task: Tier 2 architecture decisions (Items 4-7)
+  claimed_at: '2026-01-13T10:36:26Z'
 completed: []
