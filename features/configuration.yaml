@@ -1,0 +1,107 @@
+# Feature: Configuration System
+# YAML-based configuration with Pydantic validation
+
+feature: configuration
+planning_mode: autonomous  # Mature feature, well-understood
+
+# === PRD SECTION (What/Why) ===
+problem: |
+  The system needs configurable parameters without magic numbers in code.
+  Without a configuration system:
+  - Values scattered throughout codebase
+  - Typos in config keys cause silent failures
+  - No validation of configuration values
+  - Hard to tune simulation parameters
+
+  The configuration system provides YAML-based config with Pydantic validation,
+  failing fast on invalid values with clear error messages.
+
+out_of_scope:
+  - "Runtime config hot-reloading (requires restart)"
+  - "Per-agent config overrides (agents use artifact content)"
+  - "Environment variable interpolation (use YAML directly)"
+  - "Config encryption or secrets management"
+
+# === ACCEPTANCE CRITERIA ===
+acceptance_criteria:
+  - id: AC-1
+    scenario: "Load configuration from YAML file"
+    category: happy_path
+    given:
+      - "Valid config/config.yaml exists"
+    when: "load_config() is called at startup"
+    then:
+      - "Config is parsed from YAML"
+      - "Config is validated against Pydantic schema"
+      - "Config values accessible via get() function"
+    locked: true
+
+  - id: AC-2
+    scenario: "Invalid config fails fast with clear error"
+    category: error_case
+    given:
+      - "Config file has invalid value (e.g., negative tick count)"
+    when: "load_config() is called"
+    then:
+      - "pydantic.ValidationError is raised"
+      - "Error message indicates which field is invalid"
+      - "Simulation does not start with bad config"
+    locked: true
+
+  - id: AC-3
+    scenario: "Missing required field fails with clear error"
+    category: error_case
+    given:
+      - "Config file is missing required section"
+    when: "load_config() is called"
+    then:
+      - "ValidationError indicates missing field"
+      - "No fallback to implicit defaults"
+    locked: true
+
+  - id: AC-4
+    scenario: "Dot-path access to nested config"
+    category: happy_path
+    given:
+      - "Config has nested structure: world.max_ticks = 100"
+    when: "get('world.max_ticks') is called"
+    then:
+      - "Returns 100"
+      - "Type is preserved (int, not string)"
+    locked: true
+
+  - id: AC-5
+    scenario: "Typed config object provides IDE support"
+    category: happy_path
+    given:
+      - "Config is loaded"
+    when: "get_validated_config() is called"
+    then:
+      - "Returns typed AppConfig object"
+      - "IDE autocompletion works on config.world.max_ticks"
+      - "Type errors caught at development time"
+    locked: true
+
+  - id: AC-6
+    scenario: "Default values from schema applied"
+    category: edge_case
+    given:
+      - "Config file omits optional field with default"
+    when: "Config is loaded and accessed"
+    then:
+      - "Default value from schema is used"
+      - "No error for missing optional fields"
+    locked: true
+
+# === IMPLEMENTATION SECTION ===
+adrs: []  # No specific ADRs govern configuration
+
+code:
+  - src/config.py
+  - src/config_schema.py
+
+tests:
+  - tests/unit/test_config.py
+
+docs:
+  - docs/architecture/current/configuration.md

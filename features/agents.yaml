@@ -1,0 +1,119 @@
+# Feature: Agents (LLM-Powered Decision Making)
+# Core agent class that observes world state and proposes actions
+
+feature: agents
+planning_mode: autonomous  # Mature feature, well-understood
+
+# === PRD SECTION (What/Why) ===
+problem: |
+  The simulation needs intelligent actors that can observe state and decide actions.
+  Without LLM-powered agents:
+  - No emergent behavior or creativity
+  - Only deterministic rule-based actors
+  - No ability to learn from context (memory)
+
+  The Agent class provides LLM integration, memory management, and action proposal.
+  Agents can be backed by artifacts, making them first-class tradeable principals.
+
+out_of_scope:
+  - "Execution loop mechanics (handled by agent_loop feature)"
+  - "World state management (handled by world/executor)"
+  - "Action execution (handled by executor)"
+  - "Multi-agent coordination (emergent via contracts)"
+
+# === ACCEPTANCE CRITERIA ===
+acceptance_criteria:
+  - id: AC-1
+    scenario: "Agent proposes valid action from world state"
+    category: happy_path
+    given:
+      - "Agent is initialized with valid config"
+      - "World state contains balances, artifacts, tick"
+    when: "Agent.propose_action_async(world_state) is called"
+    then:
+      - "LLM is called with constructed prompt"
+      - "Returns ActionResult with action and thought_process"
+      - "Action conforms to action schema"
+    locked: true
+
+  - id: AC-2
+    scenario: "Agent memory influences decisions"
+    category: happy_path
+    given:
+      - "Agent has memories stored from previous interactions"
+      - "Current world state is related to those memories"
+    when: "Agent builds prompt for LLM"
+    then:
+      - "RAG search retrieves relevant memories"
+      - "Memories are included in prompt"
+      - "Agent can reference past experience"
+    locked: true
+
+  - id: AC-3
+    scenario: "Artifact-backed agent loads config from artifact"
+    category: happy_path
+    given:
+      - "Artifact exists with agent configuration in content"
+      - "Artifact has type 'agent'"
+    when: "Agent.from_artifact(artifact, store) is called"
+    then:
+      - "Agent is created with config from artifact.content"
+      - "agent_id delegates to artifact.id"
+      - "Memory links to artifact's memory_artifact_id"
+    locked: true
+
+  - id: AC-4
+    scenario: "Agent handles LLM parsing failure gracefully"
+    category: error_case
+    given:
+      - "Agent is initialized correctly"
+      - "LLM returns malformed response (not valid JSON)"
+    when: "Response is parsed"
+    then:
+      - "ActionResult contains error field"
+      - "No crash or unhandled exception"
+      - "Raw response is included for debugging"
+    locked: true
+
+  - id: AC-5
+    scenario: "Agent loader discovers agents from directories"
+    category: happy_path
+    given:
+      - "Directory src/agents/ contains agent subdirectories"
+      - "Each subdirectory has agent.yaml and system_prompt.md"
+    when: "load_agents() is called"
+    then:
+      - "All valid agent directories are discovered"
+      - "Agent instances are created from configs"
+      - "Invalid directories are skipped with warning"
+    locked: true
+
+  - id: AC-6
+    scenario: "Agent tracks token usage"
+    category: edge_case
+    given:
+      - "Agent makes LLM call"
+    when: "LLM response is received"
+    then:
+      - "input_tokens and output_tokens are recorded"
+      - "total_tokens and cost are calculated"
+      - "Usage available in ActionResult"
+    locked: true
+
+# === IMPLEMENTATION SECTION ===
+adrs:
+  - ADR-0001  # Everything is an artifact (agents can be artifacts)
+
+code:
+  - src/agents/agent.py
+  - src/agents/loader.py
+  - src/agents/memory.py
+  - src/agents/schema.py
+  - src/agents/models.py
+
+tests:
+  - tests/unit/test_async_agent.py
+  - tests/unit/test_agent_artifacts.py
+
+docs:
+  - docs/architecture/current/agents.md
