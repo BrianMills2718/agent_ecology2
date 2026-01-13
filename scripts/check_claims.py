@@ -17,8 +17,14 @@ Usage:
     # Claim with explicit ID (if not using branches)
     python scripts/check_claims.py --claim --id my-instance --task "..."
 
+    # Check if a task would overlap with existing claims (without claiming)
+    python scripts/check_claims.py --check-overlap "Create feature definitions"
+
     # Release current branch's claim
     python scripts/check_claims.py --release
+
+    # Verify current branch has a claim (CI mode)
+    python scripts/check_claims.py --verify-claim
 
     # Sync YAML to CLAUDE.md table
     python scripts/check_claims.py --sync
@@ -28,6 +34,12 @@ Usage:
 
 Branch name is used as instance identity by default.
 Primary data store: .claude/active-work.yaml
+
+Overlap Detection:
+    When claiming, the script checks for overlapping claims based on:
+    - Same plan number (always blocked)
+    - Similar task descriptions (keyword-based similarity)
+    Use --force to proceed despite overlap warnings.
 """
 
 import argparse
@@ -44,6 +56,94 @@ import yaml
 YAML_PATH = Path(".claude/active-work.yaml")
 CLAUDE_MD_PATH = Path("CLAUDE.md")
 PLANS_DIR = Path("docs/plans")
+
+# Keywords that indicate similar work scopes
+SCOPE_KEYWORDS = {
+    "feature": ["feature", "features", "definition", "definitions", "yaml"],
+    "test": ["test", "tests", "testing", "tdd", "pytest"],
+    "doc": ["doc", "docs", "documentation", "readme", "claude.md"],
+    "ci": ["ci", "workflow", "github", "actions", "enforcement"],
+    "plan": ["plan", "plans", "gap", "gaps", "implementation"],
+    "claim": ["claim", "claims", "coordination", "checkout"],
+}
+
+
+def extract_scope_tags(text: str) -> set[str]:
+    """Extract scope tags from text based on keywords."""
+    text_lower = text.lower()
+    tags: set[str] = set()
+
+    for scope, keywords in SCOPE_KEYWORDS.items():
+        for keyword in keywords:
+            if keyword in text_lower:
+                tags.add(scope)
+                break
+
+    return tags
+
+
+def compute_task_similarity(task1: str, task2: str) -> tuple[float, list[str]]:
+    """Compute similarity between two task descriptions.
+
+    Returns (similarity_score, list_of_overlapping_aspects).
+    Score is 0.0 to 1.0.
+    """
+    # Extract scope tags
+    tags1 = extract_scope_tags(task1)
+    tags2 = extract_scope_tags(task2)
+
+    # Check for overlapping scopes
+    overlapping = tags1 & tags2
+    if not overlapping:
+        return (0.0, [])
+
+    # Calculate Jaccard similarity of scope tags
+    union = tags1 | tags2
+    similarity = len(overlapping) / len(union) if union else 0.0
+
+    # Boost similarity if exact words match
+    words1 = set(task1.lower().split())
+    words2 = set(task2.lower().split())
+    word_overlap = words1 & words2
+
+    # Filter out common words
+    common_words = {"the", "a", "an", "to", "for", "and", "or", "in", "on", "with", "is", "are"}
+    significant_overlap = word_overlap - common_words
+
+    if len(significant_overlap) >= 3:
+        similarity = min(1.0, similarity + 0.3)
+
+    return (similarity, list(overlapping))
+
+
+def check_claim_overlap(
+    new_task: str,
+    new_plan: int | None,
+    existing_claims: list[dict[str, Any]],
+) -> list[tuple[dict[str, Any], float, list[str]]]:
+    """Check if a new claim overlaps with existing claims.
+
+    Returns list of (claim, similarity, overlapping_aspects) for overlapping claims.
+    """
+    overlaps: list[tuple[dict[str, Any], float, list[str]]] = []
+
+    for claim in existing_claims:
+        existing_task = claim.get("task", "")
+        existing_plan = claim.get("plan")
+
+        # Exact plan match is always an overlap
+        if new_plan and existing_plan and new_plan == existing_plan:
+            overlaps.append((claim, 1.0, ["same plan"]))
+            continue
+
+        # Check task similarity
+        similarity, aspects = compute_task_similarity(new_task, existing_task)
+
+        # Threshold for warning (0.4 = 40% overlap)
+        if similarity >= 0.4:
+            overlaps.append((claim, similarity, aspects))
+
+    return overlaps
 
 
 def get_plan_status(plan_number: int) -> tuple[str, list[int]]:
@@ -150,6 +250,26 @@ def get_current_branch() -> str:
         return result.stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return "unknown"
+
+
+def verify_has_claim(data: dict[str, Any], branch: str) -> tuple[bool, str]:
+    """Verify the current branch has an active claim.
+
+    Returns (has_claim, message).
+    """
+    claims = data.get("claims", [])
+
+    # Check if this branch has a claim
+    for claim in claims:
+        if claim.get("cc_id") == branch:
+            task = claim.get("task", "")
+            return (True, f"Active claim: {task}")
+
+    # Special case: main branch with no active PRs is allowed for reviews
+    if branch == "main":
+        return (False, "No claim on main branch (use worktree for implementation)")
+
+    return (False, f"No active claim for branch '{branch}'")
 
 
 def load_yaml() -> dict[str, Any]:
@@ -280,7 +400,32 @@ def add_claim(
                 return False
             print("\n--force specified, proceeding despite dependency issues.\n")
 
+    # Check for overlapping claims (NEW)
+    overlaps = check_claim_overlap(task, plan, data["claims"])
+    if overlaps:
+        print("=" * 60)
+        print("⚠️  POTENTIAL OVERLAP DETECTED")
+        print("=" * 60)
+        for existing_claim, similarity, aspects in overlaps:
+            pct = int(similarity * 100)
+            existing_cc = existing_claim.get("cc_id", "?")
+            existing_task = existing_claim.get("task", "")[:50]
+            print(f"\n  Overlap with: {existing_cc}")
+            print(f"  Their task:   {existing_task}")
+            print(f"  Similarity:   {pct}% (overlapping: {', '.join(aspects)})")
+
+        print("\n" + "-" * 60)
+        print("This may cause duplicate work or merge conflicts.")
+        print("Check with the other instance before proceeding.")
+
+        if not force:
+            print("\nUse --force to claim anyway (coordinates at your own risk).")
+            return False
+        print("\n--force specified, proceeding despite overlap warning.\n")
+
     # Check for conflicting claim on same plan (if plan specified)
+    # Note: This is now partially redundant with overlap check above,
+    # but kept for explicit plan-level warnings
     if plan:
         for claim in data["claims"]:
             if claim.get("plan") == plan:
@@ -517,6 +662,17 @@ def main() -> int:
         action="store_true",
         help="Run TDD validation when releasing (recommended for plan claims)"
     )
+    parser.add_argument(
+        "--verify-claim",
+        action="store_true",
+        help="CI mode: verify current branch has an active claim (exit 1 if not)"
+    )
+    parser.add_argument(
+        "--check-overlap",
+        type=str,
+        metavar="TASK",
+        help="Check if a task would overlap with existing claims (without claiming)"
+    )
 
     args = parser.parse_args()
 
@@ -536,6 +692,41 @@ def main() -> int:
             print(f"Plan #{args.check_deps}: Dependencies NOT satisfied:")
             for issue in issues:
                 print(f"  - {issue}")
+            return 1
+
+    # Handle verify-claim (CI mode)
+    if args.verify_claim:
+        has_claim, message = verify_has_claim(data, instance_id)
+        if has_claim:
+            print(f"✓ {message}")
+            return 0
+        else:
+            print("=" * 60)
+            print("❌ CLAIM VERIFICATION FAILED")
+            print("=" * 60)
+            print(f"\n{message}")
+            print("\nAll implementation work requires an active claim.")
+            print("This ensures coordination between Claude instances.")
+            print("\nTo fix:")
+            print("  1. Create a worktree: make worktree BRANCH=my-feature")
+            print("  2. Claim work: python scripts/check_claims.py --claim --task 'My task'")
+            print("  3. Then commit your changes")
+            return 1
+
+    # Handle check-overlap (preview mode)
+    if args.check_overlap:
+        overlaps = check_claim_overlap(args.check_overlap, args.plan, claims)
+        if not overlaps:
+            print(f"✓ No overlapping claims found for: {args.check_overlap}")
+            return 0
+        else:
+            print("⚠️  Potential overlaps detected:")
+            for existing_claim, similarity, aspects in overlaps:
+                pct = int(similarity * 100)
+                existing_cc = existing_claim.get("cc_id", "?")
+                existing_task = existing_claim.get("task", "")[:50]
+                print(f"\n  {existing_cc}: {existing_task}")
+                print(f"  Similarity: {pct}% (overlapping: {', '.join(aspects)})")
             return 1
 
     # Handle cleanup

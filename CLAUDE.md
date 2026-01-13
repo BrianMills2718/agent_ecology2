@@ -332,7 +332,7 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| - | - | - | - | - |
+| claim-enforcement | - | Implement claim overlap detection and CI | 2026-01-13T18:52 | Active |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->

@@ -271,3 +271,77 @@ jobs:
           else
             echo "No unplanned work detected."
           fi
+
+  claim-verification:
+    runs-on: ubuntu-latest
+    # Verifies the PR branch was claimed before work started
+    # Prevents duplicate/overlapping work between Claude instances
+    if: github.event_name == 'pull_request'
+    continue-on-error: true  # Informational initially - will make strict later
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Verify branch was claimed
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          echo "Checking claim for branch: $BRANCH"
+
+          # Check if branch appears in claims (active or completed)
+          if python -c "
+          import yaml
+          from pathlib import Path
+
+          yaml_path = Path('.claude/active-work.yaml')
+          if not yaml_path.exists():
+              print('No claims file found')
+              exit(1)
+
+          data = yaml.safe_load(yaml_path.read_text()) or {}
+          claims = data.get('claims', [])
+          completed = data.get('completed', [])
+
+          branch = '$BRANCH'
+
+          # Check active claims
+          for c in claims:
+              if c.get('cc_id') == branch:
+                  print(f'✓ Active claim found: {c.get(\"task\", \"\")}')
+                  exit(0)
+
+          # Check completed claims
+          for c in completed:
+              if c.get('cc_id') == branch:
+                  print(f'✓ Completed claim found: {c.get(\"task\", \"\")}')
+                  exit(0)
+
+          print(f'❌ No claim found for branch: {branch}')
+          print()
+          print('Work should be claimed before starting.')
+          print('Use: python scripts/check_claims.py --claim --task \"Your task\"')
+          exit(1)
+          "; then
+            echo "Claim verification passed"
+          else
+            echo ""
+            echo "========================================"
+            echo "WARNING: No claim found for this branch"
+            echo "========================================"
+            echo ""
+            echo "The claim system ensures coordination between"
+            echo "Claude instances to prevent duplicate work."
+            echo ""
+            echo "For future PRs, claim work first:"
+            echo "  python scripts/check_claims.py --claim --task 'Your task'"
+            echo ""
+            # Exit 0 for now (informational) - will be exit 1 when strict
+            exit 0
+          fi
