@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-12 (oracle→mint rename)
+**Last verified:** 2026-01-13 (MCP config added)
 
 ---
 
@@ -160,6 +160,24 @@ genesis:
       first_auction_tick: 50
       minimum_bid: 1
       # ...
+
+  mcp:                      # MCP server artifacts (Plan #28)
+    fetch:
+      enabled: false        # HTTP fetch capability
+      command: "npx"
+      args: ["@anthropic/mcp-server-fetch"]
+      env: {}
+    filesystem:
+      enabled: false        # Sandboxed file I/O
+      command: "npx"
+      args: ["@anthropic/mcp-server-filesystem", "/tmp/agent_sandbox"]
+      env: {}
+    web_search:
+      enabled: false        # Brave Search
+      command: "npx"
+      args: ["@anthropic/mcp-server-brave-search"]
+      env:
+        BRAVE_API_KEY: "${BRAVE_API_KEY}"
 ```
 
 ### Executor

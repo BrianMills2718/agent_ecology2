@@ -1,6 +1,6 @@
 # Gap 28: Pre-seeded MCP Servers
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** High
 **Blocked By:** None
 **Blocks:** None
@@ -251,23 +251,23 @@ Create these tests FIRST, before implementing:
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/test_genesis_mcp.py` | `test_mcp_bridge_start_server` | Server subprocess starts |
-| `tests/test_genesis_mcp.py` | `test_mcp_bridge_stop_server` | Server subprocess stops |
-| `tests/test_genesis_mcp.py` | `test_mcp_bridge_call_tool` | Tool invocation works |
-| `tests/test_genesis_mcp.py` | `test_mcp_bridge_error_handling` | Errors returned properly |
-| `tests/test_genesis_mcp.py` | `test_genesis_fetch_methods` | Fetch artifact has correct methods |
-| `tests/test_genesis_mcp.py` | `test_genesis_fetch_invoke` | Fetch invocation works |
-| `tests/test_genesis_mcp.py` | `test_mcp_config_schema` | Config schema validates |
-| `tests/test_genesis_mcp.py` | `test_mcp_disabled_not_created` | Disabled servers not registered |
-| `tests/test_genesis_mcp.py` | `test_mcp_registered_in_genesis` | MCP artifacts in genesis |
+| `tests/test_genesis_mcp.py` | `TestMcpBridgeLifecycle::test_mcp_bridge_start_server` | Server subprocess starts |
+| `tests/test_genesis_mcp.py` | `TestMcpBridgeLifecycle::test_mcp_bridge_stop_server` | Server subprocess stops |
+| `tests/test_genesis_mcp.py` | `TestMcpBridgeLifecycle::test_mcp_bridge_call_tool` | Tool invocation works |
+| `tests/test_genesis_mcp.py` | `TestMcpBridgeLifecycle::test_mcp_bridge_error_handling` | Errors returned properly |
+| `tests/test_genesis_mcp.py` | `TestGenesisFetch::test_genesis_fetch_methods` | Fetch artifact has correct methods |
+| `tests/test_genesis_mcp.py` | `TestGenesisFetch::test_genesis_fetch_invoke` | Fetch invocation works |
+| `tests/test_genesis_mcp.py` | `TestMcpConfig::test_mcp_config_schema` | Config schema validates |
+| `tests/test_genesis_mcp.py` | `TestMcpConfig::test_mcp_disabled_not_created` | Disabled servers not registered |
+| `tests/test_genesis_mcp.py` | `TestMcpRegistration::test_mcp_registered_in_genesis` | MCP artifacts in genesis |
 
 ### Existing Tests (Must Pass)
 
 | Test Pattern | Why |
 |--------------|-----|
-| `tests/test_genesis.py` | Genesis artifact registration unchanged |
-| `tests/test_genesis_store.py` | Store still discovers artifacts |
-| `tests/test_invoke.py` | Invoke mechanism unchanged |
+| `tests/integration/test_genesis_store.py` | Store still discovers artifacts |
+| `tests/integration/test_invoke.py` | Invoke mechanism unchanged |
+| `tests/unit/test_genesis_contracts.py` | Genesis contracts unchanged |
 
 ---
 

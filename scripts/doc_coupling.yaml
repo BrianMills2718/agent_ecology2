@@ -33,9 +33,10 @@ couplings:
   # Genesis artifacts
   - sources:
       - "src/world/genesis.py"
+      - "src/world/mcp_bridge.py"
     docs:
       - "docs/architecture/current/genesis_artifacts.md"
-    description: "System services (ledger, oracle, escrow, etc.)"
+    description: "System services (ledger, oracle, escrow, MCP bridges)"
 
   # Agent system
   - sources:

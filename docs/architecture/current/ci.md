@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-13 (added validate-specs, locked-sections, feature-coverage, plan-blockers, new-code-tests, unplanned-work jobs)
+Last verified: 2026-01-13 (added mcp_bridge.py to genesis coupling in doc_coupling.yaml)
 
 ---
 
