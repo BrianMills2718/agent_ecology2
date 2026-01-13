@@ -29,3 +29,11 @@ completed:
 - cc_id: edge-case-decisions
   task: Add edge case decisions from architecture review (PR
   completed_at: '2026-01-13T21:00:00Z'
+- cc_id: plan-37-mandatory-planning
+  plan: 37
+  task: Mandatory planning and human review
+  completed_at: '2026-01-13T19:43:08Z'
+- cc_id: plan-24-kpis-impl
+  plan: 24
+  task: 'Implement Gap #24 Ecosystem Health KPIs'
+  completed_at: '2026-01-13T19:43:44Z'

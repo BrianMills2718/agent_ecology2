@@ -345,8 +345,6 @@ python scripts/check_claims.py --release --validate
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
 | main | - | Phase 3: Create per-feature E2E tests | 2026-01-13T19:30 | Active |
-| plan-24-kpis-impl | 24 | Implement Gap #24 Ecosystem Health KPIs | 2026-01-13T19:31 | Active |
-| plan-37-mandatory-planning | 37 | Mandatory planning and human review | 2026-01-13T19:31 | Active |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->
