@@ -65,7 +65,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 17 | [Agent Discovery](17_agent_discovery.md) | Medium | ✅ Complete | - |
 | 18 | [Dangling Reference Handling](18_dangling_refs.md) | Medium | ❌ Needs Plan | - |
 | 19 | [Agent-to-Agent Threat Model](19_threat_model.md) | Medium | ❌ Needs Plan | - |
-| 20 | [Migration Strategy](20_migration_strategy.md) | **High** | 🚧 In Progress | - |
+| 20 | [Migration Strategy](20_migration_strategy.md) | **High** | ✅ Complete | - |
 | 21 | [Testing for Continuous](21_continuous_testing.md) | Medium | 📋 Planned | - |
 | 22 | [Coordination Primitives](22_coordination.md) | Medium | ❌ Needs Plan | - |
 | 23 | [Error Response Conventions](23_error_conventions.md) | Low | ❌ Needs Plan | - |
@@ -73,7 +73,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 25 | [System Auditor Agent](25_system_auditor.md) | Low | ⏸️ Blocked | - |
 | 26 | [Vulture Observability](26_vulture_observability.md) | Medium | ❌ Needs Plan | - |
 | 27 | [Invocation Registry](27_invocation_registry.md) | Medium | ❌ Needs Plan | - |
-| 28 | [Pre-seeded MCP Servers](28_mcp_servers.md) | **High** | 🚧 In Progress | - |
+| 28 | [Pre-seeded MCP Servers](28_mcp_servers.md) | **High** | ✅ Complete | - |
 | 29 | [Library Installation](29_package_manager.md) | Medium | ❌ Needs Plan | - |
 | 30 | [Capability Request System](30_capability_requests.md) | Medium | ❌ Needs Plan | - |
 | 31 | [Resource Measurement](31_resource_measurement.md) | **High** | ✅ Complete | - |
