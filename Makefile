@@ -65,19 +65,20 @@ branch:  ## Create plan branch (usage: make branch PLAN=3 NAME=docker)
 
 worktree:  ## Create worktree for parallel CC work (usage: make worktree BRANCH=feature-name)
 	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree BRANCH=feature-name"; exit 1; fi
+	@mkdir -p worktrees
 	git fetch origin
-	git worktree add ../ecology-$(BRANCH) -b $(BRANCH) origin/main
+	git worktree add worktrees/$(BRANCH) -b $(BRANCH) origin/main
 	@echo ""
-	@echo "Worktree created at ../ecology-$(BRANCH) (based on latest origin/main)"
-	@echo "To use: cd ../ecology-$(BRANCH) && claude"
-	@echo "To remove when done: git worktree remove ../ecology-$(BRANCH)"
+	@echo "Worktree created at worktrees/$(BRANCH) (based on latest origin/main)"
+	@echo "To use: cd worktrees/$(BRANCH) && claude"
+	@echo "To remove when done: git worktree remove worktrees/$(BRANCH)"
 
 worktree-list:  ## List active worktrees
 	git worktree list
 
 worktree-remove:  ## Remove a worktree (usage: make worktree-remove BRANCH=feature-name)
 	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree-remove BRANCH=feature-name"; exit 1; fi
-	git worktree remove ../ecology-$(BRANCH)
+	git worktree remove worktrees/$(BRANCH)
 
 rebase:  ## Rebase current branch onto latest origin/main
 	git fetch origin

@@ -14,7 +14,8 @@ if not API_KEY:
     sys.exit(1)
 
 # ---- read specs file ----
-specs_path = Path("/home/azureuser/brian_misc/agent_ecology/agent_ecology_v2_specs.txt")
+REPO_ROOT = Path(__file__).parent.parent
+specs_path = REPO_ROOT / "agent_ecology_v2_specs.txt"
 specs_content = specs_path.read_text(encoding="utf-8")
 
 # ---- build prompt ----
@@ -51,6 +52,6 @@ print("=" * 60)
 print(response.text)
 
 # ---- save response ----
-output_path = Path("/home/azureuser/brian_misc/agent_ecology/specs_critique.txt")
+output_path = REPO_ROOT / "specs_critique.txt"
 output_path.write_text(response.text, encoding="utf-8")
 print(f"\n[Critique saved to {output_path}]")
