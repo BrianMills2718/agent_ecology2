@@ -41,6 +41,7 @@ This is **mechanism design for real resource allocation**, not a simulation or m
 | [05_contracts.md](05_contracts.md) | Access control via contract artifacts |
 | [06_mint.md](06_mint.md) | Bids anytime, periodic resolution, minting |
 | [07_infrastructure.md](07_infrastructure.md) | Docker isolation, real constraints |
+| [08_kernel.md](08_kernel.md) | Kernel primitives (storage, permissions, bootstrap) |
 
 ---
 

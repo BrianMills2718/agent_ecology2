@@ -763,35 +763,32 @@ These decisions are prerequisites for all other design work.
 
 #### 1. What Are the Kernel Primitives?
 
-**Status:** Not enumerated
+**Status:** RESOLVED - See [architecture/target/08_kernel.md](architecture/target/08_kernel.md)
 
-**Questions to answer:**
-- What operations does the kernel expose?
-- What are their exact signatures?
-- Which are read-only vs mutating?
-- How do artifacts access them?
+**Decisions made (2026-01-13):**
 
-**Proposed primitives (draft):**
-```
-Storage:
-  kernel.store_artifact(id, data) -> void
-  kernel.get_artifact(id) -> data | null
-  kernel.list_artifact_ids() -> list[id]
+Storage primitives (kernel-internal, permission-checked access):
+- `_store(id: str, data: bytes)` - caller provides ID, collision = error
+- `_load(id: str) -> bytes | null`
+- `_exists(id: str) -> bool`
+- `_delete(id: str)` - needed due to disk scarcity
 
-Scheduling:
-  kernel.sleep(agent_id, wake_conditions) -> void
-  kernel.wake(agent_id) -> void
-  kernel.register_wake_trigger(agent_id, condition) -> void
+Kernel-tracked metadata: `created_at`, `updated_at`, `size_bytes`
 
-Ledger (internal, not directly exposed?):
-  ledger.get_balance(principal_id, resource) -> amount
-  ledger.transfer(from, to, resource, amount) -> bool
+Resource costs: writes cost disk quota, reads are free (not scarce at scale)
 
-Time:
-  kernel.current_time() -> timestamp
-```
+Permission model:
+- All artifact code can access kernel storage, but kernel checks permissions
+- Genesis artifacts NOT privileged - anyone could build alternatives
+- Kernel calls `check_permission` directly (it's physics, no permission needed)
+- Each invocation link checked independently (immediate caller matters)
+- Configurable depth limit for contract invocation chains
 
-**Decision needed:** Finalize this list before designing genesis artifacts.
+Bootstrap: Genesis contracts self-govern, creator = "genesis" (reserved)
+
+Naming: Services use `_api` suffix, contracts use `_contract` suffix
+
+**Remaining items for separate discussions:** Scheduling, events, time, ledger internals
 
 ---
 
@@ -1118,3 +1115,4 @@ Lower stakes, can iterate.
 
 - **2026-01-13:** Initial document created from design discussion
 - **2026-01-13:** Added Section 15 (Remaining Unresolved Issues) and Section 16 (Prioritized Resolution Plan)
+- **2026-01-13:** Resolved Tier 1 Item 1 (Kernel Primitives) - created architecture/target/08_kernel.md
