@@ -25,6 +25,7 @@ This document captures architectural decisions, tradeoffs, and open questions fr
 14. [Open Questions](#14-open-questions)
 15. [Remaining Unresolved Issues](#15-remaining-unresolved-issues)
 16. [Prioritized Resolution Plan](#16-prioritized-resolution-plan)
+17. [Edge Case Decisions](#17-edge-case-decisions)
 
 ---
 
@@ -119,11 +120,13 @@ If we log full invocations including writes, artifact content ends up in the log
 {"action": "write", "agent": "alice", "artifact": "my_tool", "content": "secret code..."}
 ```
 
-### Uncertainty
+### Uncertainty (See Section 14)
 
-- How do agents verify artifact behavior without seeing code?
-- How does reputation form without observing failures?
-- Should there be an opt-in "open source" mode for artifacts?
+These open questions are tracked in Section 14:
+
+- How do agents verify artifact behavior without seeing code? → Section 14 Item 1
+- How does reputation form without observing failures? → Addressed via action log visibility
+- Should there be an opt-in "open source" mode for artifacts? → Section 14 Item 5
 
 ---
 
@@ -689,35 +692,32 @@ In-memory Python dict.
    - Who can publish under what namespaces?
    - How to prevent event flooding?
 
-4. **Resource attribution in nested invocations** - RESOLVED
-   - See Section 7 and Tier 2 Item 4 for billing_principal + resource_payer model
-
 ### Medium Priority
 
-5. **Should there be opt-in "open source" mode for artifacts?**
+4. **Should there be opt-in "open source" mode for artifacts?**
    - Visible code in exchange for reputation boost?
 
-6. **Predicate wake conditions**
+5. **Predicate wake conditions** - Partially resolved (see Tier 2 Item 7)
    - How evaluated efficiently?
    - What state can predicates reference?
 
-7. **Payment destination flexibility**
+6. **Payment destination flexibility** - Resolved (see Tier 3 Item 10)
    - Extend PermissionResult to include destination?
    - What about splits (50% to owner, 50% to treasury)?
 
-8. **Artifact auto-detection vs explicit store.write()**
+7. **Artifact auto-detection vs explicit store.write()**
    - User wondered if kernel could auto-detect artifact creation
    - Permission model unclear with auto-detection
 
 ### Lower Priority
 
-9. **MCP vs custom interface schemas**
+8. **MCP vs custom interface schemas**
    - Should we recommend MCP for discoverability?
    - Or let conventions emerge?
 
-10. **Genesis artifact advantage**
-    - How much to tell agents in prompts?
-    - More fair vs easier cold start?
+9. **Genesis artifact advantage**
+   - How much to tell agents in prompts?
+   - More fair vs easier cold start?
 
 ---
 
@@ -762,7 +762,7 @@ In-memory Python dict.
 |------|--------|-------------------|
 | Lying interface | Agents get scammed | Reputation system not designed |
 | Vulture capitalist pattern | May not emerge | Relies on undesigned reputation |
-| Current→Target migration | Broken intermediate states | No migration roadmap |
+| Current→Target migration | Broken intermediate states | Plan #20 complete (see docs/plans/) |
 | Event system underdefined | Coordination failures | 40% certainty, load-bearing |
 | Zombie agent accumulation | Unbounded growth | No cleanup mechanism in V1 |
 | Bootstrap economics | New agents can't start | "Emergent philanthropy" not designed |
@@ -1433,6 +1433,290 @@ Lower stakes, can iterate.
 
 ---
 
+## 17. Edge Case Decisions
+
+**Date:** 2026-01-13
+**Status:** Reviewed and approved during architecture review session.
+
+This section documents decisions for edge cases, failure modes, and scenarios not explicitly covered by the main tier decisions.
+
+### 17.1 Critical Missing Pieces
+
+#### 17.1.1 Reentrancy Attacks
+
+**Decision:** Accept risk, document explicitly.
+
+- Contracts must protect themselves from reentrancy
+- Observable in action log
+- Consistent with "observe what happens" philosophy
+
+**Concern:** Contracts without reentrancy guards can be exploited. This is accepted - contracts are responsible for their own safety.
+
+---
+
+#### 17.1.2 Race Conditions on Resource Checks
+
+**Decision:** Optimistic + reject.
+
+- Deduction is atomic at kernel level
+- If race causes insufficient funds, second invocation fails
+- No debt tracking needed
+
+**Concern:** Loser of race sees invocation failure. Agent should handle gracefully.
+
+---
+
+#### 17.1.3 Contract Upgrade Path
+
+**Decision:** Action-based.
+
+- Changing `access_contract_id` is action `"set_contract"`
+- Old contract's `check_permission("set_contract", ...)` decides
+- Consistent with flexible rights model
+
+**Concern:** Old contract can trap artifact (refuse set_contract). This is intentional - contract has authority.
+
+---
+
+### 17.2 Kernel Primitives Edge Cases
+
+#### 17.2.1 `_store()` Collision
+
+**Decision:** Error, reject.
+
+- `_store()` fails if ID already exists
+- Caller must check `_exists()` first or handle error
+- Forces explicit intent
+
+---
+
+#### 17.2.2 `_delete()` During Active Invocation
+
+**Decision:** Delete proceeds.
+
+- Deletion succeeds immediately
+- Active invocations continue with cached state
+- Fail on next access attempt
+
+---
+
+### 17.3 Flexible Rights Edge Cases
+
+#### 17.3.1 Action String Edge Cases
+
+**Decisions:**
+
+| Input | Result | Rationale |
+|-------|--------|-----------|
+| Empty string `""` | **Rejected** | No semantic meaning |
+| Unicode | **Allowed** | Strings are strings |
+| Exceeds 256 chars | **Rejected** | Fail loud, don't truncate |
+
+**Configurable:** `action_max_length` (default: 256)
+
+---
+
+### 17.4 Resource Attribution Edge Cases
+
+#### 17.4.1 `billing_principal` Deleted Mid-Chain
+
+**Decision:** Invocation fails.
+
+- Rare scenario (deleting yourself mid-call)
+- Fail loud, consistent with philosophy
+
+---
+
+#### 17.4.2 `resource_payer: "self"` with Insufficient Resources
+
+**Decision:** Invocation fails.
+
+- Kernel attempts deduction from artifact
+- If insufficient, invocation fails
+- Contract should check own balance (but kernel doesn't enforce)
+
+---
+
+### 17.5 Contract Edge Cases
+
+#### 17.5.1 `check_permission()` Throws Exception
+
+**Decision:** Deny by default.
+
+- Exception = permission denied
+- Fail closed for access control
+- Error details logged for observability
+
+---
+
+#### 17.5.2 Error Visibility (Cross-Cutting)
+
+**Decision:** Tiered model.
+
+| Location | Contains |
+|----------|----------|
+| Response to caller | Error type + reason |
+| Action log (public) | Error type + reason + context (caller, target, balances) |
+| Developer logs (operator-only) | Stack traces |
+
+**Rationale:** No stack traces in public action log because code structure is opaque per Section 2. This is about preserving opacity, not security (action log is public anyway).
+
+---
+
+#### 17.5.3 Circular Contract References
+
+**Decision:** Depth limit catches it.
+
+- Existing configurable depth limit handles cycles
+- No extra cycle detection machinery needed
+
+---
+
+### 17.6 Predicate Edge Cases
+
+#### 17.6.1 Predicate Artifact Deleted While Agent Sleeps
+
+**Decision:** Wake immediately with error context.
+
+- Fail loud, agent can decide what to do
+- Being stuck forever is worse than spurious wake
+
+---
+
+#### 17.6.2 Predicate Timeout
+
+**Decision:** Wake with error.
+
+- Timeout = something wrong, wake agent to handle
+- Consistent with fail loud
+
+---
+
+#### 17.6.3 Agent Has 0 Resources, Can't Pay for Predicate Evaluation
+
+**Decision:** Wake with error.
+
+- Agent already in trouble with 0 resources
+- Waking lets them potentially receive funds or take action
+- Staying asleep with 0 resources is effectively dead anyway
+
+---
+
+### 17.7 Payment Edge Cases
+
+#### 17.7.1 `payment_destination` Doesn't Exist
+
+**Decision:** Invocation fails.
+
+- Fail loud
+- Caller must verify destination exists before invoking
+
+---
+
+#### 17.7.2 `payment_split` Percentages
+
+**Decision:** Integer basis points (0-10000).
+
+- Sum must equal 10000 exactly, else rejected
+- Validation strictness configurable
+- Avoids float rounding issues
+
+**Configurable:** `payment_split_validation` (default: strict)
+
+---
+
+#### 17.7.3 One Split Destination Rejects Payment
+
+**Decision:** Whole payment fails, invocation fails.
+
+- Atomic payments
+- No partial state
+
+---
+
+### 17.8 Zombie/Storage Edge Cases
+
+#### 17.8.1 Storage Rent, Zombie Has 0 Scrip
+
+**Decision:** Artifacts deleted when rent unpaid.
+
+- Natural pressure for cleanup
+- Consistent with scarcity model
+
+**Configurable:**
+- `storage_rent_rate` (default: 0, no rent)
+- `storage_rent_grace_period` (ticks before deletion)
+
+**Concern:** Could cause data loss if agent goes dormant unexpectedly. Operators should configure grace periods appropriately.
+
+---
+
+#### 17.8.2 `disk_bytes_principal` Transfer Declined
+
+**Decision:** Transfer fails, original principal keeps paying.
+
+- Can't force storage sponsorship
+- Simple, no complex negotiation
+
+---
+
+### 17.9 Security Concerns
+
+#### 17.9.1 Event Spam Prevention
+
+**Decision:** Rate limit + cost hybrid.
+
+- Free tier for normal use, costs kick in for heavy usage
+- Sybils pay for multiple principals
+
+**Configurable:**
+- `events_free_per_window` (default: 100)
+- `event_cost_after_free` (default: 1 scrip)
+
+**Concern:** Free tier could still be abused by many principals. Accept risk, observe patterns.
+
+---
+
+#### 17.9.2 Sybil Attacks on Reputation
+
+**Decision:** Accept risk + track lineage.
+
+- Kernel tracks creator lineage as observable fact
+- Reputation services decide how to use it
+- No kernel enforcement of sybil resistance
+- Consistent with emergence philosophy
+
+**Concern:** Sybil attacks possible. Lineage helps reputation services but doesn't prevent.
+
+---
+
+### 17.10 Configurable Parameters Summary
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `action_max_length` | 256 | Max action string length |
+| `contract_depth_limit` | (existing) | Max contract invocation depth |
+| `payment_split_validation` | strict | Reject if basis points ≠ 10000 |
+| `storage_rent_rate` | 0 | Scrip per byte per tick (0 = no rent) |
+| `storage_rent_grace_period` | configurable | Ticks before deletion |
+| `events_free_per_window` | 100 | Free events per time window |
+| `event_cost_after_free` | 1 | Scrip cost per event after free tier |
+
+---
+
+### 17.11 Documented Concerns
+
+These are accepted risks that should be understood:
+
+1. **Reentrancy:** Contracts must self-protect, kernel doesn't prevent
+2. **Race conditions:** Loser of race sees invocation failure
+3. **Contract upgrades:** Old contract can trap artifact (refuse set_contract)
+4. **Sybil attacks:** Accepted risk, lineage helps but doesn't prevent
+5. **Event spam:** Free tier could still be abused by many principals
+6. **Storage rent:** Could cause data loss if agent goes dormant unexpectedly
+
+---
+
 ## Appendix: Terminology
 
 | Term | Definition |
@@ -1486,3 +1770,5 @@ Lower stakes, can iterate.
 - **2026-01-13:** Resolved Tier 3 Item 10 (Payment Destination) - contracts specify destination and splits
 - **2026-01-13:** Resolved Tier 3 Item 11 (Zombie Cleanup) - no kernel cleanup, emergent salvage pattern, configurable storage rent
 - **2026-01-13:** Added Genesis Artifacts Economic Model - self-sustaining services, configurable charging (resources/scrip/hybrid), rate allocation trading
+- **2026-01-13:** Added Section 17 (Edge Case Decisions) - 25 edge case decisions covering reentrancy, race conditions, contract upgrades, kernel primitives, flexible rights, resource attribution, contracts, predicates, payments, storage, and security concerns
+- **2026-01-13:** Document cleanup: updated Section 15.4 migration status, linked Section 2 uncertainties to Section 14, marked appendix inconsistencies, renumbered Section 14 items (removed resolved item 4)
