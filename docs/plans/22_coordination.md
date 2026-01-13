@@ -1,8 +1,8 @@
 # Gap 22: Coordination Primitives
 
-**Status:** ⏸️ Blocked
+**Status:** ❌ Needs Plan
 **Priority:** Medium
-**Blocked By:** #16
+**Blocked By:** None
 **Blocks:** None
 
 ---

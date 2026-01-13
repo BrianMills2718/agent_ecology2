@@ -1,8 +1,8 @@
 # Gap 12: Per-Agent LLM Budget
 
-**Status:** ⏸️ Blocked
+**Status:** ❌ Needs Plan
 **Priority:** Medium
-**Blocked By:** #11
+**Blocked By:** None
 **Blocks:** None
 
 ---

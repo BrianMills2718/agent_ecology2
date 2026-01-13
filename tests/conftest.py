@@ -15,26 +15,69 @@ from src.world.ledger import Ledger
 from src.world.world import World, ConfigDict
 
 
+def pytest_configure(config: pytest.Config) -> None:
+    """Register custom markers."""
+    config.addinivalue_line(
+        "markers",
+        "plans(nums): mark test as belonging to plan number(s). "
+        "Usage: @pytest.mark.plans([1, 6]) or @pytest.mark.plans(6)"
+    )
+    config.addinivalue_line(
+        "markers",
+        "feature_type(type): mark test as 'feature', 'enabler', or 'refactor'"
+    )
+    config.addinivalue_line(
+        "markers",
+        "external: mark test as requiring external services (real API calls)"
+    )
+
+
 def pytest_addoption(parser: pytest.Parser) -> None:
-    """Add --run-external option for running external tests."""
+    """Add custom command-line options."""
     parser.addoption(
         "--run-external",
         action="store_true",
         default=False,
         help="Run tests marked as external (real API calls, slow)",
     )
+    parser.addoption(
+        "--plan",
+        action="store",
+        type=int,
+        default=None,
+        help="Run tests for a specific plan number",
+    )
 
 
 def pytest_collection_modifyitems(
     config: pytest.Config, items: list[pytest.Item]
 ) -> None:
-    """Skip external tests unless --run-external is passed."""
-    if config.getoption("--run-external"):
-        return
-    skip_external = pytest.mark.skip(reason="need --run-external option to run")
-    for item in items:
-        if "external" in item.keywords:
-            item.add_marker(skip_external)
+    """Filter tests based on command-line options."""
+    # Handle --run-external
+    if not config.getoption("--run-external"):
+        skip_external = pytest.mark.skip(reason="need --run-external option to run")
+        for item in items:
+            if "external" in item.keywords:
+                item.add_marker(skip_external)
+
+    # Handle --plan N
+    plan_filter = config.getoption("--plan")
+    if plan_filter is not None:
+        selected = []
+        deselected = []
+        for item in items:
+            marker = item.get_closest_marker("plans")
+            if marker is not None:
+                plans_arg = marker.args[0] if marker.args else []
+                # Handle both @pytest.mark.plans(6) and @pytest.mark.plans([1, 6])
+                if isinstance(plans_arg, int):
+                    plans_arg = [plans_arg]
+                if plan_filter in plans_arg:
+                    selected.append(item)
+                    continue
+            deselected.append(item)
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = selected
 
 
 @pytest.fixture
