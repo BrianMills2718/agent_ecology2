@@ -46,7 +46,7 @@
 | Everything is an artifact | 90% | Agents, contracts, data - all artifacts |
 | Standing = pays own costs | 90% | has_standing determines payment |
 | No owner bypass | 90% | access_contract_id is only authority |
-| Token bucket for flow | 90% | Rolling window, allows debt |
+| Token bucket for flow | 90% | Rolling window, no debt (wait for capacity) |
 | Scrip cannot go negative | 90% | Debt via contract artifacts instead |
 | Genesis = definitional privilege | 95% | Not mechanical, but semantic |
 | Contract caching for all | 80% | No genesis privilege for performance |
@@ -184,6 +184,40 @@ Design Goals:
 
 ---
 
+## Research System Trust Model (ADDED 2026-01-13)
+
+**This is a research system, not a production blockchain.**
+
+Unlike trustless production systems (Bitcoin, Ethereum), this ecology operates with an explicit admin role:
+
+| Aspect | Production Blockchain | This Research System |
+|--------|----------------------|---------------------|
+| **Admin access** | None (trustless) | Yes, with transparency |
+| **Rollback** | Computationally infeasible | Possible if needed |
+| **State reset** | Prohibited | Allowed for research |
+| **Bug fixes** | Requires hard fork | Genesis contracts mutable |
+
+**Why this framing matters:**
+
+1. **Orphan artifacts aren't permanent** - Unlike lost Bitcoin, an admin can intervene if a catastrophic bug locks valuable work. This is a feature, not a bug.
+
+2. **Design decisions can favor simplicity** - We don't need Byzantine fault tolerance for a system with trusted operators.
+
+3. **Experiments can be reset** - If an experiment goes wrong, we can restore from checkpoint, not lose months of work.
+
+4. **Genesis contract evolution** - Genesis artifacts can be updated via code deploy. No governance token voting required.
+
+**Transparency requirement:** Any admin intervention must be:
+- Logged in the event system
+- Documented with rationale
+- Visible to all agents and observers
+
+This isn't "centralized vs decentralized" - it's acknowledging that research systems have different trust assumptions than production deployments.
+
+**Certainty:** 100% (framing clarification, not design change)
+
+---
+
 ## Resource Terminology
 
 **Distinct resources - do not conflate:**
@@ -225,19 +259,25 @@ available = min(capacity, balance + elapsed_time * rate)
 # T=0:  balance = 100
 # T=5:  spend 60 → balance = 40
 # T=10: balance = min(100, 40 + 5*10) = 90 (accumulated 50)
-# T=12: spend 100 → balance = -10 (debt)
-# T=15: balance = min(100, -10 + 3*10) = 20 (still recovering)
+# T=12: want to spend 100 → only 90 available → must WAIT
+# T=13: balance = min(100, 90 + 1*10) = 100 → now can spend 100
 ```
 
-### Debt Persists
-- Agents can go negative (debt)
-- Accumulation continues even in debt
-- Negative balance = cannot act (natural throttling)
-- No debt forgiveness, must accumulate out
+### No Debt Model (REVISED 2026-01-12)
+- Agents CANNOT go negative on renewable resources
+- If balance < cost, operation blocks/waits until sufficient capacity
+- No debt tracking, no debt forgiveness needed
+- Simpler semantics: you either have capacity or you wait
+
+**Why no debt?**
+- Debt complicates accounting and recovery
+- "Wait for capacity" is cleaner than "go negative and recover"
+- Matches how real rate limiters work (429s block, not incur debt)
+- Prevents pathological debt accumulation scenarios
 
 ### Throttling Emerges Naturally
 - No hardcoded "max N agents"
-- Expensive operations → debt → wait for accumulation
+- Expensive operations → insufficient capacity → wait for accumulation
 - System self-regulates based on actual resource consumption
 
 ---
@@ -4898,5 +4938,97 @@ External review raised these concerns. Documented for future consideration, not 
 | Labor Bonds | No commitment primitives for future work | Agents can build as artifacts |
 
 **Source:** Gemini external review (2026-01-11)
+
+---
+
+## Approved Architecture Decisions (2026-01-13)
+
+Comprehensive target architecture review resulted in the following approved decisions.
+
+### High-Certainty Decisions (Auto-Approved)
+
+These were approved without discussion due to high certainty (≥85%):
+
+| # | Decision | Resolution |
+|---|----------|------------|
+| 1 | Contract sandbox security | Process isolation (V1), contract-enforced limits (V2) |
+| 2 | Event log retention | 7-day rolling window, configurable |
+| 3 | Event delivery semantics | At-most-once; agents handle missed via catch-up |
+| 4 | Checkpoint atomicity | Stop-the-world pause with timeout |
+| 5 | Agent freeze threshold | Config-driven, not hardcoded |
+| 6 | Dangling artifact handling | Fail-open with logged warning |
+| 7 | Spawn resource requirements | No minimum; spawner decides viability |
+| 8 | Rate limit recovery | Automatic when capacity available |
+| 9 | Contract execution depth | Max 10 levels |
+| 10 | Permission check cost | Free (avoids infinite regress) |
+| 11 | Failed action cost | Charged (prevents spam) |
+| 12 | Multi-container coordination | Single genesis artifacts, shared ledger |
+| 13 | Ledger consistency | Single writer with queue (V1) |
+| 14 | Worker identity | Stateless pool; no worker-specific state |
+| 15 | Agent state coordination | Agent loop handles via locks |
+| 16 | Kernel boundary | Minimal: permissions, ledger, storage |
+| 17 | Kernel primitives | Storage (CRUD), permissions (check), ledger (transfer) |
+| 18 | Genesis privilege | Semantic (first mover), not mechanical |
+
+### Medium-High Certainty (Quick Confirm)
+
+Approved with brief verification:
+
+| # | Decision | Resolution |
+|---|----------|------------|
+| 19 | Interface schemas | Optional metadata artifact (not enforced) |
+| 20 | Genesis prompting | Seeded handbook artifact (genesis_handbook) |
+| 21 | ReadOnlyLedger scope | All reads except artifact content mutation |
+| 22 | Artifact auto-detection | Registry artifact with type signatures |
+| 23 | Sandbox evolution | Process isolation (V1) → contract limits (V2) |
+| 24 | Qdrant/memory integration | Memory artifact references Qdrant collection |
+| 25 | Spawn endowment | Explicit funding via genesis_store |
+| 26 | Salvage rights | Deferred to V2+ |
+
+### Medium Certainty (Discussed)
+
+| # | Decision | Chosen Option | Rationale |
+|---|----------|---------------|-----------|
+| 27 | Stale subscription cleanup | LRU eviction | Bounded memory, config limit |
+| 28 | Zombie agent GC | Market handles | Selection pressure via dormancy |
+| 29 | Hybrid checkpoint | Snapshot + WAL for Qdrant | Balance durability vs complexity |
+| 30 | Permission billing | Requester pays | Simple, prevents probing |
+| 31 | Resource units | Per-unit tracking | No artificial conversion |
+| 32 | Recovery attestation | Optional | Not required for V1 |
+| 33 | Partial restart | Pause container first | Ensures consistency |
+| 34 | Contract isolation | Process isolation | V1 simplicity |
+| 35 | Worker pool | Contract-based genesis artifact | Flexible, not kernel |
+
+### Low Certainty (Required Discussion)
+
+| # | Decision | Chosen Option | Rationale |
+|---|----------|---------------|-----------|
+| 36 | Dangling cascade | No global cleanup | Market handles via opportunity cost |
+| 37 | Event catch-up | Hybrid (query log + re-verify) | See agents.md for details |
+| 38 | Orphan economic pressure | Reputation-based | No forced reclamation; accept risk |
+
+### Contradiction Resolutions
+
+| ID | Contradiction | Resolution |
+|----|---------------|------------|
+| C1 | Debt model (allowed vs not) | **No debt for renewable resources** - agents wait for capacity |
+| C2 | Permission check cost boundary | **Free for checks**, charged for execution |
+| C3 | Ledger implementation (SQLite vs PostgreSQL) | **SQLite for V1** (single writer sufficient) |
+| C4 | Admin trust model | **Research system** - admin can rollback with transparency |
+
+### Confirmed Understandings
+
+| ID | Concept | Confirmed Understanding |
+|----|---------|------------------------|
+| U1 | Contracts as pure functions | Contracts return decisions; kernel applies mutations |
+
+### Implementation Notes
+
+1. **Event catch-up** documented in `docs/architecture/target/03_agents.md`
+2. **Research system trust model** documented above (new section)
+3. **Debt model resolution** fixed in Flow Resources section
+4. All decisions reflected in target architecture docs
+
+**Source:** Target architecture review session (2026-01-13)
 
 ---
