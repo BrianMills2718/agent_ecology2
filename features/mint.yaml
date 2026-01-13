@@ -99,8 +99,9 @@ code:
   - src/world/genesis.py
 
 tests:
-  - tests/unit/test_mint_scorer.py
-  - tests/integration/test_runner.py
+  - tests/unit/test_originality.py
+  - tests/integration/test_mint_auction.py
 
 docs:
   - docs/architecture/current/genesis_artifacts.md
+  - docs/architecture/current/mint.md

@@ -113,6 +113,20 @@ acceptance_criteria:
       - "Content unchanged"
     locked: true
 
+  - id: AC-7
+    scenario: "Ownership transfer updates all permissions"
+    category: edge_case
+    given:
+      - "Artifact owned by Alice"
+      - "Artifact has custom policy (allow_read: ['charlie'])"
+    when: "Alice transfers ownership to Bob"
+    then:
+      - "Bob becomes new owner"
+      - "Bob can now modify artifact"
+      - "Alice loses owner privileges"
+      - "Existing allow_read policy is preserved"
+    locked: true
+
 # === IMPLEMENTATION SECTION ===
 adrs:
   - ADR-0001  # Everything is an artifact

@@ -141,4 +141,4 @@ tests:
   - tests/integration/test_runner.py
 
 docs:
-  - docs/architecture/current/execution.md
+  - docs/architecture/current/execution_model.md
