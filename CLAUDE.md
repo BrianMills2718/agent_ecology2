@@ -23,6 +23,52 @@ See `README.md` for full theoretical grounding (Hayek, Coase, Ostrom, Sugarscape
 
 ---
 
+## Architecture Decision Heuristics
+
+When making design decisions, apply these heuristics (in priority order):
+
+### 1. Emergence is the goal
+
+Everything else serves creating conditions for emergent collective capability. We're doing system design with a **mechanism design lens** - at every decision ask "what does this incentivize?" not just "does this work technically?"
+
+### 2. Minimal kernel, maximum flexibility
+
+*Heuristic.* Kernel provides physics (what's possible), not policy (what's encouraged). Restrict as little as possible in the physics. When in doubt, don't add it to kernel.
+
+### 3. Align incentives
+
+*Heuristic.* Consider what behaviors decisions incentivize. Bad incentives = bad emergence. If a design choice creates perverse incentives, reconsider.
+
+### 4. Pragmatism over purity
+
+*Heuristic.* Purity is a heuristic, not a hard rule. If purity causes undue friction, latency, or resource costs, consider less pure options. Don't let architectural elegance obstruct the actual goal.
+
+### 5. Avoid defaults; if unavoidable, make configurable
+
+*Heuristic.* Defaults can distort incentives. Prefer explicit choice. When defaults are needed (e.g., cold start), ensure they're configurable.
+
+### 6. Genesis artifacts as middle ground
+
+*Heuristic.* When facing kernel-opinion vs agent-friction tradeoffs, consider providing genesis artifacts as services. They encode useful patterns without baking opinions into kernel physics. Agents can use them, replace them, or compete with them.
+
+### 7. Selection pressure over protection
+
+*Heuristic.* Don't over-protect agents from mistakes. Provide tools to avoid problems, but accept that agents who don't use them may fail. That's selection pressure, and it's healthy.
+
+### 8. Observe, don't prevent
+
+*Heuristic.* Many risks (lying interfaces, malicious contracts, bad actors) are accepted. Make behavior observable via action log. Reputation emerges from observation, not enforcement.
+
+### 9. When in doubt, contract decides
+
+*Heuristic.* If something could be hardcoded or contract-specified, prefer contract-specified. Contracts are flexible; kernel changes are not.
+
+### Developer Observability (Not a Tradeoff)
+
+Full observability for developers: action log, reasoning traces, state changes. This is orthogonal to "minimal kernel" - kernel tracks minimal state to *function*, but *logs* everything for observability.
+
+---
+
 ## Project Structure
 
 ```

@@ -732,8 +732,8 @@ In-memory Python dict.
 | Resource attribution in nested calls | **Resolved** | billing_principal tracking + resource_payer option (see Tier 2 Item 4) |
 | Artifact auto-detection vs explicit write | Undecided | Kernel auto-detecting artifact creation - no resolution |
 | Action discovery | **Resolved** | Optional interface publishing via genesis_store, flexible format (see Tier 2 Item 5) |
-| Predicate syntax for wake conditions | Undecided | What's the query language for predicates? |
-| Event filter query language | Undecided | Rich filtering mentioned but not specified |
+| Predicate syntax for wake conditions | **Resolved** | Separate triggers (kernel) from predicates (artifacts). See Tier 2 Item 7. |
+| Event filter query language | **Resolved** | Same pattern - triggers + predicate artifacts. See Tier 2 Item 7. |
 | Complete kernel primitive list | Undecided | Not fully enumerated with signatures |
 
 ### 15.2 Security Concerns
@@ -1067,19 +1067,72 @@ members_only_contract = {
 
 #### 7. Predicate/Filter Syntax
 
-**Questions:**
-- Wake conditions use predicates - what syntax?
-- Event filters use queries - what syntax?
-- Same language for both?
-- How complex can predicates be?
+**Status:** RESOLVED (2026-01-13)
 
-**Options:**
+**Decision: Separate triggers from predicates, predicates are artifacts**
 
-| Option | Example | Complexity |
-|--------|---------|------------|
-| **Simple key-value** | `{"scrip": {">": 100}}` | Low |
-| **JSONPath-like** | `$.balance.scrip > 100` | Medium |
-| **Full expression language** | `scrip > 100 AND time > T` | High |
+| Concept | Purpose | Who Understands |
+|---------|---------|-----------------|
+| **Trigger** | WHEN to evaluate | Kernel (enumerated types) |
+| **Predicate** | WHETHER condition is true | Artifact (flexible logic) |
+
+**Kernel-understood trigger types:**
+- `time` - After specified duration
+- `balance_changed` - When principal's balance changes
+- `artifact_modified` - When artifact is written/deleted
+- `event_published` - When matching event published
+
+**Usage pattern:**
+```python
+kernel.sleep(
+    agent_id="alice",
+    wake_conditions=[
+        # Simple trigger, no predicate needed
+        {"trigger": "time", "after_seconds": 300},
+
+        # Trigger + predicate refinement
+        {
+            "trigger": "balance_changed",
+            "principal": "alice",
+            "predicate_id": "genesis_threshold_predicate",
+            "config": {"field": "scrip", "operator": ">", "value": 100}
+        }
+    ]
+)
+```
+
+**Genesis predicate artifacts:**
+- `genesis_threshold_predicate` - Numeric comparisons (>, <, =, >=, <=)
+- `genesis_match_predicate` - Equality checks
+- `genesis_contains_predicate` - Substring/membership
+- `genesis_compound_predicate` - AND/OR combinations
+- `genesis_always_true` - Wake on any trigger
+
+**Predicate evaluation:**
+- Sleeping agent pays for evaluation (creates good incentives)
+- Timeout enforced (e.g., 100ms max)
+- Predicates must be pure (documented requirement, not enforced)
+- Depth limit for compound predicates
+
+**Context passed to predicates (limited):**
+
+| Trigger | Context |
+|---------|---------|
+| `balance_changed` | `{principal, resource, old_value, new_value}` |
+| `artifact_modified` | `{artifact_id, action, actor}` |
+| `event_published` | `{source, type, data}` |
+| `time` | `{current_time}` |
+
+**Why this design:**
+- Triggers tell kernel WHEN to evaluate (efficient)
+- Predicates tell kernel WHETHER to wake (flexible)
+- Genesis artifacts provide common patterns (middle ground heuristic)
+- No special syntax in kernel - predicates are just artifacts
+- Agents can create custom predicates for exotic conditions
+
+**Accepted risks:**
+- Malicious predicates could waste resources (mitigated by timeout + agent pays)
+- Predicates could have side effects (documented as forbidden, not enforced)
 
 ---
 
@@ -1288,3 +1341,5 @@ Lower stakes, can iterate.
 - **2026-01-13:** Resolved Tier 2 Item 4 (Resource Attribution) - billing_principal tracking + resource_payer: "billing_principal" | "self"
 - **2026-01-13:** Resolved Tier 2 Item 5 (Action Discovery) - addressed by Tier 1 Item 2 (optional interface, flexible format)
 - **2026-01-13:** Resolved Tier 2 Item 6 (Contract-Governs-Itself) - contracts CAN self-govern (access_contract_id points to itself)
+- **2026-01-13:** Resolved Tier 2 Item 7 (Predicate/Filter Syntax) - separate triggers (kernel) from predicates (artifacts), genesis predicates for common patterns
+- **2026-01-13:** Documented Architecture Decision Heuristics in CLAUDE.md and README.md
