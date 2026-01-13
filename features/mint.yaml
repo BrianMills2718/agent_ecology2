@@ -1,0 +1,107 @@
+# Feature: Mint (Auction-Based Scoring)
+# LLM-powered evaluation and reward system for artifacts
+
+feature: mint
+planning_mode: autonomous  # Well-defined scoring system
+
+# === PRD SECTION (What/Why) ===
+problem: |
+  Agents create artifacts, but there's no way to evaluate quality or reward
+  valuable contributions. Without a mint:
+  - No incentive to create high-quality artifacts
+  - No way to distinguish useful tools from trivial ones
+  - No mechanism to distribute rewards for contributions
+
+  The mint uses LLM evaluation to score artifacts and distribute scrip rewards,
+  creating economic incentives for valuable work.
+
+out_of_scope:
+  - "Market pricing (handled by escrow/contracts)"
+  - "Manual curation or voting systems"
+  - "Complex auction mechanisms (simple score-to-reward for now)"
+  - "Multi-evaluator consensus (single LLM judge)"
+
+# === ACCEPTANCE CRITERIA ===
+acceptance_criteria:
+  - id: AC-1
+    scenario: "Score a valid executable artifact"
+    category: happy_path
+    given:
+      - "An artifact with type 'executable'"
+      - "Content contains valid Python code"
+      - "Content is original (not seen before)"
+    when: "Artifact is submitted to mint for scoring"
+    then:
+      - "Returns success: true"
+      - "Returns score between 0-100"
+      - "Returns reason explaining the score"
+      - "Score reflects code quality and utility"
+    locked: true
+
+  - id: AC-2
+    scenario: "Duplicate content receives zero score"
+    category: error_case
+    given:
+      - "Artifact A was previously scored"
+      - "Artifact B has identical content to A"
+    when: "Artifact B is submitted for scoring"
+    then:
+      - "Returns success: true (not an error)"
+      - "Returns score: 0"
+      - "Reason indicates duplicate content"
+      - "No scrip reward given"
+    locked: true
+
+  - id: AC-3
+    scenario: "Long content is truncated"
+    category: edge_case
+    given:
+      - "Artifact content exceeds max_content_length (default 2000)"
+    when: "Artifact is submitted for scoring"
+    then:
+      - "Content is truncated with '... [truncated]' marker"
+      - "Scoring still proceeds"
+      - "No error is raised"
+    locked: true
+
+  - id: AC-4
+    scenario: "LLM failure returns error gracefully"
+    category: error_case
+    given:
+      - "LLM service is unavailable or times out"
+    when: "Artifact is submitted for scoring"
+    then:
+      - "Returns success: false"
+      - "Returns score: 0"
+      - "Error field contains description of failure"
+      - "No crash or unhandled exception"
+    locked: true
+
+  - id: AC-5
+    scenario: "Score is clamped to valid range"
+    category: edge_case
+    given:
+      - "LLM returns a score outside 0-100 range"
+    when: "Response is parsed"
+    then:
+      - "Score is clamped to 0-100"
+      - "Values < 0 become 0"
+      - "Values > 100 become 100"
+    locked: true
+
+# === IMPLEMENTATION SECTION ===
+adrs:
+  - ADR-0001  # Everything is an artifact (mint scores artifacts)
+  - ADR-0003  # Contracts can do anything (mint is a genesis artifact)
+
+code:
+  - src/world/mint_scorer.py
+  - src/world/genesis.py
+
+tests:
+  - tests/unit/test_originality.py
+  - tests/integration/test_mint_auction.py
+
+docs:
+  - docs/architecture/current/genesis_artifacts.md
+  - docs/architecture/current/mint.md

@@ -14,6 +14,9 @@ Usage:
     # Skip E2E tests (for documentation-only plans)
     python scripts/complete_plan.py --plan 35 --skip-e2e
 
+    # Re-verify an already-complete plan
+    python scripts/complete_plan.py --plan 35 --force
+
 See docs/meta/verification-enforcement.md for the full pattern.
 """
 
@@ -282,6 +285,7 @@ def complete_plan(
     project_root: Path,
     dry_run: bool = False,
     skip_e2e: bool = False,
+    force: bool = False,
     verbose: bool = True,
 ) -> bool:
     """Complete a plan with full verification.
@@ -304,10 +308,13 @@ def complete_plan(
         print(f"File: {plan_file.name}")
         print(f"Current Status: {current_status}")
 
-    if "\u2705" in current_status or "Complete" in current_status:
+    if ("\u2705" in current_status or "Complete" in current_status) and not force:
         print(f"\nPlan #{plan_number} is already marked complete.")
-        print("Use --force to re-verify if needed.")
+        print("Use --force to re-verify and update evidence.")
         return True
+
+    if force and verbose:
+        print(f"  (--force: re-verifying already-complete plan)")
 
     # Run verification steps
     all_passed = True
@@ -397,6 +404,11 @@ def main() -> int:
         help="Skip E2E tests (for documentation-only plans)"
     )
     parser.add_argument(
+        "--force", "-f",
+        action="store_true",
+        help="Re-verify and update evidence for already-complete plans"
+    )
+    parser.add_argument(
         "--quiet", "-q",
         action="store_true",
         help="Minimal output"
@@ -411,6 +423,7 @@ def main() -> int:
         project_root=project_root,
         dry_run=args.dry_run,
         skip_e2e=args.skip_e2e,
+        force=args.force,
         verbose=not args.quiet,
     )
 

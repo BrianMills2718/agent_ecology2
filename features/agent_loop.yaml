@@ -1,0 +1,144 @@
+# Feature: Agent Loop (Continuous Execution)
+# Autonomous agent loops that run independently of ticks
+
+feature: agent_loop
+planning_mode: detailed  # Core execution model, affects everything
+
+# === PRD SECTION (What/Why) ===
+problem: |
+  Agents need to run autonomously and continuously rather than being
+  tick-synchronized. Without continuous execution:
+  - Runner controls when agents think (centralized)
+  - All agents act exactly once per tick (inflexible)
+  - No way for agents to self-throttle or sleep
+  - Race conditions handled by tick sequencing, not by design
+
+  The agent loop provides autonomous execution where agents decide when to act,
+  with resource-gating and sleep/wake primitives.
+
+out_of_scope:
+  - "Multi-agent coordination primitives (handled by contracts)"
+  - "Complex scheduling algorithms (simple loop delays for now)"
+  - "Agent priority or preemption (all agents equal)"
+  - "Cross-agent resource sharing (independent rate limiters)"
+
+# === DESIGN SECTION (How) ===
+design:
+  approach: |
+    Each agent runs an autonomous loop: check resources → decide → execute → delay.
+    Rate limiters gate execution. Sleep/wake conditions allow agents to pause.
+    AgentLoopManager coordinates lifecycle of multiple agent loops.
+  key_decisions:
+    - "Agents run continuous async loops, not tick-synchronized"
+    - "Resource checks (rate limiter) before each action"
+    - "Configurable delays (min/max loop delay)"
+    - "Error backoff with max consecutive errors"
+    - "Sleep with wake conditions (time, event, resource)"
+  risks:
+    - "Runaway loops if rate limiting fails (mitigated by resource checks)"
+    - "Starvation if one agent monopolizes (accepted, observe outcomes)"
+
+# === ACCEPTANCE CRITERIA ===
+acceptance_criteria:
+  - id: AC-1
+    scenario: "Agent loop starts and runs iterations"
+    category: happy_path
+    given:
+      - "Agent loop is created with valid callbacks"
+      - "Rate limiter has available capacity"
+    when: "Loop is started"
+    then:
+      - "State transitions to RUNNING"
+      - "decide_action callback is called"
+      - "execute_action callback is called with result"
+      - "Loop continues until stopped"
+    locked: true
+
+  - id: AC-2
+    scenario: "Agent loop respects rate limits"
+    category: happy_path
+    given:
+      - "Agent loop is running"
+      - "Rate limiter is exhausted (0 capacity)"
+    when: "Next loop iteration begins"
+    then:
+      - "State transitions to WAITING_FOR_RESOURCES"
+      - "No action is proposed or executed"
+      - "Loop waits until capacity available"
+    locked: true
+
+  - id: AC-3
+    scenario: "Agent can sleep with wake condition"
+    category: happy_path
+    given:
+      - "Agent loop is running"
+      - "Sleep is requested with wake condition"
+    when: "Sleep is triggered"
+    then:
+      - "State transitions to SLEEPING"
+      - "No actions executed while sleeping"
+      - "Loop resumes when wake condition is met"
+    locked: true
+
+  - id: AC-4
+    scenario: "Wake condition types work correctly"
+    category: happy_path
+    given:
+      - "Agent is sleeping"
+    when: "Wake condition type is TIME with duration 5s"
+    then:
+      - "Agent wakes after 5 seconds"
+      - "Agent resumes normal operation"
+    locked: true
+
+  - id: AC-5
+    scenario: "Error backoff increases delay"
+    category: error_case
+    given:
+      - "Agent loop encounters consecutive errors"
+      - "Error count reaches max_consecutive_errors"
+    when: "Another error occurs"
+    then:
+      - "State transitions to BACKING_OFF"
+      - "Delay increases exponentially"
+      - "Agent eventually retries or stops"
+    locked: true
+
+  - id: AC-6
+    scenario: "Loop manager starts multiple agents"
+    category: happy_path
+    given:
+      - "AgentLoopManager with multiple registered agents"
+    when: "start_all() is called"
+    then:
+      - "All agent loops start concurrently"
+      - "Each agent runs independently"
+      - "Manager tracks all loop states"
+    locked: true
+
+  - id: AC-7
+    scenario: "Loop manager stops all agents gracefully"
+    category: happy_path
+    given:
+      - "Multiple agent loops running"
+    when: "stop_all() is called"
+    then:
+      - "All loops receive stop signal"
+      - "All loops transition to STOPPED"
+      - "No orphan tasks remain"
+    locked: true
+
+# === IMPLEMENTATION SECTION ===
+adrs:
+  - ADR-0002  # No compute debt (rate limiting gates execution)
+
+code:
+  - src/simulation/agent_loop.py
+  - src/simulation/runner.py
+
+tests:
+  - tests/unit/test_agent_loop.py
+  - tests/integration/test_runner.py
+
+docs:
+  - docs/architecture/current/execution_model.md

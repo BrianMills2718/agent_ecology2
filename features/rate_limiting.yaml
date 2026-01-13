@@ -1,0 +1,116 @@
+# Feature: Rate Limiting
+# Rolling window rate limiter for renewable resources
+
+feature: rate_limiting
+planning_mode: autonomous  # Well-understood algorithm
+
+# === PRD SECTION (What/Why) ===
+problem: |
+  Agents need constrained access to renewable resources (LLM calls, CPU time,
+  disk I/O) to prevent resource exhaustion and ensure fair sharing.
+  Without rate limiting:
+  - One agent could exhaust all LLM budget
+  - No fairness between agents
+  - No way to throttle heavy users
+
+  Rate limiting uses a rolling time window to track usage and enforce limits,
+  independent of simulation ticks.
+
+out_of_scope:
+  - "Stock resources (handled by ledger balances)"
+  - "Per-request pricing (handled by contracts)"
+  - "Adaptive/dynamic limits (fixed config for now)"
+  - "Cross-agent limit sharing or pools"
+
+# === ACCEPTANCE CRITERIA ===
+acceptance_criteria:
+  - id: AC-1
+    scenario: "Consume within limit"
+    category: happy_path
+    given:
+      - "Resource 'llm_calls' has limit of 100 per 60-second window"
+      - "Agent has used 50 calls in current window"
+    when: "Agent consumes 10 more calls"
+    then:
+      - "Consume succeeds"
+      - "Usage increases to 60"
+      - "Remaining capacity is 40"
+    locked: true
+
+  - id: AC-2
+    scenario: "Consume fails when over limit"
+    category: error_case
+    given:
+      - "Resource has limit of 100 per window"
+      - "Agent has used 95 calls"
+    when: "Agent tries to consume 10 calls"
+    then:
+      - "Consume fails (returns False)"
+      - "Usage remains at 95"
+      - "No partial consumption"
+    locked: true
+
+  - id: AC-3
+    scenario: "Old records expire after window"
+    category: happy_path
+    given:
+      - "Agent consumed 100 calls 61 seconds ago"
+      - "Window is 60 seconds"
+    when: "Agent checks capacity"
+    then:
+      - "Old records have expired"
+      - "Capacity is fully available (100)"
+      - "Agent can consume again"
+    locked: true
+
+  - id: AC-4
+    scenario: "Wait for capacity with timeout"
+    category: happy_path
+    given:
+      - "Agent is at limit (100/100 used)"
+      - "Records will expire in 5 seconds"
+    when: "Agent calls wait_for_capacity with 10-second timeout"
+    then:
+      - "Waits until records expire"
+      - "Returns True when capacity available"
+      - "Agent can then consume"
+    locked: true
+
+  - id: AC-5
+    scenario: "Wait for capacity times out"
+    category: error_case
+    given:
+      - "Agent is at limit"
+      - "Records won't expire within timeout period"
+    when: "Agent calls wait_for_capacity with 1-second timeout"
+    then:
+      - "Wait times out"
+      - "Returns False"
+      - "No consumption occurs"
+    locked: true
+
+  - id: AC-6
+    scenario: "Independent limits per agent"
+    category: happy_path
+    given:
+      - "Agent A has used 100 calls (at limit)"
+      - "Agent B has used 0 calls"
+    when: "Agent B tries to consume 50 calls"
+    then:
+      - "Agent B succeeds"
+      - "Agent A's limit is independent"
+      - "Each agent tracked separately"
+    locked: true
+
+# === IMPLEMENTATION SECTION ===
+adrs:
+  - ADR-0002  # No compute debt (rate limiting enforces constraints)
+
+code:
+  - src/world/rate_tracker.py
+
+tests:
+  - tests/unit/test_rate_tracker.py
+
+docs:
+  - docs/architecture/current/resources.md
