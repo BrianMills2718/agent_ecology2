@@ -6,6 +6,8 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 
 | Pattern | Problem Solved | Complexity |
 |---------|----------------|------------|
+| [Feature-Driven Development](feature-driven-development.md) | AI drift, cheating, big bang integration | High |
+| [Feature Linkage](feature-linkage.md) | Sparse file-to-constraint mappings | Medium |
 | [CLAUDE.md Authoring](claude-md-authoring.md) | AI assistants lack project context | Low |
 | [ADR](adr.md) | Architectural decisions get lost | Medium |
 | [Documentation Graph](documentation-graph.md) | Can't trace decisions → code | Medium |
@@ -38,6 +40,7 @@ These patterns are now implementation details of [Documentation Graph](documenta
 - Rebase Workflow - when using worktrees for parallel work (prevents "reverted" changes)
 
 **Add these when needed (more setup):**
+- Feature-Driven Development - comprehensive meta-process for verified progress, preventing AI drift/cheating
 - ADR - when architectural decisions need to be preserved long-term
 - Documentation Graph - when you need to trace ADR → target → current → code
 - Plan Workflow - for larger features with multiple steps
