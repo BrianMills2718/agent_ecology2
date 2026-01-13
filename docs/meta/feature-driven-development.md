@@ -52,6 +52,38 @@ Spec written → Spec LOCKED (committed) → Implementation
 
 Even if same AI instance, same context - once specs are committed and CI enforces immutability, the AI must pass the specs it wrote.
 
+### Modifying Locked Specs
+
+Locks prevent *sneaky* changes, not *all* changes. Legitimate reasons to modify specs:
+- Requirements actually changed (user decision)
+- Original spec was wrong or ambiguous
+- Scope legitimately changed
+
+**Process to modify:**
+
+```
+PR: Remove `locked: true` → Modify spec → Re-add `locked: true`
+                │
+                └── Human reviews diff, sees explicit unlock/modify/relock
+```
+
+**Why this works:**
+| Protection | How |
+|------------|-----|
+| Friction | AI must explicitly unlock (shows intent) |
+| Visibility | Spec changes show clearly in PR diff |
+| Audit trail | Git history shows unlock → modify → relock |
+| Human review | User reviews specs in plain English |
+
+**The key insight:** The lock's value is making spec changes *visible and deliberate*, not *impossible*. If AI explicitly unlocks, modifies, and relocks, that's a deliberate choice visible in git history for human review.
+
+**Stronger enforcement (if needed later):**
+- Require `unlock_reason:` field in YAML
+- Require separate unlock PR before modification PR
+- Require human approval label (e.g., `spec-change-approved`)
+
+Start simple. Add friction only if abuse is detected.
+
 ### Human-AI Division of Labor
 
 | Role | Human | AI |
