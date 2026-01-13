@@ -95,6 +95,22 @@ Agents are artifacts. Their configuration (prompts, models, policies) is artifac
 
 Unlike biological evolution, changes aren't random or incremental. An agent can analyze its own performance, reason about improvements, and rewrite itself entirely. Agents can sell control of themselves—enabling employment, delegation, and acquisition. No mutation operators or fitness functions. Just artifacts, rights, intelligence, and selection pressure.
 
+### Decision Heuristics
+
+When making architectural decisions, we apply these heuristics (in priority order):
+
+1. **Emergence is the goal** - Everything else serves emergent capability. Ask "what does this incentivize?" not just "does this work?"
+2. **Minimal kernel, maximum flexibility** - Kernel provides physics, not policy. When in doubt, don't add it to kernel.
+3. **Align incentives** - Bad incentives = bad emergence. Consider what behaviors decisions incentivize.
+4. **Pragmatism over purity** - If purity causes undue friction, consider less pure options.
+5. **Avoid defaults; if unavoidable, make configurable** - Defaults can distort incentives.
+6. **Genesis artifacts as middle ground** - When facing kernel-opinion vs agent-friction tradeoffs, consider genesis artifacts as services.
+7. **Selection pressure over protection** - Provide tools, accept failure as selection.
+8. **Observe, don't prevent** - Make behavior observable. Reputation emerges from observation.
+9. **When in doubt, contract decides** - Prefer contract-specified over hardcoded.
+
+See `CLAUDE.md` for detailed explanations of each heuristic.
+
 ## Resource Model
 
 Three resource categories plus economic currency:
