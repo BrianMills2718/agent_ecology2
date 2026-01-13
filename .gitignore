@@ -75,3 +75,4 @@ Thumbs.db
 !.claude/handoff_template.md
 !.claude/settings.json
 !.claude/hooks/
+!.claude/commands/

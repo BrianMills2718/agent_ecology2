@@ -2,7 +2,7 @@
 
 Master index of all gaps and their implementation plans.
 
-**Last verified:** 2026-01-12 (Plan #35 test names fixed, check_plan_tests.py skips inactive plans)
+**Last verified:** 2026-01-13 (Updated #20 to In Progress, refreshed migration strategy phases)
 
 ---
 
@@ -52,22 +52,22 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 4 | ~~Compute Debt Model~~ | - | ✅ Superseded | - |
 | 5 | [Oracle Anytime Bidding](05_oracle_anytime.md) | Medium | ❌ Needs Plan | - |
 | 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | ✅ Complete | #7,#8,#14,#16 |
-| 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | ❌ Blocked | - |
-| 8 | [Agent Rights Trading](08_agent_rights.md) | Low | ❌ Blocked | - |
+| 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | ❌ Needs Plan | - |
+| 8 | [Agent Rights Trading](08_agent_rights.md) | Low | ❌ Needs Plan | - |
 | 9 | [Scrip Debt Contracts](09_scrip_debt.md) | Low | ❌ Needs Plan | - |
 | 10 | [Memory Persistence](10_memory_persistence.md) | Low | ❌ Needs Plan | - |
 | 11 | [Terminology Cleanup](11_terminology.md) | Medium | ✅ Complete | #12 |
-| 12 | [Per-Agent LLM Budget](12_per_agent_budget.md) | Medium | ❌ Blocked | - |
+| 12 | [Per-Agent LLM Budget](12_per_agent_budget.md) | Medium | ❌ Needs Plan | - |
 | 13 | [Doc Line Number Refs](13_doc_line_refs.md) | Low | ❌ Needs Plan | - |
-| 14 | [MCP-Style Artifact Interface](14_mcp_interface.md) | Medium | ❌ Blocked | - |
+| 14 | [MCP-Style Artifact Interface](14_mcp_interface.md) | Medium | ❌ Needs Plan | - |
 | 15 | [invoke() Genesis Support](15_invoke_genesis.md) | Medium | ❌ Needs Plan | - |
 | 16 | [Artifact Discovery](16_artifact_discovery.md) | **High** | ✅ Complete | #17,#22 |
 | 17 | [Agent Discovery](17_agent_discovery.md) | Medium | ✅ Complete | - |
 | 18 | [Dangling Reference Handling](18_dangling_refs.md) | Medium | ❌ Needs Plan | - |
 | 19 | [Agent-to-Agent Threat Model](19_threat_model.md) | Medium | ❌ Needs Plan | - |
-| 20 | [Migration Strategy](20_migration_strategy.md) | **High** | 📋 Planned | - |
+| 20 | [Migration Strategy](20_migration_strategy.md) | **High** | 🚧 In Progress | - |
 | 21 | [Testing for Continuous](21_continuous_testing.md) | Medium | 📋 Planned | - |
-| 22 | [Coordination Primitives](22_coordination.md) | Medium | ❌ Blocked | - |
+| 22 | [Coordination Primitives](22_coordination.md) | Medium | ❌ Needs Plan | - |
 | 23 | [Error Response Conventions](23_error_conventions.md) | Low | ❌ Needs Plan | - |
 | 24 | [Ecosystem Health KPIs](24_health_kpis.md) | Medium | ❌ Needs Plan | #25 |
 | 25 | [System Auditor Agent](25_system_auditor.md) | Low | ⏸️ Blocked | - |

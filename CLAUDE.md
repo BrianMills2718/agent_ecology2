@@ -262,15 +262,23 @@ claude -p "migrate foo.py..." --allowedTools Edit Bash
 
 ### Work Priorities
 
-When starting a session, address these in rough order:
+When starting or continuing a session, first run:
+```bash
+python scripts/check_claims.py --list && gh pr list
+```
+
+Then address these in rough order (use judgment):
 
 | Priority | Why |
 |----------|-----|
-| 1. Check claims | Avoid colliding with other CC instances |
-| 2. Surface uncertainties | Wasted work is expensive - ask early |
-| 3. Review PRs / resolve conflicts | Unblocks others; stale PRs accumulate debt |
-| 4. Update documentation | Clarifies thinking, often reveals issues |
-| 5. New implementation | Only after above are addressed |
+| 1. Surface uncertainties | Wasted work is expensive - ask early |
+| 2. Merge passing PRs | Clears the queue, integrates completed work |
+| 3. Resolve PR conflicts | Keeps work mergeable |
+| 4. Review pending PRs | Unblocks other instances |
+| 5. Update stale documentation | Low risk, high value |
+| 6. New implementation | Use `make worktree` (handles claiming) |
+
+**If finishing work:** `make release`, verify PR created, check CI status.
 
 **These are guidelines, not rigid rules.** Use judgment:
 - A PR conflict might be a doc issue requiring research first
@@ -324,8 +332,7 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| tier2-architecture-decisions | - | Tier 2 architecture decisions (Items 4-7 | 2026-01-13T10:36 | Active |
-| plan-28-mcp-servers | 28 | Implement MCP server integration | 2026-01-13T10:43 | Active |
+| - | - | - | - | - |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->

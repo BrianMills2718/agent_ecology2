@@ -1,9 +1,10 @@
 # Gap 20: Migration Strategy
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** High
 **Blocked By:** None
 **Blocks:** None
+**Last Updated:** 2026-01-13
 
 ---
 
@@ -47,14 +48,14 @@ From `docs/architecture/target/01_README.md`:
 
 ---
 
-### Phase 2: Integration (CURRENT)
+### Phase 2: Integration ✅ MOSTLY COMPLETE
 
 **Goal:** Wire new infrastructure into simulation runner
 
 | Gap | Status | Description |
 |-----|--------|-------------|
-| #2 Continuous Execution | ⏸️ In Progress | AgentLoop, remove tick dependency |
-| #21 Testing for Continuous | ⏸️ Blocked by #2 | New testing patterns |
+| #2 Continuous Execution | ✅ Complete | AgentLoop, feature flag implemented |
+| #21 Testing for Continuous | 📋 Planned | Now unblocked, ready for work |
 
 **Key Changes:**
 1. Replace tick loop with agent loops
@@ -77,16 +78,16 @@ From `docs/architecture/target/01_README.md`:
 
 ---
 
-### Phase 3: Unified Ontology
+### Phase 3: Unified Ontology ✅ MOSTLY COMPLETE
 
 **Goal:** Everything is an artifact with consistent interface
 
 | Gap | Status | Description |
 |-----|--------|-------------|
-| #6 Unified Ontology | ❌ In Progress | Common artifact fields |
-| #14 MCP Interface | ⏸️ Blocked by #6 | Artifact schemas |
-| #16 Artifact Discovery | ⏸️ Blocked by #6 | genesis_store interface |
-| #7 Single ID Namespace | ⏸️ Blocked by #6 | Unify agent/artifact IDs |
+| #6 Unified Ontology | ✅ Complete | Common artifact fields implemented |
+| #14 MCP Interface | 📋 Unblocked | Now ready for implementation |
+| #16 Artifact Discovery | ✅ Complete | genesis_store interface done |
+| #7 Single ID Namespace | 📋 Unblocked | Now ready for implementation |
 
 **Key Changes:**
 1. Add `has_standing`, `can_execute`, `access_contract_id` to all artifacts
@@ -108,8 +109,8 @@ From `docs/architecture/target/01_README.md`:
 
 | Gap | Status | Description |
 |-----|--------|-------------|
-| #5 Contracts | ✅ Complete | Basic contract system |
-| #8 Agent Rights Trading | ⏸️ Blocked by #6 | Tradeable capabilities |
+| Contract System | ✅ Complete | Basic contract system (GAP-GEN-001) |
+| #8 Agent Rights Trading | 📋 Unblocked | Now ready (#6 complete) |
 
 **Key Changes:**
 1. Every artifact gets `access_contract_id` field
@@ -126,14 +127,14 @@ From `docs/architecture/target/01_README.md`:
 
 ---
 
-### Phase 5: Real Resource Limits
+### Phase 5: Real Resource Limits ✅ PARTIALLY COMPLETE
 
 **Goal:** Docker containers with actual resource limits
 
 | Gap | Status | Description |
 |-----|--------|-------------|
 | #3 Docker Isolation | ✅ Complete | Container infrastructure |
-| #12 Per-Agent Budget | ⏸️ Blocked by #11 | Individual LLM budgets |
+| #12 Per-Agent Budget | 📋 Unblocked | Now ready (#11 complete) |
 
 **Key Changes:**
 1. Each agent runs in Docker container
@@ -148,15 +149,15 @@ From `docs/architecture/target/01_README.md`:
 
 ---
 
-### Phase 6: Advanced Features
+### Phase 6: Advanced Features (In Progress)
 
 **Goal:** Full target architecture
 
 | Gap | Status | Description |
 |-----|--------|-------------|
-| #28 MCP Servers | ❌ Needs Plan | External tool access |
-| #22 Coordination | ⏸️ Blocked | Agent collaboration |
-| #17 Agent Discovery | ⏸️ Blocked | Find other agents |
+| #28 MCP Servers | 🚧 In Progress | External tool access (CC-3 working) |
+| #22 Coordination | 📋 Unblocked | Now ready (#16 complete) |
+| #17 Agent Discovery | ✅ Complete | Agent discovery implemented |
 
 ---
 
@@ -205,17 +206,46 @@ features:
 
 ## Implementation Order
 
-Based on dependency graph:
+Based on dependency graph (updated 2026-01-13):
 
 ```
-Phase 1 (✅) → Phase 2 (current)
-                    ↓
-              Phase 3 → Phase 4
-                    ↓
-              Phase 5 → Phase 6
+Phase 1 (✅ COMPLETE) → Phase 2 (✅ mostly complete)
+                              ↓
+                        Phase 3 (✅ mostly complete) → Phase 4 (partial)
+                              ↓
+                        Phase 5 (partial) → Phase 6 (in progress)
 ```
 
-**Critical path:** Phase 2 (Continuous Execution) unblocks most other work.
+**Progress Summary:**
+- Phase 1: ✅ Foundation complete
+- Phase 2: ✅ #2 Continuous Execution done, #21 Testing ready
+- Phase 3: ✅ #6 Ontology done, #16 Discovery done, #14/#7 unblocked
+- Phase 4: ✅ Contract system done, #8 unblocked
+- Phase 5: ✅ #3 Docker done, #12 unblocked
+- Phase 6: 🚧 #17 done, #28 in progress, #22 unblocked
+
+**Remaining blockers:** None - all previously blocked items are now unblocked.
+
+---
+
+## Required Tests
+
+This is a meta-tracking plan. Tests live in individual gap plans:
+- `tests/test_rate_tracking.py` - Phase 1 (#1 Rate Allocation)
+- `tests/test_agent_loop.py` - Phase 2 (#2 Continuous Execution)
+- `tests/test_discovery.py` - Phase 3 (#16 Artifact Discovery)
+- `tests/e2e/test_smoke.py` - End-to-end verification
+
+**Verification approach:** All referenced gaps must be ✅ Complete with passing tests before this plan can be marked complete.
+
+---
+
+## E2E Verification
+
+Meta-plan completion criteria:
+1. All Phase 1-3 gaps marked ✅ Complete
+2. Feature flags functional: `execution_mode`, `artifact_ontology`, `access_control`
+3. E2E test passes with continuous mode: `pytest tests/e2e/ -v --run-external`
 
 ---
 
@@ -224,4 +254,4 @@ Phase 1 (✅) → Phase 2 (current)
 - This plan tracks high-level phases; individual gaps have detailed plans
 - Update this document as phases complete
 - Feature flags enable safe experimentation
-- Prioritize Phase 2 to unblock downstream work
+- ~~Prioritize Phase 2 to unblock downstream work~~ (Phase 2 done)
