@@ -8,17 +8,20 @@ Usage:
     # List all claims
     python scripts/check_claims.py --list
 
-    # Claim work (auto-detects branch as ID)
-    python scripts/check_claims.py --claim --task "Implement docker isolation"
+    # List available features
+    python scripts/check_claims.py --list-features
 
-    # Claim a plan (checks dependencies first)
+    # Claim a feature (recommended)
+    python scripts/check_claims.py --claim --feature ledger --task "Fix transfer bug"
+
+    # Claim a plan
     python scripts/check_claims.py --claim --plan 3 --task "Docker isolation"
 
-    # Claim with explicit ID (if not using branches)
-    python scripts/check_claims.py --claim --id my-instance --task "..."
+    # Claim both feature and plan
+    python scripts/check_claims.py --claim --feature escrow --plan 8 --task "Agent rights"
 
-    # Check if a task would overlap with existing claims (without claiming)
-    python scripts/check_claims.py --check-overlap "Create feature definitions"
+    # Check if files are covered by claims (CI mode)
+    python scripts/check_claims.py --check-files src/world/ledger.py src/world/executor.py
 
     # Release current branch's claim
     python scripts/check_claims.py --release
@@ -35,11 +38,12 @@ Usage:
 Branch name is used as instance identity by default.
 Primary data store: .claude/active-work.yaml
 
-Overlap Detection:
-    When claiming, the script checks for overlapping claims based on:
-    - Same plan number (always blocked)
-    - Similar task descriptions (keyword-based similarity)
-    Use --force to proceed despite overlap warnings.
+Scope-Based Claims:
+    Claims should specify a scope (--plan and/or --feature).
+    - Plans are defined in docs/plans/*.md
+    - Features are defined in features/*.yaml
+    Each scope can only be claimed by one instance at a time.
+    Use --force to override (NOT recommended).
 """
 
 import argparse
@@ -57,93 +61,121 @@ YAML_PATH = Path(".claude/active-work.yaml")
 CLAUDE_MD_PATH = Path("CLAUDE.md")
 PLANS_DIR = Path("docs/plans")
 
-# Keywords that indicate similar work scopes
-SCOPE_KEYWORDS = {
-    "feature": ["feature", "features", "definition", "definitions", "yaml"],
-    "test": ["test", "tests", "testing", "tdd", "pytest"],
-    "doc": ["doc", "docs", "documentation", "readme", "claude.md"],
-    "ci": ["ci", "workflow", "github", "actions", "enforcement"],
-    "plan": ["plan", "plans", "gap", "gaps", "implementation"],
-    "claim": ["claim", "claims", "coordination", "checkout"],
-}
+FEATURES_DIR = Path("features")
 
 
-def extract_scope_tags(text: str) -> set[str]:
-    """Extract scope tags from text based on keywords."""
-    text_lower = text.lower()
-    tags: set[str] = set()
+def load_all_features() -> dict[str, dict[str, Any]]:
+    """Load all feature definitions from features/*.yaml.
 
-    for scope, keywords in SCOPE_KEYWORDS.items():
-        for keyword in keywords:
-            if keyword in text_lower:
-                tags.add(scope)
-                break
-
-    return tags
-
-
-def compute_task_similarity(task1: str, task2: str) -> tuple[float, list[str]]:
-    """Compute similarity between two task descriptions.
-
-    Returns (similarity_score, list_of_overlapping_aspects).
-    Score is 0.0 to 1.0.
+    Returns dict mapping feature name to feature data.
     """
-    # Extract scope tags
-    tags1 = extract_scope_tags(task1)
-    tags2 = extract_scope_tags(task2)
+    features: dict[str, dict[str, Any]] = {}
 
-    # Check for overlapping scopes
-    overlapping = tags1 & tags2
-    if not overlapping:
-        return (0.0, [])
+    if not FEATURES_DIR.exists():
+        return features
 
-    # Calculate Jaccard similarity of scope tags
-    union = tags1 | tags2
-    similarity = len(overlapping) / len(union) if union else 0.0
-
-    # Boost similarity if exact words match
-    words1 = set(task1.lower().split())
-    words2 = set(task2.lower().split())
-    word_overlap = words1 & words2
-
-    # Filter out common words
-    common_words = {"the", "a", "an", "to", "for", "and", "or", "in", "on", "with", "is", "are"}
-    significant_overlap = word_overlap - common_words
-
-    if len(significant_overlap) >= 3:
-        similarity = min(1.0, similarity + 0.3)
-
-    return (similarity, list(overlapping))
-
-
-def check_claim_overlap(
-    new_task: str,
-    new_plan: int | None,
-    existing_claims: list[dict[str, Any]],
-) -> list[tuple[dict[str, Any], float, list[str]]]:
-    """Check if a new claim overlaps with existing claims.
-
-    Returns list of (claim, similarity, overlapping_aspects) for overlapping claims.
-    """
-    overlaps: list[tuple[dict[str, Any], float, list[str]]] = []
-
-    for claim in existing_claims:
-        existing_task = claim.get("task", "")
-        existing_plan = claim.get("plan")
-
-        # Exact plan match is always an overlap
-        if new_plan and existing_plan and new_plan == existing_plan:
-            overlaps.append((claim, 1.0, ["same plan"]))
+    for path in list(FEATURES_DIR.glob("*.yaml")) + list(FEATURES_DIR.glob("*.yml")):
+        try:
+            with open(path) as f:
+                data = yaml.safe_load(f)
+                if data and "feature" in data:
+                    features[data["feature"]] = data
+        except (yaml.YAMLError, FileNotFoundError):
             continue
 
-        # Check task similarity
-        similarity, aspects = compute_task_similarity(new_task, existing_task)
+    return features
 
-        # Threshold for warning (0.4 = 40% overlap)
-        if similarity >= 0.4:
-            overlaps.append((claim, similarity, aspects))
 
-    return overlaps
+def get_feature_names() -> list[str]:
+    """Get list of valid feature names."""
+    features = load_all_features()
+    return sorted(features.keys())
+
+
+def build_file_to_feature_map() -> dict[str, str]:
+    """Build mapping from file paths to feature names.
+
+    Uses the 'code:' section in each feature definition.
+    """
+    file_map: dict[str, str] = {}
+    features = load_all_features()
+
+    for feature_name, data in features.items():
+        code_files = data.get("code", [])
+        for filepath in code_files:
+            # Normalize path
+            normalized = str(Path(filepath))
+            file_map[normalized] = feature_name
+
+    return file_map
+
+
+def check_scope_conflict(
+    new_plan: int | None,
+    new_feature: str | None,
+    existing_claims: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Check if new claim conflicts with existing claims.
+
+    Conflicts occur when:
+    - Same plan number is claimed
+    - Same feature is claimed
+
+    Returns list of conflicting claims.
+    """
+    conflicts: list[dict[str, Any]] = []
+
+    for claim in existing_claims:
+        existing_plan = claim.get("plan")
+        existing_feature = claim.get("feature")
+
+        # Exact plan match
+        if new_plan and existing_plan and new_plan == existing_plan:
+            conflicts.append(claim)
+            continue
+
+        # Exact feature match
+        if new_feature and existing_feature and new_feature == existing_feature:
+            conflicts.append(claim)
+            continue
+
+    return conflicts
+
+
+def check_files_claimed(
+    modified_files: list[str],
+    claims: list[dict[str, Any]],
+) -> tuple[list[str], list[str]]:
+    """Check if modified files are covered by claims.
+
+    Returns (claimed_files, unclaimed_files).
+    """
+    file_map = build_file_to_feature_map()
+
+    # Get all claimed features and plans
+    claimed_features: set[str] = set()
+    claimed_plans: set[int] = set()
+
+    for claim in claims:
+        if claim.get("feature"):
+            claimed_features.add(claim["feature"])
+        if claim.get("plan"):
+            claimed_plans.add(claim["plan"])
+
+    claimed: list[str] = []
+    unclaimed: list[str] = []
+
+    for filepath in modified_files:
+        normalized = str(Path(filepath))
+        feature = file_map.get(normalized)
+
+        if feature and feature in claimed_features:
+            claimed.append(filepath)
+        else:
+            # File is not in any feature's code section, or feature not claimed
+            unclaimed.append(filepath)
+
+    return claimed, unclaimed
 
 
 def get_plan_status(plan_number: int) -> tuple[str, list[int]]:
@@ -360,26 +392,43 @@ def list_claims(claims: list[dict]) -> None:
         age = get_age_string(ts) if ts else "unknown"
 
         cc_id = claim.get("cc_id", "?")
-        plan = claim.get("plan", "?")
+        plan = claim.get("plan")
+        feature = claim.get("feature")
         task = claim.get("task", "")[:35]
-        branch = claim.get("branch", "")
 
-        print(f"  {cc_id:8} | Plan #{plan:<3} | {task:35} | {age}")
-        if branch:
-            print(f"           Branch: {branch}")
+        # Build scope string
+        scope_parts = []
+        if plan:
+            scope_parts.append(f"Plan #{plan}")
+        if feature:
+            scope_parts.append(f"'{feature}'")
+        scope_str = " + ".join(scope_parts) if scope_parts else "unscoped"
+
+        print(f"  {cc_id:15} | {scope_str:20} | {task:30} | {age}")
         if claim.get("files"):
-            print(f"           Files: {', '.join(claim['files'][:3])}")
+            print(f"                   Files: {', '.join(claim['files'][:3])}")
 
 
 def add_claim(
     data: dict[str, Any],
     cc_id: str,
     plan: int | None,
+    feature: str | None,
     task: str,
     files: list[str] | None = None,
     force: bool = False,
 ) -> bool:
-    """Add a new claim."""
+    """Add a new claim.
+
+    Args:
+        data: Claims data structure
+        cc_id: Instance identifier (usually branch name)
+        plan: Plan number to claim (optional)
+        feature: Feature name to claim (optional)
+        task: Task description
+        files: Specific files being worked on (optional)
+        force: Force claim despite conflicts
+    """
     # Check for existing claim by this instance
     for claim in data["claims"]:
         if claim.get("cc_id") == cc_id:
@@ -400,37 +449,40 @@ def add_claim(
                 return False
             print("\n--force specified, proceeding despite dependency issues.\n")
 
-    # Check for overlapping claims (NEW)
-    overlaps = check_claim_overlap(task, plan, data["claims"])
-    if overlaps:
+    # Validate feature name if provided
+    if feature:
+        valid_features = get_feature_names()
+        if feature not in valid_features:
+            print(f"Error: Unknown feature '{feature}'")
+            print(f"Valid features: {', '.join(valid_features)}")
+            return False
+
+    # Check for scope conflicts (exact match on plan or feature)
+    conflicts = check_scope_conflict(plan, feature, data["claims"])
+    if conflicts:
         print("=" * 60)
-        print("⚠️  POTENTIAL OVERLAP DETECTED")
+        print("❌ SCOPE CONFLICT - CLAIM BLOCKED")
         print("=" * 60)
-        for existing_claim, similarity, aspects in overlaps:
-            pct = int(similarity * 100)
-            existing_cc = existing_claim.get("cc_id", "?")
-            existing_task = existing_claim.get("task", "")[:50]
-            print(f"\n  Overlap with: {existing_cc}")
-            print(f"  Their task:   {existing_task}")
-            print(f"  Similarity:   {pct}% (overlapping: {', '.join(aspects)})")
+        for conflict in conflicts:
+            existing_cc = conflict.get("cc_id", "?")
+            existing_plan = conflict.get("plan")
+            existing_feature = conflict.get("feature")
+            existing_task = conflict.get("task", "")[:50]
+
+            if existing_plan and plan and existing_plan == plan:
+                print(f"\n  Plan #{plan} already claimed by: {existing_cc}")
+            if existing_feature and feature and existing_feature == feature:
+                print(f"\n  Feature '{feature}' already claimed by: {existing_cc}")
+            print(f"  Their task: {existing_task}")
 
         print("\n" + "-" * 60)
-        print("This may cause duplicate work or merge conflicts.")
-        print("Check with the other instance before proceeding.")
+        print("Each plan/feature can only be claimed by one instance.")
+        print("Coordinate with the other instance before proceeding.")
 
         if not force:
-            print("\nUse --force to claim anyway (coordinates at your own risk).")
+            print("\nUse --force to claim anyway (NOT recommended).")
             return False
-        print("\n--force specified, proceeding despite overlap warning.\n")
-
-    # Check for conflicting claim on same plan (if plan specified)
-    # Note: This is now partially redundant with overlap check above,
-    # but kept for explicit plan-level warnings
-    if plan:
-        for claim in data["claims"]:
-            if claim.get("plan") == plan:
-                print(f"Warning: Plan #{plan} already claimed by {claim.get('cc_id')}")
-                print("Proceed with caution to avoid conflicts.")
+        print("\n--force specified, proceeding despite conflict.\n")
 
     new_claim = {
         "cc_id": cc_id,
@@ -440,16 +492,23 @@ def add_claim(
 
     if plan:
         new_claim["plan"] = plan
+    if feature:
+        new_claim["feature"] = feature
     if files:
         new_claim["files"] = files
 
     data["claims"].append(new_claim)
     save_yaml(data)
 
+    # Build output message
+    scope_parts = []
     if plan:
-        print(f"Claimed: {cc_id} -> Plan #{plan}: {task}")
-    else:
-        print(f"Claimed: {cc_id} -> {task}")
+        scope_parts.append(f"Plan #{plan}")
+    if feature:
+        scope_parts.append(f"Feature '{feature}'")
+    scope_str = " + ".join(scope_parts) if scope_parts else "unscoped"
+
+    print(f"Claimed: {cc_id} -> {scope_str}: {task}")
     return True
 
 
@@ -668,10 +727,21 @@ def main() -> int:
         help="CI mode: verify current branch has an active claim (exit 1 if not)"
     )
     parser.add_argument(
-        "--check-overlap",
+        "--feature", "-F",
         type=str,
-        metavar="TASK",
-        help="Check if a task would overlap with existing claims (without claiming)"
+        help="Feature name to claim (from features/*.yaml)"
+    )
+    parser.add_argument(
+        "--list-features",
+        action="store_true",
+        help="List all available feature names"
+    )
+    parser.add_argument(
+        "--check-files",
+        type=str,
+        nargs="+",
+        metavar="FILE",
+        help="Check if files are covered by current claims"
     )
 
     args = parser.parse_args()
@@ -713,21 +783,43 @@ def main() -> int:
             print("  3. Then commit your changes")
             return 1
 
-    # Handle check-overlap (preview mode)
-    if args.check_overlap:
-        overlaps = check_claim_overlap(args.check_overlap, args.plan, claims)
-        if not overlaps:
-            print(f"✓ No overlapping claims found for: {args.check_overlap}")
+    # Handle list-features
+    if args.list_features:
+        features = get_feature_names()
+        if not features:
+            print("No features defined in features/*.yaml")
             return 0
-        else:
-            print("⚠️  Potential overlaps detected:")
-            for existing_claim, similarity, aspects in overlaps:
-                pct = int(similarity * 100)
-                existing_cc = existing_claim.get("cc_id", "?")
-                existing_task = existing_claim.get("task", "")[:50]
-                print(f"\n  {existing_cc}: {existing_task}")
-                print(f"  Similarity: {pct}% (overlapping: {', '.join(aspects)})")
+        print("Available features:")
+        for f in features:
+            print(f"  - {f}")
+
+        # Show file mapping
+        file_map = build_file_to_feature_map()
+        if file_map:
+            print(f"\nFiles mapped to features: {len(file_map)}")
+        return 0
+
+    # Handle check-files (CI mode)
+    if args.check_files:
+        claimed, unclaimed = check_files_claimed(args.check_files, claims)
+        if unclaimed:
+            print("❌ Files not covered by claims:")
+            for f in unclaimed:
+                print(f"  - {f}")
+
+            print("\nTo fix, claim the feature that owns these files:")
+            file_map = build_file_to_feature_map()
+            suggested_features: set[str] = set()
+            for f in unclaimed:
+                feature = file_map.get(str(Path(f)))
+                if feature:
+                    suggested_features.add(feature)
+            if suggested_features:
+                print(f"  python scripts/check_claims.py --claim --feature {list(suggested_features)[0]} --task '...'")
             return 1
+        else:
+            print(f"✓ All {len(claimed)} file(s) covered by claims")
+            return 0
 
     # Handle cleanup
     if args.cleanup:
@@ -742,11 +834,16 @@ def main() -> int:
     if args.claim:
         if not args.task:
             print("Error: --claim requires --task")
-            print(f"Example: python scripts/check_claims.py --claim --task 'Implement feature X'")
+            print("Example: python scripts/check_claims.py --claim --feature ledger --task 'Fix transfer bug'")
             return 1
+        if not args.plan and not args.feature:
+            print("Warning: No --plan or --feature specified. Consider scoping your claim.")
+            print("  Use --plan N for plan-based work")
+            print("  Use --feature NAME for feature-based work")
+            print("  Use --list-features to see available features")
         if instance_id == "main":
             print("Warning: Claiming on 'main' branch. Consider using a feature branch.")
-        success = add_claim(data, instance_id, args.plan, args.task, force=args.force)
+        success = add_claim(data, instance_id, args.plan, args.feature, args.task, force=args.force)
         if success:
             sync_to_claude_md(data["claims"])
         return 0 if success else 1
