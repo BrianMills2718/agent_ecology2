@@ -63,16 +63,16 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 15 | [invoke() Genesis Support](15_invoke_genesis.md) | Medium | ❌ Needs Plan | - |
 | 16 | [Artifact Discovery](16_artifact_discovery.md) | **High** | ✅ Complete | #17,#22 |
 | 17 | [Agent Discovery](17_agent_discovery.md) | Medium | ✅ Complete | - |
-| 18 | [Dangling Reference Handling](18_dangling_refs.md) | Medium | ❌ Needs Plan | - |
-| 19 | [Agent-to-Agent Threat Model](19_threat_model.md) | Medium | ❌ Needs Plan | - |
+| 18 | [Dangling Reference Handling](18_dangling_refs.md) | Medium | 📋 Needs Plan | - |
+| 19 | [Agent-to-Agent Threat Model](19_threat_model.md) | Medium | 📋 Planned | - |
 | 20 | [Migration Strategy](20_migration_strategy.md) | **High** | ✅ Complete | - |
 | 21 | [Testing for Continuous](21_continuous_testing.md) | Medium | ✅ Complete | - |
 | 22 | [Coordination Primitives](22_coordination.md) | Medium | ❌ Needs Plan | - |
 | 23 | [Error Response Conventions](23_error_conventions.md) | Low | 📋 Needs Plan | - |
 | 24 | [Ecosystem Health KPIs](24_health_kpis.md) | Medium | ✅ Complete | #25 |
-| 25 | [System Auditor Agent](25_system_auditor.md) | Low | ✅ Complete | - |
-| 26 | [Vulture Observability](26_vulture_observability.md) | Medium | ❌ Planned | - |
-| 27 | [Invocation Registry](27_invocation_registry.md) | Medium | 📋 Planned | - |
+| 25 | [System Auditor Agent](25_system_auditor.md) | Low | ✅ Planned | - |
+| 26 | [Vulture Observability](26_vulture_observability.md) | Medium | 📋 Planned | - |
+| 27 | [Invocation Registry](27_invocation_registry.md) | Medium | 📋 Needs Plan | - |
 | 28 | [Pre-seeded MCP Servers](28_mcp_servers.md) | **High** | ✅ Complete | - |
 | 29 | [Library Installation](29_package_manager.md) | Medium | ❌ Needs Plan | - |
 | 30 | [Capability Request System](30_capability_requests.md) | Medium | ❌ Needs Plan | - |
@@ -82,7 +82,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 34 | [Oracle to Mint Rename](34_oracle_mint_rename.md) | Medium | ✅ Complete | - |
 | 35 | [Verification Enforcement](35_verification_enforcement.md) | **High** | ✅ Complete | - |
 | 36 | [Re-verify Complete Plans](36_reverify_complete_plans.md) | **High** | ✅ Complete | - |
-| 37 | [Mandatory Planning + Human Review](37_mandatory_planning_human_review.md) | **High** | 🚧 In Progress | - |
+| 37 | [Mandatory Planning + Human Review](37_mandatory_planning_human_review.md) | **High** | ✅ Complete | - |
 
 ---
 

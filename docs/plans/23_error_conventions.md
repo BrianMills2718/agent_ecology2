@@ -1,4 +1,4 @@
-# Gap 23: Error Response Conventions
+# Plan #23: Error Response Conventions
 
 **Status:** 📋 Planned
 **Priority:** Low
@@ -7,245 +7,124 @@
 
 ---
 
-## Gap
+## Problem
 
-**Current:** No standard error format. Errors returned as `{"success": False, "error": "message"}` inconsistently.
+Error handling is inconsistent across the codebase:
 
-**Target:** Consistent error response schema with error codes and categories.
+1. **Multiple return patterns:**
+   - `{"success": False, "error": "message"}` (ExecutionResult)
+   - `(False, "error message")` (tuple returns in contracts.py)
+   - Exceptions (some places)
+   - String error messages (genesis artifacts)
 
----
+2. **No error classification:**
+   - Can't distinguish user errors from system errors
+   - No error codes for programmatic handling
+   - Agents can't easily categorize failures
 
-## Problem Statement
-
-Artifact invocations currently return errors as simple dictionaries:
-```python
-{"success": False, "error": "Some error message"}
-```
-
-Issues with current approach:
-1. **No error codes** - Can't programmatically distinguish error types
-2. **No categories** - Hard to know if error is user's fault or system's fault
-3. **Inconsistent fields** - Some add extra context, some don't
-4. **No retry guidance** - No way to know if error is retriable
-
-Agents need to:
-- Know if they caused the error (validation) vs system issue (timeout)
-- Know if they should retry
-- Identify specific error conditions for recovery logic
+3. **Inconsistent error messages:**
+   - Some include context, some don't
+   - No standard format for what information to include
 
 ---
 
-## Plan
+## Solution
 
-### Phase 1: Define Error Schema
+### Standard Error Response Schema
 
-**1.1 ErrorResponse Dataclass**
-
-```python
-# src/world/errors.py
-
-from dataclasses import dataclass
-from enum import Enum
-
-class ErrorCategory(str, Enum):
-    """Categories for error classification."""
-    VALIDATION = "validation"      # Invalid input, bad arguments
-    PERMISSION = "permission"      # Not authorized, wrong owner
-    RESOURCE = "resource"          # Not found, already exists
-    EXECUTION = "execution"        # Runtime error, timeout
-    SYSTEM = "system"              # Internal error, unexpected
-
-class ErrorCode(str, Enum):
-    """Specific error codes for programmatic handling."""
-    # Validation errors
-    MISSING_ARGUMENT = "missing_argument"
-    INVALID_ARGUMENT = "invalid_argument"
-    INVALID_TYPE = "invalid_type"
-
-    # Permission errors
-    NOT_OWNER = "not_owner"
-    NOT_AUTHORIZED = "not_authorized"
-    INSUFFICIENT_FUNDS = "insufficient_funds"
-
-    # Resource errors
-    NOT_FOUND = "not_found"
-    ALREADY_EXISTS = "already_exists"
-    ALREADY_LISTED = "already_listed"
-
-    # Execution errors
-    TIMEOUT = "timeout"
-    RUNTIME_ERROR = "runtime_error"
-    SYNTAX_ERROR = "syntax_error"
-
-    # System errors
-    INTERNAL_ERROR = "internal_error"
-    NOT_CONFIGURED = "not_configured"
-
-@dataclass
-class ErrorResponse:
-    """Standardized error response."""
-    success: bool = False  # Always False for errors
-    error: str = ""        # Human-readable message
-    code: str = ""         # Machine-readable error code
-    category: str = ""     # Error category (validation, permission, etc.)
-    retriable: bool = False  # Whether the operation should be retried
-    details: dict | None = None  # Optional additional context
-
-    def to_dict(self) -> dict:
-        """Convert to dictionary for serialization."""
-        result = {
-            "success": self.success,
-            "error": self.error,
-            "code": self.code,
-            "category": self.category,
-            "retriable": self.retriable,
-        }
-        if self.details:
-            result["details"] = self.details
-        return result
-```
-
-**1.2 Error Factory Functions**
+All functions that can fail should return a consistent structure:
 
 ```python
-def validation_error(message: str, code: ErrorCode = ErrorCode.INVALID_ARGUMENT, **details) -> dict:
-    """Create a validation error response."""
-    return ErrorResponse(
-        error=message,
-        code=code.value,
-        category=ErrorCategory.VALIDATION.value,
-        retriable=False,
-        details=details or None,
-    ).to_dict()
+class ErrorResponse(TypedDict):
+    """Standard error response format."""
+    success: Literal[False]
+    error_code: str          # Machine-readable (e.g., "INSUFFICIENT_FUNDS")
+    error_message: str       # Human-readable description
+    error_context: dict      # Optional additional details
 
-def permission_error(message: str, code: ErrorCode = ErrorCode.NOT_AUTHORIZED, **details) -> dict:
-    """Create a permission error response."""
-    return ErrorResponse(
-        error=message,
-        code=code.value,
-        category=ErrorCategory.PERMISSION.value,
-        retriable=False,
-        details=details or None,
-    ).to_dict()
 
-def resource_error(message: str, code: ErrorCode = ErrorCode.NOT_FOUND, **details) -> dict:
-    """Create a resource error response."""
-    return ErrorResponse(
-        error=message,
-        code=code.value,
-        category=ErrorCategory.RESOURCE.value,
-        retriable=False,
-        details=details or None,
-    ).to_dict()
+class SuccessResponse(TypedDict):
+    """Standard success response format."""
+    success: Literal[True]
+    result: Any              # The actual result
 
-def execution_error(message: str, code: ErrorCode = ErrorCode.RUNTIME_ERROR, retriable: bool = False, **details) -> dict:
-    """Create an execution error response."""
-    return ErrorResponse(
-        error=message,
-        code=code.value,
-        category=ErrorCategory.EXECUTION.value,
-        retriable=retriable,
-        details=details or None,
-    ).to_dict()
+
+# Union type for all responses
+Response = SuccessResponse | ErrorResponse
 ```
 
-### Phase 2: Migrate Genesis Artifacts
+### Error Code Categories
 
-Update genesis artifacts to use new error helpers:
+| Prefix | Category | Example |
+|--------|----------|---------|
+| `AUTH_` | Permission/ownership | `AUTH_NOT_OWNER` |
+| `VAL_` | Validation/input | `VAL_INVALID_AMOUNT` |
+| `RES_` | Resource limits | `RES_INSUFFICIENT_FUNDS` |
+| `SYS_` | System errors | `SYS_TIMEOUT` |
+| `NOT_` | Not found | `NOT_ARTIFACT_MISSING` |
 
-**Before:**
-```python
-return {"success": False, "error": "transfer requires [from_id, to_id, amount]"}
+### Standard Error Messages
+
+Error messages should follow format:
+```
+{action} failed: {reason}. {context}
 ```
 
-**After:**
-```python
-return validation_error(
-    "transfer requires [from_id, to_id, amount]",
-    code=ErrorCode.MISSING_ARGUMENT,
-    required=["from_id", "to_id", "amount"],
-)
-```
+Examples:
+- "Transfer failed: insufficient funds. Required 100, available 50."
+- "Invoke failed: method not found. Artifact 'genesis_ledger' has no method 'foo'."
 
-### Phase 3: Backwards Compatibility
+---
 
-The new schema is backwards compatible:
-- Still has `success` and `error` fields
-- New `code`, `category`, `retriable` fields are additive
-- Existing code checking `result["success"]` continues to work
+## Implementation Steps
 
-### Implementation Steps
+1. **Define types** in `src/world/errors.py`:
+   - `ErrorResponse`, `SuccessResponse` TypedDicts
+   - Error code constants
+   - Helper functions to create responses
 
-1. **Create `src/world/errors.py`** - ErrorResponse, ErrorCode, ErrorCategory, factory functions
-2. **Update genesis_ledger** - Use new error helpers
-3. **Update genesis_mint** - Use new error helpers
-4. **Update genesis_escrow** - Use new error helpers
-5. **Update genesis_store** - Use new error helpers
-6. **Update executor** - Use new error helpers for code execution
-7. **Add tests** - Unit tests for error helpers
-8. **Update docs** - Document error schema
+2. **Migrate executor.py**:
+   - Update `ExecutionResult` to use new format
+   - Add error codes to all error returns
+
+3. **Migrate genesis.py**:
+   - Update artifact methods to return standard responses
+   - Add context to error messages
+
+4. **Migrate contracts.py**:
+   - Change tuple returns to standard responses
+
+5. **Update documentation**:
+   - Add error handling section to developer docs
+   - Document all error codes
 
 ---
 
 ## Required Tests
 
-### Unit Tests
-- `tests/unit/test_errors.py::test_validation_error_format` - Correct structure
-- `tests/unit/test_errors.py::test_permission_error_format` - Correct structure
-- `tests/unit/test_errors.py::test_error_to_dict` - Serialization works
-- `tests/unit/test_errors.py::test_error_code_enum` - All codes valid
-- `tests/unit/test_errors.py::test_backwards_compatible` - Has success/error fields
-
-### Integration Tests
-- `tests/integration/test_genesis_errors.py::test_ledger_error_format` - Ledger returns new format
-- `tests/integration/test_genesis_errors.py::test_escrow_error_format` - Escrow returns new format
+- `tests/unit/test_errors.py::test_error_response_format`
+- `tests/unit/test_errors.py::test_success_response_format`
+- `tests/unit/test_errors.py::test_error_code_categories`
+- `tests/integration/test_error_responses.py::test_executor_errors`
+- `tests/integration/test_error_responses.py::test_genesis_errors`
 
 ---
 
-## E2E Verification
+## Acceptance Criteria
 
-Invoke genesis artifact with invalid arguments and verify error format:
-
-```bash
-python -c "
-from src.world.genesis import GenesisLedger
-ledger = GenesisLedger()
-result = ledger.invoke('transfer', [], 'alice')
-print(result)
-assert 'code' in result
-assert 'category' in result
-"
-```
-
----
-
-## Out of Scope
-
-- **Exception hierarchy** - Keep using dict returns for now
-- **Retry logic** - Just provide `retriable` flag, let callers decide
-- **Error logging changes** - Existing logging remains
-- **Dashboard error UI** - Future enhancement
-
----
-
-## Verification
-
-- [ ] Tests pass
-- [ ] Docs updated
-- [ ] Implementation matches target
+1. All functions that can fail return `Response` type
+2. All errors include error_code from defined categories
+3. All error messages follow standard format
+4. Backward compatibility maintained (success field still works)
+5. Tests verify all error paths
 
 ---
 
 ## Notes
 
-This is a quality-of-life improvement that enables better agent error handling.
+This is a refactoring task. Should be done incrementally:
+1. Add new types alongside existing
+2. Migrate one module at a time
+3. Remove old patterns after all migrated
 
-Key design decisions:
-- **Dict-based, not exceptions** - Matches existing pattern
-- **Backwards compatible** - Existing code keeps working
-- **Simple enums** - Easy to extend
-- **Factory functions** - Less boilerplate
-
-See also:
-- `src/world/genesis.py` - Current error patterns
-- `src/world/executor.py` - Code execution errors
+See GAPS.md archive for detailed context.
