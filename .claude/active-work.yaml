@@ -7,6 +7,10 @@ claims:
   task: Fix meta-process enforcement gaps
   claimed_at: '2026-01-14T07:34:39Z'
   plan: 41
+- cc_id: plan-44-genesis-unprivilege
+  task: Implement genesis full unprivilege
+  claimed_at: '2026-01-14T08:18:48Z'
+  plan: 44
 completed:
 - cc_id: tier2-architecture-decisions
   task: Tier 2 architecture decisions (Items 4-7)

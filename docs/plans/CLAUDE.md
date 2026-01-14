@@ -68,11 +68,13 @@ Master index of all gaps and their implementation plans.
 | 39 | [Genesis Unprivilege](39_genesis_unprivilege.md) | **High** | ✅ Complete | - |
 | 40 | [ActionResult Error Integration](40_actionresult_errors.md) | **High** | ✅ Complete | - |
 | 41 | [Meta-Process Enforcement Gaps](41_enforcement_gaps.md) | **Critical** | 🚧 In Progress | - |
-| 42 | [Kernel Quota Primitives](42_kernel_quota_primitives.md) | **High** | 📋 Planned | #1 |
+| 42 | [Kernel Quota Primitives](42_kernel_quota_primitives.md) | **High** | 📋 In Progress | #1 |
 | 43 | [Comprehensive Meta-Enforcement](43_meta_enforcement.md) | **Critical** | 📋 Planned | - |
-| 44 | [Meta-Process Enforcement](44_meta_process_enforcement.md) | **High** | 📋 Planned | #41 |
-| 45 | [Real E2E Test Requirement](45_real_e2e_requirement.md) | **High** | 📋 Planned | #44 |
+| 44 | [Genesis Full Unprivilege](44_genesis_full_unprivilege.md) | **High** | ✅ Complete | #42 |
+| 45 | [Real E2E Test Requirement](45_real_e2e_requirement.md) | **High** | 📋 Planned | - |
 | 46 | [PR Review Coordination](46_review_coordination.md) | **High** | 📋 Planned | - |
+| 47 | [Meta-Process Enforcement](47_meta_process_enforcement.md) | **High** | 📋 Planned | #41 |
+| 48 | [CI Optimization](48_ci_optimization.md) | Medium | 📋 Planned | - |
 
 ---
 
