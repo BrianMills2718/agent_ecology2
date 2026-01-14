@@ -8,8 +8,7 @@ Structured documentation of system architecture.
 architecture/
 ├── current/    # What IS implemented (source of truth)
 ├── target/     # What we WANT (aspirational)
-├── gaps/       # Comprehensive gap analysis (142 gaps)
-└── GAPS.md     # DEPRECATED - see docs/plans/CLAUDE.md
+└── gaps/       # Comprehensive gap analysis (142 gaps)
 ```
 
 ## Current vs Target
@@ -46,7 +45,3 @@ The 142 gaps are a finer breakdown of the 34 in `docs/plans/`.
 3. **Making architecture decisions?**
    - Update `target/` with new vision
    - Document rationale in `docs/DESIGN_CLARIFICATIONS.md`
-
-## GAPS.md Status
-
-`GAPS.md` is superseded by `docs/plans/CLAUDE.md`. It remains for historical reference and will be archived.
