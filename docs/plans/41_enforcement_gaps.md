@@ -147,7 +147,7 @@ Script validates all criteria have at least one test.
 
 ### Remaining
 - ✅ **Step 1:** Parser format support complete (bullet + inline formats)
-- ❓ **Step 4:** CI strict mode for plans without tests - unclear if done
+- ✅ **Step 4:** `--strict` flag enabled in CI (`check_plan_tests.py --all --strict`)
 - ❌ **Step 5:** V1 acceptance doc (`docs/V1_ACCEPTANCE.md`) not created
 - ❌ **Step 5:** V1 acceptance test (`tests/e2e/test_v1_acceptance.py`) not created
 - ⏳ **Gap 5:** Criteria-Test Traceability - marked as future work

@@ -11,6 +11,9 @@ Usage:
     # Check all plans with tests defined
     python scripts/check_plan_tests.py --all
 
+    # Strict mode - fail for In Progress plans without tests
+    python scripts/check_plan_tests.py --all --strict
+
     # List plans and their test requirements
     python scripts/check_plan_tests.py --list
 """
@@ -322,7 +325,7 @@ def list_plans(plans_dir: Path) -> None:
         print(f"#{plan.plan_number:2d} {plan.plan_name:30s} {plan.status:20s} ({test_info})")
 
 
-def check_plan(plan: PlanTests, project_root: Path, tdd_mode: bool = False) -> int:
+def check_plan(plan: PlanTests, project_root: Path, tdd_mode: bool = False, strict: bool = False) -> int:
     """Check tests for a single plan. Returns exit code."""
     print(f"\n{'='*60}")
     print(f"Plan #{plan.plan_number}: {plan.plan_name}")
@@ -335,6 +338,12 @@ def check_plan(plan: PlanTests, project_root: Path, tdd_mode: bool = False) -> i
     if not all_requirements:
         print("No test requirements defined for this plan.")
         print("Add a '## Required Tests' section to define tests.")
+        # Plan #41 Step 4: In strict mode, fail for plans without tests
+        if strict:
+            is_in_progress = "In Progress" in plan.status or "🚧" in plan.status
+            if is_in_progress:
+                print("\n❌ STRICT MODE: Plan is In Progress but has no tests defined!")
+                return 1
         return 0
 
     # Plan #41: Only fail for in-progress plans, not complete ones
@@ -445,6 +454,11 @@ def main() -> int:
         help="TDD mode - show which tests need to be written"
     )
     parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Strict mode - fail for In Progress plans without tests defined"
+    )
+    parser.add_argument(
         "--plans-dir",
         type=Path,
         default=Path("docs/plans"),
@@ -479,7 +493,7 @@ def main() -> int:
             print(f"Error: Could not parse plan file: {plan_files[0]}")
             return 1
 
-        return check_plan(plan, project_root, args.tdd)
+        return check_plan(plan, project_root, args.tdd, args.strict)
 
     if args.all:
         exit_code = 0
@@ -487,19 +501,33 @@ def main() -> int:
         # Plans in "Planned", "Needs Plan", or "Blocked" status shouldn't
         # have their tests enforced yet (TDD tests written when work starts)
         active_statuses = ["In Progress", "Complete", "🚧", "✅"]
+        in_progress_statuses = ["In Progress", "🚧"]
 
         for plan_file in find_plan_files(plans_dir):
             plan = parse_plan_file(plan_file)
-            if not plan or not (plan.new_tests or plan.existing_tests):
+            if not plan:
                 continue
 
             # Check if plan is in an active status
             is_active = any(status in plan.status for status in active_statuses)
+            is_in_progress = any(status in plan.status for status in in_progress_statuses)
+
             if not is_active:
                 print(f"Skipping Plan #{plan.plan_number} ({plan.plan_name}) - status: {plan.status}")
                 continue
 
-            result = check_plan(plan, project_root, args.tdd)
+            # Plan #41 Step 4: In strict mode, fail for In Progress plans without tests
+            has_tests = plan.new_tests or plan.existing_tests
+            if not has_tests:
+                if args.strict and is_in_progress:
+                    print(f"\n❌ Plan #{plan.plan_number} ({plan.plan_name}) is In Progress but has NO tests defined!")
+                    print(f"   Add a '## Required Tests' section to: {plan.plan_file}")
+                    exit_code = 1
+                else:
+                    # Non-strict mode or Complete plan: skip silently
+                    continue
+
+            result = check_plan(plan, project_root, args.tdd, args.strict)
             if result != 0:
                 exit_code = 1
         return exit_code
