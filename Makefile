@@ -127,3 +127,9 @@ clean:  ## Remove generated files
 
 clean-claims:  ## Remove old completed claims
 	python scripts/check_claims.py --cleanup
+
+# Install git hooks for worktree enforcement
+install-hooks:
+	@cp scripts/git-hooks/pre-commit .git/hooks/pre-commit
+	@chmod +x .git/hooks/pre-commit
+	@echo "Git hooks installed"
