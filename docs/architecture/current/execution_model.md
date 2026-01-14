@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-14 (Plan #44 - Added kernel mint primitives to World)
+**Last verified:** 2026-01-14 (Plan #42 - Added kernel quota primitives to World)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
