@@ -1,6 +1,12 @@
-# Phase 1 Implementation Plans
+# Phase 1-3 Implementation Plans (ARCHIVED)
 
-Detailed implementation plans for the 4 foundational gaps.
+**Status:** Historical Archive (All Phases Complete as of 2026-01-12)
+**Active tracking:** `docs/plans/CLAUDE.md`
+
+---
+
+Detailed implementation plans for the foundational gaps using the old naming scheme (GAP-XXX-NNN).
+These have been superseded by the numbered plan system in `docs/plans/`.
 
 ## Overview
 
