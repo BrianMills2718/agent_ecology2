@@ -11,6 +11,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `check_plan_blockers.py` | Detect stale blockers (blocked by complete plans) |
 | `check_mock_usage.py` | Detect suspicious mock patterns in tests |
 | `check_claims.py` | Manage active work claims (scope-based) |
+| `merge_pr.py` | Merge PRs with distributed locking |
 | `check_feature_coverage.py` | Verify all src files assigned to features |
 | `check_locked_files.py` | Protect locked acceptance criteria |
 | `check_new_code_tests.py` | Verify new code has test coverage |
@@ -81,6 +82,14 @@ python scripts/check_claims.py --list-features     # See available features
 python scripts/check_claims.py --claim --plan N --task "X"     # Claim plan
 python scripts/check_claims.py --claim --feature NAME --task "X"  # Claim feature
 python scripts/check_claims.py --release --validate # Done + verify
+
+# Merge PRs (with distributed locking)
+python scripts/merge_pr.py 123           # Merge PR #123 with lock
+python scripts/merge_pr.py 123 --dry-run # Check without merging
+python scripts/merge_pr.py --status      # Show current merge lock
+python scripts/merge_pr.py --release     # Force release stale lock
+# Or via make:
+make merge PR=123                        # Preferred way to merge
 ```
 
 ## Configuration
