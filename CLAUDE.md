@@ -370,8 +370,8 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| plan-42-kernel-quotas | 42 | Kernel quota primitives | 2026-01-14T07:35 | Active |
 | main | 41 | Fix meta-process enforcement gaps | 2026-01-14T07:34 | Active |
+| plan-44-genesis-unprivilege | 44 | Implement genesis full unprivilege | 2026-01-14T08:18 | Active |
 
 > **COORDINATION NOTICE (Plan #41):** PRs #118, #120, #123 all touch Plan #41 scope.
 > Review together to avoid conflicts. Merge order: #118 (base fixes) → #120 (validation) → #123 (meta_status.py).
