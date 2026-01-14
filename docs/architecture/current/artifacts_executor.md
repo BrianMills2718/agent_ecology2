@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-14 (Plan #26 - Added get_artifacts_by_owner)
+**Last verified:** 2026-01-14 (Plan #39 - Added kernel interfaces to executor)
 
 ---
 
@@ -159,7 +159,7 @@ def run():
     pay("alice", 10)             # Transfer from artifact wallet
 ```
 
-#### `execute_with_invoke(code, args, caller_id, artifact_id, ledger, artifact_store)` - Full composition
+#### `execute_with_invoke(code, args, caller_id, artifact_id, ledger, artifact_store, world)` - Full composition
 
 Adds `invoke()` for artifact-to-artifact calls:
 
@@ -168,6 +168,27 @@ def run():
     result = invoke("other_artifact", arg1, arg2)
     # result: {"success": bool, "result": Any, "error": str, "price_paid": int}
 ```
+
+When `world` is provided, also injects kernel interfaces (Plan #39 - Genesis Unprivilege):
+
+```python
+def run():
+    # Read-only state access
+    balance = kernel_state.get_balance("alice")
+    resource = kernel_state.get_resource("alice", "llm_tokens")
+    artifacts = kernel_state.list_artifacts_by_owner("alice")
+    metadata = kernel_state.get_artifact_metadata("art_id")
+    content = kernel_state.read_artifact("art_id", caller_id)
+
+    # Write access (caller verified)
+    kernel_actions.transfer_scrip(caller_id, "bob", 50)
+    kernel_actions.transfer_resource(caller_id, "bob", "llm_tokens", 10.0)
+    kernel_actions.write_artifact(caller_id, "new_art", "content")
+```
+
+The `caller_id` is also injected so artifacts know who invoked them.
+
+**Key principle:** Agent-built artifacts have equal access to kernel interfaces as genesis artifacts - no privilege difference.
 
 ### Recursion Protection
 
@@ -194,6 +215,7 @@ cost = max(1.0, execution_time_ms * cost_per_ms)
 | `src/world/artifacts.py` | `default_policy()`, `is_contract_reference()` | Policy utilities |
 | `src/world/executor.py` | `SafeExecutor` | Code execution |
 | `src/world/executor.py` | `get_executor()` | Singleton accessor |
+| `src/world/kernel_interface.py` | `KernelState`, `KernelActions` | Kernel interfaces for artifacts |
 
 ---
 

@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .ledger import Ledger
     from .artifacts import Artifact, ArtifactStore
+    from .world import World
 
 # Import contracts module for permission checking
 from .contracts import (
@@ -761,6 +762,7 @@ class SafeExecutor:
         artifact_store: "ArtifactStore | None" = None,
         current_depth: int = 0,
         max_depth: int = DEFAULT_MAX_INVOKE_DEPTH,
+        world: "World | None" = None,
     ) -> ExecutionResult:
         """
         Execute code with invoke() capability for artifact composition.
@@ -768,6 +770,11 @@ class SafeExecutor:
         Injects invoke(artifact_id, *args) function that allows artifacts to
         call other artifacts. Also includes pay() and get_balance() from
         execute_with_wallet.
+
+        When `world` is provided, also injects kernel interfaces for equal access:
+        - kernel_state: Read-only access to ledger, resources, artifacts
+        - kernel_actions: Write access (transfers, artifact writes)
+        - caller_id: The ID of the invoking principal
 
         Args:
             code: Python code defining a run() function
@@ -778,6 +785,7 @@ class SafeExecutor:
             artifact_store: ArtifactStore for looking up artifacts
             current_depth: Current recursion depth (for preventing infinite loops)
             max_depth: Maximum allowed recursion depth
+            world: World instance for kernel interface injection (Plan #39)
 
         Returns:
             Same as execute() - dict with success, result/error
@@ -811,6 +819,17 @@ class SafeExecutor:
         # Add allowed modules to namespace
         for name, module in self.preloaded_modules.items():
             controlled_globals[name] = module
+
+        # Inject kernel interfaces if world is provided (Plan #39 - Genesis Unprivilege)
+        # This gives all artifacts equal access to kernel state/actions
+        if world is not None:
+            from .kernel_interface import KernelState, KernelActions
+            controlled_globals["kernel_state"] = KernelState(world)
+            controlled_globals["kernel_actions"] = KernelActions(world)
+
+        # Inject caller_id so artifacts know who invoked them
+        if caller_id is not None:
+            controlled_globals["caller_id"] = caller_id
 
         # Track payments made during execution
         payments_made: list[PaymentResult] = []
@@ -939,6 +958,7 @@ class SafeExecutor:
                     artifact_store=artifact_store,
                     current_depth=current_depth + 1,
                     max_depth=max_depth,
+                    world=world,
                 )
 
                 if nested_result.get("success"):

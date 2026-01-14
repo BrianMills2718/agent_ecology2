@@ -625,6 +625,7 @@ class World:
                 )
 
             # Execute the code with invoke() capability for composition
+            # Pass world for kernel interface injection (Plan #39 - Genesis Unprivilege)
             executor = get_executor()
             exec_result = executor.execute_with_invoke(
                 code=regular_artifact.code,
@@ -633,6 +634,7 @@ class World:
                 artifact_id=artifact_id,
                 ledger=self.ledger,
                 artifact_store=self.artifacts,
+                world=self,
             )
 
             # Extract resource consumption from executor

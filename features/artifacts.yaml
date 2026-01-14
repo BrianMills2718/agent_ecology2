@@ -135,10 +135,12 @@ code:
   - src/world/artifacts.py
   - src/world/executor.py
   - src/world/actions.py
+  - src/world/kernel_interface.py
 
 tests:
   - tests/unit/test_executor.py
   - tests/unit/test_policy.py
+  - tests/unit/test_kernel_interface.py
   - tests/integration/test_invoke.py
   - tests/integration/test_unified_ontology.py
 
