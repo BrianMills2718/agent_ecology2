@@ -10,17 +10,21 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `check_plan_tests.py` | Verify/run plan test requirements |
 | `check_plan_blockers.py` | Detect stale blockers (blocked by complete plans) |
 | `check_mock_usage.py` | Detect suspicious mock patterns in tests |
-| `check_claims.py` | Manage active work claims |
+| `check_claims.py` | Manage active work claims (scope-based) |
+| `check_feature_coverage.py` | Verify all src files assigned to features |
+| `check_locked_files.py` | Protect locked acceptance criteria |
+| `check_new_code_tests.py` | Verify new code has test coverage |
 | `sync_plan_status.py` | Sync plan status across files |
 | `sync_governance.py` | Sync ADR governance headers |
 | `validate_plan.py` | Pre-implementation validation gate |
+| `validate_spec.py` | Validate feature spec YAML format |
 | `complete_plan.py` | Mark plan complete (runs tests, records evidence) |
 | `plan_progress.py` | Show plan implementation progress |
 | `view_log.py` | Parse run.jsonl events |
 | `concat_for_review.py` | Concatenate files for review |
 | `setup_hooks.sh` | Install git hooks |
 
-Config files: `relationships.yaml`, `doc_coupling.yaml`, `governance.yaml`
+Config files: `doc_coupling.yaml`, `governance.yaml`
 
 ## Git Hooks
 

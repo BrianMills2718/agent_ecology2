@@ -52,5 +52,5 @@ Changes here MUST update `docs/architecture/current/agents.md`.
 ## Testing
 
 ```bash
-pytest tests/test_async_agent.py tests/test_memory.py tests/test_loader.py -v
+pytest tests/unit/test_async_agent.py tests/unit/test_memory.py -v
 ```
