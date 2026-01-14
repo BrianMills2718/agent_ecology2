@@ -2,7 +2,7 @@
 
 Master index of all gaps and their implementation plans.
 
-**Last verified:** 2026-01-14 (Gap 6 documented in Plan #41)
+**Last verified:** 2026-01-14 (Plan #41 CI enforcement update)
 
 ---
 

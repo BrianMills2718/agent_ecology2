@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-14 (trivial exemption added to plan-required)
+Last verified: 2026-01-14 (plan-completion-evidence job added)
 
 ---
 
@@ -299,6 +299,33 @@ Features are defined in `features/*.yaml` with their code files. Same plan numbe
 **Status:** Currently informational (`continue-on-error: true`). Will become strict once workflow is established.
 
 See `docs/meta/claim-system.md` for full workflow.
+
+### 14. plan-completion-evidence (Post-merge, Informational)
+
+Checks that merged plan commits have verification evidence. Runs post-merge on main to catch plans completed without using `complete_plan.py`.
+
+```yaml
+- uses: actions/checkout@v4 (with fetch-depth: 10)
+- uses: actions/setup-python@v5 (Python 3.11)
+- python scripts/check_plan_completion.py --recent-commits 5 --warn-only
+```
+
+**What it catches:**
+- Plans marked Complete without `**Verified:**` timestamp
+- Commits referencing plan numbers where plan lacks verification evidence
+
+**When it runs:**
+- Only on push to main (post-merge)
+- Not on PRs (to avoid false positives for in-progress work)
+
+**Script options:**
+```bash
+python scripts/check_plan_completion.py --recent-commits 5  # Check last 5 commits
+python scripts/check_plan_completion.py --plan N            # Check specific plan
+python scripts/check_plan_completion.py --list-missing      # All plans missing evidence
+```
+
+**Status:** Informational (`continue-on-error: true`, `--warn-only`). Reports issues but doesn't block main.
 
 ---
 
