@@ -6,16 +6,20 @@ All extended documentation lives here. Root CLAUDE.md has the overview.
 
 ```
 docs/
-├── adr/            # Architecture Decision Records (immutable)
+├── adr/                  # Architecture Decision Records (immutable)
 ├── architecture/
-│   ├── current/    # What IS implemented (source of truth)
-│   └── target/     # What we WANT (aspirational)
-├── meta/           # Reusable process patterns
-├── plans/          # Gap tracking + implementation plans
-├── features/       # Feature-specific documentation
-├── GLOSSARY.md     # Canonical terminology
+│   ├── current/          # What IS implemented (source of truth)
+│   ├── target/           # What we WANT (aspirational)
+│   └── gaps/             # Comprehensive gap analysis (142 gaps)
+├── archive/              # Historical/deprecated docs
+├── meta/                 # Reusable process patterns
+├── plans/                # Gap tracking + implementation plans
+├── features/             # Feature-specific documentation
+├── GLOSSARY.md           # Redirects to current/target glossaries
+├── GLOSSARY_CURRENT.md   # Terminology for current implementation
+├── GLOSSARY_TARGET.md    # Terminology for target architecture
 ├── DESIGN_CLARIFICATIONS.md  # Decision rationale archive
-└── SECURITY.md     # Security model
+└── SECURITY.md           # Security model
 ```
 
 ## Key Files
@@ -24,7 +28,8 @@ docs/
 |------|---------|----------------|
 | `adr/` | Architecture Decision Records | New architectural decisions |
 | `meta/` | Reusable process patterns | New patterns identified |
-| `GLOSSARY.md` | Canonical terms (scrip, principal, tick) | New concepts added |
+| `GLOSSARY_CURRENT.md` | Terms for current implementation | Changes to current code |
+| `GLOSSARY_TARGET.md` | Terms for target architecture | Architecture decisions |
 | `DESIGN_CLARIFICATIONS.md` | WHY decisions were made | Architecture discussions |
 | `SECURITY.md` | Security model and boundaries | Security changes |
 

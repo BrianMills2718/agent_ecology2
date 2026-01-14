@@ -76,3 +76,7 @@ Thumbs.db
 !.claude/settings.json
 !.claude/hooks/
 !.claude/commands/
+
+# Generated documentation packages (regeneratable via build scripts)
+docs/EXTERNAL_REVIEW_PACKAGE.md
+docs/meta/META_REVIEW_PACKAGE.md
