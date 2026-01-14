@@ -265,6 +265,6 @@ SEC-001 (security), API-001 (API design)...
 
 ## See Also
 
-- [Doc-code coupling pattern](doc-code-coupling.md) - Related enforcement mechanism
-- [Plan workflow pattern](plan-workflow.md) - ADRs can link to implementation plans
+- [Doc-code coupling pattern](10_doc-code-coupling.md) - Related enforcement mechanism
+- [Plan workflow pattern](15_plan-workflow.md) - ADRs can link to implementation plans
 - [Original ADR proposal](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions) by Michael Nygard

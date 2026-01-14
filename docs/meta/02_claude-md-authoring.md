@@ -242,6 +242,6 @@ See this project's [CLAUDE.md](../../CLAUDE.md) for a complete example.
 
 ## See Also
 
-- [Claim system pattern](claim-system.md) - Coordination tables in CLAUDE.md
-- [Plan workflow pattern](plan-workflow.md) - Linking CLAUDE.md to plans
-- [Handoff protocol pattern](handoff-protocol.md) - Session continuity
+- [Claim system pattern](18_claim-system.md) - Coordination tables in CLAUDE.md
+- [Plan workflow pattern](15_plan-workflow.md) - Linking CLAUDE.md to plans
+- [Handoff protocol pattern](archive/handoff-protocol.md) - Session continuity (archived)

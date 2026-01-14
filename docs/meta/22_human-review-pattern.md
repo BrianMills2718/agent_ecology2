@@ -159,6 +159,6 @@ Before marking complete, a human must verify:
 
 ## Related
 
-- [verification-enforcement.md](verification-enforcement.md) - Overall completion requirements
-- [plan-workflow.md](plan-workflow.md) - Full plan lifecycle
-- [testing-strategy.md](testing-strategy.md) - Test types and when to use each
+- [Verification Enforcement](17_verification-enforcement.md) - Overall completion requirements
+- [Plan Workflow](15_plan-workflow.md) - Full plan lifecycle
+- [Testing Strategy](03_testing-strategy.md) - Test types and when to use each

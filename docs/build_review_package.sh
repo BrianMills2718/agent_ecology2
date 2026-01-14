@@ -25,10 +25,11 @@ in recommended reading order for external review.
 04. [Resource Model](#04-resource-model)
 05. [Agent Model](#05-agent-model)
 06. [Contract System](#06-contract-system)
-07. [Oracle and Minting](#07-oracle-and-minting)
+07. [Minting System](#07-minting-system)
 08. [Infrastructure](#08-infrastructure)
-09. [Design Decisions and Rationale](#09-design-decisions-and-rationale)
-10. [Implementation Gaps](#10-implementation-gaps)
+09. [Kernel](#09-kernel)
+10. [Design Decisions and Rationale](#10-design-decisions-and-rationale)
+11. [Implementation Gaps](#11-implementation-gaps)
 
 ---
 
@@ -84,20 +85,24 @@ append_content "$TARGET_DIR/03_agents.md"
 append_section "06" "Contract System" "docs/architecture/target/05_contracts.md"
 append_content "$TARGET_DIR/05_contracts.md"
 
-# 07. Oracle and Minting
-append_section "07" "Oracle and Minting" "docs/architecture/target/06_oracle.md"
-append_content "$TARGET_DIR/06_oracle.md"
+# 07. Minting System
+append_section "07" "Minting System" "docs/architecture/target/06_mint.md"
+append_content "$TARGET_DIR/06_mint.md"
 
 # 08. Infrastructure
 append_section "08" "Infrastructure" "docs/architecture/target/07_infrastructure.md"
 append_content "$TARGET_DIR/07_infrastructure.md"
 
-# 09. Design Decisions and Rationale
-append_section "09" "Design Decisions and Rationale" "docs/DESIGN_CLARIFICATIONS.md"
+# 09. Kernel
+append_section "09" "Kernel" "docs/architecture/target/08_kernel.md"
+append_content "$TARGET_DIR/08_kernel.md"
+
+# 10. Design Decisions and Rationale
+append_section "10" "Design Decisions and Rationale" "docs/DESIGN_CLARIFICATIONS.md"
 append_content "$DOCS_DIR/DESIGN_CLARIFICATIONS.md"
 
-# 10. Implementation Gaps
-append_section "10" "Implementation Gaps" "docs/architecture/GAPS.md"
+# 11. Implementation Gaps
+append_section "11" "Implementation Gaps" "docs/architecture/GAPS.md"
 append_content "$DOCS_DIR/architecture/GAPS.md"
 
 echo "Generated: $OUTPUT"

@@ -247,5 +247,5 @@ fi
 
 ## See Also
 
-- [Doc-code coupling pattern](doc-code-coupling.md) - Often run as pre-commit check
-- [Plan workflow pattern](plan-workflow.md) - Commit message format ties to plans
+- [Doc-code coupling pattern](10_doc-code-coupling.md) - Often run as pre-commit check
+- [Plan workflow pattern](15_plan-workflow.md) - Commit message format ties to plans

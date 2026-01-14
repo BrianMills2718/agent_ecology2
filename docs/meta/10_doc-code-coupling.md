@@ -256,5 +256,5 @@ For docs that should trigger source review:
 
 ## See Also
 
-- [Git hooks pattern](git-hooks.md) - Can run doc-coupling check pre-commit
-- [Plan workflow pattern](plan-workflow.md) - Plans are a form of doc-code coupling
+- [Git hooks pattern](06_git-hooks.md) - Can run doc-coupling check pre-commit
+- [Plan workflow pattern](15_plan-workflow.md) - Plans are a form of doc-code coupling
