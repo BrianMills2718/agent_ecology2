@@ -72,6 +72,7 @@ Master index of all gaps and their implementation plans.
 | 43 | [Comprehensive Meta-Enforcement](43_meta_enforcement.md) | **Critical** | 📋 Planned | - |
 | 44 | [Meta-Process Enforcement](44_meta_process_enforcement.md) | **High** | 📋 Planned | #41 |
 | 45 | [Real E2E Test Requirement](45_real_e2e_requirement.md) | **High** | 📋 Planned | #44 |
+| 46 | [PR Review Coordination](46_review_coordination.md) | **High** | 📋 Planned | - |
 
 ---
 
