@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-13 (MCP config added)
+**Last verified:** 2026-01-14 (Libraries config added, Plan #29)
 
 ---
 
@@ -259,6 +259,37 @@ memory:
   temperature: 0.1
   collection_name: "agent_memories"
 ```
+
+### Libraries (Plan #29)
+
+```yaml
+libraries:
+  genesis:                    # Pre-installed, free (don't count against quota)
+    - requests
+    - aiohttp
+    - urllib3
+    - numpy
+    - pandas
+    - python-dateutil
+    - scipy
+    - matplotlib
+    - cryptography
+    - pyyaml
+    - pydantic
+    - jinja2
+  blocked:                    # Security risks - installation rejected
+    - docker
+    - debugpy
+    - pyautogui
+    - keyboard
+    - pynput
+```
+
+**Genesis libraries:** Pre-installed in the Docker image, available to all agents at no quota cost. These are cold-start conveniences like genesis artifacts.
+
+**Runtime installation:** Agents can install additional libraries via `kernel_actions.install_library()`. Each installation deducts ~5MB from disk quota.
+
+**Blocklist:** Packages that could escape Docker sandbox (e.g., `docker` for daemon access, `debugpy` for debugger attachment). Returns `BLOCKED_PACKAGE` error code.
 
 ---
 
