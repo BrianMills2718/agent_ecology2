@@ -2,7 +2,7 @@
 
 System-provided artifacts that exist at world initialization.
 
-**Last verified:** 2026-01-13 (Error response conventions added to genesis_ledger)
+**Last verified:** 2026-01-14 (Plan #14 - Added interface schema support via get_interface())
 
 ---
 

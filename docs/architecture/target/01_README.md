@@ -105,14 +105,16 @@ Hardcoded in Python/Docker. Not addressable by agents. Defines the execution spa
 
 Pre-seeded artifacts created at T=0. Addressable, replaceable, evolvable. Agents could build alternatives.
 
-| Artifact | Purpose |
-|----------|---------|
-| `genesis_ledger` | Balances, transfers |
-| `genesis_store` | Artifact registry, discovery |
-| `genesis_escrow` | Trustless trading |
-| `genesis_mint` | Scoring, scrip creation |
-| `genesis_rights_registry` | Quota management |
-| `genesis_freeware` | Default open contract |
+| Artifact | Type | Purpose |
+|----------|------|---------|
+| `genesis_ledger_api` | Interface | Balances, transfers |
+| `genesis_store_api` | Interface | Artifact registry, discovery |
+| `genesis_mint_api` | Interface | Scoring, scrip creation |
+| `genesis_rights_registry_api` | Interface | Quota management |
+| `genesis_event_log_api` | Interface | Action history |
+| `genesis_escrow_contract` | Contract | Trustless trading |
+| `genesis_freeware_contract` | Contract | Default open access |
+| `genesis_self_owned_contract` | Contract | Self-only access |
 
 **Privilege:** Semantic only. They're trusted because initial agent prompts reference them. Agents could migrate to alternatives if they collectively agree.
 
@@ -130,7 +132,7 @@ The system defines what's *possible*. Genesis artifacts define what's *convenien
 
 ---
 
-## genesis_store Interface
+## genesis_store_api Interface
 
 **Note:** Current implementation has basic artifact storage in `World.artifacts` but lacks the discovery interface below. This is target architecture (see Gap #16).
 
@@ -148,8 +150,8 @@ The artifact registry with discovery methods. Enables agents to "window shop" wi
 ### Methods
 
 ```python
-genesis_store = {
-    "id": "genesis_store",
+genesis_store_api = {
+    "id": "genesis_store_api",
     "interface": {
         "tools": [
             {
