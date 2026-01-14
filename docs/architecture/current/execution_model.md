@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-14 (Plan #12 - Per-agent LLM budget checks)
+**Last verified:** 2026-01-14 (Plan #18 - Artifact deletion convenience methods)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

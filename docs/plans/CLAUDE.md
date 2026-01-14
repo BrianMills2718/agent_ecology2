@@ -63,7 +63,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 15 | [invoke() Genesis Support](15_invoke_genesis.md) | Medium | ❌ Needs Plan | - |
 | 16 | [Artifact Discovery](16_artifact_discovery.md) | **High** | ✅ Complete | #17,#22 |
 | 17 | [Agent Discovery](17_agent_discovery.md) | Medium | ✅ Complete | - |
-| 18 | [Dangling Reference Handling](18_dangling_refs.md) | Medium | 📋 Needs Plan | - |
+| 18 | [Dangling Reference Handling](18_dangling_refs.md) | Medium | ✅ Complete | - |
 | 19 | [Agent-to-Agent Threat Model](19_threat_model.md) | Medium | 📋 Planned | - |
 | 20 | [Migration Strategy](20_migration_strategy.md) | **High** | ✅ Complete | - |
 | 21 | [Testing for Continuous](21_continuous_testing.md) | Medium | ✅ Complete | - |
