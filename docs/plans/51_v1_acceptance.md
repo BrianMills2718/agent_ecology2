@@ -1,6 +1,7 @@
 # Plan #51: V1 Acceptance Criteria
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
+
 **Priority:** **High**
 **Blocked By:** None
 **Blocks:** V1 release confidence
@@ -43,12 +44,21 @@
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/e2e/test_v1_acceptance.py` | `test_ac_1_artifact_discovery` | Agents discover artifacts |
-| `tests/e2e/test_v1_acceptance.py` | `test_ac_2_artifact_invocation` | Agents invoke interfaces |
-| `tests/e2e/test_v1_acceptance.py` | `test_ac_3_scrip_transfers` | Ledger transfers work |
-| `tests/e2e/test_v1_acceptance.py` | `test_ac_4_resource_constraints` | Rate limiting enforced |
-| `tests/e2e/test_v1_acceptance.py` | `test_ac_5_contracts` | Contracts work |
-| `tests/e2e/test_v1_acceptance.py` | `test_ac_6_escrow` | Escrow trading works |
+| `tests/e2e/test_v1_acceptance.py` | `TestV1MultiAgentExecution::test_multi_agent_execution` | Multiple agents run without interference |
+| `tests/e2e/test_v1_acceptance.py` | `TestV1ArtifactSystem::test_artifact_discovery` | Agents can discover artifacts via genesis_store |
+| `tests/e2e/test_v1_acceptance.py` | `TestV1ArtifactSystem::test_artifact_creation` | Agents can create new artifacts |
+| `tests/e2e/test_v1_acceptance.py` | `TestV1ArtifactSystem::test_artifact_invocation` | Agents can invoke artifact interfaces |
+| `tests/e2e/test_v1_acceptance.py` | `TestV1EconomicPrimitives::test_scrip_transfer` | Ledger transfers work correctly |
+| `tests/e2e/test_v1_acceptance.py` | `TestV1ResourceConstraints::test_resource_rate_limiting` | Rate limits are enforced |
+| `tests/e2e/test_v1_acceptance.py` | `TestV1Coordination::test_escrow_coordination` | Escrow enables trustless artifact trade |
+| `tests/e2e/test_v1_acceptance.py` | `TestV1Observability::test_action_logging` | All actions are logged to event log |
+
+### Existing Tests (Must Pass)
+
+| Test Pattern | Why |
+|--------------|-----|
+| `tests/e2e/test_smoke.py` | Smoke tests still work |
+| `tests/e2e/test_real_e2e.py` | Real E2E still works |
 
 ---
 

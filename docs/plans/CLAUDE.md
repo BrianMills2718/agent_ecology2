@@ -77,7 +77,7 @@ Master index of all gaps and their implementation plans.
 | 48 | [CI Optimization](48_ci_optimization.md) | Medium | 📋 Post-V1 | - |
 | 49 | [Reasoning in Narrow Waist](49_reasoning_narrow_waist.md) | **High** | ✅ Complete | LLM-native monitoring |
 | 50 | [Test Structure Refactor](50_test_structure_refactor.md) | Medium | ✅ Complete | AI navigability |
-| 51 | [V1 Acceptance Criteria](51_v1_acceptance.md) | **High** | 📋 Planned | V1 release confidence |
+| 51 | [V1 Acceptance Criteria](51_v1_acceptance.md) | **High** | 🚧 In Progress | V1 release |
 
 ---
 
