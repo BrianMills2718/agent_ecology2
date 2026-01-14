@@ -464,6 +464,22 @@ python scripts/check_claims.py --release --validate
 
 **Handoff:** If original instance can't complete, they must explicitly note handoff in Active Work table with context for the new owner.
 
+### Meta-Process Feedback
+
+**Always flag potential meta-process improvements.** When following the processes in this file, if you notice:
+- Friction or inefficiency in the workflow
+- Missing documentation that would help
+- Steps that could be automated
+- Unclear instructions
+- Redundant or contradictory guidance
+
+**Flag it for human review** by noting it explicitly:
+```
+META-PROCESS NOTE: [description of the issue and suggested improvement]
+```
+
+Include these notes in your response when appropriate. The goal is continuous improvement of the coordination process itself.
+
 ### Commit Message Convention
 
 Link commits to plans when applicable:

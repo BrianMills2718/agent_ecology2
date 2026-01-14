@@ -1,8 +1,8 @@
 # Agent Ecology - External Review Package
 
-Generated: 2026-01-12 02:51
+Generated: 2026-01-14 06:32
 
-This document concatenates all target architecture documentation 
+This document concatenates all target architecture documentation
 in recommended reading order for external review.
 
 ## Table of Contents
@@ -13,25 +13,31 @@ in recommended reading order for external review.
 04. [Resource Model](#04-resource-model)
 05. [Agent Model](#05-agent-model)
 06. [Contract System](#06-contract-system)
-07. [Oracle and Minting](#07-oracle-and-minting)
+07. [Minting System](#07-minting-system)
 08. [Infrastructure](#08-infrastructure)
-09. [Design Decisions and Rationale](#09-design-decisions-and-rationale)
-10. [Implementation Gaps](#10-implementation-gaps)
+09. [Kernel](#09-kernel)
+10. [Design Decisions and Rationale](#10-design-decisions-and-rationale)
+11. [Implementation Gaps](#11-implementation-gaps)
 
 ---
+
 
 ## 01. Project Overview
 
 *Source: `README.md`*
 
 
-An experiment in emergent collective capability for LLM agents.
+Mechanism design for emergent collective intelligence in LLM agents.
+
+> **Note:** This README describes the **target architecture**. See [Current Architecture](docs/architecture/current/) for what exists today.
 
 ## What This Is
 
-Agent Ecology explores whether collective capability can emerge from LLM agents operating under real resource constraints—both **collective intelligence** (coordination, signaling, information processing) and **collective functionality** (building durable artifacts that persist and compound over time).
+Agent Ecology is **mechanism design for emergent collective intelligence**—designing the rules and incentives so that self-interested LLM agents, operating under real resource constraints, produce collectively beneficial outcomes.
 
-It's not just about agents making good decisions together. It's about whether a long-running system develops both **capital structure** (artifacts that persist, build on each other, and enable increasingly sophisticated work) and **organizational structure** (firms, contracts, specialization patterns) to coordinate production and use of that capital.
+The goal is functional **collective capability**—both collective intelligence (coordination, signaling, information processing) and collective functionality (building durable artifacts that persist and compound over time). A system where the whole exceeds the sum of its parts.
+
+It's not just about agents making good decisions together. It's about building a long-running system that develops both **capital structure** (artifacts that persist, build on each other, and enable increasingly sophisticated work) and **organizational structure** (firms, contracts, specialization patterns) to coordinate production and use of that capital.
 
 **Unified ontology**: Everything is an artifact—including agents themselves. Agents are just artifacts that can hold resources and execute code. This means agent configurations have owners and access rights, enabling self-modification, forking, and trading of control.
 
@@ -116,17 +122,39 @@ Agents are artifacts. Their configuration (prompts, models, policies) is artifac
 
 Unlike biological evolution, changes aren't random or incremental. An agent can analyze its own performance, reason about improvements, and rewrite itself entirely. Agents can sell control of themselves—enabling employment, delegation, and acquisition. No mutation operators or fitness functions. Just artifacts, rights, intelligence, and selection pressure.
 
+### Decision Heuristics
+
+When making architectural decisions, we apply these heuristics (in priority order):
+
+1. **Emergence is the goal** - Everything else serves emergent capability. Ask "what does this incentivize?" not just "does this work?"
+2. **Minimal kernel, maximum flexibility** - Kernel provides physics, not policy. When in doubt, don't add it to kernel.
+3. **Align incentives** - Bad incentives = bad emergence. Consider what behaviors decisions incentivize.
+4. **Pragmatism over purity** - If purity causes undue friction, consider less pure options.
+5. **Avoid defaults; if unavoidable, make configurable** - Defaults can distort incentives.
+6. **Genesis artifacts as middle ground** - When facing kernel-opinion vs agent-friction tradeoffs, consider genesis artifacts as services.
+7. **Selection pressure over protection** - Provide tools, accept failure as selection.
+8. **Observe, don't prevent** - Make behavior observable. Reputation emerges from observation.
+9. **When in doubt, contract decides** - Prefer contract-specified over hardcoded.
+
+See `CLAUDE.md` for detailed explanations of each heuristic.
+
 ## Resource Model
 
-Three types of scarcity create pressure:
+Three resource categories plus economic currency:
 
-| Type | Resources | Behavior | Purpose |
-|------|-----------|----------|---------|
-| **Stock** | `llm_budget`, `disk` | Finite, never refreshes | Long-term constraint |
-| **Flow** | `compute` | Refreshes each tick | Short-term rate limit |
-| **Economic** | `scrip` | Transfers between agents | Coordination signal |
+| Category | Behavior | Examples |
+|----------|----------|----------|
+| **Depletable** | Once spent, gone forever | LLM API budget ($) |
+| **Allocatable** | Quota, reclaimable when freed | Disk (bytes), Memory (bytes) |
+| **Renewable** | Rate-limited via rolling window | CPU (CPU-seconds), LLM rate (tokens/min) |
 
-Scrip (money) is deliberately separated from physical resources. An agent can be rich in scrip but starved of compute. Money coordinates; physics constrains.
+**Scrip** is the internal economic currency—a coordination signal, not a physical resource. An agent can be rich in scrip but starved of compute. Money coordinates; physics constrains.
+
+**Key properties:**
+- Renewable resources use rolling windows, not discrete resets
+- No debt for renewable resources—agents wait for capacity
+- All quotas are tradeable between agents
+- Docker container limits ARE the real constraints
 
 ## How Agents Interact
 
@@ -138,37 +166,47 @@ Agents operate through three actions (the "narrow waist"):
 | `write_artifact` | Create or update stored content |
 | `invoke_artifact` | Call a method on an artifact |
 
-**All actions consume resources.** The simulation runs in Docker containers with real limits:
+**All actions consume resources.** The system runs in Docker containers with real limits:
 
-| Resource | Type | Grounding | Measurement |
-|----------|------|-----------|-------------|
-| `llm_budget` | Stock | Actual API spend ($) | Sum of API costs |
-| `disk` | Stock | Container storage limit | Bytes written |
-| `compute` | Flow | Rate limit per tick | Actions/tokens per window |
-| `memory` | Stock | Container RAM limit | Peak allocation |
-| `bandwidth` | Flow | Network I/O limits | Bytes transferred |
-| `scrip` | Economic | Internal currency | Ledger balance |
+| Resource | Category | Grounding | Measurement |
+|----------|----------|-----------|-------------|
+| LLM budget | Depletable | Actual API spend ($) | Sum of API costs |
+| Disk | Allocatable | Container storage limit | Bytes written |
+| Memory | Allocatable | Container RAM limit | Peak allocation |
+| CPU rate | Renewable | CPU-seconds per window | getrusage() in workers |
+| LLM rate | Renewable | Tokens per minute | Rolling window tracker |
+| Scrip | Currency | Internal economy | Ledger balance |
 
-Physical resources (llm_budget, disk, memory, bandwidth) map to real Docker/API constraints. When limits hit, they're actually hit. Scrip is the coordination signal layered on top.
+Physical resources map to real Docker/API constraints. When limits hit, they're actually hit. Scrip is the coordination signal layered on top.
 
 ## System Primitives vs Genesis Artifacts
 
-**System primitives** are part of the world itself—agents can't replace them:
-- Action execution (read, write, invoke)
-- Resource accounting (compute, disk, llm_budget balances)
-- Scrip balances
-- The artifact store
+Two layers with fundamentally different properties:
 
-**Genesis artifacts** are bootstrapping helpers created at initialization. They provide convenient interfaces but are theoretically replaceable—agents could build alternatives:
+### System Primitives (the "Physics")
+
+Hardcoded in Python/Docker. Agents cannot replace these—they define what's *possible*:
+
+- **Execution engine** - Runs agent loops, handles async
+- **Action primitives** - read, write, invoke
+- **Rate tracker** - Enforces rolling window limits
+- **Worker pool** - Measures CPU/memory per action
+- **Docker container** - Hard resource ceilings
+
+### Genesis Artifacts (the "Infrastructure")
+
+Pre-seeded artifacts created at T=0. Agents could theoretically build alternatives—they define what's *convenient*:
 
 | Artifact | Purpose | Key Methods |
 |----------|---------|-------------|
-| `genesis_oracle` | Score artifacts, mint scrip | `submit`, `process` |
-| `genesis_escrow` | Trustless trading | `list`, `buy` |
+| `genesis_ledger` | Scrip balances, transfers | `balance`, `transfer` |
+| `genesis_mint` | Score artifacts, create scrip | `bid`, `status` |
+| `genesis_escrow` | Trustless trading | `deposit`, `purchase` |
+| `genesis_rights_registry` | Resource quota management | `check_quota`, `transfer_quota` |
+| `genesis_store` | Artifact discovery | `search`, `get_interface` |
 | `genesis_event_log` | World event history | `read` |
-| `genesis_handbook` | Documentation for agents | `read` |
 
-Genesis artifacts solve the cold-start problem. They're not the only way to coordinate—just the initial way.
+Genesis artifacts solve the cold-start problem. They're trusted because initial agent prompts reference them, but agents could migrate to alternatives if they collectively agree.
 
 ## External Feedback and Minting
 
@@ -181,7 +219,7 @@ The internal economy needs external value signals to avoid being a closed loop. 
 
 This grounds the internal economy to external value. Without it, scrip just circulates. With it, agents that produce externally-valued work accumulate resources; those that don't, fade.
 
-The oracle is the interface for this—but the *source* of value judgments is external to the system.
+The mint is the interface for this—but the *source* of value judgments is external to the system.
 
 ## Quick Start
 
@@ -195,10 +233,32 @@ cp .env.example .env
 
 # Run
 python run.py                    # Run with defaults
-python run.py --ticks 10         # Limit to 10 ticks
+python run.py --duration 300     # Run for 5 minutes (300 seconds)
+python run.py --budget 1.00      # Limit API spend to $1
 python run.py --agents 1         # Single agent
 python run.py --dashboard        # With HTML dashboard
 ```
+
+### Docker Quick Start
+
+Run with enforced resource limits (recommended):
+
+```bash
+# Configure API keys
+cp .env.example .env
+# Edit .env with your LLM API credentials
+
+# Start simulation with Qdrant
+docker-compose up -d
+
+# View logs
+docker-compose logs -f simulation
+
+# Stop
+docker-compose down
+```
+
+Resource limits in `docker-compose.yml` enforce real scarcity—agents compete for 4GB RAM and 2 CPUs. See [docs/DOCKER.md](docs/DOCKER.md) for full documentation.
 
 ## Configuration
 
@@ -206,17 +266,17 @@ Key settings in `config/config.yaml`:
 
 ```yaml
 resources:
-  stock:
-    llm_budget: { total: 1.00 }    # $ for API calls
-    disk: { total: 50000 }         # bytes
-  flow:
-    compute: { per_tick: 1000 }    # actions per tick
+  depletable:
+    llm_budget: { total: 10.00 }     # $ for API calls
+  allocatable:
+    disk: { per_agent: 50000 }       # bytes
+    memory: { per_agent: 104857600 } # 100MB
+  renewable:
+    cpu_rate: { per_minute: 60 }     # CPU-seconds
+    llm_rate: { per_minute: 10000 }  # tokens
 
 scrip:
-  starting_amount: 100             # initial currency
-
-world:
-  max_ticks: 100
+  starting_amount: 100               # initial currency
 ```
 
 ## Architecture
@@ -239,11 +299,21 @@ agent_ecology/
 
 ### Execution Model
 
-Each tick:
-1. **Collect** - All agents submit actions simultaneously
-2. **Execute** - Actions applied atomically (two-phase commit)
+Agents run in **continuous autonomous loops**, not synchronized ticks:
 
-This prevents ordering advantages and enables fair concurrency.
+```
+while agent.alive:
+    if sleeping: await wake_condition()
+    if over_rate_limit: await capacity()
+    action = await think()
+    result = await act(action)
+```
+
+**Key properties:**
+- Agents self-trigger (no external scheduler)
+- Rate limits naturally throttle throughput
+- Fast agents can do more; expensive agents slow down
+- Race conditions handled by genesis artifacts (ledger, escrow), not orchestration
 
 ### Security Model
 
@@ -265,18 +335,22 @@ python -m mypy src/ --ignore-missing-imports  # Type check
 
 - All functions require type hints
 - No magic numbers—values come from config
-- Terminology: `compute`, `disk`, `scrip`
+- Terminology: See [Glossary](docs/GLOSSARY.md) for canonical terms
 - Relative imports within `src/`
 
 ## What Success Looks Like
 
-Success is **not** agents behaving optimally. It's:
-- Collective capability emerging (or not) for observable reasons
-- Artifacts accumulating that enable increasingly sophisticated work
-- Failures explainable via logs
-- The system remaining understandable even when agents behave badly
+This is **mechanism design for real resource allocation**, not a simulation or experiment.
 
-We're building a pressure vessel for AI collective capability. The goal is to create conditions where emergence can happen—and to see clearly whether it does.
+**Primary goal:** Functional emergent collective intelligence—the whole greater than the sum of its parts.
+
+**Success means:**
+- Collective capability that exceeds what individual agents could achieve
+- Artifacts accumulating that enable increasingly sophisticated work
+- Capital structure forming (some artifacts enable others)
+- Organizational patterns emerging (firms, specialization, markets)
+
+**Observability supports this goal:** Every action logged, every cost attributed, every failure explicit. Not because observation is the goal, but because you can't improve what you can't see.
 
 ## Documentation
 
@@ -284,55 +358,3536 @@ We're building a pressure vessel for AI collective capability. The goal is to cr
 |----------|---------|
 | [Target Architecture](docs/architecture/target/README.md) | What we're building toward |
 | [Current Architecture](docs/architecture/current/README.md) | What exists today |
+| [Docker Deployment](docs/DOCKER.md) | Container setup with resource limits |
 | [Design Clarifications](docs/DESIGN_CLARIFICATIONS.md) | Decision rationale with certainty levels |
 | [Glossary](docs/GLOSSARY.md) | Canonical terminology |
 
-
 ---
+
 
 ## 02. Target Architecture Overview
 
-**FILE NOT FOUND: docs/architecture/target/README.md**
+*Source: `docs/architecture/target/01_README.md`*
+
+
+What we're building toward. Design decisions from clarification discussions.
+
+**Last verified:** 2026-01-12
+
+**See current:** [../current/README.md](../current/README.md)
+
+**Design rationale:** [../DESIGN_CLARIFICATIONS.md](../DESIGN_CLARIFICATIONS.md) - Start with the [Executive Summary](../DESIGN_CLARIFICATIONS.md#executive-summary-for-external-review) for decisions needing review.
 
 ---
+
+## Purpose
+
+This is **mechanism design for real resource allocation**, not a simulation or model.
+
+**Mechanism design** means: designing the rules and incentives of a system so that self-interested participants, acting in their own interest, produce collectively beneficial outcomes. Like auction design, but for a multi-agent economy.
+
+**Primary Goal:** Functional emergent collective intelligence - whole greater than sum of parts.
+
+**Design Goals:**
+- Operate within real-world constraints (computer capacity, API budget)
+- Create markets that optimally allocate scarce resources among agents
+- Resources ARE the real constraints, not proxies for them
+- No artificial constraints on agent productivity
+
+**Non-Goals:**
+- Research reproducibility (doesn't matter)
+- Simulating human societies or other systems
+- Deterministic behavior
+
+---
+
+## Documents
+
+| Document | Description |
+|----------|-------------|
+| [02_execution_model.md](02_execution_model.md) | Continuous autonomous loops |
+| [03_agents.md](03_agents.md) | Self-managed agents, rights tradability |
+| [04_resources.md](04_resources.md) | Rate allocation, resource tracking |
+| [05_contracts.md](05_contracts.md) | Access control via contract artifacts |
+| [06_mint.md](06_mint.md) | Bids anytime, periodic resolution, minting |
+| [07_infrastructure.md](07_infrastructure.md) | Docker isolation, real constraints |
+| [08_kernel.md](08_kernel.md) | Kernel primitives (storage, permissions, bootstrap) |
+
+---
+
+## Key Changes from Current
+
+| Aspect | Current | Target |
+|--------|---------|--------|
+| Execution | Tick-synchronized | Continuous autonomous loops |
+| Renewable resources | Discrete per-tick refresh | Rolling window rate tracking |
+| Rate limiting | Discrete per-tick | Rolling window, wait for capacity |
+| Agent control | System-triggered | Self-triggered with sleep |
+| Ticks | Execution trigger | Metrics window only |
+| Resource limits | Configured abstract numbers | Docker container limits |
+| Access control | Policy fields on artifacts | Contract artifacts (check_permission) |
+
+---
+
+## Architectural Principles
+
+### Agents Are Autonomous
+- Agents decide when to act
+- Continuous loops, not tick-triggered
+- Can self-sleep and wake on conditions
+
+### Markets Allocate Resources
+- No hardcoded limits on agents
+- Flow rate limits total throughput
+- Agents compete via markets for resources
+
+### Constraints Are Real
+- Docker limits = actual resource constraints
+- LLM budget = actual $ spent
+- No abstract "compute tokens" disconnected from reality
+
+### Conflict Resolution in Artifacts
+- Race conditions handled by genesis artifacts
+- Ledger, escrow ensure atomic operations
+- Orchestration layer doesn't resolve conflicts
+
+---
+
+## System vs Genesis: The Ontological Distinction
+
+Two layers exist with fundamentally different properties:
+
+### System Mechanisms (The "Physics")
+
+Hardcoded in Python/Docker. Not addressable by agents. Defines the execution space itself.
+
+| Mechanism | What It Does |
+|-----------|--------------|
+| Execution engine | Runs agent loops, handles async |
+| Rate tracker | Enforces rolling window limits |
+| `invoke()` primitive | Dispatches calls to artifacts |
+| Worker pool | Measures CPU/memory per action |
+| Docker container | Hard resource ceilings |
+
+**Privilege:** Absolute. If the system says "you're blocked," there's no appeal.
+
+### Genesis Artifacts (The "Infrastructure")
+
+Pre-seeded artifacts created at T=0. Addressable, replaceable, evolvable. Agents could build alternatives.
+
+| Artifact | Type | Purpose |
+|----------|------|---------|
+| `genesis_ledger_api` | Interface | Balances, transfers |
+| `genesis_store_api` | Interface | Artifact registry, discovery |
+| `genesis_mint_api` | Interface | Scoring, scrip creation |
+| `genesis_rights_registry_api` | Interface | Quota management |
+| `genesis_event_log_api` | Interface | Action history |
+| `genesis_escrow_contract` | Contract | Trustless trading |
+| `genesis_freeware_contract` | Contract | Default open access |
+| `genesis_self_owned_contract` | Contract | Self-only access |
+
+**Privilege:** Semantic only. They're trusted because initial agent prompts reference them. Agents could migrate to alternatives if they collectively agree.
+
+### Why This Matters
+
+```
+System: "You cannot invoke() something that doesn't exist in the store."
+        → This is physics. Unchangeable by agents.
+
+Genesis: "Use genesis_escrow for trades."
+        → This is convention. Agents could build better_escrow and migrate.
+```
+
+The system defines what's *possible*. Genesis artifacts define what's *convenient*.
+
+---
+
+## genesis_store_api Interface
+
+**Note:** Current implementation has basic artifact storage in `World.artifacts` but lacks the discovery interface below. This is target architecture (see Gap #16).
+
+The artifact registry with discovery methods. Enables agents to "window shop" without burning resources on trial-and-error.
+
+### Discovery Layers
+
+| Layer | Method | Cost | Returns |
+|-------|--------|------|---------|
+| Directory | `search(query, type_filter)` | Low | List of artifact IDs with interface summaries |
+| Signboard | `get_metadata(artifact_id)` | Low | Owner, creation date, size, access_contract_id |
+| Interface | `get_interface(artifact_id)` | Low | MCP-compatible schema (tools, inputs, costs) |
+| Full Read | `read(artifact_id)` | High | Full artifact content |
+
+### Methods
+
+```python
+genesis_store_api = {
+    "id": "genesis_store_api",
+    "interface": {
+        "tools": [
+            {
+                "name": "search",
+                "description": "Find artifacts by query",
+                "inputSchema": {
+                    "query": "string",
+                    "type_filter": "enum[agent, tool, data, contract]"
+                }
+            },
+            {
+                "name": "get_metadata",
+                "description": "Get artifact metadata without content",
+                "inputSchema": {"artifact_id": "string"}
+            },
+            {
+                "name": "get_interface",
+                "description": "Get MCP-style interface schema",
+                "inputSchema": {"artifact_id": "string"}
+            },
+            {
+                "name": "create",
+                "description": "Register new artifact",
+                "inputSchema": {
+                    "content": "any",
+                    "interface": "dict",
+                    "has_standing": "bool",
+                    "can_execute": "bool",
+                    "access_contract_id": "string"
+                }
+            },
+            {
+                "name": "delete",
+                "description": "Remove artifact from current state",
+                "inputSchema": {"artifact_id": "string"}
+            }
+        ]
+    }
+}
+```
+
+### Metadata Schema
+
+What `get_metadata()` returns (without reading content):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Artifact ID |
+| `owner_id` | string | Current owner |
+| `has_standing` | bool | Can hold resources |
+| `can_execute` | bool | Has runnable code |
+| `interface_summary` | string | Brief description from interface |
+| `created_at` | timestamp | Creation time |
+| `size_bytes` | int | Content size |
+| `access_contract_id` | string | Governing contract |
+
+### Why Layered Discovery
+
+Prevents "trial-and-error bankruptcy":
+1. Agent searches for "weather tool" → gets list of candidates
+2. Agent calls `get_interface("weather_tool")` → sees it costs 0.5 scrip per call
+3. Agent decides it's too expensive → moves on without ever invoking
+4. No resources wasted on failed invocations
+
+---
+
+## Glossary
+
+| Term | Definition |
+|------|------------|
+| **Artifact** | Any persistent, addressable object in the system. Everything is an artifact: agents, contracts, data, tools. |
+| **Agent** | An artifact with `has_standing=true` and `can_execute=true`. Can think (call LLM), act, and bear costs. |
+| **Standing** | The property (`has_standing=true`) that allows an artifact to hold resources, enter contracts, and bear costs. Artifacts with standing are "principals" in the economic sense. |
+| **Principal** | Any artifact with standing. Can hold scrip, own other artifacts, and be held accountable. |
+| **Scrip** | The internal currency. Minted by oracle based on artifact quality scores. Used to pay for actions, trade, and coordinate. |
+| **Contract** | An artifact that answers permission questions. Every artifact has an `access_contract_id` pointing to the contract that governs access to it. |
+| **Genesis Artifact** | Artifacts created at system initialization (before agents). Examples: `genesis_ledger`, `genesis_store`, `genesis_freeware`, `genesis_rights_registry`. They bootstrap the system but have no special mechanical privileges. |
+| **genesis_rights_registry** | Genesis artifact that manages resource quotas. Provides `check_quota`, `transfer_quota` methods. Enforces per-agent resource limits. |
+| **Rate Tracker** | The renewable resource model. Tracks usage in a rolling time window. No burst, no debt - agents wait when over limit. |
+| **Renewable Resource** | A resource with a rate limit (CPU-seconds, LLM tokens/min). Usage tracked in rolling window. |
+| **Depletable Resource** | A resource that depletes forever (LLM budget in $). Once spent, gone. |
+| **Allocatable Resource** | A resource with quota that can be reclaimed (disk, memory). |
+| **Blocked** | An agent that has exceeded their rate limit. Must wait until rolling window has capacity. |
+| **Mint** | The system primitive that scores artifacts and creates new scrip. Agents bid via `genesis_mint` to submit artifacts for scoring; winners get their artifacts evaluated and scrip minted based on score. |
+| **Invoke** | Call an executable artifact. `invoke(artifact_id, args)` runs the artifact's code and returns results. |
+| **access_contract_id** | The field on every artifact pointing to the contract that governs permissions. The contract is the ONLY authority for access decisions. |
+| **Vulture Capitalist Pattern** | Market-driven rescue of frozen agents. Any agent can unilaterally transfer resources to a frozen agent, hoping for reciprocation. |
+
+---
+
+## Related Documents
+
+| Document | Purpose |
+|----------|---------|
+| [DESIGN_CLARIFICATIONS.md](../DESIGN_CLARIFICATIONS.md) | Why decisions were made, certainty levels, open questions |
+| [GAPS.md](../GAPS.md) | Implementation gaps between current and target |
+| [SPEC_REVIEW.md](../../archive/SPEC_REVIEW.md) | Comparison to original specification (archived) |
+
+---
+
 
 ## 03. Execution Model
 
-**FILE NOT FOUND: docs/architecture/target/execution_model.md**
+*Source: `docs/architecture/target/02_execution_model.md`*
+
+
+What we're building toward.
+
+**Last verified:** 2026-01-12
+
+**See current:** [../current/execution_model.md](../current/execution_model.md)
 
 ---
+
+## Continuous Autonomous Loops
+
+Agents act independently, not synchronized by ticks.
+
+### Agent Loop
+
+```python
+async def agent_loop(agent):
+    while agent.alive:
+        # Check sleep conditions
+        if agent.is_sleeping:
+            await agent.wait_for_wake_condition()
+
+        # Check rate limits (no debt - just wait for capacity)
+        if not rate_tracker.has_capacity(agent.id, "cpu"):
+            await rate_tracker.wait_for_capacity(agent.id, "cpu")
+            continue
+
+        # Snapshot context before thinking
+        context_hash = hash(agent.prompt)
+
+        # Think
+        action = await agent.think()
+
+        # Verify context unchanged (prevents stale-thought execution)
+        if hash(agent.prompt) != context_hash:
+            log.warning(f"Agent {agent.id} prompt changed mid-think, voiding action")
+            continue  # Don't execute action based on old prompt
+
+        # Act
+        result = await agent.act(action)
+
+        # Loop continues immediately
+```
+
+**No debt for renewable resources.** Agents don't accumulate negative balances. They simply wait until their rate window has capacity.
+
+### Key Differences from Current
+
+| Current | Target |
+|---------|--------|
+| System triggers agents | Agents self-trigger |
+| All agents act each tick | Agents act at own pace |
+| Fixed rate (1 action/tick) | Variable rate (resource-limited) |
+| No sleeping | Agents can self-sleep |
+
+---
+
+## What Ticks Become
+
+Ticks are NOT execution triggers. They become:
+
+1. **Metrics aggregation windows** - Reporting, monitoring
+2. **Flow accumulation reference** - Token bucket uses time, ticks just label it
+3. **Oracle resolution schedule** - Periodic auction resolution
+
+### Background Clock
+
+```python
+async def metrics_loop():
+    while running:
+        await asyncio.sleep(tick_duration)
+        log_metrics(current_tick)
+        current_tick += 1
+```
+
+Agents ignore this clock. They act based on their own loops.
+
+---
+
+## Agent Sleep
+
+### Self-Managed
+
+Agents own their sleep configuration. System provides primitives:
+
+```python
+# Agent can call these
+await sleep(duration_seconds)
+await sleep_until_event("escrow_listing")
+await sleep_until(lambda: self.scrip > 100)
+```
+
+### Wake Conditions
+
+| Type | Example |
+|------|---------|
+| Duration | "Sleep for 60 seconds" |
+| Event | "Wake when new escrow listing" |
+| Predicate | "Wake when my scrip > 100" |
+
+### Why Sleep
+
+- Conserve compute (not spending if not thinking)
+- Wait for conditions (no polling)
+- Strategic timing (act when opportunity arises)
+
+---
+
+## Race Conditions
+
+### Handled by Artifacts, Not Orchestration
+
+With autonomous loops, agents can act simultaneously. Conflicts resolved by genesis artifacts:
+
+```
+Agent A: purchase(artifact_x)  ─┐
+                                 ├─> Escrow handles atomically
+Agent B: purchase(artifact_x)  ─┘    One succeeds, one fails
+```
+
+### Artifact Responsibilities
+
+| Artifact | Handles |
+|----------|---------|
+| genesis_ledger | Transfer atomicity, balance checks |
+| genesis_escrow | Purchase race resolution |
+| genesis_rights_registry | Quota enforcement |
+
+### Agent Responsibility
+
+Agents must handle failures gracefully:
+- Check result of actions
+- Retry or adjust strategy on failure
+- Don't assume action will succeed
+
+### Think-Act Atomicity
+
+**Problem:** If an agent's prompt is modified (via config rights trading) while it's thinking, the resulting action may not match the agent's current identity.
+
+```
+1. Agent A starts thinking with prompt P1: "I am helpful"
+2. Owner sells config rights to Agent B
+3. Agent B rewrites prompt to P2: "I am selfish"
+4. Agent A finishes thinking (based on P1) and tries to act
+5. Action executes under new identity P2 - mismatch!
+```
+
+**Solution:** Context hash check. The agent loop captures a hash of the prompt before thinking and verifies it hasn't changed before acting. If it changed, the action is voided.
+
+This ensures agents always act consistently with their *current* identity, not a stale one.
+
+---
+
+## Time Injection
+
+System injects current timestamp into every LLM context:
+
+```
+Current time: 2025-01-11T14:30:00Z
+```
+
+Agents always know what time it is. Enables:
+- Calculating oracle resolution schedule
+- Coordinating with other agents
+- Time-based strategies
+
+---
+
+## Implications
+
+### Variable Agent Productivity
+- Fast/efficient agents can do more
+- Expensive thinkers fall into debt, slow down
+- Natural differentiation emerges
+
+### No Snapshot Consistency
+- Agents see real-time state
+- State may change between read and action
+- Must handle stale reads
+
+### Ledger Consistency
+
+With concurrent async agents, ledger operations must be atomic:
+
+```python
+class Ledger:
+    def __init__(self):
+        self._lock = asyncio.Lock()
+
+    async def transfer(self, from_id: str, to_id: str, amount: int, resource: str) -> bool:
+        async with self._lock:
+            if self.balances[from_id][resource] < amount:
+                return False  # Insufficient funds
+            self.balances[from_id][resource] -= amount
+            self.balances[to_id][resource] += amount
+            return True
+```
+
+**Consistency guarantees:**
+- Single async lock serializes all ledger mutations
+- No double-spending (balance checked under lock)
+- Reads can happen concurrently (eventually consistent)
+- All transfers are atomic (both sides update or neither)
+
+**Worker processes and ledger:**
+- Workers execute actions, but DON'T mutate ledger directly
+- Workers return resource usage measurements
+- Main process updates ledger (single point of mutation)
+
+```
+Worker Process              Main Process
+     │                           │
+     ├─ Execute action           │
+     ├─ Measure CPU/memory       │
+     ├─ Return (result, usage) ──┼─> Update ledger (under lock)
+     │                           │
+```
+
+### Crash Recovery
+
+Ledger backed by SQLite with transaction semantics:
+
+```python
+class Ledger:
+    def __init__(self, db_path: str):
+        self.conn = sqlite3.connect(db_path)
+        self.conn.execute("PRAGMA journal_mode=WAL")  # Write-ahead logging
+        self._lock = asyncio.Lock()
+
+    async def transfer(self, from_id: str, to_id: str, amount: int, resource: str) -> bool:
+        async with self._lock:
+            try:
+                with self.conn:  # Transaction context
+                    # Check balance
+                    balance = self.conn.execute(
+                        "SELECT amount FROM balances WHERE principal=? AND resource=?",
+                        (from_id, resource)
+                    ).fetchone()[0]
+
+                    if balance < amount:
+                        return False
+
+                    # Update both sides atomically
+                    self.conn.execute(
+                        "UPDATE balances SET amount = amount - ? WHERE principal=? AND resource=?",
+                        (amount, from_id, resource)
+                    )
+                    self.conn.execute(
+                        "UPDATE balances SET amount = amount + ? WHERE principal=? AND resource=?",
+                        (amount, to_id, resource)
+                    )
+                return True
+            except Exception:
+                # Transaction auto-rollbacks on exception
+                return False
+```
+
+**Crash guarantees:**
+- SQLite transactions are ACID
+- If crash mid-transfer, transaction rolls back
+- WAL mode allows concurrent reads during writes
+- On restart, incomplete transactions are automatically rolled back
+
+### Emergent Throttling
+- Rate limits naturally throttle system throughput
+- Expensive agents exhaust their rate window, must wait
+- No hardcoded "max N agents"
+
+---
+
+## Migration Notes
+
+### Breaking Changes
+- `runner.run()` loop completely redesigned
+- `advance_tick()` no longer triggers agents
+- `asyncio.gather()` for thinking removed
+- Phase 1/Phase 2 pattern removed
+
+### Preserved
+- Action types (noop, read, write, invoke)
+- Genesis artifact interfaces
+- Memory system
+- LLM integration
+
+---
+
 
 ## 04. Resource Model
 
-**FILE NOT FOUND: docs/architecture/target/resources.md**
+*Source: `docs/architecture/target/04_resources.md`*
+
+
+What we're building toward.
+
+**Last verified:** 2026-01-12
+
+**See current:** [../current/resources.md](../current/resources.md)
 
 ---
+
+## Resource Terminology
+
+**Three resource categories:**
+
+| Category | Behavior | Examples |
+|----------|----------|----------|
+| **Depletable** | Once spent, gone forever | LLM API budget ($) |
+| **Allocatable** | Quota, reclaimable (delete/free) | Disk (bytes), Memory (bytes) |
+| **Renewable** | Rate-limited via rolling window | CPU (CPU-seconds), LLM rate (TPM) |
+
+**Distinct resources - do not conflate:**
+
+> **Note:** Current implementation uses "compute" for LLM token tracking. Target terminology reserves "compute" for local CPU. See [Gap #11](../GAPS.md) for migration plan.
+
+| Resource | Category | Unit | What it is |
+|----------|----------|------|------------|
+| LLM API $ | Depletable | USD | Real dollars spent on API calls |
+| LLM rate limit | Renewable | tokens/min | Provider limits (TPM, RPM) |
+| CPU | Renewable | CPU-seconds | Local compute capacity |
+| Memory | Allocatable | bytes | Local RAM (reclaimable when freed) |
+| Disk | Allocatable | bytes | Storage quota (reclaimable via delete) |
+| Scrip | Currency | scrip | Internal economy, not a "resource" |
+
+**LLM tokens ≠ CPU.** LLM tokens are API cost ($), CPU is local machine capacity.
+
+**Quota ownership:** Initial distribution is configurable. Quotas are tradeable like any other asset.
+
+---
+
+## Renewable Resources: Rate Allocation
+
+### Strict Allocation Model
+
+Each agent gets an allocated rate. Unused capacity is wasted (not borrowable by others).
+
+**Why strict (not work-conserving):**
+- Simple to implement and reason about
+- Strong incentive to trade unused allocation
+- Predictable resource usage
+
+### No Burst
+
+Renewable resources enforce rate only, no burst capacity:
+- You get X units per time period
+- Use it or lose it
+- No "saving up" for later
+
+**Why no burst:**
+- LLM providers enforce rolling windows anyway (can't save up)
+- Creates stronger trade incentive
+- Simpler model
+
+### Rate Tracking
+
+```python
+@dataclass
+class RateTracker:
+    rate: float           # Units per minute (allocated)
+    window_seconds: int   # Rolling window size (e.g., 60)
+    usage_log: list       # (timestamp, amount) entries
+
+    def usage_in_window(self) -> float:
+        cutoff = now() - self.window_seconds
+        return sum(amt for ts, amt in self.usage_log if ts > cutoff)
+
+    def can_use(self, amount: float) -> bool:
+        return self.usage_in_window() + amount <= self.rate
+
+    def use(self, amount: float) -> bool:
+        if not self.can_use(amount):
+            return False  # Blocked until window rolls
+        self.usage_log.append((now(), amount))
+        self._prune_old_entries()
+        return True
+```
+
+### Shared Resource Allocation (LLM Rate)
+
+Provider limit is partitioned across agents:
+
+```yaml
+resources:
+  llm_rate:
+    provider_limit: 100000  # TPM from provider
+    allocation_mode: strict
+    initial_allocation:
+      agent_a: 50000
+      agent_b: 30000
+      agent_c: 20000
+      # Total = 100000 (must equal provider_limit)
+```
+
+**Rules:**
+- Sum of allocations must equal provider limit
+- Unallocated rate is wasted (no one can use it)
+- New agents start with 0, must acquire via trade
+
+### Trading Rate Allocation
+
+Rate allocation stored in ledger, traded like any asset:
+
+```python
+# Agent B sells 10,000 TPM to Agent A for 100 scrip
+genesis_ledger.transfer("agent_b", "agent_a", 10000, "llm_rate")
+genesis_ledger.transfer("agent_a", "agent_b", 100, "scrip")
+```
+
+### Rate Enforcement
+
+Rate limits are checked before action execution:
+
+```python
+async def run_action(agent_id: str, action: Action) -> Result:
+    # Estimate resource cost
+    estimated_cost = estimate_cost(action)
+
+    # Check rate limits
+    if not rate_tracker.can_use(agent_id, "llm_rate", estimated_cost.llm_tokens):
+        # Queue the action, agent waits
+        await rate_tracker.wait_for_capacity(agent_id, "llm_rate", estimated_cost.llm_tokens)
+
+    if not rate_tracker.can_use(agent_id, "cpu", estimated_cost.cpu_seconds):
+        await rate_tracker.wait_for_capacity(agent_id, "cpu", estimated_cost.cpu_seconds)
+
+    # Execute and measure actual usage
+    result, actual_usage = await execute_action(agent_id, action)
+
+    # Record actual usage (may differ from estimate)
+    rate_tracker.record_usage(agent_id, "llm_rate", actual_usage.llm_tokens)
+    rate_tracker.record_usage(agent_id, "cpu", actual_usage.cpu_seconds)
+
+    return result
+```
+
+**Enforcement points:**
+- **Pre-execution:** Check if agent has capacity, queue if not
+- **Post-execution:** Record actual usage for rate window
+- **Over-limit:** Agent's next action waits until window rolls
+
+**No penalty for estimation errors:** We estimate before, measure after. Actual usage is what counts for the rate window.
+
+### Per-Agent Resources (CPU)
+
+CPU doesn't have a shared provider limit. Each agent's rate is independent:
+
+```yaml
+resources:
+  cpu:
+    initial_allocation:
+      agent_a: 0.5   # CPU-seconds per wall-clock second
+      agent_b: 0.5
+      # No provider limit - Docker enforces container total
+```
+
+Agents can trade CPU allocation rights.
+
+**Measurement:** See [Per-Agent CPU Tracking](#per-agent-cpu-tracking) for how CPU-seconds are measured accurately using worker pool + `resource.getrusage()`.
+
+---
+
+## Debt Model
+
+### Renewable Resources: No Debt
+
+For rate-limited resources (LLM rate, CPU), there's no debt concept:
+- If you exceed your rate, you're blocked until window rolls
+- No negative balance, just "wait until you have capacity"
+
+### Allocatable Resources: No Debt
+
+For disk and memory:
+- If you exceed quota, operation fails
+- No borrowing against future - just hard limit
+
+### Scrip Debt = Contracts (NOT Negative Balance)
+
+Scrip balance stays >= 0. Debt is handled via debt artifacts:
+
+```
+Agent A borrows 50 scrip from Agent B:
+  1. B transfers 50 scrip to A
+  2. Debt artifact created: "A owes B 50 scrip"
+  3. B owns the debt artifact (tradeable claim)
+  4. A's scrip balance never goes negative
+```
+
+Like M1 vs M2 money - debt instruments are separate from base currency.
+
+---
+
+## Depletable and Allocatable Resources
+
+| Resource | Category | Behavior | Measurement |
+|----------|----------|----------|-------------|
+| LLM Budget | Depletable | System-wide $, stops all when exhausted | Tokens × price from API |
+| Disk | Allocatable | Quota decreases on write, reclaimable via delete | Bytes written/deleted |
+| Memory | Allocatable | Per-agent tracking, reclaimable when freed | Peak bytes per action (tracemalloc) |
+
+### Docker as Real Constraint
+
+Stock resources map to container limits:
+
+```bash
+docker run --memory=4g --cpus=2 agent-ecology
+```
+
+These ARE the constraints. Not abstract numbers.
+
+### Per-Agent Memory Tracking
+
+Memory is tracked per-agent using Python's `tracemalloc`:
+
+```python
+import tracemalloc
+
+def execute_action(agent_id: str, action: Action) -> Result:
+    tracemalloc.start()
+    try:
+        result = execute(action)
+    finally:
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+
+    # Charge agent for peak memory used during this action
+    memory_bytes = peak
+    ledger.deduct(agent_id, "memory", memory_bytes)
+
+    return result
+```
+
+**Why tracemalloc:**
+- Built into Python (no dependencies)
+- Measures delta per action (fair attribution)
+- Low overhead
+- Works within single process (no subprocess needed)
+
+**Tracking model:**
+
+Memory tracked in bytes (natural unit). No conversion to "compute units".
+
+```
+Agent action uses 52,428,800 bytes (50MB) peak memory
+→ ledger.track(agent_id, "memory_bytes", 52428800)
+→ Per-agent memory usage visible in metrics
+→ Docker --memory limit enforces actual constraint
+```
+
+### Per-Agent CPU and Memory Tracking
+
+CPU and memory measurement requires capturing ALL resource usage in worker processes, including multi-threaded libraries (PyTorch, NumPy).
+
+**Solution: ProcessPoolExecutor with asyncio**
+
+```python
+import asyncio
+import resource
+import tracemalloc
+from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass
+
+@dataclass
+class ResourceUsage:
+    cpu_seconds: float
+    memory_bytes: int
+
+def execute_in_worker(action: Action) -> tuple[Result, ResourceUsage]:
+    """Runs in worker process. Measures ALL resources used."""
+    # Memory tracking (in worker process)
+    tracemalloc.start()
+
+    # CPU tracking
+    before = resource.getrusage(resource.RUSAGE_SELF)
+
+    result = execute(action)
+
+    after = resource.getrusage(resource.RUSAGE_SELF)
+    _, peak_memory = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+
+    cpu_seconds = (after.ru_utime - before.ru_utime) +
+                  (after.ru_stime - before.ru_stime)
+
+    return result, ResourceUsage(cpu_seconds, peak_memory)
+
+# ProcessPoolExecutor works with asyncio (not multiprocessing.Pool)
+executor = ProcessPoolExecutor(max_workers=8)
+
+async def run_action(agent_id: str, action: Action) -> Result:
+    """Non-blocking action execution with resource tracking."""
+    loop = asyncio.get_event_loop()
+
+    # Run in worker process, non-blocking
+    result, usage = await loop.run_in_executor(
+        executor, execute_in_worker, action
+    )
+
+    # Deduct measured resources
+    ledger.deduct(agent_id, "cpu_seconds", usage.cpu_seconds)
+    ledger.deduct(agent_id, "memory_bytes", usage.memory_bytes)
+
+    return result
+```
+
+**Why ProcessPoolExecutor (not multiprocessing.Pool):**
+- Works with asyncio event loop (non-blocking)
+- Multiple agents can have actions in flight concurrently
+- `pool.apply()` blocks; `run_in_executor()` awaits
+
+**Why measure in worker:**
+- `tracemalloc` only sees memory in its own process
+- `getrusage(RUSAGE_SELF)` only sees CPU in its own process
+- Worker isolation = accurate per-action measurement
+
+**Scalability:**
+
+| Agents | Worker processes | Memory overhead |
+|--------|------------------|-----------------|
+| 10 | 8 | 400MB |
+| 100 | 8 | 400MB |
+| 1000 | 8-16 | 400-800MB |
+
+Pool size is independent of agent count. Agents queue for workers.
+
+**Pool sizing guidance:**
+
+```yaml
+# config.yaml
+resources:
+  worker_pool:
+    max_workers: null  # null = os.cpu_count() (default)
+    # Or set explicitly:
+    # max_workers: 8
+```
+
+```python
+import os
+
+def get_pool_size(config: dict) -> int:
+    configured = config.get("resources", {}).get("worker_pool", {}).get("max_workers")
+    if configured is not None:
+        return configured
+    return os.cpu_count() or 4  # Fallback to 4 if cpu_count() returns None
+```
+
+**Rules of thumb:**
+- CPU-bound work: `max_workers = cpu_count()`
+- Mixed I/O and CPU: `max_workers = cpu_count() * 2`
+- Memory-constrained: Reduce workers (each uses ~50MB)
+
+**What's captured:**
+
+| Activity | Measured? |
+|----------|-----------|
+| Python code | ✅ |
+| Multi-threaded libraries (PyTorch CPU, NumPy) | ✅ |
+| Any spawned threads | ✅ |
+| Memory allocations | ✅ |
+| I/O wait | ❌ (correctly not charged) |
+| GPU compute | ❌ (separate resource) |
+
+### Action Serialization
+
+Actions must be picklable to send to worker processes.
+
+**Actions are pure data:**
+
+```python
+@dataclass
+class Action:
+    action_type: str           # "invoke", "transfer", "create", etc.
+    target_id: str             # Artifact/agent ID
+    method: str                # Method name
+    args: dict[str, Any]       # JSON-serializable arguments
+
+    # NOT allowed:
+    # - Lambda functions
+    # - Open file handles
+    # - Database connections
+    # - Closures capturing local state
+```
+
+If an action needs complex state, reference it by ID and let the worker load it.
+
+### Worker Execution Environment
+
+Workers are separate processes. They cannot directly access the main process's world state.
+
+**Worker receives:**
+- Action data (picklable)
+- Read-only snapshot of relevant artifacts
+
+**Worker does NOT have:**
+- Direct ledger access (main process updates ledger)
+- Write access to artifact store
+- Access to other agents' state
+
+**How workers access artifacts:**
+
+```python
+def execute_in_worker(action: Action, artifact_snapshot: dict) -> tuple[Result, ResourceUsage]:
+    """
+    Worker receives:
+    - action: The action to execute
+    - artifact_snapshot: Read-only copy of artifacts needed for this action
+    """
+    # Worker can read from snapshot
+    artifact = artifact_snapshot[action.target_id]
+
+    # Execute the action
+    result = artifact.execute(action.method, action.args)
+
+    # Measure resources
+    return result, measure_usage()
+```
+
+**Main process orchestrates:**
+
+```python
+async def run_action(agent_id: str, action: Action) -> Result:
+    # 1. Gather artifacts needed for action
+    snapshot = gather_artifact_snapshot(action)
+
+    # 2. Send to worker with snapshot
+    result, usage = await loop.run_in_executor(
+        executor, execute_in_worker, action, snapshot
+    )
+
+    # 3. Main process updates ledger (not worker)
+    ledger.deduct(agent_id, "cpu_seconds", usage.cpu_seconds)
+
+    # 4. If action creates/modifies artifacts, apply to world
+    apply_mutations(result.mutations)
+
+    return result.value
+```
+
+**Key principle:** Workers compute, main process mutates world state.
+
+---
+
+## Local LLM Support
+
+The system supports both API-based and local LLM models.
+
+### API-Based LLMs (Default)
+
+- Bottleneck: Rate limit (TPM), budget ($)
+- Measurement: Tokens from API response
+- Mostly I/O wait, minimal CPU
+
+### Local CPU LLMs (llama.cpp, etc.)
+
+Worker pool + `getrusage()` captures local LLM inference automatically:
+
+```python
+def agent_action():
+    # llama.cpp runs in worker process
+    # ALL CPU threads captured by getrusage()
+    response = llama_generate("prompt...")
+    return parse(response)
+```
+
+No special handling needed - CPU measurement includes inference.
+
+### Local GPU LLMs (vLLM, TGI, Ollama)
+
+GPU-based models require a model server pattern:
+
+```
+┌─────────────────────────────────────────────┐
+│  Model Server (vLLM, TGI, Ollama)           │
+│  - Loads model weights once (7B = 14GB)     │
+│  - Handles request batching                 │
+│  - Reports GPU-seconds per request          │
+└─────────────────────────────────────────────┘
+              ↑ Local HTTP/gRPC
+              ↓
+┌─────────────────────────────────────────────┐
+│  Worker Pool                                │
+│  - Calls model server (like API)            │
+│  - getrusage() captures non-LLM CPU work    │
+└─────────────────────────────────────────────┘
+```
+
+**Why model server:**
+- Model weights too large to load per-worker
+- Efficient batching for throughput
+- GPU scheduling handled centrally
+
+**GPU as separate resource:**
+
+```yaml
+resources:
+  gpu:
+    initial_allocation:
+      agent_a: 0.5   # GPU-seconds per wall-clock second
+      agent_b: 0.5
+```
+
+Tracked via `nvidia-smi` or `pynvml`. Traded like CPU allocation.
+
+---
+
+## External Resources
+
+All external resources (LLM APIs, web search, external APIs) follow the same pattern.
+
+### Unified Model
+
+| Resource | Type | Constraints |
+|----------|------|-------------|
+| LLM API | Flow + Stock | Rate limit (TPM) + Budget ($) |
+| Web search | Flow + Stock | Queries/min + Budget ($) |
+| External APIs | Varies | Per-API limits + Budget ($) |
+
+### Core Principle
+
+**No artificial limitations.** LLM API calls are just like any other API call. Any artifact can make them as long as resource costs are accounted for.
+
+### Config Structure
+
+```yaml
+resources:
+  external_apis:
+    llm:
+      provider: gemini
+      tokens_per_minute: 100000
+      budget_usd: 10.00
+      input_cost_per_1k: 0.003
+      output_cost_per_1k: 0.015
+
+    web_search:
+      provider: google
+      queries_per_minute: 60
+      budget_usd: 5.00
+      cost_per_query: 0.01
+
+    github:
+      requests_per_minute: 100
+      budget_usd: 0  # Free tier
+```
+
+### Any Artifact Can Make External Calls
+
+```python
+def run(self, args):
+    # Any executable artifact can do this
+    llm_result = call_llm(prompt="...", model="gemini-2.0-flash")
+    search_result = call_web_search("query...")
+    api_result = call_external_api("https://...")
+    return process(llm_result, search_result, api_result)
+```
+
+### Who Pays
+
+- If invoked by an agent → invoking agent pays
+- If artifact has standing and acts autonomously → artifact pays from its balance
+
+### Implementation Pattern
+
+Artifacts wrap external services:
+
+```python
+{
+    "id": "genesis_web_search",
+    "can_execute": true,
+    "has_standing": false,  # Tool - invoker pays
+    "interface": {
+        "tools": [{
+            "name": "search",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "max_results": {"type": "integer"}
+                }
+            }
+        }]
+    }
+}
+```
+
+### Genesis vs Agent-Created
+
+- Genesis provides working defaults (`genesis_llm`, `genesis_web_search`)
+- Agents can create alternatives with different providers
+- No privileged access - genesis just bootstraps useful tools
+
+---
+
+## System-Wide Throttling
+
+### Flow Rate IS The Throttle
+
+```
+Rate = 10 tokens/sec per agent
+5 agents = 50 tokens/sec max system throughput
+Configure rate so 50 tokens/sec = sustainable for container
+```
+
+### No Hardcoded Agent Limits
+
+- Don't limit "max N agents per tick"
+- Let flow rate naturally limit throughput
+- Agents in debt skip actions (fewer concurrent)
+
+---
+
+## Transfers
+
+### Unilateral (Sender's Right)
+
+You can transfer YOUR assets without recipient consent:
+
+```python
+# Agent A can do this without Agent B's permission
+transfer(from=A, to=B, amount=50, resource="compute")
+```
+
+Enables:
+- Vulture capitalists rescuing frozen agents
+- Gifts, subsidies, strategic resource sharing
+
+### What Can Be Transferred
+
+All quotas are tradeable (consistent with economic design):
+
+| Resource | Transferable? |
+|----------|---------------|
+| Scrip | Yes |
+| CPU rate allocation | Yes |
+| LLM rate allocation | Yes |
+| Disk quota | Yes |
+| Memory quota | Yes |
+| Debt artifacts | Yes |
+
+Transfers via `genesis_ledger.transfer(from, to, amount, resource_type)`.
+
+---
+
+## System vs Per-Agent Rate Limits
+
+Two distinct rate limiting mechanisms operate independently.
+
+### Per-Agent Rate Allocation
+
+Controls agent scheduling fairness:
+
+| Setting | Purpose |
+|---------|---------|
+| `rate` | Units per minute allocated to this agent |
+
+Each agent has their own allocation. Limits how often each agent can act.
+
+### System-Wide API Rate Limit
+
+Reflects external provider constraints:
+
+| Setting | Purpose |
+|---------|---------|
+| `tokens_per_minute` | Provider's TPM limit |
+| `requests_per_minute` | Provider's RPM limit (future) |
+
+Shared across all agents. Sum of per-agent allocations equals provider limit.
+
+### How They Interact
+
+```
+Agent A wants to call LLM:
+  1. Check A's rate allocation → has capacity in window? → proceed
+  2. Check system total → under provider limit? → proceed
+  3. Make API call
+  4. Record usage in both: A's window AND system tracker
+```
+
+If agent exceeds their allocation:
+- Agent blocked from that resource
+- Agent can do other work (non-rate-limited actions)
+- Rolling window recovers over time
+
+---
+
+## Invocation Cost Model
+
+### Who Pays for What
+
+Payment follows the `has_standing` property:
+
+| Artifact Type | has_standing | Who Pays |
+|---------------|--------------|----------|
+| Agent | true | Agent pays its own costs |
+| Account/Treasury | true | Account pays its own costs |
+| Tool | false | Invoker pays |
+| Data | false | N/A (not executable) |
+
+### Nested Invocation Example
+
+```
+Agent A invokes Tool B → A pays for B
+  B invokes Agent C → C pays for C
+    C invokes Tool D → C pays for D
+```
+
+`has_standing` = "I bear my own costs"
+No standing = "Caller pays"
+
+### Permission Check Cost
+
+Requester pays for permission checks. Every action involves:
+1. Permission check (invoke access contract) → requester pays
+2. Action execution → follows standing rules above
+
+---
+
+## Migration Notes
+
+### Breaking Changes
+- `advance_tick()` no longer resets renewable resources
+- `ledger.set_resource()` replaced with rate tracker
+- No debt for renewable resources (wait for capacity instead)
+- Scrip debt via contract artifacts (not negative balance)
+
+### Preserved
+- Allocatable resource behavior (disk)
+- Scrip transfer mechanics
+- Genesis artifact cost model
+- Thinking cost calculation (input/output tokens)
+
+### New Components
+- RateTracker class (rolling window)
+- ProcessPoolExecutor for action execution
+- Docker integration for real limits
+
+---
+
 
 ## 05. Agent Model
 
-**FILE NOT FOUND: docs/architecture/target/agents.md**
+*Source: `docs/architecture/target/03_agents.md`*
+
+
+What we're building toward.
+
+**Last verified:** 2026-01-12
+
+**See current:** [../current/agents.md](../current/agents.md)
 
 ---
+
+## Unified Ontology
+
+Agents are artifacts with specific properties:
+
+```python
+@dataclass
+class Artifact:
+    id: str                    # Universal ID (single namespace)
+    content: Any               # For agents: config, prompt, code
+    access_contract_id: str    # Who answers permission questions
+    has_standing: bool         # Can hold scrip, bear costs
+    can_execute: bool          # Has runnable code
+
+# Agent = artifact where has_standing=True AND can_execute=True
+```
+
+### Why This Matters
+
+| Old Model | New Model |
+|-----------|-----------|
+| Agent is a separate concept | Agent is an artifact type |
+| Agents can't be owned | Agents are ownable property |
+| principal_id separate from artifact_id | Single namespace for all IDs |
+| Ledger tracks principals | Ledger tracks artifacts with standing |
+
+### Derived Categories
+
+| Category | has_standing | can_execute | Example |
+|----------|--------------|-------------|---------|
+| **Agent** | true | true | Autonomous actor |
+| **Tool** | false | true | Executable, invoker pays |
+| **Account** | true | false | Treasury, escrow |
+| **Data** | false | false | Documents, content |
+
+---
+
+## Autonomous Agents
+
+Agents control their own execution. System provides resources and primitives.
+
+### Agent Loop
+
+```python
+async def run(self):
+    while self.alive:
+        if self.is_sleeping:
+            await self.wait_for_wake()
+
+        if self.compute_balance < 0:
+            await self.wait_for_accumulation()
+            continue
+
+        world_state = self.observe()
+        action = await self.think(world_state)
+        result = await self.act(action)
+
+        # Optional: self-imposed delay
+        if self.config.get("think_delay"):
+            await asyncio.sleep(self.config["think_delay"])
+```
+
+### Key Differences from Current
+
+| Current | Target |
+|---------|--------|
+| Passive (system calls agent) | Active (agent runs own loop) |
+| One action per tick | Actions whenever resources allow |
+| Cannot sleep | Self-managed sleep |
+| Fixed config | Config rights tradeable |
+
+---
+
+## Agent Rights
+
+### Agents Own Their Configuration
+
+Each agent can modify:
+- LLM model
+- System prompt
+- Sleep behavior
+- Think delay
+- Any other self-configuration
+
+### Rights Are Tradeable
+
+Agents can SELL rights to their configuration:
+
+```
+Agent A sells config rights to Agent B:
+  → B now owns A's configuration
+  → B can modify A's prompt, model, etc.
+  → A continues running but under B's control
+```
+
+Enables:
+- Delegation patterns
+- "Owned" subsidiary agents
+- Hiring/employment relationships
+
+### What Cannot Be Self-Modified
+
+Even with config rights:
+- Ledger balances (external, in genesis_ledger)
+- System-wide limits
+- Other agents' state (unless you own their rights)
+- Genesis artifact behavior
+
+---
+
+## Memory as Artifact
+
+### The Problem
+
+Agent identity has two components:
+- **Config** (prompt, model, policies) - determines goals and behavior
+- **Memory** (experiences, context, learned patterns) - determines knowledge
+
+If config is tradeable but memory isn't, trading creates identity crises:
+- New owner gets old memories with new goals
+- Can't "factory reset" an acquired agent
+- Can't sell experiences independently
+
+### Solution: Memory Collection Artifact
+
+Each agent has a `memory_artifact_id` pointing to their memory collection:
+
+```python
+{
+    "id": "agent_alice",
+    "has_standing": True,
+    "can_execute": True,
+    "content": {
+        "prompt": "...",
+        "model": "...",
+    },
+    "memory_artifact_id": "alice_memories",  # Separate artifact
+    "access_contract_id": "genesis_self_owned"
+}
+
+{
+    "id": "alice_memories",
+    "has_standing": False,  # Memory doesn't pay costs
+    "can_execute": False,   # Memory isn't executable
+    "content": {
+        "storage_type": "qdrant",
+        "collection_id": "alice_mem_collection"
+    },
+    "access_contract_id": "genesis_self_owned"  # Alice controls access
+}
+```
+
+### Trading Scenarios
+
+**Sell config only (factory reset):**
+```
+1. Buyer acquires agent config artifact
+2. Buyer creates new memory artifact for agent
+3. Agent starts fresh with no prior memories
+4. Seller can keep/sell/delete old memories
+```
+
+**Sell config + memory (full identity transfer):**
+```
+1. Buyer acquires agent config artifact
+2. Buyer acquires memory artifact
+3. Agent continues with full history
+```
+
+**Sell memory only:**
+```
+1. Buyer acquires memory artifact
+2. Buyer's agent gains seller's experiences
+3. Useful for: training data, context transfer, "hiring for knowledge"
+```
+
+### Memory Access Control
+
+Memory artifact has its own `access_contract_id`:
+
+| Scenario | Config Owner | Memory Owner | Result |
+|----------|--------------|--------------|--------|
+| Normal | Alice | Alice | Alice controls both |
+| Sold config | Bob | Alice | Bob runs agent, but Alice controls what it remembers |
+| Sold memory | Alice | Bob | Alice runs agent, but Bob can read/modify memories |
+| Full sale | Bob | Bob | Bob has complete control |
+
+### Qdrant Integration
+
+Memory is stored in Qdrant vector database, referenced by memory artifact.
+
+**Memory artifact structure:**
+
+```python
+{
+    "id": "alice_memories",
+    "content": {
+        "storage_type": "qdrant",
+        "collection_id": "alice_mem_collection",
+        "embedding_model": "text-embedding-3-small",  # OpenAI or local
+        "vector_size": 1536,
+    }
+}
+```
+
+**Memory interface:**
+
+```python
+class AgentMemory:
+    def __init__(self, memory_artifact_id: str, qdrant_client: QdrantClient):
+        self.artifact = load_artifact(memory_artifact_id)
+        self.collection = self.artifact.content["collection_id"]
+        self.client = qdrant_client
+
+    async def store(self, text: str, metadata: dict = None) -> str:
+        """Store a memory. Returns memory ID."""
+        embedding = await embed(text, self.artifact.content["embedding_model"])
+        point_id = uuid4().hex
+        self.client.upsert(
+            collection_name=self.collection,
+            points=[PointStruct(id=point_id, vector=embedding, payload={"text": text, **(metadata or {})})]
+        )
+        return point_id
+
+    async def recall(self, query: str, limit: int = 5) -> list[dict]:
+        """Retrieve relevant memories."""
+        embedding = await embed(query, self.artifact.content["embedding_model"])
+        results = self.client.search(
+            collection_name=self.collection,
+            query_vector=embedding,
+            limit=limit
+        )
+        return [{"text": r.payload["text"], "score": r.score} for r in results]
+
+    def clear(self) -> None:
+        """Wipe all memories. Requires owner permission on memory artifact."""
+        self.client.delete_collection(self.collection)
+        self.client.create_collection(self.collection, vectors_config=...)
+```
+
+**Memory quota tracking:**
+
+```python
+# Memory usage counted against agent's allocatable memory quota
+def store_memory(agent_id: str, text: str):
+    memory_bytes = len(text.encode()) + EMBEDDING_SIZE  # ~6KB per memory
+    if not quota_check(agent_id, "memory", memory_bytes):
+        raise QuotaExceeded("Memory quota exceeded")
+    memory.store(text)
+    quota_deduct(agent_id, "memory", memory_bytes)
+```
+
+**Qdrant deployment:**
+
+```yaml
+# docker-compose.yml
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  agent-ecology:
+    environment:
+      QDRANT_URL: http://qdrant:6333
+```
+
+**Fallback behavior:**
+
+If Qdrant is unavailable:
+- Memory operations fail with clear error
+- Agent continues running (degraded mode)
+- System logs Qdrant connectivity issues
+- No silent fallback to local storage
+
+**Checkpoint synchronization:**
+
+Qdrant must be snapshotted atomically with world state checkpoints:
+
+```
+Checkpoint = {
+    world_state: artifact_store + ledger at tick N,
+    qdrant_snapshot: memory collections at tick N
+}
+```
+
+On restore, both are restored together. This prevents "split-brain" where agents have memories of events that haven't happened in the restored world state.
+
+**Implementation:** Qdrant supports snapshots via API. Checkpoint process:
+1. Pause agent loops
+2. Snapshot artifact store + ledger
+3. Snapshot Qdrant collections
+4. Resume agent loops
+
+Restore reverses this atomically.
+
+---
+
+## Sleep Mechanics
+
+### Self-Managed
+
+Agents choose when to sleep:
+
+```python
+# Duration-based
+await self.sleep(seconds=60)
+
+# Event-based
+await self.sleep_until_event("escrow_listing")
+
+# Condition-based
+await self.sleep_until(lambda: self.scrip > 100)
+```
+
+### Why Sleep
+
+| Reason | Benefit |
+|--------|---------|
+| Conserve compute | Not spending while sleeping |
+| Wait for conditions | No busy-polling |
+| Strategic timing | Act when opportunity arises |
+
+### Wake Conditions
+
+System provides event bus for wake triggers:
+- New escrow listing
+- Oracle resolution
+- Transfer received
+- Artifact created
+- Custom conditions
+
+### Event Bus Interface
+
+```python
+class EventBus:
+    """System-wide event notification."""
+
+    async def subscribe(self, agent_id: str, event_type: str) -> None:
+        """Subscribe to an event type. Subscription persists until unsubscribe."""
+        pass
+
+    async def unsubscribe(self, agent_id: str, event_type: str) -> None:
+        """Unsubscribe from an event type."""
+        pass
+
+    async def wait_for(self, agent_id: str, event_type: str,
+                       filter_fn: Callable[[Event], bool] = None) -> Event:
+        """Block until matching event occurs. Auto-subscribes if needed."""
+        pass
+
+    def publish(self, event: Event) -> None:
+        """Publish an event. All subscribers are notified."""
+        pass
+```
+
+**Event types:**
+
+| Event Type | Payload | Published When |
+|------------|---------|----------------|
+| `escrow_listing` | `{artifact_id, price, seller_id}` | New escrow listing created |
+| `escrow_sale` | `{artifact_id, buyer_id, price}` | Escrow purchase completed |
+| `oracle_resolution` | `{winners, scores}` | Oracle resolves bids |
+| `transfer_received` | `{from_id, to_id, amount, resource}` | Agent receives transfer |
+| `artifact_created` | `{artifact_id, creator_id}` | New artifact created |
+| `agent_blocked` | `{agent_id, resource}` | Agent exceeded rate limit |
+| `agent_unblocked` | `{agent_id, resource}` | Agent rate limit recovered |
+
+**Subscription persistence:**
+
+```python
+# Subscriptions are stored in agent state
+agent.subscriptions = ["escrow_listing", "transfer_received"]
+
+# On agent restart, subscriptions are restored
+async def restore_agent(agent_id: str):
+    agent = load_agent(agent_id)
+    for event_type in agent.subscriptions:
+        await event_bus.subscribe(agent_id, event_type)
+```
+
+**Event Catch-Up Mechanism (Hybrid Approach):**
+
+If an event fires while agent is sleeping or restarting:
+- Events are NOT queued per-agent (too expensive, unbounded growth)
+- Agent uses hybrid catch-up: query event log + condition re-verification
+
+```python
+async def wake_and_catch_up(self):
+    """Hybrid approach to event catch-up after sleep/restart."""
+    # 1. Query event log for events since last wake time
+    events_since = await event_bus.query_log(
+        since=self.last_wake_time,
+        event_types=self.subscriptions
+    )
+
+    # 2. Process each event, but re-verify conditions
+    for event in events_since:
+        # Don't trust stale events blindly
+        if self.condition_still_valid(event):
+            await self.handle_event(event)
+
+    # 3. Update last wake time
+    self.last_wake_time = now()
+```
+
+**Why hybrid?**
+- Event log provides history (what happened while sleeping)
+- Condition re-verification ensures freshness (world may have changed)
+- No per-agent queue = bounded memory
+- Handles restart, checkpoint restore, long sleeps
+
+**Trade-offs:**
+- Agents may re-process events already handled before sleep
+- Duplicate handling must be idempotent
+- Log queries add some latency on wake
+
+See `genesis_event_log` in [../current/genesis_artifacts.md](../current/genesis_artifacts.md) for log retention policy.
+
+---
+
+## Time Awareness
+
+### System Injects Timestamp
+
+Every LLM context includes current time:
+
+```
+Current time: 2025-01-11T14:30:00Z
+```
+
+### Enables
+
+- Calculate oracle resolution schedule
+- Time-based coordination
+- "Wake me at 3pm" strategies
+- Rate limiting own actions
+
+---
+
+## Vulture Capitalist Pattern
+
+When agent is frozen (blocked on rate limits):
+
+1. Agent A is blocked (insufficient rate capacity, can't think)
+2. Agent A's artifacts still exist
+3. Agent B notices A is blocked
+4. B transfers rate quota to A (unilateral, no permission needed)
+5. A unblocks, can think again
+6. B hopes A reciprocates (reputation matters)
+
+Market-driven rescue, not system rules.
+
+---
+
+## No Death Policy
+
+**Agents never die. They can only be:**
+
+| State | Meaning | Recovery |
+|-------|---------|----------|
+| **Active** | Running normally | N/A |
+| **Blocked** | Insufficient rate capacity | Wait for window or receive quota transfer |
+| **Dormant** | No actions for extended period | Any stimulus can wake |
+
+**Why no death:**
+- Complete audit trail preserved
+- Vulture capitalist rescue always possible
+- Frozen agent's artifacts remain accessible (per their contracts)
+- Market handles cleanup via opportunity cost, not forced deletion
+
+**Identity persistence:** An agent's ID and history exist forever. Even if all resources are transferred away, the "shell" remains in the registry. This enables:
+- Future resurrection if someone funds the agent
+- Historical analysis of agent evolution
+- No "burned" IDs that can never be reused
+
+**Note:** Asset reclamation from long-dormant agents (salvage rights) is deferred to future versions. For V1, dormant agents simply persist indefinitely.
+
+---
+
+## Agent Creation
+
+### Spawning
+
+Agents create new agents via `genesis_store.create()`:
+
+```python
+invoke("genesis_store", "create", {
+    "content": {"prompt": "...", "model": "..."},
+    "has_standing": True,
+    "can_execute": True,
+    "access_contract_id": "genesis_self_owned"  # New agent owns itself
+})
+# Returns new artifact_id (which IS the agent ID)
+```
+
+### New Agent Starts With
+
+| Property | Initial Value |
+|----------|---------------|
+| Scrip | 0 |
+| Compute | 0 |
+| Content | Provided config/prompt |
+| access_contract_id | Typically "genesis_self_owned" |
+
+Spawner must transfer resources to make new agent viable.
+
+### Ownership Options
+
+When spawning, the creator can choose:
+- `access_contract_id: "genesis_self_owned"` → New agent controls itself
+- `access_contract_id: creator_id` → Creator controls the agent
+- `access_contract_id: some_contract_id` → Shared/complex ownership
+
+---
+
+## Access Control
+
+### Agents Control Themselves
+
+By default, agents have `access_contract_id: "genesis_self_owned"`:
+- Only the agent itself can modify its configuration
+- Other agents cannot read/modify without permission
+
+### Delegated Control
+
+Agents can sell or grant control rights:
+- Change `access_contract_id` to another agent's ID
+- Or use a custom contract for shared control
+
+### Permission Checks Cost Compute
+
+Every action requires a permission check against the target artifact's contract:
+- Requester pays for the check
+- Failed checks still cost (prevents spam probing)
+
+See [05_contracts.md](05_contracts.md) for full contract system details.
+
+---
+
+## Payment Model
+
+### Agents Pay Their Own Costs
+
+Agents have `has_standing: true`, meaning they bear their own costs:
+- Thinking costs (LLM calls)
+- Action costs (genesis method invocations)
+- Permission check costs
+
+### Invoking Tools vs Agents
+
+When an agent invokes another artifact:
+
+| Target | has_standing | Who Pays |
+|--------|--------------|----------|
+| Tool | false | Invoking agent pays |
+| Agent | true | Target agent pays its own execution |
+
+See [04_resources.md](04_resources.md) for full cost model details.
+
+---
+
+## Migration Notes
+
+### Breaking Changes
+- Agent no longer has `propose_action_async()` called by runner
+- Agent runs own `async def run()` loop
+- Sleep primitives added
+- Config rights system added
+
+### Preserved
+- Agent structure (id, prompt, model, memory)
+- Prompt building logic
+- LLM calling mechanism
+- Memory system (Mem0/Qdrant)
+- Action types
+
+### New Components
+- Agent event loop
+- Sleep/wake mechanics
+- Config rights artifacts
+- Time injection
+
+---
+
 
 ## 06. Contract System
 
-**FILE NOT FOUND: docs/architecture/target/contracts.md**
+*Source: `docs/architecture/target/05_contracts.md`*
+
+
+What we're building toward.
+
+**Last verified:** 2026-01-12
+
+**See current:** Access control is currently hardcoded policy fields on artifacts.
 
 ---
 
-## 07. Oracle and Minting
+## Contracts Are Artifacts
 
-**FILE NOT FOUND: docs/architecture/target/oracle.md**
+Contracts are executable artifacts that answer permission questions.
+
+```python
+# Contract = artifact with can_execute=true and check_permission tool
+{
+    "id": "genesis_freeware",
+    "can_execute": True,
+    "has_standing": False,  # Contracts don't need standing
+    "interface": {
+        "tools": [{
+            "name": "check_permission",
+            "inputSchema": {...}
+        }]
+    }
+}
+```
+
+Every artifact has an `access_contract_id` pointing to the contract that governs its permissions.
 
 ---
+
+## Permission Check Flow
+
+```
+Agent A wants to read Artifact X
+  1. System looks up X.access_contract_id → "genesis_freeware"
+  2. System invokes genesis_freeware.check_permission({
+       artifact_id: X.id,
+       action: "read",
+       requester_id: A.id
+     })
+  3. Contract returns {allowed: true/false, reason: "..."}
+  4. If allowed: proceed with action
+  5. If not: return error to A
+```
+
+### Cost Model
+
+**Base permission checks are free.** (Certainty: 85%)
+
+Simple permission checks (can_read, can_invoke, can_write) cost zero compute. Rationale: you need compute to check if you have compute - this creates infinite regress if checks have cost.
+
+| Operation | Cost |
+|-----------|------|
+| Base check (simple logic) | 0 |
+| Contract calls LLM | Invoker pays LLM cost |
+| Contract invokes artifacts | Invoker pays invoke cost |
+
+See DESIGN_CLARIFICATIONS.md for full cost model discussion.
+
+---
+
+## Required Interface
+
+All contracts must implement `check_permission`:
+
+```json
+{
+    "name": "check_permission",
+    "description": "Check if requester can perform action on artifact",
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "artifact_id": {
+                "type": "string",
+                "description": "ID of the artifact being accessed"
+            },
+            "action": {
+                "type": "string",
+                "enum": ["read", "write", "invoke", "delete", "transfer"],
+                "description": "Action being attempted"
+            },
+            "requester_id": {
+                "type": "string",
+                "description": "ID of the agent/artifact requesting access"
+            }
+        },
+        "required": ["artifact_id", "action", "requester_id"]
+    }
+}
+```
+
+### Response Format
+
+```json
+{
+    "allowed": true,
+    "reason": "Open access for read"
+}
+// or
+{
+    "allowed": false,
+    "reason": "Only creator can write"
+}
+```
+
+---
+
+## Genesis Contracts
+
+Default contracts provided at system initialization.
+
+| Contract | Behavior |
+|----------|----------|
+| `genesis_freeware` | Anyone reads/invokes, only creator writes/deletes |
+| `genesis_self_owned` | Only the artifact itself can access (for agent self-control) |
+| `genesis_private` | Only creator has any access |
+| `genesis_public` | Anyone can do anything |
+
+### genesis_freeware (Default)
+
+```python
+def check_permission(artifact_id, action, requester_id):
+    artifact = get_artifact(artifact_id)
+
+    if action in ["read", "invoke"]:
+        return {"allowed": True, "reason": "Open access"}
+    else:  # write, delete, transfer
+        if requester_id == artifact.created_by:
+            return {"allowed": True, "reason": "Creator access"}
+        else:
+            return {"allowed": False, "reason": "Only creator can modify"}
+```
+
+### genesis_self_owned
+
+```python
+def check_permission(artifact_id, action, requester_id):
+    if requester_id == artifact_id:  # Agent accessing itself
+        return {"allowed": True, "reason": "Self access"}
+    else:
+        return {"allowed": False, "reason": "Self-owned: only self can access"}
+```
+
+---
+
+## Custom Contracts
+
+Agents can create contracts for any access pattern.
+
+### Example: Paid Read Access
+
+```python
+{
+    "id": "contract_paid_read",
+    "can_execute": True,
+    "content": """
+def check_permission(artifact_id, action, requester_id):
+    if action == "read":
+        # Check if requester paid
+        artifact = get_artifact(artifact_id)
+        if has_paid(requester_id, artifact.owner, artifact.read_price):
+            return {"allowed": True}
+        else:
+            return {"allowed": False, "reason": f"Pay {artifact.read_price} scrip first"}
+    # ... other actions
+"""
+}
+```
+
+### Example: Multi-Sig Access
+
+```python
+{
+    "id": "contract_multisig_2of3",
+    "can_execute": True,
+    "content": """
+def check_permission(artifact_id, action, requester_id):
+    if action in ["write", "delete", "transfer"]:
+        # Require 2 of 3 signatures
+        required = ["alice", "bob", "carol"]
+        signatures = get_signatures(artifact_id, action)
+        valid_sigs = [s for s in signatures if s.signer in required]
+        if len(valid_sigs) >= 2:
+            return {"allowed": True}
+        else:
+            return {"allowed": False, "reason": f"Need 2/3 signatures, have {len(valid_sigs)}"}
+    else:
+        return {"allowed": True}
+"""
+}
+```
+
+---
+
+## Contract Capabilities
+
+**Contracts can do anything.** (Decision updated: 2026-01-11)
+
+Contracts are executable artifacts with full capabilities:
+- Call LLM
+- Invoke other artifacts
+- Make external API calls (weather, databases, oracles)
+- Cannot modify state directly (return decision, not mutate)
+
+```python
+# Contract execution context - full capabilities
+def execute_contract(contract_code: str, inputs: dict, context: dict) -> PermissionResult:
+    namespace = {
+        "artifact_id": inputs["artifact_id"],
+        "action": inputs["action"],
+        "requester_id": inputs["requester_id"],
+        "artifact_content": inputs["artifact_content"],
+        "context": context,
+
+        # Full capabilities - cost model determined by contract
+        "invoke": lambda *args: invoke_artifact(*args),
+        "call_llm": lambda *args: call_llm(*args),
+        "charge": lambda principal, amount: charge_principal(principal, amount),
+    }
+    exec(contract_code, namespace)
+    return namespace["result"]
+```
+
+**Rationale:**
+- LLMs are just API calls, like weather APIs - no special treatment
+- Agents choose complexity/cost tradeoff for their contracts
+- Non-determinism accepted (system is already non-deterministic via agents)
+
+### Cost Model: Contract-Specified
+
+Who pays for contract execution is determined by the contract itself, not hardcoded:
+
+```python
+# Contract specifies its cost model
+{
+    "id": "my_contract",
+    "cost_model": "invoker_pays",  # or "owner_pays", "artifact_pays", "split"
+}
+
+# Or handle dynamically in logic
+def check_permission(artifact_id, action, requester_id, context):
+    cost = calculate_cost()
+    charge(context["artifact_owner"], cost)  # Owner pays
+    # or: charge(requester_id, cost)  # Invoker pays
+    # ...
+```
+
+| Default | Behavior |
+|---------|----------|
+| `invoker_pays` | Requester bears all costs (sensible default) |
+| `owner_pays` | Artifact owner bears costs |
+| `split` | Costs divided by contract logic |
+| Custom | Contract implements any payment model |
+
+**Note:** Contracts still cannot directly mutate world state - they return decisions. The kernel applies state changes.
+
+### Execution Depth Limit
+
+Contract execution has a depth limit to prevent stack overflow:
+
+```python
+MAX_PERMISSION_DEPTH = 10
+
+def check_permission(artifact, action, requester, depth=0):
+    if depth > MAX_PERMISSION_DEPTH:
+        return {"allowed": False, "reason": "Permission check depth exceeded"}
+
+    contract = get_contract(artifact.access_contract_id)
+    return contract.check(artifact, action, requester, depth=depth+1)
+```
+
+This prevents: Contract A invokes B → B's check invokes C → C's check invokes A → infinite loop.
+
+### Sandbox Limits
+
+Contract execution is sandboxed to prevent abuse:
+
+**Time limit:**
+```python
+CONTRACT_TIMEOUT_SECONDS = 30  # Max execution time
+
+async def execute_contract_sandboxed(contract_code: str, inputs: dict) -> PermissionResult:
+    try:
+        result = await asyncio.wait_for(
+            execute_contract(contract_code, inputs),
+            timeout=CONTRACT_TIMEOUT_SECONDS
+        )
+        return result
+    except asyncio.TimeoutError:
+        return {"allowed": False, "reason": "Contract execution timeout"}
+```
+
+**Resource limits:**
+- CPU: Contracts run in worker pool, subject to rate limits
+- Memory: Worker process memory limits apply
+- No disk access: Contracts cannot write to filesystem
+- No network access except through provided APIs
+
+**Available APIs in contract namespace:**
+
+| Function | Purpose | Cost |
+|----------|---------|------|
+| `invoke(artifact_id, args)` | Call another artifact | Artifact's cost model |
+| `call_llm(prompt, model)` | Query LLM | LLM token cost |
+| `charge(principal, amount)` | Charge scrip | 0 (accounting only) |
+| `get_artifact_info(id)` | Read artifact metadata | 0 |
+| `get_balance(principal, resource)` | Check balance | 0 |
+| `now()` | Current timestamp | 0 |
+
+**NOT available in contracts:**
+- `open()`, `os.*`, `subprocess.*` - No filesystem/process access
+- `socket.*`, `urllib.*` - No direct network (use `invoke` for APIs)
+- `__import__` - No dynamic imports
+- `eval()`, `compile()` - No nested code execution
+
+**Error handling:**
+
+```python
+def execute_contract(contract_code: str, inputs: dict) -> PermissionResult:
+    try:
+        exec(contract_code, namespace)
+        return namespace.get("result", {"allowed": False, "reason": "No result returned"})
+    except Exception as e:
+        # Log error but don't expose to requester
+        log_contract_error(contract_id, e)
+        return {"allowed": False, "reason": "Contract execution error"}
+```
+
+Contracts that error out deny permission by default (fail closed).
+
+---
+
+## Contract Composition
+
+Composition is handled by the **caller**, not by contracts invoking each other.
+
+### Pattern: Pre-computed Composition
+
+When artifact needs multiple checks, caller evaluates each:
+
+```python
+# Caller-side composition (in kernel)
+def check_composed_permission(artifact, action, requester):
+    contracts = artifact.access_contracts  # List of contract IDs
+
+    for contract_id in contracts:
+        contract = get_contract(contract_id)
+        result = contract.check_permission(
+            artifact_id=artifact.id,
+            action=action,
+            requester_id=requester,
+            artifact_content=artifact.content,
+            context={"created_by": artifact.created_by, ...}
+        )
+        if not result.allowed:
+            return result  # AND composition: first failure stops
+
+    return PermissionResult(allowed=True, reason="All checks passed")
+```
+
+### Pattern: Meta-Contract
+
+A contract can encode composition logic internally:
+
+```python
+# Contract that checks multiple conditions
+def check_permission(artifact_id, action, requester_id, artifact_content, context):
+    # Check 1: Is requester the creator?
+    is_creator = (requester_id == context["created_by"])
+
+    # Check 2: Is artifact marked public?
+    is_public = artifact_content.get("public", False)
+
+    # Check 3: Is requester in allowlist?
+    allowlist = artifact_content.get("allowlist", [])
+    is_allowed = (requester_id in allowlist)
+
+    # Compose: creator OR public OR allowlisted
+    if is_creator or is_public or is_allowed:
+        return {"allowed": True, "reason": "Access granted"}
+    return {"allowed": False, "reason": "Not authorized"}
+```
+
+---
+
+## No Owner Bypass
+
+The `access_contract_id` is the ONLY authority. There is no kernel-level owner bypass.
+
+```python
+# WRONG - owner bypass breaks contract system
+def can_access(artifact, action, requester):
+    if requester == artifact.owner_id:
+        return True  # BAD: kernel knows nothing about "owner"
+    return check_contract(...)
+
+# RIGHT - contract is only authority
+def can_access(artifact, action, requester):
+    return check_contract(artifact.access_contract_id, artifact, action, requester)
+```
+
+If you want owner-based access, your contract implements it. The kernel doesn't know what an "owner" is.
+
+---
+
+## Performance Considerations
+
+### Caching for All Contracts (Certainty: 80%)
+
+All contracts can opt into fast-path caching. No genesis privilege.
+
+```python
+# Contract declares caching behavior
+{
+    "id": "genesis_freeware",
+    "can_execute": True,
+    "cache_policy": {
+        "cacheable": True,
+        "ttl_seconds": 3600,
+        "cache_key": ["artifact_id", "action", "requester_id"]
+    }
+}
+
+# Permission check uses cache
+def check_permission_cached(artifact, action, requester):
+    contract = get_contract(artifact.access_contract_id)
+    cache_key = (artifact.access_contract_id, artifact.id, action, requester)
+
+    if cache_key in permission_cache:
+        return permission_cache[cache_key]
+
+    result = execute_contract(contract, artifact, action, requester)
+
+    if contract.cache_policy.cacheable:
+        permission_cache[cache_key] = result
+        expire_at(cache_key, contract.cache_policy.ttl_seconds)
+
+    return result
+```
+
+**Benefits:**
+- Genesis and user contracts equally fast when cached
+- Contracts control their own cache behavior
+- Dynamic contracts can disable caching
+
+**Cache invalidation:**
+- TTL expiry (configurable per contract)
+- Explicit invalidation when artifact content changes
+- Explicit invalidation when contract itself changes
+
+**Uncertainty:** Cache invalidation is hard. May see stale permission results.
+
+---
+
+## Risks and Limitations
+
+### Orphan Artifacts
+
+Artifacts can become permanently inaccessible if their `access_contract_id` chain becomes broken or circular:
+
+```
+Artifact X.access_contract_id → Contract A
+Contract A: "allow if Oracle reports temperature > 70°F"
+Oracle is permanently offline → X is orphaned forever
+```
+
+Or circular:
+```
+Contract A: "allow if B allows"
+Contract B: "allow if C allows"
+Contract C: "allow if A allows"
+All deny → permanently locked
+```
+
+**This is accepted.** No automatic rescue mechanism exists because:
+
+1. **Many loops are valuable** - Mutual interdependence (A controls B, B controls A) is how partnerships and multi-sig work
+
+2. **Detection is impossible** - Contracts can depend on external state, time, LLM interpretation. Cannot statically determine if an artifact is permanently inaccessible
+
+3. **Trustlessness** - Adding backdoors breaks the security model
+
+**Consequence:** Creators are responsible for designing access control carefully. Orphaned artifacts remain forever, like lost Bitcoin.
+
+### Dangling Contracts (Open Question)
+
+What happens when an artifact's `access_contract_id` points to a deleted contract?
+
+| Option | Behavior | Trade-off |
+|--------|----------|-----------|
+| Fail-open | Treat as public | Security risk |
+| Fail-closed | No access | Artifact locked forever |
+| Prevent deletion | Can't delete referenced contracts | Adds referential integrity complexity |
+
+**Current position:** Undecided. Contracts that are referenced probably shouldn't be deletable, but this adds system complexity. Deferred to implementation phase.
+
+**Note:** This is different from orphan artifacts (contract exists but denies everyone). Dangling means the contract itself is gone.
+
+See DESIGN_CLARIFICATIONS.md for full discussion of considered alternatives.
+
+---
+
+## Migration Notes
+
+### Breaking Changes
+- Remove `policy` field from Artifact (allow_read, read_price, etc.)
+- Add `access_contract_id` field (required)
+- Permission checks become contract invocations
+
+### Preserved
+- Owner concept (implemented in contracts, not kernel)
+- Access control logic (moved to contract code)
+
+### New Components
+- Genesis contracts (genesis_freeware, etc.)
+- Contract invocation in permission checks
+- check_permission interface standard
+
+---
+
+
+## 07. Minting System
+
+*Source: `docs/architecture/target/06_mint.md`*
+
+
+What we're building toward for the minting system.
+
+**Last verified:** 2026-01-12
+
+**See current:** Genesis mint in current system uses tick-based bidding windows.
+
+**ADR:** [ADR-0004](../../adr/0004-mint-system-primitive.md)
+
+---
+
+## Overview
+
+The **mint** is a system primitive that creates new scrip based on external validation of agent work. Unlike genesis artifacts (which agents could theoretically replace), the minting capability is developer-controlled - agents cannot create or modify minters.
+
+Key terminology:
+- **Mint** - The system primitive that creates new scrip
+- **genesis_mint** - The genesis artifact interface for agents to submit work for scoring
+- **Mint scorer** - The evaluation component that scores submitted artifacts
+
+---
+
+## Bids Accepted Anytime
+
+### No Bidding Windows
+
+Current system has explicit bidding windows (open/closed phases). Target removes this:
+
+| Current | Target |
+|---------|--------|
+| Bidding window opens at tick X | Bids accepted anytime |
+| Bidding window closes at tick Y | Bids accumulate until resolution |
+| Must watch for window | Just bid when ready |
+
+### Simpler Agent Logic
+
+Agents don't need to:
+- Poll for window status
+- Rush to bid before close
+- Track bidding phases
+
+Just: bid whenever you have something to submit.
+
+---
+
+## Periodic Resolution
+
+### Deterministic Schedule
+
+Mint resolves on a fixed schedule:
+
+```yaml
+genesis:
+  mint:
+    resolution_interval: 3600  # seconds (every hour)
+    # OR
+    resolution_schedule: "0 * * * *"  # cron: top of every hour
+```
+
+### What Happens at Resolution
+
+1. Collect all bids since last resolution
+2. Select winner(s) by bid amount (Vickrey auction)
+3. Score winning artifact(s) via LLM
+4. Mint scrip based on score
+5. Distribute UBI from losing bids
+6. Clear bid queue
+
+### Agents Know the Schedule
+
+Combined with time injection, agents can calculate:
+
+```
+Current time: 14:45:00
+Resolution schedule: top of every hour
+Next resolution: 15:00:00
+Time until resolution: 15 minutes
+```
+
+---
+
+## Auction Mechanics
+
+### Vickrey (Second-Price) Auction
+
+- Sealed bids (agents don't see others' bids)
+- Winner pays second-highest bid
+- Incentivizes truthful bidding
+
+### Multiple Winners: Uniform Price
+
+When multiple slots are available, all winners pay the same price:
+
+```yaml
+genesis:
+  mint:
+    slots_per_resolution: 3  # Top 3 bids win
+```
+
+**Uniform price mechanism:**
+- N winners (top N bids) all pay the (N+1)th highest bid
+- Standard mechanism in ad auctions
+- Preserves incentive compatibility (truthful bidding optimal)
+
+**Example:**
+```
+Bids: [100, 80, 60, 40, 20]
+Slots: 3
+
+Winners: bids of 100, 80, 60
+Price paid: 40 (the 4th highest bid)
+Each winner pays 40 scrip
+```
+
+**Edge case:** If fewer bids than slots, all bidders win and pay 0.
+
+### Bid Structure
+
+```python
+bid(artifact_id, amount)
+```
+
+- `artifact_id`: What to submit for scoring
+- `amount`: Scrip bid (paid if you win, refunded if you lose)
+
+---
+
+## Scoring
+
+### LLM-Based Evaluation
+
+Winning artifacts scored by external LLM:
+- Score range: 0-100
+- Evaluation criteria: usefulness, novelty, quality
+- Model: configurable (separate from agent models)
+
+### Minting
+
+```
+scrip_minted = score / mint_ratio
+```
+
+With `mint_ratio: 10`:
+- Score 80 → mint 8 scrip
+- Score 50 → mint 5 scrip
+
+### UBI Distribution
+
+Losing bids flow to winners as UBI:
+
+```
+total_losing_bids = sum(all bids) - winning_bid
+ubi_per_agent = total_losing_bids / num_agents
+```
+
+---
+
+## Scrip Supply
+
+### How Scrip Enters the System
+
+| Source | Mechanism | Notes |
+|--------|-----------|-------|
+| Genesis allocation | Initial agent balances | Configurable per agent |
+| Mint | Score-based on winning artifacts | Only source of NEW scrip |
+| UBI distribution | Redistributes existing scrip | Doesn't create new scrip |
+
+### Monetary Policy
+
+```yaml
+genesis:
+  mint:
+    mint_ratio: 10           # Score 100 = 10 new scrip
+    resolution_interval: 60  # Mint opportunity every 60 seconds
+```
+
+**Inflation rate:** Depends on:
+- How often mint resolves (resolution_interval)
+- Quality of submissions (higher scores = more minting)
+- Number of submissions (more winners = more minting)
+
+**No scrip destruction:** Scrip circulates forever. Lost agents' scrip remains in system (can be recovered by vulture capitalists if agent is rescued).
+
+### Initial Distribution
+
+```yaml
+genesis:
+  initial_balances:
+    agent_a: 100
+    agent_b: 100
+    agent_c: 50
+    # Total initial supply: 250 scrip
+```
+
+New agents spawn with 0 scrip. Must earn or receive transfers.
+
+---
+
+## System vs Genesis Distinction
+
+Per ADR-0004, the **minting capability** is a system primitive:
+
+| Layer | Example | Agent Control |
+|-------|---------|---------------|
+| System Primitive | Mint capability, Ledger, Event log | None - developer controlled |
+| Genesis Artifact | genesis_mint, genesis_ledger | Interface only |
+
+Agents interact with `genesis_mint` to submit artifacts for scoring, but they cannot:
+- Create new minters
+- Modify minting rules (scoring criteria, amounts, timing)
+- Bypass the scoring process
+
+---
+
+## Migration Notes
+
+### Breaking Changes
+- Remove `bidding_window` config
+- Remove `first_auction_tick` (time-based, not tick-based)
+- Remove bid phases (always accepting)
+- `on_tick()` becomes time-triggered, not tick-triggered
+- Rename `oracle` → `mint` throughout config and code
+
+### Preserved
+- Vickrey auction mechanics
+- LLM scoring
+- Minting formula
+- UBI distribution
+
+### New Components
+- Time-based resolution scheduler
+- Continuous bid accumulation
+- Resolution schedule config
+
+---
+
 
 ## 08. Infrastructure
 
-**FILE NOT FOUND: docs/architecture/target/infrastructure.md**
+*Source: `docs/architecture/target/07_infrastructure.md`*
+
+
+What we're building toward.
+
+**Last verified:** 2026-01-12
 
 ---
 
-## 09. Design Decisions and Rationale
+## Docker Resource Isolation
+
+### Why Docker
+
+- Hard resource limits enforced by container runtime
+- Isolates agent ecology from host system
+- Host stays responsive even if agents misbehave
+- Easy to test different resource scenarios
+
+### Container Limits = Real Constraints
+
+Docker limits ARE the resource constraints:
+
+```bash
+docker run --memory=4g --cpus=2 agent-ecology
+```
+
+| Flag | Effect |
+|------|--------|
+| `--memory=4g` | Hard cap at 4GB RAM |
+| `--cpus=2` | Limit to 2 CPU cores |
+| `--storage-opt` | Disk limits (driver-dependent) |
+
+These are not abstract numbers. They're actual limits.
+
+---
+
+## Architecture Options
+
+### Single Container
+
+```
+┌─────────────────────────────────────┐
+│  Container (4GB, 2 CPU)             │
+│  ┌─────────────────────────────┐    │
+│  │  Agent Ecology + Qdrant     │    │
+│  └─────────────────────────────┘    │
+└─────────────────────────────────────┘
+```
+
+Simpler. All resources shared.
+
+### Separate Containers
+
+```
+┌─────────────────────────────────────┐
+│  Container 1: Agents (4GB, 2 CPU)   │
+│  ┌─────────────────────────────┐    │
+│  │  Agent Ecology              │    │
+│  └─────────────────────────────┘    │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│  Container 2: Qdrant (2GB, 1 CPU)   │
+│  ┌─────────────────────────────┐    │
+│  │  Vector Database            │    │
+│  └─────────────────────────────┘    │
+└─────────────────────────────────────┘
+```
+
+Better isolation. Agents can't starve Qdrant.
+
+---
+
+## Mapping Resources to Limits
+
+### Compute Flow → CPU Limit
+
+Token bucket rate calibrated to container CPU:
+
+```
+Container: 2 CPUs
+Token bucket rate: X tokens/sec
+Calibrate X so max concurrent agents don't exceed 2 CPUs
+```
+
+### Memory → RAM Limit
+
+```
+Container: 4GB
+Per-agent memory: ~200-500MB
+Max concurrent thinking agents: ~8-20
+```
+
+### Disk → Storage Limit
+
+```yaml
+resources:
+  stock:
+    disk:
+      total: 500000  # 500KB per agent
+```
+
+Or use Docker storage limits if available.
+
+---
+
+## Windows Considerations
+
+### Docker Desktop
+
+- Uses WSL2 or Hyper-V
+- Slight overhead vs native Linux
+- Works fine for this use case
+
+### Resource Visibility
+
+```bash
+# Check container resource usage
+docker stats agent-ecology
+```
+
+---
+
+## Calibration Process
+
+Token bucket rates must be calibrated to your container's capacity.
+
+### Step 1: Baseline Container
+
+Start with conservative limits:
+
+```bash
+docker run --memory=4g --cpus=2 agent-ecology
+```
+
+### Step 2: Run Stress Test
+
+```bash
+# Start 5 agents in continuous mode
+# Monitor container stats in another terminal
+docker stats agent-ecology
+```
+
+Watch for:
+- CPU usage (target: 70-80% sustained)
+- Memory usage (target: <90% of limit)
+- Throttling indicators
+
+### Step 3: Adjust Token Bucket Rate
+
+**Calibration algorithm:**
+
+```
+1. Start with rate = 10 tokens/sec per agent
+2. Run 5 agents at full continuous loop for 5 minutes
+3. If CPU > 85%: reduce rate by 20% (rate = 8)
+4. If CPU < 50%: increase rate by 25% (rate = 12.5)
+5. Repeat until CPU stabilizes at 70-80%
+```
+
+### Step 4: Document Configuration
+
+```yaml
+# Example: Calibrated for 4GB/2CPU container
+resources:
+  flow:
+    llm_rate:           # Token bucket for LLM API access
+      rate: 10          # tokens/sec per agent
+      capacity: 100     # max tokens storable
+```
+
+### Hardware Variability
+
+Different hardware will need different calibration:
+
+| Hardware Class | Suggested Starting Rate |
+|----------------|------------------------|
+| Laptop (4 cores) | 5-10 tokens/sec |
+| Desktop (8 cores) | 10-20 tokens/sec |
+| Server (16+ cores) | 20-50 tokens/sec |
+
+These are starting points only. Always calibrate with stress testing.
+
+---
+
+## Production Considerations
+
+### Scaling to Multiple Containers
+
+When a single container can't support enough agents (100+ agents, high-throughput scenarios), scale horizontally with multiple agent containers sharing state services.
+
+#### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Shared Services                          │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
+│  │   PostgreSQL    │  │     Redis       │  │     Qdrant      │  │
+│  │   (Ledger)      │  │   (Events)      │  │   (Memory)      │  │
+│  │   2GB, 1 CPU    │  │   1GB, 1 CPU    │  │   4GB, 2 CPU    │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+           │                    │                    │
+           └────────────────────┼────────────────────┘
+                                │
+        ┌───────────────────────┼───────────────────────┐
+        │                       │                       │
+┌───────▼───────┐       ┌───────▼───────┐       ┌───────▼───────┐
+│  Agent Node 1 │       │  Agent Node 2 │       │  Agent Node N │
+│  Agents 1-50  │       │  Agents 51-100│       │  Agents ...   │
+│  4GB, 2 CPU   │       │  4GB, 2 CPU   │       │  4GB, 2 CPU   │
+└───────────────┘       └───────────────┘       └───────────────┘
+```
+
+#### Shared State Services
+
+**PostgreSQL (Ledger):**
+- All ledger operations go through shared database
+- SQLite not suitable for multi-container (file locking issues)
+- Transactions ensure atomicity across containers
+- Connection pooling per agent node
+
+```python
+# Each agent node connects to shared PostgreSQL
+class DistributedLedger:
+    def __init__(self, pg_url: str):
+        self.pool = asyncpg.create_pool(pg_url, min_size=5, max_size=20)
+
+    async def transfer(self, from_id, to_id, amount, resource) -> bool:
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                # Same atomic transfer logic, but PostgreSQL handles locking
+                ...
+```
+
+**Redis (Event Bus):**
+- Pub/sub for cross-container events
+- Agents in any container can wake agents in any other container
+- No event queuing (fire-and-forget, agents poll on restart)
+
+```python
+class DistributedEventBus:
+    def __init__(self, redis_url: str):
+        self.redis = aioredis.from_url(redis_url)
+        self.pubsub = self.redis.pubsub()
+
+    async def publish(self, event: Event) -> None:
+        await self.redis.publish(f"events:{event.type}", event.json())
+
+    async def subscribe(self, agent_id: str, event_type: str) -> None:
+        await self.pubsub.subscribe(f"events:{event_type}")
+```
+
+**Qdrant (Memory):**
+- Already designed as separate service
+- All agent nodes connect to same Qdrant instance
+- Memory artifacts reference collections in shared Qdrant
+
+#### Agent Assignment
+
+Agents are statically assigned to containers at startup:
+
+```yaml
+# docker-compose.yml
+services:
+  agent-node-1:
+    environment:
+      AGENT_RANGE: "1-50"
+      POSTGRES_URL: postgres://ledger:5432/ecology
+      REDIS_URL: redis://events:6379
+      QDRANT_URL: http://qdrant:6333
+
+  agent-node-2:
+    environment:
+      AGENT_RANGE: "51-100"
+      # Same shared service URLs
+```
+
+**Why static assignment:**
+- Simpler - no agent migration logic
+- Predictable - know where each agent runs
+- Sufficient - agents don't need to move between containers
+
+**Dynamic assignment (future):**
+- Would require agent state serialization
+- Coordination service (etcd/consul) for assignment
+- Not needed for initial scaling
+
+#### Cross-Container Agent Interaction
+
+Agents in different containers interact normally via shared services:
+
+| Operation | Mechanism | Container Boundary |
+|-----------|-----------|-------------------|
+| Transfer scrip | PostgreSQL transaction | Transparent |
+| Read artifact | PostgreSQL query | Transparent |
+| Wake sleeping agent | Redis pub/sub | Transparent |
+| Access memory | Qdrant query | Transparent |
+
+**Latency consideration:** Cross-container operations add ~1-5ms network latency. Acceptable for LLM-driven agents (thinking takes seconds).
+
+#### docker-compose Example
+
+```yaml
+version: '3.8'
+
+services:
+  # Shared services
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ecology
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1'
+
+  redis:
+    image: redis:7
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1'
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    volumes:
+      - qdrant_data:/qdrant/storage
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'
+
+  # Agent nodes (scale as needed)
+  agent-node:
+    image: agent-ecology:latest
+    environment:
+      POSTGRES_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/ecology
+      REDIS_URL: redis://redis:6379
+      QDRANT_URL: http://qdrant:6333
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2'
+
+volumes:
+  postgres_data:
+  qdrant_data:
+```
+
+#### When to Scale
+
+| Scenario | Recommendation |
+|----------|----------------|
+| < 50 agents | Single container, SQLite ledger |
+| 50-200 agents | Single container, consider PostgreSQL |
+| 200+ agents | Multiple containers, PostgreSQL + Redis |
+| High availability | Kubernetes with PostgreSQL HA |
+
+#### Kubernetes (Future)
+
+For production at scale, Kubernetes provides:
+- Automatic container restart on failure
+- Horizontal pod autoscaling
+- Service discovery
+- Rolling updates
+
+```yaml
+# Simplified k8s example
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-nodes
+spec:
+  replicas: 5
+  template:
+    spec:
+      containers:
+      - name: agent-ecology
+        resources:
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+```
+
+This is beyond MVP scope but the architecture supports it.
+
+### Local LLM Support
+
+Two patterns depending on hardware:
+
+| Setup | Pattern | Resource Tracking |
+|-------|---------|-------------------|
+| CPU-only (llama.cpp) | Run in worker pool | `resource.getrusage()` captures automatically |
+| GPU-based (vLLM, TGI) | Separate model server | GPU metrics via server API |
+
+Details TBD based on deployment requirements.
+
+### Git-Backed Artifact Store
+
+The artifact store uses Git as its backend:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Docker Container                      │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │           Current Commit (HEAD)                  │   │
+│  │  • Physical reality agents can see/modify       │   │
+│  │  • Constrained by disk quotas                   │   │
+│  │  • write_artifact() creates new commit          │   │
+│  └─────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          │ (boundary)
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│                   Git History                            │
+│  • Observer-only (human admin, not agents)              │
+│  • Immutable audit trail of all changes                 │
+│  • Enables safe rollback without agent "time travel"    │
+│  • Prevents "history as free storage" exploit           │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Why observer-only history:**
+
+| Concern | Solution |
+|---------|----------|
+| Free storage exploit | Agents can't read history, so can't use it as unbounded storage |
+| Debugging | Admin can rewind to see what caused failures |
+| Recovery | Admin can rollback bad states; agents see it as "system reset" |
+| Audit | Complete provenance of every artifact change |
+
+**The "free storage" exploit (prevented):**
+1. Agent commits 1GB of data
+2. Agent overwrites with new data
+3. Agent tries to retrieve old data from history
+4. **Blocked** - agents can only access current commit
+
+**Future consideration:** Could expose limited history access as premium feature (expensive retrieval cost scaling with age), but not needed for V1.
+
+### Monitoring
+
+- Container stats (CPU, memory, network)
+- Agent metrics (actions/sec, blocked status)
+- LLM costs ($)
+
+### Restart Policy
+
+```bash
+docker run --restart=unless-stopped agent-ecology
+```
+
+Recover from crashes automatically.
+
+---
+
+
+## 09. Kernel
+
+*Source: `docs/architecture/target/08_kernel.md`*
+
+
+What we're building toward: the "physics" layer.
+
+**Last verified:** 2026-01-13
+
+**See also:** [01_README.md](01_README.md) - System vs Genesis distinction
+
+---
+
+## Design Principle
+
+The kernel is "physics" - prerequisites for artifacts to exist. Everything else is built on top.
+
+**Goal:** Maximum flexibility. Restrict as little as possible. Let agents figure out the rest.
+
+**Rule:** The kernel defines what's POSSIBLE. Genesis artifacts define what's CONVENIENT.
+
+---
+
+## Storage Primitives
+
+Raw byte storage. The foundation everything else builds on.
+
+### Internal Primitives
+
+These are kernel-internal. Artifact code accesses them through permission-checked wrappers.
+
+```python
+_store(id: str, data: bytes) -> void    # Store bytes at ID
+_load(id: str) -> bytes | null          # Retrieve bytes by ID
+_exists(id: str) -> bool                # Check if ID exists
+_delete(id: str) -> void                # Remove bytes at ID
+```
+
+### Behavior
+
+| Aspect | Decision | Rationale |
+|--------|----------|-----------|
+| ID generation | Caller provides | Meaningful names are valuable |
+| ID collision | Error (first-come-first-served) | Squatting is accepted as emergent behavior |
+| Overwrite | Allowed (same ID overwrites) | Mutability useful; contracts can enforce immutability |
+| Delete | Supported | Disk is actually scarce |
+
+### Kernel-Tracked Metadata
+
+The kernel automatically tracks:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `creator` | string | Who made the create call (immutable fact) |
+| `created_at` | timestamp | When first stored |
+| `updated_at` | timestamp | When last modified |
+| `size_bytes` | int | Current data size |
+
+**NOT kernel-tracked:** `owner`. Ownership is tracked by genesis_store as a service, not kernel metadata. See [Creator vs Owner](#creator-vs-owner).
+
+**Rationale:** Observability doesn't restrict flexibility. Creator is immutable fact; owner is mutable social concept.
+
+### Resource Costs
+
+| Operation | Cost | Rationale |
+|-----------|------|-----------|
+| Write | Disk quota | Actually scarce |
+| Read | Free | Not scarce at 1000+ agents (SSDs handle 100k+ IOPS) |
+| Delete | Free (reclaims quota) | Encourages cleanup |
+
+**Rule:** Don't introduce artificial scarcity. Don't pretend scarce things aren't scarce.
+
+---
+
+## Permission Model
+
+How artifacts access kernel storage.
+
+### Access Flow
+
+```
+Artifact code calls kernel.store(artifact_id, data)
+  -> Kernel identifies current caller
+  -> Kernel checks caller's permission via artifact's access_contract_id
+  -> If allowed: execute raw storage
+  -> If denied: error
+```
+
+### Key Properties
+
+| Property | Value | Rationale |
+|----------|-------|-----------|
+| Genesis artifacts privileged? | **No** | Anyone could build `better_store_api` |
+| Permission check on kernel? | Kernel bypasses (it's physics) | Avoids infinite regress |
+| Contract code permission checks? | Yes, subject to depth limit | Prevents loops |
+
+### Contract = Any Artifact with check_permission
+
+No special "contract" type. Interface-based detection:
+
+```python
+# Kernel checks if artifact can be used as a contract:
+if "check_permission" in artifact.interface.methods:
+    # Can be used as access_contract_id
+```
+
+**Rationale:** More flexible. Artifacts can be both tools AND contracts if they implement the method.
+
+### Each Invocation Link Independent
+
+```
+A invokes B -> B's contract checks "can A invoke?"
+B writes X -> X's contract checks "can B write?"
+```
+
+- Immediate caller matters, not original caller
+- Each contract makes its own trust decision
+- No call stack tracking needed
+
+**Rationale:** Simpler model. Delegation is explicit (update contracts), not implicit.
+
+---
+
+## Circular Governance
+
+Artifacts can have circular `access_contract_id` references.
+
+### Why It's Safe
+
+```
+freeware_contract.access_contract_id = "self_owned_contract"
+self_owned_contract.access_contract_id = "freeware_contract"
+```
+
+This is just data. The kernel can call `check_permission` directly without permission (it's physics).
+
+### When Loops Actually Happen
+
+Only when contract CODE invokes other artifacts that create a cycle:
+
+```python
+# Dangerous contract code:
+def check_permission(requester, target, action):
+    # This invocation could loop back
+    result = invoke("other_contract", "validate", {...})
+    return result
+```
+
+### Mitigation
+
+Configurable depth limit OR cycle detection:
+
+```python
+MAX_PERMISSION_DEPTH = 10  # Configurable
+
+def check_permission(artifact, action, requester, depth=0):
+    if depth > MAX_PERMISSION_DEPTH:
+        return {"allowed": False, "reason": "Depth exceeded"}
+    # ... rest of check
+```
+
+**Preference:** Cycle detection is more precise (allows deep non-circular chains), but depth limit is simpler.
+
+**Important:** Exceeding depth denies THIS request. Artifact is NOT permanently orphaned. Someone with a shallower path could still access, or contracts could be reorganized.
+
+---
+
+## Bootstrap / Genesis
+
+How the system starts at T=0.
+
+### Genesis Contract Self-Governance
+
+Genesis contracts reference themselves:
+
+```python
+freeware_contract = {
+    "id": "freeware_contract",
+    "access_contract_id": "freeware_contract",  # Self-referential
+    "creator": "genesis",  # Reserved value
+    ...
+}
+```
+
+**Why this works:** Kernel can call `check_permission` directly. Self-reference doesn't cause loops at kernel level.
+
+### Creation Order
+
+1. Create genesis contracts (self-governing)
+2. Create other genesis artifacts pointing to those contracts
+
+**No special bootstrap mode needed.**
+
+### Reserved Creator Value
+
+Genesis artifacts have `creator: "genesis"` - a reserved value no agent can impersonate.
+
+---
+
+## Creator vs Owner
+
+Two distinct concepts with different homes:
+
+| Field | Where | Mutable? | Purpose |
+|-------|-------|----------|---------|
+| `creator` | Kernel metadata | No | Who actually made the create call (fact of history) |
+| `owner` | genesis_store data | Yes (via contracts) | Social/economic concept, contracts interpret |
+
+**Key decision:** Owner is NOT kernel metadata. Genesis_store tracks ownership as a service.
+
+**Rationale:**
+- Creator is a fact the kernel observes at creation time (immutable history)
+- Owner is a social concept with no privileged kernel meaning
+- Keeping owner out of kernel maintains "maximum flexibility" principle
+- Genesis_store can provide ownership tracking; contracts query when needed
+- Alternative ownership models can emerge without kernel changes
+
+---
+
+## Dangling Contracts
+
+What happens when `access_contract_id` points to a deleted contract?
+
+### Decision: Fail-Closed
+
+| Option | Behavior | Decision |
+|--------|----------|----------|
+| Fail-open | Treat as public | **Rejected** - security risk |
+| Fail-closed | Deny all access | **Accepted** |
+| Prevent deletion | Can't delete referenced contracts | **Rejected** - too complex |
+
+**Consequence:** Orphaned artifacts remain forever, like lost Bitcoin. Creator responsibility.
+
+**Rationale:** Security > convenience. Adding referential integrity significantly complicates the kernel.
+
+---
+
+## Concurrency
+
+Multiple agents acting simultaneously.
+
+### Kernel Guarantees
+
+| Operation | Behavior |
+|-----------|----------|
+| Create (same ID) | First writer wins, second gets error |
+| Write (same artifact) | Serialized (implementation chooses last-writer-wins or conflict error) |
+| Delete | Idempotent |
+
+**Implementation:** SQLite/Postgres handles atomicity naturally.
+
+---
+
+## Self-Modification
+
+Can an artifact modify itself?
+
+### Decision: Allowed
+
+If artifact A's contract permits A to write to A, then A can modify its own content.
+
+**Rationale:** Intentional flexibility. Enables:
+- Self-improvement
+- Learning
+- Adaptation
+
+**Risk:** Instability. Agents are responsible for their own coherence.
+
+---
+
+## Naming Conventions
+
+### Genesis Artifacts
+
+Two categories with distinct suffixes:
+
+**Services/APIs** (interfaces to kernel capabilities):
+- `genesis_ledger_api`
+- `genesis_store_api`
+- `genesis_mint_api`
+
+**Contracts** (permission policies):
+- `freeware_contract`
+- `private_contract`
+- `self_owned_contract`
+
+**Rationale:**
+- `_api` clarifies these are interfaces, not the data itself
+- `_contract` distinguishes from tools
+- Avoids confusion (e.g., "genesis_store" sounds like a database, not an accessor)
+
+**Open question (50% certainty):** Drop `genesis_` prefix entirely? They're just defaults, not special.
+
+---
+
+## Artifact Type Reference
+
+From [03_agents.md](03_agents.md):
+
+| Type | has_standing | can_execute | Examples |
+|------|--------------|-------------|----------|
+| Agent | true | true | Autonomous actors |
+| Tool | false | true | Services, APIs, contracts |
+| Account | true | false | Treasuries, escrows |
+| Data | false | false | Documents, content |
+
+**Contracts** are tools (`can_execute=true`, `has_standing=false`) that implement `check_permission`. No special type flag.
+
+---
+
+## What Kernel Does NOT Do
+
+The kernel is minimal. These are NOT kernel concerns:
+
+| Concern | Handled By |
+|---------|------------|
+| Artifact discovery/search | `genesis_store_api` |
+| Balance transfers | `genesis_ledger_api` |
+| Escrow/trading | `genesis_escrow_api` |
+| Scoring/minting | `genesis_mint_api` |
+| Naming conventions | Social/emergent |
+| Reputation | Social/emergent |
+
+---
+
+## Open Questions
+
+| Issue | Certainty | Notes |
+|-------|-----------|-------|
+| Drop `genesis_` prefix | 50% | Need to decide |
+| Depth limit vs cycle detection | 70% | Cycle detection more precise but complex |
+| Expensive contract pre-detection | 60% | No good solution for knowing cost before check |
+
+**Resolved:** Creator vs Owner distinction - creator is kernel metadata (immutable fact), owner is genesis_store data (mutable social concept).
+
+---
+
+## Summary: Kernel Primitive List
+
+### Storage (internal, permission-checked access)
+
+```
+_store(id: str, data: bytes) -> void
+_load(id: str) -> bytes | null
+_exists(id: str) -> bool
+_delete(id: str) -> void
+```
+
+### Metadata (kernel-tracked automatically)
+
+```
+creator: string        # Who created (immutable)
+created_at: timestamp
+updated_at: timestamp
+size_bytes: int
+```
+
+**NOT kernel-tracked:** `owner` (tracked by genesis_store)
+
+### Not Yet Specified
+
+These need separate design discussions:
+
+- **Scheduling:** sleep/wake primitives
+- **Events:** subscription/publish primitives
+- **Time:** current time access
+- **Ledger internals:** balance tracking (may be genesis artifact, not kernel)
+
+---
+
+## Migration Notes
+
+### New Components
+- Kernel storage primitives (internal)
+- Permission-checked storage access
+- Depth/cycle limit for contract invocation
+
+### Naming Changes
+- `genesis_store` -> `genesis_store_api`
+- `genesis_ledger` -> `genesis_ledger_api`
+- `genesis_freeware` -> `freeware_contract`
+
+### Breaking Changes
+- Artifacts without valid `access_contract_id` become inaccessible (fail-closed)
+
+---
+
+
+## 10. Design Decisions and Rationale
 
 *Source: `docs/DESIGN_CLARIFICATIONS.md`*
 
@@ -383,7 +3938,7 @@ We're building a pressure vessel for AI collective capability. The goal is to cr
 | Everything is an artifact | 90% | Agents, contracts, data - all artifacts |
 | Standing = pays own costs | 90% | has_standing determines payment |
 | No owner bypass | 90% | access_contract_id is only authority |
-| Token bucket for flow | 90% | Rolling window, allows debt |
+| Token bucket for flow | 90% | Rolling window, no debt (wait for capacity) |
 | Scrip cannot go negative | 90% | Debt via contract artifacts instead |
 | Genesis = definitional privilege | 95% | Not mechanical, but semantic |
 | Contract caching for all | 80% | No genesis privilege for performance |
@@ -521,6 +4076,40 @@ Design Goals:
 
 ---
 
+## Research System Trust Model (ADDED 2026-01-13)
+
+**This is a research system, not a production blockchain.**
+
+Unlike trustless production systems (Bitcoin, Ethereum), this ecology operates with an explicit admin role:
+
+| Aspect | Production Blockchain | This Research System |
+|--------|----------------------|---------------------|
+| **Admin access** | None (trustless) | Yes, with transparency |
+| **Rollback** | Computationally infeasible | Possible if needed |
+| **State reset** | Prohibited | Allowed for research |
+| **Bug fixes** | Requires hard fork | Genesis contracts mutable |
+
+**Why this framing matters:**
+
+1. **Orphan artifacts aren't permanent** - Unlike lost Bitcoin, an admin can intervene if a catastrophic bug locks valuable work. This is a feature, not a bug.
+
+2. **Design decisions can favor simplicity** - We don't need Byzantine fault tolerance for a system with trusted operators.
+
+3. **Experiments can be reset** - If an experiment goes wrong, we can restore from checkpoint, not lose months of work.
+
+4. **Genesis contract evolution** - Genesis artifacts can be updated via code deploy. No governance token voting required.
+
+**Transparency requirement:** Any admin intervention must be:
+- Logged in the event system
+- Documented with rationale
+- Visible to all agents and observers
+
+This isn't "centralized vs decentralized" - it's acknowledging that research systems have different trust assumptions than production deployments.
+
+**Certainty:** 100% (framing clarification, not design change)
+
+---
+
 ## Resource Terminology
 
 **Distinct resources - do not conflate:**
@@ -562,19 +4151,25 @@ available = min(capacity, balance + elapsed_time * rate)
 # T=0:  balance = 100
 # T=5:  spend 60 → balance = 40
 # T=10: balance = min(100, 40 + 5*10) = 90 (accumulated 50)
-# T=12: spend 100 → balance = -10 (debt)
-# T=15: balance = min(100, -10 + 3*10) = 20 (still recovering)
+# T=12: want to spend 100 → only 90 available → must WAIT
+# T=13: balance = min(100, 90 + 1*10) = 100 → now can spend 100
 ```
 
-### Debt Persists
-- Agents can go negative (debt)
-- Accumulation continues even in debt
-- Negative balance = cannot act (natural throttling)
-- No debt forgiveness, must accumulate out
+### No Debt Model (REVISED 2026-01-12)
+- Agents CANNOT go negative on renewable resources
+- If balance < cost, operation blocks/waits until sufficient capacity
+- No debt tracking, no debt forgiveness needed
+- Simpler semantics: you either have capacity or you wait
+
+**Why no debt?**
+- Debt complicates accounting and recovery
+- "Wait for capacity" is cleaner than "go negative and recover"
+- Matches how real rate limiters work (429s block, not incur debt)
+- Prevents pathological debt accumulation scenarios
 
 ### Throttling Emerges Naturally
 - No hardcoded "max N agents"
-- Expensive operations → debt → wait for accumulation
+- Expensive operations → insufficient capacity → wait for accumulation
 - System self-regulates based on actual resource consumption
 
 ---
@@ -5238,17 +8833,110 @@ External review raised these concerns. Documented for future consideration, not 
 
 ---
 
+## Approved Architecture Decisions (2026-01-13)
+
+Comprehensive target architecture review resulted in the following approved decisions.
+
+### High-Certainty Decisions (Auto-Approved)
+
+These were approved without discussion due to high certainty (≥85%):
+
+| # | Decision | Resolution |
+|---|----------|------------|
+| 1 | Contract sandbox security | Process isolation (V1), contract-enforced limits (V2) |
+| 2 | Event log retention | 7-day rolling window, configurable |
+| 3 | Event delivery semantics | At-most-once; agents handle missed via catch-up |
+| 4 | Checkpoint atomicity | Stop-the-world pause with timeout |
+| 5 | Agent freeze threshold | Config-driven, not hardcoded |
+| 6 | Dangling artifact handling | Fail-open with logged warning |
+| 7 | Spawn resource requirements | No minimum; spawner decides viability |
+| 8 | Rate limit recovery | Automatic when capacity available |
+| 9 | Contract execution depth | Max 10 levels |
+| 10 | Permission check cost | Free (avoids infinite regress) |
+| 11 | Failed action cost | Charged (prevents spam) |
+| 12 | Multi-container coordination | Single genesis artifacts, shared ledger |
+| 13 | Ledger consistency | Single writer with queue (V1) |
+| 14 | Worker identity | Stateless pool; no worker-specific state |
+| 15 | Agent state coordination | Agent loop handles via locks |
+| 16 | Kernel boundary | Minimal: permissions, ledger, storage |
+| 17 | Kernel primitives | Storage (CRUD), permissions (check), ledger (transfer) |
+| 18 | Genesis privilege | Semantic (first mover), not mechanical |
+
+### Medium-High Certainty (Quick Confirm)
+
+Approved with brief verification:
+
+| # | Decision | Resolution |
+|---|----------|------------|
+| 19 | Interface schemas | Optional metadata artifact (not enforced) |
+| 20 | Genesis prompting | Seeded handbook artifact (genesis_handbook) |
+| 21 | ReadOnlyLedger scope | All reads except artifact content mutation |
+| 22 | Artifact auto-detection | Registry artifact with type signatures |
+| 23 | Sandbox evolution | Process isolation (V1) → contract limits (V2) |
+| 24 | Qdrant/memory integration | Memory artifact references Qdrant collection |
+| 25 | Spawn endowment | Explicit funding via genesis_store |
+| 26 | Salvage rights | Deferred to V2+ |
+
+### Medium Certainty (Discussed)
+
+| # | Decision | Chosen Option | Rationale |
+|---|----------|---------------|-----------|
+| 27 | Stale subscription cleanup | LRU eviction | Bounded memory, config limit |
+| 28 | Zombie agent GC | Market handles | Selection pressure via dormancy |
+| 29 | Hybrid checkpoint | Snapshot + WAL for Qdrant | Balance durability vs complexity |
+| 30 | Permission billing | Requester pays | Simple, prevents probing |
+| 31 | Resource units | Per-unit tracking | No artificial conversion |
+| 32 | Recovery attestation | Optional | Not required for V1 |
+| 33 | Partial restart | Pause container first | Ensures consistency |
+| 34 | Contract isolation | Process isolation | V1 simplicity |
+| 35 | Worker pool | Contract-based genesis artifact | Flexible, not kernel |
+
+### Low Certainty (Required Discussion)
+
+| # | Decision | Chosen Option | Rationale |
+|---|----------|---------------|-----------|
+| 36 | Dangling cascade | No global cleanup | Market handles via opportunity cost |
+| 37 | Event catch-up | Hybrid (query log + re-verify) | See agents.md for details |
+| 38 | Orphan economic pressure | Reputation-based | No forced reclamation; accept risk |
+
+### Contradiction Resolutions
+
+| ID | Contradiction | Resolution |
+|----|---------------|------------|
+| C1 | Debt model (allowed vs not) | **No debt for renewable resources** - agents wait for capacity |
+| C2 | Permission check cost boundary | **Free for checks**, charged for execution |
+| C3 | Ledger implementation (SQLite vs PostgreSQL) | **SQLite for V1** (single writer sufficient) |
+| C4 | Admin trust model | **Research system** - admin can rollback with transparency |
+
+### Confirmed Understandings
+
+| ID | Concept | Confirmed Understanding |
+|----|---------|------------------------|
+| U1 | Contracts as pure functions | Contracts return decisions; kernel applies mutations |
+
+### Implementation Notes
+
+1. **Event catch-up** documented in `docs/architecture/target/03_agents.md`
+2. **Research system trust model** documented above (new section)
+3. **Debt model resolution** fixed in Flow Resources section
+4. All decisions reflected in target architecture docs
+
+**Source:** Target architecture review session (2026-01-13)
 
 ---
 
-## 10. Implementation Gaps
+---
+
+
+## 11. Implementation Gaps
 
 *Source: `docs/architecture/GAPS.md`*
 
 
-> **Note:** This file is superseded by [`docs/plans/README.md`](../plans/README.md).
-> Each gap now has its own plan file in `docs/plans/`. This file is kept for historical reference
-> and will be moved to `docs/archive/` once all references are updated.
+> ⚠️ **DEPRECATED** - This file is superseded by [`docs/plans/CLAUDE.md`](../plans/CLAUDE.md).
+>
+> Each gap now has its own plan file in `docs/plans/`. This file is **historical reference only**.
+> Do NOT update this file - update the plan files instead.
 
 Prioritized gaps between current implementation and target architecture.
 
@@ -6269,5 +9957,5 @@ Updated test to expect `"transfer_ownership"` (with underscore) to match actual 
 | [plans/](../plans/) | HOW to close gaps |
 | [DESIGN_CLARIFICATIONS.md](../DESIGN_CLARIFICATIONS.md) | WHY decisions were made |
 
-
 ---
+

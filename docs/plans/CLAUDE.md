@@ -2,7 +2,7 @@
 
 Master index of all gaps and their implementation plans.
 
-**Last verified:** 2026-01-14 (Plan #39 Genesis Unprivilege complete)
+**Last verified:** 2026-01-14 (Plan #40 added, Plan #14 merged)
 
 ---
 
@@ -66,6 +66,7 @@ Master index of all gaps and their implementation plans.
 | 37 | [Mandatory Planning + Human Review](37_mandatory_planning_human_review.md) | **High** | ✅ Complete | - |
 | 38 | [Meta-Process Simplification](38_meta_process_simplification.md) | **High** | ✅ Complete | - |
 | 39 | [Genesis Unprivilege](39_genesis_unprivilege.md) | **High** | ✅ Complete | - |
+| 40 | [ActionResult Error Integration](40_actionresult_errors.md) | **High** | 📋 Planned | - |
 
 ---
 
