@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-14 (Plan #27 - Invocation logging added)
+**Last verified:** 2026-01-14 (Plan #12 - Per-agent LLM budget checks)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
@@ -60,11 +60,12 @@ while self.world.advance_tick():
 
 **`SimulationRunner.run()` thinking phase**
 
-1. Capture world state snapshot via `get_state_summary()`
-2. All agents see IDENTICAL state (snapshot consistency)
-3. Agents think in parallel via `asyncio.gather()`
-4. Each produces an action proposal
-5. Thinking cost deducted immediately from compute
+1. Check per-agent `llm_budget` if configured (Plan #12)
+2. Capture world state snapshot via `get_state_summary()`
+3. All agents see IDENTICAL state (snapshot consistency)
+4. Agents think in parallel via `asyncio.gather()`
+5. Each produces an action proposal
+6. Thinking cost deducted from compute AND per-agent `llm_budget` (if configured)
 
 ```python
 tick_state = self.world.get_state_summary()
