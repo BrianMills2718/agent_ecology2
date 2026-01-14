@@ -211,3 +211,29 @@ Each gap alone might be caught. Together, they allowed unverified work through.
 - **Format-agnostic** - Parse what humans write, not what we wish they'd write
 - **Positive verification** - Require evidence, not absence of failure
 - **Defense in depth** - Multiple checks, not single points of failure
+
+### Gap 6: Claims Are Local-Only (Not Shared)
+
+The claim system stores claims in `.claude/active-work.yaml` which is LOCAL. The `create_worktree.sh` script:
+1. Claims work in `.claude/active-work.yaml` (local file)
+2. Creates worktree
+3. Does NOT push the claim to origin
+
+**Result:** Multiple instances can claim the same plan if they don't pull each other's changes first. Plan #41 had 4 different PRs (#117, #118, #120, #123) because instances claimed simultaneously without seeing each other's claims.
+
+**Fix:** Add check for existing open PRs on the same plan before allowing a claim. In `create_worktree.sh`:
+```bash
+# Check for existing PRs on this plan
+if [ -n "$PLAN" ]; then
+    EXISTING_PRS=$(gh pr list --state open --search "[Plan #$PLAN]" 2>/dev/null | wc -l || echo "0")
+    if [ "$EXISTING_PRS" -gt 0 ]; then
+        echo "WARNING: There are already $EXISTING_PRS open PRs for Plan #$PLAN"
+        gh pr list --state open --search "[Plan #$PLAN]"
+        read -p "Continue anyway? (y/N): " PR_CONTINUE
+        if [[ ! "$PR_CONTINUE" =~ ^[Yy]$ ]]; then
+            echo "Aborting. Coordinate with existing PR authors first."
+            exit 0
+        fi
+    fi
+fi
+```

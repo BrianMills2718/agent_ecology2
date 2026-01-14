@@ -33,6 +33,8 @@ With 7+ CC instances working in parallel:
 | **PR Review** | **None** | **None** |
 | Merging | PR ownership | PR state |
 
+## Plan
+
 ## Proposed Solution
 
 ### Option A: Lightweight Review Tracking (Recommended)
