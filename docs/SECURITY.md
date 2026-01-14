@@ -213,19 +213,31 @@ services:
 
 ## Threat Model
 
-### In Scope
+This document covers **infrastructure-level threats** (container escape, API key exposure).
+
+For **agent-to-agent threats** (adversarial agents within the simulation), see [THREAT_MODEL.md](THREAT_MODEL.md).
+
+### In Scope (Infrastructure)
 
 - Preventing agent code from escaping the container
 - Preventing runaway resource consumption (via budgets/timeouts)
 - Preventing agent A from accessing agent B's resources (via policy system)
 - Logging all actions for audit
 
-### Out of Scope
+### Out of Scope (Infrastructure)
 
 - Protecting against Docker vulnerabilities
 - Preventing agents from using their allocated resources maliciously
 - Preventing social engineering via LLM-generated content
 - Formal verification of agent behavior
+
+### Agent-to-Agent Threats
+
+Agent Ecology is an adversarial ecosystem by design. Agents compete for resources. See [THREAT_MODEL.md](THREAT_MODEL.md) for:
+- Attack/mitigation matrix for inter-agent attacks
+- Trust assumptions agents should make
+- Defensive patterns for agents and contract authors
+- Monitoring recommendations
 
 ---
 
