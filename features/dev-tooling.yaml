@@ -107,6 +107,7 @@ code:
   - scripts/dev_scripts/gemini_chat.py
   - scripts/dev_scripts/summarize_specs.py
   - scripts/meta_status.py
+  - scripts/safe_worktree_remove.py
   - scripts/check_claims.py
   - scripts/check_doc_coupling.py
   - scripts/merge_pr.py
@@ -132,6 +133,7 @@ tests:
   - tests/unit/test_check_plan_blockers.py
   - tests/unit/test_meta_status.py
   - tests/unit/test_merge_pr.py
+  - tests/unit/test_safe_worktree_remove.py
 
 docs:
   - docs/meta/claim-system.md

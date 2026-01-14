@@ -163,6 +163,45 @@ def get_recent_commits(limit: int = 5) -> list[dict]:
     return commits
 
 
+def get_review_status() -> list[dict]:
+    """Get PR review status from CLAUDE.md Awaiting Review table."""
+    import re
+    claude_md = Path("CLAUDE.md")
+    if not claude_md.exists():
+        return []
+
+    try:
+        content = claude_md.read_text()
+        # Find the Awaiting Review table
+        match = re.search(
+            r"\*\*Awaiting Review:\*\*.*?\n\|.*?\n\|[-|\s]+\n((?:\|.*?\n)*)",
+            content,
+            re.DOTALL
+        )
+        if not match:
+            return []
+
+        reviews = []
+        for line in match.group(1).strip().split("\n"):
+            if not line.strip() or not line.startswith("|"):
+                continue
+            cells = [c.strip() for c in line.split("|")[1:-1]]
+            if len(cells) >= 4:
+                pr_num = cells[0].replace("#", "").strip()
+                if not pr_num or pr_num == "-":
+                    continue
+                reviews.append({
+                    "pr": pr_num,
+                    "title": cells[1] if len(cells) > 1 else "",
+                    "reviewer": cells[2] if len(cells) > 2 else "",
+                    "started": cells[3] if len(cells) > 3 else "",
+                    "status": cells[4] if len(cells) > 4 else "Awaiting",
+                })
+        return reviews
+    except Exception:
+        return []
+
+
 def format_time_ago(iso_time: str) -> str:
     """Convert ISO timestamp to 'X ago' format."""
     try:
@@ -255,14 +294,16 @@ def print_status(brief: bool = False) -> None:
     """Print meta-process status."""
     claims = get_claims()
     prs = get_open_prs()
+    reviews = get_review_status()
     plans = get_plan_progress()
     worktrees = get_worktrees()
     commits = get_recent_commits()
     issues = identify_issues(claims, prs, plans, worktrees)
-    
+
     if brief:
         # One-line summary
-        print(f"Claims: {len(claims)} | PRs: {len(prs)} | Plans: {plans['complete']}/{plans['total']} complete | Issues: {len(issues)}")
+        in_review = len([r for r in reviews if r.get("status") == "In Review"])
+        print(f"Claims: {len(claims)} | PRs: {len(prs)} | Reviews: {in_review} active | Plans: {plans['complete']}/{plans['total']} | Issues: {len(issues)}")
         return
     
     print("=" * 60)
@@ -301,7 +342,23 @@ def print_status(brief: bool = False) -> None:
     else:
         print("No open PRs.")
     print()
-    
+
+    # Review Status
+    print("## Review Status")
+    if reviews:
+        print()
+        print("| PR | Title | Reviewer | Status |")
+        print("|----|-------|----------|--------|")
+        for r in reviews:
+            pr_num = r.get("pr", "?")
+            title = r.get("title", "?")[:35]
+            reviewer = r.get("reviewer", "-") or "-"
+            status = r.get("status", "Awaiting") or "Awaiting"
+            print(f"| #{pr_num} | {title} | {reviewer} | {status} |")
+    else:
+        print("No PRs in review queue.")
+    print()
+
     # Plan Progress
     print("## Plan Progress")
     print()
