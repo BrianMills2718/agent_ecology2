@@ -12,6 +12,7 @@ from .genesis import (
 from .executor import SafeExecutor, get_executor
 from .simulation_engine import SimulationEngine, ThinkingCostResult, BudgetCheckResult
 from .rate_tracker import RateTracker, UsageRecord
+from .invocation_registry import InvocationRegistry, InvocationRecord, InvocationStats
 from .contracts import PermissionAction, PermissionResult, AccessContract
 from .genesis_contracts import (
     FreewareContract, SelfOwnedContract, PrivateContract, PublicContract,
@@ -28,6 +29,7 @@ __all__ = [
     "SafeExecutor", "get_executor",
     "SimulationEngine", "ThinkingCostResult", "BudgetCheckResult",
     "RateTracker", "UsageRecord",
+    "InvocationRegistry", "InvocationRecord", "InvocationStats",
     "PermissionAction", "PermissionResult", "AccessContract",
     "FreewareContract", "SelfOwnedContract", "PrivateContract", "PublicContract",
     "GENESIS_CONTRACTS", "get_genesis_contract", "get_contract_by_id", "list_genesis_contracts",
