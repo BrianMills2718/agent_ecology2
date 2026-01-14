@@ -110,6 +110,7 @@ code:
   - src/world/rate_tracker.py
 
 tests:
+  - tests/integration/test_rate_limiting_acceptance.py  # Feature acceptance tests
   - tests/unit/test_rate_tracker.py
 
 docs:

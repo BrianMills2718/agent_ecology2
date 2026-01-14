@@ -138,6 +138,7 @@ code:
   - src/world/kernel_interface.py
 
 tests:
+  - tests/integration/test_artifacts_acceptance.py  # Feature acceptance tests
   - tests/unit/test_executor.py
   - tests/unit/test_policy.py
   - tests/unit/test_kernel_interface.py

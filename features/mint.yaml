@@ -99,6 +99,7 @@ code:
   - src/world/genesis.py
 
 tests:
+  - tests/integration/test_mint_acceptance.py  # Feature acceptance tests
   - tests/unit/test_originality.py
   - tests/integration/test_mint_auction.py
 

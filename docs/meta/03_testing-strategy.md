@@ -8,6 +8,8 @@
 
 **Real over mocked.** Prefer real dependencies. Mock only external APIs or when explicitly justified.
 
+**Explicit markers over directory semantics.** Tests map to features via `@pytest.mark.feature("X")` markers, not directory structure. This enables multi-dimensional associations and is more navigable for AI coding assistants.
+
 ## The Thin Slice Principle
 
 ### Problem
@@ -33,39 +35,34 @@ Feature -> Unit Tests Only -> "Complete" -> Broken in production
 
 ## Test Organization
 
-### Recommended Structure
+### Structure
 
 ```
 tests/
-├── conftest.py              # Global fixtures
+├── conftest.py              # Global fixtures + markers
 ├── unit/                    # Single-component tests
 │   └── test_ledger.py       # Can be marked with @pytest.mark.plans([1, 11])
 ├── integration/             # Multi-component tests
-│   └── test_escrow.py       # Can be marked with @pytest.mark.plans([6])
-├── e2e/                     # Full system tests
-│   ├── test_smoke.py        # Generic smoke (mocked LLM)
-│   └── test_real_e2e.py     # Real LLM ($$$)
-└── plans/                   # Feature-specific E2E tests (NEW)
-    ├── conftest.py          # Plan-specific fixtures
-    ├── plan_01/
-    │   └── test_rate_limiting_e2e.py
-    ├── plan_06/
-    │   └── test_unified_ontology_e2e.py
-    └── ...
+│   ├── test_escrow.py       # Can be marked with @pytest.mark.plans([6])
+│   └── test_*_acceptance.py # Feature acceptance tests (AC-mapped)
+└── e2e/                     # Full system tests
+    ├── test_smoke.py        # Generic smoke (mocked LLM)
+    └── test_real_e2e.py     # Real LLM ($$$)
 ```
 
-### Why Hybrid Structure?
+### Why Type-Based with Markers?
 
 | Approach | Pros | Cons |
 |----------|------|------|
-| Type-first (`unit/`, `integration/`) | Shared fixtures, pytest conventions | Hard to find tests for a plan |
-| Plan-first (`plan_01/`, `plan_02/`) | Clear feature mapping | Duplication, deep nesting |
-| **Hybrid** (both) | Best of both | Slightly more complex |
+| Type-first with markers | Explicit associations, queryable, AI-friendly | Requires discipline |
+| Plan-first directories | Visual feature mapping | Duplication, lifecycle mismatch |
 
-The hybrid approach:
-- Keeps shared unit/integration tests in their traditional locations
-- Adds `tests/plans/` for feature-specific E2E tests
-- Uses pytest markers for queryability
+**Key insight:** Directory structure implies single-dimensional organization. Markers support multi-dimensional associations (a test can belong to multiple features/plans).
+
+For AI coding assistants:
+- Explicit metadata (markers) > implicit directory semantics
+- `@pytest.mark.feature("escrow")` is greppable and machine-readable
+- Feature specs (`features/*.yaml`) remain authoritative source
 
 ### Pytest Markers
 
@@ -80,30 +77,54 @@ def pytest_configure(config):
         "markers", "plans(nums): mark test as belonging to plan number(s)"
     )
     config.addinivalue_line(
-        "markers", "feature_type: mark test as 'feature' or 'enabler'"
+        "markers", "feature(name): mark test as belonging to a feature. "
+        "Usage: @pytest.mark.feature('escrow') - maps to features/<name>.yaml"
+    )
+    config.addinivalue_line(
+        "markers", "feature_type(type): mark test as 'feature', 'enabler', or 'refactor'"
     )
 ```
 
 Use in tests:
 
 ```python
-# tests/integration/test_escrow.py
+# tests/integration/test_escrow_acceptance.py
 import pytest
 
-@pytest.mark.plans([6, 22])
-class TestEscrowIntegration:
-    """Tests for escrow system (Plans #6, #22)."""
-    pass
+@pytest.mark.feature("escrow")
+class TestEscrowFeature:
+    """Tests mapping to features/escrow.yaml acceptance criteria."""
+
+    def test_ac_1_successful_artifact_sale(self):
+        """AC-1: Successful artifact sale via escrow."""
+        ...
 ```
 
 Query with:
 ```bash
-# Run all tests for plan 6
-pytest -m "plans and 6" tests/
+# Run all tests for a feature
+pytest --feature escrow tests/
+
+# Run all tests for a plan
+pytest --plan 6 tests/
 
 # Or use the check script
 python scripts/check_plan_tests.py --plan 6
 ```
+
+### Acceptance Tests
+
+Feature acceptance tests live in `tests/integration/test_*_acceptance.py`:
+
+| File | Feature | Maps To |
+|------|---------|---------|
+| `test_escrow_acceptance.py` | escrow | features/escrow.yaml |
+| `test_rate_limiting_acceptance.py` | rate_limiting | features/rate_limiting.yaml |
+| `test_agent_loop_acceptance.py` | agent_loop | features/agent_loop.yaml |
+
+**Naming convention:** Test functions map to acceptance criteria:
+- `test_ac_1_*` → AC-1 from feature spec
+- `test_ac_2_*` → AC-2 from feature spec
 
 ## TDD Policy
 
@@ -112,7 +133,7 @@ python scripts/check_plan_tests.py --plan 6
 1. **Define tests** in plan's `## Required Tests` section
 2. **Create test stubs** (they will fail)
 3. **Implement** until tests pass
-4. **Add E2E test** in `tests/plans/plan_NN/`
+4. **Add acceptance test** with `@pytest.mark.feature("X")` marker
 5. **Verify with script** before marking complete
 
 ### Escape Hatch 1: Exploratory Work
@@ -197,50 +218,57 @@ python scripts/check_plan_tests.py --plan N
 python scripts/complete_plan.py --plan N --dry-run
 ```
 
-## Writing Good E2E Tests
+## Writing Good Acceptance Tests
 
-### Feature E2E Test Template
+### Feature Acceptance Test Template
 
 ```python
-# tests/plans/plan_NN/test_feature_e2e.py
-"""E2E test for Plan #NN: Feature Name.
+# tests/integration/test_feature_acceptance.py
+"""Feature acceptance tests for [feature] - maps to features/[feature].yaml.
 
-This test verifies that [feature] works end-to-end with [real/mocked] LLM.
+Run with: pytest --feature [feature] tests/
 """
 
 import pytest
-from src.simulation.runner import SimulationRunner
 
-class TestFeatureE2E:
-    """End-to-end tests for [feature]."""
+@pytest.mark.feature("[feature]")
+class TestFeatureFeature:
+    """Tests mapping to features/[feature].yaml acceptance criteria."""
 
-    def test_feature_basic_flow(self, e2e_config):
-        """Verify [feature] works in a real simulation."""
+    def test_ac_1_description(self, fixture):
+        """AC-1: [Acceptance criterion from feature spec]."""
         # Arrange
-        runner = SimulationRunner(e2e_config)
+        ...
 
         # Act
-        world = runner.run_sync()
+        ...
 
-        # Assert - feature-specific assertions
-        assert [feature-specific condition]
+        # Assert - acceptance criterion assertions
+        assert [acceptance criterion condition]
 
-    @pytest.mark.external
-    def test_feature_with_real_llm(self, real_e2e_config):
-        """Verify [feature] with real LLM (costs $$$)."""
-        # Only runs with --run-external
+    def test_ac_2_description(self, fixture):
+        """AC-2: [Another acceptance criterion]."""
+        ...
+
+@pytest.mark.feature("[feature]")
+class TestFeatureEdgeCases:
+    """Additional edge case tests for [feature] robustness."""
+
+    def test_edge_case(self):
+        """Edge case not in feature spec."""
         ...
 ```
 
-### What Makes a Good E2E Test
+### What Makes a Good Acceptance Test
 
 | Good | Bad |
 |------|-----|
 | Tests user-visible behavior | Tests internal implementation |
+| Maps to feature spec ACs | Arbitrary test scenarios |
 | Minimal mocking | Mocks everything |
 | Specific assertions | "Doesn't crash" only |
-| Documents the feature | Cryptic test names |
-| Fast (< 30s for mocked) | Slow (minutes) |
+| Documents the acceptance criteria | Cryptic test names |
+| Uses `@pytest.mark.feature()` | No markers (hidden association) |
 
 ## Mocking Policy
 
@@ -274,7 +302,7 @@ If your codebase has accumulated untested "complete" plans:
 1. **Audit**: Run `python scripts/plan_progress.py --summary`
 2. **Identify gaps**: Plans marked Complete with 0% test progress
 3. **Prioritize**: Focus on high-priority plans first
-4. **Add tests retroactively**: Create `tests/plans/plan_NN/` for each
+4. **Add acceptance tests**: Create `tests/integration/test_*_acceptance.py` with markers
 5. **Update verification**: Run `complete_plan.py` to record evidence
 
 ## Origin

@@ -97,8 +97,10 @@ code:
   - src/world/genesis.py  # GenesisEscrow class
 
 tests:
+  - tests/integration/test_escrow_acceptance.py  # Feature acceptance tests
   - tests/integration/test_escrow.py
   - tests/unit/test_ledger.py  # Scrip transfer tests used by escrow
 
 docs:
   - docs/architecture/current/genesis_artifacts.md
+  - tests/integration/test_escrow_acceptance.py

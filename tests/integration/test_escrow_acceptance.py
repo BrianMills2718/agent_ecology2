@@ -1,6 +1,6 @@
-"""Feature tests for escrow - maps to features/escrow.yaml acceptance criteria.
+"""Feature acceptance tests for escrow - maps to features/escrow.yaml.
 
-Each test corresponds to an AC-ID in the feature definition.
+Run with: pytest --feature escrow tests/
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from src.world.artifacts import ArtifactStore
 from src.world.genesis import GenesisEscrow
 
 
+@pytest.mark.feature("escrow")
 class TestEscrowFeature:
     """Tests mapping to features/escrow.yaml acceptance criteria."""
 
@@ -191,6 +192,7 @@ class TestEscrowFeature:
         assert store.get_owner("artifact_x") == "restricted_buyer"
 
 
+@pytest.mark.feature("escrow")
 class TestEscrowEdgeCases:
     """Additional edge case tests for escrow robustness."""
 
