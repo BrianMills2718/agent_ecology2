@@ -164,6 +164,45 @@ def parse_plan_file(plan_file: Path) -> PlanTests | None:
                 is_new=True
             ))
 
+    # NEW (Plan #41): Parse inline code format
+    # Matches: `tests/foo.py::test_bar` - description
+    # Matches: `tests/foo.py::TestClass::test_method` description
+    # Matches: `tests/foo.py` (file only)
+    # Must NOT be preceded by "- " (already handled by bullet format)
+    inline_pattern = re.compile(
+        r"(?<!- )`(tests/[^`]+)`(?:\s*[-–—]?\s*(.*))?",
+        re.MULTILINE
+    )
+
+    for match in inline_pattern.finditer(section_content):
+        test_spec = match.group(1).strip()
+        description = match.group(2).strip() if match.group(2) else ""
+
+        # Parse test spec - could be file, file::func, or file::Class::func
+        if "::" in test_spec:
+            parts = test_spec.split("::", 1)
+            file_part = parts[0]
+            func_part = parts[1]  # Could be "test_foo" or "TestClass::test_foo"
+        else:
+            file_part = test_spec
+            func_part = None
+
+        # Check if this test is already in our lists (avoid duplicates)
+        is_duplicate = False
+        for existing in plan.new_tests + plan.existing_tests:
+            if existing.file == file_part and existing.function == func_part:
+                is_duplicate = True
+                break
+
+        if not is_duplicate:
+            # Inline format tests are treated as "new" (TDD style)
+            plan.new_tests.append(TestRequirement(
+                file=file_part,
+                function=func_part,
+                description=description,
+                is_new=True
+            ))
+
     return plan
 
 

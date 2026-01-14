@@ -146,7 +146,7 @@ Script validates all criteria have at least one test.
 - ✅ **Gap 7:** Blocker enforcement added to `scripts/validate_plan.py` (PR #135)
 
 ### Remaining
-- ❌ **Step 1 (partial):** Inline code format parsing not implemented
+- ✅ **Step 1:** Parser format support complete (bullet + inline formats)
 - ❓ **Step 4:** CI strict mode for plans without tests - unclear if done
 - ❌ **Step 5:** V1 acceptance doc (`docs/V1_ACCEPTANCE.md`) not created
 - ❌ **Step 5:** V1 acceptance test (`tests/e2e/test_v1_acceptance.py`) not created
