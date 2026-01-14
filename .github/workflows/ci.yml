@@ -263,7 +263,7 @@ jobs:
         run: python scripts/validate_spec.py --all
 
       - name: Verify branch was claimed
-        continue-on-error: true  # Informational initially
+        continue-on-error: true
         run: |
           BRANCH="${{ github.head_ref }}"
           echo "Checking claim for branch: $BRANCH"
@@ -320,9 +320,8 @@ jobs:
             exit 0
           }
 
-      # Plan #43: Check for human review requirements
       - name: Check for human review requirements
-        continue-on-error: true  # Warning initially - will make strict later
+        continue-on-error: true
         run: |
           # Extract plan numbers from PR commits
           PLANS=$(git log origin/main..HEAD --oneline | grep -oP '\[Plan #\K\d+' | sort -u || true)
@@ -362,15 +361,13 @@ jobs:
             echo "Please ensure a human has reviewed and approved this work"
             echo "before merging."
             echo ""
-            # Exit 0 for now (informational) - will be exit 1 when strict
             exit 0
           fi
 
           echo "✓ No human review requirements found"
 
-      # Plan #43: Check ADR requirements for core architecture files
       - name: Check ADR requirements for core files
-        continue-on-error: true  # Warning initially - tracks ADR coverage
+        continue-on-error: true
         run: |
           # Define core architecture files that should have ADR coverage
           CORE_FILES="src/world/ledger.py src/world/executor.py src/world/artifacts/genesis_*.py src/world/action.py"
@@ -406,7 +403,6 @@ jobs:
             echo "Consider creating or referencing an ADR for architectural changes."
             echo "See: docs/adr/README.md"
             echo ""
-            # Informational only
             exit 0
           fi
 

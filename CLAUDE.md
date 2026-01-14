@@ -379,7 +379,7 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| plan-48-ci-optimization | 48 | Implement CI Optimization - caching, job | 2026-01-14T22:56 | Active |
+| plan-29-library-install | 29 | Implement library installation with quot | 2026-01-14T23:00 | Active |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update table when starting/completing review. -->
