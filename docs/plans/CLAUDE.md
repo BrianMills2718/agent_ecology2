@@ -70,6 +70,8 @@ Master index of all gaps and their implementation plans.
 | 41 | [Meta-Process Enforcement Gaps](41_enforcement_gaps.md) | **Critical** | 📋 Planned | - |
 | 42 | [Kernel Quota Primitives](42_kernel_quota_primitives.md) | **High** | 📋 Planned | #1 |
 | 43 | [Comprehensive Meta-Enforcement](43_meta_enforcement.md) | **Critical** | 📋 Planned | - |
+| 44 | [Meta-Process Enforcement](44_meta_process_enforcement.md) | **High** | 📋 Planned | #41 |
+| 45 | [Real E2E Test Requirement](45_real_e2e_requirement.md) | **High** | 📋 Planned | #44 |
 
 ---
 
