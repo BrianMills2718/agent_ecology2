@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-14 (Plan #14 - Added interface schema to artifacts)
+**Last verified:** 2026-01-14 (Plan #40 - Added ActionResult error fields)
 
 ---
 
@@ -209,6 +209,54 @@ cost = max(1.0, execution_time_ms * cost_per_ms)
 
 ---
 
+## ActionResult (Plan #40)
+
+All three narrow waist actions return `ActionResult` with structured error information.
+
+### ActionResult Structure
+
+```python
+@dataclass
+class ActionResult:
+    success: bool
+    message: str
+    data: dict[str, Any] | None = None
+    resources_consumed: dict[str, float] | None = None
+    charged_to: str | None = None
+    # Structured error fields (Plan #40)
+    error_code: str | None = None       # e.g., "insufficient_funds", "not_found"
+    error_category: str | None = None   # e.g., "resource", "permission"
+    retriable: bool = False             # Should agent retry?
+    error_details: dict[str, Any] | None = None  # Additional context
+```
+
+### Error Codes by Action
+
+| Action | Error | Code | Category | Retriable |
+|--------|-------|------|----------|-----------|
+| read | Not found | `not_found` | resource | No |
+| read | Access denied | `not_authorized` | permission | No |
+| read | Cannot afford price | `insufficient_funds` | resource | Yes |
+| write | Genesis protected | `not_authorized` | permission | No |
+| write | Write denied | `not_authorized` | permission | No |
+| write | Disk quota exceeded | `quota_exceeded` | resource | Yes |
+| write | Invalid code | `invalid_argument` | validation | No |
+| invoke | Not found | `not_found` | resource | No |
+| invoke | Method not found | `not_found` | resource | No |
+| invoke | Not executable | `invalid_type` | validation | No |
+| invoke | Permission denied | `not_authorized` | permission | No |
+| invoke | Insufficient scrip | `insufficient_funds` | resource | Yes |
+| invoke | Timeout | `timeout` | execution | Yes |
+| invoke | Runtime error | `runtime_error` | execution | No |
+
+### Retriability
+
+Agents can use `retriable` to decide whether to retry:
+- **True:** Condition may change (get more scrip, free space, timing)
+- **False:** Won't succeed without external change (permissions, code fixes)
+
+---
+
 ## Key Files
 
 | File | Key Classes/Functions | Description |
@@ -218,6 +266,8 @@ cost = max(1.0, execution_time_ms * cost_per_ms)
 | `src/world/executor.py` | `SafeExecutor` | Code execution |
 | `src/world/executor.py` | `get_executor()` | Singleton accessor |
 | `src/world/kernel_interface.py` | `KernelState`, `KernelActions` | Kernel interfaces for artifacts |
+| `src/world/actions.py` | `ActionResult`, `ActionIntent` | Action definitions and results |
+| `src/world/errors.py` | `ErrorCode`, `ErrorCategory` | Error response conventions |
 
 ---
 

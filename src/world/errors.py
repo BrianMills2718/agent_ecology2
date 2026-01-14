@@ -62,6 +62,7 @@ class ErrorCode(str, Enum):
     ALREADY_EXISTS = "already_exists"
     ALREADY_LISTED = "already_listed"
     DELETED = "deleted"
+    QUOTA_EXCEEDED = "quota_exceeded"
 
     # Execution errors
     TIMEOUT = "timeout"
