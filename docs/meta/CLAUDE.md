@@ -16,7 +16,7 @@ Files are numbered for reading order:
 | 03-06 | Testing and hooks |
 | 07-12 | Documentation patterns |
 | 13-17 | Feature and plan workflows |
-| 18-22 | Coordination patterns |
+| 18-23 | Coordination patterns |
 
 ## Key Patterns
 

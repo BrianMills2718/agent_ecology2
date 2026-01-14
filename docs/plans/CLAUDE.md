@@ -2,7 +2,7 @@
 
 Master index of all gaps and their implementation plans.
 
-**Last verified:** 2026-01-14 (Plan test paths fixed)
+**Last verified:** 2026-01-14 (Plan #45 section name fixed)
 
 ---
 

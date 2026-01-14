@@ -39,6 +39,7 @@ in recommended reading order for external review.
 20. [Rebase Workflow](#20-rebase-workflow)
 21. [PR Coordination](#21-pr-coordination)
 22. [Human Review Pattern](#22-human-review-pattern)
+23. [Plan Status Validation](#23-plan-status-validation)
 
 ---
 
@@ -157,6 +158,10 @@ append_content "$META_DIR/21_pr-coordination.md"
 # 22. Human Review Pattern
 append_section "22" "Human Review Pattern" "docs/meta/22_human-review-pattern.md"
 append_content "$META_DIR/22_human-review-pattern.md"
+
+# 23. Plan Status Validation
+append_section "23" "Plan Status Validation" "docs/meta/23_plan-status-validation.md"
+append_content "$META_DIR/23_plan-status-validation.md"
 
 echo "Generated: $OUTPUT"
 echo "Line count: $(wc -l < "$OUTPUT")"

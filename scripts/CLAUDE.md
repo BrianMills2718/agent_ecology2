@@ -14,7 +14,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `check_feature_coverage.py` | Verify all src files assigned to features |
 | `check_locked_files.py` | Protect locked acceptance criteria |
 | `check_new_code_tests.py` | Verify new code has test coverage |
-| `sync_plan_status.py` | Sync plan status across files |
+| `sync_plan_status.py` | Sync plan status + validate content consistency |
 | `sync_governance.py` | Sync ADR governance headers |
 | `validate_plan.py` | Pre-implementation validation gate |
 | `validate_spec.py` | Validate feature spec YAML format |
@@ -42,6 +42,12 @@ git commit --no-verify        # Bypass (not recommended)
 # Doc coupling
 python scripts/check_doc_coupling.py --suggest     # What docs to update
 python scripts/check_doc_coupling.py --strict      # CI mode
+
+# Plan status sync (index ↔ file ↔ content)
+python scripts/sync_plan_status.py --check         # CI mode (validates all)
+python scripts/sync_plan_status.py --fix-content   # Fix Needs Plan → Planned
+python scripts/sync_plan_status.py --sync          # Sync index to match files
+python scripts/sync_plan_status.py --list          # Show all statuses
 
 # Plan blockers
 python scripts/check_plan_blockers.py              # Report stale blockers
