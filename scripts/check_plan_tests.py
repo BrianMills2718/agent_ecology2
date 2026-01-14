@@ -78,7 +78,7 @@ def parse_plan_file(plan_file: Path) -> PlanTests | None:
 
     section_content = tests_section.group(1)
 
-    # Parse New Tests table
+    # Parse New Tests table (existing format)
     new_tests_match = re.search(
         r"### New Tests.*?\n\|.*?\n\|[-\s|]+\n((?:\|.*?\n)*)",
         section_content,
@@ -99,7 +99,7 @@ def parse_plan_file(plan_file: Path) -> PlanTests | None:
                     is_new=True
                 ))
 
-    # Parse Existing Tests table
+    # Parse Existing Tests table (existing format)
     existing_match = re.search(
         r"### Existing Tests.*?\n\|.*?\n\|[-\s|]+\n((?:\|.*?\n)*)",
         section_content,
@@ -125,6 +125,44 @@ def parse_plan_file(plan_file: Path) -> PlanTests | None:
                     description=desc,
                     is_new=False
                 ))
+
+    # NEW (Plan #41): Parse bullet list format
+    # Matches: - `tests/foo.py::test_bar`
+    # Matches: - `tests/foo.py::TestClass::test_method`
+    # Note: Don't anchor to $ as some lines may have trailing content
+    bullet_pattern = re.compile(
+        r"^-\s+`([^`]+)`",
+        re.MULTILINE
+    )
+
+    for match in bullet_pattern.finditer(section_content):
+        test_spec = match.group(1).strip()
+        description = ""  # Bullet format doesn't capture description
+
+        # Parse test spec - could be file, file::func, or file::Class::func
+        if "::" in test_spec:
+            parts = test_spec.split("::", 1)
+            file_part = parts[0]
+            func_part = parts[1]  # Could be "test_foo" or "TestClass::test_foo"
+        else:
+            file_part = test_spec
+            func_part = None
+
+        # Check if this test is already in our lists (avoid duplicates from tables)
+        is_duplicate = False
+        for existing in plan.new_tests + plan.existing_tests:
+            if existing.file == file_part and existing.function == func_part:
+                is_duplicate = True
+                break
+
+        if not is_duplicate:
+            # Bullet format tests are treated as "new" (TDD style)
+            plan.new_tests.append(TestRequirement(
+                file=file_part,
+                function=func_part,
+                description=description,
+                is_new=True
+            ))
 
     return plan
 
