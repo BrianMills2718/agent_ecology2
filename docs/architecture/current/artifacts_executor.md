@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-14 (Plan #40 - Added ActionResult error fields)
+**Last verified:** 2026-01-14 (Plan #49 - Added reasoning field to ActionIntent)
 
 ---
 
@@ -254,6 +254,41 @@ class ActionResult:
 Agents can use `retriable` to decide whether to retry:
 - **True:** Condition may change (get more scrip, free space, timing)
 - **False:** Won't succeed without external change (permissions, code fixes)
+
+---
+
+## ActionIntent (Plan #49)
+
+Agent actions flow through `ActionIntent` classes, which now include a required `reasoning` field for LLM-native monitoring.
+
+### ActionIntent Structure
+
+```python
+@dataclass
+class ActionIntent:
+    action_type: ActionType
+    principal_id: str
+    reasoning: str = ""  # Plan #49: Why the agent chose this action
+```
+
+### Intent Types
+
+| Intent Class | action_type | Additional Fields |
+|--------------|-------------|-------------------|
+| `NoopIntent` | NOOP | - |
+| `ReadArtifactIntent` | READ_ARTIFACT | `artifact_id` |
+| `WriteArtifactIntent` | WRITE_ARTIFACT | `artifact_id`, `artifact_type`, `content`, `price`, `code`, `policy` |
+| `InvokeArtifactIntent` | INVOKE_ARTIFACT | `artifact_id`, `method`, `args` |
+
+### Reasoning Field
+
+The `reasoning` field enables:
+- **LLM-native monitoring** - Semantic analysis of agent behavior
+- **Debugging** - Understanding why agents make decisions
+- **Observability** - Action log includes agent explanations
+- **Strategy extraction** - Cluster agents by reasoning patterns
+
+All intents include reasoning in their `to_dict()` output, so logged actions contain both the action and its justification.
 
 ---
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
@@ -22,21 +22,31 @@ class ActionType(str, Enum):
 
 @dataclass
 class ActionIntent:
-    """Base class for action intents"""
+    """Base class for action intents.
+
+    All action intents include a `reasoning` field (Plan #49) that captures
+    why the agent chose this action. This enables LLM-native monitoring and
+    semantic analysis of agent behavior.
+    """
 
     action_type: ActionType
     principal_id: str
+    reasoning: str = field(default="", kw_only=True)  # Plan #49: Required explanation
 
     def to_dict(self) -> dict[str, Any]:
-        return {"action_type": self.action_type.value, "principal_id": self.principal_id}
+        return {
+            "action_type": self.action_type.value,
+            "principal_id": self.principal_id,
+            "reasoning": self.reasoning,
+        }
 
 
 @dataclass
 class NoopIntent(ActionIntent):
     """Do nothing, just consume minimal cost"""
 
-    def __init__(self, principal_id: str) -> None:
-        super().__init__(ActionType.NOOP, principal_id)
+    def __init__(self, principal_id: str, reasoning: str = "") -> None:
+        super().__init__(ActionType.NOOP, principal_id, reasoning=reasoning)
 
 
 @dataclass
@@ -45,8 +55,8 @@ class ReadArtifactIntent(ActionIntent):
 
     artifact_id: str
 
-    def __init__(self, principal_id: str, artifact_id: str) -> None:
-        super().__init__(ActionType.READ_ARTIFACT, principal_id)
+    def __init__(self, principal_id: str, artifact_id: str, reasoning: str = "") -> None:
+        super().__init__(ActionType.READ_ARTIFACT, principal_id, reasoning=reasoning)
         self.artifact_id = artifact_id
 
     def to_dict(self) -> dict[str, Any]:
@@ -79,8 +89,9 @@ class WriteArtifactIntent(ActionIntent):
         price: int = 0,
         code: str = "",
         policy: dict[str, Any] | None = None,
+        reasoning: str = "",
     ) -> None:
-        super().__init__(ActionType.WRITE_ARTIFACT, principal_id)
+        super().__init__(ActionType.WRITE_ARTIFACT, principal_id, reasoning=reasoning)
         self.artifact_id = artifact_id
         self.artifact_type = artifact_type
         self.content = content
@@ -117,8 +128,9 @@ class InvokeArtifactIntent(ActionIntent):
         artifact_id: str,
         method: str,
         args: list[Any] | None = None,
+        reasoning: str = "",
     ) -> None:
-        super().__init__(ActionType.INVOKE_ARTIFACT, principal_id)
+        super().__init__(ActionType.INVOKE_ARTIFACT, principal_id, reasoning=reasoning)
         self.artifact_id = artifact_id
         self.method = method
         self.args = args or []
@@ -191,8 +203,13 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
     else:
         action_type = ""
 
+    # Plan #49: Extract reasoning from JSON (defaults to empty string)
+    reasoning = data.get("reasoning", "")
+    if not isinstance(reasoning, str):
+        reasoning = ""
+
     if action_type == "noop":
-        return NoopIntent(principal_id)
+        return NoopIntent(principal_id, reasoning=reasoning)
 
     elif action_type == "read_artifact":
         artifact_id = data.get("artifact_id")
@@ -200,7 +217,7 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
             return "read_artifact requires 'artifact_id'"
         if not isinstance(artifact_id, str):
             return "artifact_id must be a string"
-        return ReadArtifactIntent(principal_id, artifact_id)
+        return ReadArtifactIntent(principal_id, artifact_id, reasoning=reasoning)
 
     elif action_type == "write_artifact":
         artifact_id = data.get("artifact_id")
@@ -245,6 +262,7 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
             price=price,
             code=code,
             policy=policy,
+            reasoning=reasoning,
         )
 
     elif action_type == "transfer":
@@ -265,7 +283,7 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
             return "method must be a string"
         if not isinstance(args, list):
             return "invoke_artifact 'args' must be a list"
-        return InvokeArtifactIntent(principal_id, artifact_id, method, args)
+        return InvokeArtifactIntent(principal_id, artifact_id, method, args, reasoning=reasoning)
 
     else:
         return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, invoke_artifact"

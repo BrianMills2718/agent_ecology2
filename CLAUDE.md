@@ -370,7 +370,7 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| - | - | - | - | - |
+| plan-49-reasoning | 49 | Add reasoning field to ActionIntent narr | 2026-01-14T09:50 | Active |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->

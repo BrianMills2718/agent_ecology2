@@ -1,6 +1,6 @@
 # Plan 49: Reasoning in Narrow Waist
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** High
 **Blocked By:** None
 **Blocks:** LLM-native monitoring, semantic analysis
@@ -139,9 +139,9 @@ Decided against for now:
 
 | Test Pattern | Why |
 |--------------|-----|
-| `tests/unit/test_actions.py::test_parse_*` | Action parsing still works |
+| `tests/unit/test_actions.py` | Action parsing still works |
 | `tests/unit/test_async_agent.py` | Agent response handling unchanged |
-| `tests/integration/test_simulation.py` | E2E simulation works |
+| `tests/integration/test_runner.py` | E2E simulation works |
 
 ---
 
