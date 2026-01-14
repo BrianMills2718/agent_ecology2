@@ -137,6 +137,7 @@ code:
   - src/simulation/runner.py
 
 tests:
+  - tests/integration/test_agent_loop_acceptance.py  # Feature acceptance tests
   - tests/unit/test_agent_loop.py
   - tests/integration/test_runner.py
 

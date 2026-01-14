@@ -1,6 +1,6 @@
-"""Feature tests for ledger - maps to features/ledger.yaml acceptance criteria.
+"""Feature acceptance tests for ledger - maps to features/ledger.yaml.
 
-Each test corresponds to an AC-ID in the feature definition.
+Run with: pytest --feature ledger tests/
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.world.ledger import Ledger
 
 
+@pytest.mark.feature("ledger")
 class TestLedgerFeature:
     """Tests mapping to features/ledger.yaml acceptance criteria."""
 
@@ -154,6 +155,7 @@ class TestLedgerFeature:
         assert ledger.get_scrip("agent_b") == 10
 
 
+@pytest.mark.feature("ledger")
 class TestLedgerEdgeCases:
     """Additional edge case tests for ledger robustness."""
 

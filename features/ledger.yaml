@@ -93,6 +93,7 @@ code:
   - src/world/rate_tracker.py
 
 tests:
+  - tests/integration/test_ledger_acceptance.py  # Feature acceptance tests
   - tests/unit/test_ledger.py
   - tests/unit/test_resource_tracking.py
   - tests/integration/test_integration.py

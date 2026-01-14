@@ -24,6 +24,11 @@ def pytest_configure(config: pytest.Config) -> None:
     )
     config.addinivalue_line(
         "markers",
+        "feature(name): mark test as belonging to a feature. "
+        "Usage: @pytest.mark.feature('escrow') - maps to features/<name>.yaml"
+    )
+    config.addinivalue_line(
+        "markers",
         "feature_type(type): mark test as 'feature', 'enabler', or 'refactor'"
     )
     config.addinivalue_line(
@@ -46,6 +51,13 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         type=int,
         default=None,
         help="Run tests for a specific plan number",
+    )
+    parser.addoption(
+        "--feature",
+        action="store",
+        type=str,
+        default=None,
+        help="Run tests for a specific feature (e.g., --feature escrow)",
     )
 
 
@@ -73,6 +85,23 @@ def pytest_collection_modifyitems(
                 if isinstance(plans_arg, int):
                     plans_arg = [plans_arg]
                 if plan_filter in plans_arg:
+                    selected.append(item)
+                    continue
+            deselected.append(item)
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = selected
+        return  # Don't apply feature filter if plan filter was used
+
+    # Handle --feature NAME
+    feature_filter = config.getoption("--feature")
+    if feature_filter is not None:
+        selected = []
+        deselected = []
+        for item in items:
+            marker = item.get_closest_marker("feature")
+            if marker is not None:
+                feature_name = marker.args[0] if marker.args else ""
+                if feature_name == feature_filter:
                     selected.append(item)
                     continue
             deselected.append(item)
@@ -186,3 +215,74 @@ def single_agent_world(single_agent_config: ConfigDict, tmp_path: Path) -> World
     config["logging"] = {"output_file": str(log_file)}
 
     return World(config)
+
+
+# --- Feature Acceptance Test Fixtures ---
+# These fixtures support acceptance tests in tests/integration/*_acceptance.py
+
+
+from src.world.artifacts import ArtifactStore
+from src.world.genesis import GenesisEscrow, GenesisMint, GenesisStore
+
+
+@pytest.fixture
+def feature_world(tmp_path: Path) -> World:
+    """Create a World configured for feature testing.
+
+    Includes multiple agents with sufficient resources for trading scenarios.
+    """
+    log_file = tmp_path / "feature_test.jsonl"
+    config: ConfigDict = {
+        "world": {"max_ticks": 100},
+        "costs": {
+            "per_1k_input_tokens": 1,
+            "per_1k_output_tokens": 3,
+        },
+        "logging": {"output_file": str(log_file)},
+        "principals": [
+            {"id": "alice", "starting_scrip": 1000},
+            {"id": "bob", "starting_scrip": 500},
+            {"id": "charlie", "starting_scrip": 200},
+        ],
+        "rights": {
+            "default_compute_quota": 100,
+            "default_disk_quota": 10000
+        }
+    }
+    world = World(config)
+    world.advance_tick()  # Initialize tick 1
+    return world
+
+
+@pytest.fixture
+def ledger_with_principals() -> Ledger:
+    """Ledger with test principals for ledger feature tests."""
+    ledger = Ledger()
+    ledger.create_principal("alice", starting_scrip=1000, starting_compute=100)
+    ledger.create_principal("bob", starting_scrip=500, starting_compute=100)
+    ledger.create_principal("charlie", starting_scrip=200, starting_compute=100)
+    return ledger
+
+
+@pytest.fixture
+def escrow_with_store() -> tuple[GenesisEscrow, ArtifactStore, Ledger]:
+    """Set up escrow with store and ledger for escrow feature tests."""
+    ledger = Ledger()
+    store = ArtifactStore()
+    ledger.create_principal("seller", starting_scrip=100, starting_compute=50)
+    ledger.create_principal("buyer", starting_scrip=500, starting_compute=50)
+    ledger.create_principal("restricted_buyer", starting_scrip=500, starting_compute=50)
+
+    escrow = GenesisEscrow(ledger, store)
+    return escrow, store, ledger
+
+
+@pytest.fixture
+def store_with_ledger() -> tuple[GenesisStore, ArtifactStore, Ledger]:
+    """Set up genesis_store with artifacts and ledger."""
+    ledger = Ledger()
+    artifacts = ArtifactStore()
+    ledger.create_principal("creator", starting_scrip=100, starting_compute=50)
+
+    store = GenesisStore(artifacts)
+    return store, artifacts, ledger
