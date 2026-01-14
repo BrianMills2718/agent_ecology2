@@ -215,7 +215,7 @@ rate_limiting:
 # EXECUTION - Agent execution model settings
 # -----------------------------------------------------------------------------
 execution:
-  use_autonomous_loops: false     # Enable via --duration or --autonomous CLI flags
+  use_autonomous_loops: true      # Autonomous mode is default (V1). Use --ticks N for legacy tick-based mode.
   agent_loop:
     min_loop_delay: 0.1           # Minimum seconds between actions
     max_loop_delay: 10.0          # Maximum backoff delay on errors
