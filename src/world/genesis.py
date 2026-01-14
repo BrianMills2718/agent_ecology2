@@ -2263,4 +2263,20 @@ def create_genesis_artifacts(
     for artifact_id, mcp_artifact in mcp_artifacts.items():
         artifacts[artifact_id] = mcp_artifact
 
+    # Add aliases for new naming convention (Plan #44)
+    # Maps old names -> new names (both can be used to access same artifact)
+    # API wrappers: genesis_*_api - wrap kernel primitives
+    # Contracts: genesis_*_contract - pure contract logic
+    alias_mapping = {
+        "genesis_ledger": "genesis_ledger_api",
+        "genesis_mint": "genesis_mint_api",
+        "genesis_rights_registry": "genesis_rights_api",
+        "genesis_store": "genesis_store_api",
+        "genesis_event_log": "genesis_event_log_api",
+        "genesis_escrow": "genesis_escrow_contract",
+    }
+    for old_name, new_name in alias_mapping.items():
+        if old_name in artifacts:
+            artifacts[new_name] = artifacts[old_name]
+
     return artifacts
