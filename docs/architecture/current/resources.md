@@ -2,7 +2,7 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-01-12 (Plan #34 - Oracle→Mint rename)
+**Last verified:** 2026-01-14 (Plan #12 - Per-agent LLM budget)
 
 **See target:** [../target/resources.md](../target/resources.md)
 
@@ -109,20 +109,31 @@ if not self.rights_registry.can_write(agent_id, bytes_needed):
 
 | Property | Value |
 |----------|-------|
-| Config key | `budget.max_api_cost` |
-| Default | $1.00 |
-| Scope | System-wide (shared) |
+| Config key (global) | `budget.max_api_cost` |
+| Config key (per-agent default) | `budget.per_agent_budget` |
+| Config key (per-principal) | `principals[].llm_budget` |
+| Default (global) | $1.00 |
+| Default (per-agent) | 0 (disabled) |
+| Scope | System-wide + per-agent (Plan #12) |
 
 **Behavior:**
-- Tracks cumulative $ spent on LLM API calls
-- When exhausted: simulation stops
-- Checkpoint saved before stopping
+- Tracks cumulative $ spent on LLM API calls (global)
+- Per-agent `llm_budget` tracked as stock resource in Ledger (Plan #12)
+- When global budget exhausted: simulation stops
+- When per-agent budget exhausted: agent skipped for tick
+- Per-agent budget is tradeable via `ledger.transfer_resource()`
+- Set to 0 to disable per-agent enforcement
 
 **`SimulationRunner.run()`** in `src/simulation/runner.py`:
 ```python
+# Global budget check
 if self.engine.is_budget_exhausted():
     save_checkpoint(...)  # Checkpoint saved before stopping
     return
+
+# Per-agent budget check (Plan #12)
+if has_llm_budget_config and llm_budget <= 0:
+    return {"skipped": True, "skip_reason": "insufficient_llm_budget"}
 ```
 
 ---
@@ -222,10 +233,11 @@ Set by artifact owner:
 - No borrowing, no credit
 - Limits complex economic strategies
 
-### Shared LLM Budget = Collective Limit
-- All agents share $1.00 total
-- One expensive agent affects all
-- No per-agent API budgets
+### LLM Budget Options (Plan #12)
+- **Global budget** (`budget.max_api_cost`): All agents share total
+- **Per-agent budget** (`budget.per_agent_budget` or `principals[].llm_budget`): Individual limits
+- Per-agent budget is opt-in: set to 0 to disable (default)
+- Both can be used together for tiered enforcement
 
 ---
 

@@ -57,7 +57,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 9 | [Scrip Debt Contracts](09_scrip_debt.md) | Low | ❌ Needs Plan | - |
 | 10 | [Memory Persistence](10_memory_persistence.md) | Low | ❌ Needs Plan | - |
 | 11 | [Terminology Cleanup](11_terminology.md) | Medium | ✅ Complete | #12 |
-| 12 | [Per-Agent LLM Budget](12_per_agent_budget.md) | Medium | 📋 Planned | - |
+| 12 | [Per-Agent LLM Budget](12_per_agent_budget.md) | Medium | ✅ Complete | - |
 | 13 | [Doc Line Number Refs](13_doc_line_refs.md) | Low | ❌ Needs Plan | - |
 | 14 | [MCP-Style Artifact Interface](14_mcp_interface.md) | Medium | ❌ Needs Plan | - |
 | 15 | [invoke() Genesis Support](15_invoke_genesis.md) | Medium | ❌ Needs Plan | - |

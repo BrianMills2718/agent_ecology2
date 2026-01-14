@@ -71,12 +71,14 @@ class SimulationEngine:
         rate_output: Compute cost per 1K output tokens (default: 3)
         max_api_cost: Maximum API cost in dollars, 0 = unlimited (default: 0)
         cumulative_api_cost: Running total of API costs (default: 0)
+        per_agent_costs: Per-agent cumulative API costs (Plan #12)
     """
 
     rate_input: int = 1
     rate_output: int = 3
     max_api_cost: float = 0.0
     cumulative_api_cost: float = field(default=0.0)
+    per_agent_costs: dict[str, float] = field(default_factory=dict)
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> SimulationEngine:
@@ -130,19 +132,28 @@ class SimulationEngine:
             "total_cost": input_cost + output_cost,
         }
 
-    def track_api_cost(self, api_cost: float) -> BudgetCheckResult:
+    def track_api_cost(
+        self, api_cost: float, agent_id: str | None = None
+    ) -> BudgetCheckResult:
         """
         Add API cost and check budget constraints.
 
-        Updates cumulative_api_cost and returns budget status.
+        Updates cumulative_api_cost and optionally per-agent costs.
 
         Args:
             api_cost: Cost of API call in dollars
+            agent_id: Optional agent ID for per-agent tracking (Plan #12)
 
         Returns:
             BudgetCheckResult with budget status
         """
         self.cumulative_api_cost += api_cost
+
+        # Track per-agent costs (Plan #12)
+        if agent_id is not None:
+            if agent_id not in self.per_agent_costs:
+                self.per_agent_costs[agent_id] = 0.0
+            self.per_agent_costs[agent_id] += api_cost
 
         if self.max_api_cost > 0:
             remaining = self.max_api_cost - self.cumulative_api_cost
@@ -157,6 +168,17 @@ class SimulationEngine:
             "max_cost": self.max_api_cost,
             "remaining": remaining,
         }
+
+    def get_agent_cost(self, agent_id: str) -> float:
+        """Get cumulative API cost for a specific agent (Plan #12).
+
+        Args:
+            agent_id: Agent ID to get cost for
+
+        Returns:
+            Cumulative API cost for this agent
+        """
+        return self.per_agent_costs.get(agent_id, 0.0)
 
     def is_budget_exhausted(self) -> bool:
         """

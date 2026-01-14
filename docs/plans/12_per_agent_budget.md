@@ -1,6 +1,18 @@
 # Plan #12: Per-Agent LLM Budget
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
+
+**Verified:** 2026-01-14T02:39:34Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-01-14T02:39:34Z
+tests:
+  unit: 1161 passed, 1 skipped in 13.75s
+  e2e_smoke: PASSED (2.09s)
+  doc_coupling: passed
+commit: 998be9c
+```
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** None
