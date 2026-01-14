@@ -376,15 +376,11 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| plan-49-reasoning | 49 | Add reasoning field to ActionIntent narr | 2026-01-14T09:50 | Active |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->
 | PR | Branch | Title | Created | Status |
 |----|--------|-------|---------|--------|
-| #122 | plan-42-implementation | [Plan #42] Kernel quotas | 2026-01-14 | Open |
-| #124 | plan-43-reasoning-narrow-waist | [Plan #43] Reasoning | 2026-01-14 | Open |
-| #135 | plan-41-blocker-enforcement | [Plan #41] Blocker enforcement | 2026-01-14 | Open |
 
 **After PR merged:** Remove from Awaiting Review table.
 
