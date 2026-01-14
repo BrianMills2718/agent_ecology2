@@ -538,6 +538,8 @@ class SimulationRunner:
             proposal = action_proposal["proposal"]
 
             action_dict: dict[str, Any] = proposal["action"]
+            # Plan #49: Pass thought_process as reasoning to narrow waist
+            action_dict["reasoning"] = proposal.get("thought_process", "")
             intent: ActionIntent | str = parse_intent_from_json(
                 agent.agent_id, json.dumps(action_dict)
             )

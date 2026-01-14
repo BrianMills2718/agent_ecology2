@@ -3,10 +3,10 @@
 # Use: python scripts/check_claims.py --help
 
 claims:
-- cc_id: main
-  task: Add real E2E requirement to complete_plan.py
-  claimed_at: '2026-01-14T09:48:12Z'
-  plan: 45
+- cc_id: plan-49-reasoning
+  task: Add reasoning field to ActionIntent narrow waist
+  claimed_at: '2026-01-14T09:50:23Z'
+  plan: 49
 completed:
 - cc_id: tier2-architecture-decisions
   task: Tier 2 architecture decisions (Items 4-7)
@@ -54,3 +54,7 @@ completed:
   plan: 44
   task: Implement genesis full unprivilege
   completed_at: '2026-01-14T09:45:00Z'
+- cc_id: main
+  plan: 45
+  task: Add real E2E requirement to complete_plan.py
+  completed_at: '2026-01-14T10:00:00Z'

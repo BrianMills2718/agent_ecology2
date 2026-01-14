@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-14 (Plan #22 - Added coordination handbook section, no execution model changes)
+**Last verified:** 2026-01-14 (Plan #49 - Added reasoning field to narrow waist ActionIntent)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
@@ -104,7 +104,7 @@ for proposal in proposals:
 
 ---
 
-## The Narrow Waist: 4 Action Types
+## The Narrow Waist: 4 Action Types + Reasoning
 
 All agent actions must be one of these 4 types (`src/world/actions.py`):
 
@@ -116,6 +116,26 @@ All agent actions must be one of these 4 types (`src/world/actions.py`):
 | `invoke_artifact` | Call method on artifact |
 
 **Note:** There is no `transfer` action. All transfers go through `genesis_ledger.transfer()`.
+
+### Reasoning Field (Plan #49)
+
+Every `ActionIntent` includes a `reasoning` field that captures why the agent chose this action:
+
+```python
+@dataclass
+class ActionIntent:
+    action_type: ActionType
+    principal_id: str
+    reasoning: str = ""  # Required explanation for this action
+```
+
+The reasoning flows from agent's `thought_process` through the narrow waist:
+1. Agent produces `ActionResponse` with `thought_process`
+2. Runner maps `thought_process` → `reasoning` in action JSON
+3. `parse_intent_from_json()` extracts `reasoning`
+4. Action event logged includes `reasoning` in `intent.to_dict()`
+
+This enables LLM-native monitoring: analyzing reasoning quality, extracting strategies, detecting anomalies.
 
 ---
 
