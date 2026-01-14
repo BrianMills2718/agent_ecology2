@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from typing import Any, Callable, TypedDict
+from typing import Any, Callable, TypedDict, cast
 
 from ..config import get_genesis_config, get, get_validated_config
 from ..config_schema import GenesisConfig
@@ -1218,6 +1218,9 @@ class GenesisRightsRegistry(GenesisArtifact):
     """
     Genesis artifact for managing resource rights (means of production).
 
+    This is a thin wrapper around kernel quota primitives (Plan #42).
+    Quotas are kernel state, not genesis artifact state.
+
     Supports generic resources defined in config. Common resources:
     - compute: LLM tokens per tick (renews each tick)
     - disk: Bytes of storage (fixed pool)
@@ -1228,7 +1231,10 @@ class GenesisRightsRegistry(GenesisArtifact):
 
     default_quotas: dict[str, float]
     artifact_store: ArtifactStore | None
-    quotas: dict[str, dict[str, float]]
+    # Legacy storage - used as fallback when _world is not set
+    _legacy_quotas: dict[str, dict[str, float]]
+    # World reference for kernel delegation (Plan #42)
+    _world: Any  # Type is World but avoiding circular import
 
     def __init__(
         self,
@@ -1269,8 +1275,11 @@ class GenesisRightsRegistry(GenesisArtifact):
 
         self.artifact_store = artifact_store
 
-        # Track quotas per agent: {agent_id: {resource: amount}}
-        self.quotas = {}
+        # Legacy quota storage - used when _world not set (backward compat)
+        self._legacy_quotas = {}
+
+        # World reference for kernel delegation - set via set_world()
+        self._world = None
 
         # Register methods with costs/descriptions from config
         self.register_method(
@@ -1294,25 +1303,88 @@ class GenesisRightsRegistry(GenesisArtifact):
             description=rights_cfg.methods.transfer_quota.description
         )
 
+    def set_world(self, world: Any) -> None:
+        """Set world reference for kernel delegation (Plan #42).
+
+        Once set, all quota operations delegate to kernel state.
+
+        Args:
+            world: The World instance containing kernel quota primitives
+        """
+        self._world = world
+        # Migrate any legacy quotas to kernel
+        for agent_id, quotas in self._legacy_quotas.items():
+            for resource, amount in quotas.items():
+                self._world.set_quota(agent_id, resource, amount)
+        self._legacy_quotas.clear()
+
+    @property
+    def quotas(self) -> dict[str, dict[str, float]]:
+        """Backward compat: return quotas dict (read-only view).
+
+        When _world is set, this reconstructs from kernel state.
+        """
+        if self._world is not None:
+            # Reconstruct from kernel state
+            result: dict[str, dict[str, float]] = {}
+            for pid in self._world.principal_ids:
+                result[pid] = {}
+                for resource in self.default_quotas.keys():
+                    result[pid][resource] = self._world.get_quota(pid, resource)
+            return result
+        return self._legacy_quotas
+
     def ensure_agent(self, agent_id: str) -> None:
-        """Ensure an agent has quota entries (initialize with defaults)"""
-        if agent_id not in self.quotas:
-            self.quotas[agent_id] = dict(self.default_quotas)
+        """Ensure an agent has quota entries (initialize with defaults)."""
+        if self._world is not None:
+            # Kernel mode: set default quotas if not already set
+            for resource, amount in self.default_quotas.items():
+                if self._world.get_quota(agent_id, resource) == 0.0:
+                    self._world.set_quota(agent_id, resource, amount)
+        else:
+            # Legacy mode
+            if agent_id not in self._legacy_quotas:
+                self._legacy_quotas[agent_id] = dict(self.default_quotas)
 
     def get_quota(self, agent_id: str, resource: str) -> float:
-        """Get quota for a specific resource."""
+        """Get quota for a specific resource.
+
+        Delegates to kernel when world is set (Plan #42).
+        """
+        if self._world is not None:
+            # Kernel mode: ensure defaults then query
+            if self._world.get_quota(agent_id, resource) == 0.0:
+                self.ensure_agent(agent_id)
+            return cast(float, self._world.get_quota(agent_id, resource))
+        # Legacy mode
         self.ensure_agent(agent_id)
-        return self.quotas[agent_id].get(resource, 0.0)
+        return self._legacy_quotas[agent_id].get(resource, 0.0)
 
     def set_quota(self, agent_id: str, resource: str, amount: float) -> None:
-        """Set quota for a specific resource."""
-        self.ensure_agent(agent_id)
-        self.quotas[agent_id][resource] = amount
+        """Set quota for a specific resource.
+
+        Delegates to kernel when world is set (Plan #42).
+        """
+        if self._world is not None:
+            self._world.set_quota(agent_id, resource, amount)
+        else:
+            self.ensure_agent(agent_id)
+            self._legacy_quotas[agent_id][resource] = amount
 
     def get_all_quotas(self, agent_id: str) -> dict[str, float]:
-        """Get all quotas for an agent."""
+        """Get all quotas for an agent.
+
+        Delegates to kernel when world is set (Plan #42).
+        """
+        if self._world is not None:
+            self.ensure_agent(agent_id)
+            result = {}
+            for resource in self.default_quotas.keys():
+                result[resource] = self._world.get_quota(agent_id, resource)
+            return result
+        # Legacy mode
         self.ensure_agent(agent_id)
-        return dict(self.quotas[agent_id])
+        return dict(self._legacy_quotas[agent_id])
 
     # Backward compat: compute = "compute" resource
     def get_compute_quota(self, agent_id: str) -> int:
@@ -1388,7 +1460,10 @@ class GenesisRightsRegistry(GenesisArtifact):
         return {"success": True, "quotas": result}
 
     def _transfer_quota(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
-        """Transfer quota between agents. Works with any resource type."""
+        """Transfer quota between agents. Works with any resource type.
+
+        Delegates to kernel when world is set (Plan #42).
+        """
         if not args or len(args) < 4:
             return {"success": False, "error": "transfer_quota requires [from_id, to_id, resource, amount]"}
 
@@ -1412,8 +1487,32 @@ class GenesisRightsRegistry(GenesisArtifact):
         self.ensure_agent(from_id)
         self.ensure_agent(to_id)
 
-        # Check if sender has enough quota
-        current = self.quotas[from_id].get(resource, 0.0)
+        # Kernel delegation mode (Plan #42)
+        if self._world is not None:
+            from src.world.kernel_interface import KernelActions
+            kernel_actions = KernelActions(self._world)
+            success = kernel_actions.transfer_quota(from_id, to_id, resource, float(amount))
+
+            if not success:
+                current = self._world.get_quota(from_id, resource)
+                return {
+                    "success": False,
+                    "error": f"Insufficient {resource} quota. Have {current}, need {amount}"
+                }
+
+            return {
+                "success": True,
+                "transferred": amount,
+                "quota_type": resource,  # Keep legacy field name
+                "resource": resource,    # New field name
+                "from": from_id,
+                "to": to_id,
+                "from_new_quota": self._world.get_quota(from_id, resource),
+                "to_new_quota": self._world.get_quota(to_id, resource)
+            }
+
+        # Legacy mode
+        current = self._legacy_quotas[from_id].get(resource, 0.0)
         if current < amount:
             return {
                 "success": False,
@@ -1421,8 +1520,8 @@ class GenesisRightsRegistry(GenesisArtifact):
             }
 
         # Transfer
-        self.quotas[from_id][resource] = current - amount
-        self.quotas[to_id][resource] = self.quotas[to_id].get(resource, 0.0) + amount
+        self._legacy_quotas[from_id][resource] = current - amount
+        self._legacy_quotas[to_id][resource] = self._legacy_quotas[to_id].get(resource, 0.0) + amount
 
         return {
             "success": True,
@@ -1431,8 +1530,8 @@ class GenesisRightsRegistry(GenesisArtifact):
             "resource": resource,    # New field name
             "from": from_id,
             "to": to_id,
-            "from_new_quota": self.quotas[from_id][resource],
-            "to_new_quota": self.quotas[to_id][resource]
+            "from_new_quota": self._legacy_quotas[from_id][resource],
+            "to_new_quota": self._legacy_quotas[to_id][resource]
         }
 
 
