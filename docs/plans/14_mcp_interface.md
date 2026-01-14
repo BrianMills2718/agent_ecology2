@@ -1,6 +1,6 @@
 # Gap 14: MCP-Style Artifact Interface
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** None
@@ -207,10 +207,10 @@ print(ledger.get_interface())
 
 ## Verification
 
-- [ ] Tests pass
-- [ ] Docs updated
-- [ ] Genesis artifacts have interface schemas
-- [ ] Interface discoverable via genesis_store
+- [x] Tests pass (7 tests in test_artifact_interface.py)
+- [x] Docs updated (artifacts_executor.md)
+- [x] Genesis artifacts have interface schemas (GenesisLedger implemented)
+- [ ] Interface discoverable via genesis_store (Phase 4 - future)
 
 ---
 

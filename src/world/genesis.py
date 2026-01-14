@@ -258,6 +258,26 @@ class GenesisArtifact:
             for m in self.methods.values()
         ]
 
+    def get_interface(self) -> dict[str, Any]:
+        """Get the interface schema for this artifact (Plan #14).
+
+        Returns a JSON Schema-compatible interface describing the artifact's
+        tools (methods) and their inputs/outputs. Uses MCP-compatible format.
+
+        Override in subclasses to add detailed inputSchema for each method.
+        """
+        tools = []
+        for method in self.methods.values():
+            tools.append({
+                "name": method.name,
+                "description": method.description,
+                "cost": method.cost,
+            })
+        return {
+            "description": self.description,
+            "tools": tools,
+        }
+
     def to_dict(self) -> GenesisArtifactDict:
         """Convert to dict for artifact listing"""
         return {
@@ -505,6 +525,97 @@ class GenesisLedger(GenesisArtifact):
                 code=ErrorCode.NOT_FOUND,
                 artifact_id=artifact_id,
             )
+
+    def get_interface(self) -> dict[str, Any]:
+        """Get detailed interface schema for the ledger (Plan #14)."""
+        return {
+            "description": self.description,
+            "tools": [
+                {
+                    "name": "balance",
+                    "description": "Get balance for an agent (resources and scrip)",
+                    "cost": self.methods["balance"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "agent_id": {
+                                "type": "string",
+                                "description": "ID of the agent to query"
+                            }
+                        },
+                        "required": ["agent_id"]
+                    }
+                },
+                {
+                    "name": "all_balances",
+                    "description": "Get balances for all principals",
+                    "cost": self.methods["all_balances"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                },
+                {
+                    "name": "transfer",
+                    "description": "Transfer scrip to another principal",
+                    "cost": self.methods["transfer"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "to": {
+                                "type": "string",
+                                "description": "Recipient principal ID"
+                            },
+                            "amount": {
+                                "type": "integer",
+                                "description": "Amount of scrip to transfer",
+                                "minimum": 1
+                            }
+                        },
+                        "required": ["to", "amount"]
+                    }
+                },
+                {
+                    "name": "spawn_principal",
+                    "description": "Create a new principal with initial scrip",
+                    "cost": self.methods["spawn_principal"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "principal_id": {
+                                "type": "string",
+                                "description": "ID for the new principal"
+                            },
+                            "initial_scrip": {
+                                "type": "integer",
+                                "description": "Initial scrip balance",
+                                "minimum": 0
+                            }
+                        },
+                        "required": ["principal_id"]
+                    }
+                },
+                {
+                    "name": "transfer_ownership",
+                    "description": "Transfer artifact ownership to another principal",
+                    "cost": self.methods["transfer_ownership"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "artifact_id": {
+                                "type": "string",
+                                "description": "ID of the artifact to transfer"
+                            },
+                            "to": {
+                                "type": "string",
+                                "description": "New owner principal ID"
+                            }
+                        },
+                        "required": ["artifact_id", "to"]
+                    }
+                }
+            ]
+        }
 
 
 class BidInfo(TypedDict):

@@ -40,7 +40,7 @@ Master index of all gaps and their implementation plans.
 | 11 | [Terminology Cleanup](11_terminology.md) | Medium | ✅ Complete | #12 |
 | 12 | [Per-Agent LLM Budget](12_per_agent_budget.md) | Medium | ✅ Complete | - |
 | 13 | [Doc Line Number Refs](13_doc_line_refs.md) | Low | ❌ Needs Plan | - |
-| 14 | [MCP-Style Artifact Interface](14_mcp_interface.md) | Medium | 📋 Planned | - |
+| 14 | [Artifact Interface Schema](14_mcp_interface.md) | Medium | 🚧 In Progress | - |
 | 15 | [invoke() Genesis Support](15_invoke_genesis.md) | Medium | ❌ Needs Plan | - |
 | 16 | [Artifact Discovery](16_artifact_discovery.md) | **High** | ✅ Complete | #17,#22 |
 | 17 | [Agent Discovery](17_agent_discovery.md) | Medium | ✅ Complete | - |
