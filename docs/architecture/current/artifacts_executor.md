@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-14 (Plan #39 - Added kernel interfaces to executor)
+**Last verified:** 2026-01-14 (Plan #14 - Added interface schema to artifacts)
 
 ---
 
@@ -36,6 +36,8 @@ class Artifact:
     deleted: bool = False         # Is artifact deleted?
     deleted_at: str | None        # ISO timestamp of deletion
     deleted_by: str | None        # Who deleted it
+    # Interface schema (Plan #14)
+    interface: dict | None = None # JSON Schema for discoverability
 ```
 
 ### Artifact Types
