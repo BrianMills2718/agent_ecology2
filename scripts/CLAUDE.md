@@ -70,6 +70,7 @@ pytest --plan N tests/                             # Run tests for plan N
 # Plan completion
 python scripts/complete_plan.py --plan N           # Complete with verification
 python scripts/complete_plan.py --plan N --dry-run # Check without updating
+python scripts/complete_plan.py --plan N --skip-real-e2e  # Skip real LLM E2E tests
 python scripts/complete_plan.py --plan N --human-verified  # For plans with human review
 
 # Mock usage

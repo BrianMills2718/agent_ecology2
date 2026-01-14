@@ -11,8 +11,11 @@ Usage:
     # Dry run - check without updating
     python scripts/complete_plan.py --plan 35 --dry-run
 
-    # Skip E2E tests (for documentation-only plans)
+    # Skip all E2E tests (for documentation-only plans)
     python scripts/complete_plan.py --plan 35 --skip-e2e
+
+    # Skip only real E2E tests (actual LLM calls) but run smoke tests
+    python scripts/complete_plan.py --plan 35 --skip-real-e2e
 
     # Re-verify an already-complete plan
     python scripts/complete_plan.py --plan 35 --force
@@ -100,7 +103,7 @@ def run_unit_tests(project_root: Path, verbose: bool = True) -> tuple[bool, str]
     Returns (success, summary).
     """
     if verbose:
-        print("\n[1/3] Running unit tests...")
+        print("\n[1/4] Running unit tests...")
 
     result = subprocess.run(
         ["pytest", "tests/", "--ignore=tests/e2e/", "-v", "--tb=short"],
@@ -134,19 +137,68 @@ def run_e2e_tests(project_root: Path, verbose: bool = True) -> tuple[bool, str]:
 
     if not e2e_dir.exists():
         if verbose:
-            print("\n[2/3] E2E tests... SKIPPED (tests/e2e/ not found)")
+            print("\n[2/4] E2E smoke tests... SKIPPED (tests/e2e/ not found)")
         return True, "skipped (no e2e directory)"
 
     if not smoke_test.exists():
         if verbose:
-            print("\n[2/3] E2E tests... SKIPPED (test_smoke.py not found)")
+            print("\n[2/4] E2E smoke tests... SKIPPED (test_smoke.py not found)")
         return True, "skipped (no smoke test)"
 
     if verbose:
-        print("\n[2/3] Running E2E smoke tests...")
+        print("\n[2/4] Running E2E smoke tests...")
 
     result = subprocess.run(
         ["pytest", "tests/e2e/test_smoke.py", "-v", "--tb=short"],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+    )
+
+    output = result.stdout + result.stderr
+
+    # Extract timing
+    time_match = re.search(r"in (\d+\.\d+)s", output)
+    timing = time_match.group(1) if time_match else "?"
+
+    if result.returncode == 0:
+        summary = f"PASSED ({timing}s)"
+    else:
+        summary = f"FAILED ({timing}s)"
+
+    if verbose:
+        if result.returncode == 0:
+            print(f"    PASSED ({timing}s)")
+        else:
+            print(f"    FAILED")
+            print(output[-2000:])
+
+    return result.returncode == 0, summary
+
+
+def run_real_e2e_tests(project_root: Path, verbose: bool = True) -> tuple[bool, str]:
+    """Run real E2E tests (actual LLM calls).
+
+    Returns (success, summary).
+    """
+    e2e_dir = project_root / "tests" / "e2e"
+    real_e2e = e2e_dir / "test_real_e2e.py"
+
+    if not e2e_dir.exists():
+        if verbose:
+            print("\n[3/4] Real E2E tests... SKIPPED (tests/e2e/ not found)")
+        return True, "skipped (no e2e directory)"
+
+    if not real_e2e.exists():
+        if verbose:
+            print("\n[3/4] Real E2E tests... SKIPPED (test_real_e2e.py not found)")
+        return True, "skipped (no real e2e test)"
+
+    if verbose:
+        print("\n[3/4] Running real E2E tests (actual LLM calls)...")
+
+    result = subprocess.run(
+        ["pytest", "tests/e2e/test_real_e2e.py", "-v", "--tb=short", "--run-external"],
         cwd=project_root,
         capture_output=True,
         text=True,
@@ -179,7 +231,7 @@ def check_doc_coupling(project_root: Path, verbose: bool = True) -> tuple[bool, 
     Returns (success, summary).
     """
     if verbose:
-        print("\n[3/3] Checking doc-code coupling...")
+        print("\n[4/4] Checking doc-code coupling...")
 
     result = subprocess.run(
         ["python", "scripts/check_doc_coupling.py", "--strict"],
@@ -228,7 +280,8 @@ def get_git_info(project_root: Path) -> tuple[str, str]:
 def update_plan_file(
     plan_file: Path,
     unit_summary: str,
-    e2e_summary: str,
+    e2e_smoke_summary: str,
+    e2e_real_summary: str,
     doc_summary: str,
     commit: str,
     dry_run: bool = False,
@@ -249,7 +302,8 @@ completed_by: scripts/complete_plan.py
 timestamp: {timestamp}
 tests:
   unit: {unit_summary}
-  e2e_smoke: {e2e_summary}
+  e2e_smoke: {e2e_smoke_summary}
+  e2e_real: {e2e_real_summary}
   doc_coupling: {doc_summary}
 commit: {commit}
 ```
@@ -331,6 +385,7 @@ def complete_plan(
     project_root: Path,
     dry_run: bool = False,
     skip_e2e: bool = False,
+    skip_real_e2e: bool = False,
     force: bool = False,
     human_verified: bool = False,
     verbose: bool = True,
@@ -382,17 +437,27 @@ def complete_plan(
     if not unit_passed:
         all_passed = False
 
-    # 2. E2E tests
+    # 2. E2E smoke tests
     if skip_e2e:
-        e2e_passed, e2e_summary = True, "skipped (--skip-e2e)"
+        e2e_smoke_passed, e2e_smoke_summary = True, "skipped (--skip-e2e)"
         if verbose:
-            print("\n[2/3] E2E tests... SKIPPED (--skip-e2e flag)")
+            print("\n[2/4] E2E smoke tests... SKIPPED (--skip-e2e flag)")
     else:
-        e2e_passed, e2e_summary = run_e2e_tests(project_root, verbose)
-        if not e2e_passed:
+        e2e_smoke_passed, e2e_smoke_summary = run_e2e_tests(project_root, verbose)
+        if not e2e_smoke_passed:
             all_passed = False
 
-    # 3. Doc coupling
+    # 3. Real E2E tests (actual LLM calls)
+    if skip_e2e or skip_real_e2e:
+        e2e_real_passed, e2e_real_summary = True, "skipped (--skip-real-e2e)"
+        if verbose:
+            print("\n[3/4] Real E2E tests... SKIPPED (--skip-real-e2e flag)")
+    else:
+        e2e_real_passed, e2e_real_summary = run_real_e2e_tests(project_root, verbose)
+        if not e2e_real_passed:
+            all_passed = False
+
+    # 4. Doc coupling
     doc_passed, doc_summary = check_doc_coupling(project_root, verbose)
     if not doc_passed:
         all_passed = False
@@ -402,9 +467,10 @@ def complete_plan(
         print(f"\n{'='*60}")
         print("VERIFICATION SUMMARY")
         print(f"{'='*60}")
-        print(f"  Unit tests:    {'PASS' if unit_passed else 'FAIL'}")
-        print(f"  E2E tests:     {'PASS' if e2e_passed else 'FAIL'}")
-        print(f"  Doc coupling:  {'PASS' if doc_passed else 'FAIL'}")
+        print(f"  Unit tests:      {'PASS' if unit_passed else 'FAIL'}")
+        print(f"  E2E smoke:       {'PASS' if e2e_smoke_passed else 'FAIL'}")
+        print(f"  E2E real (LLM):  {'PASS' if e2e_real_passed else 'FAIL'}")
+        print(f"  Doc coupling:    {'PASS' if doc_passed else 'FAIL'}")
 
     if not all_passed:
         print(f"\nFAILED: Plan #{plan_number} cannot be marked complete.")
@@ -420,7 +486,8 @@ def complete_plan(
     update_plan_file(
         plan_file,
         unit_summary,
-        e2e_summary,
+        e2e_smoke_summary,
+        e2e_real_summary,
         doc_summary,
         commit,
         dry_run,
@@ -459,7 +526,12 @@ def main() -> int:
     parser.add_argument(
         "--skip-e2e",
         action="store_true",
-        help="Skip E2E tests (for documentation-only plans)"
+        help="Skip all E2E tests (for documentation-only plans)"
+    )
+    parser.add_argument(
+        "--skip-real-e2e",
+        action="store_true",
+        help="Skip real E2E tests (actual LLM calls) but run smoke tests"
     )
     parser.add_argument(
         "--force", "-f",
@@ -486,6 +558,7 @@ def main() -> int:
         project_root=project_root,
         dry_run=args.dry_run,
         skip_e2e=args.skip_e2e,
+        skip_real_e2e=args.skip_real_e2e,
         force=args.force,
         human_verified=args.human_verified,
         verbose=not args.quiet,
