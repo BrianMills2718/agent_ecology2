@@ -3,10 +3,12 @@ First run:
 python scripts/meta_status.py
 ```
 
+**IMPORTANT:** This format is the standard for ALL recommendations, not just "what next?" situations. Any time you suggest an action, use this format to confirm alignment with metaprocess.
+
 Based on the output, provide:
 
 1. **Recommendation** - A specific next action
-2. **Alignment** - Which CLAUDE.md priority this satisfies
+2. **Alignment** - Which CLAUDE.md priority this satisfies (cite the number)
 3. **Uncertainties** - Any questions before proceeding, or "None"
 
 **Priority order** (per CLAUDE.md):
@@ -16,10 +18,15 @@ Based on the output, provide:
 4. Update stale documentation
 5. New implementation (requires plan + worktree)
 
-**Response format:**
+**Response format (ALWAYS use this for recommendations):**
 > **Recommended:** [specific action]
-> **Alignment:** [which CLAUDE.md priority this satisfies]
+> **Alignment:** Priority #N - [description]
 > **Uncertainties:** [questions or "None"]
+
+Example:
+> **Recommended:** Merge PR #152 (trivial /proceed improvement)
+> **Alignment:** Priority #2 - Merge passing PRs
+> **Uncertainties:** None
 
 ---
 
