@@ -67,6 +67,7 @@ Master index of all gaps and their implementation plans.
 | 38 | [Meta-Process Simplification](38_meta_process_simplification.md) | **High** | ✅ Complete | - |
 | 39 | [Genesis Unprivilege](39_genesis_unprivilege.md) | **High** | ✅ Complete | - |
 | 40 | [ActionResult Error Integration](40_actionresult_errors.md) | **High** | 🚧 In Progress | - |
+| 42 | [Kernel Quota Primitives](42_kernel_quota_primitives.md) | **High** | 📋 Planned | #1 |
 
 ---
 

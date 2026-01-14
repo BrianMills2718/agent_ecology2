@@ -366,7 +366,7 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| - | - | - | - | - |
+| plan-42-kernel-quotas | 42 | Kernel quota primitives | 2026-01-14T07:35 | Active |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->
@@ -571,6 +571,24 @@ python scripts/sync_governance.py --apply      # Apply changes (requires clean g
 **Adding governance:** Edit `scripts/governance.yaml`, then run `--apply`.
 
 See `docs/adr/README.md` for ADR format and `docs/meta/adr-governance.md` for the pattern.
+
+### ADRs as Valid Research Outcomes
+
+Not all research leads to implementation. When analysis concludes "don't build X" or "use approach Y", document the decision in an ADR:
+
+**When to create an ADR instead of a plan:**
+- Research concludes a particular approach should NOT be taken
+- Build vs buy analysis recommends against external dependencies
+- Architectural decision affects multiple future plans
+- Trade-off analysis that future work should reference
+
+**Example:** ADR-0006 documents why we build custom rate limiting rather than using pyrate-limiter. This is valuable even though it results in NO code changes.
+
+**Process:**
+1. Do research/analysis
+2. If outcome is "don't do X" or "always do Y" → create ADR
+3. If outcome is "implement X" → create or update plan
+4. Both are valid, valuable contributions
 
 ### Plans Workflow (TDD + Verification)
 
