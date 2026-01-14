@@ -113,6 +113,7 @@ code:
   - scripts/check_mock_tests.py
   - scripts/check_new_code_tests.py
   - scripts/check_plan_blockers.py
+  - scripts/check_plan_completion.py
   - scripts/check_plan_overlap.py
   - scripts/check_plan_tests.py
   - scripts/complete_plan.py

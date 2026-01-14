@@ -224,6 +224,75 @@ def find_coupled_docs(file_path: str, config: dict[str, Any], coupling_type: str
     return docs
 
 
+def get_plan_blockers(plan_num: int) -> list[int]:
+    """Extract blocker plan numbers from a plan file's 'Blocked By' field."""
+    plans_dir = Path("docs/plans")
+
+    # Find plan file
+    patterns = [f"{plan_num:02d}_*.md", f"{plan_num}_*.md"]
+    plan_path = None
+    for pattern in patterns:
+        matches = list(plans_dir.glob(pattern))
+        if matches:
+            plan_path = matches[0]
+            break
+
+    if not plan_path:
+        return []
+
+    content = plan_path.read_text()
+
+    # Look for "Blocked By:" line
+    blocked_match = re.search(r'\*\*Blocked By:\*\*\s*(.+)', content)
+    if not blocked_match:
+        return []
+
+    blocked_text = blocked_match.group(1).strip()
+    if blocked_text.lower() in ("none", "-", "n/a", ""):
+        return []
+
+    # Extract plan numbers (e.g., "#42", "Plan #42", "#42 (description)")
+    blocker_nums = re.findall(r'#(\d+)', blocked_text)
+    return [int(n) for n in blocker_nums]
+
+
+def get_plan_status(plan_num: int) -> str:
+    """Get the status of a plan."""
+    plans_dir = Path("docs/plans")
+
+    patterns = [f"{plan_num:02d}_*.md", f"{plan_num}_*.md"]
+    for pattern in patterns:
+        matches = list(plans_dir.glob(pattern))
+        if matches:
+            content = matches[0].read_text()
+            status_match = re.search(r'\*\*Status:\*\*\s*(.+)', content)
+            if status_match:
+                return status_match.group(1).strip()
+    return "Unknown"
+
+
+def check_active_blockers(plan_num: int) -> list[dict[str, Any]]:
+    """Check if plan is blocked by incomplete plans.
+
+    Returns list of incomplete blockers with their status.
+    """
+    blockers = get_plan_blockers(plan_num)
+    if not blockers:
+        return []
+
+    incomplete_blockers = []
+    for blocker_num in blockers:
+        status = get_plan_status(blocker_num)
+        # "Complete" with checkmark or just "Complete" text
+        if "Complete" not in status:
+            incomplete_blockers.append({
+                "plan": blocker_num,
+                "status": status
+            })
+
+    return incomplete_blockers
+
+
 def validate_plan(plan_num: int, config: dict[str, Any]) -> dict[str, Any]:
     """Validate a plan and return findings."""
     plan = load_plan(plan_num)
@@ -238,7 +307,8 @@ def validate_plan(plan_num: int, config: dict[str, Any]) -> dict[str, Any]:
         "governing_adrs": [],
         "docs_to_update": [],
         "uncertainties": [],
-        "warnings": []
+        "warnings": [],
+        "active_blockers": []
     }
 
     # Find governing ADRs for all files
@@ -269,6 +339,9 @@ def validate_plan(plan_num: int, config: dict[str, Any]) -> dict[str, Any]:
 
     if plan["status"] == "✅ Complete":
         result["warnings"].append("Plan is already marked complete")
+
+    # Check for active blockers (incomplete plans this plan depends on)
+    result["active_blockers"] = check_active_blockers(plan_num)
 
     return result
 
@@ -318,8 +391,16 @@ def print_validation_result(result: dict[str, Any]) -> None:
             print(f"  ⚠️  {w}")
         print()
 
+    if result.get("active_blockers"):
+        print("🚫 BLOCKED BY INCOMPLETE PLANS:")
+        for blocker in result["active_blockers"]:
+            print(f"  - Plan #{blocker['plan']} ({blocker['status']})")
+        print()
+        print("  Cannot implement this plan until blockers are complete.")
+        print()
+
     # Summary
-    issues = len(result["uncertainties"]) + len(result["warnings"])
+    issues = len(result["uncertainties"]) + len(result["warnings"]) + len(result.get("active_blockers", []))
     if issues > 0:
         print(f"⚠️  {issues} issue(s) found - review before implementing")
     else:
@@ -364,7 +445,7 @@ def main() -> int:
         # Exit with error if issues found
         if "error" in result:
             return 1
-        if result.get("uncertainties") or result.get("warnings"):
+        if result.get("uncertainties") or result.get("warnings") or result.get("active_blockers"):
             return 1
         return 0
 

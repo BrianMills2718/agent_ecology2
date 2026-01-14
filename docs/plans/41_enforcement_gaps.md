@@ -237,3 +237,24 @@ if [ -n "$PLAN" ]; then
     fi
 fi
 ```
+
+### Gap 7: Blocker Enforcement Not in validate_plan.py
+
+`validate_plan.py` is the pre-implementation gate, but it didn't check the "Blocked By" field. Plans could start implementation even when blocked by incomplete plans.
+
+**Evidence:** Plan #44 (blocked by #42) was marked Complete while Plan #42 was still "Planned".
+
+**Fix:** Added to `validate_plan.py`:
+- `get_plan_blockers(plan_num)` - extracts blocker plan numbers from `**Blocked By:**` field
+- `get_plan_status(plan_num)` - gets status of a plan
+- `check_active_blockers(plan_num)` - returns list of incomplete blockers
+
+Now `validate_plan.py --plan 44` shows:
+```
+🚫 BLOCKED BY INCOMPLETE PLANS:
+  - Plan #42 (📋 Planned)
+
+  Cannot implement this plan until blockers are complete.
+```
+
+And exits with code 1 to fail CI/gating.
