@@ -1,6 +1,6 @@
 # Plan #48: CI Optimization
 
-**Status:** 📋 Planned
+**Status:** 📋 Planned (Post-V1)
 
 **Priority:** Medium
 **Blocked By:** None

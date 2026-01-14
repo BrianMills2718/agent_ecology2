@@ -1,6 +1,6 @@
 # Gap 13: Doc Line Number References
 
-**Status:** 📋 Planned
+**Status:** 📋 Planned (Post-V1)
 **Priority:** Low
 **Blocked By:** None
 **Blocks:** None
