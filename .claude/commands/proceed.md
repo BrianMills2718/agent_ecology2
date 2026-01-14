@@ -1,29 +1,34 @@
 First run:
 ```
-python scripts/check_claims.py --list && python scripts/check_claims.py --list-features && gh pr list
+python scripts/meta_status.py
 ```
 
-Then read CLAUDE.md and proceed as you think best, consistent with CLAUDE.md.
+Based on the output, provide:
 
-Consider (roughly in order, use judgment):
-- Surface uncertainties first - ask before guessing
-- Merge passing PRs / resolve conflicts - keeps queue clear
-- Review other instances' PRs - unblocks parallel work
-- Update stale documentation
-- New implementation (see below)
+1. **Recommendation** - A specific next action
+2. **Alignment** - Which CLAUDE.md priority this satisfies
+3. **Uncertainties** - Any questions before proceeding, or "None"
 
-**Finishing work:** `make release`, verify PR created, check CI status.
+**Priority order** (per CLAUDE.md):
+1. Surface uncertainties - ask before guessing
+2. Merge passing PRs / resolve conflicts - keeps queue clear
+3. Review pending PRs - unblocks parallel work
+4. Update stale documentation
+5. New implementation (requires plan + worktree)
 
-**Starting ANY implementation:**
+**Response format:**
+> **Recommended:** [specific action]
+> **Alignment:** [which CLAUDE.md priority this satisfies]
+> **Uncertainties:** [questions or "None"]
+
+---
+
+**Starting implementation:**
 1. Find existing plan or create new one (`docs/plans/NN_*.md`)
-2. Define required tests in the plan (TDD workflow)
-3. `make worktree BRANCH=plan-NN-description` (claims work)
-4. Write tests first, then implement
-5. If plan has `## Human Review Required`, flag human before completing
+2. `make worktree BRANCH=plan-NN-description` (claims work)
+3. TDD: define tests in plan, write tests first, then implement
+4. `make release` when done, verify PR created
 
-**All work requires a plan. No exceptions.**
-
-Commits must use `[Plan #NN]` prefix. CI blocks `[Unplanned]` commits.
-Plans can be lightweight for trivial work - see `docs/plans/TEMPLATE.md`.
+**All work requires a plan.** Use `[Trivial]` only for <20 line non-src changes.
 
 Implementation work must be in a worktree.
