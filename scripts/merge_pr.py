@@ -324,6 +324,11 @@ def show_status() -> None:
 
 
 def main() -> int:
+    # Prevent CWD-in-deleted-worktree issue
+    # Always run from project root, not from a worktree that may be deleted
+    project_root = Path(__file__).parent.parent
+    os.chdir(project_root)
+
     parser = argparse.ArgumentParser(
         description="Merge PR with distributed locking",
         formatter_class=argparse.RawDescriptionHelpFormatter,
