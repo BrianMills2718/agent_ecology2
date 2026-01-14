@@ -6,7 +6,15 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # =============================================================================
+  # Core Quality Gates (test + mypy)
+  # =============================================================================
   test:
     runs-on: ubuntu-latest
 
@@ -17,6 +25,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
@@ -40,6 +56,14 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -50,7 +74,10 @@ jobs:
         run: |
           mypy --strict --ignore-missing-imports --exclude '__pycache__' --no-namespace-packages src/config.py src/world/*.py src/agents/*.py run.py
 
-  doc-coupling:
+  # =============================================================================
+  # Documentation Checks (doc-coupling + governance-sync)
+  # =============================================================================
+  docs:
     runs-on: ubuntu-latest
 
     steps:
@@ -69,47 +96,32 @@ jobs:
       - name: Check doc-code coupling
         run: python scripts/check_doc_coupling.py --base origin/main --strict
 
-  plan-status-sync:
+      - name: Check governance headers in sync
+        run: python scripts/sync_governance.py --check
+
+  # =============================================================================
+  # Plan Checks (status, blockers, tests, required, completion)
+  # =============================================================================
+  plans:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Check plan status consistency
-        run: python scripts/sync_plan_status.py --check
-
-  plan-blockers:
-    runs-on: ubuntu-latest
-    # Ensures no plan is blocked by an already-completed plan
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
         with:
-          python-version: "3.11"
-
-      - name: Check for stale blockers
-        run: python scripts/check_plan_blockers.py --strict
-
-  plan-tests:
-    runs-on: ubuntu-latest
-    # Validates that plans with defined tests have passing tests
-    # STRICT: Fails if required tests don't pass
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
@@ -117,138 +129,21 @@ jobs:
           pip install -e .
           pip install -r requirements.txt
 
+      - name: Check plan status consistency
+        run: python scripts/sync_plan_status.py --check
+
+      - name: Check for stale blockers
+        run: python scripts/check_plan_blockers.py --strict
+
       - name: List plan test status
         run: python scripts/check_plan_tests.py --list
 
       - name: Check plan tests
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        # Plan #41 Step 4: Strict mode fails for In Progress plans without tests
         run: python scripts/check_plan_tests.py --all --strict
 
-  mock-usage:
-    runs-on: ubuntu-latest
-    # Detect suspicious mock patterns that may hide real failures
-    # Uses --strict to fail if mocking internal code without justification
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Check for suspicious mock patterns
-        run: python scripts/check_mock_usage.py --strict
-
-  governance-sync:
-    runs-on: ubuntu-latest
-    # Ensures source files have correct governance headers matching governance.yaml
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install PyYAML
-        run: pip install pyyaml
-
-      - name: Check governance headers in sync
-        run: python scripts/sync_governance.py --check
-
-  validate-specs:
-    runs-on: ubuntu-latest
-    # Validates feature specification files meet minimum requirements
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install PyYAML
-        run: pip install pyyaml
-
-      - name: Validate feature specs
-        run: python scripts/validate_spec.py --all
-
-  locked-sections:
-    runs-on: ubuntu-latest
-    # Detects modifications to locked acceptance criteria (AC-2)
-    if: github.event_name == 'pull_request'
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Need full history for git diff
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install PyYAML
-        run: pip install pyyaml
-
-      - name: Check locked sections
-        run: python scripts/check_locked_files.py --base origin/main
-
-  feature-coverage:
-    runs-on: ubuntu-latest
-    # Checks that source files are assigned to features (informational)
-    continue-on-error: true
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install PyYAML
-        run: pip install pyyaml
-
-      - name: Check feature coverage
-        run: python scripts/check_feature_coverage.py --warn-only
-
-  new-code-tests:
-    runs-on: ubuntu-latest
-    # Ensures new source files have corresponding tests
-    # Prevents adding code without tests
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Need full history for git diff
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Check new files have tests
-        run: python scripts/check_new_code_tests.py --base origin/main --strict --suggest
-
-  plan-required:
-    runs-on: ubuntu-latest
-    # STRICT: All work must have a plan OR be trivial
-    # Blocks PRs containing [Unplanned] commits
-    # Allows: [Plan #N], [Trivial]
-    # See: docs/plans/37_mandatory_planning_human_review.md
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Verify all commits have plan references or are trivial
+      - name: Verify plan references in commits
         run: |
           # Check if any commit in PR has [Unplanned]
           UNPLANNED=$(git log origin/main..HEAD --oneline | grep -c '\[Unplanned\]' || true)
@@ -312,32 +207,11 @@ jobs:
 
           echo "✓ All commits have valid plan references or trivial tags."
 
-  plan-completion-evidence:
+  # =============================================================================
+  # Code Quality Checks (mock-usage, new-code-tests, feature-coverage)
+  # =============================================================================
+  code-quality:
     runs-on: ubuntu-latest
-    # Plan #41 Gap 2: Check that merged plan commits have verification evidence
-    # Runs post-merge on main to catch plans completed without proper verification
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    continue-on-error: true  # Warn only - don't block main
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 10  # Need recent history
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Check plan completion evidence
-        run: python scripts/check_plan_completion.py --recent-commits 5 --warn-only
-
-  claim-verification:
-    runs-on: ubuntu-latest
-    # Verifies the PR branch was claimed before work started
-    # Prevents duplicate/overlapping work between Claude instances
-    if: github.event_name == 'pull_request'
-    continue-on-error: true  # Informational initially - will make strict later
 
     steps:
       - uses: actions/checkout@v4
@@ -352,12 +226,48 @@ jobs:
       - name: Install PyYAML
         run: pip install pyyaml
 
+      - name: Check for suspicious mock patterns
+        run: python scripts/check_mock_usage.py --strict
+
+      - name: Check new files have tests
+        run: python scripts/check_new_code_tests.py --base origin/main --strict --suggest
+
+      - name: Check feature coverage
+        continue-on-error: true
+        run: python scripts/check_feature_coverage.py --warn-only
+
+  # =============================================================================
+  # Meta-Process Checks (claims, locked sections, specs, human review, ADR)
+  # =============================================================================
+  meta:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for git diff
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Check locked sections
+        run: python scripts/check_locked_files.py --base origin/main
+
+      - name: Validate feature specs
+        run: python scripts/validate_spec.py --all
+
       - name: Verify branch was claimed
+        continue-on-error: true  # Informational initially
         run: |
           BRANCH="${{ github.head_ref }}"
           echo "Checking claim for branch: $BRANCH"
 
-          # Check if branch appears in claims (active or completed)
           python -c "
           import yaml
           from pathlib import Path
@@ -407,27 +317,12 @@ jobs:
             echo "The claim system ensures coordination between"
             echo "Claude instances to prevent duplicate work."
             echo ""
-            # Exit 0 for now (informational) - will be exit 1 when strict
             exit 0
           }
 
-  human-review-check:
-    runs-on: ubuntu-latest
-    # Plan #43: Block PRs for plans with ## Human Review Required until reviewed
-    if: github.event_name == 'pull_request'
-    continue-on-error: true  # Warning initially - will make strict later
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
+      # Plan #43: Check for human review requirements
       - name: Check for human review requirements
+        continue-on-error: true  # Warning initially - will make strict later
         run: |
           # Extract plan numbers from PR commits
           PLANS=$(git log origin/main..HEAD --oneline | grep -oP '\[Plan #\K\d+' | sort -u || true)
@@ -473,18 +368,9 @@ jobs:
 
           echo "✓ No human review requirements found"
 
-  adr-requirement:
-    runs-on: ubuntu-latest
-    # Plan #43: Core architecture files require ADR link in commit message
-    if: github.event_name == 'pull_request'
-    continue-on-error: true  # Warning initially - tracks ADR coverage
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
+      # Plan #43: Check ADR requirements for core architecture files
       - name: Check ADR requirements for core files
+        continue-on-error: true  # Warning initially - tracks ADR coverage
         run: |
           # Define core architecture files that should have ADR coverage
           CORE_FILES="src/world/ledger.py src/world/executor.py src/world/artifacts/genesis_*.py src/world/action.py"
@@ -525,3 +411,24 @@ jobs:
           fi
 
           echo "✓ ADR reference found in commits"
+
+  # =============================================================================
+  # Post-Merge Checks (runs only on main)
+  # =============================================================================
+  post-merge:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    continue-on-error: true  # Warn only - don't block main
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 10  # Need recent history
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check plan completion evidence
+        run: python scripts/check_plan_completion.py --recent-commits 5 --warn-only

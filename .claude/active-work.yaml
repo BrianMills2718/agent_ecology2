@@ -3,10 +3,10 @@
 # Use: python scripts/check_claims.py --help
 
 claims:
-- cc_id: plan-29-library-install
-  task: Implement library installation with quota tracking
-  claimed_at: '2026-01-14T23:00:35Z'
-  plan: 29
+- cc_id: plan-48-ci-optimization
+  task: Implement CI Optimization - caching, job consolidation
+  claimed_at: '2026-01-14T22:56:43Z'
+  plan: 48
 completed:
 - cc_id: tier2-architecture-decisions
   task: Tier 2 architecture decisions (Items 4-7)
