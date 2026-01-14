@@ -138,6 +138,12 @@ class ActionResult:
     Includes resource consumption tracking for the two-layer model:
     - resources_consumed: Physical resources used (compute, disk, etc.)
     - charged_to: Principal who paid the resource cost
+
+    Error fields (Plan #40) for structured error handling:
+    - error_code: Machine-readable error code (e.g., "insufficient_funds")
+    - error_category: Error category (e.g., "resource", "permission")
+    - retriable: Whether the agent should retry the operation
+    - error_details: Additional context for programmatic handling
     """
 
     success: bool
@@ -145,6 +151,11 @@ class ActionResult:
     data: dict[str, Any] | None = None
     resources_consumed: dict[str, float] | None = None
     charged_to: str | None = None
+    # Structured error fields (Plan #40)
+    error_code: str | None = None
+    error_category: str | None = None
+    retriable: bool = False
+    error_details: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {"success": self.success, "message": self.message, "data": self.data}
@@ -152,6 +163,15 @@ class ActionResult:
             result["resources_consumed"] = self.resources_consumed
         if self.charged_to:
             result["charged_to"] = self.charged_to
+        # Include error fields when set (Plan #40)
+        if self.error_code is not None:
+            result["error_code"] = self.error_code
+        if self.error_category is not None:
+            result["error_category"] = self.error_category
+        if self.error_code is not None:  # Only include retriable when there's an error
+            result["retriable"] = self.retriable
+        if self.error_details is not None:
+            result["error_details"] = self.error_details
         return result
 
 

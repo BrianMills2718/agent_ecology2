@@ -20,6 +20,7 @@ from .genesis import (
     GenesisMint, RightsConfig, SubmissionInfo
 )
 from .executor import get_executor
+from .errors import ErrorCode, ErrorCategory
 from .rate_tracker import RateTracker
 from .invocation_registry import InvocationRegistry, InvocationRecord
 
@@ -341,7 +342,10 @@ class World:
                 if not artifact.can_read(intent.principal_id):
                     result = ActionResult(
                         success=False,
-                        message=get_error_message("access_denied_read", artifact_id=intent.artifact_id)
+                        message=get_error_message("access_denied_read", artifact_id=intent.artifact_id),
+                        error_code=ErrorCode.NOT_AUTHORIZED.value,
+                        error_category=ErrorCategory.PERMISSION.value,
+                        retriable=False,
                     )
                 else:
                     # Check if can afford read_price (economic cost -> SCRIP)
@@ -349,7 +353,11 @@ class World:
                     if read_price > 0 and not self.ledger.can_afford_scrip(intent.principal_id, read_price):
                         result = ActionResult(
                             success=False,
-                            message=f"Cannot afford read price: {read_price} scrip (have {self.ledger.get_scrip(intent.principal_id)})"
+                            message=f"Cannot afford read price: {read_price} scrip (have {self.ledger.get_scrip(intent.principal_id)})",
+                            error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
+                            error_category=ErrorCategory.RESOURCE.value,
+                            retriable=True,  # Can get more scrip and retry
+                            error_details={"required": read_price, "available": self.ledger.get_scrip(intent.principal_id)},
                         )
                     else:
                         # Pay read_price to owner (economic transfer -> SCRIP)
@@ -372,7 +380,11 @@ class World:
             else:
                 result = ActionResult(
                     success=False,
-                    message=f"Artifact {intent.artifact_id} not found"
+                    message=f"Artifact {intent.artifact_id} not found",
+                    error_code=ErrorCode.NOT_FOUND.value,
+                    error_category=ErrorCategory.RESOURCE.value,
+                    retriable=False,
+                    error_details={"artifact_id": intent.artifact_id},
                 )
 
         elif isinstance(intent, WriteArtifactIntent):
@@ -410,7 +422,10 @@ class World:
         if intent.artifact_id in self.genesis_artifacts:
             return ActionResult(
                 success=False,
-                message=f"Cannot modify system artifact {intent.artifact_id}"
+                message=f"Cannot modify system artifact {intent.artifact_id}",
+                error_code=ErrorCode.NOT_AUTHORIZED.value,
+                error_category=ErrorCategory.PERMISSION.value,
+                retriable=False,
             )
 
         # Check write permission for existing artifacts (policy-based)
@@ -418,7 +433,10 @@ class World:
         if existing and not existing.can_write(intent.principal_id):
             return ActionResult(
                 success=False,
-                message=get_error_message("access_denied_write", artifact_id=intent.artifact_id)
+                message=get_error_message("access_denied_write", artifact_id=intent.artifact_id),
+                error_code=ErrorCode.NOT_AUTHORIZED.value,
+                error_category=ErrorCategory.PERMISSION.value,
+                retriable=False,
             )
 
         # Calculate disk bytes
@@ -433,7 +451,11 @@ class World:
                 used = self.rights_registry.get_disk_used(intent.principal_id)
                 return ActionResult(
                     success=False,
-                    message=f"Disk quota exceeded. Need {net_new_bytes} bytes, have {quota - used} available (quota: {quota}, used: {used})"
+                    message=f"Disk quota exceeded. Need {net_new_bytes} bytes, have {quota - used} available (quota: {quota}, used: {used})",
+                    error_code=ErrorCode.QUOTA_EXCEEDED.value,
+                    error_category=ErrorCategory.RESOURCE.value,
+                    retriable=True,  # Can free space or acquire more quota
+                    error_details={"required": net_new_bytes, "available": quota - used, "quota": quota, "used": used},
                 )
 
         # Validate executable code if provided
@@ -443,7 +465,11 @@ class World:
             if not valid:
                 return ActionResult(
                     success=False,
-                    message=f"Invalid executable code: {error}"
+                    message=f"Invalid executable code: {error}",
+                    error_code=ErrorCode.INVALID_ARGUMENT.value,
+                    error_category=ErrorCategory.VALIDATION.value,
+                    retriable=False,
+                    error_details={"validation_error": error},
                 )
 
         # Write the artifact
@@ -510,7 +536,11 @@ class World:
                         method=method_name,
                         artifact_id=artifact_id,
                         methods=[m['name'] for m in genesis.list_methods()]
-                    )
+                    ),
+                    error_code=ErrorCode.NOT_FOUND.value,
+                    error_category=ErrorCategory.RESOURCE.value,
+                    retriable=False,
+                    error_details={"method": method_name, "artifact_id": artifact_id},
                 )
 
             # Genesis method costs are COMPUTE (physical resource, not scrip)
@@ -523,7 +553,11 @@ class World:
                 )
                 return ActionResult(
                     success=False,
-                    message=f"Cannot afford method cost: {method.cost} compute (have {self.ledger.get_compute(intent.principal_id)})"
+                    message=f"Cannot afford method cost: {method.cost} compute (have {self.ledger.get_compute(intent.principal_id)})",
+                    error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
+                    error_category=ErrorCategory.RESOURCE.value,
+                    retriable=True,  # Can get more compute and retry
+                    error_details={"required": method.cost, "available": self.ledger.get_compute(intent.principal_id)},
                 )
 
             # Deduct compute cost FIRST (always paid, even on failure)
@@ -551,6 +585,10 @@ class World:
                         charged_to=intent.principal_id,
                     )
                 else:
+                    # Extract error info from genesis artifact response
+                    error_code = result_data.get("code", ErrorCode.RUNTIME_ERROR.value)
+                    error_category = result_data.get("category", ErrorCategory.EXECUTION.value)
+                    retriable = result_data.get("retriable", False)
                     self._log_invoke_failure(
                         intent.principal_id, artifact_id, method_name,
                         duration_ms, "method_failed",
@@ -561,6 +599,10 @@ class World:
                         message=result_data.get("error", "Method failed"),
                         resources_consumed=resources_consumed if resources_consumed else None,
                         charged_to=intent.principal_id,
+                        error_code=error_code,
+                        error_category=error_category,
+                        retriable=retriable,
+                        error_details=result_data.get("details"),
                     )
             except Exception as e:
                 duration_ms = (time.perf_counter() - start_time) * 1000
@@ -574,6 +616,10 @@ class World:
                     message=f"Method execution error: {str(e)}",
                     resources_consumed=resources_consumed if resources_consumed else None,
                     charged_to=intent.principal_id,
+                    error_code=ErrorCode.RUNTIME_ERROR.value,
+                    error_category=ErrorCategory.EXECUTION.value,
+                    retriable=False,
+                    error_details={"exception": str(e)},
                 )
 
         # Check regular artifacts for executable invocation
@@ -588,7 +634,11 @@ class World:
                 )
                 return ActionResult(
                     success=False,
-                    message=f"Artifact {artifact_id} is not executable"
+                    message=f"Artifact {artifact_id} is not executable",
+                    error_code=ErrorCode.INVALID_TYPE.value,
+                    error_category=ErrorCategory.VALIDATION.value,
+                    retriable=False,
+                    error_details={"artifact_id": artifact_id, "executable": False},
                 )
 
             # Check invoke permission (policy-based)
@@ -601,7 +651,10 @@ class World:
                 )
                 return ActionResult(
                     success=False,
-                    message=get_error_message("access_denied_invoke", artifact_id=artifact_id)
+                    message=get_error_message("access_denied_invoke", artifact_id=artifact_id),
+                    error_code=ErrorCode.NOT_AUTHORIZED.value,
+                    error_category=ErrorCategory.PERMISSION.value,
+                    retriable=False,
                 )
 
             # Price (SCRIP) - economic payment to owner
@@ -621,7 +674,11 @@ class World:
                 )
                 return ActionResult(
                     success=False,
-                    message=f"Insufficient scrip for price: need {price}, have {self.ledger.get_scrip(intent.principal_id)}"
+                    message=f"Insufficient scrip for price: need {price}, have {self.ledger.get_scrip(intent.principal_id)}",
+                    error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
+                    error_category=ErrorCategory.RESOURCE.value,
+                    retriable=True,  # Can get more scrip and retry
+                    error_details={"required": price, "available": self.ledger.get_scrip(intent.principal_id)},
                 )
 
             # Execute the code with invoke() capability for composition
@@ -655,6 +712,10 @@ class World:
                             message=f"Insufficient {resource}: need {amount}",
                             resources_consumed=resources_consumed,
                             charged_to=resource_payer,
+                            error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
+                            error_category=ErrorCategory.RESOURCE.value,
+                            retriable=True,
+                            error_details={"resource": resource, "required": amount},
                         )
                     self.ledger.spend_resource(resource_payer, resource, amount)
 
@@ -685,12 +746,19 @@ class World:
                         self.ledger.spend_resource(resource_payer, resource, amount)
 
                 error_msg = exec_result.get("error", "Unknown error")
-                # Determine error type from error message
+                # Determine error type and code from error message
                 error_type = "execution"
+                error_code = ErrorCode.RUNTIME_ERROR.value
+                error_category = ErrorCategory.EXECUTION.value
+                retriable = False
                 if "timed out" in error_msg.lower():
                     error_type = "timeout"
+                    error_code = ErrorCode.TIMEOUT.value
+                    retriable = True  # Timeout might not happen on retry
                 elif "syntax" in error_msg.lower():
                     error_type = "validation"
+                    error_code = ErrorCode.SYNTAX_ERROR.value
+                    error_category = ErrorCategory.VALIDATION.value
 
                 self._log_invoke_failure(
                     intent.principal_id, artifact_id, method_name,
@@ -702,6 +770,10 @@ class World:
                     data={"error": error_msg},
                     resources_consumed=resources_consumed if resources_consumed else None,
                     charged_to=resource_payer,
+                    error_code=error_code,
+                    error_category=error_category,
+                    retriable=retriable,
+                    error_details={"artifact_id": artifact_id, "error": error_msg},
                 )
 
         # Artifact not found
@@ -713,7 +785,11 @@ class World:
         )
         return ActionResult(
             success=False,
-            message=f"Artifact {artifact_id} not found"
+            message=f"Artifact {artifact_id} not found",
+            error_code=ErrorCode.NOT_FOUND.value,
+            error_category=ErrorCategory.RESOURCE.value,
+            retriable=False,
+            error_details={"artifact_id": artifact_id},
         )
 
     def _log_invoke_success(
