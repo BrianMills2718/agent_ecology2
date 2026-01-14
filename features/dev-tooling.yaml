@@ -109,6 +109,7 @@ code:
   - scripts/meta_status.py
   - scripts/check_claims.py
   - scripts/check_doc_coupling.py
+  - scripts/merge_pr.py
   - scripts/check_mock_usage.py
   - scripts/check_mock_tests.py
   - scripts/check_new_code_tests.py
@@ -129,6 +130,7 @@ tests:
   - tests/unit/test_check_new_code_tests.py
   - tests/unit/test_check_plan_blockers.py
   - tests/unit/test_meta_status.py
+  - tests/unit/test_merge_pr.py
 
 docs:
   - docs/meta/claim-system.md
