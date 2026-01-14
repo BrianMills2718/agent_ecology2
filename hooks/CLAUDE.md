@@ -10,8 +10,9 @@ Catch issues before they reach CI. These hooks run locally on every commit.
 
 | Hook | Purpose |
 |------|---------|
-| `pre-commit` | Doc-coupling check, mypy on changed files, config validation |
+| `pre-commit` | Doc-coupling, mypy, config validation, branch divergence check |
 | `commit-msg` | Validates commit message format (`[Plan #N]` or `[Trivial]`) |
+| `post-commit` | Reminds about unpushed commits to prevent divergence |
 
 ## Installation
 
@@ -19,6 +20,7 @@ Catch issues before they reach CI. These hooks run locally on every commit.
 # Symlink hooks to .git/hooks
 ln -sf ../../hooks/pre-commit .git/hooks/pre-commit
 ln -sf ../../hooks/commit-msg .git/hooks/commit-msg
+ln -sf ../../hooks/post-commit .git/hooks/post-commit
 
 # Or use the Makefile
 make install-hooks
@@ -38,11 +40,17 @@ git commit --no-verify -m "..."
 1. Doc-coupling violations (strict mode)
 2. Mypy on staged `src/` files
 3. Coupling config validity
+4. Plan status consistency (when plan files staged)
+5. Branch divergence detection (blocks if diverged, warns if behind)
 
 **commit-msg:**
 1. Requires `[Plan #N]` or `[Trivial]` prefix
 2. Validates plan number exists
 3. Validates trivial commits are actually trivial
+
+**post-commit:**
+1. Shows count of unpushed commits
+2. Reminds to push to prevent divergence
 
 ## Modifying Hooks
 
