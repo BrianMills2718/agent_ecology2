@@ -1,6 +1,6 @@
 # Gap 29: Library Installation
 
-**Status:** ❌ Needs Plan
+**Status:** 📋 Planned
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** None

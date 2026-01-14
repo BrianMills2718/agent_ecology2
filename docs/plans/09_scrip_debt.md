@@ -1,6 +1,6 @@
 # Gap 9: Scrip Debt Contracts
 
-**Status:** ❌ Needs Plan
+**Status:** 📋 Planned
 **Priority:** Low
 **Blocked By:** None
 **Blocks:** None

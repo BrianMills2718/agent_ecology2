@@ -1,6 +1,6 @@
 # Gap 15: invoke() Genesis Support
 
-**Status:** ❌ Needs Plan
+**Status:** 📋 Planned
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** None

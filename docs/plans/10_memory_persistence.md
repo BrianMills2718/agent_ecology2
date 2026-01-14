@@ -1,6 +1,6 @@
 # Gap 10: Memory Persistence
 
-**Status:** ❌ Needs Plan
+**Status:** 📋 Planned
 **Priority:** Low
 **Blocked By:** None
 **Blocks:** None

@@ -1,6 +1,6 @@
 # Gap 13: Doc Line Number References
 
-**Status:** ❌ Needs Plan
+**Status:** 📋 Planned
 **Priority:** Low
 **Blocked By:** None
 **Blocks:** None

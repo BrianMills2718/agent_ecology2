@@ -1,6 +1,6 @@
 # Gap 30: Capability Request System
 
-**Status:** ❌ Needs Plan
+**Status:** 📋 Planned
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** None
