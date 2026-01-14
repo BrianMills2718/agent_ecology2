@@ -36,7 +36,7 @@ Master index of all gaps and their implementation plans.
 | 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | 📋 Planned | - |
 | 8 | [Agent Rights Trading](08_agent_rights.md) | Low | 📋 Planned | - |
 | 9 | [Scrip Debt Contracts](09_scrip_debt.md) | Low | 📋 Planned | - |
-| 10 | [Memory Persistence](10_memory_persistence.md) | Low | 📋 Planned | - |
+| 10 | [Memory Persistence](10_memory_persistence.md) | Low | 🚧 In Progress | - |
 | 11 | [Terminology Cleanup](11_terminology.md) | Medium | ✅ Complete | #12 |
 | 12 | [Per-Agent LLM Budget](12_per_agent_budget.md) | Medium | ✅ Complete | - |
 | 13 | [Doc Line Number Refs](13_doc_line_refs.md) | Low | 📋 Planned | - |
@@ -72,7 +72,7 @@ Master index of all gaps and their implementation plans.
 | 43 | [Comprehensive Meta-Enforcement](43_meta_enforcement.md) | **Critical** | 📋 Planned | - |
 | 44 | [Genesis Full Unprivilege](44_genesis_full_unprivilege.md) | **High** | ✅ Complete | #42 |
 | 45 | [Real E2E Test Requirement](45_real_e2e_requirement.md) | **High** | 📋 Planned | - |
-| 46 | [PR Review Coordination](46_review_coordination.md) | **High** | 📋 Planned | - |
+| 46 | [PR Review Coordination](46_review_coordination.md) | **High** | ✅ Complete | - |
 | 47 | [Meta-Process Enforcement](47_meta_process_enforcement.md) | **High** | 📋 Planned | #41 |
 | 48 | [CI Optimization](48_ci_optimization.md) | Medium | 📋 Planned | - |
 | 49 | [Reasoning in Narrow Waist](49_reasoning_narrow_waist.md) | **High** | 📋 Planned | LLM-native monitoring |
