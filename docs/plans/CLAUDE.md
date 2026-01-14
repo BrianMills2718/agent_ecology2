@@ -2,7 +2,7 @@
 
 Master index of all gaps and their implementation plans.
 
-**Last verified:** 2026-01-14 (Post-V1 categorization)
+**Last verified:** 2026-01-14 (Post-V1 categorization, Plan #41 progress)
 
 ---
 
