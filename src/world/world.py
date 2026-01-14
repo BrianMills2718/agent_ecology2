@@ -943,7 +943,8 @@ class World:
         intent = ReadArtifactIntent(principal_id=requester_id, artifact_id=artifact_id)
         result = self.execute_action(intent)
         if result.success and result.data:
-            return result.data.get("artifact", {})
+            artifact_data: dict[str, Any] = result.data.get("artifact", {})
+            return artifact_data
         return {"success": False, "error": result.message}
 
     def write_artifact(
