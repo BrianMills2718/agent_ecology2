@@ -126,6 +126,10 @@ class Artifact:
     can_execute: bool = False  # Can execute code autonomously
     # For agents: link to memory artifact
     memory_artifact_id: str | None = None
+    # Soft deletion fields (Plan #18: Dangling Reference Handling)
+    deleted: bool = False
+    deleted_at: str | None = None
+    deleted_by: str | None = None
 
     @property
     def price(self) -> int:
@@ -255,6 +259,11 @@ class Artifact:
             result["can_execute"] = True
         if self.memory_artifact_id is not None:
             result["memory_artifact_id"] = self.memory_artifact_id
+        # Include deletion fields if deleted (Plan #18)
+        if self.deleted:
+            result["deleted"] = True
+            result["deleted_at"] = self.deleted_at
+            result["deleted_by"] = self.deleted_by
         return result
 
 
@@ -481,9 +490,15 @@ class ArtifactStore:
         artifact = self.get(artifact_id)
         return artifact.owner_id if artifact else None
 
-    def list_all(self) -> list[dict[str, Any]]:
-        """List all artifacts"""
-        return [a.to_dict() for a in self.artifacts.values()]
+    def list_all(self, include_deleted: bool = False) -> list[dict[str, Any]]:
+        """List all artifacts.
+
+        Args:
+            include_deleted: If True, include deleted artifacts (Plan #18)
+        """
+        if include_deleted:
+            return [a.to_dict() for a in self.artifacts.values()]
+        return [a.to_dict() for a in self.artifacts.values() if not a.deleted]
 
     def count(self) -> int:
         """Count total artifacts"""

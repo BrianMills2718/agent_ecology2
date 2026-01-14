@@ -861,3 +861,177 @@ class World:
     def get_recent_events(self, n: int = 20) -> list[dict[str, Any]]:
         """Get recent events from the log"""
         return self.logger.read_recent(n)
+
+    # -------------------------------------------------------------------------
+    # Convenience methods for artifact operations (Plan #18)
+    # -------------------------------------------------------------------------
+
+    def delete_artifact(self, artifact_id: str, requester_id: str) -> dict[str, Any]:
+        """Delete an artifact (soft delete with tombstone).
+
+        Only the artifact owner can delete. Genesis artifacts cannot be deleted.
+
+        Args:
+            artifact_id: ID of artifact to delete
+            requester_id: ID of principal requesting deletion
+
+        Returns:
+            {"success": True} on success
+            {"success": False, "error": "..."} on failure
+        """
+        from datetime import datetime
+
+        # Check if genesis artifact
+        if artifact_id.startswith("genesis_"):
+            return {"success": False, "error": "Cannot delete genesis artifacts"}
+
+        # Check if artifact exists
+        artifact = self.artifacts.get(artifact_id)
+        if not artifact:
+            return {"success": False, "error": f"Artifact {artifact_id} not found"}
+
+        # Check if already deleted
+        if artifact.deleted:
+            return {"success": False, "error": f"Artifact {artifact_id} is already deleted"}
+
+        # Check ownership
+        if artifact.owner_id != requester_id:
+            return {"success": False, "error": "Only owner can delete artifact"}
+
+        # Soft delete - mark as tombstone
+        artifact.deleted = True
+        artifact.deleted_at = datetime.utcnow().isoformat()
+        artifact.deleted_by = requester_id
+
+        # Log the deletion
+        self.logger.log("artifact_deleted", {
+            "tick": self.tick,
+            "artifact_id": artifact_id,
+            "deleted_by": requester_id,
+            "deleted_at": artifact.deleted_at,
+        })
+
+        return {"success": True}
+
+    def read_artifact(self, requester_id: str, artifact_id: str) -> dict[str, Any]:
+        """Read an artifact's content.
+
+        Returns tombstone metadata if artifact is deleted.
+
+        Args:
+            requester_id: ID of principal reading
+            artifact_id: ID of artifact to read
+
+        Returns:
+            Artifact data including deletion fields if deleted
+        """
+        artifact = self.artifacts.get(artifact_id)
+        if not artifact:
+            return {"success": False, "error": f"Artifact {artifact_id} not found"}
+
+        # Return tombstone metadata for deleted artifacts
+        if artifact.deleted:
+            return {
+                "id": artifact.id,
+                "owner_id": artifact.owner_id,
+                "deleted": True,
+                "deleted_at": artifact.deleted_at,
+                "deleted_by": artifact.deleted_by,
+            }
+
+        # Use execute_action for full permission/pricing logic
+        intent = ReadArtifactIntent(principal_id=requester_id, artifact_id=artifact_id)
+        result = self.execute_action(intent)
+        if result.success and result.data:
+            return result.data.get("artifact", {})
+        return {"success": False, "error": result.message}
+
+    def write_artifact(
+        self,
+        agent_id: str,
+        artifact_id: str,
+        artifact_type: str,
+        content: str,
+        executable: bool = False,
+        price: int = 0,
+        code: str = "",
+        policy: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Write or create an artifact.
+
+        Cannot write to deleted artifacts.
+
+        Args:
+            agent_id: ID of principal writing
+            artifact_id: ID of artifact to write
+            artifact_type: Type of artifact
+            content: Artifact content
+            executable: Whether artifact is executable
+            price: Invoke price
+            code: Code for executable artifacts
+            policy: Access policy
+
+        Returns:
+            {"success": True, "message": "..."} on success
+            {"success": False, "message": "..."} on failure
+        """
+        # Check if artifact exists and is deleted
+        existing = self.artifacts.get(artifact_id)
+        if existing and existing.deleted:
+            return {"success": False, "message": f"Cannot write to deleted artifact {artifact_id}"}
+
+        intent = WriteArtifactIntent(
+            principal_id=agent_id,
+            artifact_id=artifact_id,
+            artifact_type=artifact_type,
+            content=content,
+            executable=executable,
+            price=price,
+            code=code,
+            policy=policy,
+        )
+        result = self.execute_action(intent)
+        return {"success": result.success, "message": result.message}
+
+    def invoke_artifact(
+        self,
+        invoker_id: str,
+        artifact_id: str,
+        method: str,
+        args: list[Any] | None = None,
+    ) -> dict[str, Any]:
+        """Invoke a method on an artifact.
+
+        Returns DELETED error if artifact is deleted.
+
+        Args:
+            invoker_id: ID of principal invoking
+            artifact_id: ID of artifact to invoke
+            method: Method name to invoke
+            args: Arguments to pass to method
+
+        Returns:
+            {"success": True, ...} on success
+            {"success": False, "error_code": "DELETED", ...} if deleted
+        """
+        # Check if deleted (for regular artifacts)
+        artifact = self.artifacts.get(artifact_id)
+        if artifact and artifact.deleted:
+            return {
+                "success": False,
+                "error_code": "DELETED",
+                "error": f"Artifact {artifact_id} was deleted at {artifact.deleted_at}",
+            }
+
+        intent = InvokeArtifactIntent(
+            principal_id=invoker_id,
+            artifact_id=artifact_id,
+            method=method,
+            args=args,
+        )
+        result = self.execute_action(intent)
+        return {
+            "success": result.success,
+            "message": result.message,
+            "data": result.data,
+        }

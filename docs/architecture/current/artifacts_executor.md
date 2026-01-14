@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified: 2026-01-12
+**Last verified: 2026-01-14 (Plan #18 - Artifact deletion)
 
 ---
 
@@ -32,6 +32,10 @@ class Artifact:
     executable: bool     # Can be invoked?
     code: str            # Python code (must define run())
     policy: dict         # Access control and pricing
+    # Soft deletion fields (Plan #18)
+    deleted: bool = False         # Is artifact deleted?
+    deleted_at: str | None        # ISO timestamp of deletion
+    deleted_by: str | None        # Who deleted it
 ```
 
 ### Artifact Types
@@ -109,7 +113,7 @@ In-memory storage for all artifacts.
 | `get(artifact_id)` | Get artifact or None |
 | `write(...)` | Create or update artifact |
 | `get_owner(artifact_id)` | Get owner ID |
-| `list_all()` | List all artifacts (as dicts) |
+| `list_all(include_deleted=False)` | List artifacts (excludes deleted by default) |
 | `list_by_owner(owner_id)` | List artifacts by owner |
 | `get_artifact_size(artifact_id)` | Size in bytes (content + code) |
 | `get_owner_usage(owner_id)` | Total disk usage for owner |
@@ -274,6 +278,44 @@ def check_permission(caller, action, target, context):
 ### ReadOnlyLedger
 
 Contracts execute with `ReadOnlyLedger` - can read balances but not modify.
+
+---
+
+## Artifact Deletion (Plan #18)
+
+Soft delete with tombstones - deleted artifacts remain in storage with metadata.
+
+### Delete Semantics
+
+| Action on Deleted Artifact | Behavior |
+|---------------------------|----------|
+| `invoke()` | Returns `{"success": False, "error_code": "DELETED", "error": "..."}` |
+| `read_artifact()` | Returns tombstone metadata (`deleted=True`, `deleted_at`, `deleted_by`) |
+| `write_artifact()` | Fails - cannot write to deleted artifact |
+| `list_all()` | Excludes deleted by default, includes with `include_deleted=True` |
+
+### Deletion Rules
+
+- Only artifact owner can delete
+- Genesis artifacts (`genesis_*`) cannot be deleted
+- Deletion is logged as `artifact_deleted` event
+- Deleted artifacts count toward storage but cannot be modified
+
+### World Methods
+
+```python
+# Delete an artifact (owner only)
+world.delete_artifact(artifact_id, requester_id) -> {"success": bool, "error": str}
+
+# Read (returns tombstone for deleted)
+world.read_artifact(requester_id, artifact_id) -> {..., "deleted": True, ...}
+
+# Write fails for deleted
+world.write_artifact(...) -> {"success": False, "message": "Cannot write to deleted..."}
+
+# Invoke fails for deleted
+world.invoke_artifact(...) -> {"success": False, "error_code": "DELETED", ...}
+```
 
 ---
 
