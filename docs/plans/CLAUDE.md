@@ -50,7 +50,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 2 | [Continuous Execution](02_continuous_execution.md) | **High** | ✅ Complete | #21 |
 | 3 | [Docker Isolation](03_docker_isolation.md) | Medium | ✅ Complete | - |
 | 4 | ~~Compute Debt Model~~ | - | ✅ Superseded | - |
-| 5 | [Oracle Anytime Bidding](05_oracle_anytime.md) | Medium | ❌ Needs Plan | - |
+| 5 | [Oracle Anytime Bidding](05_oracle_anytime.md) | Medium | 📋 Planned | - |
 | 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | ✅ Complete | #7,#8,#14,#16 |
 | 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | ❌ Needs Plan | - |
 | 8 | [Agent Rights Trading](08_agent_rights.md) | Low | ❌ Needs Plan | - |
@@ -59,12 +59,12 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 11 | [Terminology Cleanup](11_terminology.md) | Medium | ✅ Complete | #12 |
 | 12 | [Per-Agent LLM Budget](12_per_agent_budget.md) | Medium | ✅ Complete | - |
 | 13 | [Doc Line Number Refs](13_doc_line_refs.md) | Low | ❌ Needs Plan | - |
-| 14 | [MCP-Style Artifact Interface](14_mcp_interface.md) | Medium | ❌ Needs Plan | - |
+| 14 | [MCP-Style Artifact Interface](14_mcp_interface.md) | Medium | 📋 Planned | - |
 | 15 | [invoke() Genesis Support](15_invoke_genesis.md) | Medium | ❌ Needs Plan | - |
 | 16 | [Artifact Discovery](16_artifact_discovery.md) | **High** | ✅ Complete | #17,#22 |
 | 17 | [Agent Discovery](17_agent_discovery.md) | Medium | ✅ Complete | - |
 | 18 | [Dangling Reference Handling](18_dangling_refs.md) | Medium | ✅ Complete | - |
-| 19 | [Agent-to-Agent Threat Model](19_threat_model.md) | Medium | 📋 Planned | - |
+| 19 | [Agent-to-Agent Threat Model](19_threat_model.md) | Medium | ✅ Complete | - |
 | 20 | [Migration Strategy](20_migration_strategy.md) | **High** | ✅ Complete | - |
 | 21 | [Testing for Continuous](21_continuous_testing.md) | Medium | ✅ Complete | - |
 | 22 | [Coordination Primitives](22_coordination.md) | Medium | ❌ Needs Plan | - |
