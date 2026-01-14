@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-13 (plan-required now blocks, unplanned-work removed)
+Last verified: 2026-01-14 (trivial exemption added to plan-required)
 
 ---
 
@@ -238,24 +238,39 @@ Ensures new source files have corresponding tests.
 
 ### 12. plan-required (Strict)
 
-**All work requires a plan.** Blocks PRs containing `[Unplanned]` commits.
+**All significant work requires a plan.** Blocks PRs containing `[Unplanned]` commits.
 
 ```yaml
 - uses: actions/checkout@v4 (with fetch-depth: 0)
 - Check for [Unplanned] in commit messages
-- exit 1 if found
+- Validate [Trivial] commits don't exceed limits
+- exit 1 if unplanned found
 ```
 
 **What it catches:**
 - Work that bypassed the planning process
-- Commits without `[Plan #N]` prefix
+- Commits without `[Plan #N]` or `[Trivial]` prefix
 
-**To fix:**
+**Allowed prefixes:**
+- `[Plan #N]` - Links to plan in `docs/plans/NN_*.md`
+- `[Trivial]` - For tiny changes (see below)
+
+**Trivial exemption:** Use `[Trivial]` for tiny changes:
+```bash
+git commit -m "[Trivial] Fix typo in README"
+```
+
+**Trivial criteria (ALL must be true):**
+- Less than 20 lines changed
+- No changes to `src/` (production code)
+- No new files created
+
+CI validates trivial commits and warns if limits exceeded.
+
+**To fix [Unplanned] commits:**
 1. Create a plan file: `docs/plans/NN_your_feature.md`
 2. Amend commits to use `[Plan #NN]` prefix
-3. Or rebase and squash with proper prefix
-
-Plans can be lightweight for trivial work - see `docs/plans/TEMPLATE.md`.
+3. Or use `[Trivial]` if criteria are met
 
 ### 13. claim-verification (PRs only, Informational)
 

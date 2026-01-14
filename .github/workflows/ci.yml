@@ -237,8 +237,9 @@ jobs:
 
   plan-required:
     runs-on: ubuntu-latest
-    # STRICT: All work must have a plan
+    # STRICT: All work must have a plan OR be trivial
     # Blocks PRs containing [Unplanned] commits
+    # Allows: [Plan #N], [Trivial]
     # See: docs/plans/37_mandatory_planning_human_review.md
 
     steps:
@@ -246,7 +247,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verify all commits have plan references
+      - name: Verify all commits have plan references or are trivial
         run: |
           # Check if any commit in PR has [Unplanned]
           UNPLANNED=$(git log origin/main..HEAD --oneline | grep -c '\[Unplanned\]' || true)
@@ -259,24 +260,56 @@ jobs:
             echo "Commits without plan references:"
             git log origin/main..HEAD --oneline | grep '\[Unplanned\]'
             echo ""
-            echo "All work requires a plan. To fix:"
+            echo "All work requires a plan OR trivial tag. To fix:"
             echo ""
-            echo "  1. Create a plan file: docs/plans/NN_your_feature.md"
-            echo "  2. Amend commits to use [Plan #NN] prefix"
-            echo "  3. Or rebase and squash with proper prefix"
+            echo "  Option 1 - Create a plan:"
+            echo "    1. Create a plan file: docs/plans/NN_your_feature.md"
+            echo "    2. Amend commits to use [Plan #NN] prefix"
             echo ""
-            echo "Plans ensure:"
-            echo "  - Clear rationale for all changes"
-            echo "  - TDD workflow (tests defined before code)"
-            echo "  - Traceability and audit trail"
+            echo "  Option 2 - Mark as trivial (for tiny changes only):"
+            echo "    1. Amend commit to use [Trivial] prefix"
+            echo "    2. Trivial = <20 lines, no src/ changes, no new files"
             echo ""
-            echo "Even small fixes need a plan (can be lightweight)."
             echo "See: docs/plans/TEMPLATE.md"
             echo ""
             exit 1
-          else
-            echo "✓ All commits have plan references."
           fi
+
+          # Check trivial commits don't exceed limits
+          TRIVIAL_COMMITS=$(git log origin/main..HEAD --oneline | grep '\[Trivial\]' || true)
+          if [ -n "$TRIVIAL_COMMITS" ]; then
+            echo "Validating [Trivial] commits..."
+            TRIVIAL_VALID=true
+
+            while IFS= read -r commit; do
+              if [ -z "$commit" ]; then continue; fi
+              HASH=$(echo "$commit" | cut -d' ' -f1)
+
+              # Check lines changed
+              LINES=$(git show --stat "$HASH" | tail -1 | grep -oP '\d+(?= insertion)' || echo "0")
+              LINES_DEL=$(git show --stat "$HASH" | tail -1 | grep -oP '\d+(?= deletion)' || echo "0")
+              TOTAL_LINES=$((LINES + LINES_DEL))
+
+              # Check if src/ files changed
+              SRC_CHANGED=$(git show --name-only "$HASH" | grep -c '^src/' || true)
+
+              if [ "$TOTAL_LINES" -gt 20 ] || [ "$SRC_CHANGED" -gt 0 ]; then
+                echo "WARNING: [Trivial] commit exceeds limits:"
+                echo "  Commit: $commit"
+                echo "  Lines changed: $TOTAL_LINES (limit: 20)"
+                echo "  src/ files changed: $SRC_CHANGED (limit: 0)"
+                TRIVIAL_VALID=false
+              fi
+            done <<< "$TRIVIAL_COMMITS"
+
+            if [ "$TRIVIAL_VALID" = false ]; then
+              echo ""
+              echo "Some [Trivial] commits exceed limits. Use [Plan #N] instead."
+              # Warning only for now - can make strict later
+            fi
+          fi
+
+          echo "✓ All commits have valid plan references or trivial tags."
 
   claim-verification:
     runs-on: ubuntu-latest

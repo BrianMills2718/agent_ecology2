@@ -1,0 +1,80 @@
+feature: shared
+planning_mode: minimal  # Infrastructure, no detailed design needed
+
+# === PRD SECTION (What/Why) ===
+problem: |
+  Strict feature ownership creates false claim conflicts on cross-cutting
+  infrastructure files. When multiple features need to modify the same file
+  (conftest.py, fixtures), they block each other unnecessarily.
+
+  The shared scope allows any plan to modify these files without coordination,
+  using tests as the quality gate instead of exclusive ownership.
+
+out_of_scope:
+  - "Production code (src/) - those belong to specific features"
+  - "Feature-specific test files"
+  - "Documentation files"
+
+# === ACCEPTANCE CRITERIA ===
+acceptance_criteria:
+  - id: AC-1
+    scenario: "Shared files have no claim conflicts"
+    category: happy_path
+    given:
+      - "Another CC instance has claimed feature 'ledger'"
+      - "tests/conftest.py is in shared scope"
+    when: "New CC instance tries to modify tests/conftest.py"
+    then:
+      - "No claim conflict is raised"
+      - "Both instances can work simultaneously"
+
+  - id: AC-2
+    scenario: "Shared files always considered claimed"
+    category: happy_path
+    given:
+      - "No claims exist in the system"
+      - "tests/conftest.py is in shared scope"
+    when: "check_files_claimed is called for conftest.py"
+    then:
+      - "File is reported as 'claimed'"
+      - "No error about missing claims"
+
+  - id: AC-3
+    scenario: "Non-shared files still require claims"
+    category: edge_case
+    given:
+      - "src/world/ledger.py is owned by 'ledger' feature"
+      - "No claim for ledger feature exists"
+    when: "check_files_claimed is called for ledger.py"
+    then:
+      - "File is reported as 'unclaimed'"
+      - "Guidance suggests claiming 'ledger' feature"
+
+  - id: AC-4
+    scenario: "Invalid shared file path fails gracefully"
+    category: error_case
+    given:
+      - "A file path is not listed in any feature's code section"
+    when: "check_files_claimed is called for the unknown file"
+    then:
+      - "File is reported as 'unclaimed'"
+      - "No crash or exception occurs"
+
+# === FILES ===
+code:
+  - tests/conftest.py
+  - tests/fixtures/
+
+# Shared files don't have dedicated tests - they're tested through feature tests
+tests: []
+
+# Shared files don't have dedicated docs - they're documented inline
+docs: []
+
+# No ADRs specifically govern shared infrastructure
+adrs: []
+
+# Design note:
+# The "shared" scope exists because strict feature ownership creates false conflicts.
+# Evidence: Google's monorepo allows anyone to modify common libraries with tests as the gate.
+# Rule: If a file is used by 3+ features, consider moving it to shared.
