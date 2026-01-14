@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-14 (Plan #39 - Kernel interface injection in execute_with_invoke)
+**Last verified:** 2026-01-14 (Plan #40 - Structured errors in narrow waist actions)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
