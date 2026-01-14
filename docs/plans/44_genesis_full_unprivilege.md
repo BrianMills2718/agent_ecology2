@@ -1,6 +1,6 @@
 # Plan #44: Genesis Artifact Full Unprivilege
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 
 **Priority:** High
 **Blocked By:** Plan #42 (Kernel Quota Primitives)
