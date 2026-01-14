@@ -71,7 +71,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 23 | [Error Response Conventions](23_error_conventions.md) | Low | ✅ Complete | - |
 | 24 | [Ecosystem Health KPIs](24_health_kpis.md) | Medium | ✅ Complete | #25 |
 | 25 | [System Auditor Agent](25_system_auditor.md) | Low | ✅ Complete | - |
-| 26 | [Vulture Observability](26_vulture_observability.md) | Medium | 📋 Planned | - |
+| 26 | [Vulture Observability](26_vulture_observability.md) | Medium | ✅ Complete | - |
 | 27 | [Invocation Registry](27_invocation_registry.md) | Medium | ✅ Complete | - |
 | 28 | [Pre-seeded MCP Servers](28_mcp_servers.md) | **High** | ✅ Complete | - |
 | 29 | [Library Installation](29_package_manager.md) | Medium | ❌ Needs Plan | - |
@@ -83,7 +83,7 @@ The 142 gaps are a finer breakdown of these 33. Both track the same work at diff
 | 35 | [Verification Enforcement](35_verification_enforcement.md) | **High** | ✅ Complete | - |
 | 36 | [Re-verify Complete Plans](36_reverify_complete_plans.md) | **High** | ✅ Complete | - |
 | 37 | [Mandatory Planning + Human Review](37_mandatory_planning_human_review.md) | **High** | ✅ Complete | - |
-| 38 | [Meta-Process Simplification](38_meta_process_simplification.md) | **High** | 🚧 In Progress | - |
+| 38 | [Meta-Process Simplification](38_meta_process_simplification.md) | **High** | ✅ Complete | - |
 
 ---
 
