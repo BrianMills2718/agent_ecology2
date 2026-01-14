@@ -224,6 +224,11 @@ class World:
         rights_registry = self.genesis_artifacts.get("genesis_rights_registry")
         self.rights_registry = rights_registry if isinstance(rights_registry, GenesisRightsRegistry) else None
 
+        # Wire up GenesisMint to use kernel primitives (Plan #44)
+        genesis_mint = self.genesis_artifacts.get("genesis_mint")
+        if isinstance(genesis_mint, GenesisMint):
+            genesis_mint.set_world(self)
+
         # Seed genesis_handbook artifact (readable documentation for agents)
         self._seed_handbook()
 

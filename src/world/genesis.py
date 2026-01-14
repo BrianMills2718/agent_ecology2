@@ -651,19 +651,31 @@ class GenesisMint(GenesisArtifact):
     - After bidding window: Resolve auction, score artifact, distribute UBI
 
     All configuration is in config.yaml under genesis.mint.auction.
+
+    Plan #44: GenesisMint now delegates to kernel primitives for bid storage
+    and auction resolution. Timing (phases, windows) stays here as policy.
     """
 
-    mint_callback: Callable[[str, int], None]
-    ubi_callback: Callable[[int, str | None], dict[str, int]]  # (amount, exclude) -> distribution
+    # World reference for kernel delegation (Plan #44)
+    _world: Any
+
+    # Legacy callbacks (deprecated - use kernel primitives)
+    mint_callback: Callable[[str, int], None] | None
+    ubi_callback: Callable[[int, str | None], dict[str, int]] | None
     artifact_store: ArtifactStore | None
     ledger: Any  # Ledger reference for bid escrow
 
-    # Auction state
+    # Auction timing state (policy - stays in GenesisMint)
     _current_tick: int
     _auction_start_tick: int | None
+    _auction_history: list[AuctionResult]  # Local history for status display
+
+    # Legacy bid state (deprecated - kernel stores bids now)
     _bids: dict[str, BidInfo]  # agent_id -> bid info
-    _auction_history: list[AuctionResult]
     _held_bids: dict[str, int]  # agent_id -> held amount (escrow)
+
+    # Track submission IDs for bid updates (Plan #44)
+    _submission_ids: dict[str, str]  # agent_id -> kernel submission_id
 
     # Config
     _mint_ratio: int
@@ -681,16 +693,16 @@ class GenesisMint(GenesisArtifact):
 
     def __init__(
         self,
-        mint_callback: Callable[[str, int], None],
-        ubi_callback: Callable[[int, str | None], dict[str, int]],
+        mint_callback: Callable[[str, int], None] | None = None,
+        ubi_callback: Callable[[int, str | None], dict[str, int]] | None = None,
         artifact_store: ArtifactStore | None = None,
         ledger: Any = None,
         genesis_config: GenesisConfig | None = None
     ) -> None:
         """
         Args:
-            mint_callback: Function(agent_id, amount) to mint scrip
-            ubi_callback: Function(amount, exclude) to distribute UBI
+            mint_callback: DEPRECATED - kernel handles minting now
+            ubi_callback: DEPRECATED - kernel handles UBI now
             artifact_store: ArtifactStore to look up submitted artifacts
             ledger: Ledger for bid escrow
             genesis_config: Optional genesis config (uses global if not provided)
@@ -707,17 +719,26 @@ class GenesisMint(GenesisArtifact):
             description=mint_cfg.description
         )
 
+        # World reference set via set_world() after creation (Plan #44)
+        self._world = None
+
+        # Legacy callbacks (deprecated)
         self.mint_callback = mint_callback
         self.ubi_callback = ubi_callback
         self.artifact_store = artifact_store
         self.ledger = ledger
 
-        # Auction state
+        # Auction timing state
         self._current_tick = 0
         self._auction_start_tick = None
-        self._bids = {}
         self._auction_history = []
+
+        # Legacy bid state (for backward compat during transition)
+        self._bids = {}
         self._held_bids = {}
+
+        # Kernel submission tracking (Plan #44)
+        self._submission_ids = {}
 
         # Config
         self._mint_ratio = mint_cfg.mint_ratio
@@ -754,6 +775,14 @@ class GenesisMint(GenesisArtifact):
             cost=mint_cfg.methods.check.cost,
             description=mint_cfg.methods.check.description
         )
+
+    def set_world(self, world: Any) -> None:
+        """Set world reference for kernel delegation (Plan #44).
+
+        Called by World after genesis artifact creation to enable
+        kernel primitive access without circular imports.
+        """
+        self._world = world
 
     def _get_phase(self) -> str:
         """Get current auction phase."""
@@ -815,7 +844,11 @@ class GenesisMint(GenesisArtifact):
         return result
 
     def _bid(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
-        """Submit a sealed bid during bidding window."""
+        """Submit a sealed bid during bidding window.
+
+        Plan #44: Now delegates to kernel primitives for bid storage.
+        Timing (phases) stays here as policy.
+        """
         if len(args) < 2:
             return {"success": False, "error": "bid requires [artifact_id, amount]"}
 
@@ -825,7 +858,7 @@ class GenesisMint(GenesisArtifact):
         except (TypeError, ValueError):
             return {"success": False, "error": "bid amount must be an integer"}
 
-        # Check phase
+        # Check phase (timing policy - stays in GenesisMint)
         phase = self._get_phase()
         if phase == "WAITING":
             return {
@@ -838,14 +871,51 @@ class GenesisMint(GenesisArtifact):
                 "error": f"Bidding window closed. Next auction at tick {(self._auction_start_tick or 0) + self._period}"
             }
 
-        # Validate amount
+        # Validate amount (policy)
         if amount < self._minimum_bid:
             return {"success": False, "error": f"Bid must be at least {self._minimum_bid} scrip"}
 
-        # Check if bid update is allowed
-        if invoker_id in self._bids and not self._allow_bid_updates:
+        # Check if bid update is allowed (policy)
+        has_existing_bid = invoker_id in self._submission_ids
+        if has_existing_bid and not self._allow_bid_updates:
             return {"success": False, "error": "Bid updates not allowed. You already have a bid."}
 
+        # Use kernel primitives if world is set (Plan #44)
+        if self._world is not None:
+            # If updating, cancel old submission first
+            if has_existing_bid:
+                old_submission_id = self._submission_ids[invoker_id]
+                self._world.cancel_mint_submission(invoker_id, old_submission_id)
+                del self._submission_ids[invoker_id]
+
+            # Submit via kernel
+            try:
+                submission_id = self._world.submit_for_mint(
+                    principal_id=invoker_id,
+                    artifact_id=artifact_id,
+                    bid=amount
+                )
+                self._submission_ids[invoker_id] = submission_id
+
+                # Keep local _bids for backward compat with _check() and _status()
+                self._bids[invoker_id] = {
+                    "agent_id": invoker_id,
+                    "artifact_id": artifact_id,
+                    "amount": amount,
+                    "tick_submitted": self._current_tick,
+                }
+
+                return {
+                    "success": True,
+                    "message": f"Bid of {amount} scrip recorded for {artifact_id}",
+                    "artifact_id": artifact_id,
+                    "amount": amount,
+                    "submission_id": submission_id,
+                }
+            except ValueError as e:
+                return {"success": False, "error": str(e)}
+
+        # Legacy path (no world reference - deprecated)
         # Check if artifact exists and is executable
         if self.artifact_store:
             artifact = self.artifact_store.get(artifact_id)
@@ -877,7 +947,7 @@ class GenesisMint(GenesisArtifact):
                 self.ledger.credit_scrip(invoker_id, refund)
                 self._held_bids[invoker_id] = amount
 
-        # Record bid
+        # Record bid (legacy)
         self._bids[invoker_id] = {
             "agent_id": invoker_id,
             "artifact_id": artifact_id,
@@ -987,7 +1057,36 @@ class GenesisMint(GenesisArtifact):
         return None
 
     def _resolve_auction(self) -> AuctionResult:
-        """Resolve the current auction and distribute rewards."""
+        """Resolve the current auction and distribute rewards.
+
+        Plan #44: Now delegates to kernel for auction resolution.
+        Kernel handles scoring, minting, and UBI distribution.
+        """
+        # Use kernel primitives if world is set (Plan #44)
+        if self._world is not None:
+            # Kernel already has the bids from _bid() calls
+            kernel_result = self._world.resolve_mint_auction()
+
+            # Convert kernel result to AuctionResult format
+            result: AuctionResult = {
+                "winner_id": kernel_result.get("winner_id"),
+                "artifact_id": kernel_result.get("artifact_id"),
+                "winning_bid": kernel_result.get("winning_bid", 0),
+                "price_paid": kernel_result.get("price_paid", 0),
+                "score": kernel_result.get("score"),
+                "scrip_minted": kernel_result.get("scrip_minted", 0),
+                "ubi_distributed": kernel_result.get("ubi_distributed", {}),
+                "error": kernel_result.get("error"),
+            }
+            self._auction_history.append(result)
+
+            # Clear local state
+            self._bids.clear()
+            self._submission_ids.clear()
+
+            return result
+
+        # Legacy path (no world reference - deprecated)
         if not self._bids:
             # No bids - auction passes
             empty_result: AuctionResult = {
@@ -1051,8 +1150,10 @@ class GenesisMint(GenesisArtifact):
         # Clear held bids
         self._held_bids.clear()
 
-        # Distribute UBI from the price paid
-        ubi_distribution = self.ubi_callback(second_price, None)
+        # Distribute UBI from the price paid (legacy - uses callback)
+        ubi_distribution: dict[str, int] = {}
+        if self.ubi_callback is not None:
+            ubi_distribution = self.ubi_callback(second_price, None)
 
         # Score the artifact
         score: int | None = None
@@ -1076,7 +1177,7 @@ class GenesisMint(GenesisArtifact):
                     if score_result["success"]:
                         score = score_result["score"]
                         scrip_minted = score // self._mint_ratio
-                        if scrip_minted > 0:
+                        if scrip_minted > 0 and self.mint_callback is not None:
                             self.mint_callback(winner_id, scrip_minted)
                     else:
                         error = score_result.get("error", "Scoring failed")
@@ -1089,16 +1190,16 @@ class GenesisMint(GenesisArtifact):
             else:
                 error = f"Artifact {artifact_id} not found"
 
-        result: AuctionResult = {
-            "winner_id": winner_id,
-            "artifact_id": artifact_id,
-            "winning_bid": winning_bid,
-            "price_paid": second_price,
-            "score": score,
-            "scrip_minted": scrip_minted,
-            "ubi_distributed": ubi_distribution,
-            "error": error,
-        }
+        result = AuctionResult(
+            winner_id=winner_id,
+            artifact_id=artifact_id,
+            winning_bid=winning_bid,
+            price_paid=second_price,
+            score=score,
+            scrip_minted=scrip_minted,
+            ubi_distributed=ubi_distribution,
+            error=error,
+        )
         self._auction_history.append(result)
 
         # Clear bids for next auction
