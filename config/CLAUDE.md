@@ -30,11 +30,11 @@ All runtime configuration lives here. No magic numbers in code.
 from src.config import get, get_validated_config
 
 # Dict access (legacy)
-value = get("genesis.oracle.mint_ratio")
+value = get("genesis.mint.mint_ratio")
 
 # Typed access (preferred)
 config = get_validated_config()
-ratio = config.genesis.oracle.mint_ratio  # Type-safe
+ratio = config.genesis.mint.mint_ratio  # Type-safe
 ```
 
 ## Validation
