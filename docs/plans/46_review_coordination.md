@@ -125,10 +125,12 @@ Add CI check (optional) to warn if:
 
 ## Acceptance Criteria
 
-- [ ] CLAUDE.md documents review coordination protocol
-- [ ] Awaiting Review table includes Reviewer column
-- [ ] `meta_status.py` shows review status in output
+- [x] CLAUDE.md documents review coordination protocol
+- [x] Awaiting Review table includes Reviewer column
+- [x] `meta_status.py` shows review status in output
 - [ ] Protocol tested with multiple instances
+
+**Note:** Core implementation completed. Testing with multiple instances is ongoing.
 
 ## Open Questions
 

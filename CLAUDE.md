@@ -378,11 +378,17 @@ python scripts/check_claims.py --release --validate
 |-------|------|------|---------|--------|
 
 **Awaiting Review:**
-<!-- PRs needing review. Update manually or via script. -->
-| PR | Branch | Title | Created | Status |
-|----|--------|-------|---------|--------|
+<!-- PRs needing review. Update table when starting/completing review. -->
+| PR | Title | Reviewer | Started | Status |
+|----|-------|----------|---------|--------|
 
-**After PR merged:** Remove from Awaiting Review table.
+**Review Coordination Protocol:**
+1. **Before reviewing:** Check table - if PR shows "In Review", let that reviewer finish
+2. **Start review:** Add your CC-ID to Reviewer column, set Status to "In Review"
+3. **Complete review:** Update Status to "Approved" or "Changes Requested"
+4. **After merge:** Remove row from table
+
+**Status values:** `Awaiting` → `In Review` → `Approved`/`Changes Requested`
 
 
 ### Merging PRs
