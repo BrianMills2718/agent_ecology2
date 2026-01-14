@@ -148,12 +148,11 @@ Script validates all criteria have at least one test.
 ### Remaining
 - ✅ **Step 1:** Parser format support complete (bullet + inline formats)
 - ✅ **Step 4:** `--strict` flag enabled in CI (`check_plan_tests.py --all --strict`)
-- ❌ **Step 5:** V1 acceptance doc (`docs/V1_ACCEPTANCE.md`) not created
-- ❌ **Step 5:** V1 acceptance test (`tests/e2e/test_v1_acceptance.py`) not created
+- ➡️ **Step 5:** **Moved to [Plan #51](51_v1_acceptance.md)** - V1 acceptance is its own plan
 - ⏳ **Gap 5:** Criteria-Test Traceability - marked as future work
 
-### Recommendation
-V1 acceptance (Step 5) is significant scope - requires defining what V1 means and creating comprehensive E2E tests. Consider splitting into a separate plan (e.g., Plan #51: V1 Acceptance Criteria).
+### Completion Note
+All enforcement gaps in scope for Plan #41 are resolved. V1 acceptance criteria (Step 5) was identified as significant scope requiring its own plan - now tracked as [Plan #51: V1 Acceptance Criteria](51_v1_acceptance.md).
 
 ---
 
@@ -189,13 +188,13 @@ These will be added as Plan #41 progresses through its phases.
 
 ## Acceptance Criteria
 
-1. `check_plan_tests.py` parses bullet format correctly
-2. `check_plan_tests.py` parses inline code format correctly
-3. CI fails when PR references plan without required tests
-4. CI warns when merged plan lacks verification evidence
-5. V1 acceptance criteria documented in `docs/V1_ACCEPTANCE.md`
-6. V1 acceptance test exists and passes
-7. `docs/meta/17_verification-enforcement.md` updated with lessons learned
+1. ✅ `check_plan_tests.py` parses bullet format correctly
+2. ✅ `check_plan_tests.py` parses inline code format correctly
+3. ✅ CI fails when PR references plan without required tests (`--strict` mode)
+4. ✅ CI warns when merged plan lacks verification evidence
+5. ➡️ V1 acceptance criteria - **moved to [Plan #51](51_v1_acceptance.md)**
+6. ➡️ V1 acceptance test - **moved to [Plan #51](51_v1_acceptance.md)**
+7. ✅ `docs/meta/17_verification-enforcement.md` updated with lessons learned
 
 ---
 
