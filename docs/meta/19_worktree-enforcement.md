@@ -32,7 +32,7 @@ This runs an interactive script that:
 5. Creates the claim
 6. Creates the worktree
 
-See [claim-system.md](claim-system.md) for details on the claim system.
+See [Claim System](18_claim-system.md) for details on the claim system.
 
 ## Hook-Based Enforcement
 
@@ -159,7 +159,7 @@ Adjust the error message to match your branch naming convention.
 
 ## Related Patterns
 
-- [Rebase Workflow](rebase-workflow.md) - Keeps worktrees up-to-date before creating PRs
-- [Claim System](claim-system.md) - Coordinates which instance works on what
-- [Git Hooks](git-hooks.md) - Pre-commit validation before pushing
-- [PR Coordination](pr-coordination.md) - Tracks review requests across instances
+- [Rebase Workflow](20_rebase-workflow.md) - Keeps worktrees up-to-date before creating PRs
+- [Claim System](18_claim-system.md) - Coordinates which instance works on what
+- [Git Hooks](06_git-hooks.md) - Pre-commit validation before pushing
+- [PR Coordination](21_pr-coordination.md) - Tracks review requests across instances

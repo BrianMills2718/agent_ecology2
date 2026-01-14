@@ -1,6 +1,6 @@
 # Agent Ecology - Meta Patterns Review Package
 
-Generated: 2026-01-14 06:34
+Generated: 2026-01-14 06:35
 
 This document concatenates all meta pattern documentation
 in recommended reading order for external review.
@@ -383,9 +383,9 @@ See this project's [CLAUDE.md](../../CLAUDE.md) for a complete example.
 
 ## See Also
 
-- [Claim system pattern](claim-system.md) - Coordination tables in CLAUDE.md
-- [Plan workflow pattern](plan-workflow.md) - Linking CLAUDE.md to plans
-- [Handoff protocol pattern](handoff-protocol.md) - Session continuity
+- [Claim system pattern](18_claim-system.md) - Coordination tables in CLAUDE.md
+- [Plan workflow pattern](15_plan-workflow.md) - Linking CLAUDE.md to plans
+- [Handoff protocol pattern](archive/handoff-protocol.md) - Session continuity (archived)
 
 ---
 
@@ -1341,8 +1341,8 @@ fi
 
 ## See Also
 
-- [Doc-code coupling pattern](doc-code-coupling.md) - Often run as pre-commit check
-- [Plan workflow pattern](plan-workflow.md) - Commit message format ties to plans
+- [Doc-code coupling pattern](10_doc-code-coupling.md) - Often run as pre-commit check
+- [Plan workflow pattern](15_plan-workflow.md) - Commit message format ties to plans
 
 ---
 
@@ -1617,8 +1617,8 @@ SEC-001 (security), API-001 (API design)...
 
 ## See Also
 
-- [Doc-code coupling pattern](doc-code-coupling.md) - Related enforcement mechanism
-- [Plan workflow pattern](plan-workflow.md) - ADRs can link to implementation plans
+- [Doc-code coupling pattern](10_doc-code-coupling.md) - Related enforcement mechanism
+- [Plan workflow pattern](15_plan-workflow.md) - ADRs can link to implementation plans
 - [Original ADR proposal](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions) by Michael Nygard
 
 ---
@@ -1877,8 +1877,8 @@ python scripts/validate_plan.py --plan 28
 
 | Pattern | Status | Relationship |
 |---------|--------|--------------|
-| [ADR Governance](adr-governance.md) | Subsumed | `governs` edges replace `governance.yaml` |
-| [Doc-Code Coupling](doc-code-coupling.md) | Subsumed | `documented_by` edges replace `doc_coupling.yaml` |
+| [ADR Governance](08_adr-governance.md) | Subsumed | `governs` edges replace `governance.yaml` |
+| [Doc-Code Coupling](10_doc-code-coupling.md) | Subsumed | `documented_by` edges replace `doc_coupling.yaml` |
 
 Both patterns remain valid until migration is complete. After migration, they become implementation details of this unified pattern.
 
@@ -2169,8 +2169,8 @@ For docs that should trigger source review:
 
 ## See Also
 
-- [Git hooks pattern](git-hooks.md) - Can run doc-coupling check pre-commit
-- [Plan workflow pattern](plan-workflow.md) - Plans are a form of doc-code coupling
+- [Git hooks pattern](06_git-hooks.md) - Can run doc-coupling check pre-commit
+- [Plan workflow pattern](15_plan-workflow.md) - Plans are a form of doc-code coupling
 
 ---
 
@@ -3197,12 +3197,12 @@ require_approval_for_lock: true
 
 ## Related Patterns
 
-- [Feature Linkage](feature-linkage.md) - Companion pattern: optimal linkage structure
-- [ADR](adr.md) - Architecture Decision Records
-- [ADR Governance](adr-governance.md) - Linking ADRs to code
-- [Doc-Code Coupling](doc-code-coupling.md) - Linking docs to code
-- [Testing Strategy](testing-strategy.md) - Test organization
-- [Verification Enforcement](verification-enforcement.md) - Proving completion
+- [Feature Linkage](14_feature-linkage.md) - Companion pattern: optimal linkage structure
+- [ADR](07_adr.md) - Architecture Decision Records
+- [ADR Governance](08_adr-governance.md) - Linking ADRs to code
+- [Doc-Code Coupling](10_doc-code-coupling.md) - Linking docs to code
+- [Testing Strategy](03_testing-strategy.md) - Test organization
+- [Verification Enforcement](17_verification-enforcement.md) - Proving completion
 
 ## Origin
 
@@ -3536,10 +3536,10 @@ python scripts/check_feature_coverage.py
 
 ## Related Patterns
 
-- [Feature-Driven Development](feature-driven-development.md) - The complete meta-process
-- [ADR Governance](adr-governance.md) - Now derived from features
-- [Doc-Code Coupling](doc-code-coupling.md) - Now derived from features
-- [Documentation Graph](documentation-graph.md) - Features as nodes
+- [Feature-Driven Development](13_feature-driven-development.md) - The complete meta-process
+- [ADR Governance](08_adr-governance.md) - Now derived from features
+- [Doc-Code Coupling](10_doc-code-coupling.md) - Now derived from features
+- [Documentation Graph](09_documentation-graph.md) - Features as nodes
 
 ## Origin
 
@@ -3943,9 +3943,9 @@ git commit -m "[Trivial] Fix formatting in config"
 
 ## See Also
 
-- [Git hooks pattern](git-hooks.md) - Enforces plan references in commits
-- [PR coordination pattern](pr-coordination.md) - Auto-updates plan status on merge
-- [Claim system pattern](claim-system.md) - Tracks who's working on which plan
+- [Git hooks pattern](06_git-hooks.md) - Enforces plan references in commits
+- [PR coordination pattern](21_pr-coordination.md) - Auto-updates plan status on merge
+- [Claim system pattern](18_claim-system.md) - Tracks who's working on which plan
 
 ---
 
@@ -4475,10 +4475,10 @@ git commit -m "[Trivial] Fix typo in README"
 
 ## See Also
 
-- [worktree-enforcement.md](worktree-enforcement.md) - Worktree + claim workflow
-- [pr-coordination.md](pr-coordination.md) - PR workflow with claims
-- [plan-workflow.md](plan-workflow.md) - Plans that claims reference
-- [feature-driven-development.md](feature-driven-development.md) - Feature definitions
+- [Worktree Enforcement](19_worktree-enforcement.md) - Worktree + claim workflow
+- [PR Coordination](21_pr-coordination.md) - PR workflow with claims
+- [Plan Workflow](15_plan-workflow.md) - Plans that claims reference
+- [Feature-Driven Development](13_feature-driven-development.md) - Feature definitions
 
 ---
 
@@ -4520,7 +4520,7 @@ This runs an interactive script that:
 5. Creates the claim
 6. Creates the worktree
 
-See [claim-system.md](claim-system.md) for details on the claim system.
+See [Claim System](18_claim-system.md) for details on the claim system.
 
 ## Hook-Based Enforcement
 
@@ -4647,10 +4647,10 @@ Adjust the error message to match your branch naming convention.
 
 ## Related Patterns
 
-- [Rebase Workflow](rebase-workflow.md) - Keeps worktrees up-to-date before creating PRs
-- [Claim System](claim-system.md) - Coordinates which instance works on what
-- [Git Hooks](git-hooks.md) - Pre-commit validation before pushing
-- [PR Coordination](pr-coordination.md) - Tracks review requests across instances
+- [Rebase Workflow](20_rebase-workflow.md) - Keeps worktrees up-to-date before creating PRs
+- [Claim System](18_claim-system.md) - Coordinates which instance works on what
+- [Git Hooks](06_git-hooks.md) - Pre-commit validation before pushing
+- [PR Coordination](21_pr-coordination.md) - Tracks review requests across instances
 
 ---
 
@@ -4843,9 +4843,9 @@ Step 6 is critical for preventing "reverted" changes.
 
 ## Related Patterns
 
-- [Worktree Enforcement](worktree-enforcement.md) - Blocks edits in main directory
-- [PR Coordination](pr-coordination.md) - Tracks PRs and claims
-- [Claim System](claim-system.md) - Coordinates which instance works on what
+- [Worktree Enforcement](19_worktree-enforcement.md) - Blocks edits in main directory
+- [PR Coordination](21_pr-coordination.md) - Tracks PRs and claims
+- [Claim System](18_claim-system.md) - Coordinates which instance works on what
 
 ---
 
@@ -5138,8 +5138,8 @@ STALE_HOURS = 4  # Claims older than this are flagged
 
 ## See Also
 
-- [Claim system pattern](claim-system.md) - More detailed claim management
-- [Plan workflow pattern](plan-workflow.md) - How plans integrate with PRs
+- [Claim system pattern](18_claim-system.md) - More detailed claim management
+- [Plan workflow pattern](15_plan-workflow.md) - How plans integrate with PRs
 
 ---
 
@@ -5308,9 +5308,9 @@ Before marking complete, a human must verify:
 
 ## Related
 
-- [verification-enforcement.md](verification-enforcement.md) - Overall completion requirements
-- [plan-workflow.md](plan-workflow.md) - Full plan lifecycle
-- [testing-strategy.md](testing-strategy.md) - Test types and when to use each
+- [Verification Enforcement](17_verification-enforcement.md) - Overall completion requirements
+- [Plan Workflow](15_plan-workflow.md) - Full plan lifecycle
+- [Testing Strategy](03_testing-strategy.md) - Test types and when to use each
 
 ---
 

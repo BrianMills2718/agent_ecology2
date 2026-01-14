@@ -183,6 +183,6 @@ Step 6 is critical for preventing "reverted" changes.
 
 ## Related Patterns
 
-- [Worktree Enforcement](worktree-enforcement.md) - Blocks edits in main directory
-- [PR Coordination](pr-coordination.md) - Tracks PRs and claims
-- [Claim System](claim-system.md) - Coordinates which instance works on what
+- [Worktree Enforcement](19_worktree-enforcement.md) - Blocks edits in main directory
+- [PR Coordination](21_pr-coordination.md) - Tracks PRs and claims
+- [Claim System](18_claim-system.md) - Coordinates which instance works on what

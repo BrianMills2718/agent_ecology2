@@ -222,7 +222,7 @@ git commit -m "[Trivial] Fix typo in README"
 
 ## See Also
 
-- [worktree-enforcement.md](worktree-enforcement.md) - Worktree + claim workflow
-- [pr-coordination.md](pr-coordination.md) - PR workflow with claims
-- [plan-workflow.md](plan-workflow.md) - Plans that claims reference
-- [feature-driven-development.md](feature-driven-development.md) - Feature definitions
+- [Worktree Enforcement](19_worktree-enforcement.md) - Worktree + claim workflow
+- [PR Coordination](21_pr-coordination.md) - PR workflow with claims
+- [Plan Workflow](15_plan-workflow.md) - Plans that claims reference
+- [Feature-Driven Development](13_feature-driven-development.md) - Feature definitions
