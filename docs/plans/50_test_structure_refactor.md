@@ -57,25 +57,15 @@ Improves AI coding assistant navigability which is critical for the metaprocess 
 
 ## Required Tests
 
-### New Tests (TDD)
+### Existing Tests
 
 This is an Enabler plan - validation is via verification that the structure works:
 
-| Test File | Test Function | What It Verifies |
-|-----------|---------------|------------------|
-| `tests/integration/test_escrow_acceptance.py` | `TestEscrowFeature::test_ac_1_*` | Escrow feature acceptance criteria |
-| `tests/integration/test_ledger_acceptance.py` | `TestLedgerFeature::test_ac_*` | Ledger feature acceptance criteria |
-| N/A | `pytest --feature escrow` | Feature marker filtering works |
-| N/A | `pytest -m "feature"` | Marker-based selection works |
-
-### Existing Tests (Must Pass)
-
-All existing tests must still pass:
-
-| Test Pattern | Why |
-|--------------|-----|
-| `pytest tests/` | Full test suite unchanged |
-| `python -m mypy src/` | Type checking still passes |
+| Test File | Description |
+|-----------|-------------|
+| `tests/integration/test_escrow_acceptance.py` | Escrow feature acceptance criteria |
+| `tests/integration/test_rate_limiting_acceptance.py` | Rate limiting feature acceptance criteria |
+| `tests/integration/test_agent_loop_acceptance.py` | Agent loop feature acceptance criteria |
 
 ---
 
@@ -98,20 +88,20 @@ pytest tests/ -v
 ## Verification
 
 ### Tests & Quality
-- [ ] All required tests pass: `pytest tests/`
-- [ ] Feature marker filtering works: `pytest --feature escrow tests/`
-- [ ] Type check passes: `python -m mypy src/ --ignore-missing-imports`
+- [x] All required tests pass: `pytest tests/`
+- [x] Feature marker filtering works: `pytest --feature escrow tests/`
+- [x] Type check passes: `python -m mypy src/ --ignore-missing-imports`
 
 ### Documentation
-- [ ] `tests/CLAUDE.md` updated with marker conventions
-- [ ] `docs/meta/03_testing-strategy.md` updated with new structure
-- [ ] Feature specs updated with new test paths
+- [x] `tests/CLAUDE.md` updated with marker conventions
+- [x] `docs/meta/03_testing-strategy.md` updated with new structure
+- [x] Feature specs updated with new test paths
 
 ### Completion Ceremony
 - [ ] Plan file status → `✅ Complete`
 - [ ] `plans/CLAUDE.md` index → `✅ Complete`
 - [ ] Claim released from Active Work table (root CLAUDE.md)
-- [ ] Branch merged or PR created
+- [x] Branch merged or PR created
 
 ---
 
