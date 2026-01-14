@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Any, TypedDict, TYPE_CHECKING, cast
 
@@ -20,6 +21,7 @@ from .genesis import (
 )
 from .executor import get_executor
 from .rate_tracker import RateTracker
+from .invocation_registry import InvocationRegistry, InvocationRecord
 
 from ..config import get as config_get, compute_per_agent_quota, PerAgentQuota
 
@@ -142,6 +144,8 @@ class World:
     use_autonomous_loops: bool
     rate_tracker: RateTracker | None
     loop_manager: "AgentLoopManager | None"
+    # Invocation tracking for observability (Gap #27)
+    invocation_registry: InvocationRegistry
 
     def __init__(self, config: ConfigDict) -> None:
         self.config = config
@@ -229,6 +233,10 @@ class World:
         # AgentLoopManager will be created by SimulationRunner when autonomous mode is enabled
         # We store it here so it's accessible to components that need it
         self.loop_manager = None
+
+        # Invocation registry for observability (Gap #27)
+        # Tracks all artifact invocations for stats and reputation emergence
+        self.invocation_registry = InvocationRegistry()
 
         # Log world init
         default_quotas = self.rights_config.get("default_quotas", {})
@@ -449,10 +457,15 @@ class World:
         Cost model:
         - Genesis method costs: Configurable compute cost per method
         - Artifact prices: Scrip paid to owner on successful invocation
+
+        Invocation tracking (Gap #27):
+        - Logs invoke_success/invoke_failure events
+        - Records invocations in the registry for observability
         """
         artifact_id = intent.artifact_id
         method_name = intent.method
         args = intent.args
+        start_time = time.perf_counter()
 
         # Check genesis artifacts first
         if artifact_id in self.genesis_artifacts:
@@ -460,6 +473,12 @@ class World:
             method = genesis.get_method(method_name)
 
             if not method:
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self._log_invoke_failure(
+                    intent.principal_id, artifact_id, method_name,
+                    duration_ms, "method_not_found",
+                    f"Method {method_name} not found"
+                )
                 return ActionResult(
                     success=False,
                     message=get_error_message(
@@ -472,6 +491,12 @@ class World:
 
             # Genesis method costs are COMPUTE (physical resource, not scrip)
             if method.cost > 0 and not self.ledger.can_spend_compute(intent.principal_id, method.cost):
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self._log_invoke_failure(
+                    intent.principal_id, artifact_id, method_name,
+                    duration_ms, "insufficient_compute",
+                    f"Cannot afford method cost: {method.cost}"
+                )
                 return ActionResult(
                     success=False,
                     message=f"Cannot afford method cost: {method.cost} compute (have {self.ledger.get_compute(intent.principal_id)})"
@@ -487,8 +512,13 @@ class World:
             # Execute the genesis method
             try:
                 result_data: dict[str, Any] = method.handler(args, intent.principal_id)
+                duration_ms = (time.perf_counter() - start_time) * 1000
 
                 if result_data.get("success"):
+                    self._log_invoke_success(
+                        intent.principal_id, artifact_id, method_name,
+                        duration_ms, type(result_data.get("result")).__name__
+                    )
                     return ActionResult(
                         success=True,
                         message=f"Invoked {artifact_id}.{method_name}",
@@ -497,6 +527,11 @@ class World:
                         charged_to=intent.principal_id,
                     )
                 else:
+                    self._log_invoke_failure(
+                        intent.principal_id, artifact_id, method_name,
+                        duration_ms, "method_failed",
+                        result_data.get("error", "Method failed")
+                    )
                     return ActionResult(
                         success=False,
                         message=result_data.get("error", "Method failed"),
@@ -504,6 +539,12 @@ class World:
                         charged_to=intent.principal_id,
                     )
             except Exception as e:
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self._log_invoke_failure(
+                    intent.principal_id, artifact_id, method_name,
+                    duration_ms, "exception",
+                    str(e)
+                )
                 return ActionResult(
                     success=False,
                     message=f"Method execution error: {str(e)}",
@@ -515,6 +556,12 @@ class World:
         regular_artifact = self.artifacts.get(artifact_id)
         if regular_artifact:
             if not regular_artifact.executable:
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self._log_invoke_failure(
+                    intent.principal_id, artifact_id, method_name,
+                    duration_ms, "not_executable",
+                    f"Artifact {artifact_id} is not executable"
+                )
                 return ActionResult(
                     success=False,
                     message=f"Artifact {artifact_id} is not executable"
@@ -522,6 +569,12 @@ class World:
 
             # Check invoke permission (policy-based)
             if not regular_artifact.can_invoke(intent.principal_id):
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self._log_invoke_failure(
+                    intent.principal_id, artifact_id, method_name,
+                    duration_ms, "permission_denied",
+                    "Access denied"
+                )
                 return ActionResult(
                     success=False,
                     message=get_error_message("access_denied_invoke", artifact_id=artifact_id)
@@ -536,6 +589,12 @@ class World:
 
             # Check if caller can afford the price (scrip)
             if price > 0 and not self.ledger.can_afford_scrip(intent.principal_id, price):
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self._log_invoke_failure(
+                    intent.principal_id, artifact_id, method_name,
+                    duration_ms, "insufficient_scrip",
+                    f"Insufficient scrip for price: need {price}"
+                )
                 return ActionResult(
                     success=False,
                     message=f"Insufficient scrip for price: need {price}, have {self.ledger.get_scrip(intent.principal_id)}"
@@ -554,11 +613,17 @@ class World:
 
             # Extract resource consumption from executor
             resources_consumed = exec_result.get("resources_consumed", {})
+            duration_ms = exec_result.get("execution_time_ms", (time.perf_counter() - start_time) * 1000)
 
             if exec_result.get("success"):
                 # Deduct physical resources from caller
                 for resource, amount in resources_consumed.items():
                     if not self.ledger.can_spend_resource(resource_payer, resource, amount):
+                        self._log_invoke_failure(
+                            intent.principal_id, artifact_id, method_name,
+                            duration_ms, "insufficient_resource",
+                            f"Insufficient {resource}: need {amount}"
+                        )
                         return ActionResult(
                             success=False,
                             message=f"Insufficient {resource}: need {amount}",
@@ -572,6 +637,10 @@ class World:
                     self.ledger.deduct_scrip(intent.principal_id, price)
                     self.ledger.credit_scrip(owner_id, price)
 
+                self._log_invoke_success(
+                    intent.principal_id, artifact_id, method_name,
+                    duration_ms, type(exec_result.get("result")).__name__
+                )
                 return ActionResult(
                     success=True,
                     message=f"Invoked {artifact_id}" + (f" (paid {price} scrip to {owner_id})" if price > 0 else ""),
@@ -589,19 +658,92 @@ class World:
                     if self.ledger.can_spend_resource(resource_payer, resource, amount):
                         self.ledger.spend_resource(resource_payer, resource, amount)
 
+                error_msg = exec_result.get("error", "Unknown error")
+                # Determine error type from error message
+                error_type = "execution"
+                if "timed out" in error_msg.lower():
+                    error_type = "timeout"
+                elif "syntax" in error_msg.lower():
+                    error_type = "validation"
+
+                self._log_invoke_failure(
+                    intent.principal_id, artifact_id, method_name,
+                    duration_ms, error_type, error_msg
+                )
                 return ActionResult(
                     success=False,
-                    message=f"Execution failed: {exec_result.get('error')}",
-                    data={"error": exec_result.get("error")},
+                    message=f"Execution failed: {error_msg}",
+                    data={"error": error_msg},
                     resources_consumed=resources_consumed if resources_consumed else None,
                     charged_to=resource_payer,
                 )
 
         # Artifact not found
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        self._log_invoke_failure(
+            intent.principal_id, artifact_id, method_name,
+            duration_ms, "not_found",
+            f"Artifact {artifact_id} not found"
+        )
         return ActionResult(
             success=False,
             message=f"Artifact {artifact_id} not found"
         )
+
+    def _log_invoke_success(
+        self,
+        invoker_id: str,
+        artifact_id: str,
+        method: str,
+        duration_ms: float,
+        result_type: str,
+    ) -> None:
+        """Log a successful invocation and record in registry."""
+        self.logger.log("invoke_success", {
+            "tick": self.tick,
+            "invoker_id": invoker_id,
+            "artifact_id": artifact_id,
+            "method": method,
+            "duration_ms": duration_ms,
+            "result_type": result_type,
+        })
+        self.invocation_registry.record_invocation(InvocationRecord(
+            tick=self.tick,
+            invoker_id=invoker_id,
+            artifact_id=artifact_id,
+            method=method,
+            success=True,
+            duration_ms=duration_ms,
+        ))
+
+    def _log_invoke_failure(
+        self,
+        invoker_id: str,
+        artifact_id: str,
+        method: str,
+        duration_ms: float,
+        error_type: str,
+        error_message: str,
+    ) -> None:
+        """Log a failed invocation and record in registry."""
+        self.logger.log("invoke_failure", {
+            "tick": self.tick,
+            "invoker_id": invoker_id,
+            "artifact_id": artifact_id,
+            "method": method,
+            "duration_ms": duration_ms,
+            "error_type": error_type,
+            "error_message": error_message,
+        })
+        self.invocation_registry.record_invocation(InvocationRecord(
+            tick=self.tick,
+            invoker_id=invoker_id,
+            artifact_id=artifact_id,
+            method=method,
+            success=False,
+            duration_ms=duration_ms,
+            error_type=error_type,
+        ))
 
     def advance_tick(self) -> bool:
         """

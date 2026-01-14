@@ -38,6 +38,8 @@ from .models import (
     ActivityItem,
     ActivityFeed,
     ArtifactDetail,
+    InvocationEvent,
+    InvocationStatsResponse,
 )
 
 
@@ -122,6 +124,9 @@ class SimulationState:
 
     # Activity feed items
     activity_items: list[ActivityItem] = field(default_factory=list)
+
+    # Invocation tracking (Gap #27)
+    invocation_events: list[InvocationEvent] = field(default_factory=list)
 
 
 class JSONLParser:
@@ -641,6 +646,45 @@ class JSONLParser:
             details={"score": score},
         ))
 
+    def _handle_invoke_success(self, event: dict[str, Any], timestamp: str) -> None:
+        """Handle successful invocation event (Gap #27)."""
+        invocation = InvocationEvent(
+            tick=event.get("tick", self.state.current_tick),
+            timestamp=timestamp,
+            invoker_id=event.get("invoker_id", ""),
+            artifact_id=event.get("artifact_id", ""),
+            method=event.get("method", "run"),
+            success=True,
+            duration_ms=event.get("duration_ms", 0.0),
+            result_type=event.get("result_type"),
+        )
+        self.state.invocation_events.append(invocation)
+
+        # Update artifact invocation count
+        artifact_id = event.get("artifact_id", "")
+        if artifact_id in self.state.artifacts:
+            self.state.artifacts[artifact_id].invocation_count += 1
+
+    def _handle_invoke_failure(self, event: dict[str, Any], timestamp: str) -> None:
+        """Handle failed invocation event (Gap #27)."""
+        invocation = InvocationEvent(
+            tick=event.get("tick", self.state.current_tick),
+            timestamp=timestamp,
+            invoker_id=event.get("invoker_id", ""),
+            artifact_id=event.get("artifact_id", ""),
+            method=event.get("method", "run"),
+            success=False,
+            duration_ms=event.get("duration_ms", 0.0),
+            error_type=event.get("error_type"),
+            error_message=event.get("error_message"),
+        )
+        self.state.invocation_events.append(invocation)
+
+        # Update artifact invocation count (even for failures)
+        artifact_id = event.get("artifact_id", "")
+        if artifact_id in self.state.artifacts:
+            self.state.artifacts[artifact_id].invocation_count += 1
+
     def _handle_intent_rejected(self, event: dict[str, Any], timestamp: str) -> None:
         """Handle rejected intent event."""
         agent_id = event.get("principal_id", "")
@@ -1013,4 +1057,81 @@ class JSONLParser:
             invocation_count=art.invocation_count,
             ownership_history=art.ownership_history,
             invocation_history=art.invocation_history[-50:],  # Last 50
+        )
+
+    def get_invocations(
+        self,
+        artifact_id: str | None = None,
+        invoker_id: str | None = None,
+        success: bool | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[InvocationEvent]:
+        """Get filtered invocation events (Gap #27).
+
+        Args:
+            artifact_id: Filter by artifact ID
+            invoker_id: Filter by invoker ID
+            success: Filter by success status
+            limit: Max results to return
+            offset: Skip first N results
+
+        Returns:
+            List of InvocationEvent objects
+        """
+        results = self.state.invocation_events
+
+        if artifact_id is not None:
+            results = [r for r in results if r.artifact_id == artifact_id]
+
+        if invoker_id is not None:
+            results = [r for r in results if r.invoker_id == invoker_id]
+
+        if success is not None:
+            results = [r for r in results if r.success == success]
+
+        # Sort by tick descending (most recent first)
+        results = sorted(results, key=lambda x: (x.tick, x.timestamp), reverse=True)
+
+        return results[offset:offset + limit]
+
+    def get_invocation_stats(self, artifact_id: str) -> InvocationStatsResponse:
+        """Get invocation statistics for an artifact (Gap #27).
+
+        Args:
+            artifact_id: The artifact to get stats for
+
+        Returns:
+            InvocationStatsResponse with success rate, duration, failure types
+        """
+        relevant = [
+            e for e in self.state.invocation_events
+            if e.artifact_id == artifact_id
+        ]
+
+        if not relevant:
+            return InvocationStatsResponse(artifact_id=artifact_id)
+
+        successful = sum(1 for r in relevant if r.success)
+        failed = len(relevant) - successful
+        total = len(relevant)
+
+        # Calculate average duration
+        total_duration = sum(r.duration_ms for r in relevant)
+        avg_duration = total_duration / total if total > 0 else 0.0
+
+        # Count failure types
+        failure_types: dict[str, int] = {}
+        for r in relevant:
+            if not r.success and r.error_type:
+                failure_types[r.error_type] = failure_types.get(r.error_type, 0) + 1
+
+        return InvocationStatsResponse(
+            artifact_id=artifact_id,
+            total_invocations=total,
+            successful=successful,
+            failed=failed,
+            success_rate=successful / total if total > 0 else 0.0,
+            avg_duration_ms=avg_duration,
+            failure_types=failure_types,
         )

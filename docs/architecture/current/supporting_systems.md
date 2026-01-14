@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-13 (Added /api/health endpoint for System Auditor)
+**Last verified:** 2026-01-14 (Added invocation registry endpoints)
 
 ---
 
@@ -174,6 +174,8 @@ Real-time web UI for monitoring simulation.
 | `/api/agents/{id}` | GET | Agent details |
 | `/api/artifacts` | GET | All artifacts |
 | `/api/artifacts/{id}/detail` | GET | Artifact details with content |
+| `/api/artifacts/{id}/invocations` | GET | Invocation statistics for artifact |
+| `/api/invocations` | GET | Filtered invocation events |
 | `/api/events` | GET | Filtered events |
 | `/api/genesis` | GET | Genesis artifact activity |
 | `/api/charts/compute` | GET | Compute utilization chart data |
@@ -232,6 +234,7 @@ dashboard:
 | `src/dashboard/models.py` | Pydantic models | API response types |
 | `src/dashboard/auditor.py` | `HealthReport`, `assess_health()` | Health assessment |
 | `src/dashboard/kpis.py` | `EcosystemKPIs`, `calculate_kpis()` | KPI calculations |
+| `src/world/invocation_registry.py` | `InvocationRegistry`, `InvocationRecord` | Invocation tracking |
 
 ---
 

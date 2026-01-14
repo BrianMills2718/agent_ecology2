@@ -101,6 +101,20 @@ acceptance_criteria:
       - "Error message indicates MCP failure"
     locked: true
 
+  - id: AC-7
+    scenario: "Invocation registry tracks artifact invocations"
+    category: happy_path
+    given:
+      - "InvocationRegistry is initialized"
+      - "Artifact invocations occur (success and failure)"
+    when: "Registry is queried for stats"
+    then:
+      - "Total invocation count is accurate"
+      - "Success rate is calculated correctly"
+      - "Average duration is computed"
+      - "Failure types are categorized"
+    locked: true
+
 # === IMPLEMENTATION SECTION ===
 adrs: []  # World state management predates ADR system
 
@@ -110,10 +124,13 @@ code:
   - src/world/logger.py
   - src/world/mcp_bridge.py
   - src/world/errors.py
+  - src/world/invocation_registry.py
 
 tests:
   - tests/unit/test_simulation_engine.py
+  - tests/unit/test_invocation_registry.py
   - tests/integration/test_integration.py
+  - tests/integration/test_invocation_events.py
 
 docs:
   - docs/architecture/current/execution_model.md

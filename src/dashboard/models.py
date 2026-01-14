@@ -88,6 +88,31 @@ class ThinkingEvent(BaseModel):
     thought_process: str | None = None  # Agent's reasoning/thinking content
 
 
+class InvocationEvent(BaseModel):
+    """Single invocation event (success or failure)."""
+    tick: int
+    timestamp: str
+    invoker_id: str
+    artifact_id: str
+    method: str
+    success: bool
+    duration_ms: float = 0.0
+    error_type: str | None = None
+    error_message: str | None = None
+    result_type: str | None = None
+
+
+class InvocationStatsResponse(BaseModel):
+    """Invocation statistics for an artifact."""
+    artifact_id: str
+    total_invocations: int = 0
+    successful: int = 0
+    failed: int = 0
+    success_rate: float = 0.0
+    avg_duration_ms: float = 0.0
+    failure_types: dict[str, int] = Field(default_factory=dict)
+
+
 class TickSummary(BaseModel):
     """Summary of a single tick."""
     tick: int

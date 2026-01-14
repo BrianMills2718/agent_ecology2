@@ -40,6 +40,8 @@ from .models import (
     ConfigInfo,
     EventFilter,
     EcosystemKPIsResponse,
+    InvocationEvent,
+    InvocationStatsResponse,
 )
 
 # Default paths
@@ -421,6 +423,38 @@ def create_app(
         if detail:
             return detail.model_dump()
         return {"error": f"Artifact {artifact_id} not found"}
+
+    @app.get("/api/artifacts/{artifact_id}/invocations")
+    async def get_artifact_invocations(artifact_id: str) -> dict[str, Any]:
+        """Get invocation statistics for an artifact (Gap #27).
+
+        Returns success rate, average duration, and failure type breakdown.
+        """
+        dashboard.parser.parse_incremental()
+        stats = dashboard.parser.get_invocation_stats(artifact_id)
+        return stats.model_dump()
+
+    @app.get("/api/invocations")
+    async def get_invocations(
+        artifact_id: str | None = Query(None, description="Filter by artifact ID"),
+        invoker_id: str | None = Query(None, description="Filter by invoker ID"),
+        success: bool | None = Query(None, description="Filter by success status"),
+        limit: int = Query(100, ge=1, le=1000),
+        offset: int = Query(0, ge=0),
+    ) -> list[dict[str, Any]]:
+        """Get filtered invocation events (Gap #27).
+
+        Returns list of invocations with filtering options.
+        """
+        dashboard.parser.parse_incremental()
+        invocations = dashboard.parser.get_invocations(
+            artifact_id=artifact_id,
+            invoker_id=invoker_id,
+            success=success,
+            limit=limit,
+            offset=offset,
+        )
+        return [i.model_dump() for i in invocations]
 
     @app.get("/api/thinking")
     async def get_thinking_history(

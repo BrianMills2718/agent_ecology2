@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-12 (Plan #34 - Oracle→Mint rename)
+**Last verified:** 2026-01-14 (Plan #27 - Invocation logging added)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
