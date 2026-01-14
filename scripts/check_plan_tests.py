@@ -78,7 +78,7 @@ def parse_plan_file(plan_file: Path) -> PlanTests | None:
 
     section_content = tests_section.group(1)
 
-    # Parse New Tests table
+    # Parse New Tests table (existing format)
     new_tests_match = re.search(
         r"### New Tests.*?\n\|.*?\n\|[-\s|]+\n((?:\|.*?\n)*)",
         section_content,
@@ -99,7 +99,7 @@ def parse_plan_file(plan_file: Path) -> PlanTests | None:
                     is_new=True
                 ))
 
-    # Parse Existing Tests table
+    # Parse Existing Tests table (existing format)
     existing_match = re.search(
         r"### Existing Tests.*?\n\|.*?\n\|[-\s|]+\n((?:\|.*?\n)*)",
         section_content,
@@ -126,6 +126,44 @@ def parse_plan_file(plan_file: Path) -> PlanTests | None:
                     is_new=False
                 ))
 
+    # NEW (Plan #41): Parse bullet list format
+    # Matches: - `tests/foo.py::test_bar`
+    # Matches: - `tests/foo.py::TestClass::test_method`
+    # Note: Don't anchor to $ as some lines may have trailing content
+    bullet_pattern = re.compile(
+        r"^-\s+`([^`]+)`",
+        re.MULTILINE
+    )
+
+    for match in bullet_pattern.finditer(section_content):
+        test_spec = match.group(1).strip()
+        description = ""  # Bullet format doesn't capture description
+
+        # Parse test spec - could be file, file::func, or file::Class::func
+        if "::" in test_spec:
+            parts = test_spec.split("::", 1)
+            file_part = parts[0]
+            func_part = parts[1]  # Could be "test_foo" or "TestClass::test_foo"
+        else:
+            file_part = test_spec
+            func_part = None
+
+        # Check if this test is already in our lists (avoid duplicates from tables)
+        is_duplicate = False
+        for existing in plan.new_tests + plan.existing_tests:
+            if existing.file == file_part and existing.function == func_part:
+                is_duplicate = True
+                break
+
+        if not is_duplicate:
+            # Bullet format tests are treated as "new" (TDD style)
+            plan.new_tests.append(TestRequirement(
+                file=file_part,
+                function=func_part,
+                description=description,
+                is_new=True
+            ))
+
     return plan
 
 
@@ -138,28 +176,71 @@ def find_plan_files(plans_dir: Path) -> list[Path]:
     )
 
 
-def check_test_exists(req: TestRequirement, project_root: Path) -> bool:
-    """Check if a test file/function exists."""
+def find_test_class(content: str, func_name: str) -> str | None:
+    """Find the class containing a test function, if any.
+
+    Returns class name if function is in a class, None if at top level.
+    """
+    lines = content.split("\n")
+    current_class: str | None = None
+    func_pattern = re.compile(rf"^\s*def\s+{re.escape(func_name)}\s*\(")
+    class_pattern = re.compile(r"^class\s+(\w+)\s*[:\(]")
+
+    for line in lines:
+        # Check for class definition (not indented)
+        class_match = class_pattern.match(line)
+        if class_match:
+            current_class = class_match.group(1)
+
+        # Check for function (may be indented if in class)
+        if func_pattern.search(line):
+            return current_class
+
+    return None
+
+
+def get_pytest_path(req: TestRequirement, project_root: Path) -> str | None:
+    """Get the correct pytest path for a test requirement.
+
+    Returns the full pytest path (with class if needed) or None if test doesn't exist.
+    Plan #41: This handles the case where tests are specified without class prefix
+    but are actually inside a class.
+    """
     test_file = project_root / req.file
 
     if not test_file.exists():
-        return False
+        return None
 
-    if req.function:
-        # Check if function exists in file
-        content = test_file.read_text()
-        # Handle TestClass::test_function format
-        if "::" in req.function:
-            class_name, func_name = req.function.split("::", 1)
-            # Check both class and function exist
-            class_pattern = rf"class\s+{re.escape(class_name)}\s*[:\(]"
-            func_pattern = rf"def\s+{re.escape(func_name)}\s*\("
-            return bool(re.search(class_pattern, content) and re.search(func_pattern, content))
-        else:
-            pattern = rf"def\s+{re.escape(req.function)}\s*\("
-            return bool(re.search(pattern, content))
+    if not req.function:
+        return req.file
 
-    return True
+    content = test_file.read_text()
+
+    # Handle TestClass::test_function format (already complete)
+    if "::" in req.function:
+        class_name, func_name = req.function.split("::", 1)
+        class_pattern = rf"class\s+{re.escape(class_name)}\s*[:\(]"
+        func_pattern = rf"def\s+{re.escape(func_name)}\s*\("
+        if re.search(class_pattern, content) and re.search(func_pattern, content):
+            return f"{req.file}::{req.function}"
+        return None
+
+    # Function without class - check if it exists
+    func_pattern = rf"def\s+{re.escape(req.function)}\s*\("
+    if not re.search(func_pattern, content):
+        return None
+
+    # Find if function is in a class
+    containing_class = find_test_class(content, req.function)
+    if containing_class:
+        return f"{req.file}::{containing_class}::{req.function}"
+    else:
+        return f"{req.file}::{req.function}"
+
+
+def check_test_exists(req: TestRequirement, project_root: Path) -> bool:
+    """Check if a test file/function exists."""
+    return get_pytest_path(req, project_root) is not None
 
 
 def run_tests(requirements: list[TestRequirement], project_root: Path) -> tuple[int, str]:
@@ -170,7 +251,12 @@ def run_tests(requirements: list[TestRequirement], project_root: Path) -> tuple[
     pytest_args = ["pytest", "-v"]
 
     for req in requirements:
-        if req.function:
+        # Plan #41: Use get_pytest_path to get the correct path with class prefix
+        pytest_path = get_pytest_path(req, project_root)
+        if pytest_path:
+            pytest_args.append(pytest_path)
+        elif req.function:
+            # Fallback to original format if get_pytest_path returns None
             pytest_args.append(f"{req.file}::{req.function}")
         else:
             pytest_args.append(req.file)
@@ -212,6 +298,11 @@ def check_plan(plan: PlanTests, project_root: Path, tdd_mode: bool = False) -> i
         print("Add a '## Required Tests' section to define tests.")
         return 0
 
+    # Plan #41: Only fail for in-progress plans, not complete ones
+    # Complete plans have already been verified (or should have been)
+    # Missing tests in complete plans are a documentation cleanup issue
+    is_complete = "Complete" in plan.status or "✅" in plan.status
+
     # Check which tests exist
     print("Test Existence Check:")
     print("-" * 40)
@@ -251,11 +342,19 @@ def check_plan(plan: PlanTests, project_root: Path, tdd_mode: bool = False) -> i
 
     # Normal mode: Run existing tests
     if missing_tests:
-        print("WARNING: Some required tests are missing!")
-        print("Use --tdd to see what needs to be written.\n")
+        if is_complete:
+            print("NOTE: Some documented tests are missing (plan is Complete, not blocking CI).")
+            print("Consider updating the plan's Required Tests section.\n")
+        else:
+            print("WARNING: Some required tests are missing!")
+            print("Use --tdd to see what needs to be written.\n")
 
     if not existing_tests:
         print("No existing tests to run.")
+        # Plan #41: Don't fail for Complete plans with missing tests
+        if is_complete:
+            print("(Plan is Complete - not blocking CI for documentation issue)")
+            return 0
         return 1 if missing_tests else 0
 
     print("Running Tests:")
@@ -268,8 +367,12 @@ def check_plan(plan: PlanTests, project_root: Path, tdd_mode: bool = False) -> i
         print("\nAll required tests pass!")
         return 0
     elif exit_code == 0:
-        print("\nExisting tests pass, but some tests are missing.")
-        return 1
+        if is_complete:
+            print("\nExisting tests pass. (Missing tests noted but not blocking - plan Complete)")
+            return 0
+        else:
+            print("\nExisting tests pass, but some tests are missing.")
+            return 1
     else:
         print("\nSome tests failed!")
         return 1

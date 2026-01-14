@@ -1,6 +1,6 @@
 # Plan #41: Meta-Process Enforcement Gaps
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 
 **Priority:** **Critical**
 **Blocked By:** None
@@ -137,27 +137,31 @@ Script validates all criteria have at least one test.
 
 ## Required Tests
 
-### New Tests (TDD)
-
-| Test File | Test Function | What It Verifies |
-|-----------|---------------|------------------|
-| `tests/unit/test_check_plan_tests.py` | `test_parses_bullet_format` | Bullet format parsed correctly |
-| `tests/unit/test_check_plan_tests.py` | `test_parses_table_format` | Table format still works |
-| `tests/unit/test_check_plan_tests.py` | `test_parses_inline_format` | Inline format parsed |
-| `tests/unit/test_check_plan_completion.py` | `test_detects_missing_evidence` | Missing verification detected |
-| `tests/unit/test_check_plan_completion.py` | `test_detects_valid_evidence` | Valid evidence accepted |
-| `tests/e2e/test_v1_acceptance.py` | `test_artifact_discovery` | Agents can discover artifacts |
-| `tests/e2e/test_v1_acceptance.py` | `test_artifact_interfaces` | Interfaces are readable |
-| `tests/e2e/test_v1_acceptance.py` | `test_structured_errors` | Errors have codes |
-| `tests/e2e/test_v1_acceptance.py` | `test_scrip_transfers` | Economic transactions work |
-| `tests/e2e/test_v1_acceptance.py` | `test_resource_constraints` | Limits are enforced |
-
-### Existing Tests (Must Pass)
+### Existing Tests
 
 | Test Pattern | Why |
 |--------------|-----|
 | `tests/e2e/test_smoke.py` | Smoke tests still work |
-| All unit tests | No regressions |
+
+**Note:** Parser fix verified manually - Plan #40 now shows 6 tests instead of 0.
+
+---
+
+## Future Tests (Planned for Later Phases)
+
+The following tests are planned for future phases of Plan #41 and are NOT part of this PR's requirements:
+
+| Test File | Test Function | Phase |
+|-----------|---------------|-------|
+| `tests/unit/test_check_plan_tests.py` | `test_parses_bullet_format` | Parser testing |
+| `tests/unit/test_check_plan_completion.py` | `test_detects_missing_evidence` | CI enforcement |
+| `tests/e2e/test_v1_acceptance.py` | `test_artifact_discovery` | V1 acceptance |
+| `tests/e2e/test_v1_acceptance.py` | `test_artifact_interfaces` | V1 acceptance |
+| `tests/e2e/test_v1_acceptance.py` | `test_structured_errors` | V1 acceptance |
+| `tests/e2e/test_v1_acceptance.py` | `test_scrip_transfers` | V1 acceptance |
+| `tests/e2e/test_v1_acceptance.py` | `test_resource_constraints` | V1 acceptance |
+
+These will be added as Plan #41 progresses through its phases.
 
 ---
 

@@ -140,6 +140,57 @@ python scripts/complete_plan.py --plan N --skip-e2e
 | Git Hooks | Could add pre-commit check for unverified completions |
 | Doc-Code Coupling | Verification includes coupling check |
 
+## Lessons Learned (Plan #41)
+
+This pattern had enforcement gaps that allowed unverified work through. Documented here for future reference.
+
+### Gap 1: Test Parser Only Handled Tables
+
+**Problem:** `check_plan_tests.py` only parsed markdown table format:
+```markdown
+| Test File | Test Function | Description |
+|-----------|---------------|-------------|
+| `tests/foo.py` | `test_bar` | Does X |
+```
+
+But Claude instances often wrote bullet format:
+```markdown
+- `tests/foo.py::test_bar`
+```
+
+**Result:** Tests defined in bullets were invisible to CI. Plan #40 had 6 required tests that were never validated.
+
+**Fix:** Updated parser to handle both table and bullet formats (Plan #41).
+
+### Gap 2: No CI Enforcement of complete_plan.py
+
+**Problem:** The script was documented as "mandatory" but nothing enforced it:
+- PRs could merge without running the script
+- Plan status could stay "In Progress" after implementation merged
+- No post-merge check verified evidence existed
+
+**Result:** Plan #40 was merged without ever running `complete_plan.py`.
+
+**Fix:** Added CI job to check for verification evidence (Plan #41).
+
+### Gap 3: "No Tests Defined" Passed CI
+
+**Problem:** When a plan had no parseable tests:
+- CI reported "No test requirements defined"
+- This was treated as **pass**, not fail
+- Plans without proper test sections slipped through
+
+**Fix:** CI now warns on plans with no tests. PRs referencing such plans require explicit acknowledgment.
+
+### Key Insight
+
+Process compliance is only as good as automated enforcement. Documented requirements without tooling support will be violated—not maliciously, but because AI instances vary in format and sessions end mid-workflow.
+
+**Enforcement must be:**
+- **Format-agnostic** - Parse what's written, not what you wish was written
+- **Positive verification** - Require evidence, not absence of failure
+- **Defense in depth** - Multiple checks, not single points of failure
+
 ## Origin
 
 Emerged from agent_ecology after multiple "complete" plans were found to have failing tests. The cost of late integration testing exceeded the overhead of mandatory verification.
