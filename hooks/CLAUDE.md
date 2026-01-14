@@ -13,6 +13,7 @@ Catch issues before they reach CI. These hooks run locally on every commit.
 | `pre-commit` | Doc-coupling, mypy, config validation, branch divergence check |
 | `commit-msg` | Validates commit message format (`[Plan #N]` or `[Trivial]`) |
 | `post-commit` | Reminds about unpushed commits to prevent divergence |
+| `pre-push` | Warns if pushing branch without active claim (warning only) |
 
 ## Installation
 
@@ -21,6 +22,7 @@ Catch issues before they reach CI. These hooks run locally on every commit.
 ln -sf ../../hooks/pre-commit .git/hooks/pre-commit
 ln -sf ../../hooks/commit-msg .git/hooks/commit-msg
 ln -sf ../../hooks/post-commit .git/hooks/post-commit
+ln -sf ../../hooks/pre-push .git/hooks/pre-push
 
 # Or use the Makefile
 make install-hooks

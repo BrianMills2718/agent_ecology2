@@ -29,6 +29,9 @@ Usage:
     # Verify current branch has a claim (CI mode)
     python scripts/check_claims.py --verify-claim
 
+    # Verify a specific branch has a claim (for pre-push hook)
+    python scripts/check_claims.py --verify-branch my-branch
+
     # Sync YAML to CLAUDE.md table
     python scripts/check_claims.py --sync
 
@@ -62,11 +65,32 @@ from typing import Any
 import yaml
 
 
-YAML_PATH = Path(".claude/active-work.yaml")
-CLAUDE_MD_PATH = Path("CLAUDE.md")
-PLANS_DIR = Path("docs/plans")
+def get_main_repo_root() -> Path:
+    """Get the main repo root (not worktree).
 
-FEATURES_DIR = Path("features")
+    For worktrees, returns the main repository's root directory.
+    This ensures claims are stored in a shared location.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        git_dir = Path(result.stdout.strip())
+        # git-common-dir returns the .git directory, so parent is repo root
+        return git_dir.parent
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return Path.cwd()
+
+
+# Use main repo root for claims to share across worktrees
+_MAIN_ROOT = get_main_repo_root()
+YAML_PATH = _MAIN_ROOT / ".claude/active-work.yaml"
+CLAUDE_MD_PATH = _MAIN_ROOT / "CLAUDE.md"
+PLANS_DIR = _MAIN_ROOT / "docs/plans"
+FEATURES_DIR = _MAIN_ROOT / "features"
 
 
 def load_all_features() -> dict[str, dict[str, Any]]:
@@ -764,6 +788,12 @@ def main() -> int:
         metavar="FILE",
         help="Check if files are covered by current claims"
     )
+    parser.add_argument(
+        "--verify-branch",
+        type=str,
+        metavar="BRANCH",
+        help="CI mode: verify a specific branch has an active claim (exit 1 if not)"
+    )
 
     args = parser.parse_args()
 
@@ -802,6 +832,17 @@ def main() -> int:
             print("  1. Create a worktree: make worktree BRANCH=my-feature")
             print("  2. Claim work: python scripts/check_claims.py --claim --task 'My task'")
             print("  3. Then commit your changes")
+            return 1
+
+    # Handle verify-branch (CI mode - for pre-push hook)
+    if args.verify_branch:
+        branch = args.verify_branch
+        has_claim, message = verify_has_claim(data, branch)
+        if has_claim:
+            print(f"✓ {message}")
+            return 0
+        else:
+            # Silent failure - used by pre-push hook which shows its own message
             return 1
 
     # Handle list-features
