@@ -54,7 +54,3 @@ completed:
   plan: 44
   task: Implement genesis full unprivilege
   completed_at: '2026-01-14T09:45:00Z'
-merging:
-  pr: '145'
-  cc_id: trivial-post-v1-plans
-  locked_at: '2026-01-14T10:02:39.178775Z'
