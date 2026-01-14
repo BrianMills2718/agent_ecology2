@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from typing import Any, Callable, TypedDict
+from typing import Any, Callable, TypedDict, cast
 
 from ..config import get_genesis_config, get, get_validated_config
 from ..config_schema import GenesisConfig
@@ -1355,7 +1355,7 @@ class GenesisRightsRegistry(GenesisArtifact):
             # Kernel mode: ensure defaults then query
             if self._world.get_quota(agent_id, resource) == 0.0:
                 self.ensure_agent(agent_id)
-            return self._world.get_quota(agent_id, resource)
+            return cast(float, self._world.get_quota(agent_id, resource))
         # Legacy mode
         self.ensure_agent(agent_id)
         return self._legacy_quotas[agent_id].get(resource, 0.0)
