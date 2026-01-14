@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified: 2026-01-14 (Plan #18 - Artifact deletion)
+**Last verified:** 2026-01-14 (Plan #26 - Added get_artifacts_by_owner)
 
 ---
 

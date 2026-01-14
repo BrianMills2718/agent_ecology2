@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-14 (Added invocation registry endpoints)
+**Last verified:** 2026-01-14 (Added vulture observability events)
 
 ---
 
@@ -113,6 +113,47 @@ class EventLogger:
 | `mint` | Scrip minted | `world.py` |
 | `world_init` | World initialized | `world.py` |
 | `budget_pause` | API budget exhausted | `runner.py` |
+| `agent_frozen` | Agent exhausts compute | `world.py` |
+| `agent_unfrozen` | Agent resources restored | `world.py` |
+
+### Vulture Observability Events (Plan #26)
+
+Events for market-based rescue of frozen agents.
+
+**AGENT_FROZEN Event** - Emitted when an agent exhausts compute:
+```json
+{
+    "event_type": "agent_frozen",
+    "tick": 1500,
+    "agent_id": "alice",
+    "reason": "compute_exhausted",
+    "scrip_balance": 200,
+    "compute_remaining": 0,
+    "owned_artifacts": ["art_1", "art_2"],
+    "last_action_tick": 1480
+}
+```
+
+**AGENT_UNFROZEN Event** - Emitted when an agent is rescued or recovers:
+```json
+{
+    "event_type": "agent_unfrozen",
+    "tick": 1600,
+    "agent_id": "alice",
+    "unfrozen_by": "vulture_bob",
+    "resources_transferred": {
+        "compute": 100,
+        "scrip": 0
+    }
+}
+```
+
+**World API Methods:**
+- `world.is_agent_frozen(agent_id)` - Check if agent has compute <= 0
+- `world.get_frozen_agents()` - List all frozen agents
+- `world.emit_agent_frozen(agent_id, reason)` - Log AGENT_FROZEN event
+- `world.emit_agent_unfrozen(agent_id, unfrozen_by, resources)` - Log AGENT_UNFROZEN event
+- `world.artifacts.get_artifacts_by_owner(owner_id)` - Get artifact IDs owned by principal
 
 ### Configuration
 

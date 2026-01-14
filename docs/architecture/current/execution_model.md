@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-14 (Plan #18 - Artifact deletion convenience methods)
+**Last verified:** 2026-01-14 (Plan #26 - Vulture observability methods added)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

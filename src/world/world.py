@@ -1036,3 +1036,76 @@ class World:
             "message": result.message,
             "data": result.data,
         }
+
+    # -------------------------------------------------------------------------
+    # Vulture Observability - Freeze/Unfreeze Events (Plan #26)
+    # -------------------------------------------------------------------------
+
+    def is_agent_frozen(self, agent_id: str) -> bool:
+        """Check if an agent is frozen (compute exhausted).
+
+        An agent is frozen when their llm_tokens (compute) resource is <= 0.
+
+        Args:
+            agent_id: ID of agent to check
+
+        Returns:
+            True if agent is frozen, False otherwise
+        """
+        compute = self.ledger.get_resource(agent_id, "llm_tokens")
+        return compute <= 0
+
+    def get_frozen_agents(self) -> list[str]:
+        """Get list of all frozen agents.
+
+        Returns:
+            List of agent IDs that are currently frozen
+        """
+        frozen = []
+        for pid in self.principal_ids:
+            if self.is_agent_frozen(pid):
+                frozen.append(pid)
+        return frozen
+
+    def emit_agent_frozen(
+        self,
+        agent_id: str,
+        reason: str = "compute_exhausted",
+        last_action_tick: int | None = None,
+    ) -> None:
+        """Emit an AGENT_FROZEN event for vulture observability.
+
+        Args:
+            agent_id: ID of agent that froze
+            reason: Why agent froze (compute_exhausted, rate_limited, etc.)
+            last_action_tick: Tick of agent's last successful action
+        """
+        self.logger.log("agent_frozen", {
+            "tick": self.tick,
+            "agent_id": agent_id,
+            "reason": reason,
+            "scrip_balance": self.ledger.get_scrip(agent_id),
+            "compute_remaining": self.ledger.get_resource(agent_id, "llm_tokens"),
+            "owned_artifacts": self.artifacts.get_artifacts_by_owner(agent_id),
+            "last_action_tick": last_action_tick or self.tick,
+        })
+
+    def emit_agent_unfrozen(
+        self,
+        agent_id: str,
+        unfrozen_by: str = "self",
+        resources_transferred: dict[str, float] | None = None,
+    ) -> None:
+        """Emit an AGENT_UNFROZEN event for vulture observability.
+
+        Args:
+            agent_id: ID of agent that unfroze
+            unfrozen_by: ID of agent who transferred resources ("self" for natural recovery)
+            resources_transferred: Resources that were transferred to unfreeze
+        """
+        self.logger.log("agent_unfrozen", {
+            "tick": self.tick,
+            "agent_id": agent_id,
+            "unfrozen_by": unfrozen_by,
+            "resources_transferred": resources_transferred or {},
+        })
