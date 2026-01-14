@@ -2,11 +2,14 @@
 """Sync and verify plan status across all locations.
 
 Usage:
-    # Check for inconsistencies
+    # Check for inconsistencies (index vs file AND content vs status)
     python scripts/sync_plan_status.py --check
 
     # Sync index to match plan files (plan files are source of truth)
     python scripts/sync_plan_status.py --sync
+
+    # Auto-fix status based on content (Needs Plan → Planned if has ## Plan)
+    python scripts/sync_plan_status.py --fix-content
 
     # Show all plan statuses
     python scripts/sync_plan_status.py --list
@@ -15,7 +18,7 @@ Status is tracked in two places:
 1. Individual plan files (docs/plans/NN_*.md) - SOURCE OF TRUTH
 2. Index table in docs/plans/CLAUDE.md
 
-This script ensures they stay in sync.
+This script ensures they stay in sync and validates that status matches content.
 """
 
 import argparse
@@ -71,12 +74,21 @@ def parse_plan_status(plan_path: Path) -> dict | None:
     title_match = re.search(r"^#\s*(?:Gap\s*\d+[:\s]*)?(.+?)(?:\n|$)", content, re.MULTILINE)
     title = title_match.group(1).strip() if title_match else plan_path.stem
 
+    # Check for content sections (indicates plan is written)
+    has_plan_section = bool(re.search(r"^## (?:Plan|Solution|Design)\b", content, re.MULTILINE))
+    has_problem_section = bool(re.search(r"^## (?:Problem|Gap|Motivation)\b", content, re.MULTILINE))
+    has_verification_section = bool(re.search(r"^## (?:Verification|Required Tests)\b", content, re.MULTILINE))
+
     return {
         "number": plan_num,
         "file": plan_path.name,
+        "path": plan_path,
         "title": title,
         "status_raw": status_text,
         "status_emoji": status_emoji or "❓",
+        "has_plan_section": has_plan_section,
+        "has_problem_section": has_problem_section,
+        "has_verification_section": has_verification_section,
     }
 
 
@@ -128,6 +140,84 @@ def parse_index_table(index_path: Path) -> dict[int, dict]:
         }
 
     return plans
+
+
+def check_content_consistency() -> list[dict]:
+    """Check that plan status matches content.
+
+    Validates:
+    - Status "❌ Needs Plan" + has ## Plan section = should be "📋 Planned"
+    - Status "📋 Planned" + no ## Plan section = missing content
+    """
+    issues = []
+
+    plan_files = sorted(PLANS_DIR.glob("[0-9][0-9]_*.md"))
+
+    for pf in plan_files:
+        plan = parse_plan_status(pf)
+        if not plan:
+            continue
+
+        status = plan["status_emoji"]
+        has_plan = plan["has_plan_section"]
+
+        # Check: "Needs Plan" but has plan content
+        if status == "❌" and has_plan:
+            issues.append({
+                "plan": plan["number"],
+                "issue": "status_content_mismatch",
+                "message": f"Plan #{plan['number']}: status is 'Needs Plan' but has ## Plan section",
+                "current_status": plan["status_raw"],
+                "suggested_status": "📋 Planned",
+                "path": plan["path"],
+            })
+
+        # Check: "Planned" but missing plan content
+        if status == "📋" and not has_plan:
+            issues.append({
+                "plan": plan["number"],
+                "issue": "missing_content",
+                "message": f"Plan #{plan['number']}: status is 'Planned' but missing ## Plan section",
+                "current_status": plan["status_raw"],
+                "path": plan["path"],
+            })
+
+    return issues
+
+
+def fix_content_status() -> int:
+    """Auto-fix status based on content.
+
+    Changes "❌ Needs Plan" → "📋 Planned" for plans with ## Plan section.
+    """
+    issues = check_content_consistency()
+
+    # Only fix status_content_mismatch issues
+    fixable = [i for i in issues if i["issue"] == "status_content_mismatch"]
+
+    if not fixable:
+        print("No status/content mismatches to fix.")
+        return 0
+
+    fixed = 0
+    for issue in fixable:
+        path = issue["path"]
+        content = path.read_text()
+
+        # Replace "❌ Needs Plan" with "📋 Planned"
+        new_content = re.sub(
+            r"(\*\*Status:\*\*\s*)❌\s*Needs Plan",
+            r"\1📋 Planned",
+            content
+        )
+
+        if new_content != content:
+            path.write_text(new_content)
+            print(f"  Fixed Plan #{issue['plan']}: ❌ Needs Plan → 📋 Planned")
+            fixed += 1
+
+    print(f"\nFixed {fixed} plan(s).")
+    return 0
 
 
 def check_consistency() -> list[dict]:
@@ -279,12 +369,17 @@ def main() -> int:
     parser.add_argument(
         "--check", "-c",
         action="store_true",
-        help="Check for inconsistencies (default action)",
+        help="Check for all inconsistencies (index sync + content validation)",
     )
     parser.add_argument(
         "--sync", "-s",
         action="store_true",
         help="Sync index table to match plan files",
+    )
+    parser.add_argument(
+        "--fix-content",
+        action="store_true",
+        help="Auto-fix status based on content (Needs Plan → Planned)",
     )
     parser.add_argument(
         "--list", "-l",
@@ -295,34 +390,59 @@ def main() -> int:
     args = parser.parse_args()
 
     # Default to check if no action specified
-    if not any([args.check, args.sync, args.list]):
+    if not any([args.check, args.sync, args.fix_content, args.list]):
         args.check = True
 
     if args.list:
         list_statuses()
         return 0
 
+    if args.fix_content:
+        return fix_content_status()
+
     if args.sync:
         return sync_index_to_plans()
 
     if args.check:
-        issues = check_consistency()
+        # Check both index consistency and content consistency
+        index_issues = check_consistency()
+        content_issues = check_content_consistency()
 
-        if not issues:
-            print("All plan statuses are consistent.")
+        all_issues = index_issues + content_issues
+
+        if not all_issues:
+            print("✅ All plan statuses are consistent.")
             return 0
 
-        print("STATUS INCONSISTENCIES FOUND:")
-        print("-" * 60)
-        for issue in issues:
-            print(f"  Plan #{issue['plan']}: {issue['message']}")
-            if "file_status" in issue:
-                print(f"    File:  {issue['file_status']}")
-                print(f"    Index: {issue['index_status']}")
+        exit_code = 0
 
-        print()
-        print("To fix, run: python scripts/sync_plan_status.py --sync")
-        return 1
+        if index_issues:
+            print("INDEX/FILE STATUS MISMATCHES:")
+            print("-" * 60)
+            for issue in index_issues:
+                print(f"  Plan #{issue['plan']}: {issue['message']}")
+                if "file_status" in issue:
+                    print(f"    File:  {issue['file_status']}")
+                    print(f"    Index: {issue['index_status']}")
+            print()
+            print("To fix: python scripts/sync_plan_status.py --sync")
+            print()
+            exit_code = 1
+
+        if content_issues:
+            print("STATUS/CONTENT MISMATCHES:")
+            print("-" * 60)
+            for issue in content_issues:
+                print(f"  Plan #{issue['plan']}: {issue['message']}")
+                if issue["issue"] == "status_content_mismatch":
+                    print(f"    Current:   {issue['current_status']}")
+                    print(f"    Suggested: {issue['suggested_status']}")
+            print()
+            print("To fix: python scripts/sync_plan_status.py --fix-content")
+            print()
+            exit_code = 1
+
+        return exit_code
 
     return 0
 

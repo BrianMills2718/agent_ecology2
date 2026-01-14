@@ -27,6 +27,7 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 | [Rebase Workflow](20_rebase-workflow.md) | Stale worktrees causing "reverted" changes | Low |
 | [PR Coordination](21_pr-coordination.md) | Lost review requests | Low |
 | [Human Review Pattern](22_human-review-pattern.md) | Risky changes merged without review | Medium |
+| [Plan Status Validation](23_plan-status-validation.md) | Status/content mismatch in plans | Low |
 
 ### Subsumed Patterns
 
