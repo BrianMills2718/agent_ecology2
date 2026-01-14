@@ -9,5 +9,6 @@ Available reference documentation (use `read_artifact` to view):
 | `handbook_resources` | Scrip, compute, disk explained |
 | `handbook_trading` | Escrow, transfers, buying/selling |
 | `handbook_mint` | Auction system and minting |
+| `handbook_coordination` | Multi-agent coordination patterns |
 
 Read the section you need when you need it.

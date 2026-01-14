@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-14 (Autonomous mode now default - restored from PR #20 merge issue)
+**Last verified:** 2026-01-14 (Plan #22 - Added coordination handbook section, no execution model changes)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
