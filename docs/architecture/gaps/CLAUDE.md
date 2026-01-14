@@ -49,7 +49,8 @@ Use `docs/plans/` to:
 | `ws4_genesis.yaml` | Genesis artifact gaps |
 | `ws5_artifacts.yaml` | Artifact system gaps |
 | `ws6_infrastructure.yaml` | Infrastructure gaps |
-| `plans/` | Detailed implementation plans for Phase 1-2 |
+
+**Archived:** Phase 1-2 implementation plans moved to `docs/archive/phase_implementation_plans/` (all complete)
 
 ---
 
