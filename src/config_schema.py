@@ -1003,6 +1003,35 @@ class MemoryConfigModel(StrictModel):
 
 
 # =============================================================================
+# LIBRARIES MODEL (Plan #29)
+# =============================================================================
+
+class LibrariesConfig(StrictModel):
+    """Library installation configuration for agents."""
+
+    genesis: list[str] = Field(
+        default_factory=lambda: [
+            "requests", "aiohttp", "urllib3",  # HTTP
+            "numpy", "pandas", "python-dateutil",  # Data
+            "scipy", "matplotlib",  # Scientific
+            "cryptography",  # Crypto
+            "pyyaml", "pydantic", "jinja2",  # Core (already installed)
+        ],
+        description="Pre-installed libraries (don't count against quota)"
+    )
+    blocked: list[str] = Field(
+        default_factory=lambda: [
+            "docker",  # Docker daemon access
+            "debugpy",  # Debugger attachment
+            "pyautogui",  # Desktop automation
+            "keyboard",  # Keyboard input capture
+            "pynput",  # Input device control
+        ],
+        description="Blocked packages (security risks)"
+    )
+
+
+# =============================================================================
 # ROOT CONFIG MODEL
 # =============================================================================
 
@@ -1028,6 +1057,7 @@ class AppConfig(StrictModel):
     dashboard: DashboardConfig = Field(default_factory=DashboardConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
     memory: MemoryConfigModel = Field(default_factory=MemoryConfigModel)
+    libraries: LibrariesConfig = Field(default_factory=LibrariesConfig)
 
     # Dynamic fields set at runtime
     principals: list[dict[str, int | str]] = Field(

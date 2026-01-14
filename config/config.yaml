@@ -340,6 +340,39 @@ budget:
   checkpoint_on_end: true       # Save checkpoint when simulation ends normally
 
 # -----------------------------------------------------------------------------
+# LIBRARIES - Package installation for agents
+# -----------------------------------------------------------------------------
+libraries:
+  # Genesis libraries: Pre-installed in Docker image, don't count against quota
+  # These are cold-start conveniences, like genesis artifacts
+  genesis:
+    # HTTP
+    - requests
+    - aiohttp
+    - urllib3
+    # Data
+    - numpy
+    - pandas
+    - python-dateutil
+    # Scientific
+    - scipy
+    - matplotlib
+    # Crypto
+    - cryptography
+    # Already in requirements.txt (core deps)
+    - pyyaml
+    - pydantic
+    - jinja2
+
+  # Blocked packages: Security risks (sandbox escape potential)
+  blocked:
+    - docker            # Docker daemon access
+    - debugpy           # Debugger attachment
+    - pyautogui         # Desktop automation
+    - keyboard          # Keyboard input capture
+    - pynput            # Input device control
+
+# -----------------------------------------------------------------------------
 # DASHBOARD - HTML visibility interface
 # -----------------------------------------------------------------------------
 dashboard:

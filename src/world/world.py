@@ -179,6 +179,9 @@ class World:
     _quota_limits: dict[str, dict[str, float]]
     # Maps principal_id -> resource -> current usage
     _quota_usage: dict[str, dict[str, float]]
+    # Installed libraries per agent (Plan #29)
+    # Maps principal_id -> list of (library_name, version)
+    _installed_libraries: dict[str, list[tuple[str, str | None]]]
 
     def __init__(self, config: ConfigDict) -> None:
         self.config = config
@@ -220,6 +223,8 @@ class World:
         # Must be initialized BEFORE genesis artifacts since rights_registry delegates here
         self._quota_limits = {}
         self._quota_usage = {}
+        # Installed libraries per agent (Plan #29)
+        self._installed_libraries = {}
 
         # Genesis artifacts (system-owned proxies)
         self.genesis_artifacts = create_genesis_artifacts(
@@ -313,10 +318,8 @@ class World:
         self._mint_submissions = {}
         self._mint_held_bids = {}
         self._mint_history = []
-        # Kernel quota state (Plan #42)
-        # Quotas are kernel state, not genesis artifact state
-        self._quota_limits = {}
-        self._quota_usage = {}
+        # NOTE: _quota_limits and _quota_usage are initialized earlier (line ~222)
+        # to ensure they exist before rights_registry.ensure_agent() is called
 
 
         # Log world init
@@ -1583,3 +1586,45 @@ class World:
         quota = self.get_quota(principal_id, resource)
         usage = self.get_quota_usage(principal_id, resource)
         return max(0.0, quota - usage)
+
+    # -------------------------------------------------------------------------
+    # Library Installation (Plan #29)
+    # -------------------------------------------------------------------------
+
+    def record_library_install(
+        self, principal_id: str, library_name: str, version: str | None = None
+    ) -> None:
+        """Record that a library was installed for an agent.
+
+        This tracks installed libraries per-agent for observability and
+        potential future enforcement (e.g., preventing duplicate installs).
+
+        Args:
+            principal_id: The agent who installed the library
+            library_name: Package name
+            version: Optional version constraint
+        """
+        if principal_id not in self._installed_libraries:
+            self._installed_libraries[principal_id] = []
+        self._installed_libraries[principal_id].append((library_name, version))
+
+        # Log the installation event
+        self.logger.log(
+            "library_installed",
+            {
+                "principal_id": principal_id,
+                "library": library_name,
+                "version": version,
+            },
+        )
+
+    def get_installed_libraries(self, principal_id: str) -> list[tuple[str, str | None]]:
+        """Get list of libraries installed by an agent.
+
+        Args:
+            principal_id: The agent to query
+
+        Returns:
+            List of (library_name, version) tuples
+        """
+        return self._installed_libraries.get(principal_id, [])
