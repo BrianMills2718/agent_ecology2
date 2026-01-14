@@ -1,43 +1,19 @@
 # Plan #51: V1 Acceptance Criteria
 
 **Status:** 📋 Planned
-
 **Priority:** **High**
-**Blocked By:** None (extracted from #41)
-**Blocks:** V1 release declaration
+**Blocked By:** None
+**Blocks:** V1 release confidence
 
 ---
 
 ## Gap
 
-**Current:** We have smoke tests and basic real E2E tests, but no formal definition of what "V1" means. Can't prove V1 works because we haven't defined V1.
+**Current:** No formal definition of what "V1" means. No automated verification that V1 works.
 
-**Target:** Clear V1 acceptance criteria with comprehensive E2E tests that validate all core features work end-to-end with real LLM.
+**Target:** Concrete V1 acceptance criteria with automated tests proving they pass.
 
-**Why High:** Without V1 acceptance criteria, "V1 complete" is guesswork. This blocks confident release declaration.
-
----
-
-## V1 Definition
-
-V1 is the **minimal viable agent ecology** - sufficient to demonstrate emergent collective capability under resource constraints.
-
-### Core Capabilities (Must Have)
-
-1. **Multi-Agent Execution** - Multiple agents run simultaneously without interference
-2. **Artifact System** - Agents can discover, create, read, and invoke artifacts
-3. **Economic Primitives** - Scrip transfers work, balances are tracked correctly
-4. **Resource Constraints** - Rate limiting and quotas are enforced
-5. **Coordination** - Contracts and escrow enable trustless coordination
-6. **Observability** - Actions are logged and traceable
-
-### Not in V1 (Explicitly Excluded)
-
-- Agent rights trading (Plan #8)
-- Scrip debt contracts (Plan #9)
-- Memory persistence (Plan #10)
-- Library installation (Plan #29)
-- LLM budget trading (Plan #30)
+**Why High:** Can't prove V1 works without this. "V1 complete" is guesswork.
 
 ---
 
@@ -47,16 +23,17 @@ V1 is the **minimal viable agent ecology** - sufficient to demonstrate emergent 
 
 | File | Change |
 |------|--------|
-| `docs/V1_ACCEPTANCE.md` | Create V1 acceptance criteria document |
-| `tests/e2e/test_v1_acceptance.py` | Create comprehensive V1 acceptance tests |
-| `.github/workflows/ci.yml` | Add V1 acceptance job (optional) |
+| `docs/V1_ACCEPTANCE.md` | Define concrete V1 criteria |
+| `tests/e2e/test_v1_acceptance.py` | Test each criterion |
+| `.github/workflows/ci.yml` | CI job for V1 acceptance |
 
 ### Steps
 
-1. Create `docs/V1_ACCEPTANCE.md` with formal criteria
-2. Create `tests/e2e/test_v1_acceptance.py` with tests for each criterion
-3. Verify all tests pass with `--run-external`
-4. Update CI to run V1 acceptance on release branches (optional)
+1. **Draft V1 criteria** - Review README.md and architecture docs
+2. **Create acceptance doc** - `docs/V1_ACCEPTANCE.md`
+3. **Write acceptance tests** - `tests/e2e/test_v1_acceptance.py`
+4. **Add CI job** - Run acceptance tests on main
+5. **Verify all pass** - Ensure V1 criteria are met
 
 ---
 
@@ -64,75 +41,34 @@ V1 is the **minimal viable agent ecology** - sufficient to demonstrate emergent 
 
 ### New Tests (TDD)
 
-Create these tests FIRST, before implementing:
-
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/e2e/test_v1_acceptance.py` | `test_multi_agent_execution` | Multiple agents run without interference |
-| `tests/e2e/test_v1_acceptance.py` | `test_artifact_discovery` | Agents can discover artifacts via genesis_store |
-| `tests/e2e/test_v1_acceptance.py` | `test_artifact_creation` | Agents can create new artifacts |
-| `tests/e2e/test_v1_acceptance.py` | `test_artifact_invocation` | Agents can invoke artifact interfaces |
-| `tests/e2e/test_v1_acceptance.py` | `test_scrip_transfer` | Ledger transfers work correctly |
-| `tests/e2e/test_v1_acceptance.py` | `test_resource_rate_limiting` | Rate limits are enforced |
-| `tests/e2e/test_v1_acceptance.py` | `test_escrow_coordination` | Escrow enables trustless artifact trade |
-| `tests/e2e/test_v1_acceptance.py` | `test_action_logging` | All actions are logged to event log |
-
-### Existing Tests (Must Pass)
-
-| Test Pattern | Why |
-|--------------|-----|
-| `tests/e2e/test_smoke.py` | Smoke tests still work |
-| `tests/e2e/test_real_e2e.py` | Real E2E still works |
+| `tests/e2e/test_v1_acceptance.py` | `test_ac_1_artifact_discovery` | Agents discover artifacts |
+| `tests/e2e/test_v1_acceptance.py` | `test_ac_2_artifact_invocation` | Agents invoke interfaces |
+| `tests/e2e/test_v1_acceptance.py` | `test_ac_3_scrip_transfers` | Ledger transfers work |
+| `tests/e2e/test_v1_acceptance.py` | `test_ac_4_resource_constraints` | Rate limiting enforced |
+| `tests/e2e/test_v1_acceptance.py` | `test_ac_5_contracts` | Contracts work |
+| `tests/e2e/test_v1_acceptance.py` | `test_ac_6_escrow` | Escrow trading works |
 
 ---
 
-## E2E Verification
+## Acceptance Criteria
 
-**Required:** All V1 acceptance tests must pass with real LLM.
-
-| Scenario | Steps | Expected Outcome |
-|----------|-------|------------------|
-| Multi-agent economy | 1. Run 3 agents for 5 ticks | All agents execute, balances tracked |
-| Artifact lifecycle | 1. Agent discovers store 2. Creates artifact 3. Another agent invokes | Artifact created and invocable |
-| Economic transaction | 1. Agent A transfers to Agent B | Balance correctly updated |
-
-```bash
-# Run V1 acceptance verification
-pytest tests/e2e/test_v1_acceptance.py -v --run-external
-```
-
----
-
-## Verification
-
-### Tests & Quality
-- [ ] All required tests pass: `python scripts/check_plan_tests.py --plan 51`
-- [ ] Full test suite passes: `pytest tests/`
-- [ ] Type check passes: `python -m mypy src/ --ignore-missing-imports`
-- [ ] **E2E verification passes:** `pytest tests/e2e/test_v1_acceptance.py -v --run-external`
-
-### Documentation
-- [ ] `docs/V1_ACCEPTANCE.md` created with clear criteria
-- [ ] Doc-coupling check passes: `python scripts/check_doc_coupling.py`
-
-### Completion Ceremony
-- [ ] Plan file status → `✅ Complete`
-- [ ] `plans/CLAUDE.md` index → `✅ Complete`
-- [ ] Claim released from Active Work table (root CLAUDE.md)
-- [ ] Branch merged or PR created
+1. `docs/V1_ACCEPTANCE.md` exists with concrete criteria
+2. `tests/e2e/test_v1_acceptance.py` tests each criterion
+3. All V1 acceptance tests pass
+4. CI runs acceptance tests on main branch
 
 ---
 
 ## Notes
 
-This plan was extracted from Plan #41 Step 5 to give V1 acceptance proper scope and attention.
+Split from Plan #41 (Meta-Process Enforcement Gaps) Step 5. Plan #41 focused on enforcement tooling; this plan focuses on V1 product definition.
 
-**Design decisions:**
-- Tests use real LLM (`--run-external`) because V1 must work end-to-end
-- Tests are comprehensive but not exhaustive - focus on core capabilities
-- V1 scope is intentionally minimal - better to ship something that works
+---
 
-**Relationship to Plan #41:**
-- Plan #41 focused on meta-process enforcement gaps
-- V1 acceptance was one of those gaps but deserved its own plan
-- Plan #41 can be completed once this plan is created (not necessarily complete)
+## References
+
+- Plan #41: Meta-Process Enforcement Gaps (origin)
+- README.md (project goals)
+- docs/architecture/current/ (implementation status)
