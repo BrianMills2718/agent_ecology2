@@ -385,17 +385,32 @@ python scripts/check_claims.py --release --validate
 
 ### Merging PRs
 
-> **MERGE PROTOCOL:** Only merge one PR at a time. Wait for CI to pass AND merge to complete
-> before starting the next merge. Check `gh pr list` before merging to avoid race conditions.
+> **MERGE PROTOCOL:** Use `make merge PR=N` to merge PRs. This enforces distributed locking
+> so only one PR merges at a time across all CC instances.
 
-No branch protection = no approval required. Review with comment, then merge:
-
+**Always use the locking merge command:**
 ```bash
-gh pr review 46 --comment --body "LGTM"
-gh pr merge 46 --squash --delete-branch
+make merge PR=123          # Merge with distributed lock (REQUIRED)
+make merge-status          # Check if another merge is in progress
+make merge-release         # Force release stale lock (>10 min old)
 ```
 
-**Note:** GitHub blocks self-approval (`--approve`) but allows direct merge if protection doesn't require it.
+**How it works:**
+1. Checks if another merge is in progress (via `.claude/active-work.yaml`)
+2. Acquires lock (commits + pushes lock state)
+3. Merges the PR via `gh pr merge`
+4. Releases lock (commits + pushes release)
+5. Pulls latest main
+
+**Why locking?** Without it, two CC instances could:
+- Both see a PR with passing CI
+- Both try to merge simultaneously
+- Create race conditions and conflicts
+
+**Direct merge (not recommended):**
+```bash
+gh pr merge 46 --squash --delete-branch  # No locking - avoid
+```
 
 See `docs/meta/pr-coordination.md` for detailed merge workflow.
 
