@@ -74,6 +74,7 @@ Master index of all gaps and their implementation plans.
 | 45 | [Real E2E Test Requirement](45_real_e2e_requirement.md) | **High** | 📋 Planned | - |
 | 46 | [PR Review Coordination](46_review_coordination.md) | **High** | 📋 Planned | - |
 | 47 | [Meta-Process Enforcement](47_meta_process_enforcement.md) | **High** | 📋 Planned | #41 |
+| 48 | [CI Optimization](48_ci_optimization.md) | Medium | 📋 Planned | - |
 
 ---
 
