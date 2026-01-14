@@ -132,6 +132,10 @@ Zero magic numbers in code. All values from `config/config.yaml`. Missing config
 
 **If a mock is truly necessary:** Add `# mock-ok: <reason>` comment. CI enforces this (`python scripts/check_mock_usage.py --strict`).
 
+### 6. Prefer Libraries Over Hand-Rolling
+
+Before implementing algorithms or infrastructure (graph analysis, parsing, data structures, etc.), check if a well-maintained library exists. **Ask the user for guidance** if unsure - don't assume building from scratch is better. Hand-rolled code has maintenance burden and likely more bugs than battle-tested libraries.
+
 ---
 
 ## Terminology
