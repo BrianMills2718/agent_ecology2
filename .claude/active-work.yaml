@@ -2,14 +2,7 @@
 # Machine-readable tracking for multi-CC coordination.
 # Use: python scripts/check_claims.py --help
 
-claims:
-- cc_id: main
-  task: 'Phase 3: Create per-feature E2E tests'
-  claimed_at: '2026-01-13T19:30:32Z'
-- cc_id: plan-23-error-conventions
-  task: 'Plan #23: Implement Error Response Conventions'
-  claimed_at: '2026-01-13T20:31:18Z'
-  plan: 23
+claims: []
 completed:
 - cc_id: tier2-architecture-decisions
   task: Tier 2 architecture decisions (Items 4-7)
@@ -41,3 +34,11 @@ completed:
   plan: 24
   task: 'Implement Gap #24 Ecosystem Health KPIs'
   completed_at: '2026-01-13T19:43:44Z'
+- cc_id: main
+  plan: null
+  task: 'Phase 3: Create per-feature E2E tests'
+  completed_at: '2026-01-14T02:15:25Z'
+- cc_id: plan-23-error-conventions
+  plan: 23
+  task: 'Plan #23: Implement Error Response Conventions'
+  completed_at: '2026-01-14T02:17:06Z'
