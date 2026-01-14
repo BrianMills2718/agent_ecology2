@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-14 (Plan #42 - Added kernel quota primitives to World)
+**Last verified:** 2026-01-14 (Autonomous mode now default - restored from PR #20 merge issue)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
@@ -32,9 +32,23 @@ See `docs/architecture/current/agents.md` for artifact-backed agent details.
 
 ---
 
-## Tick-Synchronized Execution
+## Execution Modes
 
-Agents do NOT act autonomously. The runner controls when agents think and act.
+**Default: Autonomous mode** (`use_autonomous_loops: true`)
+- Agents run independently via `AgentLoop`
+- Resource-gated by `RateTracker` (rolling window)
+- No tick synchronization
+
+**Legacy: Tick-synchronized mode** (`--ticks N` CLI flag)
+- Runner controls when agents think and act
+- Two-phase commit per tick
+- Useful for debugging/deterministic replay
+
+---
+
+## Tick-Synchronized Execution (Legacy Mode)
+
+When using `--ticks N`, agents do NOT act autonomously. The runner controls when agents think and act.
 
 ### Main Loop (`SimulationRunner.run()`)
 
@@ -181,21 +195,21 @@ def advance_tick(self) -> bool:
 
 ---
 
-## Autonomous Execution Mode (Optional)
+## Autonomous Execution Mode (Default)
 
-When `execution.use_autonomous_loops: true`, agents run independently instead of tick-synchronized.
+Autonomous mode is the default (`execution.use_autonomous_loops: true`). Agents run independently via `AgentLoop`, resource-gated by `RateTracker`.
 
 ### CLI Usage
 
 ```bash
-# Run autonomous mode for 60 seconds
+# Run autonomous mode for 60 seconds (default)
 python run.py --duration 60
 
-# Enable autonomous mode (runs until all agents stop)
-python run.py --autonomous
-
-# Combine with dashboard
+# Run autonomous mode with dashboard
 python run.py --duration 120 --dashboard
+
+# Run legacy tick-based mode (for debugging)
+python run.py --ticks 10
 ```
 
 ### Configuration
