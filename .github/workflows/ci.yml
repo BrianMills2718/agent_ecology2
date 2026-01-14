@@ -410,3 +410,118 @@ jobs:
             # Exit 0 for now (informational) - will be exit 1 when strict
             exit 0
           }
+
+  human-review-check:
+    runs-on: ubuntu-latest
+    # Plan #43: Block PRs for plans with ## Human Review Required until reviewed
+    if: github.event_name == 'pull_request'
+    continue-on-error: true  # Warning initially - will make strict later
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check for human review requirements
+        run: |
+          # Extract plan numbers from PR commits
+          PLANS=$(git log origin/main..HEAD --oneline | grep -oP '\[Plan #\K\d+' | sort -u || true)
+
+          if [ -z "$PLANS" ]; then
+            echo "No plan references found in commits - skipping check"
+            exit 0
+          fi
+
+          echo "Plans referenced in this PR: $PLANS"
+
+          NEEDS_REVIEW=false
+          for plan in $PLANS; do
+            PLAN_FILE=$(ls docs/plans/${plan}_*.md 2>/dev/null || ls docs/plans/0${plan}_*.md 2>/dev/null || echo "")
+
+            if [ -z "$PLAN_FILE" ]; then
+              echo "Plan #$plan: No plan file found"
+              continue
+            fi
+
+            if grep -q "## Human Review Required" "$PLAN_FILE"; then
+              echo ""
+              echo "⚠️ Plan #$plan requires human review!"
+              echo "   File: $PLAN_FILE"
+              echo ""
+              NEEDS_REVIEW=true
+            fi
+          done
+
+          if [ "$NEEDS_REVIEW" = true ]; then
+            echo ""
+            echo "========================================"
+            echo "WARNING: Human review required"
+            echo "========================================"
+            echo ""
+            echo "One or more plans have '## Human Review Required' section."
+            echo "Please ensure a human has reviewed and approved this work"
+            echo "before merging."
+            echo ""
+            # Exit 0 for now (informational) - will be exit 1 when strict
+            exit 0
+          fi
+
+          echo "✓ No human review requirements found"
+
+  adr-requirement:
+    runs-on: ubuntu-latest
+    # Plan #43: Core architecture files require ADR link in commit message
+    if: github.event_name == 'pull_request'
+    continue-on-error: true  # Warning initially - tracks ADR coverage
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check ADR requirements for core files
+        run: |
+          # Define core architecture files that should have ADR coverage
+          CORE_FILES="src/world/ledger.py src/world/executor.py src/world/artifacts/genesis_*.py src/world/action.py"
+
+          # Check if any core files were modified
+          CHANGED_CORE=""
+          for pattern in $CORE_FILES; do
+            MATCHES=$(git diff --name-only origin/main..HEAD -- $pattern 2>/dev/null || true)
+            if [ -n "$MATCHES" ]; then
+              CHANGED_CORE="$CHANGED_CORE $MATCHES"
+            fi
+          done
+
+          if [ -z "$CHANGED_CORE" ]; then
+            echo "✓ No core architecture files modified"
+            exit 0
+          fi
+
+          echo "Core files modified:$CHANGED_CORE"
+          echo ""
+
+          # Check if commits reference ADRs
+          ADR_REFS=$(git log origin/main..HEAD --oneline | grep -ciE 'ADR-[0-9]+|adr.*[0-9]+' || true)
+
+          if [ "$ADR_REFS" -eq 0 ]; then
+            echo "========================================"
+            echo "INFO: Core files modified without ADR reference"
+            echo "========================================"
+            echo ""
+            echo "Core architecture files were modified:"
+            echo "$CHANGED_CORE" | tr ' ' '\n' | grep -v '^$'
+            echo ""
+            echo "Consider creating or referencing an ADR for architectural changes."
+            echo "See: docs/adr/README.md"
+            echo ""
+            # Informational only
+            exit 0
+          fi
+
+          echo "✓ ADR reference found in commits"
