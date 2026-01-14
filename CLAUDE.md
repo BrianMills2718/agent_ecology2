@@ -367,6 +367,7 @@ python scripts/check_claims.py --release --validate
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
 | plan-42-kernel-quotas | 42 | Kernel quota primitives | 2026-01-14T07:35 | Active |
+| main | 41 | Fix meta-process enforcement gaps | 2026-01-14T07:34 | Active |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->

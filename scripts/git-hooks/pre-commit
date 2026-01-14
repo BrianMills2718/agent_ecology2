@@ -1,0 +1,65 @@
+#!/bin/bash
+# Worktree Enforcement - Git Pre-commit Hook
+# Blocks commits on main BRANCH to prevent multi-instance conflicts.
+#
+# Allowed:
+#   - Commits in worktrees (always)
+#   - Commits on feature branches (even in main directory)
+#   - Coordination files on main branch (.claude/*, CLAUDE.md)
+#   - --no-verify bypass for emergencies
+
+set -e
+
+# Check if we're in a worktree (main has .git directory, worktree has .git file)
+TOPLEVEL=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+if [[ -f "$TOPLEVEL/.git" ]]; then
+    exit 0  # Worktree - always allowed
+fi
+
+# We're in main directory. Check which branch we're on.
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || exit 0
+
+# If not on main branch, allow the commit
+if [[ "$BRANCH" != "main" ]]; then
+    exit 0  # Feature branch - allowed
+fi
+
+# We're on main branch. Check what's being committed.
+STAGED_FILES=$(git diff --cached --name-only)
+
+if [[ -z "$STAGED_FILES" ]]; then
+    exit 0  # No files staged
+fi
+
+# Check if ALL staged files are coordination files
+BLOCKED_FILES=""
+for file in $STAGED_FILES; do
+    case "$file" in
+        .claude/*|CLAUDE.md)
+            # Coordination files - allowed on main
+            ;;
+        *)
+            BLOCKED_FILES="$BLOCKED_FILES $file"
+            ;;
+    esac
+done
+
+if [[ -n "$BLOCKED_FILES" ]]; then
+    echo "================================================================" >&2
+    echo "BLOCKED: Committing to main branch" >&2
+    echo "================================================================" >&2
+    echo "" >&2
+    echo "Files blocked:" >&2
+    for f in $BLOCKED_FILES; do
+        echo "  - $f" >&2
+    done
+    echo "" >&2
+    echo "Options:" >&2
+    echo "  1. Create a feature branch: git checkout -b plan-NN-description" >&2
+    echo "  2. Use a worktree: make worktree BRANCH=plan-NN-description" >&2
+    echo "  3. Emergency bypass: git commit --no-verify" >&2
+    echo "" >&2
+    exit 1
+fi
+
+exit 0

@@ -1,0 +1,209 @@
+# Plan #41: Meta-Process Enforcement Gaps
+
+**Status:** 📋 Planned
+
+**Priority:** **Critical**
+**Blocked By:** None
+**Blocks:** All future work (meta-process integrity)
+
+---
+
+## Problem
+
+The meta-process has good documentation but **brittle or missing enforcement**. Multiple gaps allow work to bypass verification:
+
+### Gap 1: Test Parser Only Handles Tables
+
+`check_plan_tests.py` only parses markdown table format:
+```markdown
+| Test File | Test Function | What It Verifies |
+|-----------|---------------|------------------|
+| `tests/foo.py` | `test_bar` | Does X |
+```
+
+But Claude instances often write bullet format:
+```markdown
+- `tests/foo.py::test_bar`
+```
+
+**Result:** Tests defined in bullets are invisible to CI. Plan #40 had 6 required tests that were never validated.
+
+### Gap 2: No CI Enforcement of complete_plan.py
+
+`complete_plan.py` is documented as "mandatory" but:
+- No CI check verifies it was run
+- PRs can merge without verification evidence
+- Plan status can stay "In Progress" after implementation merges
+
+**Result:** Plan #40 merged without `complete_plan.py` ever running.
+
+### Gap 3: "No Tests Defined" Passes CI
+
+When a plan has no parseable `## Required Tests` section:
+- CI reports "No test requirements defined"
+- This is treated as **pass**, not fail
+- Plans without tests slip through
+
+**Result:** Zero enforcement for plans that don't follow exact format.
+
+### Gap 4: No V1 Acceptance Definition
+
+- No `docs/V1_ACCEPTANCE.md` defining what V1 means
+- No `tests/e2e/test_v1_acceptance.py` validating V1 criteria
+- "V1 complete" is guesswork based on plan status
+
+**Result:** Can't prove V1 works. Only generic smoke tests exist.
+
+### Gap 5: Acceptance Criteria Not Linked to Tests
+
+Plans have `## Acceptance Criteria` sections but:
+- No tooling validates criteria are covered by tests
+- No traceability from criteria → test → evidence
+
+**Result:** Criteria exist as documentation only, not gates.
+
+---
+
+## Solution
+
+### Fix 1: Robust Test Parser
+
+Update `check_plan_tests.py` to parse multiple formats:
+
+```python
+# Table format (existing)
+| `tests/foo.py` | `test_bar` | description |
+
+# Bullet format (new)
+- `tests/foo.py::test_bar`
+- `tests/foo.py::TestClass::test_method`
+
+# Inline code format (new)
+`tests/foo.py::test_bar` - description
+```
+
+### Fix 2: CI Verification Evidence Check
+
+Add GitHub Action that:
+1. Detects PRs with `[Plan #N]` in commit messages
+2. After merge, checks plan file has `**Verified:**` block
+3. Fails/warns if implementation merged without evidence
+
+```yaml
+# .github/workflows/ci.yml
+plan-completion-check:
+  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  steps:
+    - name: Check plan verification evidence
+      run: python scripts/check_plan_completion.py --recent-commits 5
+```
+
+### Fix 3: Fail on Missing Tests
+
+Change `check_plan_tests.py` behavior:
+- Plans marked "In Progress" or "Planned" with no tests → **warning**
+- PRs referencing plans with no tests → **fail** (new strict mode)
+
+### Fix 4: V1 Acceptance Criteria
+
+Create:
+1. `docs/V1_ACCEPTANCE.md` - defines V1 scope with concrete criteria
+2. `tests/e2e/test_v1_acceptance.py` - tests each criterion
+3. CI job that runs V1 acceptance on main branch
+
+### Fix 5: Criteria-Test Traceability (Future)
+
+Add optional `criteria_id` to test markers:
+```python
+@pytest.mark.criteria("AC-1")  # Links to acceptance criteria
+def test_agents_can_discover_artifacts():
+    ...
+```
+
+Script validates all criteria have at least one test.
+
+---
+
+## Implementation Steps
+
+1. **Fix test parser** - Support bullet and inline formats
+2. **Add completion check script** - `scripts/check_plan_completion.py`
+3. **Add CI job** - Verify evidence exists post-merge
+4. **Change CI behavior** - Fail on plans without tests in PRs
+5. **Create V1 acceptance** - Definition + E2E test
+6. **Update docs/meta** - Document failures and fixes
+
+---
+
+## Required Tests
+
+### New Tests (TDD)
+
+| Test File | Test Function | What It Verifies |
+|-----------|---------------|------------------|
+| `tests/unit/test_check_plan_tests.py` | `test_parses_bullet_format` | Bullet format parsed correctly |
+| `tests/unit/test_check_plan_tests.py` | `test_parses_table_format` | Table format still works |
+| `tests/unit/test_check_plan_tests.py` | `test_parses_inline_format` | Inline format parsed |
+| `tests/unit/test_check_plan_completion.py` | `test_detects_missing_evidence` | Missing verification detected |
+| `tests/unit/test_check_plan_completion.py` | `test_detects_valid_evidence` | Valid evidence accepted |
+| `tests/e2e/test_v1_acceptance.py` | `test_artifact_discovery` | Agents can discover artifacts |
+| `tests/e2e/test_v1_acceptance.py` | `test_artifact_interfaces` | Interfaces are readable |
+| `tests/e2e/test_v1_acceptance.py` | `test_structured_errors` | Errors have codes |
+| `tests/e2e/test_v1_acceptance.py` | `test_scrip_transfers` | Economic transactions work |
+| `tests/e2e/test_v1_acceptance.py` | `test_resource_constraints` | Limits are enforced |
+
+### Existing Tests (Must Pass)
+
+| Test Pattern | Why |
+|--------------|-----|
+| `tests/e2e/test_smoke.py` | Smoke tests still work |
+| All unit tests | No regressions |
+
+---
+
+## Acceptance Criteria
+
+1. `check_plan_tests.py` parses bullet format correctly
+2. `check_plan_tests.py` parses inline code format correctly
+3. CI fails when PR references plan without required tests
+4. CI warns when merged plan lacks verification evidence
+5. V1 acceptance criteria documented in `docs/V1_ACCEPTANCE.md`
+6. V1 acceptance test exists and passes
+7. `docs/meta/17_verification-enforcement.md` updated with lessons learned
+
+---
+
+## Design Rationale
+
+**Why fix parser vs mandate table format?**
+- Claude instances naturally vary in formatting
+- Mandating exact format adds friction and will be violated
+- Robust parsing is more resilient than process compliance
+
+**Why warn vs fail on missing evidence post-merge?**
+- Can't block already-merged PRs
+- Warning creates visibility for manual follow-up
+- Future: could require evidence before merge
+
+**Why V1 acceptance test now?**
+- We claimed V1 progress without proof
+- E2E acceptance test is the only way to know V1 works
+- Sets pattern for V2, V3, etc.
+
+---
+
+## Notes
+
+This plan emerged from investigating why Plan #40 was merged without verification. The root cause was multiple enforcement gaps that compounded:
+
+1. Tests in wrong format → invisible to CI
+2. No completion enforcement → script never run
+3. "No tests" passes → no safety net
+4. No V1 test → can't prove anything works
+
+Each gap alone might be caught. Together, they allowed unverified work through.
+
+**META-PROCESS LESSON:** Enforcement must be:
+- **Format-agnostic** - Parse what humans write, not what we wish they'd write
+- **Positive verification** - Require evidence, not absence of failure
+- **Defense in depth** - Multiple checks, not single points of failure
