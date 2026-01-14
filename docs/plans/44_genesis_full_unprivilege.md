@@ -136,20 +136,49 @@ Update all references in:
 
 ---
 
+## Progress
+
+### Phase 1-2: Complete ✓
+
+Kernel mint primitives implemented:
+- `World.submit_for_mint()` - Submit artifact for mint consideration
+- `World.get_mint_submissions()` - Query pending submissions
+- `World.get_mint_history()` - Query mint history
+- `World.cancel_mint_submission()` - Cancel and refund
+- `World.resolve_mint_auction()` - Resolve auction, score, mint, UBI
+- `KernelState.get_mint_submissions()` / `get_mint_history()` - Read-only access
+- `KernelActions.submit_for_mint()` / `cancel_mint_submission()` - Write actions
+
+### Phase 3-4: Remaining Work
+
+**Phase 3 (GenesisMint refactor)** requires design decisions:
+- Current GenesisMint has complex auction timing (phases, windows, periods)
+- Kernel primitives are simpler (immediate submission, explicit resolution)
+- Need to decide: move timing to kernel, or keep timing in GenesisMint with kernel storage?
+- This is a larger refactor affecting auction behavior
+
+**Phase 4 (naming convention)** is a wide change:
+- Affects config files, source code, tests, documentation, handbook
+- Should be done after Phase 3 to avoid churn
+
+---
+
 ## Required Tests
 
-### Unit Tests
-- [ ] `test_kernel_mint_primitives.py::test_submit_for_mint` - Submission stored in kernel
-- [ ] `test_kernel_mint_primitives.py::test_get_submissions` - Can query pending submissions
-- [ ] `test_kernel_mint_primitives.py::test_get_history` - Can query mint history
-- [ ] `test_kernel_mint_primitives.py::test_auction_resolution` - Kernel resolves auctions
+### Unit Tests (Phase 1-2) - COMPLETE ✓
+- [x] `test_kernel_mint_primitives.py::test_submit_for_mint_stores_submission`
+- [x] `test_kernel_mint_primitives.py::test_get_mint_submissions_returns_pending`
+- [x] `test_kernel_mint_primitives.py::test_get_mint_history_returns_resolved`
+- [x] `test_kernel_mint_primitives.py::test_auction_resolution_picks_winner`
+- [x] `test_kernel_mint_primitives.py::test_auction_resolution_mints_scrip`
+- [x] Plus 15 more tests for validation, KernelState/KernelActions, and equivalence
 
-### Integration Tests
+### Integration Tests (Phase 3-4) - PENDING
 - [ ] `test_genesis_mint_unprivileged.py::test_mint_via_kernel` - GenesisMintApi uses kernel primitives
 - [ ] `test_genesis_mint_unprivileged.py::test_agent_equivalent` - Agent could build equivalent
 - [ ] `test_naming_convention.py::test_api_vs_contract_naming` - All artifacts correctly named
 
-### E2E Tests
+### E2E Tests (Phase 3-4) - PENDING
 - [ ] `test_mint_e2e.py::test_full_auction_cycle` - Auction works end-to-end with new architecture
 
 ---
