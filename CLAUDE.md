@@ -264,7 +264,7 @@ claude -p "migrate foo.py..." --allowedTools Edit Bash
 
 When starting or continuing a session, first run:
 ```bash
-python scripts/check_claims.py --list && python scripts/check_claims.py --list-features && gh pr list
+python scripts/meta_status.py  # Shows claims, PRs, plan progress, issues
 ```
 
 Then address these in rough order (use judgment):
@@ -372,6 +372,10 @@ python scripts/check_claims.py --release --validate
 |-------|------|------|---------|--------|
 | plan-42-kernel-quotas | 42 | Kernel quota primitives | 2026-01-14T07:35 | Active |
 | main | 41 | Fix meta-process enforcement gaps | 2026-01-14T07:34 | Active |
+
+> **COORDINATION NOTICE (Plan #41):** PRs #118, #120, #123 all touch Plan #41 scope.
+> Review together to avoid conflicts. Merge order: #118 (base fixes) → #120 (validation) → #123 (meta_status.py).
+> **Remove this notice when:** All three PRs are merged OR superseded by a single consolidated PR.
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->
