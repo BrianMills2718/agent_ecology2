@@ -12,6 +12,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `check_mock_usage.py` | Detect suspicious mock patterns in tests |
 | `check_claims.py` | Manage active work claims (scope-based) |
 | `merge_pr.py` | Merge PRs with distributed locking |
+| `cleanup_branches.py` | Delete stale remote branches (merged PRs) |
 | `check_feature_coverage.py` | Verify all src files assigned to features |
 | `check_locked_files.py` | Protect locked acceptance criteria |
 | `check_new_code_tests.py` | Verify new code has test coverage |
@@ -91,6 +92,12 @@ python scripts/merge_pr.py --status      # Show current merge lock
 python scripts/merge_pr.py --release     # Force release stale lock
 # Or via make:
 make merge PR=123                        # Preferred way to merge
+
+# Branch cleanup (stale branches from merged PRs)
+python scripts/cleanup_branches.py           # List stale branches
+python scripts/cleanup_branches.py --delete  # Delete stale branches
+python scripts/cleanup_branches.py --all     # Include abandoned PRs too
+# Run periodically to keep branch count low
 ```
 
 ## Configuration

@@ -1,7 +1,7 @@
 # Agent Ecology - Common Commands
 # Usage: make <target>
 
-.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge merge-status merge-release pr-merge pr-merge-admin pr-list pr-view worktree worktree-quick
+.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge merge-status merge-release pr-merge pr-merge-admin pr-list pr-view worktree worktree-quick clean-branches clean-branches-delete
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -147,3 +147,15 @@ install-hooks:
 	@cp scripts/git-hooks/pre-commit .git/hooks/pre-commit
 	@chmod +x .git/hooks/pre-commit
 	@echo "Git hooks installed"
+
+clean-branches:  ## List stale remote branches (PRs already merged)
+	python scripts/cleanup_branches.py
+
+clean-branches-delete:  ## Delete stale remote branches (PRs already merged)
+	python scripts/cleanup_branches.py --delete
+
+clean-branches:  ## List stale remote branches (PRs already merged)
+	python scripts/cleanup_branches.py
+
+clean-branches-delete:  ## Delete stale remote branches (PRs already merged)
+	python scripts/cleanup_branches.py --delete
