@@ -1,0 +1,66 @@
+#!/bin/bash
+# Worktree Enforcement - Git Pre-commit Hook
+# Blocks commits from main directory to prevent multi-instance conflicts.
+#
+# Allowed in main:
+#   - [Trivial] commits (docs, typos, etc.)
+#   - Coordination files (.claude/*, root CLAUDE.md)
+#   - Empty commits
+
+set -e
+
+# Check if we're in a worktree or main
+TOPLEVEL=$(git rev-parse --show-toplevel)
+GIT_DIR=$(git rev-parse --git-dir)
+
+# If .git is a file (not directory), we're in a worktree - allow
+if [[ -f "$TOPLEVEL/.git" ]]; then
+    exit 0  # Worktree - allowed
+fi
+
+# We're in main. Check what's being committed.
+STAGED_FILES=$(git diff --cached --name-only)
+
+# If no files staged, allow (empty commit or amend)
+if [[ -z "$STAGED_FILES" ]]; then
+    exit 0
+fi
+
+# Check if ALL staged files are coordination files
+BLOCKED_FILES=""
+for file in $STAGED_FILES; do
+    case "$file" in
+        .claude/*|CLAUDE.md)
+            # Coordination files - allowed in main
+            ;;
+        *)
+            BLOCKED_FILES="$BLOCKED_FILES $file"
+            ;;
+    esac
+done
+
+# If any non-coordination files, block unless [Trivial]
+if [[ -n "$BLOCKED_FILES" ]]; then
+    # Check commit message for [Trivial]
+    # Note: During commit, message might not be available yet
+    # So we block and tell user to use worktree
+    
+    echo "================================================================"
+    echo "BLOCKED: Committing from main directory"
+    echo "================================================================"
+    echo ""
+    echo "Files blocked:"
+    for f in $BLOCKED_FILES; do
+        echo "  - $f"
+    done
+    echo ""
+    echo "You're in the main directory. Create a worktree first:"
+    echo "  make worktree BRANCH=plan-NN-description"
+    echo ""
+    echo "Or for trivial changes, use --no-verify (with [Trivial] prefix):"
+    echo "  git commit --no-verify -m '[Trivial] ...'"
+    echo ""
+    exit 1
+fi
+
+exit 0

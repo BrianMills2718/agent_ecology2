@@ -1,49 +1,49 @@
 #!/bin/bash
-# Worktree Enforcement Hook
-# Blocks Edit/Write operations in the main directory to prevent conflicts
-# between multiple Claude Code instances.
+# Worktree Enforcement Hook for Claude Code
+# Blocks Edit/Write operations in the main directory.
 #
 # Exit codes:
 #   0 - Allow the operation
-#   2 - Block the operation (Claude Code will show error message)
+#   2 - Block the operation
 
 set -e
 
-# Main directory path (update for your project)
-MAIN_DIR="/home/azureuser/brian_misc/agent_ecology"
+# Detect main directory dynamically (works on any machine)
+MAIN_DIR=$(git rev-parse --show-toplevel 2>/dev/null)
+if [[ -z "$MAIN_DIR" ]]; then
+    exit 0  # Not in a git repo, allow
+fi
 
-# Read tool input from stdin (JSON with tool_input field)
+# Check if we're in a worktree (main has .git directory, worktree has .git file)
+if [[ -f "$MAIN_DIR/.git" ]]; then
+    exit 0  # We're in a worktree, allow all writes
+fi
+
+# We're in main. Read tool input.
 INPUT=$(cat)
-
-# Extract file_path from the tool input
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 
-# If no file_path, allow (might be a different tool structure)
 if [[ -z "$FILE_PATH" ]]; then
-    exit 0
+    exit 0  # No file_path, allow
 fi
 
-# Allow coordination files even in main directory
-# These files are used for multi-CC coordination and must be editable
+# Allow coordination files in main
 BASENAME=$(basename "$FILE_PATH")
 if [[ "$FILE_PATH" == *"/.claude/"* ]] || \
-   [[ "$BASENAME" == "CLAUDE.md" ]]; then
-    exit 0  # Coordination files are allowed in main
+   [[ "$BASENAME" == "CLAUDE.md" ]] || \
+   [[ "$FILE_PATH" == *"/.git/"* ]]; then
+    exit 0  # Coordination files allowed
 fi
 
-# Get directory of the file being edited
-FILE_DIR=$(dirname "$FILE_PATH")
-
-# Check if file is in the main directory (not a worktree)
-if [[ "$FILE_PATH" == "$MAIN_DIR"/* ]] || [[ "$FILE_PATH" == "$MAIN_DIR" ]]; then
-    echo "BLOCKED: Cannot edit files in main directory ($MAIN_DIR)" >&2
+# Check if file is in main directory
+if [[ "$FILE_PATH" == "$MAIN_DIR"/* ]]; then
+    echo "BLOCKED: Cannot edit files in main directory" >&2
     echo "" >&2
-    echo "You're in the main directory. Create a worktree first:" >&2
+    echo "Create a worktree first:" >&2
     echo "  make worktree BRANCH=plan-NN-description" >&2
     echo "" >&2
-    echo "Or use an existing worktree:" >&2
-    echo "  make worktree-list" >&2
-    exit 2  # Exit code 2 = block the tool call
+    echo "File: $FILE_PATH" >&2
+    exit 2
 fi
 
-exit 0  # Allow
+exit 0
