@@ -41,6 +41,7 @@ class ArtifactDict(TypedDict, total=False):
     price: int
     has_code: bool
     policy: PolicyDict
+    interface: dict[str, Any]  # Plan #14: JSON Schema for discoverability
 
 
 class WriteResult(TypedDict):
@@ -106,6 +107,11 @@ class Artifact:
     - can_execute=True: Can execute code autonomously (agents)
     - memory_artifact_id: Link to separate memory artifact (for agents)
 
+    Interface schema (Plan #14 Artifact Interface Schema):
+    - interface: Optional JSON Schema describing inputs/outputs
+    - Enables discoverability - agents can learn how to invoke without reading code
+    - Uses MCP-compatible format (but not strict MCP protocol)
+
     Use is_principal property to check if artifact can own things.
     Use is_agent property to check if artifact is an autonomous agent.
     """
@@ -130,6 +136,10 @@ class Artifact:
     deleted: bool = False
     deleted_at: str | None = None
     deleted_by: str | None = None
+    # Interface schema for discoverability (Plan #14: Artifact Interface Schema)
+    # JSON Schema format (MCP-compatible but not strict MCP)
+    # Optional - only useful for executable artifacts
+    interface: dict[str, Any] | None = None
 
     @property
     def price(self) -> int:
@@ -264,6 +274,9 @@ class Artifact:
             result["deleted"] = True
             result["deleted_at"] = self.deleted_at
             result["deleted_by"] = self.deleted_by
+        # Include interface if set (Plan #14)
+        if self.interface is not None:
+            result["interface"] = self.interface
         return result
 
 
