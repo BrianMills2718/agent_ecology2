@@ -58,7 +58,3 @@ completed:
   plan: 49
   task: Add reasoning field to ActionIntent narrow waist
   completed_at: '2026-01-14T16:18:00Z'
-merging:
-  pr: '169'
-  cc_id: trivial-fix-merge-cwd
-  locked_at: '2026-01-14T22:38:30.570135Z'
