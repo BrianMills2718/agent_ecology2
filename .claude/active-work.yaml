@@ -2,18 +2,8 @@
 # Machine-readable tracking for multi-CC coordination.
 # Use: python scripts/check_claims.py --help
 
-claims:
-- cc_id: main
-  task: Fix meta-process enforcement gaps
-  claimed_at: '2026-01-14T07:34:39Z'
-  plan: 41
-<<<<<<< HEAD
-- cc_id: plan-44-genesis-unprivilege
-  task: Implement genesis full unprivilege
-  claimed_at: '2026-01-14T08:18:48Z'
-  plan: 44
-=======
->>>>>>> [Trivial] Add implementation plans for gaps 7,8,9,10,13,15,22,29,30
+claims: []
+
 completed:
 - cc_id: tier2-architecture-decisions
   task: Tier 2 architecture decisions (Items 4-7)
@@ -53,3 +43,11 @@ completed:
   plan: 23
   task: 'Plan #23: Implement Error Response Conventions'
   completed_at: '2026-01-14T02:17:06Z'
+- cc_id: main
+  plan: 41
+  task: Fix meta-process enforcement gaps
+  completed_at: '2026-01-14T09:45:00Z'
+- cc_id: plan-44-genesis-unprivilege
+  plan: 44
+  task: Implement genesis full unprivilege
+  completed_at: '2026-01-14T09:45:00Z'
