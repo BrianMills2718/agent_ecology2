@@ -58,10 +58,11 @@ Adapting libraries to our semantics often costs MORE than building simple custom
 
 **2. Integration Complexity**
 
-Rate limits come from `genesis_rights_registry_api`, which agents can trade. A library like pyrate-limiter has no concept of:
-- Querying a ledger for current quota
-- Updating quota mid-execution due to a transfer
-- Checkpointing rate limit state consistently with other state
+Rate limits are **kernel state** (quotas are part of principal metadata in the kernel). `genesis_rights_registry_api` is merely a convenience wrapper for reading/modifying kernel quota state—it's not privileged or mandatory. A library like pyrate-limiter has no concept of:
+- Querying kernel state for current quota
+- Updating quota mid-execution due to a transfer (kernel primitive)
+- Checkpointing rate limit state consistently with other kernel state
+- Quota ownership and trading (kernel tracks, genesis wraps)
 
 **3. Checkpoint/Restore Consistency**
 
@@ -115,9 +116,9 @@ Single container  →   (keep single)            →   Multi-container
 
 Build `RateTracker` with:
 - Rolling window algorithm (simple math)
-- Query ledger for current quota
+- Query **kernel state** for current quota (quotas are kernel metadata, not genesis artifact state)
 - `can_use()` and `wait_for_capacity()` methods
-- Integration with `genesis_rights_registry_api`
+- `genesis_rights_registry_api` is optional convenience wrapper—kernel is source of truth
 
 ### Contract Permissions
 

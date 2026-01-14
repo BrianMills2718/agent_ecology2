@@ -305,18 +305,33 @@ From [03_agents.md](03_agents.md):
 
 ---
 
-## What Kernel Does NOT Do
+## What Kernel Does vs Doesn't Do
+
+### Kernel DOES (Physics Layer)
+
+| Concern | Why Kernel |
+|---------|-----------|
+| Storage primitives | Foundation for all artifacts |
+| Quota tracking | Quotas are physics (what agents CAN do) |
+| Rate limiting enforcement | Resource constraints are physics |
+| Permission checking | Access control is physics |
+| Creator metadata | Immutable fact of history |
+
+### Kernel Does NOT Do
 
 The kernel is minimal. These are NOT kernel concerns:
 
 | Concern | Handled By |
 |---------|------------|
 | Artifact discovery/search | `genesis_store_api` |
-| Balance transfers | `genesis_ledger_api` |
-| Escrow/trading | `genesis_escrow_api` |
+| Scrip balance transfers | `genesis_ledger_api` (scrip is economic signal, not physics) |
+| Escrow/trading | `genesis_escrow_contract` |
 | Scoring/minting | `genesis_mint_api` |
+| Ownership tracking | `genesis_store_api` (mutable social concept) |
 | Naming conventions | Social/emergent |
 | Reputation | Social/emergent |
+
+**Note:** Quota tracking IS kernel (physics), but genesis_rights_registry_api provides friendly interface. Scrip transfers are NOT kernel because scrip is economic signal, not resource constraint.
 
 ---
 
@@ -354,6 +369,46 @@ size_bytes: int
 
 **NOT kernel-tracked:** `owner` (tracked by genesis_store)
 
+### Quota Primitives (Kernel State)
+
+Quotas are **kernel state**, not genesis artifact state. `genesis_rights_registry_api` is a convenience wrapper, not privileged.
+
+**Kernel-tracked quota data:**
+```python
+# Per-principal quota metadata (kernel state)
+quotas: dict[str, float] = {      # {resource_type: assigned_amount}
+    "cpu_seconds_per_minute": 10.0,
+    "llm_tokens_per_minute": 1000,
+    "disk_bytes": 1_000_000,
+}
+usage_windows: RollingWindow      # Rolling window for rate limiting
+```
+
+**Quota primitives (internal, permission-checked access):**
+```python
+_get_quota(principal_id: str, resource: str) -> float
+_set_quota(principal_id: str, resource: str, amount: float) -> void
+_transfer_quota(from_id: str, to_id: str, resource: str, amount: float) -> void
+_get_available_capacity(principal_id: str, resource: str) -> float
+_consume_quota(principal_id: str, resource: str, amount: float) -> void
+```
+
+**Rationale:**
+- Quotas are "physics" (what agents CAN do), not social convention
+- Kernel enforces quotas before action execution
+- genesis_rights_registry_api just wraps these primitives
+- Agents could build alternative rights interfaces using same kernel primitives
+- Tradeable quotas: `_transfer_quota` is kernel primitive, trading is emergent
+
+**Enforcement:**
+```python
+# Kernel checks quota BEFORE executing any action
+if not _has_capacity(principal_id, resource, estimated_cost):
+    return ActionResult(error_code="QUOTA_EXCEEDED", retriable=True)
+```
+
+See [Plan #42: Kernel Quota Primitives](../../plans/42_kernel_quota_primitives.md) for implementation.
+
 ### Not Yet Specified
 
 These need separate design discussions:
@@ -361,7 +416,6 @@ These need separate design discussions:
 - **Scheduling:** sleep/wake primitives
 - **Events:** subscription/publish primitives
 - **Time:** current time access
-- **Ledger internals:** balance tracking (may be genesis artifact, not kernel)
 
 ---
 
