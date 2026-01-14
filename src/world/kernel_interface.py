@@ -144,7 +144,51 @@ class KernelState:
         # TypedDict is compatible with dict[str, Any] but needs explicit cast
         history = self._world.get_mint_history(limit=limit)
         return cast(list[dict[str, Any]], history)
+    # -------------------------------------------------------------------------
+    # Quota Primitives (Plan #42) - Read-only access to kernel quota state
+    # -------------------------------------------------------------------------
 
+    def get_quota(self, principal_id: str, resource: str) -> float:
+        """Get quota limit for a principal's resource.
+
+        Args:
+            principal_id: The principal to query
+            resource: Resource name (e.g., "cpu_seconds_per_minute")
+
+        Returns:
+            Quota limit, or 0.0 if not set
+        """
+        return self._world.get_quota(principal_id, resource)
+
+    def get_available_capacity(self, principal_id: str, resource: str) -> float:
+        """Get remaining capacity (quota - usage) for a resource.
+
+        Args:
+            principal_id: The principal to query
+            resource: Resource name
+
+        Returns:
+            Remaining capacity, or 0.0 if no quota set
+        """
+        return self._world.get_available_capacity(principal_id, resource)
+
+    def would_exceed_quota(
+        self, principal_id: str, resource: str, amount: float
+    ) -> bool:
+        """Check if consuming amount would exceed quota.
+
+        Use this for pre-flight checks before attempting actions.
+
+        Args:
+            principal_id: The principal to check
+            resource: Resource name
+            amount: Amount that would be consumed
+
+        Returns:
+            True if consumption would exceed quota, False otherwise
+        """
+        available = self.get_available_capacity(principal_id, resource)
+        return amount > available
 
 class KernelActions:
     """Action interface for artifacts - caller is verified.
@@ -289,3 +333,53 @@ class KernelActions:
             True if cancelled, False if not allowed
         """
         return self._world.cancel_mint_submission(caller_id, submission_id)
+
+    # -------------------------------------------------------------------------
+    # Quota Primitives (Plan #42) - Write access to kernel quota state
+    # -------------------------------------------------------------------------
+
+    def transfer_quota(
+        self, from_id: str, to_id: str, resource: str, amount: float
+    ) -> bool:
+        """Atomically transfer quota from one principal to another.
+
+        This transfers the quota *limit*, not usage. Use for trading quotas.
+
+        Args:
+            from_id: Principal giving up quota
+            to_id: Principal receiving quota
+            resource: Resource name
+            amount: Quota amount to transfer
+
+        Returns:
+            True if transfer succeeded, False if insufficient quota
+        """
+        if amount <= 0:
+            return False
+
+        # Check source has sufficient quota
+        from_quota = self._world.get_quota(from_id, resource)
+        if from_quota < amount:
+            return False
+
+        # Perform atomic transfer
+        to_quota = self._world.get_quota(to_id, resource)
+        self._world.set_quota(from_id, resource, from_quota - amount)
+        self._world.set_quota(to_id, resource, to_quota + amount)
+
+        return True
+
+    def consume_quota(
+        self, principal_id: str, resource: str, amount: float
+    ) -> bool:
+        """Record resource consumption against quota.
+
+        Args:
+            principal_id: Principal consuming resources
+            resource: Resource name
+            amount: Amount consumed
+
+        Returns:
+            True if consumption recorded, False if would exceed quota
+        """
+        return self._world.consume_quota(principal_id, resource, amount)
