@@ -13,7 +13,7 @@ Design principles:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from src.world.world import World
@@ -115,6 +115,35 @@ class KernelState:
             return None
 
         return artifact.content
+
+    # --- Kernel Mint Read Methods (Plan #44) ---
+
+    def get_mint_submissions(self) -> list[dict[str, Any]]:
+        """Get all pending mint submissions.
+
+        Public data - any artifact can read pending submissions.
+
+        Returns:
+            List of pending mint submissions
+        """
+        # TypedDict is compatible with dict[str, Any] but needs explicit cast
+        submissions = self._world.get_mint_submissions()
+        return cast(list[dict[str, Any]], submissions)
+
+    def get_mint_history(self, limit: int = 100) -> list[dict[str, Any]]:
+        """Get mint auction history.
+
+        Public data - any artifact can read history.
+
+        Args:
+            limit: Maximum number of results
+
+        Returns:
+            List of mint results, newest first
+        """
+        # TypedDict is compatible with dict[str, Any] but needs explicit cast
+        history = self._world.get_mint_history(limit=limit)
+        return cast(list[dict[str, Any]], history)
 
 
 class KernelActions:
@@ -218,3 +247,45 @@ class KernelActions:
                 artifact_id, artifact_type, content, caller_id
             )
             return True
+
+    # --- Kernel Mint Action Methods (Plan #44) ---
+
+    def submit_for_mint(
+        self, caller_id: str, artifact_id: str, bid: int
+    ) -> dict[str, Any]:
+        """Submit artifact for mint consideration.
+
+        Caller must own the artifact. Bid is escrowed until auction resolution.
+
+        Args:
+            caller_id: Who is submitting (verified by kernel)
+            artifact_id: Artifact to submit
+            bid: Amount of scrip to bid
+
+        Returns:
+            {"success": True, "submission_id": ...} on success
+            {"success": False, "error": ...} on failure
+        """
+        try:
+            submission_id = self._world.submit_for_mint(
+                principal_id=caller_id,
+                artifact_id=artifact_id,
+                bid=bid
+            )
+            return {"success": True, "submission_id": submission_id}
+        except ValueError as e:
+            return {"success": False, "error": str(e)}
+
+    def cancel_mint_submission(self, caller_id: str, submission_id: str) -> bool:
+        """Cancel a mint submission and refund the bid.
+
+        Can only cancel your own submissions.
+
+        Args:
+            caller_id: Who is cancelling (verified by kernel)
+            submission_id: Which submission to cancel
+
+        Returns:
+            True if cancelled, False if not allowed
+        """
+        return self._world.cancel_mint_submission(caller_id, submission_id)

@@ -80,7 +80,7 @@ class TestWorldMintPrimitives:
         )
 
         # Alice only has 100 scrip
-        with pytest.raises(ValueError, match="insufficient"):
+        with pytest.raises(ValueError, match="(?i)insufficient"):
             world.submit_for_mint("alice", "artifact_1", bid=500)
 
     def test_submit_for_mint_requires_artifact_ownership(self, world: World) -> None:
