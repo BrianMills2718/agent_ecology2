@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-14 (Plan #43 - added human-review-check and adr-requirement)
+Last verified: 2026-01-15 (Plan #48 - CI Optimization with Plan #43 checks integrated)
 
 ---
 
@@ -14,9 +14,25 @@ Located at `.github/workflows/ci.yml`
 - Push to `main` branch
 - Pull requests to `main` branch
 
+**Concurrency:**
+- Cancels in-progress runs when new commits push to same branch
+- Prevents wasted CI on superseded commits
+
 ---
 
-## Jobs
+## Jobs (Consolidated)
+
+The CI workflow has 7 consolidated jobs (reduced from 15+ for efficiency):
+
+| Job | Checks | Caching |
+|-----|--------|---------|
+| `test` | pytest | ✓ pip cache |
+| `mypy` | type checking | ✓ pip cache |
+| `docs` | doc-coupling, governance-sync | - |
+| `plans` | plan-status-sync, plan-blockers, plan-tests, plan-required | ✓ pip cache |
+| `code-quality` | mock-usage, new-code-tests, feature-coverage | - |
+| `meta` | locked-sections, validate-specs, claim-verification, human-review, adr-requirement | - |
+| `post-merge` | plan-completion-evidence | - |
 
 ### 1. test
 
@@ -25,6 +41,7 @@ Runs the full pytest suite.
 ```yaml
 - uses: actions/checkout@v4
 - uses: actions/setup-python@v5 (Python 3.11)
+- uses: actions/cache@v4 (pip cache)
 - pip install -e . && pip install -r requirements.txt
 - pytest tests/ -v --tb=short
 ```
@@ -44,6 +61,7 @@ Runs strict type checking on core modules.
 ```yaml
 - uses: actions/checkout@v4
 - uses: actions/setup-python@v5 (Python 3.11)
+- uses: actions/cache@v4 (pip cache)
 - pip install -r requirements.txt && pip install mypy
 - mypy --strict --ignore-missing-imports src/config.py src/world/*.py src/agents/*.py run.py
 ```
@@ -54,258 +72,117 @@ Runs strict type checking on core modules.
 - Invalid attribute access
 - Incompatible return types
 
-### 3. doc-coupling
+### 3. docs
 
-Checks that documentation is updated when coupled source files change.
+Combines documentation-related checks into a single job.
+
+**Checks:**
+1. **doc-coupling** - Checks that documentation is updated when coupled source files change
+2. **governance-sync** - Ensures source files have correct governance headers
 
 ```yaml
 - uses: actions/checkout@v4 (with fetch-depth: 0)
 - uses: actions/setup-python@v5 (Python 3.11)
 - pip install pyyaml
 - python scripts/check_doc_coupling.py --base origin/main --strict
+- python scripts/sync_governance.py --check
 ```
 
 **What it catches:**
 - Source file changes without corresponding doc updates
 - Documentation drift from implementation
+- Source files missing required ADR governance headers
 
-### 4. plan-status-sync
+### 4. plans
 
-Verifies plan statuses are consistent between individual plan files and the index.
+Combines plan-related checks into a single job.
 
-```yaml
-- uses: actions/checkout@v4
-- uses: actions/setup-python@v5 (Python 3.11)
-- python scripts/sync_plan_status.py --check
-```
-
-**What it catches:**
-- Plan file status doesn't match index in `docs/plans/CLAUDE.md`
-- Status drift after plan updates
-
-### 5. plan-blockers
-
-Checks for stale blockers - plans marked "Blocked" but whose blockers are already complete.
+**Checks:**
+1. **plan-status-sync** - Verifies plan statuses are consistent
+2. **plan-blockers** - Checks for stale blockers
+3. **plan-tests** - Validates plan test requirements (strict)
+4. **plan-required** - Ensures all commits have plan references
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v4 (with fetch-depth: 0)
 - uses: actions/setup-python@v5 (Python 3.11)
-- python scripts/check_plan_blockers.py --strict
-```
-
-**What it catches:**
-- Plans blocked by completed plans (stale dependency chains)
-- Blockers not updated when work completes
-
-**Fixing stale blockers:**
-```bash
-python scripts/check_plan_blockers.py --apply  # Auto-fix
-python scripts/sync_plan_status.py --sync       # Update index
-```
-
-### 6. plan-tests
-
-Checks test requirements for implementation plans. **Strict** - blocks PRs if tests fail or In Progress plans lack tests.
-
-```yaml
-- uses: actions/checkout@v4
-- uses: actions/setup-python@v5 (Python 3.11)
+- uses: actions/cache@v4 (pip cache)
 - pip install -e . && pip install -r requirements.txt
+- python scripts/sync_plan_status.py --check
+- python scripts/check_plan_blockers.py --strict
 - python scripts/check_plan_tests.py --list
 - python scripts/check_plan_tests.py --all --strict
+- (inline plan-required check)
 ```
 
-**Environment:** `GEMINI_API_KEY` from GitHub secrets (for memory/embedding tests).
-
 **What it catches:**
+- Plan file status doesn't match index
+- Plans blocked by completed plans (stale dependency chains)
 - Plans with missing required tests
-- **In Progress plans without any test definitions** (`--strict` mode, Plan #41 Step 4)
-- TDD workflow status (which tests need to be written)
-- Test failures for plans with defined requirements
+- In Progress plans without test definitions
+- Work without `[Plan #N]` or `[Trivial]` prefix
 
-**Only checks active plans:** Plans in "In Progress" (`🚧`) or "Complete" (`✅`) status. Plans that are "Planned", "Needs Plan", or "Blocked" are skipped (TDD tests should be written when work starts, not when plan is created).
+### 5. code-quality
 
-**Strict mode:** With `--strict`, CI fails for any In Progress plan without a `## Required Tests` section. This ensures TDD workflow is followed - tests must be defined before implementation.
+Combines code quality checks into a single job.
 
-**Configuration:** Test requirements defined in each plan file's `## Required Tests` section.
-
-### 7. mock-usage
-
-Detects suspicious mock patterns that may hide real failures ("green CI, broken production").
+**Checks:**
+1. **mock-usage** - Detects suspicious mock patterns
+2. **new-code-tests** - Ensures new source files have tests
+3. **feature-coverage** - Reports files not assigned to features (informational)
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v4 (with fetch-depth: 0)
 - uses: actions/setup-python@v5 (Python 3.11)
+- pip install pyyaml
 - python scripts/check_mock_usage.py --strict
+- python scripts/check_new_code_tests.py --base origin/main --strict --suggest
+- python scripts/check_feature_coverage.py --warn-only  # continue-on-error
 ```
 
 **What it catches:**
 - Mocking internal `src.` code instead of testing it
-- Mocking Memory, Agent, or other core classes
-- Using MagicMock return values for internal code
+- New files without test coverage
+- Unassigned source files (informational)
 
-**Allowed patterns (not flagged):**
-- Mocking `time.`, `datetime`, `sleep` (timing)
-- Mocking `requests.`, `httpx.`, `aiohttp.` (external HTTP)
+### 6. meta (PRs only)
 
-**Justifying a mock:** Add `# mock-ok: <reason>` comment:
-```python
-# mock-ok: Testing error handling when memory unavailable
-@patch("src.agents.memory.Memory.search")
-def test_memory_error_handling():
-    ...
-```
+Combines meta-process checks. Only runs on pull requests.
 
-### 7. governance-sync
-
-Ensures source files have correct governance headers matching governance.yaml.
-
-```yaml
-- uses: actions/checkout@v4
-- uses: actions/setup-python@v5 (Python 3.11)
-- pip install pyyaml
-- python scripts/sync_governance.py --check
-```
-
-**What it catches:**
-- Source files missing required ADR governance headers
-- Governance headers out of sync with governance.yaml
-
-### 8. validate-specs
-
-Validates feature specification files in `features/*.yaml`.
-
-```yaml
-- uses: actions/checkout@v4
-- uses: actions/setup-python@v5 (Python 3.11)
-- pip install pyyaml
-- python scripts/validate_spec.py --all
-```
-
-**What it catches:**
-- Feature specs with fewer than 3 acceptance criteria
-- Missing Given/When/Then format
-- Missing category coverage (happy_path, error_case, edge_case)
-- Missing design section when planning_mode is "detailed"
-
-### 9. locked-sections (PRs only)
-
-Detects modifications to locked acceptance criteria. Only runs on pull requests.
+**Checks:**
+1. **locked-sections** - Detects modifications to locked acceptance criteria
+2. **validate-specs** - Validates feature specification files
+3. **claim-verification** - Verifies branch was claimed (informational)
+4. **human-review-check** - Checks for plans requiring human review (informational)
+5. **adr-requirement** - Checks ADR coverage for core files (informational)
 
 ```yaml
 - uses: actions/checkout@v4 (with fetch-depth: 0)
 - uses: actions/setup-python@v5 (Python 3.11)
 - pip install pyyaml
 - python scripts/check_locked_files.py --base origin/main
+- python scripts/validate_spec.py --all
+- (inline claim verification)  # continue-on-error
+- (inline human review check)  # continue-on-error
+- (inline ADR requirement check)  # continue-on-error
 ```
 
 **What it catches:**
-- Modifications to acceptance criteria marked with `locked: true`
-- Deletion of locked criteria
-- Changes to locked scenario, given, when, or then fields
+- Modifications to locked acceptance criteria
+- Invalid feature specification format
+- PRs from unclaimed branches (informational)
+- PRs for plans with `## Human Review Required` section
+- Core file changes without ADR references
 
-### 10. feature-coverage (Informational)
+**Human Review Check:**
+Extracts plan numbers from commit messages, checks if plan files have `## Human Review Required` section, and warns if human review is needed before merge.
 
-Reports source files not assigned to features. Runs with `continue-on-error: true` - does not block PRs.
+**ADR Requirement Check:**
+Monitors changes to core architecture files (`src/world/{ledger,executor,genesis_*,action}.py`). If modified, checks if commits reference ADRs and provides informational guidance.
 
-```yaml
-- uses: actions/checkout@v4
-- uses: actions/setup-python@v5 (Python 3.11)
-- pip install pyyaml
-- python scripts/check_feature_coverage.py --warn-only
-```
+### 7. post-merge (main only)
 
-**What it catches:**
-- Source files in `src/` and `scripts/` not listed in any feature's `code:` section
-- Coverage percentage across the codebase
-
-### 11. new-code-tests
-
-Ensures new source files have corresponding tests.
-
-```yaml
-- uses: actions/checkout@v4 (with fetch-depth: 0)
-- uses: actions/setup-python@v5 (Python 3.11)
-- python scripts/check_new_code_tests.py --base origin/main --strict --suggest
-```
-
-**What it catches:**
-- New files in `src/` or `scripts/` without tests
-- Code added without test coverage
-
-**Exemptions:**
-- `__init__.py` files
-- `conftest.py` files
-- Template directories (`_template/`)
-- `CLAUDE.md` files
-
-### 12. plan-required (Strict)
-
-**All significant work requires a plan.** Blocks PRs containing `[Unplanned]` commits.
-
-```yaml
-- uses: actions/checkout@v4 (with fetch-depth: 0)
-- Check for [Unplanned] in commit messages
-- Validate [Trivial] commits don't exceed limits
-- exit 1 if unplanned found
-```
-
-**What it catches:**
-- Work that bypassed the planning process
-- Commits without `[Plan #N]` or `[Trivial]` prefix
-
-**Allowed prefixes:**
-- `[Plan #N]` - Links to plan in `docs/plans/NN_*.md`
-- `[Trivial]` - For tiny changes (see below)
-
-**Trivial exemption:** Use `[Trivial]` for tiny changes:
-```bash
-git commit -m "[Trivial] Fix typo in README"
-```
-
-**Trivial criteria (ALL must be true):**
-- Less than 20 lines changed
-- No changes to `src/` (production code)
-- No new files created
-
-CI validates trivial commits and warns if limits exceeded.
-
-**To fix [Unplanned] commits:**
-1. Create a plan file: `docs/plans/NN_your_feature.md`
-2. Amend commits to use `[Plan #NN]` prefix
-3. Or use `[Trivial]` if criteria are met
-
-### 13. claim-verification (PRs only, Informational)
-
-Verifies PR branches were claimed before work started. Prevents duplicate work between Claude instances.
-
-```yaml
-- uses: actions/checkout@v4 (with fetch-depth: 0)
-- uses: actions/setup-python@v5 (Python 3.11)
-- pip install pyyaml
-- python scripts/check_claims.py (inline verification)
-```
-
-**What it catches:**
-- PRs from branches without corresponding claims
-- Work started without coordination
-
-**Scope-based claims:**
-Claims should specify a scope (`--plan N` and/or `--feature NAME`):
-```bash
-python scripts/check_claims.py --list-features    # See available features
-python scripts/check_claims.py --claim --feature ledger --task "..."
-```
-
-Features are defined in `features/*.yaml` with their code files. Same plan number or same feature name blocks duplicate claims.
-
-**Status:** Currently informational (`continue-on-error: true`). Will become strict once workflow is established.
-
-See `docs/meta/claim-system.md` for full workflow.
-
-### 14. plan-completion-evidence (Post-merge, Informational)
-
-Checks that merged plan commits have verification evidence. Runs post-merge on main to catch plans completed without using `complete_plan.py`.
+Runs post-merge checks. Only runs on push to main.
 
 ```yaml
 - uses: actions/checkout@v4 (with fetch-depth: 10)
@@ -314,61 +191,31 @@ Checks that merged plan commits have verification evidence. Runs post-merge on m
 ```
 
 **What it catches:**
-- Plans marked Complete without `**Verified:**` timestamp
-- Commits referencing plan numbers where plan lacks verification evidence
+- Plans marked Complete without verification evidence
+- Commits referencing plans that lack verification
 
-**When it runs:**
-- Only on push to main (post-merge)
-- Not on PRs (to avoid false positives for in-progress work)
+**Status:** Informational (`continue-on-error: true`).
 
-**Script options:**
-```bash
-python scripts/check_plan_completion.py --recent-commits 5  # Check last 5 commits
-python scripts/check_plan_completion.py --plan N            # Check specific plan
-python scripts/check_plan_completion.py --list-missing      # All plans missing evidence
-```
+---
 
-**Status:** Informational (`continue-on-error: true`, `--warn-only`). Reports issues but doesn't block main.
+## Dependency Caching
 
-### 15. human-review-check (PRs only, Informational)
-
-Checks if PRs touch plans with `## Human Review Required` section. Warns to ensure human review before merge.
+Jobs that need heavy dependencies use pip caching:
 
 ```yaml
-- uses: actions/checkout@v4 (with fetch-depth: 0)
-- uses: actions/setup-python@v5 (Python 3.11)
-- Extract plan numbers from commit messages
-- Check if plan files have ## Human Review Required
+- name: Cache pip dependencies
+  uses: actions/cache@v4
+  with:
+    path: ~/.cache/pip
+    key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+    restore-keys: |
+      ${{ runner.os }}-pip-
 ```
 
-**What it catches:**
-- PRs implementing plans that require human approval
-- Changes to sensitive features flagged for review
-
-**Status:** Informational (`continue-on-error: true`). Will become strict when process is established.
-
-### 16. adr-requirement (PRs only, Informational)
-
-Checks if core architecture files are modified and warns if no ADR is referenced.
-
-```yaml
-- uses: actions/checkout@v4 (with fetch-depth: 0)
-- Check if core files modified: src/world/{ledger,executor,genesis_*,action}.py
-- Check if commits reference ADR-NNNN
-```
-
-**Core files:**
-- `src/world/ledger.py`
-- `src/world/executor.py`
-- `src/world/artifacts/genesis_*.py`
-- `src/world/action.py`
-
-**What it catches:**
-- Architectural changes without documented decisions
-- Core file modifications that may need ADR coverage
-
-**Status:** Informational (`continue-on-error: true`). Tracks ADR coverage without blocking.
-
+**Benefits:**
+- Faster dependency installation (~30s savings per job)
+- Less bandwidth usage
+- More consistent builds
 
 ---
 
@@ -393,18 +240,6 @@ couplings:
 - **Strict** (default): CI fails if source changes without doc update
 - **Soft** (`soft: true`): CI warns but doesn't fail - for reminder couplings
 
-**Soft couplings include:**
-- `current/` changes → `plans/CLAUDE.md` (did you close a gap?)
-- Plan file changes → `plans/CLAUDE.md` index (sync status)
-- Terminology files → GLOSSARY.md (new terms?)
-
-**Script options:**
-```bash
---suggest         # Show which docs to update
---validate-config # Check all docs in config exist
---strict          # Fail on strict violations (used in CI)
-```
-
 ---
 
 ## Local Equivalents
@@ -424,22 +259,11 @@ python scripts/check_doc_coupling.py --base origin/main
 # See which docs you should update
 python scripts/check_doc_coupling.py --suggest --base origin/main
 
-# Validate coupling config (check all doc paths exist)
-python scripts/check_doc_coupling.py --validate-config
-
-# List plan test status
+# Check plan tests
 python scripts/check_plan_tests.py --list
-
-# TDD mode - see what tests to write for a plan
-python scripts/check_plan_tests.py --plan 1 --tdd
-
-# Run all required tests for a plan
-python scripts/check_plan_tests.py --plan 1
+python scripts/check_plan_tests.py --plan N
 
 # Check for suspicious mock patterns
-python scripts/check_mock_usage.py
-
-# Fail on suspicious mocks (as in CI)
 python scripts/check_mock_usage.py --strict
 ```
 
@@ -447,23 +271,20 @@ python scripts/check_mock_usage.py --strict
 
 ## Required for Merge
 
-All jobs must pass for PRs to be mergeable (when branch protection is enabled):
+All jobs must pass for PRs to be mergeable:
 - test
 - mypy
-- doc-coupling
-- plan-status-sync
-- plan-blockers
-- plan-tests
-- mock-usage
-- governance-sync
-- validate-specs
-- locked-sections (on PRs only)
-- new-code-tests
-- plan-required (all work needs a plan)
+- docs
+- plans
+- code-quality
+- meta (on PRs only)
 
 **Informational (doesn't block):**
-- feature-coverage (warns about unassigned files)
-- claim-verification (warns about unclaimed branches)
+- feature-coverage (within code-quality, warns about unassigned files)
+- claim-verification (within meta, warns about unclaimed branches)
+- human-review-check (within meta, warns about human review requirements)
+- adr-requirement (within meta, warns about ADR coverage)
+- post-merge (only runs after merge)
 
 ---
 
@@ -473,4 +294,4 @@ Consider adding:
 - **Coverage reporting** - Track test coverage trends
 - **Lint job** - ruff or flake8 for style consistency
 - **Security scanning** - pip-audit for dependency vulnerabilities
-- **PR template** - Checklist for manual review items
+- **Conditional execution** - Skip jobs when irrelevant files change
