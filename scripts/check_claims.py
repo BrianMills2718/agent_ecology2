@@ -44,6 +44,11 @@ Scope-Based Claims:
     - Features are defined in features/*.yaml
     Each scope can only be claimed by one instance at a time.
     Use --force to override (NOT recommended).
+
+Special Cases:
+    - "shared" feature: Files in features/shared.yaml have NO claim conflicts.
+      These are cross-cutting files (config, fixtures) any plan can modify.
+    - [Trivial] commits: Don't require claims. See CI workflow for validation.
 """
 
 import argparse
@@ -121,9 +126,17 @@ def check_scope_conflict(
     - Same plan number is claimed
     - Same feature is claimed
 
+    Exception: The "shared" feature never conflicts. Multiple plans can
+    modify shared files (config, fixtures) simultaneously. Tests are
+    the quality gate, not claim exclusivity.
+
     Returns list of conflicting claims.
     """
     conflicts: list[dict[str, Any]] = []
+
+    # Shared feature never conflicts - anyone can modify shared files
+    if new_feature == "shared":
+        return []
 
     for claim in existing_claims:
         existing_plan = claim.get("plan")
@@ -134,10 +147,11 @@ def check_scope_conflict(
             conflicts.append(claim)
             continue
 
-        # Exact feature match
+        # Exact feature match (but not for shared)
         if new_feature and existing_feature and new_feature == existing_feature:
-            conflicts.append(claim)
-            continue
+            if existing_feature != "shared":  # Shared never conflicts
+                conflicts.append(claim)
+                continue
 
     return conflicts
 
@@ -149,6 +163,10 @@ def check_files_claimed(
     """Check if modified files are covered by claims.
 
     Returns (claimed_files, unclaimed_files).
+
+    Note: Files in the "shared" feature are always considered claimed.
+    This allows any plan to modify cross-cutting infrastructure files
+    (config, fixtures, etc.) without needing to explicitly claim them.
     """
     file_map = build_file_to_feature_map()
 
@@ -169,7 +187,10 @@ def check_files_claimed(
         normalized = str(Path(filepath))
         feature = file_map.get(normalized)
 
-        if feature and feature in claimed_features:
+        # Shared files are always considered claimed (no conflicts)
+        if feature == "shared":
+            claimed.append(filepath)
+        elif feature and feature in claimed_features:
             claimed.append(filepath)
         else:
             # File is not in any feature's code section, or feature not claimed

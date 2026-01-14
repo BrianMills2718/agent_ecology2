@@ -169,11 +169,56 @@ CI checks that PR branches were claimed. Currently informational, will become st
 4. **Release promptly** - Don't hold claims overnight
 5. **Use features for code work** - Plans are for gap implementations
 
+## Special Scopes
+
+### Shared Scope
+
+Cross-cutting files that many features use (config, fixtures, types) are in the `shared` scope:
+
+```yaml
+# features/shared.yaml
+feature: shared
+code:
+  - src/config.py
+  - tests/conftest.py
+  - tests/fixtures/
+```
+
+**Shared files have no claim conflicts** - any plan can modify them without claiming the shared feature. This prevents false conflicts on common infrastructure.
+
+### Trivial Changes
+
+Changes with `[Trivial]` prefix don't require claims:
+- Typo fixes
+- Comment updates
+- Formatting changes
+- Changes < 20 lines not touching `src/`
+
+```bash
+git commit -m "[Trivial] Fix typo in README"
+# No plan or claim required
+```
+
+## Design Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Claim granularity | **Feature-level** | File-level is over-restrictive; git handles merges fine. Feature-level prevents duplicate work without blocking valid parallel changes. |
+| File lists in plans | **Not required** | Impractical to maintain; files derived from feature's `code:` section instead. |
+| Shared scope | **No claim conflicts** | Cross-cutting files shouldn't block anyone; tests are the quality gate. |
+| Trivial exemption | **`[Trivial]` prefix** | Reduces friction for tiny fixes; CI validates size limits. |
+
+**Evidence considered:**
+- DORA research: deployment frequency > process rigor
+- Trunk-based development: small changes + trust git
+- Google/Spotify: anyone can modify common code, tests are the gate
+
 ## Limitations
 
 - **CI check is informational** - Currently warns but doesn't block (will be strict later)
 - **Force override exists** - `--force` can bypass conflicts (for emergencies only)
 - **Files outside features** - Files not in any `features/*.yaml` aren't tracked
+- **Shared scope honor system** - Anyone can modify shared files; abuse visible in git history
 
 ## See Also
 

@@ -346,17 +346,44 @@ docs/plans/2024-01-auth.md
 **PR:** (pending)
 ```
 
+## Trivial Exemption
+
+Not everything needs a plan. Use `[Trivial]` prefix for tiny changes:
+
+```bash
+git commit -m "[Trivial] Fix typo in README"
+git commit -m "[Trivial] Update copyright year"
+git commit -m "[Trivial] Fix formatting in config"
+```
+
+**Trivial criteria (all must be true):**
+- Less than 20 lines changed
+- No changes to `src/` (production code)
+- No new files created
+- No test changes (except fixing typos)
+
+**CI validates trivial commits** - if a `[Trivial]` commit exceeds limits, CI warns.
+
+**Why this exists:** Plans add value for significant work but create friction for tiny fixes. The 80/20 principle: most value comes from planning significant work, not typo fixes.
+
+## Design Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Test requirement format | **Plain English + pytest path** | Both: description for humans, path for automation |
+| Trivial exemption | **`[Trivial]` prefix** | Reduces friction; CI validates size limits |
+| File lists in plans | **Optional** | Impractical to maintain upfront; derived from feature scope |
+
 ## Limitations
 
 - **Manual status updates** - Must remember to update both plan file and index.
 - **No enforcement** - Plans are advisory unless combined with hooks/CI.
-- **Overhead for small changes** - Creating a plan for a typo fix is overkill.
 - **Stale plans** - Old plans may reference outdated code/structure.
 
 ## Best Practices
 
-1. **Skip plans for trivial changes** - Typos, formatting, obvious bugs
-2. **Use `[Unplanned]` for urgent fixes** - Track later if needed
+1. **Use `[Trivial]` for tiny changes** - Typos, formatting, comments
+2. **Use `[Unplanned]` sparingly** - CI blocks these; reserved for emergencies
 3. **Keep plans small** - One feature per plan, not epics
 4. **Archive completed plans** - Move to `docs/plans/archive/` after a quarter
 5. **Link PRs to plans** - PR description should reference plan

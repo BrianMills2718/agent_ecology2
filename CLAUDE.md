@@ -287,10 +287,32 @@ Then address these in rough order (use judgment):
 4. Write tests first, then implement
 5. If plan has `## Human Review Required`, flag human before completing
 
-**All work requires a plan. No exceptions.**
+**All significant work requires a plan.**
 
 Commits must use `[Plan #NN]` prefix. CI blocks `[Unplanned]` commits.
-Plans can be lightweight for trivial work - see `docs/plans/TEMPLATE.md`.
+
+### Trivial Exemption
+
+For tiny changes, use `[Trivial]` instead of a plan:
+
+```bash
+git commit -m "[Trivial] Fix typo in README"
+git commit -m "[Trivial] Update copyright year"
+```
+
+**Trivial criteria (ALL must be true):**
+- Less than 20 lines changed
+- No changes to `src/` (production code)
+- No new files created
+- No test logic changes (typo fixes ok)
+
+**CI validates trivial commits** - if `[Trivial]` exceeds limits, CI warns.
+
+**Why:** Plans add value for significant work but create friction for tiny fixes. See `docs/meta/plan-workflow.md` for details.
+
+### Shared Scope
+
+Cross-cutting files (config, fixtures) are in the "shared" feature (`features/shared.yaml`). These have NO claim conflicts - any plan can modify them without coordination. Tests are the quality gate.
 
 **These are guidelines, not rigid rules.** Use judgment:
 - A PR conflict might be a doc issue requiring research first
@@ -455,7 +477,13 @@ Link commits to plans when applicable:
 Part of: docs/plans/NN_name.md
 ```
 
-For non-plan work, use conventional format:
+For trivial changes (typos, formatting, comments):
+
+```
+[Trivial] Fix typo in README
+```
+
+For non-plan work (emergency fixes, discussions):
 
 ```
 Add/Fix/Update: Short description
@@ -463,6 +491,8 @@ Add/Fix/Update: Short description
 - Detail 1
 - Detail 2
 ```
+
+**CI enforces:** `[Plan #N]` or `[Trivial]` required. `[Unplanned]` is blocked.
 
 ---
 
