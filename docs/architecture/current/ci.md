@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-14 (Plan #41 Step 4 - strict mode for plan-tests)
+Last verified: 2026-01-14 (Plan #43 - added human-review-check and adr-requirement)
 
 ---
 
@@ -329,6 +329,46 @@ python scripts/check_plan_completion.py --list-missing      # All plans missing 
 ```
 
 **Status:** Informational (`continue-on-error: true`, `--warn-only`). Reports issues but doesn't block main.
+
+### 15. human-review-check (PRs only, Informational)
+
+Checks if PRs touch plans with `## Human Review Required` section. Warns to ensure human review before merge.
+
+```yaml
+- uses: actions/checkout@v4 (with fetch-depth: 0)
+- uses: actions/setup-python@v5 (Python 3.11)
+- Extract plan numbers from commit messages
+- Check if plan files have ## Human Review Required
+```
+
+**What it catches:**
+- PRs implementing plans that require human approval
+- Changes to sensitive features flagged for review
+
+**Status:** Informational (`continue-on-error: true`). Will become strict when process is established.
+
+### 16. adr-requirement (PRs only, Informational)
+
+Checks if core architecture files are modified and warns if no ADR is referenced.
+
+```yaml
+- uses: actions/checkout@v4 (with fetch-depth: 0)
+- Check if core files modified: src/world/{ledger,executor,genesis_*,action}.py
+- Check if commits reference ADR-NNNN
+```
+
+**Core files:**
+- `src/world/ledger.py`
+- `src/world/executor.py`
+- `src/world/artifacts/genesis_*.py`
+- `src/world/action.py`
+
+**What it catches:**
+- Architectural changes without documented decisions
+- Core file modifications that may need ADR coverage
+
+**Status:** Informational (`continue-on-error: true`). Tracks ADR coverage without blocking.
+
 
 ---
 
