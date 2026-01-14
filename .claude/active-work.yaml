@@ -2,11 +2,7 @@
 # Machine-readable tracking for multi-CC coordination.
 # Use: python scripts/check_claims.py --help
 
-claims:
-- cc_id: plan-49-reasoning
-  task: Add reasoning field to ActionIntent narrow waist
-  claimed_at: '2026-01-14T09:50:23Z'
-  plan: 49
+claims: []
 completed:
 - cc_id: tier2-architecture-decisions
   task: Tier 2 architecture decisions (Items 4-7)
@@ -58,3 +54,7 @@ completed:
   plan: 45
   task: Add real E2E requirement to complete_plan.py
   completed_at: '2026-01-14T10:00:00Z'
+- cc_id: plan-49-reasoning
+  plan: 49
+  task: Add reasoning field to ActionIntent narrow waist
+  completed_at: '2026-01-14T16:18:00Z'

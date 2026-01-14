@@ -75,7 +75,7 @@ Master index of all gaps and their implementation plans.
 | 46 | [PR Review Coordination](46_review_coordination.md) | **High** | ✅ Complete | - |
 | 47 | [Meta-Process Enforcement](47_meta_process_enforcement.md) | **High** | 📋 Planned | #41 |
 | 48 | [CI Optimization](48_ci_optimization.md) | Medium | 📋 Post-V1 | - |
-| 49 | [Reasoning in Narrow Waist](49_reasoning_narrow_waist.md) | **High** | 🚧 In Progress | LLM-native monitoring |
+| 49 | [Reasoning in Narrow Waist](49_reasoning_narrow_waist.md) | **High** | ✅ Complete | LLM-native monitoring |
 
 ---
 
