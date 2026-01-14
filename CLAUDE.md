@@ -264,7 +264,7 @@ claude -p "migrate foo.py..." --allowedTools Edit Bash
 
 When starting or continuing a session, first run:
 ```bash
-python scripts/check_claims.py --list && python scripts/check_claims.py --list-features && gh pr list
+python scripts/meta_status.py  # Shows claims, PRs, plan progress, issues
 ```
 
 Then address these in rough order (use judgment):
