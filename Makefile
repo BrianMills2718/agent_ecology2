@@ -43,6 +43,9 @@ gaps:  ## Show gap status summary
 gaps-sync:  ## Sync plan statuses
 	python scripts/sync_plan_status.py --sync
 
+gaps-check:  ## Check plan status consistency
+	python scripts/sync_plan_status.py --check
+
 claim:  ## Claim work (usage: make claim TASK="description" PLAN=N)
 	python scripts/check_claims.py --claim --task "$(TASK)" $(if $(PLAN),--plan $(PLAN),)
 
