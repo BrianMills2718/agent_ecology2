@@ -202,11 +202,35 @@ class World:
         # Initialize principals from config
         self.principal_ids = []
         default_starting_scrip: int = config_get("scrip.starting_amount") or 100
+
+        # Per-agent LLM budget (Plan #12)
+        # Get default from agents.initial_resources.llm_budget or budget.per_agent_budget
+        budget_config = cast(dict[str, Any], config.get("budget", {}))
+        agents_config = cast(dict[str, Any], config.get("agents", {}))
+        initial_resources = cast(dict[str, Any], agents_config.get("initial_resources", {}))
+        default_llm_budget: float = float(initial_resources.get(
+            "llm_budget",
+            budget_config.get("per_agent_budget", 0.0)  # 0 = no per-agent enforcement
+        ))
+
         for p in config["principals"]:
             # Initialize with starting scrip (persistent currency)
             # Flow will be set when first tick starts
             starting_scrip = p.get("starting_scrip", p.get("starting_credits", default_starting_scrip))
-            self.ledger.create_principal(p["id"], starting_scrip=starting_scrip)
+
+            # Per-agent LLM budget (stock resource, Plan #12)
+            # Can be overridden per-principal or use default
+            llm_budget_raw = p.get("llm_budget", default_llm_budget)
+            llm_budget: float = float(cast(float, llm_budget_raw)) if llm_budget_raw is not None else 0.0
+            starting_resources: dict[str, float] = {}
+            if llm_budget > 0:
+                starting_resources["llm_budget"] = llm_budget
+
+            self.ledger.create_principal(
+                p["id"],
+                starting_scrip=starting_scrip,
+                starting_resources=starting_resources if starting_resources else None,
+            )
             self.principal_ids.append(p["id"])
             # Initialize agent in rights registry
             if self.rights_registry:

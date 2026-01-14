@@ -261,10 +261,11 @@ world:
 
 # -----------------------------------------------------------------------------
 # BUDGET
-# Global API spend limit
+# API spending limits (global and per-agent)
 # -----------------------------------------------------------------------------
 budget:
-  max_api_cost: <number>        # $ limit (0 = unlimited)
+  max_api_cost: <number>        # $ limit for global simulation (0 = unlimited)
+  per_agent_budget: <number>    # $ limit per agent (Plan #12, 0 = no enforcement)
   checkpoint_file: <string>     # Where to save state on pause
 
 # -----------------------------------------------------------------------------

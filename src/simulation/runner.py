@@ -348,6 +348,24 @@ class SimulationRunner:
         """
         compute_before: int = self.world.ledger.get_compute(agent.agent_id)
 
+        # Check per-agent LLM budget (Plan #12)
+        # If agent has llm_budget allocated but it's exhausted, skip thinking
+        llm_budget = self.world.ledger.get_resource(agent.agent_id, "llm_budget")
+        # Only enforce if the agent has ever had budget allocated (> 0 at genesis)
+        # A budget of 0 from genesis means "no per-agent budget enforcement"
+        has_budget_config = agent.agent_id in self.world.ledger.resources and \
+            "llm_budget" in self.world.ledger.resources[agent.agent_id]
+        if has_budget_config and llm_budget <= 0:
+            return {
+                "agent": agent,
+                "skipped": True,
+                "skip_reason": "insufficient_llm_budget",
+                "thinking_cost": 0,
+                "api_cost": 0.0,
+                "input_tokens": 0,
+                "output_tokens": 0,
+            }
+
         try:
             proposal: AgentActionResult = await agent.propose_action_async(cast(dict[str, Any], tick_state))
         except Exception as e:
@@ -414,7 +432,14 @@ class SimulationRunner:
         for result in results:
             agent = result["agent"]
             api_cost = result.get("api_cost", 0.0)
-            self.engine.track_api_cost(api_cost)
+            # Track global and per-agent costs (Plan #12)
+            self.engine.track_api_cost(api_cost, agent_id=agent.agent_id)
+
+            # Deduct from agent's llm_budget resource if allocated (Plan #12)
+            if api_cost > 0:
+                self.world.ledger.spend_resource(
+                    agent.agent_id, "llm_budget", api_cost
+                )
 
             if result.get("skipped"):
                 reason = result.get("skip_reason", "unknown")
@@ -436,6 +461,21 @@ class SimulationRunner:
                     )
                     if self.verbose:
                         print(f"    {agent.agent_id}: OUT OF COMPUTE ({reason})")
+                elif "insufficient_llm_budget" in reason:
+                    # Per-agent LLM budget exhausted (Plan #12)
+                    self.world.logger.log(
+                        "thinking_failed",
+                        {
+                            "tick": self.world.tick,
+                            "principal_id": agent.agent_id,
+                            "reason": "insufficient_llm_budget",
+                            "llm_budget_remaining": self.world.ledger.get_resource(
+                                agent.agent_id, "llm_budget"
+                            ),
+                        },
+                    )
+                    if self.verbose:
+                        print(f"    {agent.agent_id}: OUT OF LLM BUDGET")
                 elif "intent_rejected" in reason:
                     self.world.logger.log(
                         "intent_rejected",
