@@ -1,6 +1,6 @@
 # Plan #45: Require Real E2E Tests Before Completion
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** High
 **Type:** Quality Gate / Meta-process
 **Created:** 2026-01-14
@@ -145,15 +145,15 @@ For a project with ~50 plans, this adds ~$0.50-2.50 total cost for full verifica
 ## Required Tests
 
 ### Unit Tests
-- `test_run_real_e2e_tests_success`: Verify function runs and parses output
-- `test_run_real_e2e_tests_skip_missing`: Verify graceful skip if file missing
-- `test_skip_real_e2e_flag`: Verify flag skips real E2E
+- `tests/unit/test_complete_plan.py::TestRunRealE2ETests::test_run_real_e2e_tests_success`: Verify function runs and parses output
+- `tests/unit/test_complete_plan.py::TestRunRealE2ETests::test_run_real_e2e_tests_skip_missing`: Verify graceful skip if file missing
+- `tests/unit/test_complete_plan.py::TestSkipRealE2EFlag::test_skip_real_e2e_flag`: Verify flag skips real E2E
 
 ### Integration Tests
-- `test_complete_plan_with_real_e2e`: Full completion flow with real E2E step
+- `tests/integration/test_complete_plan_integration.py::TestCompletePlanWithRealE2E::test_complete_plan_with_real_e2e`: Full completion flow with real E2E step
 
 ### E2E Tests
-- The existing `test_real_e2e.py` tests serve as the verification target
+- The existing `tests/e2e/test_real_e2e.py` tests serve as the verification target
 
 ## Acceptance Criteria
 

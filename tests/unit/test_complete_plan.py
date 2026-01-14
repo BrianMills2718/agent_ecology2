@@ -1,14 +1,20 @@
-"""Tests for complete_plan.py human review detection."""
+"""Tests for complete_plan.py functionality."""
 
+import subprocess
 import tempfile
 from pathlib import Path
+from unittest.mock import patch, MagicMock
 
 import pytest
 
 # Import the functions we want to test
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
-from complete_plan import get_human_review_section, get_plan_status
+from complete_plan import (
+    get_human_review_section,
+    get_plan_status,
+    run_real_e2e_tests,
+)
 
 
 class TestGetHumanReviewSection:
@@ -152,3 +158,101 @@ No status line here.
         status = get_plan_status(plan_file)
 
         assert status == "Unknown"
+
+
+@pytest.mark.plans(45)
+class TestRunRealE2ETests:
+    """Tests for real E2E test running (Plan #45)."""
+
+    def test_run_real_e2e_tests_success(self, tmp_path: Path) -> None:
+        """Verify run_real_e2e_tests runs pytest and parses output correctly."""
+        # Create a minimal e2e directory with test file
+        e2e_dir = tmp_path / "tests" / "e2e"
+        e2e_dir.mkdir(parents=True)
+        test_file = e2e_dir / "test_real_e2e.py"
+        test_file.write_text("""
+import pytest
+
+@pytest.mark.external
+def test_placeholder():
+    pass
+""")
+
+        # mock-ok: Testing subprocess behavior without running actual tests
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=0,
+                stdout="tests/e2e/test_real_e2e.py::test_placeholder PASSED\n"
+                       "======== 1 passed in 5.23s ========",
+                stderr="",
+            )
+
+            success, summary = run_real_e2e_tests(tmp_path, verbose=False)
+
+            assert success is True
+            assert "PASSED" in summary
+            assert "5.23" in summary
+
+    def test_run_real_e2e_tests_skip_missing(self, tmp_path: Path) -> None:
+        """Verify graceful skip when test_real_e2e.py doesn't exist."""
+        # Create e2e directory but no test file
+        e2e_dir = tmp_path / "tests" / "e2e"
+        e2e_dir.mkdir(parents=True)
+        # Don't create test_real_e2e.py
+
+        success, summary = run_real_e2e_tests(tmp_path, verbose=False)
+
+        assert success is True
+        assert "skipped" in summary.lower()
+
+    def test_run_real_e2e_tests_skip_no_e2e_dir(self, tmp_path: Path) -> None:
+        """Verify graceful skip when tests/e2e/ doesn't exist."""
+        # Don't create any directories
+
+        success, summary = run_real_e2e_tests(tmp_path, verbose=False)
+
+        assert success is True
+        assert "skipped" in summary.lower()
+
+
+@pytest.mark.plans(45)
+class TestSkipRealE2EFlag:
+    """Tests for --skip-real-e2e flag behavior (Plan #45)."""
+
+    def test_skip_real_e2e_flag(self, tmp_path: Path) -> None:
+        """Verify --skip-real-e2e flag skips real E2E tests."""
+        from complete_plan import complete_plan
+
+        # Create minimal plan file
+        plans_dir = tmp_path / "docs" / "plans"
+        plans_dir.mkdir(parents=True)
+        plan_file = plans_dir / "99_test.md"
+        plan_file.write_text("""# Plan #99: Test
+
+**Status:** 🚧 In Progress
+
+## Problem
+Test problem.
+""")
+
+        # mock-ok: Testing flag behavior without running actual verification
+        with patch("complete_plan.run_unit_tests") as mock_unit, \
+             patch("complete_plan.run_e2e_tests") as mock_e2e, \
+             patch("complete_plan.run_real_e2e_tests") as mock_real_e2e, \
+             patch("complete_plan.check_doc_coupling") as mock_doc:
+            mock_unit.return_value = (True, "1 passed")
+            mock_e2e.return_value = (True, "PASSED (1s)")
+            mock_real_e2e.return_value = (True, "skipped")
+            mock_doc.return_value = (True, "passed")
+
+            # Call with skip_real_e2e=True
+            result = complete_plan(
+                plan_number=99,
+                project_root=tmp_path,
+                dry_run=True,
+                skip_real_e2e=True,
+                verbose=False,
+            )
+
+            # Real E2E should NOT be called when skip flag is set
+            mock_real_e2e.assert_not_called()
