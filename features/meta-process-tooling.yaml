@@ -112,6 +112,7 @@ code:
   - scripts/validate_spec.py
   - scripts/check_locked_files.py
   - scripts/check_feature_coverage.py
+  - scripts/check_plan_completion.py
 
 tests:
   - tests/unit/test_validate_spec.py
