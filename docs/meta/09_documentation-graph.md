@@ -89,8 +89,8 @@ python scripts/validate_plan.py --plan 28
 
 | Pattern | Status | Relationship |
 |---------|--------|--------------|
-| [ADR Governance](adr-governance.md) | Subsumed | `governs` edges replace `governance.yaml` |
-| [Doc-Code Coupling](doc-code-coupling.md) | Subsumed | `documented_by` edges replace `doc_coupling.yaml` |
+| [ADR Governance](08_adr-governance.md) | Subsumed | `governs` edges replace `governance.yaml` |
+| [Doc-Code Coupling](10_doc-code-coupling.md) | Subsumed | `documented_by` edges replace `doc_coupling.yaml` |
 
 Both patterns remain valid until migration is complete. After migration, they become implementation details of this unified pattern.
 

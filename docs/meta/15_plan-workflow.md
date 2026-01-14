@@ -390,6 +390,6 @@ git commit -m "[Trivial] Fix formatting in config"
 
 ## See Also
 
-- [Git hooks pattern](git-hooks.md) - Enforces plan references in commits
-- [PR coordination pattern](pr-coordination.md) - Auto-updates plan status on merge
-- [Claim system pattern](claim-system.md) - Tracks who's working on which plan
+- [Git hooks pattern](06_git-hooks.md) - Enforces plan references in commits
+- [PR coordination pattern](21_pr-coordination.md) - Auto-updates plan status on merge
+- [Claim system pattern](18_claim-system.md) - Tracks who's working on which plan

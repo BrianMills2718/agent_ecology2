@@ -643,12 +643,12 @@ require_approval_for_lock: true
 
 ## Related Patterns
 
-- [Feature Linkage](feature-linkage.md) - Companion pattern: optimal linkage structure
-- [ADR](adr.md) - Architecture Decision Records
-- [ADR Governance](adr-governance.md) - Linking ADRs to code
-- [Doc-Code Coupling](doc-code-coupling.md) - Linking docs to code
-- [Testing Strategy](testing-strategy.md) - Test organization
-- [Verification Enforcement](verification-enforcement.md) - Proving completion
+- [Feature Linkage](14_feature-linkage.md) - Companion pattern: optimal linkage structure
+- [ADR](07_adr.md) - Architecture Decision Records
+- [ADR Governance](08_adr-governance.md) - Linking ADRs to code
+- [Doc-Code Coupling](10_doc-code-coupling.md) - Linking docs to code
+- [Testing Strategy](03_testing-strategy.md) - Test organization
+- [Verification Enforcement](17_verification-enforcement.md) - Proving completion
 
 ## Origin
 

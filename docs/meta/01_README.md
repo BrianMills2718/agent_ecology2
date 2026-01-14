@@ -6,28 +6,36 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 
 | Pattern | Problem Solved | Complexity |
 |---------|----------------|------------|
-| [Feature-Driven Development](feature-driven-development.md) | AI drift, cheating, big bang integration | High |
-| [Feature Linkage](feature-linkage.md) | Sparse file-to-constraint mappings | Medium |
-| [CLAUDE.md Authoring](claude-md-authoring.md) | AI assistants lack project context | Low |
-| [ADR](adr.md) | Architectural decisions get lost | Medium |
-| [Documentation Graph](documentation-graph.md) | Can't trace decisions → code | Medium |
-| [Mock Enforcement](mock-enforcement.md) | Green CI, broken production | Low |
-| [PR Coordination](pr-coordination.md) | Lost review requests | Low |
-| [Git Hooks](git-hooks.md) | CI failures caught late | Low |
-| [Plan Workflow](plan-workflow.md) | Untracked work, scope creep | Medium |
-| [Claim System](claim-system.md) | Parallel work conflicts | Medium |
-| [Verification Enforcement](verification-enforcement.md) | Untested "complete" work | Medium |
-| [Worktree Enforcement](worktree-enforcement.md) | Main directory corruption from parallel edits | Low |
-| [Rebase Workflow](rebase-workflow.md) | Stale worktrees causing "reverted" changes | Low |
+| [CLAUDE.md Authoring](02_claude-md-authoring.md) | AI assistants lack project context | Low |
+| [Testing Strategy](03_testing-strategy.md) | Inconsistent test approaches | Low |
+| [Mocking Policy](04_mocking-policy.md) | When to mock, when not to | Low |
+| [Mock Enforcement](05_mock-enforcement.md) | Green CI, broken production | Low |
+| [Git Hooks](06_git-hooks.md) | CI failures caught late | Low |
+| [ADR](07_adr.md) | Architectural decisions get lost | Medium |
+| [ADR Governance](08_adr-governance.md) | ADRs not linked to code | Medium |
+| [Documentation Graph](09_documentation-graph.md) | Can't trace decisions → code | Medium |
+| [Doc-Code Coupling](10_doc-code-coupling.md) | Docs drift from code | Medium |
+| [Terminology](11_terminology.md) | Inconsistent terms | Low |
+| [Structured Logging](12_structured-logging.md) | Unreadable logs | Low |
+| [Feature-Driven Development](13_feature-driven-development.md) | AI drift, cheating, big bang integration | High |
+| [Feature Linkage](14_feature-linkage.md) | Sparse file-to-constraint mappings | Medium |
+| [Plan Workflow](15_plan-workflow.md) | Untracked work, scope creep | Medium |
+| [Plan Blocker Enforcement](16_plan-blocker-enforcement.md) | Blocked plans started anyway | Medium |
+| [Verification Enforcement](17_verification-enforcement.md) | Untested "complete" work | Medium |
+| [Claim System](18_claim-system.md) | Parallel work conflicts | Medium |
+| [Worktree Enforcement](19_worktree-enforcement.md) | Main directory corruption from parallel edits | Low |
+| [Rebase Workflow](20_rebase-workflow.md) | Stale worktrees causing "reverted" changes | Low |
+| [PR Coordination](21_pr-coordination.md) | Lost review requests | Low |
+| [Human Review Pattern](22_human-review-pattern.md) | Risky changes merged without review | Medium |
 
 ### Subsumed Patterns
 
-These patterns are now implementation details of [Documentation Graph](documentation-graph.md):
+These patterns are now implementation details of [Documentation Graph](09_documentation-graph.md):
 
 | Pattern | Status |
 |---------|--------|
-| [ADR Governance](adr-governance.md) | `governs` edges in relationships.yaml |
-| [Doc-Code Coupling](doc-code-coupling.md) | `documented_by` edges in relationships.yaml |
+| [ADR Governance](08_adr-governance.md) | `governs` edges in relationships.yaml |
+| [Doc-Code Coupling](10_doc-code-coupling.md) | `documented_by` edges in relationships.yaml |
 
 ## When to Use
 

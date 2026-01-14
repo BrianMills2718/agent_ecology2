@@ -306,10 +306,10 @@ python scripts/check_feature_coverage.py
 
 ## Related Patterns
 
-- [Feature-Driven Development](feature-driven-development.md) - The complete meta-process
-- [ADR Governance](adr-governance.md) - Now derived from features
-- [Doc-Code Coupling](doc-code-coupling.md) - Now derived from features
-- [Documentation Graph](documentation-graph.md) - Features as nodes
+- [Feature-Driven Development](13_feature-driven-development.md) - The complete meta-process
+- [ADR Governance](08_adr-governance.md) - Now derived from features
+- [Doc-Code Coupling](10_doc-code-coupling.md) - Now derived from features
+- [Documentation Graph](09_documentation-graph.md) - Features as nodes
 
 ## Origin
 
