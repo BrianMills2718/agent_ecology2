@@ -311,6 +311,26 @@ jobs:
 
           echo "✓ All commits have valid plan references or trivial tags."
 
+  plan-completion-evidence:
+    runs-on: ubuntu-latest
+    # Plan #41 Gap 2: Check that merged plan commits have verification evidence
+    # Runs post-merge on main to catch plans completed without proper verification
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    continue-on-error: true  # Warn only - don't block main
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 10  # Need recent history
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check plan completion evidence
+        run: python scripts/check_plan_completion.py --recent-commits 5 --warn-only
+
   claim-verification:
     runs-on: ubuntu-latest
     # Verifies the PR branch was claimed before work started
