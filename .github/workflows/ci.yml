@@ -123,7 +123,8 @@ jobs:
       - name: Check plan tests
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/check_plan_tests.py --all
+        # Plan #41 Step 4: Strict mode fails for In Progress plans without tests
+        run: python scripts/check_plan_tests.py --all --strict
 
   mock-usage:
     runs-on: ubuntu-latest
