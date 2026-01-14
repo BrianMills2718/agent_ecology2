@@ -527,6 +527,25 @@ class ArtifactStore:
         """List all artifacts owned by a principal"""
         return [a.to_dict() for a in self.artifacts.values() if a.owner_id == owner_id]
 
+    def get_artifacts_by_owner(
+        self, owner_id: str, include_deleted: bool = False
+    ) -> list[str]:
+        """Get artifact IDs owned by a principal.
+
+        Args:
+            owner_id: Principal ID to query
+            include_deleted: If True, include deleted artifacts (Plan #18)
+
+        Returns:
+            List of artifact IDs owned by the principal
+        """
+        result = []
+        for artifact_id, artifact in self.artifacts.items():
+            if artifact.owner_id == owner_id:
+                if include_deleted or not artifact.deleted:
+                    result.append(artifact_id)
+        return result
+
     def transfer_ownership(
         self, artifact_id: str, from_id: str, to_id: str
     ) -> bool:
