@@ -216,6 +216,11 @@ class World:
         self.artifacts = ArtifactStore()
         self.logger = EventLogger(config["logging"]["output_file"])
 
+        # Kernel quota state (Plan #42)
+        # Must be initialized BEFORE genesis artifacts since rights_registry delegates here
+        self._quota_limits = {}
+        self._quota_usage = {}
+
         # Genesis artifacts (system-owned proxies)
         self.genesis_artifacts = create_genesis_artifacts(
             ledger=self.ledger,
@@ -229,10 +234,14 @@ class World:
         rights_registry = self.genesis_artifacts.get("genesis_rights_registry")
         self.rights_registry = rights_registry if isinstance(rights_registry, GenesisRightsRegistry) else None
 
-        # Wire up GenesisMint to use kernel primitives (Plan #44)
+# Wire up GenesisMint to use kernel primitives (Plan #44)
         genesis_mint = self.genesis_artifacts.get("genesis_mint")
         if isinstance(genesis_mint, GenesisMint):
             genesis_mint.set_world(self)
+
+        # Wire up rights registry to delegate to kernel (Plan #42)
+        if self.rights_registry is not None:
+            self.rights_registry.set_world(self)
 
         # Seed genesis_handbook artifact (readable documentation for agents)
         self._seed_handbook()
@@ -308,6 +317,7 @@ class World:
         # Quotas are kernel state, not genesis artifact state
         self._quota_limits = {}
         self._quota_usage = {}
+
 
         # Log world init
         default_quotas = self.rights_config.get("default_quotas", {})
