@@ -110,6 +110,7 @@ code:
   - scripts/check_claims.py
   - scripts/check_doc_coupling.py
   - scripts/merge_pr.py
+  - scripts/cleanup_branches.py
   - scripts/check_mock_usage.py
   - scripts/check_mock_tests.py
   - scripts/check_new_code_tests.py
