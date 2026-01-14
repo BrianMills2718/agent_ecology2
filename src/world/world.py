@@ -350,6 +350,7 @@ class World:
             "resources": "handbook_resources",
             "trading": "handbook_trading",
             "mint": "handbook_mint",
+            "coordination": "handbook_coordination",
         }
 
         for section_name, artifact_id in handbook_sections.items():

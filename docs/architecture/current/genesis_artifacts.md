@@ -249,6 +249,7 @@ Agent
 - `handbook_resources` - Resource system documentation
 - `handbook_trading` - Escrow trading guide
 - `handbook_mint` - Mint bidding guide
+- `handbook_coordination` - Multi-agent coordination patterns
 
 **Source:** `src/agents/_handbook/*.md` files
 
