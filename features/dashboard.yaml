@@ -111,12 +111,14 @@ code:
   - src/dashboard/watcher.py
   - src/dashboard/kpis.py
   - src/dashboard/auditor.py
+  - src/dashboard/network_analysis.py
 
 tests:
   - tests/e2e/test_smoke.py  # Dashboard tested as part of E2E smoke
   - tests/unit/test_kpis.py
   - tests/unit/test_auditor.py
   - tests/integration/test_dashboard_health.py
+  - tests/unit/test_network_analysis.py
 
 docs:
   - docs/architecture/current/supporting_systems.md

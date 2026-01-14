@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .parser import JSONLParser
 from .kpis import calculate_kpis, EcosystemKPIs
 from .auditor import assess_health, AuditorThresholds, HealthReport
+from .network_analysis import calculate_network_metrics
 
 # Import simulation runner for control (may not be available)
 try:
@@ -397,6 +398,21 @@ def create_app(
         """Get network graph data for agent interactions."""
         dashboard.parser.parse_incremental()
         return dashboard.parser.get_network_graph_data(tick_max).model_dump()
+
+    @app.get("/api/network/metrics")
+    async def get_network_metrics() -> dict[str, Any]:
+        """Get network analysis metrics for emergence detection.
+
+        Returns graph metrics to detect emergent structures:
+        - degree_centrality: Who has most connections (hubs)
+        - betweenness_centrality: Who bridges groups
+        - clustering_coefficient: How tightly connected are neighborhoods
+        - communities: Distinct connected groups
+        - summary: Aggregate statistics (node count, density, etc.)
+        """
+        dashboard.parser.parse_incremental()
+        interactions = dashboard.parser.state.interactions
+        return calculate_network_metrics(interactions)
 
     @app.get("/api/activity")
     async def get_activity_feed(

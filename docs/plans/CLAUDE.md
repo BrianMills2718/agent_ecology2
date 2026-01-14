@@ -48,7 +48,7 @@ Master index of all gaps and their implementation plans.
 | 19 | [Agent-to-Agent Threat Model](19_threat_model.md) | Medium | ✅ Complete | - |
 | 20 | [Migration Strategy](20_migration_strategy.md) | **High** | ✅ Complete | - |
 | 21 | [Testing for Continuous](21_continuous_testing.md) | Medium | ✅ Complete | - |
-| 22 | [Coordination Primitives](22_coordination.md) | Medium | 📋 Planned | - |
+| 22 | [Coordination Primitives](22_coordination.md) | Medium | ✅ Planned | - |
 | 23 | [Error Response Conventions](23_error_conventions.md) | Low | ✅ Complete | - |
 | 24 | [Ecosystem Health KPIs](24_health_kpis.md) | Medium | ✅ Complete | #25 |
 | 25 | [System Auditor Agent](25_system_auditor.md) | Low | ✅ Complete | - |
@@ -68,14 +68,14 @@ Master index of all gaps and their implementation plans.
 | 39 | [Genesis Unprivilege](39_genesis_unprivilege.md) | **High** | ✅ Complete | - |
 | 40 | [ActionResult Error Integration](40_actionresult_errors.md) | **High** | ✅ Complete | - |
 | 41 | [Meta-Process Enforcement Gaps](41_enforcement_gaps.md) | **Critical** | 🚧 In Progress | - |
-| 42 | [Kernel Quota Primitives](42_kernel_quota_primitives.md) | **High** | 🚧 In Progress | #1 |
+| 42 | [Kernel Quota Primitives](42_kernel_quota_primitives.md) | **High** | ✅ In Progress | #1 |
 | 43 | [Comprehensive Meta-Enforcement](43_meta_enforcement.md) | **Critical** | 📋 Planned | - |
 | 44 | [Genesis Full Unprivilege](44_genesis_full_unprivilege.md) | **High** | ✅ Complete | #42 |
-| 45 | [Real E2E Test Requirement](45_real_e2e_requirement.md) | **High** | 📋 Planned | - |
+| 45 | [Real E2E Test Requirement](45_real_e2e_requirement.md) | **High** | 🚧 Planned | - |
 | 46 | [PR Review Coordination](46_review_coordination.md) | **High** | ✅ Complete | - |
 | 47 | [Meta-Process Enforcement](47_meta_process_enforcement.md) | **High** | 📋 Planned | #41 |
 | 48 | [CI Optimization](48_ci_optimization.md) | Medium | 📋 Planned | - |
-| 49 | [Reasoning in Narrow Waist](49_reasoning_narrow_waist.md) | **High** | 📋 Planned | LLM-native monitoring |
+| 49 | [Reasoning in Narrow Waist](49_reasoning_narrow_waist.md) | **High** | 🚧 Planned | LLM-native monitoring |
 | 50 | [Emergence Detection Dashboard](50_emergence_detection.md) | **High** | 🚧 In Progress | Core thesis |
 
 ---

@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-14 (Added vulture observability events)
+**Last verified:** 2026-01-14 (Added network analysis for emergence detection)
 
 ---
 
@@ -178,6 +178,7 @@ Real-time web UI for monitoring simulation.
 | `parser.py` | JSONL parsing and state extraction |
 | `watcher.py` | File change detection (watchdog + polling fallback) |
 | `models.py` | Pydantic models for API responses |
+| `network_analysis.py` | Graph metrics for emergence detection |
 | `static/` | HTML/CSS/JS frontend |
 
 ### Architecture
@@ -227,6 +228,7 @@ Real-time web UI for monitoring simulation.
 | `/api/config` | GET | Simulation configuration |
 | `/api/ticks` | GET | Tick summary history |
 | `/api/network` | GET | Agent interaction graph |
+| `/api/network/metrics` | GET | Network analysis for emergence detection |
 | `/api/activity` | GET | Activity feed with filtering |
 | `/api/thinking` | GET | Agent thinking history |
 | `/api/simulation/status` | GET | Runner status |
@@ -276,6 +278,55 @@ dashboard:
 | `src/dashboard/auditor.py` | `HealthReport`, `assess_health()` | Health assessment |
 | `src/dashboard/kpis.py` | `EcosystemKPIs`, `calculate_kpis()` | KPI calculations |
 | `src/world/invocation_registry.py` | `InvocationRegistry`, `InvocationRecord` | Invocation tracking |
+| `src/dashboard/network_analysis.py` | Graph metric functions | Emergence detection |
+
+---
+
+## Network Analysis (Plan #50)
+
+Graph metrics for detecting emergent structures in agent interactions.
+
+### Metrics
+
+| Metric | Purpose | Interpretation |
+|--------|---------|----------------|
+| Degree centrality | Connection count / (n-1) | High = hub node with many connections |
+| Betweenness centrality | Fraction of shortest paths through node | High = bridge between groups |
+| Clustering coefficient | Edges among neighbors / possible edges | High = tightly knit neighborhood |
+| Communities | Connected components | Groups that interact within but not between |
+
+### API Response
+
+`GET /api/network/metrics` returns:
+
+```json
+{
+    "degree_centrality": {"agent_1": 0.5, "agent_2": 0.3},
+    "betweenness_centrality": {"agent_1": 0.2, "agent_2": 0.1},
+    "clustering_coefficient": {"agent_1": 0.8, "agent_2": 0.0},
+    "communities": [["agent_1", "agent_3"], ["agent_2"]],
+    "summary": {
+        "node_count": 3,
+        "community_count": 2,
+        "avg_degree_centrality": 0.4,
+        "avg_clustering": 0.4,
+        "max_betweenness_node": "agent_1",
+        "density": 0.33
+    }
+}
+```
+
+### Key Functions
+
+**`network_analysis.py`** - `src/dashboard/network_analysis.py:1-232`
+
+| Function | Purpose |
+|----------|---------|
+| `calculate_degree_centrality()` | Normalized connection counts |
+| `calculate_betweenness_centrality()` | Bridge node detection (Brandes' algorithm) |
+| `calculate_clustering_coefficient()` | Local neighborhood density |
+| `detect_communities()` | Connected component identification |
+| `calculate_network_metrics()` | Aggregate all metrics + summary statistics |
 
 ---
 
