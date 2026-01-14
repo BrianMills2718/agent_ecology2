@@ -242,8 +242,11 @@ cd worktrees/plan-03-docker && claude
 
 # Now you're isolated - safe to edit files
 # Do work, create PR, then cleanup
-git worktree remove worktrees/plan-03-docker
+make worktree-remove BRANCH=plan-03-docker  # Safe - checks for uncommitted changes
 ```
+
+> **⚠️ ALWAYS use `make worktree-remove`** - it blocks removal if uncommitted changes exist.
+> Direct `git worktree remove` will **permanently lose** uncommitted changes!
 
 **What happens without worktrees (BAD):**
 ```
@@ -257,7 +260,7 @@ Instance 1: commits           → wrong content, missing changes
 1. Claude A creates PR from worktree
 2. Claude B reviews in main directory (read-only) or different worktree
 3. Claude B approves/requests changes
-4. After merge, remove worktree
+4. After merge, remove worktree (`make worktree-remove BRANCH=...`)
 
 **Headless fan-out (batch operations):**
 ```bash
@@ -339,7 +342,7 @@ Cross-cutting files (config, fixtures) are in the "shared" feature (`features/sh
 5. **Rebase** - `make pr-ready` (rebase onto latest main, push)
 6. **PR** - Create PR from worktree
 7. **Review** - Another CC instance reviews (from main or separate worktree)
-8. **Complete** - `make release`, merge PR, remove worktree
+8. **Complete** - `make release`, merge PR, `make worktree-remove BRANCH=...`
 
 > **CRITICAL: `make worktree` is mandatory for implementation work.**
 > It prompts for task description and plan number, then claims the work before creating the worktree.

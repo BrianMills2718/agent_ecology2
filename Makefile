@@ -1,7 +1,7 @@
 # Agent Ecology - Common Commands
 # Usage: make <target>
 
-.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge merge-status merge-release pr-merge pr-merge-admin pr-list pr-view worktree worktree-quick clean-branches clean-branches-delete
+.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge merge-status merge-release pr-merge pr-merge-admin pr-list pr-view worktree worktree-quick worktree-remove worktree-remove-force clean-branches clean-branches-delete
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -84,9 +84,13 @@ worktree-quick:  ## Create worktree without claim (usage: make worktree-quick BR
 worktree-list:  ## List active worktrees
 	git worktree list
 
-worktree-remove:  ## Remove a worktree (usage: make worktree-remove BRANCH=feature-name)
+worktree-remove:  ## Remove a worktree safely (usage: make worktree-remove BRANCH=feature-name)
 	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree-remove BRANCH=feature-name"; exit 1; fi
-	git worktree remove worktrees/$(BRANCH)
+	python scripts/safe_worktree_remove.py worktrees/$(BRANCH)
+
+worktree-remove-force:  ## Force remove worktree (LOSES uncommitted changes!)
+	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree-remove-force BRANCH=feature-name"; exit 1; fi
+	python scripts/safe_worktree_remove.py --force worktrees/$(BRANCH)
 
 rebase:  ## Rebase current branch onto latest origin/main
 	git fetch origin
