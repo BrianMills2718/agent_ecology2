@@ -2,7 +2,7 @@
 
 Master index of all gaps and their implementation plans.
 
-**Last verified:** 2026-01-14 (Post-V1 categorization, Plan #41 progress)
+**Last verified:** 2026-01-14 (Gap 7 - blocker enforcement in validate_plan.py)
 
 ---
 
@@ -31,32 +31,32 @@ Master index of all gaps and their implementation plans.
 | 2 | [Continuous Execution](02_continuous_execution.md) | **High** | ✅ Complete | #21 |
 | 3 | [Docker Isolation](03_docker_isolation.md) | Medium | ✅ Complete | - |
 | 4 | ~~Compute Debt Model~~ | - | ✅ Superseded | - |
-| 5 | [Oracle Anytime Bidding](05_oracle_anytime.md) | Medium | 📋 Post-V1 | - |
+| 5 | [Oracle Anytime Bidding](05_oracle_anytime.md) | Medium | 📋 Planned | - |
 | 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | ✅ Complete | #7,#8,#14,#16 |
-| 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | 📋 Post-V1 | - |
-| 8 | [Agent Rights Trading](08_agent_rights.md) | Low | 📋 Post-V1 | - |
-| 9 | [Scrip Debt Contracts](09_scrip_debt.md) | Low | 📋 Post-V1 | - |
+| 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | 📋 Planned | - |
+| 8 | [Agent Rights Trading](08_agent_rights.md) | Low | 📋 Planned | - |
+| 9 | [Scrip Debt Contracts](09_scrip_debt.md) | Low | 📋 Planned | - |
 | 10 | [Memory Persistence](10_memory_persistence.md) | Low | 🚧 In Progress | - |
 | 11 | [Terminology Cleanup](11_terminology.md) | Medium | ✅ Complete | #12 |
 | 12 | [Per-Agent LLM Budget](12_per_agent_budget.md) | Medium | ✅ Complete | - |
-| 13 | [Doc Line Number Refs](13_doc_line_refs.md) | Low | 📋 Post-V1 | - |
+| 13 | [Doc Line Number Refs](13_doc_line_refs.md) | Low | 📋 Planned | - |
 | 14 | [Artifact Interface Schema](14_mcp_interface.md) | Medium | ✅ Complete | - |
-| 15 | [invoke() Genesis Support](15_invoke_genesis.md) | Medium | 📋 Post-V1 | - |
+| 15 | [invoke() Genesis Support](15_invoke_genesis.md) | Medium | 📋 Planned | - |
 | 16 | [Artifact Discovery](16_artifact_discovery.md) | **High** | ✅ Complete | #17,#22 |
 | 17 | [Agent Discovery](17_agent_discovery.md) | Medium | ✅ Complete | - |
 | 18 | [Dangling Reference Handling](18_dangling_refs.md) | Medium | ✅ Complete | - |
 | 19 | [Agent-to-Agent Threat Model](19_threat_model.md) | Medium | ✅ Complete | - |
 | 20 | [Migration Strategy](20_migration_strategy.md) | **High** | ✅ Complete | - |
 | 21 | [Testing for Continuous](21_continuous_testing.md) | Medium | ✅ Complete | - |
-| 22 | [Coordination Primitives](22_coordination.md) | Medium | ✅ Complete | - |
+| 22 | [Coordination Primitives](22_coordination.md) | Medium | 📋 Planned | - |
 | 23 | [Error Response Conventions](23_error_conventions.md) | Low | ✅ Complete | - |
 | 24 | [Ecosystem Health KPIs](24_health_kpis.md) | Medium | ✅ Complete | #25 |
 | 25 | [System Auditor Agent](25_system_auditor.md) | Low | ✅ Complete | - |
 | 26 | [Vulture Observability](26_vulture_observability.md) | Medium | ✅ Complete | - |
 | 27 | [Invocation Registry](27_invocation_registry.md) | Medium | ✅ Complete | - |
 | 28 | [Pre-seeded MCP Servers](28_mcp_servers.md) | **High** | ✅ Complete | - |
-| 29 | [Library Installation](29_package_manager.md) | Medium | 📋 Post-V1 | - |
-| 30 | [LLM Budget Trading](30_capability_requests.md) | Medium | 📋 Post-V1 | - |
+| 29 | [Library Installation](29_package_manager.md) | Medium | 📋 Planned | - |
+| 30 | [LLM Budget Trading](30_capability_requests.md) | Medium | 📋 Planned | - |
 | 31 | [Resource Measurement](31_resource_measurement.md) | **High** | ✅ Complete | - |
 | 32 | [Developer Tooling](32_developer_tooling.md) | **High** | ✅ Complete | - |
 | 33 | [ADR Governance](33_adr_governance.md) | **High** | ✅ Complete | - |
@@ -68,14 +68,15 @@ Master index of all gaps and their implementation plans.
 | 39 | [Genesis Unprivilege](39_genesis_unprivilege.md) | **High** | ✅ Complete | - |
 | 40 | [ActionResult Error Integration](40_actionresult_errors.md) | **High** | ✅ Complete | - |
 | 41 | [Meta-Process Enforcement Gaps](41_enforcement_gaps.md) | **Critical** | 🚧 In Progress | - |
-| 42 | [Kernel Quota Primitives](42_kernel_quota_primitives.md) | **High** | ✅ Complete | #1 |
+| 42 | [Kernel Quota Primitives](42_kernel_quota_primitives.md) | **High** | 🚧 In Progress | #1 |
 | 43 | [Comprehensive Meta-Enforcement](43_meta_enforcement.md) | **Critical** | 📋 Planned | - |
 | 44 | [Genesis Full Unprivilege](44_genesis_full_unprivilege.md) | **High** | ✅ Complete | #42 |
-| 45 | [Real E2E Test Requirement](45_real_e2e_requirement.md) | **High** | 🚧 Complete | - |
+| 45 | [Real E2E Test Requirement](45_real_e2e_requirement.md) | **High** | 📋 Planned | - |
 | 46 | [PR Review Coordination](46_review_coordination.md) | **High** | ✅ Complete | - |
 | 47 | [Meta-Process Enforcement](47_meta_process_enforcement.md) | **High** | 📋 Planned | #41 |
-| 48 | [CI Optimization](48_ci_optimization.md) | Medium | 📋 Post-V1 | - |
-| 49 | [Reasoning in Narrow Waist](49_reasoning_narrow_waist.md) | **High** | 🚧 In Progress | LLM-native monitoring |
+| 48 | [CI Optimization](48_ci_optimization.md) | Medium | 📋 Planned | - |
+| 49 | [Reasoning in Narrow Waist](49_reasoning_narrow_waist.md) | **High** | 📋 Planned | LLM-native monitoring |
+| 50 | [Emergence Detection Dashboard](50_emergence_detection.md) | **High** | 🚧 In Progress | Core thesis |
 
 ---
 
