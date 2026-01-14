@@ -131,12 +131,12 @@ All three action types must populate error fields:
 
 ## Required Tests
 
-- `tests/unit/test_actions.py::test_action_result_error_fields`
-- `tests/unit/test_actions.py::test_action_result_backward_compat`
-- `tests/integration/test_narrow_waist_errors.py::test_read_artifact_errors`
-- `tests/integration/test_narrow_waist_errors.py::test_write_artifact_errors`
-- `tests/integration/test_narrow_waist_errors.py::test_invoke_artifact_errors`
-- `tests/integration/test_narrow_waist_errors.py::test_error_retriability`
+### Existing Tests (Must Pass)
+
+| Test Pattern | Why |
+|--------------|-----|
+| `tests/unit/test_action_result_errors.py` | ActionResult error fields unit tests |
+| `tests/integration/test_narrow_waist_errors.py` | Narrow waist error handling integration tests |
 
 ---
 

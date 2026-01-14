@@ -166,15 +166,11 @@ exec(artifact_code, sandbox_globals)
 
 ## Required Tests
 
-### Unit Tests
-- `test_kernel_interface.py::test_state_read_public` - Any artifact can read balances
-- `test_kernel_interface.py::test_state_read_access_controlled` - Artifact content respects permissions
-- `test_kernel_interface.py::test_actions_verify_caller` - Can only transfer from own account
-- `test_kernel_interface.py::test_genesis_uses_interface` - Genesis artifacts use same interface
+### Existing Tests (Must Pass)
 
-### Integration Tests
-- `test_genesis_unprivilege.py::test_agent_artifact_equivalent_to_genesis` - Agent can build functional equivalent of genesis_ledger
-- `test_genesis_unprivilege.py::test_no_privilege_escalation` - Cannot bypass access controls via interface
+| Test Pattern | Why |
+|--------------|-----|
+| `tests/unit/test_kernel_interface.py` | Kernel interface unit tests |
 
 ---
 
