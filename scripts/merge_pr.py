@@ -151,7 +151,7 @@ def acquire_lock(pr_number: int, dry_run: bool = False) -> bool:
     # Commit and push lock
     print(f"🔒 Acquiring merge lock for PR #{pr_number}...")
     try:
-        run_cmd(["git", "add", str(YAML_PATH)])
+        run_cmd(["git", "add", "-f", str(YAML_PATH)])
         run_cmd(
             ["git", "commit", "-m", f"[Trivial] Acquire merge lock for PR #{pr_number}"]
         )
@@ -183,7 +183,7 @@ def release_lock(pr_number: int | None = None) -> bool:
     )
     print("🔓 Releasing merge lock...")
     try:
-        run_cmd(["git", "add", str(YAML_PATH)])
+        run_cmd(["git", "add", "-f", str(YAML_PATH)])
         run_cmd(["git", "commit", "-m", msg])
         run_cmd(["git", "push", "origin", "HEAD"])
         print("✅ Lock released")
