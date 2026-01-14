@@ -278,6 +278,8 @@ Then address these in rough order (use judgment):
 | 5. Update stale documentation | Low risk, high value |
 | 6. New implementation | Requires a plan first (see below) |
 
+**When recommending actions:** Always use the `/proceed` format to confirm alignment with priorities above.
+
 **If finishing work:** `make release`, verify PR created, check CI status.
 
 **Starting ANY implementation:**
