@@ -370,28 +370,18 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| main | 41 | Fix meta-process enforcement gaps | 2026-01-14T07:34 | Active |
-| plan-44-genesis-unprivilege | 44 | Implement genesis full unprivilege | 2026-01-14T08:18 | Active |
+| - | - | - | - | - |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->
 | PR | Branch | Title | Created | Status |
 |----|--------|-------|---------|--------|
-| #134 | plan-41-ci-enforcement | [Plan #41] CI enforcement | 2026-01-14 | Open |
-| #124 | plan-43-reasoning-narrow-waist | [Plan #43] Reasoning | 2026-01-14 | Open |
 | #122 | plan-42-implementation | [Plan #42] Kernel quotas | 2026-01-14 | Open |
+| #124 | plan-43-reasoning-narrow-waist | [Plan #43] Reasoning | 2026-01-14 | Open |
+| #135 | plan-41-blocker-enforcement | [Plan #41] Blocker enforcement | 2026-01-14 | Open |
 
 **After PR merged:** Remove from Awaiting Review table.
 
----
-
-### ⚠️ CC Instance Messages
-
-<!-- Messages for other CC instances. Remove each message when its condition is met. -->
-
-*No active messages at this time.*
-
----
 
 ### Merging PRs
 
