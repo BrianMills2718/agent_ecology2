@@ -1,6 +1,6 @@
 # Gap 8: Agent Rights Trading
 
-**Status:** 📋 Planned
+**Status:** 📋 Planned (Post-V1)
 **Priority:** Low
 **Blocked By:** None
 **Blocks:** None

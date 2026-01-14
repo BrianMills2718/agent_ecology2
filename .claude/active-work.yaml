@@ -2,8 +2,11 @@
 # Machine-readable tracking for multi-CC coordination.
 # Use: python scripts/check_claims.py --help
 
-claims: []
-
+claims:
+- cc_id: main
+  task: Add real E2E requirement to complete_plan.py
+  claimed_at: '2026-01-14T09:48:12Z'
+  plan: 45
 completed:
 - cc_id: tier2-architecture-decisions
   task: Tier 2 architecture decisions (Items 4-7)
