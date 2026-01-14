@@ -2,7 +2,7 @@
 
 Master index of all gaps and their implementation plans.
 
-**Last verified:** 2026-01-14 (Plan #41 Step 1 complete)
+**Last verified:** 2026-01-14 (Plan #41 Step 4 complete)
 
 ---
 
@@ -36,7 +36,7 @@ Master index of all gaps and their implementation plans.
 | 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | 📋 Post-V1 | - |
 | 8 | [Agent Rights Trading](08_agent_rights.md) | Low | 📋 Post-V1 | - |
 | 9 | [Scrip Debt Contracts](09_scrip_debt.md) | Low | 📋 Post-V1 | - |
-| 10 | [Memory Persistence](10_memory_persistence.md) | Low | 🚧 In Progress | - |
+| 10 | [Memory Persistence](10_memory_persistence.md) | Low | 📋 Post-V1 | - |
 | 11 | [Terminology Cleanup](11_terminology.md) | Medium | ✅ Complete | #12 |
 | 12 | [Per-Agent LLM Budget](12_per_agent_budget.md) | Medium | ✅ Complete | - |
 | 13 | [Doc Line Number Refs](13_doc_line_refs.md) | Low | 📋 Post-V1 | - |

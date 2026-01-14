@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-14 (plan-completion-evidence job added)
+Last verified: 2026-01-14 (Plan #41 Step 4 - strict mode for plan-tests)
 
 ---
 
@@ -105,24 +105,27 @@ python scripts/sync_plan_status.py --sync       # Update index
 
 ### 6. plan-tests
 
-Checks test requirements for implementation plans. **Strict** - blocks PRs if tests fail.
+Checks test requirements for implementation plans. **Strict** - blocks PRs if tests fail or In Progress plans lack tests.
 
 ```yaml
 - uses: actions/checkout@v4
 - uses: actions/setup-python@v5 (Python 3.11)
 - pip install -e . && pip install -r requirements.txt
 - python scripts/check_plan_tests.py --list
-- python scripts/check_plan_tests.py --all
+- python scripts/check_plan_tests.py --all --strict
 ```
 
 **Environment:** `GEMINI_API_KEY` from GitHub secrets (for memory/embedding tests).
 
 **What it catches:**
 - Plans with missing required tests
+- **In Progress plans without any test definitions** (`--strict` mode, Plan #41 Step 4)
 - TDD workflow status (which tests need to be written)
 - Test failures for plans with defined requirements
 
 **Only checks active plans:** Plans in "In Progress" (`🚧`) or "Complete" (`✅`) status. Plans that are "Planned", "Needs Plan", or "Blocked" are skipped (TDD tests should be written when work starts, not when plan is created).
+
+**Strict mode:** With `--strict`, CI fails for any In Progress plan without a `## Required Tests` section. This ensures TDD workflow is followed - tests must be defined before implementation.
 
 **Configuration:** Test requirements defined in each plan file's `## Required Tests` section.
 
