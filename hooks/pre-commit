@@ -55,4 +55,18 @@ if ! python scripts/check_doc_coupling.py --validate-config 2>/dev/null; then
     exit 1
 fi
 
+# 4. Plan status consistency (only if plan files staged)
+STAGED_PLANS=$(git diff --cached --name-only --diff-filter=ACM | grep '^docs/plans/' || true)
+if [ -n "$STAGED_PLANS" ]; then
+    echo "Checking plan status consistency..."
+    if ! python scripts/sync_plan_status.py --check 2>/dev/null; then
+        echo ""
+        echo "ERROR: Plan status inconsistency detected!"
+        echo "Run 'python scripts/sync_plan_status.py --check' to see details"
+        echo "Run 'python scripts/sync_plan_status.py --sync' to sync index"
+        echo ""
+        exit 1
+    fi
+fi
+
 echo "Pre-commit checks passed!"

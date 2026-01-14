@@ -25,6 +25,29 @@ echo "Current claims:"
 python scripts/check_claims.py --list
 echo ""
 
+# Check PR queue depth (enforce priority order: merge before new work)
+OPEN_PRS=$(gh pr list --state open 2>/dev/null | wc -l || echo "0")
+if [ "$OPEN_PRS" -gt 3 ]; then
+    echo -e "${YELLOW}========================================"
+    echo "WARNING: $OPEN_PRS open PRs in queue"
+    echo "========================================${NC}"
+    echo ""
+    echo "Meta-process priority order says:"
+    echo "  Priority 2: Merge passing PRs"
+    echo "  Priority 6: New implementation (last)"
+    echo ""
+    echo "Open PRs:"
+    gh pr list --state open
+    echo ""
+    read -p "Continue creating worktree anyway? (y/N): " PR_RESPONSE
+    if [[ ! "$PR_RESPONSE" =~ ^[Yy]$ ]]; then
+        echo "Aborting. Merge existing PRs first with:"
+        echo "  gh pr merge <number> --squash --delete-branch"
+        exit 0
+    fi
+    echo ""
+fi
+
 # Get task description
 read -p "Task description (required): " TASK
 if [ -z "$TASK" ]; then
