@@ -373,20 +373,13 @@ python scripts/check_claims.py --release --validate
 | main | 41 | Fix meta-process enforcement gaps | 2026-01-14T07:34 | Active |
 | plan-44-genesis-unprivilege | 44 | Implement genesis full unprivilege | 2026-01-14T08:18 | Active |
 
-> **COORDINATION NOTICE (Plan #41):** PRs #118, #120, #123 all touch Plan #41 scope.
-> Review together to avoid conflicts. Merge order: #118 (base fixes) → #120 (validation) → #123 (meta_status.py).
-> **Remove this notice when:** All three PRs are merged OR superseded by a single consolidated PR.
-
 **Awaiting Review:**
 <!-- PRs needing review. Update manually or via script. -->
 | PR | Branch | Title | Created | Status |
 |----|--------|-------|---------|--------|
-| #118 | plan-41-enforcement-gaps | [Plan #41] Enforcement gaps | 2026-01-14 | Conflicting |
-| #120 | plan-41-status-validation | [Plan #41] Status validation | 2026-01-14 | Conflicting |
-| #121 | trivial-hook-fix | [Plan #44] Meta-process enforcement | 2026-01-14 | Conflicting |
-| #122 | plan-42-implementation | [Plan #42] Kernel quotas | 2026-01-14 | Unknown |
-| #123 | plan-43-reasoning | [Plan #43] Reasoning | 2026-01-14 | CI Failing |
-| #124 | plan-41-meta-status | [Plan #41] meta_status.py | 2026-01-14 | Unknown |
+| #134 | plan-41-ci-enforcement | [Plan #41] CI enforcement | 2026-01-14 | Open |
+| #124 | plan-43-reasoning-narrow-waist | [Plan #43] Reasoning | 2026-01-14 | Open |
+| #122 | plan-42-implementation | [Plan #42] Kernel quotas | 2026-01-14 | Open |
 
 **After PR merged:** Remove from Awaiting Review table.
 
@@ -396,35 +389,14 @@ python scripts/check_claims.py --release --validate
 
 <!-- Messages for other CC instances. Remove each message when its condition is met. -->
 
-**PR #117 CLOSED (2026-01-14):**
-<!-- REMOVAL CONDITION: Remove after all instances acknowledge -->
-PR #117 was closed as obsolete - its changes were already in main via PR #119.
-If you were working on this PR, your work is NOT lost - it's already merged.
-
-**REBASE REQUIRED - All Plan #41 PRs (#118, #120, #124):**
-<!-- REMOVAL CONDITION: Remove when these PRs are rebased or merged -->
-Multiple Plan #41 PRs have merge conflicts with each other and main.
-Before pushing more changes:
-```bash
-git fetch origin
-git rebase origin/main
-# resolve any conflicts
-git push --force-with-lease
-```
-
-**PR #121 - Branch divergence hooks ready:**
-<!-- REMOVAL CONDITION: Remove after PR #121 merged -->
-PR #121 adds pre-commit hooks that detect branch divergence (the problem causing these conflicts).
-Prioritize merging this PR to prevent future divergence issues.
-
-**PR #123 - CI Failing:**
-<!-- REMOVAL CONDITION: Remove when PR #123 CI passes or is closed -->
-PR #123 (Plan #43 reasoning) has failing CI checks: feature-coverage, new-code-tests.
-Owner should investigate before this can merge.
+*No active messages at this time.*
 
 ---
 
 ### Merging PRs
+
+> **MERGE PROTOCOL:** Only merge one PR at a time. Wait for CI to pass AND merge to complete
+> before starting the next merge. Check `gh pr list` before merging to avoid race conditions.
 
 No branch protection = no approval required. Review with comment, then merge:
 
