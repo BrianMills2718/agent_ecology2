@@ -7,95 +7,6 @@
 
 ---
 
-## 🔴 TEMP HANDOFF - DELETE THIS SECTION AFTER READING
-
-**Date:** 2026-01-15
-**From:** Debugging session on Azure VM (shared, overloaded)
-**To:** Fresh CC instance on user's local machine
-
-### What Just Happened
-
-User ran `python run.py --duration 600 --agents 5 --dashboard` on shared Azure VM. Simulation OOM-killed after ~7 minutes.
-
-**Root causes identified:**
-1. **Docker not used** - Plan #3 (Docker Isolation) is COMPLETE but user ran directly on host
-2. **Shared VM overloaded** - 8+ other processes (Next.js 8GB, multiple Claude instances, VS Code) consumed 20GB before simulation started
-3. **Each agent creates own LLMProvider** - 5 agents = 5 independent HTTP connection pools (`src/agents/agent.py:217`)
-4. **run.jsonl empty** - Events not flushed before OOM, breaking dashboard thinking/artifact views
-5. **Logs mixed per-day** - Multiple runs in `llm_logs/YYYYMMDD/`, no per-run organization
-
-### IMMEDIATE FIX - Use Docker (Already Built!)
-
-```bash
-cd agent_ecology
-docker-compose up --build
-```
-
-This is **already implemented** (Plan #3 ✅). Provides:
-- 4GB memory limit for simulation container
-- 2GB for Qdrant container
-- Process isolation
-- Should allow 5+ agents for full 10 minute duration
-
-### Uncertainties to Resolve with User
-
-| Issue | Options | Notes |
-|-------|---------|-------|
-| **Per-run log organization** | a) Keep flat `run.jsonl`, b) Create `runs/YYYYMMDD_HHMMSS/` dirs | Affects debugging, disk usage |
-| **Share LLMProvider** | a) One per agent (current), b) Shared with call metadata | ~5x memory reduction |
-| **Log retention** | a) Keep forever, b) Auto-prune after N days | Disk quota implications |
-| **Strict mypy** | a) Keep current, b) Enable `--strict` | May have 50+ violations |
-| **Docstring enforcement** | a) None, b) Public APIs, c) All functions | Maintenance burden |
-| **Max concurrent thinking** | a) Unlimited parallel, b) Semaphore limit | Memory vs emergence speed |
-
-### Dashboard Issues (Will Self-Resolve with Docker)
-
-These issues existed because `run.jsonl` was empty:
-- Agent thinking panel shows nothing
-- Artifact click-through shows no content
-
-**Fix:** Just use Docker. With memory limits, OOM won't kill before flush. Features already work.
-
-### Files Involved
-
-| File | Issue |
-|------|-------|
-| `src/agents/agent.py:217` | Creates new LLMProvider per agent |
-| `src/world/logger.py:24` | Clears run.jsonl on init |
-| `llm_provider_standalone/llm_provider.py` | Logs to date-based dirs |
-| `docker-compose.yml` | Ready to use, 4GB simulation limit |
-
-### Proposed Plan #53 (Not Yet Created)
-
-If Docker works and scaling is still needed, create Plan #53 covering:
-1. Per-run log organization
-2. Shared LLMProvider across agents
-3. Strict typing/docstrings in pyproject.toml
-4. Optional: max concurrent agent thinking
-
-### Previous Issue: Merge Lock (Lower Priority)
-
-`make merge PR=N` fails because branch protection blocks direct pushes.
-**Workaround:** Use `gh pr merge N --squash --delete-branch` directly.
-Decide later if lock mechanism needs fixing or removal.
-
-### Recommended First Actions
-
-1. **Verify Docker works:** `docker-compose up --build` - run 5 agents for 10+ min
-2. **Check run.jsonl not empty** after a successful run
-3. **Check dashboard** shows agent thinking and artifact content
-4. If all works, decide on Plan #53 uncertainties with user
-
-### ⚠️ DELETE THIS SECTION
-
-After:
-1. Confirming Docker works on local machine, AND
-2. Deciding on uncertainties above
-
-Remove this entire "TEMP HANDOFF" section from CLAUDE.md.
-
----
-
 This file is always loaded. Keep it lean. Reference other docs for details.
 
 ## Philosophy & Goals
@@ -470,7 +381,7 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| plan-29-library-install | 29 | Implement library installation with quot | 2026-01-14T23:00 | Active |
+| main | 30 | Plan #30: LLM Budget Trading | 2026-01-15T05:41 | Active |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update table when starting/completing review. -->
@@ -488,32 +399,22 @@ python scripts/check_claims.py --release --validate
 
 ### Merging PRs
 
-> **MERGE PROTOCOL:** Use `make merge PR=N` to merge PRs. This enforces distributed locking
-> so only one PR merges at a time across all CC instances.
-
-**Always use the locking merge command:**
+**Use the merge command:**
 ```bash
-make merge PR=123          # Merge with distributed lock (REQUIRED)
-make merge-status          # Check if another merge is in progress
-make merge-release         # Force release stale lock (>10 min old)
+make merge PR=123          # Merge PR via GitHub CLI
 ```
 
 **How it works:**
-1. Checks if another merge is in progress (via `.claude/active-work.yaml`)
-2. Acquires lock (commits + pushes lock state)
-3. Merges the PR via `gh pr merge`
-4. Releases lock (commits + pushes release)
-5. Pulls latest main
+1. Checks if PR is mergeable (CI passed, no conflicts)
+2. Merges the PR via `gh pr merge --squash`
+3. Pulls latest main
 
-**Why locking?** Without it, two CC instances could:
-- Both see a PR with passing CI
-- Both try to merge simultaneously
-- Create race conditions and conflicts
+**Branch protection ensures:**
+- PRs require passing CI before merge
+- Direct pushes to main are blocked
+- GitHub handles concurrent merge attempts atomically
 
-**Direct merge (not recommended):**
-```bash
-gh pr merge 46 --squash --delete-branch  # No locking - avoid
-```
+If two instances try to merge different PRs simultaneously, GitHub handles it - one succeeds, the other may need to rebase if main changed.
 
 See `docs/meta/pr-coordination.md` for detailed merge workflow.
 
