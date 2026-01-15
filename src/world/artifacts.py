@@ -15,6 +15,7 @@ from typing import Any, TypedDict, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .genesis import GenesisMethod
+    from .id_registry import IDRegistry
 
 
 # Type alias for policy allow fields: either a static list or a contract reference
@@ -432,12 +433,20 @@ def create_memory_artifact(
 
 
 class ArtifactStore:
-    """In-memory artifact storage"""
+    """In-memory artifact storage
+    
+    Args:
+        id_registry: Optional IDRegistry for global ID collision prevention (Plan #7).
+                     When provided, new artifact IDs are registered and collisions 
+                     raise IDCollisionError.
+    """
 
     artifacts: dict[str, Artifact]
+    id_registry: "IDRegistry | None"
 
-    def __init__(self) -> None:
+    def __init__(self, id_registry: "IDRegistry | None" = None) -> None:
         self.artifacts = {}
+        self.id_registry = id_registry
 
     def exists(self, artifact_id: str) -> bool:
         """Check if artifact exists"""
@@ -489,7 +498,13 @@ class ArtifactStore:
             artifact.code = code
             artifact.policy = artifact_policy
         else:
-            # Create new
+            # Create new - register with ID registry if available (Plan #7)
+            if self.id_registry is not None:
+                # Import here to avoid circular imports at module level
+                from .id_registry import IDCollisionError
+                # Determine entity type for registry
+                entity_type = "genesis" if type == "genesis" else "artifact"
+                self.id_registry.register(artifact_id, entity_type)  # type: ignore[arg-type]
             artifact = Artifact(
                 id=artifact_id,
                 type=type,

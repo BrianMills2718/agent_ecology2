@@ -24,6 +24,7 @@ from .executor import get_executor
 from .errors import ErrorCode, ErrorCategory
 from .rate_tracker import RateTracker
 from .invocation_registry import InvocationRegistry, InvocationRecord
+from .id_registry import IDRegistry
 
 from ..config import get as config_get, compute_per_agent_quota, PerAgentQuota
 
@@ -183,6 +184,8 @@ class World:
     # Installed libraries per agent (Plan #29)
     # Maps principal_id -> list of (library_name, version)
     _installed_libraries: dict[str, list[tuple[str, str | None]]]
+    # Global ID registry for collision prevention (Plan #7)
+    id_registry: IDRegistry
 
     def __init__(self, config: ConfigDict, run_id: str | None = None) -> None:
         self.config = config
@@ -215,9 +218,12 @@ class World:
         rate_limiting_config = cast(dict[str, Any], config.get("rate_limiting", {}))
         self.use_rate_tracker = rate_limiting_config.get("enabled", False)
 
-        # Core state - create ledger with rate_limiting config
-        self.ledger = Ledger.from_config(cast(dict[str, Any], config), [])
-        self.artifacts = ArtifactStore()
+        # Global ID registry for collision prevention (Plan #7)
+        self.id_registry = IDRegistry()
+        
+        # Core state - create ledger with rate_limiting config and ID registry
+        self.ledger = Ledger.from_config(cast(dict[str, Any], config), [], self.id_registry)
+        self.artifacts = ArtifactStore(id_registry=self.id_registry)
         # Per-run logging if logs_dir and run_id provided, else legacy mode
         logs_dir = config.get("logging", {}).get("logs_dir")
         if logs_dir and run_id:
