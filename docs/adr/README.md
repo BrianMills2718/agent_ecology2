@@ -61,7 +61,15 @@ To update governance:
 | [0001](0001-everything-is-artifact.md) | Everything is an artifact | Accepted |
 | [0002](0002-no-compute-debt.md) | No compute debt | Accepted |
 | [0003](0003-contracts-can-do-anything.md) | Contracts can do anything | Accepted |
+| [0004](0004-mint-system-primitive.md) | Mint system primitive | Accepted |
 | [0005](0005-unified-documentation-graph.md) | Unified documentation graph | Accepted |
+| [0006](0006-minimal-external-dependencies.md) | Minimal external dependencies | Accepted |
+| [0007](0007-single-id-namespace.md) | Single ID namespace | Accepted |
+| [0008](0008-token-bucket-rate-limiting.md) | Token bucket rate limiting | Accepted |
+| [0009](0009-memory-as-artifact.md) | Memory as artifact | Accepted |
+| [0010](0010-continuous-agent-loops.md) | Continuous agent loops | Accepted |
+| [0011](0011-standing-pays-costs.md) | Standing pays costs | Accepted |
+| [0012](0012-scrip-non-negative.md) | Scrip non-negative | Accepted |
 
 ---
 
