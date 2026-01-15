@@ -2,19 +2,26 @@
 
 Documentation of how the system works TODAY. Updated as code changes.
 
-Last verified: 2026-01-12
+Last verified: 2026-01-15
 
 ---
 
 ## Overview
 
-The Agent Ecology is a tick-synchronized multi-agent system where LLM-powered agents observe shared world state, propose actions, and execute them within resource constraints.
+The Agent Ecology is a multi-agent system where LLM-powered agents observe shared world state, propose actions, and execute them within resource constraints.
 
-**Key Characteristics:**
-- **Tick-synchronized execution** - All agents act within discrete tick cycles
-- **Two-phase commit** - Observe (parallel) → Execute (sequential randomized)
-- **Strict resource constraints** - No debt, cannot spend more than available
-- **Discrete flow refresh** - Flow resources reset each tick (use-or-lose)
+**Default: Autonomous Execution** (`use_autonomous_loops: true`)
+- Agents run independently via `AgentLoop`
+- Resource-gated by `RateTracker` (rolling window rate limiting)
+- No tick synchronization required
+
+**Legacy: Tick-Synchronized Mode** (`--ticks N` CLI flag)
+- Two-phase commit: Observe (parallel) → Execute (sequential randomized)
+- Useful for debugging/deterministic replay
+
+**Key Constraints:**
+- **Strict resource limits** - No debt, cannot spend more than available
+- **Rate-limited execution** - RateTracker enforces rolling window limits
 
 ---
 
@@ -36,10 +43,21 @@ The Agent Ecology is a tick-synchronized multi-agent system where LLM-powered ag
 
 ## Quick Reference
 
-### Execution Flow (Per Tick)
+### Execution Flow
+
+**Autonomous Mode (Default):**
 ```
-1. advance_tick() - increment, reset flow resources
-2. oracle.on_tick() - resolve auctions if any
+1. Each agent runs in independent AgentLoop
+2. RateTracker gates resource consumption (rolling window)
+3. Agent calls LLM, proposes action
+4. World executes action
+5. Agent sleeps, repeats
+```
+
+**Tick Mode (Legacy, `--ticks N`):**
+```
+1. advance_tick() - increment tick counter
+2. mint.on_tick() - resolve auctions if any
 3. get_state_summary() - snapshot world state
 4. PHASE 1: All agents think in parallel (asyncio.gather)
 5. PHASE 2: Execute actions in randomized order
@@ -51,14 +69,14 @@ The Agent Ecology is a tick-synchronized multi-agent system where LLM-powered ag
 ### Resource Types
 | Type | Examples | Tracked By | Behavior |
 |------|----------|------------|----------|
-| Flow | llm_tokens | Ledger | Reset each tick to quota |
-| Stock | disk | ArtifactStore | Quota-based, cumulative usage |
-| Stock | llm_budget | SimulationEngine | Global API budget (not per-agent) |
+| Renewable | llm_tokens | RateTracker | Rolling window rate limit |
+| Depletable | llm_budget | SimulationEngine | Per-agent $ budget (Plan #12) |
+| Allocatable | disk | ArtifactStore | Quota-based, reclaimable |
 | Currency | scrip | Ledger | Persistent, transfers only |
 
-**Note:** Config uses "compute" as the flow resource name, internally stored as "llm_tokens".
+**Note:** Legacy config uses "compute" which maps to "llm_tokens".
 
 ### Key Constraints
 - No negative balances (resources or scrip)
 - Cannot spend more than available
-- Flow resources lost if unused at tick end
+- Rate limits enforced via RateTracker (wait for capacity)
