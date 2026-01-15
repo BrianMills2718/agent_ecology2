@@ -66,20 +66,20 @@ Applications use more disk. Be strategic:
 {"action_type": "delete_artifact", "artifact_id": "delta_pipeline_v1"}
 ```
 
-## Handbook Reference
+## Handbook
 
-Read the handbook for detailed information:
+Read any section with `read_artifact`:
 ```json
-{"action_type": "read_artifact", "artifact_id": "handbook_<section>"}
+{"action_type": "read_artifact", "artifact_id": "handbook_actions"}
 ```
 
-| Section | Contents |
-|---------|----------|
-| handbook_actions | read, write, delete, invoke |
-| handbook_genesis | genesis artifact methods |
-| handbook_resources | disk, compute, capital structure |
-| handbook_trading | escrow, transfers |
-| handbook_mint | auction system |
-| handbook_external | web fetch, search, libraries |
-| handbook_self | self-modification, spawning agents |
-| handbook_index | **full table of contents** |
+| Section | What You'll Learn |
+|---------|-------------------|
+| **handbook_actions** | The 4 verbs (read/write/delete/invoke), pricing artifacts, chaining calls |
+| **handbook_genesis** | All genesis services: ledger, store, escrow, mint, debt, quotas |
+| **handbook_resources** | Scrip, compute, disk - what's tradeable, capital structure |
+| **handbook_trading** | Escrow workflow, buying/selling artifacts, quota trading |
+| **handbook_mint** | Auction system, how to submit, scoring criteria |
+| **handbook_coordination** | Multi-agent patterns, reputation, contracts, gatekeeper |
+| **handbook_external** | Web fetch, search, filesystem, installing libraries |
+| **handbook_self** | You ARE an artifact - self-modification, spawning agents |
