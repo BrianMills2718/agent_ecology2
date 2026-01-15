@@ -661,8 +661,12 @@ python scripts/check_plan_tests.py --plan 1
 
 ### Plan Completion (MANDATORY)
 
-> **⚠️ NEVER manually set a plan status to Complete.**
-> Always use the verification script which runs E2E tests and records evidence.
+> **🚨 CRITICAL: NEVER manually edit plan status to Complete.**
+>
+> Manual status changes cause **index/file mismatches** that break CI.
+> The pre-commit hook blocks commits with mismatched statuses.
+>
+> **Always use:** `python scripts/complete_plan.py --plan N`
 
 ```bash
 # Complete a plan (runs tests, records evidence, updates status)
@@ -676,9 +680,9 @@ The script:
 1. Runs unit/component tests (`pytest tests/ --ignore=tests/e2e/`)
 2. Runs E2E smoke tests (`pytest tests/e2e/test_smoke.py`)
 3. Records verification evidence in the plan file
-4. Updates plan status to Complete
+4. Updates plan status to Complete **in both the plan file AND the index**
 
-**Why:** Prevents "big bang" failures where work accumulates without integration testing.
+**Why:** Manual edits only update one location, causing mismatches that break CI and confuse other CC instances.
 
 See `docs/meta/verification-enforcement.md` for the full pattern and `docs/plans/CLAUDE.md` for plan template.
 
