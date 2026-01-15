@@ -58,6 +58,21 @@ class KernelState:
         """
         return self._world.ledger.get_resource(principal_id, resource)
 
+    def get_llm_budget(self, principal_id: str) -> float:
+        """Get LLM budget for a principal.
+
+        Convenience method for get_resource(principal_id, "llm_budget").
+        LLM budget is a depletable resource representing dollars available
+        for LLM API calls.
+
+        Args:
+            principal_id: The principal to query
+
+        Returns:
+            Current LLM budget (0.0 if not found)
+        """
+        return self._world.ledger.get_resource(principal_id, "llm_budget")
+
     def list_artifacts_by_owner(self, owner_id: str) -> list[str]:
         """List artifact IDs owned by a principal.
 
@@ -258,6 +273,25 @@ class KernelActions:
         self._world.ledger.set_resource(to, resource, new_recipient)
 
         return True
+
+    def transfer_llm_budget(
+        self, caller_id: str, to: str, amount: float
+    ) -> bool:
+        """Transfer LLM budget from caller to recipient.
+
+        Convenience method for transfer_resource(caller_id, to, "llm_budget", amount).
+        LLM budget is a depletable resource representing dollars available
+        for LLM API calls. Making it tradeable enables budget markets.
+
+        Args:
+            caller_id: Who is transferring (must be actual caller)
+            to: Recipient principal
+            amount: Amount to transfer (in budget units, e.g., dollars)
+
+        Returns:
+            True if transfer succeeded, False otherwise
+        """
+        return self.transfer_resource(caller_id, to, "llm_budget", amount)
 
     def write_artifact(
         self,

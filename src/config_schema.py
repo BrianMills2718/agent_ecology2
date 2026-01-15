@@ -183,6 +183,18 @@ class LedgerMethodsConfig(StrictModel):
             description="Transfer artifact ownership to another principal. Args: [artifact_id, to_id]"
         )
     )
+    transfer_budget: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=1,
+            description="Transfer LLM budget to another agent. Args: [to_id, amount]"
+        )
+    )
+    get_budget: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Get LLM budget for an agent. Args: [agent_id]"
+        )
+    )
 
 
 class LedgerConfig(StrictModel):
