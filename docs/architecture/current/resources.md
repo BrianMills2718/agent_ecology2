@@ -2,7 +2,7 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-01-14 (Plan #12 - Per-agent LLM budget)
+**Last verified:** 2026-01-15 (Plan #7 - ID Registry integration with Ledger)
 
 **See target:** [../target/resources.md](../target/resources.md)
 

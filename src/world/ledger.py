@@ -30,6 +30,12 @@ from typing import Any, TypedDict
 from src.world.rate_tracker import RateTracker
 
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .id_registry import IDRegistry
+
+
 def _to_decimal(value: float) -> Decimal:
     """Convert float to Decimal using string conversion for precision.
 
@@ -80,12 +86,16 @@ class Ledger:
 
     Optionally integrates with RateTracker for rolling-window rate limiting
     when rate_limiting.enabled is True in config.
+    
+    Optionally integrates with IDRegistry for global ID collision prevention
+    (Plan #7: Single ID Namespace).
     """
 
     resources: dict[str, dict[str, float]]
     scrip: dict[str, int]
     rate_tracker: RateTracker | None
     use_rate_tracker: bool
+    id_registry: "IDRegistry | None"
     _scrip_lock: asyncio.Lock
     _resource_lock: asyncio.Lock
 
@@ -93,6 +103,7 @@ class Ledger:
         self,
         rate_tracker: RateTracker | None = None,
         use_rate_tracker: bool = False,
+        id_registry: "IDRegistry | None" = None,
     ) -> None:
         # Generic resources: {principal_id: {resource_name: amount}}
         self.resources = {}
@@ -101,18 +112,26 @@ class Ledger:
         # Rate tracker for rolling-window rate limiting
         self.rate_tracker = rate_tracker
         self.use_rate_tracker = use_rate_tracker
+        # ID registry for global collision prevention (Plan #7)
+        self.id_registry = id_registry
         # Async locks for thread-safe concurrent access
         self._scrip_lock = asyncio.Lock()
         self._resource_lock = asyncio.Lock()
 
     @classmethod
-    def from_config(cls, config: dict[str, Any], agent_ids: list[str]) -> "Ledger":
-        """Create Ledger from config with optional RateTracker.
+    def from_config(
+        cls, 
+        config: dict[str, Any], 
+        agent_ids: list[str],
+        id_registry: "IDRegistry | None" = None,
+    ) -> "Ledger":
+        """Create Ledger from config with optional RateTracker and IDRegistry.
 
         Args:
             config: Configuration dict, may contain 'rate_limiting' section
             agent_ids: List of agent IDs to initialize (currently unused,
                        but kept for future extension)
+            id_registry: Optional IDRegistry for global ID collision prevention (Plan #7)
 
         Returns:
             Configured Ledger instance
@@ -134,6 +153,7 @@ class Ledger:
         return cls(
             rate_tracker=rate_tracker,
             use_rate_tracker=use_rate_tracker,
+            id_registry=id_registry,
         )
 
     def create_principal(
@@ -143,7 +163,15 @@ class Ledger:
         starting_resources: dict[str, float] | None = None,
         starting_compute: int = 0,  # Backward compat
     ) -> None:
-        """Create a new principal with starting balances."""
+        """Create a new principal with starting balances.
+        
+        If id_registry is set, registers the principal ID and raises
+        IDCollisionError if the ID is already in use (Plan #7).
+        """
+        # Register with ID registry if available (Plan #7)
+        if self.id_registry is not None:
+            from .id_registry import IDCollisionError
+            self.id_registry.register(principal_id, "principal")
         self.scrip[principal_id] = starting_scrip
         self.resources[principal_id] = starting_resources.copy() if starting_resources else {}
         # Backward compat: if starting_compute provided, set llm_tokens

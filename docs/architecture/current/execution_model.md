@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-15 (Plan #53, #56 - cpu_seconds rate-limited; per-run logging)
+**Last verified:** 2026-01-15 (Plan #53, #56, #7 - cpu_seconds rate-limited; per-run logging; ID Registry)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
