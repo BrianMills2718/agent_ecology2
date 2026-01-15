@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-15 (Plan #15, #53, #54 - genesis_methods + ResourceMeasurer + Interface Terms)
+**Last verified:** 2026-01-15 (Plan #53 - cpu_seconds rate-limited via RateTracker)
 
 ---
 
@@ -266,8 +266,12 @@ usage = measurer.get_usage()
 resources_consumed = {"cpu_seconds": usage.cpu_seconds}
 ```
 
-**Note:** `cpu_seconds` is metered (tracked for observability) but not gated (no quota check).
-This means execution always succeeds from a resource perspective - we track CPU usage but don't block on it.
+**CPU is rate-limited (renewable resource):**
+- Uses rolling window rate limiter (`RateTracker`) not fixed balance
+- Configured via `rate_limiting.resources.cpu_seconds.max_per_window`
+- Default: 5.0 CPU-seconds per 60-second window
+- Agents exceeding their rate limit are blocked from further invocations until window rolls
+- This is "physics" - agents can trade rate allocation rights via contracts
 
 ---
 

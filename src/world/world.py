@@ -1018,16 +1018,18 @@ class World:
             resources_consumed = exec_result.get("resources_consumed", {})
             duration_ms = exec_result.get("execution_time_ms", (time.perf_counter() - start_time) * 1000)
 
-            # Resources that are tracked but don't require quota (observability only)
-            # cpu_seconds is metered for observability but doesn't gate execution
-            metered_only_resources = {"cpu_seconds"}
+            # Resources use different tracking mechanisms:
+            # - Rate-limited (renewable via rolling window): cpu_seconds
+            # - Balance-based (depletable): llm_tokens, disk_bytes, etc.
+            rate_limited_resources = {"cpu_seconds"}
 
             if exec_result.get("success"):
                 # Deduct physical resources from caller
                 for resource, amount in resources_consumed.items():
-                    if resource in metered_only_resources:
-                        # Just track usage - credit the resource for observability
-                        self.ledger.credit_resource(resource_payer, resource, amount)
+                    if resource in rate_limited_resources:
+                        # Rate-limited resource: record in rolling window rate tracker
+                        # This tracks usage over time; agent blocked when window limit exceeded
+                        self.ledger.consume_resource(resource_payer, resource, amount)
                     elif not self.ledger.can_spend_resource(resource_payer, resource, amount):
                         self._log_invoke_failure(
                             intent.principal_id, artifact_id, method_name,
@@ -1069,11 +1071,10 @@ class World:
                 )
             else:
                 # Execution failed - still charge resources (they were consumed)
-                # Note: cpu_seconds is metered (tracked) but not gated
                 for resource, amount in resources_consumed.items():
-                    if resource in metered_only_resources:
-                        # Just track usage
-                        self.ledger.credit_resource(resource_payer, resource, amount)
+                    if resource in rate_limited_resources:
+                        # Rate-limited: record in rolling window
+                        self.ledger.consume_resource(resource_payer, resource, amount)
                     elif self.ledger.can_spend_resource(resource_payer, resource, amount):
                         self.ledger.spend_resource(resource_payer, resource, amount)
 
