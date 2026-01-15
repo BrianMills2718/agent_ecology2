@@ -164,3 +164,74 @@ class TestClaimedFilesCheck:
         if other_files:
             claimed, unclaimed = check_files_claimed(other_files[:1], [])
             assert len(unclaimed) == 1
+
+
+@pytest.mark.plans([43])
+class TestVerifyBranch:
+    """Tests for verify-branch functionality (Plan #43: Meta-Enforcement)."""
+
+    def test_verify_branch_with_matching_claim(self) -> None:
+        """Branch with matching claim should be verified."""
+        from check_claims import verify_has_claim
+
+        data: dict[str, Any] = {
+            "claims": [
+                {
+                    "cc_id": "plan-43-test",
+                    "task": "Test task",
+                    "plan": 43,
+                }
+            ]
+        }
+
+        has_claim, message = verify_has_claim(data, "plan-43-test")
+        assert has_claim is True
+        # Message contains the task description
+        assert "Test task" in message or "claim" in message.lower()
+
+    def test_verify_branch_without_claim(self) -> None:
+        """Branch without claim should fail verification."""
+        from check_claims import verify_has_claim
+
+        data: dict[str, Any] = {
+            "claims": [
+                {
+                    "cc_id": "other-branch",
+                    "task": "Other task",
+                    "plan": 99,
+                }
+            ]
+        }
+
+        has_claim, message = verify_has_claim(data, "nonexistent-branch")
+        assert has_claim is False
+
+    def test_verify_branch_empty_claims(self) -> None:
+        """Empty claims list should fail verification."""
+        from check_claims import verify_has_claim
+
+        data: dict[str, Any] = {"claims": []}
+
+        has_claim, message = verify_has_claim(data, "any-branch")
+        assert has_claim is False
+
+    def test_verify_branch_matches_cc_id(self) -> None:
+        """Verification should match on cc_id field."""
+        from check_claims import verify_has_claim
+
+        data: dict[str, Any] = {
+            "claims": [
+                {
+                    "cc_id": "exact-branch-name",
+                    "task": "Test task",
+                }
+            ]
+        }
+
+        # Exact match should work
+        has_claim, _ = verify_has_claim(data, "exact-branch-name")
+        assert has_claim is True
+
+        # Partial match should not work
+        has_claim, _ = verify_has_claim(data, "exact-branch")
+        assert has_claim is False
