@@ -70,11 +70,11 @@ With "everything is an artifact" (ADR-0001), the distinction between principals 
 ## Required Tests
 
 ```
-tests/unit/test_id_namespace.py::TestIDRegistry::test_no_duplicate_ids
-tests/unit/test_id_namespace.py::TestIDRegistry::test_lookup_by_id_only
-tests/unit/test_id_namespace.py::TestAgentIsArtifact::test_agent_is_artifact
-tests/unit/test_id_namespace.py::TestWorldIntegration::test_artifact_cannot_use_principal_id
-tests/unit/test_id_namespace.py::TestWorldIntegration::test_new_artifact_gets_registered
+tests/unit/test_id_registry.py::TestIDRegistry::test_no_duplicate_ids
+tests/unit/test_id_registry.py::TestIDRegistry::test_lookup_by_id_only
+tests/unit/test_id_registry.py::TestAgentIsArtifact::test_agent_is_artifact
+tests/unit/test_id_registry.py::TestWorldIntegration::test_artifact_cannot_use_principal_id
+tests/unit/test_id_registry.py::TestWorldIntegration::test_new_artifact_gets_registered
 ```
 
 ---
@@ -83,7 +83,7 @@ tests/unit/test_id_namespace.py::TestWorldIntegration::test_new_artifact_gets_re
 
 - [x] No ID collisions possible (via IDRegistry checks)
 - [x] Single lookup mechanism works (`IDRegistry.lookup()`)
-- [x] Tests pass (16 tests in test_id_namespace.py)
+- [x] Tests pass (16 tests in test_id_registry.py)
 - [x] Docs updated (plan file)
 
 ---
