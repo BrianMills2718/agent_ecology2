@@ -26,6 +26,7 @@ import asyncio
 import webbrowser
 import yaml
 import argparse
+import socket
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +44,19 @@ def load_config(config_path: str = "config/config.yaml") -> dict[str, Any]:
     with open(config_path) as f:
         result: dict[str, Any] = yaml.safe_load(f)
         return result
+
+
+def find_free_port(start_port: int, max_attempts: int = 10) -> int:
+    """Find a free port starting from start_port."""
+    for offset in range(max_attempts):
+        port = start_port + offset
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("127.0.0.1", port))
+                return port
+            except OSError:
+                continue
+    raise RuntimeError(f"No free port found in range {start_port}-{start_port + max_attempts}")
 
 
 def run_simulation(
@@ -123,7 +137,10 @@ async def run_with_dashboard(
     # Get dashboard config
     dashboard_config = config.get("dashboard", {})
     host = dashboard_config.get("host", "0.0.0.0")
-    port = dashboard_config.get("port", 8080)
+    configured_port = dashboard_config.get("port", 8080)
+    port = find_free_port(configured_port)
+    if port != configured_port:
+        print(f"Port {configured_port} in use, using {port} instead")
     jsonl_file = dashboard_config.get("jsonl_file", "run.jsonl")
 
     # Create dashboard app
@@ -191,7 +208,10 @@ def run_dashboard_only(config: dict[str, Any]) -> None:
 
     dashboard_config = config.get("dashboard", {})
     host = dashboard_config.get("host", "0.0.0.0")
-    port = dashboard_config.get("port", 8080)
+    configured_port = dashboard_config.get("port", 8080)
+    port = find_free_port(configured_port)
+    if port != configured_port:
+        print(f"Port {configured_port} in use, using {port} instead")
     jsonl_file = dashboard_config.get("jsonl_file", "run.jsonl")
 
     print(f"Starting dashboard server on http://localhost:{port}")
