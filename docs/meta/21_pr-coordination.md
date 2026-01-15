@@ -285,3 +285,20 @@ STALE_HOURS = 4  # Claims older than this are flagged
 
 - [Claim system pattern](18_claim-system.md) - More detailed claim management
 - [Plan workflow pattern](15_plan-workflow.md) - How plans integrate with PRs
+
+## Current Implementation (Simplified)
+
+The full GitHub Actions workflow above is **not currently implemented**. Instead, we use a simpler approach:
+
+```bash
+# Discover PRs needing review
+gh pr list                      # Direct GitHub query
+python scripts/meta_status.py   # Aggregates claims, PRs, plan progress
+```
+
+**Why simplified?**
+- Branch protection blocks direct pushes to main (required for auto-updating tables)
+- `gh pr list` provides the same information without manual table maintenance
+- Single source of truth (GitHub) eliminates stale/incorrect table state
+
+**If automation is needed later:** Implement the workflow above with a GitHub App or PAT that can bypass branch protection for coordination-only updates.

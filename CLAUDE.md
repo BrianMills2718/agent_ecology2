@@ -412,19 +412,11 @@ python scripts/check_claims.py --release --validate
 |-------|------|------|---------|--------|
 | plan-48-ci-optimization | 48 | Optimize CI - add caching, consolidate j | 2026-01-15T08:43 | Active |
 
-**Awaiting Review:**
-<!-- PRs needing review. Update table when starting/completing review. -->
-| PR | Title | Reviewer | Started | Status |
-|----|-------|----------|---------|--------|
-
-**Review Coordination Protocol:**
-1. **Before reviewing:** Check table - if PR shows "In Review", let that reviewer finish
-2. **Start review:** Add your CC-ID to Reviewer column, set Status to "In Review"
-3. **Complete review:** Update Status to "Approved" or "Changes Requested"
-4. **After merge:** Remove row from table
-
-**Status values:** `Awaiting` → `In Review` → `Approved`/`Changes Requested`
-
+**Finding PRs to Review:**
+```bash
+gh pr list                      # List all open PRs
+python scripts/meta_status.py   # Shows claims, PRs, plan progress
+```
 
 ### Merging PRs
 
