@@ -75,11 +75,9 @@ Everything else is safe within Docker isolation.
 
 ## Required Tests
 
-```
-tests/unit/test_library_install.py::test_install_deducts_quota
-tests/unit/test_library_install.py::test_blocked_package_rejected
-tests/unit/test_library_install.py::test_insufficient_quota_fails
-```
+- `tests/unit/test_library_install.py::test_install_deducts_quota`
+- `tests/unit/test_library_install.py::test_blocked_package_rejected`
+- `tests/unit/test_library_install.py::test_insufficient_quota_fails`
 
 ---
 
