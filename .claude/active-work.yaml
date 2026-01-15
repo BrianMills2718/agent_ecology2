@@ -62,7 +62,3 @@ completed:
   plan: 49
   task: Add reasoning field to ActionIntent narrow waist
   completed_at: '2026-01-14T16:18:00Z'
-merging:
-  pr: '173'
-  cc_id: plan-05-oracle-anytime
-  locked_at: '2026-01-15T00:33:54.982902Z'
