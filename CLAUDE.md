@@ -10,39 +10,44 @@
 ## 🔴 TEMP HANDOFF - DELETE THIS SECTION AFTER READING
 
 **Date:** 2026-01-15
-**Status:** V1 COMPLETE 🎉
+**From:** Claude instance on remote machine
 
 ### What Just Happened
-- Plan #43 (Comprehensive Meta-Enforcement) completed - all meta-processes now enforced
-- Plan #51 (V1 Acceptance Criteria) verified - all 8 acceptance tests pass
-- V1_ACCEPTANCE.md checkboxes filled in - V1 formally declared complete
-- 42/50 plans complete (84%), remaining 8 are Post-V1 (intentionally deferred)
+- Plan #43 (Comprehensive Meta-Enforcement) completed and merged (PR #180)
+- 42/50 plans complete (84%), remaining 8 are Post-V1
 
-### Current State
-- No active claims
-- No open PRs
-- User is running a simulation on their local machine
-- Coordination state is clean
+### Cleanup Needed
+1. **Remove stale worktree:** `make worktree-remove BRANCH=plan-43-phase2`
 
-### Recommended Next Action
-**Implement Plan #30 (LLM Budget Trading)** - highest value for emergent behavior
+### Open Issue: Merge Lock Mechanism Broken
 
-Why: LLM budget is the core scarce resource. Making it tradeable:
-- Completes "everything contractable" principle
-- Enables budget markets, specialization, capital accumulation
-- Directly observable in running simulations
+**Problem:** `make merge PR=N` fails because branch protection blocks direct pushes to main.
 
-To start:
-```bash
-make worktree BRANCH=plan-30-budget-trading
-# Read docs/plans/30_capability_requests.md
-# Define tests (TDD), then implement
-```
+**Root cause:** The lock mechanism in `scripts/merge_pr.py` tries to:
+1. Write lock to `.claude/active-work.yaml`
+2. Commit and push directly to main ← BLOCKED by branch protection
 
-Alternative: Plan #9 (Scrip Debt Contracts) is also high-value if credit markets preferred.
+**Discussion with user:**
+- User concerned about losing work when agents work in parallel
+- We discussed whether the lock is even needed now that branch protection exists
+- GitHub already handles concurrent merge attempts atomically
+- Without merge queue (premium feature), worst case is "branch out of date, please rebase"
+
+**Uncertainties to resolve with user:**
+1. **What work has been lost?** User mentioned "continually lost work" - need to understand the actual failure mode (worktree issues? merge conflicts? something else?)
+2. **Is the lock mechanism needed?** Options discussed:
+   - Remove it (branch protection handles concurrent merges)
+   - Fix it (use separate branch, GitHub API, etc.)
+   - Keep as advisory only
+3. **Should this be a new Plan or Trivial fix?** Depends on scope of solution
+
+**Current workaround:** Use `gh pr merge N --squash --delete-branch` directly (bypasses broken lock).
+
+### Recommended First Action
+Ask the user to clarify what work-loss scenarios they've experienced, then decide on lock mechanism fix.
 
 ### ⚠️ DELETE THIS SECTION
-After reading, remove this entire "TEMP HANDOFF" section from CLAUDE.md. It's one-time context, not permanent documentation.
+After reading and addressing the above, remove this entire "TEMP HANDOFF" section from CLAUDE.md.
 
 ---
 
