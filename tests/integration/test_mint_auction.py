@@ -119,10 +119,13 @@ class TestMintBidding:
         assert result["success"] is True
         assert result["amount"] == 20
 
-    def test_bid_rejected_before_bidding(self):
-        """Bid rejected before bidding window."""
+    def test_bid_accepted_before_bidding(self):
+        """Bid accepted before bidding window (Plan #5: anytime bidding)."""
         ledger = Ledger()
         ledger.create_principal("agent_1", starting_scrip=100)
+        store = ArtifactStore()
+        store.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
+                   owner_id="agent_1", executable=True)
 
         def mint_callback(agent_id: str, amount: int) -> None:
             ledger.credit_scrip(agent_id, amount)
@@ -133,13 +136,15 @@ class TestMintBidding:
         mint = GenesisMint(
             mint_callback=mint_callback,
             ubi_callback=ubi_callback,
+            artifact_store=store,
             ledger=ledger,
         )
 
         mint.on_tick(10)  # Before first_auction_tick
         result = mint._bid(["my_tool", 20], "agent_1")
-        assert result["success"] is False
-        assert "not open" in result["error"]
+        # Plan #5: Bids now accepted at any tick
+        assert result["success"] is True
+        assert result["amount"] == 20
 
     def test_bid_holds_scrip(self):
         """Bidding holds scrip in escrow."""

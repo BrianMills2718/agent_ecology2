@@ -31,7 +31,7 @@ Master index of all gaps and their implementation plans.
 | 2 | [Continuous Execution](02_continuous_execution.md) | **High** | ✅ Complete | #21 |
 | 3 | [Docker Isolation](03_docker_isolation.md) | Medium | ✅ Complete | - |
 | 4 | ~~Compute Debt Model~~ | - | ✅ Superseded | - |
-| 5 | [Oracle Anytime Bidding](05_oracle_anytime.md) | Medium | 📋 Post-V1 | - |
+| 5 | [Oracle Anytime Bidding](05_oracle_anytime.md) | Medium | 🚧 In Progress | - |
 | 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | ✅ Complete | #7,#8,#14,#16 |
 | 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | 📋 Post-V1 | - |
 | 8 | [Agent Rights Trading](08_agent_rights.md) | Low | 📋 Post-V1 | - |
