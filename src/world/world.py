@@ -1012,10 +1012,17 @@ class World:
             resources_consumed = exec_result.get("resources_consumed", {})
             duration_ms = exec_result.get("execution_time_ms", (time.perf_counter() - start_time) * 1000)
 
+            # Resources that are tracked but don't require quota (observability only)
+            # cpu_seconds is metered for observability but doesn't gate execution
+            metered_only_resources = {"cpu_seconds"}
+
             if exec_result.get("success"):
                 # Deduct physical resources from caller
                 for resource, amount in resources_consumed.items():
-                    if not self.ledger.can_spend_resource(resource_payer, resource, amount):
+                    if resource in metered_only_resources:
+                        # Just track usage - credit the resource for observability
+                        self.ledger.credit_resource(resource_payer, resource, amount)
+                    elif not self.ledger.can_spend_resource(resource_payer, resource, amount):
                         self._log_invoke_failure(
                             intent.principal_id, artifact_id, method_name,
                             duration_ms, "insufficient_resource",
@@ -1031,7 +1038,8 @@ class World:
                             retriable=True,
                             error_details={"resource": resource, "required": amount},
                         )
-                    self.ledger.spend_resource(resource_payer, resource, amount)
+                    else:
+                        self.ledger.spend_resource(resource_payer, resource, amount)
 
                 # Pay price to owner from SCRIP (only on success)
                 if price > 0 and owner_id != intent.principal_id:
@@ -1055,8 +1063,12 @@ class World:
                 )
             else:
                 # Execution failed - still charge resources (they were consumed)
+                # Note: cpu_seconds is metered (tracked) but not gated
                 for resource, amount in resources_consumed.items():
-                    if self.ledger.can_spend_resource(resource_payer, resource, amount):
+                    if resource in metered_only_resources:
+                        # Just track usage
+                        self.ledger.credit_resource(resource_payer, resource, amount)
+                    elif self.ledger.can_spend_resource(resource_payer, resource, amount):
                         self.ledger.spend_resource(resource_payer, resource, amount)
 
                 error_msg = exec_result.get("error", "Unknown error")
