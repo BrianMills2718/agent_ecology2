@@ -167,7 +167,7 @@ class TestConfigFileLoading:
         # Check some expected values from the real config
         assert config.world.max_ticks == 100
         assert config.llm.default_model == "gemini/gemini-3-flash-preview"
-        assert config.budget.max_api_cost == 1.0
+        assert config.budget.max_api_cost == 100.0  # Updated from 1.0 for Plan #57
 
     def test_missing_file_raises_error(self) -> None:
         """Missing config file should raise FileNotFoundError."""

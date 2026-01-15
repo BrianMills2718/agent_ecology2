@@ -227,6 +227,21 @@ genesis:
         cost: 0                 # 0 compute
         description: "Count artifacts matching filter. Args: [filter?]"
 
+  # MCP servers for external tool access
+  mcp:
+    fetch:
+      enabled: true                 # HTTP fetch capability
+      command: "npx"
+      args: ["@anthropic/mcp-server-fetch"]
+    web_search:
+      enabled: false                # Disabled - requires BRAVE_API_KEY env var
+      command: "npx"
+      args: ["@anthropic/mcp-server-brave-search"]
+    filesystem:
+      enabled: true                 # Sandboxed file I/O
+      command: "npx"
+      args: ["@anthropic/mcp-server-filesystem", "/tmp/agent_sandbox"]
+
 # -----------------------------------------------------------------------------
 # RATE LIMITING - Rolling window rate limiting (time-based, not tick-based)
 # -----------------------------------------------------------------------------
@@ -406,23 +421,6 @@ libraries:
     - pyautogui         # Desktop automation
     - keyboard          # Keyboard input capture
     - pynput            # Input device control
-
-# -----------------------------------------------------------------------------
-# MCP SERVERS - External tool access for agents
-# -----------------------------------------------------------------------------
-mcp:
-  fetch:
-    enabled: true                 # HTTP fetch capability
-    command: "npx"
-    args: ["@anthropic/mcp-server-fetch"]
-  web_search:
-    enabled: false                # Disabled - requires BRAVE_API_KEY env var
-    command: "npx"
-    args: ["@anthropic/mcp-server-brave-search"]
-  filesystem:
-    enabled: true                 # Sandboxed file I/O
-    command: "npx"
-    args: ["@anthropic/mcp-server-filesystem", "/tmp/agent_sandbox"]
 
 # -----------------------------------------------------------------------------
 # DASHBOARD - HTML visibility interface

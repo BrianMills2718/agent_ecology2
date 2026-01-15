@@ -372,12 +372,15 @@ class World:
 
         # Map of filename (without .md) to artifact_id
         handbook_sections = {
+            "_index": "handbook_toc",
             "actions": "handbook_actions",
             "genesis": "handbook_genesis",
             "resources": "handbook_resources",
             "trading": "handbook_trading",
             "mint": "handbook_mint",
             "coordination": "handbook_coordination",
+            "external": "handbook_external",
+            "self": "handbook_self",
         }
 
         for section_name, artifact_id in handbook_sections.items():

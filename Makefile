@@ -1,7 +1,7 @@
 # Agent Ecology - Common Commands
 # Usage: make <target>
 
-.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge pr-merge-admin pr-list pr-view worktree worktree-quick worktree-remove worktree-remove-force clean-branches clean-branches-delete
+.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge pr-merge-admin pr-list pr-view worktree worktree-quick worktree-remove worktree-remove-force clean-branches clean-branches-delete kill
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -10,6 +10,10 @@ help:  ## Show this help
 install:  ## Install dependencies
 	pip install -e .
 	pip install -r requirements.txt
+
+# Simulation control
+kill:  ## Kill all running simulations
+	@pkill -f "python run.py" 2>/dev/null && echo "Killed simulation processes" || echo "No simulations running"
 
 # Testing
 test:  ## Run pytest
