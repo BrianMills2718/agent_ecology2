@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-15 (Plan #15, #9, #53 - Unified invoke; Debt contract; ResourceMeasurer)
+**Last verified:** 2026-01-15 (Plan #56 - Per-run logging; run_id passed to World)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

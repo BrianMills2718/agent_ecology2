@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-15 (Plan #54 - Added interface field to dashboard models)
+**Last verified: 2026-01-15 (Plan #56 - Per-run logging)
 
 ---
 
@@ -295,3 +295,66 @@ dashboard:
 - Checkpoint on budget exhaustion
 - Load checkpoint to continue later
 - Artifacts and balances preserved
+
+---
+
+## Per-Run Event Logging (Plan #56)
+
+EventLogger supports per-run directory organization for preserving event history.
+
+### Two Modes
+
+| Mode | Config | Behavior |
+|------|--------|----------|
+| **Per-run** (recommended) | `logs_dir` + `run_id` | Creates timestamped directories |
+| **Legacy** | `output_file` only | Single file, overwritten each run |
+
+### Per-Run Directory Structure
+
+When `logs_dir` is configured, each run creates a timestamped directory:
+
+```
+logs/
+├── run_20260115_100000/
+│   └── events.jsonl
+├── run_20260115_110000/
+│   └── events.jsonl
+├── run_20260115_120000/
+│   └── events.jsonl
+└── latest -> run_20260115_120000/  # Symlink to most recent
+```
+
+### Configuration
+
+```yaml
+logging:
+  output_file: "run.jsonl"      # Legacy mode fallback
+  logs_dir: "logs"              # Per-run logs directory
+  log_dir: "llm_logs"           # Separate directory for LLM logs
+  default_recent: 50
+```
+
+### Usage
+
+**Per-run mode (when run_id provided):**
+```python
+# SimulationRunner generates run_id and passes to World
+self.run_id = datetime.now().strftime("run_%Y%m%d_%H%M%S")
+self.world = World(config, run_id=self.run_id)
+
+# EventLogger creates:
+#   logs/{run_id}/events.jsonl
+#   logs/latest -> {run_id}/
+```
+
+**Legacy mode (backward compatible):**
+```python
+# World created without run_id uses legacy mode
+self.world = World(config)  # Uses output_file, overwrites each run
+```
+
+### Benefits
+
+- **History preserved**: Previous runs available for comparison
+- **Easy access**: `logs/latest/events.jsonl` always points to current
+- **Backward compatible**: Legacy single-file mode still works

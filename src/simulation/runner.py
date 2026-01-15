@@ -110,7 +110,7 @@ class SimulationRunner:
         config["principals"] = principals
 
         # Initialize world
-        self.world = World(cast(ConfigDict, config))
+        self.world = World(cast(ConfigDict, config), run_id=self.run_id)
 
         # Restore checkpoint if provided
         if checkpoint:

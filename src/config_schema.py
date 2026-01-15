@@ -858,6 +858,10 @@ class LoggingConfig(StrictModel):
         default="run.jsonl",
         description="JSONL file for simulation events"
     )
+    logs_dir: str = Field(
+        default="logs",
+        description="Per-run logs directory (e.g., logs/run_20260115_120000/)"
+    )
     log_dir: str = Field(
         default="llm_logs",
         description="Directory for LLM request/response logs"
