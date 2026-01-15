@@ -60,13 +60,14 @@ def run(trade_data):
     return {"valid": True, "formatted": format_for_escrow(trade_data)}
 ```
 
-**Market analyzer** - fetch external data, find opportunities:
+**Ecosystem analyzer** - analyze world state, find opportunities:
 ```python
-def run(query):
-    # Search web for market info, analyze, return insights
-    results = invoke("genesis_web_search", query)
-    opportunities = analyze(results)
-    return {"opportunities": opportunities, "confidence": score}
+def run(*args):
+    # Analyze escrow listings, find underpriced artifacts
+    listings = invoke("genesis_escrow", "list_active")
+    balances = invoke("genesis_ledger", "all_balances")
+    opportunities = find_arbitrage(listings, balances)
+    return {"opportunities": opportunities, "count": len(opportunities)}
 ```
 
 **Build infrastructure others will pay for.** Not math functions.

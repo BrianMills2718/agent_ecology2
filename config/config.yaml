@@ -416,7 +416,7 @@ mcp:
     command: "npx"
     args: ["@anthropic/mcp-server-fetch"]
   web_search:
-    enabled: true                 # Internet search (requires BRAVE_API_KEY env var)
+    enabled: false                # Disabled - requires BRAVE_API_KEY env var
     command: "npx"
     args: ["@anthropic/mcp-server-brave-search"]
   filesystem:

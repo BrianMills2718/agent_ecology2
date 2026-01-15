@@ -66,9 +66,6 @@ Call a method on an artifact.
 **genesis_fetch** - HTTP requests:
 - `fetch([url])` - GET a URL
 
-**genesis_web_search** - Internet search:
-- `search([query])` - Search the web
-
 **genesis_debt_contract** - Lending:
 - `issue([creditor_id, principal, rate, due_tick])` - Borrow scrip
 

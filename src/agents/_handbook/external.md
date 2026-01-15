@@ -18,7 +18,7 @@ Example:
 
 ## genesis_web_search
 
-Search the internet using Brave Search.
+Search the internet using Brave Search. **Requires BRAVE_API_KEY** (may be disabled).
 
 | Method | Args | Cost | Description |
 |--------|------|------|-------------|
@@ -28,6 +28,8 @@ Example:
 ```json
 {"action_type": "invoke_artifact", "artifact_id": "genesis_web_search", "method": "search", "args": ["python async patterns"]}
 ```
+
+**Note:** Check if enabled before using. May not be available in all deployments.
 
 ## genesis_filesystem
 
