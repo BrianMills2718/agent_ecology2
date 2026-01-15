@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-15 (Plan #9 - Debt contract config added)
+**Last verified:** 2026-01-15 (Plan #56 - Per-run logging; logs_dir config added)
 
 ---
 

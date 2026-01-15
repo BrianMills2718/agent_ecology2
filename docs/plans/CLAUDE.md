@@ -84,6 +84,7 @@ Master index of all gaps and their implementation plans.
 | 52 | [Worktree Session Tracking](52_worktree_session_tracking.md) | Medium | ✅ Complete | - |
 | 53 | [Scalable Resource Architecture](53_scalable_resource_architecture.md) | **High** | 📋 Planned | #31 |
 | 54 | [Interface Reserved Terms](54_interface_reserved_terms.md) | Medium | ✅ Complete | #14 |
+| 56 | [Per-Run Logging](56_per_run_logging.md) | Medium | ✅ Complete | - |
 
 ---
 

@@ -62,8 +62,6 @@ Create these tests FIRST, before implementing:
 
 | Test Pattern | Why |
 |--------------|-----|
-| `tests/unit/test_logger.py::test_*` | Existing logger tests |
-| `tests/integration/test_world.py` | World uses logger |
 | `tests/e2e/test_smoke.py` | Full simulation works |
 
 ---
