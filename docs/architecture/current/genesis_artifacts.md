@@ -2,7 +2,7 @@
 
 System-provided artifacts that exist at world initialization.
 
-**Last verified:** 2026-01-14 (Plan #42 - GenesisRightsRegistry delegates to kernel quota primitives)
+**Last verified:** 2026-01-15 (Plan #30 - Added LLM budget trading methods to genesis_ledger)
 
 ---
 
@@ -32,6 +32,8 @@ All genesis artifacts:
 | `transfer(from_id, to_id, amount)` | 1 | Transfer scrip (from_id must be caller) |
 | `spawn_principal()` | 1 | Create new principal with 0 scrip/compute |
 | `transfer_ownership(artifact_id, to_id)` | 1 | Transfer artifact ownership |
+| `transfer_budget(to_id, amount)` | 1 | Transfer LLM budget to another agent (Plan #30) |
+| `get_budget(agent_id)` | 0 | Get LLM budget for an agent (Plan #30) |
 
 **Notes:**
 - Transfers deduct from caller, credit to recipient
