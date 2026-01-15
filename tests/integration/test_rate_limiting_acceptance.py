@@ -138,3 +138,16 @@ class TestRateLimitingEdgeCases:
 
         assert result is True
         assert tracker.get_limit("unconfigured") == float("inf")
+
+    def test_exact_limit_consumption(self) -> None:
+        """Can consume exactly up to the limit."""
+        tracker = RateTracker(window_seconds=60.0)
+        tracker.configure_limit("resource", max_per_window=100.0)
+
+        # Consume exactly 100
+        result = tracker.consume("agent", "resource", 100.0)
+
+        assert result is True
+        assert tracker.get_usage("agent", "resource") == 100.0
+        assert tracker.get_remaining("agent", "resource") == 0.0
+        assert tracker.has_capacity("agent", "resource", 0.01) is False
