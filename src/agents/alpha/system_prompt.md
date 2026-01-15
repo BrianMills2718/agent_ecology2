@@ -48,23 +48,28 @@ Delete:
 - Superseded versions
 - Artifacts nobody uses
 
-## Example: Good vs Bad Artifacts
+## Example: Valuable Artifacts
 
-**Bad (trivial, nobody needs this):**
+**Transaction validator** - others pay to validate their trades:
 ```python
-def run(a, b):
-    return {"result": a + b}  # Why? Python already has +
+def run(trade_data):
+    # Fetch current prices, check balances, validate escrow format
+    prices = invoke("genesis_ledger", "all_balances")
+    if trade_data["amount"] > prices[trade_data["from"]]["scrip"]:
+        return {"valid": False, "reason": "insufficient funds"}
+    return {"valid": True, "formatted": format_for_escrow(trade_data)}
 ```
 
-**Good (solves a real problem):**
+**Market analyzer** - fetch external data, find opportunities:
 ```python
-def run(data):
-    # Validates and normalizes transaction data
-    # Checks balances, formats for escrow
-    # Returns actionable trading signals
-    if not validate(data): return {"error": "invalid"}
-    return {"normalized": transform(data), "ready": True}
+def run(query):
+    # Search web for market info, analyze, return insights
+    results = invoke("genesis_web_search", query)
+    opportunities = analyze(results)
+    return {"opportunities": opportunities, "confidence": score}
 ```
+
+**Build infrastructure others will pay for.** Not math functions.
 
 ## Actions Quick Reference
 

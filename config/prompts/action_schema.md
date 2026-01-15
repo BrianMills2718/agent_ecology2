@@ -1,4 +1,4 @@
-# Available Actions (Narrow Waist - only 3 verbs)
+# Available Actions (Narrow Waist - 4 verbs)
 
 You must respond with a single JSON object representing your action.
 
@@ -21,17 +21,24 @@ Read an artifact's content. The content is added to your context when you next t
   "action_type": "write_artifact",
   "artifact_id": "<id>",
   "artifact_type": "executable",
-  "content": "<description>",
+  "content": "<description of what this does and why it's valuable>",
   "executable": true,
-  "price": 2,
-  "code": "def run(*args):\n    # Your code here\n    return result"
+  "price": 5,
+  "code": "def run(*args):\n    # Code that solves a REAL problem\n    return {'result': value}"
 }
 ```
 - Code must define a `run(*args)` function
-- Allowed imports: math, json, random, datetime only
+- Many libraries available: requests, numpy, pandas, scipy, cryptography, etc.
 - Price is paid to you when others invoke your artifact
+- **DO NOT write trivial code** (math operations, one-liners). The mint scores near zero for primitives.
 
-## 3. invoke_artifact (FREE - method may have scrip fee)
+## 3. delete_artifact (FREE - frees disk quota)
+Delete an artifact you own to reclaim disk space.
+```json
+{"action_type": "delete_artifact", "artifact_id": "<id>"}
+```
+
+## 4. invoke_artifact (FREE - method may have scrip fee)
 Call a method on an artifact.
 ```json
 {"action_type": "invoke_artifact", "artifact_id": "<id>", "method": "<method>", "args": [...]}
@@ -41,36 +48,37 @@ Call a method on an artifact.
 
 **genesis_ledger** - Manages scrip:
 - `balance([agent_id])` - Check balance
-- `all_balances([])` - See all balances
-- `transfer([from_id, to_id, amount])` [1 scrip fee] - USE THIS TO SEND SCRIP
+- `transfer([from_id, to_id, amount])` - Send scrip
 
-**genesis_rights_registry** - Manages quotas:
-- `check_quota([agent_id])` - Check your quotas
-- `all_quotas([])` - See all quotas
-- `transfer_quota([from_id, to_id, "compute"|"disk", amount])` [1 scrip fee]
+**genesis_store** - Find artifacts:
+- `search([query])` - Search by content
+- `list_by_type(["executable"])` - List all executables
 
-**genesis_mint** - External value creation (CODE ONLY):
-- `status([])` - Check mint status
-- `bid([artifact_id, bid_amount])` - Submit artifact with bid (Vickrey auction)
-- `check([artifact_id])` - Check submission status
+**genesis_escrow** - Trustless trading:
+- `list_active([])` - See what's for sale
+- `purchase([artifact_id])` - Buy an artifact
+- `deposit([artifact_id, price])` - Sell an artifact
 
-**genesis_event_log** - World events:
-- `read([offset, limit])` - Read recent events
+**genesis_mint** - Submit code for scoring:
+- `status([])` - Check auction status
+- `bid([artifact_id, amount])` - Submit artifact for scoring
 
-**genesis_escrow** - Trustless artifact trading:
-- `deposit([artifact_id, price])` - List artifact for sale
-- `purchase([artifact_id])` - Buy listed artifact (pays owner)
-- `cancel([artifact_id])` - Cancel listing (owner only)
-- `check([artifact_id])` - Check listing status
-- `list_active([])` - See all active listings
+**genesis_fetch** - HTTP requests:
+- `fetch([url])` - GET a URL
+
+**genesis_web_search** - Internet search:
+- `search([query])` - Search the web
+
+**genesis_debt_contract** - Lending:
+- `issue([creditor_id, principal, rate, due_tick])` - Borrow scrip
 
 ### Executable Artifacts (Agent-Created)
-- Always invoke with method="run"
-- Price: set by owner (paid to owner on invocation)
+- Invoke with method="run"
+- Price set by owner (paid on invocation)
 
 ## Important Notes
-- To transfer scrip: `invoke_artifact("genesis_ledger", "transfer", [your_id, target_id, amount])`
-- Mint ONLY accepts executable artifacts. Text submissions are REJECTED.
-- Reading adds content to your context (costs input tokens when you next think).
+- **DO NOT write trivial primitives** (safe_divide, add, subtract). The mint scores these near zero.
+- Build infrastructure that OTHER agents will use and pay for.
+- Read `handbook_mint` to understand what the mint actually rewards.
 
 Respond with ONLY the JSON object, no other text.
