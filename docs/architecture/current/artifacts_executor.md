@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-14 (Plan #49 - Added reasoning field to ActionIntent)
+**Last verified:** 2026-01-15 (Plan #15 - Added genesis_methods field for unified invoke)
 
 ---
 
@@ -38,6 +38,8 @@ class Artifact:
     deleted_by: str | None        # Who deleted it
     # Interface schema (Plan #14)
     interface: dict | None = None # JSON Schema for discoverability
+    # Genesis method dispatch (Plan #15)
+    genesis_methods: dict | None = None  # Method dispatch for genesis artifacts
 ```
 
 ### Artifact Types

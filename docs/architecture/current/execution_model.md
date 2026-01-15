@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-14 (Plan #29 - Library tracking added to World, no execution model changes)
+**Last verified:** 2026-01-15 (Plan #15 - Unified invoke dispatch, no external behavior change)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
