@@ -102,9 +102,9 @@ Simplest approach - enhance existing claim to include worktree path. Worktree re
 
 ## Required Tests
 
-- `tests/unit/test_worktree_session.py::test_worktree_remove_blocked_with_active_claim`
-- `tests/unit/test_worktree_session.py::test_worktree_remove_allowed_after_release`
-- `tests/unit/test_worktree_session.py::test_force_flag_bypasses_check`
+- `tests/unit/test_worktree_session.py::TestWorktreeRemovalBlocking::test_worktree_remove_blocked_with_active_claim`
+- `tests/unit/test_worktree_session.py::TestWorktreeRemovalBlocking::test_worktree_remove_allowed_after_release`
+- `tests/unit/test_worktree_session.py::TestWorktreeRemovalBlocking::test_force_flag_bypasses_claim_check`
 
 ---
 
