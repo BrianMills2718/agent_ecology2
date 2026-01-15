@@ -266,13 +266,19 @@ def identify_issues(claims: list, prs: list, plans: dict, worktrees: list) -> li
         if len(pr_nums) > 1:
             issues.append(f"Plan #{plan_num} has multiple PRs: {pr_nums} - may conflict")
     
-    # Orphaned worktrees (no recent commits)
+    # Orphaned worktrees (no PR and no active claim)
+    claimed_branches = {claim.get("cc_id") for claim in claims}
     for wt in worktrees:
         if wt.get("path", "").endswith("/agent_ecology"):
             continue  # Skip main
         branch = wt.get("branch", "")
-        if branch and not any(pr.get("headRefName") == branch for pr in prs):
-            issues.append(f"Worktree '{branch}' has no open PR - orphaned?")
+        if not branch:
+            continue
+        has_pr = any(pr.get("headRefName") == branch for pr in prs)
+        has_claim = branch in claimed_branches
+
+        if not has_pr and not has_claim:
+            issues.append(f"Worktree '{branch}' has no PR and no claim - likely orphaned")
     
     # Old PRs (> 24h)
     for pr in prs:
