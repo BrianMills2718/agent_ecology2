@@ -34,6 +34,34 @@
 
 ---
 
+## Existing Infrastructure (Plan #31)
+
+Plan #31 created measurement infrastructure that was **never integrated**:
+
+| Component | Location | Status |
+|-----------|----------|--------|
+| `ResourceUsage` dataclass | `src/world/simulation_engine.py:236` | ✅ Built, ❌ Not used |
+| `ResourceMeasurer` class | `src/world/simulation_engine.py:255` | ✅ Built, ❌ Not used |
+| `measure_resources()` helper | `src/world/simulation_engine.py:338` | ✅ Built, ❌ Not used |
+
+**The problem:** `executor.py` still uses a legacy hack:
+
+```python
+# executor.py:181 - WRONG: conflates wall-clock time with LLM tokens
+def _time_to_tokens(execution_time_ms: float) -> float:
+    cost_per_ms: float = get("executor.cost_per_ms") or 0.1
+    return max(1.0, execution_time_ms * cost_per_ms)
+```
+
+This charges **wall-clock time** as **"llm_tokens"** - fundamentally wrong:
+- `llm_tokens` should mean "tokens sent to/from LLM API"
+- Execution time is a different resource (`cpu_seconds`)
+- Makes resource accounting meaningless
+
+**This plan must fix this before building new infrastructure.**
+
+---
+
 ## Design Decisions
 
 ### Process-Per-Agent-Turn Model
@@ -111,6 +139,32 @@ All tradeable resources use same mechanism: `rights_registry.transfer_quota(from
 
 ## Plan
 
+### Phase 0: Fix Executor Integration (PREREQUISITE)
+
+**Goal:** Stop conflating execution time with LLM tokens. Use Plan #31's `ResourceMeasurer`.
+
+| File | Change |
+|------|--------|
+| `src/world/executor.py` | Replace `_time_to_tokens()` with `ResourceMeasurer` |
+| `src/world/executor.py` | Return `cpu_seconds` in `resources_consumed`, not `llm_tokens` |
+| `src/world/ledger.py` | Add `cpu_seconds` as a valid resource type |
+| `src/world/world.py` | Deduct `cpu_seconds` from agent after execution |
+
+**Before (wrong):**
+```python
+resources_consumed = {"llm_tokens": _time_to_tokens(execution_time_ms)}
+```
+
+**After (correct):**
+```python
+with measure_resources() as measurer:
+    # ... execute code ...
+usage = measurer.get_usage()
+resources_consumed = {"cpu_seconds": usage.cpu_seconds}
+```
+
+**Why this is Phase 0:** All subsequent phases depend on accurate resource tracking. Building worker pools on broken accounting is pointless.
+
 ### Phase 1: Terminology Cleanup
 
 Replace all "compute" with "llm_tokens" where it refers to LLM token quotas.
@@ -173,6 +227,16 @@ Agent state must persist between turns for process-per-turn model.
 ## Required Tests
 
 ### New Tests (TDD)
+
+#### Phase 0 Tests
+
+| Test File | Test Function | What It Verifies |
+|-----------|---------------|------------------|
+| `tests/unit/test_executor.py` | `test_executor_returns_cpu_seconds` | Executor returns `cpu_seconds` not `llm_tokens` |
+| `tests/unit/test_executor.py` | `test_executor_uses_resource_measurer` | Executor uses `ResourceMeasurer` not wall-clock hack |
+| `tests/unit/test_ledger.py` | `test_cpu_seconds_resource_type` | Ledger accepts `cpu_seconds` as valid resource |
+
+#### Phase 2+ Tests
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
@@ -260,9 +324,10 @@ With worker pool, all workers can share one LLMProvider instance (passed via IPC
 
 ### Migration Path
 
-1. Phase 1-2 can ship independently (terminology + state persistence)
-2. Phase 3-5 are the core architecture change
-3. Phase 6 (connection pool) can be independent
+1. **Phase 0 MUST ship first** - fixes broken resource accounting
+2. Phase 1-2 can ship independently (terminology + state persistence)
+3. Phase 3-5 are the core architecture change
+4. Phase 6 (connection pool) can be independent
 
 ### Error Bounds Documentation
 
@@ -275,7 +340,18 @@ Document in resources.md:
 
 ## Inconsistencies Found
 
-During plan creation, the following inconsistencies were identified (to be fixed in Phase 1):
+During plan creation, the following inconsistencies were identified:
+
+### Critical: Executor Resource Conflation (Phase 0)
+
+| File | Line | Issue |
+|------|------|-------|
+| `src/world/executor.py` | 181-190 | `_time_to_tokens()` converts wall-clock time to "llm_tokens" |
+| `src/world/executor.py` | 550, 558, 566, 577, 720, 728, 736, 746, 1020, 1028, 1036, 1046 | All return `{"llm_tokens": ...}` for execution time |
+
+**Root cause:** Plan #31 built `ResourceMeasurer` but never integrated it into executor.
+
+### Terminology Issues (Phase 1)
 
 ### Glossary (GLOSSARY_CURRENT.md)
 
