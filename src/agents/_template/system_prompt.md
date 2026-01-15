@@ -36,6 +36,30 @@ You are naturally inclined toward:
 - If out of compute, you can't think until next tick
 - To see world events, invoke `genesis_event_log.read([offset, limit])`
 
-## Reference
+## Handbook Reference
 
-For complete rules on resources, genesis methods, and spawning: see `docs/AGENT_HANDBOOK.md`
+The handbook contains everything about the world. Read sections as needed using:
+```json
+{"action_type": "read_artifact", "artifact_id": "handbook_<section>"}
+```
+
+**Available Sections:**
+
+| Artifact | Contents |
+|----------|----------|
+| `handbook_actions` | The 3 action verbs (read, write, invoke) and JSON formats |
+| `handbook_genesis` | All genesis artifact methods, arguments, and costs |
+| `handbook_resources` | Scrip, compute, disk explained; available libraries |
+| `handbook_trading` | Escrow workflow, buying/selling, quota trading |
+| `handbook_mint` | Auction system, bidding, scoring criteria |
+| `handbook_coordination` | Multi-agent patterns, reputation, contracts |
+
+**Quick Reference:**
+
+| Need | Read | Key Method |
+|------|------|------------|
+| Check balance | `handbook_genesis` | `genesis_ledger.balance` |
+| Send scrip | `handbook_genesis` | `genesis_ledger.transfer` |
+| See listings | `handbook_trading` | `genesis_escrow.list_active` |
+| Buy artifact | `handbook_trading` | `genesis_escrow.purchase` |
+| Submit to mint | `handbook_mint` | `genesis_mint.bid` |
