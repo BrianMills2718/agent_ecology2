@@ -77,7 +77,7 @@ Master index of all gaps and their implementation plans.
 | 49 | [Reasoning in Narrow Waist](49_reasoning_narrow_waist.md) | **High** | ✅ Complete | LLM-native monitoring |
 | 50 | [Test Structure Refactor](50_test_structure_refactor.md) | Medium | ✅ Complete | AI navigability |
 | 51 | [V1 Acceptance Criteria](51_v1_acceptance.md) | **High** | ✅ Complete | V1 release |
-| 52 | [Worktree Session Tracking](52_worktree_session_tracking.md) | Medium | 📋 Planned | - |
+| 52 | [Worktree Session Tracking](52_worktree_session_tracking.md) | Medium | 🚧 In Progress | - |
 
 ---
 

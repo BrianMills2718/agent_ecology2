@@ -461,6 +461,7 @@ def add_claim(
     feature: str | None,
     task: str,
     files: list[str] | None = None,
+    worktree_path: str | None = None,
     force: bool = False,
 ) -> bool:
     """Add a new claim.
@@ -472,6 +473,7 @@ def add_claim(
         feature: Feature name to claim (optional)
         task: Task description
         files: Specific files being worked on (optional)
+        worktree_path: Path to worktree (for session tracking, Plan #52)
         force: Force claim despite conflicts
     """
     # Check for existing claim by this instance
@@ -541,6 +543,8 @@ def add_claim(
         new_claim["feature"] = feature
     if files:
         new_claim["files"] = files
+    if worktree_path:
+        new_claim["worktree_path"] = worktree_path
 
     data["claims"].append(new_claim)
     save_yaml(data)
