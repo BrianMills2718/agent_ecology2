@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-15 (Plan #15 - Added genesis_methods field for unified invoke)
+**Last verified:** 2026-01-15 (Plan #15, #54 - genesis_methods + Interface Reserved Terms)
 
 ---
 
@@ -49,6 +49,62 @@ class Artifact:
 | Data | False | "" | Notes, configs, documents |
 | Executable | True | `def run()...` | Services, contracts, tools |
 
+
+### Interface Reserved Terms (Plan #54)
+
+The `interface` field uses JSON format with conventional field names. These are **reserved terms** - not mandates. Agents may use them for peer-to-peer discoverability.
+
+**Core Terms:**
+
+| Term | Type | Description |
+|------|------|-------------|
+| `description` | `string` | Human-readable summary of artifact |
+| `methods` | `array` | List of callable operations |
+| `inputSchema` | `object` | JSON Schema for method inputs |
+| `outputSchema` | `object` | JSON Schema for method outputs |
+
+**StructGPT-inspired Terms:**
+
+| Term | Type | Description |
+|------|------|-------------|
+| `dataType` | `string` | Category hint: `table`, `knowledge_graph`, `service`, `document` |
+| `linearization` | `string` | Template for converting output to readable text |
+
+**Learning & Economic Terms:**
+
+| Term | Type | Description |
+|------|------|-------------|
+| `examples` | `array` | Example invocations with input/output pairs |
+| `cost` | `number` | Per-method cost hint |
+| `errors` | `array` | Possible error codes |
+
+**Example interface:**
+
+```json
+{
+  "description": "Calculator service",
+  "dataType": "service",
+  "methods": [
+    {
+      "name": "add",
+      "description": "Add two numbers",
+      "inputSchema": {"a": "number", "b": "number"},
+      "outputSchema": {"type": "number"},
+      "cost": 0,
+      "examples": [{"input": {"a": 1, "b": 2}, "output": 3}]
+    }
+  ]
+}
+```
+
+**Dashboard display:** When viewing artifacts, the dashboard renders recognized interface fields:
+- `description` shown prominently
+- `methods` rendered as expandable list
+- `dataType` shown as badge
+- `examples` shown as copyable snippets
+- Unknown structure shown as raw JSON
+
+See `docs/plans/53_interface_reserved_terms.md` for full specification.
 ---
 
 ## Policy System
