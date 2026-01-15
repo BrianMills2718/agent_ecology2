@@ -329,6 +329,99 @@ def get_current_branch() -> str:
         return "unknown"
 
 
+
+def get_worktrees() -> list[dict[str, Any]]:
+    """Get git worktree information with recent activity."""
+    try:
+        result = subprocess.run(
+            ["git", "worktree", "list", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=_MAIN_ROOT,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return []
+
+    worktrees: list[dict[str, Any]] = []
+    current: dict[str, Any] = {}
+
+    for line in result.stdout.strip().split("\n"):
+        if line.startswith("worktree "):
+            if current:
+                worktrees.append(current)
+            current = {"path": line[9:]}
+        elif line.startswith("HEAD "):
+            current["commit"] = line[5:]
+        elif line.startswith("branch "):
+            current["branch"] = line[7:].replace("refs/heads/", "")
+        elif line == "detached":
+            current["branch"] = "(detached)"
+
+    if current:
+        worktrees.append(current)
+
+    for wt in worktrees:
+        if wt.get("commit"):
+            try:
+                result = subprocess.run(
+                    ["git", "log", "-1", "--format=%ct", wt["commit"]],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    cwd=_MAIN_ROOT,
+                )
+                timestamp = int(result.stdout.strip())
+                wt["last_commit_time"] = datetime.fromtimestamp(timestamp)
+            except (subprocess.CalledProcessError, ValueError):
+                wt["last_commit_time"] = None
+
+    return worktrees
+
+
+def get_worktree_claim_status(
+    worktrees: list[dict[str, Any]],
+    claims: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Cross-reference worktrees with claims."""
+    branch_to_claim: dict[str, dict[str, Any]] = {}
+    for claim in claims:
+        cc_id = claim.get("cc_id", "")
+        branch_to_claim[cc_id] = claim
+
+    results: list[dict[str, Any]] = []
+
+    for wt in worktrees:
+        branch = wt.get("branch", "")
+        path = wt.get("path", "")
+
+        if path.endswith("/agent_ecology") and "worktrees" not in path:
+            continue
+
+        wt_claim = branch_to_claim.get(branch)
+
+        if wt_claim:
+            status = "claimed"
+        else:
+            last_commit = wt.get("last_commit_time")
+            if last_commit:
+                hours_ago = (datetime.now() - last_commit).total_seconds() / 3600
+                if hours_ago < 4:
+                    status = "ACTIVE_NO_CLAIM"
+                else:
+                    status = "orphaned"
+            else:
+                status = "orphaned"
+
+        results.append({
+            **wt,
+            "claim": wt_claim,
+            "status": status,
+        })
+
+    return results
+
+
 def verify_has_claim(data: dict[str, Any], branch: str) -> tuple[bool, str]:
     """Verify the current branch has an active claim.
 
@@ -423,35 +516,79 @@ def check_stale_claims(claims: list[dict], hours: int) -> list[dict]:
     return stale
 
 
-def list_claims(claims: list[dict]) -> None:
-    """Print all current claims."""
+def list_claims(claims: list[dict], show_worktrees: bool = True) -> None:
+    """Print claims AND worktrees with cross-referencing.
+    
+    Shows both to prevent confusion about active work.
+    """
+    worktrees = get_worktrees() if show_worktrees else []
+    wt_status = get_worktree_claim_status(worktrees, claims) if worktrees else []
+    wt_branches = {wt.get("branch", "") for wt in wt_status}
+    
     if not claims:
         print("No active claims.")
-        return
+    else:
+        print("Active Claims:")
+        print("-" * 70)
 
-    print("Active Claims:")
-    print("-" * 70)
+        for claim in claims:
+            ts = parse_timestamp(claim.get("claimed_at", ""))
+            age = get_age_string(ts) if ts else "unknown"
 
-    for claim in claims:
-        ts = parse_timestamp(claim.get("claimed_at", ""))
-        age = get_age_string(ts) if ts else "unknown"
+            cc_id = claim.get("cc_id", "?")
+            plan = claim.get("plan")
+            feature = claim.get("feature")
+            task = claim.get("task", "")[:35]
 
-        cc_id = claim.get("cc_id", "?")
-        plan = claim.get("plan")
-        feature = claim.get("feature")
-        task = claim.get("task", "")[:35]
+            scope_parts = []
+            if plan:
+                scope_parts.append(f"Plan #{plan}")
+            if feature:
+                scope_parts.append(f"'{feature}'")
+            scope_str = " + ".join(scope_parts) if scope_parts else "unscoped"
+            
+            has_wt = cc_id in wt_branches
+            wt_indicator = "" if has_wt else " [NO WORKTREE]"
 
-        # Build scope string
-        scope_parts = []
-        if plan:
-            scope_parts.append(f"Plan #{plan}")
-        if feature:
-            scope_parts.append(f"'{feature}'")
-        scope_str = " + ".join(scope_parts) if scope_parts else "unscoped"
-
-        print(f"  {cc_id:15} | {scope_str:20} | {task:30} | {age}")
-        if claim.get("files"):
-            print(f"                   Files: {', '.join(claim['files'][:3])}")
+            print(f"  {cc_id:15} | {scope_str:20} | {task:30} | {age}{wt_indicator}")
+            if claim.get("files"):
+                print(f"                   Files: {', '.join(claim['files'][:3])}")
+    
+    if wt_status:
+        print()
+        print("Worktrees:")
+        print("-" * 70)
+        
+        active_no_claim = []
+        
+        for wt in wt_status:
+            branch = wt.get("branch", "?")
+            status = wt.get("status", "?")
+            last_commit = wt.get("last_commit_time")
+            
+            age = get_age_string(last_commit) if last_commit else "unknown"
+            
+            if status == "ACTIVE_NO_CLAIM":
+                status_str = "!! ACTIVE (no claim)"
+                active_no_claim.append(wt)
+            elif status == "claimed":
+                claim = wt.get("claim", {})
+                plan = claim.get("plan")
+                status_str = f"Claimed (Plan #{plan})" if plan else "Claimed"
+            else:
+                status_str = "orphaned"
+            
+            print(f"  {branch:30} | {status_str:25} | last: {age}")
+        
+        if active_no_claim:
+            print()
+            print("=" * 70)
+            print("!! WARNING: ACTIVE WORKTREES WITHOUT CLAIMS")
+            print("=" * 70)
+            print("Another CC instance may be working in these worktrees!")
+            for wt in active_no_claim:
+                print(f"  - {wt.get('branch', '?')}: {wt.get('path', '?')}")
+            print("=" * 70)
 
 
 def add_claim(
@@ -531,7 +668,7 @@ def add_claim(
             return False
         print("\n--force specified, proceeding despite conflict.\n")
 
-    new_claim = {
+    new_claim: dict[str, Any] = {
         "cc_id": cc_id,
         "task": task,
         "claimed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
