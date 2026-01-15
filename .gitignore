@@ -80,3 +80,4 @@ Thumbs.db
 # Generated documentation packages (regeneratable via build scripts)
 docs/EXTERNAL_REVIEW_PACKAGE.md
 docs/meta/META_REVIEW_PACKAGE.md
+logs/
