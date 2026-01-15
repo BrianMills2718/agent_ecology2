@@ -11,7 +11,10 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, TypedDict
+from typing import Any, TypedDict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .genesis import GenesisMethod
 
 
 # Type alias for policy allow fields: either a static list or a contract reference
@@ -140,6 +143,10 @@ class Artifact:
     # JSON Schema format (MCP-compatible but not strict MCP)
     # Optional - only useful for executable artifacts
     interface: dict[str, Any] | None = None
+    # Genesis method dispatch (Plan #15: invoke() Genesis Support)
+    # If set, this artifact uses method dispatch instead of code execution
+    # Enables unified invoke path for genesis and user artifacts
+    genesis_methods: dict[str, "GenesisMethod"] | None = None
 
     @property
     def price(self) -> int:

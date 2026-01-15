@@ -2,7 +2,7 @@
 
 Master index of all gaps and their implementation plans.
 
-**Last verified:** 2026-01-15 (Plan #43 all phases complete)
+**Last verified:** 2026-01-15 (Plan #15 complete - unified invoke dispatch)
 
 ---
 
@@ -41,7 +41,7 @@ Master index of all gaps and their implementation plans.
 | 12 | [Per-Agent LLM Budget](12_per_agent_budget.md) | Medium | ✅ Complete | - |
 | 13 | [Doc Line Number Refs](13_doc_line_refs.md) | Low | 📋 Post-V1 | - |
 | 14 | [Artifact Interface Schema](14_mcp_interface.md) | Medium | ✅ Complete | - |
-| 15 | [invoke() Genesis Support](15_invoke_genesis.md) | Medium | 📋 Post-V1 | - |
+| 15 | [invoke() Genesis Support](15_invoke_genesis.md) | Medium | ✅ Complete | - |
 | 16 | [Artifact Discovery](16_artifact_discovery.md) | **High** | ✅ Complete | #17,#22 |
 | 17 | [Agent Discovery](17_agent_discovery.md) | Medium | ✅ Complete | - |
 | 18 | [Dangling Reference Handling](18_dangling_refs.md) | Medium | ✅ Complete | - |
