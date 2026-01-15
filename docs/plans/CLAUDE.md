@@ -73,7 +73,7 @@ Master index of all gaps and their implementation plans.
 | 44 | [Genesis Full Unprivilege](44_genesis_full_unprivilege.md) | **High** | ✅ Complete | #42 |
 | 45 | [Real E2E Test Requirement](45_real_e2e_requirement.md) | **High** | ✅ Complete | - |
 | 46 | [PR Review Coordination](46_review_coordination.md) | **High** | ✅ Complete | - |
-| 48 | [CI Optimization](48_ci_optimization.md) | Medium | 📋 Post-V1 | - |
+| 48 | [CI Optimization](48_ci_optimization.md) | Medium | ✅ Post-V1 | - |
 | 49 | [Reasoning in Narrow Waist](49_reasoning_narrow_waist.md) | **High** | ✅ Complete | LLM-native monitoring |
 | 50 | [Test Structure Refactor](50_test_structure_refactor.md) | Medium | ✅ Complete | AI navigability |
 | 51 | [V1 Acceptance Criteria](51_v1_acceptance.md) | **High** | ✅ Complete | V1 release |
