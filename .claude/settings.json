@@ -10,6 +10,16 @@
             "timeout": 5000
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/block-worktree-remove.sh",
+            "timeout": 5000
+          }
+        ]
       }
     ]
   }

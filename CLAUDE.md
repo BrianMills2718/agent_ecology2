@@ -247,8 +247,13 @@ cd worktrees/plan-03-docker && claude
 make worktree-remove BRANCH=plan-03-docker  # Safe - checks for uncommitted changes
 ```
 
-> **⚠️ ALWAYS use `make worktree-remove`** - it blocks removal if uncommitted changes exist.
-> Direct `git worktree remove` will **permanently lose** uncommitted changes!
+> **🚨 NEVER use `git worktree remove` directly. ALWAYS use `make worktree-remove BRANCH=...`**
+>
+> Why this matters:
+> - `make worktree-remove` checks for uncommitted changes (prevents data loss)
+> - `make worktree-remove` checks for active claims (prevents breaking other sessions)
+> - Direct `git worktree remove` **breaks the shell** if you're in that directory (CWD becomes invalid)
+> - A Claude Code hook enforces this - `git worktree remove` commands are blocked
 
 **What happens without worktrees (BAD):**
 ```
@@ -381,7 +386,7 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| main | 30 | Plan #30: LLM Budget Trading | 2026-01-15T05:41 | Active |
+| plan-48-ci-optimization | 48 | Optimize CI - add caching, consolidate j | 2026-01-15T08:43 | Active |
 
 **Awaiting Review:**
 <!-- PRs needing review. Update table when starting/completing review. -->
