@@ -2,7 +2,7 @@
 
 System-provided artifacts that exist at world initialization.
 
-**Last verified:** 2026-01-15 (Plan #30 - Added LLM budget trading methods to genesis_ledger)
+**Last verified:** 2026-01-15 (Plan #9 - Added genesis_debt_contract)
 
 ---
 
@@ -132,6 +132,40 @@ during a specific bidding window. Auctions still resolve on schedule.
 3. Or seller cancels → escrow returns artifact
 
 **Demonstrates Gatekeeper pattern:** Contract holds ownership, manages multi-party access.
+
+---
+
+### genesis_debt_contract
+
+**Purpose:** Non-privileged credit/lending example (Plan #9)
+
+**File:** `src/world/genesis.py` (`GenesisDebtContract` class)
+
+| Method | Cost (compute) | Description |
+|--------|----------------|-------------|
+| `issue(creditor, principal, rate, due_tick)` | 1 | Create debt request (debtor initiates) |
+| `accept(debt_id)` | 1 | Creditor accepts debt |
+| `repay(debt_id, amount)` | 1 | Debtor pays back (partial or full) |
+| `collect(debt_id)` | 1 | Creditor collects after due_tick |
+| `transfer_creditor(debt_id, new_creditor)` | 1 | Sell debt rights to another |
+| `check(debt_id)` | 0 | Get debt status with current_owed |
+| `list_debts(principal_id)` | 0 | List debts for a principal |
+| `list_all()` | 0 | List all debts in system |
+
+**Flow:**
+1. Debtor issues debt request → status="pending"
+2. Creditor accepts → status="active", interest starts accruing
+3. Debtor repays (partial or full) → transfers scrip to creditor
+4. After due_tick: creditor can collect remaining (forced transfer)
+5. If debtor broke: status="defaulted" (no magic enforcement)
+
+**Interest:** Simple interest: `current_owed = principal + (principal * rate * ticks_elapsed) - amount_paid`
+
+**Tradeable debt:** Creditor can sell debt rights via `transfer_creditor()`. Payment goes to whoever currently holds the debt.
+
+**Key insight:** No kernel-level enforcement. Bad debtors observable via event log. Reputation emerges from observed behavior.
+
+**Demonstrates:** How credit/lending can work without privileged kernel support - just a genesis artifact example.
 
 ---
 
@@ -280,6 +314,8 @@ genesis:
     escrow:
       enabled: true
     store:
+      enabled: true
+    debt_contract:
       enabled: true
   # Note: handbook_* artifacts are seeded separately from _handbook/*.md files
 

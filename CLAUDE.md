@@ -193,6 +193,7 @@ See `docs/GLOSSARY.md` for full definitions. Quick reference:
 | `genesis_mint` | Auction-based scoring, minting |
 | `genesis_store` | Artifact discovery and creation |
 | `genesis_escrow` | Trustless artifact trading |
+| `genesis_debt_contract` | Non-privileged credit/lending example |
 | `genesis_event_log` | Passive observability |
 | `genesis_handbook` | Seeded documentation for agents |
 

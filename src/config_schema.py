@@ -148,6 +148,7 @@ class GenesisArtifactsEnabled(StrictModel):
     event_log: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
     escrow: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
     store: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
+    debt_contract: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
 
 
 class LedgerMethodsConfig(StrictModel):
@@ -443,6 +444,70 @@ class EscrowConfig(StrictModel):
     methods: EscrowMethodsConfig = Field(default_factory=EscrowMethodsConfig)
 
 
+class DebtContractMethodsConfig(StrictModel):
+    """Genesis debt contract method configurations."""
+
+    issue: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=1,
+            description="Issue a debt. Invoker becomes debtor. Args: [creditor_id, principal, interest_rate, due_tick]"
+        )
+    )
+    accept: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Accept a pending debt (creditor must call). Args: [debt_id]"
+        )
+    )
+    repay: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Repay debt (debtor pays creditor). Args: [debt_id, amount]"
+        )
+    )
+    collect: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Collect overdue debt (creditor only, after due_tick). Args: [debt_id]"
+        )
+    )
+    transfer_creditor: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=1,
+            description="Transfer creditor rights to another principal (sell the debt). Args: [debt_id, new_creditor_id]"
+        )
+    )
+    check: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Check status of a debt. Args: [debt_id]"
+        )
+    )
+    list_debts: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="List debts for a principal. Args: [principal_id]"
+        )
+    )
+    list_all: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="List all debts. Args: []"
+        )
+    )
+
+
+class DebtContractConfig(StrictModel):
+    """Genesis debt contract configuration."""
+
+    id: str = Field(default="genesis_debt_contract", description="Artifact ID")
+    description: str = Field(
+        default="Non-privileged debt contract example. Issue, accept, repay, collect debts. No magic enforcement.",
+        description="Artifact description"
+    )
+    methods: DebtContractMethodsConfig = Field(default_factory=DebtContractMethodsConfig)
+
+
 class StoreMethodsConfig(StrictModel):
     """Genesis store method configurations."""
 
@@ -578,6 +643,7 @@ class GenesisConfig(StrictModel):
     event_log: EventLogConfig = Field(default_factory=EventLogConfig)
     escrow: EscrowConfig = Field(default_factory=EscrowConfig)
     store: StoreConfig = Field(default_factory=StoreConfig)
+    debt_contract: DebtContractConfig = Field(default_factory=DebtContractConfig)
     mcp: McpConfig = Field(default_factory=McpConfig)
 
 
@@ -1151,6 +1217,8 @@ __all__ = [
     "EventLogMethodsConfig",
     "EscrowConfig",
     "EscrowMethodsConfig",
+    "DebtContractConfig",
+    "DebtContractMethodsConfig",
     "StoreConfig",
     "StoreMethodsConfig",
     # MCP configs

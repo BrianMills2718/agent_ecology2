@@ -67,6 +67,8 @@ genesis:
       enabled: true
     store:
       enabled: true
+    debt_contract:
+      enabled: true
 
   # Genesis Ledger - balance queries and transfers
   ledger:
@@ -164,6 +166,36 @@ genesis:
       list_active:
         cost: 0                 # 0 compute - encourage discovery
         description: "List all active escrow listings. Args: []"
+
+  # Genesis Debt Contract - non-privileged lending example
+  debt_contract:
+    id: "genesis_debt_contract"
+    description: "Non-privileged debt contract example. Issue, accept, repay, collect debts. No magic enforcement - bad debtors get bad reputation."
+    methods:
+      issue:
+        cost: 1                 # 1 compute
+        description: "Issue a debt. Invoker becomes debtor. Args: [creditor_id, principal, interest_rate, due_tick]"
+      accept:
+        cost: 0                 # 0 compute - creditor accepts
+        description: "Accept a pending debt (creditor must call). Args: [debt_id]"
+      repay:
+        cost: 0                 # 0 compute - debtor pays
+        description: "Repay debt (debtor pays creditor). Args: [debt_id, amount]"
+      collect:
+        cost: 0                 # 0 compute - attempt collection
+        description: "Collect overdue debt (creditor only, after due_tick). Args: [debt_id]"
+      transfer_creditor:
+        cost: 1                 # 1 compute
+        description: "Transfer creditor rights to another principal (sell the debt). Args: [debt_id, new_creditor_id]"
+      check:
+        cost: 0                 # 0 compute
+        description: "Check status of a debt. Args: [debt_id]"
+      list_debts:
+        cost: 0                 # 0 compute
+        description: "List debts for a principal. Args: [principal_id]"
+      list_all:
+        cost: 0                 # 0 compute
+        description: "List all debts. Args: []"
 
   # Genesis Store - artifact discovery and registry
   store:
