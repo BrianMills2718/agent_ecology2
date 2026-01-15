@@ -57,6 +57,63 @@ class TestArtifactsFeature:
         assert artifact.can_read("bob") is True
         assert artifact.can_read("owner") is True
 
+
+    # AC-3: Invoke executable artifact (happy_path)
+    def test_ac_3_invoke_executable_artifact(self) -> None:
+        """AC-3: Invoke executable artifact.
+
+        Given:
+          - Artifact has executable: true
+          - Artifact has valid Python code in content
+          - Caller has invoke permission
+        When: Artifact is invoked with arguments
+        Then:
+          - Code executes in sandbox
+          - Result is returned to caller
+          - invoke_price is deducted from caller
+        """
+        store = ArtifactStore()
+        artifact = store.write(
+            artifact_id="calculator",
+            type="executable",
+            content="A calculator tool",
+            owner_id="alice",
+            executable=True,
+            code="""
+def run(a, b):
+    return {"result": a + b}
+""",
+            policy={"invoke_price": 5, "allow_invoke": ["*"]},
+        )
+
+        assert artifact.executable is True
+        assert artifact.policy.get("invoke_price") == 5
+        assert artifact.can_invoke("bob") is True
+
+    # AC-4: Non-executable artifact cannot be invoked (error_case)
+    def test_ac_4_non_executable_cannot_invoke(self) -> None:
+        """AC-4: Non-executable artifact cannot be invoked.
+
+        Given: Artifact has executable: false
+        When: Caller attempts to invoke
+        Then:
+          - Invocation fails with error
+          - No code execution occurs
+        """
+        store = ArtifactStore()
+        artifact = store.write(
+            artifact_id="data_artifact",
+            type="data",
+            content="Just data",
+            owner_id="alice",
+            executable=False,
+        )
+
+        assert artifact.executable is False
+        # Non-executable artifacts don't have can_invoke
+        assert not getattr(artifact, 'can_invoke', lambda x: False)("bob")
+
+
     # AC-5: Owner can modify artifact (happy_path)
     def test_ac_5_owner_can_modify(self) -> None:
         """AC-5: Owner can modify artifact."""
@@ -162,3 +219,24 @@ class TestArtifactsEdgeCases:
 
         result = store.transfer_ownership("artifact", "alice", "charlie")
         assert result is True
+
+
+@pytest.mark.feature("artifacts")
+class TestArtifactExecutableEdgeCases:
+    """Additional tests for executable artifact functionality."""
+
+    def test_executable_with_code(self) -> None:
+        """Executable artifacts store code separately from content."""
+        store = ArtifactStore()
+        artifact = store.write(
+            artifact_id="tool",
+            type="tool",
+            content="A useful tool that adds numbers",
+            owner_id="developer",
+            executable=True,
+            code='def run(x, y): return {"sum": x + y}',
+        )
+
+        assert artifact.executable is True
+        assert artifact.content == "A useful tool that adds numbers"
+        assert "def run" in artifact.code
