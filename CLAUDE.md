@@ -7,6 +7,29 @@
 
 ---
 
+## 🔴 TEMP: PRs Need Rebase (delete after resolved)
+
+**Date:** 2026-01-15
+
+The following PRs are reviewed and approved but need rebase before merge:
+
+| PR | Branch | Action Needed |
+|----|--------|---------------|
+| #195 | plan-15-invoke-genesis | Rebase onto main |
+| #194 | plan-09-debt-contract | Rebase onto main |
+| #193 | plan-53-interface-terms | Resolve conflicts, then rebase |
+
+**If you worked on one of these PRs**, please:
+```bash
+cd worktrees/<your-branch>
+git fetch origin main && git rebase origin/main
+git push --force-with-lease
+```
+
+Then delete this section once your PR is rebased and merged.
+
+---
+
 This file is always loaded. Keep it lean. Reference other docs for details.
 
 ## Philosophy & Goals
