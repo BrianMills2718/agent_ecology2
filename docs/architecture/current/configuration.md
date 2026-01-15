@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-14 (Libraries config added, Plan #29)
+**Last verified:** 2026-01-15 (Plan #30 - LLM budget methods config added)
 
 ---
 

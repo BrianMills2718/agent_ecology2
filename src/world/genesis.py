@@ -365,6 +365,20 @@ class GenesisLedger(GenesisArtifact):
             description=ledger_cfg.methods.transfer_ownership.description
         )
 
+        self.register_method(
+            name="transfer_budget",
+            handler=self._transfer_budget,
+            cost=ledger_cfg.methods.transfer_budget.cost,
+            description=ledger_cfg.methods.transfer_budget.description
+        )
+
+        self.register_method(
+            name="get_budget",
+            handler=self._get_budget,
+            cost=ledger_cfg.methods.get_budget.cost,
+            description=ledger_cfg.methods.get_budget.description
+        )
+
     def _balance(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Get balance for an agent (resources and scrip)."""
         if not args or len(args) < 1:
@@ -525,6 +539,89 @@ class GenesisLedger(GenesisArtifact):
                 code=ErrorCode.NOT_FOUND,
                 artifact_id=artifact_id,
             )
+
+    def _transfer_budget(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
+        """Transfer LLM budget to another agent.
+
+        LLM budget is a depletable resource representing dollars available
+        for LLM API calls. Making it tradeable enables budget markets.
+
+        Args:
+            args: [to_id, amount] - recipient and amount to transfer
+            invoker_id: The caller (transfers FROM this principal)
+
+        Returns:
+            {"success": True, "transferred": ..., "from": ..., "to": ...}
+        """
+        if not args or len(args) < 2:
+            return validation_error(
+                "transfer_budget requires [to_id, amount]",
+                code=ErrorCode.MISSING_ARGUMENT,
+                required=["to_id", "amount"],
+            )
+
+        to_id: str = args[0]
+        amount: Any = args[1]
+
+        # Validate amount
+        if not isinstance(amount, (int, float)) or amount <= 0:
+            return validation_error(
+                "Amount must be positive number",
+                code=ErrorCode.INVALID_ARGUMENT,
+                provided=amount,
+            )
+
+        # Check invoker has sufficient budget
+        current_budget = self.ledger.get_resource(invoker_id, "llm_budget")
+        if current_budget < amount:
+            return permission_error(
+                f"Insufficient LLM budget. Have {current_budget}, need {amount}",
+                code=ErrorCode.INSUFFICIENT_FUNDS,
+                from_id=invoker_id,
+                current=current_budget,
+                requested=amount,
+            )
+
+        # Perform transfer via ledger
+        self.ledger.spend_resource(invoker_id, "llm_budget", float(amount))
+        recipient_budget = self.ledger.get_resource(to_id, "llm_budget")
+        self.ledger.set_resource(to_id, "llm_budget", recipient_budget + float(amount))
+
+        return {
+            "success": True,
+            "transferred": amount,
+            "resource": "llm_budget",
+            "from": invoker_id,
+            "to": to_id,
+            "from_budget_after": self.ledger.get_resource(invoker_id, "llm_budget"),
+            "to_budget_after": self.ledger.get_resource(to_id, "llm_budget")
+        }
+
+    def _get_budget(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
+        """Get LLM budget for an agent.
+
+        Args:
+            args: [agent_id] - the agent to query
+            invoker_id: The caller (anyone can query)
+
+        Returns:
+            {"success": True, "agent_id": ..., "budget": ...}
+        """
+        if not args or len(args) < 1:
+            return validation_error(
+                "get_budget requires [agent_id]",
+                code=ErrorCode.MISSING_ARGUMENT,
+                required=["agent_id"],
+            )
+
+        agent_id: str = args[0]
+        budget = self.ledger.get_resource(agent_id, "llm_budget")
+
+        return {
+            "success": True,
+            "agent_id": agent_id,
+            "budget": budget
+        }
 
     def get_interface(self) -> dict[str, Any]:
         """Get detailed interface schema for the ledger (Plan #14)."""
