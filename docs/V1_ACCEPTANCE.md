@@ -13,10 +13,10 @@ This document defines what "V1" means for the Agent Ecology project.
 **Requirement:** Multiple agents can run simultaneously without interference.
 
 **Acceptance Criteria:**
-- [ ] 2+ agents execute actions in the same simulation
-- [ ] Each agent's balance is tracked separately
-- [ ] No crashes from concurrent execution
-- [ ] Genesis artifacts accessible by all agents
+- [x] 2+ agents execute actions in the same simulation
+- [x] Each agent's balance is tracked separately
+- [x] No crashes from concurrent execution
+- [x] Genesis artifacts accessible by all agents
 
 **Test:** `test_multi_agent_execution`
 
@@ -25,11 +25,11 @@ This document defines what "V1" means for the Agent Ecology project.
 **Requirement:** Agents can discover, create, read, and invoke artifacts.
 
 **Acceptance Criteria:**
-- [ ] genesis_store lists discoverable artifacts
-- [ ] Agents can create new artifacts via store.write
-- [ ] Created artifacts are retrievable
-- [ ] Artifact ownership is tracked correctly
-- [ ] Artifact methods (interfaces) are invocable
+- [x] genesis_store lists discoverable artifacts
+- [x] Agents can create new artifacts via store.write
+- [x] Created artifacts are retrievable
+- [x] Artifact ownership is tracked correctly
+- [x] Artifact methods (interfaces) are invocable
 
 **Tests:** `test_artifact_discovery`, `test_artifact_creation`, `test_artifact_invocation`
 
@@ -38,10 +38,10 @@ This document defines what "V1" means for the Agent Ecology project.
 **Requirement:** Scrip transfers work and balances are tracked correctly.
 
 **Acceptance Criteria:**
-- [ ] Transfers reduce sender balance
-- [ ] Transfers increase receiver balance
-- [ ] Total scrip is conserved (no creation/destruction)
-- [ ] Balance queries return accurate values
+- [x] Transfers reduce sender balance
+- [x] Transfers increase receiver balance
+- [x] Total scrip is conserved (no creation/destruction)
+- [x] Balance queries return accurate values
 
 **Test:** `test_scrip_transfer`
 
@@ -50,10 +50,10 @@ This document defines what "V1" means for the Agent Ecology project.
 **Requirement:** Rate limiting and quotas are enforced.
 
 **Acceptance Criteria:**
-- [ ] Rate limiter exists and is configurable
-- [ ] Simulation runs with rate limiting enabled
-- [ ] Exceeding rate limits has observable effect (delay/block)
-- [ ] No crashes from rate limit enforcement
+- [x] Rate limiter exists and is configurable
+- [x] Simulation runs with rate limiting enabled
+- [x] Exceeding rate limits has observable effect (delay/block)
+- [x] No crashes from rate limit enforcement
 
 **Test:** `test_resource_rate_limiting`
 
@@ -62,11 +62,11 @@ This document defines what "V1" means for the Agent Ecology project.
 **Requirement:** Contracts and escrow enable trustless coordination.
 
 **Acceptance Criteria:**
-- [ ] genesis_escrow artifact exists
-- [ ] Deposit: Artifact can be listed for sale
-- [ ] Purchase: Buyer can buy listed artifact
-- [ ] Ownership transfers to buyer on purchase
-- [ ] Scrip transfers from buyer to seller on purchase
+- [x] genesis_escrow artifact exists
+- [x] Deposit: Artifact can be listed for sale
+- [x] Purchase: Buyer can buy listed artifact
+- [x] Ownership transfers to buyer on purchase
+- [x] Scrip transfers from buyer to seller on purchase
 
 **Test:** `test_escrow_coordination`
 
@@ -75,10 +75,10 @@ This document defines what "V1" means for the Agent Ecology project.
 **Requirement:** Actions are logged and traceable.
 
 **Acceptance Criteria:**
-- [ ] Event log records all actions
-- [ ] Events have timestamps
-- [ ] Events are retrievable via logger.read_recent()
-- [ ] Tick boundaries are logged
+- [x] Event log records all actions
+- [x] Events have timestamps
+- [x] Events are retrievable via logger.read_recent()
+- [x] Tick boundaries are logged
 
 **Test:** `test_action_logging`
 
