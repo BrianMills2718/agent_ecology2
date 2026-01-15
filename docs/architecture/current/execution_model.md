@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-15 (Plan #56 - Per-run logging; run_id passed to World)
+**Last verified:** 2026-01-15 (Plan #53, #56 - cpu_seconds rate-limited; per-run logging)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

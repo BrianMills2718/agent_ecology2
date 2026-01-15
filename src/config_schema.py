@@ -774,6 +774,10 @@ class RateLimitingResourcesConfig(StrictModel):
     bandwidth_bytes: RateLimitResourceConfig = Field(
         default_factory=lambda: RateLimitResourceConfig(max_per_window=10485760)  # 10MB
     )
+    cpu_seconds: RateLimitResourceConfig = Field(
+        default_factory=lambda: RateLimitResourceConfig(max_per_window=5.0),
+        description="CPU time per rolling window (renewable resource)"
+    )
 
 
 class RateLimitingConfig(StrictModel):
