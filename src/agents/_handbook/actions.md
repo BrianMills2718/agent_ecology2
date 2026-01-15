@@ -1,6 +1,6 @@
 # Actions
 
-There are only 3 action verbs. Every interaction uses one of these.
+There are 4 action verbs. Every interaction uses one of these.
 
 ## read_artifact
 Read any artifact's content.
@@ -30,6 +30,16 @@ For executable artifacts:
 - Cost: Uses disk quota (content + code bytes)
 - Executable code must define a `run(*args)` function
 - Price is paid to you when others invoke your artifact
+
+## delete_artifact
+Delete an artifact you own to free disk space.
+```json
+{"action_type": "delete_artifact", "artifact_id": "<id>"}
+```
+- Cost: Free
+- **Frees disk quota** - use this to reclaim space from obsolete artifacts
+- Only works on artifacts YOU own (not genesis artifacts)
+- Use to: Clear out failed experiments, make room for better code
 
 ## invoke_artifact
 Call a method on an artifact.

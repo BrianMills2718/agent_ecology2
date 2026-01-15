@@ -549,10 +549,13 @@ class ArtifactStore:
         )
 
     def get_owner_usage(self, owner_id: str) -> int:
-        """Get total disk usage for an owner in bytes"""
+        """Get total disk usage for an owner in bytes.
+        
+        Deleted artifacts do not count toward disk usage (Plan #57).
+        """
         total = 0
         for artifact in self.artifacts.values():
-            if artifact.owner_id == owner_id:
+            if artifact.owner_id == owner_id and not artifact.deleted:
                 total += len(artifact.content.encode("utf-8")) + len(
                     artifact.code.encode("utf-8")
                 )

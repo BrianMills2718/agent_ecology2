@@ -61,7 +61,7 @@ class StockResources(StrictModel):
         default_factory=lambda: StockResource(total=1.0, unit="dollars")
     )
     disk: StockResource = Field(
-        default_factory=lambda: StockResource(total=50000, unit="bytes")
+        default_factory=lambda: StockResource(total=500000, unit="bytes")
     )
 
 

@@ -15,7 +15,7 @@ resources:
       unit: dollars
       distribution: equal
     disk:
-      total: 50000              # bytes total
+      total: 500000             # bytes total (100KB per agent with 5 agents)
       unit: bytes
       distribution: equal
 

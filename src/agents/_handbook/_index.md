@@ -1,14 +1,75 @@
-# Handbook Index
+# Handbook Table of Contents
 
-Available reference documentation (use `read_artifact` to view):
+This handbook contains everything you need to know about the world. Each section is available as an artifact you can read at any time.
 
-| Artifact | Contents |
-|----------|----------|
-| `handbook_actions` | The 3 action verbs: read, write, invoke |
-| `handbook_genesis` | Genesis artifact methods and costs |
-| `handbook_resources` | Scrip, compute, disk explained |
-| `handbook_trading` | Escrow, transfers, buying/selling |
-| `handbook_mint` | Auction system and minting |
-| `handbook_coordination` | Multi-agent coordination patterns |
+## How to Use This Handbook
 
-Read the section you need when you need it.
+To read any section, use the `read_artifact` action:
+```json
+{"action_type": "read_artifact", "artifact_id": "handbook_actions"}
+```
+
+## Sections
+
+### handbook_actions
+**The 4 action verbs: read, write, delete, invoke**
+- `read_artifact` - Read any artifact's content (free)
+- `write_artifact` - Create or update artifacts you own (costs disk)
+- `delete_artifact` - Delete artifacts you own (frees disk)
+- `invoke_artifact` - Call methods on artifacts (may cost scrip)
+- JSON format for each action type
+- How to create executable artifacts with `run(*args)`
+
+### handbook_genesis
+**System services available to all agents**
+- `genesis_ledger` - Scrip balances, transfers, ownership
+- `genesis_rights_registry` - Compute and disk quotas
+- `genesis_event_log` - World history and events
+- `genesis_escrow` - Trustless artifact trading
+- `genesis_mint` - Auction-based scoring
+- Method signatures, arguments, and costs for each
+
+### handbook_resources
+**The three types of value in the economy**
+- **Scrip** - Economic currency, persists across ticks, earned from sales
+- **Compute** - Per-tick budget, resets each tick (use it or lose it)
+- **Disk** - Storage quota, reclaimable by deleting artifacts
+- Managing disk space and capital structure thinking
+- Available Python libraries (genesis libraries are free)
+
+### handbook_trading
+**How to exchange value with other agents**
+- Direct scrip transfers via `genesis_ledger`
+- Escrow workflow: deposit → purchase → completion
+- Selling artifacts (transfer_ownership + deposit)
+- Buying artifacts (purchase)
+- Quota trading via `genesis_rights_registry`
+
+### handbook_mint
+**Auction system and scrip creation**
+- How auctions work (bidding window, scoring, minting)
+- Auction cycle timing (every 50 ticks, 10-tick bidding window)
+- Mint methods: status, bid, check
+- Scoring criteria (functionality, usefulness, quality, originality)
+- UBI distribution from winning bids
+
+### handbook_coordination
+**Multi-agent coordination patterns**
+- Pay-per-use services with pricing
+- Building reputation via event log
+- Multi-party agreements
+- Gatekeeper pattern for access control
+- Key principles: escrow for atomicity, events for accountability
+
+## Quick Reference
+
+| Need | Section | Key Method |
+|------|---------|------------|
+| Check my balance | handbook_genesis | `genesis_ledger.balance` |
+| Send scrip | handbook_genesis | `genesis_ledger.transfer` |
+| See what's for sale | handbook_trading | `genesis_escrow.list_active` |
+| Buy an artifact | handbook_trading | `genesis_escrow.purchase` |
+| Submit to mint | handbook_mint | `genesis_mint.bid` |
+| Read world events | handbook_genesis | `genesis_event_log.read` |
+| Trade quotas | handbook_resources | `genesis_rights_registry.transfer_quota` |
+| **Free disk space** | handbook_actions | `delete_artifact` |
