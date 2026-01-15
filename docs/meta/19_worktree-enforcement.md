@@ -43,7 +43,8 @@ The PreToolUse hook blocks Edit/Write operations in the main directory.
 | File | Purpose |
 |------|---------|
 | `.claude/settings.json` | Hook configuration |
-| `.claude/hooks/protect-main.sh` | Script that checks file paths and blocks if in main |
+| `.claude/hooks/protect-main.sh` | Blocks Edit/Write operations in main directory |
+| `.claude/hooks/block-worktree-remove.sh` | Blocks `git worktree remove` Bash commands |
 
 ## Setup
 
@@ -155,7 +156,7 @@ Adjust the error message to match your branch naming convention.
 - **Path-based only:** Detects main vs worktree by path, not git internals
 - **Per-project:** Must configure `MAIN_DIR` for each project
 - **Read operations allowed:** Only blocks Edit/Write, not Read (intentional - reviewing main is fine)
-- **Bash operations allowed:** Doesn't block shell commands (could add if needed)
+- **Most Bash operations allowed:** Only `git worktree remove` is blocked (prevents shell breakage)
 
 ## Related Patterns
 
@@ -163,3 +164,55 @@ Adjust the error message to match your branch naming convention.
 - [Claim System](18_claim-system.md) - Coordinates which instance works on what
 - [Git Hooks](06_git-hooks.md) - Pre-commit validation before pushing
 - [PR Coordination](21_pr-coordination.md) - Tracks review requests across instances
+
+## Worktree Removal Protection
+
+A separate hook prevents direct use of `git worktree remove`:
+
+### Problem
+
+When a shell's current working directory is inside a worktree that gets removed:
+- The shell's CWD becomes invalid
+- All subsequent commands fail with "No such file or directory"
+- The Claude Code session becomes unusable
+
+### Solution
+
+The `block-worktree-remove.sh` hook intercepts Bash commands containing `git worktree remove` and blocks them:
+
+```
+BLOCKED: Direct 'git worktree remove' is not allowed
+
+Use the safe removal command instead:
+  make worktree-remove BRANCH=<branch-name>
+```
+
+### Safe Removal
+
+Always use `make worktree-remove BRANCH=...` which:
+1. Checks for uncommitted changes (prevents data loss)
+2. Checks for active claims (prevents breaking other sessions)
+3. Uses `safe_worktree_remove.py` for the actual removal
+
+### Hook Configuration
+
+The hook is registered in `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/block-worktree-remove.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}
+```
