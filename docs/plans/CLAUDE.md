@@ -84,7 +84,7 @@ Master index of all gaps and their implementation plans.
 | 52 | [Worktree Session Tracking](52_worktree_session_tracking.md) | Medium | ✅ Complete | - |
 | 53 | [Scalable Resource Architecture](53_scalable_resource_architecture.md) | **High** | 📋 Planned | #31 |
 | 54 | [Interface Reserved Terms](54_interface_reserved_terms.md) | Medium | 📋 Planned | #14 |
-| 55 | [Dashboard Autonomous Mode](55_autonomous_dashboard.md) | **High** | 📋 Planned | - |
+| 58 | [Dashboard Autonomous Mode](58_autonomous_dashboard.md) | **High** | 📋 Planned | - |
 
 ---
 

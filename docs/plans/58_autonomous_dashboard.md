@@ -1,4 +1,4 @@
-# Gap 55: Dashboard Support for Autonomous Mode
+# Gap 58: Dashboard Support for Autonomous Mode
 
 **Status:** 📋 Planned
 **Priority:** **High**
