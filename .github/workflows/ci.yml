@@ -368,45 +368,7 @@ jobs:
 
       - name: Check ADR requirements for core files
         continue-on-error: true
-        run: |
-          # Define core architecture files that should have ADR coverage
-          CORE_FILES="src/world/ledger.py src/world/executor.py src/world/artifacts/genesis_*.py src/world/action.py"
-
-          # Check if any core files were modified
-          CHANGED_CORE=""
-          for pattern in $CORE_FILES; do
-            MATCHES=$(git diff --name-only origin/main..HEAD -- $pattern 2>/dev/null || true)
-            if [ -n "$MATCHES" ]; then
-              CHANGED_CORE="$CHANGED_CORE $MATCHES"
-            fi
-          done
-
-          if [ -z "$CHANGED_CORE" ]; then
-            echo "✓ No core architecture files modified"
-            exit 0
-          fi
-
-          echo "Core files modified:$CHANGED_CORE"
-          echo ""
-
-          # Check if commits reference ADRs
-          ADR_REFS=$(git log origin/main..HEAD --oneline | grep -ciE 'ADR-[0-9]+|adr.*[0-9]+' || true)
-
-          if [ "$ADR_REFS" -eq 0 ]; then
-            echo "========================================"
-            echo "INFO: Core files modified without ADR reference"
-            echo "========================================"
-            echo ""
-            echo "Core architecture files were modified:"
-            echo "$CHANGED_CORE" | tr ' ' '\n' | grep -v '^$'
-            echo ""
-            echo "Consider creating or referencing an ADR for architectural changes."
-            echo "See: docs/adr/README.md"
-            echo ""
-            exit 0
-          fi
-
-          echo "✓ ADR reference found in commits"
+        run: python scripts/check_adr_requirement.py --base origin/main
 
   # =============================================================================
   # Post-Merge Checks (runs only on main)
