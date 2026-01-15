@@ -11,7 +11,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `check_plan_blockers.py` | Detect stale blockers (blocked by complete plans) |
 | `check_mock_usage.py` | Detect suspicious mock patterns in tests |
 | `check_claims.py` | Manage active work claims (scope-based) |
-| `merge_pr.py` | Merge PRs with distributed locking |
+| `merge_pr.py` | Merge PRs via GitHub CLI |
 | `cleanup_branches.py` | Delete stale remote branches (merged PRs) |
 | `check_feature_coverage.py` | Verify all src files assigned to features |
 | `check_locked_files.py` | Protect locked acceptance criteria |
@@ -85,13 +85,12 @@ python scripts/check_claims.py --claim --plan N --task "X"     # Claim plan
 python scripts/check_claims.py --claim --feature NAME --task "X"  # Claim feature
 python scripts/check_claims.py --release --validate # Done + verify
 
-# Merge PRs (with distributed locking)
-python scripts/merge_pr.py 123           # Merge PR #123 with lock
+# Merge PRs
+python scripts/merge_pr.py 123           # Merge PR #123
 python scripts/merge_pr.py 123 --dry-run # Check without merging
-python scripts/merge_pr.py --status      # Show current merge lock
-python scripts/merge_pr.py --release     # Force release stale lock
 # Or via make:
 make merge PR=123                        # Preferred way to merge
+# Note: Branch protection ensures CI passes before merge
 
 # Branch cleanup (stale branches from merged PRs)
 python scripts/cleanup_branches.py           # List stale branches

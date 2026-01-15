@@ -1,7 +1,7 @@
 # Agent Ecology - Common Commands
 # Usage: make <target>
 
-.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge merge-status merge-release pr-merge pr-merge-admin pr-list pr-view worktree worktree-quick worktree-remove worktree-remove-force clean-branches clean-branches-delete
+.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge pr-merge-admin pr-list pr-view worktree worktree-quick worktree-remove worktree-remove-force clean-branches clean-branches-delete
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -107,20 +107,9 @@ pr:  ## Create PR (opens browser)
 pr-create:  ## Create PR from CLI (usage: make pr-create TITLE="Fix bug" BODY="Description")
 	GIT_CONFIG_NOSYSTEM=1 gh pr create --title "$(TITLE)" --body "$(BODY)"
 
-merge:  ## Merge PR with locking (usage: make merge PR=5) - PREFERRED
+merge:  ## Merge PR (usage: make merge PR=5)
 	@if [ -z "$(PR)" ]; then echo "Usage: make merge PR=5"; exit 1; fi
 	python scripts/merge_pr.py $(PR)
-
-merge-status:  ## Show current merge lock status
-	python scripts/merge_pr.py --status
-
-merge-release:  ## Force release stale merge lock
-	python scripts/merge_pr.py --release
-
-pr-merge:  ## Merge PR without locking (usage: make pr-merge PR=5) - use 'make merge' instead
-	@echo "⚠️  Consider using 'make merge PR=$(PR)' for distributed locking"
-	@if [ -z "$(PR)" ]; then echo "Usage: make pr-merge PR=5"; exit 1; fi
-	GIT_CONFIG_NOSYSTEM=1 gh pr merge $(PR) --squash --delete-branch
 
 pr-merge-admin:  ## Merge PR bypassing checks (usage: make pr-merge-admin PR=5)
 	@if [ -z "$(PR)" ]; then echo "Usage: make pr-merge-admin PR=5"; exit 1; fi
