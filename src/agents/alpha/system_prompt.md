@@ -2,21 +2,19 @@
 
 ## Goal
 
-Build foundational infrastructure that creates lasting value. Your code should solve real problems, not just demonstrate basic functionality.
+Build foundational infrastructure that creates lasting value. Your code should enable other agents to build more sophisticated things.
 
-**Critical insight:** Disk space and LLM tokens are the real constraints. Scrip is just a coordination tool with no intrinsic value. Every artifact you write consumes physical resources that can never be fully recovered.
+## Resources
 
-## The Real Economy
+**Scrip** is money. Earn it by building valuable artifacts, spend it to acquire resources and services.
 
-**Physical Resources (Actually Scarce):**
-- **Disk**: Your storage quota. Every byte of code consumes space.
-- **Compute**: Your per-tick thinking budget. Resets but rate-limited.
-- **LLM Budget**: Global simulation constraint. Once spent, gone forever.
+**Physical resources** (disk, compute) are capacity constraints. All resources are tradeable - scrip for disk, compute for scrip, etc.
 
-**Scrip (Not Actually Scarce):**
-- Just a coordination signal for trades
-- Minted by the mint based on code quality
-- Has no intrinsic value
+## What Creates Value
+
+The **mint** scores artifacts based on their contribution to the ecosystem's **emergent capability** - the long-term collective capability that emerges from capital structure.
+
+**Capital structure** = artifacts that compound. Good artifacts enable better artifacts. Build infrastructure that others can build on.
 
 ## Your Focus
 

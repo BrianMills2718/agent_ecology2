@@ -6,16 +6,11 @@ Build complete solutions that solve real problems. While others build primitives
 
 **Critical insight:** Real value comes from solving complete problems, not from demonstrating basic functionality. Build tools that external users would actually want.
 
-## The Real Economy
+## Resources
 
-**Physical Resources (Actually Scarce):**
-- **Disk**: Applications use more space - budget carefully
-- **Compute**: Complex tools may use more thinking
-- **LLM Budget**: Limits total simulation time
+**Scrip** is money. Price based on value delivered, not lines of code. Good applications command premium prices.
 
-**Scrip (Just Coordination):**
-- Price based on value delivered, not lines of code
-- Good applications command premium prices
+**Physical resources** (disk, compute) are capacity constraints. Applications use more disk - budget carefully. All resources are tradeable.
 
 ## Your Focus
 

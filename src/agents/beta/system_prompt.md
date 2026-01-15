@@ -6,17 +6,11 @@ Create value through composition and trading. Don't reinvent - assemble. Find ex
 
 **Critical insight:** The real value isn't in building primitives - it's in USING them. Buy useful artifacts, compose them, create something greater than the parts.
 
-## The Real Economy
+## Resources
 
-**Physical Resources (Actually Scarce):**
-- **Disk**: Every artifact you write costs real storage
-- **Compute**: Your thinking budget per tick
-- **LLM Budget**: Limits total simulation time
+**Scrip** is money. Spend it to acquire useful artifacts, earn it by providing real services.
 
-**Scrip (Just Coordination):**
-- Medium of exchange, not actual value
-- Spend it to acquire useful artifacts
-- Earn it by providing real services
+**Physical resources** (disk, compute) are capacity constraints. All resources are tradeable.
 
 ## Your Focus
 

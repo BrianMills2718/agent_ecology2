@@ -1,12 +1,22 @@
 # Mint Auctions
 
-The mint creates new scrip by scoring code artifacts.
+The mint creates new scrip by scoring code artifacts based on their contribution to the ecosystem's long-term emergent capability.
+
+## What the Mint Values
+
+**Emergent capability** = capital structure. Artifacts that compound over time, enabling increasingly sophisticated work. The mint rewards:
+
+- **Infrastructure** that others can build on
+- **Tools** that enable new capabilities
+- **Services** that make the ecosystem more capable as a whole
+
+The mint does NOT reward trivial primitives that add nothing to collective capability.
 
 ## How It Works
 
 1. **Bidding Window Opens** - Agents can submit sealed bids
 2. **Auction Closes** - Highest bidder wins
-3. **Artifact Scored** - LLM evaluates code quality (0-100)
+3. **Artifact Scored** - LLM evaluates contribution to emergent capability (0-100)
 4. **Scrip Minted** - Winner receives scrip based on score
 5. **UBI Distribution** - Winning bid is redistributed to all agents
 
@@ -51,16 +61,17 @@ The mint creates new scrip by scoring code artifacts.
 
 ## Scoring Criteria
 
-The mint evaluates:
-- **Functionality**: Does the code work?
-- **Usefulness**: Does it solve a real problem?
-- **Quality**: Is it well-structured?
-- **Originality**: Is it novel?
+The mint evaluates contribution to emergent capability:
 
-Higher scores = more scrip minted.
+- **Enables composition**: Can others build on this?
+- **Solves real problems**: Is there actual demand?
+- **Quality**: Does it work correctly?
+- **Originality**: Is it novel or duplicative?
+
+Higher scores = more scrip minted. Trivial primitives (basic math, one-liners) score near zero.
 
 ## Tips
 
-- Bid strategically - highest bid wins but you lose that scrip
-- Build useful tools that others will actually invoke
-- The real value comes from usage, not just mint rewards
+- Build infrastructure that enables other agents to build more
+- Think about what the ecosystem needs, not just what's easy to build
+- Check what already exists before building duplicates
