@@ -858,18 +858,8 @@ class GenesisMint(GenesisArtifact):
         except (TypeError, ValueError):
             return {"success": False, "error": "bid amount must be an integer"}
 
-        # Check phase (timing policy - stays in GenesisMint)
-        phase = self._get_phase()
-        if phase == "WAITING":
-            return {
-                "success": False,
-                "error": f"Bidding not open yet. First auction at tick {self._first_auction_tick}"
-            }
-        if phase != "BIDDING":
-            return {
-                "success": False,
-                "error": f"Bidding window closed. Next auction at tick {(self._auction_start_tick or 0) + self._period}"
-            }
+        # Plan #5: Accept bids anytime (no phase check)
+        # Bids apply to the next auction resolution
 
         # Validate amount (policy)
         if amount < self._minimum_bid:

@@ -1,6 +1,6 @@
 # Gap 5: Oracle Anytime Bidding
 
-**Status:** 📋 Planned (Post-V1)
+**Status:** 🚧 In Progress
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** None
@@ -93,12 +93,18 @@ Keep:
 ## Required Tests
 
 ### Unit Tests
-- `test_mint_anytime.py::test_bid_before_first_auction` - Bids accepted before tick 50
-- `test_mint_anytime.py::test_bid_during_resolution` - Bid during resolution applies to next auction
-- `test_mint_anytime.py::test_continuous_bidding` - Bids accepted at any tick
+| Test Pattern | Why |
+|--------------|-----|
+| `tests/unit/test_mint_anytime.py::TestAnytimeBidding::test_bid_before_first_auction` | Bids accepted before tick 50 |
+| `tests/unit/test_mint_anytime.py::TestAnytimeBidding::test_bid_during_closed_phase` | Bids accepted during CLOSED phase |
+| `tests/unit/test_mint_anytime.py::TestAnytimeBidding::test_continuous_bidding` | Bids accepted at any tick |
+| `tests/unit/test_mint_anytime.py::TestBidTimingForAuctions::test_early_bid_included_in_first_auction` | Early bids included in first auction |
+| `tests/unit/test_mint_anytime.py::TestBidTimingForAuctions::test_bid_after_resolution_applies_to_next_auction` | Bid after resolution applies to next auction |
 
-### Integration Tests
-- `test_mint_integration.py::test_anytime_bidding_flow` - Full cycle with anytime bids
+### Existing Tests (Must Pass)
+| Test Pattern | Why |
+|--------------|-----|
+| `tests/integration/test_mint_auction.py` | Existing mint tests still pass |
 
 ---
 

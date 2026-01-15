@@ -54,12 +54,15 @@ All genesis artifacts:
 | `check(artifact_id)` | 0 | Check submission/bid status |
 
 **Auction Flow:**
-1. Agent bids on their artifact
-2. Mint collects bids during bidding window
+1. Agent bids on their artifact (accepted anytime)
+2. Mint collects bids until next auction resolution
 3. At resolution: scores artifacts via external LLM
 4. Winner pays second-highest bid (Vickrey auction)
 5. Scrip minted based on score
 6. UBI distributed to all principals
+
+**Anytime Bidding (Plan #5):** Bids are accepted at any tick, not just
+during a specific bidding window. Auctions still resolve on schedule.
 
 **Config:** `config/config.yaml` under `genesis.mint`
 
