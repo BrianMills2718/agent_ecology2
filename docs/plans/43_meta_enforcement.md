@@ -176,7 +176,7 @@ Create `tests/e2e/test_v1_acceptance.py` per Plan #41.
 | `tests/unit/test_commit_msg_hook.py::TestCommitMsgHook::test_accepts_plan_prefix` | Hook allows [Plan #N] |
 | `tests/unit/test_commit_msg_hook.py::TestCommitMsgHook::test_accepts_trivial` | Hook allows [Trivial] |
 | `tests/unit/test_check_claims.py::TestVerifyBranch::test_verify_branch_with_matching_claim` | Claim check works |
-| `tests/unit/test_check_adr.py::TestADRRequirement::test_requires_adr_for_core` | ADR requirement works |
+| `tests/unit/test_check_adr_requirement.py::TestADRRequirement::test_requires_adr_for_core` | ADR requirement works |
 
 ---
 

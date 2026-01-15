@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-15 (Plan #48 - CI Optimization with Plan #43 checks integrated)
+Last verified: 2026-01-15 (Plan #43 - ADR check uses script; Plan #48 optimizations)
 
 ---
 
