@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-15 (Plan #15 - Unified invoke dispatch; Plan #9 - Debt contract tick sync)
+**Last verified:** 2026-01-15 (Plan #15, #9, #53 - Unified invoke; Debt contract; ResourceMeasurer)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

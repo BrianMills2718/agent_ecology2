@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-15 (Plan #15, #54 - genesis_methods + Interface Reserved Terms)
+**Last verified:** 2026-01-15 (Plan #15, #53, #54 - genesis_methods + ResourceMeasurer + Interface Terms)
 
 ---
 
@@ -198,7 +198,6 @@ Executes agent-created code with timeout protection.
 |------------|---------|-------------|
 | `executor.timeout_seconds` | 5 | Max execution time |
 | `executor.preloaded_imports` | `[math, json, random, datetime]` | Pre-loaded modules |
-| `executor.cost_per_ms` | 0.1 | Token cost per ms of execution |
 
 ### Execution Methods
 
@@ -258,12 +257,17 @@ The `caller_id` is also injected so artifacts know who invoked them.
 
 ### Resource Tracking
 
-Execution time converted to token cost:
+Execution uses `ResourceMeasurer` from `src/world/simulation_engine.py` (Plan #31) to track actual CPU time:
 
 ```python
-cost = max(1.0, execution_time_ms * cost_per_ms)
-# Default: 1 token per 10ms, minimum 1 token
+with measure_resources() as measurer:
+    result = run_func(*args)
+usage = measurer.get_usage()
+resources_consumed = {"cpu_seconds": usage.cpu_seconds}
 ```
+
+**Note:** `cpu_seconds` is metered (tracked for observability) but not gated (no quota check).
+This means execution always succeeds from a resource perspective - we track CPU usage but don't block on it.
 
 ---
 

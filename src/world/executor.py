@@ -25,6 +25,7 @@ from types import FrameType, ModuleType
 from typing import Any, Generator, TypedDict
 
 from ..config import get
+from .simulation_engine import measure_resources
 
 # Import types for type hints (avoid circular import at runtime)
 from typing import TYPE_CHECKING
@@ -176,18 +177,6 @@ def _timeout_context(timeout: int) -> Generator[None, None, None]:
                 signal.signal(signal.SIGALRM, old_handler)
         except (ValueError, AttributeError):
             pass
-
-
-def _time_to_tokens(execution_time_ms: float) -> float:
-    """Convert execution time to token cost.
-
-    Uses a configurable rate (default: 0.1 tokens per ms = 1 token per 10ms).
-    Minimum cost is 1 token for any execution.
-
-    This is an approximation - actual resource consumption may vary.
-    """
-    cost_per_ms: float = get("executor.cost_per_ms") or 0.1
-    return max(1.0, execution_time_ms * cost_per_ms)
 
 
 def _make_controlled_import(
@@ -533,38 +522,48 @@ class SafeExecutor:
         if not callable(run_func):
             return {"success": False, "error": "run is not callable"}
 
-        # Call run() with args, measuring execution time
+        # Call run() with args, measuring resource usage via ResourceMeasurer
         start_time = time.perf_counter()
         execution_time_ms: float = 0.0
+        result: Any = None
+        error_result: ExecutionResult | None = None
 
-        try:
-            with _timeout_context(self.timeout):
-                result = run_func(*args)
+        # Use ResourceMeasurer for accurate CPU time measurement
+        with measure_resources() as measurer:
+            try:
+                with _timeout_context(self.timeout):
+                    result = run_func(*args)
+                    execution_time_ms = (time.perf_counter() - start_time) * 1000
+            except TimeoutError:
                 execution_time_ms = (time.perf_counter() - start_time) * 1000
-        except TimeoutError:
-            execution_time_ms = (time.perf_counter() - start_time) * 1000
-            return {
-                "success": False,
-                "error": "Execution timed out",
-                "execution_time_ms": execution_time_ms,
-                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
-            }
-        except TypeError as e:
-            execution_time_ms = (time.perf_counter() - start_time) * 1000
-            return {
-                "success": False,
-                "error": f"Argument error: {e}",
-                "execution_time_ms": execution_time_ms,
-                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
-            }
-        except Exception as e:
-            execution_time_ms = (time.perf_counter() - start_time) * 1000
-            return {
-                "success": False,
-                "error": f"Runtime error: {type(e).__name__}: {e}",
-                "execution_time_ms": execution_time_ms,
-                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
-            }
+                error_result = {
+                    "success": False,
+                    "error": "Execution timed out",
+                    "execution_time_ms": execution_time_ms,
+                }
+            except TypeError as e:
+                execution_time_ms = (time.perf_counter() - start_time) * 1000
+                error_result = {
+                    "success": False,
+                    "error": f"Argument error: {e}",
+                    "execution_time_ms": execution_time_ms,
+                }
+            except Exception as e:
+                execution_time_ms = (time.perf_counter() - start_time) * 1000
+                error_result = {
+                    "success": False,
+                    "error": f"Runtime error: {type(e).__name__}: {e}",
+                    "execution_time_ms": execution_time_ms,
+                }
+
+        # Get resource usage after exiting context manager
+        usage = measurer.get_usage()
+        resources_consumed = {"cpu_seconds": usage.cpu_seconds}
+
+        # Return error if one occurred
+        if error_result is not None:
+            error_result["resources_consumed"] = resources_consumed
+            return error_result
 
         # Ensure result is JSON-serializable
         try:
@@ -572,9 +571,6 @@ class SafeExecutor:
         except (TypeError, ValueError):
             # Convert to string if not serializable
             result = str(result)
-
-        # Calculate resource consumption based on execution time
-        resources_consumed = {"llm_tokens": _time_to_tokens(execution_time_ms)}
 
         return {
             "success": True,
@@ -703,47 +699,54 @@ class SafeExecutor:
         if not callable(run_func):
             return {"success": False, "error": "run is not callable"}
 
-        # Call run() with args, measuring execution time
+        # Call run() with args, measuring resource usage via ResourceMeasurer
         start_time = time.perf_counter()
         execution_time_ms: float = 0.0
+        result: Any = None
+        error_result: ExecutionResult | None = None
 
-        try:
-            with _timeout_context(self.timeout):
-                result = run_func(*args)
+        # Use ResourceMeasurer for accurate CPU time measurement
+        with measure_resources() as measurer:
+            try:
+                with _timeout_context(self.timeout):
+                    result = run_func(*args)
+                    execution_time_ms = (time.perf_counter() - start_time) * 1000
+            except TimeoutError:
                 execution_time_ms = (time.perf_counter() - start_time) * 1000
-        except TimeoutError:
-            execution_time_ms = (time.perf_counter() - start_time) * 1000
-            return {
-                "success": False,
-                "error": "Execution timed out",
-                "execution_time_ms": execution_time_ms,
-                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
-            }
-        except TypeError as e:
-            execution_time_ms = (time.perf_counter() - start_time) * 1000
-            return {
-                "success": False,
-                "error": f"Argument error: {e}",
-                "execution_time_ms": execution_time_ms,
-                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
-            }
-        except Exception as e:
-            execution_time_ms = (time.perf_counter() - start_time) * 1000
-            return {
-                "success": False,
-                "error": f"Runtime error: {type(e).__name__}: {e}",
-                "execution_time_ms": execution_time_ms,
-                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
-            }
+                error_result = {
+                    "success": False,
+                    "error": "Execution timed out",
+                    "execution_time_ms": execution_time_ms,
+                }
+            except TypeError as e:
+                execution_time_ms = (time.perf_counter() - start_time) * 1000
+                error_result = {
+                    "success": False,
+                    "error": f"Argument error: {e}",
+                    "execution_time_ms": execution_time_ms,
+                }
+            except Exception as e:
+                execution_time_ms = (time.perf_counter() - start_time) * 1000
+                error_result = {
+                    "success": False,
+                    "error": f"Runtime error: {type(e).__name__}: {e}",
+                    "execution_time_ms": execution_time_ms,
+                }
+
+        # Get resource usage after exiting context manager
+        usage = measurer.get_usage()
+        resources_consumed = {"cpu_seconds": usage.cpu_seconds}
+
+        # Return error if one occurred
+        if error_result is not None:
+            error_result["resources_consumed"] = resources_consumed
+            return error_result
 
         # Ensure result is JSON-serializable
         try:
             json.dumps(result)
         except (TypeError, ValueError):
             result = str(result)
-
-        # Calculate resource consumption based on execution time
-        resources_consumed = {"llm_tokens": _time_to_tokens(execution_time_ms)}
 
         return {
             "success": True,
@@ -1003,47 +1006,54 @@ class SafeExecutor:
         if not callable(run_func):
             return {"success": False, "error": "run is not callable"}
 
-        # Call run() with args, measuring execution time
+        # Call run() with args, measuring resource usage via ResourceMeasurer
         start_time = time.perf_counter()
         execution_time_ms: float = 0.0
+        result: Any = None
+        error_result: ExecutionResult | None = None
 
-        try:
-            with _timeout_context(self.timeout):
-                result = run_func(*args)
+        # Use ResourceMeasurer for accurate CPU time measurement
+        with measure_resources() as measurer:
+            try:
+                with _timeout_context(self.timeout):
+                    result = run_func(*args)
+                    execution_time_ms = (time.perf_counter() - start_time) * 1000
+            except TimeoutError:
                 execution_time_ms = (time.perf_counter() - start_time) * 1000
-        except TimeoutError:
-            execution_time_ms = (time.perf_counter() - start_time) * 1000
-            return {
-                "success": False,
-                "error": "Execution timed out",
-                "execution_time_ms": execution_time_ms,
-                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
-            }
-        except TypeError as e:
-            execution_time_ms = (time.perf_counter() - start_time) * 1000
-            return {
-                "success": False,
-                "error": f"Argument error: {e}",
-                "execution_time_ms": execution_time_ms,
-                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
-            }
-        except Exception as e:
-            execution_time_ms = (time.perf_counter() - start_time) * 1000
-            return {
-                "success": False,
-                "error": f"Runtime error: {type(e).__name__}: {e}",
-                "execution_time_ms": execution_time_ms,
-                "resources_consumed": {"llm_tokens": _time_to_tokens(execution_time_ms)},
-            }
+                error_result = {
+                    "success": False,
+                    "error": "Execution timed out",
+                    "execution_time_ms": execution_time_ms,
+                }
+            except TypeError as e:
+                execution_time_ms = (time.perf_counter() - start_time) * 1000
+                error_result = {
+                    "success": False,
+                    "error": f"Argument error: {e}",
+                    "execution_time_ms": execution_time_ms,
+                }
+            except Exception as e:
+                execution_time_ms = (time.perf_counter() - start_time) * 1000
+                error_result = {
+                    "success": False,
+                    "error": f"Runtime error: {type(e).__name__}: {e}",
+                    "execution_time_ms": execution_time_ms,
+                }
+
+        # Get resource usage after exiting context manager
+        usage = measurer.get_usage()
+        resources_consumed = {"cpu_seconds": usage.cpu_seconds}
+
+        # Return error if one occurred
+        if error_result is not None:
+            error_result["resources_consumed"] = resources_consumed
+            return error_result
 
         # Ensure result is JSON-serializable
         try:
             json.dumps(result)
         except (TypeError, ValueError):
             result = str(result)
-
-        # Calculate resource consumption based on execution time
-        resources_consumed = {"llm_tokens": _time_to_tokens(execution_time_ms)}
 
         return {
             "success": True,
