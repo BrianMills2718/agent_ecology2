@@ -247,5 +247,5 @@ Prevents "trial-and-error bankruptcy":
 | Document | Purpose |
 |----------|---------|
 | [DESIGN_CLARIFICATIONS.md](../DESIGN_CLARIFICATIONS.md) | Why decisions were made, certainty levels, open questions |
-| [GAPS.md](../GAPS.md) | Implementation gaps between current and target |
+| [GAPS.md](../../archive/GAPS.md) | Implementation gaps between current and target (archived) |
 | [SPEC_REVIEW.md](../../archive/SPEC_REVIEW.md) | Comparison to original specification (archived) |

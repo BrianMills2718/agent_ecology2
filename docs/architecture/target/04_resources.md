@@ -20,7 +20,7 @@ What we're building toward.
 
 **Distinct resources - do not conflate:**
 
-> **Note:** Current implementation uses "compute" for LLM token tracking. Target terminology reserves "compute" for local CPU. See [Gap #11](../GAPS.md) for migration plan.
+> **Note:** Legacy config uses "compute" for LLM token tracking. This is deprecated - use "llm_tokens". "Compute" is reserved for future local CPU tracking. (Plan #11 Terminology Cleanup: ✅ Complete)
 
 | Resource | Category | Unit | What it is |
 |----------|----------|------|------------|

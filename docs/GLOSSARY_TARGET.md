@@ -2,9 +2,9 @@
 
 Terminology for what we're BUILDING TOWARD. For current implementation, see [GLOSSARY_CURRENT.md](GLOSSARY_CURRENT.md).
 
-**Last updated:** 2026-01-12
+**Last updated:** 2026-01-15
 
-**Key changes from current:** oracle → mint terminology (ADR-0004), system primitives clarified
+**Note:** Most target terminology is now implemented. The oracle → mint migration (ADR-0004) is complete.
 
 ---
 
@@ -207,11 +207,15 @@ The mint is the interface for scrip creation—but the *source* of value judgmen
 
 ## Migration Status
 
-| Target Term | Current Code | Gap |
-|-------------|--------------|-----|
-| `genesis_mint` | `genesis_oracle` | Gap #34 |
-| `MintScorer` | `OracleScorer` | Gap #34 |
-| `GenesisMint` | `GenesisOracle` | Gap #34 |
-| `genesis.mint.*` config | `genesis.oracle.*` | Gap #34 |
+**✅ Complete** (Plan #34, 2026-01-15)
 
-See `docs/plans/34_oracle_mint_rename.md` for migration plan.
+All oracle→mint terminology migration is complete:
+
+| Term | Status |
+|------|--------|
+| `genesis_mint` | ✅ In code |
+| `MintScorer` | ✅ In code |
+| `GenesisMint` | ✅ In code |
+| `genesis.mint.*` config | ✅ In config |
+
+See `docs/plans/34_oracle_mint_rename.md` for migration details.

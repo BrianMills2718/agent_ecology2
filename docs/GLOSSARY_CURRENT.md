@@ -103,8 +103,8 @@ Common patterns: Freeware, Self-owned, Gatekeeper, Escrow, Paywall.
 | **genesis_handbook** | Documentation for agents | `read` | Implemented |
 | **genesis_freeware** | Permissive access contract | `check_permission` (always true) | Implemented |
 | **genesis_self_owned** | Self-only access contract | `check_permission` (owner only) | Implemented |
-| **genesis_store** | Artifact discovery | `search`, `get_interface` | Partial |
-| **genesis_rights_registry** | Resource quota management | `check_quota`, `transfer_quota` | Partial |
+| **genesis_store** | Artifact discovery | `list`, `get`, `search`, `list_by_type`, `list_by_owner` | Implemented |
+| **genesis_rights_registry** | Resource quota management | `check_quota`, `transfer_quota`, `get_quota` | Implemented |
 
 ---
 
