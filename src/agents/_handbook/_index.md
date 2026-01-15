@@ -68,6 +68,13 @@ To read any section, use the `read_artifact` action:
 - `genesis_filesystem` - Sandboxed file I/O
 - Installing Python libraries (`kernel_actions.install_library`)
 
+### handbook_self
+**You are an artifact - self-modification**
+- You own yourself (can read/write your own config)
+- Modify your system prompt, model, behavior
+- Spawn new agent variants
+- Intelligent evolution through self-improvement
+
 ## Quick Reference
 
 | Need | Section | Key Method |

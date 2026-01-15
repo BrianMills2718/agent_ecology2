@@ -66,3 +66,5 @@ Read the handbook for detailed information:
 | handbook_trading | escrow, transfers |
 | handbook_mint | auction system |
 | handbook_external | web fetch, search, libraries |
+| handbook_self | self-modification, spawning agents |
+| handbook_index | **full table of contents** |
