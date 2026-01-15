@@ -42,18 +42,18 @@ Meta-processes are documented but not enforced. Documentation without enforcemen
 | Hook | Enforces | Status |
 |------|----------|--------|
 | pre-commit | Worktree/branch rules | ✅ Done |
-| commit-msg | [Plan #N] prefix required | 🔧 TODO |
-| pre-push | Claim exists for branch | 🔧 TODO |
+| commit-msg | [Plan #N] prefix required | ✅ Done (hooks/commit-msg) |
+| pre-push | Claim exists for branch | ✅ Done (hooks/pre-push, warning only) |
 
 ### Layer 2: CI Checks (PR Gates)
 
 | Check | Enforces | Status |
 |-------|----------|--------|
-| Plan prefix | All commits have [Plan #N] or [Trivial] | 🔧 TODO |
+| Plan prefix | All commits have [Plan #N] or [Trivial] | ✅ Done (CI enforces) |
 | Claim validation | PR branch has active claim | 🔧 TODO |
 | Verification evidence | Plan file has verification block | 🔧 TODO |
 | Human review flag | Plans with flag block until reviewed | 🔧 TODO |
-| ADR requirement | Core changes require ADR link | 🔧 TODO |
+| ADR requirement | Core changes require ADR link | ✅ Script ready (check_adr_requirement.py) |
 | Acceptance tests | Features require acceptance test | 🔧 TODO |
 | PR freshness | Warn if >N commits behind main | 🔧 TODO |
 
@@ -172,11 +172,11 @@ Create `tests/e2e/test_v1_acceptance.py` per Plan #41.
 
 | Test | Verifies |
 |------|----------|
-| `tests/unit/test_commit_msg_hook.py::test_rejects_no_prefix` | Hook blocks bad commits |
-| `tests/unit/test_commit_msg_hook.py::test_accepts_plan_prefix` | Hook allows [Plan #N] |
-| `tests/unit/test_commit_msg_hook.py::test_accepts_trivial` | Hook allows [Trivial] |
-| `tests/unit/test_check_claims.py::test_verify_branch` | Claim check works |
-| `tests/unit/test_check_adr.py::test_requires_adr_for_core` | ADR requirement works |
+| `tests/unit/test_commit_msg_hook.py::TestCommitMsgHook::test_rejects_no_prefix` | Hook blocks bad commits |
+| `tests/unit/test_commit_msg_hook.py::TestCommitMsgHook::test_accepts_plan_prefix` | Hook allows [Plan #N] |
+| `tests/unit/test_commit_msg_hook.py::TestCommitMsgHook::test_accepts_trivial` | Hook allows [Trivial] |
+| `tests/unit/test_check_claims.py::TestVerifyBranch::test_verify_branch_with_matching_claim` | Claim check works |
+| `tests/unit/test_check_adr.py::TestADRRequirement::test_requires_adr_for_core` | ADR requirement works |
 
 ---
 
