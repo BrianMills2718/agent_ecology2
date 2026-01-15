@@ -69,13 +69,15 @@ With "everything is an artifact" (ADR-0001), the distinction between principals 
 
 ## Required Tests
 
-```
-tests/unit/test_id_registry.py::TestIDRegistry::test_no_duplicate_ids
-tests/unit/test_id_registry.py::TestIDRegistry::test_lookup_by_id_only
-tests/unit/test_id_registry.py::TestAgentIsArtifact::test_agent_is_artifact
-tests/unit/test_id_registry.py::TestWorldIntegration::test_artifact_cannot_use_principal_id
-tests/unit/test_id_registry.py::TestWorldIntegration::test_new_artifact_gets_registered
-```
+### New Tests (TDD)
+
+| Test File | Test Function | What It Verifies |
+|-----------|---------------|------------------|
+| `tests/unit/test_id_registry.py` | `test_no_duplicate_ids` | Same ID cannot be registered twice |
+| `tests/unit/test_id_registry.py` | `test_lookup_by_id_only` | Lookup works by ID regardless of type |
+| `tests/unit/test_id_registry.py` | `test_agent_is_artifact` | Agents stored as artifacts |
+| `tests/unit/test_id_registry.py` | `test_artifact_cannot_use_principal_id` | Cross-system collision prevention |
+| `tests/unit/test_id_registry.py` | `test_new_artifact_gets_registered` | New artifacts registered in namespace |
 
 ---
 
