@@ -235,6 +235,18 @@ class World:
             rights_config=self.rights_config
         )
 
+        # Register genesis artifacts in artifact store for unified invoke path (Plan #15)
+        for genesis_id, genesis in self.genesis_artifacts.items():
+            artifact = self.artifacts.write(
+                artifact_id=genesis_id,
+                type="genesis",
+                content=genesis.description,
+                owner_id="system",
+                executable=True,
+            )
+            # Attach genesis methods for dispatch
+            artifact.genesis_methods = genesis.methods
+
         # Store reference to rights registry for quota enforcement
         rights_registry = self.genesis_artifacts.get("genesis_rights_registry")
         self.rights_registry = rights_registry if isinstance(rights_registry, GenesisRightsRegistry) else None
@@ -822,115 +834,10 @@ class World:
         args = intent.args
         start_time = time.perf_counter()
 
-        # Check genesis artifacts first
-        if artifact_id in self.genesis_artifacts:
-            genesis = self.genesis_artifacts[artifact_id]
-            method = genesis.get_method(method_name)
-
-            if not method:
-                duration_ms = (time.perf_counter() - start_time) * 1000
-                self._log_invoke_failure(
-                    intent.principal_id, artifact_id, method_name,
-                    duration_ms, "method_not_found",
-                    f"Method {method_name} not found"
-                )
-                return ActionResult(
-                    success=False,
-                    message=get_error_message(
-                        "method_not_found",
-                        method=method_name,
-                        artifact_id=artifact_id,
-                        methods=[m['name'] for m in genesis.list_methods()]
-                    ),
-                    error_code=ErrorCode.NOT_FOUND.value,
-                    error_category=ErrorCategory.RESOURCE.value,
-                    retriable=False,
-                    error_details={"method": method_name, "artifact_id": artifact_id},
-                )
-
-            # Genesis method costs are COMPUTE (physical resource, not scrip)
-            if method.cost > 0 and not self.ledger.can_spend_compute(intent.principal_id, method.cost):
-                duration_ms = (time.perf_counter() - start_time) * 1000
-                self._log_invoke_failure(
-                    intent.principal_id, artifact_id, method_name,
-                    duration_ms, "insufficient_compute",
-                    f"Cannot afford method cost: {method.cost}"
-                )
-                return ActionResult(
-                    success=False,
-                    message=f"Cannot afford method cost: {method.cost} compute (have {self.ledger.get_compute(intent.principal_id)})",
-                    error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
-                    error_category=ErrorCategory.RESOURCE.value,
-                    retriable=True,  # Can get more compute and retry
-                    error_details={"required": method.cost, "available": self.ledger.get_compute(intent.principal_id)},
-                )
-
-            # Deduct compute cost FIRST (always paid, even on failure)
-            # Genesis methods always charge caller (system services)
-            resources_consumed: dict[str, float] = {}
-            if method.cost > 0:
-                self.ledger.spend_compute(intent.principal_id, method.cost)
-                resources_consumed["llm_tokens"] = float(method.cost)
-
-            # Execute the genesis method
-            try:
-                result_data: dict[str, Any] = method.handler(args, intent.principal_id)
-                duration_ms = (time.perf_counter() - start_time) * 1000
-
-                if result_data.get("success"):
-                    self._log_invoke_success(
-                        intent.principal_id, artifact_id, method_name,
-                        duration_ms, type(result_data.get("result")).__name__
-                    )
-                    return ActionResult(
-                        success=True,
-                        message=f"Invoked {artifact_id}.{method_name}",
-                        data=result_data,
-                        resources_consumed=resources_consumed if resources_consumed else None,
-                        charged_to=intent.principal_id,
-                    )
-                else:
-                    # Extract error info from genesis artifact response
-                    error_code = result_data.get("code", ErrorCode.RUNTIME_ERROR.value)
-                    error_category = result_data.get("category", ErrorCategory.EXECUTION.value)
-                    retriable = result_data.get("retriable", False)
-                    self._log_invoke_failure(
-                        intent.principal_id, artifact_id, method_name,
-                        duration_ms, "method_failed",
-                        result_data.get("error", "Method failed")
-                    )
-                    return ActionResult(
-                        success=False,
-                        message=result_data.get("error", "Method failed"),
-                        resources_consumed=resources_consumed if resources_consumed else None,
-                        charged_to=intent.principal_id,
-                        error_code=error_code,
-                        error_category=error_category,
-                        retriable=retriable,
-                        error_details=result_data.get("details"),
-                    )
-            except Exception as e:
-                duration_ms = (time.perf_counter() - start_time) * 1000
-                self._log_invoke_failure(
-                    intent.principal_id, artifact_id, method_name,
-                    duration_ms, "exception",
-                    str(e)
-                )
-                return ActionResult(
-                    success=False,
-                    message=f"Method execution error: {str(e)}",
-                    resources_consumed=resources_consumed if resources_consumed else None,
-                    charged_to=intent.principal_id,
-                    error_code=ErrorCode.RUNTIME_ERROR.value,
-                    error_category=ErrorCategory.EXECUTION.value,
-                    retriable=False,
-                    error_details={"exception": str(e)},
-                )
-
-        # Check regular artifacts for executable invocation
-        regular_artifact = self.artifacts.get(artifact_id)
-        if regular_artifact:
-            if not regular_artifact.executable:
+        # Plan #15: Unified invoke path - all artifacts via artifact store
+        artifact = self.artifacts.get(artifact_id)
+        if artifact:
+            if not artifact.executable:
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 self._log_invoke_failure(
                     intent.principal_id, artifact_id, method_name,
@@ -947,7 +854,7 @@ class World:
                 )
 
             # Check invoke permission (policy-based)
-            if not regular_artifact.can_invoke(intent.principal_id):
+            if not artifact.can_invoke(intent.principal_id):
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 self._log_invoke_failure(
                     intent.principal_id, artifact_id, method_name,
@@ -962,9 +869,111 @@ class World:
                     retriable=False,
                 )
 
+            # Plan #15: Genesis method dispatch (if genesis_methods is set)
+            if artifact.genesis_methods is not None:
+                method = artifact.genesis_methods.get(method_name)
+                if not method:
+                    duration_ms = (time.perf_counter() - start_time) * 1000
+                    self._log_invoke_failure(
+                        intent.principal_id, artifact_id, method_name,
+                        duration_ms, "method_not_found",
+                        f"Method {method_name} not found"
+                    )
+                    return ActionResult(
+                        success=False,
+                        message=get_error_message(
+                            "method_not_found",
+                            method=method_name,
+                            artifact_id=artifact_id,
+                            methods=list(artifact.genesis_methods.keys())
+                        ),
+                        error_code=ErrorCode.NOT_FOUND.value,
+                        error_category=ErrorCategory.RESOURCE.value,
+                        retriable=False,
+                        error_details={"method": method_name, "artifact_id": artifact_id},
+                    )
+
+                # Genesis method costs are COMPUTE (physical resource, not scrip)
+                if method.cost > 0 and not self.ledger.can_spend_compute(intent.principal_id, method.cost):
+                    duration_ms = (time.perf_counter() - start_time) * 1000
+                    self._log_invoke_failure(
+                        intent.principal_id, artifact_id, method_name,
+                        duration_ms, "insufficient_compute",
+                        f"Cannot afford method cost: {method.cost}"
+                    )
+                    return ActionResult(
+                        success=False,
+                        message=f"Cannot afford method cost: {method.cost} compute (have {self.ledger.get_compute(intent.principal_id)})",
+                        error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
+                        error_category=ErrorCategory.RESOURCE.value,
+                        retriable=True,
+                        error_details={"required": method.cost, "available": self.ledger.get_compute(intent.principal_id)},
+                    )
+
+                # Deduct compute cost FIRST (always paid, even on failure)
+                resources_consumed: dict[str, float] = {}
+                if method.cost > 0:
+                    self.ledger.spend_compute(intent.principal_id, method.cost)
+                    resources_consumed["llm_tokens"] = float(method.cost)
+
+                # Execute the genesis method
+                try:
+                    result_data: dict[str, Any] = method.handler(args, intent.principal_id)
+                    duration_ms = (time.perf_counter() - start_time) * 1000
+
+                    if result_data.get("success"):
+                        self._log_invoke_success(
+                            intent.principal_id, artifact_id, method_name,
+                            duration_ms, type(result_data.get("result")).__name__
+                        )
+                        return ActionResult(
+                            success=True,
+                            message=f"Invoked {artifact_id}.{method_name}",
+                            data=result_data,
+                            resources_consumed=resources_consumed if resources_consumed else None,
+                            charged_to=intent.principal_id,
+                        )
+                    else:
+                        error_code = result_data.get("code", ErrorCode.RUNTIME_ERROR.value)
+                        error_category = result_data.get("category", ErrorCategory.EXECUTION.value)
+                        retriable = result_data.get("retriable", False)
+                        self._log_invoke_failure(
+                            intent.principal_id, artifact_id, method_name,
+                            duration_ms, "method_failed",
+                            result_data.get("error", "Method failed")
+                        )
+                        return ActionResult(
+                            success=False,
+                            message=result_data.get("error", "Method failed"),
+                            resources_consumed=resources_consumed if resources_consumed else None,
+                            charged_to=intent.principal_id,
+                            error_code=error_code,
+                            error_category=error_category,
+                            retriable=retriable,
+                            error_details=result_data.get("details"),
+                        )
+                except Exception as e:
+                    duration_ms = (time.perf_counter() - start_time) * 1000
+                    self._log_invoke_failure(
+                        intent.principal_id, artifact_id, method_name,
+                        duration_ms, "exception",
+                        str(e)
+                    )
+                    return ActionResult(
+                        success=False,
+                        message=f"Method execution error: {str(e)}",
+                        resources_consumed=resources_consumed if resources_consumed else None,
+                        charged_to=intent.principal_id,
+                        error_code=ErrorCode.RUNTIME_ERROR.value,
+                        error_category=ErrorCategory.EXECUTION.value,
+                        retriable=False,
+                        error_details={"exception": str(e)},
+                    )
+
+            # Regular artifact code execution path
             # Price (SCRIP) - economic payment to owner
-            price = regular_artifact.price
-            owner_id = regular_artifact.owner_id
+            price = artifact.price
+            owner_id = artifact.owner_id
 
             # Caller pays for physical resources
             resource_payer = intent.principal_id
@@ -982,7 +991,7 @@ class World:
                     message=f"Insufficient scrip for price: need {price}, have {self.ledger.get_scrip(intent.principal_id)}",
                     error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
                     error_category=ErrorCategory.RESOURCE.value,
-                    retriable=True,  # Can get more scrip and retry
+                    retriable=True,
                     error_details={"required": price, "available": self.ledger.get_scrip(intent.principal_id)},
                 )
 
@@ -990,7 +999,7 @@ class World:
             # Pass world for kernel interface injection (Plan #39 - Genesis Unprivilege)
             executor = get_executor()
             exec_result = executor.execute_with_invoke(
-                code=regular_artifact.code,
+                code=artifact.code,
                 args=args,
                 caller_id=intent.principal_id,
                 artifact_id=artifact_id,
