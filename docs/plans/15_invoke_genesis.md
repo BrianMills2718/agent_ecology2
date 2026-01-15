@@ -1,6 +1,19 @@
 # Gap 15: invoke() Genesis Support
 
-**Status:** 🚧 In Progress
+**Status:** ✅ Complete
+
+**Verified:** 2026-01-15T09:16:20Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-01-15T09:16:20Z
+tests:
+  unit: 1402 passed, 7 skipped, 5 warnings in 19.94s
+  e2e_smoke: PASSED (2.00s)
+  e2e_real: PASSED (35.49s)
+  doc_coupling: passed
+commit: b2b6ce1
+```
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** None
