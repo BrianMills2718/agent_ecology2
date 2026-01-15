@@ -18,7 +18,7 @@ from .actions import (
 # NOTE: TransferIntent removed - all transfers via genesis_ledger.transfer()
 from .genesis import (
     create_genesis_artifacts, GenesisArtifact, GenesisRightsRegistry,
-    GenesisMint, RightsConfig, SubmissionInfo
+    GenesisMint, GenesisDebtContract, RightsConfig, SubmissionInfo
 )
 from .executor import get_executor
 from .errors import ErrorCode, ErrorCategory
@@ -1169,6 +1169,11 @@ class World:
             return False
 
         self.tick += 1
+
+        # Update tick in debt contract if present
+        debt_contract = self.genesis_artifacts.get("genesis_debt_contract")
+        if isinstance(debt_contract, GenesisDebtContract):
+            debt_contract.set_tick(self.tick)
 
         # Only reset FLOW RESOURCES when NOT using rate tracker (legacy tick-based mode)
         # When rate limiting is enabled, resources flow continuously via RateTracker

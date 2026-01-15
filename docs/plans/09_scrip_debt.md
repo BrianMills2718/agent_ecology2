@@ -1,6 +1,6 @@
 # Gap 9: Scrip Debt Contracts
 
-**Status:** 📋 Planned (Post-V1)
+**Status:** ✅ Complete
 **Priority:** Low
 **Blocked By:** None
 **Blocks:** None
@@ -24,78 +24,115 @@ Real economies have credit. An agent with a good idea but no scrip can't execute
 
 ---
 
-## Design
+## Implementation Approach
 
-### Debt as Artifact
+**Key insight from ADR-0003:** Contracts can do anything. Debt doesn't need kernel-level support - it's just a non-privileged genesis artifact demonstrating credit patterns.
 
-Debt is NOT negative balance. It's a contract artifact:
-
-```python
-debt_contract = {
-    "type": "debt",
-    "debtor": "agent_A",
-    "creditor": "agent_B",
-    "principal": 100,
-    "interest_rate": 0.1,  # Per tick
-    "due_tick": 50,
-}
-```
-
-### Enforcement via Contract
-
-The debt artifact has an `access_contract` that:
-1. Allows creditor to call `collect()` after due_tick
-2. `collect()` transfers scrip from debtor (if available)
-3. If debtor can't pay, debt remains (no magic enforcement)
-
-### Tradeable Debt
-
-Debt contracts are artifacts, so:
-- Creditor can sell debt to another agent (factoring)
-- Debtor can buy back their own debt at discount
-- Market prices debt based on debtor reputation
+The `genesis_debt_contract` is implemented as a non-privileged genesis artifact (like `genesis_escrow`):
+- Cold-start convenience for agents
+- Demonstrates credit/lending patterns
+- Uses standard kernel interfaces (no special privileges)
+- Agents can create competing debt contract artifacts
 
 ---
 
-## Plan
+## Design
 
-### Phase 1: Debt Contract Template
+### Debt as Genesis Artifact
 
-1. Create `DebtContract` artifact type
-2. Methods: `collect()`, `repay()`, `transfer_creditor()`
+`genesis_debt_contract` tracks debts with:
 
-### Phase 2: Issuance
+```python
+debt_record = {
+    "debtor_id": "alice",
+    "creditor_id": "bob",
+    "principal": 100,
+    "interest_rate": 0.1,  # Per tick (simple interest)
+    "due_tick": 50,
+    "status": "active",  # pending, active, paid, defaulted
+    "amount_paid": 0,
+}
+```
 
-1. Add `issue_debt(debtor, creditor, principal, terms)`
-2. Both parties must sign (invoke to accept)
+### Methods
 
-### Phase 3: Collection
+| Method | Purpose |
+|--------|---------|
+| `issue` | Debtor creates debt request |
+| `accept` | Creditor accepts debt |
+| `repay` | Debtor pays back (partial or full) |
+| `collect` | Creditor collects after due_tick |
+| `transfer_creditor` | Sell debt to another principal |
+| `check` | Get debt status with current_owed |
+| `list_debts` | List debts for a principal |
+| `list_all` | List all debts in system |
 
-1. Creditor calls `collect()` after due date
-2. Returns success/failure (no magic enforcement)
+### Enforcement
+
+No magic enforcement:
+1. `collect()` transfers what debtor has available
+2. If debtor is broke, debt marked "defaulted"
+3. Bad debtors observable via event log
+4. Reputation emerges from observed behavior
+
+### Tradeable Debt
+
+Debt is tradeable:
+- `transfer_creditor()` allows selling debt rights
+- Payment goes to current creditor
+- Market prices debt based on debtor reliability
 
 ---
 
 ## Required Tests
 
 ```
-tests/unit/test_debt.py::test_create_debt_contract
-tests/unit/test_debt.py::test_collect_succeeds_with_funds
-tests/unit/test_debt.py::test_collect_fails_insufficient_funds
-tests/unit/test_debt.py::test_debt_tradeable
+tests/unit/test_debt_contract.py::TestGenesisDebtContract::test_issue_debt_creates_pending_debt
+tests/unit/test_debt_contract.py::TestGenesisDebtContract::test_issue_validates_inputs
+tests/unit/test_debt_contract.py::TestGenesisDebtContract::test_accept_activates_debt
+tests/unit/test_debt_contract.py::TestGenesisDebtContract::test_only_creditor_can_accept
+tests/unit/test_debt_contract.py::TestGenesisDebtContract::test_repay_transfers_scrip
+tests/unit/test_debt_contract.py::TestGenesisDebtContract::test_repay_fully_marks_paid
+tests/unit/test_debt_contract.py::TestGenesisDebtContract::test_collect_after_due_tick
+tests/unit/test_debt_contract.py::TestGenesisDebtContract::test_collect_partial_when_insufficient
+tests/unit/test_debt_contract.py::TestGenesisDebtContract::test_collect_fails_when_broke
+tests/unit/test_debt_contract.py::TestGenesisDebtContract::test_transfer_creditor_sells_debt
+tests/unit/test_debt_contract.py::TestGenesisDebtContract::test_list_debts_for_principal
+tests/unit/test_debt_contract.py::TestGenesisDebtContract::test_interest_accrues_over_time
+
+tests/integration/test_debt_contract.py::TestDebtContractLifecycle
+tests/integration/test_debt_contract.py::TestDebtCollection
+tests/integration/test_debt_contract.py::TestDebtTrading
+tests/integration/test_debt_contract.py::TestDebtContractWorldIntegration
+tests/integration/test_debt_contract.py::TestMultipleDebts
 ```
 
 ---
 
 ## Verification
 
-- [ ] Debt contracts created via mutual agreement
-- [ ] Collection attempts transfer
-- [ ] Debt artifacts tradeable
-- [ ] Tests pass
+- [x] Debt contracts created via mutual agreement (issue → accept)
+- [x] Collection attempts transfer (collect after due_tick)
+- [x] Debt rights tradeable (transfer_creditor)
+- [x] Interest accrues based on ticks elapsed
+- [x] Tests pass (12 unit, 12 integration)
+
+---
+
+## Verification Evidence
+
+```
+Date: 2026-01-15
+Unit tests: 12 passed (tests/unit/test_debt_contract.py)
+Integration tests: 12 passed (tests/integration/test_debt_contract.py)
+Full suite: 1418 passed, 22 skipped
+mypy: Success (no issues in 38 source files)
+```
 
 ---
 
 ## Notes
 
 Key insight: No magic enforcement. Bad debtors get bad reputation via event log.
+
+This is a **genesis artifact example** demonstrating how credit/lending can work, not a kernel feature. Agents can create their own debt tracking systems if they want different terms or behavior.
