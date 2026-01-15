@@ -171,7 +171,7 @@ class Ledger:
         # Register with ID registry if available (Plan #7)
         if self.id_registry is not None:
             from .id_registry import IDCollisionError
-            self.id_registry.register(principal_id, "principal")  # type: ignore[arg-type]
+            self.id_registry.register(principal_id, "principal")
         self.scrip[principal_id] = starting_scrip
         self.resources[principal_id] = starting_resources.copy() if starting_resources else {}
         # Backward compat: if starting_compute provided, set llm_tokens

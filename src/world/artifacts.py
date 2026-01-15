@@ -501,10 +501,10 @@ class ArtifactStore:
             # Create new - register with ID registry if available (Plan #7)
             if self.id_registry is not None:
                 # Import here to avoid circular imports at module level
-                from .id_registry import IDCollisionError
+                from .id_registry import IDCollisionError, EntityType
                 # Determine entity type for registry
-                entity_type = "genesis" if type == "genesis" else "artifact"
-                self.id_registry.register(artifact_id, entity_type)  # type: ignore[arg-type]
+                entity_type: EntityType = "genesis" if type == "genesis" else "artifact"
+                self.id_registry.register(artifact_id, entity_type)
             artifact = Artifact(
                 id=artifact_id,
                 type=type,
