@@ -10,44 +10,89 @@
 ## 🔴 TEMP HANDOFF - DELETE THIS SECTION AFTER READING
 
 **Date:** 2026-01-15
-**From:** Claude instance on remote machine
+**From:** Debugging session on Azure VM (shared, overloaded)
+**To:** Fresh CC instance on user's local machine
 
 ### What Just Happened
-- Plan #43 (Comprehensive Meta-Enforcement) completed and merged (PR #180)
-- 42/50 plans complete (84%), remaining 8 are Post-V1
 
-### Cleanup Needed
-1. **Remove stale worktree:** `make worktree-remove BRANCH=plan-43-phase2`
+User ran `python run.py --duration 600 --agents 5 --dashboard` on shared Azure VM. Simulation OOM-killed after ~7 minutes.
 
-### Open Issue: Merge Lock Mechanism Broken
+**Root causes identified:**
+1. **Docker not used** - Plan #3 (Docker Isolation) is COMPLETE but user ran directly on host
+2. **Shared VM overloaded** - 8+ other processes (Next.js 8GB, multiple Claude instances, VS Code) consumed 20GB before simulation started
+3. **Each agent creates own LLMProvider** - 5 agents = 5 independent HTTP connection pools (`src/agents/agent.py:217`)
+4. **run.jsonl empty** - Events not flushed before OOM, breaking dashboard thinking/artifact views
+5. **Logs mixed per-day** - Multiple runs in `llm_logs/YYYYMMDD/`, no per-run organization
 
-**Problem:** `make merge PR=N` fails because branch protection blocks direct pushes to main.
+### IMMEDIATE FIX - Use Docker (Already Built!)
 
-**Root cause:** The lock mechanism in `scripts/merge_pr.py` tries to:
-1. Write lock to `.claude/active-work.yaml`
-2. Commit and push directly to main ← BLOCKED by branch protection
+```bash
+cd agent_ecology
+docker-compose up --build
+```
 
-**Discussion with user:**
-- User concerned about losing work when agents work in parallel
-- We discussed whether the lock is even needed now that branch protection exists
-- GitHub already handles concurrent merge attempts atomically
-- Without merge queue (premium feature), worst case is "branch out of date, please rebase"
+This is **already implemented** (Plan #3 ✅). Provides:
+- 4GB memory limit for simulation container
+- 2GB for Qdrant container
+- Process isolation
+- Should allow 5+ agents for full 10 minute duration
 
-**Uncertainties to resolve with user:**
-1. **What work has been lost?** User mentioned "continually lost work" - need to understand the actual failure mode (worktree issues? merge conflicts? something else?)
-2. **Is the lock mechanism needed?** Options discussed:
-   - Remove it (branch protection handles concurrent merges)
-   - Fix it (use separate branch, GitHub API, etc.)
-   - Keep as advisory only
-3. **Should this be a new Plan or Trivial fix?** Depends on scope of solution
+### Uncertainties to Resolve with User
 
-**Current workaround:** Use `gh pr merge N --squash --delete-branch` directly (bypasses broken lock).
+| Issue | Options | Notes |
+|-------|---------|-------|
+| **Per-run log organization** | a) Keep flat `run.jsonl`, b) Create `runs/YYYYMMDD_HHMMSS/` dirs | Affects debugging, disk usage |
+| **Share LLMProvider** | a) One per agent (current), b) Shared with call metadata | ~5x memory reduction |
+| **Log retention** | a) Keep forever, b) Auto-prune after N days | Disk quota implications |
+| **Strict mypy** | a) Keep current, b) Enable `--strict` | May have 50+ violations |
+| **Docstring enforcement** | a) None, b) Public APIs, c) All functions | Maintenance burden |
+| **Max concurrent thinking** | a) Unlimited parallel, b) Semaphore limit | Memory vs emergence speed |
 
-### Recommended First Action
-Ask the user to clarify what work-loss scenarios they've experienced, then decide on lock mechanism fix.
+### Dashboard Issues (Will Self-Resolve with Docker)
+
+These issues existed because `run.jsonl` was empty:
+- Agent thinking panel shows nothing
+- Artifact click-through shows no content
+
+**Fix:** Just use Docker. With memory limits, OOM won't kill before flush. Features already work.
+
+### Files Involved
+
+| File | Issue |
+|------|-------|
+| `src/agents/agent.py:217` | Creates new LLMProvider per agent |
+| `src/world/logger.py:24` | Clears run.jsonl on init |
+| `llm_provider_standalone/llm_provider.py` | Logs to date-based dirs |
+| `docker-compose.yml` | Ready to use, 4GB simulation limit |
+
+### Proposed Plan #53 (Not Yet Created)
+
+If Docker works and scaling is still needed, create Plan #53 covering:
+1. Per-run log organization
+2. Shared LLMProvider across agents
+3. Strict typing/docstrings in pyproject.toml
+4. Optional: max concurrent agent thinking
+
+### Previous Issue: Merge Lock (Lower Priority)
+
+`make merge PR=N` fails because branch protection blocks direct pushes.
+**Workaround:** Use `gh pr merge N --squash --delete-branch` directly.
+Decide later if lock mechanism needs fixing or removal.
+
+### Recommended First Actions
+
+1. **Verify Docker works:** `docker-compose up --build` - run 5 agents for 10+ min
+2. **Check run.jsonl not empty** after a successful run
+3. **Check dashboard** shows agent thinking and artifact content
+4. If all works, decide on Plan #53 uncertainties with user
 
 ### ⚠️ DELETE THIS SECTION
-After reading and addressing the above, remove this entire "TEMP HANDOFF" section from CLAUDE.md.
+
+After:
+1. Confirming Docker works on local machine, AND
+2. Deciding on uncertainties above
+
+Remove this entire "TEMP HANDOFF" section from CLAUDE.md.
 
 ---
 
