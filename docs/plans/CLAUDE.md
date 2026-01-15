@@ -33,8 +33,8 @@ Master index of all gaps and their implementation plans.
 | 4 | ~~Compute Debt Model~~ | - | ✅ Superseded | - |
 | 5 | [Oracle Anytime Bidding](05_oracle_anytime.md) | Medium | ✅ Complete | - |
 | 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | ✅ Complete | #7,#8,#14,#16 |
-| 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | 📋 Post-V1 | - |
-| 8 | [Agent Rights Trading](08_agent_rights.md) | Low | 📋 Post-V1 | - |
+| 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | ✅ Complete | - |
+| 8 | [Agent Rights Trading](08_agent_rights.md) | Low | ✅ Complete | - |
 | 9 | [Scrip Debt Contracts](09_scrip_debt.md) | Low | 📋 Post-V1 | - |
 | 10 | [Memory Persistence](10_memory_persistence.md) | Low | 📋 Post-V1 | - |
 | 11 | [Terminology Cleanup](11_terminology.md) | Medium | ✅ Complete | #12 |
