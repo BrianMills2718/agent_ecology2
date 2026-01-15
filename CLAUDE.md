@@ -5,6 +5,52 @@
 
 **First:** `python scripts/check_claims.py --list` then `--claim --task "..."` (always check/claim before starting)
 
+---
+
+## 🔴 TEMP HANDOFF - DELETE THIS SECTION AFTER READING
+
+**Date:** 2026-01-15
+**From:** Claude instance on remote machine
+
+### What Just Happened
+- Plan #43 (Comprehensive Meta-Enforcement) completed and merged (PR #180)
+- 42/50 plans complete (84%), remaining 8 are Post-V1
+
+### Cleanup Needed
+1. **Remove stale worktree:** `make worktree-remove BRANCH=plan-43-phase2`
+
+### Open Issue: Merge Lock Mechanism Broken
+
+**Problem:** `make merge PR=N` fails because branch protection blocks direct pushes to main.
+
+**Root cause:** The lock mechanism in `scripts/merge_pr.py` tries to:
+1. Write lock to `.claude/active-work.yaml`
+2. Commit and push directly to main ← BLOCKED by branch protection
+
+**Discussion with user:**
+- User concerned about losing work when agents work in parallel
+- We discussed whether the lock is even needed now that branch protection exists
+- GitHub already handles concurrent merge attempts atomically
+- Without merge queue (premium feature), worst case is "branch out of date, please rebase"
+
+**Uncertainties to resolve with user:**
+1. **What work has been lost?** User mentioned "continually lost work" - need to understand the actual failure mode (worktree issues? merge conflicts? something else?)
+2. **Is the lock mechanism needed?** Options discussed:
+   - Remove it (branch protection handles concurrent merges)
+   - Fix it (use separate branch, GitHub API, etc.)
+   - Keep as advisory only
+3. **Should this be a new Plan or Trivial fix?** Depends on scope of solution
+
+**Current workaround:** Use `gh pr merge N --squash --delete-branch` directly (bypasses broken lock).
+
+### Recommended First Action
+Ask the user to clarify what work-loss scenarios they've experienced, then decide on lock mechanism fix.
+
+### ⚠️ DELETE THIS SECTION
+After reading and addressing the above, remove this entire "TEMP HANDOFF" section from CLAUDE.md.
+
+---
+
 This file is always loaded. Keep it lean. Reference other docs for details.
 
 ## Philosophy & Goals
