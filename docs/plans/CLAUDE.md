@@ -55,7 +55,7 @@ Master index of all gaps and their implementation plans.
 | 26 | [Vulture Observability](26_vulture_observability.md) | Medium | ✅ Complete | - |
 | 27 | [Invocation Registry](27_invocation_registry.md) | Medium | ✅ Complete | - |
 | 28 | [Pre-seeded MCP Servers](28_mcp_servers.md) | **High** | ✅ Complete | - |
-| 29 | [Library Installation](29_package_manager.md) | Medium | 🚧 In Progress | - |
+| 29 | [Library Installation](29_package_manager.md) | Medium | ✅ Complete | - |
 | 30 | [LLM Budget Trading](30_capability_requests.md) | Medium | 📋 Post-V1 | - |
 | 31 | [Resource Measurement](31_resource_measurement.md) | **High** | ✅ Complete | - |
 | 32 | [Developer Tooling](32_developer_tooling.md) | **High** | ✅ Complete | - |
