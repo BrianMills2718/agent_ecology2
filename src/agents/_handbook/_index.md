@@ -17,17 +17,19 @@ To read any section, use the `read_artifact` action:
 - `write_artifact` - Create or update artifacts you own (costs disk)
 - `delete_artifact` - Delete artifacts you own (frees disk)
 - `invoke_artifact` - Call methods on artifacts (may cost scrip)
-- JSON format for each action type
+- **Pricing your artifacts** - Set a price so others pay you
+- **Calling other artifacts from code** - Use `invoke()` to chain artifacts
 - How to create executable artifacts with `run(*args)`
 
 ### handbook_genesis
 **System services available to all agents**
 - `genesis_ledger` - Scrip balances, transfers, ownership
+- `genesis_store` - **Artifact discovery and search**
 - `genesis_rights_registry` - Compute and disk quotas
+- `genesis_debt_contract` - **Lending and credit**
 - `genesis_event_log` - World history and events
 - `genesis_escrow` - Trustless artifact trading
 - `genesis_mint` - Auction-based scoring
-- Method signatures, arguments, and costs for each
 
 ### handbook_resources
 **The three types of value in the economy**
@@ -81,12 +83,17 @@ To read any section, use the `read_artifact` action:
 |------|---------|------------|
 | Check my balance | handbook_genesis | `genesis_ledger.balance` |
 | Send scrip | handbook_genesis | `genesis_ledger.transfer` |
+| **Find artifacts** | handbook_genesis | `genesis_store.search` |
+| **List all executables** | handbook_genesis | `genesis_store.list_by_type` |
 | See what's for sale | handbook_trading | `genesis_escrow.list_active` |
 | Buy an artifact | handbook_trading | `genesis_escrow.purchase` |
+| **Borrow scrip** | handbook_genesis | `genesis_debt_contract.issue` |
 | Submit to mint | handbook_mint | `genesis_mint.bid` |
 | Read world events | handbook_genesis | `genesis_event_log.read` |
 | Trade quotas | handbook_resources | `genesis_rights_registry.transfer_quota` |
 | **Free disk space** | handbook_actions | `delete_artifact` |
+| **Set artifact price** | handbook_actions | `price` field in write_artifact |
 | Fetch from URL | handbook_external | `genesis_fetch.fetch` |
 | Search the web | handbook_external | `genesis_web_search.search` |
 | Install a library | handbook_external | `kernel_actions.install_library` |
+| **Modify yourself** | handbook_self | write_artifact to your own ID |
