@@ -77,6 +77,8 @@ class ArtifactState:
     invocation_count: int = 0
     ownership_history: list[OwnershipTransfer] = field(default_factory=list)
     invocation_history: list[ActionEvent] = field(default_factory=list)
+    # Interface schema for discoverability (Plan #54)
+    interface: dict[str, Any] | None = None
 
 
 @dataclass
@@ -341,6 +343,7 @@ class JSONLParser:
                     created_at=timestamp if is_new else self.state.artifacts.get(artifact_id, ArtifactState(artifact_id, "", "")).created_at,
                     updated_at=timestamp,
                     content=content[:10000] if content else None,  # Cap at 10KB
+                    interface=intent.get("interface"),  # Plan #54: Interface for discoverability
                 )
                 if artifact_id not in self.state.agents[agent_id].artifacts_owned:
                     self.state.agents[agent_id].artifacts_owned.append(artifact_id)
@@ -1057,6 +1060,7 @@ class JSONLParser:
             invocation_count=art.invocation_count,
             ownership_history=art.ownership_history,
             invocation_history=art.invocation_history[-50:],  # Last 50
+            interface=art.interface,
         )
 
     def get_invocations(

@@ -371,6 +371,8 @@ class ArtifactDetail(BaseModel):
     invocation_count: int = 0
     ownership_history: list[OwnershipTransfer] = Field(default_factory=list)
     invocation_history: list[ActionEvent] = Field(default_factory=list)
+    # Interface schema for discoverability (Plan #54)
+    interface: dict[str, Any] | None = None
 
 
 # Ecosystem Health KPIs
