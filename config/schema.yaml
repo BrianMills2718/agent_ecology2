@@ -249,6 +249,7 @@ llm:
 # -----------------------------------------------------------------------------
 logging:
   output_file: <string>
+  logs_dir: <string>            # Per-run logs directory (e.g., logs/run_20260115_120000/)
   log_dir: <string>
   default_recent: <number>      # Default N for "recent events"
 

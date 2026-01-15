@@ -69,9 +69,10 @@ class PrincipalConfig(TypedDict, total=False):
     starting_credits: int  # Legacy name
 
 
-class LoggingConfig(TypedDict):
+class LoggingConfig(TypedDict, total=False):
     """Logging configuration."""
     output_file: str
+    logs_dir: str
 
 
 class CostsConfig(TypedDict, total=False):
@@ -183,7 +184,7 @@ class World:
     # Maps principal_id -> list of (library_name, version)
     _installed_libraries: dict[str, list[tuple[str, str | None]]]
 
-    def __init__(self, config: ConfigDict) -> None:
+    def __init__(self, config: ConfigDict, run_id: str | None = None) -> None:
         self.config = config
         self.tick = 0
         self.max_ticks = config["world"]["max_ticks"]
@@ -217,7 +218,12 @@ class World:
         # Core state - create ledger with rate_limiting config
         self.ledger = Ledger.from_config(cast(dict[str, Any], config), [])
         self.artifacts = ArtifactStore()
-        self.logger = EventLogger(config["logging"]["output_file"])
+        # Per-run logging if logs_dir and run_id provided, else legacy mode
+        logs_dir = config.get("logging", {}).get("logs_dir")
+        if logs_dir and run_id:
+            self.logger = EventLogger(logs_dir=logs_dir, run_id=run_id)
+        else:
+            self.logger = EventLogger(output_file=config["logging"]["output_file"])
 
         # Kernel quota state (Plan #42)
         # Must be initialized BEFORE genesis artifacts since rights_registry delegates here

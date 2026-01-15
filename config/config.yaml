@@ -308,6 +308,7 @@ llm:
 # -----------------------------------------------------------------------------
 logging:
   output_file: "run.jsonl"
+  logs_dir: "logs"              # Per-run logs directory (events.jsonl per run)
   log_dir: "llm_logs"
   default_recent: 50
 
