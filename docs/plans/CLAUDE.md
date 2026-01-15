@@ -13,6 +13,10 @@ Master index of all gaps and their implementation plans.
 3. **Implement** - TDD: write tests first
 4. **Complete** - `python scripts/complete_plan.py --plan N`
 
+> **🚨 NEVER manually edit status to Complete.** Always use `complete_plan.py`.
+> Manual edits cause index/file mismatches that break CI. The script updates
+> both the plan file AND this index automatically.
+
 ### Status Key
 
 | Status | Meaning |

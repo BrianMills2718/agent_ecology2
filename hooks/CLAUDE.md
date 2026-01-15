@@ -45,6 +45,9 @@ git commit --no-verify -m "..."
 4. Plan status consistency (when plan files staged)
 5. Branch divergence detection (blocks if diverged, warns if behind)
 
+> **Note:** Plan status check (#4) prevents manual status edits that don't update both
+> the plan file AND the index. Always use `complete_plan.py` instead of editing manually.
+
 **commit-msg:**
 1. Requires `[Plan #N]` or `[Trivial]` prefix
 2. Validates plan number exists
