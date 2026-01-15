@@ -78,6 +78,8 @@ Master index of all gaps and their implementation plans.
 | 50 | [Test Structure Refactor](50_test_structure_refactor.md) | Medium | ✅ Complete | AI navigability |
 | 51 | [V1 Acceptance Criteria](51_v1_acceptance.md) | **High** | ✅ Complete | V1 release |
 | 52 | [Worktree Session Tracking](52_worktree_session_tracking.md) | Medium | ✅ Complete | - |
+| 53 | [Scalable Resource Architecture](53_scalable_resource_architecture.md) | **High** | 📋 Planned | #31 |
+| 53 | [Scalable Resource Architecture](53_scalable_resource_architecture.md) | **High** | 📋 Planned | #31 |
 
 ---
 

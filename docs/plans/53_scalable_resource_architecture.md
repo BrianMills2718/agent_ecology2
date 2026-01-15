@@ -1,0 +1,303 @@
+# Plan 53: Scalable Resource Architecture
+
+**Status:** 📋 Planned
+**Priority:** High
+**Blocked By:** None
+**Blocks:** None
+**Human Review Required:** Yes (architectural change)
+
+---
+
+## Gap
+
+**Current:**
+- All agents run in one Python process
+- Memory/CPU measured per-process, not per-agent (Plan #31 added measurement, but shared process limits attribution)
+- Memory and CPU not tracked as tradeable resources in ledger
+- Connection pool not tracked or managed
+- Legacy "compute" terminology persists when it should be "llm_tokens"
+- Architecture doesn't scale past ~50 agents
+
+**Target:**
+- Process-per-agent-turn architecture enabling 1000+ agents
+- Per-agent memory and CPU measurement (~90% accurate, ±10% for shared runtime)
+- Memory and CPU as tradeable resources via rights_registry
+- Connection pool as managed infrastructure (fair queue V1, contractable later)
+- Clean "llm_tokens" terminology throughout
+- All scarce resources contractable (core principle)
+
+**Why High Priority:**
+- User needs to scale to 100-1000 agents
+- Current architecture OOM-killed with 5 agents on shared VM
+- Resources must map to real-world scarcity for meaningful emergence
+- Everything must be contractable per project philosophy
+
+---
+
+## Design Decisions
+
+### Process-Per-Agent-Turn Model
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Agent State Store (SQLite/files)                           │
+│  1000 agent states persisted                                │
+└─────────────────────────────────────────────────────────────┘
+          │
+          ▼
+┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+│ Worker 1    │ │ Worker 2    │ │ Worker N    │
+│ (process)   │ │ (process)   │ │ (process)   │
+│             │ │             │ │             │
+│ Load agent  │ │ Load agent  │ │ Load agent  │
+│ Run turn    │ │ Run turn    │ │ Run turn    │
+│ Measure res │ │ Measure res │ │ Measure res │
+│ Save state  │ │ Save state  │ │ Save state  │
+│ Next agent  │ │ Next agent  │ │ Next agent  │
+└─────────────┘ └─────────────┘ └─────────────┘
+```
+
+**Why process per turn, not container per agent:**
+- Container overhead: ~50MB each × 1000 = 50GB (impractical)
+- Process overhead: ~30MB × N workers (N can be 10-50)
+- Memory measurement via psutil: ~90% accurate per-process
+- Worker pool scales horizontally
+
+### Resource Measurement Accuracy
+
+| Resource | Method | Accuracy | Error Source |
+|----------|--------|----------|--------------|
+| LLM tokens | API response | Exact (0%) | None |
+| LLM $ cost | litellm.completion_cost() | Exact (0%) | None |
+| Disk bytes | File size | Exact (0%) | None |
+| Memory | psutil.Process().memory_info() | ~90% | Shared Python runtime (~10%) |
+| CPU time | time.process_time() | ~90% | Shared runtime overhead |
+| Connections | Pool tracking | Exact (0%) | None |
+
+**Error documentation:** The ~10% error from shared Python runtime is actually realistic - agents pay for their infrastructure.
+
+### Connection Pool: Fair Queue (V1)
+
+```python
+# V1: Fair queue, no ownership
+class ConnectionPool:
+    async def acquire(self, agent_id: str) -> Connection:
+        return await self.queue.get()  # FIFO
+
+# Future V2: Priority based on owned slots (configurable)
+class ConnectionPool:
+    async def acquire(self, agent_id: str) -> Connection:
+        priority = self.get_owned_slots(agent_id)
+        return await self.priority_queue.get(priority)
+```
+
+Connection slots tracked and logged, but not tradeable in V1. Config flag to enable trading later.
+
+### Resource Contractability
+
+| Resource | V1 Tracked | V1 Tradeable | Contractable |
+|----------|------------|--------------|--------------|
+| scrip | ✅ | ✅ | ✅ |
+| llm_tokens | ✅ | ✅ | ✅ |
+| llm_budget ($) | ✅ | ✅ | ✅ |
+| disk | ✅ | ✅ | ✅ |
+| **memory** | ✅ (new) | ✅ (new) | ✅ (new) |
+| **cpu_seconds** | ✅ (new) | ✅ (new) | ✅ (new) |
+| **connection_slots** | ✅ (new) | ❌ (V1) | ❌ (V1) |
+
+All tradeable resources use same mechanism: `rights_registry.transfer_quota(from, to, resource_type, amount)`
+
+---
+
+## Plan
+
+### Phase 1: Terminology Cleanup
+
+Replace all "compute" with "llm_tokens" where it refers to LLM token quotas.
+
+| File | Change |
+|------|--------|
+| `src/agents/agent.py` | `compute_quota` → `llm_tokens_quota` |
+| `src/agents/schema.py` | handbook reference |
+| `src/dashboard/models.py` | All `compute` fields → `llm_tokens` |
+| `src/dashboard/parser.py` | All `compute` references → `llm_tokens` |
+| `src/dashboard/server.py` | `/api/charts/compute` → `/api/charts/llm_tokens` |
+| `config/config.yaml` | Comments clarifying terminology |
+| `docs/architecture/current/resources.md` | Update terminology section |
+
+### Phase 2: State Persistence Layer
+
+Agent state must persist between turns for process-per-turn model.
+
+| File | Change |
+|------|--------|
+| `src/agents/state_store.py` (new) | SQLite-backed agent state persistence |
+| `src/agents/agent.py` | Add `to_state()` / `from_state()` serialization |
+| `src/simulation/runner.py` | Use state store instead of in-memory agents |
+
+### Phase 3: Worker Pool Architecture
+
+| File | Change |
+|------|--------|
+| `src/simulation/worker.py` (new) | Worker process that loads agent, runs turn, saves state |
+| `src/simulation/pool.py` (new) | Worker pool manager with N workers |
+| `src/simulation/runner.py` | Orchestrate via pool instead of direct agent calls |
+
+### Phase 4: Per-Agent Resource Quotas
+
+| File | Change |
+|------|--------|
+| `src/world/ledger.py` | Add `memory` and `cpu_seconds` as resource types |
+| `src/world/genesis.py` | `rights_registry.transfer_quota()` supports memory/cpu |
+| `config/schema.yaml` | Add memory/cpu quota config |
+| `config/config.yaml` | Default quotas for memory/cpu |
+
+### Phase 5: Resource Enforcement
+
+| File | Change |
+|------|--------|
+| `src/simulation/worker.py` | Monitor memory via psutil, enforce quota |
+| `src/simulation/worker.py` | Monitor CPU time, enforce timeout |
+| `src/simulation/worker.py` | Record actual usage to ledger |
+
+### Phase 6: Connection Pool
+
+| File | Change |
+|------|--------|
+| `src/world/connection_pool.py` (new) | Fair queue for LLM connections |
+| `src/agents/llm_provider.py` | Acquire from pool before LLM call |
+| `config/schema.yaml` | `connection_pool.size`, `connection_pool.tradeable` |
+
+---
+
+## Required Tests
+
+### New Tests (TDD)
+
+| Test File | Test Function | What It Verifies |
+|-----------|---------------|------------------|
+| `tests/unit/test_state_store.py` | `test_save_load_agent_state` | Agent state persists correctly |
+| `tests/unit/test_state_store.py` | `test_concurrent_access` | Multiple workers don't corrupt state |
+| `tests/unit/test_worker.py` | `test_memory_measurement` | Memory tracked per-turn |
+| `tests/unit/test_worker.py` | `test_cpu_measurement` | CPU time tracked per-turn |
+| `tests/unit/test_worker.py` | `test_memory_quota_exceeded` | Turn killed when over quota |
+| `tests/unit/test_worker.py` | `test_cpu_quota_exceeded` | Turn killed when over time |
+| `tests/unit/test_connection_pool.py` | `test_fair_queue` | Connections allocated FIFO |
+| `tests/unit/test_connection_pool.py` | `test_pool_exhaustion` | Agents wait when pool full |
+| `tests/integration/test_worker_pool.py` | `test_100_agents` | 100 agents run without OOM |
+| `tests/integration/test_resource_trading.py` | `test_memory_transfer` | Memory quota tradeable |
+| `tests/integration/test_resource_trading.py` | `test_cpu_transfer` | CPU quota tradeable |
+
+### Existing Tests (Must Pass)
+
+| Test Pattern | Why |
+|--------------|-----|
+| `tests/unit/test_ledger.py` | Resource tracking unchanged for existing resources |
+| `tests/unit/test_rights_registry.py` | Quota transfer mechanism unchanged |
+| `tests/e2e/test_smoke.py` | End-to-end still works |
+
+---
+
+## E2E Verification
+
+| Scenario | Steps | Expected Outcome |
+|----------|-------|------------------|
+| 100 agents run | `python run.py --agents 100 --duration 300` | Completes without OOM |
+| Memory quota enforced | Agent exceeds memory quota | Turn terminated, logged |
+| CPU quota enforced | Agent infinite loops | Turn terminated after timeout |
+| Resource trading | Agent transfers memory quota | Recipient has more quota |
+
+```bash
+pytest tests/e2e/test_real_e2e.py -v --run-external
+```
+
+---
+
+## Verification
+
+### Tests & Quality
+- [ ] All required tests pass: `python scripts/check_plan_tests.py --plan 53`
+- [ ] Full test suite passes: `pytest tests/`
+- [ ] Type check passes: `python -m mypy src/ --ignore-missing-imports`
+- [ ] E2E verification passes with 100 agents
+
+### Documentation
+- [ ] `docs/architecture/current/resources.md` updated with memory/cpu
+- [ ] `docs/architecture/current/execution_model.md` updated for worker pool
+- [ ] `docs/GLOSSARY_CURRENT.md` terminology verified
+- [ ] Doc-coupling check passes
+
+### Completion Ceremony
+- [ ] Plan file status → `✅ Complete`
+- [ ] `plans/CLAUDE.md` index → `✅ Complete`
+- [ ] Claim released
+- [ ] PR merged
+
+---
+
+## Notes
+
+### Why Not Containers?
+
+Containers provide perfect isolation but:
+- ~50MB overhead each
+- 1000 containers = 50GB just for infrastructure
+- Orchestration complexity (Kubernetes)
+- Process-per-turn gives ~90% of the benefit with ~10% of the cost
+
+### Future: Connection Slot Trading
+
+V1 uses fair queue for connections. To enable trading later:
+
+1. Set `connection_pool.tradeable: true` in config
+2. Track slot ownership in rights_registry
+3. Priority queue weighted by owned slots
+4. Same `transfer_quota()` interface
+
+### Shared LLMProvider
+
+With worker pool, all workers can share one LLMProvider instance (passed via IPC or recreated). This reduces connection pool overhead vs one provider per agent.
+
+### Migration Path
+
+1. Phase 1-2 can ship independently (terminology + state persistence)
+2. Phase 3-5 are the core architecture change
+3. Phase 6 (connection pool) can be independent
+
+### Error Bounds Documentation
+
+Document in resources.md:
+- Memory measurement: ±10% due to Python runtime
+- CPU measurement: ±10% due to runtime overhead
+- These errors are acceptable and represent real infrastructure costs
+
+---
+
+## Inconsistencies Found
+
+During plan creation, the following inconsistencies were identified (to be fixed in Phase 1):
+
+### Glossary (GLOSSARY_CURRENT.md)
+
+| Line | Issue |
+|------|-------|
+| 63 | "Resources = Physical constraints (compute, disk...)" - mixes "compute" with physical resources |
+| 76 | "invoke_artifact costs Scrip fee + compute" - should say "llm_tokens" |
+| 152 | Deprecated table says "flow → compute" which is confusing |
+
+### Config Schema (config/schema.yaml)
+
+| Line | Issue |
+|------|-------|
+| 26 | Uses `compute:` with comment explaining it's really `llm_tokens` - should rename |
+
+### Code (found earlier)
+
+| File | Issue |
+|------|-------|
+| `src/agents/agent.py` | `compute_quota` variable name |
+| `src/dashboard/models.py` | Multiple `compute` fields |
+| `src/dashboard/parser.py` | Multiple `compute` references |
+| `src/dashboard/server.py` | `/api/charts/compute` endpoint |
+
+All of these should be renamed to `llm_tokens` in Phase 1.
