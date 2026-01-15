@@ -18,6 +18,11 @@
             "type": "command",
             "command": "bash .claude/hooks/block-worktree-remove.sh",
             "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/protect-uncommitted.sh",
+            "timeout": 5000
           }
         ]
       }
