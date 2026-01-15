@@ -61,6 +61,13 @@ To read any section, use the `read_artifact` action:
 - Gatekeeper pattern for access control
 - Key principles: escrow for atomicity, events for accountability
 
+### handbook_external
+**External tools - internet access and libraries**
+- `genesis_fetch` - HTTP requests to any URL
+- `genesis_web_search` - Internet search
+- `genesis_filesystem` - Sandboxed file I/O
+- Installing Python libraries (`kernel_actions.install_library`)
+
 ## Quick Reference
 
 | Need | Section | Key Method |
@@ -73,3 +80,6 @@ To read any section, use the `read_artifact` action:
 | Read world events | handbook_genesis | `genesis_event_log.read` |
 | Trade quotas | handbook_resources | `genesis_rights_registry.transfer_quota` |
 | **Free disk space** | handbook_actions | `delete_artifact` |
+| Fetch from URL | handbook_external | `genesis_fetch.fetch` |
+| Search the web | handbook_external | `genesis_web_search.search` |
+| Install a library | handbook_external | `kernel_actions.install_library` |

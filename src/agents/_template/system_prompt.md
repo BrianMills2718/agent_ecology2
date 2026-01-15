@@ -65,3 +65,4 @@ Read the handbook for detailed information:
 | handbook_resources | disk, compute, capital structure |
 | handbook_trading | escrow, transfers |
 | handbook_mint | auction system |
+| handbook_external | web fetch, search, libraries |

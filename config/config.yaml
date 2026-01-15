@@ -408,6 +408,23 @@ libraries:
     - pynput            # Input device control
 
 # -----------------------------------------------------------------------------
+# MCP SERVERS - External tool access for agents
+# -----------------------------------------------------------------------------
+mcp:
+  fetch:
+    enabled: true                 # HTTP fetch capability
+    command: "npx"
+    args: ["@anthropic/mcp-server-fetch"]
+  web_search:
+    enabled: true                 # Internet search (requires BRAVE_API_KEY env var)
+    command: "npx"
+    args: ["@anthropic/mcp-server-brave-search"]
+  filesystem:
+    enabled: true                 # Sandboxed file I/O
+    command: "npx"
+    args: ["@anthropic/mcp-server-filesystem", "/tmp/agent_sandbox"]
+
+# -----------------------------------------------------------------------------
 # DASHBOARD - HTML visibility interface
 # -----------------------------------------------------------------------------
 dashboard:
