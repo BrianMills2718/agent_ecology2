@@ -1,6 +1,6 @@
 # Gap 29: Library Installation
 
-**Status:** 📋 Planned (Post-V1)
+**Status:** 🚧 In Progress
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** None
@@ -75,18 +75,16 @@ Everything else is safe within Docker isolation.
 
 ## Required Tests
 
-```
-tests/unit/test_library_install.py::test_install_deducts_quota
-tests/unit/test_library_install.py::test_blocked_package_rejected
-tests/unit/test_library_install.py::test_insufficient_quota_fails
-```
+- `tests/unit/test_library_install.py::test_install_deducts_quota`
+- `tests/unit/test_library_install.py::test_blocked_package_rejected`
+- `tests/unit/test_library_install.py::test_insufficient_quota_fails`
 
 ---
 
 ## Verification
 
-- [ ] Genesis libraries available without quota cost
-- [ ] New installs deduct from disk quota
-- [ ] Blocked packages rejected
-- [ ] Tests pass
-- [ ] Handbook documents available libraries
+- [x] Genesis libraries available without quota cost
+- [x] New installs deduct from disk quota
+- [x] Blocked packages rejected
+- [x] Tests pass
+- [x] Handbook documents available libraries

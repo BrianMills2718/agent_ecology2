@@ -383,3 +383,81 @@ class KernelActions:
             True if consumption recorded, False if would exceed quota
         """
         return self._world.consume_quota(principal_id, resource, amount)
+
+    # -------------------------------------------------------------------------
+    # Library Installation (Plan #29)
+    # -------------------------------------------------------------------------
+
+    def install_library(
+        self, caller_id: str, library_name: str, version: str | None = None
+    ) -> dict[str, Any]:
+        """Install a Python library for the calling agent.
+
+        Genesis libraries are pre-installed and free. Other libraries
+        cost disk quota based on installed size.
+
+        Args:
+            caller_id: Agent requesting installation
+            library_name: Package name (e.g., "scikit-learn")
+            version: Optional version constraint (e.g., ">=1.0.0")
+
+        Returns:
+            {"success": True, "message": "..."} on success
+            {"success": False, "error": "...", "error_code": "..."} on failure
+        """
+        from src.config import get_validated_config
+
+        config = get_validated_config()
+        genesis_libs = [lib.lower() for lib in config.libraries.genesis]
+        blocked_libs = [lib.lower() for lib in config.libraries.blocked]
+
+        lib_lower = library_name.lower()
+
+        # Check blocklist
+        if lib_lower in blocked_libs:
+            return {
+                "success": False,
+                "error": f"Package '{library_name}' is blocked for security reasons",
+                "error_code": "BLOCKED_PACKAGE",
+            }
+
+        # Check if genesis library (free, pre-installed)
+        if lib_lower in genesis_libs:
+            # Don't record - genesis libs are always available
+            return {
+                "success": True,
+                "message": f"Library '{library_name}' is a genesis library (pre-installed)",
+                "quota_cost": 0,
+            }
+
+        # For non-genesis libraries, estimate size and check quota
+        # Default estimate: 5MB per package (conservative)
+        estimated_size = 5 * 1024 * 1024  # 5MB in bytes
+
+        # Check disk quota
+        available = self._world.get_available_capacity(caller_id, "disk")
+        if estimated_size > available:
+            return {
+                "success": False,
+                "error": f"Insufficient disk quota. Need ~{estimated_size} bytes, have {available}",
+                "error_code": "QUOTA_EXCEEDED",
+                "required": estimated_size,
+                "available": available,
+            }
+
+        # Consume quota
+        if not self._world.consume_quota(caller_id, "disk", float(estimated_size)):
+            return {
+                "success": False,
+                "error": "Failed to consume disk quota",
+                "error_code": "QUOTA_CONSUME_FAILED",
+            }
+
+        # Track installation in world state
+        self._world.record_library_install(caller_id, library_name, version)
+
+        return {
+            "success": True,
+            "message": f"Installed '{library_name}' (quota cost: {estimated_size} bytes)",
+            "quota_cost": estimated_size,
+        }

@@ -29,6 +29,23 @@ Compute represents CPU/LLM capacity. Heavy thinking uses more compute.
 
 Disk is your storage limit. Large artifacts consume more disk.
 
+## Libraries (Python Packages)
+
+**Genesis libraries** are pre-installed and FREE:
+- HTTP: `requests`, `aiohttp`, `urllib3`
+- Data: `numpy`, `pandas`, `python-dateutil`
+- Scientific: `scipy`, `matplotlib`
+- Crypto: `cryptography`
+- Config: `pyyaml`, `pydantic`, `jinja2`
+
+**Other libraries** cost disk quota (~5MB each):
+- Install: `kernel_actions.install_library("package_name")`
+- Checks quota before installing
+- Deducts from your disk quota on success
+
+**Blocked packages** (security risks):
+- `docker`, `debugpy`, `pyautogui`, `keyboard`, `pynput`
+
 ## Resource Flow
 
 ```

@@ -2,7 +2,11 @@
 # Machine-readable tracking for multi-CC coordination.
 # Use: python scripts/check_claims.py --help
 
-claims: []
+claims:
+- cc_id: plan-29-library-install
+  task: Implement library installation with quota tracking
+  claimed_at: '2026-01-14T23:00:35Z'
+  plan: 29
 completed:
 - cc_id: tier2-architecture-decisions
   task: Tier 2 architecture decisions (Items 4-7)
