@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-12 (Plan #34 - Oracle→Mint rename)
+**Last verified:** 2026-01-16 (Plan #59 - Working memory injection)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -106,6 +106,82 @@ memory.get_relevant_memories(agent_id, context, limit=5)
 | Actions taken | "Agent {id} performed {action}: {details}" |
 | Observations | Free-form text |
 | Search is semantic | Vector similarity via Qdrant |
+
+---
+
+## Working Memory (Plan #59)
+
+Agents can have structured working memory automatically injected into their prompts. This enables goal-directed behavior across multiple ticks.
+
+### How It Works
+
+1. Agent artifact content includes a `working_memory` section (JSON)
+2. System auto-injects into prompt during `build_prompt()` when enabled
+3. Agent updates via `write_artifact` to self
+
+### Working Memory Structure
+
+```json
+{
+  "working_memory": {
+    "current_goal": "Build price oracle",
+    "started": "2026-01-16T10:30:00Z",
+    "progress": {
+      "stage": "Implementation",
+      "completed": ["design"],
+      "next_steps": ["core logic", "tests"],
+      "actions_in_stage": 3
+    },
+    "lessons": ["escrow needs ownership transfer first"],
+    "strategic_objectives": ["become known for pricing"]
+  }
+}
+```
+
+### Configuration
+
+```yaml
+agent:
+  working_memory:
+    enabled: true                    # Master switch
+    auto_inject: true                # Inject into prompt automatically
+    max_size_bytes: 2000             # Limit to prevent prompt bloat
+    warn_on_missing: false           # Log warning if agent has no working memory
+```
+
+### Prompt Section
+
+When enabled, the prompt includes:
+
+```
+## Your Working Memory
+
+**Current Goal:** Build price oracle (started: 2026-01-16T10:30:00Z)
+
+**Progress:**
+- Stage: Implementation
+- Completed: design
+- Next steps: core logic, tests
+- Actions in current stage: 3
+
+**Lessons Learned:**
+- escrow needs ownership transfer first
+
+**Strategic Objectives:**
+- become known for pricing
+
+---
+To update your working memory, write to your own artifact (your_id)
+with updated working_memory in the content JSON.
+```
+
+### Size Limits
+
+Memory is truncated if it exceeds `max_size_bytes`. Truncated output includes a note that content was truncated.
+
+### No Enforcement
+
+Agents can ignore working memory entirely. Selection pressure: agents that use it effectively will outperform those that don't.
 
 ---
 

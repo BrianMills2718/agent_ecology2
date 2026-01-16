@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-16 (Plan #57 - disk quota config, rate limits updated)
+**Last verified:** 2026-01-16 (Plan #59 - working memory config)
 
 ---
 
@@ -244,6 +244,13 @@ agent:
     enabled: true
     limit: 5
     query_template: "Tick {tick}. I am {agent_id}..."
+  working_memory:               # Plan #59
+    enabled: true               # Master switch for working memory
+    auto_inject: true           # Automatically inject into prompts
+    max_size_bytes: 2000        # Truncate if larger
+    include_in_rag: false       # Include in semantic search?
+    structured_format: true     # Enforce YAML/JSON schema
+    warn_on_missing: false      # Log warning if absent
   errors:
     access_denied_read: "Access denied:..."
     # ...
