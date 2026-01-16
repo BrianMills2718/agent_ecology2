@@ -1,10 +1,16 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+  # Only run post-merge on main (lightweight check only)
+  push:
+    branches: [main]
+
+# Permissions needed for dorny/paths-filter and other actions
+permissions:
+  contents: read
+  pull-requests: read
 
 # Cancel in-progress runs for the same branch
 concurrency:
@@ -13,9 +19,39 @@ concurrency:
 
 jobs:
   # =============================================================================
-  # Core Quality Gates (test + mypy)
+  # Change Detection - Determines which jobs need to run
+  # Saves minutes by skipping expensive jobs for docs-only changes
+  # =============================================================================
+  changes:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'src/**'
+              - 'tests/**'
+              - 'run.py'
+              - 'requirements*.txt'
+              - 'pyproject.toml'
+            docs:
+              - 'docs/**'
+              - '*.md'
+              - 'scripts/**'
+              - '.claude/**'
+
+  # =============================================================================
+  # Core Quality Gates (test + mypy) - Only on code changes
   # =============================================================================
   test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -46,6 +82,8 @@ jobs:
         run: pytest tests/ -v --tb=short
 
   mypy:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -75,9 +113,12 @@ jobs:
           mypy --strict --ignore-missing-imports --exclude '__pycache__' --no-namespace-packages src/config.py src/world/*.py src/agents/*.py run.py
 
   # =============================================================================
-  # Documentation Checks (doc-coupling + governance-sync)
+  # Fast Checks - Consolidated into single job (saves ~4 min setup time)
+  # Combines: docs, code-quality, meta checks
   # =============================================================================
-  docs:
+  fast-checks:
+    needs: changes
+    if: always() && github.event_name == 'pull_request' && !cancelled()
     runs-on: ubuntu-latest
 
     steps:
@@ -90,25 +131,90 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install PyYAML
+      - name: Install minimal dependencies
         run: pip install pyyaml
 
+      # --- Doc checks ---
       - name: Check doc-code coupling
         run: python scripts/check_doc_coupling.py --base origin/main --strict
 
       - name: Check governance headers in sync
         run: python scripts/sync_governance.py --check
 
+      # --- Code quality checks ---
+      - name: Check for suspicious mock patterns
+        run: python scripts/check_mock_usage.py --strict
+
+      - name: Check new files have tests
+        run: python scripts/check_new_code_tests.py --base origin/main --strict --suggest
+
+      - name: Check feature coverage
+        continue-on-error: true
+        run: python scripts/check_feature_coverage.py --warn-only
+
+      # --- Meta checks ---
+      - name: Check locked sections
+        run: python scripts/check_locked_files.py --base origin/main
+
+      - name: Validate feature specs
+        run: python scripts/validate_spec.py --all
+
+      - name: Verify branch was claimed
+        continue-on-error: true
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          echo "Checking claim for branch: $BRANCH"
+          python -c "
+          import yaml
+          from pathlib import Path
+          yaml_path = Path('.claude/active-work.yaml')
+          if not yaml_path.exists():
+              print('No claims file found - skipping check')
+              exit(0)
+          data = yaml.safe_load(yaml_path.read_text()) or {}
+          claims = data.get('claims', [])
+          completed = data.get('completed', [])
+          branch = '$BRANCH'
+          for c in claims:
+              if c.get('cc_id') == branch:
+                  print(f'✓ Active claim found')
+                  exit(0)
+          for c in completed:
+              if c.get('cc_id') == branch:
+                  print(f'✓ Completed claim found')
+                  exit(0)
+          print(f'⚠️ No claim found for branch: {branch}')
+          exit(1)
+          " || echo 'WARNING: No claim found (non-blocking)'
+
+      - name: Check for human review requirements
+        continue-on-error: true
+        run: |
+          PLANS=$(git log origin/main..HEAD --oneline | grep -oP '\[Plan #\K\d+' | sort -u || true)
+          if [ -z "$PLANS" ]; then exit 0; fi
+          for plan in $PLANS; do
+            PLAN_FILE=$(ls docs/plans/${plan}_*.md 2>/dev/null || ls docs/plans/0${plan}_*.md 2>/dev/null || echo "")
+            if [ -n "$PLAN_FILE" ] && grep -q "## Human Review Required" "$PLAN_FILE"; then
+              echo "⚠️ Plan #$plan requires human review!"
+            fi
+          done
+
+      - name: Check ADR requirements
+        continue-on-error: true
+        run: python scripts/check_adr_requirement.py --base origin/main
+
   # =============================================================================
-  # Plan Checks (status, blockers, tests, required, completion)
+  # Plan Checks - Runs for all PRs
   # =============================================================================
   plans:
+    needs: changes
+    if: always() && github.event_name == 'pull_request' && !cancelled()
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Need full history
+          fetch-depth: 0
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -135,9 +241,6 @@ jobs:
       - name: Check for stale blockers
         run: python scripts/check_plan_blockers.py --strict
 
-      - name: List plan test status
-        run: python scripts/check_plan_tests.py --list
-
       - name: Check plan tests
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -145,243 +248,40 @@ jobs:
 
       - name: Verify plan references in commits
         run: |
-          # Check if any commit in PR has [Unplanned]
           UNPLANNED=$(git log origin/main..HEAD --oneline | grep -c '\[Unplanned\]' || true)
-
           if [ "$UNPLANNED" -gt 0 ]; then
-            echo "============================================"
-            echo "ERROR: This PR contains unplanned work"
-            echo "============================================"
-            echo ""
-            echo "Commits without plan references:"
+            echo "ERROR: PR contains unplanned work"
             git log origin/main..HEAD --oneline | grep '\[Unplanned\]'
-            echo ""
-            echo "All work requires a plan OR trivial tag. To fix:"
-            echo ""
-            echo "  Option 1 - Create a plan:"
-            echo "    1. Create a plan file: docs/plans/NN_your_feature.md"
-            echo "    2. Amend commits to use [Plan #NN] prefix"
-            echo ""
-            echo "  Option 2 - Mark as trivial (for tiny changes only):"
-            echo "    1. Amend commit to use [Trivial] prefix"
-            echo "    2. Trivial = <20 lines, no src/ changes, no new files"
-            echo ""
-            echo "See: docs/plans/TEMPLATE.md"
-            echo ""
             exit 1
           fi
-
-          # Check trivial commits don't exceed limits
-          TRIVIAL_COMMITS=$(git log origin/main..HEAD --oneline | grep '\[Trivial\]' || true)
-          if [ -n "$TRIVIAL_COMMITS" ]; then
+          TRIVIAL=$(git log origin/main..HEAD --oneline | grep '\[Trivial\]' || true)
+          if [ -n "$TRIVIAL" ]; then
             echo "Validating [Trivial] commits..."
-            TRIVIAL_VALID=true
-
             while IFS= read -r commit; do
-              if [ -z "$commit" ]; then continue; fi
+              [ -z "$commit" ] && continue
               HASH=$(echo "$commit" | cut -d' ' -f1)
-
-              # Check lines changed
               LINES=$(git show --stat "$HASH" | tail -1 | grep -oP '\d+(?= insertion)' || echo "0")
               LINES_DEL=$(git show --stat "$HASH" | tail -1 | grep -oP '\d+(?= deletion)' || echo "0")
-              TOTAL_LINES=$((LINES + LINES_DEL))
-
-              # Check if src/ files changed
-              SRC_CHANGED=$(git show --name-only "$HASH" | grep -c '^src/' || true)
-
-              if [ "$TOTAL_LINES" -gt 20 ] || [ "$SRC_CHANGED" -gt 0 ]; then
-                echo "WARNING: [Trivial] commit exceeds limits:"
-                echo "  Commit: $commit"
-                echo "  Lines changed: $TOTAL_LINES (limit: 20)"
-                echo "  src/ files changed: $SRC_CHANGED (limit: 0)"
-                TRIVIAL_VALID=false
+              SRC=$(git show --name-only "$HASH" | grep -c '^src/' || true)
+              if [ $((LINES + LINES_DEL)) -gt 20 ] || [ "$SRC" -gt 0 ]; then
+                echo "WARNING: Trivial commit may exceed limits: $commit"
               fi
-            done <<< "$TRIVIAL_COMMITS"
-
-            if [ "$TRIVIAL_VALID" = false ]; then
-              echo ""
-              echo "Some [Trivial] commits exceed limits. Use [Plan #N] instead."
-              # Warning only for now - can make strict later
-            fi
+            done <<< "$TRIVIAL"
           fi
-
-          echo "✓ All commits have valid plan references or trivial tags."
-
-  # =============================================================================
-  # Code Quality Checks (mock-usage, new-code-tests, feature-coverage)
-  # =============================================================================
-  code-quality:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Need full history for git diff
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install PyYAML
-        run: pip install pyyaml
-
-      - name: Check for suspicious mock patterns
-        run: python scripts/check_mock_usage.py --strict
-
-      - name: Check new files have tests
-        run: python scripts/check_new_code_tests.py --base origin/main --strict --suggest
-
-      - name: Check feature coverage
-        continue-on-error: true
-        run: python scripts/check_feature_coverage.py --warn-only
+          echo "✓ All commits have valid references"
 
   # =============================================================================
-  # Meta-Process Checks (claims, locked sections, specs, human review, ADR)
-  # =============================================================================
-  meta:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Need full history for git diff
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install PyYAML
-        run: pip install pyyaml
-
-      - name: Check locked sections
-        run: python scripts/check_locked_files.py --base origin/main
-
-      - name: Validate feature specs
-        run: python scripts/validate_spec.py --all
-
-      - name: Verify branch was claimed
-        continue-on-error: true
-        run: |
-          BRANCH="${{ github.head_ref }}"
-          echo "Checking claim for branch: $BRANCH"
-
-          python -c "
-          import yaml
-          from pathlib import Path
-
-          yaml_path = Path('.claude/active-work.yaml')
-          if not yaml_path.exists():
-              print('No claims file found - skipping check')
-              exit(0)
-
-          data = yaml.safe_load(yaml_path.read_text()) or {}
-          claims = data.get('claims', [])
-          completed = data.get('completed', [])
-
-          branch = '$BRANCH'
-
-          # Check active claims
-          for c in claims:
-              if c.get('cc_id') == branch:
-                  scope_parts = []
-                  if c.get('plan'):
-                      scope_parts.append(f'Plan #{c[\"plan\"]}')
-                  if c.get('feature'):
-                      scope_parts.append(f'Feature: {c[\"feature\"]}')
-                  scope = ' + '.join(scope_parts) if scope_parts else 'unscoped'
-                  print(f'✓ Active claim found: {scope}')
-                  print(f'  Task: {c.get(\"task\", \"\")}')
-                  exit(0)
-
-          # Check completed claims
-          for c in completed:
-              if c.get('cc_id') == branch:
-                  print(f'✓ Completed claim found: {c.get(\"task\", \"\")}')
-                  exit(0)
-
-          print(f'⚠️ No claim found for branch: {branch}')
-          print()
-          print('Work should be claimed with a scope before starting:')
-          print('  python scripts/check_claims.py --claim --feature NAME --task \"Your task\"')
-          print('  python scripts/check_claims.py --list-features  # See available features')
-          exit(1)
-          " || {
-            echo ""
-            echo "========================================"
-            echo "WARNING: No claim found for this branch"
-            echo "========================================"
-            echo ""
-            echo "The claim system ensures coordination between"
-            echo "Claude instances to prevent duplicate work."
-            echo ""
-            exit 0
-          }
-
-      - name: Check for human review requirements
-        continue-on-error: true
-        run: |
-          # Extract plan numbers from PR commits
-          PLANS=$(git log origin/main..HEAD --oneline | grep -oP '\[Plan #\K\d+' | sort -u || true)
-
-          if [ -z "$PLANS" ]; then
-            echo "No plan references found in commits - skipping check"
-            exit 0
-          fi
-
-          echo "Plans referenced in this PR: $PLANS"
-
-          NEEDS_REVIEW=false
-          for plan in $PLANS; do
-            PLAN_FILE=$(ls docs/plans/${plan}_*.md 2>/dev/null || ls docs/plans/0${plan}_*.md 2>/dev/null || echo "")
-
-            if [ -z "$PLAN_FILE" ]; then
-              echo "Plan #$plan: No plan file found"
-              continue
-            fi
-
-            if grep -q "## Human Review Required" "$PLAN_FILE"; then
-              echo ""
-              echo "⚠️ Plan #$plan requires human review!"
-              echo "   File: $PLAN_FILE"
-              echo ""
-              NEEDS_REVIEW=true
-            fi
-          done
-
-          if [ "$NEEDS_REVIEW" = true ]; then
-            echo ""
-            echo "========================================"
-            echo "WARNING: Human review required"
-            echo "========================================"
-            echo ""
-            echo "One or more plans have '## Human Review Required' section."
-            echo "Please ensure a human has reviewed and approved this work"
-            echo "before merging."
-            echo ""
-            exit 0
-          fi
-
-          echo "✓ No human review requirements found"
-
-      - name: Check ADR requirements for core files
-        continue-on-error: true
-        run: python scripts/check_adr_requirement.py --base origin/main
-
-  # =============================================================================
-  # Post-Merge Checks (runs only on main)
+  # Post-Merge (lightweight - only on main push)
   # =============================================================================
   post-merge:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    continue-on-error: true  # Warn only - don't block main
+    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 10  # Need recent history
+          fetch-depth: 10
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
