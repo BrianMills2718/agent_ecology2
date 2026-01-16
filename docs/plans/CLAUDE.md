@@ -37,7 +37,7 @@ Master index of all gaps and their implementation plans.
 | 4 | ~~Compute Debt Model~~ | - | ✅ Superseded | - |
 | 5 | [Oracle Anytime Bidding](05_oracle_anytime.md) | Medium | ✅ Complete | - |
 | 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | ✅ Complete | #7,#8,#14,#16 |
-| 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | 🚧 In Progress | - |
+| 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | ✅ Complete | - |
 | 8 | [Agent Rights Trading](08_agent_rights.md) | Low | 📋 Post-V1 | - |
 | 9 | [Scrip Debt Contracts](09_scrip_debt.md) | Low | ✅ Complete | - |
 | 10 | [Memory Persistence](10_memory_persistence.md) | Low | ✅ Complete | - |
@@ -85,8 +85,8 @@ Master index of all gaps and their implementation plans.
 | 53 | [Scalable Resource Architecture](53_scalable_resource_architecture.md) | **High** | 📋 Planned | #31 |
 | 54 | [Interface Reserved Terms](54_interface_reserved_terms.md) | Medium | ✅ Complete | #14 |
 | 56 | [Per-Run Logging](56_per_run_logging.md) | Medium | ✅ Complete | - |
-| 57 | [Agent Resource Management](57_agent_improvements.md) | **High** | 🚧 In Progress | - |
-| 58 | [Dashboard Autonomous Mode](58_dashboard_autonomous.md) | Medium | 🚧 In Progress | #57 |
+| 57 | [Agent Resource Management](57_agent_improvements.md) | **High** | ✅ Complete | - |
+| 58 | [Dashboard Autonomous Mode](58_dashboard_autonomous.md) | Medium | ✅ Complete | #57 |
 | 59 | [Agent Intelligence Patterns](59_agent_intelligence.md) | **High** | 📋 Planned | #57 |
 
 ---
