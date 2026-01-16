@@ -98,14 +98,14 @@ def calculate_scrip_velocity(
 
 
 def count_frozen_agents(agents: list[dict[str, float]]) -> int:
-    """Count agents that have exhausted their compute quota.
+    """Count agents that have exhausted their LLM token quota.
 
-    An agent is frozen when compute_used >= compute_quota.
+    An agent is frozen when llm_tokens_used >= llm_tokens_quota.
     """
     return sum(
         1
         for agent in agents
-        if agent.get("compute_used", 0) >= agent.get("compute_quota", 0)
+        if agent.get("llm_tokens_used", 0) >= agent.get("llm_tokens_quota", 0)
     )
 
 
@@ -197,7 +197,7 @@ def calculate_kpis(state: SimulationState) -> EcosystemKPIs:
     )
 
     agent_dicts_for_frozen = [
-        {"compute_used": agent.compute_used, "compute_quota": agent.compute_quota}
+        {"llm_tokens_used": agent.llm_tokens_used, "llm_tokens_quota": agent.llm_tokens_quota}
         for agent in agents
     ]
     kpis.frozen_agent_count = count_frozen_agents(agent_dicts_for_frozen)

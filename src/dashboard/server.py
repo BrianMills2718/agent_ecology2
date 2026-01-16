@@ -270,11 +270,11 @@ def create_app(
         dashboard.parser.parse_incremental()
         return dashboard.parser.get_genesis_activity().model_dump()
 
-    @app.get("/api/charts/compute")
-    async def get_compute_chart() -> dict[str, Any]:
-        """Get compute utilization chart data."""
+    @app.get("/api/charts/llm_tokens")
+    async def get_llm_tokens_chart() -> dict[str, Any]:
+        """Get LLM token utilization chart data."""
         dashboard.parser.parse_incremental()
-        return dashboard.parser.get_compute_chart_data().model_dump()
+        return dashboard.parser.get_llm_tokens_chart_data().model_dump()
 
     @app.get("/api/charts/scrip")
     async def get_scrip_chart() -> dict[str, Any]:

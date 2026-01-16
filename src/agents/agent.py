@@ -75,7 +75,7 @@ class ArtifactInfo(TypedDict, total=False):
 
 class QuotaInfo(TypedDict, total=False):
     """Quota information for an agent."""
-    compute_quota: int
+    llm_tokens_quota: int
     disk_quota: int
     disk_used: int
     disk_available: int
@@ -472,9 +472,11 @@ class Agent:
         quotas: dict[str, Any] = world_state.get('quotas', {}).get(self.agent_id, {})
         quota_info: str = ""
         if quotas:
+            # Support both new and legacy field names
+            tokens_quota = quotas.get('llm_tokens_quota', quotas.get('compute_quota', 50))
             quota_info = f"""
 ## Your Rights (Quotas)
-- Compute quota: {quotas.get('compute_quota', 50)} per tick
+- LLM tokens quota: {tokens_quota} per tick
 - Disk quota: {quotas.get('disk_quota', 10000)} bytes
 - Disk used: {quotas.get('disk_used', 0)} bytes
 - Disk available: {quotas.get('disk_available', 10000)} bytes"""

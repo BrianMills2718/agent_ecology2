@@ -91,10 +91,10 @@ class TestFrozenCount:
         """No agents frozen should return 0."""
         from src.dashboard.kpis import count_frozen_agents
 
-        # All agents have compute available
+        # All agents have LLM tokens available
         agents = [
-            {"compute_used": 50.0, "compute_quota": 100.0},
-            {"compute_used": 80.0, "compute_quota": 100.0},
+            {"llm_tokens_used": 50.0, "llm_tokens_quota": 100.0},
+            {"llm_tokens_used": 80.0, "llm_tokens_quota": 100.0},
         ]
         count = count_frozen_agents(agents)
         assert count == 0
@@ -104,9 +104,9 @@ class TestFrozenCount:
         from src.dashboard.kpis import count_frozen_agents
 
         agents = [
-            {"compute_used": 50.0, "compute_quota": 100.0},   # Active
-            {"compute_used": 100.0, "compute_quota": 100.0},  # Frozen
-            {"compute_used": 150.0, "compute_quota": 100.0},  # Frozen (over quota)
+            {"llm_tokens_used": 50.0, "llm_tokens_quota": 100.0},   # Active
+            {"llm_tokens_used": 100.0, "llm_tokens_quota": 100.0},  # Frozen
+            {"llm_tokens_used": 150.0, "llm_tokens_quota": 100.0},  # Frozen (over quota)
         ]
         count = count_frozen_agents(agents)
         assert count == 2
@@ -116,8 +116,8 @@ class TestFrozenCount:
         from src.dashboard.kpis import count_frozen_agents
 
         agents = [
-            {"compute_used": 100.0, "compute_quota": 100.0},
-            {"compute_used": 100.0, "compute_quota": 100.0},
+            {"llm_tokens_used": 100.0, "llm_tokens_quota": 100.0},
+            {"llm_tokens_used": 100.0, "llm_tokens_quota": 100.0},
         ]
         count = count_frozen_agents(agents)
         assert count == 2
@@ -204,9 +204,9 @@ class TestEcosystemKPIs:
 
         # Add agents with different scrip balances
         state.agents = {
-            "alice": AgentState(agent_id="alice", scrip=100, compute_used=50.0, compute_quota=100.0),
-            "bob": AgentState(agent_id="bob", scrip=200, compute_used=100.0, compute_quota=100.0),  # Frozen
-            "carol": AgentState(agent_id="carol", scrip=300, compute_used=30.0, compute_quota=100.0),
+            "alice": AgentState(agent_id="alice", scrip=100, llm_tokens_used=50.0, llm_tokens_quota=100.0),
+            "bob": AgentState(agent_id="bob", scrip=200, llm_tokens_used=100.0, llm_tokens_quota=100.0),  # Frozen
+            "carol": AgentState(agent_id="carol", scrip=300, llm_tokens_used=30.0, llm_tokens_quota=100.0),
         }
 
         kpis = calculate_kpis(state)

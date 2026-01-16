@@ -17,7 +17,7 @@ class AgentBalance(BaseModel):
     """Complete balance info for an agent."""
     agent_id: str
     scrip: int = 0
-    compute: ResourceBalance
+    llm_tokens: ResourceBalance
     disk: ResourceBalance
     status: Literal["active", "low_resources", "frozen"] = "active"
 
@@ -26,8 +26,8 @@ class AgentSummary(BaseModel):
     """Summary of agent for list view."""
     agent_id: str
     scrip: int = 0
-    compute_used: float = 0
-    compute_quota: float = 0
+    llm_tokens_used: float = 0
+    llm_tokens_quota: float = 0
     disk_used: float = 0
     disk_quota: float = 0
     status: Literal["active", "low_resources", "frozen"] = "active"
@@ -39,7 +39,7 @@ class AgentDetail(BaseModel):
     """Full agent detail with history."""
     agent_id: str
     scrip: int = 0
-    compute: ResourceBalance
+    llm_tokens: ResourceBalance
     disk: ResourceBalance
     status: Literal["active", "low_resources", "frozen"] = "active"
     actions: list[ActionEvent] = Field(default_factory=list)
@@ -68,7 +68,7 @@ class ActionEvent(BaseModel):
     agent_id: str
     action_type: str
     target: str | None = None
-    compute_cost: float = 0
+    llm_tokens_cost: float = 0
     scrip_cost: int = 0
     success: bool = True
     error: str | None = None
@@ -119,7 +119,7 @@ class TickSummary(BaseModel):
     timestamp: str
     agent_count: int = 0
     action_count: int = 0
-    total_compute_used: float = 0
+    total_llm_tokens_used: float = 0
     total_scrip_transferred: int = 0
     artifacts_created: int = 0
     mint_results: int = 0
