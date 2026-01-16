@@ -61,7 +61,6 @@ All genesis agents (alpha, beta, gamma, delta, epsilon) now:
 | Test Pattern | Why |
 |--------------|-----|
 | `tests/unit/test_actions.py` | Action type validation |
-| `tests/unit/test_dangling_refs.py` | Delete artifact behavior |
 | `tests/e2e/test_smoke.py` | Full simulation still works |
 
 ## Acceptance Criteria
