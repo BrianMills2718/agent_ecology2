@@ -33,6 +33,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from ..config import get_validated_config
+
 
 @dataclass
 class AgentState:
@@ -129,9 +131,10 @@ class AgentStateStore:
 
     def _connect(self) -> sqlite3.Connection:
         """Create a new database connection with WAL mode."""
+        timeout = get_validated_config().timeouts.state_store_lock
         conn = sqlite3.connect(
             str(self.db_path),
-            timeout=30.0,  # Wait up to 30s for locks
+            timeout=timeout,  # Wait for locks (from config)
             isolation_level="IMMEDIATE",  # Acquire write lock early
         )
         # Enable WAL mode for better concurrency

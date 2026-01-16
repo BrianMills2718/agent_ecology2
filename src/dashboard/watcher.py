@@ -8,6 +8,8 @@ from typing import Callable, Awaitable, Any, TYPE_CHECKING
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileModifiedEvent, FileSystemEvent
 
+from ..config import get_validated_config
+
 if TYPE_CHECKING:
     from watchdog.observers import Observer as ObserverType
 
@@ -25,7 +27,9 @@ class JSONLFileHandler(FileSystemEventHandler):
         self.callback = callback
         self.loop = loop
         self._debounce_task: asyncio.Task[None] | None = None
-        self._debounce_delay = 0.1  # 100ms debounce
+        # Debounce delay from config (converted from ms to seconds)
+        config = get_validated_config()
+        self._debounce_delay = config.dashboard.debounce_delay_ms / 1000.0
 
     def on_modified(self, event: FileSystemEvent) -> None:
         """Handle file modification event."""
@@ -119,8 +123,10 @@ class JSONLWatcher:
 class PollingWatcher:
     """Fallback polling-based watcher for when watchdog isn't reliable."""
 
-    def __init__(self, jsonl_path: str | Path, poll_interval: float = 0.5) -> None:
+    def __init__(self, jsonl_path: str | Path, poll_interval: float | None = None) -> None:
         self.jsonl_path = Path(jsonl_path).resolve()
+        if poll_interval is None:
+            poll_interval = get_validated_config().dashboard.poll_interval
         self.poll_interval = poll_interval
         self._callbacks: list[Callable[[], Awaitable[None]]] = []
         self._running = False

@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .parser import JSONLParser
 from .kpis import calculate_kpis, EcosystemKPIs
 from .auditor import assess_health, AuditorThresholds, HealthReport
+from ..config import get_validated_config
 
 # Import simulation runner for control (may not be available)
 try:
@@ -99,7 +100,7 @@ class DashboardApp:
         self.config_path = Path(config_path)
 
         self.parser = JSONLParser(self.jsonl_path)
-        self.watcher = PollingWatcher(self.jsonl_path, poll_interval=0.5)
+        self.watcher = PollingWatcher(self.jsonl_path)  # poll_interval from config
         self.connection_manager = ConnectionManager()
 
         # Initial parse
@@ -634,11 +635,12 @@ def create_app(
             })
 
             # Keep connection alive and wait for messages
+            dashboard_timeout = get_validated_config().timeouts.dashboard_server
             while True:
                 try:
                     data = await asyncio.wait_for(
                         websocket.receive_text(),
-                        timeout=30.0
+                        timeout=dashboard_timeout
                     )
                     # Handle ping/pong for keepalive
                     if data == "ping":
