@@ -878,9 +878,25 @@ class SimulationRunner:
         result = await agent.propose_action_async(cast(dict[str, Any], tick_state))
 
         # Track API cost
-        usage = result.get("usage") or {"cost": 0.0}
+        usage = result.get("usage") or {"cost": 0.0, "input_tokens": 0, "output_tokens": 0}
         api_cost = usage.get("cost", 0.0)
+        input_tokens = usage.get("input_tokens", 0)
+        output_tokens = usage.get("output_tokens", 0)
         self.engine.track_api_cost(api_cost)
+
+        # Log thinking event for dashboard
+        thought_process = result.get("thought_process", "")
+        self.world.logger.log(
+            "thinking",
+            {
+                "tick": self.world.tick,
+                "principal_id": agent.agent_id,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "thinking_cost": 0,
+                "thought_process": thought_process,
+            },
+        )
 
         # Check for error
         if "error" in result:
@@ -912,6 +928,20 @@ class SimulationRunner:
 
         # Execute via world
         result = self.world.execute_action(intent)
+
+        # Log action event for dashboard
+        self.world.logger.log(
+            "action",
+            {
+                "tick": self.world.tick,
+                "agent_id": agent.agent_id,
+                "action_type": action.get("action_type", "noop"),
+                "artifact_id": action.get("artifact_id", ""),
+                "method": action.get("method", ""),
+                "success": result.success,
+                "message": result.message,
+            },
+        )
 
         # Record the action for the agent
         action_type = action.get("action_type", "noop")

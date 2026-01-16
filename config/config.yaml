@@ -428,9 +428,9 @@ libraries:
 dashboard:
   enabled: true
   host: "0.0.0.0"
-  port: 8080
+  port: 9000
   static_dir: "src/dashboard/static"
-  jsonl_file: "run.jsonl"
+  jsonl_file: "logs/latest/events.jsonl"
   websocket_path: "/ws"
   cors_origins: ["*"]
   max_events_cache: 10000
