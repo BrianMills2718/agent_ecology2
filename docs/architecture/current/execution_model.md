@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-16 (Plan #53 - Worker pool architecture)
+**Last verified:** 2026-01-16 (Plan #60 - Tick summary logging)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
@@ -163,6 +163,48 @@ def advance_tick(self) -> bool:
 
     return True
 ```
+
+---
+
+## Tick Summary Logging (Plan #60)
+
+Each tick-based run generates summary statistics for observability via `TickSummaryCollector`.
+
+### What's Tracked
+
+| Metric | Description |
+|--------|-------------|
+| `agents_active` | Agents that produced valid proposals |
+| `actions_executed` | Total actions in Phase 2 |
+| `actions_by_type` | Breakdown by action type (read, write, invoke, noop) |
+| `total_llm_tokens` | Combined input+output tokens for all agents |
+| `total_scrip_transferred` | Scrip moved via genesis_ledger invocations |
+| `artifacts_created` | New artifacts written this tick |
+| `errors` | Failed action count |
+| `highlights` | Notable events (artifact creation, etc.) |
+
+### Collection Points
+
+```
+1. advance_tick()              # Tick starts
+2. _tick_collector = new       # Initialize collector
+3. Phase 1: _think_agent()     # Record LLM tokens
+4. Phase 2: _execute_proposals() # Record actions, transfers, artifacts
+5. _tick_collector.finalize()  # Compute summary
+6. summary_logger.log_tick_summary() # Write to summary.jsonl
+```
+
+### Output
+
+Summary data written to `summary.jsonl` via `SummaryLogger`:
+
+```json
+{"type": "tick_summary", "tick": 5, "agents_active": 3, "actions_executed": 3,
+ "actions_by_type": {"invoke_artifact": 2, "write_artifact": 1},
+ "total_llm_tokens": 4523, "total_scrip_transferred": 100, ...}
+```
+
+Use `python scripts/view_log.py --summary` to view aggregated tick summaries.
 
 ---
 
