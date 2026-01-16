@@ -29,6 +29,45 @@ class StrictModel(BaseModel):
 
 
 # =============================================================================
+# TIMEOUTS MODEL
+# =============================================================================
+
+class TimeoutsConfig(StrictModel):
+    """Consolidated timeout values for all components."""
+
+    agent_loop_stop: float = Field(
+        default=5.0,
+        gt=0,
+        description="AgentLoop stop timeout in seconds"
+    )
+    loop_manager_stop: float = Field(
+        default=10.0,
+        gt=0,
+        description="AgentLoopManager stop_all timeout in seconds"
+    )
+    simulation_shutdown: float = Field(
+        default=5.0,
+        gt=0,
+        description="SimulationRunner shutdown timeout in seconds"
+    )
+    mcp_server: float = Field(
+        default=5.0,
+        gt=0,
+        description="MCP server operations timeout in seconds"
+    )
+    state_store_lock: float = Field(
+        default=30.0,
+        gt=0,
+        description="SQLite lock timeout in seconds"
+    )
+    dashboard_server: float = Field(
+        default=30.0,
+        gt=0,
+        description="Dashboard server operations timeout in seconds"
+    )
+
+
+# =============================================================================
 # RESOURCE MODELS
 # =============================================================================
 
@@ -659,6 +698,11 @@ class ExecutorConfig(StrictModel):
         gt=0,
         description="Maximum execution time in seconds"
     )
+    max_invoke_depth: int = Field(
+        default=5,
+        gt=0,
+        description="Maximum artifact invocation nesting depth"
+    )
     preloaded_imports: list[str] = Field(
         default_factory=lambda: ["math", "json", "random", "datetime"],
         description="Modules pre-loaded into execution namespace (NOT a security whitelist)"
@@ -830,6 +874,21 @@ class RateLimitingConfig(StrictModel):
 # MINT SCORER MODEL
 # =============================================================================
 
+class ScoreBoundsConfig(StrictModel):
+    """Score clamping bounds."""
+
+    min: int = Field(
+        default=0,
+        ge=0,
+        description="Minimum score"
+    )
+    max: int = Field(
+        default=100,
+        gt=0,
+        description="Maximum score"
+    )
+
+
 class MintScorerConfig(StrictModel):
     """LLM-based mint scorer configuration."""
 
@@ -846,6 +905,15 @@ class MintScorerConfig(StrictModel):
         default=200000,
         gt=0,
         description="Maximum content length to score"
+    )
+    score_bounds: ScoreBoundsConfig = Field(
+        default_factory=ScoreBoundsConfig,
+        description="Score clamping bounds"
+    )
+    thread_pool_workers: int = Field(
+        default=1,
+        gt=0,
+        description="Thread pool size for scoring"
     )
 
 
@@ -880,6 +948,31 @@ class LLMConfig(StrictModel):
 # LOGGING MODEL
 # =============================================================================
 
+class LoggingTruncationConfig(StrictModel):
+    """Log message truncation limits."""
+
+    content: int = Field(
+        default=100,
+        gt=0,
+        description="Artifact content truncation limit in logs"
+    )
+    code: int = Field(
+        default=100,
+        gt=0,
+        description="Code snippet truncation limit in logs"
+    )
+    errors: int = Field(
+        default=100,
+        gt=0,
+        description="Error message truncation limit"
+    )
+    detailed: int = Field(
+        default=500,
+        gt=0,
+        description="Detailed log truncation limit"
+    )
+
+
 class LoggingConfig(StrictModel):
     """Logging configuration."""
 
@@ -899,6 +992,89 @@ class LoggingConfig(StrictModel):
         default=50,
         gt=0,
         description="Default number of recent events to return"
+    )
+    truncation: LoggingTruncationConfig = Field(
+        default_factory=LoggingTruncationConfig,
+        description="Log message truncation limits"
+    )
+
+
+# =============================================================================
+# MONITORING MODEL
+# =============================================================================
+
+class ThresholdConfig(StrictModel):
+    """Warning and critical threshold pair."""
+
+    warning: float = Field(description="Warning threshold")
+    critical: float | None = Field(default=None, description="Critical threshold (optional)")
+
+
+class AuditThresholdsConfig(StrictModel):
+    """Audit alert thresholds."""
+
+    gini: ThresholdConfig = Field(
+        default_factory=lambda: ThresholdConfig(warning=0.7, critical=0.9),
+        description="Gini coefficient thresholds"
+    )
+    frozen_ratio: ThresholdConfig = Field(
+        default_factory=lambda: ThresholdConfig(warning=0.2, critical=0.5),
+        description="Frozen agent ratio thresholds"
+    )
+    active_ratio: ThresholdConfig = Field(
+        default_factory=lambda: ThresholdConfig(warning=0.3, critical=0.1),
+        description="Active agent ratio thresholds"
+    )
+    burn_rate: ThresholdConfig = Field(
+        default_factory=lambda: ThresholdConfig(warning=0.1, critical=0.25),
+        description="Budget burn rate thresholds"
+    )
+    scrip_velocity_low: ThresholdConfig = Field(
+        default_factory=lambda: ThresholdConfig(warning=0.001),
+        description="Scrip velocity low threshold"
+    )
+
+
+class HealthScoringConfig(StrictModel):
+    """Health score calculation parameters."""
+
+    warning_penalty: float = Field(
+        default=0.1,
+        ge=0,
+        description="Penalty per warning"
+    )
+    critical_penalty: float = Field(
+        default=0.2,
+        ge=0,
+        description="Penalty per critical"
+    )
+    trend_threshold: float = Field(
+        default=0.1,
+        ge=0,
+        description="Threshold for trend detection"
+    )
+    trend_history_ticks: int = Field(
+        default=10,
+        gt=0,
+        description="Ticks of history to analyze for trends"
+    )
+
+
+class MonitoringConfig(StrictModel):
+    """Ecosystem health monitoring configuration."""
+
+    audit_thresholds: AuditThresholdsConfig = Field(
+        default_factory=AuditThresholdsConfig,
+        description="Audit alert thresholds"
+    )
+    health_scoring: HealthScoringConfig = Field(
+        default_factory=HealthScoringConfig,
+        description="Health score calculation parameters"
+    )
+    active_agent_threshold_ticks: int = Field(
+        default=5,
+        gt=0,
+        description="Ticks of inactivity before agent considered inactive"
     )
 
 
@@ -983,6 +1159,16 @@ class DashboardConfig(StrictModel):
         default=10000,
         gt=0,
         description="Max events to cache in memory"
+    )
+    debounce_delay_ms: int = Field(
+        default=100,
+        gt=0,
+        description="File watcher debounce delay in milliseconds"
+    )
+    poll_interval: float = Field(
+        default=0.5,
+        gt=0,
+        description="Polling interval in seconds"
     )
 
 
@@ -1117,6 +1303,21 @@ class MemoryConfigModel(StrictModel):
 # LIBRARIES MODEL (Plan #29)
 # =============================================================================
 
+# =============================================================================
+# ID GENERATION MODEL
+# =============================================================================
+
+class IdGenerationConfig(StrictModel):
+    """Settings for artifact ID generation."""
+
+    uuid_hex_length: int = Field(
+        default=8,
+        gt=0,
+        le=32,
+        description="Characters from UUID hex for IDs"
+    )
+
+
 class LibrariesConfig(StrictModel):
     """Library installation configuration for agents."""
 
@@ -1156,6 +1357,7 @@ class AppConfig(StrictModel):
     scrip: ScripConfig = Field(default_factory=ScripConfig)
     costs: CostsConfig = Field(default_factory=CostsConfig)
     genesis: GenesisConfig = Field(default_factory=GenesisConfig)
+    timeouts: TimeoutsConfig = Field(default_factory=TimeoutsConfig)
     executor: ExecutorConfig = Field(default_factory=ExecutorConfig)
     validation: ValidationConfig = Field(default_factory=ValidationConfig)
     rate_limiting: RateLimitingConfig = Field(default_factory=RateLimitingConfig)
@@ -1163,12 +1365,14 @@ class AppConfig(StrictModel):
     mint_scorer: MintScorerConfig = Field(default_factory=MintScorerConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
     world: WorldConfig = Field(default_factory=WorldConfig)
     budget: BudgetConfig = Field(default_factory=BudgetConfig)
     dashboard: DashboardConfig = Field(default_factory=DashboardConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
     memory: MemoryConfigModel = Field(default_factory=MemoryConfigModel)
     libraries: LibrariesConfig = Field(default_factory=LibrariesConfig)
+    id_generation: IdGenerationConfig = Field(default_factory=IdGenerationConfig)
 
     # Dynamic fields set at runtime
     principals: list[dict[str, int | str]] = Field(
@@ -1234,6 +1438,8 @@ __all__ = [
     "FlowResource",
     "ScripConfig",
     "CostsConfig",
+    # Timeouts
+    "TimeoutsConfig",
     # Genesis configs
     "GenesisConfig",
     "GenesisArtifactsEnabled",
@@ -1267,8 +1473,14 @@ __all__ = [
     # Other configs
     "ExecutorConfig",
     "MintScorerConfig",
+    "ScoreBoundsConfig",
     "LLMConfig",
     "LoggingConfig",
+    "LoggingTruncationConfig",
+    "MonitoringConfig",
+    "AuditThresholdsConfig",
+    "HealthScoringConfig",
+    "ThresholdConfig",
     "WorldConfig",
     "BudgetConfig",
     "DashboardConfig",
@@ -1276,6 +1488,7 @@ __all__ = [
     "AgentPromptConfig",
     "RAGConfig",
     "ErrorMessagesConfig",
+    "IdGenerationConfig",
     # Functions
     "load_validated_config",
     "validate_config_dict",
