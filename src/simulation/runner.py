@@ -27,6 +27,7 @@ from ..agents.loader import load_agents, create_agent_artifacts, load_agents_fro
 from ..agents.agent import ActionResult as AgentActionResult, TokenUsage
 from ..agents.schema import ActionType
 from ..world.artifacts import create_agent_artifact, create_memory_artifact
+from ..world.logger import TickSummaryCollector
 
 from .types import (
     PrincipalConfig,
@@ -168,6 +169,9 @@ class SimulationRunner:
         self._pause_event = asyncio.Event()
         self._pause_event.set()  # Start unpaused
         self._running = False
+
+        # Summary logging (Plan #60)
+        self._tick_collector: TickSummaryCollector | None = None
 
     def _restore_checkpoint(self, checkpoint: CheckpointData) -> None:
         """Restore world state from checkpoint.
@@ -526,6 +530,10 @@ class SimulationRunner:
             output_tokens = result.get("output_tokens", 0)
             thinking_cost = result.get("thinking_cost", 0)
 
+            # Track LLM tokens for summary (Plan #60)
+            if self._tick_collector:
+                self._tick_collector.record_llm_tokens(input_tokens + output_tokens)
+
             # Extract thought process from proposal if available
             thought_process = result.get("proposal", {}).get("thought_process", "")
 
@@ -630,6 +638,10 @@ class SimulationRunner:
             if api_cost > 0:
                 self.world.ledger.spend_resource(agent_id, "llm_budget", api_cost)
 
+            # Track LLM tokens for summary (Plan #60)
+            if self._tick_collector:
+                self._tick_collector.record_llm_tokens(input_tokens + output_tokens)
+
             # Log the thinking
             thought_process = action_result.get("thought_process", "")
             self.world.logger.log(
@@ -701,6 +713,22 @@ class SimulationRunner:
                 print(f"    {agent.agent_id}: {status}: {result.message}")
 
             raw_action_type = action_dict.get("action_type", "noop")
+
+            # Track action for summary (Plan #60)
+            if self._tick_collector:
+                self._tick_collector.record_action(raw_action_type, success=result.success)
+
+                # Track artifact creation
+                if raw_action_type == "write_artifact" and result.success:
+                    self._tick_collector.record_artifact_created()
+                    artifact_id = action_dict.get("artifact_id", "unknown")
+                    self._tick_collector.add_highlight(f"{agent.agent_id} created {artifact_id}")
+
+                # Track scrip transfers from invoke results
+                if raw_action_type == "invoke" and result.success and result.data:
+                    transfer_amount = result.data.get("scrip_transferred", 0)
+                    if transfer_amount > 0:
+                        self._tick_collector.record_scrip_transfer(transfer_amount)
             valid_types = get_args(ActionType)
             action_type: ActionType = raw_action_type if raw_action_type in valid_types else "noop"
             agent.set_last_result(action_type, result.success, result.message, result.data)
@@ -832,6 +860,9 @@ class SimulationRunner:
             if self.verbose:
                 print(f"--- Tick {self.world.tick} ---")
 
+            # Initialize tick summary collector (Plan #60)
+            self._tick_collector = TickSummaryCollector()
+
             # Handle mint auction tick (resolve auctions, start bidding windows)
             mint_result = self._handle_mint_tick()
             if mint_result and self.verbose:
@@ -920,6 +951,24 @@ class SimulationRunner:
                 )
                 if self.verbose:
                     print(f"  [CHECKPOINT] Saved to {checkpoint_file}")
+
+            # Log tick summary (Plan #60)
+            if self._tick_collector and self.world.logger.summary_logger:
+                summary = self._tick_collector.finalize(
+                    tick=self.world.tick,
+                    agents_active=len(proposals),  # Agents that produced valid proposals
+                )
+                self.world.logger.summary_logger.log_tick_summary(
+                    tick=summary["tick"],
+                    agents_active=summary["agents_active"],
+                    actions_executed=summary["actions_executed"],
+                    actions_by_type=summary["actions_by_type"],
+                    total_llm_tokens=summary["total_llm_tokens"],
+                    total_scrip_transferred=summary["total_scrip_transferred"],
+                    artifacts_created=summary["artifacts_created"],
+                    errors=summary["errors"],
+                    highlights=summary["highlights"],
+                )
 
             if self.verbose:
                 print(f"  End of tick. Scrip: {self.world.ledger.get_all_scrip()}")

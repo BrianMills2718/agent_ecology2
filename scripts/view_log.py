@@ -6,6 +6,7 @@ Usage:
     python view_log.py                    # Summary of run.jsonl
     python view_log.py --full             # Full event log
     python view_log.py --artifacts        # List all artifacts
+    python view_log.py --report           # Quick tick summary report (from summary.jsonl)
     python view_log.py run2.jsonl         # View different log file
 """
 
@@ -155,12 +156,111 @@ def show_artifacts(events: list) -> None:
         print(f"Content:\n{data['content']}")
 
 
+def show_report(summary_file: str) -> None:
+    """Show quick tick summary report from summary.jsonl (Plan #60).
+
+    Displays a concise overview of the simulation run:
+    - Per-tick statistics
+    - Total actions by type
+    - Notable highlights
+    """
+    summaries = []
+    with open(summary_file) as f:
+        for line in f:
+            if line.strip():
+                summaries.append(json.loads(line))
+
+    if not summaries:
+        print("No tick summaries found.")
+        return
+
+    print("=" * 60)
+    print("TICK SUMMARY REPORT")
+    print("=" * 60)
+
+    # Aggregate stats
+    total_actions = sum(s.get("actions_executed", 0) for s in summaries)
+    total_tokens = sum(s.get("total_llm_tokens", 0) for s in summaries)
+    total_scrip = sum(s.get("total_scrip_transferred", 0) for s in summaries)
+    total_artifacts = sum(s.get("artifacts_created", 0) for s in summaries)
+    total_errors = sum(s.get("errors", 0) for s in summaries)
+
+    # Action type breakdown across all ticks
+    action_types = defaultdict(int)
+    for s in summaries:
+        for action_type, count in s.get("actions_by_type", {}).items():
+            action_types[action_type] += count
+
+    # All highlights
+    all_highlights = []
+    for s in summaries:
+        for h in s.get("highlights", []):
+            all_highlights.append((s.get("tick", "?"), h))
+
+    print(f"\nRun Overview:")
+    print(f"  Total ticks: {len(summaries)}")
+    print(f"  Total actions: {total_actions}")
+    print(f"  Total LLM tokens: {total_tokens:,}")
+    print(f"  Total scrip transferred: {total_scrip}")
+    print(f"  Artifacts created: {total_artifacts}")
+    print(f"  Total errors: {total_errors}")
+
+    if action_types:
+        print(f"\nAction Types:")
+        for action_type, count in sorted(action_types.items(), key=lambda x: -x[1]):
+            print(f"  {action_type}: {count}")
+
+    if all_highlights:
+        print(f"\nHighlights:")
+        for tick, highlight in all_highlights[-10:]:  # Last 10 highlights
+            print(f"  [Tick {tick}] {highlight}")
+        if len(all_highlights) > 10:
+            print(f"  ... and {len(all_highlights) - 10} more")
+
+    # Per-tick summary table
+    print(f"\nPer-Tick Summary:")
+    print(f"  {'Tick':>5} {'Agents':>7} {'Actions':>8} {'Tokens':>8} {'Errors':>6}")
+    print(f"  {'-'*5} {'-'*7} {'-'*8} {'-'*8} {'-'*6}")
+    for s in summaries[:20]:  # Show first 20 ticks
+        tick = s.get("tick", "?")
+        agents = s.get("agents_active", 0)
+        actions = s.get("actions_executed", 0)
+        tokens = s.get("total_llm_tokens", 0)
+        errors = s.get("errors", 0)
+        print(f"  {tick:>5} {agents:>7} {actions:>8} {tokens:>8} {errors:>6}")
+    if len(summaries) > 20:
+        print(f"  ... and {len(summaries) - 20} more ticks")
+
+
 def main():
     parser = argparse.ArgumentParser(description="View simulation logs")
     parser.add_argument("log_file", nargs="?", default="run.jsonl", help="Log file to view")
     parser.add_argument("--full", action="store_true", help="Show full event log")
     parser.add_argument("--artifacts", action="store_true", help="Show artifacts")
+    parser.add_argument("--report", action="store_true", help="Show tick summary report (reads summary.jsonl)")
     args = parser.parse_args()
+
+    # Handle --report mode (reads summary.jsonl, not events.jsonl)
+    if args.report:
+        # Determine summary file location
+        log_path = Path(args.log_file)
+        if log_path.name in ("run.jsonl", "events.jsonl"):
+            # Look for summary.jsonl in same directory
+            summary_file = log_path.parent / "summary.jsonl"
+        elif log_path.is_dir():
+            # Directory provided - look for summary.jsonl inside
+            summary_file = log_path / "summary.jsonl"
+        else:
+            # Assume it's the summary file itself
+            summary_file = log_path
+
+        if not summary_file.exists():
+            print(f"Error: {summary_file} not found")
+            print("Hint: --report reads summary.jsonl (created in per-run mode)")
+            return
+
+        show_report(str(summary_file))
+        return
 
     if not Path(args.log_file).exists():
         print(f"Error: {args.log_file} not found")

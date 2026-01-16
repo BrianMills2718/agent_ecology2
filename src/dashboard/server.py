@@ -390,6 +390,76 @@ def create_app(
         dashboard.parser.parse_incremental()
         return [t.model_dump() for t in dashboard.parser.state.tick_summaries]
 
+    @app.get("/api/summary")
+    async def get_summary() -> dict[str, Any]:
+        """Get tractable tick summary data (Plan #60).
+
+        Reads summary.jsonl (if present) for quick overview metrics.
+        Returns aggregated stats and per-tick summaries.
+        """
+        # Look for summary.jsonl in same directory as events log
+        summary_path = dashboard.jsonl_path.parent / "summary.jsonl"
+
+        if not summary_path.exists():
+            return {
+                "available": False,
+                "message": "summary.jsonl not found (enable per-run mode for tractable logs)",
+                "summaries": [],
+            }
+
+        # Parse summary.jsonl
+        summaries: list[dict[str, Any]] = []
+        try:
+            with open(summary_path) as f:
+                for line in f:
+                    if line.strip():
+                        summaries.append(json.loads(line))
+        except Exception as e:
+            return {
+                "available": False,
+                "message": f"Error reading summary.jsonl: {e}",
+                "summaries": [],
+            }
+
+        if not summaries:
+            return {
+                "available": True,
+                "message": "No tick summaries recorded yet",
+                "summaries": [],
+                "totals": {},
+            }
+
+        # Aggregate stats
+        totals = {
+            "total_ticks": len(summaries),
+            "total_actions": sum(s.get("actions_executed", 0) for s in summaries),
+            "total_llm_tokens": sum(s.get("total_llm_tokens", 0) for s in summaries),
+            "total_scrip_transferred": sum(s.get("total_scrip_transferred", 0) for s in summaries),
+            "total_artifacts_created": sum(s.get("artifacts_created", 0) for s in summaries),
+            "total_errors": sum(s.get("errors", 0) for s in summaries),
+        }
+
+        # Action type breakdown
+        action_types: dict[str, int] = {}
+        for s in summaries:
+            for action_type, count in s.get("actions_by_type", {}).items():
+                action_types[action_type] = action_types.get(action_type, 0) + count
+        totals["actions_by_type"] = action_types
+
+        # Collect highlights
+        all_highlights: list[dict[str, Any]] = []
+        for s in summaries:
+            tick = s.get("tick", 0)
+            for h in s.get("highlights", []):
+                all_highlights.append({"tick": tick, "text": h})
+
+        return {
+            "available": True,
+            "summaries": summaries,
+            "totals": totals,
+            "highlights": all_highlights[-50:],  # Last 50 highlights
+        }
+
     @app.get("/api/network")
     async def get_network_graph(
         tick_max: int | None = Query(None, description="Max tick to include"),

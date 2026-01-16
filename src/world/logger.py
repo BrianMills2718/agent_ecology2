@@ -11,17 +11,168 @@ from typing import Any
 from ..config import get
 
 
+class SummaryLogger:
+    """Writes per-tick summary lines to summary.jsonl.
+
+    Creates a tractable overview of simulation activity alongside
+    the full event log. One line per tick with key metrics.
+    """
+
+    output_path: Path
+
+    def __init__(self, path: Path) -> None:
+        """Initialize the summary logger.
+
+        Args:
+            path: Path to the summary.jsonl file
+        """
+        self.output_path = path
+        # Create parent directory if needed
+        self.output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def log_tick_summary(
+        self,
+        tick: int,
+        agents_active: int,
+        actions_executed: int,
+        actions_by_type: dict[str, int] | None = None,
+        total_llm_tokens: int = 0,
+        total_scrip_transferred: int = 0,
+        artifacts_created: int = 0,
+        errors: int = 0,
+        highlights: list[str] | None = None,
+    ) -> None:
+        """Log a single tick summary.
+
+        Args:
+            tick: The tick number
+            agents_active: Number of agents that acted this tick
+            actions_executed: Total actions executed
+            actions_by_type: Breakdown of actions by type (e.g., {"invoke": 3, "write": 2})
+            total_llm_tokens: Total LLM tokens consumed this tick
+            total_scrip_transferred: Total scrip transferred this tick
+            artifacts_created: Number of artifacts created
+            errors: Number of errors/failures
+            highlights: List of notable events (e.g., "alpha created tool_x")
+        """
+        summary: dict[str, Any] = {
+            "tick": tick,
+            "timestamp": datetime.utcnow().isoformat(),
+            "agents_active": agents_active,
+            "actions_executed": actions_executed,
+            "actions_by_type": actions_by_type or {},
+            "total_llm_tokens": total_llm_tokens,
+            "total_scrip_transferred": total_scrip_transferred,
+            "artifacts_created": artifacts_created,
+            "errors": errors,
+            "highlights": highlights or [],
+        }
+        with open(self.output_path, "a") as f:
+            f.write(json.dumps(summary) + "\n")
+
+
+class TickSummaryCollector:
+    """Accumulates metrics within a tick for summary logging.
+
+    Use this to track actions, tokens, scrip, and highlights during
+    a tick, then call finalize() to get the summary dict.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the collector with zeroed counters."""
+        self._reset()
+
+    def _reset(self) -> None:
+        """Reset all counters to initial state."""
+        self._actions_executed: int = 0
+        self._actions_by_type: dict[str, int] = {}
+        self._errors: int = 0
+        self._llm_tokens: int = 0
+        self._scrip_transferred: int = 0
+        self._artifacts_created: int = 0
+        self._highlights: list[str] = []
+
+    def record_action(self, action_type: str, success: bool = True) -> None:
+        """Record an action execution.
+
+        Args:
+            action_type: The type of action (e.g., "invoke", "write", "read")
+            success: Whether the action succeeded
+        """
+        self._actions_executed += 1
+        self._actions_by_type[action_type] = self._actions_by_type.get(action_type, 0) + 1
+        if not success:
+            self._errors += 1
+
+    def record_llm_tokens(self, count: int) -> None:
+        """Record LLM token usage.
+
+        Args:
+            count: Number of tokens consumed
+        """
+        self._llm_tokens += count
+
+    def record_scrip_transfer(self, amount: int) -> None:
+        """Record a scrip transfer.
+
+        Args:
+            amount: Amount of scrip transferred
+        """
+        self._scrip_transferred += amount
+
+    def record_artifact_created(self) -> None:
+        """Record that an artifact was created."""
+        self._artifacts_created += 1
+
+    def add_highlight(self, text: str) -> None:
+        """Add a notable event to highlights.
+
+        Args:
+            text: Description of the notable event
+        """
+        self._highlights.append(text)
+
+    def finalize(self, tick: int, agents_active: int) -> dict[str, Any]:
+        """Finalize the tick and return summary dict.
+
+        Resets the collector state after returning.
+
+        Args:
+            tick: The tick number
+            agents_active: Number of agents that were active
+
+        Returns:
+            Summary dict suitable for SummaryLogger.log_tick_summary()
+        """
+        summary: dict[str, Any] = {
+            "tick": tick,
+            "timestamp": datetime.utcnow().isoformat(),
+            "agents_active": agents_active,
+            "actions_executed": self._actions_executed,
+            "actions_by_type": self._actions_by_type.copy(),
+            "total_llm_tokens": self._llm_tokens,
+            "total_scrip_transferred": self._scrip_transferred,
+            "artifacts_created": self._artifacts_created,
+            "errors": self._errors,
+            "highlights": self._highlights.copy(),
+        }
+        self._reset()
+        return summary
+
+
 class EventLogger:
     """Append-only JSONL event log with per-run directory support.
-    
+
     Supports two modes:
     1. Per-run mode (run_id + logs_dir): Creates timestamped directories
        - logs/{run_id}/events.jsonl
+       - logs/{run_id}/summary.jsonl (companion SummaryLogger)
        - logs/latest -> {run_id} (symlink)
     2. Legacy mode (output_file only): Single file, overwritten each run
     """
 
     output_path: Path
+    summary_logger: SummaryLogger | None
     _logs_dir: Path | None
     _run_id: str | None
 
@@ -32,7 +183,7 @@ class EventLogger:
         run_id: str | None = None,
     ) -> None:
         """Initialize the event logger.
-        
+
         Args:
             output_file: Legacy mode - single file path (default: run.jsonl)
             logs_dir: Per-run mode - base directory for run logs
@@ -40,6 +191,7 @@ class EventLogger:
         """
         self._logs_dir = Path(logs_dir) if logs_dir else None
         self._run_id = run_id
+        self.summary_logger = None  # Set in _setup_per_run_logging if applicable
 
         if logs_dir and run_id:
             # Per-run mode: create timestamped directory
@@ -60,6 +212,9 @@ class EventLogger:
         # Set output path
         self.output_path = run_dir / "events.jsonl"
         self.output_path.write_text("")  # Clear/create file
+
+        # Create companion SummaryLogger for tractable tick summaries
+        self.summary_logger = SummaryLogger(run_dir / "summary.jsonl")
 
         # Create/update 'latest' symlink
         latest_link = self._logs_dir / "latest"
