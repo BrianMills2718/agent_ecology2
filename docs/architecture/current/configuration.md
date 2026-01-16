@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-16 (Plan #57 - disk quota config, rate limits updated)
+**Last verified:** 2026-01-16 (Plan #53 - worker pool config, memory_bytes resource)
 
 ---
 
@@ -87,15 +87,22 @@ costs:
   per_1k_output_tokens: 3   # Compute cost per 1K output
 ```
 
-### Execution (Phase 2)
+### Execution (Plan #53)
 
 ```yaml
 execution:
-  use_autonomous_loops: false     # Enable autonomous agent loops
-  resource_exhaustion_policy: skip  # "skip" or "block"
+  use_autonomous_loops: true      # Enable autonomous agent loops (default)
+  use_worker_pool: false          # Enable worker pool for 100+ agents (Plan #53)
+  worker_pool:
+    num_workers: 4                # Number of parallel worker threads
+    state_db_path: "agent_state.db"  # SQLite database for agent state
+  agent_loop:
+    min_loop_delay: 0.1           # Minimum seconds between actions
+    max_loop_delay: 10.0          # Maximum backoff on errors
+    resource_exhaustion_policy: skip  # "skip" or "block"
 ```
 
-### Rate Limiting (Phase 3)
+### Rate Limiting (Plan #53)
 
 ```yaml
 rate_limiting:
@@ -103,13 +110,17 @@ rate_limiting:
   window_seconds: 60.0            # Rolling window duration
   resources:
     llm_tokens:
-      max_per_window: 1000        # LLM tokens per window
+      max_per_window: 1000000000  # Effectively unlimited
     llm_calls:
-      max_per_window: 100
+      max_per_window: 1000000000  # Effectively unlimited
     disk_writes:
-      max_per_window: 1000
+      max_per_window: 1000000     # 1M writes per window
     bandwidth_bytes:
-      max_per_window: 10485760    # 10MB
+      max_per_window: 1073741824  # 1GB per window
+    cpu_seconds:
+      max_per_window: 5.0         # CPU-seconds per window (Plan #53)
+    memory_bytes:
+      max_per_window: 104857600   # 100MB per window (Plan #53)
 ```
 
 **Note:** Rate limiting replaces tick-based resource reset. When enabled, resources flow continuously via RateTracker rolling windows instead of resetting each tick.
