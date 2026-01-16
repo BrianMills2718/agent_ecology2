@@ -28,6 +28,7 @@ from ..agents.agent import ActionResult as AgentActionResult, TokenUsage
 from ..agents.schema import ActionType
 from ..world.artifacts import create_agent_artifact, create_memory_artifact
 from ..world.logger import TickSummaryCollector
+from ..config import get_validated_config
 
 from .types import (
     PrincipalConfig,
@@ -1160,7 +1161,7 @@ class SimulationRunner:
             "data": result.data,
         }
 
-    async def shutdown(self, timeout: float = 5.0) -> None:
+    async def shutdown(self, timeout: float | None = None) -> None:
         """Gracefully stop the simulation.
 
         Stops all agent loops if in autonomous mode.
@@ -1168,7 +1169,10 @@ class SimulationRunner:
 
         Args:
             timeout: Maximum seconds to wait for loops to stop.
+                     Defaults to config timeouts.simulation_shutdown.
         """
+        if timeout is None:
+            timeout = get_validated_config().timeouts.simulation_shutdown
         if self.use_autonomous_loops and self.world.loop_manager:
             await self.world.loop_manager.stop_all(timeout=timeout)
         if self._worker_pool is not None:
