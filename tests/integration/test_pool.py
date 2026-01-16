@@ -1,6 +1,6 @@
-"""Integration tests for worker pool (Plan #53 Phase 3).
+"""Integration tests for pool module (Plan #53 Phase 3).
 
-Tests the pool's ability to run multiple agents in parallel.
+Tests WorkerPool's ability to run multiple agents in parallel.
 """
 
 from __future__ import annotations
