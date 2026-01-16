@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-15 (Plan #43 - ADR check uses script; Plan #48 optimizations)
+Last verified: 2026-01-16 (Plan #48 - path filtering, job consolidation)
 
 ---
 
@@ -11,28 +11,35 @@ Last verified: 2026-01-15 (Plan #43 - ADR check uses script; Plan #48 optimizati
 Located at `.github/workflows/ci.yml`
 
 **Triggers:**
-- Push to `main` branch
-- Pull requests to `main` branch
+- Pull requests to `main` branch (full CI)
+- Push to `main` branch (post-merge check only)
 
 **Concurrency:**
 - Cancels in-progress runs when new commits push to same branch
 - Prevents wasted CI on superseded commits
 
+**Permissions:**
+- `contents: read` - Read repository contents
+- `pull-requests: read` - Read PR metadata for path filtering
+
 ---
 
-## Jobs (Consolidated)
+## Jobs (Optimized)
 
-The CI workflow has 7 consolidated jobs (reduced from 15+ for efficiency):
+The CI workflow uses path filtering to skip expensive jobs for docs-only changes:
 
-| Job | Checks | Caching |
-|-----|--------|---------|
-| `test` | pytest | ✓ pip cache |
-| `mypy` | type checking | ✓ pip cache |
-| `docs` | doc-coupling, governance-sync | - |
-| `plans` | plan-status-sync, plan-blockers, plan-tests, plan-required | ✓ pip cache |
-| `code-quality` | mock-usage, new-code-tests, feature-coverage | - |
-| `meta` | locked-sections, validate-specs, claim-verification, human-review, adr-requirement | - |
-| `post-merge` | plan-completion-evidence | - |
+| Job | Checks | When |
+|-----|--------|------|
+| `changes` | Path detection (dorny/paths-filter) | All PRs |
+| `test` | pytest | Code changes only |
+| `mypy` | type checking | Code changes only |
+| `fast-checks` | doc-coupling, governance, mock-usage, new-code-tests, meta | All PRs |
+| `plans` | plan-status-sync, plan-blockers, plan-tests, plan-required | All PRs |
+| `post-merge` | plan-completion-evidence | Main push only |
+
+**Path filtering:**
+- `code` changes: `src/**`, `tests/**`, `run.py`, `requirements*.txt`, `pyproject.toml`
+- `docs` changes: `docs/**`, `*.md`, `scripts/**`, `.claude/**`
 
 ### 1. test
 
@@ -294,4 +301,6 @@ Consider adding:
 - **Coverage reporting** - Track test coverage trends
 - **Lint job** - ruff or flake8 for style consistency
 - **Security scanning** - pip-audit for dependency vulnerabilities
-- **Conditional execution** - Skip jobs when irrelevant files change
+
+**Already implemented:**
+- ✅ Conditional execution via path filtering (Plan #48)
