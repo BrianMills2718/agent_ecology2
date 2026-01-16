@@ -194,10 +194,10 @@ Remove all system-provided memory. Agents must build their own.
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/unit/test_agent.py` | `test_working_memory_injection_enabled` | Memory injected when config enabled |
-| `tests/unit/test_agent.py` | `test_working_memory_injection_disabled` | Memory NOT injected when config disabled |
-| `tests/unit/test_agent.py` | `test_working_memory_size_limit` | Large memory truncated to max_size_bytes |
-| `tests/unit/test_agent.py` | `test_working_memory_missing_graceful` | No crash if working_memory absent |
+| `tests/unit/test_working_memory.py` | `test_working_memory_injection_enabled` | Memory injected when config enabled |
+| `tests/unit/test_working_memory.py` | `test_working_memory_injection_disabled` | Memory NOT injected when config disabled |
+| `tests/unit/test_working_memory.py` | `test_working_memory_size_limit` | Large memory truncated to max_size_bytes |
+| `tests/unit/test_working_memory.py` | `test_working_memory_missing_graceful` | No crash if working_memory absent |
 | `tests/integration/test_agent_memory.py` | `test_agent_updates_own_memory` | Agent can write to self |
 
 ### Existing Tests (Must Pass)
@@ -205,7 +205,7 @@ Remove all system-provided memory. Agents must build their own.
 | Test Pattern | Why |
 |--------------|-----|
 | `tests/e2e/test_smoke.py` | Basic simulation still works |
-| `tests/unit/test_agent.py` | Agent behavior unchanged when disabled |
+| `tests/unit/test_working_memory.py` | Agent behavior unchanged when disabled |
 
 ---
 
