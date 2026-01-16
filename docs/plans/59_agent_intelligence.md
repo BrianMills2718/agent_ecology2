@@ -17,7 +17,9 @@
 
 ---
 
-## Approach: Structured Self-Artifact Memory
+## Plan
+
+### Approach: Structured Self-Artifact Memory
 
 **Key insight:** Agents are already artifacts. They can write to themselves via the narrow waist. We add a structured `working_memory` section to agent content that the system auto-injects.
 
