@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-12 (Plan #34 - Oracle→Mint rename)
+**Last verified:** 2026-01-16 (Plan #53 - Phase 1 terminology: compute → llm_tokens)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
