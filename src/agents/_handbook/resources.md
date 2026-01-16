@@ -1,19 +1,29 @@
 # Resources
 
-Three types of value in the economy.
+Two types of resources in the economy.
 
-## Scrip (Economic Currency)
-- **Persistent** - accumulates or depletes over time
+## Scrip (Money)
+
+Scrip is money. It's the medium of exchange that lets agents trade and coordinate.
+
 - **Starting amount**: 100
-- **Earned by**: Selling artifacts (when others invoke), mint rewards
-- **Spent on**: Artifact prices, transfers, genesis method fees
+- **Earned by**: Selling artifacts, mint rewards
+- **Spent on**: Buying artifacts, transfers, genesis method fees
 - **Trade**: `genesis_ledger.transfer([from, to, amount])`
 
-Scrip is the medium of exchange. If you run out, you can still act but can't buy anything.
+## Physical Resources (Scarce Capacity)
+
+These are the actual physical constraints on what you can do:
+
+- **Disk** (bytes) - Your storage quota. Finite but reclaimable (delete artifacts).
+- **Compute** (tokens/tick) - Your thinking budget per tick. Resets each tick.
+- **LLM budget** (dollars) - Global simulation limit. Once spent, simulation ends.
+
+**All resources are tradeable.** You can trade scrip for disk quota, compute for scrip, etc. Even at zero scrip, you can still trade physical resources for other physical resources.
 
 ## Compute (Per-Tick Budget)
 - **Resets each tick** - use it or lose it
-- **Quota**: ~50 per tick (varies by config)
+- **Quota**: ~1000 token-units per tick (varies by config)
 - **Used by**: LLM thinking, genesis method costs, code execution
 - **If exhausted**: Wait for next tick
 - **Trade**: `genesis_rights_registry.transfer_quota([from, to, "compute", amount])`
@@ -21,13 +31,26 @@ Scrip is the medium of exchange. If you run out, you can still act but can't buy
 Compute represents CPU/LLM capacity. Heavy thinking uses more compute.
 
 ## Disk (Storage Quota)
-- **Persistent** - doesn't reset
-- **Quota**: ~10,000 bytes per agent
+- **Persistent** - doesn't reset, but reclaimable
+- **Quota**: ~100,000 bytes per agent (100KB)
 - **Used by**: write_artifact (content + code bytes)
-- **If full**: Delete artifacts or trade for more quota
+- **If full**: **Delete old artifacts** or trade for more quota
 - **Trade**: `genesis_rights_registry.transfer_quota([from, to, "disk", amount])`
 
-Disk is your storage limit. Large artifacts consume more disk.
+### Managing Disk Space
+
+**Don't waste disk on trivial artifacts.** Every byte of code you write consumes quota.
+
+To free disk space, delete artifacts you no longer need:
+```json
+{"action_type": "delete_artifact", "artifact_id": "my_old_artifact"}
+```
+
+**Good disk hygiene:**
+- Delete failed experiments
+- Remove superseded versions
+- Don't create duplicate primitives
+- Build fewer, more valuable artifacts
 
 ## Libraries (Python Packages)
 
@@ -46,6 +69,18 @@ Disk is your storage limit. Large artifacts consume more disk.
 **Blocked packages** (security risks):
 - `docker`, `debugpy`, `pyautogui`, `keyboard`, `pynput`
 
+## Capital Structure Thinking
+
+**Capital structure** = artifacts that compound over time. Good artifacts enable better artifacts. The ecosystem becomes more capable as capital accumulates.
+
+When deciding what to build, ask:
+1. **Does this enable other things?** Infrastructure > isolated tools.
+2. **Will this compound?** Can others build on top of this?
+3. **Is this already built?** Check escrow listings before reinventing.
+4. **Can I compose existing artifacts?** Use `invoke()` to chain primitives.
+
+**Build infrastructure that compounds.** The mint rewards artifacts that contribute to the ecosystem's long-term emergent capability.
+
 ## Resource Flow
 
 ```
@@ -54,4 +89,5 @@ Each tick:
 2. Agents think (costs compute from LLM tokens)
 3. Agents act (may cost compute or scrip)
 4. Scrip and disk persist to next tick
+5. Deleted artifacts free disk space immediately
 ```

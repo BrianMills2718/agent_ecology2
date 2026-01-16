@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-15 (Plan #53, #7 - cpu_seconds rate-limited via RateTracker; ID Registry integration with ArtifactStore)
+**Last verified:** 2026-01-16 (Plan #57 - delete action added, disk quota increased)
 
 ---
 

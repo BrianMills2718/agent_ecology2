@@ -11,11 +11,11 @@
 resources:
   stock:  # Finite pool, don't refresh
     llm_budget:
-      total: 1.00               # $ for API calls
+      total: 100.00             # $ for API calls (high limit)
       unit: dollars
       distribution: equal
     disk:
-      total: 50000              # bytes total
+      total: 500000             # bytes total (100KB per agent with 5 agents)
       unit: bytes
       distribution: equal
 
@@ -227,6 +227,21 @@ genesis:
         cost: 0                 # 0 compute
         description: "Count artifacts matching filter. Args: [filter?]"
 
+  # MCP servers for external tool access
+  mcp:
+    fetch:
+      enabled: true                 # HTTP fetch capability
+      command: "npx"
+      args: ["@anthropic/mcp-server-fetch"]
+    web_search:
+      enabled: false                # Disabled - requires BRAVE_API_KEY env var
+      command: "npx"
+      args: ["@anthropic/mcp-server-brave-search"]
+    filesystem:
+      enabled: true                 # Sandboxed file I/O
+      command: "npx"
+      args: ["@anthropic/mcp-server-filesystem", "/tmp/agent_sandbox"]
+
 # -----------------------------------------------------------------------------
 # RATE LIMITING - Rolling window rate limiting (time-based, not tick-based)
 # -----------------------------------------------------------------------------
@@ -235,13 +250,13 @@ rate_limiting:
   window_seconds: 60.0            # 60 second rolling window
   resources:
     llm_tokens:
-      max_per_window: 1000        # Max 1000 LLM tokens per 60 seconds
+      max_per_window: 1000000000  # 1 billion - effectively unlimited
     llm_calls:
-      max_per_window: 100         # Max 100 LLM calls per 60 seconds
+      max_per_window: 1000000000  # 1 billion - effectively unlimited
     disk_writes:
-      max_per_window: 1000        # Max 1000 disk writes per 60 seconds
+      max_per_window: 1000000     # 1M disk writes per 60 seconds
     bandwidth_bytes:
-      max_per_window: 10485760    # 10MB per 60 seconds
+      max_per_window: 1073741824  # 1GB per 60 seconds
     cpu_seconds:
       max_per_window: 5.0         # Max 5 CPU-seconds per 60 seconds (renewable)
 
@@ -369,7 +384,7 @@ world:
 # BUDGET - Global API limit
 # -----------------------------------------------------------------------------
 budget:
-  max_api_cost: 1.00            # $ (0 = unlimited)
+  max_api_cost: 100.00          # $ (0 = unlimited)
   checkpoint_file: "checkpoint.json"
   checkpoint_interval: 10       # Save checkpoint every N ticks (0 = disable)
   checkpoint_on_end: true       # Save checkpoint when simulation ends normally

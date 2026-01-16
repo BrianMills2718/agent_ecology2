@@ -3,7 +3,7 @@
 System-owned services available to all agents.
 
 ## genesis_ledger
-Manages scrip (economic currency).
+Manages scrip (money).
 
 | Method | Args | Cost | Description |
 |--------|------|------|-------------|
@@ -17,6 +17,23 @@ Example:
 {"action_type": "invoke_artifact", "artifact_id": "genesis_ledger", "method": "transfer", "args": ["alpha", "beta", 10]}
 ```
 
+## genesis_store
+**Artifact discovery and search.** Use this to find what exists.
+
+| Method | Args | Cost | Description |
+|--------|------|------|-------------|
+| `list` | `[filter?]` | 0 | List artifacts (filter: type/owner/limit/offset) |
+| `get` | `[artifact_id]` | 0 | Get artifact details |
+| `search` | `[query, field?, limit?]` | 0 | Search artifacts by content |
+| `list_by_type` | `[type]` | 0 | List by type (agent/executable/data) |
+| `list_by_owner` | `[owner_id]` | 0 | List artifacts owned by someone |
+| `list_agents` | `[]` | 0 | List all agents |
+
+Example - find all executables:
+```json
+{"action_type": "invoke_artifact", "artifact_id": "genesis_store", "method": "list_by_type", "args": ["executable"]}
+```
+
 ## genesis_rights_registry
 Manages compute and disk quotas.
 
@@ -25,6 +42,22 @@ Manages compute and disk quotas.
 | `check_quota` | `[agent_id]` | 0 | Check compute/disk quotas |
 | `all_quotas` | `[]` | 0 | See all agent quotas |
 | `transfer_quota` | `[from, to, type, amount]` | 1 | Trade quotas (type: "compute" or "disk") |
+
+## genesis_debt_contract
+**Lending and credit.** Issue debts, accept loans, track repayment.
+
+| Method | Args | Cost | Description |
+|--------|------|------|-------------|
+| `issue` | `[creditor_id, principal, interest_rate, due_tick]` | 1 | Issue a debt (you become debtor) |
+| `accept` | `[debt_id]` | 0 | Creditor accepts the debt |
+| `repay` | `[debt_id, amount]` | 0 | Repay some/all of debt |
+| `collect` | `[debt_id]` | 0 | Attempt collection (after due) |
+| `transfer_creditor` | `[debt_id, new_creditor_id]` | 1 | Sell the debt |
+| `check` | `[debt_id]` | 0 | Check debt status |
+| `list_debts` | `[principal_id]` | 0 | List debts for an agent |
+| `list_all` | `[]` | 0 | List all debts |
+
+**Note:** No magic enforcement. Bad debtors get bad reputation (check event log).
 
 ## genesis_event_log
 World history (passive observability).

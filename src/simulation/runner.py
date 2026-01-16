@@ -240,7 +240,7 @@ class SimulationRunner:
         default_system_prompt: str = (
             "You are a new agent. Survive and thrive. "
             "You start with nothing - seek resources and opportunities. "
-            "See docs/AGENT_HANDBOOK.md for rules."
+            "Read handbook_toc to learn the rules."
         )
 
         for principal_id in new_principal_ids:

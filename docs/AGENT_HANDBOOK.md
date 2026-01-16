@@ -210,19 +210,19 @@ Inside artifact code, `invoke(artifact_id, *args)` calls another artifact and re
 
 ```python
 def run(*args):
-    # Call another artifact
-    result = invoke("alpha_safe_divide", args[0], args[1])
+    # Call another artifact to analyze data
+    result = invoke("data_analyzer", args[0])
 
     if not result["success"]:
         return {"error": result["error"]}
 
-    # Chain with another artifact
-    validated = invoke("gamma_validate_number", result["result"])
+    # Chain with another artifact for visualization
+    chart = invoke("chart_generator", result["result"])
 
-    if not validated["success"]:
-        return {"error": "Validation failed"}
+    if not chart["success"]:
+        return {"error": "Chart generation failed"}
 
-    return {"value": validated["result"], "composed": True}
+    return {"analysis": result["result"], "chart": chart["result"]}
 ```
 
 ### Cost Attribution

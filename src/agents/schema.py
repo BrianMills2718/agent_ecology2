@@ -10,6 +10,7 @@ ActionType = Literal[
     "noop",
     "read_artifact",
     "write_artifact",
+    "delete_artifact",
     "invoke_artifact",
 ]
 
@@ -20,7 +21,7 @@ ActionValidationResult = dict[str, Any] | str
 ACTION_SCHEMA: str = """
 You must respond with a single JSON object representing your action.
 
-## Available Actions (only 3 verbs)
+## Available Actions (4 verbs)
 
 1. read_artifact - Read artifact content
    {"action_type": "read_artifact", "artifact_id": "<id>"}
@@ -29,7 +30,10 @@ You must respond with a single JSON object representing your action.
    {"action_type": "write_artifact", "artifact_id": "<id>", "artifact_type": "<type>", "content": "<content>"}
    For executable: add "executable": true, "price": <scrip>, "code": "<python with run(*args) function>"
 
-3. invoke_artifact - Call artifact method
+3. delete_artifact - Delete artifact you own (frees disk quota)
+   {"action_type": "delete_artifact", "artifact_id": "<id>"}
+
+4. invoke_artifact - Call artifact method
    {"action_type": "invoke_artifact", "artifact_id": "<id>", "method": "<method>", "args": [...]}
 
 ## Genesis Artifacts (System)
@@ -104,7 +108,7 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
         return "Response must be a JSON object"
 
     action_type: ActionType | str = data.get("action_type", "").lower()
-    if action_type not in ["noop", "read_artifact", "write_artifact", "invoke_artifact"]:
+    if action_type not in ["noop", "read_artifact", "write_artifact", "delete_artifact", "invoke_artifact"]:
         if action_type == "transfer":
             return "transfer is not a kernel action. Use: invoke_artifact('genesis_ledger', 'transfer', [from_id, to_id, amount])"
         return f"Invalid action_type: {action_type}"
@@ -124,6 +128,13 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
     elif action_type == "write_artifact":
         if not data.get("artifact_id"):
             return "write_artifact requires 'artifact_id'"
+        artifact_id = str(data.get("artifact_id", ""))
+        if len(artifact_id) > max_artifact_id_length:
+            return f"artifact_id exceeds max length ({max_artifact_id_length} chars)"
+
+    elif action_type == "delete_artifact":
+        if not data.get("artifact_id"):
+            return "delete_artifact requires 'artifact_id'"
         artifact_id = str(data.get("artifact_id", ""))
         if len(artifact_id) > max_artifact_id_length:
             return f"artifact_id exceeds max length ({max_artifact_id_length} chars)"

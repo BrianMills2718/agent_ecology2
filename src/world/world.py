@@ -13,7 +13,7 @@ from .logger import EventLogger
 from .actions import (
     ActionIntent, ActionResult, ActionType,
     NoopIntent, ReadArtifactIntent, WriteArtifactIntent,
-    InvokeArtifactIntent
+    InvokeArtifactIntent, DeleteArtifactIntent
 )
 # NOTE: TransferIntent removed - all transfers via genesis_ledger.transfer()
 from .genesis import (
@@ -372,12 +372,15 @@ class World:
 
         # Map of filename (without .md) to artifact_id
         handbook_sections = {
+            "_index": "handbook_toc",
             "actions": "handbook_actions",
             "genesis": "handbook_genesis",
             "resources": "handbook_resources",
             "trading": "handbook_trading",
             "mint": "handbook_mint",
             "coordination": "handbook_coordination",
+            "external": "handbook_external",
+            "self": "handbook_self",
         }
 
         for section_name, artifact_id in handbook_sections.items():
@@ -721,6 +724,9 @@ class World:
 
         elif isinstance(intent, InvokeArtifactIntent):
             result = self._execute_invoke(intent)
+
+        elif isinstance(intent, DeleteArtifactIntent):
+            result = self._execute_delete(intent)
 
         else:
             result = ActionResult(success=False, message="Unknown action type")
@@ -1130,6 +1136,36 @@ class World:
             retriable=False,
             error_details={"artifact_id": artifact_id},
         )
+
+    def _execute_delete(self, intent: DeleteArtifactIntent) -> ActionResult:
+        """Execute a delete_artifact action (Plan #57).
+
+        Soft deletes an artifact, freeing disk quota for the owner.
+        Only the artifact owner can delete. Genesis artifacts cannot be deleted.
+        """
+        result = self.delete_artifact(intent.artifact_id, intent.principal_id)
+        
+        if result.get("success"):
+            # Calculate freed disk space
+            artifact = self.artifacts.get(intent.artifact_id)
+            freed_bytes = 0
+            if artifact:
+                freed_bytes = len(artifact.content.encode("utf-8")) + len(artifact.code.encode("utf-8"))
+            
+            return ActionResult(
+                success=True,
+                message=f"Deleted artifact {intent.artifact_id}",
+                data={"artifact_id": intent.artifact_id, "freed_bytes": freed_bytes},
+            )
+        else:
+            return ActionResult(
+                success=False,
+                message=result.get("error", "Delete failed"),
+                error_code=ErrorCode.NOT_AUTHORIZED.value if "owner" in result.get("error", "") else ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.PERMISSION.value if "owner" in result.get("error", "") else ErrorCategory.RESOURCE.value,
+                retriable=False,
+                error_details={"artifact_id": intent.artifact_id},
+            )
 
     def _log_invoke_success(
         self,

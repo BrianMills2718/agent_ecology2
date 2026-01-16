@@ -17,6 +17,7 @@ class ActionType(str, Enum):
     READ_ARTIFACT = "read_artifact"
     WRITE_ARTIFACT = "write_artifact"
     INVOKE_ARTIFACT = "invoke_artifact"
+    DELETE_ARTIFACT = "delete_artifact"
     # NOTE: No TRANSFER - all transfers via genesis_ledger.transfer()
 
 
@@ -141,6 +142,23 @@ class InvokeArtifactIntent(ActionIntent):
         d["method"] = self.method
         d["args"] = self.args
         return d
+
+
+@dataclass
+class DeleteArtifactIntent(ActionIntent):
+    """Delete an artifact (soft delete, frees disk quota)"""
+
+    artifact_id: str
+
+    def __init__(self, principal_id: str, artifact_id: str, reasoning: str = "") -> None:
+        super().__init__(ActionType.DELETE_ARTIFACT, principal_id, reasoning=reasoning)
+        self.artifact_id = artifact_id
+
+    def to_dict(self) -> dict[str, Any]:
+        d = super().to_dict()
+        d["artifact_id"] = self.artifact_id
+        return d
+
 
 
 @dataclass
@@ -285,5 +303,14 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
             return "invoke_artifact 'args' must be a list"
         return InvokeArtifactIntent(principal_id, artifact_id, method, args, reasoning=reasoning)
 
+
+    elif action_type == "delete_artifact":
+        artifact_id = data.get("artifact_id")
+        if not artifact_id:
+            return "delete_artifact requires 'artifact_id'"
+        if not isinstance(artifact_id, str):
+            return "artifact_id must be a string"
+        return DeleteArtifactIntent(principal_id, artifact_id, reasoning=reasoning)
+
     else:
-        return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, invoke_artifact"
+        return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, delete_artifact, invoke_artifact"
