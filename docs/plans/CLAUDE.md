@@ -85,6 +85,7 @@ Master index of all gaps and their implementation plans.
 | 53 | [Scalable Resource Architecture](53_scalable_resource_architecture.md) | **High** | 📋 Planned | #31 |
 | 54 | [Interface Reserved Terms](54_interface_reserved_terms.md) | Medium | ✅ Complete | #14 |
 | 56 | [Per-Run Logging](56_per_run_logging.md) | Medium | ✅ Complete | - |
+| 57 | [Agent Resource Management](57_agent_improvements.md) | **High** | 🚧 In Progress | - |
 
 ---
 
