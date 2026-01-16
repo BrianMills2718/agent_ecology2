@@ -10,15 +10,36 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from ..config import get_validated_config
 from .kpis import EcosystemKPIs
 
 if TYPE_CHECKING:
     import logging
 
 
+def _get_default_thresholds() -> dict[str, float]:
+    """Get audit thresholds from config."""
+    config = get_validated_config()
+    monitoring = config.monitoring
+    return {
+        "gini_warning": monitoring.audit_thresholds.gini.warning,
+        "gini_critical": monitoring.audit_thresholds.gini.critical or 0.9,
+        "frozen_ratio_warning": monitoring.audit_thresholds.frozen_ratio.warning,
+        "frozen_ratio_critical": monitoring.audit_thresholds.frozen_ratio.critical or 0.5,
+        "active_ratio_warning": monitoring.audit_thresholds.active_ratio.warning,
+        "active_ratio_critical": monitoring.audit_thresholds.active_ratio.critical or 0.1,
+        "burn_rate_warning": monitoring.audit_thresholds.burn_rate.warning,
+        "burn_rate_critical": monitoring.audit_thresholds.burn_rate.critical or 0.25,
+        "scrip_velocity_low_warning": monitoring.audit_thresholds.scrip_velocity_low.warning,
+    }
+
+
 @dataclass
 class AuditorThresholds:
-    """Configurable thresholds for health assessment."""
+    """Configurable thresholds for health assessment.
+
+    Defaults loaded from config/config.yaml monitoring.audit_thresholds.
+    """
 
     # Gini coefficient (wealth inequality)
     gini_warning: float = 0.7
@@ -38,6 +59,22 @@ class AuditorThresholds:
 
     # Scrip velocity (low = economic stagnation)
     scrip_velocity_low_warning: float = 0.001
+
+    @classmethod
+    def from_config(cls) -> "AuditorThresholds":
+        """Create thresholds from config values."""
+        defaults = _get_default_thresholds()
+        return cls(
+            gini_warning=defaults["gini_warning"],
+            gini_critical=defaults["gini_critical"],
+            frozen_ratio_warning=defaults["frozen_ratio_warning"],
+            frozen_ratio_critical=defaults["frozen_ratio_critical"],
+            active_ratio_warning=defaults["active_ratio_warning"],
+            active_ratio_critical=defaults["active_ratio_critical"],
+            burn_rate_warning=defaults["burn_rate_warning"],
+            burn_rate_critical=defaults["burn_rate_critical"],
+            scrip_velocity_low_warning=defaults["scrip_velocity_low_warning"],
+        )
 
 
 @dataclass
@@ -67,36 +104,44 @@ def calculate_health_score(concerns: list[HealthConcern]) -> float:
     """Calculate composite health score from concerns.
 
     Score ranges from 0.0 (very unhealthy) to 1.0 (perfectly healthy).
-    Each warning reduces score by 0.1, each critical by 0.2.
+    Penalties from config: monitoring.health_scoring.warning_penalty/critical_penalty.
     """
     if not concerns:
         return 1.0
 
+    config = get_validated_config()
+    warning_penalty = config.monitoring.health_scoring.warning_penalty
+    critical_penalty = config.monitoring.health_scoring.critical_penalty
+
     penalty = 0.0
     for concern in concerns:
         if concern.severity == "critical":
-            penalty += 0.2
+            penalty += critical_penalty
         elif concern.severity == "warning":
-            penalty += 0.1
+            penalty += warning_penalty
 
     return max(0.0, min(1.0, 1.0 - penalty))
 
 
 def determine_trend(
-    current_score: float, prev_score: float | None, threshold: float = 0.1
+    current_score: float, prev_score: float | None, threshold: float | None = None
 ) -> str:
     """Determine trend based on score comparison.
 
     Args:
         current_score: Current health score
         prev_score: Previous health score (None if no history)
-        threshold: Minimum change to count as improving/declining
+        threshold: Minimum change to count as improving/declining.
+                   Defaults to config monitoring.health_scoring.trend_threshold.
 
     Returns:
         "improving", "stable", "declining", or "unknown"
     """
     if prev_score is None:
         return "unknown"
+
+    if threshold is None:
+        threshold = get_validated_config().monitoring.health_scoring.trend_threshold
 
     diff = current_score - prev_score
 

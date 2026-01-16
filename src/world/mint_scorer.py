@@ -26,7 +26,7 @@ sys.path.insert(0, str(PROJECT_ROOT / 'llm_provider_standalone'))
 
 from llm_provider import LLMProvider
 
-from ..config import get
+from ..config import get, get_validated_config
 
 
 SCORING_PROMPT: str = """You are evaluating executable code submitted to an agent marketplace.
@@ -152,7 +152,9 @@ class MintScorer:
             try:
                 loop = asyncio.get_running_loop()
                 # We're in an async context - run in thread pool
-                with ThreadPoolExecutor(max_workers=1) as executor:
+                config = get_validated_config()
+                workers = config.mint_scorer.thread_pool_workers
+                with ThreadPoolExecutor(max_workers=workers) as executor:
                     future = executor.submit(self.llm.generate, prompt)
                     response_raw = future.result(timeout=60)
             except RuntimeError:
@@ -194,8 +196,11 @@ class MintScorer:
             score = int(data.get("score", 0))
             reason = str(data.get("reason", ""))
 
-            # Clamp score to 0-100
-            score = max(0, min(100, score))
+            # Clamp score to configured bounds
+            config = get_validated_config()
+            score_min = config.mint_scorer.score_bounds.min
+            score_max = config.mint_scorer.score_bounds.max
+            score = max(score_min, min(score_max, score))
 
             return {
                 "success": True,
