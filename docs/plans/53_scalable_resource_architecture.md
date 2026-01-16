@@ -377,3 +377,52 @@ During plan creation, the following inconsistencies were identified:
 | `src/dashboard/server.py` | `/api/charts/compute` endpoint |
 
 All of these should be renamed to `llm_tokens` in Phase 1.
+
+---
+
+## Implementation Notes (2026-01-16)
+
+### Design Decisions Made
+
+1. **Threads vs Processes**: Used `ThreadPoolExecutor` not `ProcessPoolExecutor`
+   - Simpler IPC (shared memory)
+   - GIL contention acceptable for I/O-bound LLM calls
+   - True process isolation would require more complex state serialization
+   - *Pragmatism over purity* - can upgrade to processes later if needed
+
+2. **Memory/CPU as Renewable Resources**: Implemented via RateTracker rolling windows
+   - README explicitly categorizes CPU as "Renewable" (rate-limited)
+   - Memory as "Allocatable" (quota) - but implemented as renewable for V1
+   - Renewable resources naturally fit rolling window model
+   - *Tradeoff*: Renewable means "wait for capacity" not "trade quota"
+
+3. **Worker Pool Opt-In**: Default `use_worker_pool: false`
+   - Matches *avoid defaults* heuristic
+   - Existing behavior unchanged
+   - User explicitly enables when scaling beyond ~50 agents
+
+### Uncertainties for Review
+
+| Item | Concern | Severity |
+|------|---------|----------|
+| Memory as renewable vs allocatable | README says memory is "Allocatable" but I implemented as rate-limited renewable | Medium |
+| Thread vs process isolation | ~10% measurement error from shared runtime; threads share GIL | Low |
+| Connection pool (Phase 6) | Not implemented - plan said "V1: Fair queue" but no code exists | Low (marked optional) |
+| Resource trading | Plan said memory/cpu should be "tradeable" but rate-limited resources don't trade the same way quotas do | Medium |
+
+### Alignment with Philosophy
+
+| Principle | How Addressed |
+|-----------|---------------|
+| Physics-first | CPU/memory measured from actual process stats (psutil, process_time) |
+| Observability | All resource usage logged per-turn in TickResults |
+| Minimal kernel | Worker pool is config-driven, not hardcoded |
+| Selection pressure | Agents exceeding quotas get their turn terminated, not protected |
+| Pragmatism | Threads over processes for V1 simplicity |
+
+### Future Work (Not in V1)
+
+- **Connection Pool (Phase 6)**: Fair queue for LLM API connections
+- **Memory as true quota**: Transfer memory allocation between agents
+- **Process isolation**: True process-per-turn for better measurement
+- **Resource trading tests**: `test_memory_transfer`, `test_cpu_transfer`
