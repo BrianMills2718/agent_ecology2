@@ -89,7 +89,7 @@ Master index of all gaps and their implementation plans.
 | 58 | [Dashboard Autonomous Mode](58_dashboard_autonomous.md) | Medium | ✅ Complete | #57 |
 | 59 | [Agent Intelligence Patterns](59_agent_intelligence.md) | **High** | 📋 Planned | #57 |
 | 60 | [Tractable Logs](60_tractable_logs.md) | Medium | ✅ Complete | plan-60-tractable-logs |
-| 61 | [Dashboard Entity Detail](61_dashboard_entity_detail.md) | Medium | 📋 Planned | - |
+| 61 | [Dashboard Entity Detail](61_dashboard_entity_detail.md) | Medium | ✅ Complete | - |
 
 ---
 
