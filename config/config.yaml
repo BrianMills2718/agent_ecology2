@@ -370,6 +370,16 @@ agent:
     method_not_found: "Method '{method}' not found on {artifact_id}. Available: {methods}. See handbook_genesis for method details."
     escrow_not_owner: "Escrow does not own {artifact_id}. See handbook_trading for the 2-step process: 1) genesis_ledger.transfer_ownership([artifact_id, '{escrow_id}']), 2) deposit."
 
+  # Working Memory (Plan #59) - Structured context for complex goal pursuit
+  # Agents can store current_goal, progress, and lessons in their artifact content
+  working_memory:
+    enabled: false                # Master switch - set true to enable
+    auto_inject: true             # Inject into prompt automatically when enabled
+    max_size_bytes: 2000          # Limit to prevent prompt bloat
+    include_in_rag: false         # Also include in semantic search?
+    structured_format: true       # Enforce YAML schema vs freeform
+    warn_on_missing: false        # Log warning if agent has no working memory
+
 # -----------------------------------------------------------------------------
 # MEMORY - Mem0/Qdrant configuration
 # -----------------------------------------------------------------------------

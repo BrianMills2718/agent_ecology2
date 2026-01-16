@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-16 (Plan #53 - Phase 1 terminology: compute → llm_tokens)
+**Last verified:** 2026-01-16 (Plan #59 - Working memory injection)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -42,6 +42,9 @@ class Agent:
     llm: LLMProvider           # LLM provider instance
     rag_config: RAGConfigDict  # Per-agent RAG settings
     last_action_result: str    # Feedback from previous action
+    inject_working_memory: bool     # Auto-inject working memory into prompts (Plan #59)
+    working_memory_max_bytes: int   # Max size for working memory truncation
+    _working_memory: dict | None    # Cached working memory from agent artifact
 ```
 
 ---
@@ -69,6 +72,7 @@ Prompt includes:
 | Mint submissions | world_state["mint_submissions"] |
 | Recent events | world_state["recent_events"] |
 | Relevant memories | RAG search on current context |
+| Working memory | Agent artifact `working_memory` section (Plan #59) |
 | Last action result | self.last_action_result |
 
 ### LLM Response Schema
@@ -106,6 +110,67 @@ memory.get_relevant_memories(agent_id, context, limit=5)
 | Actions taken | "Agent {id} performed {action}: {details}" |
 | Observations | Free-form text |
 | Search is semantic | Vector similarity via Qdrant |
+
+---
+
+## Working Memory (Plan #59)
+
+Agents can maintain structured working memory for goal persistence.
+
+### How It Works
+
+1. **Agent artifact includes `working_memory` section** in its JSON content
+2. **System auto-extracts** during `from_artifact()`
+3. **System auto-injects** into prompt in `build_prompt()` if enabled
+4. **Agent updates** by writing to self via `write_artifact`
+
+### Configuration
+
+`config.yaml` under `agent.working_memory`:
+
+```yaml
+working_memory:
+  enabled: false          # Master switch (off by default)
+  auto_inject: true       # Inject into prompt when enabled
+  max_size_bytes: 2000    # Truncate to prevent prompt bloat
+  include_in_rag: false   # Also include in semantic search
+  structured_format: true # Enforce schema vs freeform
+  warn_on_missing: false  # Log warning if no working memory
+```
+
+### Working Memory Structure
+
+```json
+{
+  "current_goal": "Build price oracle",
+  "started": "2026-01-16T10:30:00Z",
+  "progress": {
+    "stage": "Implementation",
+    "completed": ["interface design"],
+    "next_steps": ["core logic", "tests"],
+    "actions_in_stage": 3
+  },
+  "lessons": ["escrow needs ownership transfer first"],
+  "strategic_objectives": ["become known for pricing"]
+}
+```
+
+### Key Methods
+
+| Method | Purpose |
+|--------|---------|
+| `_extract_working_memory(content)` | Extract from agent artifact content |
+| `_format_working_memory()` | Format for prompt injection with truncation |
+| `build_prompt()` | Injects working memory if enabled |
+
+### Design Philosophy
+
+- **Optional**: Disabled by default, agents can ignore it
+- **No enforcement**: Selection pressure, not system enforcement
+- **Minimal schema**: Not prescriptive about goal structure
+- **Size-limited**: Prevents prompt bloat via `max_size_bytes`
+
+See `src/agents/_handbook/memory.md` for agent-facing documentation.
 
 ---
 
@@ -181,9 +246,11 @@ Agent receives failure message in `last_action_result` for next tick.
 
 | File | Key Functions | Description |
 |------|---------------|-------------|
-| `src/agents/agent.py` | `Agent.build_prompt()` | Prompt construction |
+| `src/agents/agent.py` | `Agent.build_prompt()` | Prompt construction (incl. working memory) |
 | `src/agents/agent.py` | `Agent.propose_action_async()` | LLM call and action parsing |
 | `src/agents/agent.py` | `Agent.record_action()`, `record_observation()` | Memory recording |
+| `src/agents/agent.py` | `Agent._extract_working_memory()` | Working memory extraction (Plan #59) |
+| `src/agents/agent.py` | `Agent._format_working_memory()` | Working memory formatting (Plan #59) |
 | `src/agents/memory.py` | `AgentMemory` class | RAG-based memory |
 | `src/agents/loader.py` | `load_agents()` | Agent loading from config |
 

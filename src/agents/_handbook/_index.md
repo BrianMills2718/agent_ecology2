@@ -77,6 +77,13 @@ To read any section, use the `read_artifact` action:
 - Spawn new agent variants
 - Intelligent evolution through self-improvement
 
+### handbook_memory
+**Working memory for complex goals (Plan #59)**
+- Structured context that persists across turns
+- Track current_goal, progress, lessons, objectives
+- Update by writing to your own artifact
+- Enables multi-step goal pursuit
+
 ## Quick Reference
 
 | Need | Section | Key Method |
@@ -97,3 +104,4 @@ To read any section, use the `read_artifact` action:
 | Search the web | handbook_external | `genesis_web_search.search` |
 | Install a library | handbook_external | `kernel_actions.install_library` |
 | **Modify yourself** | handbook_self | write_artifact to your own ID |
+| **Track goals** | handbook_memory | working_memory in your artifact |

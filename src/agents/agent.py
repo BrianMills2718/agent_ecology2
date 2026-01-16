@@ -161,6 +161,8 @@ class Agent:
         *,
         artifact: Artifact | None = None,
         artifact_store: ArtifactStore | None = None,
+        inject_working_memory: bool | None = None,
+        working_memory_max_bytes: int | None = None,
     ) -> None:
         """Initialize an agent.
 
@@ -174,6 +176,8 @@ class Agent:
             rag_config: RAG configuration overrides
             artifact: Optional artifact backing this agent (INT-004)
             artifact_store: Optional artifact store for memory access (INT-004)
+            inject_working_memory: Whether to inject working memory into prompts (Plan #59)
+            working_memory_max_bytes: Max size of working memory in bytes (Plan #59)
         """
         # Get defaults from config
         default_model: str = config_get("llm.default_model") or "gemini/gemini-3-flash-preview"
@@ -213,6 +217,21 @@ class Agent:
             "query_template": (rag_config or {}).get("query_template", global_rag.get("query_template", "")),
         }
 
+        # Working memory config (Plan #59)
+        wm_config: dict[str, Any] = config_get("agent.working_memory") or {}
+        wm_enabled: bool = wm_config.get("enabled", False)
+        wm_auto_inject: bool = wm_config.get("auto_inject", True)
+        # Use config values, but allow parameter override
+        self.inject_working_memory: bool = (
+            inject_working_memory if inject_working_memory is not None
+            else (wm_enabled and wm_auto_inject)
+        )
+        self.working_memory_max_bytes: int = (
+            working_memory_max_bytes if working_memory_max_bytes is not None
+            else wm_config.get("max_size_bytes", 2000)
+        )
+        self._working_memory: dict[str, Any] | None = None
+
         # Initialize LLM provider with agent metadata for logging
         extra_metadata: dict[str, Any] = {"agent_id": self.agent_id}
         if run_id:
@@ -240,6 +259,72 @@ class Agent:
             self._system_prompt = config["system_prompt"]
         if "action_schema" in config:
             self._action_schema = config["action_schema"]
+
+        # Load working memory from artifact content if present (Plan #59)
+        self._working_memory = self._extract_working_memory(config)
+
+    def _extract_working_memory(
+        self, artifact_content: AgentConfigDict | dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Extract working_memory from artifact content (Plan #59).
+
+        Args:
+            artifact_content: Parsed JSON content from agent artifact
+
+        Returns:
+            Working memory dict if present, None otherwise
+        """
+        if not isinstance(artifact_content, dict):
+            return None
+        wm = artifact_content.get("working_memory")
+        if isinstance(wm, dict):
+            return wm
+        return None
+
+    def _format_working_memory(self) -> str:
+        """Format working memory for injection into prompt (Plan #59).
+
+        Returns truncated YAML-like format if memory exceeds max_size_bytes.
+        """
+        if not self._working_memory:
+            return ""
+
+        # Format as YAML-like readable text
+        lines: list[str] = []
+        wm = self._working_memory
+
+        if "current_goal" in wm:
+            lines.append(f"Current Goal: {wm['current_goal']}")
+
+        if "progress" in wm and isinstance(wm["progress"], dict):
+            prog = wm["progress"]
+            if "stage" in prog:
+                lines.append(f"Stage: {prog['stage']}")
+            if "completed" in prog and prog["completed"]:
+                lines.append(f"Completed: {', '.join(str(c) for c in prog['completed'])}")
+            if "next_steps" in prog and prog["next_steps"]:
+                lines.append(f"Next: {', '.join(str(n) for n in prog['next_steps'])}")
+
+        if "lessons" in wm and wm["lessons"]:
+            lessons = wm["lessons"]
+            if isinstance(lessons, list):
+                lines.append(f"Lessons: {'; '.join(str(l) for l in lessons)}")
+
+        if "strategic_objectives" in wm and wm["strategic_objectives"]:
+            objs = wm["strategic_objectives"]
+            if isinstance(objs, list):
+                lines.append(f"Objectives: {', '.join(str(o) for o in objs)}")
+
+        result = "\n".join(lines)
+
+        # Truncate if exceeds max size
+        if len(result.encode("utf-8")) > self.working_memory_max_bytes:
+            # Truncate to fit within limit
+            while len(result.encode("utf-8")) > self.working_memory_max_bytes - 20:
+                result = result[: len(result) - 100]
+            result = result.strip() + "\n[...truncated]"
+
+        return result
 
     @classmethod
     def from_artifact(
@@ -629,10 +714,17 @@ class Agent:
             if first_tick_hint:
                 first_tick_section = f"\n## Getting Started\n{first_tick_hint}\n"
 
+        # Working memory injection (Plan #59)
+        working_memory_section: str = ""
+        if self.inject_working_memory and self._working_memory:
+            formatted_wm = self._format_working_memory()
+            if formatted_wm:
+                working_memory_section = f"\n## Your Working Memory\n{formatted_wm}\n"
+
         prompt: str = f"""You are {self.agent_id} in a simulated world.
 
 {self.system_prompt}
-{first_tick_section}{action_feedback}
+{first_tick_section}{working_memory_section}{action_feedback}
 ## Your Memories
 {memories}
 
