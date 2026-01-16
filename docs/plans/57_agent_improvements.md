@@ -56,7 +56,13 @@ All genesis agents (alpha, beta, gamma, delta, epsilon) now:
 
 ## Required Tests
 
-No new tests required - uses existing test infrastructure. The delete functionality already had tests via `test_dangling_refs.py`.
+### Existing Tests (Must Pass)
+
+| Test Pattern | Why |
+|--------------|-----|
+| `tests/unit/test_actions.py` | Action type validation |
+| `tests/unit/test_dangling_refs.py` | Delete artifact behavior |
+| `tests/e2e/test_smoke.py` | Full simulation still works |
 
 ## Acceptance Criteria
 
