@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-16 (Plan #53 - worker pool config, memory_bytes resource)
+**Last verified:** 2026-01-16 (Plan #59 - Working memory config)
 
 ---
 
@@ -255,6 +255,13 @@ agent:
     enabled: true
     limit: 5
     query_template: "Tick {tick}. I am {agent_id}..."
+  working_memory:                 # Plan #59
+    enabled: false                # Master switch (off by default)
+    auto_inject: true             # Inject into prompt when enabled
+    max_size_bytes: 2000          # Truncate to prevent prompt bloat
+    include_in_rag: false         # Also include in semantic search
+    structured_format: true       # Enforce schema vs freeform
+    warn_on_missing: false        # Log warning if no working memory
   errors:
     access_denied_read: "Access denied:..."
     # ...
