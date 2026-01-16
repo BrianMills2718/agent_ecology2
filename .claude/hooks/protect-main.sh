@@ -14,18 +14,25 @@ if [[ -z "$MAIN_DIR" ]]; then
     exit 0  # Not in a git repo, allow
 fi
 
-# Check if we're in a worktree (main has .git directory, worktree has .git file)
-if [[ -f "$MAIN_DIR/.git" ]]; then
-    exit 0  # We're in a worktree, allow all writes
-fi
-
-# We're in main. Read tool input.
+# Read tool input first to get file path
 INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 
 if [[ -z "$FILE_PATH" ]]; then
     exit 0  # No file_path, allow
 fi
+
+# Check if file path is inside a worktrees directory (allow writes to worktrees)
+if [[ "$FILE_PATH" == *"/worktrees/"* ]]; then
+    exit 0  # Writing to a worktree, allow
+fi
+
+# Check if we're in a worktree (main has .git directory, worktree has .git file)
+if [[ -f "$MAIN_DIR/.git" ]]; then
+    exit 0  # We're in a worktree, allow all writes
+fi
+
+# We're in main. Check if file is allowed.
 
 # Allow coordination files in main
 BASENAME=$(basename "$FILE_PATH")
