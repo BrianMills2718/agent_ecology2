@@ -8,7 +8,18 @@
 
 - [x] Phase 1: Add config schema (config.yaml + schema.yaml) - **Done**
 - [x] Phase 3: Add Pydantic models (config_schema.py) - **Done**
-- [ ] Phase 2: Update source files to use config values (14 files)
+- [x] Phase 2: Update source files to use config values - **Done**
+
+### Files Updated in Phase 2
+- `src/simulation/agent_loop.py` - timeouts.agent_loop_stop, loop_manager_stop
+- `src/simulation/runner.py` - timeouts.simulation_shutdown
+- `src/world/executor.py` - executor.max_invoke_depth
+- `src/world/mint_scorer.py` - mint_scorer.score_bounds, thread_pool_workers
+- `src/world/mcp_bridge.py` - timeouts.mcp_server
+- `src/agents/state_store.py` - timeouts.state_store_lock
+- `src/dashboard/watcher.py` - dashboard.debounce_delay_ms, poll_interval
+- `src/dashboard/server.py` - dashboard.poll_interval, timeouts.dashboard_server
+- `src/dashboard/auditor.py` - All monitoring.audit_thresholds and health_scoring values
 
 ## Problem Statement
 
