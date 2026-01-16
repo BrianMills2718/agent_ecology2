@@ -7,6 +7,11 @@ on:
   push:
     branches: [main]
 
+# Permissions needed for dorny/paths-filter and other actions
+permissions:
+  contents: read
+  pull-requests: read
+
 # Cancel in-progress runs for the same branch
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
