@@ -67,10 +67,13 @@ Create these tests FIRST, before implementing:
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/unit/test_logger.py` | `test_summary_logger_writes_per_tick` | SummaryLogger writes one line per tick |
-| `tests/unit/test_logger.py` | `test_summary_format` | Summary JSON has required fields |
-| `tests/integration/test_runner.py` | `test_summary_log_created` | Runner creates summary.jsonl |
-| `tests/unit/test_view_log.py` | `test_report_generation` | --report produces markdown |
+| `tests/unit/test_summary_logger.py` | `test_writes_one_line_per_tick` | SummaryLogger writes one line per tick |
+| `tests/unit/test_summary_logger.py` | `test_summary_format_has_required_fields` | Summary JSON has required fields |
+| `tests/unit/test_summary_logger.py` | `test_event_logger_creates_summary_logger` | EventLogger creates companion SummaryLogger |
+| `tests/unit/test_summary_logger.py` | `test_tick_summary_collector_tracks_actions` | TickSummaryCollector tracks actions |
+| `tests/unit/test_summary_logger.py` | `test_tick_summary_collector_tracks_llm_tokens` | TickSummaryCollector tracks tokens |
+| `tests/unit/test_summary_logger.py` | `test_tick_summary_collector_tracks_scrip` | TickSummaryCollector tracks scrip |
+| `tests/unit/test_summary_logger.py` | `test_tick_summary_collector_captures_highlights` | TickSummaryCollector captures highlights |
 
 ### Existing Tests (Must Pass)
 
