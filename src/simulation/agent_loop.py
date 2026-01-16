@@ -27,6 +27,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Awaitable, Literal, Protocol
 
+from ..config import get_validated_config
+
 if TYPE_CHECKING:
     from ..world.rate_tracker import RateTracker
 
@@ -229,15 +231,18 @@ class AgentLoop:
         self._task = asyncio.create_task(self._run_loop())
         logger.info(f"Agent {self.agent_id} loop started")
 
-    async def stop(self, timeout: float = 5.0) -> None:
+    async def stop(self, timeout: float | None = None) -> None:
         """Stop the autonomous loop gracefully.
 
         Sets state to STOPPING and waits for the loop to exit.
         If timeout is reached, cancels the task.
 
         Args:
-            timeout: Maximum seconds to wait for graceful stop (default: 5.0)
+            timeout: Maximum seconds to wait for graceful stop.
+                     Defaults to config timeouts.agent_loop_stop.
         """
+        if timeout is None:
+            timeout = get_validated_config().timeouts.agent_loop_stop
         if self._state == AgentState.STOPPED:
             return
 
@@ -556,14 +561,17 @@ class AgentLoopManager:
         """
         await asyncio.gather(*[loop.start() for loop in self._loops.values()])
 
-    async def stop_all(self, timeout: float = 10.0) -> None:
+    async def stop_all(self, timeout: float | None = None) -> None:
         """Stop all agent loops.
 
         Stops all registered loops concurrently.
 
         Args:
-            timeout: Maximum seconds to wait for each loop to stop (default: 10.0)
+            timeout: Maximum seconds to wait for each loop to stop.
+                     Defaults to config timeouts.loop_manager_stop.
         """
+        if timeout is None:
+            timeout = get_validated_config().timeouts.loop_manager_stop
         await asyncio.gather(
             *[loop.stop(timeout) for loop in self._loops.values()]
         )
