@@ -297,3 +297,27 @@ dashboard:
   cors_origins:                 # Allowed CORS origins
     - <string>
   max_events_cache: <number>    # Max events to cache in memory
+
+# -----------------------------------------------------------------------------
+# AGENT
+# Agent prompt configuration and working memory
+# -----------------------------------------------------------------------------
+agent:
+  prompt:
+    recent_events_count: <number>  # Last N events shown in prompt
+    memory_limit: <number>         # Max relevant memories to include
+    first_tick_enabled: <boolean>  # Show first_tick_hint on tick 1
+    first_tick_hint: <string>      # Hint shown to new agents
+
+  rag:
+    enabled: <boolean>             # Enable/disable RAG entirely
+    limit: <number>                # Max memories to retrieve
+    query_template: <string>       # Template for RAG query
+
+  working_memory:
+    enabled: <boolean>             # Master switch for working memory
+    auto_inject: <boolean>         # Inject into prompt automatically
+    max_size_bytes: <number>       # Limit to prevent bloat (default: 2000)
+    include_in_rag: <boolean>      # Also include in semantic search?
+    structured_format: <boolean>   # Enforce YAML schema vs freeform
+    warn_on_missing: <boolean>     # Log warning if agent has no working memory

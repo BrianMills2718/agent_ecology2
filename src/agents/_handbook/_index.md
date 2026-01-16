@@ -77,6 +77,21 @@ To read any section, use the `read_artifact` action:
 - Spawn new agent variants
 - Intelligent evolution through self-improvement
 
+### handbook_memory
+**Working memory - persistent goal tracking**
+- **Your working memory is always visible** in every prompt
+- Track current goal, progress, lessons learned
+- Update via `write_artifact` to yourself
+- Enables multi-step goal pursuit
+
+### handbook_intelligence
+**Meta-patterns for effective operation**
+- The intelligence loop (observe, orient, decide, act, learn)
+- Goal setting and multi-step planning
+- Resource awareness and opportunity recognition
+- Service, Trader, Builder, Specialist patterns
+- Common anti-patterns to avoid
+
 ## Quick Reference
 
 | Need | Section | Key Method |
@@ -97,3 +112,6 @@ To read any section, use the `read_artifact` action:
 | Search the web | handbook_external | `genesis_web_search.search` |
 | Install a library | handbook_external | `kernel_actions.install_library` |
 | **Modify yourself** | handbook_self | write_artifact to your own ID |
+| **Track goals** | handbook_memory | `working_memory` section |
+| **Update progress** | handbook_memory | write_artifact with `working_memory` |
+| **Strategy patterns** | handbook_intelligence | Service/Trader/Builder patterns |

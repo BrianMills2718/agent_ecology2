@@ -104,12 +104,34 @@ class RAGConfigDict(TypedDict, total=False):
     query_template: str
 
 
+class WorkingMemoryProgressDict(TypedDict, total=False):
+    """Progress tracking within working memory."""
+    stage: str
+    completed: list[str]
+    next_steps: list[str]
+    actions_in_stage: int
+
+
+class WorkingMemoryDict(TypedDict, total=False):
+    """Working memory structure stored in agent artifact content (Plan #59).
+
+    Agents update this via write_artifact to themselves. System auto-injects
+    into prompts when enabled, enabling persistent goal tracking.
+    """
+    current_goal: str
+    started: str  # ISO 8601 timestamp
+    progress: WorkingMemoryProgressDict
+    lessons: list[str]
+    strategic_objectives: list[str]
+
+
 class AgentConfigDict(TypedDict, total=False):
     """Agent configuration stored in artifact content."""
     llm_model: str
     system_prompt: str
     action_schema: str
     rag: RAGConfigDict
+    working_memory: WorkingMemoryDict
 
 
 class Agent:
@@ -409,6 +431,99 @@ class Agent:
         """Check if using a Gemini model (requires flat action schema)."""
         return "gemini" in self.llm_model.lower()
 
+    def _get_working_memory(self) -> WorkingMemoryDict | None:
+        """Get working memory from artifact content (Plan #59).
+
+        Working memory is stored in the agent artifact's content under
+        the 'working_memory' key. Returns None if:
+        - Agent is not artifact-backed
+        - Artifact content doesn't have working_memory section
+        - working_memory feature is disabled in config
+
+        Returns:
+            WorkingMemoryDict if present and enabled, None otherwise.
+        """
+        # Check if feature is enabled
+        wm_config: dict[str, Any] = config_get("agent.working_memory") or {}
+        if not wm_config.get("enabled", True):
+            return None
+
+        # Must be artifact-backed to have working memory
+        if self._artifact is None:
+            return None
+
+        # Parse working memory from artifact content
+        try:
+            config: AgentConfigDict = json.loads(self._artifact.content)
+            working_memory = config.get("working_memory")
+            if working_memory:
+                return working_memory
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+        # Optionally warn if no working memory found
+        if wm_config.get("warn_on_missing", False):
+            import logging
+            logging.warning(f"Agent {self.agent_id} has no working memory section")
+
+        return None
+
+    def _format_working_memory(self, wm: WorkingMemoryDict) -> str:
+        """Format working memory for injection into prompt.
+
+        Respects max_size_bytes config to prevent bloat.
+
+        Args:
+            wm: Working memory dict to format
+
+        Returns:
+            Formatted string for prompt injection, truncated if needed.
+        """
+        wm_config: dict[str, Any] = config_get("agent.working_memory") or {}
+        max_size: int = wm_config.get("max_size_bytes", 2000)
+
+        lines: list[str] = []
+
+        # Current goal (most important)
+        if wm.get("current_goal"):
+            lines.append(f"**Current Goal:** {wm['current_goal']}")
+
+        # Progress tracking
+        progress = wm.get("progress", {})
+        if progress:
+            if progress.get("stage"):
+                lines.append(f"**Stage:** {progress['stage']}")
+            if progress.get("completed"):
+                lines.append(f"**Completed:** {', '.join(progress['completed'])}")
+            if progress.get("next_steps"):
+                lines.append(f"**Next Steps:** {', '.join(progress['next_steps'])}")
+            if progress.get("actions_in_stage"):
+                lines.append(f"**Actions in Stage:** {progress['actions_in_stage']}")
+
+        # Lessons learned
+        if wm.get("lessons"):
+            lines.append(f"**Lessons:** {'; '.join(wm['lessons'])}")
+
+        # Strategic objectives
+        if wm.get("strategic_objectives"):
+            lines.append(f"**Strategic Objectives:** {', '.join(wm['strategic_objectives'])}")
+
+        # Started timestamp (less important)
+        if wm.get("started"):
+            lines.append(f"**Started:** {wm['started']}")
+
+        formatted = "\n".join(lines)
+
+        # Truncate if exceeds max size
+        if len(formatted.encode('utf-8')) > max_size:
+            # Truncate with indicator
+            while len(formatted.encode('utf-8')) > max_size - 20:
+                lines = lines[:-1]  # Remove least important items
+                formatted = "\n".join(lines)
+            formatted += "\n... (truncated)"
+
+        return formatted
+
     def build_prompt(self, world_state: dict[str, Any]) -> str:
         """Build the prompt for the LLM (events require genesis_event_log)"""
         # Extract world state for RAG context
@@ -555,10 +670,25 @@ class Agent:
             if first_tick_hint:
                 first_tick_section = f"\n## Getting Started\n{first_tick_hint}\n"
 
+        # Working memory injection (Plan #59)
+        working_memory_section: str = ""
+        wm_config: dict[str, Any] = config_get("agent.working_memory") or {}
+        if wm_config.get("enabled", True) and wm_config.get("auto_inject", True):
+            working_memory = self._get_working_memory()
+            if working_memory:
+                formatted_wm = self._format_working_memory(working_memory)
+                working_memory_section = f"""
+## Your Working Memory
+{formatted_wm}
+
+To update your working memory, use `write_artifact` to update your own artifact
+with a modified `working_memory` section.
+"""
+
         prompt: str = f"""You are {self.agent_id} in a simulated world.
 
 {self.system_prompt}
-{first_tick_section}{action_feedback}
+{first_tick_section}{working_memory_section}{action_feedback}
 ## Your Memories
 {memories}
 

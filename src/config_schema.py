@@ -1048,12 +1048,47 @@ class ErrorMessagesConfig(StrictModel):
     )
 
 
+class WorkingMemoryConfig(StrictModel):
+    """Configuration for agent working memory injection (Plan #59).
+
+    Working memory is stored in the agent artifact's content and auto-injected
+    into prompts. This enables persistent goal tracking across actions.
+    """
+
+    enabled: bool = Field(
+        default=True,
+        description="Master switch for working memory feature"
+    )
+    auto_inject: bool = Field(
+        default=True,
+        description="Automatically inject working memory into agent prompts"
+    )
+    max_size_bytes: int = Field(
+        default=2000,
+        gt=0,
+        description="Maximum size of working memory section in bytes (prevents bloat)"
+    )
+    include_in_rag: bool = Field(
+        default=False,
+        description="Include working memory in semantic search queries"
+    )
+    structured_format: bool = Field(
+        default=True,
+        description="Enforce YAML/JSON schema vs freeform text"
+    )
+    warn_on_missing: bool = Field(
+        default=False,
+        description="Log warning if agent has no working memory section"
+    )
+
+
 class AgentConfig(StrictModel):
     """Configuration for agent behavior."""
 
     prompt: AgentPromptConfig = Field(default_factory=AgentPromptConfig)
     rag: RAGConfig = Field(default_factory=RAGConfig)
     errors: ErrorMessagesConfig = Field(default_factory=ErrorMessagesConfig)
+    working_memory: WorkingMemoryConfig = Field(default_factory=WorkingMemoryConfig)
 
 
 # =============================================================================
@@ -1251,6 +1286,7 @@ __all__ = [
     "AgentPromptConfig",
     "RAGConfig",
     "ErrorMessagesConfig",
+    "WorkingMemoryConfig",
     # Functions
     "load_validated_config",
     "validate_config_dict",
