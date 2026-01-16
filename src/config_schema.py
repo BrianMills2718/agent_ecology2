@@ -1073,12 +1073,47 @@ class ErrorMessagesConfig(StrictModel):
     )
 
 
+class WorkingMemoryConfig(StrictModel):
+    """Configuration for agent working memory (Plan #59).
+
+    Working memory provides structured context that persists across agent turns,
+    enabling complex multi-step goal pursuit.
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description="Master switch for working memory feature"
+    )
+    auto_inject: bool = Field(
+        default=True,
+        description="Automatically inject working memory into agent prompts"
+    )
+    max_size_bytes: int = Field(
+        default=2000,
+        gt=0,
+        description="Maximum size of working memory in bytes (prevents prompt bloat)"
+    )
+    include_in_rag: bool = Field(
+        default=False,
+        description="Also include working memory in semantic search"
+    )
+    structured_format: bool = Field(
+        default=True,
+        description="Enforce YAML schema vs freeform working memory"
+    )
+    warn_on_missing: bool = Field(
+        default=False,
+        description="Log warning if agent has no working memory"
+    )
+
+
 class AgentConfig(StrictModel):
     """Configuration for agent behavior."""
 
     prompt: AgentPromptConfig = Field(default_factory=AgentPromptConfig)
     rag: RAGConfig = Field(default_factory=RAGConfig)
     errors: ErrorMessagesConfig = Field(default_factory=ErrorMessagesConfig)
+    working_memory: WorkingMemoryConfig = Field(default_factory=WorkingMemoryConfig)
 
 
 # =============================================================================
