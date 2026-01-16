@@ -286,10 +286,22 @@ execution:
                                         # - "block": Block until capacity available
 
 # -----------------------------------------------------------------------------
+# TIMEOUTS - Consolidated timeout values for all components
+# -----------------------------------------------------------------------------
+timeouts:
+  agent_loop_stop: 5.0           # AgentLoop stop timeout (seconds)
+  loop_manager_stop: 10.0        # AgentLoopManager stop_all timeout (seconds)
+  simulation_shutdown: 5.0       # SimulationRunner shutdown timeout (seconds)
+  mcp_server: 5.0                # MCP server operations timeout (seconds)
+  state_store_lock: 30.0         # SQLite lock timeout (seconds)
+  dashboard_server: 30.0         # Dashboard server operations timeout (seconds)
+
+# -----------------------------------------------------------------------------
 # EXECUTOR
 # -----------------------------------------------------------------------------
 executor:
   timeout_seconds: 5
+  max_invoke_depth: 5            # Maximum artifact invocation nesting depth
   # NOTE: These modules are PRE-LOADED into the execution namespace.
   # This is NOT a security whitelist - agents can import any stdlib module.
   # Security boundary is the container, not code-level sandboxing.
@@ -314,6 +326,10 @@ mint_scorer:
   model: "gemini/gemini-3-flash-preview"
   timeout: 30
   max_content_length: 200000
+  score_bounds:
+    min: 0
+    max: 100
+  thread_pool_workers: 1
 
 # -----------------------------------------------------------------------------
 # LLM
@@ -334,6 +350,37 @@ logging:
   logs_dir: "logs"              # Per-run logs directory (events.jsonl per run)
   log_dir: "llm_logs"
   default_recent: 50
+  truncation:                   # Log message truncation limits
+    content: 100                # Artifact content in logs
+    code: 100                   # Code snippets in logs
+    errors: 100                 # Error messages
+    detailed: 500               # Detailed logs
+
+# -----------------------------------------------------------------------------
+# MONITORING - Ecosystem health settings
+# -----------------------------------------------------------------------------
+monitoring:
+  audit_thresholds:
+    gini:
+      warning: 0.7
+      critical: 0.9
+    frozen_ratio:
+      warning: 0.2
+      critical: 0.5
+    active_ratio:
+      warning: 0.3
+      critical: 0.1
+    burn_rate:
+      warning: 0.1
+      critical: 0.25
+    scrip_velocity_low:
+      warning: 0.001
+  health_scoring:
+    warning_penalty: 0.1
+    critical_penalty: 0.2
+    trend_threshold: 0.1
+    trend_history_ticks: 10
+  active_agent_threshold_ticks: 5
 
 # -----------------------------------------------------------------------------
 # AGENT PROMPTS - What agents see in their context
@@ -450,3 +497,11 @@ dashboard:
   websocket_path: "/ws"
   cors_origins: ["*"]
   max_events_cache: 10000
+  debounce_delay_ms: 100        # File watcher debounce delay
+  poll_interval: 0.5            # Polling interval seconds
+
+# -----------------------------------------------------------------------------
+# ID GENERATION
+# -----------------------------------------------------------------------------
+id_generation:
+  uuid_hex_length: 8            # Characters from UUID hex for IDs
