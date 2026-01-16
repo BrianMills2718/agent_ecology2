@@ -36,6 +36,8 @@ from .types import (
 )
 from .checkpoint import save_checkpoint
 from .agent_loop import AgentLoopManager, AgentLoopConfig
+from .pool import WorkerPool, PoolConfig
+from ..agents.state_store import AgentStateStore
 
 
 class SimulationRunner:
@@ -133,6 +135,33 @@ class SimulationRunner:
                 rate_tracker = RateTracker(window_seconds=60.0)
                 self.world.rate_tracker = rate_tracker
             self.world.loop_manager = AgentLoopManager(rate_tracker)
+
+        # Worker pool support (Plan #53)
+        execution_config = config.get("execution", {})
+        self.use_worker_pool = execution_config.get("use_worker_pool", False)
+        self._worker_pool: WorkerPool | None = None
+        self._state_store: AgentStateStore | None = None
+
+        if self.use_worker_pool:
+            # Initialize state store and save initial agent states
+            pool_config = execution_config.get("worker_pool", {})
+            from pathlib import Path
+            state_db_path = Path(pool_config.get("state_db_path", "agent_state.db"))
+            self._state_store = AgentStateStore(state_db_path)
+
+            # Save all agent states to SQLite
+            for agent in self.agents:
+                state = agent.to_state()
+                self._state_store.save(state)
+
+            # Create worker pool
+            self._worker_pool = WorkerPool(PoolConfig(
+                num_workers=pool_config.get("num_workers", 4),
+                state_db_path=state_db_path,
+                log_dir=config.get("llm", {}).get("log_dir"),
+                run_id=self.run_id,
+            ))
+            self._worker_pool.start()
 
         # Pause/resume state
         self._paused = False
@@ -526,6 +555,114 @@ class SimulationRunner:
 
         return proposals
 
+    def _process_pool_results(
+        self, tick_results: Any  # TickResults from pool
+    ) -> list[ActionProposal]:
+        """Process pool results and return valid proposals (Plan #53).
+
+        Converts TickResults from WorkerPool.run_tick() to ActionProposal list
+        for Phase 2 execution.
+        """
+        from .pool import TickResults
+
+        proposals: list[ActionProposal] = []
+
+        # Build agent lookup by ID
+        agents_by_id = {agent.agent_id: agent for agent in self.agents}
+
+        for result in tick_results.results:
+            agent_id = result["agent_id"]
+            agent = agents_by_id.get(agent_id)
+
+            if agent is None:
+                # Agent not found - could be a newly spawned agent
+                if self.verbose:
+                    print(f"    {agent_id}: NOT FOUND (skipping)")
+                continue
+
+            if not result.get("success", False):
+                # Turn failed
+                error = result.get("error", "unknown error")
+                self.world.logger.log(
+                    "pool_turn_failed",
+                    {
+                        "tick": self.world.tick,
+                        "principal_id": agent_id,
+                        "error": error,
+                        "cpu_seconds": result.get("cpu_seconds", 0),
+                        "memory_bytes": result.get("memory_bytes", 0),
+                    },
+                )
+                if self.verbose:
+                    print(f"    {agent_id}: FAILED: {error[:100]}")
+                continue
+
+            # Successful turn - extract action
+            action_result = result.get("action", {})
+            if not action_result:
+                if self.verbose:
+                    print(f"    {agent_id}: NO ACTION")
+                continue
+
+            # Handle error responses from propose_action
+            if "error" in action_result and "action" not in action_result:
+                self.world.logger.log(
+                    "thinking_failed",
+                    {
+                        "tick": self.world.tick,
+                        "principal_id": agent_id,
+                        "reason": "propose_action_error",
+                        "error": action_result.get("error", ""),
+                    },
+                )
+                if self.verbose:
+                    print(f"    {agent_id}: ERROR: {action_result.get('error', '')[:100]}")
+                continue
+
+            # Extract usage info for cost tracking
+            usage = action_result.get("usage", {})
+            api_cost = usage.get("cost", 0.0)
+            input_tokens = usage.get("input_tokens", 0)
+            output_tokens = usage.get("output_tokens", 0)
+
+            # Track costs
+            self.engine.track_api_cost(api_cost, agent_id=agent_id)
+            if api_cost > 0:
+                self.world.ledger.spend_resource(agent_id, "llm_budget", api_cost)
+
+            # Log the thinking
+            thought_process = action_result.get("thought_process", "")
+            self.world.logger.log(
+                "thinking",
+                {
+                    "tick": self.world.tick,
+                    "principal_id": agent_id,
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "thinking_cost": input_tokens + output_tokens,
+                    "cpu_seconds": result.get("cpu_seconds", 0),
+                    "memory_bytes": result.get("memory_bytes", 0),
+                    "thought_process": thought_process,
+                },
+            )
+
+            if self.verbose:
+                cost_str = f" (${api_cost:.4f})" if api_cost > 0 else ""
+                print(f"    {agent_id}: {input_tokens} in, {output_tokens} out{cost_str}")
+
+            # Create proposal
+            proposals.append({
+                "agent": agent,
+                "proposal": {
+                    "action": action_result.get("action", {}),
+                    "thought_process": thought_process,
+                },
+                "thinking_cost": input_tokens + output_tokens,
+                "api_cost": api_cost,
+            })
+
+        return proposals
+
     def _execute_proposals(self, proposals: list[ActionProposal]) -> None:
         """Execute proposals in randomized order (Phase 2)."""
         if self.verbose and proposals:
@@ -735,17 +872,37 @@ class SimulationRunner:
                 return
 
             # PHASE 1: Parallel thinking
-            if self.verbose:
-                print(f"  [PHASE 1] {len(self.agents)} agents thinking in parallel...")
+            if self.use_worker_pool and self._worker_pool is not None:
+                # Pool mode: Use worker pool for process-isolated turns
+                if self.verbose:
+                    print(f"  [PHASE 1/POOL] {len(self.agents)} agents thinking via pool...")
 
-            thinking_tasks = [
-                self._think_agent(agent, tick_state)
-                for agent in self.agents
-            ]
-            thinking_results = await asyncio.gather(*thinking_tasks)
+                # Convert world state summary to dict format expected by pool
+                # StateSummary is a TypedDict, so cast to dict[str, Any]
+                world_state_dict: dict[str, Any] = dict(tick_state)
 
-            # Process results
-            proposals = self._process_thinking_results(thinking_results)
+                # Run all agents through the pool
+                agent_ids = [agent.agent_id for agent in self.agents]
+                pool_results = self._worker_pool.run_tick(
+                    agent_ids=agent_ids,
+                    world_state=world_state_dict,
+                )
+
+                # Convert pool results to proposals
+                proposals = self._process_pool_results(pool_results)
+            else:
+                # Traditional mode: Use asyncio.gather
+                if self.verbose:
+                    print(f"  [PHASE 1] {len(self.agents)} agents thinking in parallel...")
+
+                thinking_tasks = [
+                    self._think_agent(agent, tick_state)
+                    for agent in self.agents
+                ]
+                thinking_results = await asyncio.gather(*thinking_tasks)
+
+                # Process results
+                proposals = self._process_thinking_results(thinking_results)
 
             # PHASE 2: Execute in random order
             self._execute_proposals(proposals)
@@ -958,12 +1115,16 @@ class SimulationRunner:
         """Gracefully stop the simulation.
 
         Stops all agent loops if in autonomous mode.
+        Stops worker pool if in pool mode.
 
         Args:
             timeout: Maximum seconds to wait for loops to stop.
         """
         if self.use_autonomous_loops and self.world.loop_manager:
             await self.world.loop_manager.stop_all(timeout=timeout)
+        if self._worker_pool is not None:
+            self._worker_pool.stop()
+            self._worker_pool = None
         self._running = False
 
     def run_sync(self) -> World:

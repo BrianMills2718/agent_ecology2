@@ -43,5 +43,8 @@ python-dateutil>=2.8.0
 scipy>=1.11.0
 matplotlib>=3.7.0
 
+# Resource monitoring (Plan #53)
+psutil>=5.9.0
+
 # Crypto
 cryptography>=41.0.0

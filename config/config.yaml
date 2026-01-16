@@ -259,12 +259,18 @@ rate_limiting:
       max_per_window: 1073741824  # 1GB per 60 seconds
     cpu_seconds:
       max_per_window: 5.0         # Max 5 CPU-seconds per 60 seconds (renewable)
+    memory_bytes:
+      max_per_window: 104857600   # 100MB per 60 seconds (100 * 1024 * 1024)
 
 # -----------------------------------------------------------------------------
 # EXECUTION - Agent execution model settings
 # -----------------------------------------------------------------------------
 execution:
   use_autonomous_loops: true      # Autonomous mode is default (V1). Use --ticks N for legacy tick-based mode.
+  use_worker_pool: false          # Use worker pool for process-isolated turns (Plan #53)
+  worker_pool:
+    num_workers: 4                # Number of worker threads
+    state_db_path: "agent_state.db"  # Path to SQLite state database
   agent_loop:
     min_loop_delay: 0.1           # Minimum seconds between actions
     max_loop_delay: 10.0          # Maximum backoff delay on errors

@@ -68,8 +68,8 @@ const AgentsPanel = {
             const row = document.createElement('tr');
             row.addEventListener('click', () => this.showAgentDetail(agent.agent_id));
 
-            const computePercent = agent.compute_quota > 0
-                ? (agent.compute_used / agent.compute_quota * 100).toFixed(0)
+            const llmTokensPercent = agent.llm_tokens_quota > 0
+                ? (agent.llm_tokens_used / agent.llm_tokens_quota * 100).toFixed(0)
                 : 0;
             const diskPercent = agent.disk_quota > 0
                 ? (agent.disk_used / agent.disk_quota * 100).toFixed(0)
@@ -82,7 +82,7 @@ const AgentsPanel = {
             row.innerHTML = `
                 <td>${this.escapeHtml(agent.agent_id)}</td>
                 <td>${agent.scrip}</td>
-                <td>${computePercent}%</td>
+                <td>${llmTokensPercent}%</td>
                 <td>${diskPercent}%</td>
                 <td class="${statusClass}">${agent.status}</td>
                 <td>${agent.action_count}</td>
@@ -144,8 +144,8 @@ const AgentsPanel = {
                         <div class="modal-stat-value">${agent.scrip}</div>
                     </div>
                     <div class="modal-stat">
-                        <div class="modal-stat-label">Compute</div>
-                        <div class="modal-stat-value">${agent.compute.current.toFixed(0)}/${agent.compute.quota}</div>
+                        <div class="modal-stat-label">LLM Tokens</div>
+                        <div class="modal-stat-value">${agent.llm_tokens.current.toFixed(0)}/${agent.llm_tokens.quota}</div>
                     </div>
                     <div class="modal-stat">
                         <div class="modal-stat-label">Disk</div>
@@ -199,7 +199,7 @@ const AgentsPanel = {
                                 <div class="thinking-meta">
                                     <span class="timeline-tick">T${thought.tick}</span>
                                     <span class="thinking-tokens-small">${thought.input_tokens}in/${thought.output_tokens}out</span>
-                                    <span class="thinking-cost-small">${thought.thinking_cost} compute</span>
+                                    <span class="thinking-cost-small">${thought.thinking_cost} tokens</span>
                                 </div>
                                 <div class="thinking-preview-modal">${preview}</div>
                             </div>

@@ -30,6 +30,9 @@ import json
 from pathlib import Path
 from typing import Any, TypedDict, TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from .state_store import AgentState
+
 # Add llm_provider_standalone to path
 PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / 'llm_provider_standalone'))
@@ -75,7 +78,7 @@ class ArtifactInfo(TypedDict, total=False):
 
 class QuotaInfo(TypedDict, total=False):
     """Quota information for an agent."""
-    compute_quota: int
+    llm_tokens_quota: int
     disk_quota: int
     disk_used: int
     disk_available: int
@@ -324,6 +327,75 @@ class Agent:
 
         return artifact
 
+    # State persistence methods (Plan #53 Phase 2)
+
+    def to_state(self) -> "AgentState":
+        """Serialize agent to persistable state for process-per-turn model.
+
+        This enables the worker pool architecture where each turn runs in
+        a separate process. The state can be saved to SQLite between turns.
+
+        Returns:
+            AgentState dataclass with all state needed to reconstruct agent
+        """
+        from .state_store import AgentState
+
+        return AgentState(
+            agent_id=self.agent_id,
+            llm_model=self._llm_model,
+            system_prompt=self._system_prompt,
+            action_schema=self._action_schema,
+            last_action_result=self.last_action_result,
+            turn_history=[],  # TODO: Track turn history if needed
+            rag_enabled=self._rag_config.get("enabled", False),
+            rag_limit=self._rag_config.get("limit", 5),
+            rag_query_template=self._rag_config.get("query_template"),
+        )
+
+    @classmethod
+    def from_state(
+        cls,
+        state: "AgentState",
+        *,
+        log_dir: str | None = None,
+        run_id: str | None = None,
+    ) -> "Agent":
+        """Reconstruct agent from saved state.
+
+        This factory method creates an Agent from persisted state,
+        enabling the process-per-turn model where agents are loaded
+        fresh each turn from SQLite.
+
+        Args:
+            state: AgentState with saved configuration and runtime state
+            log_dir: Directory for LLM logs
+            run_id: Run ID for log organization
+
+        Returns:
+            Agent instance ready for action
+        """
+        rag_config: RAGConfigDict = {
+            "enabled": state.rag_enabled,
+            "limit": state.rag_limit,
+        }
+        if state.rag_query_template:
+            rag_config["query_template"] = state.rag_query_template
+
+        agent = cls(
+            agent_id=state.agent_id,
+            llm_model=state.llm_model,
+            system_prompt=state.system_prompt,
+            action_schema=state.action_schema,
+            log_dir=log_dir,
+            run_id=run_id,
+            rag_config=rag_config,
+        )
+
+        # Restore runtime state
+        agent.last_action_result = state.last_action_result
+
+        return agent
+
     # Properties that delegate to artifact when backed
 
     @property
@@ -472,9 +544,11 @@ class Agent:
         quotas: dict[str, Any] = world_state.get('quotas', {}).get(self.agent_id, {})
         quota_info: str = ""
         if quotas:
+            # Support both new and legacy field names
+            tokens_quota = quotas.get('llm_tokens_quota', quotas.get('compute_quota', 50))
             quota_info = f"""
 ## Your Rights (Quotas)
-- Compute quota: {quotas.get('compute_quota', 50)} per tick
+- LLM tokens quota: {tokens_quota} per tick
 - Disk quota: {quotas.get('disk_quota', 10000)} bytes
 - Disk used: {quotas.get('disk_used', 0)} bytes
 - Disk available: {quotas.get('disk_available', 10000)} bytes"""

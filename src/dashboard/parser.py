@@ -48,8 +48,8 @@ class AgentState:
     """Internal state tracking for an agent."""
     agent_id: str
     scrip: int = 0
-    compute_used: float = 0
-    compute_quota: float = 0
+    llm_tokens_used: float = 0
+    llm_tokens_quota: float = 0
     disk_used: float = 0
     disk_quota: float = 0
     action_count: int = 0
@@ -115,7 +115,7 @@ class SimulationState:
     tick_summaries: list[TickSummary] = field(default_factory=list)
 
     # Charts
-    compute_history: dict[str, list[ChartDataPoint]] = field(default_factory=dict)
+    llm_tokens_history: dict[str, list[ChartDataPoint]] = field(default_factory=dict)
     scrip_history: dict[str, list[ChartDataPoint]] = field(default_factory=dict)
 
     # Flow data
@@ -139,7 +139,7 @@ class JSONLParser:
         self.file_position: int = 0
         self.state = SimulationState()
         self._current_tick_actions: int = 0
-        self._current_tick_compute: float = 0
+        self._current_tick_llm_tokens: float = 0
         self._current_tick_scrip_transfers: int = 0
         self._current_tick_artifacts: int = 0
         self._current_tick_mints: int = 0
@@ -162,7 +162,7 @@ class JSONLParser:
             self.file_position = 0
             self.state = SimulationState()
             self._current_tick_actions = 0
-            self._current_tick_compute = 0
+            self._current_tick_llm_tokens = 0
             self._current_tick_scrip_transfers = 0
             self._current_tick_artifacts = 0
             self._current_tick_mints = 0
@@ -222,7 +222,7 @@ class JSONLParser:
                 self.state.agents[agent_id] = AgentState(
                     agent_id=agent_id,
                     scrip=p.get("starting_scrip", 0),
-                    compute_quota=p.get("compute_quota", 0),
+                    llm_tokens_quota=p.get("compute_quota", 0),  # Legacy field name in events
                     disk_quota=p.get("disk_quota", 0),
                 )
 
@@ -238,7 +238,7 @@ class JSONLParser:
                 timestamp=timestamp,
                 agent_count=len(self.state.agents),
                 action_count=self._current_tick_actions,
-                total_compute_used=self._current_tick_compute,
+                total_llm_tokens_used=self._current_tick_llm_tokens,
                 total_scrip_transferred=self._current_tick_scrip_transfers,
                 artifacts_created=self._current_tick_artifacts,
                 mint_results=self._current_tick_mints,
@@ -247,26 +247,26 @@ class JSONLParser:
 
         # Reset per-tick counters
         self._current_tick_actions = 0
-        self._current_tick_compute = 0
+        self._current_tick_llm_tokens = 0
         self._current_tick_scrip_transfers = 0
         self._current_tick_artifacts = 0
         self._current_tick_mints = 0
 
-        # Update balances from tick event
-        compute = event.get("compute", {})
+        # Update balances from tick event (legacy field name "compute" in events)
+        llm_tokens = event.get("compute", {})  # Legacy field name
         scrip = event.get("scrip", {})
 
         for agent_id, agent in self.state.agents.items():
-            if agent_id in compute:
-                agent.compute_used = agent.compute_quota - compute[agent_id]
+            if agent_id in llm_tokens:
+                agent.llm_tokens_used = agent.llm_tokens_quota - llm_tokens[agent_id]
             if agent_id in scrip:
                 agent.scrip = scrip[agent_id]
 
             # Record history for charts
-            if agent_id not in self.state.compute_history:
-                self.state.compute_history[agent_id] = []
-            self.state.compute_history[agent_id].append(
-                ChartDataPoint(tick=tick, value=agent.compute_used, label=agent_id)
+            if agent_id not in self.state.llm_tokens_history:
+                self.state.llm_tokens_history[agent_id] = []
+            self.state.llm_tokens_history[agent_id].append(
+                ChartDataPoint(tick=tick, value=agent.llm_tokens_used, label=agent_id)
             )
 
             if agent_id not in self.state.scrip_history:
@@ -294,7 +294,7 @@ class JSONLParser:
             thought_process=thought_process if thought_process else None,
         )
         self.state.agents[agent_id].thinking_history.append(thinking)
-        self._current_tick_compute += event.get("thinking_cost", 0)
+        self._current_tick_llm_tokens += event.get("thinking_cost", 0)
 
     def _handle_thinking_failed(self, event: dict[str, Any], timestamp: str) -> None:
         """Handle failed thinking event."""
@@ -382,7 +382,7 @@ class JSONLParser:
             agent_id=agent_id,
             action_type=action_type,
             target=target,
-            compute_cost=event.get("compute_cost", 0),
+            llm_tokens_cost=event.get("compute_cost", 0),  # Legacy field name in events
             success=True,
             result=event.get("result"),
         )
@@ -392,7 +392,7 @@ class JSONLParser:
         self.state.agents[agent_id].last_action_tick = self.state.current_tick
 
         self._current_tick_actions += 1
-        self._current_tick_compute += event.get("compute_cost", 0)
+        self._current_tick_llm_tokens += event.get("compute_cost", 0)  # Legacy field name
 
         # Track scrip changes
         if "scrip_after" in event:
@@ -719,16 +719,16 @@ class JSONLParser:
             return None
 
         status: Literal["active", "low_resources", "frozen"] = "active"
-        if agent.compute_used >= agent.compute_quota * 0.9:
+        if agent.llm_tokens_used >= agent.llm_tokens_quota * 0.9:
             status = "low_resources"
-        if agent.compute_used >= agent.compute_quota:
+        if agent.llm_tokens_used >= agent.llm_tokens_quota:
             status = "frozen"
 
         return AgentSummary(
             agent_id=agent.agent_id,
             scrip=agent.scrip,
-            compute_used=agent.compute_used,
-            compute_quota=agent.compute_quota,
+            llm_tokens_used=agent.llm_tokens_used,
+            llm_tokens_quota=agent.llm_tokens_quota,
             disk_used=agent.disk_used,
             disk_quota=agent.disk_quota,
             status=status,
@@ -752,18 +752,18 @@ class JSONLParser:
             return None
 
         status: Literal["active", "low_resources", "frozen"] = "active"
-        if agent.compute_used >= agent.compute_quota * 0.9:
+        if agent.llm_tokens_used >= agent.llm_tokens_quota * 0.9:
             status = "low_resources"
-        if agent.compute_used >= agent.compute_quota:
+        if agent.llm_tokens_used >= agent.llm_tokens_quota:
             status = "frozen"
 
         return AgentDetail(
             agent_id=agent.agent_id,
             scrip=agent.scrip,
-            compute=ResourceBalance(
-                current=agent.compute_quota - agent.compute_used,
-                quota=agent.compute_quota,
-                used=agent.compute_used,
+            llm_tokens=ResourceBalance(
+                current=agent.llm_tokens_quota - agent.llm_tokens_used,
+                quota=agent.llm_tokens_quota,
+                used=agent.llm_tokens_used,
             ),
             disk=ResourceBalance(
                 current=agent.disk_quota - agent.disk_used,
@@ -839,16 +839,16 @@ class JSONLParser:
             status=self.state.status,
         )
 
-    def get_compute_chart_data(self) -> ResourceChartData:
-        """Get compute usage chart data."""
+    def get_llm_tokens_chart_data(self) -> ResourceChartData:
+        """Get LLM tokens usage chart data."""
         agents = [
             AgentChartData(agent_id=agent_id, data=points)
-            for agent_id, points in self.state.compute_history.items()
+            for agent_id, points in self.state.llm_tokens_history.items()
         ]
 
         # Calculate totals per tick
         totals: dict[int, float] = {}
-        for points in self.state.compute_history.values():
+        for points in self.state.llm_tokens_history.values():
             for p in points:
                 totals[p.tick] = totals.get(p.tick, 0) + p.value
 
@@ -858,7 +858,7 @@ class JSONLParser:
         ]
 
         return ResourceChartData(
-            resource_name="compute",
+            resource_name="llm_tokens",
             agents=agents,
             totals=total_points,
         )
@@ -965,9 +965,9 @@ class JSONLParser:
         nodes: list[NetworkNode] = []
         for agent_id, agent in self.state.agents.items():
             status: Literal["active", "low_resources", "frozen"] = "active"
-            if agent.compute_used >= agent.compute_quota * 0.9:
+            if agent.llm_tokens_used >= agent.llm_tokens_quota * 0.9:
                 status = "low_resources"
-            if agent.compute_used >= agent.compute_quota:
+            if agent.llm_tokens_used >= agent.llm_tokens_quota:
                 status = "frozen"
 
             node_type: Literal["agent", "genesis", "artifact"] = "agent"

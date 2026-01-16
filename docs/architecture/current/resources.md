@@ -2,7 +2,7 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-01-15 (Plan #7 - ID Registry integration with Ledger)
+**Last verified:** 2026-01-16 (Plan #53 - Added cpu_seconds, memory_bytes resources)
 
 **See target:** [../target/resources.md](../target/resources.md)
 
@@ -10,12 +10,14 @@ How resources work TODAY.
 
 ## Terminology
 
-| Term | Meaning | Internal Name |
-|------|---------|---------------|
-| **llm_tokens** | Rate-limited LLM API access | `llm_tokens` |
-| **llm_budget** | Real $ for API calls | `max_api_cost` |
-| **disk** | Storage quota | `disk` |
-| **scrip** | Internal currency | `scrip` |
+| Term | Meaning | Internal Name | Category |
+|------|---------|---------------|----------|
+| **llm_tokens** | Rate-limited LLM API access | `llm_tokens` | Renewable (rate-limited) |
+| **llm_budget** | Real $ for API calls | `max_api_cost` | Depletable |
+| **disk** | Storage quota | `disk` | Allocatable |
+| **cpu_seconds** | CPU time per rolling window | `cpu_seconds` | Renewable (rate-limited) |
+| **memory_bytes** | Memory usage per rolling window | `memory_bytes` | Renewable (rate-limited) |
+| **scrip** | Internal currency | `scrip` | Economic signal |
 
 **Note:** Legacy config uses `resources.flow.compute` which maps to `llm_tokens`. The term "compute" is reserved for future local CPU tracking.
 
@@ -262,3 +264,63 @@ can_proceed = ledger.rate_tracker.can_consume("llm_calls", agent_id, 1)
 - Async-safe: uses `asyncio.Lock` for concurrent access
 
 See `docs/architecture/current/configuration.md` for rate limiting config options.
+
+---
+
+## Renewable Resources (Plan #53)
+
+### CPU Seconds
+
+| Property | Value |
+|----------|-------|
+| Config key | `rate_limiting.resources.cpu_seconds.max_per_window` |
+| Internal name | `cpu_seconds` |
+| Default | 5.0 CPU-seconds per 60-second window |
+| Measurement | `time.process_time()` via ResourceMeasurer |
+
+**Behavior:**
+- Tracked via RateTracker rolling window
+- Measured per-agent-turn using ResourceMeasurer
+- Replenishes continuously over time
+- ~90% accurate (±10% for Python runtime overhead)
+
+**Enforcement (worker pool mode):**
+```python
+# In worker.py
+if cpu_time_used > cpu_quota:
+    return {"success": False, "error": "cpu_quota_exceeded"}
+```
+
+### Memory Bytes
+
+| Property | Value |
+|----------|-------|
+| Config key | `rate_limiting.resources.memory_bytes.max_per_window` |
+| Internal name | `memory_bytes` |
+| Default | 104857600 bytes (100MB) per 60-second window |
+| Measurement | `psutil.Process().memory_info().rss` |
+
+**Behavior:**
+- Tracked via RateTracker rolling window
+- Measured per-agent-turn using psutil
+- Replenishes continuously over time
+- ~90% accurate (±10% for shared Python runtime)
+
+**Enforcement (worker pool mode):**
+```python
+# In worker.py
+if memory_used > memory_quota:
+    return {"success": False, "error": "memory_quota_exceeded"}
+```
+
+### Resource Measurement Accuracy
+
+| Resource | Method | Accuracy | Error Source |
+|----------|--------|----------|--------------|
+| LLM tokens | API response | Exact (0%) | None |
+| LLM $ cost | litellm.completion_cost() | Exact (0%) | None |
+| Disk bytes | File size | Exact (0%) | None |
+| Memory | psutil.Process().memory_info() | ~90% | Shared Python runtime |
+| CPU time | time.process_time() | ~90% | Shared runtime overhead |
+
+**Note:** The ~10% error from shared Python runtime is realistic - agents pay for their infrastructure overhead.
