@@ -86,6 +86,7 @@ Master index of all gaps and their implementation plans.
 | 54 | [Interface Reserved Terms](54_interface_reserved_terms.md) | Medium | ✅ Complete | #14 |
 | 56 | [Per-Run Logging](56_per_run_logging.md) | Medium | ✅ Complete | - |
 | 57 | [Agent Resource Management](57_agent_improvements.md) | **High** | 🚧 In Progress | - |
+| 58 | [Dashboard Autonomous Mode](58_dashboard_autonomous.md) | Medium | 🚧 In Progress | #57 |
 | 59 | [Agent Intelligence Patterns](59_agent_intelligence.md) | **High** | 📋 Planned | #57 |
 
 ---
