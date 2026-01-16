@@ -664,6 +664,64 @@ class TestCpuSecondsResourceType:
         assert result is False
 
 
+class TestMemoryBytesResourceType:
+    """Tests for memory_bytes as a valid resource type (Plan #53 Phase 4)."""
+
+    @pytest.mark.plans([53])
+    def test_memory_bytes_resource_type(self) -> None:
+        """Ledger accepts memory_bytes as a valid resource type.
+
+        Plan #53 Phase 4 requires memory_bytes to be tracked by the ledger
+        via the rate tracker rolling window mechanism.
+        """
+        config = {
+            "rate_limiting": {
+                "enabled": True,
+                "window_seconds": 60.0,
+                "resources": {
+                    "memory_bytes": {"max_per_window": 104857600}  # 100MB
+                }
+            }
+        }
+        ledger = Ledger.from_config(config, ["agent1"])
+
+        # Initially should have full capacity
+        assert ledger.check_resource_capacity("agent1", "memory_bytes", 1048576) is True
+        assert ledger.get_resource_remaining("agent1", "memory_bytes") == 104857600
+
+        # Consume some memory_bytes
+        result = ledger.consume_resource("agent1", "memory_bytes", 52428800)  # 50MB
+        assert result is True
+
+        # Should have 50MB remaining
+        assert ledger.get_resource_remaining("agent1", "memory_bytes") == 52428800
+
+        # Should be able to consume more (up to 50MB)
+        assert ledger.check_resource_capacity("agent1", "memory_bytes", 30000000) is True
+        assert ledger.check_resource_capacity("agent1", "memory_bytes", 60000000) is False
+
+    @pytest.mark.plans([53])
+    def test_memory_bytes_exhaustion_blocks_further_consumption(self) -> None:
+        """When memory_bytes exhausted, further consumption is blocked."""
+        config = {
+            "rate_limiting": {
+                "enabled": True,
+                "resources": {
+                    "memory_bytes": {"max_per_window": 10485760}  # 10MB
+                }
+            }
+        }
+        ledger = Ledger.from_config(config, ["agent1"])
+
+        # Exhaust the memory_bytes
+        ledger.consume_resource("agent1", "memory_bytes", 10485760)
+        assert ledger.get_resource_remaining("agent1", "memory_bytes") == 0.0
+
+        # Should not be able to consume more
+        result = ledger.consume_resource("agent1", "memory_bytes", 1)
+        assert result is False
+
+
 class TestAsyncScripOperations:
     """Tests for async thread-safe scrip operations."""
 

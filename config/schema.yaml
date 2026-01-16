@@ -180,12 +180,18 @@ rate_limiting:
   enabled: <boolean>              # Enable rate limiting (default: false)
   window_seconds: <number>        # Rolling window duration (default: 60.0)
   resources:                      # Per-resource limits
+    llm_tokens:
+      max_per_window: <number>    # Max LLM tokens per window
     llm_calls:
       max_per_window: <number>    # Max LLM API calls per window
     disk_writes:
       max_per_window: <number>    # Max disk write operations per window
     bandwidth_bytes:
       max_per_window: <number>    # Max bytes transferred per window
+    cpu_seconds:
+      max_per_window: <number>    # Max CPU seconds per window (Plan #53)
+    memory_bytes:
+      max_per_window: <number>    # Max memory bytes per window (Plan #53)
 
 # -----------------------------------------------------------------------------
 # EXECUTION
@@ -193,6 +199,10 @@ rate_limiting:
 # -----------------------------------------------------------------------------
 execution:
   use_autonomous_loops: <boolean>  # Enable continuous autonomous loops (default: false)
+  use_worker_pool: <boolean>       # Use worker pool for process-isolated turns (default: false)
+  worker_pool:
+    num_workers: <number>          # Number of worker threads (default: 4)
+    state_db_path: <string>        # Path to SQLite state database (default: "agent_state.db")
   agent_loop:
     min_loop_delay: <number>       # Minimum seconds between actions (default: 0.1)
     max_loop_delay: <number>       # Maximum backoff delay on errors (default: 10.0)

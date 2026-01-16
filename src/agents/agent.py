@@ -30,6 +30,9 @@ import json
 from pathlib import Path
 from typing import Any, TypedDict, TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from .state_store import AgentState
+
 # Add llm_provider_standalone to path
 PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / 'llm_provider_standalone'))

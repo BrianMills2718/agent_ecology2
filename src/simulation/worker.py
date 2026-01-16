@@ -100,12 +100,23 @@ def run_agent_turn(
         # Run turn
         action_result = agent.propose_action(world_state)
 
-        # Update state with turn results
-        state.last_action_result = str(action_result)
+        # Update state with turn results (ensure serializable)
+        try:
+            import json
+            # Try to serialize to ensure it's JSON-safe
+            json.dumps(action_result)
+            state.last_action_result = str(action_result)
+        except (TypeError, ValueError):
+            # Not serializable, convert to string representation
+            state.last_action_result = repr(action_result)
+
         state.last_tick = world_state.get("tick", 0)
+        action_type = None
+        if isinstance(action_result, dict):
+            action_type = action_result.get("action")
         state.turn_history.append({
             "tick": world_state.get("tick", 0),
-            "action": action_result.get("action") if isinstance(action_result, dict) else None,
+            "action": action_type,
         })
 
         # Save updated state
@@ -275,6 +286,6 @@ def _get_memory_usage() -> int:
 
     try:
         process = psutil.Process()
-        return process.memory_info().rss
+        return int(process.memory_info().rss)
     except Exception:
         return 0

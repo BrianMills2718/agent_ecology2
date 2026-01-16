@@ -733,12 +733,33 @@ class AgentLoopExecutionConfig(StrictModel):
     )
 
 
+class WorkerPoolConfig(StrictModel):
+    """Configuration for worker pool execution (Plan #53)."""
+
+    num_workers: int = Field(
+        default=4,
+        gt=0,
+        description="Number of worker threads for parallel execution"
+    )
+    state_db_path: str = Field(
+        default="agent_state.db",
+        description="Path to SQLite database for agent state persistence"
+    )
+
+
 class ExecutionConfig(StrictModel):
     """Configuration for agent execution model."""
 
     use_autonomous_loops: bool = Field(
         default=False,
         description="Enable continuous autonomous agent loops (default: tick-based)"
+    )
+    use_worker_pool: bool = Field(
+        default=False,
+        description="Use worker pool for process-isolated turns (Plan #53)"
+    )
+    worker_pool: WorkerPoolConfig = Field(
+        default_factory=WorkerPoolConfig
     )
     agent_loop: AgentLoopExecutionConfig = Field(
         default_factory=AgentLoopExecutionConfig
@@ -777,6 +798,10 @@ class RateLimitingResourcesConfig(StrictModel):
     cpu_seconds: RateLimitResourceConfig = Field(
         default_factory=lambda: RateLimitResourceConfig(max_per_window=5.0),
         description="CPU time per rolling window (renewable resource)"
+    )
+    memory_bytes: RateLimitResourceConfig = Field(
+        default_factory=lambda: RateLimitResourceConfig(max_per_window=104857600),  # 100MB
+        description="Memory usage per rolling window (allocatable resource)"
     )
 
 
