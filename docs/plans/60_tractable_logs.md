@@ -1,6 +1,6 @@
 # Gap 60: Tractable Logs
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** Medium
 **Blocked By:** -
 **Blocks:** -

@@ -87,6 +87,52 @@ class EventLogger:
     def read_recent(self, n: int | None = None) -> list[dict[str, Any]]
 ```
 
+### SummaryLogger Class (Plan #60)
+
+**`SummaryLogger`** - `logger.py:14-71` - Tractable per-tick summaries
+
+```python
+class SummaryLogger:
+    def __init__(self, path: Path)
+    def log_tick_summary(
+        self, tick: int, agents_active: int, actions_executed: int,
+        actions_by_type: dict | None = None, total_llm_tokens: int = 0,
+        total_scrip_transferred: int = 0, artifacts_created: int = 0,
+        errors: int = 0, highlights: list[str] | None = None
+    ) -> None
+```
+
+**`TickSummaryCollector`** - `logger.py:74-160` - Accumulates metrics within a tick
+
+```python
+class TickSummaryCollector:
+    def record_action(self, action_type: str, success: bool = True)
+    def record_llm_tokens(self, count: int)
+    def record_scrip_transfer(self, amount: int)
+    def record_artifact_created(self)
+    def add_highlight(self, text: str)
+    def finalize(self, tick: int, agents_active: int) -> dict
+```
+
+### Summary Format (summary.jsonl)
+
+```json
+{
+    "tick": 5,
+    "timestamp": "2026-01-16T12:00:00Z",
+    "agents_active": 3,
+    "actions_executed": 3,
+    "actions_by_type": {"invoke": 2, "write": 1},
+    "total_llm_tokens": 150,
+    "total_scrip_transferred": 25,
+    "artifacts_created": 1,
+    "errors": 0,
+    "highlights": ["alpha created tool_x"]
+}
+```
+
+In per-run mode, `EventLogger` creates a companion `SummaryLogger` at `logs/{run_id}/summary.jsonl`.
+
 ### Event Format
 
 ```json
@@ -226,6 +272,7 @@ Real-time web UI for monitoring simulation.
 | `/api/health` | GET | Health assessment with concerns and trends |
 | `/api/config` | GET | Simulation configuration |
 | `/api/ticks` | GET | Tick summary history |
+| `/api/summary` | GET | Tractable tick summaries from summary.jsonl (Plan #60) |
 | `/api/network` | GET | Agent interaction graph |
 | `/api/activity` | GET | Activity feed with filtering |
 | `/api/thinking` | GET | Agent thinking history |
