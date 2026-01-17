@@ -17,6 +17,27 @@
 
 ---
 
+## References Reviewed
+
+**Required:** Document what code/docs you reviewed before planning.
+This forces exploration before implementation and creates traceability.
+
+- `src/relevant/file.py:10-50` - description of what you learned
+- `docs/architecture/current/relevant.md` - relevant design context
+- `CLAUDE.md` - project conventions reviewed
+
+---
+
+## Files Affected
+
+**Required:** Declare what files will be touched. Hook blocks undeclared edits.
+
+- `src/path/to/file.py` (modify)
+- `src/path/to/new_file.py` (create)
+- `tests/test_feature.py` (create)
+
+---
+
 ## Plan
 
 ### Changes Required
