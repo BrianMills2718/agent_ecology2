@@ -450,7 +450,8 @@ acceptance_criteria:
     locked: false
 
 # === IMPLEMENTATION SECTION ===
-adrs: []  # May create ADR for workflow architecture decision
+adrs:
+  - ADR-0013  # Configurable Agent Workflows
 
 code:
   phase_1:
