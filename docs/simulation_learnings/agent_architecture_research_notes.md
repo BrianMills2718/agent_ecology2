@@ -532,6 +532,12 @@ Source: https://github.com/open-thought/system-2-research
 | 24 | Zep/Graphiti | **Read** |
 | 25 | Agent Workflow Memory | **Read** |
 | 26 | Reddit: AI Agent Memory Guide | **Read** |
+| 27 | Episodic Memory Retrieval & Injection | **Read** |
+| 28 | Memory Synthesis from Execution Logs | **Read** |
+| 29 | Skill Library Evolution | **Read** |
+| 30 | Self-Critique Evaluator Loop | **Read** |
+| 31 | Dual Episodic+Semantic Memory (impl) | **Read** |
+| 32 | RLHF Self-Improvement Pattern (impl) | **Read** |
 
 ---
 
@@ -809,6 +815,181 @@ Episode: Specific interactions + what worked
 - Graph relationships between memories (what's connected to what) could improve retrieval
 - "Keep solutions, discard process" aligns with AWM's workflow storage pattern
 - We should track what WORKED, not just what happened
+
+### Episodic Memory Retrieval & Injection Pattern
+
+Source: agentic-patterns.com
+
+**Problem:** Stateless agent calls cause agents to forget prior decisions, leading to repeated mistakes.
+
+**Three-Step Solution:**
+
+1. **Memory Recording**: After each episode, write a concise "memory blob" capturing event, outcome, and reasoning
+2. **Memory Retrieval & Injection**: Embed prompt, retrieve top-k similar memories via vector similarity, inject as contextual hints
+3. **Memory Maintenance**: Apply TTL or decay scoring to prune outdated memories
+
+**Trade-offs:**
+- ✓ Richer continuity across sessions, reduces repeated errors
+- ✗ Retrieval noise if memories lack curation, storage costs
+
+**Relevance:** We could write episode summaries to artifacts after each tick, then retrieve relevant ones for context.
+
+### Memory Synthesis from Execution Logs (CRITICAL FOR LEARNING)
+
+Source: agentic-patterns.com
+
+**Problem:** Memorizing everything creates noise; ignoring learnings wastes experience.
+
+**Two-Tier Solution:**
+
+**Tier 1 - Task Diaries:** Each execution generates structured entry:
+- Attempted approaches + outcomes
+- Failures with error details
+- Successful solutions + reasoning
+- Edge cases discovered
+- Potentially generalizable patterns
+
+**Tier 2 - Synthesis:** Dedicated agents review batches (50+ entries) to find patterns appearing in 3+ tasks, then recommend:
+- General rules for system prompts
+- Reusable commands
+- Test cases
+
+**Implementation Phases:**
+1. Structured logging (what attempted, why failed, what worked)
+2. Periodic synthesis (weekly or after N tasks)
+3. Knowledge integration (feed into prompts, commands, tests)
+
+**Key Quote:**
+> Rather than "make button pink", synthesis reveals: "Authentication changes consistently require CORS updates and dual expiry checks"
+
+**Relevance:** This is exactly how our agents could learn across ticks/runs. Action logs → periodic synthesis → prompt improvements.
+
+### Skill Library Evolution
+
+Source: agentic-patterns.com
+
+**Evolution Path:**
+```
+Ad-hoc Code → Save Working Solution → Reusable Function → Documented Skill → Agent Capability
+```
+
+**Storage Structure:**
+```
+skills/
+├── README.md (skill index)
+├── data_processing/
+├── api_integration/
+└── tests/
+```
+
+**Progressive Discovery (91% token reduction):**
+- Don't load all skills into context
+- Inject brief descriptions into system prompt
+- Provide on-demand `load_skills` tool
+- Lazy-load only relevant tools
+
+**Trade-offs:**
+- ✓ Reduces redundant problem-solving, builds org knowledge
+- ✗ Requires curation discipline, potential staleness
+
+**Relevance:** Agents could build skill artifacts that other agents can discover and use.
+
+### Self-Critique Evaluator Loop
+
+Source: agentic-patterns.com (Wang et al., arXiv:2408.02666)
+
+**Self-Taught Evaluator Pattern:**
+
+1. **Generate candidates**: Multiple response options
+2. **Self-judge**: Model articulates which excels + reasoning
+3. **Bootstrap training**: Fine-tune evaluator on own judgments
+4. **Iterate**: Strengthen discriminative ability
+5. **Refresh synthetically**: Regenerate to prevent drift
+
+**Integration Points:**
+- Reward model scoring agent outputs
+- Quality gate filtering low-confidence generations
+- Triggers after generation, before execution
+
+**Result:** Near-human eval accuracy without labels; scales with compute
+
+**Relevance:** Agents could self-evaluate actions before committing.
+
+### Dual Episodic+Semantic Memory Implementation
+
+Source: FareedKhan-dev/all-agentic-architectures
+
+**Architecture:**
+```
+Episodic Memory (FAISS)     Semantic Memory (Neo4j)
+    ↓                              ↓
+"What happened?"            "What do I know?"
+Past conversations          Entities & relationships
+Vector similarity           Graph queries
+    ↓                              ↓
+    └──────── Combined Context ────────┘
+                    ↓
+            Generate Response
+                    ↓
+            Update Both Memories
+```
+
+**Memory Creation Flow:**
+1. After interaction, "Memory Maker" agent processes conversation
+2. LLM generates brief summary → episodic (vector)
+3. Structured output extracts entities/relationships → semantic (graph)
+4. Both updated asynchronously
+
+**Retrieval Pattern:**
+```python
+retrieve_memory() → [vector search + graph query] → combined context
+```
+
+**Example:**
+Query: "Based on my goals, what's a good alternative?"
+- Episodic: retrieves summary about conservative investing
+- Semantic: retrieves `(User:Alex)-[HAS_GOAL]->(ConservativeInvesting)`
+- Combined: contextually appropriate recommendation
+
+**Relevance:** We already have Qdrant (vector). Adding graph structure could improve relationship-aware retrieval.
+
+### RLHF Self-Improvement Pattern Implementation
+
+Source: FareedKhan-dev/all-agentic-architectures
+
+**Three-Phase Feedback Loop:**
+
+```
+┌─────────────────────────────────────────────┐
+│  1. GENERATION: Primary agent creates output │
+└──────────────────┬──────────────────────────┘
+                   ↓
+┌──────────────────────────────────────────────┐
+│  2. CRITIQUE: Critic scores + gives feedback │
+│     - Numeric score (1-10)                   │
+│     - Specific actionable feedback           │
+│     - Approval boolean (≥8 = done)           │
+└──────────────────┬───────────────────────────┘
+                   ↓
+         ┌────────────────┐
+         │  Score ≥ 8?    │
+         └───┬────────┬───┘
+           Yes       No
+            ↓         ↓
+         DONE    3. REVISION
+                     ↓
+              Loop back to 2
+```
+
+**Persistent Learning via GoldStandardMemory:**
+- High-quality outputs stored in memory
+- Injected as examples in future prompts:
+  > "Learn from the style and quality of past successful examples"
+- Result: Second task achieved 9/10 immediately (zero revisions) vs first task needing revision
+
+**Key Insight:** Reinforces successful patterns WITHOUT mathematical reward functions. System learns from accumulated positive outcomes.
+
+**Relevance:** Our agents could store successful action sequences as exemplars for future reference.
 
 ---
 

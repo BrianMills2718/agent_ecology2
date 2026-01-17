@@ -2,7 +2,7 @@
 
 **Status:** recommendation
 **Date:** 2026-01-16
-**Based on:** 26 research sources reviewed
+**Based on:** 32 research sources reviewed
 **Related:** agent_architecture_research_notes.md, agent_architecture_design_space.md
 
 ---
@@ -267,3 +267,9 @@ Fix the cold-start deadlock first. Then add planning. Then reflection. Test at e
 | 24 | Zep/Graphiti | Temporal knowledge graphs, 94.8% accuracy, 90% latency reduction |
 | 25 | Agent Workflow Memory | Store reusable workflows not actions, 51% improvement |
 | 26 | Reddit Practitioners | data+context+timestamp; graph relationships; keep solutions not process |
+| 27 | Episodic Memory Pattern | Vector-backed memory blobs with TTL/decay for maintenance |
+| 28 | **Memory Synthesis** | **Task diaries → periodic synthesis → prompt improvements** |
+| 29 | Skill Library Evolution | Progressive skill accumulation, 91% token reduction via lazy-load |
+| 30 | Self-Critique Evaluator | Self-taught evaluator bootstrapping without labels |
+| 31 | Dual Memory (impl) | Vector (episodic) + Graph (semantic) combined context |
+| 32 | RLHF Pattern (impl) | Generate→Critique→Revise loop with GoldStandardMemory |
