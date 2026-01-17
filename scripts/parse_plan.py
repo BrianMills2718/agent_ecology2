@@ -102,15 +102,33 @@ def get_active_plan_number() -> int | None:
 
 
 def find_plan_file(plan_number: int) -> Path | None:
-    """Find the plan file for a given plan number."""
-    main_root = get_main_repo_root()
-    plans_dir = main_root / "docs/plans"
+    """Find the plan file for a given plan number.
+
+    Checks both main repo and current worktree (if different).
+    """
+    # Check locations in order of preference
+    locations = [
+        get_main_repo_root() / "docs/plans",  # Main repo (shared)
+        Path.cwd() / "docs/plans",  # Current worktree
+    ]
+
+    # Dedupe while preserving order
+    seen = set()
+    unique_locations = []
+    for loc in locations:
+        resolved = loc.resolve()
+        if resolved not in seen:
+            seen.add(resolved)
+            unique_locations.append(loc)
 
     # Try both formats: 01_name.md and 1_name.md
-    for pattern in [f"{plan_number:02d}_*.md", f"{plan_number}_*.md"]:
-        matches = list(plans_dir.glob(pattern))
-        if matches:
-            return matches[0]
+    for plans_dir in unique_locations:
+        if not plans_dir.exists():
+            continue
+        for pattern in [f"{plan_number:02d}_*.md", f"{plan_number}_*.md"]:
+            matches = list(plans_dir.glob(pattern))
+            if matches:
+                return matches[0]
 
     return None
 
