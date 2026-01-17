@@ -1278,12 +1278,9 @@ class World:
 
     def get_state_summary(self) -> StateSummary:
         """Get a summary of current world state"""
-        # Combine regular artifacts with genesis artifacts
+        # Genesis artifacts are already in artifact store (registered at init, line ~250)
+        # for unified invoke path (Plan #15) - no need to add them separately
         all_artifacts: list[dict[str, Any]] = self.artifacts.list_all()
-        for genesis in self.genesis_artifacts.values():
-            # Cast to dict[str, Any] since GenesisArtifactDict is a TypedDict
-            genesis_dict = dict(genesis.to_dict())
-            all_artifacts.append(genesis_dict)
 
         # Get quota info for all agents
         quotas: dict[str, QuotaInfo] = {}
