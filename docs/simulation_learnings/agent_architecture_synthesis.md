@@ -2,7 +2,7 @@
 
 **Status:** recommendation
 **Date:** 2026-01-16
-**Based on:** 37 research sources reviewed
+**Based on:** 39 research sources reviewed
 **Related:** agent_architecture_research_notes.md, agent_architecture_design_space.md
 
 ---
@@ -278,3 +278,5 @@ Fix the cold-start deadlock first. Then add planning. Then reflection. Test at e
 | 35 | Progressive Complexity | Cold-start: Tier 1 (info gather) → Tier 2 (human gates) → Tier 3 (autonomous) |
 | 36 | Plan-Then-Execute | Separate planning from execution. 2-3x success rate improvement |
 | 37 | Context-Minimization | Security: purge untrusted input after transformation |
+| 38 | Graphiti (Neo4j) | Bi-temporal model (t_valid/t_invalid), 300ms P95 latency, hybrid retrieval |
+| 39 | Neo4j Cypher AI | GraphRAG in pure Cypher, graph expansion beyond vector search |

@@ -543,6 +543,8 @@ Source: https://github.com/open-thought/system-2-research
 | 35 | Progressive Complexity Escalation | **Read** |
 | 36 | Plan-Then-Execute Pattern | **Read** |
 | 37 | Context-Minimization Pattern | **Read** |
+| 38 | Graphiti: Knowledge Graph Memory (Neo4j) | **Read** |
+| 39 | Neo4j Cypher AI Procedures | **Read** |
 
 ---
 
@@ -1224,3 +1226,118 @@ Based on this research, potential improvements:
 1. Let agents modify their own prompts/strategies
 2. Evolutionary selection of successful agent variants
 3. Cross-agent learning from successful patterns
+
+---
+
+## Additional Sources (2026-01-17)
+
+### Graphiti: Knowledge Graph Memory for an Agentic World
+
+Source: https://neo4j.com/blog/developer/graphiti-knowledge-graph-memory/
+
+**The Problem with Static GraphRAG (Microsoft's Approach):**
+- Builds entity-centric knowledge graphs with precomputed community summaries
+- Updates trigger extensive recomputation of entire graph
+- Multi-step summarization = slow retrieval (tens of seconds)
+- Unsuitable for dynamic, agentic applications
+
+**Graphiti's Architecture (Built for Dynamic Data):**
+- Real-time, temporally-aware knowledge graph engine
+- Incrementally processes incoming data
+- Instantly updates entities, relationships, and communities
+- No batch recomputation required
+
+**Bi-Temporal Model (Key Innovation):**
+```
+Every edge has:
+- t_valid: When the event occurred
+- t_invalid: When the information was superseded
+```
+- Tracks both event time AND ingestion time
+- Conflicts resolved via temporal metadata
+- Historical accuracy preserved (update/invalidate, never discard)
+- Enables powerful historical queries
+
+**Hybrid Retrieval (No LLM Calls During Retrieval):**
+- Semantic embeddings (vector search)
+- Keyword search (BM25)
+- Graph traversal (relationship exploration)
+- P95 latency: 300ms (near real-time)
+
+**Custom Entity Types via Pydantic:**
+```python
+class Customer(BaseModel):
+    """A customer of the service"""
+    name: str | None = Field(..., description="The name of the customer")
+    email: str | None = Field(..., description="The email address")
+    subscription_tier: str | None = Field(..., description="Subscription level")
+```
+- Automatic matching of extracted entities to defined types
+- Domain-specific extraction for better context
+
+**Multi-Source Integration:**
+- Chat histories, structured JSON, unstructured text simultaneously
+- Multiple graphs can coexist in same Graphiti setup
+- Unified, evolving view of agent's world
+
+**Relevance:** Expands on our source #24 (Zep/Graphiti paper). The bi-temporal model directly addresses our "phantom artifacts" confusion problem - agents could query historical state. The 300ms P95 latency is fast enough for real-time interactions. Custom entity types via Pydantic could help agents extract structured knowledge from their environment.
+
+---
+
+### Neo4j Cypher AI Procedures (GraphRAG in Pure Cypher)
+
+Source: https://neo4j.com/docs/genai/plugin/current/
+
+**New AI Functions (December 2025):**
+
+| Function | Purpose |
+|----------|---------|
+| `ai.text.completion(prompt, provider, config)` | Generate text from prompt |
+| `ai.text.embed(resource, provider, config)` | Create vector embedding |
+| `ai.text.embedBatch(resources, provider, config)` | Batch embeddings |
+| `ai.text.chat(prompt, chatId, provider, config)` | Conversational with continuity |
+
+**Providers Supported:**
+- OpenAI, Azure OpenAI, VertexAI, Bedrock (Titan)
+
+**Key Improvements Over Legacy Functions:**
+- Accept any model name (not hardcoded list) - crucial for fast-changing AI landscape
+- Model name now required (no defaults) - prevents accidentally using deprecated models
+- Can use Cypher's parallel runtime with `ai.text.completion`
+
+**GraphRAG Pattern (Pure Cypher):**
+```cypher
+-- 1. Embed the question
+WITH ai.text.embed($question, "OpenAI", {token: $apiKey}) AS embedding
+
+-- 2. Vector search to find starting point
+CALL db.index.vector.queryNodes('synopsis_embeddings', 1, embedding)
+YIELD node AS title, score
+
+-- 3. GRAPH EXPANSION (the GraphRAG part)
+OPTIONAL MATCH (title)-[:EPISODE_OF]->(series:Title)
+OPTIONAL MATCH (title)<-[:EPISODE_OF]-(other1:Title)
+OPTIONAL MATCH (series)<-[:EPISODE_OF]-(other2:Title)
+WITH collect(title)+collect(series)+collect(other1)+collect(other2) AS allTitles
+
+-- 4. LLM completion with expanded context
+CALL ai.text.completion(
+  "Answer based on context: " + context + " Question: " + $question,
+  "OpenAI", {token: $apiKey}
+) YIELD result
+RETURN result
+```
+
+**Why GraphRAG Works:**
+> "Testing showed that the most interesting references in answers came not from nodes directly neighboring those returned from vector search, but in the shortest path between two nodes."
+
+- Vector search finds starting point
+- Graph traversal finds related context that wouldn't appear in simple retrieval
+- Relationship paths provide reasoning chains
+
+**Implementation Notes:**
+- Neo4j Aura: GenAI plugin enabled by default
+- Self-managed: Move `neo4j-genai.jar` from `products` to `plugins`
+- Legacy `genai.vector.encode` still works but new API preferred
+
+**Relevance:** This provides a concrete implementation pattern for graph-based agent memory. Instead of just vector similarity, agents could traverse relationships to find connected knowledge. The "shortest path between nodes" insight suggests graph structure adds value beyond what vector search alone provides. Our `genesis_store` artifact discovery could potentially evolve toward graph-based patterns.
