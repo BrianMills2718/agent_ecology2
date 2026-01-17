@@ -360,9 +360,90 @@ enforcement:
 
 ---
 
+## Reference Implementation (agent_ecology)
+
+### Hooks That Exist
+
+| Hook | Trigger | Purpose | Status |
+|------|---------|---------|--------|
+| `protect-main.sh` | Edit/Write | Blocks file edits in main directory | ✅ Working |
+| `block-worktree-remove.sh` | Bash | Blocks `git worktree remove` commands | ✅ Working |
+| `protect-uncommitted.sh` | Bash | Warns about uncommitted work in commands | ✅ Working |
+
+### Hooks Needed (Not Yet Implemented)
+
+| Hook | Trigger | Purpose | Priority |
+|------|---------|---------|----------|
+| `verify-claim.sh` | Edit/Write | Verify work is claimed before edits | HIGH |
+| `check-plan-prefix.sh` | Bash (git commit) | Verify `[Plan #N]` or `[Trivial]` prefix | MEDIUM |
+
+### Settings.json Configuration
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {"type": "command", "command": "bash .claude/hooks/protect-main.sh"}
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {"type": "command", "command": "bash .claude/hooks/block-worktree-remove.sh"},
+          {"type": "command", "command": "bash .claude/hooks/protect-uncommitted.sh"}
+        ]
+      }
+    ]
+  }
+}
+```
+
+---
+
+## CLAUDE.md Hierarchy Best Practices
+
+### Recommended Structure
+
+| Level | File | Max Lines | Contains |
+|-------|------|-----------|----------|
+| Root | `/CLAUDE.md` | 500 | Philosophy, universal rules, quick reference |
+| Docs | `/docs/CLAUDE.md` | 200 | Doc conventions, update protocols |
+| Source | `/src/CLAUDE.md` | 200 | Code style, testing, typing rules |
+| Plans | `/docs/plans/CLAUDE.md` | 200 | Plan template, workflow |
+
+### What Goes Where
+
+**Root CLAUDE.md:**
+- Project philosophy and goals
+- Critical warnings (worktree enforcement, claim requirements)
+- Quick command reference
+- Links to detailed docs
+
+**Subdirectory CLAUDE.md:**
+- Context-specific rules only
+- Never duplicate root content
+- Link back to root for universal rules
+
+### Anti-Pattern: Bloated Root
+
+❌ **Bad**: Root CLAUDE.md with 2000+ lines covering everything
+- Wastes tokens on every load
+- Hard to maintain
+- CC may ignore due to length
+
+✅ **Good**: Root ~300-500 lines with links to subdirectory CLAUDE.md
+- Contextual loading (only loads what's needed)
+- Easier to maintain
+- Clear separation of concerns
+
+---
+
 ## Version History
 
-- **v0.1** (2026-01-16): Initial spec based on agent_ecology investigation
+- **v0.1** (2026-01-17): Initial spec based on agent_ecology investigation
   - 23 patterns audited, 14 active, 5 partial, 3 aspirational
   - 20 dangling commits analyzed (duplicate work, not lost)
   - Simplified from features+plans to plans-only
