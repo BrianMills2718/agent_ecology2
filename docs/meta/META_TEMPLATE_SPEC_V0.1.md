@@ -56,12 +56,9 @@ documentation:
 
   architecture:
     current_dir: docs/architecture/current/   # What IS implemented
-    target_dir: docs/architecture/target/     # Destination (not route)
-    plans_dir: docs/plans/                    # Route to target
-
-    # Target vs Plan distinction:
-    # - target/: "I want escrow functionality" (WHAT)
-    # - plans/: "Implement escrow in 3 phases" (HOW)
+    plans_dir: docs/plans/                    # Work items
+    # NOTE: No target/ directory. PRD + ADRs capture architectural intent.
+    # ADRs = specific decisions, PRD = overall requirements
 
 # === MULTI-CC COORDINATION (only if cc_instances: multi) ===
 coordination:
@@ -101,9 +98,11 @@ project/
 ├── ...core structure above...
 ├── docs/
 │   ├── architecture/
-│   │   ├── current/              # What IS implemented
-│   │   └── target/               # Destination only (no HOW)
+│   │   └── current/              # What IS implemented
+│   │   # NOTE: No target/. Use PRD for requirements, ADRs for decisions.
 │   ├── adr/                      # Architecture Decision Records
+│   ├── features/                 # E2E acceptance definitions
+│   │   └── NN_feature_name.md    # Feature with acceptance criteria
 │   └── meta/                     # Reusable process patterns
 ├── scripts/
 │   ├── doc_coupling.yaml         # Doc-to-code mappings
@@ -151,7 +150,7 @@ project/
 
 ### 2. Plans Workflow (Required)
 
-**Why plans, not features**: Investigation found features.yaml never used in practice. All claims are plan-based.
+**Plans are work coordination units** - they track what needs doing and coordinate multi-CC work.
 
 ```yaml
 # docs/plans/NN_plan_name.md structure
@@ -161,6 +160,13 @@ status: "🚧 In Progress"  # or ✅ Complete, 📋 Planned
 
 ## Problem Statement
 What problem does this solve?
+
+## Files Affected
+# REQUIRED: Declare upfront what files will be touched
+- src/world/executor.py (modify)
+- src/world/rate_limiter.py (create)
+- tests/test_rate_limiter.py (create)
+- config/schema.yaml (modify)
 
 ## Acceptance Criteria
 - [ ] Criterion 1
@@ -176,11 +182,19 @@ Step-by-step implementation route.
 <!-- Filled by completion script -->
 ```
 
+**Files Affected Enforcement**:
+- Plans MUST declare files upfront
+- Claiming a plan locks those files from other plans
+- Hook blocks edits to undeclared files: "File not in plan scope. Update plan first."
+- Creates automatic dependency graph (plans sharing files = dependency)
+- Traceability: every file change traces to a plan
+
 **Lifecycle**:
-1. Create plan with acceptance criteria
-2. Claim work (multi-CC)
-3. Implement with TDD
-4. Complete via script (validates tests, updates status atomically)
+1. Create plan with files affected + acceptance criteria
+2. Claim work (multi-CC) - locks declared files
+3. Implement with TDD (hook enforces file scope)
+4. If touching new file: update plan's Files Affected first
+5. Complete via script (validates tests, updates status atomically)
 
 ### 3. Trivial Exemption (Required)
 
@@ -199,7 +213,63 @@ git commit -m "[Trivial] Fix typo in README"
 
 CI validates trivial commits don't exceed configured limits.
 
-### 4. Doc Coupling (Required, Configurable Strictness)
+### 4. Features as E2E Acceptance Gates (Recommended)
+
+**Features are testable capabilities** - coherent units that can be verified end-to-end.
+
+**The problem Features solve:**
+```
+CC workflow without features:
+1. Write code for 3 days
+2. Write mocked unit tests (pass!)
+3. Say "done"
+4. User runs → everything broken
+5. Codebase is unsalvageable
+```
+
+**Feature definition:**
+```markdown
+# docs/features/NN_feature_name.md
+
+## Feature: Agent Resource Trading
+
+### Scope
+Agents can exchange resources using the ledger and escrow systems.
+
+### Acceptance Criteria (LLM-Verifiable)
+1. Agents can transfer scrip to each other
+2. Ledger balances update correctly
+3. Agents make economically rational trades (LLM-verified)
+4. No agent goes negative without debt contract
+
+### E2E Test
+- Run: `python run.py --ticks 10 --agents 3`
+- Programmatic checks: criteria 1-2
+- LLM review: criteria 3-4 (review logs against criteria)
+
+### Status
+- [ ] E2E test passes
+- [ ] LLM review approved
+```
+
+**Key distinctions:**
+| Concept | Purpose | Granularity |
+|---------|---------|-------------|
+| Plan | Work coordination, file locking | Task-level |
+| Feature | E2E acceptance verification | Capability-level |
+
+- A plan might partially implement a feature
+- A feature might require multiple plans
+- Plans coordinate CC instances (who works on what)
+- Features define "actually done" for users (does it work?)
+
+**Verification:**
+- Features require REAL execution (no mocks)
+- Programmatic checks for objective criteria
+- LLM review for semantic criteria ("behavior is sensible")
+- Example: simulation runs but agents act randomly = feature FAILS
+
+### 5. Doc Coupling (Required, Configurable Strictness)
 
 **Purpose**: Ensure documentation matches code.
 
@@ -260,13 +330,15 @@ adr-0001-everything-artifact:
 
 Files get headers showing which ADRs govern them. CI ensures sync.
 
-### 7. Target Architecture (Mature Projects)
+### 7. ~~Target Architecture~~ (REMOVED)
 
-**Key Distinction**:
-- `docs/architecture/target/`: DESTINATION ("I want escrow")
-- `docs/plans/`: ROUTE ("Implement escrow via these 3 phases")
+**Decision:** Kill `target/` directory. PRD + ADRs are sufficient.
 
-Target describes the end state without implementation details. Plans describe how to get there.
+- **PRD**: Overall requirements ("I want escrow functionality")
+- **ADRs**: Specific technical decisions ("Use optimistic locking for escrow")
+- **Plans**: Work items to implement ("Implement escrow phase 1")
+
+If someone wants a synthesized architecture diagram, treat it as a point-in-time artifact, not a maintained document.
 
 ---
 
@@ -340,23 +412,27 @@ enforcement:
 
 | Anti-Pattern | Problem | Solution |
 |--------------|---------|----------|
-| Features + Plans | Redundant, features never used | Kill features, use plans only |
-| Two-tier docs (current/target) without graduation | Drift, never graduates | Clear distinction: target=destination, plans=route |
+| File-scope ownership (features.yaml) | Tedious to maintain, redundant with plans | Plans declare files upfront, hook enforces |
+| Target architecture docs | Drifts from ADRs, maintenance burden | Kill target/, use PRD + ADRs |
 | Multiple glossaries | Inconsistency | Single GLOSSARY.md |
 | Honor-system claims | Work overwrites | Hook-based enforcement |
 | Editing in main directory | Conflicts, lost work | Mandatory worktrees for multi-CC |
+| Big-bang development | Mocked tests pass, real system broken | Features as E2E acceptance gates |
+| Plans without file declarations | Undiscovered conflicts, no traceability | Require Files Affected section |
 
 ---
 
 ## Checklist for New Projects
 
 - [ ] Create root `CLAUDE.md` with philosophy
-- [ ] Create `docs/plans/CLAUDE.md` with plan template
+- [ ] Create `docs/plans/CLAUDE.md` with plan template (include Files Affected section)
 - [ ] Create `.claude/template-config.yaml`
 - [ ] Set enforcement preset based on team/risk
 - [ ] If multi-CC: Add claims and worktree hooks
+- [ ] Add hook to enforce plan file scope (block undeclared file edits)
 - [ ] Create first plan before first code change
 - [ ] Add doc coupling for critical files
+- [ ] Define first feature with E2E acceptance criteria
 
 ---
 
@@ -375,7 +451,9 @@ enforcement:
 | Hook | Trigger | Purpose | Priority |
 |------|---------|---------|----------|
 | `verify-claim.sh` | Edit/Write | Verify work is claimed before edits | HIGH |
+| `check-file-scope.sh` | Edit/Write | Block edits to files not in plan's Files Affected | HIGH |
 | `check-plan-prefix.sh` | Bash (git commit) | Verify `[Plan #N]` or `[Trivial]` prefix | MEDIUM |
+| `verify-feature-e2e.sh` | PR merge | Run feature E2E tests before merge | MEDIUM |
 
 ### Settings.json Configuration
 
@@ -442,6 +520,13 @@ enforcement:
 ---
 
 ## Version History
+
+- **v0.1.1** (2026-01-17): Major refinements from template discussion
+  - Removed `target/` architecture - PRD + ADRs sufficient
+  - Added plan-declared file scopes with hook enforcement
+  - Added Features as E2E acceptance gates (real runs, LLM verification)
+  - Clarified Plans (work coordination) vs Features (acceptance verification)
+  - Added anti-patterns: big-bang development, plans without file declarations
 
 - **v0.1** (2026-01-17): Initial spec based on agent_ecology investigation
   - 23 patterns audited, 14 active, 5 partial, 3 aspirational
