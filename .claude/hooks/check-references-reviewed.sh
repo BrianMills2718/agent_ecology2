@@ -58,13 +58,21 @@ if [[ -z "$PLAN_NUM" ]]; then
 fi
 
 # Check references using parse_plan.py
-SCRIPT_DIR="$MAIN_DIR/scripts"
-if [[ ! -f "$SCRIPT_DIR/parse_plan.py" ]]; then
+# Try worktree first, then main repo
+SCRIPT_PATH=""
+if [[ -f "scripts/parse_plan.py" ]]; then
+    SCRIPT_PATH="scripts/parse_plan.py"
+elif [[ -f "$MAIN_DIR/scripts/parse_plan.py" ]]; then
+    SCRIPT_PATH="$MAIN_DIR/scripts/parse_plan.py"
+else
     exit 0
 fi
 
 # Get references reviewed
-RESULT=$(python "$SCRIPT_DIR/parse_plan.py" --plan "$PLAN_NUM" --references-reviewed --json 2>/dev/null || echo '{"error": "parse_failed"}')
+RESULT=$(python "$SCRIPT_PATH" --plan "$PLAN_NUM" --references-reviewed --json 2>/dev/null)
+if ! echo "$RESULT" | jq . >/dev/null 2>&1; then
+    RESULT='{"error": "parse_failed"}'
+fi
 
 # Parse result
 REFS=$(echo "$RESULT" | jq -r '.references_reviewed // []')
