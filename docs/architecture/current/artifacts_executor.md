@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-16 (Plan #57 - delete action added, disk quota increased)
+**Last verified:** 2026-01-17 (Plan #63 - artifact dependencies added)
 
 ---
 
@@ -40,7 +40,56 @@ class Artifact:
     interface: dict | None = None # JSON Schema for discoverability
     # Genesis method dispatch (Plan #15)
     genesis_methods: dict | None = None  # Method dispatch for genesis artifacts
+    # Artifact dependencies (Plan #63)
+    depends_on: list[str] = []  # List of artifact IDs this depends on
 ```
+
+### Artifact Dependencies (Plan #63)
+
+Artifacts can declare dependencies on other artifacts. Dependencies are resolved at invocation time and injected into the execution context.
+
+**Declaration Model:**
+```python
+artifact = Artifact(
+    id="my_pipeline",
+    depends_on=["helper_lib", "data_processor"],
+    code="""
+def run(*args):
+    helper = context.dependencies["helper_lib"]
+    result = helper.invoke()
+    return result["result"]
+""",
+    ...
+)
+```
+
+**Key Properties:**
+
+| Property | Behavior |
+|----------|----------|
+| Declaration time | At artifact creation (static) |
+| Cycle detection | Rejected at creation (DFS) |
+| Missing deps | Rejected at creation |
+| Depth limit | Default 10 (configurable) |
+| Genesis as deps | Allowed |
+| Transitive deps | Allowed within depth limit |
+
+**Dependency Wrapper:**
+
+At invocation, each dependency is wrapped in a `DependencyWrapper` that provides an `invoke()` method:
+
+```python
+# Inside artifact code
+helper = context.dependencies["helper_lib"]
+result = helper.invoke(arg1, arg2)  # Returns invoke result dict
+```
+
+**Deleted Dependencies:**
+
+If a dependency is deleted after artifact creation:
+- Invocation fails with clear error: "Dependency 'X' not found or deleted"
+- Artifact itself remains valid but unusable
+- Dashboard shows broken dependency link
 
 ### Artifact Types
 
@@ -228,6 +277,28 @@ def run():
     # result: {"success": bool, "result": Any, "error": str, "price_paid": int}
 ```
 
+**Dependency Injection (Plan #63):**
+
+If the artifact has `depends_on`, dependencies are resolved and injected via global `context`:
+
+```python
+def run(*args):
+    # Access declared dependencies
+    helper = context.dependencies["helper_lib"]
+    result = helper.invoke()
+    return result["result"]
+```
+
+The `ExecutionContext` class provides:
+- `dependencies: dict[str, DependencyWrapper]` - Resolved dependency wrappers
+
+**Dependency Resolution Flow:**
+1. Look up artifact's `depends_on` list
+2. For each dep, verify it exists and is not deleted
+3. Create `DependencyWrapper` with pre-bound `invoke()` function
+4. Inject as `context` global
+5. Execute artifact code
+
 When `world` is provided, also injects kernel interfaces (Plan #39 - Genesis Unprivilege):
 
 ```python
@@ -364,8 +435,10 @@ All intents include reasoning in their `to_dict()` output, so logged actions con
 |------|----------------------|-------------|
 | `src/world/artifacts.py` | `Artifact`, `ArtifactStore` | Storage and access control |
 | `src/world/artifacts.py` | `default_policy()`, `is_contract_reference()` | Policy utilities |
+| `src/world/artifacts.py` | `_validate_dependencies()`, `_would_create_cycle()` | Dependency validation |
 | `src/world/executor.py` | `SafeExecutor` | Code execution |
 | `src/world/executor.py` | `get_executor()` | Singleton accessor |
+| `src/world/executor.py` | `DependencyWrapper`, `ExecutionContext` | Dependency injection (Plan #63) |
 | `src/world/kernel_interface.py` | `KernelState`, `KernelActions` | Kernel interfaces for artifacts |
 | `src/world/actions.py` | `ActionResult`, `ActionIntent` | Action definitions and results |
 | `src/world/errors.py` | `ErrorCode`, `ErrorCategory` | Error response conventions |
