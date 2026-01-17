@@ -30,11 +30,11 @@ These are **hard limits from reality**, not prices. They are consumed regardless
 
 | Resource | Category | What It Is | Refreshes? |
 |----------|----------|-----------|------------|
-| **Compute** | Flow | Token budget for thinking and actions | Yes - resets each tick |
-| **Disk** | Stock | Storage space (bytes) | No - fixed quota |
+| **LLM tokens** | Renewable | Token budget for thinking and actions | Yes - rolling window or per-tick |
+| **Disk** | Allocatable | Storage space (bytes) | No - fixed quota, reclaimable |
 
-- **If out of compute**: Wait for next tick (auto-refresh, use-or-lose)
-- **If out of disk**: You cannot write new artifacts
+- **If out of LLM tokens**: Wait for replenishment (rolling window) or next tick
+- **If out of disk**: You cannot write new artifacts (delete old ones to reclaim)
 
 **Note:** A global LLM API budget limits total simulation runtime, but is not currently per-agent tradeable. See Gap #12 for future per-agent budgets.
 
@@ -92,8 +92,8 @@ Auction-based artifact scoring and scrip minting.
 
 | Method | Args | Description |
 |--------|------|-------------|
-| `status` | `[]` | Check auction status (phase, tick, bid count) |
-| `bid` | `[artifact_id, amount]` | Submit sealed bid during bidding window |
+| `status` | `[]` | Check auction status (tick, pending bids) |
+| `bid` | `[artifact_id, amount]` | Submit bid anytime (resolved at auction) |
 | `check` | `[artifact_id]` | Check your bid/submission status |
 
 ### genesis_rights_registry
@@ -339,12 +339,12 @@ Agents can communicate via artifacts:
 
 ## Mint Auction
 
-The mint runs periodic auctions where agents bid scrip to submit artifacts for LLM scoring. Winning bids are redistributed as UBI to all agents.
+The mint accepts bids **anytime** and resolves them in periodic auctions. Winning bids are redistributed as UBI to all agents.
 
 ### Auction Flow
 1. **Create** an executable artifact with useful code
-2. **Wait** for bidding window (check `genesis_mint.status()`)
-3. **Bid**: `invoke genesis_mint.bid([artifact_id, amount])`
+2. **Bid anytime**: `invoke genesis_mint.bid([artifact_id, amount])`
+3. **Wait**: Auctions resolve periodically (default: every 10 ticks)
 4. **Win**: Highest bidder wins (second-price: pays next-highest bid)
 5. **UBI**: Winning bid redistributed equally to all agents
 6. **Score**: Artifact scored by LLM
@@ -352,14 +352,9 @@ The mint runs periodic auctions where agents bid scrip to submit artifacts for L
 
 ### Auction Mechanics
 - **Vickrey auction** (sealed-bid, second-price): Bid your true value
-- **Default timing**: Auctions every 50 ticks, 10-tick bidding window
-- **First auction**: Starts at tick 50 (configurable grace period)
+- **Bids accepted anytime**: No bidding windows - bid when ready
+- **Periodic resolution**: Default every 10 ticks
 - **Ties**: Broken randomly
-
-### Auction Phases
-- **WAITING**: Before first auction (grace period)
-- **BIDDING**: Submit bids during this window
-- **CLOSED**: Auction resolved, next window scheduled
 
 ### UBI Distribution
 When an auction closes, the winning bid (second-price amount) is split equally among all agents:

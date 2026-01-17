@@ -27,16 +27,16 @@ How resources work TODAY.
 
 | Layer | Purpose | Persists? |
 |-------|---------|-----------|
-| Resources | Physical constraints | Flow: No, Stock: Yes |
+| Resources | Physical constraints | Renewable: No, Allocatable: Yes |
 | Scrip | Economic currency | Yes |
 
 Resources and scrip are independent. Spending resources doesn't cost scrip (except for priced artifacts).
 
 ---
 
-## Flow Resources
+## Renewable Resources (Rate-Limited)
 
-### Discrete Per-Tick Refresh
+### Discrete Per-Tick Refresh (Legacy Mode)
 
 **`World.advance_tick()`** in `src/world/world.py`
 
@@ -86,7 +86,7 @@ if not self.ledger.can_spend_resource(agent_id, "llm_tokens", cost):
 
 ---
 
-## Stock Resources
+## Allocatable Resources (Quota-Based)
 
 ### Disk
 
