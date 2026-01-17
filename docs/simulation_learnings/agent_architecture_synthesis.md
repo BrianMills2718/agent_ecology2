@@ -2,7 +2,7 @@
 
 **Status:** recommendation
 **Date:** 2026-01-16
-**Based on:** 39 research sources reviewed
+**Based on:** 40 research sources reviewed
 **Related:** agent_architecture_research_notes.md, agent_architecture_design_space.md
 
 ---
@@ -280,3 +280,4 @@ Fix the cold-start deadlock first. Then add planning. Then reflection. Test at e
 | 37 | Context-Minimization | Security: purge untrusted input after transformation |
 | 38 | Graphiti (Neo4j) | Bi-temporal model (t_valid/t_invalid), 300ms P95 latency, hybrid retrieval |
 | 39 | Neo4j Cypher AI | GraphRAG in pure Cypher, graph expansion beyond vector search |
+| 40 | **Agentic Clinical Dialogue Survey** | **Four archetypes: LSC → EP → GS → VWA (increasing constraint); 5 dimensions** |

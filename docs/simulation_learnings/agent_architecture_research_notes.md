@@ -545,6 +545,7 @@ Source: https://github.com/open-thought/system-2-research
 | 37 | Context-Minimization Pattern | **Read** |
 | 38 | Graphiti: Knowledge Graph Memory (Neo4j) | **Read** |
 | 39 | Neo4j Cypher AI Procedures | **Read** |
+| 40 | Agentic Clinical Dialogue Survey (TJU ADM Lab) | **Read** |
 
 ---
 
@@ -1341,3 +1342,97 @@ RETURN result
 - Legacy `genai.vector.encode` still works but new API preferred
 
 **Relevance:** This provides a concrete implementation pattern for graph-based agent memory. Instead of just vector similarity, agents could traverse relationships to find connected knowledge. The "shortest path between nodes" insight suggests graph structure adds value beyond what vector search alone provides. Our `genesis_store` artifact discovery could potentially evolve toward graph-based patterns.
+
+---
+
+### Agentic Clinical Dialogue Survey: Four Archetypes
+
+Source: https://github.com/xqz614/Awesome-Agentic-Clinical-Dialogue (TJU ADM Lab)
+
+**Four Agent Archetypes (Key Taxonomy):**
+
+| Archetype | Philosophy | Example Systems |
+|-----------|------------|-----------------|
+| **Latent Space Clinicians (LSC)** | Trust model's emergent reasoning; creative synthesis | Med-PaLM, MedAgents, BioGPT |
+| **Emergent Planners (EP)** | High autonomy, dynamic multi-step planning | AgentMD, ReAct-style agents |
+| **Grounded Synthesizers (GS)** | LLMs as interfaces to reliable external info | Med-RAG, MA-COIR, HyKGE |
+| **Verifiable Workflow Automators (VWA)** | Constrained within pre-defined workflows | AMIE, task-oriented dialogue |
+
+**Cognitive Pipeline Dimensions (Cross-Cutting All Archetypes):**
+1. **Planning** - Strategic goal decomposition
+2. **Memory** - Context retention and retrieval
+3. **Action** - Tool use and external operations
+4. **Cooperation** - Multi-agent coordination
+5. **Self-evolution** - Continuous improvement
+
+**Mapping to Our Architecture:**
+
+| Our Current State | Closest Archetype | Gap |
+|-------------------|-------------------|-----|
+| One-action-per-tick, no explicit planning | VWA (but without the workflow) | We have constraints but no structured workflow |
+| Tick-by-tick reaction | LSC (emergent reasoning) | But we lack the reasoning depth |
+| No multi-agent coordination | Neither EP nor GS | Both emphasize cooperation |
+
+**Key Papers by Archetype (High Priority for Us):**
+
+**LSC - Planning:**
+- **CoD (Chain of Diagnosis)** - Breaks diagnosis into interpretable steps
+- **HuaTuo** - Knowledge graph injection via instruction tuning
+- **Med-PaLM** - Instruction tuning + ensemble refinement
+
+**EP - Planning:**
+- **Self-Consistency** - Sample multiple reasoning paths, pick most consistent
+- **Tree-Planner** - Task planning as tree search with closed-loop correction
+- **Least-to-Most Prompting** - Decompose into simpler sub-problems
+
+**EP - Memory:**
+- **Recursively Summarizing** - Compress dialogue history for long-term memory
+- **HuatuoGPT-II** - One-stage medical adaptation unifying domain + instruction
+
+**EP - Cooperation (Most Relevant for Multi-Agent):**
+- **MedAgents** - Multi-agent debate for zero-shot clinical reasoning
+- **MDAgents** - Adaptive collaboration (solo vs group based on complexity)
+- **ColaCare** - Multi-agent "medical team" (DoctorAgents + MetaAgent)
+- **ReConcile** - Round-table discussion among diverse LLMs for consensus
+- **MedAgentSim** - Self-evolving doctor/patient agent interactions
+
+**EP - Self-Evolution:**
+- **Agent Hospital** - Full hospital simulation where agents evolve by treating patients
+- **Darwin Gödel Machine** - Open-ended agent evolution with self-rewriting code
+
+**GS - Action (Tool Use):**
+- **MMedAgent** - Multimodal agent learns to use medical tools (calculators, search)
+- **ReflecTool** - Agents reflect on tool sufficiency, autonomously decide when to use tools
+
+**VWA - Planning:**
+- **AMIE** - Google's structured conversational framework for diagnostic dialogue
+- **MedPlan** - Two-stage RAG: retrieve guidelines → adapt to patient
+- **End-to-End Agentic RAG** - Traceable diagnostic reasoning linked to evidence
+
+**Key Insights for Our Architecture:**
+
+1. **Our agents are closest to VWA** (constrained, verifiable) but lack the structured workflow. We should either:
+   - Add explicit workflow/plan artifacts (like `{agent}_plan`)
+   - Or move toward EP with more autonomous planning
+
+2. **EP requires explicit planning mechanisms:**
+   - Self-consistency sampling (multiple reasoning paths)
+   - Tree-based planning with backtracking
+   - Least-to-most decomposition
+
+3. **Memory is a first-class concern in ALL archetypes:**
+   - LSC uses in-context learning (short-term)
+   - EP uses recursive summarization (long-term)
+   - GS uses external retrieval (infinite)
+   - VWA uses structured EHR/pathway models
+
+4. **Cooperation dimension worth more attention:**
+   - We marked multi-agent as "Tier 3" but this survey emphasizes it across all archetypes
+   - Key patterns: debate (consensus-seeking), MDT simulation (role specialization), adaptive teams
+
+5. **Self-evolution is the frontier:**
+   - Agent Hospital: agents improve by experience
+   - Darwin Gödel: self-modifying code
+   - MetaAgent: learns by creating tools
+
+**Relevance:** This survey provides a cleaner taxonomy than our current design space document. The LSC → EP → GS → VWA spectrum represents increasing structure/constraint. Our agents should probably target **EP + GS hybrid**: autonomous planning (EP) but grounded in artifact retrieval (GS). The cooperation dimension suggests we're underweighting multi-agent patterns.
