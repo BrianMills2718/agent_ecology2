@@ -7,6 +7,17 @@
 
 ---
 
+## Files Affected
+
+| File | Change |
+|------|--------|
+| `src/world/artifacts.py` | Add `depends_on` field, validation methods |
+| `src/world/executor.py` | Add dependency resolution, context injection |
+| `tests/unit/test_artifact_deps.py` | Create - unit tests for depends_on |
+| `tests/integration/test_artifact_deps.py` | Create - integration tests for injection |
+
+---
+
 ## Gap
 
 **Current:** Artifacts cannot invoke other artifacts. Agents must manually orchestrate all calls. This prevents:
