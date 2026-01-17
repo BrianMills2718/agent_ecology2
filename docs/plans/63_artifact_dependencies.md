@@ -151,18 +151,17 @@ Return result to X
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
 | `tests/unit/test_artifact_deps.py` | `test_depends_on_field_exists` | Schema has field |
-| `tests/unit/test_artifact_deps.py` | `test_create_with_dependencies` | Can create artifact with deps |
-| `tests/unit/test_artifact_deps.py` | `test_cycle_detection_direct` | A→A rejected |
-| `tests/unit/test_artifact_deps.py` | `test_cycle_detection_indirect` | A→B→A rejected |
-| `tests/unit/test_artifact_deps.py` | `test_missing_dep_rejected` | Dep must exist at creation |
+| `tests/unit/test_artifact_deps.py` | `test_create_artifact_with_dependencies` | Can create artifact with deps |
+| `tests/unit/test_artifact_deps.py` | `test_cycle_detection_direct_self_reference` | A→A rejected |
+| `tests/unit/test_artifact_deps.py` | `test_cycle_detection_indirect_two_nodes` | A→B→A rejected |
+| `tests/unit/test_artifact_deps.py` | `test_missing_dependency_rejected` | Dep must exist at creation |
 | `tests/unit/test_artifact_deps.py` | `test_depth_limit_enforced` | Too-deep chains rejected |
-| `tests/unit/test_artifact_deps.py` | `test_genesis_as_dependency` | Genesis artifacts allowed as deps |
-| `tests/integration/test_artifact_deps.py` | `test_invoke_with_deps` | Deps injected and callable |
-| `tests/integration/test_artifact_deps.py` | `test_dep_permission_required` | Invoker needs dep access |
-| `tests/integration/test_artifact_deps.py` | `test_nested_invocation_logged` | Dep usage tracked |
+| `tests/unit/test_artifact_deps.py` | `test_genesis_as_dependency_allowed` | Genesis artifacts allowed as deps |
+| `tests/integration/test_artifact_deps.py` | `test_invoke_with_deps_injects_dependencies` | Deps injected and callable |
+| `tests/integration/test_artifact_deps.py` | `test_nested_invocation_tracked` | Dep usage tracked |
 | `tests/integration/test_artifact_deps.py` | `test_dep_resource_attribution` | Invoker pays for dep calls |
 | `tests/integration/test_artifact_deps.py` | `test_deleted_dep_fails_gracefully` | Clear error if dep deleted |
-| `tests/integration/test_artifact_deps.py` | `test_transitive_deps` | A depends on B depends on C works |
+| `tests/integration/test_artifact_deps.py` | `test_transitive_deps_resolved` | A depends on B depends on C works |
 
 ### Existing Tests (Must Pass)
 
