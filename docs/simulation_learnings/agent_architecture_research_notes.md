@@ -427,6 +427,81 @@ Most corporate GenAI systems don't retain feedback, don't accumulate knowledge, 
 
 ---
 
+### Building an Agentic System (Practical Guide)
+
+Source: https://gerred.github.io/building-an-agentic-system/print.html
+
+**Three-Layer Architecture:**
+1. Terminal UI Layer
+2. Intelligence Layer (LLM with streaming)
+3. Tools Layer (standardized plugin architecture)
+
+**Tool System Design:**
+- Read-only classification enables parallel execution
+- "Read operations can run in parallel, but write operations need careful coordination"
+- Smart concurrency: read tools simultaneous, write tools sequenced
+
+**Permission & Safety:**
+- Explicit permission gates for modifications
+- Risk-based UI styling communicates impact
+- Beyond simple confirmation dialogs
+
+**System Prompt Architecture:**
+- Base Instructions (identity, rules, tone)
+- Environment Info (cwd, git status, platform)
+- Agent-Specific Prompts (tool instructions)
+
+**Key Principle:** "Keep responses short, since they will be displayed on command line interface."
+
+### Anthropic: Building Effective Agents (CRITICAL)
+
+Source: https://www.anthropic.com/research/building-effective-agents
+
+**Workflows vs Agents:**
+- **Workflows**: LLMs orchestrated through predefined code paths
+- **Agents**: LLMs dynamically direct their own processes and tool usage
+
+**Five Workflow Patterns:**
+
+| Pattern | Use Case |
+|---------|----------|
+| Prompt Chaining | Fixed subtasks, trade latency for accuracy |
+| Routing | Complex tasks with distinct categories |
+| Parallelization | Speed gains or higher confidence |
+| Orchestrator-Workers | Unpredictable subtask requirements |
+| Evaluator-Optimizer | Clear evaluation criteria, refinement helps |
+
+**When to Use Agents:**
+- Open-ended problems with unpredictable steps
+- Model needs autonomous decision-making
+- Trusted environments only
+- **NOT for**: Well-defined tasks (use workflows) or most applications (use simple prompts)
+
+**Core Principles:**
+1. Simplicity - maintain straightforward design
+2. Transparency - explicitly display planning steps
+3. Tool Documentation - invest in ACI like HCI
+
+**Critical Insight:**
+> "Start with direct LLM API calls rather than frameworks. Many patterns require just a few lines of code."
+
+> "Anthropic spent more time optimizing tools than overall prompts in their SWE-bench agent."
+
+### System 2 Research
+
+Source: https://github.com/open-thought/system-2-research
+
+**Key Approaches:**
+- Cognitive architectures (SOAR, ACT-R, LIDA)
+- Chain/Tree/Graph of Thought
+- Process Reward Models (PRMs) for intermediate step evaluation
+- Test-time compute scaling (repeated sampling matches larger models)
+
+**Key Finding:**
+> "Effective AI reasoning requires hybrid System 1 and System 2 fusion - combining rapid pattern recognition with deliberate, verifiable problem-solving."
+
+---
+
 ## Links to Review
 
 | # | Source | Status |
@@ -443,6 +518,9 @@ Most corporate GenAI systems don't retain feedback, don't accumulate knowledge, 
 | 10 | Darwin Gödel Machine | **Read** |
 | 11 | Why Agents Fail (HBR) | **Read** |
 | 12 | Six Architecture Failures | **Read** |
+| 13 | Building Agentic System | **Read** |
+| 14 | Anthropic Effective Agents | **Read** |
+| 15 | System 2 Research | **Read** |
 
 ---
 
