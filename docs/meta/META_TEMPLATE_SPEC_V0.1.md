@@ -138,15 +138,44 @@ project/
 
 | File | Contains | Loaded When |
 |------|----------|-------------|
-| `/CLAUDE.md` | Philosophy, universal rules, quick reference | Always |
+| `/CLAUDE.md` | Philosophy, universal rules, **Code Map**, quick reference | Always |
 | `/docs/CLAUDE.md` | Doc conventions, update protocols | In docs/ |
-| `/src/CLAUDE.md` | Code style, testing rules, typing | In src/ |
+| `/src/CLAUDE.md` | Code style, testing rules, typing, **detailed code map for src/** | In src/ |
 | `/docs/plans/CLAUDE.md` | Plan template, workflow | Working on plans |
 
 **Rules**:
 - Root CLAUDE.md: Max 500 lines, links to details elsewhere
 - Subdirectory CLAUDE.md: Max 200 lines, specific to that context
 - Never duplicate content between hierarchy levels
+
+**Code Map Requirement** (enforced):
+
+Root CLAUDE.md MUST include a basic Code Map:
+```markdown
+## Code Map
+| Domain | Location | Purpose |
+|--------|----------|---------|
+| Core simulation | src/simulation/ | SimulationRunner, tick loop |
+| World state | src/world/ | Ledger, artifacts, executor |
+| Agents | src/agents/ | Agent loading, LLM interaction |
+| Config | config/ | Runtime configuration |
+```
+
+Subdirectory CLAUDE.md files supplement with detail:
+```markdown
+# src/CLAUDE.md
+## Code Map (src/)
+| File | Key Elements | Purpose |
+|------|--------------|---------|
+| world/ledger.py | Ledger class, transfer() | Balance management |
+| world/executor.py | Executor class, run_action() | Action execution |
+| agents/agent.py | Agent class, decide() | Agent decision loop |
+```
+
+**Enforcement**:
+- CI validates Code Map references actual files (no stale entries)
+- Doc-coupling: src changes trigger CLAUDE.md update check
+- Hook can warn if editing file not in Code Map
 
 ### 2. Plans Workflow (Required)
 
@@ -160,6 +189,14 @@ status: "🚧 In Progress"  # or ✅ Complete, 📋 Planned
 
 ## Problem Statement
 What problem does this solve?
+
+## References Reviewed
+# REQUIRED: Cite specific code/docs reviewed before planning
+# Forces CC to explore before coding - prevents guessing
+- src/world/executor.py:45-89 - existing action handling
+- src/world/ledger.py:120-150 - balance update logic
+- docs/architecture/current/actions.md - action design
+- CLAUDE.md - project conventions
 
 ## Files Affected
 # REQUIRED: Declare upfront what files will be touched
@@ -419,6 +456,45 @@ enforcement:
 | Editing in main directory | Conflicts, lost work | Mandatory worktrees for multi-CC |
 | Big-bang development | Mocked tests pass, real system broken | Features as E2E acceptance gates |
 | Plans without file declarations | Undiscovered conflicts, no traceability | Require Files Affected section |
+| Coding without exploration | CC guesses, breaks things | Require References Reviewed section |
+| Stale CLAUDE.md | CC can't find relevant code | Code Map + validation enforcement |
+
+---
+
+## CC-Specific Considerations
+
+This template is optimized for **Claude Code instances as developers**. Key differences from human teams:
+
+### CC Strengths to Leverage
+- Parallel execution (multiple worktrees)
+- Consistent rule-following (if enforced by hooks)
+- No ego about code ownership
+- Can process large codebases quickly
+
+### CC Weaknesses to Mitigate
+
+| Weakness | Human Impact | CC Impact | Mitigation |
+|----------|--------------|-----------|------------|
+| Over-engineering | Medium | **HIGH** | Strict acceptance criteria, "minimal solution" emphasis |
+| Mock abuse | Low | **HIGH** | Hook blocks mocks without `# mock-ok:` justification |
+| Scope creep | Medium | **HIGH** | File declarations enforced by hook |
+| Skipping exploration | Low | **HIGH** | References Reviewed required, Code Map in CLAUDE.md |
+| Ignoring existing code | Low | **HIGH** | Must cite existing code in References Reviewed |
+| Breaking changes | Medium | **HIGH** | E2E tests mandatory, not just unit tests |
+| Guessing file locations | Low | **HIGH** | Code Map provides discoverable index |
+
+### Enforcement Philosophy
+
+**Prefer hooks over social pressure.** CC doesn't respond to "you should" - it responds to "you cannot."
+
+| Enforcement Type | For Humans | For CC |
+|------------------|------------|--------|
+| Guidelines in docs | Works well | Often ignored |
+| Code review | Catches issues | Too late - CC already built wrong thing |
+| CI failures | Good | Good but slow feedback loop |
+| **Pre-edit hooks** | Annoying | **Ideal - immediate feedback** |
+
+CC works best with immediate, automated feedback at the moment of action, not delayed review.
 
 ---
 
@@ -446,14 +522,44 @@ enforcement:
 | `block-worktree-remove.sh` | Bash | Blocks `git worktree remove` commands | ✅ Working |
 | `protect-uncommitted.sh` | Bash | Warns about uncommitted work in commands | ✅ Working |
 
-### Hooks Needed (Not Yet Implemented)
+### Hooks To Build (Committed)
+
+These hooks will be implemented as part of this template:
 
 | Hook | Trigger | Purpose | Priority |
 |------|---------|---------|----------|
 | `verify-claim.sh` | Edit/Write | Verify work is claimed before edits | HIGH |
 | `check-file-scope.sh` | Edit/Write | Block edits to files not in plan's Files Affected | HIGH |
+| `check-references-reviewed.sh` | Edit/Write | Warn if plan lacks References Reviewed section | HIGH |
+| `validate-code-map.sh` | CI | Verify CLAUDE.md Code Map references existing files | HIGH |
 | `check-plan-prefix.sh` | Bash (git commit) | Verify `[Plan #N]` or `[Trivial]` prefix | MEDIUM |
 | `verify-feature-e2e.sh` | PR merge | Run feature E2E tests before merge | MEDIUM |
+
+**Hook Logic Details:**
+
+`check-file-scope.sh`:
+```bash
+# 1. Get current plan from worktree name or active claim
+# 2. Parse plan's "## Files Affected" section
+# 3. Check if $EDIT_FILE is in the list
+# 4. If not: block with "File not in plan scope. Update plan first."
+```
+
+`check-references-reviewed.sh`:
+```bash
+# 1. Get current plan file
+# 2. Check for "## References Reviewed" section
+# 3. Verify it has at least 2 entries with line numbers
+# 4. If empty/missing: warn "Plan lacks References Reviewed. Explore first."
+```
+
+`validate-code-map.sh`:
+```bash
+# 1. Parse CLAUDE.md Code Map table
+# 2. For each file/directory listed, verify it exists
+# 3. Report stale entries (listed but doesn't exist)
+# 4. Optionally: report undocumented src files
+```
 
 ### Settings.json Configuration
 
@@ -520,6 +626,14 @@ enforcement:
 ---
 
 ## Version History
+
+- **v0.1.2** (2026-01-17): Exploration and Code Map requirements
+  - Added "References Reviewed" required section in plans (forces exploration)
+  - Added Code Map requirement in CLAUDE.md hierarchy
+  - Added CLAUDE.md enforcement (CI validates Code Map, doc-coupling)
+  - Documented hooks to build: check-file-scope, check-references-reviewed, validate-code-map
+  - Added CC-specific considerations section (strengths/weaknesses/enforcement philosophy)
+  - Emphasis: hooks over guidelines, immediate feedback over review
 
 - **v0.1.1** (2026-01-17): Major refinements from template discussion
   - Removed `target/` architecture - PRD + ADRs sufficient
