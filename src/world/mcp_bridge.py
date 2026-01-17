@@ -21,6 +21,7 @@ from typing import Any, cast
 
 from .genesis import GenesisArtifact
 from ..config_schema import McpConfig
+from ..config import get_validated_config
 
 
 @dataclass
@@ -114,7 +115,8 @@ class GenesisMcpBridge(GenesisArtifact):
 
         try:
             self._process.terminate()
-            self._process.wait(timeout=5.0)
+            mcp_timeout = get_validated_config().timeouts.mcp_server
+            self._process.wait(timeout=mcp_timeout)
         except subprocess.TimeoutExpired:
             self._process.kill()
             self._process.wait()

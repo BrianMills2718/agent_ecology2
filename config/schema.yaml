@@ -215,11 +215,24 @@ execution:
                                           # - "block": Block until capacity available using wait_for_capacity
 
 # -----------------------------------------------------------------------------
+# TIMEOUTS
+# Consolidated timeout values for all components
+# -----------------------------------------------------------------------------
+timeouts:
+  agent_loop_stop: <number>     # AgentLoop stop timeout (seconds, default: 5.0)
+  loop_manager_stop: <number>   # AgentLoopManager stop_all timeout (seconds, default: 10.0)
+  simulation_shutdown: <number> # SimulationRunner shutdown timeout (seconds, default: 5.0)
+  mcp_server: <number>          # MCP server operations timeout (seconds, default: 5.0)
+  state_store_lock: <number>    # SQLite lock timeout (seconds, default: 30.0)
+  dashboard_server: <number>    # Dashboard server operations timeout (seconds, default: 30.0)
+
+# -----------------------------------------------------------------------------
 # EXECUTOR
 # Code execution settings
 # -----------------------------------------------------------------------------
 executor:
   timeout_seconds: <number>     # Max time for agent code to run
+  max_invoke_depth: <number>    # Maximum artifact invocation nesting depth (default: 5)
   allowed_imports:              # Whitelist of importable modules
     - math
     - json
@@ -242,6 +255,10 @@ mint_scorer:
   model: <string>               # LLM model for scoring
   timeout: <number>             # Seconds
   max_content_length: <number>  # Truncate content beyond this
+  score_bounds:                 # Score clamping bounds
+    min: <number>               # Minimum score (default: 0)
+    max: <number>               # Maximum score (default: 100)
+  thread_pool_workers: <number> # Thread pool size for scoring (default: 1)
 
 # -----------------------------------------------------------------------------
 # LLM
@@ -262,6 +279,38 @@ logging:
   logs_dir: <string>            # Per-run logs directory (e.g., logs/run_20260115_120000/)
   log_dir: <string>
   default_recent: <number>      # Default N for "recent events"
+  truncation:                   # Log message truncation limits
+    content: <number>           # Artifact content in logs (default: 100)
+    code: <number>              # Code snippets in logs (default: 100)
+    errors: <number>            # Error messages (default: 100)
+    detailed: <number>          # Detailed logs (default: 500)
+
+# -----------------------------------------------------------------------------
+# MONITORING
+# Ecosystem health monitoring settings
+# -----------------------------------------------------------------------------
+monitoring:
+  audit_thresholds:             # Audit alert thresholds
+    gini:
+      warning: <number>         # Warning threshold (default: 0.7)
+      critical: <number>        # Critical threshold (default: 0.9)
+    frozen_ratio:
+      warning: <number>         # Warning threshold (default: 0.2)
+      critical: <number>        # Critical threshold (default: 0.5)
+    active_ratio:
+      warning: <number>         # Warning threshold (default: 0.3)
+      critical: <number>        # Critical threshold (default: 0.1)
+    burn_rate:
+      warning: <number>         # Warning threshold (default: 0.1)
+      critical: <number>        # Critical threshold (default: 0.25)
+    scrip_velocity_low:
+      warning: <number>         # Warning threshold (default: 0.001)
+  health_scoring:               # Health score calculation parameters
+    warning_penalty: <number>   # Penalty per warning (default: 0.1)
+    critical_penalty: <number>  # Penalty per critical (default: 0.2)
+    trend_threshold: <number>   # Threshold for trend detection (default: 0.1)
+    trend_history_ticks: <number>  # Ticks of history to analyze (default: 10)
+  active_agent_threshold_ticks: <number>  # Ticks of inactivity before agent considered inactive (default: 5)
 
 # -----------------------------------------------------------------------------
 # WORLD
@@ -307,3 +356,12 @@ dashboard:
   cors_origins:                 # Allowed CORS origins
     - <string>
   max_events_cache: <number>    # Max events to cache in memory
+  debounce_delay_ms: <number>   # File watcher debounce delay (default: 100)
+  poll_interval: <number>       # Polling interval in seconds (default: 0.5)
+
+# -----------------------------------------------------------------------------
+# ID GENERATION
+# Settings for artifact ID generation
+# -----------------------------------------------------------------------------
+id_generation:
+  uuid_hex_length: <number>     # Characters from UUID hex for IDs (default: 8)

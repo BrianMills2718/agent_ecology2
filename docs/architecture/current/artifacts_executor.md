@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-17 (Plan #63 - artifact dependencies added)
+**Last verified:** 2026-01-17 (Plan #62 - Config magic numbers)
 
 ---
 

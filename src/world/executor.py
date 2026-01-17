@@ -24,7 +24,7 @@ from datetime import datetime, timedelta
 from types import FrameType, ModuleType
 from typing import Any, Callable, Generator, TypedDict
 
-from ..config import get
+from ..config import get, get_validated_config
 from .simulation_engine import measure_resources
 
 # Import types for type hints (avoid circular import at runtime)
@@ -60,7 +60,12 @@ class InvokeResult(TypedDict):
     price_paid: int
 
 
-# Default max recursion depth for nested invoke() calls
+def get_max_invoke_depth() -> int:
+    """Get max recursion depth for nested invoke() calls from config."""
+    return get_validated_config().executor.max_invoke_depth
+
+
+# Legacy constant for backward compatibility
 DEFAULT_MAX_INVOKE_DEPTH = 5
 
 
@@ -797,7 +802,7 @@ class SafeExecutor:
         ledger: "Ledger | None" = None,
         artifact_store: "ArtifactStore | None" = None,
         current_depth: int = 0,
-        max_depth: int = DEFAULT_MAX_INVOKE_DEPTH,
+        max_depth: int | None = None,
         world: "World | None" = None,
     ) -> ExecutionResult:
         """
@@ -827,6 +832,8 @@ class SafeExecutor:
             Same as execute() - dict with success, result/error
         """
         args = args or []
+        if max_depth is None:
+            max_depth = get_max_invoke_depth()
 
         # Validate first
         valid, error = self.validate_code(code)

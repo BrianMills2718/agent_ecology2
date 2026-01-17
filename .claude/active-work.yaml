@@ -7,6 +7,10 @@ claims:
   task: Create genesis_debt_contract artifact (non-privileged example)
   claimed_at: '2026-01-15T08:55:05Z'
   plan: 9
+- cc_id: plan-62-config-cleanup-v2
+  task: Fix doc-code coupling for config magic numbers
+  claimed_at: '2026-01-17T23:12:08Z'
+  plan: 62
 completed:
 - cc_id: tier2-architecture-decisions
   task: Tier 2 architecture decisions (Items 4-7)
@@ -62,3 +66,7 @@ completed:
   plan: 49
   task: Add reasoning field to ActionIntent narrow waist
   completed_at: '2026-01-14T16:18:00Z'
+- cc_id: plan-62-v2
+  plan: 62
+  task: Fix doc-code coupling for config magic numbers
+  completed_at: '2026-01-17T23:12:08Z'

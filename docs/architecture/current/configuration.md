@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-16 (Plan #59 - Working memory config)
+**Last verified:** 2026-01-17 (Plan #62 - Config magic numbers)
 
 ---
 
