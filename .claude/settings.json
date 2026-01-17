@@ -8,6 +8,16 @@
             "type": "command",
             "command": "bash .claude/hooks/protect-main.sh",
             "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/check-file-scope.sh",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/check-references-reviewed.sh",
+            "timeout": 5000
           }
         ]
       },
