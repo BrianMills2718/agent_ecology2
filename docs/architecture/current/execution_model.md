@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-16 (Plan #60 - Tick summary logging)
+**Last verified:** 2026-01-17 (Plan #62 - Config magic numbers)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

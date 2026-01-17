@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified: 2026-01-16 (Plan #53 - Phase 1 terminology: compute → llm_tokens)
+**Last verified:** 2026-01-17 (Plan #62 - Config magic numbers)
 
 ---
 

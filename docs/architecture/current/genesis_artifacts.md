@@ -2,7 +2,7 @@
 
 System-provided artifacts that exist at world initialization.
 
-**Last verified:** 2026-01-15 (Plan #9 - Added genesis_debt_contract)
+**Last verified:** 2026-01-17 (Plan #62 - Config magic numbers)
 
 ---
 
