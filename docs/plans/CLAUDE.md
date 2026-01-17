@@ -90,7 +90,7 @@ Master index of all gaps and their implementation plans.
 | 59 | [Agent Intelligence Patterns](59_agent_intelligence.md) | **High** | ✅ Complete | plan-59-agent-intelligence |
 | 60 | [Tractable Logs](60_tractable_logs.md) | Medium | ✅ Complete | plan-60-tractable-logs |
 | 61 | [Dashboard Entity Detail](61_dashboard_entity_detail.md) | Medium | ✅ Complete | - |
-| 63 | [Artifact Dependencies](63_artifact_dependencies.md) | **High** | 📋 Planned | Dashboard capital structure |
+| 63 | [Artifact Dependencies](63_artifact_dependencies.md) | **High** | ✅ Complete | Dashboard capital structure |
 
 ---
 
