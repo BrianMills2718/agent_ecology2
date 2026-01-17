@@ -525,6 +525,12 @@ Source: https://github.com/open-thought/system-2-research
 | 17 | Generative Agents (Stanford) | **Read** |
 | 18 | CAMEL (NeurIPS 2023) | **Read** |
 | 19 | mem0 | **Read** |
+| 20 | MemGPT (Letta) | **Read** |
+| 21 | ExpeL | **Read** |
+| 22 | Reflexion | **Read** |
+| 23 | HippoRAG | **Read** |
+| 24 | Zep/Graphiti | **Read** |
+| 25 | Agent Workflow Memory | **Read** |
 
 ---
 
@@ -641,6 +647,124 @@ Source: https://github.com/mem0ai/mem0
 **Architectural Pattern:**
 - Hierarchical memory (user → session → agent) is proven effective
 - Separation of memory tiers enables targeted retrieval
+
+### MemGPT (Letta) - LLMs as Operating Systems
+
+Source: https://arxiv.org/abs/2310.08560
+
+**Core Innovation:** OS-inspired virtual context management for LLMs
+
+**Memory Hierarchy:**
+- Mirrors traditional OS memory tiers (fast/slow storage)
+- Creates illusion of vast memory by moving data between tiers
+- Enables processing beyond native context window limits
+
+**Key Features:**
+- Interrupt mechanisms for coordinating system-user interaction
+- Tiered memory structure preserving performance
+- Demonstrated on: document analysis (large docs) and multi-session chat
+
+**Key Insight:** "LLMs can remember, reflect, and evolve dynamically through long-term interactions" when given proper memory management.
+
+### ExpeL - Experiential Learners (CRITICAL FOR OUR USE CASE)
+
+Source: https://arxiv.org/abs/2308.10144
+
+**Core Innovation:** Learning from experience WITHOUT parameter updates
+
+**How It Works:**
+1. Agent gathers experiences from training tasks
+2. Extracts knowledge using natural language (not weights)
+3. At inference, recalls insights and past experiences
+4. Performance enhances as experiences accumulate
+
+**Why This Matters:**
+- Works with proprietary models (GPT-4, Claude) - no fine-tuning needed
+- Sidesteps resource-intensive training
+- Avoids generalization degradation from fine-tuning
+- Knowledge may transfer across different tasks
+
+**Key Insight:** Agents can learn and improve through natural language experience storage - exactly what our agents lack.
+
+### Reflexion - Verbal Reinforcement Learning (CRITICAL)
+
+Source: https://arxiv.org/abs/2303.11366
+
+**Core Innovation:** Self-improvement through linguistic feedback, not weight updates
+
+**How It Works:**
+1. Agent receives feedback (external or internal)
+2. Generates reflective text analyzing failures/mistakes
+3. Stores self-critiques in episodic memory buffer
+4. Applies insights to improve on subsequent trials
+
+**Performance:**
+- HumanEval coding: 91% pass@1 (vs GPT-4's 80%)
+- Works with scalar or free-form language feedback
+
+**Key Insight:** Natural language reflection IS a learning mechanism. Agents improve through self-critique without fine-tuning.
+
+**Relevance:** This is exactly what we need for post-action reflection (Tier 2 recommendation).
+
+### HippoRAG - Neurobiologically-Inspired Memory
+
+Source: https://arxiv.org/abs/2405.14831
+
+**Core Innovation:** Memory modeled on hippocampal indexing theory
+
+**Architecture:**
+- LLMs (reasoning) + Knowledge Graphs (structure) + Personalized PageRank (ranking)
+- Mimics neocortex + hippocampus roles in human memory
+- Prevents catastrophic forgetting
+
+**Performance:**
+- 10-30x cheaper than iterative retrieval (like IRCoT)
+- 6-13x faster
+- Up to 20% improvement on multi-hop QA
+
+**Key Insight:** Single-step retrieval can match/exceed iterative approaches with proper memory architecture.
+
+### Zep/Graphiti - Temporal Knowledge Graphs
+
+Source: https://arxiv.org/abs/2501.13956
+
+**Core Innovation:** Temporally-aware knowledge graph for dynamic memory
+
+**Key Capabilities:**
+- Synthesizes unstructured (conversations) AND structured (business data)
+- Maintains historical relationships over time
+- Cross-session information synthesis
+- Long-term context maintenance
+
+**Performance:**
+- 94.8% accuracy on Deep Memory Retrieval (vs MemGPT 93.4%)
+- Up to 18.5% improvement on temporal reasoning
+- 90% latency reduction
+
+**Key Insight:** Memory needs temporal awareness - relationships and contexts EVOLVE over time. Static RAG misses this.
+
+### Agent Workflow Memory (AWM)
+
+Source: https://arxiv.org/abs/2409.07429
+
+**Core Innovation:** Learn reusable workflows, not individual actions
+
+**What Gets Stored:**
+- Commonly reused routines (workflows)
+- Task procedures that generalize across scenarios
+
+**Two Modes:**
+- **Offline**: Workflows induced from training examples
+- **Online**: Workflows generated from test queries on-the-fly
+
+**Performance:**
+- Mind2Web: 24.6% relative success rate improvement
+- WebArena: 51.1% relative success rate improvement
+- Generalizes across tasks, websites, and domains
+
+**Key Insight:** Store generalizable task PATTERNS, not specific action sequences. Mirrors human problem-solving.
+
+**Relevance:** Our agents could benefit from workflow artifacts that capture successful patterns.
 
 ---
 
