@@ -410,7 +410,8 @@ python scripts/check_claims.py --release --validate
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
-| plan-48-ci-optimization | 48 | Optimize CI - add caching, consolidate j | 2026-01-15T08:43 | Active |
+| main | 9 | Create genesis_debt_contract artifact (n | 2026-01-15T08:55 | Active |
+| plan-62-config-cleanup-v2 | 62 | Fix doc-code coupling for config magic n | 2026-01-17T23:12 | Active |
 
 **Finding PRs to Review:**
 ```bash
