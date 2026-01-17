@@ -4,13 +4,13 @@
 
 **Features are E2E acceptance gates.**
 
-A feature is COMPLETE when its acceptance criteria pass with **real (non-mocked) LLM integration**. Not when code is written. Not when unit tests pass. When real E2E works.
+A feature is COMPLETE when its acceptance criteria pass with **real (non-mocked) integration**. Not when code is written. Not when unit tests pass. When real E2E works with no mocks.
 
 ```
 Feature: escrow
-├── AC-1: Deposit works       ← Must pass with REAL LLM
-├── AC-2: Purchase works      ← Must pass with REAL LLM
-├── AC-3: Cancellation works  ← Must pass with REAL LLM
+├── AC-1: Deposit works       ← Must pass with NO MOCKS
+├── AC-2: Purchase works      ← Must pass with NO MOCKS
+├── AC-3: Cancellation works  ← Must pass with NO MOCKS
 │
 └── DONE when: pytest tests/e2e/test_real_e2e.py --run-external passes
 ```
@@ -28,7 +28,7 @@ Feature: escrow
 
 ## Why This Matters
 
-Unit tests can pass with mocks. Integration tests can pass with mocks. Only real E2E with actual LLM calls proves the system works.
+Unit tests can pass with mocks. Integration tests can pass with mocks. Only real E2E with **no mocks at all** proves the system actually works.
 
 Features define these real checkpoints:
 - "Escrow actually works when agents trade"

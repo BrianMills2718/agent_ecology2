@@ -4,15 +4,15 @@ A comprehensive meta-process for AI-assisted software development that ensures v
 
 ## Core Concept: Features Are E2E Acceptance Gates
 
-**A feature is COMPLETE when its acceptance criteria pass with real (non-mocked) LLM integration.**
+**A feature is COMPLETE when its acceptance criteria pass with real (non-mocked) integration.**
 
-Not when code is written. Not when unit tests pass. When **real E2E tests** pass.
+Not when code is written. Not when unit tests pass. When **real E2E tests with no mocks** pass.
 
 ```
 Feature: escrow
-├── AC-1: Deposit works       ← Must pass with REAL LLM
-├── AC-2: Purchase works      ← Must pass with REAL LLM
-├── AC-3: Cancellation works  ← Must pass with REAL LLM
+├── AC-1: Deposit works       ← Must pass with NO MOCKS
+├── AC-2: Purchase works      ← Must pass with NO MOCKS
+├── AC-3: Cancellation works  ← Must pass with NO MOCKS
 │
 └── DONE when: pytest tests/e2e/test_real_e2e.py --run-external passes
 ```
@@ -30,7 +30,7 @@ Feature: escrow
 
 ### Why Real E2E Matters
 
-Unit tests can pass with mocks. Integration tests can pass with mocks. Only real E2E with actual LLM calls proves the system works. The entire pattern below exists to ensure we reach that checkpoint with verified, working code.
+Unit tests can pass with mocks. Integration tests can pass with mocks. Only real E2E **with no mocks at all** proves the system actually works. The entire pattern below exists to ensure we reach that checkpoint with verified, working code.
 
 ## Problem
 
