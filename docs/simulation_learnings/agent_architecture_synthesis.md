@@ -2,7 +2,7 @@
 
 **Status:** recommendation
 **Date:** 2026-01-16
-**Based on:** 25 research sources reviewed
+**Based on:** 26 research sources reviewed
 **Related:** agent_architecture_research_notes.md, agent_architecture_design_space.md
 
 ---
@@ -266,3 +266,4 @@ Fix the cold-start deadlock first. Then add planning. Then reflection. Test at e
 | 23 | HippoRAG | Hippocampal memory model, 10-30x cheaper than iterative RAG |
 | 24 | Zep/Graphiti | Temporal knowledge graphs, 94.8% accuracy, 90% latency reduction |
 | 25 | Agent Workflow Memory | Store reusable workflows not actions, 51% improvement |
+| 26 | Reddit Practitioners | data+context+timestamp; graph relationships; keep solutions not process |

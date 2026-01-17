@@ -531,6 +531,7 @@ Source: https://github.com/open-thought/system-2-research
 | 23 | HippoRAG | **Read** |
 | 24 | Zep/Graphiti | **Read** |
 | 25 | Agent Workflow Memory | **Read** |
+| 26 | Reddit: AI Agent Memory Guide | **Read** |
 
 ---
 
@@ -765,6 +766,49 @@ Source: https://arxiv.org/abs/2409.07429
 **Key Insight:** Store generalizable task PATTERNS, not specific action sequences. Mirrors human problem-solving.
 
 **Relevance:** Our agents could benefit from workflow artifacts that capture successful patterns.
+
+### Reddit: AI Agent Memory That Doesn't Suck (Practitioner Insights)
+
+Source: r/AI_Agents discussion
+
+**Memory Stack Pattern (what practitioners actually use):**
+```
+Short-term: Redis/cache (recent conversations)
+Long-term: Vector DB + regular DB (similar contexts + facts)
+Episode: Specific interactions + what worked
+```
+
+**Smart Memory Patterns:**
+
+1. **Search, don't cram** - Build search system instead of stuffing everything into prompts
+2. **Keep solutions, discard trial-and-error** - When task done, save the result not the process
+3. **Summarize aggressively** - "User prefers React: components + TypeScript" not verbose explanation
+4. **Weight by recency AND importance** - Recent matters, but don't lose valuable old insights
+5. **Score by relevance to current context** - Travel discussion → prioritize flight/hotel memories
+
+**Critical Implementation Details (from comments):**
+
+| Insight | Source |
+|---------|--------|
+| Memory needs: **data + context/meta + timestamp**. Timestamps help resolve conflicting info over time. | epreisz |
+| Store BOTH user AND assistant memories - assistant's memories useful for higher-order thinking | epreisz |
+| **Graph DB for relationships** between facts. Connect "Paris flights" → "vacation planning" → "prefers direct flights" | Striking-Bluejay6155 |
+| Summaries **bleed information over time** - need multilayer memory, not just long/short | Short-Honeydew-7000 |
+| Self-improvement flows are needed - personalization isn't just prompt engineering | Short-Honeydew-7000 |
+
+**Common Mistakes:**
+- Don't keep entire conversation histories in prompts
+- Don't treat all memories as equally important
+- Don't forget to clean up old, irrelevant memories
+
+**Key Quote:**
+> "The goal isn't perfect memory, it's making your agent feel like it actually knows the user. An agent that remembers you hate chitchat and prefer examples is way better than one with perfect but useless memory."
+
+**Relevance to Our Architecture:**
+- Our Mem0/Qdrant integration may benefit from timestamp + context metadata
+- Graph relationships between memories (what's connected to what) could improve retrieval
+- "Keep solutions, discard process" aligns with AWM's workflow storage pattern
+- We should track what WORKED, not just what happened
 
 ---
 
