@@ -30,15 +30,6 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 | [Plan Status Validation](23_plan-status-validation.md) | Status/content mismatch in plans | Low |
 | [Phased ADR Pattern](24_phased-adr-pattern.md) | Complex features need phased rollout | Medium |
 
-### Subsumed Patterns
-
-These patterns are now implementation details of [Documentation Graph](09_documentation-graph.md):
-
-| Pattern | Status |
-|---------|--------|
-| [ADR Governance](08_adr-governance.md) | `governs` edges in relationships.yaml |
-| [Doc-Code Coupling](10_doc-code-coupling.md) | `documented_by` edges in relationships.yaml |
-
 ## When to Use
 
 **Start with these (low overhead):**

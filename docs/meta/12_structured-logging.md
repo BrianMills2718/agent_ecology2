@@ -1,5 +1,9 @@
 # Pattern: Structured Logging with Dual Outputs
 
+> **STATUS: PROPOSED** - This pattern describes a DualLogger with JSONL output.
+> Currently NOT DEPLOYED. The system uses standard Python logging.
+> See Plan #60 for the current logging approach (SummaryLogger).
+
 ## Philosophy
 
 **Two logs always stored:**
