@@ -538,6 +538,11 @@ Source: https://github.com/open-thought/system-2-research
 | 30 | Self-Critique Evaluator Loop | **Read** |
 | 31 | Dual Episodic+Semantic Memory (impl) | **Read** |
 | 32 | RLHF Self-Improvement Pattern (impl) | **Read** |
+| 33 | VOYAGER (Minecraft lifelong learning) | **Read** |
+| 34 | OpenAI Swarm/Orchestrating Agents | **Read** |
+| 35 | Progressive Complexity Escalation | **Read** |
+| 36 | Plan-Then-Execute Pattern | **Read** |
+| 37 | Context-Minimization Pattern | **Read** |
 
 ---
 
@@ -990,6 +995,207 @@ Source: FareedKhan-dev/all-agentic-architectures
 **Key Insight:** Reinforces successful patterns WITHOUT mathematical reward functions. System learns from accumulated positive outcomes.
 
 **Relevance:** Our agents could store successful action sequences as exemplars for future reference.
+
+### VOYAGER - Lifelong Learning Agent (CRITICAL - MINECRAFT)
+
+Source: arXiv:2305.16291 (NVIDIA/Caltech/UT Austin)
+
+**The first LLM-powered embodied lifelong learning agent.** Continuously explores, acquires skills, makes discoveries without human intervention.
+
+**Three Key Components:**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  1. AUTOMATIC CURRICULUM                                │
+│     - GPT-4 proposes tasks based on current state      │
+│     - Bottom-up: adapts to exploration progress        │
+│     - Goal: "discover as many diverse things as possible" │
+└─────────────────────┬───────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│  2. SKILL LIBRARY                                       │
+│     - Each skill = executable code                     │
+│     - Indexed by embedding of description              │
+│     - Retrieved via similarity search for new tasks    │
+│     - Complex skills compose simpler ones              │
+└─────────────────────┬───────────────────────────────────┘
+                      ↓
+┌─────────────────────────────────────────────────────────┐
+│  3. ITERATIVE PROMPTING                                 │
+│     - Environment feedback (intermediate progress)     │
+│     - Execution errors (bugs, invalid operations)      │
+│     - Self-verification (GPT-4 as critic)              │
+│     - Loop until verified OR stuck (4 rounds max)      │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Results vs Baselines (ReAct, Reflexion, AutoGPT):**
+- 3.3× more unique items discovered
+- 15.3× faster tech tree unlock (wooden tools)
+- 2.3× longer distances traversed
+- ONLY method to unlock diamond level
+
+**Critical Ablation Findings:**
+| Component Removed | Impact |
+|-------------------|--------|
+| Automatic curriculum | -93% items (random curriculum fails) |
+| Skill library | Plateaus in later stages |
+| Self-verification | -73% items (most important feedback!) |
+| GPT-4 → GPT-3.5 | -82% items (5.7× worse) |
+
+**Skill Library Details:**
+- Skills are CODE, not natural language descriptions
+- Guideline: "Your function will be reused for building more complex functions. Make it generic and reusable."
+- Query: embed task + environment feedback → retrieve top-5 similar skills
+- Skills compound over time, alleviating catastrophic forgetting
+
+**Cold-Start Pattern:**
+- Curriculum adapts to current state (e.g., desert → harvest sand/cactus before iron)
+- Tasks not too hard: "may not have necessary resources or skills yet"
+- Completed/failed tasks tracked as exploration progress
+
+**Relevance to Our Architecture:**
+- Automatic curriculum = exactly what we need for cold-start
+- Skill library = our agents could write skill artifacts
+- Self-verification = our Tier 2 reflection recommendation
+- Code as skills = interpretable, composable, reusable
+
+### OpenAI Swarm / Orchestrating Agents
+
+Source: OpenAI Cookbook
+
+**Core Pattern: Routines and Handoffs**
+
+A routine = "list of instructions in natural language + tools necessary to complete them"
+
+**Execution Loop:**
+```python
+while not done:
+    response = model.call(instructions, tools)
+    for tool_call in response.tool_calls:
+        result = execute(tool_call)
+        if isinstance(result, Agent):  # Handoff detected
+            active_agent = result
+            # Conversation history preserved
+```
+
+**Handoff Mechanism:**
+- Agent returns `Agent` object from tool call (e.g., `transfer_to_refunds()`)
+- Orchestrator detects return type, swaps active agent
+- Full conversation history flows across handoffs
+
+**Best Practices:**
+- Start with straightforward prompts + conditional logic
+- Keep routines focused on specific domains
+- Use tool functions to express agent transitions explicitly
+- Test with small/medium complexity before scaling
+
+**Key Quote:** This approach is "simple, but surprisingly effective"
+
+**Relevance:** Shows how multi-agent handoffs can work simply - relevant for future multi-agent considerations.
+
+### Progressive Complexity Escalation (COLD-START PATTERN)
+
+Source: agentic-patterns.com
+
+**Core Idea:** Start with low-complexity, high-reliability tasks. Escalate as confidence grows.
+
+**Three-Tier Architecture:**
+| Tier | Mode | Description |
+|------|------|-------------|
+| 1 | Immediate | Information gathering, human decides |
+| 2 | Validated | Multi-step workflows, human approval gates |
+| 3 | Future | Autonomous decisions, confidence-based |
+
+**Initial Tasks (Tier 1):**
+- Data entry and research
+- Content categorization
+- Information extraction
+- Template-based generation
+
+**Promotion Criteria:**
+- Accuracy thresholds (95% → Tier 2; 98% → Tier 3)
+- Human approval rates
+- Override frequency
+- Stakeholder confidence
+
+**Example Evolution:**
+```
+Phase 1: Agent researches leads, human writes outreach
+Phase 2: Agent researches + drafts email, human approves
+Phase 3: Agent auto-sends when confidence > 0.8
+```
+
+**Relevance:** Directly addresses our cold-start problem. Agents should start with simple tasks (read, observe) before attempting complex ones (write, invoke).
+
+### Plan-Then-Execute Pattern
+
+Source: agentic-patterns.com
+
+**Two Distinct Phases:**
+
+**Phase 1 - Planning:**
+```python
+plan = LLM.make_plan(prompt)  # Frozen list of calls
+```
+- Complete sequence generated BEFORE any untrusted data
+- Human can review/modify before execution
+
+**Phase 2 - Execution:**
+```python
+for call in plan:
+    result = tools.run(call)
+    stash(result)  # Isolated from planner
+```
+- Controller runs exact sequence
+- Tool outputs can inform parameters, NOT alter which tools run
+
+**When to Use:**
+- Email/calendar automation
+- SQL query assistants
+- Code-review tools
+- Predictable action sets with varying parameters
+
+**Result:** "2-3x success rates for complex tasks by aligning on approach first"
+
+**Trade-off:** Strong control-flow integrity, but tool output content still vulnerable.
+
+**Relevance:** This is our Tier 1 recommendation - agents should plan before acting.
+
+### Context-Minimization Pattern
+
+Source: agentic-patterns.com
+
+**Problem:** Untrusted user input can influence downstream LLM outputs even after serving initial purpose.
+
+**Three-Step Solution:**
+```python
+# 1. Transform & Extract
+sql = LLM("convert to SQL", user_prompt)
+
+# 2. Purge Original
+remove(user_prompt)  # From conversation history
+
+# 3. Continue with Safe Data
+rows = db.query(sql)
+answer = LLM("summarize", rows)  # Never sees original input
+```
+
+**What to Retain:**
+- Transformed, validated outputs
+- System constraints and instructions
+- Factual data from trusted sources
+
+**What to Remove:**
+- Raw user-supplied text
+- Unvalidated user queries
+- Potentially injected content
+
+**Trade-offs:**
+- ✓ Simple, reduces context window, prevents injection
+- ✗ Sacrifices conversational continuity, may remove legitimate context
+
+**Relevance:** Security pattern - relevant when agents process external inputs.
 
 ---
 

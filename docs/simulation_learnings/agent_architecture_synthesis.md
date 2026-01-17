@@ -2,7 +2,7 @@
 
 **Status:** recommendation
 **Date:** 2026-01-16
-**Based on:** 32 research sources reviewed
+**Based on:** 37 research sources reviewed
 **Related:** agent_architecture_research_notes.md, agent_architecture_design_space.md
 
 ---
@@ -273,3 +273,8 @@ Fix the cold-start deadlock first. Then add planning. Then reflection. Test at e
 | 30 | Self-Critique Evaluator | Self-taught evaluator bootstrapping without labels |
 | 31 | Dual Memory (impl) | Vector (episodic) + Graph (semantic) combined context |
 | 32 | RLHF Pattern (impl) | Generate→Critique→Revise loop with GoldStandardMemory |
+| 33 | **VOYAGER** | **Automatic curriculum + skill library + self-verification. 3.3x items, 15.3x faster** |
+| 34 | OpenAI Swarm | Routines + handoffs for multi-agent orchestration |
+| 35 | Progressive Complexity | Cold-start: Tier 1 (info gather) → Tier 2 (human gates) → Tier 3 (autonomous) |
+| 36 | Plan-Then-Execute | Separate planning from execution. 2-3x success rate improvement |
+| 37 | Context-Minimization | Security: purge untrusted input after transformation |
