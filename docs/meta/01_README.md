@@ -28,6 +28,7 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 | [PR Coordination](21_pr-coordination.md) | Lost review requests | Low |
 | [Human Review Pattern](22_human-review-pattern.md) | Risky changes merged without review | Medium |
 | [Plan Status Validation](23_plan-status-validation.md) | Status/content mismatch in plans | Low |
+| [Phased ADR Pattern](24_phased-adr-pattern.md) | Complex features need phased rollout | Medium |
 
 ### Subsumed Patterns
 
@@ -51,6 +52,7 @@ These patterns are now implementation details of [Documentation Graph](09_docume
 **Add these when needed (more setup):**
 - Feature-Driven Development - comprehensive meta-process for verified progress, preventing AI drift/cheating
 - ADR - when architectural decisions need to be preserved long-term
+- Phased ADR Pattern - when building simpler first but preserving full design vision
 - Documentation Graph - when you need to trace ADR → target → current → code
 - Plan Workflow - for larger features with multiple steps
 - Claim System - for explicit parallel work coordination
