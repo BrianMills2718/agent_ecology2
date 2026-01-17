@@ -2,7 +2,7 @@
 
 **Status:** recommendation
 **Date:** 2026-01-16
-**Based on:** 15 research sources reviewed
+**Based on:** 19 research sources reviewed
 **Related:** agent_architecture_research_notes.md, agent_architecture_design_space.md
 
 ---
@@ -256,3 +256,7 @@ Fix the cold-start deadlock first. Then add planning. Then reflection. Test at e
 | 13 | Building Agentic System | Read parallel, write sequential |
 | 14 | Anthropic Effective Agents | Workflows vs agents, 5 patterns |
 | 15 | System 2 Research | System 1+2 fusion |
+| 16 | Lilian Weng (OpenAI) | Three-tier memory, retrieval factors: relevance+recency+importance |
+| 17 | Generative Agents | **ALL 3 required: observation, planning, reflection** |
+| 18 | CAMEL | Role-playing enables autonomous cooperation |
+| 19 | mem0 | Multi-level memory (user/session/agent), 90% token reduction |

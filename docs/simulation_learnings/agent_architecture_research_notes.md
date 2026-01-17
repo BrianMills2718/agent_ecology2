@@ -521,6 +521,126 @@ Source: https://github.com/open-thought/system-2-research
 | 13 | Building Agentic System | **Read** |
 | 14 | Anthropic Effective Agents | **Read** |
 | 15 | System 2 Research | **Read** |
+| 16 | Lilian Weng (OpenAI) Agent Blog | **Read** |
+| 17 | Generative Agents (Stanford) | **Read** |
+| 18 | CAMEL (NeurIPS 2023) | **Read** |
+| 19 | mem0 | **Read** |
+
+---
+
+## Additional Sources (2026-01-16)
+
+### Lilian Weng - LLM Powered Autonomous Agents (OpenAI)
+
+Source: https://lilianweng.github.io/posts/2023-06-23-agent/
+
+**Three-Tier Memory System (mirrors human cognition):**
+- **Sensory**: Embedding representations of raw inputs
+- **Short-term**: In-context learning bounded by transformer context (~4000 tokens)
+- **Long-term**: External vector stores enabling infinite information retention
+
+**Memory Retrieval Factors:**
+- Relevance (semantic similarity)
+- Recency (how recent the memory)
+- Importance (salience/significance)
+
+**Tool Use Requirements:**
+1. **Knowing when** to call tools (determining necessity)
+2. **Identifying which** tool solves the problem (API selection)
+3. **Refining calls** based on results (iterative improvement)
+
+**MRKL Architecture:**
+- LLMs as routers directing queries to specialized expert modules
+- Can route to neural OR symbolic components based on task
+
+**ReAct Pattern:**
+```
+Thought: [reasoning about situation]
+Action: [tool to invoke]
+Observation: [result of action]
+... repeat until done
+```
+
+**Reflexion Framework:**
+- Dynamic memory for detecting hallucinations and inefficient trajectories
+- Enables course correction mid-execution
+
+**Key Limitations Identified:**
+1. Finite context windows limit historical information integration
+2. Long-term planning remains brittle when facing unexpected errors
+3. Natural language interfaces create parsing overhead and output reliability issues
+
+### Generative Agents (Stanford - "Smallville")
+
+Source: https://arxiv.org/abs/2304.03442
+
+**Memory Architecture:**
+- Complete natural language record of agent's experiences
+- Not just storage - **synthesis into higher-level reflections over time**
+- Dynamic retrieval to inform planning and behavior
+
+**Three Critical Components (ALL REQUIRED):**
+1. **Observation**: Recording what happens
+2. **Planning**: Deciding what to do
+3. **Reflection**: Synthesizing meaning from experiences
+
+> "Testing confirmed that observation, planning, and reflection--each contribute critically to the believable agent behavior."
+
+**Emergent Social Behavior:**
+- From single user input ("host a Valentine's Day party"), agents autonomously:
+  - Spread invitations over two days
+  - Made new acquaintances
+  - Asked each other out on dates
+  - Coordinated to show up together
+
+**Key Insight:** Coherent long-term behavior emerges from the combination of all three components - removing any one breaks believability.
+
+### CAMEL (NeurIPS 2023)
+
+Source: https://arxiv.org/abs/2303.17760
+
+**Role-Playing Framework:**
+- Agents adopt specific roles to maintain focus and behavioral constraints
+- Roles provide context that guides collaboration
+
+**Inception Prompting:**
+- Guides chat-based agents toward task completion
+- Enables structured conversations without constant human intervention
+- Maintains alignment with human intentions
+
+**Autonomous Cooperation:**
+- Agents engage in back-and-forth exchanges
+- Role assignments provide behavioral constraints
+- Can resolve complex problems through dialogue
+
+**Research Value:**
+- Multi-agent conversations generate valuable datasets
+- Insights into "cognitive" processes of language models
+- Open-sourced CAMEL library for community research
+
+### mem0 - Memory Layer for LLM Agents
+
+Source: https://github.com/mem0ai/mem0
+
+**Multi-Level Memory Management:**
+- **User-level**: Individual preferences and long-term patterns
+- **Session-level**: Context within conversation threads
+- **Agent-level**: Autonomous system state and behavior
+
+**Performance:**
+- 91% faster responses vs full-context retention
+- 90% token reduction
+- Semantic search with vector DB backend
+
+**Key Design Features:**
+- Integration with any LLM (default GPT-4)
+- Automatic capture and storage of conversation content
+- REST endpoints and SDKs (Python/TypeScript/JavaScript)
+- Multiple vector database backends
+
+**Architectural Pattern:**
+- Hierarchical memory (user → session → agent) is proven effective
+- Separation of memory tiers enables targeted retrieval
 
 ---
 
