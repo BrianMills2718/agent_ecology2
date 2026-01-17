@@ -148,6 +148,10 @@ class Artifact:
     # If set, this artifact uses method dispatch instead of code execution
     # Enables unified invoke path for genesis and user artifacts
     genesis_methods: dict[str, "GenesisMethod"] | None = None
+    # Declared dependencies (Plan #63: Artifact Dependencies)
+    # List of artifact IDs this artifact depends on
+    # Dependencies are resolved and injected at invocation time
+    depends_on: list[str] = field(default_factory=list)
 
     @property
     def price(self) -> int:
@@ -285,6 +289,9 @@ class Artifact:
         # Include interface if set (Plan #14)
         if self.interface is not None:
             result["interface"] = self.interface
+        # Include dependencies if any (Plan #63)
+        if self.depends_on:
+            result["depends_on"] = self.depends_on
         return result
 
 
@@ -466,6 +473,8 @@ class ArtifactStore:
         price: int = 0,
         code: str = "",
         policy: dict[str, Any] | None = None,
+        depends_on: list[str] | None = None,
+        depth_limit: int = 10,
     ) -> Artifact:
         """Create or update an artifact. Returns the artifact.
 
@@ -477,8 +486,17 @@ class ArtifactStore:
         - read_price: cost to read
         - invoke_price: cost to invoke (overrides price param)
         - allow_read, allow_write, allow_invoke: access lists
+
+        Dependencies (Plan #63):
+        - depends_on: List of artifact IDs this artifact depends on
+        - depth_limit: Maximum transitive dependency depth (default 10)
         """
         now = datetime.utcnow().isoformat()
+        depends_on = depends_on or []
+
+        # Validate dependencies (Plan #63)
+        if depends_on:
+            self._validate_dependencies(artifact_id, depends_on, depth_limit)
 
         # Build policy - start with defaults, apply overrides
         artifact_policy = default_policy()
@@ -497,6 +515,7 @@ class ArtifactStore:
             artifact.executable = executable
             artifact.code = code
             artifact.policy = artifact_policy
+            artifact.depends_on = depends_on
         else:
             # Create new - register with ID registry if available (Plan #7)
             if self.id_registry is not None:
@@ -515,10 +534,115 @@ class ArtifactStore:
                 executable=executable,
                 code=code,
                 policy=artifact_policy,
+                depends_on=depends_on,
             )
             self.artifacts[artifact_id] = artifact
 
         return artifact
+
+    def _validate_dependencies(
+        self,
+        artifact_id: str,
+        depends_on: list[str],
+        depth_limit: int,
+    ) -> None:
+        """Validate dependencies for an artifact.
+
+        Raises ValueError if:
+        - A dependency doesn't exist
+        - Adding dependencies would create a cycle
+        - Transitive dependency depth exceeds limit
+        """
+        # Check for self-reference (direct cycle)
+        if artifact_id in depends_on:
+            raise ValueError(
+                f"Cycle detected: artifact '{artifact_id}' cannot depend on itself"
+            )
+
+        # Check all dependencies exist
+        for dep_id in depends_on:
+            if not self.exists(dep_id):
+                raise ValueError(f"Dependency '{dep_id}' does not exist")
+
+        # Check for cycles using DFS
+        # Build temporary graph including the new artifact
+        if self._would_create_cycle(artifact_id, depends_on):
+            raise ValueError(
+                f"Cycle detected: adding dependencies {depends_on} to '{artifact_id}' "
+                "would create a dependency cycle"
+            )
+
+        # Check depth limit
+        # max_depth is the depth of the deepest dependency
+        # Adding this artifact would create depth max_depth + 1
+        max_depth = self._calculate_max_depth(depends_on)
+        new_depth = max_depth + 1
+        if new_depth >= depth_limit:
+            raise ValueError(
+                f"Dependency depth limit exceeded: adding '{artifact_id}' would create "
+                f"chain of depth {new_depth}, limit is {depth_limit}"
+            )
+
+    def _would_create_cycle(self, artifact_id: str, new_deps: list[str]) -> bool:
+        """Check if adding new_deps to artifact_id would create a cycle.
+
+        Uses DFS to detect if any transitive dependency of new_deps
+        points back to artifact_id.
+        """
+        visited: set[str] = set()
+
+        def dfs(current_id: str) -> bool:
+            """Return True if we find artifact_id in transitive deps."""
+            if current_id == artifact_id:
+                return True
+            if current_id in visited:
+                return False
+            visited.add(current_id)
+
+            artifact = self.get(current_id)
+            if artifact is None:
+                return False
+
+            for dep_id in artifact.depends_on:
+                if dfs(dep_id):
+                    return True
+            return False
+
+        # Check each new dependency
+        for dep_id in new_deps:
+            if dfs(dep_id):
+                return True
+        return False
+
+    def _calculate_max_depth(self, depends_on: list[str]) -> int:
+        """Calculate the maximum transitive dependency depth.
+
+        Returns the depth of the deepest dependency chain.
+        """
+        if not depends_on:
+            return 0
+
+        memo: dict[str, int] = {}
+
+        def depth(artifact_id: str) -> int:
+            if artifact_id in memo:
+                return memo[artifact_id]
+
+            artifact = self.get(artifact_id)
+            if artifact is None or not artifact.depends_on:
+                memo[artifact_id] = 0
+                return 0
+
+            max_child_depth = 0
+            for dep_id in artifact.depends_on:
+                child_depth = depth(dep_id)
+                max_child_depth = max(max_child_depth, child_depth)
+
+            result = max_child_depth + 1
+            memo[artifact_id] = result
+            return result
+
+        return max(depth(dep_id) for dep_id in depends_on)
 
     def get_owner(self, artifact_id: str) -> str | None:
         """Get owner of an artifact"""

@@ -22,7 +22,7 @@ import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from types import FrameType, ModuleType
-from typing import Any, Generator, TypedDict
+from typing import Any, Callable, Generator, TypedDict
 
 from ..config import get
 from .simulation_engine import measure_resources
@@ -138,6 +138,39 @@ class ExecutionError(Exception):
 class TimeoutError(Exception):
     """Code execution timed out"""
     pass
+
+
+class DependencyWrapper:
+    """Wrapper for a declared dependency that enables invoke() calls.
+
+    Plan #63: Artifact Dependencies - provides a callable wrapper for
+    dependencies so artifacts can call `context.dependencies["foo"].invoke()`.
+    """
+
+    def __init__(
+        self,
+        artifact_id: str,
+        invoke_func: "Callable[[str, Any], InvokeResult]",
+    ):
+        self.artifact_id = artifact_id
+        self._invoke_func = invoke_func
+
+    def invoke(self, *args: Any) -> InvokeResult:
+        """Invoke this dependency with the given arguments."""
+        return self._invoke_func(self.artifact_id, *args)
+
+
+class ExecutionContext:
+    """Context object passed to artifact code at execution time.
+
+    Plan #63: Artifact Dependencies - provides access to resolved dependencies.
+
+    Attributes:
+        dependencies: Dict mapping dependency artifact IDs to DependencyWrapper objects
+    """
+
+    def __init__(self, dependencies: dict[str, DependencyWrapper] | None = None):
+        self.dependencies: dict[str, DependencyWrapper] = dependencies or {}
 
 
 def _timeout_handler(signum: int, frame: FrameType | None) -> None:
@@ -985,6 +1018,35 @@ class SafeExecutor:
                     }
 
             controlled_globals["invoke"] = invoke
+
+        # Build execution context with resolved dependencies (Plan #63)
+        if artifact_id and artifact_store:
+            artifact = artifact_store.get(artifact_id)
+            if artifact and artifact.depends_on:
+                # Create dependency wrappers for each declared dependency
+                dep_wrappers: dict[str, DependencyWrapper] = {}
+                for dep_id in artifact.depends_on:
+                    dep_artifact = artifact_store.get(dep_id)
+                    if dep_artifact is None or dep_artifact.deleted:
+                        # Dependency missing or deleted - fail early
+                        return {
+                            "success": False,
+                            "error": f"Dependency '{dep_id}' not found or deleted",
+                        }
+                    # Create wrapper using the invoke function
+                    if "invoke" in controlled_globals:
+                        dep_wrappers[dep_id] = DependencyWrapper(
+                            artifact_id=dep_id,
+                            invoke_func=controlled_globals["invoke"],
+                        )
+                context = ExecutionContext(dependencies=dep_wrappers)
+                controlled_globals["context"] = context
+            else:
+                # No dependencies - provide empty context
+                controlled_globals["context"] = ExecutionContext()
+        else:
+            # No artifact store - provide empty context
+            controlled_globals["context"] = ExecutionContext()
 
         # Execute the code definition
         try:
