@@ -1,5 +1,9 @@
 # Mint Auction Design
 
+> **NOTE:** This is a historical design document. The system now uses `genesis_mint` (not `genesis_oracle`).
+> Bidding windows and phases (WAITING/BIDDING/CLOSED) were removed in Plan #5 - bids are accepted anytime.
+> See `docs/architecture/current/genesis_artifacts.md` for current implementation.
+
 ## Overview
 
 This document describes the redesign of the mint submission system from fixed-cost to auction-based, along with related changes to genesis method costs and UBI distribution.

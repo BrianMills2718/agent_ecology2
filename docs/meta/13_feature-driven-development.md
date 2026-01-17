@@ -2,6 +2,36 @@
 
 A comprehensive meta-process for AI-assisted software development that ensures verified progress, prevents AI drift, and maintains thin slices.
 
+## Core Concept: Features Are E2E Acceptance Gates
+
+**A feature is COMPLETE when its acceptance criteria pass with real (non-mocked) integration.**
+
+Not when code is written. Not when unit tests pass. When **real E2E tests with no mocks** pass.
+
+```
+Feature: escrow
+├── AC-1: Deposit works       ← Must pass with NO MOCKS
+├── AC-2: Purchase works      ← Must pass with NO MOCKS
+├── AC-3: Cancellation works  ← Must pass with NO MOCKS
+│
+└── DONE when: pytest tests/e2e/test_real_e2e.py --run-external passes
+```
+
+### Features vs Plans
+
+| Concept | Purpose | Done When |
+|---------|---------|-----------|
+| **Feature** | E2E acceptance gate | Real LLM E2E tests pass |
+| **Plan** | Unit of work toward a feature | Code done, unit tests pass |
+
+- Multiple **plans** contribute to one **feature**
+- Plans can be "complete" while feature is still incomplete
+- Feature completion = the REAL checkpoint
+
+### Why Real E2E Matters
+
+Unit tests can pass with mocks. Integration tests can pass with mocks. Only real E2E **with no mocks at all** proves the system actually works. The entire pattern below exists to ensure we reach that checkpoint with verified, working code.
+
 ## Problem
 
 ### The "Fingers Crossed" Problem

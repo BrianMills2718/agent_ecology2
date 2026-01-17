@@ -1,5 +1,9 @@
 # Pattern: Documentation Graph
 
+> **STATUS: PROPOSED** - This pattern describes a unified documentation graph via `relationships.yaml`.
+> Currently NOT IMPLEMENTED. ADR-0005 is proposed but not deployed.
+> Patterns 08 (ADR Governance) and 10 (Doc-Code Coupling) remain the deployed solutions.
+
 ## Problem
 
 Documentation relationships are scattered across multiple config files:
