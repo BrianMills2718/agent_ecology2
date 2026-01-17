@@ -407,6 +407,34 @@ acceptance_criteria:
       - "Error info available to agent"
     locked: false
 
+  - id: AC-11
+    scenario: "Agent defines empty workflow"
+    phase: 1
+    category: edge_case
+    given:
+      - "Agent configured with workflow containing zero steps"
+    when: "Agent iteration executes"
+    then:
+      - "Iteration completes without error"
+      - "No actions taken"
+      - "Agent can still modify workflow for next iteration"
+    locked: false
+
+  - id: AC-12
+    scenario: "Code step throws exception"
+    phase: 1
+    category: edge_case
+    given:
+      - "Agent workflow has code step that raises Python exception"
+      - "Step has on_failure: continue configured"
+    when: "Code step executes"
+    then:
+      - "Exception caught and logged"
+      - "Error returned to agent"
+      - "Subsequent steps still run"
+      - "Agent can inspect error details"
+    locked: false
+
   # Phase 2 acceptance criteria (for future)
   - id: AC-8
     scenario: "Context injection fills template placeholders"
