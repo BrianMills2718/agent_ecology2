@@ -15,9 +15,7 @@ docs/
 ├── meta/                 # Reusable process patterns
 ├── plans/                # Gap tracking + implementation plans
 ├── features/             # Feature-specific documentation
-├── GLOSSARY.md           # Redirects to current/target glossaries
-├── GLOSSARY_CURRENT.md   # Terminology for current implementation
-├── GLOSSARY_TARGET.md    # Terminology for target architecture
+├── GLOSSARY.md           # Canonical terminology (single source)
 ├── DESIGN_CLARIFICATIONS.md  # Decision rationale archive
 └── SECURITY.md           # Security model
 ```
@@ -28,8 +26,7 @@ docs/
 |------|---------|----------------|
 | `adr/` | Architecture Decision Records | New architectural decisions |
 | `meta/` | Reusable process patterns | New patterns identified |
-| `GLOSSARY_CURRENT.md` | Terms for current implementation | Changes to current code |
-| `GLOSSARY_TARGET.md` | Terms for target architecture | Architecture decisions |
+| `GLOSSARY.md` | Canonical terminology | New concepts added |
 | `DESIGN_CLARIFICATIONS.md` | WHY decisions were made | Architecture discussions |
 | `SECURITY.md` | Security model and boundaries | Security changes |
 
