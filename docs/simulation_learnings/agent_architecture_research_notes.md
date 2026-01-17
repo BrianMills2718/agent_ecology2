@@ -340,6 +340,93 @@ Source: https://arxiv.org/abs/2410.10762
 
 ---
 
+### CrewAI
+
+Source: https://github.com/joaomdmoura/crewai
+
+**Two Approaches:**
+- **Crews**: Autonomous agent collaboration with role-based teamwork
+- **Flows**: Event-driven workflows with conditional branching
+
+**Role Definition (YAML):**
+- Role: Professional title
+- Goal: Primary objective
+- Backstory: Character context explaining expertise
+
+**Collaboration:**
+- Sequential or hierarchical processes
+- Autonomous delegation
+- Context sharing between tasks
+
+### EvoFlow
+
+Source: https://arxiv.org/abs/2502.07373
+
+**Niching Evolutionary Algorithm:**
+- Tag-based retrieval of parent workflows
+- Crossover and mutation to generate variants
+- Niching-based selection preserves diversity
+
+**Results:**
+- Outperforms handcrafted workflows by 1.23%-29.86%
+- Beats o1-preview at 12.4% of inference cost
+- Evolves workflows from simple I/O to complex multi-turn
+
+### Darwin Gödel Machine (DGM)
+
+Source: https://sakana.ai/dgm/
+
+**How It Works:**
+- Self-improving coding agent combining LLMs with evolution
+- Unlike theoretical Gödel Machine, uses empirical validation not proofs
+
+**Code Self-Modification:**
+1. Self-Understanding: Reads and modifies own Python codebase
+2. Performance Evaluation: Tests against benchmarks
+3. Parallel Exploration: Multiple evolutionary pathways simultaneously
+
+**Agent Archive:**
+- Repository of diverse agents
+- Branching point for future modifications
+- Prevents premature convergence
+
+**Results:**
+- SWE-bench: 20% → 50%
+- Polyglot: 14.2% → 30.7%
+- Improvements transfer across models and languages
+
+### Why AI Agents Fail in Production (CRITICAL)
+
+Sources: [HBR](https://hbr.org/2025/10/why-agentic-ai-projects-fail-and-how-to-set-yours-up-for-success), [Softcery](https://softcery.com/lab/why-ai-agent-prototypes-fail-in-production-and-how-to-fix-it), [Directual](https://www.directual.com/blog/ai-agents-in-2025-why-95-of-corporate-projects-fail)
+
+**Failure Statistics:**
+- 95% of AI projects see no measurable return
+- 80%+ never make it to production
+- Tool calling fails 3-15% of the time in production
+
+**Six Architecture Patterns That Fail:**
+
+| Pattern | Problem | Fix |
+|---------|---------|-----|
+| 1. Agents for simple problems | Hallucination compounds (5% per step) | Use agents only where flexibility essential |
+| 2. PoC becomes production | Overloaded prompts, no decomposition | Re-architect after PoC |
+| 3. Brittle tool integrations | No pagination, strict matching, unclear errors | Treat tool design as first-class |
+| 4. No testing framework | Can't catch regressions | Build tests immediately after PoC |
+| 5. Lack of observability | Can't diagnose failures | Structured logging from day one |
+| 6. All-in rollout | Everything breaks at once | Incremental rollout, shadow mode |
+
+**Key Insight - The Learning Gap:**
+Most corporate GenAI systems don't retain feedback, don't accumulate knowledge, and don't improve over time. Every query is treated as if it's the first.
+
+**HBR Recommendations:**
+1. Develop strategic technology roadmap
+2. Adopt composite AI (multiple techniques)
+3. Rigorous cost-benefit analysis
+4. Assess technical readiness first
+5. Focus on enterprise-wide impact
+
+---
+
 ## Links to Review
 
 | # | Source | Status |
@@ -351,11 +438,11 @@ Source: https://arxiv.org/abs/2410.10762
 | 5 | FunSearch | **Read** |
 | 6 | AFlow | **Read** |
 | 7 | AutoGen | **Read** |
-| 8 | CrewAI | Not read |
-| 9 | EvoFlow | Not read |
-| 10 | Darwin Gödel Machine | Not read (403) |
-| 11 | Why Agents Fail in Production | Not read (403) |
-| 12 | DeepSeek R1 CoT | Not read (403) |
+| 8 | CrewAI | **Read** |
+| 9 | EvoFlow | **Read** |
+| 10 | Darwin Gödel Machine | **Read** |
+| 11 | Why Agents Fail (HBR) | **Read** |
+| 12 | Six Architecture Failures | **Read** |
 
 ---
 

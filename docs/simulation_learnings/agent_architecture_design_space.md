@@ -280,6 +280,43 @@ Strategy Selection: None (same approach for all problems)
 
 ---
 
+## Production Failure Research (Critical Warnings)
+
+From research on why 95% of AI agent projects fail:
+
+### The Learning Gap
+Most GenAI systems don't retain feedback, don't accumulate knowledge, and don't improve over time. Every query is treated as first.
+
+**Relevance to us:** Our agents have memory, but no explicit learning loop. Do they actually improve?
+
+### Six Architecture Patterns That Fail
+
+| Pattern | Our Risk Level | Notes |
+|---------|---------------|-------|
+| 1. Agents for simple problems | **Medium** | Some tasks might not need full agent |
+| 2. PoC becomes production | **High** | We're in early stage, need to plan for scale |
+| 3. Brittle tool integrations | **Low** | Our action set is simple |
+| 4. No testing framework | **Medium** | We have tests but no agent intelligence benchmarks |
+| 5. Lack of observability | **Low** | We have good logging |
+| 6. All-in rollout | **N/A** | Not deploying to users |
+
+### Tool Calling Reliability
+Even well-engineered systems have 3-15% tool failure rates. Each step compounds:
+- 5% failure per step
+- 10 steps = 40% chance of at least one failure
+
+**Implication:** More actions per tick increases failure surface.
+
+### Key Recommendations from Research
+
+1. **Start narrow**: One agent that works > ten that demo well
+2. **Re-architect after PoC**: Don't polish prototypes
+3. **Test from day one**: Maintain datasets of hard cases
+4. **Design for failure**: Graceful handling of errors
+5. **Incremental rollout**: Shadow mode before full deployment
+
+---
+
 ## Philosophy Alignment Check
 
 | Principle | Implications for This Design |
