@@ -625,6 +625,42 @@ These hooks will be implemented as part of this template:
 
 ---
 
+## Decisions Log
+
+Decisions made during template development, with rationale:
+
+### Adopted
+
+| Decision | Rationale | Enforcement |
+|----------|-----------|-------------|
+| Kill features.yaml | Never used in practice, redundant with plans | N/A (removed) |
+| Single GLOSSARY.md | Multiple glossaries caused inconsistency | Doc coupling |
+| Hooks > CI | CC needs immediate feedback, not delayed | PreToolUse hooks |
+| Worktree mandatory | Multi-CC in same dir = corrupted work | Hook blocks main edits |
+| Kill target/ architecture | Drifts from ADRs, PRD + ADRs sufficient | N/A (removed) |
+| Plans declare files upfront | Forces planning, creates traceability, prevents guessing | Hook blocks undeclared |
+| Features = E2E gates | Prevents big-bang development with mocked tests | E2E required for completion |
+| References Reviewed required | Forces CC to explore before coding | Hook warns if missing |
+| Code Map in CLAUDE.md | CC needs discoverable index to find code | CI validates accuracy |
+| Shared references symlink | Reference docs shared across worktrees without git | create_worktree.sh |
+
+### Deferred
+
+| Decision | Reason Deferred |
+|----------|-----------------|
+| Function/class level scoping | Marginal value vs complexity; file-level is 90% of benefit |
+| Automatic dependency graph | Value unclear; file overlap ≠ true dependency |
+| Naming conventions for greppability | Marginal; Code Map solves discoverability better |
+
+### Rejected
+
+| Decision | Reason Rejected |
+|----------|-----------------|
+| Review step for plan approval | Prefer stricter enforcement over social process |
+| Sparse checkout for worktrees | Too restrictive; CC needs to read files it won't edit |
+
+---
+
 ## Version History
 
 - **v0.1.2** (2026-01-17): Exploration and Code Map requirements
