@@ -110,6 +110,15 @@ mkdir -p worktrees
 git fetch origin
 git worktree add "worktrees/$BRANCH" -b "$BRANCH" origin/main
 
+# Set up shared references symlink (docs/references -> shared folder)
+SHARED_REF="/home/brian/projects/shared_references"
+WT_REF="worktrees/$BRANCH/docs/references"
+if [ -d "$SHARED_REF" ]; then
+    rm -rf "$WT_REF" 2>/dev/null || true
+    ln -sf "$SHARED_REF" "$WT_REF"
+    echo -e "${GREEN}Linked docs/references -> shared folder${NC}"
+fi
+
 echo ""
 echo -e "${GREEN}=== Success ===${NC}"
 echo ""
