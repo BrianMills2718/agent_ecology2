@@ -209,64 +209,153 @@ Observation: [result of action]
 
 ---
 
+## Verified Findings from Source Links (2026-01-16)
+
+### Anthropic Multi-Agent Architecture (CRITICAL)
+
+Source: https://www.anthropic.com/engineering/built-multi-agent-research-system
+
+**Orchestrator-Worker Pattern:**
+- Lead agent analyzes queries, develops strategy, spawns subagents
+- Subagents operate in parallel exploring different aspects
+- Each subagent gets: objective, output format, tool guidance, clear boundaries
+
+**Planning & Memory:**
+- Lead agents use **extended thinking mode** to plan before execution
+- Plans persisted to external memory (context can exceed 200K tokens)
+- Agents summarize completed phases, store essential info before proceeding
+
+**Scaling Rules (embedded in prompts):**
+- Simple queries: 1 agent, 3-10 tool calls
+- Complex research: 10+ subagents
+- Parallel execution cuts research time by up to 90%
+
+**Tool Strategy:**
+- Examine all tools first, match to intent
+- Bad tool descriptions "send agents down completely wrong paths"
+- Specialized tools > generic tools
+- Interleaved thinking after tool results to evaluate quality
+
+**Performance:**
+- Multi-agent (Opus lead + Sonnet workers) outperformed single Opus by **90.2%**
+- Token usage explains 80% of performance variance
+- Multi-agent uses ~15x more tokens than single chat
+- Only economical for high-value tasks
+
+### LangGraph Core Concepts
+
+Source: https://docs.langchain.com/oss/python/langgraph/overview
+
+**What It Solves:**
+- Long-running, stateful agents
+- Failure recovery
+- Human oversight of autonomous systems
+
+**State Management:**
+- Centralized state object (not function call passing)
+- All nodes read/write same state dictionary
+- Checkpointing enables persistence and time-travel debugging
+
+**Control Flow:**
+- Conditional edges (route based on state)
+- Cycles (nodes feed outputs back as inputs = reasoning loops)
+- Subgraphs (hierarchical composition)
+- START/END explicit entry/exit
+
+**Durable Execution:**
+- Workflows persist through failures
+- Resume from checkpoints
+- Thread-based resumption
+- Time travel to previous states
+
+**Human-in-the-loop:** Interrupts pause execution for human decisions
+
+### RL of Thoughts (RLoT)
+
+Source: https://arxiv.org/abs/2505.14140
+
+**Key Innovation:** Tiny RL navigator (<3000 params) selects reasoning strategies
+
+**Logic Blocks:** 5 basic blocks from human cognition perspective (combined per task)
+
+**Results:**
+- Outperforms established techniques by up to 13.4%
+- Sub-10B LLMs match 100B-scale performance
+- Trained on one LLM-task pair, generalizes to unseen LLMs and tasks
+
+**Mechanism:** Navigator dynamically selects and combines logic blocks into task-specific structures based on problem characteristics.
+
+### FunSearch (DeepMind)
+
+Source: https://deepmind.google/discover/blog/funsearch-making-new-discoveries-in-mathematical-sciences-using-large-language-models/
+
+**Architecture:** LLM + automated evaluator in iterative loop
+- LLM generates code solutions
+- Evaluator filters hallucinations
+- Best solutions feed back into pool
+
+**Key Design:**
+1. Favors compact, human-readable code (interpretability)
+2. Diversity preservation prevents stagnation
+3. Parallel evolutionary branches
+4. Human-AI collaboration (researchers refine problems from insights)
+
+**Results:** Largest increase in cap set problem in 20 years; bin-packing algorithms beat established heuristics.
+
+### Atom of Thoughts (AoT)
+
+Source: https://arxiv.org/abs/2502.12018
+
+**Core Idea:** Markovian decomposition - minimize reliance on historical context
+
+**Atomic Units:** Self-contained, low-complexity reasoning chunks that don't require extensive history
+
+**Compatible:** Works with tree search, reflective refinement, both reasoning and non-reasoning models
+
+**Result:** Consistently outperforms baselines as computational budgets increase
+
+### AutoGen Communication Pattern
+
+Source: Microsoft AutoGen docs
+
+**Publish-Subscribe Model:**
+- Agents don't communicate directly
+- Publish messages to topics
+- Runtime handles delivery and lifecycle
+
+**Asynchronous Pipeline:**
+- Agent A processes → publishes to topic
+- Agent B subscribes → receives → processes → publishes
+- Continues until termination condition
+
+### AFlow (Workflow Automation)
+
+Source: https://arxiv.org/abs/2410.10762
+
+**Approach:** Monte Carlo Tree Search for workflow optimization
+
+**Results:**
+- 5.7% average improvement over SOTA baselines
+- Smaller LLMs outperform GPT-4o at 4.55% of inference cost
+
+---
+
 ## Links to Review
 
-### High Priority (Core Architectures)
-
-1. **AutoGen Documentation**
-   - https://github.com/microsoft/autogen
-   - Multi-agent conversation framework
-
-2. **LangGraph Documentation**
-   - https://github.com/langchain-ai/langgraph
-   - Stateful, durable agent workflows
-
-3. **CrewAI**
-   - https://github.com/joaomdmoura/crewai
-   - Role-based multi-agent
-
-4. **Anthropic Multi-Agent Research**
-   - https://www.anthropic.com/engineering/built-multi-agent-research-system
-   - How Anthropic builds multi-agent systems
-
-### Novel Reasoning Approaches
-
-5. **Atom of Thoughts**
-   - https://arxiv.org/abs/2502.12018
-   - Markovian decomposition for efficient reasoning
-
-6. **Darwin Gödel Machine**
-   - https://arxiv.org/abs/... (referenced in HuggingFace)
-   - Self-improving agents
-
-7. **Diagram of Thought**
-   - https://arxiv.org/abs/... (On the Diagram of Thought)
-   - DAG-based reasoning in single LLM
-
-8. **RL of Thoughts**
-   - https://arxiv.org/abs/2505.14140
-   - RL navigator for reasoning strategy selection
-
-### Workflow Automation
-
-9. **AFlow**
-   - https://arxiv.org/abs/2410.10762
-   - MCTS-based workflow generation
-
-10. **EvoFlow**
-    - https://arxiv.org/abs/2502.07373
-    - Evolutionary multi-objective workflow optimization
-
-### Production Considerations
-
-11. **Why Most AI Agents Fail in Production**
-    - https://medium.com/data-science-collective/why-most-ai-agents-fail-in-production-and-how-to-build-ones-that-dont-f6f604bcd075
-
-12. **Agentic Mesh (Enterprise Agent Ecosystems)**
-    - https://seanfalconer.medium.com/agentic-mesh-the-future-of-enterprise-agent-ecosystems-f26e7d53951e
-
-13. **DeepSeek R1's CoT Revolution**
-    - https://medium.com/ai-simplified-in-plain-english/deepseek-r1s-cot-revolution-rethinking-ai-reasoning-from-chains-to-hypergraphs-2baecbb5fe26
+| # | Source | Status |
+|---|--------|--------|
+| 1 | Anthropic Multi-Agent | **Read** |
+| 2 | LangGraph | **Read** |
+| 3 | Atom of Thoughts | **Read** |
+| 4 | RL of Thoughts | **Read** |
+| 5 | FunSearch | **Read** |
+| 6 | AFlow | **Read** |
+| 7 | AutoGen | **Read** |
+| 8 | CrewAI | Not read |
+| 9 | EvoFlow | Not read |
+| 10 | Darwin Gödel Machine | Not read (403) |
+| 11 | Why Agents Fail in Production | Not read (403) |
+| 12 | DeepSeek R1 CoT | Not read (403) |
 
 ---
 
