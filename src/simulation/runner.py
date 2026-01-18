@@ -752,16 +752,28 @@ class SimulationRunner:
             return
 
         print("=== Agent Ecology Simulation ===")
-        print(f"Max ticks: {self.world.max_ticks}")
+
+        # Show mode-appropriate timing info
+        if self.use_autonomous_loops:
+            print("Mode: Autonomous (agents run independently)")
+        else:
+            print(f"Mode: Tick-based (max ticks: {self.world.max_ticks})")
+
         print(f"Agents: {[a.agent_id for a in self.agents]}")
-        print(
-            f"Token rates: {self.engine.rate_input} compute/1K input, "
-            f"{self.engine.rate_output} compute/1K output"
-        )
+
+        # Show LLM budget (the real depletable resource)
         if self.engine.max_api_cost > 0:
-            print(f"API budget: ${self.engine.max_api_cost:.2f}")
+            print(f"LLM budget: ${self.engine.max_api_cost:.2f}")
+
+        # Show rate limit info if rate limiting is enabled
+        rate_config = self.config.get("rate_limiting", {})
+        if rate_config.get("enabled", False):
+            window = rate_config.get("window_seconds", 60.0)
+            llm_limit = rate_config.get("resources", {}).get("llm_tokens", {}).get("max_per_window", 0)
+            if llm_limit > 0 and llm_limit < 1_000_000_000:  # Don't show if "unlimited"
+                print(f"LLM rate limit: {llm_limit:,} tokens/{window}s window")
+
         print(f"Starting scrip: {self.world.ledger.get_all_scrip()}")
-        print(f"Compute quota/tick: {self.world.rights_config.get('default_compute_quota', 50)}")
         print()
 
     def _print_final_summary(self) -> None:

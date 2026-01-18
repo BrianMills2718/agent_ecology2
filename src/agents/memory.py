@@ -379,7 +379,7 @@ class ArtifactMemory:
     def _save_memory_content(self, agent_id: str, content: ArtifactMemoryContent) -> None:
         """Save memory content to artifact."""
         import json
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         memory_id = self._get_memory_artifact_id(agent_id)
         artifact = self._store.get(memory_id)
@@ -399,7 +399,7 @@ class ArtifactMemory:
 
         # Update artifact content
         artifact.content = json.dumps(content)
-        artifact.updated_at = datetime.utcnow().isoformat()
+        artifact.updated_at = datetime.now(timezone.utc).isoformat()
 
     def add(self, agent_id: str, content_text: str, tick: int = 0) -> dict[str, Any]:
         """Add a memory for an agent.
@@ -412,13 +412,13 @@ class ArtifactMemory:
         Returns:
             Result dict with "results" key on success, or "error" key on failure
         """
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         try:
             content = self._get_memory_content(agent_id)
             entry: MemoryEntry = {
                 "tick": tick,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "content": content_text,
                 "memory_type": "custom",
             }
@@ -499,7 +499,7 @@ class ArtifactMemory:
         Returns:
             Result dict with "results" key on success, or "error" key on failure
         """
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         try:
             content = self._get_memory_content(agent_id)
@@ -520,7 +520,7 @@ class ArtifactMemory:
 
             entry: MemoryEntry = {
                 "tick": tick,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "content": memory_text,
                 "memory_type": "action",
             }
@@ -542,14 +542,14 @@ class ArtifactMemory:
         Returns:
             Result dict with "results" key on success, or "error" key on failure
         """
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         try:
             content = self._get_memory_content(agent_id)
             memory_text = f"I observed: {observation}"
             entry: MemoryEntry = {
                 "tick": tick,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "content": memory_text,
                 "memory_type": "observation",
             }

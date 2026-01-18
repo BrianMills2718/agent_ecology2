@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, TypedDict, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -331,7 +331,7 @@ def create_agent_artifact(
         >>> agent.is_principal
         True
     """
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
 
     # Build policy based on access contract
     # Note: This is a simple mapping - full contract integration comes later
@@ -408,7 +408,7 @@ def create_memory_artifact(
         >>> memory.is_principal
         False
     """
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
 
     # Default memory structure
     if initial_content is None:
@@ -491,7 +491,7 @@ class ArtifactStore:
         - depends_on: List of artifact IDs this artifact depends on
         - depth_limit: Maximum transitive dependency depth (default 10)
         """
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         depends_on = depends_on or []
 
         # Validate dependencies (Plan #63)

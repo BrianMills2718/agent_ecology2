@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-18 (Plan #70 - Agent workflow support)
+**Last verified:** 2026-01-18 (Plan #73 - datetime deprecation fix)
 
 **See target:** [../target/agents.md](../target/agents.md)
 

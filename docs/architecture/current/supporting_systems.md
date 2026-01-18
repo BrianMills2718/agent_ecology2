@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-17 (Plan #64 - Dependency graph endpoint)
+**Last verified:** 2026-01-18 (Plan #73 - datetime deprecation fix)
 
 ---
 

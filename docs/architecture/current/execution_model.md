@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-18 (Bug fix - duplicate artifact count in get_state_summary)
+**Last verified:** 2026-01-18 (Plan #73 - output messaging fix)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

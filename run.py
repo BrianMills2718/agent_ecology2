@@ -170,6 +170,7 @@ async def run_with_dashboard(
         url = f"http://localhost:{port}"
         if verbose:
             print(f"\nDashboard available at: {url}")
+            print("(Note: In WSL, open this URL manually in your browser)")
         if open_browser:
             webbrowser.open(url)
 
