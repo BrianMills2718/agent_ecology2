@@ -2,7 +2,7 @@
 
 Master index of all gaps and their implementation plans.
 
-**Last verified:** 2026-01-17 (Renamed features/ to acceptance_gates/)
+**Last verified:** 2026-01-18 (Plan #68 PR template added)
 
 ---
 
@@ -95,7 +95,7 @@ Master index of all gaps and their implementation plans.
 | 64 | [Dependency Graph Visualization](64_dependency_graph_viz.md) | Medium | 🚧 In Progress | #63 |
 | 65 | [Continuous Execution Primary](65_continuous_execution_primary.md) | **High** | 📋 Planned | Agent workflows |
 | 66 | [Genesis Split](66_genesis_split.md) | Medium | ✅ Complete | - |
-| 68 | [PR Review Enforcement](68_pr_review_enforcement.md) | **High** | 📋 Planned | Quality assurance |
+| 68 | [PR Review Enforcement](68_pr_review_enforcement.md) | **High** | 🚧 In Progress | Quality assurance |
 | 69 | [Worktree Auto-Cleanup](69_worktree_auto_cleanup.md) | Medium | 🚧 In Progress | Cleaner workflow |
 
 ---
