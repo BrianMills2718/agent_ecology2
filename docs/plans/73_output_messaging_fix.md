@@ -1,6 +1,6 @@
 # Plan 73: Fix Simulation Output Messaging
 
-**Status:** 🚧 In Progress
+**Status:** ✅ Complete
 **Priority:** High
 **Blocked By:** None
 **Blocks:** None
@@ -116,16 +116,24 @@ Tests are in `tests/unit/test_runner_output.py`:
 ## Verification
 
 ### Tests & Quality
-- [ ] All unit tests pass
-- [ ] No deprecation warnings in output
-- [ ] `--duration 10` output doesn't mention ticks
-- [ ] Output uses $ costs not "compute" units
+- [x] All unit tests pass
+- [x] No deprecation warnings in output
+- [x] `--duration 10` output doesn't mention ticks
+- [x] Output uses $ costs not "compute" units
 
 ### Completion Ceremony
-- [ ] Plan file status -> `Complete`
-- [ ] `plans/CLAUDE.md` index updated
-- [ ] Claim released
-- [ ] PR created/merged
+- [x] Plan file status -> `Complete`
+- [x] `plans/CLAUDE.md` index updated
+- [x] Claim released
+- [x] PR created/merged
+
+**Verified:** 2026-01-18T06:50:00Z (retroactive - PR already merged)
+**PR:** #261
+**Merged:** 2026-01-18T04:40:22Z
+
+**CI Evidence:**
+- All checks passed (SUCCESS): changes, test, mypy, fast-checks, plans
+- Tests in `tests/unit/test_runner_output.py` verified functionality
 
 ---
 
