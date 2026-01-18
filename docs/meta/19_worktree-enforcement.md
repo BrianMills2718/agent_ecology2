@@ -178,8 +178,39 @@ The hook allows editing **coordination files** even in main directory:
 |---------|-------|-------------|
 | `*/.claude/*` | `.claude/active-work.yaml` | Claims tracking |
 | `CLAUDE.md` | All `CLAUDE.md` files | Coordination tables, plan status |
+| `docs/meta/*.md` | Meta-process patterns | Process docs, not implementation |
 
 This enables the "Reviews, quick reads, coordination only" workflow in main while blocking implementation work.
+
+## Plan File Exception
+
+The hook allows **creating new plan files** from main directory:
+
+| Pattern | Condition | Why Allowed |
+|---------|-----------|-------------|
+| `docs/plans/[0-9]+_*.md` | File does NOT exist | Plans are coordination artifacts, not implementation |
+
+**What's allowed:**
+- Creating `docs/plans/85_inter_cc_messaging.md` (new file)
+- Creating any new plan file matching the `NN_name.md` pattern
+
+**What's still blocked:**
+- Modifying existing plan files (could conflict with claiming instance)
+- Modifying `docs/plans/CLAUDE.md` (the index file)
+- Any other implementation files in main
+
+**Rationale:** Creating a new plan is coordination work - it documents intended work and enables other instances to see what's planned. Requiring a worktree just to create a markdown planning file adds friction without meaningful benefit. However, modifying existing plans could conflict with an instance that has claimed that plan, so modifications still require a worktree.
+
+### Example
+
+```bash
+# In main directory - ALLOWED (new file)
+# CC instance can create docs/plans/85_new_feature.md
+
+# In main directory - BLOCKED (existing file)
+# CC instance cannot modify docs/plans/65_continuous_execution_primary.md
+# Error: "BLOCKED: Cannot edit files in main directory"
+```
 
 ## Customization
 
