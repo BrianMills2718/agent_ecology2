@@ -56,6 +56,19 @@ Also includes:
 - docs/architecture/current/artifacts_executor.md (modify)
 - tests/unit/test_worktree_session.py (modify)
 
+## Required Tests
+
+This is a pure refactoring (splitting a file into a package). No new functionality added.
+Existing genesis tests verify the refactoring didn't break anything:
+
+- `tests/unit/test_genesis_contracts.py`
+- `tests/unit/test_genesis_invoke.py`
+- `tests/integration/test_genesis_errors.py`
+- `tests/integration/test_genesis_interface.py`
+- `tests/integration/test_genesis_store.py`
+- `tests/integration/test_mint_auction.py`
+- `tests/integration/test_escrow.py`
+
 ## Verification
 
 - pytest tests/ passes (1502 tests)
