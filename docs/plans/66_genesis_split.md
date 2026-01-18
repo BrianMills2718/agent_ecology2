@@ -51,6 +51,7 @@ Also includes:
 - src/world/genesis/factory.py (create)
 - src/world/genesis.py (delete)
 - scripts/governance.yaml (modify)
+- scripts/check_new_code_tests.py (modify)
 - docs/architecture/current/genesis_artifacts.md (modify)
 - docs/architecture/current/artifacts_executor.md (modify)
 - tests/unit/test_worktree_session.py (modify)

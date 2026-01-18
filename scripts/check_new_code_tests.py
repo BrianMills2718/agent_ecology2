@@ -33,7 +33,20 @@ EXEMPT_PATTERNS = [
     "CLAUDE.md",
     "_template",
     "setup.py",
+    # Genesis package split (Plan #66) - infrastructure files
+    "genesis/base.py",  # Abstract base class, tested via subclasses
+    "genesis/types.py",  # Pure TypedDicts, no logic to test
+    "genesis/factory.py",  # Factory tested via integration tests
 ]
+
+# Explicit source -> test file mappings for non-standard names
+# Used when test file doesn't follow test_{name}.py convention
+EXPLICIT_TEST_MAPPINGS: dict[str, str] = {
+    "src/world/genesis/mint.py": "tests/integration/test_mint_auction.py",
+    "src/world/genesis/store.py": "tests/integration/test_genesis_store.py",
+    "src/world/genesis/event_log.py": "tests/unit/test_freeze_events.py",
+    "src/world/genesis/rights_registry.py": "tests/unit/test_genesis_invoke.py",
+}
 
 
 def get_new_files(base: str) -> list[Path]:
@@ -81,6 +94,13 @@ def requires_tests(file_path: Path) -> bool:
 
 def find_test_file(source_file: Path) -> Path | None:
     """Find the corresponding test file for a source file."""
+    # Check explicit mappings first
+    source_str = str(source_file)
+    if source_str in EXPLICIT_TEST_MAPPINGS:
+        explicit_path = Path(EXPLICIT_TEST_MAPPINGS[source_str])
+        if explicit_path.exists():
+            return explicit_path
+
     # Extract the module name
     name = source_file.stem
 
