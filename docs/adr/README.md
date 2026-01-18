@@ -70,6 +70,7 @@ To update governance:
 | [0010](0010-continuous-agent-loops.md) | Continuous agent loops | Accepted |
 | [0011](0011-standing-pays-costs.md) | Standing pays costs | Accepted |
 | [0012](0012-scrip-non-negative.md) | Scrip non-negative | Accepted |
+| [0014](0014-continuous-execution-primary.md) | Continuous execution as primary model | Proposed |
 
 ---
 
