@@ -11,6 +11,11 @@
           },
           {
             "type": "command",
+            "command": "bash .claude/hooks/check-inbox.sh",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
             "command": "bash .claude/hooks/check-file-scope.sh",
             "timeout": 5000
           },

@@ -46,6 +46,9 @@ EXPLICIT_TEST_MAPPINGS: dict[str, str] = {
     "src/world/genesis/store.py": "tests/integration/test_genesis_store.py",
     "src/world/genesis/event_log.py": "tests/unit/test_freeze_events.py",
     "src/world/genesis/rights_registry.py": "tests/unit/test_genesis_invoke.py",
+    # Inter-CC messaging scripts (Plan #85)
+    "scripts/send_message.py": "tests/unit/test_messaging.py",
+    "scripts/check_messages.py": "tests/unit/test_messaging.py",
 }
 
 
