@@ -92,8 +92,9 @@ Master index of all gaps and their implementation plans.
 | 61 | [Dashboard Entity Detail](61_dashboard_entity_detail.md) | Medium | ✅ Complete | - |
 | 62 | [Config Magic Numbers](62_config_magic_numbers.md) | Medium | ✅ Complete | - |
 | 63 | [Artifact Dependencies](63_artifact_dependencies.md) | **High** | ✅ Complete | Dashboard capital structure |
-| 64 | [Dependency Graph Visualization](64_dependency_graph_viz.md) | Medium | 📋 Planned | #63 |
+| 64 | [Dependency Graph Visualization](64_dependency_graph_viz.md) | Medium | 🚧 In Progress | #63 |
 | 65 | [Continuous Execution Primary](65_continuous_execution_primary.md) | **High** | 📋 Planned | Agent workflows |
+| 68 | [PR Review Enforcement](68_pr_review_enforcement.md) | **High** | 📋 Planned | Quality assurance |
 
 ---
 
