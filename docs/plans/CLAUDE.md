@@ -115,6 +115,7 @@ Master index of all gaps and their implementation plans.
 | 86 | [Interface Validation](86_interface_validation.md) | Medium | 📋 Planned | #14 |
 | 87 | [Meta-Process Coordination](87_meta_process_coordination_improvements.md) | Medium | ✅ Complete | Hook improvements |
 | 89 | [Plan Enforcement Hooks](89_plan_enforcement_hooks.md) | **High** | 📋 Planned | - |
+| 91 | [Acceptance Gate Cleanup](91_acceptance_gate_cleanup.md) | **High** | 📋 Planned | Terminology refactor |
 | 92 | [Worktree/Branch Mismatch Detection](92_worktree_branch_validation.md) | **High** | 🚧 In Progress | Meta-process integrity |
 
 ---
