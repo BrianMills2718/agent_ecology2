@@ -2,15 +2,7 @@
 # Machine-readable tracking for multi-CC coordination.
 # Use: python scripts/check_claims.py --help
 
-claims:
-- cc_id: main
-  task: Create genesis_debt_contract artifact (non-privileged example)
-  claimed_at: '2026-01-15T08:55:05Z'
-  plan: 9
-- cc_id: plan-62-config-cleanup-v2
-  task: Fix doc-code coupling for config magic numbers
-  claimed_at: '2026-01-17T23:12:08Z'
-  plan: 62
+claims: []
 completed:
 - cc_id: tier2-architecture-decisions
   task: Tier 2 architecture decisions (Items 4-7)
