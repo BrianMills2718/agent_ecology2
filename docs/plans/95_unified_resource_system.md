@@ -26,6 +26,15 @@
 
 ---
 
+## Plan
+
+See handoff notes for detailed implementation approach:
+1. Create ResourceManager class consolidating Ledger.resources, RateTracker, World._quota_limits
+2. Per-agent contractable quotas (Ostrom-style rights)
+3. LLM costs in dollars via litellm
+
+---
+
 ## Notes
 
 Originally Plan #92 but renumbered due to collision with Worktree/Branch Mismatch Detection.

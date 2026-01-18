@@ -23,6 +23,12 @@
 
 ---
 
+## Plan
+
+*Deferred - will be planned after Plan #95 (Unified Resource System) provides the ResourceManager foundation.*
+
+---
+
 ## Notes
 
 Deferred until ResourceManager exists with clean `get_available(agent, resource)` API.
