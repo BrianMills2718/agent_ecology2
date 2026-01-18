@@ -27,8 +27,12 @@ Multi-part fix to make ownership visible and enforce checking:
 
 ## Required Tests
 
-- `tests/unit/test_meta_status.py::TestGetCurrentBranch` - Branch detection
-- `tests/unit/test_meta_status.py::TestGetMyIdentity` - Identity/ownership detection
+- `tests/unit/test_meta_status.py::TestGetCurrentBranch::test_returns_branch_name`
+- `tests/unit/test_meta_status.py::TestGetCurrentBranch::test_handles_git_failure`
+- `tests/unit/test_meta_status.py::TestGetMyIdentity::test_returns_identity_dict`
+- `tests/unit/test_meta_status.py::TestGetMyIdentity::test_is_main_true_on_main_branch`
+- `tests/unit/test_meta_status.py::TestGetMyIdentity::test_is_main_false_on_feature_branch`
+- `tests/unit/test_meta_status.py::TestGetMyIdentity::test_finds_matching_claim`
 
 ## Acceptance Criteria
 
