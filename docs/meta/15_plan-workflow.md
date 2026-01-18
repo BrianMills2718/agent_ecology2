@@ -94,13 +94,12 @@ mkdir -p docs/plans
 
 > **REQUIRED:** Declare upfront what files will be touched.
 > Creates traceability and enables claim-based file locking.
+> Note: Don't use backticks around paths - the parser needs plain text.
 
-| File | Action |
-|------|--------|
-| `src/module.py` | Modify |
-| `src/new_feature.py` | Create |
-| `tests/test_feature.py` | Create |
-| `config/schema.yaml` | Modify |
+- src/module.py (modify)
+- src/new_feature.py (create)
+- tests/test_feature.py (create)
+- config/schema.yaml (modify)
 
 ---
 

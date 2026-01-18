@@ -31,12 +31,10 @@
 
 ## Files Affected
 
-| File | Action |
-|------|--------|
-| `.claude/hooks/check-file-scope.sh` | Create |
-| `.claude/hooks/check-references-reviewed.sh` | Create |
-| `.claude/settings.json` | Modify (add new hooks) |
-| `docs/meta/19_worktree-enforcement.md` | Modify (document new hooks) |
+- .claude/hooks/check-file-scope.sh (create)
+- .claude/hooks/check-references-reviewed.sh (create)
+- .claude/settings.json (modify)
+- docs/meta/19_worktree-enforcement.md (modify)
 
 ---
 
