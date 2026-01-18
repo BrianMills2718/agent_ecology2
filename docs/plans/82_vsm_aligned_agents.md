@@ -69,6 +69,7 @@
 - src/agents/epsilon/agent.yaml (modify)
 - src/agents/alpha_2/agent.yaml (modify)
 - src/agents/beta_2/agent.yaml (modify)
+- docs/architecture/current/execution_model.md (modify)
 
 ---
 
