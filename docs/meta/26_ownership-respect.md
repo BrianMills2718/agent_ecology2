@@ -91,4 +91,4 @@ For projects without claims system, use PR author comparison only.
 
 ## Origin
 
-Created after repeated observations of CC instances offering to "help" fix other instances' blocked PRs, leading to confusion, duplicate work, and ownership violations. Plan #70 implemented this enforcement pattern.
+Created after repeated observations of CC instances offering to "help" fix other instances' blocked PRs, leading to confusion, duplicate work, and ownership violations. Plan #71 implemented this enforcement pattern.

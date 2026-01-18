@@ -1,7 +1,7 @@
-# Plan 70: Ownership Check in Meta-Process
+# Plan 71: Ownership Check in Meta-Process
 
 **Status:** 🚧 In Progress
-**CC-ID:** plan-70-ownership-check
+**CC-ID:** plan-71-ownership-check
 
 ## Problem
 

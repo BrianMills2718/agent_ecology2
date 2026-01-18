@@ -1,4 +1,4 @@
-"""Tests for meta_status.py ownership features (Plan #70)."""
+"""Tests for meta_status.py ownership features (Plan #71)."""
 
 import subprocess
 from unittest.mock import patch
@@ -58,22 +58,23 @@ class TestGetMyIdentity:
         from scripts.meta_status import get_my_identity
 
         with patch("scripts.meta_status.get_current_branch") as mock_branch:
-            mock_branch.return_value = "plan-70-test"  # mock-ok: testing branch detection
+            mock_branch.return_value = "plan-71-test"  # mock-ok: testing branch detection
             with patch("scripts.meta_status.get_claims") as mock_claims:
                 mock_claims.return_value = []  # mock-ok: testing without claims file
                 identity = get_my_identity()
                 assert identity["is_main"] is False
-                assert identity["branch"] == "plan-70-test"
+                assert identity["branch"] == "plan-71-test"
 
     def test_finds_matching_claim(self) -> None:
         """Should find cc_id from matching claim."""
         from scripts.meta_status import get_my_identity
 
         with patch("scripts.meta_status.get_current_branch") as mock_branch:
-            mock_branch.return_value = "plan-70-test"  # mock-ok: testing claim matching
+            mock_branch.return_value = "plan-71-test"  # mock-ok: testing claim matching
             with patch("scripts.meta_status.get_claims") as mock_claims:
                 mock_claims.return_value = [  # mock-ok: testing claim matching logic
-                    {"cc_id": "plan-70-test", "branch": "plan-70-test", "plan": 70}
+                    {"cc_id": "plan-71-test", "branch": "plan-71-test", "plan": 70}
                 ]
                 identity = get_my_identity()
-                assert identity["cc_id"] == "plan-70-test"
+                assert identity["cc_id"] == "plan-71-test"
+
