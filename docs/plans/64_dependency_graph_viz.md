@@ -119,21 +119,30 @@ This shows a 4-level capital chain: genesis → library → composed artifact �
 
 ## Required Tests
 
-### Unit Tests
-```
-tests/unit/test_dependency_graph.py::test_empty_graph
-tests/unit/test_dependency_graph.py::test_single_dependency
-tests/unit/test_dependency_graph.py::test_chain_depth_calculation
-tests/unit/test_dependency_graph.py::test_genesis_dependency_ratio
-tests/unit/test_dependency_graph.py::test_lindy_score_calculation
-```
+### New Tests (TDD)
 
-### Integration Tests
-```
-tests/integration/test_dashboard_dependency_graph.py::test_api_returns_valid_graph
-tests/integration/test_dashboard_dependency_graph.py::test_graph_includes_genesis
-tests/integration/test_dashboard_dependency_graph.py::test_metrics_computed
-```
+| Test File | Test Function | What It Verifies |
+|-----------|---------------|------------------|
+| `tests/unit/test_dependency_graph.py` | `test_dependency_node_creation` | DependencyNode model creation |
+| `tests/unit/test_dependency_graph.py` | `test_dependency_node_genesis` | Genesis node identification |
+| `tests/unit/test_dependency_graph.py` | `test_dependency_edge_creation` | DependencyEdge model creation |
+| `tests/unit/test_dependency_graph.py` | `test_dependency_graph_metrics` | Metrics model creation |
+| `tests/unit/test_dependency_graph.py` | `test_dependency_graph_data` | Full graph data structure |
+| `tests/unit/test_dependency_graph.py` | `test_empty_graph_metrics` | Empty graph metric values |
+| `tests/unit/test_dependency_graph.py` | `test_single_node_metrics` | Single node metrics |
+| `tests/unit/test_dependency_graph.py` | `test_chain_depth_calculation` | Max depth computation |
+| `tests/unit/test_dependency_graph.py` | `test_genesis_dependency_ratio` | Genesis ratio calculation |
+| `tests/unit/test_dependency_graph.py` | `test_orphan_count` | Orphan artifact counting |
+| `tests/unit/test_dependency_graph.py` | `test_avg_fanout` | Average fanout calculation |
+| `tests/unit/test_dependency_graph.py` | `test_build_empty_graph` | Empty graph construction |
+| `tests/unit/test_dependency_graph.py` | `test_build_single_artifact_no_deps` | Single artifact no deps |
+| `tests/unit/test_dependency_graph.py` | `test_build_with_dependencies` | Graph with dependencies |
+| `tests/unit/test_dependency_graph.py` | `test_build_identifies_genesis` | Genesis detection |
+| `tests/unit/test_dependency_graph.py` | `test_lindy_score_in_node` | Lindy score computation |
+| `tests/unit/test_dependency_graph.py` | `test_circular_dependency` | Cycles don't break |
+| `tests/unit/test_dependency_graph.py` | `test_missing_dependency_target` | Missing deps handled |
+| `tests/unit/test_dependency_graph.py` | `test_build_calculates_depth` | Multi-level graph depth |
+| `tests/unit/test_dependency_graph.py` | `test_self_dependency` | Self-deps filtered |
 
 ---
 
