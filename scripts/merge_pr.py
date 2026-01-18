@@ -67,6 +67,19 @@ def find_worktree_for_branch(branch: str) -> Path | None:
     return None
 
 
+def release_claim_for_branch(branch: str) -> bool:
+    """Release any claim associated with this branch. PR merged = work done."""
+    result = run_cmd(
+        ["python", "scripts/check_claims.py", "--release", "--id", branch, "--force"],
+        check=False,
+    )
+    if result.returncode == 0 and "Released" in result.stdout:
+        print(f"   Released claim for '{branch}'")
+        return True
+    # No claim existed or already released - that's fine
+    return False
+
+
 def cleanup_worktree(branch: str) -> bool:
     """Clean up local worktree for a branch. Returns True if successful."""
     worktree_path = find_worktree_for_branch(branch)
@@ -74,6 +87,10 @@ def cleanup_worktree(branch: str) -> bool:
         return True  # No worktree to clean up
 
     print(f"🧹 Cleaning up local worktree for branch '{branch}'...")
+
+    # First, release any claim for this branch (PR merged = work is complete)
+    # This must happen before worktree removal, which is blocked by active claims
+    release_claim_for_branch(branch)
 
     # Use make worktree-remove which has safety checks
     result = run_cmd(
