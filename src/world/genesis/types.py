@@ -162,11 +162,14 @@ class TransferOwnershipResult(TypedDict, total=False):
 
 # Mint-specific types
 class BidInfo(TypedDict):
-    """Information about a bid in the mint auction."""
+    """Information about a bid in the mint auction.
+
+    Plan #83: Changed tick_submitted to submitted_at (timestamp).
+    """
     agent_id: str
     artifact_id: str
     amount: int
-    tick_submitted: int
+    submitted_at: float  # Plan #83: wall-clock timestamp
 
 
 class AuctionResult(TypedDict):

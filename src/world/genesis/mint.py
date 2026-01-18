@@ -546,7 +546,7 @@ class GenesisMint(GenesisArtifact):
             if self._tie_breaking == "random":
                 winner_bid = self._random.choice(top_bidders)
             else:  # first_bid - Plan #83: use submitted_at timestamp
-                winner_bid = min(top_bidders, key=lambda b: b.get("submitted_at", 0))
+                winner_bid = min(top_bidders, key=lambda b: b["submitted_at"])
         else:
             winner_bid = sorted_bids[0]
 

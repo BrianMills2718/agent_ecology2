@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-18 (Plan #88 - cognitive_schema config)
+**Last verified:** 2026-01-18 (Plan #83 - time-based auction config)
 
 ---
 
@@ -165,12 +165,11 @@ genesis:
   mint:
     id: genesis_mint
     mint_ratio: 10          # score / ratio = scrip minted
-    auction:
-      period: 50            # Ticks between auction resolutions
+    auction:                # Plan #83: Time-based auction config
+      period_seconds: 60.0           # Seconds between auction starts
+      bidding_window_seconds: 30.0   # Duration of bidding phase
+      first_auction_delay_seconds: 30.0  # Delay before first auction
       minimum_bid: 1
-      # bidding_window: 10    # DEPRECATED (ignored) - bids accepted anytime
-      # first_auction_tick: 50  # DEPRECATED (ignored) - bids accepted anytime
-      # ...
 
   mcp:                      # MCP server artifacts (Plan #28)
     fetch:

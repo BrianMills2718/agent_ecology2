@@ -134,6 +134,8 @@ git checkout tick-based-v1 -- src/world/world.py
 - tests/integration/test_mint_auction.py (modify)
 - tests/unit/test_mint_anytime.py (modify)
 - tests/unit/test_world.py (modify)
+- src/world/genesis/types.py (modify)
+- docs/architecture/current/configuration.md (modify)
 - docs/architecture/current/execution_model.md (modify)
 
 ## Notes
