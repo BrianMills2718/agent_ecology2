@@ -96,7 +96,7 @@ These questions emerged from comprehensive review and should inform future direc
 | 1.1 | `docs/TASK_LOG.md` | Delete | None—frozen at 2026-01-11, superseded |
 | 1.2 | `docs/MULTI_CC_ANALYSIS.md` | Archive to `docs/archive/` | None—historical analysis |
 | 1.3 | Root `CLAUDE.md` lines 8-24 | Remove TEMP rebase notice (if PRs merged) | Low |
-| 1.4 | `docs/features/mint_auction.md` | Fix oracle to mint terminology | Low |
+| 1.4 | `docs/acceptance_gates/mint_auction.md` | Fix oracle to mint terminology | Low |
 
 ### Phase 2: Stale Content Updates (Medium Risk)
 
@@ -163,7 +163,7 @@ These questions emerged from comprehensive review and should inform future direc
 | `docs/AGENT_HANDBOOK.md` | 96 | "Submit sealed bid during bidding window" |
 | `docs/AGENT_HANDBOOK.md` | 346 | "Wait for bidding window" |
 | `docs/AGENT_HANDBOOK.md` | 355-362 | Describes WAITING/BIDDING/CLOSED phases |
-| `docs/features/mint_auction.md` | State machine section | Shows old phase transitions |
+| `docs/acceptance_gates/mint_auction.md` | State machine section | Shows old phase transitions |
 
 ### 3.2 Critical: Oracle to Mint Rename Incomplete
 
@@ -173,7 +173,7 @@ These questions emerged from comprehensive review and should inform future direc
 
 | File | Issue |
 |------|-------|
-| `docs/features/mint_auction.md` | References `genesis_oracle.submit`, `genesis_oracle.bid` |
+| `docs/acceptance_gates/mint_auction.md` | References `genesis_oracle.submit`, `genesis_oracle.bid` |
 | `docs/GLOSSARY_CURRENT.md` | Line 78 shows `genesis.oracle.*` |
 
 ### 3.3 High: Deprecated Config Still Documented
@@ -253,7 +253,7 @@ Commands appear in multiple places:
 |---------|--------|---------|
 | 09 (Documentation Graph) | "Unified relationships.yaml" | File doesn't exist; separate governance.yaml and doc_coupling.yaml |
 | 12 (Structured Logging) | "DualLogger with JSONL output" | No JSONL logging deployed |
-| 13 (Feature-Driven Development) | "feature.yaml schema, locks" | features/ exists but isn't primary organization |
+| 13 (Feature-Driven Development) | "feature.yaml schema, locks" | acceptance_gates/ exists but isn't primary organization |
 | 16 (Plan Blocker Enforcement) | "check_plan_blockers.py script" | Script doesn't exist |
 
 **Impact:** Implementers will build for non-existent systems.
@@ -312,7 +312,7 @@ Trivial exemption criteria appear identically in:
 | 10 | Doc-Code Coupling | Stable | Claimed "subsumed" but is what's deployed |
 | 11 | Terminology | Incomplete | Just references GLOSSARY, no local summary |
 | 12 | Structured Logging | **Proposed** | 250 lines, not deployed |
-| 13 | Feature-Driven Dev | **Partial** | 600+ lines; features/ isn't primary org |
+| 13 | Feature-Driven Dev | **Partial** | 600+ lines; acceptance_gates/ isn't primary org |
 | 14 | Feature Linkage | **Partial** | Depends on 13 which is partial |
 | 15 | Plan Workflow | Stable | Trivial exemption duplicated from 18 |
 | 16 | Plan Blocker Enforcement | **Proposed** | Script doesn't exist |
@@ -430,7 +430,7 @@ The pattern template itself is good. The problem is deployment consistency, not 
 | `docs/architecture/current/configuration.md` | Deprecated config |
 | `docs/architecture/current/resources.md` | flow/stock terminology |
 | `docs/architecture/current/execution_model.md` | flow resources terminology |
-| `docs/features/mint_auction.md` | oracle terminology |
+| `docs/acceptance_gates/mint_auction.md` | oracle terminology |
 
 ### Files to Update (Meta Patterns)
 

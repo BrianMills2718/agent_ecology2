@@ -24,7 +24,7 @@ commit: 8396a20
 ## Gap
 
 **Current:**
-- Tests organized in `tests/plans/` and `tests/features/` directories
+- Tests organized in `tests/plans/` and `tests/acceptance_gates/` directories
 - Feature association implicit through directory structure
 - Plan-based directories create lifecycle mismatch (plans are temporary, tests are permanent)
 - AI coding assistants must infer feature relationships from directory paths
@@ -33,7 +33,7 @@ commit: 8396a20
 - Pure type-based directory structure (`tests/unit/`, `tests/integration/`, `tests/e2e/`)
 - Explicit markers for feature/plan associations: `@pytest.mark.feature("X")`, `@pytest.mark.plans([N])`
 - Acceptance tests in `tests/integration/test_*_acceptance.py` files
-- Feature specs (`features/*.yaml`) as authoritative source for test-feature mappings
+- Feature specs (`acceptance_gates/*.yaml`) as authoritative source for test-feature mappings
 - `--feature NAME` pytest option to run all tests for a feature
 
 **Why Medium:**
@@ -49,8 +49,8 @@ Improves AI coding assistant navigability which is critical for the metaprocess 
 |------|--------|
 | `tests/conftest.py` | Add `feature` marker registration, `--feature` CLI option |
 | `tests/integration/test_*_acceptance.py` | Create acceptance test files with `@pytest.mark.feature()` markers |
-| `features/*.yaml` | Update test paths to point to new acceptance test locations |
-| `tests/features/` | Remove directory (move tests to integration/) |
+| `acceptance_gates/*.yaml` | Update test paths to point to new acceptance test locations |
+| `tests/acceptance_gates/` | Remove directory (move tests to integration/) |
 | `tests/plans/` | Remove directory (tests should use markers, not directories) |
 | `tests/CLAUDE.md` | Document marker-based organization |
 | `docs/meta/03_testing-strategy.md` | Update to reflect new structure |
@@ -60,9 +60,9 @@ Improves AI coding assistant navigability which is critical for the metaprocess 
 1. Add `@pytest.mark.feature("X")` marker registration to conftest.py
 2. Add `--feature NAME` option to pytest for filtering by feature
 3. Create acceptance test files in `tests/integration/` for each feature
-4. Move any existing tests from `tests/features/` to appropriate type-based directories
+4. Move any existing tests from `tests/acceptance_gates/` to appropriate type-based directories
 5. Update feature specs to reference new test paths
-6. Remove `tests/features/` and `tests/plans/` directories
+6. Remove `tests/acceptance_gates/` and `tests/plans/` directories
 7. Update documentation (tests/CLAUDE.md, docs/meta/03_testing-strategy.md)
 8. Verify all tests pass and markers work correctly
 

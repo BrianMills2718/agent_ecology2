@@ -1,4 +1,4 @@
-"""Feature acceptance tests for contracts - maps to features/contracts.yaml.
+"""Feature acceptance tests for contracts - maps to acceptance_gates/contracts.yaml.
 
 Run with: pytest --feature contracts tests/
 """
@@ -17,7 +17,7 @@ from src.world.ledger import Ledger
 
 @pytest.mark.feature("contracts")
 class TestContractsFeature:
-    """Tests mapping to features/contracts.yaml acceptance criteria."""
+    """Tests mapping to acceptance_gates/contracts.yaml acceptance criteria."""
 
     # AC-1: Contract allows action based on caller (happy_path)
     def test_ac_1_contract_allows_based_on_caller(self) -> None:

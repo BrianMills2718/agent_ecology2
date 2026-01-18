@@ -23,6 +23,6 @@ Feature docs should include:
 
 ## Related Directories
 
-- `features/*.yaml` - Feature definitions (code mappings)
+- `acceptance_gates/*.yaml` - Feature definitions (code mappings)
 - `docs/architecture/current/` - How features are implemented
 - `docs/architecture/target/` - Where features are going

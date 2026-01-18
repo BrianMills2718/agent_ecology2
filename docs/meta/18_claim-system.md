@@ -28,15 +28,15 @@ python scripts/check_claims.py --claim --feature escrow --plan 8 --task "Agent r
 
 | Scope | Source | Example |
 |-------|--------|---------|
-| **Feature** | `features/*.yaml` | `--feature ledger`, `--feature escrow` |
+| **Feature** | `acceptance_gates/*.yaml` | `--feature ledger`, `--feature escrow` |
 | **Plan** | `docs/plans/*.md` | `--plan 3`, `--plan 21` |
 
 ### Feature Scopes
 
-Features are defined in `features/*.yaml`. Each feature lists its code files:
+Features are defined in `acceptance_gates/*.yaml`. Each feature lists its code files:
 
 ```yaml
-# features/ledger.yaml
+# acceptance_gates/ledger.yaml
 feature: ledger
 code:
   - src/world/ledger.py
@@ -150,7 +150,7 @@ CI checks that PR branches were claimed. Currently informational, will become st
 | `.claude/active-work.yaml` | Machine-readable claim storage |
 | `CLAUDE.md` | Human-readable Active Work table |
 | `scripts/check_claims.py` | Claim management script |
-| `features/*.yaml` | Feature definitions with code mappings |
+| `acceptance_gates/*.yaml` | Feature definitions with code mappings |
 
 ## Workflow
 
@@ -176,7 +176,7 @@ CI checks that PR branches were claimed. Currently informational, will become st
 Cross-cutting files that many features use (config, fixtures, types) are in the `shared` scope:
 
 ```yaml
-# features/shared.yaml
+# acceptance_gates/shared.yaml
 feature: shared
 code:
   - src/config.py
@@ -217,7 +217,7 @@ git commit -m "[Trivial] Fix typo in README"
 
 - **CI check is informational** - Currently warns but doesn't block (will be strict later)
 - **Force override exists** - `--force` can bypass conflicts (for emergencies only)
-- **Files outside features** - Files not in any `features/*.yaml` aren't tracked
+- **Files outside features** - Files not in any `acceptance_gates/*.yaml` aren't tracked
 - **Shared scope honor system** - Anyone can modify shared files; abuse visible in git history
 
 ## See Also

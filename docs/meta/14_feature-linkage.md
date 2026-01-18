@@ -29,7 +29,7 @@ How to structure relationships between ADRs, features, code, tests, and document
           │ doc_coupling.yaml (MANUAL, incomplete)
           ▼
     ┌───────────┐         ┌───────────┐
-    │   DOCS    │    ?    │   TESTS   │  ← No mapping to features/plans
+    │   DOCS    │    ?    │   TESTS   │  ← No mapping to acceptance_gates/plans
     └───────────┘         └───────────┘
 
 

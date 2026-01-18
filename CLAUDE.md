@@ -329,7 +329,7 @@ git commit -m "[Trivial] Update copyright year"
 
 ### Shared Scope
 
-Cross-cutting files (config, fixtures) are in the "shared" feature (`features/shared.yaml`). These have NO claim conflicts - any plan can modify them without coordination. Tests are the quality gate.
+Cross-cutting files (config, fixtures) are in the "shared" feature (`acceptance_gates/shared.yaml`). These have NO claim conflicts - any plan can modify them without coordination. Tests are the quality gate.
 
 **These are guidelines, not rigid rules.** Use judgment:
 - A PR conflict might be a doc issue requiring research first

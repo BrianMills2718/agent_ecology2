@@ -16,7 +16,7 @@ These are low-risk, clear benefit. Say "do tier 1" to approve all.
 | 1.3 | Delete `docs/TASK_LOG.md` | Frozen 2026-01-11, superseded by active-work.yaml | 1 min |
 | 1.4 | Archive `docs/MULTI_CC_ANALYSIS.md` to `docs/archive/` | Historical analysis, improvements implemented | 1 min |
 | 1.5 | Remove TEMP rebase notice from CLAUDE.md (lines 8-24) | PRs are merged | 1 min |
-| 1.6 | Fix `docs/features/mint_auction.md` oracle→mint terminology | Plan #34 completed but refs remain | 5 min |
+| 1.6 | Fix `docs/acceptance_gates/mint_auction.md` oracle→mint terminology | Plan #34 completed but refs remain | 5 min |
 | 1.7 | Fix `docs/GLOSSARY_CURRENT.md` line 78 oracle→mint | Same issue | 2 min |
 | 1.8 | Add "PROPOSED" banner to pattern 09 (Documentation Graph) | Not implemented, misleads implementers | 2 min |
 | 1.9 | Add "PROPOSED" banner to pattern 12 (Structured Logging) | Not deployed | 2 min |

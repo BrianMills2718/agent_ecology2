@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate feature specification files.
 
-Checks that feature files in features/*.yaml meet minimum requirements:
+Checks that feature files in acceptance_gates/*.yaml meet minimum requirements:
 - At least 3 acceptance criteria scenarios
 - Given/When/Then format for each scenario
 - Design section required for detailed planning mode
@@ -15,7 +15,7 @@ Exit codes:
 Usage:
     python scripts/validate_spec.py --all
     python scripts/validate_spec.py --feature escrow
-    python scripts/validate_spec.py --file features/escrow.yaml
+    python scripts/validate_spec.py --file acceptance_gates/escrow.yaml
 """
 
 import argparse

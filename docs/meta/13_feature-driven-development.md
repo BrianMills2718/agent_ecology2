@@ -134,7 +134,7 @@ Start simple. Add friction only if abuse is detected.
 ## Feature Definition Schema
 
 ```yaml
-# features/escrow.yaml
+# acceptance_gates/escrow.yaml
 feature: escrow
 planning_mode: guided  # autonomous | guided | detailed | iterative
 
@@ -428,7 +428,7 @@ ADR references in source file headers keep constraints visible:
 ├─────────────────────────────────────────────────────────────────────┤
 │ AI: Writes problem statement, out_of_scope                          │
 │ Human: Reviews/approves (if guided/detailed mode)                   │
-│ Output: features/<name>.yaml (problem, out_of_scope)                │
+│ Output: acceptance_gates/<name>.yaml (problem, out_of_scope)                │
 └─────────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -533,14 +533,14 @@ Every unit of work must prove it works end-to-end before declaring success.
 
 | File | Purpose |
 |------|---------|
-| `features/*.yaml` | Feature definitions (single source of truth) |
+| `acceptance_gates/*.yaml` | Feature definitions (single source of truth) |
 | `scripts/validate_spec.py` | Validates spec completeness |
 | `scripts/check_locked_files.py` | Ensures locked files unchanged |
 | `scripts/generate_tests.py` | Generates test stubs from specs |
 
 ## Setup (New Project)
 
-1. Create `features/` directory
+1. Create `acceptance_gates/` directory
 2. Add spec validation to CI:
    ```yaml
    - name: validate-specs
@@ -559,7 +559,7 @@ Every unit of work must prove it works end-to-end before declaring success.
 ```bash
 # 1. Create feature definition
 claude "Create feature definition for user authentication"
-# AI writes features/authentication.yaml with problem, out_of_scope
+# AI writes acceptance_gates/authentication.yaml with problem, out_of_scope
 
 # 2. Review and approve (if guided mode)
 # Human reviews the definition
@@ -572,7 +572,7 @@ claude "Write acceptance criteria for authentication feature"
 # Human reviews acceptance criteria
 
 # 5. Lock specs
-git add features/authentication.yaml
+git add acceptance_gates/authentication.yaml
 git commit -m "Lock authentication feature specs"
 
 # 6. Implement
@@ -616,13 +616,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Verify locked files unchanged
-        run: python scripts/check_locked_files.py --locked "features/*/spec.yaml"
+        run: python scripts/check_locked_files.py --locked "acceptance_gates/*/spec.yaml"
 
   feature-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Run feature tests
-        run: pytest tests/features/ -v
+        run: pytest tests/acceptance_gates/ -v
 ```
 
 ## Customization

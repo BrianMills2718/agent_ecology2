@@ -57,12 +57,12 @@ tests/
 | Type-first with markers | Explicit associations, queryable, AI-friendly | Requires discipline |
 | Plan-first directories | Visual feature mapping | Duplication, lifecycle mismatch |
 
-**Key insight:** Directory structure implies single-dimensional organization. Markers support multi-dimensional associations (a test can belong to multiple features/plans).
+**Key insight:** Directory structure implies single-dimensional organization. Markers support multi-dimensional associations (a test can belong to multiple acceptance_gates/plans).
 
 For AI coding assistants:
 - Explicit metadata (markers) > implicit directory semantics
 - `@pytest.mark.feature("escrow")` is greppable and machine-readable
-- Feature specs (`features/*.yaml`) remain authoritative source
+- Feature specs (`acceptance_gates/*.yaml`) remain authoritative source
 
 ### Pytest Markers
 
@@ -78,7 +78,7 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers", "feature(name): mark test as belonging to a feature. "
-        "Usage: @pytest.mark.feature('escrow') - maps to features/<name>.yaml"
+        "Usage: @pytest.mark.feature('escrow') - maps to acceptance_gates/<name>.yaml"
     )
     config.addinivalue_line(
         "markers", "feature_type(type): mark test as 'feature', 'enabler', or 'refactor'"
@@ -93,7 +93,7 @@ import pytest
 
 @pytest.mark.feature("escrow")
 class TestEscrowFeature:
-    """Tests mapping to features/escrow.yaml acceptance criteria."""
+    """Tests mapping to acceptance_gates/escrow.yaml acceptance criteria."""
 
     def test_ac_1_successful_artifact_sale(self):
         """AC-1: Successful artifact sale via escrow."""
@@ -118,9 +118,9 @@ Feature acceptance tests live in `tests/integration/test_*_acceptance.py`:
 
 | File | Feature | Maps To |
 |------|---------|---------|
-| `test_escrow_acceptance.py` | escrow | features/escrow.yaml |
-| `test_rate_limiting_acceptance.py` | rate_limiting | features/rate_limiting.yaml |
-| `test_agent_loop_acceptance.py` | agent_loop | features/agent_loop.yaml |
+| `test_escrow_acceptance.py` | escrow | acceptance_gates/escrow.yaml |
+| `test_rate_limiting_acceptance.py` | rate_limiting | acceptance_gates/rate_limiting.yaml |
+| `test_agent_loop_acceptance.py` | agent_loop | acceptance_gates/agent_loop.yaml |
 
 **Naming convention:** Test functions map to acceptance criteria:
 - `test_ac_1_*` → AC-1 from feature spec
@@ -224,7 +224,7 @@ python scripts/complete_plan.py --plan N --dry-run
 
 ```python
 # tests/integration/test_feature_acceptance.py
-"""Feature acceptance tests for [feature] - maps to features/[feature].yaml.
+"""Feature acceptance tests for [feature] - maps to acceptance_gates/[feature].yaml.
 
 Run with: pytest --feature [feature] tests/
 """
@@ -233,7 +233,7 @@ import pytest
 
 @pytest.mark.feature("[feature]")
 class TestFeatureFeature:
-    """Tests mapping to features/[feature].yaml acceptance criteria."""
+    """Tests mapping to acceptance_gates/[feature].yaml acceptance criteria."""
 
     def test_ac_1_description(self, fixture):
         """AC-1: [Acceptance criterion from feature spec]."""

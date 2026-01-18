@@ -83,7 +83,7 @@ docs:
 | `docs` | `docs/**`, `scripts/doc_coupling.py`, `scripts/governance.yaml` |
 | `plans` | `docs/plans/**`, `scripts/*plan*` |
 | `code-quality` | `src/**`, `tests/**` |
-| `meta` | `.claude/**`, `features/**`, `scripts/check_claims.py` |
+| `meta` | `.claude/**`, `acceptance_gates/**`, `scripts/check_claims.py` |
 
 ### Phase 4 (Optional): GitHub Paid Tier
 

@@ -2,7 +2,7 @@
 
 Master index of all gaps and their implementation plans.
 
-**Last verified:** 2026-01-15 (Plan #53 Phase 0 - ResourceMeasurer integration)
+**Last verified:** 2026-01-17 (Renamed features/ to acceptance_gates/)
 
 ---
 

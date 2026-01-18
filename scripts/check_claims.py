@@ -44,12 +44,12 @@ Primary data store: .claude/active-work.yaml
 Scope-Based Claims:
     Claims should specify a scope (--plan and/or --feature).
     - Plans are defined in docs/plans/*.md
-    - Features are defined in features/*.yaml
+    - Features are defined in acceptance_gates/*.yaml
     Each scope can only be claimed by one instance at a time.
     Use --force to override (NOT recommended).
 
 Special Cases:
-    - "shared" feature: Files in features/shared.yaml have NO claim conflicts.
+    - "shared" feature: Files in acceptance_gates/shared.yaml have NO claim conflicts.
       These are cross-cutting files (config, fixtures) any plan can modify.
     - [Trivial] commits: Don't require claims. See CI workflow for validation.
 """
@@ -90,11 +90,28 @@ _MAIN_ROOT = get_main_repo_root()
 YAML_PATH = _MAIN_ROOT / ".claude/active-work.yaml"
 CLAUDE_MD_PATH = _MAIN_ROOT / "CLAUDE.md"
 PLANS_DIR = _MAIN_ROOT / "docs/plans"
-FEATURES_DIR = _MAIN_ROOT / "features"
+
+
+def get_git_toplevel() -> Path:
+    """Get the current git working tree root (works for both main and worktrees)."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return Path(result.stdout.strip())
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return Path.cwd()
+
+
+# Use current git toplevel for features (branch-specific)
+FEATURES_DIR = get_git_toplevel() / "acceptance_gates"
 
 
 def load_all_features() -> dict[str, dict[str, Any]]:
-    """Load all feature definitions from features/*.yaml.
+    """Load all feature definitions from acceptance_gates/*.yaml.
 
     Returns dict mapping feature name to feature data.
     """
@@ -915,7 +932,7 @@ def main() -> int:
     parser.add_argument(
         "--feature", "-F",
         type=str,
-        help="Feature name to claim (from features/*.yaml)"
+        help="Feature name to claim (from acceptance_gates/*.yaml)"
     )
     parser.add_argument(
         "--list-features",
@@ -990,7 +1007,7 @@ def main() -> int:
     if args.list_features:
         features = get_feature_names()
         if not features:
-            print("No features defined in features/*.yaml")
+            print("No features defined in acceptance_gates/*.yaml")
             return 0
         print("Available features:")
         for f in features:

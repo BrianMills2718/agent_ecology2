@@ -45,7 +45,7 @@ Based on analysis of real-world practices (DORA research, trunk-based developmen
 |----------|--------|-----------|
 | Claim granularity | Feature-level, not file-level | Git handles merges; file-level is over-restrictive |
 | Trivial exemption | `[Trivial]` for <20 lines, no src/ | Reduces friction for tiny fixes |
-| Shared scope | `features/shared.yaml` for cross-cutting | Prevents false conflicts on config, fixtures |
+| Shared scope | `acceptance_gates/shared.yaml` for cross-cutting | Prevents false conflicts on config, fixtures |
 | File lists in plans | Not required | Impractical; derived from feature scope instead |
 | AST/function tracking | Deferred | File-level sufficient for current needs |
 | Custom edge types | Standard only | Unenforced conventions drift |
@@ -61,7 +61,7 @@ Based on analysis of real-world practices (DORA research, trunk-based developmen
 | `docs/meta/claim-system.md` | Add design decisions, document shared scope |
 | `docs/meta/plan-workflow.md` | Add trivial exemption, remove file list requirement |
 | `docs/meta/feature-linkage.md` | Clarify file-level not needed |
-| `features/shared.yaml` | NEW: Define cross-cutting files |
+| `acceptance_gates/shared.yaml` | NEW: Define cross-cutting files |
 | `.github/workflows/ci.yml` | Add trivial exemption check |
 | `scripts/check_claims.py` | Skip claim check for `[Trivial]` commits |
 | `CLAUDE.md` | Update to reference trivial exemption |
@@ -69,7 +69,7 @@ Based on analysis of real-world practices (DORA research, trunk-based developmen
 ### Steps
 
 1. Update docs/meta/*.md with design decisions (6 files already partially updated)
-2. Create `features/shared.yaml` with cross-cutting files
+2. Create `acceptance_gates/shared.yaml` with cross-cutting files
 3. Update CI to recognize `[Trivial]` prefix
 4. Update `check_claims.py` to exempt trivial commits
 5. Update CLAUDE.md with trivial workflow
@@ -99,7 +99,7 @@ Based on analysis of real-world practices (DORA research, trunk-based developmen
 
 - [x] docs/meta/claim-system.md has Design Decisions section
 - [x] docs/meta/plan-workflow.md has Trivial Exemption section
-- [x] `features/shared.yaml` exists with cross-cutting files
+- [x] `acceptance_gates/shared.yaml` exists with cross-cutting files
 - [x] CI recognizes `[Trivial]` prefix
 - [x] check_claims.py handles shared scope (no conflicts)
 - [x] Tests pass (10 new tests for claims, 1192 total)

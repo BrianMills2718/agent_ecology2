@@ -101,7 +101,7 @@ project/
 │   │   └── current/              # What IS implemented
 │   │   # NOTE: No target/. Use PRD for requirements, ADRs for decisions.
 │   ├── adr/                      # Architecture Decision Records
-│   ├── features/                 # E2E acceptance definitions
+│   ├── acceptance_gates/                 # E2E acceptance definitions
 │   │   └── NN_feature_name.md    # Feature with acceptance criteria
 │   └── meta/                     # Reusable process patterns
 ├── scripts/
@@ -266,7 +266,7 @@ CC workflow without features:
 
 **Feature definition:**
 ```markdown
-# docs/features/NN_feature_name.md
+# docs/acceptance_gates/NN_feature_name.md
 
 ## Feature: Agent Resource Trading
 
