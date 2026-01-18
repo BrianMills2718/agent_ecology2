@@ -51,13 +51,16 @@ count_unread() {
     fi
 
     local count=0
-    for msg_file in "$inbox_dir"/*.md 2>/dev/null; do
+    # Enable nullglob to handle empty directories without error
+    shopt -s nullglob
+    for msg_file in "$inbox_dir"/*.md; do
         if [[ -f "$msg_file" ]]; then
             if grep -q "^status: unread" "$msg_file" 2>/dev/null; then
                 count=$((count + 1))
             fi
         fi
     done
+    shopt -u nullglob
 
     echo $count
 }

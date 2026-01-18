@@ -584,23 +584,31 @@ gh pr review 123 --request-changes --body "Issue: [describe problem]"
 
 **Review within 24 hours** - stale PRs block progress.
 
-### Review vs. Ownership
+### Review vs. Ownership (Plan #94)
 
-**Review ≠ PR Creation.** Any instance can review another's work, but ownership stays with the claimant.
+**Claim covers implementation, not merge.** Once a PR is created:
+- The PR itself is the handoff artifact (contains all context)
+- Owner should release claim after PR creation
+- Any instance can review and merge
+- Reviewer optionally claims to prevent duplicate work
 
-| Action | Who Can Do It |
-|--------|---------------|
-| Read/review code | Any instance |
-| Run tests, provide feedback | Any instance |
-| Create PR, merge | Only the claiming instance |
-| Complete/release claim | Only the claiming instance |
+| Phase | Who Can Do It |
+|-------|---------------|
+| Implementation (while claimed) | Only the claiming instance |
+| PR creation | Only the claiming instance |
+| Claim release | Owner (at PR creation) |
+| Review | Any instance |
+| Merge (after PR exists) | Any instance |
 
-**Why:** The claiming instance knows:
-- What's complete vs. work-in-progress
-- Whether uncommitted files are ready or still being refined
-- The full context and intent of the changes
+**Why this works:**
+- PR contains all context (description, code, tests, CI status)
+- After CI passes, merging is mechanical - no judgment calls
+- Enables parallelization - no waiting for owners to return
+- Reduces bottlenecks - PRs don't sit waiting
 
-**Handoff:** If original instance can't complete, they must explicitly note handoff in Active Work table with context for the new owner.
+**Workflow:**
+1. Owner claims → implements → creates PR → releases claim
+2. Any reviewer can claim (optional) → review → merge → release
 
 ### Meta-Process Feedback
 
