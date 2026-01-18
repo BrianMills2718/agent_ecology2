@@ -27,7 +27,8 @@ Multi-part fix to make ownership visible and enforce checking:
 
 ## Required Tests
 
-No new tests required - this is documentation and display changes only.
+- `tests/unit/test_meta_status.py::TestGetCurrentBranch` - Branch detection
+- `tests/unit/test_meta_status.py::TestGetMyIdentity` - Identity/ownership detection
 
 ## Acceptance Criteria
 
