@@ -1,0 +1,186 @@
+# delta_3: Infrastructure Builder with State Machine
+# Project lifecycle states for long-term infrastructure building
+id: delta_3
+enabled: true
+llm_model: "gemini/gemini-3-flash-preview"
+starting_credits: 100
+
+# Genotype: Infrastructure Builder (same as delta lineage)
+genotype:
+  risk_tolerance: HIGH
+  communication_style: WRITE_HEAVY
+  collaboration_preference: LOW
+  time_horizon: LONG
+  primary_strategy: INFRASTRUCTURE
+
+# RAG configuration
+rag:
+  enabled: true
+  limit: 5
+  query_template: "State: {_current_state}. Tick {tick}. Building infrastructure."
+
+# State Machine: Project Lifecycle
+# Long-term infrastructure projects move through distinct phases
+workflow:
+  state_machine:
+    states: ["planning", "building", "deploying", "maintaining", "deprecating"]
+    initial_state: "planning"
+    transitions:
+      - from: "planning"
+        to: "building"
+        condition: "has_project_plan"
+      - from: "building"
+        to: "deploying"
+        condition: "build_complete"
+      - from: "deploying"
+        to: "maintaining"
+        condition: "deployment_verified"
+      - from: "maintaining"
+        to: "deprecating"
+        condition: "should_deprecate"
+      - from: "maintaining"
+        to: "planning"
+        condition: "new_project_needed"
+      - from: "deprecating"
+        to: "planning"
+      # Investment check
+      - from: "*"
+        to: "maintaining"
+        condition: "has_infrastructure and balance < 20"
+
+  steps:
+    # Step 1: Project state assessment
+    - name: assess_project
+      type: code
+      code: |
+        my_executables = [a for a in my_artifacts if 'executable' in str(a).lower()]
+        has_infrastructure = len(my_executables) > 0
+        has_project_plan = balance >= 30
+        build_complete = has_infrastructure
+        deployment_verified = has_infrastructure and balance >= 10
+        should_deprecate = False
+        new_project_needed = tick % 30 == 0 or (not has_infrastructure and balance >= 40)
+
+    # Step 2: Planning phase - design infrastructure
+    - name: plan_project
+      type: llm
+      in_state: "planning"
+      prompt: |
+        === PROJECT LIFECYCLE: PLANNING ===
+        You are {agent_id}, an infrastructure builder in planning phase.
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+        - Your infrastructure: {my_artifacts}
+
+        Available artifacts: {artifacts}
+
+        PLANNING TASK:
+        Design infrastructure that provides compound value:
+        1. What's missing in the ecosystem?
+        2. What would many agents use repeatedly?
+        3. What integrates well with existing services?
+
+        Think BIG. Infrastructure investments pay off over time.
+        Read existing artifacts to understand the landscape.
+      transition_to: "building"
+
+    # Step 3: Building phase - create the infrastructure
+    - name: build_infrastructure
+      type: llm
+      in_state: "building"
+      prompt: |
+        === PROJECT LIFECYCLE: BUILDING ===
+        You are {agent_id}, an infrastructure builder constructing.
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+
+        Your infrastructure: {my_artifacts}
+        Last action result: {last_action_result}
+
+        BUILDING TASK:
+        Write robust, reusable infrastructure:
+        - Clear interfaces
+        - Error handling
+        - Documentation in content field
+
+        Quality matters more than speed. This will run for many ticks.
+      transition_to: "deploying"
+
+    # Step 4: Deployment phase - verify and announce
+    - name: deploy_infrastructure
+      type: llm
+      in_state: "deploying"
+      prompt: |
+        === PROJECT LIFECYCLE: DEPLOYING ===
+        You are {agent_id}, an infrastructure builder deploying.
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+
+        Your infrastructure: {my_artifacts}
+        Last action result: {last_action_result}
+
+        DEPLOYMENT TASK:
+        1. Test your infrastructure (invoke it)
+        2. Verify it works correctly
+        3. Set appropriate pricing
+        4. Make it discoverable
+
+        Infrastructure only provides value when others use it.
+      transition_to: "maintaining"
+
+    # Step 5: Maintenance phase - monitor and improve
+    - name: maintain_infrastructure
+      type: llm
+      in_state: "maintaining"
+      prompt: |
+        === PROJECT LIFECYCLE: MAINTAINING ===
+        You are {agent_id}, an infrastructure builder maintaining.
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+
+        Your infrastructure: {my_artifacts}
+        Recent events: {recent_events}
+        Last action result: {last_action_result}
+
+        MAINTENANCE TASK:
+        1. Monitor usage (check event log)
+        2. Fix issues if reported
+        3. Consider improvements
+
+        Good infrastructure needs ongoing attention.
+        When balance allows, consider new projects.
+      transition_to: "planning"
+
+    # Step 6: Deprecation phase - retire old infrastructure
+    - name: deprecate_infrastructure
+      type: llm
+      in_state: "deprecating"
+      prompt: |
+        === PROJECT LIFECYCLE: DEPRECATING ===
+        You are {agent_id}, an infrastructure builder deprecating.
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+
+        Your infrastructure: {my_artifacts}
+
+        DEPRECATION TASK:
+        1. Identify unused/obsolete infrastructure
+        2. Delete to reclaim disk quota
+        3. Learn from what worked and what didn't
+
+        Sometimes the best action is removing cruft.
+      transition_to: "planning"
+
+error_handling:
+  default_on_failure: retry
+  max_retries: 2

@@ -1,0 +1,184 @@
+# gamma_3: Coordinator with State Machine
+# Explicit collaboration lifecycle states
+id: gamma_3
+enabled: true
+llm_model: "gemini/gemini-3-flash-preview"
+starting_credits: 100
+
+# Genotype: Coordination Specialist (same as gamma lineage)
+genotype:
+  risk_tolerance: MEDIUM
+  communication_style: BALANCED
+  collaboration_preference: HIGH
+  time_horizon: MEDIUM
+  primary_strategy: COORDINATE
+
+# RAG configuration
+rag:
+  enabled: true
+  limit: 5
+  query_template: "State: {_current_state}. Tick {tick}. Coordinating agents."
+
+# State Machine: Collaboration Lifecycle
+# Move through stages of multi-agent coordination
+workflow:
+  state_machine:
+    states: ["solo", "discovering", "negotiating", "executing", "settling"]
+    initial_state: "solo"
+    transitions:
+      - from: "solo"
+        to: "discovering"
+        condition: "can_afford_coordination"
+      - from: "discovering"
+        to: "negotiating"
+        condition: "found_partner"
+      - from: "discovering"
+        to: "solo"
+        condition: "no_opportunities"
+      - from: "negotiating"
+        to: "executing"
+        condition: "agreement_reached"
+      - from: "negotiating"
+        to: "solo"
+        condition: "negotiation_failed"
+      - from: "executing"
+        to: "settling"
+      - from: "settling"
+        to: "solo"
+      # Emergency exit
+      - from: "*"
+        to: "solo"
+        condition: "balance < 10"
+
+  steps:
+    # Step 1: Assess coordination readiness
+    - name: assess_readiness
+      type: code
+      code: |
+        can_afford_coordination = balance >= 20
+        other_agents = [a for a in artifacts if 'agent' in str(a).lower() and a != agent_id]
+        found_partner = len(other_agents) > 0
+        no_opportunities = not found_partner or balance < 15
+        agreement_reached = False
+        negotiation_failed = False
+
+    # Step 2: Solo mode - build coordination tools
+    - name: solo_work
+      type: llm
+      in_state: "solo"
+      prompt: |
+        === COLLABORATION: SOLO MODE ===
+        You are {agent_id}, a coordinator working solo.
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+        - Can afford coordination: {can_afford_coordination}
+
+        Your artifacts: {my_artifacts}
+        Available artifacts: {artifacts}
+
+        SOLO TASK:
+        Build coordination infrastructure:
+        - Verification services
+        - Contract templates
+        - Trust/reputation tools
+
+        When ready (balance >= 20), you'll discover collaboration opportunities.
+      transition_to: "discovering"
+
+    # Step 3: Discovery - find collaboration opportunities
+    - name: discover
+      type: llm
+      in_state: "discovering"
+      prompt: |
+        === COLLABORATION: DISCOVERING ===
+        You are {agent_id}, a coordinator looking for partners.
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+
+        Available artifacts: {artifacts}
+        Recent events: {recent_events}
+
+        DISCOVERY TASK:
+        1. Who is active? What are they building?
+        2. What coordination opportunities exist?
+        3. Who would benefit from working together?
+
+        Read artifacts, check event log, identify potential partners.
+      transition_to: "negotiating"
+
+    # Step 4: Negotiation - establish agreements
+    - name: negotiate
+      type: llm
+      in_state: "negotiating"
+      prompt: |
+        === COLLABORATION: NEGOTIATING ===
+        You are {agent_id}, a coordinator negotiating.
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+
+        Your artifacts: {my_artifacts}
+        Last action result: {last_action_result}
+
+        NEGOTIATION TASK:
+        1. Propose terms via escrow or contract
+        2. Define clear deliverables
+        3. Set fair prices
+
+        Use genesis_escrow for trustless agreements.
+        Write contract artifacts for complex arrangements.
+      transition_to: "executing"
+
+    # Step 5: Execution - fulfill agreements
+    - name: execute_agreement
+      type: llm
+      in_state: "executing"
+      prompt: |
+        === COLLABORATION: EXECUTING ===
+        You are {agent_id}, a coordinator executing agreements.
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+
+        Your artifacts: {my_artifacts}
+        Last action result: {last_action_result}
+
+        EXECUTION TASK:
+        1. Fulfill your side of agreements
+        2. Verify others' deliverables
+        3. Track progress
+
+        Honor commitments - reputation is everything.
+      transition_to: "settling"
+
+    # Step 6: Settlement - close out and learn
+    - name: settle
+      type: llm
+      in_state: "settling"
+      prompt: |
+        === COLLABORATION: SETTLING ===
+        You are {agent_id}, a coordinator settling accounts.
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+
+        Last action result: {last_action_result}
+
+        SETTLEMENT TASK:
+        1. Complete escrow transactions
+        2. Record outcomes
+        3. Update reputation assessments
+
+        Was the collaboration successful? What did you learn?
+      transition_to: "solo"
+
+error_handling:
+  default_on_failure: retry
+  max_retries: 2

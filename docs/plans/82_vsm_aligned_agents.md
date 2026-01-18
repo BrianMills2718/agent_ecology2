@@ -52,6 +52,16 @@
 - src/agents/workflow.py (modify)
 - src/agents/state_machine.py (create)
 - tests/unit/test_state_machine.py (create)
+- src/agents/alpha_3/agent.yaml (create)
+- src/agents/alpha_3/system_prompt.md (create)
+- src/agents/beta_3/agent.yaml (create)
+- src/agents/beta_3/system_prompt.md (create)
+- src/agents/gamma_3/agent.yaml (create)
+- src/agents/gamma_3/system_prompt.md (create)
+- src/agents/delta_3/agent.yaml (create)
+- src/agents/delta_3/system_prompt.md (create)
+- src/agents/epsilon_3/agent.yaml (create)
+- src/agents/epsilon_3/system_prompt.md (create)
 
 ---
 

@@ -1,0 +1,159 @@
+# alpha_3: Builder with State Machine
+# Extends alpha_2's self-audit with explicit build cycle states
+id: alpha_3
+enabled: true
+llm_model: "gemini/gemini-3-flash-preview"
+starting_credits: 100
+
+# Genotype: Builder/Creator (same as alpha lineage)
+genotype:
+  risk_tolerance: MEDIUM
+  communication_style: BALANCED
+  collaboration_preference: MEDIUM
+  time_horizon: MEDIUM
+  primary_strategy: BUILD
+
+# RAG configuration
+rag:
+  enabled: true
+  limit: 5
+  query_template: "State: {_current_state}. Tick {tick}. Building artifacts."
+
+# State Machine: Build Cycle
+# Agents cycle through phases of creation
+workflow:
+  state_machine:
+    states: ["ideating", "designing", "implementing", "testing"]
+    initial_state: "ideating"
+    transitions:
+      - from: "ideating"
+        to: "designing"
+        condition: "has_idea"
+      - from: "designing"
+        to: "implementing"
+        condition: "has_design"
+      - from: "implementing"
+        to: "testing"
+      - from: "testing"
+        to: "ideating"
+      # Allow pivots
+      - from: "*"
+        to: "ideating"
+        condition: "should_pivot"
+
+  steps:
+    # Step 1: Compute metrics (from alpha_2)
+    - name: compute_metrics
+      type: code
+      code: |
+        recent_failures = context.get('recent_failures', [])
+        recent_successes = context.get('recent_successes', [])
+        failure_count = len(recent_failures) if recent_failures else 0
+        success_count = len(recent_successes) if recent_successes else 0
+        total_actions = failure_count + success_count
+        success_rate = success_count / max(total_actions, 1)
+        stuck_in_loop = failure_count >= 3
+        should_pivot = success_rate < 0.3 or stuck_in_loop
+        has_idea = balance >= 20
+        has_design = balance >= 15
+
+    # Step 2: Ideation phase - generate ideas
+    - name: ideate
+      type: llm
+      in_state: "ideating"
+      prompt: |
+        === BUILD CYCLE: IDEATION ===
+        You are {agent_id}, a builder in ideation phase.
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+        - Success rate: {success_rate:.0%}
+
+        Your artifacts: {my_artifacts}
+        Available artifacts: {artifacts}
+
+        IDEATION TASK:
+        1. What problem could you solve?
+        2. What would be valuable to build?
+        3. Is there a gap in the ecosystem?
+
+        If you have an idea worth pursuing, choose an action to research it.
+        If not ready, noop to continue observing.
+      transition_to: "designing"
+
+    # Step 3: Design phase - plan the build
+    - name: design
+      type: llm
+      in_state: "designing"
+      prompt: |
+        === BUILD CYCLE: DESIGN ===
+        You are {agent_id}, a builder in design phase.
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+
+        Your artifacts: {my_artifacts}
+        Last action result: {last_action_result}
+
+        DESIGN TASK:
+        1. What's the interface/API?
+        2. What dependencies are needed?
+        3. How will others use it?
+
+        Read relevant artifacts or write a design document.
+      transition_to: "implementing"
+
+    # Step 4: Implementation phase - build it
+    - name: implement
+      type: llm
+      in_state: "implementing"
+      prompt: |
+        === BUILD CYCLE: IMPLEMENTATION ===
+        You are {agent_id}, a builder in implementation phase.
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+
+        Your artifacts: {my_artifacts}
+        Last action result: {last_action_result}
+
+        IMPLEMENTATION TASK:
+        Write the artifact! Create executable code that provides value.
+
+        Remember:
+        - Use `def run(*args)` as entry point
+        - Set invoke_price if you want to earn from usage
+        - Make the description clear for discovery
+      transition_to: "testing"
+
+    # Step 5: Testing phase - verify it works
+    - name: test
+      type: llm
+      in_state: "testing"
+      prompt: |
+        === BUILD CYCLE: TESTING ===
+        You are {agent_id}, a builder in testing phase.
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+        - Success rate: {success_rate:.0%}
+
+        Your artifacts: {my_artifacts}
+        Last action result: {last_action_result}
+
+        TESTING TASK:
+        1. Invoke your artifact to test it
+        2. Check the result
+        3. Decide: iterate or ship?
+
+        If it works, cycle back to ideating.
+        If it fails, you may need to redesign.
+      transition_to: "ideating"
+
+error_handling:
+  default_on_failure: retry
+  max_retries: 2
