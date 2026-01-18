@@ -139,10 +139,16 @@ Create `docs/meta/25_pr-review-process.md` with:
 
 ## Required Tests
 
-No code tests - this is process/documentation.
+### Existing Tests (Must Pass)
 
-Verification:
-- [ ] Next PR requires review to merge
+No new tests needed - this is documentation/process only.
+
+| Test Pattern | Why |
+|--------------|-----|
+| `pytest tests/` | All tests still pass |
+| `python scripts/check_doc_coupling.py` | Doc coupling satisfied |
+
+### Manual Verification
 - [ ] Review checklist is in CLAUDE.md
 - [ ] PR template appears on new PRs
 
