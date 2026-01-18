@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .parser import JSONLParser
 from .kpis import calculate_kpis, EcosystemKPIs
 from .auditor import assess_health, AuditorThresholds, HealthReport
+from .dependency_graph import build_dependency_graph
 from ..config import get_validated_config
 
 # Import simulation runner for control (may not be available)
@@ -43,6 +44,7 @@ from .models import (
     EcosystemKPIsResponse,
     InvocationEvent,
     InvocationStatsResponse,
+    DependencyGraphData,
 )
 
 # Default paths
@@ -526,6 +528,43 @@ def create_app(
             offset=offset,
         )
         return [i.model_dump() for i in invocations]
+
+    @app.get("/api/artifacts/dependency-graph")
+    async def get_dependency_graph() -> dict[str, Any]:
+        """Get artifact dependency graph (Plan #64).
+
+        Returns graph data for visualizing artifact composition structure:
+        - nodes: Artifacts with metadata (owner, type, genesis status, depth)
+        - edges: depends_on relationships
+        - metrics: Graph statistics (max_depth, genesis_ratio, orphan_count)
+
+        This is pure observability - we don't define "good" structure,
+        just make the emergent capital structure visible.
+        """
+        dashboard.parser.parse_incremental()
+
+        # Extract artifact data for graph construction
+        artifacts = []
+        for artifact_id, artifact_state in dashboard.parser.state.artifacts.items():
+            # Get invocation count (unique invokers for Lindy score)
+            invocations = [
+                e for e in dashboard.parser.state.invocation_events
+                if e.artifact_id == artifact_id
+            ]
+            unique_invokers = len({inv.invoker_id for inv in invocations})
+
+            artifacts.append({
+                "artifact_id": artifact_id,
+                "name": artifact_state.artifact_id,  # Use ID as name
+                "owner": artifact_state.owner_id,
+                "artifact_type": artifact_state.artifact_type,
+                "depends_on": getattr(artifact_state, "depends_on", []) or [],
+                "created_at": artifact_state.created_at,
+                "unique_invokers": unique_invokers,
+            })
+
+        graph = build_dependency_graph(artifacts)
+        return graph.model_dump()
 
     @app.get("/api/thinking")
     async def get_thinking_history(

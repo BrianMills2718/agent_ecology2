@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Any, Literal
 
@@ -375,7 +376,51 @@ class ArtifactDetail(BaseModel):
     interface: dict[str, Any] | None = None
 
 
+# Dependency Graph Models (Plan #64)
+
+
+class DependencyNode(BaseModel):
+    """Node in the artifact dependency graph."""
+
+    artifact_id: str
+    name: str
+    owner: str
+    artifact_type: str
+    is_genesis: bool = False
+    usage_count: int = 0
+    created_at: datetime
+    depth: int = 0  # Distance from root (no dependencies)
+    lindy_score: float = 0.0  # age_days × unique_invokers
+
+
+class DependencyEdge(BaseModel):
+    """Edge representing a dependency relationship."""
+
+    source: str  # The artifact that depends on target
+    target: str  # The artifact being depended on
+
+
+class DependencyGraphMetrics(BaseModel):
+    """Computed metrics for the dependency graph."""
+
+    max_depth: int = 0  # Longest path from any root
+    avg_fanout: float = 0.0  # Mean dependents per node
+    genesis_dependency_ratio: float = 0.0  # Genesis deps / total deps
+    orphan_count: int = 0  # Artifacts with no dependents
+    total_nodes: int = 0
+    total_edges: int = 0
+
+
+class DependencyGraphData(BaseModel):
+    """Complete dependency graph data for visualization."""
+
+    nodes: list[DependencyNode] = Field(default_factory=list)
+    edges: list[DependencyEdge] = Field(default_factory=list)
+    metrics: DependencyGraphMetrics = Field(default_factory=DependencyGraphMetrics)
+
+
 # Ecosystem Health KPIs
+
 
 class EcosystemKPIsResponse(BaseModel):
     """Ecosystem health KPIs for API response."""
