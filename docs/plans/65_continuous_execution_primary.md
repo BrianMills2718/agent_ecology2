@@ -29,13 +29,13 @@
 
 ## Files Affected
 
-- `CLAUDE.md` (modify) - Update run example
-- `docs/architecture/current/agents.md` (modify) - Rewrite lifecycle section
-- `docs/architecture/current/execution_model.md` (modify) - Restructure for continuous-first
-- `docs/adr/0014-continuous-execution-primary.md` (create) - ADR
-- `docs/adr/README.md` (modify) - Add ADR to index
-- `docs/plans/CLAUDE.md` (modify) - Add plan to index
-- `features/agent_workflow.yaml` (modify) - Verify continuous alignment
+- CLAUDE.md (modify) - Update run example
+- docs/architecture/current/agents.md (modify) - Rewrite lifecycle section
+- docs/architecture/current/execution_model.md (modify) - Restructure for continuous-first
+- docs/adr/0014-continuous-execution-primary.md (create) - ADR
+- docs/adr/README.md (modify) - Add ADR to index
+- docs/plans/CLAUDE.md (modify) - Add plan to index
+- features/agent_workflow.yaml (modify) - Verify continuous alignment
 
 ---
 

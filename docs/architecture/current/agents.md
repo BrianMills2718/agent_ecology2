@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-16 (Plan #59 - Working memory injection)
+**Last verified:** 2026-01-17 (Plan #65 - Continuous execution as primary)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -10,21 +10,28 @@ How agents work TODAY.
 
 ## Agent Lifecycle
 
-Agents are passive. The system controls when they think and act.
+Agents run autonomous loops via `AgentLoop`. Each agent continuously:
+
+1. **Check resources** - RateTracker gates action rate
+2. **Decide action** - Builds prompt, calls LLM, returns proposal
+3. **Execute action** - System executes if resources available
+4. **Repeat** - Until resources exhausted or stopped
 
 ```
-Tick N:
-  1. System calls agent.propose_action_async(world_state)
-  2. Agent builds prompt (state + memory + history)
-  3. Agent calls LLM
-  4. Agent returns action proposal
-  5. System deducts thinking cost
-  6. System executes action (if resources available)
-  7. Agent receives result for next tick
-
-Tick N+1:
-  ... repeat
+AgentLoop._execute_iteration():
+  1. Check rate limit (RateTracker.can_consume)
+  2. Call agent.decide_action(world_state)
+     - Build prompt (state + memory + history)
+     - Call LLM
+     - Parse response into action
+  3. Execute action via artifact executor
+  4. Agent receives result
+  5. Loop continues (async, independent of other agents)
 ```
+
+**Integration point:** New agent-internal features (workflows, intelligence patterns) hook into `AgentLoop._execute_iteration()`.
+
+**Debug mode:** Use `--ticks N` for deterministic tick-based execution where all agents are synchronized.
 
 ---
 
