@@ -464,16 +464,66 @@ git diff main..origin/plan-03-docker
 # Instance B starts fresh, reads handoff, reviews
 ```
 
-**Review focus areas:**
-- Does the implementation match the plan?
-- Are tests meaningful (not just passing)?
-- Any security concerns or silent failures introduced?
-- Documentation updated appropriately?
+**Review Checklist (Concrete Items):**
+
+Code Quality:
+- [ ] No `except:` or `except Exception:` without `# exception-ok:` comment
+- [ ] No hardcoded values that should be in config
+- [ ] No TODO/FIXME without issue link
+- [ ] Functions over 50 lines have clear structure or justification
+
+Testing:
+- [ ] New code paths have tests
+- [ ] Tests cover error paths, not just happy path
+- [ ] No `# mock-ok:` without clear justification
+
+Security:
+- [ ] No secrets/credentials in code
+- [ ] User input validated before use
+- [ ] No SQL/command string concatenation
+
+Documentation:
+- [ ] Public functions have docstrings (or clear self-documenting names)
+- [ ] Complex logic has inline comments
+- [ ] Docs updated if behavior changes
+
+**Reject If:**
+- Silent exception swallowing (`except: pass`)
+- Tests that only check happy path for new risky code
+- Magic numbers without config
+- Missing error handling on external calls
+
+**Approve If:**
+- All checklist items pass OR have documented exceptions
+- CI passes
+- Implementation matches plan intent
 
 **Lightweight for small changes:** For trivial fixes, self-review with `--validate` is sufficient:
 ```bash
 python scripts/check_claims.py --release --validate
 ```
+
+### Review Assignment Workflow
+
+**On session start:**
+1. Run `gh pr list --state open` to see pending PRs
+2. Check which PRs have no reviews: `gh pr list --json number,reviews`
+3. Review PRs you didn't author (check commits for author)
+
+**To review a PR:**
+```bash
+# Fetch and view changes
+gh pr diff 123
+
+# Or checkout locally
+gh pr checkout 123
+
+# After review, submit via GitHub
+gh pr review 123 --approve --body "LGTM. Checklist verified."
+gh pr review 123 --request-changes --body "Issue: [describe problem]"
+```
+
+**Review within 24 hours** - stale PRs block progress.
 
 ### Review vs. Ownership
 

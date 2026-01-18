@@ -36,8 +36,8 @@
 ## Files Affected
 
 - CLAUDE.md (modify) - Add concrete review checklist, clarify workflow
-- docs/meta/pr-review-process.md (create) - Detailed review guide
-- .github/PULL_REQUEST_TEMPLATE.md (create) - PR template with review hints
+- docs/meta/25_pr-review-process.md (create) - Detailed review guide
+- .github/pull_request_template.md (modify) - PR template with review hints
 - GitHub repo settings (configure) - Enable required reviews
 
 ---
@@ -129,7 +129,7 @@ Enable GitHub branch protection:
 
 ### Phase 5: Meta Documentation
 
-Create `docs/meta/pr-review-process.md` with:
+Create `docs/meta/25_pr-review-process.md` with:
 - Full review guide
 - Examples of good vs bad reviews
 - When to approve vs request changes
@@ -161,7 +161,7 @@ Create a test PR and verify:
 
 ### Documentation
 - [ ] CLAUDE.md has concrete review checklist
-- [ ] docs/meta/pr-review-process.md created
+- [ ] docs/meta/25_pr-review-process.md created
 - [ ] .github/PULL_REQUEST_TEMPLATE.md created
 
 ### Enforcement
