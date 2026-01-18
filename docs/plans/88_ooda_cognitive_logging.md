@@ -154,6 +154,7 @@ Net cost: ~$0.0001-0.0005 per agent turn. Acceptable for improved observability.
 - docs/architecture/current/configuration.md (modify) - Document cognitive_schema config
 - docs/GLOSSARY.md (modify) - Add cognitive schema terminology
 - scripts/doc_coupling.yaml (modify) - Add dashboard coupling rules
+- docs/architecture/current/ci.md (modify) - Update Last verified for doc_coupling changes
 
 ## Related
 
