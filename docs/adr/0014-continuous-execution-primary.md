@@ -1,6 +1,6 @@
 # ADR-0014: Continuous Execution as Primary Model
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-01-17
 
 ## Context

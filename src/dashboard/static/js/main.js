@@ -30,9 +30,13 @@ const Dashboard = {
                 this.thinkingPanel = new ThinkingPanel();
                 this.thinkingPanel.init();
             }
+            if (typeof DependencyGraphPanel !== 'undefined') {
+                DependencyGraphPanel.init();
+            }
 
-            // Set up charts panel toggle
+            // Set up collapsible panel toggles
             this.setupChartsToggle();
+            this.setupDependencyToggle();
 
             // Connect WebSocket
             window.wsManager.connect();
@@ -102,6 +106,11 @@ const Dashboard = {
             if (this.thinkingPanel && event.event_type === 'thinking') {
                 this.thinkingPanel.refresh();
             }
+            // Refresh dependency graph on artifact events
+            if (typeof DependencyGraphPanel !== 'undefined' &&
+                ['artifact_created', 'artifact_updated'].includes(event.event_type)) {
+                DependencyGraphPanel.refresh();
+            }
         });
 
         // On state updates
@@ -136,6 +145,9 @@ const Dashboard = {
         if (this.thinkingPanel) {
             this.thinkingPanel.refresh();
         }
+        if (typeof DependencyGraphPanel !== 'undefined' && DependencyGraphPanel.refresh) {
+            DependencyGraphPanel.refresh();
+        }
     },
 
     /**
@@ -151,6 +163,29 @@ const Dashboard = {
                     const icon = panel.querySelector('.collapse-icon');
                     if (icon) {
                         icon.textContent = panel.classList.contains('collapsed') ? '+' : 'x';
+                    }
+                }
+            });
+        }
+    },
+
+    /**
+     * Set up collapsible dependency graph panel
+     */
+    setupDependencyToggle() {
+        const toggle = document.getElementById('dependency-toggle');
+        if (toggle) {
+            toggle.addEventListener('click', () => {
+                const panel = toggle.closest('.panel');
+                if (panel) {
+                    panel.classList.toggle('collapsed');
+                    const icon = panel.querySelector('.collapse-icon');
+                    if (icon) {
+                        icon.textContent = panel.classList.contains('collapsed') ? '+' : 'x';
+                    }
+                    // Refresh graph when expanded to ensure proper sizing
+                    if (!panel.classList.contains('collapsed') && typeof DependencyGraphPanel !== 'undefined') {
+                        setTimeout(() => DependencyGraphPanel.refresh(), 100);
                     }
                 }
             });
