@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-17 (Plan #62 - Config magic numbers)
+**Last verified:** 2026-01-17 (Plan #65 - Continuous execution as primary)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
@@ -227,33 +227,45 @@ Use `python scripts/view_log.py --summary` to view aggregated tick summaries.
 
 ## Key Files
 
+### Autonomous Mode (Primary)
+
 | File | Key Functions | Description |
 |------|---------------|-------------|
-| `src/simulation/runner.py` | `SimulationRunner.run()` | Main run loop (includes Phase 1 parallel gather) |
+| `src/simulation/agent_loop.py` | `AgentLoop._execute_iteration()` | **Primary integration point** for agent features |
+| `src/simulation/agent_loop.py` | `AgentLoopManager` | Manages agent loops lifecycle |
+| `src/agents/rate_tracker.py` | `RateTracker` | Rolling window resource gating |
+| `src/world/world.py` | `World.execute_action()` | Action dispatcher |
+| `src/world/actions.py` | `parse_intent_from_json()` | Action parsing (the "narrow waist") |
+
+### Tick Mode (Debug)
+
+| File | Key Functions | Description |
+|------|---------------|-------------|
+| `src/simulation/runner.py` | `SimulationRunner.run()` | Legacy tick loop (includes Phase 1 parallel gather) |
 | `src/simulation/runner.py` | `SimulationRunner._think_agent()` | Single agent thinking |
 | `src/simulation/runner.py` | `SimulationRunner._execute_proposals()` | Phase 2 sequential execution |
 | `src/world/world.py` | `World.advance_tick()` | Tick lifecycle |
-| `src/world/world.py` | `World.execute_action()` | Action dispatcher |
-| `src/world/actions.py` | `parse_intent_from_json()` | Action parsing (the "narrow waist") |
 
 ---
 
 ## Implications
 
-### Agents Are Passive
+### Autonomous Mode (Default)
+- Agents decide their own pace via `AgentLoop`
+- Resource exhaustion (RateTracker) gates actions, not ticks
+- Efficient agents can act more frequently → selection pressure
+- Strategy diversity: fast/slow strategies emerge naturally
+
+### Tick Mode (Debug Only)
 - Agents don't decide when to act
 - System triggers all agents each tick
 - No agent can act more/less frequently than others
+- Useful for deterministic testing and debugging
 
-### Snapshot Consistency
+### Snapshot Consistency (Tick Mode Only)
 - All agents see same world state within a tick
 - No races during thinking phase
 - Races resolved in Phase 2 by randomized order
-
-### Fixed Parallelism
-- All N agents think in parallel
-- All N agents get one action per tick
-- No way for "fast" agents to do more
 
 ---
 
@@ -319,7 +331,7 @@ execution:
 
 | Current | Target |
 |---------|--------|
-| Tick-based default | Autonomous default |
+| Autonomous default (ADR-0014) | Autonomous default ✅ |
 | Optional RateTracker | RateTracker always on |
 | Tick resets flow resources | Rolling window only |
 

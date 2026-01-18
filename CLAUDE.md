@@ -93,7 +93,8 @@ agent_ecology/
 
 ```bash
 pip install -e .                              # Required for imports
-python run.py --ticks 10 --agents 1           # Run simulation
+python run.py --duration 60 --agents 3        # Run simulation (autonomous)
+python run.py --ticks 10 --agents 1           # Debug mode (deterministic)
 pytest tests/                                 # Run tests (must pass)
 python -m mypy src/ --ignore-missing-imports  # Type check (must pass)
 python scripts/check_doc_coupling.py          # Doc-code coupling (must pass)
