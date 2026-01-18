@@ -120,12 +120,11 @@ agents:
 
 ## Required Tests
 
-- `tests/unit/test_ledger.py::test_llm_budget_allocation`
-- `tests/unit/test_ledger.py::test_llm_budget_consumption`
-- `tests/unit/test_ledger.py::test_llm_budget_exhausted`
-- `tests/integration/test_per_agent_budget.py::test_budget_isolation`
-- `tests/integration/test_per_agent_budget.py::test_budget_trading`
-- `tests/e2e/test_budget_e2e.py::test_agent_stops_when_broke`
+- `tests/unit/test_per_agent_budget.py::TestLedgerLLMBudget::test_llm_budget_allocation`
+- `tests/unit/test_per_agent_budget.py::TestLedgerLLMBudget::test_llm_budget_consumption`
+- `tests/unit/test_per_agent_budget.py::TestLedgerLLMBudget::test_llm_budget_exhausted`
+- `tests/integration/test_per_agent_budget.py::TestPerAgentBudgetIntegration::test_budget_isolation`
+- `tests/integration/test_per_agent_budget.py::TestBudgetTrading::test_budget_transfer`
 
 ---
 
