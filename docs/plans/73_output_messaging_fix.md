@@ -42,6 +42,10 @@
 - src/agents/memory.py (modify - datetime deprecation)
 - run.py (modify - WSL browser note)
 - tests/unit/test_runner_output.py (create - output tests)
+- docs/architecture/current/agents.md (modify - update verified date)
+- docs/architecture/current/artifacts_executor.md (modify - update verified date)
+- docs/architecture/current/execution_model.md (modify - update verified date)
+- docs/architecture/current/supporting_systems.md (modify - update verified date)
 
 ---
 
