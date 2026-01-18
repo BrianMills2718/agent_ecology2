@@ -2,7 +2,19 @@
 # Machine-readable tracking for multi-CC coordination.
 # Use: python scripts/check_claims.py --help
 
-claims: []
+claims:
+- cc_id: plan-86-ooda-logging
+  task: 'Plan #88: Fix CI issues'
+  claimed_at: '2026-01-18T16:47:27Z'
+  plan: 88
+- cc_id: plan-92-worktree-validation
+  task: 'Plan #92: Worktree/Branch Mismatch Detection'
+  claimed_at: '2026-01-18T16:54:32Z'
+  plan: 92
+- cc_id: main
+  task: 'Plan #91: Acceptance gate terminology cleanup'
+  claimed_at: '2026-01-18T16:59:03Z'
+  plan: 91
 completed:
 - cc_id: tier2-architecture-decisions
   task: Tier 2 architecture decisions (Items 4-7)
@@ -62,3 +74,19 @@ completed:
   plan: 62
   task: Fix doc-code coupling for config magic numbers
   completed_at: '2026-01-17T23:12:08Z'
+- cc_id: plan-88-ooda-fresh
+  plan: 88
+  task: 'Plan #88: OODA Cognitive Logging'
+  completed_at: '2026-01-18T16:43:29Z'
+- cc_id: plan-86-ooda-logging
+  plan: 88
+  task: 'Plan #88: OODA Cognitive Logging'
+  completed_at: '2026-01-18T16:43:53Z'
+- cc_id: plan-91-worktree-validation
+  plan: 91
+  task: 'Plan #91: Worktree/Branch Mismatch Detection'
+  completed_at: '2026-01-18T16:53:41Z'
+- cc_id: plan-91-worktree-validation
+  plan: 92
+  task: 'Plan #92: Worktree/Branch Mismatch Detection'
+  completed_at: '2026-01-18T16:54:26Z'

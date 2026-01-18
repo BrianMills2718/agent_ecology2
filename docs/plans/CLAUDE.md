@@ -117,7 +117,7 @@ Master index of all gaps and their implementation plans.
 | 88 | [OODA Cognitive Logging](88_ooda_cognitive_logging.md) | **High** | 🚧 In Progress | Agent observability |
 | 89 | [Plan Enforcement Hooks](89_plan_enforcement_hooks.md) | **High** | 📋 Planned | - |
 | 90 | [Cognitive Schema Configurability](90_cognitive_schema_configurability.md) | Low | 📋 Post-V1 | #88 |
-| 91 | [Acceptance Gate Cleanup](91_acceptance_gate_cleanup.md) | **High** | 📋 Planned | Terminology refactor |
+| 91 | [Acceptance Gate Cleanup](91_acceptance_gate_cleanup.md) | **High** | ✅ Complete | Meta-process clarity |
 | 92 | [Worktree/Branch Mismatch Detection](92_worktree_branch_validation.md) | **High** | 🚧 In Progress | Meta-process integrity |
 
 ---
