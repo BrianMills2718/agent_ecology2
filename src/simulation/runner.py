@@ -331,7 +331,7 @@ class SimulationRunner:
         return new_agents
 
     def _handle_mint_tick(self) -> AuctionResult | None:
-        """Handle mint auction tick.
+        """Handle mint auction tick (legacy tick-based mode).
 
         Calls the mint's on_tick method to:
         - Start new bidding windows
@@ -352,12 +352,40 @@ class SimulationRunner:
         # Cast to GenesisMint since we verified it has on_tick
         result = cast(GenesisMint, mint).on_tick(self.world.tick)
 
-        # Log auction result if there was one
+        self._log_mint_result(result)
+        return result
+
+    def _handle_mint_update(self) -> AuctionResult | None:
+        """Handle mint auction update (Plan #83 - time-based).
+
+        Calls the mint's update method to check if auctions need to:
+        - Start new bidding windows
+        - Resolve completed auctions
+        - Distribute UBI from winning bids
+
+        Returns:
+            AuctionResult dict if an auction was resolved, None otherwise.
+        """
+        mint = self.world.genesis_artifacts.get("genesis_mint")
+        if mint is None:
+            return None
+
+        # Check if mint has update method (time-based mint)
+        if not hasattr(mint, "update"):
+            return None
+
+        # Cast to GenesisMint since we verified it has update
+        result = cast(GenesisMint, mint).update()
+
+        self._log_mint_result(result)
+        return result
+
+    def _log_mint_result(self, result: AuctionResult | None) -> None:
+        """Log a mint auction result if one occurred."""
         if result:
             self.world.logger.log(
                 "mint_auction",
                 {
-                    "tick": self.world.tick,
                     "winner_id": result.get("winner_id"),
                     "artifact_id": result.get("artifact_id"),
                     "winning_bid": result.get("winning_bid"),
@@ -368,8 +396,6 @@ class SimulationRunner:
                     "error": result.get("error"),
                 },
             )
-
-        return result
 
     async def _think_agent(
         self,
@@ -1023,6 +1049,7 @@ class SimulationRunner:
         """Run simulation in autonomous mode with independent agent loops.
 
         Agents run continuously in their own loops, resource-gated by RateTracker.
+        Plan #83: Mint auctions run on wall-clock time via periodic update().
 
         Args:
             duration: Maximum seconds to run (optional, runs until stopped if not provided)
@@ -1046,6 +1073,9 @@ class SimulationRunner:
         # Start all loops
         await self.world.loop_manager.start_all()
 
+        # Plan #83: Start mint update background task
+        mint_task = asyncio.create_task(self._mint_update_loop())
+
         try:
             if duration is not None:
                 # Run for specified duration
@@ -1064,10 +1094,44 @@ class SimulationRunner:
             if self.verbose:
                 print(f"  [AUTONOMOUS] Cancelled, stopping loops...")
         finally:
+            # Stop mint update task
+            mint_task.cancel()
+            try:
+                await mint_task
+            except asyncio.CancelledError:
+                pass
+
             # Graceful shutdown
             await self.world.loop_manager.stop_all()
             if self.verbose:
                 print(f"  [AUTONOMOUS] All loops stopped.")
+
+    async def _mint_update_loop(self) -> None:
+        """Background task to periodically update mint auctions (Plan #83).
+
+        Runs continuously, calling mint.update() every second to check if
+        any auction phase transitions are needed.
+        """
+        try:
+            while True:
+                # Check for auction state changes
+                result = self._handle_mint_update()
+
+                # Log if an auction was resolved
+                if result and self.verbose:
+                    if result.get("winner_id"):
+                        print(f"  [AUCTION] Winner: {result['winner_id']}, "
+                              f"paid {result['price_paid']} scrip, "
+                              f"score: {result.get('score')}, "
+                              f"minted: {result['scrip_minted']}")
+                    elif result.get("error"):
+                        print(f"  [AUCTION] {result['error']}")
+
+                # Poll interval - check once per second
+                await asyncio.sleep(1.0)
+        except asyncio.CancelledError:
+            # Normal shutdown
+            pass
 
     def _create_agent_loop(self, agent: Agent) -> None:
         """Create an agent loop with appropriate config and callbacks.

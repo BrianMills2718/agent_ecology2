@@ -1,11 +1,14 @@
 """Tests for Oracle Anytime Bidding (Plan #5).
 
+Plan #83: Tests updated for time-based execution (no ticks).
+
 Tests the simplified mint model where:
-- Bids are accepted at any tick (not just during bidding window)
-- Auctions resolve on fixed schedule
+- Bids are accepted at any time (not just during bidding window)
+- Auctions resolve on time-based schedule
 - Bids apply to the next auction resolution
 """
 
+import time
 import pytest
 from src.world.ledger import Ledger
 from src.world.artifacts import ArtifactStore
@@ -17,7 +20,7 @@ class TestAnytimeBidding:
     """Test anytime bidding functionality."""
 
     def test_bid_before_first_auction(self):
-        """Bids accepted before first_auction_tick (tick 50).
+        """Bids accepted before first_auction_delay (Plan #83 - time-based).
 
         Plan #5: Phase-based restriction removed. Bids accepted anytime.
         """
@@ -38,20 +41,19 @@ class TestAnytimeBidding:
             ubi_callback=ubi_callback,
             artifact_store=store,
             ledger=ledger,
+            start_time=time.time(),  # Just started - still in WAITING phase
         )
 
-        # Before first_auction_tick (default 50)
-        mint.on_tick(10)
+        mint.update()  # Won't start auction yet (not enough time elapsed)
 
-        # OLD: This would return success=False with "not open" error
-        # NEW: Bid should be accepted
+        # Bids should be accepted anytime
         result = mint._bid(["my_tool", 20], "agent_1")
 
-        assert result["success"] is True, f"Bid should be accepted before first_auction_tick: {result.get('error', '')}"
+        assert result["success"] is True, f"Bid should be accepted before first_auction_delay: {result.get('error', '')}"
         assert result["amount"] == 20
 
     def test_bid_during_closed_phase(self):
-        """Bids accepted during CLOSED phase (after bidding window ends).
+        """Bids accepted during CLOSED phase (Plan #83 - time-based).
 
         Plan #5: Phase-based restriction removed. Bids accepted anytime.
         """
@@ -72,78 +74,93 @@ class TestAnytimeBidding:
             ubi_callback=ubi_callback,
             artifact_store=store,
             ledger=ledger,
+            start_time=time.time() - 31,  # Past first auction delay
         )
 
-        # Start bidding at tick 50
-        mint.on_tick(50)
-        # Resolve auction at tick 60
-        mint.on_tick(60)
-        # Now in CLOSED phase (tick 61-99)
-        mint.on_tick(61)
+        # Start auction
+        mint.update()
 
-        # OLD: This would return success=False with "window closed" error
-        # NEW: Bid should be accepted (for next auction)
+        # Set auction to be past bidding window (CLOSED phase)
+        mint._auction_start_time = time.time() - 35  # 35s ago = past bidding window
+
+        # Bids should still be accepted in CLOSED phase (for next auction)
         result = mint._bid(["my_tool", 20], "agent_1")
 
         assert result["success"] is True, f"Bid should be accepted in CLOSED phase: {result.get('error', '')}"
         assert result["amount"] == 20
 
     def test_continuous_bidding(self):
-        """Bids accepted at any tick in simulation.
+        """Bids accepted at any time in simulation (Plan #83 - time-based).
 
-        Plan #5: Verify bids work at tick 0, 25, 75, 150, etc.
+        Plan #5: Verify bids work regardless of phase.
         """
+        # Test bidding in WAITING, BIDDING, and CLOSED phases
+
+        # WAITING phase
         ledger = Ledger()
         ledger.create_principal("agent_1", starting_scrip=100)
         store = ArtifactStore()
         store.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
                    owner_id="agent_1", executable=True)
 
-        def mint_callback(agent_id: str, amount: int) -> None:
-            ledger.credit_scrip(agent_id, amount)
-
-        def ubi_callback(amount: int, exclude: str | None) -> dict[str, int]:
-            return ledger.distribute_ubi(amount, exclude)
-
         mint = GenesisMint(
-            mint_callback=mint_callback,
-            ubi_callback=ubi_callback,
+            mint_callback=lambda a, am: ledger.credit_scrip(a, am),
+            ubi_callback=lambda am, ex: ledger.distribute_ubi(am, ex),
             artifact_store=store,
             ledger=ledger,
+            start_time=time.time(),  # WAITING phase
         )
+        mint.update()
+        result = mint._bid(["my_tool", 20], "agent_1")
+        assert result["success"] is True, "Bid should succeed in WAITING phase"
 
-        # Test bidding at various ticks
-        test_ticks = [0, 25, 49, 51, 75, 99, 101, 150]
+        # BIDDING phase
+        ledger2 = Ledger()
+        ledger2.create_principal("agent_1", starting_scrip=100)
+        store2 = ArtifactStore()
+        store2.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
+                    owner_id="agent_1", executable=True)
 
-        for tick in test_ticks:
-            # Reset state for each test
-            ledger2 = Ledger()
-            ledger2.create_principal("agent_1", starting_scrip=100)
-            store2 = ArtifactStore()
-            store2.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
-                        owner_id="agent_1", executable=True)
+        mint2 = GenesisMint(
+            mint_callback=lambda a, am: ledger2.credit_scrip(a, am),
+            ubi_callback=lambda am, ex: ledger2.distribute_ubi(am, ex),
+            artifact_store=store2,
+            ledger=ledger2,
+            start_time=time.time() - 31,  # BIDDING phase
+        )
+        mint2.update()
+        result2 = mint2._bid(["my_tool", 20], "agent_1")
+        assert result2["success"] is True, "Bid should succeed in BIDDING phase"
 
-            mint2 = GenesisMint(
-                mint_callback=lambda a, am: ledger2.credit_scrip(a, am),
-                ubi_callback=lambda am, ex: ledger2.distribute_ubi(am, ex),
-                artifact_store=store2,
-                ledger=ledger2,
-            )
+        # CLOSED phase
+        ledger3 = Ledger()
+        ledger3.create_principal("agent_1", starting_scrip=100)
+        store3 = ArtifactStore()
+        store3.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
+                    owner_id="agent_1", executable=True)
 
-            mint2.on_tick(tick)
-            result = mint2._bid(["my_tool", 20], "agent_1")
-
-            assert result["success"] is True, f"Bid should be accepted at tick {tick}: {result.get('error', '')}"
+        mint3 = GenesisMint(
+            mint_callback=lambda a, am: ledger3.credit_scrip(a, am),
+            ubi_callback=lambda am, ex: ledger3.distribute_ubi(am, ex),
+            artifact_store=store3,
+            ledger=ledger3,
+            start_time=time.time() - 31,
+        )
+        mint3.update()
+        mint3._auction_start_time = time.time() - 35  # CLOSED phase
+        result3 = mint3._bid(["my_tool", 20], "agent_1")
+        assert result3["success"] is True, "Bid should succeed in CLOSED phase"
 
 
 @pytest.mark.plans(5)
 class TestBidTimingForAuctions:
-    """Test that bids apply to the correct auction."""
+    """Test that bids apply to the correct auction (Plan #83 - time-based)."""
 
     def test_early_bid_included_in_first_auction(self):
-        """Bid before first_auction_tick is included in first auction resolution.
+        """Bid before first auction is included in first auction resolution.
 
         Plan #5: Early bids should be processed when auction resolves.
+        Plan #83: Uses time-based auction resolution.
         """
         ledger = Ledger()
         ledger.create_principal("agent_1", starting_scrip=100)
@@ -162,26 +179,29 @@ class TestBidTimingForAuctions:
             ubi_callback=ubi_callback,
             artifact_store=store,
             ledger=ledger,
+            start_time=time.time(),  # Just started
         )
 
-        # Submit bid early (tick 10)
-        mint.on_tick(10)
+        # Submit bid early (during WAITING phase)
+        mint.update()
         result = mint._bid(["my_tool", 30], "agent_1")
         assert result["success"] is True
 
-        # Advance to first auction start
-        mint.on_tick(50)
+        # Simulate time passing to start auction
+        mint._simulation_start_time = time.time() - 31  # Past first auction delay
+        mint.update()  # This should start the auction
 
-        # Resolve first auction
-        auction_result = mint.on_tick(60)
+        # Simulate time passing to resolve auction
+        mint._auction_start_time = time.time() - 35  # Past bidding window
+        auction_result = mint.update()  # This should resolve
 
         # The early bid should be included and win
-        assert auction_result is not None
+        assert auction_result is not None, "Auction should resolve with early bid"
         assert auction_result["winner_id"] == "agent_1"
         assert auction_result["artifact_id"] == "my_tool"
 
     def test_bid_after_resolution_applies_to_next_auction(self):
-        """Bid after resolution applies to next auction.
+        """Bid after resolution applies to next auction (Plan #83 - time-based).
 
         Plan #5: Bids in CLOSED phase join next auction cycle.
         """
@@ -205,47 +225,47 @@ class TestBidTimingForAuctions:
             ubi_callback=ubi_callback,
             artifact_store=store,
             ledger=ledger,
+            start_time=time.time() - 31,  # Past first auction delay
         )
 
         # First auction cycle
-        mint.on_tick(50)
+        mint.update()  # Start auction
         mint._bid(["tool_1", 30], "agent_1")
-        mint.on_tick(60)  # Resolve first auction
 
-        # Bid during CLOSED phase (tick 61)
-        mint.on_tick(61)
+        # Resolve first auction
+        mint._auction_start_time = time.time() - 35
+        first_result = mint.update()
+        assert first_result is not None
+        assert first_result["winner_id"] == "agent_1"
+
+        # Bid during CLOSED phase (for next auction)
         result = mint._bid(["tool_2", 25], "agent_2")
         assert result["success"] is True
 
-        # Advance to next auction period (tick 100 is next auction start with period 50)
-        # Actually need to advance through the ticks properly
-        for tick in range(62, 100):
-            mint.on_tick(tick)
+        # Start and resolve second auction
+        # The update() should start a new auction period
+        mint._auction_start_time = time.time()  # New auction just started
+        mint.update()  # This processes but doesn't resolve yet
 
-        # Start second auction at tick 100
-        mint.on_tick(100)
+        # Resolve second auction
+        mint._auction_start_time = time.time() - 35  # Past bidding window
+        second_result = mint.update()
 
-        # Resolve second auction at tick 110
-        second_result = mint.on_tick(110)
-
-        # The bid from tick 61 should be included
-        assert second_result is not None
+        # The bid from the CLOSED phase should be included
+        assert second_result is not None, "Second auction should resolve"
         assert second_result["winner_id"] == "agent_2"
         assert second_result["artifact_id"] == "tool_2"
 
 
 @pytest.mark.plans(5)
 class TestDeprecatedConfigWarnings:
-    """Test deprecation warnings for old config fields."""
+    """Test deprecation warnings for old config fields (Plan #83 - time-based)."""
 
-    def test_first_auction_tick_deprecated(self):
-        """Log deprecation warning if first_auction_tick is configured.
+    def test_first_auction_delay_works(self):
+        """First auction delay controls when bidding starts.
 
-        Plan #5: Old configs should still work but log warning.
+        Plan #83: Uses first_auction_delay_seconds instead of first_auction_tick.
         """
-        # This test verifies backward compatibility
-        # first_auction_tick should be ignored (bids accepted anytime)
-        # but shouldn't cause errors
         ledger = Ledger()
         ledger.create_principal("agent_1", starting_scrip=100)
         store = ArtifactStore()
@@ -263,12 +283,12 @@ class TestDeprecatedConfigWarnings:
             ubi_callback=ubi_callback,
             artifact_store=store,
             ledger=ledger,
+            start_time=time.time(),  # Just started
         )
 
-        # With anytime bidding, first_auction_tick doesn't block bids
-        # but is still used for scheduling the first auction resolution
-        mint.on_tick(5)
+        # With anytime bidding, bids are accepted regardless of phase
+        mint.update()
         result = mint._bid(["my_tool", 20], "agent_1")
 
-        # Bid should succeed regardless of first_auction_tick
+        # Bid should succeed
         assert result["success"] is True

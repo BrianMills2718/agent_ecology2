@@ -97,11 +97,11 @@ genesis:
     description: "Auction-based mint - bid to submit artifacts for LLM scoring"
     mint_ratio: 10              # score / 10 = scrip minted
 
-    # Auction configuration
+    # Auction configuration (all times in seconds)
     auction:
-      period: 50                # Ticks between auctions
-      bidding_window: 10        # Duration of bidding phase (ticks)
-      first_auction_tick: 50    # Grace period before first auction
+      period_seconds: 60.0      # Seconds between auction starts
+      bidding_window_seconds: 30.0  # Duration of bidding phase (seconds)
+      first_auction_delay_seconds: 30.0  # Delay before first auction starts
       slots_per_auction: 1      # Winners per auction
       minimum_bid: 1            # Floor bid amount
       tie_breaking: "random"    # "random" or "first_bid"

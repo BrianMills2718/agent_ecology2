@@ -284,20 +284,20 @@ class MintMethodsConfig(StrictModel):
 class MintAuctionConfig(StrictModel):
     """Mint auction configuration."""
 
-    period: int = Field(
-        default=50,
+    period_seconds: float = Field(
+        default=60.0,
         gt=0,
-        description="Ticks between auctions"
+        description="Seconds between auction starts"
     )
-    bidding_window: int = Field(
-        default=10,
+    bidding_window_seconds: float = Field(
+        default=30.0,
         gt=0,
-        description="Duration of bidding phase (ticks)"
+        description="Duration of bidding phase (seconds)"
     )
-    first_auction_tick: int = Field(
-        default=50,
+    first_auction_delay_seconds: float = Field(
+        default=30.0,
         ge=0,
-        description="Grace period before first auction (0 = start immediately)"
+        description="Delay before first auction (0 = start immediately)"
     )
     slots_per_auction: int = Field(
         default=1,
@@ -326,11 +326,11 @@ class MintAuctionConfig(StrictModel):
         description="Refund winner's bid if LLM scoring fails"
     )
 
-    @field_validator("bidding_window")
+    @field_validator("bidding_window_seconds")
     @classmethod
-    def bidding_window_less_than_period(cls, v: int, info: ValidationInfo) -> int:
+    def bidding_window_less_than_period(cls, v: float, info: ValidationInfo) -> float:
         """Ensure bidding window is less than period."""
-        # Note: Can't access period here easily, validated at runtime
+        # Note: Can't access period here easily, validated at runtime in MintConfig
         return v
 
 
@@ -353,10 +353,10 @@ class MintConfig(StrictModel):
     @model_validator(mode="after")
     def validate_bidding_window(self) -> "MintConfig":
         """Ensure bidding window is less than period."""
-        if self.auction.bidding_window >= self.auction.period:
+        if self.auction.bidding_window_seconds >= self.auction.period_seconds:
             raise ValueError(
-                f"bidding_window ({self.auction.bidding_window}) must be less than "
-                f"period ({self.auction.period})"
+                f"bidding_window_seconds ({self.auction.bidding_window_seconds}) must be less than "
+                f"period_seconds ({self.auction.period_seconds})"
             )
         return self
 

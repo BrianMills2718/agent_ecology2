@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-18 (Plan #88 - OODA reasoning propagation)
+**Last verified:** 2026-01-18 (Plan #83 - time-based execution)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
@@ -139,7 +139,57 @@ This enables LLM-native monitoring: analyzing reasoning quality, extracting stra
 
 ---
 
-## Tick Lifecycle
+## Time-Based Mint Auctions (Plan #83)
+
+The mint system uses wall-clock time for auction phases, not ticks. This enables proper auction operation in autonomous/duration mode.
+
+### Auction Configuration (Time-Based)
+
+```yaml
+auction:
+  period_seconds: 60.0           # Seconds between auction starts
+  bidding_window_seconds: 30.0   # Duration of bidding phase (seconds)
+  first_auction_delay_seconds: 30.0  # Delay before first auction starts
+```
+
+### Auction Phases
+
+| Phase | Duration | Description |
+|-------|----------|-------------|
+| WAITING | `first_auction_delay_seconds` | Before first auction starts |
+| BIDDING | `bidding_window_seconds` | Bids accepted and held in escrow |
+| CLOSED | Until period ends | Auction resolved, bids apply to next cycle |
+
+### Background Mint Updates (Autonomous Mode)
+
+In autonomous mode, `SimulationRunner._mint_update_loop()` runs as a background task:
+
+```python
+async def _mint_update_loop(self) -> None:
+    """Periodically call mint.update() for time-based auctions."""
+    while True:
+        result = self._handle_mint_update()
+        if result:
+            # Log auction resolution
+        await asyncio.sleep(1.0)
+```
+
+The mint's `update()` method:
+1. Checks elapsed time since simulation start
+2. Starts auctions after `first_auction_delay_seconds`
+3. Resolves auctions after `bidding_window_seconds`
+4. Schedules next auction after `period_seconds`
+
+### Anytime Bidding (Plan #5)
+
+Bids are accepted at any time, not just during the BIDDING phase. Early bids are held until the next auction resolution.
+
+---
+
+## Tick Lifecycle (Legacy Mode)
+
+> **Note:** `advance_tick()` is deprecated for time-based execution (Plan #83).
+> In autonomous/duration mode, use wall-clock time instead of tick-based progression.
 
 ### advance_tick() (`World.advance_tick()`)
 
