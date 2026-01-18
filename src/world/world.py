@@ -1334,7 +1334,7 @@ class World:
             {"success": True} on success
             {"success": False, "error": "..."} on failure
         """
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         # Check if genesis artifact
         if artifact_id.startswith("genesis_"):
@@ -1355,7 +1355,7 @@ class World:
 
         # Soft delete - mark as tombstone
         artifact.deleted = True
-        artifact.deleted_at = datetime.utcnow().isoformat()
+        artifact.deleted_at = datetime.now(timezone.utc).isoformat()
         artifact.deleted_by = requester_id
 
         # Log the deletion

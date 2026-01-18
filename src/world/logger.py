@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -57,7 +57,7 @@ class SummaryLogger:
         """
         summary: dict[str, Any] = {
             "tick": tick,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "agents_active": agents_active,
             "actions_executed": actions_executed,
             "actions_by_type": actions_by_type or {},
@@ -146,7 +146,7 @@ class TickSummaryCollector:
         """
         summary: dict[str, Any] = {
             "tick": tick,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "agents_active": agents_active,
             "actions_executed": self._actions_executed,
             "actions_by_type": self._actions_by_type.copy(),
@@ -243,7 +243,7 @@ class EventLogger:
     def log(self, event_type: str, data: dict[str, Any]) -> None:
         """Log an event to the JSONL file"""
         event: dict[str, Any] = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "event_type": event_type,
             **data,
         }
