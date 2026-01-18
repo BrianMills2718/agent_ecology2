@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-18 (Plan #70 - Agent workflow support)
+**Last verified:** 2026-01-18 (Plan #71 - Template injection Phase 2)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -182,7 +182,7 @@ See `src/agents/_handbook/memory.md` for agent-facing documentation.
 
 ---
 
-## Agent Workflows (Plan #70)
+## Agent Workflows (Plans #70, #71)
 
 Agents can have configurable workflows that define step-by-step execution patterns.
 
@@ -193,25 +193,54 @@ Agents can have configurable workflows that define step-by-step execution patter
 3. **Steps can be code or LLM calls** - flexible execution model
 4. **Fallback to propose_action()** if no workflow configured
 
-### Configuration
+### Configuration (Phase 1)
 
-`agent.yaml` workflow section:
+`agent.yaml` workflow section with `{variable}` interpolation:
 
 ```yaml
 workflow:
   steps:
     - name: "observe"
       type: "llm"
-      prompt: "Analyze current world state"
+      prompt: "Agent {agent_id}, analyze world state at tick {tick}"
+    - name: "decide"
+      type: "code"
+      code: "priority = 'high' if balance > 50 else 'low'"
+    - name: "act"
+      type: "llm"
+      prompt: "Priority: {priority}. Choose an action."
+```
+
+### Template Injection (Phase 2 - Plan #71)
+
+For more complex prompts, use `prompt_template` with `{{mustache}}` syntax and explicit `inject` blocks:
+
+```yaml
+workflow:
+  steps:
     - name: "decide"
       type: "llm"
-      prompt: "Based on observations, choose an action"
-    - name: "act"
-      type: "code"
-      action: "execute_decision"
-  error_handling:
-    on_step_failure: "continue"  # or "abort"
+      prompt_template: |
+        You are {{name}}, balance: {{credits}}.
+        Tick: {{tick}}
+        Memories: {{memories}}
+        Choose an action.
+      inject:
+        name: "self.agent_id"
+        credits: "self.balance"
+        tick: "world.tick"
+        memories: "context.recent_memories"
 ```
+
+**Injection Sources:**
+- `context.*` - Values set by previous code steps
+- `self.*` - Agent properties (id, balance, etc.)
+- `world.*` - World state (tick, artifacts, etc.)
+
+**Template Rendering:**
+- Uses `src/agents/template.py` for safe rendering
+- No code execution in templates (security)
+- Missing variables become empty strings
 
 ### Key Methods
 
@@ -226,7 +255,14 @@ workflow:
 | Step Type | Description |
 |-----------|-------------|
 | `llm` | Call LLM with prompt, pass result to next step |
-| `code` | Execute predefined code action |
+| `code` | Execute Python expression, set context variables |
+
+### Prompt Modes
+
+| Mode | Syntax | Use Case |
+|------|--------|----------|
+| `prompt` | `{variable}` | Simple interpolation (Phase 1) |
+| `prompt_template` | `{{variable}}` | Template with inject block (Phase 2) |
 
 ### Integration with AgentLoop
 
@@ -235,7 +271,7 @@ When `AgentLoop` executes an iteration:
 2. If yes, call `run_workflow()` instead of `propose_action()`
 3. If no, fall back to standard `propose_action()`
 
-See `src/agents/workflow.py` for WorkflowRunner implementation.
+See `src/agents/workflow.py` for WorkflowRunner and `src/agents/template.py` for template rendering.
 
 ---
 

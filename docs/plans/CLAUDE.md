@@ -98,6 +98,7 @@ Master index of all gaps and their implementation plans.
 | 68 | [PR Review Enforcement](68_pr_review_enforcement.md) | **High** | ✅ Complete | Quality assurance |
 | 69 | [Worktree Auto-Cleanup](69_worktree_auto_cleanup.md) | Medium | ✅ Complete | Cleaner workflow |
 | 70 | [Agent Workflow Phase 1](70_agent_workflow_phase1.md) | **High** | ✅ Complete | Agent intelligence |
+| 71 | [Agent Workflow Phase 2](71_agent_workflow_phase2.md) | **High** | 🚧 In Progress | Phase 3 |
 
 ---
 

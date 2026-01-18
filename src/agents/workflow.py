@@ -52,7 +52,9 @@ class WorkflowStep:
         name: Unique name for this step (used for context storage)
         step_type: Type of step (code or llm)
         code: Python code to execute (for code steps)
-        prompt: Prompt text or template (for llm steps)
+        prompt: Prompt text with {variable} interpolation (for llm steps)
+        prompt_template: Prompt with {{variable}} mustache-style templates (Phase 2)
+        inject: Dict mapping variable names to context paths for template injection
         run_if: Optional condition - step only runs if this evaluates to True
         on_failure: Error handling policy for this step
         max_retries: Maximum retry attempts (for RETRY policy)
@@ -62,6 +64,8 @@ class WorkflowStep:
     step_type: StepType
     code: str | None = None
     prompt: str | None = None
+    prompt_template: str | None = None
+    inject: dict[str, str] | None = None
     run_if: str | None = None
     on_failure: ErrorPolicy = ErrorPolicy.FAIL
     max_retries: int = 3
@@ -70,8 +74,10 @@ class WorkflowStep:
         """Validate step configuration."""
         if self.step_type == StepType.CODE and not self.code:
             raise ValueError(f"Code step '{self.name}' requires 'code' field")
-        if self.step_type == StepType.LLM and not self.prompt:
-            raise ValueError(f"LLM step '{self.name}' requires 'prompt' field")
+        if self.step_type == StepType.LLM and not self.prompt and not self.prompt_template:
+            raise ValueError(
+                f"LLM step '{self.name}' requires 'prompt' or 'prompt_template' field"
+            )
 
 
 @dataclass
@@ -118,6 +124,8 @@ class WorkflowConfig:
                 step_type=step_type,
                 code=step_dict.get("code"),
                 prompt=step_dict.get("prompt"),
+                prompt_template=step_dict.get("prompt_template"),
+                inject=step_dict.get("inject"),
                 run_if=step_dict.get("run_if"),
                 on_failure=on_failure,
                 max_retries=step_dict.get("max_retries", default_max_retries),
@@ -266,21 +274,31 @@ class WorkflowRunner:
     ) -> dict[str, Any]:
         """Execute an LLM step.
 
-        Interpolates context into prompt, calls LLM, stores response.
+        Supports two prompt modes:
+        1. prompt: Uses Python .format() with {variable} syntax (Phase 1)
+        2. prompt_template: Uses {{variable}} mustache syntax with inject block (Phase 2)
+
+        When using prompt_template with inject, the inject block maps
+        target variable names to context paths (e.g., {"memories": "context.recent"}).
         """
-        if not step.prompt:
-            return {"success": False, "error": "LLM step missing prompt"}
+        if not step.prompt and not step.prompt_template:
+            return {"success": False, "error": "LLM step missing prompt or prompt_template"}
 
         if not self.llm_provider:
             return {"success": False, "error": "No LLM provider configured"}
 
-        # Interpolate context into prompt
-        try:
-            prompt = step.prompt.format(**context)
-        except KeyError as e:
-            # Missing context variable - use prompt as-is
-            logger.debug(f"Prompt interpolation missing key {e}, using raw prompt")
-            prompt = step.prompt
+        # Build prompt based on mode
+        if step.prompt_template:
+            # Phase 2: Template mode with {{}} syntax
+            prompt = self._render_template(step, context)
+        else:
+            # Phase 1: Format mode with {} syntax
+            try:
+                prompt = step.prompt.format(**context)  # type: ignore
+            except KeyError as e:
+                # Missing context variable - use prompt as-is
+                logger.debug(f"Prompt interpolation missing key {e}, using raw prompt")
+                prompt = step.prompt  # type: ignore
 
         # Execute with retry logic
         attempts = 0
@@ -330,6 +348,70 @@ class WorkflowRunner:
         # All retries exhausted or non-retry policy
         logger.warning(f"LLM step '{step.name}' failed after {attempts} attempts: {last_error}")
         return self._handle_step_error(step, last_error or "Unknown error")
+
+    def _render_template(
+        self,
+        step: WorkflowStep,
+        context: dict[str, Any],
+    ) -> str:
+        """Render a prompt template with injected context (Phase 2).
+
+        Uses the inject block to map target variables to context paths,
+        then renders the template with {{variable}} syntax.
+
+        Args:
+            step: Workflow step with prompt_template and optional inject block
+            context: Current workflow context
+
+        Returns:
+            Rendered prompt string
+        """
+        from .template import render_template
+
+        # Build injection context
+        inject_context: dict[str, Any] = {}
+
+        if step.inject:
+            for target, source_path in step.inject.items():
+                value = self._resolve_inject_path(source_path, context)
+                inject_context[target] = value
+        else:
+            # No explicit inject block - use full context
+            inject_context = context
+
+        return render_template(step.prompt_template or "", inject_context)
+
+    def _resolve_inject_path(
+        self,
+        path: str,
+        context: dict[str, Any],
+    ) -> Any:
+        """Resolve an injection source path.
+
+        Supports paths like:
+        - "context.memories" -> context["memories"]
+        - "self.id" -> context["self"]["id"]
+        - "world.tick" -> context["world"]["tick"]
+
+        Args:
+            path: Dotted path to resolve
+            context: Workflow context
+
+        Returns:
+            Resolved value, or None if path not found
+        """
+        parts = path.split(".")
+        current: Any = context
+
+        for part in parts:
+            if isinstance(current, dict) and part in current:
+                current = current[part]
+            elif hasattr(current, part):
+                current = getattr(current, part)
+            else:
+                return None
+
+        return current
 
     def _handle_step_error(
         self,

@@ -234,3 +234,161 @@ class TestAgentFallbackWithoutWorkflow:
 
         # Should still succeed via fallback
         assert result["success"] is True
+
+
+@pytest.mark.feature("agent_workflow")
+class TestTemplateInjection:
+    """AC-8: Context injection fills template placeholders (Phase 2)."""
+
+    def test_inject_fills_template(self) -> None:
+        """inject block fills {{placeholder}} in prompt_template."""
+        workflow_config = {
+            "steps": [
+                {
+                    "name": "decide",
+                    "type": "llm",
+                    "prompt_template": "Agent {{agent_id}}, balance: {{balance}}. Act.",
+                    "inject": {
+                        "agent_id": "self.id",
+                        "balance": "self.balance",
+                    },
+                },
+            ]
+        }
+
+        # mock-ok: LLM calls are expensive
+        mock_llm = MagicMock()
+        mock_response = FlatActionResponse(
+            thought_process="Injected template",
+            action=FlatAction(action_type="noop"),
+        )
+        mock_llm.generate = MagicMock(return_value=mock_response)
+        mock_llm.model = "gemini/gemini-3-flash-preview"
+
+        runner = WorkflowRunner(llm_provider=mock_llm)
+        config = WorkflowConfig.from_dict(workflow_config)
+        context: dict[str, Any] = {
+            "self": {"id": "alpha", "balance": 100},
+        }
+
+        result = runner.run_workflow(config, context)
+
+        assert result["success"] is True
+        # Verify the prompt was rendered with injected values
+        call_args = mock_llm.generate.call_args
+        prompt = call_args[0][0]
+        assert "alpha" in prompt
+        assert "100" in prompt
+
+    def test_inject_from_context(self) -> None:
+        """Code step sets value, LLM step injects it via context path."""
+        workflow_config = {
+            "steps": [
+                {
+                    "name": "prepare",
+                    "type": "code",
+                    "code": "priority = 'high' if balance > 50 else 'low'",
+                },
+                {
+                    "name": "decide",
+                    "type": "llm",
+                    "prompt_template": "Priority: {{priority}}. Act accordingly.",
+                    "inject": {
+                        "priority": "priority",
+                    },
+                },
+            ]
+        }
+
+        # mock-ok: LLM calls are expensive
+        mock_llm = MagicMock()
+        mock_response = FlatActionResponse(
+            thought_process="Priority based",
+            action=FlatAction(action_type="noop"),
+        )
+        mock_llm.generate = MagicMock(return_value=mock_response)
+        mock_llm.model = "gemini/gemini-3-flash-preview"
+
+        runner = WorkflowRunner(llm_provider=mock_llm)
+        config = WorkflowConfig.from_dict(workflow_config)
+        context: dict[str, Any] = {"balance": 100}
+
+        result = runner.run_workflow(config, context)
+
+        assert result["success"] is True
+        # Verify priority was injected
+        call_args = mock_llm.generate.call_args
+        prompt = call_args[0][0]
+        assert "high" in prompt
+
+    def test_inject_from_self(self) -> None:
+        """Agent properties injected via self.* paths."""
+        workflow_config = {
+            "steps": [
+                {
+                    "name": "decide",
+                    "type": "llm",
+                    "prompt_template": "You are {{name}} with {{credits}} credits.",
+                    "inject": {
+                        "name": "self.agent_id",
+                        "credits": "self.balance",
+                    },
+                },
+            ]
+        }
+
+        # mock-ok: LLM calls are expensive
+        mock_llm = MagicMock()
+        mock_response = FlatActionResponse(
+            thought_process="Self-aware",
+            action=FlatAction(action_type="noop"),
+        )
+        mock_llm.generate = MagicMock(return_value=mock_response)
+        mock_llm.model = "gemini/gemini-3-flash-preview"
+
+        runner = WorkflowRunner(llm_provider=mock_llm)
+        config = WorkflowConfig.from_dict(workflow_config)
+        context: dict[str, Any] = {
+            "self": {"agent_id": "beta", "balance": 75},
+        }
+
+        result = runner.run_workflow(config, context)
+
+        assert result["success"] is True
+        call_args = mock_llm.generate.call_args
+        prompt = call_args[0][0]
+        assert "beta" in prompt
+        assert "75" in prompt
+
+    def test_template_without_inject_uses_full_context(self) -> None:
+        """When no inject block, template has access to full context."""
+        workflow_config = {
+            "steps": [
+                {
+                    "name": "decide",
+                    "type": "llm",
+                    "prompt_template": "Tick {{tick}}, agent {{agent_id}}.",
+                },
+            ]
+        }
+
+        # mock-ok: LLM calls are expensive
+        mock_llm = MagicMock()
+        mock_response = FlatActionResponse(
+            thought_process="Full context",
+            action=FlatAction(action_type="noop"),
+        )
+        mock_llm.generate = MagicMock(return_value=mock_response)
+        mock_llm.model = "gemini/gemini-3-flash-preview"
+
+        runner = WorkflowRunner(llm_provider=mock_llm)
+        config = WorkflowConfig.from_dict(workflow_config)
+        context: dict[str, Any] = {"tick": 5, "agent_id": "gamma"}
+
+        result = runner.run_workflow(config, context)
+
+        assert result["success"] is True
+        call_args = mock_llm.generate.call_args
+        prompt = call_args[0][0]
+        assert "5" in prompt
+        assert "gamma" in prompt
