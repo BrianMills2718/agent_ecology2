@@ -90,7 +90,24 @@ _MAIN_ROOT = get_main_repo_root()
 YAML_PATH = _MAIN_ROOT / ".claude/active-work.yaml"
 CLAUDE_MD_PATH = _MAIN_ROOT / "CLAUDE.md"
 PLANS_DIR = _MAIN_ROOT / "docs/plans"
-FEATURES_DIR = _MAIN_ROOT / "features"
+
+
+def get_git_toplevel() -> Path:
+    """Get the current git working tree root (works for both main and worktrees)."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return Path(result.stdout.strip())
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return Path.cwd()
+
+
+# Use current git toplevel for features (branch-specific)
+FEATURES_DIR = get_git_toplevel() / "acceptance_gates"
 
 
 def load_all_features() -> dict[str, dict[str, Any]]:
