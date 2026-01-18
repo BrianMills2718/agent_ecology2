@@ -90,20 +90,26 @@ agent:
 
 ## Required Tests
 
-```
-tests/unit/test_agent_cognitive_schema.py:
-  - test_simple_schema_returns_thought_process
-  - test_ooda_schema_returns_structured_output
-  - test_action_rationale_included_in_reasoning
-  - test_recent_failures_populated_after_failure
-  - test_recent_failures_empty_on_success
-  - test_config_toggle_switches_schema
+### New Tests (TDD)
 
-tests/integration/test_ooda_logging.py:
-  - test_ooda_thinking_event_has_both_fields
-  - test_ooda_action_event_has_rationale_as_reasoning
-  - test_simple_mode_backward_compatible
-```
+| Test File | Test Function | What It Verifies |
+|-----------|---------------|------------------|
+| `tests/unit/test_agent_cognitive_schema.py` | `test_propose_action_async_returns_thought_process` | thought_process returned in proposal |
+| `tests/unit/test_agent_cognitive_schema.py` | `test_proposal_structure_has_thought_process` | proposal dict has thought_process key |
+| `tests/unit/test_agent_cognitive_schema.py` | `test_failure_history_initialized_empty` | Agent starts with empty failure history |
+| `tests/unit/test_agent_cognitive_schema.py` | `test_failure_added_on_failed_action` | Failures tracked in history |
+| `tests/unit/test_agent_cognitive_schema.py` | `test_success_does_not_add_to_failures` | Success doesn't pollute failure history |
+| `tests/unit/test_agent_cognitive_schema.py` | `test_failure_history_respects_max_limit` | Failure history capped at config max |
+| `tests/unit/test_agent_cognitive_schema.py` | `test_failures_appear_in_prompt` | Recent failures shown in agent prompts |
+| `tests/unit/test_agent_cognitive_schema.py` | `test_no_failures_section_when_empty` | No failures section if no failures |
+| `tests/unit/test_agent_cognitive_schema.py` | `test_ooda_response_model_fields` | OODA model has required fields |
+| `tests/unit/test_agent_cognitive_schema.py` | `test_flat_ooda_response_converts_to_ooda_response` | FlatOODA converts to OODA |
+| `tests/unit/test_agent_cognitive_schema.py` | `test_ooda_mode_returns_ooda_fields` | OODA mode returns OODA fields |
+| `tests/unit/test_agent_cognitive_schema.py` | `test_simple_mode_returns_thought_process_only` | Simple mode backward compatible |
+| `tests/unit/test_agent_cognitive_schema.py` | `test_config_toggle_switches_schema` | Config switches between schemas |
+| `tests/integration/test_ooda_logging.py` | `test_thinking_result_has_thought_process` | Integration: thinking has thought_process |
+| `tests/integration/test_ooda_logging.py` | `test_proposal_structure_for_execute` | Integration: proposal structure correct |
+| `tests/integration/test_ooda_logging.py` | `test_end_to_end_reasoning_flow` | Integration: full reasoning flow |
 
 ## Acceptance Criteria
 
