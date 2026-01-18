@@ -1,20 +1,23 @@
 # Plan #84: Float/Decimal Consistency
 
-**Status:** 📋 Deferred (Post-V1)
+**Status:** 📋 Planned
 **Priority:** Low
 **Blocks:** None
 
-## Problem
+---
 
-Mixed use of float and Decimal across resource tracking:
+## Gap
 
+**Current:** Mixed use of float and Decimal across resource tracking:
 1. `ledger.py` stores resources as `float` but uses Decimal helpers for arithmetic
 2. `world.py` quota tracking uses raw `float` operations
 3. Scrip correctly uses `int` (discrete currency units)
 
-This inconsistency could cause subtle precision issues if:
-- Very small fractional resources are summed many times
-- Resource amounts flow into scrip calculations
+**Target:** Consistent documentation of precision strategy; optionally standardize on Decimal.
+
+**Why Low:** Current mitigations work. Risk is marginal.
+
+---
 
 ## Current Mitigations
 
@@ -32,28 +35,31 @@ The check-then-act pattern in ledger operations is safe in asyncio because:
 The async methods (`transfer_scrip_async`, etc.) exist as forward-looking infrastructure
 for potential multi-threaded scenarios.
 
-## Proposed Solution
+---
 
-**Option A: Standardize on Decimal throughout**
-- Change `resources: dict[str, dict[str, float]]` to `Decimal`
-- Update quota tracking to use Decimal
-- Pro: Consistent, no precision concerns
-- Con: API friction (need to convert at boundaries)
+## Plan
 
-**Option B: Document current approach (Recommended)**
-- Add comments explaining the float-storage, Decimal-arithmetic pattern
-- Ensure quota operations use the same pattern if fractional values ever used
-- Pro: Minimal change
-- Con: Still inconsistent
+### Changes Required
 
-## Recommendation
+| File | Change |
+|------|--------|
+| `src/world/ledger.py` | Add comments documenting float-storage, Decimal-arithmetic pattern |
+| `src/world/world.py` | Add comments about quota tracking precision assumptions |
 
-Option B for now. The current approach works and the risk is low. Revisit if precision issues are observed.
+### Steps
+
+1. Add documentation comments explaining the precision strategy
+2. No code changes - documentation only
+
+---
 
 ## Required Tests
 
 None - this is documentation/consistency work.
 
+---
+
 ## Notes
 
 Created as deferred tech debt from codebase review (2026-01-18).
+Recommended approach: Option B (document current approach, no code changes).
