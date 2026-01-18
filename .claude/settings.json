@@ -1,5 +1,17 @@
 {
   "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/refresh-session-marker.sh",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Read|Glob",
