@@ -36,7 +36,7 @@ Multi-part fix to make ownership visible and enforce checking:
 
 ## Acceptance Criteria
 
-- [ ] CLAUDE.md has Priority 0: Check ownership
-- [ ] meta_status.py shows PR owner and flags non-owned PRs
-- [ ] /proceed skill includes ownership verification
-- [ ] docs/meta has ownership respect pattern documented
+- [x] CLAUDE.md has Priority 0: Check ownership
+- [x] meta_status.py shows PR owner and flags non-owned PRs
+- [x] /proceed skill includes ownership verification
+- [x] docs/meta has ownership respect pattern documented
