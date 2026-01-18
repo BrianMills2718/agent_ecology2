@@ -13,8 +13,8 @@ This document defines the canonical terms for project organization.
 
 ```
 Phase (optional grouping)
-└── Feature (the deliverable)
-    └── Plan (the implementation document)
+└── Feature (E2E acceptance gate)
+    └── Plan(s) (work coordination documents)
         └── Task (atomic work item)
 ```
 
@@ -22,23 +22,32 @@ Phase (optional grouping)
 
 | Term | Definition | Identifier | Tests At Level |
 |------|------------|------------|----------------|
-| **Feature** | A user-visible or system capability that can be verified E2E | Plan number (1:1 with plan) | E2E required |
-| **Plan** | Document describing how to implement a feature | `NN_name.md` | References tests |
+| **Feature** | E2E-verifiable capability (acceptance gate) | `acceptance_gates/NAME.yaml` | E2E required |
+| **Plan** | Work coordination document | `docs/plans/NN_name.md` | Unit/integration tests |
 | **Task** | Atomic work item within a plan | Checklist item | May have unit test |
 | **Phase** | Optional grouping of related features | "Phase 1" | No tests (just grouping) |
 
-### Key Insight: Feature = Plan
+### Key Insight: Features vs Plans
 
-In this system, each plan implements exactly one feature. The plan number IS the feature ID.
+**Features** and **Plans** serve different purposes:
+
+| Concept | Purpose | Relationship |
+|---------|---------|--------------|
+| **Feature** | E2E acceptance verification | "Does it actually work?" |
+| **Plan** | Work coordination, file locking | "Who works on what?" |
+
+- Multiple **plans** can contribute to one **feature**
+- A plan can be "complete" while its feature is still incomplete
+- Feature completion = the REAL checkpoint (E2E passes with no mocks)
 
 ```
-Feature: "Rate Limiting"
-    └── Plan: 01_rate_allocation.md
-        └── Tasks:
-            - Create TokenBucket class
-            - Update config schema
-            - Add tests
+Feature: "Escrow Trading"           # E2E acceptance gate
+    └── Plan: 08_escrow_basic.md    # First implementation
+    └── Plan: 15_escrow_timeout.md  # Adds timeout handling
+    └── Plan: 22_escrow_multi.md    # Adds multi-party support
 ```
+
+See [Feature-Driven Development](13_feature-driven-development.md) for the full pattern.
 
 ## Plan Types
 

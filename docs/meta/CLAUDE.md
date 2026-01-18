@@ -16,16 +16,29 @@ Files are numbered for reading order:
 | 03-06 | Testing and hooks |
 | 07-12 | Documentation patterns |
 | 13-17 | Feature and plan workflows |
-| 18-23 | Coordination patterns |
+| 18-26 | Coordination patterns |
+
+## Pattern Status
+
+Most patterns are **deployed** and actively used. A few are **proposed** (documented but not yet implemented):
+
+| Pattern | Status | Notes |
+|---------|--------|-------|
+| 09_documentation-graph.md | Proposed | Unified graph concept; 08 + 10 are deployed instead |
+| 12_structured-logging.md | Proposed | DualLogger concept; standard Python logging used |
+| 21_pr-coordination.md | Partial | Full GitHub Actions workflow not deployed; simplified `gh pr list` approach used |
+
+All other patterns (01-08, 10-11, 13-20, 22-26) are **deployed**.
 
 ## Key Patterns
 
-| Pattern | When to Use |
-|---------|-------------|
-| `02_claude-md-authoring.md` | Any AI-assisted project |
-| `15_plan-workflow.md` | Multi-step implementations |
-| `18_claim-system.md` | Parallel AI instances |
-| `19_worktree-enforcement.md` | Multiple CC in same repo |
+| Pattern | When to Use | Status |
+|---------|-------------|--------|
+| `02_claude-md-authoring.md` | Any AI-assisted project | Deployed |
+| `15_plan-workflow.md` | Multi-step implementations | Deployed |
+| `18_claim-system.md` | Parallel AI instances | Deployed |
+| `19_worktree-enforcement.md` | Multiple CC in same repo | Deployed |
+| `26_ownership-respect.md` | Prevent CC interference | Deployed |
 
 ## Build Script
 
