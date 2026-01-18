@@ -1,6 +1,6 @@
 # Plan 89: Plan Enforcement Hooks
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** High
 **Blocked By:** None
 **Blocks:** None
@@ -31,10 +31,11 @@
 
 ## Files Affected
 
-- .claude/hooks/check-file-scope.sh (create)
-- .claude/hooks/check-references-reviewed.sh (create)
+- .claude/hooks/check-file-scope.sh (modify)
+- .claude/hooks/check-references-reviewed.sh (modify)
 - .claude/settings.json (modify)
 - docs/meta/19_worktree-enforcement.md (modify)
+- tests/test_hooks.py (create)
 
 ---
 

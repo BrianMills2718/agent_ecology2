@@ -34,7 +34,9 @@ if [[ -z "$FILE_PATH" ]]; then
 fi
 
 # Only check on source file edits (not docs, config, etc.)
-if [[ "$FILE_PATH" != *"/src/"* ]] && [[ "$FILE_PATH" != *"/tests/"* ]]; then
+# Handle both absolute paths (/path/to/src/...) and relative paths (src/...)
+if [[ "$FILE_PATH" != *"/src/"* ]] && [[ "$FILE_PATH" != *"/tests/"* ]] && \
+   [[ "$FILE_PATH" != "src/"* ]] && [[ "$FILE_PATH" != "tests/"* ]]; then
     exit 0
 fi
 
