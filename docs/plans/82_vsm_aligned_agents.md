@@ -44,6 +44,10 @@
 - src/agents/beta_2/system_prompt.md (create)
 - docs/architecture/current/agents.md (modify)
 - tests/unit/test_vsm_agents.py (create)
+- src/agents/_handbook/tools.md (create)
+- src/agents/_handbook/_index.md (modify)
+- src/world/world.py (modify)
+- src/agents/CLAUDE.md (modify)
 
 ---
 

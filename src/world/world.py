@@ -374,6 +374,7 @@ class World:
         handbook_sections = {
             "_index": "handbook_toc",
             "actions": "handbook_actions",
+            "tools": "handbook_tools",
             "genesis": "handbook_genesis",
             "resources": "handbook_resources",
             "trading": "handbook_trading",
