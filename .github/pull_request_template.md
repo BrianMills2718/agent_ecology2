@@ -6,25 +6,8 @@
 
 ## Plan Reference
 
-<!-- Link to plan if applicable, or "N/A" for non-plan work -->
+<!-- Link to plan if applicable, or "[Trivial]" for small fixes -->
 Plan #:
-
-## Review Checklist
-
-**For reviewer (ideally a different CC instance):**
-
-- [ ] Code matches the plan/task description
-- [ ] Tests are meaningful (not just passing - actually verify behavior)
-- [ ] No silent failures or `except: pass` introduced
-- [ ] No magic numbers (all values from config)
-- [ ] Documentation updated if behavior changed
-
-**Automated checks (must pass):**
-
-- [ ] `pytest tests/` passes
-- [ ] `mypy` passes
-- [ ] `doc-coupling` passes
-- [ ] `plan-status-sync` passes (if plan work)
 
 ## Test Plan
 
@@ -32,6 +15,40 @@ Plan #:
 
 ```bash
 # Commands to test
+```
+
+---
+
+## For Reviewers
+
+**Review Focus:**
+<!-- What specifically needs careful review in this PR? -->
+
+**Reviewer Checklist** (copy to review comment when approving):
+
+```
+Code Quality:
+- [ ] No `except:` without `# exception-ok:` comment
+- [ ] No hardcoded magic numbers (use config)
+- [ ] No TODO/FIXME without issue link
+
+Testing:
+- [ ] New code has tests
+- [ ] Tests cover error paths
+
+Security:
+- [ ] No secrets in code
+- [ ] Input validated before use
+
+Docs:
+- [ ] Docs updated if behavior changed
+```
+
+**Quick Commands:**
+```bash
+gh pr diff <number>           # View changes
+gh pr checkout <number>       # Test locally
+gh pr review <number> --approve --body "Checklist verified."
 ```
 
 ---
