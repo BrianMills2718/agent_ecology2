@@ -1,4 +1,4 @@
-"""Feature acceptance tests for mint - maps to features/mint.yaml.
+"""Feature acceptance tests for mint - maps to acceptance_gates/mint.yaml.
 
 Run with: pytest --feature mint tests/
 
@@ -14,7 +14,7 @@ from src.world.mint_scorer import MintScorer
 
 @pytest.mark.feature("mint")
 class TestMintFeature:
-    """Tests mapping to features/mint.yaml acceptance criteria."""
+    """Tests mapping to acceptance_gates/mint.yaml acceptance criteria."""
 
     # AC-1: Score a valid executable artifact (happy_path)
     @pytest.mark.external

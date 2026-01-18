@@ -25,7 +25,7 @@ out_of_scope:
 design:
   approach: |
     Create Python scripts in scripts/ that CI can run. Each script focuses on one
-    enforcement aspect. Scripts read from features/*.yaml and validate against
+    enforcement aspect. Scripts read from acceptance_gates/*.yaml and validate against
     the codebase. Failures exit non-zero for CI integration.
 
   key_decisions:
@@ -45,7 +45,7 @@ acceptance_criteria:
     scenario: "Successful validation of complete spec"
     category: happy_path
     given:
-      - "A feature file exists in features/"
+      - "A feature file exists in acceptance_gates/"
       - "The feature has acceptance_criteria section"
     when: "validate_spec.py runs"
     then:
@@ -72,7 +72,7 @@ acceptance_criteria:
     scenario: "Check feature coverage edge case with no features"
     category: edge_case
     given:
-      - "Features are defined in features/*.yaml with code: sections"
+      - "Features are defined in acceptance_gates/*.yaml with code: sections"
       - "Source files exist in src/"
     when: "check_feature_coverage.py runs"
     then:

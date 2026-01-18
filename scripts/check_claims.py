@@ -44,12 +44,12 @@ Primary data store: .claude/active-work.yaml
 Scope-Based Claims:
     Claims should specify a scope (--plan and/or --feature).
     - Plans are defined in docs/plans/*.md
-    - Features are defined in features/*.yaml
+    - Features are defined in acceptance_gates/*.yaml
     Each scope can only be claimed by one instance at a time.
     Use --force to override (NOT recommended).
 
 Special Cases:
-    - "shared" feature: Files in features/shared.yaml have NO claim conflicts.
+    - "shared" feature: Files in acceptance_gates/shared.yaml have NO claim conflicts.
       These are cross-cutting files (config, fixtures) any plan can modify.
     - [Trivial] commits: Don't require claims. See CI workflow for validation.
 """
@@ -94,7 +94,7 @@ FEATURES_DIR = _MAIN_ROOT / "features"
 
 
 def load_all_features() -> dict[str, dict[str, Any]]:
-    """Load all feature definitions from features/*.yaml.
+    """Load all feature definitions from acceptance_gates/*.yaml.
 
     Returns dict mapping feature name to feature data.
     """
@@ -915,7 +915,7 @@ def main() -> int:
     parser.add_argument(
         "--feature", "-F",
         type=str,
-        help="Feature name to claim (from features/*.yaml)"
+        help="Feature name to claim (from acceptance_gates/*.yaml)"
     )
     parser.add_argument(
         "--list-features",
@@ -990,7 +990,7 @@ def main() -> int:
     if args.list_features:
         features = get_feature_names()
         if not features:
-            print("No features defined in features/*.yaml")
+            print("No features defined in acceptance_gates/*.yaml")
             return 0
         print("Available features:")
         for f in features:

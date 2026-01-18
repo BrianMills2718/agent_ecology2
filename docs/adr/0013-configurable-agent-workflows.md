@@ -88,7 +88,7 @@ Key mismatch: These frameworks solve "how do I (developer) orchestrate agents" n
 
 ## Related
 
-- Feature spec: `features/agent_workflow.yaml`
+- Feature spec: `acceptance_gates/agent_workflow.yaml`
 - Research notes: `docs/references/agent_architecture_research_notes.md`
 - Archived design exploration: `docs/archive/agent_research_2026-01/`
 - Simulation observation: `docs/simulation_learnings/2026-01-16_agent_paralysis.md`

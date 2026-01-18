@@ -25,7 +25,7 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
         "feature(name): mark test as belonging to a feature. "
-        "Usage: @pytest.mark.feature('escrow') - maps to features/<name>.yaml"
+        "Usage: @pytest.mark.feature('escrow') - maps to acceptance_gates/<name>.yaml"
     )
     config.addinivalue_line(
         "markers",

@@ -14,7 +14,7 @@ docs/
 ├── archive/              # Historical/deprecated docs
 ├── meta/                 # Reusable process patterns
 ├── plans/                # Gap tracking + implementation plans
-├── features/             # Feature-specific documentation
+├── acceptance_gates/             # Feature-specific documentation
 ├── GLOSSARY.md           # Canonical terminology (single source)
 ├── DESIGN_CLARIFICATIONS.md  # Decision rationale archive
 └── SECURITY.md           # Security model
