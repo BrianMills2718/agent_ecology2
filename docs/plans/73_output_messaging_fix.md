@@ -93,11 +93,19 @@ Dashboard available at: http://localhost:9000
 
 ### Unit Tests
 
-| Test | Description |
-|------|-------------|
-| `test_autonomous_output_no_ticks` | --duration mode doesn't show "Max ticks" |
-| `test_tick_mode_shows_ticks` | --ticks mode shows "Max ticks" |
-| `test_output_uses_llm_terminology` | Output uses "LLM" not "compute" |
+Tests are in `tests/unit/test_runner_output.py`:
+
+| Test File | Test Function | What It Verifies |
+|-----------|---------------|------------------|
+| `tests/unit/test_runner_output.py` | `test_autonomous_output_no_ticks` | --duration mode doesn't show "Max ticks" |
+| `tests/unit/test_runner_output.py` | `test_tick_mode_shows_ticks` | --ticks mode shows "Max ticks" |
+| `tests/unit/test_runner_output.py` | `test_output_uses_llm_terminology` | Output uses "LLM" not "compute" |
+| `tests/unit/test_runner_output.py` | `test_shows_rate_limit_when_enabled` | Shows rate limit when enabled |
+| `tests/unit/test_runner_output.py` | `test_hides_rate_limit_when_unlimited` | Hides rate limit when unlimited |
+| `tests/unit/test_runner_output.py` | `test_no_utcnow_in_artifacts` | No datetime.utcnow() in artifacts.py |
+| `tests/unit/test_runner_output.py` | `test_no_utcnow_in_logger` | No datetime.utcnow() in logger.py |
+| `tests/unit/test_runner_output.py` | `test_no_utcnow_in_invocation_registry` | No datetime.utcnow() in invocation_registry.py |
+| `tests/unit/test_runner_output.py` | `test_no_utcnow_in_memory` | No datetime.utcnow() in memory.py |
 
 ---
 
