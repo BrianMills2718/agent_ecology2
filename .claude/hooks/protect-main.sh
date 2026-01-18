@@ -135,8 +135,16 @@ fi
 if [[ "$FILE_PATH" == "$MAIN_DIR"/* ]]; then
     echo "BLOCKED: Cannot edit files in main directory" >&2
     echo "" >&2
-    echo "Create a worktree first:" >&2
-    echo "  make worktree BRANCH=plan-NN-description" >&2
+    echo "WHY: Multiple Claude instances share main. Edits here get" >&2
+    echo "overwritten or cause merge conflicts. Worktrees isolate your work." >&2
+    echo "" >&2
+    echo "DO THIS NOW:" >&2
+    echo "  1. make worktree BRANCH=plan-NN-description" >&2
+    echo "  2. cd to the new worktree" >&2
+    echo "  3. Retry your edit there" >&2
+    echo "" >&2
+    echo "DO NOT work around this by pasting content or using other tools." >&2
+    echo "The worktree exists to protect your work from being lost." >&2
     echo "" >&2
     echo "File: $FILE_PATH" >&2
     exit 2
