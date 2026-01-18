@@ -112,7 +112,7 @@ def main() -> int:
     parser.add_argument(
         "--features-dir",
         type=Path,
-        default=Path("features"),
+        default=Path("acceptance_gates"),
         help="Directory containing feature files",
     )
     parser.add_argument(

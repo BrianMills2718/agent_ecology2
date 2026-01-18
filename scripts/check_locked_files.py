@@ -172,17 +172,24 @@ def check_feature_file(
 
 
 def get_changed_feature_files(base_ref: str, features_dir: Path) -> list[Path]:
-    """Get list of feature files that changed since base ref."""
+    """Get list of feature files that changed since base ref.
+
+    Uses rename detection to handle directory renames properly.
+    Returns only files that exist in the current directory.
+    """
     try:
+        # Use -M for rename detection and --diff-filter to exclude pure deletes
+        # We only care about files that exist now (M=modified, A=added, R=renamed)
         diff_output = run_git_command(
-            ["diff", "--name-only", base_ref, "--", str(features_dir)]
+            ["diff", "-M", "--name-only", "--diff-filter=MAR", base_ref, "--", str(features_dir)]
         )
         changed = [
             Path(f.strip())
             for f in diff_output.strip().split("\n")
             if f.strip() and (f.endswith(".yaml") or f.endswith(".yml"))
         ]
-        return changed
+        # Filter to only files that actually exist (handles renames)
+        return [p for p in changed if p.exists()]
     except subprocess.CalledProcessError:
         return []
 
@@ -217,7 +224,7 @@ def main() -> int:
     parser.add_argument(
         "--features-dir",
         type=Path,
-        default=Path("features"),
+        default=Path("acceptance_gates"),
         help="Directory containing feature files",
     )
 
