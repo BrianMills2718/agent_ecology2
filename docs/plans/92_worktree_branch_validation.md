@@ -9,6 +9,8 @@
 
 - scripts/meta_status.py (modify)
 - CLAUDE.md (modify)
+- tests/scripts/__init__.py (create)
+- tests/scripts/test_meta_status.py (create)
 
 ## Problem Statement
 
@@ -46,11 +48,10 @@ When a worktree directory is reused for a different plan (by switching branches 
 
 ## Required Tests
 
-```
-tests/scripts/test_meta_status.py::test_worktree_branch_mismatch_detection
-tests/scripts/test_meta_status.py::test_orphan_detection_uses_both_dir_and_branch
-tests/scripts/test_check_claims.py::test_claim_warns_on_branch_mismatch
-```
+- `tests/scripts/test_meta_status.py::TestWorktreeBranchMismatchDetection::test_detects_mismatch_when_dir_and_branch_have_different_plans`
+- `tests/scripts/test_meta_status.py::TestOrphanDetectionUsesBothDirAndBranch::test_not_orphaned_when_claim_matches_dir_name`
+- `tests/scripts/test_meta_status.py::TestOrphanDetectionUsesBothDirAndBranch::test_not_orphaned_when_claim_matches_branch`
+- `tests/scripts/test_meta_status.py::TestOrphanDetectionUsesBothDirAndBranch::test_orphaned_when_no_matching_claim`
 
 ## Implementation Checklist
 
