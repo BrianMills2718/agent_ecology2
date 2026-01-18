@@ -419,7 +419,6 @@ agent:
 
   # Working Memory (Plan #59) - Structured context for complex goal pursuit
   # Agents can store current_goal, progress, and lessons in their artifact content
-  # NOTE: Enable for VSM-aligned agents (alpha_2, beta_2) to use goal hierarchies
   working_memory:
     enabled: false                # Master switch - set true to enable
     auto_inject: true             # Inject into prompt automatically when enabled
@@ -427,6 +426,14 @@ agent:
     include_in_rag: false         # Also include in semantic search?
     structured_format: true       # Enforce YAML schema vs freeform
     warn_on_missing: false        # Log warning if agent has no working memory
+
+  # Failure tracking (Plan #88) - Recent failures shown in prompt for learning
+  failure_history_max: 5          # Max recent failures to track per agent
+
+  # Cognitive schema (Plan #88) - Response format for agent reasoning
+  # "simple" = thought_process + action (default, backward compatible)
+  # "ooda" = situation_assessment + action_rationale + action (OODA loop aligned)
+  cognitive_schema: "simple"
 
 # -----------------------------------------------------------------------------
 # MEMORY - Mem0/Qdrant configuration

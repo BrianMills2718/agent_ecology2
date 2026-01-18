@@ -101,29 +101,59 @@ class ThinkingPanel {
     renderThinkingItem(item) {
         const itemId = `thinking-${item.agent_id}-${item.tick}`;
         const isExpanded = this.expandedItems.has(itemId);
-        const hasContent = item.thought_process && item.thought_process.trim();
 
-        // Truncate thought process for preview
+        // Plan #88: Check for OODA mode (has situation_assessment and action_rationale)
+        const isOODAMode = item.situation_assessment && item.action_rationale;
+        const hasContent = isOODAMode || (item.thought_process && item.thought_process.trim());
+
+        // Truncate for preview - use action_rationale in OODA mode as it's already concise
         let preview = '';
-        if (hasContent) {
+        if (isOODAMode) {
+            preview = item.action_rationale.substring(0, 100);
+            if (item.action_rationale.length > 100) preview += '...';
+        } else if (item.thought_process) {
             preview = item.thought_process.substring(0, 100);
             if (item.thought_process.length > 100) preview += '...';
         }
 
+        // Render content based on mode
+        let contentHtml = '';
+        if (isOODAMode) {
+            // OODA mode: Show structured fields
+            contentHtml = `
+                <div class="thinking-content ${isExpanded ? '' : 'hidden'}">
+                    <div class="ooda-section">
+                        <div class="ooda-label">Situation Assessment</div>
+                        <pre class="ooda-text">${this.escapeHtml(item.situation_assessment)}</pre>
+                    </div>
+                    <div class="ooda-section">
+                        <div class="ooda-label">Action Rationale</div>
+                        <pre class="ooda-text ooda-rationale">${this.escapeHtml(item.action_rationale)}</pre>
+                    </div>
+                </div>
+            `;
+        } else if (item.thought_process) {
+            // Simple mode: Show thought_process
+            contentHtml = `
+                <div class="thinking-content ${isExpanded ? '' : 'hidden'}">
+                    <pre>${this.escapeHtml(item.thought_process)}</pre>
+                </div>
+            `;
+        }
+
         return `
-            <div class="thinking-item ${isExpanded ? 'expanded' : ''}" data-id="${itemId}">
+            <div class="thinking-item ${isExpanded ? 'expanded' : ''} ${isOODAMode ? 'ooda-mode' : ''}" data-id="${itemId}">
                 <div class="thinking-header">
                     <span class="thinking-agent">${this.escapeHtml(item.agent_id)}</span>
                     <span class="thinking-tick">Tick ${item.tick}</span>
                     <span class="thinking-tokens">${item.input_tokens} in / ${item.output_tokens} out</span>
                     <span class="thinking-cost">${item.thinking_cost} compute</span>
+                    ${isOODAMode ? '<span class="ooda-badge">OODA</span>' : ''}
                     ${hasContent ? '<span class="expand-icon">&#x25BC;</span>' : ''}
                 </div>
                 ${hasContent ? `
                     <div class="thinking-preview ${isExpanded ? 'hidden' : ''}">${this.escapeHtml(preview)}</div>
-                    <div class="thinking-content ${isExpanded ? '' : 'hidden'}">
-                        <pre>${this.escapeHtml(item.thought_process)}</pre>
-                    </div>
+                    ${contentHtml}
                 ` : `
                     <div class="thinking-no-content">No reasoning content recorded</div>
                 `}
