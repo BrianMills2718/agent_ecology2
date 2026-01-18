@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-18 (Plan #72 - plan number exclusivity check)
+Last verified: 2026-01-18 (Plan #88 - added dashboard/agent-model soft couplings)
 
 ---
 

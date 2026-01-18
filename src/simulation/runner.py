@@ -535,21 +535,27 @@ class SimulationRunner:
             if self._tick_collector:
                 self._tick_collector.record_llm_tokens(input_tokens + output_tokens)
 
-            # Extract thought process from proposal if available
-            thought_process = result.get("proposal", {}).get("thought_process", "")
+            # Extract thought process and OODA fields from proposal if available
+            proposal_data = result.get("proposal", {})
+            thought_process = proposal_data.get("thought_process", "")
 
-            self.world.logger.log(
-                "thinking",
-                {
-                    "tick": self.world.tick,
-                    "principal_id": agent.agent_id,
-                    "input_tokens": input_tokens,
-                    "output_tokens": output_tokens,
-                    "thinking_cost": thinking_cost,
-                    "compute_after": self.world.ledger.get_compute(agent.agent_id),
-                    "thought_process": thought_process,
-                },
-            )
+            # Plan #88: Build thinking event data with OODA fields when present
+            thinking_data: dict[str, Any] = {
+                "tick": self.world.tick,
+                "principal_id": agent.agent_id,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "thinking_cost": thinking_cost,
+                "compute_after": self.world.ledger.get_compute(agent.agent_id),
+                "thought_process": thought_process,
+            }
+            # Add OODA fields when present (Plan #88)
+            if "situation_assessment" in proposal_data:
+                thinking_data["situation_assessment"] = proposal_data["situation_assessment"]
+            if "action_rationale" in proposal_data:
+                thinking_data["action_rationale"] = proposal_data["action_rationale"]
+
+            self.world.logger.log("thinking", thinking_data)
 
             if self.verbose:
                 cost_str = f" (${api_cost:.4f}, total: ${self.engine.cumulative_api_cost:.4f})" if api_cost > 0 else ""
@@ -643,33 +649,43 @@ class SimulationRunner:
             if self._tick_collector:
                 self._tick_collector.record_llm_tokens(input_tokens + output_tokens)
 
-            # Log the thinking
+            # Log the thinking with OODA fields when present (Plan #88)
             thought_process = action_result.get("thought_process", "")
-            self.world.logger.log(
-                "thinking",
-                {
-                    "tick": self.world.tick,
-                    "principal_id": agent_id,
-                    "input_tokens": input_tokens,
-                    "output_tokens": output_tokens,
-                    "thinking_cost": input_tokens + output_tokens,
-                    "cpu_seconds": result.get("cpu_seconds", 0),
-                    "memory_bytes": result.get("memory_bytes", 0),
-                    "thought_process": thought_process,
-                },
-            )
+            thinking_data: dict[str, Any] = {
+                "tick": self.world.tick,
+                "principal_id": agent_id,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "thinking_cost": input_tokens + output_tokens,
+                "cpu_seconds": result.get("cpu_seconds", 0),
+                "memory_bytes": result.get("memory_bytes", 0),
+                "thought_process": thought_process,
+            }
+            # Add OODA fields when present (Plan #88)
+            if "situation_assessment" in action_result:
+                thinking_data["situation_assessment"] = action_result["situation_assessment"]
+            if "action_rationale" in action_result:
+                thinking_data["action_rationale"] = action_result["action_rationale"]
+
+            self.world.logger.log("thinking", thinking_data)
 
             if self.verbose:
                 cost_str = f" (${api_cost:.4f})" if api_cost > 0 else ""
                 print(f"    {agent_id}: {input_tokens} in, {output_tokens} out{cost_str}")
 
-            # Create proposal
+            # Create proposal with OODA fields when present (Plan #88)
+            proposal_dict: AgentActionResult = {
+                "action": action_result.get("action", {}),
+                "thought_process": thought_process,
+            }
+            if "situation_assessment" in action_result:
+                proposal_dict["situation_assessment"] = action_result["situation_assessment"]
+            if "action_rationale" in action_result:
+                proposal_dict["action_rationale"] = action_result["action_rationale"]
+
             proposals.append({
                 "agent": agent,
-                "proposal": {
-                    "action": action_result.get("action", {}),
-                    "thought_process": thought_process,
-                },
+                "proposal": proposal_dict,
                 "thinking_cost": input_tokens + output_tokens,
                 "api_cost": api_cost,
             })
@@ -688,8 +704,13 @@ class SimulationRunner:
             proposal = action_proposal["proposal"]
 
             action_dict: dict[str, Any] = proposal["action"]
-            # Plan #49: Pass thought_process as reasoning to narrow waist
-            action_dict["reasoning"] = proposal.get("thought_process", "")
+            # Plan #49/#88: Pass reasoning to narrow waist
+            # OODA mode: Use action_rationale (concise, 1-2 sentences)
+            # Simple mode: Use thought_process (full reasoning)
+            if "action_rationale" in proposal:
+                action_dict["reasoning"] = proposal["action_rationale"]
+            else:
+                action_dict["reasoning"] = proposal.get("thought_process", "")
             intent: ActionIntent | str = parse_intent_from_json(
                 agent.agent_id, json.dumps(action_dict)
             )
@@ -1103,19 +1124,23 @@ class SimulationRunner:
         output_tokens = usage.get("output_tokens", 0)
         self.engine.track_api_cost(api_cost)
 
-        # Log thinking event for dashboard
+        # Log thinking event for dashboard with OODA fields when present (Plan #88)
         thought_process = result.get("thought_process", "")
-        self.world.logger.log(
-            "thinking",
-            {
-                "tick": self.world.tick,
-                "principal_id": agent.agent_id,
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "thinking_cost": 0,
-                "thought_process": thought_process,
-            },
-        )
+        thinking_data: dict[str, Any] = {
+            "tick": self.world.tick,
+            "principal_id": agent.agent_id,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "thinking_cost": 0,
+            "thought_process": thought_process,
+        }
+        # Add OODA fields when present (Plan #88)
+        if "situation_assessment" in result:
+            thinking_data["situation_assessment"] = result["situation_assessment"]
+        if "action_rationale" in result:
+            thinking_data["action_rationale"] = result["action_rationale"]
+
+        self.world.logger.log("thinking", thinking_data)
 
         # Check for error
         if "error" in result:

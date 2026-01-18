@@ -188,6 +188,48 @@ class FlatActionResponse(BaseModel):
         )
 
 
+# Plan #88: OODA-aligned cognitive schema models
+class OODAResponse(BaseModel):
+    """OODA-aligned response with separate situation assessment and action rationale.
+
+    This schema separates the cognitive process into distinct phases:
+    - situation_assessment: Full analysis of current state (Orient phase)
+    - action_rationale: Concise 1-2 sentence explanation of why THIS action (Decide phase)
+    - action: The action to execute (Act phase)
+    """
+
+    situation_assessment: str = Field(
+        description="Analysis of current state, options, and considerations (can be verbose)"
+    )
+    action_rationale: str = Field(
+        description="Concise 1-2 sentence explanation of why this specific action was chosen"
+    )
+    action: ActionField = Field(description="The action to execute")
+
+
+class FlatOODAResponse(BaseModel):
+    """OODA response model for Gemini structured output.
+
+    Uses FlatAction instead of discriminated union for Gemini compatibility.
+    """
+
+    situation_assessment: str = Field(
+        description="Analysis of current state, options, and considerations (can be verbose)"
+    )
+    action_rationale: str = Field(
+        description="Concise 1-2 sentence explanation of why this specific action was chosen"
+    )
+    action: FlatAction = Field(description="The action to execute")
+
+    def to_ooda_response(self) -> OODAResponse:
+        """Convert to standard OODAResponse with typed action."""
+        return OODAResponse(
+            situation_assessment=self.situation_assessment,
+            action_rationale=self.action_rationale,
+            action=self.action.to_typed_action(),
+        )
+
+
 __all__ = [
     "ActionType",
     "ArgValue",
@@ -201,4 +243,6 @@ __all__ = [
     "FlatAction",
     "ActionResponse",
     "FlatActionResponse",
+    "OODAResponse",
+    "FlatOODAResponse",
 ]

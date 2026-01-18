@@ -1016,6 +1016,59 @@ body {
     font-style: italic;
 }
 
+/* Plan #88: OODA Mode Styles */
+.thinking-item.ooda-mode {
+    border-left: 3px solid var(--accent-primary);
+}
+
+.ooda-badge {
+    background-color: var(--accent-primary);
+    color: var(--bg-primary);
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.ooda-section {
+    margin-bottom: 0.75rem;
+}
+
+.ooda-section:last-child {
+    margin-bottom: 0;
+}
+
+.ooda-label {
+    color: var(--accent-primary);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.35rem;
+    padding: 0.5rem 0.75rem 0;
+}
+
+.ooda-text {
+    padding: 0.5rem 0.75rem 0.75rem !important;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 0;
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+.ooda-rationale {
+    background-color: rgba(233, 69, 96, 0.1);
+    border-radius: 4px;
+    max-height: 100px;
+}
+
 .hidden {
     display: none;
 }

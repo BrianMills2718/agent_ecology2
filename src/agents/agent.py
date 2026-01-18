@@ -42,7 +42,7 @@ from pydantic import ValidationError
 from llm_provider import LLMProvider
 from .schema import ACTION_SCHEMA, ActionType
 from .memory import AgentMemory, ArtifactMemory, get_memory
-from .models import ActionResponse, FlatActionResponse
+from .models import ActionResponse, FlatActionResponse, OODAResponse, FlatOODAResponse
 from ..config import get as config_get
 
 if TYPE_CHECKING:
@@ -61,6 +61,9 @@ class ActionResult(TypedDict, total=False):
     """Result from propose_action method."""
     action: dict[str, Any]
     thought_process: str
+    # Plan #88: OODA schema fields (only present when cognitive_schema=ooda)
+    situation_assessment: str
+    action_rationale: str
     error: str
     raw_response: str | None
     usage: TokenUsage
@@ -219,6 +222,10 @@ class Agent:
             self.memory = get_memory()
         self.last_action_result = None  # Track result of last action for feedback
         self._alive = True  # Agent starts alive (for autonomous loops)
+
+        # Plan #88: Track recent failures for learning from mistakes
+        self.failure_history: list[str] = []
+        self._failure_history_max: int = config_get("agent.failure_history_max") or 5
 
         # RAG config: per-agent overrides merged with global defaults
         global_rag: dict[str, Any] = config_get("agent.rag") or {}
@@ -678,6 +685,15 @@ class Agent:
         else:
             action_feedback = ""
 
+        # Plan #88: Format recent failures for learning from mistakes
+        recent_failures_section: str = ""
+        if self.failure_history:
+            failure_lines = "\n".join(f"- {f}" for f in self.failure_history)
+            recent_failures_section = f"""
+## Recent Failures (Learn from these!)
+{failure_lines}
+"""
+
         # Format recent events (short-term history for situational awareness)
         recent_events: list[dict[str, Any]] = world_state.get('recent_events', [])
         recent_events_count: int = config_get("agent.prompt.recent_events_count") or 5
@@ -739,7 +755,7 @@ class Agent:
         prompt: str = f"""You are {self.agent_id} in a simulated world.
 
 {self.system_prompt}
-{first_tick_section}{working_memory_section}{action_feedback}
+{first_tick_section}{working_memory_section}{action_feedback}{recent_failures_section}
 ## Your Memories
 {memories}
 
@@ -777,33 +793,61 @@ Your response should include:
         Returns a dict with:
           - 'action' (valid action dict) and 'thought_process' (str), or 'error' (string)
           - 'usage' (token usage: input_tokens, output_tokens, total_tokens, cost)
+          - OODA mode also includes 'situation_assessment' and 'action_rationale'
         """
         prompt: str = self.build_prompt(world_state)
 
         # Update tick in log metadata
         self.llm.extra_metadata["tick"] = world_state.get("tick", 0)
 
-        try:
-            # Use FlatActionResponse for Gemini (avoids anyOf/oneOf issues)
-            # Use ActionResponse for other models (OpenAI, Anthropic, etc.)
-            if self._is_gemini_model():
-                flat_response: FlatActionResponse = self.llm.generate(
-                    prompt,
-                    response_model=FlatActionResponse
-                )
-                response: ActionResponse = flat_response.to_action_response()
-            else:
-                response = self.llm.generate(
-                    prompt,
-                    response_model=ActionResponse
-                )
-            usage: TokenUsage = self.llm.last_usage.copy()
+        # Plan #88: Check cognitive schema config
+        cognitive_schema: str = config_get("agent.cognitive_schema") or "simple"
 
-            return {
-                "action": response.action.model_dump(),
-                "thought_process": response.thought_process,
-                "usage": usage
-            }
+        try:
+            if cognitive_schema == "ooda":
+                # OODA mode: Use OODAResponse with situation_assessment + action_rationale
+                if self._is_gemini_model():
+                    flat_ooda: FlatOODAResponse = self.llm.generate(
+                        prompt,
+                        response_model=FlatOODAResponse
+                    )
+                    ooda_response: OODAResponse = flat_ooda.to_ooda_response()
+                else:
+                    ooda_response = self.llm.generate(
+                        prompt,
+                        response_model=OODAResponse
+                    )
+                usage: TokenUsage = self.llm.last_usage.copy()
+
+                return {
+                    "action": ooda_response.action.model_dump(),
+                    # For backwards compatibility, combine OODA fields into thought_process
+                    "thought_process": f"{ooda_response.situation_assessment}\n\nAction rationale: {ooda_response.action_rationale}",
+                    # OODA-specific fields
+                    "situation_assessment": ooda_response.situation_assessment,
+                    "action_rationale": ooda_response.action_rationale,
+                    "usage": usage
+                }
+            else:
+                # Simple mode (default): Use FlatActionResponse/ActionResponse
+                if self._is_gemini_model():
+                    flat_response: FlatActionResponse = self.llm.generate(
+                        prompt,
+                        response_model=FlatActionResponse
+                    )
+                    response: ActionResponse = flat_response.to_action_response()
+                else:
+                    response = self.llm.generate(
+                        prompt,
+                        response_model=ActionResponse
+                    )
+                usage = self.llm.last_usage.copy()
+
+                return {
+                    "action": response.action.model_dump(),
+                    "thought_process": response.thought_process,
+                    "usage": usage
+                }
         except ValidationError as e:
             # Pydantic validation failed
             usage = self.llm.last_usage.copy()
@@ -829,33 +873,61 @@ Your response should include:
         Returns same structure as propose_action():
           - 'action' (valid action dict) and 'thought_process' (str), or 'error' (string)
           - 'usage' (token usage: input_tokens, output_tokens, total_tokens, cost)
+          - OODA mode also includes 'situation_assessment' and 'action_rationale'
         """
         prompt: str = self.build_prompt(world_state)
 
         # Update tick in log metadata
         self.llm.extra_metadata["tick"] = world_state.get("tick", 0)
 
-        try:
-            # Use FlatActionResponse for Gemini (avoids anyOf/oneOf issues)
-            # Use ActionResponse for other models (OpenAI, Anthropic, etc.)
-            if self._is_gemini_model():
-                flat_response: FlatActionResponse = await self.llm.generate_async(
-                    prompt,
-                    response_model=FlatActionResponse
-                )
-                response: ActionResponse = flat_response.to_action_response()
-            else:
-                response = await self.llm.generate_async(
-                    prompt,
-                    response_model=ActionResponse
-                )
-            usage: TokenUsage = self.llm.last_usage.copy()
+        # Plan #88: Check cognitive schema config
+        cognitive_schema: str = config_get("agent.cognitive_schema") or "simple"
 
-            return {
-                "action": response.action.model_dump(),
-                "thought_process": response.thought_process,
-                "usage": usage
-            }
+        try:
+            if cognitive_schema == "ooda":
+                # OODA mode: Use OODAResponse with situation_assessment + action_rationale
+                if self._is_gemini_model():
+                    flat_ooda: FlatOODAResponse = await self.llm.generate_async(
+                        prompt,
+                        response_model=FlatOODAResponse
+                    )
+                    ooda_response: OODAResponse = flat_ooda.to_ooda_response()
+                else:
+                    ooda_response = await self.llm.generate_async(
+                        prompt,
+                        response_model=OODAResponse
+                    )
+                usage: TokenUsage = self.llm.last_usage.copy()
+
+                return {
+                    "action": ooda_response.action.model_dump(),
+                    # For backwards compatibility, combine OODA fields into thought_process
+                    "thought_process": f"{ooda_response.situation_assessment}\n\nAction rationale: {ooda_response.action_rationale}",
+                    # OODA-specific fields
+                    "situation_assessment": ooda_response.situation_assessment,
+                    "action_rationale": ooda_response.action_rationale,
+                    "usage": usage
+                }
+            else:
+                # Simple mode (default): Use FlatActionResponse/ActionResponse
+                if self._is_gemini_model():
+                    flat_response: FlatActionResponse = await self.llm.generate_async(
+                        prompt,
+                        response_model=FlatActionResponse
+                    )
+                    response: ActionResponse = flat_response.to_action_response()
+                else:
+                    response = await self.llm.generate_async(
+                        prompt,
+                        response_model=ActionResponse
+                    )
+                usage = self.llm.last_usage.copy()
+
+                return {
+                    "action": response.action.model_dump(),
+                    "thought_process": response.thought_process,
+                    "usage": usage
+                }
         except ValidationError as e:
             # Pydantic validation failed
             usage = self.llm.last_usage.copy()
@@ -890,6 +962,14 @@ Your response should include:
                 self.last_action_result += f"\nData: {data_str}"
             except (TypeError, ValueError):
                 pass  # Skip if data isn't JSON serializable
+
+        # Plan #88: Track recent failures for learning from mistakes
+        if not success:
+            failure_entry = f"{action_type}: {message[:100]}"
+            self.failure_history.append(failure_entry)
+            # Keep only the most recent failures
+            if len(self.failure_history) > self._failure_history_max:
+                self.failure_history = self.failure_history[-self._failure_history_max:]
 
     def record_observation(self, observation: str) -> None:
         """Record an observation to memory"""

@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-17 (Plan #62 - Config magic numbers)
+**Last verified:** 2026-01-18 (Plan #88 - cognitive_schema config)
 
 ---
 
@@ -262,6 +262,8 @@ agent:
     include_in_rag: false         # Also include in semantic search
     structured_format: true       # Enforce schema vs freeform
     warn_on_missing: false        # Log warning if no working memory
+  cognitive_schema: "simple"      # Plan #88: "simple" | "ooda"
+  failure_history_max: 5          # Plan #88: Max failures to track
   errors:
     access_denied_read: "Access denied:..."
     # ...

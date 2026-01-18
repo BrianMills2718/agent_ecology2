@@ -2,7 +2,7 @@
 
 Canonical terminology for Agent Ecology.
 
-**Last updated:** 2026-01-17
+**Last updated:** 2026-01-18
 
 ---
 
@@ -191,6 +191,24 @@ How value enters the system from outside:
 | **User bounty** | Human posts task with reward; pays winner if satisfied |
 
 The mint is the interface for scrip creation—but the *source* of value judgments is external.
+
+---
+
+## Cognitive Schema (Plan #88)
+
+How agents structure their thinking and responses to the LLM.
+
+| Term | Definition | Notes |
+|------|------------|-------|
+| **cognitive_schema** | Config option controlling agent response structure | `"simple"` or `"ooda"` |
+| **thought_process** | Agent's reasoning (simple mode) | Single field for all thinking |
+| **OODA** | Observe-Orient-Decide-Act loop | Military decision-making framework |
+| **situation_assessment** | Analysis of current state (OODA mode) | Can be verbose |
+| **action_rationale** | Concise explanation for chosen action (OODA mode) | 1-2 sentences |
+| **failure_history** | Recent failed actions shown to agent | Enables learning from mistakes |
+
+**Simple mode (default):** `thought_process` + `action`
+**OODA mode:** `situation_assessment` + `action_rationale` + `action`
 
 ---
 
