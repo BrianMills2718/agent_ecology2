@@ -2,6 +2,16 @@
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/notify-inbox-startup.sh",
+            "timeout": 3000
+          }
+        ]
+      },
+      {
         "matcher": "Edit|Write",
         "hooks": [
           {
