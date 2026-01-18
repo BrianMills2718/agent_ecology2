@@ -173,13 +173,14 @@ The "Lindy score" (age × usage) identifies artifacts that have stood the test o
 
 ---
 
-## Files to Modify
+## Files Affected
 
-| File | Change |
-|------|--------|
-| `src/dashboard/models.py` | Add `DependencyGraphData`, `ArtifactNode`, `DependencyEdge`, `GraphMetrics` |
-| `src/dashboard/parser.py` | Add `get_dependency_graph()` method |
-| `src/dashboard/server.py` | Add `/api/artifacts/dependency-graph` endpoint |
-| `src/dashboard/static/js/dependency-graph.js` | New: D3.js visualization |
-| `src/dashboard/static/index.html` | Add graph container |
-| `docs/architecture/current/supporting_systems.md` | Document new endpoint |
+- src/dashboard/models.py (modify) - Add `DependencyNode`, `DependencyEdge`, `DependencyGraphData`, `DependencyGraphMetrics`
+- src/dashboard/dependency_graph.py (create) - Graph construction and metrics calculation
+- src/dashboard/parser.py (modify) - Add `depends_on` to ArtifactState, add `get_dependency_graph()` method
+- src/dashboard/server.py (modify) - Add `/api/artifacts/dependency-graph` endpoint
+- src/dashboard/static/js/dependency-graph.js (create) - D3.js visualization
+- src/dashboard/static/index.html (modify) - Add graph container
+- tests/unit/test_dependency_graph.py (create) - Unit tests for graph construction
+- tests/integration/test_dashboard_dependency_graph.py (create) - Integration tests for API
+- docs/architecture/current/supporting_systems.md (modify) - Document new endpoint

@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-17 (Plan #62 - Config magic numbers)
+**Last verified:** 2026-01-17 (Plan #64 - Dependency graph endpoint)
 
 ---
 
@@ -262,6 +262,7 @@ Real-time web UI for monitoring simulation.
 | `/api/artifacts` | GET | All artifacts |
 | `/api/artifacts/{id}/detail` | GET | Artifact details with content |
 | `/api/artifacts/{id}/invocations` | GET | Invocation statistics for artifact |
+| `/api/artifacts/dependency-graph` | GET | Artifact dependency graph with metrics (Plan #64) |
 | `/api/invocations` | GET | Filtered invocation events |
 | `/api/events` | GET | Filtered events |
 | `/api/genesis` | GET | Genesis artifact activity |

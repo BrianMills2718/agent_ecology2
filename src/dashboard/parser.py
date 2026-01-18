@@ -79,6 +79,8 @@ class ArtifactState:
     invocation_history: list[ActionEvent] = field(default_factory=list)
     # Interface schema for discoverability (Plan #54)
     interface: dict[str, Any] | None = None
+    # Artifact dependencies (Plan #63)
+    depends_on: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -344,6 +346,7 @@ class JSONLParser:
                     updated_at=timestamp,
                     content=content[:10000] if content else None,  # Cap at 10KB
                     interface=intent.get("interface"),  # Plan #54: Interface for discoverability
+                    depends_on=intent.get("depends_on", []),  # Plan #63: Artifact dependencies
                 )
                 if artifact_id not in self.state.agents[agent_id].artifacts_owned:
                     self.state.agents[agent_id].artifacts_owned.append(artifact_id)
