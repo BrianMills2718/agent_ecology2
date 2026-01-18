@@ -113,8 +113,8 @@
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
 | `tests/unit/test_vsm_agents.py` | `test_alpha_2_workflow_has_self_audit` | alpha_2 workflow includes self_audit step |
-| `tests/unit/test_vsm_agents.py` | `test_beta_2_working_memory_schema` | beta_2 supports goal hierarchy in working memory |
-| `tests/unit/test_vsm_agents.py` | `test_working_memory_enabled` | Config has working_memory.enabled=true |
+| `tests/unit/test_vsm_agents.py` | `test_beta_2_has_goal_hierarchy` | beta_2 has goal hierarchy workflow steps |
+| `tests/unit/test_vsm_agents.py` | `test_working_memory_recommended` | Working memory config exists and is configurable |
 
 ### Existing Tests (Must Pass)
 
