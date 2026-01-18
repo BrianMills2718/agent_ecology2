@@ -81,3 +81,10 @@ Thumbs.db
 docs/EXTERNAL_REVIEW_PACKAGE.md
 docs/meta/META_REVIEW_PACKAGE.md
 logs/
+
+# Simulation outputs
+runs/
+*.jsonl
+
+# Claude Code session files
+.claude_session
