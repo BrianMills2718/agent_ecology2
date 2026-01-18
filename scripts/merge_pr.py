@@ -91,6 +91,38 @@ def cleanup_worktree(branch: str) -> bool:
     return True
 
 
+def release_claim_for_branch(branch: str) -> bool:
+    """Release any claim matching this branch name. Returns True if successful."""
+    # Claims use cc_id = branch name (e.g., plan-69-worktree-cleanup)
+    # Use --force to skip validation since the work is already merged
+    result = run_cmd(
+        [
+            "python",
+            "scripts/check_claims.py",
+            "--release",
+            "--id",
+            branch,
+            "--force",
+        ],
+        check=False,
+    )
+
+    if result.returncode != 0:
+        # Check if it's just "no claim found" - that's fine
+        stderr = result.stderr or ""
+        stdout = result.stdout or ""
+        if "No active claim found" in stderr or "No active claim found" in stdout:
+            # No claim to release - that's OK
+            return True
+        # Some other error - warn but don't fail
+        print(f"⚠️  Could not auto-release claim: {stderr or stdout}")
+        print(f"   Run manually: python scripts/check_claims.py --release --id {branch}")
+        return False
+
+    print(f"✅ Released claim for branch '{branch}'")
+    return True
+
+
 def check_pr_mergeable(pr_number: int) -> tuple[bool, str]:
     """Check if PR is mergeable. Returns (mergeable, reason)."""
     result = run_cmd(
@@ -193,8 +225,9 @@ def merge_pr(pr_number: int, dry_run: bool = False) -> bool:
     print("📥 Pulling latest main...")
     run_cmd(["git", "pull", "--rebase", "origin", "main"], check=False)
 
-    # Clean up local worktree if it exists
+    # Clean up local worktree and release claim if they exist
     if branch:
+        release_claim_for_branch(branch)
         cleanup_worktree(branch)
 
     print(f"\n✅ Done! PR #{pr_number} has been merged.")

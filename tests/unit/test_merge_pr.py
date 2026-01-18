@@ -12,7 +12,7 @@ import pytest
 # Add scripts to path for import
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
 
-from merge_pr import find_worktree_for_branch
+from merge_pr import find_worktree_for_branch, release_claim_for_branch
 
 
 class TestFindWorktreeForBranch:
@@ -100,3 +100,59 @@ branch refs/heads/target-branch
             result = find_worktree_for_branch("any-branch")
 
             assert result is None
+
+
+class TestReleaseClaimForBranch:
+    """Tests for release_claim_for_branch claim cleanup."""
+
+    def test_successful_release(self) -> None:
+        """Should return True when claim is successfully released."""
+        with patch("merge_pr.run_cmd") as mock_run:  # mock-ok: testing claim release logic
+            mock_run.return_value.returncode = 0
+            mock_run.return_value.stdout = "Released claim for plan-69-cleanup"
+            mock_run.return_value.stderr = ""
+
+            result = release_claim_for_branch("plan-69-cleanup")
+
+            assert result is True
+            # Verify correct command was called
+            mock_run.assert_called_once()
+            call_args = mock_run.call_args[0][0]
+            assert any("check_claims.py" in arg for arg in call_args)
+            assert "--release" in call_args
+            assert "--id" in call_args
+            assert "plan-69-cleanup" in call_args
+            assert "--force" in call_args
+
+    def test_no_claim_found_is_ok(self) -> None:
+        """Should return True when no claim exists (nothing to release)."""
+        with patch("merge_pr.run_cmd") as mock_run:  # mock-ok: testing no-claim handling
+            mock_run.return_value.returncode = 1
+            mock_run.return_value.stdout = ""
+            mock_run.return_value.stderr = "No active claim found for id: plan-69-cleanup"
+
+            result = release_claim_for_branch("plan-69-cleanup")
+
+            assert result is True  # No claim is OK - nothing to release
+
+    def test_no_claim_found_in_stdout(self) -> None:
+        """Should handle 'no claim' message in stdout too."""
+        with patch("merge_pr.run_cmd") as mock_run:  # mock-ok: testing stdout handling
+            mock_run.return_value.returncode = 1
+            mock_run.return_value.stdout = "No active claim found for id: plan-69-cleanup"
+            mock_run.return_value.stderr = ""
+
+            result = release_claim_for_branch("plan-69-cleanup")
+
+            assert result is True
+
+    def test_other_error_returns_false(self) -> None:
+        """Should return False on unexpected errors (but not fail the merge)."""
+        with patch("merge_pr.run_cmd") as mock_run:  # mock-ok: testing error handling
+            mock_run.return_value.returncode = 1
+            mock_run.return_value.stdout = ""
+            mock_run.return_value.stderr = "Permission denied or other error"
+
+            result = release_claim_for_branch("plan-69-cleanup")
+
+            assert result is False  # Error, but doesn't crash
