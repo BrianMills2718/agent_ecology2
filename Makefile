@@ -1,7 +1,7 @@
 # Agent Ecology - Common Commands
 # Usage: make <target>
 
-.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge pr-merge-admin pr-list pr-view worktree worktree-quick worktree-remove worktree-remove-force clean-branches clean-branches-delete kill
+.PHONY: help install test mypy lint check validate clean claim release complete gaps status rebase pr-ready pr pr-create merge pr-merge-admin pr-list pr-view worktree worktree-quick worktree-remove worktree-remove-force clean-branches clean-branches-delete kill
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -55,6 +55,10 @@ claim:  ## Claim work (usage: make claim TASK="description" PLAN=N)
 
 release:  ## Release claim with validation
 	python scripts/check_claims.py --release --validate
+
+complete:  ## Complete a plan (usage: make complete PLAN=N)
+	@test -n "$(PLAN)" || (echo "Usage: make complete PLAN=N" && exit 1)
+	python scripts/complete_plan.py --plan $(PLAN)
 
 claims:  ## List active claims
 	python scripts/check_claims.py --list

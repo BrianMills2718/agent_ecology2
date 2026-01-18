@@ -380,6 +380,36 @@ def update_plan_index(
     return True
 
 
+def release_claim_if_active(project_root: Path, verbose: bool = True) -> bool:
+    """Attempt to release any active claim for the current branch.
+
+    Returns True if claim was released or no claim existed.
+    """
+    result = subprocess.run(
+        ["python", "scripts/check_claims.py", "--release"],
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+    )
+
+    # Check result - both "Released" and "No active claim" are success
+    output = result.stdout + result.stderr
+    if "Released:" in output:
+        if verbose:
+            print("\n[5/5] Releasing claim... DONE")
+        return True
+    elif "No active claim" in output:
+        if verbose:
+            print("\n[5/5] Releasing claim... SKIPPED (no active claim)")
+        return True
+    else:
+        if verbose:
+            print("\n[5/5] Releasing claim... FAILED")
+            if output.strip():
+                print(f"      {output.strip()[:200]}")
+        return False
+
+
 def complete_plan(
     plan_number: int,
     project_root: Path,
@@ -495,12 +525,22 @@ def complete_plan(
 
     update_plan_index(plan_number, plans_dir, dry_run)
 
+    # Release claim if active (Phase 1 of Plan #96)
     if not dry_run:
-        print(f"\n\u2705 Plan #{plan_number} marked COMPLETE")
-        print(f"   Verification evidence recorded in {plan_file.name}")
-        print(f"\nNext steps:")
-        print(f"   1. Commit changes: git add {plan_file}")
-        print(f"   2. Release claim: python scripts/check_claims.py --release")
+        release_claim_if_active(project_root, verbose)
+
+    if not dry_run:
+        print(f"\n{'='*60}")
+        print(f"\u2705 Plan #{plan_number} COMPLETE")
+        print(f"{'='*60}")
+        print(f"   - Verification evidence recorded in {plan_file.name}")
+        print(f"   - Plan index updated")
+        print(f"   - Claim released (if active)")
+        print(f"\nReady for PR:")
+        print(f"   git add -A && git commit -m '[Plan #{plan_number}] ...'")
+        print(f"   make pr-ready && gh pr create")
+    else:
+        print(f"\n[DRY RUN] Would also release claim if active")
 
     return True
 

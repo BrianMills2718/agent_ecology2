@@ -433,14 +433,16 @@ python scripts/check_claims.py --list
 make claims
 ```
 
-**Releasing work:**
+**Completing work:**
 ```bash
-# When done (validates tests pass)
-make release
+# Complete a plan (runs tests, updates status, releases claim)
+make complete PLAN=N
 
 # Or manually
-python scripts/check_claims.py --release --validate
+python scripts/complete_plan.py --plan N
 ```
+
+Claims are automatically released when you complete a plan. Manual release is rarely needed but available via `make release`.
 
 **Active Work:**
 <!-- Auto-synced from .claude/active-work.yaml -->
@@ -501,8 +503,7 @@ Don't guess or assume - check the log if you need details the summary didn't cap
 - [ ] `python scripts/check_plan_tests.py --plan N` passes (if plan has tests)
 - [ ] Code matches task description
 - [ ] No new silent fallbacks
-- [ ] Plan status updated (file AND index)
-- [ ] Claim released: `make release` or `python scripts/check_claims.py --release --validate`
+- [ ] Plan completed: `make complete PLAN=N` (updates status, syncs index, releases claim)
 
 ### Cross-Instance Review
 
@@ -738,7 +739,7 @@ Each gap has a plan file in `docs/plans/NN_name.md`. When implementing:
 3. **Start work** → Update plan status to `🚧 In Progress`
 4. **Implement** → Code until tests pass
 5. **Verify** → `python scripts/check_plan_tests.py --plan N`
-6. **Complete** → **MUST use:** `python scripts/complete_plan.py --plan N`
+6. **Complete** → **MUST use:** `make complete PLAN=N`
 
 ```bash
 # See what tests a plan needs
@@ -755,21 +756,25 @@ python scripts/check_plan_tests.py --plan 1
 > Manual status changes cause **index/file mismatches** that break CI.
 > The pre-commit hook blocks commits with mismatched statuses.
 >
-> **Always use:** `python scripts/complete_plan.py --plan N`
+> **Always use:** `make complete PLAN=N`
 
 ```bash
-# Complete a plan (runs tests, records evidence, updates status)
+# Complete a plan (runs tests, records evidence, updates status, releases claim)
+make complete PLAN=N
+
+# Or use the script directly
 python scripts/complete_plan.py --plan N
 
 # Dry run - check without updating
 python scripts/complete_plan.py --plan N --dry-run
 ```
 
-The script:
+The script does everything in one command:
 1. Runs unit/component tests (`pytest tests/ --ignore=tests/e2e/`)
 2. Runs E2E smoke tests (`pytest tests/e2e/test_smoke.py`)
 3. Records verification evidence in the plan file
 4. Updates plan status to Complete **in both the plan file AND the index**
+5. **Releases the claim automatically** (no separate `make release` needed)
 
 **Why:** Manual edits only update one location, causing mismatches that break CI and confuse other CC instances.
 

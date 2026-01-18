@@ -118,7 +118,11 @@ Master index of all gaps and their implementation plans.
 | 89 | [Plan Enforcement Hooks](89_plan_enforcement_hooks.md) | **High** | 📋 Planned | - |
 | 90 | [Cognitive Schema Configurability](90_cognitive_schema_configurability.md) | Low | 📋 Post-V1 | #88 |
 | 91 | [Acceptance Gate Cleanup](91_acceptance_gate_cleanup.md) | **High** | 📋 Planned | Terminology refactor |
-| 92 | [Worktree/Branch Mismatch Detection](92_worktree_branch_validation.md) | **High** | 🚧 In Progress | Meta-process integrity |
+| 92 | [Worktree/Branch Mismatch Detection](92_worktree_branch_validation.md) | **High** | ✅ Complete | Meta-process integrity |
+| 93 | [Agent Resource Visibility](93_agent_resource_visibility.md) | Medium | 📋 Deferred | #95 |
+| 94 | [PR Handoff Protocol](94_pr_handoff_protocol.md) | Medium | 📋 Planned | Coordination efficiency |
+| 95 | [Unified Resource System](95_unified_resource_system.md) | **Critical** | 📋 Planned | Core economic mechanics |
+| 96 | [Meta-Process Simplification](96_meta_simplification.md) | **High** | 🚧 In Progress | Reduce friction |
 
 ---
 
