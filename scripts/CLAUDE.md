@@ -9,6 +9,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `check_doc_coupling.py` | Verify docs updated when source changes |
 | `check_plan_tests.py` | Verify/run plan test requirements |
 | `check_plan_blockers.py` | Detect stale blockers (blocked by complete plans) |
+| `check_plan_exclusivity.py` | Enforce unique plan numbers across open PRs |
 | `check_mock_usage.py` | Detect suspicious mock patterns in tests |
 | `check_claims.py` | Manage active work claims (scope-based) |
 | `merge_pr.py` | Merge PRs via GitHub CLI |
