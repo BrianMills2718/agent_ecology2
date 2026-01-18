@@ -130,4 +130,22 @@ couplings:
     description: "Terminology - new terms or renamed concepts?"
     soft: true
 
+  # Dashboard frontend changes
+  - sources:
+      - "src/dashboard/static/js/**/*.js"
+      - "src/dashboard/static/css/**/*.css"
+    docs:
+      - "docs/architecture/current/supporting_systems.md"
+    description: "Dashboard UI changes - document new panels/features"
+    soft: true
+
+  # Agent models and schemas
+  - sources:
+      - "src/agents/models.py"
+      - "src/agents/schema.py"
+    docs:
+      - "docs/architecture/current/agents.md"
+    description: "Agent response models - update if new fields added"
+    soft: true
+
   # NOTE: Plan-to-index coupling is now strict (above), not soft
