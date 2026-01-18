@@ -27,8 +27,13 @@ Modify `scripts/merge_pr.py` to automatically clean up the local worktree after 
 
 ## Required Tests
 
-- Unit test: `find_worktree_for_branch()` correctly parses `git worktree list --porcelain`
-- Integration: Merge flow completes even if worktree cleanup fails
+| Test File | Test Function | What It Verifies |
+|-----------|---------------|------------------|
+| `tests/unit/test_merge_pr.py` | `test_finds_matching_branch` | Parses porcelain output correctly |
+| `tests/unit/test_merge_pr.py` | `test_returns_none_for_no_match` | Returns None when branch not found |
+| `tests/unit/test_merge_pr.py` | `test_handles_detached_head_worktrees` | Skips detached HEAD entries |
+| `tests/unit/test_merge_pr.py` | `test_handles_git_command_failure` | Returns None on git failure |
+| `tests/unit/test_merge_pr.py` | `test_handles_empty_output` | Returns None for empty output |
 
 ## Acceptance Criteria
 
