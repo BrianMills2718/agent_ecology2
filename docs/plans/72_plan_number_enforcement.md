@@ -41,7 +41,7 @@ Validate that branch name and work align with plan description. More complex, de
 
 - `.github/workflows/ci.yml` (modify)
 - `scripts/check_plan_exclusivity.py` (create)
-- `tests/unit/test_plan_exclusivity.py` (create)
+- `tests/unit/test_check_plan_exclusivity.py` (create)
 
 ---
 
@@ -49,11 +49,11 @@ Validate that branch name and work align with plan description. More complex, de
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/unit/test_plan_exclusivity.py` | `test_extracts_plan_number_from_commits` | Parses `[Plan #N]` from commit messages |
-| `tests/unit/test_plan_exclusivity.py` | `test_no_conflict_when_unique` | Passes when no other PR uses same plan |
-| `tests/unit/test_plan_exclusivity.py` | `test_fails_when_duplicate` | Fails when another open PR uses same plan |
-| `tests/unit/test_plan_exclusivity.py` | `test_ignores_trivial_commits` | `[Trivial]` commits skip check |
-| `tests/unit/test_plan_exclusivity.py` | `test_ignores_closed_prs` | Closed PRs don't count as conflicts |
+| `tests/unit/test_check_plan_exclusivity.py` | `test_extracts_plan_number_from_commits` | Parses `[Plan #N]` from commit messages |
+| `tests/unit/test_check_plan_exclusivity.py` | `test_no_conflict_when_unique` | Passes when no other PR uses same plan |
+| `tests/unit/test_check_plan_exclusivity.py` | `test_fails_when_duplicate` | Fails when another open PR uses same plan |
+| `tests/unit/test_check_plan_exclusivity.py` | `test_ignores_trivial_commits` | `[Trivial]` commits skip check |
+| `tests/unit/test_check_plan_exclusivity.py` | `test_ignores_closed_prs` | Closed PRs don't count as conflicts |
 
 ---
 
