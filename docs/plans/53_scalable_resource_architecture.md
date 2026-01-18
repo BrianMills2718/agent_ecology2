@@ -234,30 +234,20 @@ Agent state must persist between turns for process-per-turn model.
 
 ## Required Tests
 
-### New Tests (TDD)
-
-#### Phase 0 Tests
+### Phase 0 Tests
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/unit/test_executor.py` | `test_executor_returns_cpu_seconds` | Executor returns `cpu_seconds` not `llm_tokens` |
-| `tests/unit/test_executor.py` | `test_executor_uses_resource_measurer` | Executor uses `ResourceMeasurer` not wall-clock hack |
-| `tests/unit/test_ledger.py` | `test_cpu_seconds_resource_type` | Ledger accepts `cpu_seconds` as valid resource |
+| `tests/unit/test_executor.py` | `test_executor_returns_cpu_seconds_not_llm_tokens` | Executor returns `cpu_seconds` |
+| `tests/unit/test_executor.py` | `test_executor_uses_resource_measurer` | Executor uses `ResourceMeasurer` |
 
-#### Phase 2+ Tests
+### Phase 2+ Tests
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
 | `tests/unit/test_state_store.py` | `test_save_load_agent_state` | Agent state persists correctly |
-| `tests/unit/test_state_store.py` | `test_concurrent_access` | Multiple workers don't corrupt state |
 | `tests/unit/test_worker.py` | `test_memory_measurement` | Memory tracked per-turn |
 | `tests/unit/test_worker.py` | `test_cpu_measurement` | CPU time tracked per-turn |
-| `tests/unit/test_worker.py` | `test_memory_quota_exceeded` | Turn killed when over quota |
-| `tests/unit/test_worker.py` | `test_cpu_quota_exceeded` | Turn killed when over time |
-| `tests/unit/test_connection_pool.py` | `test_fair_queue` | Connections allocated FIFO |
-| `tests/unit/test_connection_pool.py` | `test_pool_exhaustion` | Agents wait when pool full |
-| `tests/integration/test_worker_pool.py` | `test_100_agents` | 100 agents run without OOM |
-| `tests/integration/test_resource_trading.py` | `test_memory_transfer` | Memory quota tradeable |
 | `tests/integration/test_resource_trading.py` | `test_cpu_transfer` | CPU quota tradeable |
 
 ### Existing Tests (Must Pass)

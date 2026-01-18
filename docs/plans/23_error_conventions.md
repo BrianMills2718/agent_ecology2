@@ -114,11 +114,10 @@ Examples:
 
 ## Required Tests
 
-- `tests/unit/test_errors.py::test_error_response_format`
-- `tests/unit/test_errors.py::test_success_response_format`
-- `tests/unit/test_errors.py::test_error_code_categories`
-- `tests/integration/test_error_responses.py::test_executor_errors`
-- `tests/integration/test_error_responses.py::test_genesis_errors`
+- `tests/unit/test_errors.py::test_error_to_dict` - Error response format
+- `tests/unit/test_errors.py::test_error_category_values` - Error code categories
+- `tests/unit/test_errors.py::test_backwards_compatible` - Success response format
+- `tests/integration/test_genesis_errors.py` - Genesis error responses
 
 ---
 

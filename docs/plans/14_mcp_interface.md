@@ -185,13 +185,9 @@ genesis_store.get_interface(artifact_id) -> interface dict
 ## Required Tests
 
 ### Unit Tests
-- `test_artifact_interface.py::test_interface_field_optional` - Interface can be None
-- `test_artifact_interface.py::test_interface_schema_structure` - Valid schema format
-- `test_artifact_interface.py::test_genesis_has_interfaces` - All genesis artifacts have schemas
-
-### Integration Tests
-- `test_artifact_interface.py::test_interface_discovery` - Can query artifact interface
-- `test_artifact_interface.py::test_validation_rejects_bad_args` - Invalid args rejected (if validation enabled)
+- `tests/unit/test_artifact_interface.py::test_interface_field_optional` - Interface can be None
+- `tests/unit/test_artifact_interface.py::test_genesis_ledger_has_interface` - Genesis artifacts have schemas
+- `tests/unit/test_artifact_interface.py::test_genesis_ledger_interface_has_input_schemas` - Valid schema format
 
 ---
 

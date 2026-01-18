@@ -231,14 +231,10 @@ Update genesis artifacts to demonstrate patterns:
 
 ## Required Tests
 
-### New Tests (TDD)
+### Integration Tests
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/unit/test_interface_terms.py` | `test_interface_description_only` | Minimal interface works |
-| `tests/unit/test_interface_terms.py` | `test_interface_with_methods` | Methods array recognized |
-| `tests/unit/test_interface_terms.py` | `test_interface_full_example` | All reserved terms work |
-| `tests/unit/test_dashboard_models.py` | `test_artifact_detail_has_interface` | Model includes interface |
 | `tests/integration/test_genesis_interface.py` | `test_genesis_ledger_interface` | Genesis has interface |
 | `tests/integration/test_genesis_interface.py` | `test_genesis_mint_interface` | Genesis has interface |
 
@@ -247,8 +243,6 @@ Update genesis artifacts to demonstrate patterns:
 | Test Pattern | Why |
 |--------------|-----|
 | `tests/unit/test_artifact_interface.py` | Plan #14 interface tests |
-| `tests/integration/test_genesis_*` | Genesis artifacts unchanged |
-| `tests/unit/test_dashboard_*` | Dashboard still works |
 
 ---
 

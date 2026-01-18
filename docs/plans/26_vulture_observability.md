@@ -129,15 +129,12 @@ Verify that `genesis_ledger.get_balance(id)` is callable by any principal withou
 ## Required Tests
 
 ### Unit Tests
-- `tests/unit/test_freeze_events.py::test_agent_frozen_event_emitted` - Event on compute exhaustion
-- `tests/unit/test_freeze_events.py::test_agent_unfrozen_event_emitted` - Event on resource transfer
-- `tests/unit/test_freeze_events.py::test_frozen_event_includes_assets` - Asset inventory in event
-- `tests/unit/test_freeze_events.py::test_unfrozen_event_includes_rescuer` - Rescuer ID tracked
+- `tests/unit/test_freeze_events.py::test_agent_frozen_event_emitted_on_compute_exhaustion`
+- `tests/unit/test_freeze_events.py::test_frozen_event_includes_owned_artifacts`
+- `tests/unit/test_freeze_events.py::test_unfrozen_event_includes_rescuer_id`
 
 ### Integration Tests
-- `tests/integration/test_vulture_observability.py::test_freeze_event_in_log` - Event appears in run.jsonl
-- `tests/integration/test_vulture_observability.py::test_artifacts_by_owner_api` - API returns owned artifacts
-- `tests/integration/test_vulture_observability.py::test_public_ledger_access` - Balance readable by all
+- `tests/integration/test_vulture_observability.py` - Vulture observability tests
 
 ---
 

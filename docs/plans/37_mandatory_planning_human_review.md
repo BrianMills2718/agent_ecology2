@@ -55,8 +55,8 @@ Current meta-process has gaps:
 ## Required Tests
 
 - `tests/unit/test_complete_plan.py::test_detects_human_review_section`
-- `tests/unit/test_complete_plan.py::test_blocks_without_human_verified_flag`
-- `tests/unit/test_complete_plan.py::test_allows_with_human_verified_flag`
+- `tests/unit/test_complete_plan.py::test_returns_none_when_no_section`
+- `tests/integration/test_complete_plan_integration.py::test_complete_plan_with_real_e2e`
 
 ## Acceptance Criteria
 

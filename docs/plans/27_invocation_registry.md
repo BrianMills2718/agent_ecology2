@@ -172,9 +172,9 @@ async def get_recent_invocations(
 - `tests/unit/test_invocation_registry.py::test_failure_type_counts` - Error categorization
 
 ### Integration Tests
-- `tests/integration/test_invocation_events.py::test_invoke_success_event` - Event emitted on success
-- `tests/integration/test_invocation_events.py::test_invoke_failure_event` - Event emitted on failure
-- `tests/integration/test_invocation_events.py::test_dashboard_invocation_api` - API returns stats
+- `tests/integration/test_invocation_events.py::test_invoke_success_event_logged` - Event emitted on success
+- `tests/integration/test_invocation_events.py::test_invoke_failure_event_logged` - Event emitted on failure
+- `tests/integration/test_invocation_events.py::test_api_invocations_endpoint` - API returns stats
 
 ---
 

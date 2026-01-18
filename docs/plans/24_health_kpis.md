@@ -183,11 +183,11 @@ health_kpis:
 - `tests/unit/test_kpis.py::test_gini_coefficient_equal` - All equal balances → 0
 - `tests/unit/test_kpis.py::test_gini_coefficient_concentrated` - One has all → 1
 - `tests/unit/test_kpis.py::test_scrip_velocity_calculation` - Transfers / total / time
-- `tests/unit/test_kpis.py::test_frozen_count` - Counts frozen agents correctly
+- `tests/unit/test_kpis.py::test_frozen_count_some` - Counts frozen agents correctly
 
 ### Integration Tests
-- `tests/integration/test_dashboard_kpis.py::test_kpi_endpoint` - API returns valid KPIs
-- `tests/integration/test_dashboard_kpis.py::test_kpi_trends` - Trends update over ticks
+- `tests/integration/test_dashboard_kpis.py::test_kpi_endpoint_returns_valid_kpis` - API returns valid KPIs
+- `tests/integration/test_dashboard_kpis.py::test_kpi_trends_update_over_ticks` - Trends update over ticks
 
 ---
 

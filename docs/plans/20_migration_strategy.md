@@ -243,9 +243,9 @@ Phase 1 (✅ COMPLETE) → Phase 2 (✅ mostly complete)
 ## Required Tests
 
 This is a meta-tracking plan. Tests live in individual gap plans:
-- `tests/test_rate_tracking.py` - Phase 1 (#1 Rate Allocation)
-- `tests/test_agent_loop.py` - Phase 2 (#2 Continuous Execution)
-- `tests/test_discovery.py` - Phase 3 (#16 Artifact Discovery)
+- `tests/unit/test_rate_tracker.py` - Phase 1 (#1 Rate Allocation)
+- `tests/unit/test_agent_loop.py` - Phase 2 (#2 Continuous Execution)
+- `tests/integration/test_genesis_store.py` - Phase 3 (#16 Artifact Discovery)
 - `tests/e2e/test_smoke.py` - End-to-end verification
 
 **Verification approach:** All referenced gaps must be ✅ Complete with passing tests before this plan can be marked complete.

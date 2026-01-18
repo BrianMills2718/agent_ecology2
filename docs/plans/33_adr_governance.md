@@ -65,12 +65,12 @@ Added `governance-sync` job to `.github/workflows/ci.yml` that runs `--check` mo
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/test_sync_governance.py` | `test_dry_run_no_changes` | Dry run doesn't modify files |
-| `tests/test_sync_governance.py` | `test_generates_correct_header` | Header format is correct |
-| `tests/test_sync_governance.py` | `test_only_modifies_between_markers` | Code outside markers untouched |
-| `tests/test_sync_governance.py` | `test_syntax_validation` | Syntax validation works |
-| `tests/test_sync_governance.py` | `test_missing_adr_fails` | Reference to nonexistent ADR fails |
-| `tests/test_sync_governance.py` | `test_check_mode_detects_drift` | --check finds out-of-sync files |
+| `tests/integration/test_sync_governance.py` | `test_dry_run_no_changes` | Dry run doesn't modify files |
+| `tests/integration/test_sync_governance.py` | `test_generates_correct_header` | Header format is correct |
+| `tests/integration/test_sync_governance.py` | `test_only_modifies_between_markers` | Code outside markers untouched |
+| `tests/integration/test_sync_governance.py` | `test_syntax_validation_aborts_on_invalid` | Syntax validation works |
+| `tests/integration/test_sync_governance.py` | `test_missing_adr_fails` | Reference to nonexistent ADR fails |
+| `tests/integration/test_sync_governance.py` | `test_check_mode_detects_drift` | --check finds out-of-sync files |
 
 ## Completion Criteria
 
