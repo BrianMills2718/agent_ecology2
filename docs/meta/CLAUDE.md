@@ -15,8 +15,10 @@ Files are numbered for reading order:
 | 01-02 | Overview, CLAUDE.md authoring |
 | 03-06 | Testing and hooks |
 | 07-12 | Documentation patterns |
-| 13-17 | Feature and plan workflows |
+| 13-17 | Acceptance gate and plan workflows |
 | 18-26 | Coordination patterns |
+
+**Note:** Pattern 13 and 14 are now "Acceptance-Gate-Driven Development" and "Acceptance Gate Linkage" respectively. See `adr/` for meta-process ADRs explaining this terminology.
 
 ## Pattern Status
 

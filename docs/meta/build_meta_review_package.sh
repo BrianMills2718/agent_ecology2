@@ -29,8 +29,8 @@ in recommended reading order for external review.
 10. [Doc-Code Coupling](#10-doc-code-coupling)
 11. [Terminology](#11-terminology)
 12. [Structured Logging](#12-structured-logging)
-13. [Feature-Driven Development](#13-feature-driven-development)
-14. [Feature Linkage](#14-feature-linkage)
+13. [Acceptance-Gate-Driven Development](#13-acceptance-gate-driven-development)
+14. [Acceptance Gate Linkage](#14-acceptance-gate-linkage)
 15. [Plan Workflow](#15-plan-workflow)
 16. [Plan Blocker Enforcement](#16-plan-blocker-enforcement)
 17. [Verification Enforcement](#17-verification-enforcement)
@@ -122,13 +122,13 @@ append_content "$META_DIR/11_terminology.md"
 append_section "12" "Structured Logging" "docs/meta/12_structured-logging.md"
 append_content "$META_DIR/12_structured-logging.md"
 
-# 13. Feature-Driven Development
-append_section "13" "Feature-Driven Development" "docs/meta/13_feature-driven-development.md"
-append_content "$META_DIR/13_feature-driven-development.md"
+# 13. Acceptance-Gate-Driven Development
+append_section "13" "Acceptance-Gate-Driven Development" "docs/meta/13_acceptance-gate-driven-development.md"
+append_content "$META_DIR/13_acceptance-gate-driven-development.md"
 
-# 14. Feature Linkage
-append_section "14" "Feature Linkage" "docs/meta/14_feature-linkage.md"
-append_content "$META_DIR/14_feature-linkage.md"
+# 14. Acceptance Gate Linkage
+append_section "14" "Acceptance Gate Linkage" "docs/meta/14_acceptance-gate-linkage.md"
+append_content "$META_DIR/14_acceptance-gate-linkage.md"
 
 # 15. Plan Workflow
 append_section "15" "Plan Workflow" "docs/meta/15_plan-workflow.md"

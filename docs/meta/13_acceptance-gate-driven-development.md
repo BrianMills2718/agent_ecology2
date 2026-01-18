@@ -1,15 +1,27 @@
-# Pattern: Feature-Driven Development
+# Pattern: Acceptance-Gate-Driven Development
 
 A comprehensive meta-process for AI-assisted software development that ensures verified progress, prevents AI drift, and maintains thin slices.
 
-## Core Concept: Features Are E2E Acceptance Gates
+## Why This Exists: The Anti-Big-Bang Goal
 
-**A feature is COMPLETE when its acceptance criteria pass with real (non-mocked) integration.**
+Claude Code (and AI coding assistants generally) tends toward **big-bang development**:
+- Work for days on implementation
+- Accumulate uncommitted changes
+- Hope everything integrates at the end
+- Discover fundamental issues too late
+
+**Acceptance gates force thin-slice development** by requiring functional capabilities to pass real E2E tests before being considered complete. This pattern exists to prevent the "fingers crossed" approach to integration.
+
+See [META-ADR-0002: Thin-Slice Enforcement](adr/0002-thin-slice-enforcement.md) for the full rationale.
+
+## Core Concept: Acceptance Gates Are E2E Checkpoints
+
+**An acceptance gate is COMPLETE when its acceptance criteria pass with real (non-mocked) integration.**
 
 Not when code is written. Not when unit tests pass. When **real E2E tests with no mocks** pass.
 
 ```
-Feature: escrow
+Acceptance Gate: escrow
 ├── AC-1: Deposit works       ← Must pass with NO MOCKS
 ├── AC-2: Purchase works      ← Must pass with NO MOCKS
 ├── AC-3: Cancellation works  ← Must pass with NO MOCKS
@@ -17,16 +29,18 @@ Feature: escrow
 └── DONE when: pytest tests/e2e/test_real_e2e.py --run-external passes
 ```
 
-### Features vs Plans
+### Acceptance Gates vs Plans
 
 | Concept | Purpose | Done When |
 |---------|---------|-----------|
-| **Feature** | E2E acceptance gate | Real LLM E2E tests pass |
-| **Plan** | Unit of work toward a feature | Code done, unit tests pass |
+| **Acceptance Gate** | E2E verification checkpoint | Real LLM E2E tests pass |
+| **Plan** | Unit of work toward a gate | Code done, unit tests pass |
 
-- Multiple **plans** contribute to one **feature**
-- Plans can be "complete" while feature is still incomplete
-- Feature completion = the REAL checkpoint
+- Multiple **plans** contribute to one **acceptance gate**
+- Plans can be "complete" while acceptance gate is still not passed
+- Gate passed = the REAL checkpoint
+
+See [META-ADR-0003: Plan-Gate Hierarchy](adr/0003-plan-gate-hierarchy.md) for why E2E is at the gate level, not plan level.
 
 ### Why Real E2E Matters
 
@@ -57,11 +71,11 @@ Typical project structure has sparse, disconnected mappings:
 
 ## Solution
 
-### Core Concept: Feature as Central Entity
+### Core Concept: Acceptance Gate as Central Entity
 
-**Feature** = cohesive capability (e.g., "escrow", "rate_limiting")
+**Acceptance Gate** = E2E-verifiable functional capability (e.g., "escrow", "rate_limiting")
 
-A Feature contains:
+An Acceptance Gate contains:
 - Problem statement (WHY)
 - Acceptance criteria (WHAT, testable)
 - Out of scope (explicit exclusions)
@@ -70,7 +84,9 @@ A Feature contains:
 - Test files
 - Documentation
 
-**Tasks** operate ON Features. Plans become administrative tracking, not organizational structure.
+**Tasks** operate ON Acceptance Gates. Plans become administrative tracking, not organizational structure.
+
+See [META-ADR-0001: Acceptance Gate Terminology](adr/0001-acceptance-gate-terminology.md) for why we use "acceptance gate" not "feature".
 
 ### The Lock-Before-Implement Principle
 
@@ -131,11 +147,11 @@ Start simple. Add friction only if abuse is detected.
 
 **CI handles what automation is good at:** verification and enforcement.
 
-## Feature Definition Schema
+## Acceptance Gate Definition Schema
 
 ```yaml
 # acceptance_gates/escrow.yaml
-feature: escrow
+gate: escrow
 planning_mode: guided  # autonomous | guided | detailed | iterative
 
 # === PRD SECTION (What/Why - Human-readable) ===
@@ -242,12 +258,12 @@ Design section surfaces these choices for review.
 | `detailed` | Required |
 | `iterative` | Per-cycle (can evolve) |
 
-| Feature Type | Design Section |
-|--------------|----------------|
+| Gate Size | Design Section |
+|-----------|----------------|
 | Bug fix | Skip |
 | Small utility | Skip |
-| Medium feature | Recommended |
-| Large feature | Required |
+| Medium gate | Recommended |
+| Large gate | Required |
 | Architectural change | Required |
 
 ### Format Rules
@@ -281,7 +297,7 @@ Keep it reviewable by someone who can't read code.
 
 ## Planning Depth Levels
 
-Not all features require the same planning depth.
+Not all acceptance gates require the same planning depth.
 
 ### Autonomous Mode
 ```
@@ -424,11 +440,11 @@ ADR references in source file headers keep constraints visible:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ 1. FEATURE DEFINITION (What/Why)                                    │
+│ 1. ACCEPTANCE GATE DEFINITION (What/Why)                            │
 ├─────────────────────────────────────────────────────────────────────┤
 │ AI: Writes problem statement, out_of_scope                          │
 │ Human: Reviews/approves (if guided/detailed mode)                   │
-│ Output: acceptance_gates/<name>.yaml (problem, out_of_scope)                │
+│ Output: acceptance_gates/<name>.yaml (problem, out_of_scope)        │
 └─────────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -438,7 +454,7 @@ ADR references in source file headers keep constraints visible:
 │ AI: Writes Given/When/Then acceptance criteria                      │
 │ Human: Reviews/approves (if guided/detailed mode)                   │
 │ CI: Validates spec completeness (minimum requirements)              │
-│ Output: acceptance_criteria added to feature file                   │
+│ Output: acceptance_criteria added to gate file                      │
 └─────────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -447,8 +463,8 @@ ADR references in source file headers keep constraints visible:
 ├─────────────────────────────────────────────────────────────────────┤
 │ AI: Writes approach, key_decisions, risks (plain English)           │
 │ Human: Reviews architectural choices                                │
-│ Skip if: autonomous mode, small feature, obvious implementation     │
-│ Output: design section added to feature file                        │
+│ Skip if: autonomous mode, small gate, obvious implementation        │
+│ Output: design section added to gate file                           │
 └─────────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -500,11 +516,11 @@ ADR references in source file headers keep constraints visible:
 
 ## Task Types
 
-Features contain tasks. Each task has a type with specific verification:
+Acceptance gates contain tasks. Each task has a type with specific verification:
 
 | Type | What It Is | Verification |
 |------|------------|--------------|
-| `impl` | Code implementation | Feature tests pass, ADR conformance documented |
+| `impl` | Code implementation | Gate tests pass, ADR conformance documented |
 | `doc` | Documentation | Doc-coupling check passes, terminology correct |
 | `arch` | Architecture decision | ADR exists, governance sync passes |
 
@@ -533,10 +549,12 @@ Every unit of work must prove it works end-to-end before declaring success.
 
 | File | Purpose |
 |------|---------|
-| `acceptance_gates/*.yaml` | Feature definitions (single source of truth) |
+| `acceptance_gates/*.yaml` | Acceptance gate definitions (single source of truth) |
 | `scripts/validate_spec.py` | Validates spec completeness |
 | `scripts/check_locked_files.py` | Ensures locked files unchanged |
 | `scripts/generate_tests.py` | Generates test stubs from specs |
+
+See [META-ADR-0004: Gate YAML Is Documentation](adr/0004-gate-yaml-is-documentation.md) for why gate definitions live in YAML, not separate markdown files.
 
 ## Setup (New Project)
 
@@ -554,18 +572,18 @@ Every unit of work must prove it works end-to-end before declaring success.
 
 ## Usage
 
-### Creating a New Feature
+### Creating a New Acceptance Gate
 
 ```bash
-# 1. Create feature definition
-claude "Create feature definition for user authentication"
+# 1. Create gate definition
+claude "Create acceptance gate definition for user authentication"
 # AI writes acceptance_gates/authentication.yaml with problem, out_of_scope
 
 # 2. Review and approve (if guided mode)
 # Human reviews the definition
 
 # 3. Create specs
-claude "Write acceptance criteria for authentication feature"
+claude "Write acceptance criteria for authentication gate"
 # AI writes Given/When/Then specs
 
 # 4. Review specs (if guided mode)
@@ -573,7 +591,7 @@ claude "Write acceptance criteria for authentication feature"
 
 # 5. Lock specs
 git add acceptance_gates/authentication.yaml
-git commit -m "Lock authentication feature specs"
+git commit -m "Lock authentication gate specs"
 
 # 6. Implement
 claude "Implement authentication to pass the locked specs"
@@ -618,10 +636,10 @@ jobs:
       - name: Verify locked files unchanged
         run: python scripts/check_locked_files.py --locked "acceptance_gates/*/spec.yaml"
 
-  feature-tests:
+  gate-tests:
     runs-on: ubuntu-latest
     steps:
-      - name: Run feature tests
+      - name: Run acceptance gate tests
         run: pytest tests/acceptance_gates/ -v
 ```
 
@@ -631,12 +649,12 @@ jobs:
 
 ```yaml
 # config/spec_requirements.yaml
-minimum_scenarios: 3  # Increase for critical features
+minimum_scenarios: 3  # Increase for critical gates
 required_categories:
   - happy_path
   - error_case
   - edge_case
-  - security_case  # Add for security-sensitive features
+  - security_case  # Add for security-sensitive gates
 ```
 
 ### Planning Mode Defaults
@@ -673,12 +691,19 @@ require_approval_for_lock: true
 
 ## Related Patterns
 
-- [Feature Linkage](14_feature-linkage.md) - Companion pattern: optimal linkage structure
+- [Acceptance Gate Linkage](14_acceptance-gate-linkage.md) - Companion pattern: optimal linkage structure
 - [ADR](07_adr.md) - Architecture Decision Records
 - [ADR Governance](08_adr-governance.md) - Linking ADRs to code
 - [Doc-Code Coupling](10_doc-code-coupling.md) - Linking docs to code
 - [Testing Strategy](03_testing-strategy.md) - Test organization
 - [Verification Enforcement](17_verification-enforcement.md) - Proving completion
+
+## Related Meta-Process ADRs
+
+- [META-ADR-0001: Acceptance Gate Terminology](adr/0001-acceptance-gate-terminology.md) - Why "acceptance gate" not "feature"
+- [META-ADR-0002: Thin-Slice Enforcement](adr/0002-thin-slice-enforcement.md) - Anti-big-bang goal
+- [META-ADR-0003: Plan-Gate Hierarchy](adr/0003-plan-gate-hierarchy.md) - E2E at gate level
+- [META-ADR-0004: Gate YAML Is Documentation](adr/0004-gate-yaml-is-documentation.md) - YAML as single source
 
 ## Origin
 

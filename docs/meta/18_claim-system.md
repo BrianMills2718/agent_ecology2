@@ -243,4 +243,4 @@ See root `CLAUDE.md` > Multi-Claude Coordination > Inter-CC Messaging for detail
 - [Worktree Enforcement](19_worktree-enforcement.md) - Worktree + claim workflow
 - [PR Coordination](21_pr-coordination.md) - PR workflow with claims
 - [Plan Workflow](15_plan-workflow.md) - Plans that claims reference
-- [Feature-Driven Development](13_feature-driven-development.md) - Feature definitions
+- [Acceptance-Gate-Driven Development](13_acceptance-gate-driven-development.md) - Acceptance gate definitions
