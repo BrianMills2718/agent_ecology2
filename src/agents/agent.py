@@ -107,12 +107,19 @@ class RAGConfigDict(TypedDict, total=False):
     query_template: str
 
 
+class WorkflowConfigDict(TypedDict, total=False):
+    """Workflow configuration dictionary (Plan #69)."""
+    steps: list[dict[str, Any]]
+    error_handling: dict[str, Any]
+
+
 class AgentConfigDict(TypedDict, total=False):
     """Agent configuration stored in artifact content."""
     llm_model: str
     system_prompt: str
     action_schema: str
     rag: RAGConfigDict
+    workflow: WorkflowConfigDict
 
 
 class Agent:
@@ -148,6 +155,9 @@ class Agent:
     # Artifact backing (INT-004)
     _artifact: Artifact | None
     _artifact_store: ArtifactStore | None
+
+    # Workflow configuration (Plan #69 - ADR-0013)
+    _workflow_config: WorkflowConfigDict | None
 
     def __init__(
         self,
@@ -193,6 +203,7 @@ class Agent:
         self._llm_model = llm_model or default_model
         self._system_prompt = system_prompt
         self._action_schema = action_schema or ACTION_SCHEMA  # Fall back to default
+        self._workflow_config = None  # Plan #69: Workflow config
 
         # If artifact-backed, load config from artifact content
         if artifact is not None:
@@ -259,6 +270,10 @@ class Agent:
             self._system_prompt = config["system_prompt"]
         if "action_schema" in config:
             self._action_schema = config["action_schema"]
+
+        # Load workflow config if present (Plan #69)
+        if "workflow" in config:
+            self._workflow_config = config["workflow"]
 
         # Load working memory from artifact content if present (Plan #59)
         self._working_memory = self._extract_working_memory(config)
@@ -879,3 +894,93 @@ Your response should include:
     def record_observation(self, observation: str) -> None:
         """Record an observation to memory"""
         self.memory.record_observation(self.agent_id, observation)
+
+    # --- Workflow methods (Plan #69 - ADR-0013) ---
+
+    @property
+    def has_workflow(self) -> bool:
+        """Whether this agent has a configured workflow."""
+        return self._workflow_config is not None and len(
+            self._workflow_config.get("steps", [])
+        ) > 0
+
+    @property
+    def workflow_config(self) -> WorkflowConfigDict | None:
+        """Agent's workflow configuration, or None."""
+        return self._workflow_config
+
+    def run_workflow(self, world_state: dict[str, Any]) -> dict[str, Any]:
+        """Execute agent's configured workflow.
+
+        If agent has no workflow configured, falls back to propose_action().
+
+        Args:
+            world_state: Current world state for context
+
+        Returns:
+            Result dict with:
+                - success: Whether workflow completed
+                - action: Action to execute (or None)
+                - thought_process: Agent's reasoning
+                - error: Error message if failed
+        """
+        from .workflow import WorkflowRunner, WorkflowConfig
+
+        if not self.has_workflow:
+            # No workflow - fall back to legacy propose_action
+            legacy_result = self.propose_action(world_state)
+            if "error" in legacy_result:
+                return {
+                    "success": False,
+                    "action": None,
+                    "error": legacy_result["error"],
+                }
+            return {
+                "success": True,
+                "action": legacy_result.get("action"),
+                "thought_process": legacy_result.get("thought_process", ""),
+            }
+
+        # Build workflow context from world state
+        context = self._build_workflow_context(world_state)
+
+        # Parse and run workflow
+        config = WorkflowConfig.from_dict(self._workflow_config)  # type: ignore
+        runner = WorkflowRunner(llm_provider=self.llm)
+        workflow_result = runner.run_workflow(config, context)
+
+        return workflow_result
+
+    def _build_workflow_context(self, world_state: dict[str, Any]) -> dict[str, Any]:
+        """Build context dict for workflow execution.
+
+        Provides common variables that workflow steps can access:
+        - agent_id, balance, tick
+        - memories, artifacts
+        - last_action_result
+        - self reference for methods
+        """
+        tick: int = world_state.get("tick", 0)
+        balance: int = world_state.get("balances", {}).get(self.agent_id, 0)
+        artifacts: list[dict[str, Any]] = world_state.get("artifacts", [])
+
+        # Get memories using RAG
+        memories: str = "(No memories)"
+        if self.rag_config.get("enabled", True):
+            rag_limit: int = self.rag_config.get("limit", 5)
+            query = f"Tick {tick}. Agent {self.agent_id} with {balance} scrip."
+            memories = self.memory.get_relevant_memories(
+                self.agent_id, query, limit=rag_limit
+            )
+
+        return {
+            "agent_id": self.agent_id,
+            "tick": tick,
+            "balance": balance,
+            "artifacts": artifacts,
+            "memories": memories,
+            "last_action_result": self.last_action_result or "(No previous action)",
+            "system_prompt": self._system_prompt,
+            "goal": self._system_prompt,  # Alias for convenience
+            "self": self,  # Allow workflow steps to call agent methods
+        }

@@ -1,6 +1,6 @@
 # ADR-0013: Configurable Agent Workflows
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-01-17
 
 ## Context

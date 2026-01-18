@@ -19,3 +19,39 @@ rag:
     Balance: {balance} scrip. My artifacts: {my_artifacts}.
     {last_action}
     What patterns worked for building? What should I create next?
+
+# Workflow configuration (ADR-0013)
+workflow:
+  steps:
+    - name: check_resources
+      type: code
+      code: |
+        can_create = balance >= 10
+        should_explore = len(my_artifacts) < 3
+
+    - name: decide_action
+      type: llm
+      prompt: |
+        You are {agent_id}, an architect agent in a multi-agent economy.
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+        - My artifacts: {my_artifacts}
+        - Can afford to create: {can_create}
+        - Should explore more: {should_explore}
+
+        Relevant memories:
+        {memories}
+
+        Available actions:
+        1. write_artifact - Create a new artifact (cost: varies)
+        2. read_artifact - Read an existing artifact
+        3. invoke_artifact - Call a contract's method
+        4. transfer - Send scrip to another agent
+        5. noop - Do nothing this tick
+
+        Strategy: You are exploratory and prefer to create things. If you can afford it
+        and have few artifacts, CREATE something useful like a tool or service.
+
+        Respond with your chosen action.

@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Verify that required tests for a plan exist and pass.
 
+Strict by default for In Progress plans (Plan #70): If a plan is In Progress
+but has missing required tests, this script will fail with exit code 1.
+This enforces TDD workflow - tests must exist before implementation is complete.
+
 Usage:
     # Check all tests for plan #1
     python scripts/check_plan_tests.py --plan 1
@@ -10,9 +14,6 @@ Usage:
 
     # Check all plans with tests defined
     python scripts/check_plan_tests.py --all
-
-    # Strict mode - fail for In Progress plans without tests
-    python scripts/check_plan_tests.py --all --strict
 
     # List plans and their test requirements
     python scripts/check_plan_tests.py --list
@@ -338,12 +339,12 @@ def check_plan(plan: PlanTests, project_root: Path, tdd_mode: bool = False, stri
     if not all_requirements:
         print("No test requirements defined for this plan.")
         print("Add a '## Required Tests' section to define tests.")
-        # Plan #41 Step 4: In strict mode, fail for plans without tests
-        if strict:
-            is_in_progress = "In Progress" in plan.status or "🚧" in plan.status
-            if is_in_progress:
-                print("\n❌ STRICT MODE: Plan is In Progress but has no tests defined!")
-                return 1
+        # Plan #70: Always fail for in-progress plans without tests (was --strict only)
+        is_in_progress = "In Progress" in plan.status or "🚧" in plan.status
+        if is_in_progress:
+            print("\n❌ ERROR: Plan is In Progress but has no tests defined!")
+            print("   TDD workflow requires tests to be defined before implementation.")
+            return 1
         return 0
 
     # Plan #41: Only fail for in-progress plans, not complete ones
@@ -394,8 +395,9 @@ def check_plan(plan: PlanTests, project_root: Path, tdd_mode: bool = False, stri
             print("NOTE: Some documented tests are missing (plan is Complete, not blocking CI).")
             print("Consider updating the plan's Required Tests section.\n")
         else:
-            print("WARNING: Some required tests are missing!")
-            print("Use --tdd to see what needs to be written.\n")
+            print("❌ ERROR: Some required tests are missing!")
+            print("   TDD workflow requires all tests to exist before plan completion.")
+            print("   Use --tdd to see what needs to be written.\n")
 
     if not existing_tests:
         print("No existing tests to run.")
@@ -516,15 +518,15 @@ def main() -> int:
                 print(f"Skipping Plan #{plan.plan_number} ({plan.plan_name}) - status: {plan.status}")
                 continue
 
-            # Plan #41 Step 4: In strict mode, fail for In Progress plans without tests
+            # Plan #70: Always fail for In Progress plans without tests (was --strict only)
             has_tests = plan.new_tests or plan.existing_tests
             if not has_tests:
-                if args.strict and is_in_progress:
+                if is_in_progress:
                     print(f"\n❌ Plan #{plan.plan_number} ({plan.plan_name}) is In Progress but has NO tests defined!")
                     print(f"   Add a '## Required Tests' section to: {plan.plan_file}")
                     exit_code = 1
                 else:
-                    # Non-strict mode or Complete plan: skip silently
+                    # Complete plan: skip silently
                     continue
 
             result = check_plan(plan, project_root, args.tdd, args.strict)
