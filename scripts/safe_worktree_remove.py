@@ -16,10 +16,16 @@ import argparse
 import os
 import subprocess
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+
+# Session marker settings
+SESSION_MARKER_FILE = ".claude_session"
+SESSION_STALENESS_HOURS = 24  # Block removal if marker is newer than this
 
 
 def run_cmd(cmd: list[str], cwd: str | None = None) -> tuple[bool, str]:
@@ -125,27 +131,79 @@ def check_worktree_claimed(
     return False, None
 
 
+def check_session_marker_recent(worktree_path: str) -> tuple[bool, datetime | None]:
+    """Check if session marker exists and is recent (< 24h old).
+
+    The session marker is created when a worktree is created and refreshed
+    on every Edit/Write operation. If the marker is recent, a Claude session
+    is likely still using this worktree.
+
+    Args:
+        worktree_path: Path to the worktree to check
+
+    Returns:
+        (is_recent, marker_time) - is_recent is True if marker exists and is < 24h old
+    """
+    marker_path = Path(worktree_path) / SESSION_MARKER_FILE
+
+    if not marker_path.exists():
+        return False, None
+
+    try:
+        content = marker_path.read_text().strip()
+        # Parse ISO format timestamp
+        marker_time = datetime.fromisoformat(content)
+
+        # Ensure timezone aware for comparison
+        if marker_time.tzinfo is None:
+            marker_time = marker_time.replace(tzinfo=timezone.utc)
+
+        now = datetime.now(timezone.utc)
+        age = now - marker_time
+
+        if age < timedelta(hours=SESSION_STALENESS_HOURS):
+            return True, marker_time
+
+        return False, marker_time
+    except (ValueError, OSError):
+        # Can't parse marker - treat as not recent
+        return False, None
+
+
 def should_block_removal(
     worktree_path: str,
     force: bool = False,
     claims_file: Path | None = None,
-) -> tuple[bool, dict[str, Any] | None]:
-    """Determine if worktree removal should be blocked due to active claim.
+) -> tuple[bool, str, dict[str, Any] | None]:
+    """Determine if worktree removal should be blocked.
+
+    Checks two conditions:
+    1. Active claim in .claude/active-work.yaml
+    2. Recent session marker (< 24h old) - indicates active Claude session
 
     Args:
         worktree_path: Path to the worktree
-        force: If True, don't block for claims (still returns info)
+        force: If True, don't block (still returns info)
         claims_file: Optional path to claims file (for testing)
 
     Returns:
-        (should_block, claim_info) - should_block is False if force=True
+        (should_block, reason, info) where:
+        - should_block: True if removal should be blocked (and force=False)
+        - reason: "claim", "session_marker", or "" if not blocked
+        - info: claim dict or session marker info
     """
+    # Check for active claims first
     is_claimed, claim_info = check_worktree_claimed(worktree_path, claims_file)
-
     if is_claimed and not force:
-        return True, claim_info
+        return True, "claim", claim_info
 
-    return False, claim_info
+    # Check for recent session marker
+    is_recent, marker_time = check_session_marker_recent(worktree_path)
+    if is_recent and not force:
+        return True, "session_marker", {"marker_time": marker_time}
+
+    # Return claim info if available for informational purposes
+    return False, "", claim_info
 
 
 def remove_worktree(worktree_path: str, force: bool = False) -> bool:
@@ -159,12 +217,13 @@ def remove_worktree(worktree_path: str, force: bool = False) -> bool:
         print(f"❌ Worktree path does not exist: {worktree_path}")
         return False
 
-    # Check for active claims (Plan #52: Worktree Session Tracking)
-    should_block, claim_info = should_block_removal(worktree_path, force)
-    if should_block and claim_info:
-        cc_id = claim_info.get("cc_id", "unknown")
-        task = claim_info.get("task", "")[:50]
-        plan = claim_info.get("plan")
+    # Check for active claims or recent session marker (Plan #52: Worktree Session Tracking)
+    block, reason, info = should_block_removal(worktree_path, force)
+
+    if block and reason == "claim" and info:
+        cc_id = info.get("cc_id", "unknown")
+        task = info.get("task", "")[:50]
+        plan = info.get("plan")
         print(f"❌ BLOCKED: Worktree has an active claim!")
         print(f"   Claimed by: {cc_id}")
         if plan:
@@ -177,6 +236,25 @@ def remove_worktree(worktree_path: str, force: bool = False) -> bool:
         print("   Options:")
         print(f"   1. Release the claim first: python scripts/check_claims.py --release --id {cc_id}")
         print(f"   2. Force remove (BREAKS SESSION): python scripts/safe_worktree_remove.py --force {worktree_path}")
+        return False
+
+    if block and reason == "session_marker" and info:
+        marker_time = info.get("marker_time")
+        if marker_time:
+            age = datetime.now(timezone.utc) - marker_time
+            age_str = f"{age.seconds // 3600}h {(age.seconds % 3600) // 60}m ago"
+        else:
+            age_str = "recently"
+        print(f"❌ BLOCKED: Session marker is recent!")
+        print(f"   Last activity: {age_str}")
+        print()
+        print("   A Claude session may be actively using this worktree.")
+        print("   The session marker is updated on every Edit/Write operation.")
+        print()
+        print("   Options:")
+        print(f"   1. Wait until marker is > {SESSION_STALENESS_HOURS}h old")
+        print(f"   2. Delete the marker: rm {worktree_path}/{SESSION_MARKER_FILE}")
+        print(f"   3. Force remove (BREAKS SESSION): python scripts/safe_worktree_remove.py --force {worktree_path}")
         return False
 
     # Check for uncommitted changes

@@ -103,19 +103,21 @@ class TestWorktreeRemovalBlocking:
         """Force flag allows removal even with active claim."""
         from scripts.safe_worktree_remove import should_block_removal
 
-        should_block, _ = should_block_removal(
+        should_block, reason, _ = should_block_removal(
             "/tmp/worktrees/plan-52-test",
             force=False,
             claims_file=claims_with_worktree,
         )
         assert should_block is True
+        assert reason == "claim"
 
-        should_block, _ = should_block_removal(
+        should_block, reason, _ = should_block_removal(
             "/tmp/worktrees/plan-52-test",
             force=True,
             claims_file=claims_with_worktree,
         )
         assert should_block is False
+        assert reason == ""
 
 
 class TestClaimCreationWithWorktreePath:

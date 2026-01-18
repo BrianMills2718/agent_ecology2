@@ -1,0 +1,438 @@
+"""Genesis Ledger - Proxy to world ledger
+
+Provides balance queries, scrip transfers, ownership transfers, and budget management.
+"""
+
+from __future__ import annotations
+
+import uuid
+from typing import Any
+
+from ...config import get_validated_config
+from ...config_schema import GenesisConfig
+from ..ledger import Ledger
+from ..artifacts import ArtifactStore
+from ..errors import (
+    ErrorCode,
+    permission_error,
+    resource_error,
+    validation_error,
+)
+from .base import GenesisArtifact
+
+
+class GenesisLedger(GenesisArtifact):
+    """
+    Genesis artifact that proxies to the world ledger.
+
+    Two types of balances:
+    - flow: Action budget (resets each tick) - real resource constraint
+    - scrip: Economic currency (persistent) - medium of exchange
+
+    All method costs and descriptions are configurable via config.yaml.
+    """
+
+    ledger: Ledger
+    artifact_store: ArtifactStore | None
+
+    def __init__(
+        self,
+        ledger: Ledger,
+        artifact_store: ArtifactStore | None = None,
+        genesis_config: GenesisConfig | None = None
+    ) -> None:
+        # Get config (use provided or load from global)
+        cfg = genesis_config or get_validated_config().genesis
+        ledger_cfg = cfg.ledger
+
+        super().__init__(
+            artifact_id=ledger_cfg.id,
+            description=ledger_cfg.description
+        )
+        self.ledger = ledger
+        self.artifact_store = artifact_store
+
+        # Register methods with costs/descriptions from config
+        self.register_method(
+            name="balance",
+            handler=self._balance,
+            cost=ledger_cfg.methods.balance.cost,
+            description=ledger_cfg.methods.balance.description
+        )
+
+        self.register_method(
+            name="all_balances",
+            handler=self._all_balances,
+            cost=ledger_cfg.methods.all_balances.cost,
+            description=ledger_cfg.methods.all_balances.description
+        )
+
+        self.register_method(
+            name="transfer",
+            handler=self._transfer,
+            cost=ledger_cfg.methods.transfer.cost,
+            description=ledger_cfg.methods.transfer.description
+        )
+
+        self.register_method(
+            name="spawn_principal",
+            handler=self._spawn_principal,
+            cost=ledger_cfg.methods.spawn_principal.cost,
+            description=ledger_cfg.methods.spawn_principal.description
+        )
+
+        self.register_method(
+            name="transfer_ownership",
+            handler=self._transfer_ownership,
+            cost=ledger_cfg.methods.transfer_ownership.cost,
+            description=ledger_cfg.methods.transfer_ownership.description
+        )
+
+        self.register_method(
+            name="transfer_budget",
+            handler=self._transfer_budget,
+            cost=ledger_cfg.methods.transfer_budget.cost,
+            description=ledger_cfg.methods.transfer_budget.description
+        )
+
+        self.register_method(
+            name="get_budget",
+            handler=self._get_budget,
+            cost=ledger_cfg.methods.get_budget.cost,
+            description=ledger_cfg.methods.get_budget.description
+        )
+
+    def _balance(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
+        """Get balance for an agent (resources and scrip)."""
+        if not args or len(args) < 1:
+            return validation_error(
+                "balance requires [agent_id]",
+                code=ErrorCode.MISSING_ARGUMENT,
+                required=["agent_id"],
+            )
+        agent_id: str = args[0]
+        compute = self.ledger.get_compute(agent_id)
+        return {
+            "success": True,
+            "agent_id": agent_id,
+            "flow": compute,  # Backward compat
+            "compute": compute,  # Clearer name
+            "scrip": self.ledger.get_scrip(agent_id),
+            "resources": self.ledger.get_all_resources(agent_id)  # New: all resources
+        }
+
+    def _all_balances(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
+        """Get all balances (resources and scrip for each agent)."""
+        # Include both legacy format and new format
+        legacy = self.ledger.get_all_balances()
+        full = self.ledger.get_all_balances_full()
+        return {
+            "success": True,
+            "balances": legacy,  # Backward compat
+            "balances_full": full  # New: includes all resources
+        }
+
+    def _transfer(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
+        """Transfer SCRIP between agents (not flow - flow is non-transferable)"""
+        if not args or len(args) < 3:
+            return validation_error(
+                "transfer requires [from_id, to_id, amount]",
+                code=ErrorCode.MISSING_ARGUMENT,
+                required=["from_id", "to_id", "amount"],
+            )
+
+        from_id: str = args[0]
+        to_id: str = args[1]
+        amount: Any = args[2]
+
+        # Security check: invoker can only transfer FROM themselves
+        if from_id != invoker_id:
+            return permission_error(
+                f"Cannot transfer from {from_id} - you are {invoker_id}",
+                code=ErrorCode.NOT_AUTHORIZED,
+                invoker=invoker_id,
+                target=from_id,
+            )
+
+        if not isinstance(amount, int) or amount <= 0:
+            return validation_error(
+                "Amount must be positive integer",
+                code=ErrorCode.INVALID_ARGUMENT,
+                provided=amount,
+            )
+
+        success = self.ledger.transfer_scrip(from_id, to_id, amount)
+        if success:
+            return {
+                "success": True,
+                "transferred": amount,
+                "currency": "scrip",
+                "from": from_id,
+                "to": to_id,
+                "from_scrip_after": self.ledger.get_scrip(from_id),
+                "to_scrip_after": self.ledger.get_scrip(to_id)
+            }
+        else:
+            return permission_error(
+                "Transfer failed (insufficient scrip or invalid recipient)",
+                code=ErrorCode.INSUFFICIENT_FUNDS,
+                from_id=from_id,
+                to_id=to_id,
+                amount=amount,
+            )
+
+    def _spawn_principal(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
+        """Spawn a new principal with 0 scrip and 0 compute.
+
+        The new principal starts with nothing - parent must transfer resources
+        to keep it alive.
+
+        Args:
+            args: [] (no arguments needed, system generates ID)
+            invoker_id: The agent spawning the new principal
+
+        Returns:
+            {"success": True, "principal_id": new_id} on success
+        """
+        # Generate a unique principal ID
+        new_id = f"agent_{uuid.uuid4().hex[:8]}"
+
+        # Create ledger entry with 0 scrip, 0 compute
+        self.ledger.create_principal(new_id, starting_scrip=0, starting_compute=0)
+
+        return {"success": True, "principal_id": new_id}
+
+    def _transfer_ownership(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
+        """Transfer ownership of an artifact to another principal.
+
+        Args:
+            args: [artifact_id, to_id] - artifact to transfer and new owner
+            invoker_id: Must be the current owner of the artifact
+
+        Returns:
+            {"success": True, "artifact_id": ..., "from_owner": ..., "to_owner": ...}
+        """
+        if not args or len(args) < 2:
+            return validation_error(
+                "transfer_ownership requires [artifact_id, to_id]",
+                code=ErrorCode.MISSING_ARGUMENT,
+                required=["artifact_id", "to_id"],
+            )
+
+        artifact_id: str = args[0]
+        to_id: str = args[1]
+
+        if not self.artifact_store:
+            return resource_error(
+                "Artifact store not configured",
+                code=ErrorCode.NOT_FOUND,
+            )
+
+        # Get the artifact to verify ownership
+        artifact = self.artifact_store.get(artifact_id)
+        if not artifact:
+            return resource_error(
+                f"Artifact {artifact_id} not found",
+                code=ErrorCode.NOT_FOUND,
+                artifact_id=artifact_id,
+            )
+
+        # Security check: can only transfer artifacts you own
+        if artifact.owner_id != invoker_id:
+            return permission_error(
+                f"Cannot transfer {artifact_id} - you are not the owner (owner is {artifact.owner_id})",
+                code=ErrorCode.NOT_OWNER,
+                artifact_id=artifact_id,
+                owner=artifact.owner_id,
+                invoker=invoker_id,
+            )
+
+        # Perform the transfer
+        success = self.artifact_store.transfer_ownership(artifact_id, invoker_id, to_id)
+        if success:
+            return {
+                "success": True,
+                "artifact_id": artifact_id,
+                "from_owner": invoker_id,
+                "to_owner": to_id
+            }
+        else:
+            return resource_error(
+                "Transfer failed",
+                code=ErrorCode.NOT_FOUND,
+                artifact_id=artifact_id,
+            )
+
+    def _transfer_budget(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
+        """Transfer LLM budget to another agent.
+
+        LLM budget is a depletable resource representing dollars available
+        for LLM API calls. Making it tradeable enables budget markets.
+
+        Args:
+            args: [to_id, amount] - recipient and amount to transfer
+            invoker_id: The caller (transfers FROM this principal)
+
+        Returns:
+            {"success": True, "transferred": ..., "from": ..., "to": ...}
+        """
+        if not args or len(args) < 2:
+            return validation_error(
+                "transfer_budget requires [to_id, amount]",
+                code=ErrorCode.MISSING_ARGUMENT,
+                required=["to_id", "amount"],
+            )
+
+        to_id: str = args[0]
+        amount: Any = args[1]
+
+        # Validate amount
+        if not isinstance(amount, (int, float)) or amount <= 0:
+            return validation_error(
+                "Amount must be positive number",
+                code=ErrorCode.INVALID_ARGUMENT,
+                provided=amount,
+            )
+
+        # Check invoker has sufficient budget
+        current_budget = self.ledger.get_resource(invoker_id, "llm_budget")
+        if current_budget < amount:
+            return permission_error(
+                f"Insufficient LLM budget. Have {current_budget}, need {amount}",
+                code=ErrorCode.INSUFFICIENT_FUNDS,
+                from_id=invoker_id,
+                current=current_budget,
+                requested=amount,
+            )
+
+        # Perform transfer via ledger
+        self.ledger.spend_resource(invoker_id, "llm_budget", float(amount))
+        recipient_budget = self.ledger.get_resource(to_id, "llm_budget")
+        self.ledger.set_resource(to_id, "llm_budget", recipient_budget + float(amount))
+
+        return {
+            "success": True,
+            "transferred": amount,
+            "resource": "llm_budget",
+            "from": invoker_id,
+            "to": to_id,
+            "from_budget_after": self.ledger.get_resource(invoker_id, "llm_budget"),
+            "to_budget_after": self.ledger.get_resource(to_id, "llm_budget")
+        }
+
+    def _get_budget(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
+        """Get LLM budget for an agent.
+
+        Args:
+            args: [agent_id] - the agent to query
+            invoker_id: The caller (anyone can query)
+
+        Returns:
+            {"success": True, "agent_id": ..., "budget": ...}
+        """
+        if not args or len(args) < 1:
+            return validation_error(
+                "get_budget requires [agent_id]",
+                code=ErrorCode.MISSING_ARGUMENT,
+                required=["agent_id"],
+            )
+
+        agent_id: str = args[0]
+        budget = self.ledger.get_resource(agent_id, "llm_budget")
+
+        return {
+            "success": True,
+            "agent_id": agent_id,
+            "budget": budget
+        }
+
+    def get_interface(self) -> dict[str, Any]:
+        """Get detailed interface schema for the ledger (Plan #14)."""
+        return {
+            "description": self.description,
+            "tools": [
+                {
+                    "name": "balance",
+                    "description": "Get balance for an agent (resources and scrip)",
+                    "cost": self.methods["balance"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "agent_id": {
+                                "type": "string",
+                                "description": "ID of the agent to query"
+                            }
+                        },
+                        "required": ["agent_id"]
+                    }
+                },
+                {
+                    "name": "all_balances",
+                    "description": "Get balances for all principals",
+                    "cost": self.methods["all_balances"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                },
+                {
+                    "name": "transfer",
+                    "description": "Transfer scrip to another principal",
+                    "cost": self.methods["transfer"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "to": {
+                                "type": "string",
+                                "description": "Recipient principal ID"
+                            },
+                            "amount": {
+                                "type": "integer",
+                                "description": "Amount of scrip to transfer",
+                                "minimum": 1
+                            }
+                        },
+                        "required": ["to", "amount"]
+                    }
+                },
+                {
+                    "name": "spawn_principal",
+                    "description": "Create a new principal with initial scrip",
+                    "cost": self.methods["spawn_principal"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "principal_id": {
+                                "type": "string",
+                                "description": "ID for the new principal"
+                            },
+                            "initial_scrip": {
+                                "type": "integer",
+                                "description": "Initial scrip balance",
+                                "minimum": 0
+                            }
+                        },
+                        "required": ["principal_id"]
+                    }
+                },
+                {
+                    "name": "transfer_ownership",
+                    "description": "Transfer artifact ownership to another principal",
+                    "cost": self.methods["transfer_ownership"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "artifact_id": {
+                                "type": "string",
+                                "description": "ID of the artifact to transfer"
+                            },
+                            "to": {
+                                "type": "string",
+                                "description": "New owner principal ID"
+                            }
+                        },
+                        "required": ["artifact_id", "to"]
+                    }
+                }
+            ]
+        }

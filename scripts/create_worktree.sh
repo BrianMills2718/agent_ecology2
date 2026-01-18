@@ -110,6 +110,12 @@ mkdir -p worktrees
 git fetch origin
 git worktree add "worktrees/$BRANCH" -b "$BRANCH" origin/main
 
+# Create session marker (Plan #52: prevents premature worktree removal)
+# The marker contains the creation timestamp - safe_worktree_remove.py checks
+# if it's recent (< 24h) and blocks removal if so
+echo "$(date -Iseconds)" > "worktrees/$BRANCH/.claude_session"
+echo -e "${GREEN}Created session marker${NC}"
+
 # Set up shared references symlink (docs/references -> shared folder)
 SHARED_REF="/home/brian/projects/shared_references"
 WT_REF="worktrees/$BRANCH/docs/references"
