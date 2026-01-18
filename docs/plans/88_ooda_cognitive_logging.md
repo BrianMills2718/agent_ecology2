@@ -143,6 +143,9 @@ Net cost: ~$0.0001-0.0005 per agent turn. Acceptable for improved observability.
 - src/dashboard/static/css/dashboard.css (modify) - Add OODA-specific styles
 - tests/unit/test_agent_cognitive_schema.py (create) - Unit tests for cognitive schema
 - tests/integration/test_ooda_logging.py (create) - Integration tests for OODA logging
+- docs/architecture/current/agents.md (modify) - Document failure tracking and OODA
+- docs/architecture/current/execution_model.md (modify) - Document reasoning propagation
+- docs/architecture/current/configuration.md (modify) - Document cognitive_schema config
 
 ## Related
 

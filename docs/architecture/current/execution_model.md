@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-18 (Plan #82 - handbook tools section added)
+**Last verified:** 2026-01-18 (Plan #88 - OODA reasoning propagation)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

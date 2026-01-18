@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-18 (Plan #82 - VSM-aligned agents)
+**Last verified:** 2026-01-18 (Plan #88 - OODA cognitive logging)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -53,6 +53,7 @@ class Agent:
     working_memory_max_bytes: int   # Max size for working memory truncation
     _working_memory: dict | None    # Cached working memory from agent artifact
     _workflow_config: WorkflowConfigDict | None  # Workflow configuration (Plan #70)
+    failure_history: list[str]      # Recent failed actions for learning (Plan #88)
 ```
 
 ---
@@ -82,13 +83,23 @@ Prompt includes:
 | Relevant memories | RAG search on current context |
 | Working memory | Agent artifact `working_memory` section (Plan #59) |
 | Last action result | self.last_action_result |
+| Recent failures | self.failure_history (Plan #88) |
 
 ### LLM Response Schema
 
+**Simple mode (default):**
 ```python
 class AgentResponse(BaseModel):
     thought_process: str
     action: Action  # noop, read_artifact, write_artifact, invoke_artifact
+```
+
+**OODA mode** (`cognitive_schema: ooda` in config, Plan #88):
+```python
+class OODAResponse(BaseModel):
+    situation_assessment: str  # Analysis of current state (can be verbose)
+    action_rationale: str      # Concise 1-2 sentence explanation
+    action: Action
 ```
 
 ---

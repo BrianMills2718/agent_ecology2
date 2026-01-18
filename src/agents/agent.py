@@ -61,6 +61,9 @@ class ActionResult(TypedDict, total=False):
     """Result from propose_action method."""
     action: dict[str, Any]
     thought_process: str
+    # Plan #88: OODA schema fields (only present when cognitive_schema=ooda)
+    situation_assessment: str
+    action_rationale: str
     error: str
     raw_response: str | None
     usage: TokenUsage

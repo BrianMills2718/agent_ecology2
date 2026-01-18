@@ -209,6 +209,25 @@ function renderThinkingEvent(event) {
 - [ ] Logging captures all cognitive fields
 - [ ] No hardcoded schema assumptions in kernel
 
+## Plan
+
+### Phase 1: Schema Definition System
+1. Create schema definition format in config
+2. Add validation for schema definitions
+3. Implement dynamic Pydantic model generation
+
+### Phase 2: Per-Agent Selection
+1. Add `cognitive_schema` to per-agent config
+2. Load and apply schema at agent init
+3. Update prompts to match schema
+
+### Phase 3: Self-Modification (Optional)
+1. Allow agents to modify their own schema
+2. Track schema changes in action log
+3. Dashboard adapts to schema changes
+
+---
+
 ## Related
 
 - Plan #88: OODA Cognitive Logging (prerequisite)
