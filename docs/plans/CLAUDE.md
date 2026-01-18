@@ -115,6 +115,9 @@ Master index of all gaps and their implementation plans.
 | 86 | [Interface Validation](86_interface_validation.md) | Medium | 📋 Planned | #14 |
 | 87 | [Meta-Process Coordination](87_meta_process_coordination_improvements.md) | Medium | ✅ Complete | Hook improvements |
 | 89 | [Plan Enforcement Hooks](89_plan_enforcement_hooks.md) | **High** | 📋 Planned | - |
+| 91 | [Acceptance Gate Cleanup](91_acceptance_gate_cleanup.md) | **High** | 📋 Planned | Meta-process clarity |
+| 92 | [Unified Resource System](92_unified_resource_system.md) | **Critical** | 📋 Planned | Core economic mechanics |
+| 93 | [Agent Resource Visibility](93_agent_resource_visibility.md) | Medium | 📋 Deferred | #92 |
 
 ---
 
