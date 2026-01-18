@@ -2,7 +2,7 @@
 
 Master index of all gaps and their implementation plans.
 
-**Last verified:** 2026-01-18 (Plan #12 test references fixed)
+**Last verified:** 2026-01-18 (Plans #86, #87 added)
 
 ---
 
@@ -102,6 +102,8 @@ Master index of all gaps and their implementation plans.
 | 72 | [Plan Number Enforcement](72_plan_number_enforcement.md) | **High** | ✅ Complete | Meta-process integrity |
 | 73 | [Output Messaging Fix](73_output_messaging_fix.md) | **High** | ✅ Complete | - |
 | 84 | [Float/Decimal Consistency](84_float_decimal_consistency.md) | Low | 📋 Deferred | - |
+| 86 | [OODA Cognitive Logging](86_ooda_cognitive_logging.md) | **High** | 📋 Planned | Agent observability |
+| 87 | [Cognitive Schema Configurability](87_cognitive_schema_configurability.md) | Low | 📋 Post-V1 | #86 |
 
 ---
 
