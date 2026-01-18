@@ -139,6 +139,44 @@
                     </div>
                 </section>
 
+                <!-- Temporal Artifact Network Panel -->
+                <section class="panel temporal-network-panel">
+                    <div class="panel-header" id="temporal-network-toggle">
+                        <h2>Temporal Artifact Network</h2>
+                        <span id="temporal-stats" class="temporal-stats"></span>
+                    </div>
+                    <div class="panel-content" id="temporal-network-content">
+                        <div class="temporal-controls">
+                            <button id="temporal-play-btn" class="play-btn" title="Play">&#9654;</button>
+                            <input type="range" id="temporal-tick-slider" min="0" max="100" value="100" class="tick-slider temporal-slider">
+                            <span id="temporal-tick-value">Tick: All</span>
+                            <select id="temporal-speed" class="speed-select" title="Playback speed">
+                                <option value="1000">0.5x</option>
+                                <option value="500" selected>1x</option>
+                                <option value="250">2x</option>
+                                <option value="100">5x</option>
+                            </select>
+                        </div>
+                        <div class="temporal-network-container" id="temporal-network-container">
+                            <!-- vis.js network renders here -->
+                        </div>
+                        <div class="temporal-legend">
+                            <span class="legend-title">Nodes:</span>
+                            <span class="legend-item"><span class="legend-shape agent"></span> Agent</span>
+                            <span class="legend-item"><span class="legend-shape genesis"></span> Genesis</span>
+                            <span class="legend-item"><span class="legend-shape contract"></span> Contract</span>
+                            <span class="legend-item"><span class="legend-shape data"></span> Data</span>
+                            <span class="legend-title">Edges:</span>
+                            <span class="legend-item"><span class="legend-line invocation"></span> Invocation</span>
+                            <span class="legend-item"><span class="legend-line dependency"></span> Dependency</span>
+                            <span class="legend-item"><span class="legend-line ownership"></span> Ownership</span>
+                        </div>
+                        <div class="temporal-heatmap" id="temporal-heatmap">
+                            <!-- Activity heatmap renders here -->
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Artifact Dependency Graph Panel -->
                 <section class="panel dependency-panel collapsed">
                     <div class="panel-header" id="dependency-toggle">
@@ -376,6 +414,7 @@
     <script src="/static/js/panels/genesis.js"></script>
     <script src="/static/js/panels/controls.js"></script>
     <script src="/static/js/panels/network.js"></script>
+    <script src="/static/js/panels/temporal-network.js"></script>
     <script src="/static/js/panels/dependency-graph.js"></script>
     <script src="/static/js/panels/activity.js"></script>
     <script src="/static/js/panels/thinking.js"></script>

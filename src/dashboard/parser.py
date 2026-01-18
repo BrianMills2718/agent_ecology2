@@ -40,6 +40,10 @@ from .models import (
     ArtifactDetail,
     InvocationEvent,
     InvocationStatsResponse,
+    # Temporal artifact network models
+    ArtifactNode,
+    ArtifactEdge,
+    TemporalNetworkData,
 )
 
 
@@ -1141,4 +1145,156 @@ class JSONLParser:
             success_rate=successful / total if total > 0 else 0.0,
             avg_duration_ms=avg_duration,
             failure_types=failure_types,
+        )
+
+    def get_temporal_network_data(
+        self,
+        tick_min: int | None = None,
+        tick_max: int | None = None,
+    ) -> TemporalNetworkData:
+        """Get artifact-centric temporal network data.
+
+        Unlike the agent-only network graph, this includes ALL artifacts as nodes:
+        - Agents (LLM-powered principals)
+        - Genesis artifacts (system services)
+        - Contracts (executable artifacts)
+        - Data artifacts (non-executable)
+
+        Edges represent:
+        - Invocations (who called what artifact)
+        - Dependencies (artifact A depends on artifact B)
+        - Ownership (which principal owns which artifact)
+        - Creation (who created what)
+        """
+        nodes: list[ArtifactNode] = []
+        edges: list[ArtifactEdge] = []
+        activity_by_tick: dict[int, dict[str, int]] = {}
+
+        # Determine tick range
+        min_tick = tick_min if tick_min is not None else 0
+        max_tick = tick_max if tick_max is not None else self.state.current_tick
+
+        # Helper to determine artifact type
+        def get_artifact_type(
+            artifact_id: str, artifact_state: ArtifactState | None
+        ) -> Literal["agent", "genesis", "contract", "data", "unknown"]:
+            if artifact_id.startswith("genesis_"):
+                return "genesis"
+            if artifact_id in self.state.agents:
+                return "agent"
+            if artifact_state:
+                if artifact_state.executable:
+                    return "contract"
+                return "data"
+            return "unknown"
+
+        # Build nodes from ALL artifacts
+        seen_nodes: set[str] = set()
+
+        # First, add all agents as nodes
+        for agent_id, agent in self.state.agents.items():
+            status: Literal["active", "low_resources", "frozen"] = "active"
+            if agent.llm_tokens_used >= agent.llm_tokens_quota * 0.9:
+                status = "low_resources"
+            if agent.llm_tokens_used >= agent.llm_tokens_quota:
+                status = "frozen"
+
+            nodes.append(ArtifactNode(
+                id=agent_id,
+                label=agent_id,
+                artifact_type="genesis" if agent_id.startswith("genesis_") else "agent",
+                owner_id=None,  # Agents don't have owners
+                executable=True,
+                invocation_count=0,  # Agents aren't invoked directly
+                scrip=agent.scrip,
+                status=status,
+            ))
+            seen_nodes.add(agent_id)
+
+        # Then add all artifacts
+        for artifact_id, artifact in self.state.artifacts.items():
+            if artifact_id in seen_nodes:
+                continue
+
+            artifact_type = get_artifact_type(artifact_id, artifact)
+
+            nodes.append(ArtifactNode(
+                id=artifact_id,
+                label=artifact_id,
+                artifact_type=artifact_type,
+                owner_id=artifact.owner_id,
+                executable=artifact.executable,
+                invocation_count=artifact.invocation_count,
+            ))
+            seen_nodes.add(artifact_id)
+
+        # Build edges from invocation events
+        for inv in self.state.invocation_events:
+            if inv.tick < min_tick or inv.tick > max_tick:
+                continue
+
+            # Only add edge if both nodes exist
+            if inv.invoker_id in seen_nodes and inv.artifact_id in seen_nodes:
+                edges.append(ArtifactEdge(
+                    from_id=inv.invoker_id,
+                    to_id=inv.artifact_id,
+                    edge_type="invocation",
+                    tick=inv.tick,
+                    weight=1,
+                    details=f"{inv.invoker_id} invoked {inv.artifact_id}.{inv.method}",
+                ))
+
+            # Track activity by tick
+            if inv.tick not in activity_by_tick:
+                activity_by_tick[inv.tick] = {}
+            activity_by_tick[inv.tick][inv.invoker_id] = (
+                activity_by_tick[inv.tick].get(inv.invoker_id, 0) + 1
+            )
+
+        # Build edges from artifact dependencies
+        for artifact_id, artifact in self.state.artifacts.items():
+            for dep_id in artifact.depends_on:
+                if artifact_id in seen_nodes and dep_id in seen_nodes:
+                    edges.append(ArtifactEdge(
+                        from_id=artifact_id,
+                        to_id=dep_id,
+                        edge_type="dependency",
+                        tick=0,  # Dependencies are static
+                        weight=1,
+                        details=f"{artifact_id} depends on {dep_id}",
+                    ))
+
+        # Build edges from ownership (artifact → owner)
+        for artifact_id, artifact in self.state.artifacts.items():
+            if artifact.owner_id and artifact.owner_id in seen_nodes:
+                edges.append(ArtifactEdge(
+                    from_id=artifact_id,
+                    to_id=artifact.owner_id,
+                    edge_type="ownership",
+                    tick=0,  # Current ownership
+                    weight=1,
+                    details=f"{artifact_id} owned by {artifact.owner_id}",
+                ))
+
+        # Track activity from actions
+        for agent_id, agent in self.state.agents.items():
+            for action in agent.actions:
+                if action.tick < min_tick or action.tick > max_tick:
+                    continue
+                if action.tick not in activity_by_tick:
+                    activity_by_tick[action.tick] = {}
+                activity_by_tick[action.tick][agent_id] = (
+                    activity_by_tick[action.tick].get(agent_id, 0) + 1
+                )
+
+        # Calculate tick range
+        tick_range = (min_tick, max_tick)
+
+        return TemporalNetworkData(
+            nodes=nodes,
+            edges=edges,
+            tick_range=tick_range,
+            activity_by_tick=activity_by_tick,
+            total_artifacts=len(nodes),
+            total_interactions=len(edges),
         )

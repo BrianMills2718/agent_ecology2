@@ -471,6 +471,22 @@ def create_app(
         dashboard.parser.parse_incremental()
         return dashboard.parser.get_network_graph_data(tick_max).model_dump()
 
+    @app.get("/api/temporal-network")
+    async def get_temporal_network(
+        tick_min: int | None = Query(None, description="Min tick to include"),
+        tick_max: int | None = Query(None, description="Max tick to include"),
+    ) -> dict[str, Any]:
+        """Get artifact-centric temporal network data.
+
+        This endpoint provides a richer view than /api/network:
+        - ALL artifacts as nodes (not just agents)
+        - Multiple edge types (invocation, dependency, ownership)
+        - Activity heatmap data by tick
+        - Suitable for temporal playback visualization
+        """
+        dashboard.parser.parse_incremental()
+        return dashboard.parser.get_temporal_network_data(tick_min, tick_max).model_dump()
+
     @app.get("/api/activity")
     async def get_activity_feed(
         limit: int = Query(100, ge=1, le=500),

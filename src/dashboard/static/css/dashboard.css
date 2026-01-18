@@ -1060,3 +1060,210 @@ body {
     font-style: italic;
     line-height: 1.4;
 }
+
+/* ==========================================
+   Temporal Artifact Network Panel
+   ========================================== */
+
+.temporal-network-panel {
+    flex: 2;
+}
+
+.temporal-stats {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    display: flex;
+    gap: 1rem;
+}
+
+.temporal-stats span {
+    white-space: nowrap;
+}
+
+.temporal-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    background-color: var(--bg-secondary);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.play-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background-color: var(--accent);
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.play-btn:hover {
+    background-color: var(--accent-hover);
+}
+
+.temporal-slider {
+    flex: 1;
+}
+
+.speed-select {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.75rem;
+}
+
+.temporal-network-container {
+    min-height: 350px;
+    background-color: var(--bg-primary);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.temporal-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border-color);
+}
+
+.legend-title {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.legend-shape {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.legend-shape.agent {
+    background-color: #4caf50;
+    border-radius: 50%;
+}
+
+.legend-shape.genesis {
+    background-color: #0f4c75;
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+.legend-shape.contract {
+    background-color: #9c27b0;
+    transform: rotate(45deg);
+}
+
+.legend-shape.data {
+    background-color: #607d8b;
+}
+
+.legend-line {
+    display: inline-block;
+    width: 20px;
+    height: 2px;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.legend-line.invocation {
+    background-color: #ff9800;
+}
+
+.legend-line.dependency {
+    background: repeating-linear-gradient(
+        90deg,
+        #2196f3,
+        #2196f3 4px,
+        transparent 4px,
+        transparent 8px
+    );
+}
+
+.legend-line.ownership {
+    background-color: #9c27b0;
+}
+
+/* Activity Heatmap */
+.temporal-heatmap {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background-color: var(--bg-secondary);
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+.heatmap-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: min-content;
+}
+
+.heatmap-row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.heatmap-row.header {
+    font-size: 0.6rem;
+    color: var(--text-secondary);
+}
+
+.heatmap-label {
+    min-width: 60px;
+    max-width: 60px;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.heatmap-cell {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.heatmap-cell:hover {
+    transform: scale(1.2);
+    z-index: 1;
+}
+
+.heatmap-cell.highlighted {
+    box-shadow: 0 0 0 2px var(--accent);
+}
+
+.heatmap-cell.tick-header {
+    background: transparent;
+    font-size: 0.55rem;
+    text-align: center;
+    line-height: 16px;
+}
+
+.no-data {
+    padding: 1rem;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}

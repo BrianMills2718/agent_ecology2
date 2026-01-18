@@ -328,6 +328,44 @@ class NetworkGraphData(BaseModel):
     tick_range: tuple[int, int] = (0, 0)
 
 
+# Temporal Artifact Network Models
+
+class ArtifactNode(BaseModel):
+    """Node representing any artifact in the temporal network."""
+    id: str
+    label: str
+    artifact_type: Literal["agent", "genesis", "contract", "data", "unknown"] = "unknown"
+    owner_id: str | None = None
+    executable: bool = False
+    invocation_count: int = 0
+    created_tick: int | None = None
+    # For agents specifically
+    scrip: int = 0
+    status: Literal["active", "low_resources", "frozen"] = "active"
+
+
+class ArtifactEdge(BaseModel):
+    """Edge representing relationship between artifacts."""
+    from_id: str
+    to_id: str
+    edge_type: Literal["invocation", "ownership", "dependency", "creation", "transfer"]
+    tick: int
+    weight: int = 1
+    details: str | None = None
+
+
+class TemporalNetworkData(BaseModel):
+    """Artifact-centric temporal network graph data."""
+    nodes: list[ArtifactNode] = Field(default_factory=list)
+    edges: list[ArtifactEdge] = Field(default_factory=list)
+    tick_range: tuple[int, int] = (0, 0)
+    # Activity counts per tick for heatmap
+    activity_by_tick: dict[int, dict[str, int]] = Field(default_factory=dict)
+    # Metadata
+    total_artifacts: int = 0
+    total_interactions: int = 0
+
+
 # Activity Feed Models
 
 class ActivityItem(BaseModel):
