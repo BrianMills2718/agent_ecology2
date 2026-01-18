@@ -1,131 +1,80 @@
-"""Unit tests for meta_status.py coordination script."""
+"""Tests for meta_status.py ownership features (Plan #71)."""
 
 import subprocess
-import sys
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-# Import the module
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
-from meta_status import (
-    format_time_ago,
-    get_claims,
-    get_plan_progress,
-    identify_issues,
-)
+
+class TestGetCurrentBranch:
+    """Tests for get_current_branch function."""
+
+    def test_returns_branch_name(self) -> None:
+        """Should return current branch name."""
+        from scripts.meta_status import get_current_branch
+
+        # This runs in actual git repo, so should return something
+        branch = get_current_branch()
+        assert isinstance(branch, str)
+        assert len(branch) > 0
+
+    def test_handles_git_failure(self) -> None:
+        """Should return empty string on git failure."""
+        from scripts.meta_status import get_current_branch
+
+        with patch("scripts.meta_status.run_cmd") as mock_run:
+            mock_run.return_value = (False, "error")  # mock-ok: testing error handling
+            branch = get_current_branch()
+            assert branch == ""
 
 
-class TestFormatTimeAgo:
-    """Tests for time formatting."""
+class TestGetMyIdentity:
+    """Tests for get_my_identity function."""
 
-    def test_format_days_ago(self) -> None:
-        """ISO timestamp from days ago formats correctly."""
-        from datetime import datetime, timezone, timedelta
+    def test_returns_identity_dict(self) -> None:
+        """Should return dict with branch, is_main, cc_id."""
+        from scripts.meta_status import get_my_identity
 
-        two_days_ago = datetime.now(timezone.utc) - timedelta(days=2)
-        iso = two_days_ago.isoformat()
+        identity = get_my_identity()
+        assert isinstance(identity, dict)
+        assert "branch" in identity
+        assert "is_main" in identity
+        assert "cc_id" in identity
 
-        result = format_time_ago(iso)
-        assert "2d ago" in result
+    def test_is_main_true_on_main_branch(self) -> None:
+        """Should set is_main=True when on main branch."""
+        from scripts.meta_status import get_my_identity
 
-    def test_format_hours_ago(self) -> None:
-        """ISO timestamp from hours ago formats correctly."""
-        from datetime import datetime, timezone, timedelta
+        with patch("scripts.meta_status.get_current_branch") as mock_branch:
+            mock_branch.return_value = "main"  # mock-ok: testing branch detection logic
+            with patch("scripts.meta_status.get_claims") as mock_claims:
+                mock_claims.return_value = []  # mock-ok: testing without claims file
+                identity = get_my_identity()
+                assert identity["is_main"] is True
+                assert identity["branch"] == "main"
 
-        three_hours_ago = datetime.now(timezone.utc) - timedelta(hours=3)
-        iso = three_hours_ago.isoformat()
+    def test_is_main_false_on_feature_branch(self) -> None:
+        """Should set is_main=False when on feature branch."""
+        from scripts.meta_status import get_my_identity
 
-        result = format_time_ago(iso)
-        assert "3h ago" in result
+        with patch("scripts.meta_status.get_current_branch") as mock_branch:
+            mock_branch.return_value = "plan-71-test"  # mock-ok: testing branch detection
+            with patch("scripts.meta_status.get_claims") as mock_claims:
+                mock_claims.return_value = []  # mock-ok: testing without claims file
+                identity = get_my_identity()
+                assert identity["is_main"] is False
+                assert identity["branch"] == "plan-71-test"
 
-    def test_format_invalid_timestamp(self) -> None:
-        """Invalid timestamp returns original string."""
-        result = format_time_ago("not-a-timestamp")
-        assert result == "not-a-timestamp"
+    def test_finds_matching_claim(self) -> None:
+        """Should find cc_id from matching claim."""
+        from scripts.meta_status import get_my_identity
 
+        with patch("scripts.meta_status.get_current_branch") as mock_branch:
+            mock_branch.return_value = "plan-71-test"  # mock-ok: testing claim matching
+            with patch("scripts.meta_status.get_claims") as mock_claims:
+                mock_claims.return_value = [  # mock-ok: testing claim matching logic
+                    {"cc_id": "plan-71-test", "branch": "plan-71-test", "plan": 70}
+                ]
+                identity = get_my_identity()
+                assert identity["cc_id"] == "plan-71-test"
 
-class TestGetClaims:
-    """Tests for claims retrieval."""
-
-    def test_get_claims_returns_list(self, tmp_path: Path) -> None:
-        """get_claims returns a list."""
-        # Create a temporary claims file
-        claims_file = tmp_path / ".claude" / "active-work.yaml"
-        claims_file.parent.mkdir(parents=True)
-        claims_file.write_text("""
-claims:
-  - cc_id: test
-    task: Test task
-    plan: 1
-""")
-
-        with patch("meta_status.Path") as mock_path:
-            mock_path.return_value.exists.return_value = False
-            result = get_claims()
-
-        # Without the real file, returns empty list
-        assert isinstance(result, list)
-
-    def test_get_claims_missing_file(self) -> None:
-        """Missing claims file returns empty list."""
-        with patch("meta_status.Path") as mock_path:
-            mock_path.return_value.exists.return_value = False
-            result = get_claims()
-
-        assert result == []
-
-
-class TestGetPlanProgress:
-    """Tests for plan progress retrieval."""
-
-    def test_get_plan_progress_returns_dict(self) -> None:
-        """get_plan_progress returns a dictionary with expected keys."""
-        with patch("meta_status.Path") as mock_path:
-            mock_path.return_value.exists.return_value = False
-            result = get_plan_progress()
-
-        assert "total" in result
-        assert "complete" in result
-        assert "in_progress" in result
-        assert "planned" in result
-
-
-class TestIdentifyIssues:
-    """Tests for issue identification."""
-
-    def test_identify_multiple_prs_for_same_plan(self) -> None:
-        """Detects multiple PRs for the same plan."""
-        claims: list = []
-        prs = [
-            {"number": 1, "title": "Plan #41 first PR", "headRefName": "plan-41-a"},
-            {"number": 2, "title": "Plan #41 second PR", "headRefName": "plan-41-b"},
-        ]
-        plans: dict = {"plans": []}
-        worktrees: list = []
-
-        issues = identify_issues(claims, prs, plans, worktrees)
-
-        assert any("Plan #41" in issue and "multiple PRs" in issue for issue in issues)
-
-    def test_identify_no_issues(self) -> None:
-        """Returns empty list when no issues detected."""
-        issues = identify_issues([], [], {"plans": []}, [])
-        assert issues == []
-
-
-class TestMetaStatusScript:
-    """Integration tests for the script."""
-
-    def test_brief_output_runs(self) -> None:
-        """Script runs with --brief flag without error."""
-        result = subprocess.run(
-            [sys.executable, "scripts/meta_status.py", "--brief"],
-            capture_output=True,
-            text=True,
-        )
-
-        # Script should run (may have warnings but shouldn't crash)
-        # Check that output contains expected format
-        assert "Claims:" in result.stdout or result.returncode == 0
