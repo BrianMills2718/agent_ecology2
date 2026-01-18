@@ -238,6 +238,9 @@ jobs:
       - name: Check plan status consistency
         run: python scripts/sync_plan_status.py --check
 
+      - name: Check plan number exclusivity
+        run: python scripts/check_plan_exclusivity.py --check
+
       - name: Check for stale blockers
         run: python scripts/check_plan_blockers.py --strict
 
