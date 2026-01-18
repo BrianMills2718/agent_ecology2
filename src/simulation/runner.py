@@ -674,7 +674,7 @@ class SimulationRunner:
                 print(f"    {agent_id}: {input_tokens} in, {output_tokens} out{cost_str}")
 
             # Create proposal with OODA fields when present (Plan #88)
-            proposal_dict: dict[str, Any] = {
+            proposal_dict: AgentActionResult = {
                 "action": action_result.get("action", {}),
                 "thought_process": thought_process,
             }
