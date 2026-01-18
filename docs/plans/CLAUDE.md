@@ -1,8 +1,12 @@
+<!-- AUTO-GENERATED FILE - DO NOT EDIT MANUALLY -->
+<!-- This file is auto-synced by post-merge CI via sync_plan_status.py -->
+<!-- To update: Edit individual plan files, then merge to main -->
+
 # Implementation Plans
 
 Master index of all gaps and their implementation plans.
 
-**Last verified:** 2026-01-18 (Plan #89 in progress)
+**Last synced:** Auto-updated after each merge to main
 
 ---
 
