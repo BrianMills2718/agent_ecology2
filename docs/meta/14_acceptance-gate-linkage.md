@@ -1,6 +1,9 @@
-# Pattern: Feature Linkage
+# Pattern: Acceptance Gate Linkage
 
-How to structure relationships between ADRs, features, code, tests, and documentation for full traceability.
+How to structure relationships between ADRs, acceptance gates, code, tests, and documentation for full traceability.
+
+> **Note:** This pattern uses the `acceptance_gates/` directory and `features.yaml` filename for historical reasons.
+> The authoritative term is "acceptance gate" - see [META-ADR-0001](adr/0001-acceptance-gate-terminology.md).
 
 ## Complete Linkage Diagram
 
@@ -46,15 +49,15 @@ How to structure relationships between ADRs, features, code, tests, and document
            │                              │                              │
            ▼                              ▼                              ▼
     ┌─────────────┐               ┌─────────────┐               ┌─────────────┐
-    │  FEATURE:   │               │  FEATURE:   │               │  FEATURE:   │
+    │    GATE:    │               │    GATE:    │               │    GATE:    │
     │   escrow    │               │   ledger    │               │rate_limiting│
     └──────┬──────┘               └──────┬──────┘               └──────┬──────┘
            │                              │                              │
            ▼                              ▼                              ▼
     ┌─────────────────────────────────────────────────────────────────────────┐
-    │                         FEATURE CONTENTS                                 │
+    │                    ACCEPTANCE GATE CONTENTS                              │
     │                                                                          │
-    │   problem         → WHY this feature exists                              │
+    │   problem         → WHY this gate exists                                 │
     │   acceptance_criteria → Given/When/Then specs (LOCKED before impl)       │
     │   out_of_scope    → Explicit exclusions (prevents AI drift)              │
     │   adrs            → [1, 3] constraints from architecture decisions       │
@@ -77,12 +80,12 @@ How to structure relationships between ADRs, features, code, tests, and document
     ┌─────────────────────────────────────┬───────────────────────────────┐
     │  QUERY                              │  LOOKUP PATH                  │
     ├─────────────────────────────────────┼───────────────────────────────┤
-    │  "What ADRs apply to escrow.py?"    │  file → feature → adrs        │
-    │  "What tests cover escrow?"         │  feature → tests              │
-    │  "What feature owns runner.py?"     │  file → feature               │
-    │  "Is escrow fully tested?"          │  feature.tests all pass?      │
-    │  "What docs need update?"           │  file → feature → docs        │
-    │  "What does ADR-1 govern?"          │  reverse: adrs → features     │
+    │  "What ADRs apply to escrow.py?"    │  file → gate → adrs           │
+    │  "What tests cover escrow?"         │  gate → tests                 │
+    │  "What gate owns runner.py?"        │  file → gate                  │
+    │  "Is escrow fully tested?"          │  gate.tests all pass?         │
+    │  "What docs need update?"           │  file → gate → docs           │
+    │  "What does ADR-1 govern?"          │  reverse: adrs → gates        │
     └─────────────────────────────────────┴───────────────────────────────┘
 ```
 
@@ -96,36 +99,36 @@ See "CURRENT STATE" in the diagram above. Key issues:
 - Most source files have NO ADR mapping
 - `doc_coupling.yaml` is manual and incomplete
 - Plans are administrative, not linked to code
-- No Feature concept linking code + tests + docs + ADRs
-- Tests have no mapping to features or plans
+- No Acceptance Gate concept linking code + tests + docs + ADRs
+- Tests have no mapping to gates or plans
 
 ### What's Missing
 
 | Query | Can Answer? |
 |-------|-------------|
 | "What ADRs apply to this file?" | Only if file is in sparse mapping |
-| "What tests cover this feature?" | No |
+| "What tests cover this gate?" | No |
 | "Which plan owns this file?" | No |
-| "Is this feature fully tested?" | No |
+| "Is this gate fully tested?" | No |
 | "What docs need updating if I change X?" | Partial |
 
 ## Solution
 
-### Feature as Central Entity
+### Acceptance Gate as Central Entity
 
-See "OPTIMAL STATE" in the diagram above. **Feature** becomes the single source of truth connecting:
+See "OPTIMAL STATE" in the diagram above. **Acceptance Gate** becomes the single source of truth connecting:
 
 - **ADRs** - Architectural constraints
-- **Code** - Source files implementing the feature
-- **Tests** - Verification that feature works
-- **Docs** - Documentation explaining the feature
+- **Code** - Source files implementing the gate
+- **Tests** - Verification that gate works
+- **Docs** - Documentation explaining the gate
 
-All other mappings (governance, doc-coupling, test-mapping) are **derived** from features.yaml.
+All other mappings (governance, doc-coupling, test-mapping) are **derived** from features.yaml (the gate definition file).
 
-### Features.yaml Schema
+### Features.yaml Schema (Gate Definitions)
 
 ```yaml
-features:
+gates:
   escrow:
     description: "Trustless artifact trading"
 
@@ -156,21 +159,21 @@ features:
     docs:
       - docs/architecture/current/resources.md
 
-  # ... all features
+  # ... all gates
 ```
 
 ## Derived Mappings
 
-From `features.yaml`, derive all other mappings:
+From `features.yaml` (the gate definition file), derive all other mappings:
 
 ### File → ADR (replaces governance.yaml)
 
 ```python
 def get_adrs_for_file(filepath: str) -> list[int]:
     """Given a file, return which ADRs govern it."""
-    for feature in features.values():
-        if filepath in feature['code']:
-            return feature['adrs']
+    for gate in gates.values():
+        if filepath in gate['code']:
+            return gate['adrs']
     return []
 ```
 
@@ -179,27 +182,27 @@ def get_adrs_for_file(filepath: str) -> list[int]:
 ```python
 def get_docs_for_file(filepath: str) -> list[str]:
     """Given a file, return which docs should be updated."""
-    for feature in features.values():
-        if filepath in feature['code']:
-            return feature['docs']
+    for gate in gates.values():
+        if filepath in gate['code']:
+            return gate['docs']
     return []
 ```
 
-### Feature → Tests
+### Gate → Tests
 
 ```python
-def get_tests_for_feature(feature_name: str) -> list[str]:
-    """Given a feature, return its tests."""
-    return features[feature_name]['tests']
+def get_tests_for_gate(gate_name: str) -> list[str]:
+    """Given a gate, return its tests."""
+    return gates[gate_name]['tests']
 ```
 
-### File → Feature (reverse lookup)
+### File → Gate (reverse lookup)
 
 ```python
-def get_feature_for_file(filepath: str) -> str | None:
-    """Given a file, return which feature owns it."""
-    for name, feature in features.items():
-        if filepath in feature['code']:
+def get_gate_for_file(filepath: str) -> str | None:
+    """Given a file, return which gate owns it."""
+    for name, gate in gates.items():
+        if filepath in gate['code']:
             return name
     return None
 ```
@@ -209,17 +212,17 @@ def get_feature_for_file(filepath: str) -> str | None:
 | Query | How |
 |-------|-----|
 | "What ADRs apply to this file?" | `get_adrs_for_file(path)` |
-| "What tests cover this feature?" | `get_tests_for_feature(name)` |
-| "What feature owns this file?" | `get_feature_for_file(path)` |
-| "Is this feature fully tested?" | Check all tests in feature pass |
+| "What tests cover this gate?" | `get_tests_for_gate(name)` |
+| "What gate owns this file?" | `get_gate_for_file(path)` |
+| "Is this gate fully tested?" | Check all tests in gate pass |
 | "What docs need updating?" | `get_docs_for_file(path)` |
-| "What files does ADR-X govern?" | Reverse lookup through features |
+| "What files does ADR-X govern?" | Reverse lookup through gates |
 
 ## Handling Edge Cases
 
 ### Shared Utilities
 
-Files used by multiple features:
+Files used by multiple gates:
 
 ```yaml
 shared:
@@ -228,8 +231,8 @@ shared:
     code:
       - src/utils.py
       - src/common/helpers.py
-    # No specific ADRs - inherits from all features that use it
-    # Tests in unit tests, not feature tests
+    # No specific ADRs - inherits from all gates that use it
+    # Tests in unit tests, not gate tests
     tests:
       - tests/unit/test_utils.py
 ```
@@ -240,15 +243,15 @@ Temporary state during migration:
 
 ```yaml
 unassigned:
-  description: "Code not yet assigned to a feature"
+  description: "Code not yet assigned to a gate"
   code:
     - src/legacy/old_module.py
   # Flagged in CI as needing assignment
 ```
 
-### Multiple Features for One File
+### Multiple Gates for One File
 
-If a file legitimately belongs to multiple features (rare):
+If a file legitimately belongs to multiple gates (rare):
 
 ```yaml
 ledger:
@@ -260,28 +263,28 @@ escrow:
     - src/world/ledger.py  # Also uses (secondary)
 ```
 
-Resolution: Primary feature's ADRs apply. Both features' tests must pass.
+Resolution: Primary gate's ADRs apply. Both gates' tests must pass.
 
 ## Migration Path
 
 ### From Current State
 
 1. **Audit existing code** - List all files in `src/`
-2. **Identify features** - Group files by capability
-3. **Create features.yaml** - Define features with code mappings
-4. **Add ADR mappings** - Which ADRs apply to each feature
-5. **Add test mappings** - Which tests verify each feature
+2. **Identify gates** - Group files by capability
+3. **Create features.yaml** - Define gates with code mappings
+4. **Add ADR mappings** - Which ADRs apply to each gate
+5. **Add test mappings** - Which tests verify each gate
 6. **Deprecate old configs** - Replace governance.yaml, doc_coupling.yaml
 
 ### Validation Script
 
 ```bash
-# Check all src/ files are assigned to a feature
+# Check all src/ files are assigned to a gate
 python scripts/check_feature_coverage.py
 
 # Output:
-# ✓ src/world/ledger.py -> feature:ledger
-# ✓ src/world/escrow.py -> feature:escrow
+# ✓ src/world/ledger.py -> gate:ledger
+# ✓ src/world/escrow.py -> gate:escrow
 # ✗ src/world/orphan.py -> UNASSIGNED
 ```
 
@@ -289,28 +292,33 @@ python scripts/check_feature_coverage.py
 
 | File | Purpose |
 |------|---------|
-| `features.yaml` | Single source of truth |
-| `scripts/derive_governance.py` | Generate governance.yaml from features |
-| `scripts/derive_doc_coupling.py` | Generate doc_coupling.yaml from features |
+| `features.yaml` | Single source of truth (gate definitions) |
+| `scripts/derive_governance.py` | Generate governance.yaml from gates |
+| `scripts/derive_doc_coupling.py` | Generate doc_coupling.yaml from gates |
 | `scripts/check_feature_coverage.py` | Ensure all code assigned |
 
 ## Benefits
 
 | Before | After |
 |--------|-------|
-| Sparse ADR mapping | Complete coverage via features |
-| Manual doc_coupling.yaml | Derived from features |
-| "What owns this file?" - unknown | Feature lookup |
-| "Is feature tested?" - unknown | Feature.tests check |
-| Plans as organization | Features as organization, plans as tasks |
+| Sparse ADR mapping | Complete coverage via gates |
+| Manual doc_coupling.yaml | Derived from gates |
+| "What owns this file?" - unknown | Gate lookup |
+| "Is gate tested?" - unknown | Gate.tests check |
+| Plans as organization | Gates as organization, plans as tasks |
 
 ## Related Patterns
 
-- [Feature-Driven Development](13_feature-driven-development.md) - The complete meta-process
-- [ADR Governance](08_adr-governance.md) - Now derived from features
-- [Doc-Code Coupling](10_doc-code-coupling.md) - Now derived from features
-- [Documentation Graph](09_documentation-graph.md) - Features as nodes
+- [Acceptance-Gate-Driven Development](13_acceptance-gate-driven-development.md) - The complete meta-process
+- [ADR Governance](08_adr-governance.md) - Now derived from gates
+- [Doc-Code Coupling](10_doc-code-coupling.md) - Now derived from gates
+- [Documentation Graph](09_documentation-graph.md) - Gates as nodes
+
+## Related Meta-Process ADRs
+
+- [META-ADR-0001: Acceptance Gate Terminology](adr/0001-acceptance-gate-terminology.md) - Why "acceptance gate" not "feature"
+- [META-ADR-0004: Gate YAML Is Documentation](adr/0004-gate-yaml-is-documentation.md) - YAML as single source
 
 ## Origin
 
-Identified during meta-process design when analyzing why ADR conformance checking would fail - the linkage from files to ADRs was too sparse to be useful. Feature-centric organization provides complete coverage.
+Identified during meta-process design when analyzing why ADR conformance checking would fail - the linkage from files to ADRs was too sparse to be useful. Gate-centric organization provides complete coverage.

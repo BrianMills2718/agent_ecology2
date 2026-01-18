@@ -17,8 +17,8 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 | [Doc-Code Coupling](10_doc-code-coupling.md) | Docs drift from code | Medium |
 | [Terminology](11_terminology.md) | Inconsistent terms | Low |
 | [Structured Logging](12_structured-logging.md) | Unreadable logs | Low |
-| [Feature-Driven Development](13_feature-driven-development.md) | AI drift, cheating, big bang integration | High |
-| [Feature Linkage](14_feature-linkage.md) | Sparse file-to-constraint mappings | Medium |
+| [Acceptance-Gate-Driven Development](13_acceptance-gate-driven-development.md) | AI drift, cheating, big bang integration | High |
+| [Acceptance Gate Linkage](14_acceptance-gate-linkage.md) | Sparse file-to-constraint mappings | Medium |
 | [Plan Workflow](15_plan-workflow.md) | Untracked work, scope creep | Medium |
 | [Plan Blocker Enforcement](16_plan-blocker-enforcement.md) | Blocked plans started anyway | Medium |
 | [Verification Enforcement](17_verification-enforcement.md) | Untested "complete" work | Medium |
@@ -45,11 +45,11 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 - Ownership Respect - prevent CC instances from fixing each other's work
 
 **Add these when needed (more setup):**
-- Feature-Driven Development - comprehensive meta-process for verified progress, preventing AI drift/cheating
+- Acceptance-Gate-Driven Development - comprehensive meta-process for verified progress, preventing AI drift/cheating
 - ADR - when architectural decisions need to be preserved long-term
 - Phased ADR Pattern - when building simpler first but preserving full design vision
 - Documentation Graph - when you need to trace ADR → target → current → code
-- Plan Workflow - for larger features with multiple steps
+- Plan Workflow - for larger acceptance gates with multiple steps
 - Claim System - for explicit parallel work coordination
 - Verification Enforcement - when plans need proof of completion
 

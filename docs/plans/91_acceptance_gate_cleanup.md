@@ -1,6 +1,19 @@
 # Plan 91: Acceptance Gate Terminology and Documentation Cleanup
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
+
+**Verified:** 2026-01-18T18:14:22Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-01-18T18:14:22Z
+tests:
+  unit: 1646 passed, 9 skipped, 3 warnings in 106.60s (0:01:46)
+  e2e_smoke: skipped (--skip-e2e)
+  e2e_real: skipped (--skip-real-e2e)
+  doc_coupling: passed
+commit: dfd44ee
+```
 **Priority:** High
 **Type:** Refactor
 **Blocked By:** None
@@ -37,26 +50,23 @@ Establish "acceptance gate" as the canonical term, document the rationale in met
 
 ## Files Affected
 
-### Create
 - docs/meta/adr/README.md (create)
 - docs/meta/adr/0001-acceptance-gate-terminology.md (create)
 - docs/meta/adr/0002-thin-slice-enforcement.md (create)
 - docs/meta/adr/0003-plan-gate-hierarchy.md (create)
 - docs/meta/adr/0004-gate-yaml-is-documentation.md (create)
-
-### Modify
-- docs/meta/11_terminology.md (modify) - Replace "feature" with "acceptance gate"
-- docs/meta/13_feature-driven-development.md (modify) - Rename, update terminology
-- docs/meta/14_feature-linkage.md (modify) - Rename, update terminology
-- docs/meta/01_README.md (modify) - Update pattern names in index
-- docs/meta/CLAUDE.md (modify) - Update references
-- docs/GLOSSARY.md (modify) - Add "acceptance gate" definition
-
-### Delete
+- docs/meta/11_terminology.md (modify)
+- docs/meta/13_acceptance-gate-driven-development.md (modify)
+- docs/meta/14_acceptance-gate-linkage.md (modify)
+- docs/meta/01_README.md (modify)
+- docs/meta/CLAUDE.md (modify)
+- docs/meta/18_claim-system.md (modify)
+- docs/meta/build_meta_review_package.sh (modify)
+- docs/GLOSSARY.md (modify)
 - docs/acceptance_gates/README.md (delete)
 - docs/acceptance_gates/CLAUDE.md (delete)
-- docs/acceptance_gates/dashboard.md (delete) - merge to docs/architecture/current/
-- docs/acceptance_gates/mint_auction.md (delete) - merge to docs/architecture/current/
+- docs/acceptance_gates/dashboard.md (delete)
+- docs/acceptance_gates/mint_auction.md (delete)
 
 ---
 
@@ -122,17 +132,14 @@ Establish "acceptance gate" as the canonical term, document the rationale in met
 
 ## Required Tests
 
-### Existing Tests (Must Pass)
-
-| Test Pattern | Why |
-|--------------|-----|
-| `pytest tests/` | No functional changes |
-| `python scripts/check_doc_coupling.py` | Doc paths may change |
+No functional tests required - documentation-only cleanup. CI validates:
+- Doc-code coupling (`check_doc_coupling.py`)
+- Existing tests still pass
 
 ### Validation
 
-| Check | Command |
-|-------|---------|
+| Check | Method |
+|-------|--------|
 | No broken links | Manual review of updated pattern cross-references |
 | Terminology consistency | grep for "feature" in updated files, verify context |
 

@@ -13,7 +13,7 @@ This document defines the canonical terms for project organization.
 
 ```
 Phase (optional grouping)
-└── Feature (E2E acceptance gate)
+└── Acceptance Gate (E2E verification checkpoint)
     └── Plan(s) (work coordination documents)
         └── Task (atomic work item)
 ```
@@ -22,46 +22,54 @@ Phase (optional grouping)
 
 | Term | Definition | Identifier | Tests At Level |
 |------|------------|------------|----------------|
-| **Feature** | E2E-verifiable capability (acceptance gate) | `acceptance_gates/NAME.yaml` | E2E required |
+| **Acceptance Gate** | E2E-verifiable functional capability | `acceptance_gates/NAME.yaml` | E2E required |
 | **Plan** | Work coordination document | `docs/plans/NN_name.md` | Unit/integration tests |
 | **Task** | Atomic work item within a plan | Checklist item | May have unit test |
-| **Phase** | Optional grouping of related features | "Phase 1" | No tests (just grouping) |
+| **Phase** | Optional grouping of related gates | "Phase 1" | No tests (just grouping) |
 
-### Key Insight: Features vs Plans
+### Why "Acceptance Gate" Not "Feature"
 
-**Features** and **Plans** serve different purposes:
+See [META-ADR-0001](adr/0001-acceptance-gate-terminology.md) for full rationale.
+
+1. **"Feature" is overloaded** - means different things everywhere (product feature, feature flag, feature branch)
+2. **"Acceptance gate" conveys mechanism** - it's a gate you must pass, not an optional checkpoint
+3. **Name encodes discipline** - not a suggestion, a requirement
+
+### Key Insight: Gates vs Plans
+
+**Acceptance gates** and **Plans** serve different purposes:
 
 | Concept | Purpose | Relationship |
 |---------|---------|--------------|
-| **Feature** | E2E acceptance verification | "Does it actually work?" |
+| **Acceptance Gate** | E2E acceptance verification | "Does it actually work?" |
 | **Plan** | Work coordination, file locking | "Who works on what?" |
 
-- Multiple **plans** can contribute to one **feature**
-- A plan can be "complete" while its feature is still incomplete
-- Feature completion = the REAL checkpoint (E2E passes with no mocks)
+- Multiple **plans** can contribute to one **acceptance gate**
+- A plan can be "complete" while its gate is still not passed
+- Gate passed = the REAL checkpoint (E2E passes with no mocks)
 
 ```
-Feature: "Escrow Trading"           # E2E acceptance gate
-    └── Plan: 08_escrow_basic.md    # First implementation
-    └── Plan: 15_escrow_timeout.md  # Adds timeout handling
-    └── Plan: 22_escrow_multi.md    # Adds multi-party support
+Acceptance Gate: "Escrow Trading"    # E2E verification checkpoint
+    └── Plan: 08_escrow_basic.md     # First implementation
+    └── Plan: 15_escrow_timeout.md   # Adds timeout handling
+    └── Plan: 22_escrow_multi.md     # Adds multi-party support
 ```
 
-See [Feature-Driven Development](13_feature-driven-development.md) for the full pattern.
+See [Acceptance-Gate-Driven Development](13_acceptance-gate-driven-development.md) for the full pattern.
 
 ## Plan Types
 
-Not all plans are features. Distinguish between:
+Not all plans contribute to acceptance gates. Distinguish between:
 
 | Type | Definition | E2E Required? | Examples |
 |------|------------|---------------|----------|
-| **Feature Plan** | Delivers testable capability | Yes | Rate limiting, Escrow, MCP servers |
+| **Gate Plan** | Delivers testable capability | Yes | Rate limiting, Escrow, MCP servers |
 | **Enabler Plan** | Improves dev process | No | Dev tooling, ADR governance |
 | **Refactor Plan** | Changes internals, not behavior | Existing E2E must pass | Terminology cleanup |
 
 Mark in plan header:
 ```markdown
-**Type:** Feature  # or Enabler, Refactor
+**Type:** Gate  # or Enabler, Refactor
 ```
 
 ## Status Terms
@@ -108,20 +116,28 @@ Terminology is enforced through:
 
 ### Correct
 
-> "Plan #6 (Unified Ontology) is a feature plan that delivers artifact-backed agents."
+> "Plan #6 (Unified Ontology) is a gate plan that delivers artifact-backed agents."
 
 > "Task: Create the TokenBucket class (part of Plan #1)"
 
 > "Phase 1 includes Plans #1, #2, and #3"
 
+> "The escrow acceptance gate requires three E2E tests to pass."
+
 ### Incorrect
 
-> "Feature #6 is blocked" (use "Plan #6")
+> "Feature #6 is blocked" (use "Plan #6" or "the escrow acceptance gate")
 
-> "The rate limiting task needs E2E tests" (tasks don't have E2E; plans do)
+> "The rate limiting task needs E2E tests" (tasks don't have E2E; gates do)
 
 > "The credits system" (use "scrip")
 
+## Related ADRs
+
+- [META-ADR-0001: Acceptance Gate Terminology](adr/0001-acceptance-gate-terminology.md)
+- [META-ADR-0002: Thin-Slice Enforcement](adr/0002-thin-slice-enforcement.md)
+- [META-ADR-0003: Plan-Gate Hierarchy](adr/0003-plan-gate-hierarchy.md)
+
 ## Origin
 
-Defined to resolve confusion between "feature", "plan", "gap", and "task" during coordination.
+Defined to resolve confusion between "feature", "acceptance gate", "plan", "gap", and "task" during coordination.

@@ -212,6 +212,32 @@ How agents structure their thinking and responses to the LLM.
 
 ---
 
+## Meta-Process Terminology
+
+Development process terms (not system concepts):
+
+| Term | Definition | Notes |
+|------|------------|-------|
+| **Acceptance Gate** | E2E-verifiable functional capability | Must pass real (non-mocked) tests. Prevents big-bang integration. See [META-ADR-0001](meta/adr/0001-acceptance-gate-terminology.md). |
+| **Plan** | Work coordination document | Unit/integration tests. Multiple plans may contribute to one acceptance gate. |
+| **Task** | Atomic work item within a plan | May have no dedicated tests. |
+
+**Key hierarchy:**
+```
+Acceptance Gate (functional capability)    ← E2E test required
+└── Plan(s) (work coordination)            ← Unit/integration tests
+    └── Task(s) (atomic work)              ← May have no tests
+```
+
+**Why "acceptance gate" not "feature":**
+- "Feature" is overloaded (product feature, feature flag, feature branch)
+- "Acceptance gate" conveys the mechanism—it's a gate you must pass
+- The name encodes discipline: not optional, not a suggestion
+
+See [docs/meta/adr/](meta/adr/) for meta-process ADRs.
+
+---
+
 ## Deprecated Terms
 
 | Don't Use | Use Instead | Reason |
@@ -219,6 +245,7 @@ How agents structure their thinking and responses to the LLM.
 | **oracle** | **mint** | "Mint" describes function (creating scrip) |
 | **genesis_oracle** | **genesis_mint** | Terminology migration per ADR-0004 |
 | **OracleScorer** | **MintScorer** | Class rename per ADR-0004 |
+| **feature** (for E2E checkpoint) | **acceptance gate** | "Feature" is overloaded; see [META-ADR-0001](meta/adr/0001-acceptance-gate-terminology.md) |
 | credits | scrip | Consistency |
 | account | principal | Principals include non-agents |
 | turn | tick | Consistency |
