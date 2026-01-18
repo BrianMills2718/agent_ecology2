@@ -9,7 +9,7 @@ on:
 
 # Permissions needed for dorny/paths-filter and other actions
 permissions:
-  contents: read
+  contents: write  # write for post-merge auto-commit
   pull-requests: read
 
 # Cancel in-progress runs for the same branch
@@ -275,6 +275,7 @@ jobs:
 
   # =============================================================================
   # Post-Merge (lightweight - only on main push)
+  # Auto-syncs plan index to prevent PR conflicts
   # =============================================================================
   post-merge:
     runs-on: ubuntu-latest
@@ -285,11 +286,29 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 10
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Auto-sync plan index
+        run: |
+          python scripts/sync_plan_status.py --sync
+          if git diff --quiet docs/plans/CLAUDE.md; then
+            echo "Plan index already in sync"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add docs/plans/CLAUDE.md
+            git commit -m "[Auto] Sync plan index after merge"
+            git push
+            echo "Plan index synced and committed"
+          fi
 
       - name: Check plan completion evidence
         run: python scripts/check_plan_completion.py --recent-commits 5 --warn-only

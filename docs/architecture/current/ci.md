@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-18 (Plan #88 - added dashboard/agent-model soft couplings)
+Last verified: 2026-01-18 (auto-sync plan index via post-merge CI)
 
 ---
 
@@ -19,7 +19,7 @@ Located at `.github/workflows/ci.yml`
 - Prevents wasted CI on superseded commits
 
 **Permissions:**
-- `contents: read` - Read repository contents
+- `contents: write` - Read repository contents + write for post-merge auto-commit
 - `pull-requests: read` - Read PR metadata for path filtering
 
 ---
@@ -192,13 +192,22 @@ Monitors changes to core architecture files (`src/world/{ledger,executor,genesis
 
 ### 7. post-merge (main only)
 
-Runs post-merge checks. Only runs on push to main.
+Runs post-merge automation. Only runs on push to main.
+
+**Automation:**
+1. **Auto-sync plan index** - Regenerates `docs/plans/CLAUDE.md` from individual plan files
+2. **Completion evidence check** - Warns about plans missing verification
 
 ```yaml
-- uses: actions/checkout@v4 (with fetch-depth: 10)
+- uses: actions/checkout@v4 (with fetch-depth: 10, token: GITHUB_TOKEN)
 - uses: actions/setup-python@v5 (Python 3.11)
+- pip install pyyaml
+- python scripts/sync_plan_status.py --sync
+- git commit -m "[Auto] Sync plan index after merge" (if changed)
 - python scripts/check_plan_completion.py --recent-commits 5 --warn-only
 ```
+
+**Why auto-sync?** The plan index (`docs/plans/CLAUDE.md`) was a "hot file" - every plan PR had to edit it, causing immediate conflicts when multiple PRs were in flight. Now PRs only edit their own plan file, and the index is auto-generated post-merge.
 
 **What it catches:**
 - Plans marked Complete without verification evidence
