@@ -99,7 +99,7 @@ Master index of all gaps and their implementation plans.
 | 69 | [Worktree Auto-Cleanup](69_worktree_auto_cleanup.md) | Medium | ✅ Complete | Cleaner workflow |
 | 70 | [Agent Workflow Phase 1](70_agent_workflow_phase1.md) | **High** | 🚧 In Progress | Agent intelligence |
 | 71 | [Ownership Check](71_ownership_check.md) | **High** | 🚧 In Progress | Meta-process integrity |
-| 72 | [Plan Number Enforcement](72_plan_number_enforcement.md) | **High** | ✅ Complete | Meta-process integrity |
+| 72 | [Plan Number Enforcement](72_plan_number_enforcement.md) | **High** | 🚧 In Progress | Meta-process integrity |
 | 73 | [Output Messaging Fix](73_output_messaging_fix.md) | **High** | 🚧 In Progress | - |
 
 ---
