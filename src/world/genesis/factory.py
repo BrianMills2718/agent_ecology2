@@ -3,6 +3,13 @@
 Creates all genesis artifacts based on configuration.
 """
 
+# --- GOVERNANCE START (do not edit) ---
+# ADR-0001: Everything is an artifact
+# ADR-0003: Contracts can do anything
+#
+# Genesis artifacts: ledger, mint, escrow, event_log, rights_registry, store.
+# System-provided, solve cold-start problem. Split into package (Plan #66).
+# --- GOVERNANCE END ---
 from __future__ import annotations
 
 from typing import Any, Callable

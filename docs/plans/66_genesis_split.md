@@ -36,6 +36,25 @@ Also includes:
 - [x] All tests pass
 - [x] executor.py exception catches documented
 
+## Files Affected
+
+- src/world/genesis/__init__.py (create)
+- src/world/genesis/base.py (create)
+- src/world/genesis/types.py (create)
+- src/world/genesis/ledger.py (create)
+- src/world/genesis/mint.py (create)
+- src/world/genesis/rights_registry.py (create)
+- src/world/genesis/event_log.py (create)
+- src/world/genesis/escrow.py (create)
+- src/world/genesis/debt_contract.py (create)
+- src/world/genesis/store.py (create)
+- src/world/genesis/factory.py (create)
+- src/world/genesis.py (delete)
+- scripts/governance.yaml (modify)
+- docs/architecture/current/genesis_artifacts.md (modify)
+- docs/architecture/current/artifacts_executor.md (modify)
+- tests/unit/test_worktree_session.py (modify)
+
 ## Verification
 
 - pytest tests/ passes (1502 tests)
