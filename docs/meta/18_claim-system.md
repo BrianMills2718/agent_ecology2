@@ -220,6 +220,24 @@ git commit -m "[Trivial] Fix typo in README"
 - **Files outside features** - Files not in any `acceptance_gates/*.yaml` aren't tracked
 - **Shared scope honor system** - Anyone can modify shared files; abuse visible in git history
 
+## Alternative: Messaging
+
+For direct communication between instances without PR workflows:
+
+```bash
+# Send a message to another instance
+python scripts/send_message.py --to plan-83-feature --type suggestion --subject "Review feedback" --content "..."
+
+# Check your inbox
+python scripts/check_messages.py --list
+```
+
+**When to use messaging vs claims:**
+- **Claims**: Ownership of work scope (prevents conflicts)
+- **Messaging**: Suggestions, questions, handoffs, reviews (async communication)
+
+See root `CLAUDE.md` > Multi-Claude Coordination > Inter-CC Messaging for details.
+
 ## See Also
 
 - [Worktree Enforcement](19_worktree-enforcement.md) - Worktree + claim workflow

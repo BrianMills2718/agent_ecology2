@@ -198,6 +198,35 @@ This maps your unique port to a human-readable name (e.g., "meta", "plan70"). Us
 - Identifying which instance should handle a task
 - Coordinating with other instances
 
+### Inter-CC Messaging
+
+**Send messages to other CC instances:**
+```bash
+# Send a message
+python scripts/send_message.py --to <recipient> --type <type> --subject "Subject" --content "Content"
+
+# Message types: suggestion, question, handoff, info, review-request
+```
+
+**Check your inbox:**
+```bash
+# List unread messages
+python scripts/check_messages.py --list
+
+# Acknowledge messages (required before editing)
+python scripts/check_messages.py --ack
+
+# Archive a message
+python scripts/check_messages.py --archive <msg-id>
+```
+
+**Blocking enforcement:** Unread messages block Edit/Write operations until acknowledged. This ensures coordination messages are never missed.
+
+**Identity resolution:**
+1. Worktree name (e.g., `plan-83-feature` from worktree path)
+2. Port mapping from `.claude/sessions.yaml`
+3. Fallback: `main`
+
 ### CRITICAL: Never Commit Directly to Main
 
 **All work MUST be on feature branches.** Commits directly to main will be orphaned when other instances push.
