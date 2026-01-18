@@ -37,6 +37,60 @@ def run_cmd(
     )
 
 
+def get_pr_branch(pr_number: int) -> str | None:
+    """Get the head branch name for a PR."""
+    result = run_cmd(
+        ["gh", "pr", "view", str(pr_number), "--json", "headRefName"],
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+    data = json.loads(result.stdout)
+    return data.get("headRefName")
+
+
+def find_worktree_for_branch(branch: str) -> Path | None:
+    """Find local worktree path for a branch, if it exists."""
+    result = run_cmd(["git", "worktree", "list", "--porcelain"], check=False)
+    if result.returncode != 0:
+        return None
+
+    # Parse porcelain output: worktree path, HEAD sha, branch on separate lines
+    current_path = None
+    for line in result.stdout.strip().split("\n"):
+        if line.startswith("worktree "):
+            current_path = Path(line[9:])
+        elif line.startswith("branch refs/heads/"):
+            worktree_branch = line[18:]
+            if worktree_branch == branch:
+                return current_path
+    return None
+
+
+def cleanup_worktree(branch: str) -> bool:
+    """Clean up local worktree for a branch. Returns True if successful."""
+    worktree_path = find_worktree_for_branch(branch)
+    if not worktree_path:
+        return True  # No worktree to clean up
+
+    print(f"🧹 Cleaning up local worktree for branch '{branch}'...")
+
+    # Use make worktree-remove which has safety checks
+    result = run_cmd(
+        ["make", "worktree-remove", f"BRANCH={branch}"],
+        check=False,
+    )
+
+    if result.returncode != 0:
+        # Worktree removal failed - warn but don't fail the merge
+        print(f"⚠️  Could not auto-cleanup worktree: {result.stderr or result.stdout}")
+        print(f"   Run manually: make worktree-remove BRANCH={branch}")
+        return False
+
+    print(f"✅ Cleaned up worktree at {worktree_path}")
+    return True
+
+
 def check_pr_mergeable(pr_number: int) -> tuple[bool, str]:
     """Check if PR is mergeable. Returns (mergeable, reason)."""
     result = run_cmd(
@@ -92,6 +146,9 @@ def merge_pr(pr_number: int, dry_run: bool = False) -> bool:
     """Merge a PR. Returns True if successful."""
     print(f"🔍 Checking PR #{pr_number}...")
 
+    # Get branch name before merge (needed for worktree cleanup)
+    branch = get_pr_branch(pr_number)
+
     # Fetch latest
     print("📥 Fetching latest...")
     run_cmd(["git", "fetch", "origin"], check=False)
@@ -135,6 +192,10 @@ def merge_pr(pr_number: int, dry_run: bool = False) -> bool:
     # Pull latest
     print("📥 Pulling latest main...")
     run_cmd(["git", "pull", "--rebase", "origin", "main"], check=False)
+
+    # Clean up local worktree if it exists
+    if branch:
+        cleanup_worktree(branch)
 
     print(f"\n✅ Done! PR #{pr_number} has been merged.")
     return True
