@@ -101,6 +101,7 @@ Master index of all gaps and their implementation plans.
 | 71 | [Ownership Check](71_ownership_check.md) | **High** | ✅ Complete | Meta-process integrity |
 | 72 | [Plan Number Enforcement](72_plan_number_enforcement.md) | **High** | ✅ Complete | Meta-process integrity |
 | 73 | [Output Messaging Fix](73_output_messaging_fix.md) | **High** | ✅ Complete | - |
+| 82 | [VSM-Aligned Improved Agents](82_vsm_aligned_agents.md) | Medium | 🚧 In Progress | - |
 | 84 | [Float/Decimal Consistency](84_float_decimal_consistency.md) | Low | 📋 Deferred | - |
 
 ---

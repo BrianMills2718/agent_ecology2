@@ -1,0 +1,123 @@
+id: alpha_2
+enabled: false  # Disabled - use alpha_3 instead
+llm_model: "gemini/gemini-3-flash-preview"
+starting_credits: 100
+
+# Genotype traits (evolved from alpha):
+# - Risk tolerance: HIGH
+# - Communication: WRITE-HEAVY
+# - Collaboration: LOW (solo-focused)
+# - Time horizon: MEDIUM (strategic awareness)
+# - Strategy: ADAPTIVE (self-monitoring)
+# VSM Features:
+# - S3* (Self-audit): Evaluates own strategy effectiveness
+# - Adaptation triggers: Computed metrics drive strategy changes
+
+# Per-agent RAG config
+rag:
+  enabled: true
+  limit: 5
+  query_template: |
+    I am {agent_id}, an adaptive architect.
+    Balance: {balance} scrip. My artifacts: {my_artifacts}.
+    Recent success rate: {success_rate}
+    {last_action}
+    What worked? What should I change?
+
+# VSM-aligned workflow with self-audit
+workflow:
+  steps:
+    # Step 1: Compute performance metrics (S3* self-monitoring)
+    - name: compute_metrics
+      type: code
+      code: |
+        # Count recent successes and failures
+        failure_count = len(recent_failures) if recent_failures else 0
+        success_count = len(recent_successes) if recent_successes else 0
+        total_actions = failure_count + success_count
+        success_rate = success_count / max(total_actions, 1)
+
+        # Detect if stuck in a loop (same failure type repeated)
+        stuck_in_loop = False
+        if failure_count >= 3 and recent_failures:
+          failure_types = [f.get('action_type', '') for f in recent_failures[-3:]]
+          stuck_in_loop = len(set(failure_types)) == 1
+
+        # Adaptation trigger
+        should_pivot = success_rate < 0.3 or stuck_in_loop
+
+        can_create = balance >= 10
+        should_explore = len(my_artifacts) < 3
+
+    # Step 2: Self-audit (VSM S3* - sporadic deep evaluation)
+    - name: self_audit
+      type: llm
+      output_key: audit_result
+      prompt: |
+        === SELF-AUDIT ===
+        You are {agent_id}. Pause and honestly evaluate your performance.
+
+        Metrics:
+        - Success rate: {success_rate:.0%}
+        - Recent failures: {failure_count}
+        - Stuck in loop: {stuck_in_loop}
+        - Should pivot: {should_pivot}
+
+        Recent failures: {recent_failures}
+
+        Answer honestly:
+        1. WORKING: What's actually working? Be specific.
+        2. NOT WORKING: What keeps failing? Why?
+        3. MEMORY CHECK: Are my memories useful or misleading?
+        4. PIVOT DECISION: Should I fundamentally change my approach?
+
+        Be brutally honest. Denial wastes resources.
+
+    # Step 3: Strategy review (informed by self-audit)
+    - name: review_strategy
+      type: llm
+      output_key: strategy
+      prompt: |
+        You are {agent_id}. Your self-audit found:
+        {audit_result}
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+        - My artifacts: {my_artifacts}
+        - Adaptation trigger active: {should_pivot}
+
+        Based on the audit:
+        1. GOAL: What should your goal be now? (may need to change)
+        2. STRATEGY: What approach will you take?
+        3. FIRST STEP: What's the immediate next action?
+
+        If should_pivot is True, you MUST change something significant.
+
+    # Step 4: Decide action
+    - name: decide_action
+      type: llm
+      prompt: |
+        You are {agent_id}, an adaptive architect agent.
+
+        Current state:
+        - Tick: {tick}
+        - Balance: {balance} scrip
+        - My artifacts: {my_artifacts}
+        - Success rate: {success_rate:.0%}
+        - Can afford to create: {can_create}
+
+        Your strategy:
+        {strategy}
+
+        Relevant memories:
+        {memories}
+
+        Available actions:
+        1. write_artifact - Create a new artifact (cost: varies)
+        2. read_artifact - Read an existing artifact
+        3. invoke_artifact - Call a contract's method
+        4. transfer - Send scrip to another agent
+        5. noop - Do nothing this tick
+
+        Execute your strategy. Choose your next action.

@@ -21,6 +21,14 @@ To read any section, use the `read_artifact` action:
 - **Calling other artifacts from code** - Use `invoke()` to chain artifacts
 - How to create executable artifacts with `run(*args)`
 
+### handbook_tools
+**Building tools and services for other agents**
+- Full API available in `run()`: `invoke()`, `pay()`, `get_balance()`, `kernel_state`, `kernel_actions`
+- Access control: `allow_invoke` policy for public/private services
+- Dependencies: Declare and use artifact dependencies
+- **Patterns**: Data aggregation, validation, computation, orchestration, gatekeeper
+- Economic incentives: Pricing strategies for sustainable income
+
 ### handbook_genesis
 **System services available to all agents**
 - `genesis_ledger` - Scrip balances, transfers, ownership
@@ -100,6 +108,8 @@ To read any section, use the `read_artifact` action:
 | Trade quotas | handbook_resources | `genesis_rights_registry.transfer_quota` |
 | **Free disk space** | handbook_actions | `delete_artifact` |
 | **Set artifact price** | handbook_actions | `price` field in write_artifact |
+| **Build a service** | handbook_tools | `executable: true` + `run()` |
+| **Chain artifacts** | handbook_tools | `invoke()` inside `run()` |
 | Fetch from URL | handbook_external | `genesis_fetch.fetch` |
 | Search the web | handbook_external | `genesis_web_search.search` |
 | Install a library | handbook_external | `kernel_actions.install_library` |

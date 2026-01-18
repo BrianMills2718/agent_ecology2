@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-18 (Plan #73 - datetime deprecation fix)
+**Last verified:** 2026-01-18 (Plan #82 - VSM-aligned agents)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -236,6 +236,45 @@ When `AgentLoop` executes an iteration:
 3. If no, fall back to standard `propose_action()`
 
 See `src/agents/workflow.py` for WorkflowRunner implementation.
+
+---
+
+## VSM-Aligned Agents (Plan #82)
+
+Enhanced agent variants implementing Viable Systems Model patterns.
+
+### alpha_2: Adaptive Architect
+
+Self-monitoring agent with adaptation triggers:
+
+| Feature | Implementation |
+|---------|---------------|
+| **Self-audit (S3*)** | `self_audit` workflow step evaluates strategy effectiveness |
+| **Adaptation triggers** | Computes `success_rate`, `stuck_in_loop` flags |
+| **Pivot mechanism** | When `should_pivot=True`, agent must change approach |
+
+Workflow steps: `compute_metrics` → `self_audit` → `review_strategy` → `decide_action`
+
+### beta_2: Strategic Integrator
+
+Goal hierarchy tracking with strategic/tactical modes:
+
+| Feature | Implementation |
+|---------|---------------|
+| **Goal hierarchy** | Maintains `strategic_goal` and `current_subgoal` |
+| **Progress tracking** | Tracks `subgoal_progress` with action counts |
+| **Strategic reviews** | Periodic (every 10 ticks) or when stuck |
+
+Workflow steps: `load_goals` → `strategic_review` (conditional) → `tactical_plan` → `decide_action`
+
+### Configuration Note
+
+VSM-aligned agents work best with working memory enabled:
+```yaml
+# config.yaml
+working_memory:
+  enabled: true
+```
 
 ---
 

@@ -11,6 +11,8 @@ LLM-powered agents that observe world state and propose actions.
 | `loader.py` | Agent discovery from `src/agents/*/` directories |
 | `schema.py` | Action schema definitions for LLM |
 | `models.py` | Pydantic models for agent config and results |
+| `workflow.py` | Configurable workflow execution with state machine support |
+| `state_machine.py` | State machine definitions and transitions |
 
 ## Agent Directories
 
@@ -21,7 +23,23 @@ src/agents/alpha/
 └── system_prompt.md  # Agent personality and instructions
 ```
 
-Seeded agents: `alpha`, `beta`, `gamma`, `delta`, `epsilon`
+## Agent Generations
+
+| Generation | Agents | Features |
+|------------|--------|----------|
+| Original | alpha, beta, gamma, delta, epsilon | Basic workflows, RAG memory |
+| _2 (VSM-aligned) | alpha_2, beta_2 | Self-audit, goal hierarchies, adaptation triggers |
+| _3 (State machines) | alpha_3, beta_3, gamma_3, delta_3, epsilon_3 | Explicit state machines |
+
+### _3 Generation State Machines
+
+| Agent | Focus | States |
+|-------|-------|--------|
+| alpha_3 | Builder | ideating → designing → implementing → testing |
+| beta_3 | Integrator | strategic → tactical → operational → reviewing |
+| gamma_3 | Coordinator | solo → discovering → negotiating → executing → settling |
+| delta_3 | Infrastructure | planning → building → deploying → maintaining → deprecating |
+| epsilon_3 | Info Broker | monitoring → analyzing → executing → learning |
 
 ## Key Patterns
 

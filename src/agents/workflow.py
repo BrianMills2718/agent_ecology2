@@ -5,6 +5,11 @@ Implements ADR-0013: Configurable Agent Workflows (Phase 1).
 Workflows are ordered lists of steps that execute sequentially. Each step
 can be either a code step (Python expression) or an LLM step (prompt).
 
+Extended with state machine support (Plan #82) for VSM-aligned agents:
+- States define distinct operational modes (e.g., "planning", "executing")
+- Transitions validate state changes
+- Steps can be conditional on current state
+
 Usage:
     from src.agents.workflow import WorkflowRunner, WorkflowConfig
 
@@ -25,6 +30,8 @@ from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from llm_provider import LLMProvider
+
+from .state_machine import StateConfig, WorkflowStateMachine
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +63,8 @@ class WorkflowStep:
         run_if: Optional condition - step only runs if this evaluates to True
         on_failure: Error handling policy for this step
         max_retries: Maximum retry attempts (for RETRY policy)
+        in_state: Only run if state machine is in one of these states
+        transition_to: Transition to this state after step completes
     """
 
     name: str
@@ -65,6 +74,8 @@ class WorkflowStep:
     run_if: str | None = None
     on_failure: ErrorPolicy = ErrorPolicy.FAIL
     max_retries: int = 3
+    in_state: list[str] | None = None  # State condition
+    transition_to: str | None = None  # State to transition to after step
 
     def __post_init__(self) -> None:
         """Validate step configuration."""
@@ -82,11 +93,13 @@ class WorkflowConfig:
         steps: Ordered list of steps to execute
         default_on_failure: Default error policy for steps without explicit policy
         default_max_retries: Default max retries for steps with RETRY policy
+        state_machine: Optional state machine configuration
     """
 
     steps: list[WorkflowStep] = field(default_factory=list)
     default_on_failure: ErrorPolicy = ErrorPolicy.RETRY
     default_max_retries: int = 3
+    state_machine: StateConfig | None = None
 
     @classmethod
     def from_dict(cls, config: dict[str, Any]) -> WorkflowConfig:
@@ -104,6 +117,11 @@ class WorkflowConfig:
         default_on_failure = ErrorPolicy(default_on_failure_str)
         default_max_retries = error_handling.get("max_retries", 3)
 
+        # Parse state machine config if present
+        state_machine: StateConfig | None = None
+        if "state_machine" in config:
+            state_machine = StateConfig.from_dict(config["state_machine"])
+
         # Parse steps
         steps: list[WorkflowStep] = []
         for step_dict in config.get("steps", []):
@@ -113,6 +131,11 @@ class WorkflowConfig:
             on_failure_str = step_dict.get("on_failure", default_on_failure_str)
             on_failure = ErrorPolicy(on_failure_str)
 
+            # Parse state conditions
+            in_state = step_dict.get("in_state")
+            if isinstance(in_state, str):
+                in_state = [in_state]  # Single state -> list
+
             step = WorkflowStep(
                 name=step_dict["name"],
                 step_type=step_type,
@@ -121,6 +144,8 @@ class WorkflowConfig:
                 run_if=step_dict.get("run_if"),
                 on_failure=on_failure,
                 max_retries=step_dict.get("max_retries", default_max_retries),
+                in_state=in_state,
+                transition_to=step_dict.get("transition_to"),
             )
             steps.append(step)
 
@@ -128,6 +153,7 @@ class WorkflowConfig:
             steps=steps,
             default_on_failure=default_on_failure,
             default_max_retries=default_max_retries,
+            state_machine=state_machine,
         )
 
 
@@ -167,12 +193,21 @@ class WorkflowRunner:
                 - action: Final action (from last LLM step), or None
                 - error: Error message if failed
                 - step_results: Results from each step
+                - state: Final state (if state machine configured)
         """
         step_results: list[dict[str, Any]] = []
         last_action: dict[str, Any] | None = None
 
+        # Initialize state machine if configured
+        state_machine: WorkflowStateMachine | None = None
+        if config.state_machine:
+            state_machine = WorkflowStateMachine(config.state_machine, context)
+            # Add current state to context for step access
+            context["_current_state"] = state_machine.current_state
+            context.update(state_machine.to_context())
+
         for step in config.steps:
-            result = self.execute_step(step, context)
+            result = self.execute_step(step, context, state_machine)
             step_results.append({"step": step.name, **result})
 
             # Check if we should stop
@@ -182,6 +217,7 @@ class WorkflowRunner:
                     "action": None,
                     "error": result.get("error", "Workflow stopped"),
                     "step_results": step_results,
+                    "state": state_machine.current_state if state_machine else None,
                 }
 
             # Track action from LLM steps
@@ -189,26 +225,42 @@ class WorkflowRunner:
                 if "action" in result:
                     last_action = result["action"]
 
+        # Update context with final state
+        if state_machine:
+            context.update(state_machine.to_context())
+
         return {
             "success": True,
             "action": last_action,
             "step_results": step_results,
+            "state": state_machine.current_state if state_machine else None,
         }
 
     def execute_step(
         self,
         step: WorkflowStep,
         context: dict[str, Any],
+        state_machine: WorkflowStateMachine | None = None,
     ) -> dict[str, Any]:
         """Execute a single workflow step.
 
         Args:
             step: Step to execute
             context: Shared context (modified in place)
+            state_machine: Optional state machine for state-aware execution
 
         Returns:
             Result dict with success, error, skipped flags
         """
+        # Check state condition (in_state)
+        if step.in_state and state_machine:
+            if not state_machine.in_state(*step.in_state):
+                logger.debug(
+                    f"Step '{step.name}' skipped (not in state {step.in_state}, "
+                    f"current={state_machine.current_state})"
+                )
+                return {"success": True, "skipped": True, "reason": "state_condition"}
+
         # Check run_if condition
         if step.run_if:
             try:
@@ -222,11 +274,30 @@ class WorkflowRunner:
 
         # Execute based on step type
         if step.step_type == StepType.CODE:
-            return self._execute_code_step(step, context)
+            result = self._execute_code_step(step, context)
         elif step.step_type == StepType.LLM:
-            return self._execute_llm_step(step, context)
+            result = self._execute_llm_step(step, context)
         else:
             return {"success": False, "error": f"Unknown step type: {step.step_type}"}
+
+        # Handle state transition after successful step
+        if result.get("success") and step.transition_to and state_machine:
+            if state_machine.transition_to(step.transition_to, context):
+                context["_current_state"] = state_machine.current_state
+                result["state_transition"] = {
+                    "to": step.transition_to,
+                    "success": True,
+                }
+            else:
+                logger.warning(
+                    f"Step '{step.name}' transition to '{step.transition_to}' failed"
+                )
+                result["state_transition"] = {
+                    "to": step.transition_to,
+                    "success": False,
+                }
+
+        return result
 
     def _execute_code_step(
         self,
