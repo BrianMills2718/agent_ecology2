@@ -419,6 +419,7 @@ agent:
 
   # Working Memory (Plan #59) - Structured context for complex goal pursuit
   # Agents can store current_goal, progress, and lessons in their artifact content
+  # NOTE: Enable for VSM-aligned agents (alpha_2, beta_2) to use goal hierarchies
   working_memory:
     enabled: false                # Master switch - set true to enable
     auto_inject: true             # Inject into prompt automatically when enabled

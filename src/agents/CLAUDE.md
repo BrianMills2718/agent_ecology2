@@ -23,6 +23,10 @@ src/agents/alpha/
 
 Seeded agents: `alpha`, `beta`, `gamma`, `delta`, `epsilon`
 
+VSM-aligned agents (Plan #82): `alpha_2`, `beta_2`
+- `alpha_2`: Self-audit workflow, adaptation triggers, performance metrics
+- `beta_2`: Goal hierarchies, strategic/tactical planning, subgoal tracking
+
 ## Key Patterns
 
 ### Async Thinking
