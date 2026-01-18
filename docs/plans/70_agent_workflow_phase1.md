@@ -36,6 +36,8 @@
 - src/agents/epsilon/agent.yaml (modify)
 - tests/unit/test_workflow.py (create)
 - tests/integration/test_agent_workflow.py (create)
+- scripts/check_plan_tests.py (modify)
+- docs/architecture/current/agents.md (modify)
 
 ---
 

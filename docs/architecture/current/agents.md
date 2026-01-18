@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-17 (Plan #65 - Continuous execution as primary)
+**Last verified:** 2026-01-18 (Plan #70 - Agent workflow support)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -52,6 +52,7 @@ class Agent:
     inject_working_memory: bool     # Auto-inject working memory into prompts (Plan #59)
     working_memory_max_bytes: int   # Max size for working memory truncation
     _working_memory: dict | None    # Cached working memory from agent artifact
+    _workflow_config: WorkflowConfigDict | None  # Workflow configuration (Plan #70)
 ```
 
 ---
@@ -178,6 +179,63 @@ working_memory:
 - **Size-limited**: Prevents prompt bloat via `max_size_bytes`
 
 See `src/agents/_handbook/memory.md` for agent-facing documentation.
+
+---
+
+## Agent Workflows (Plan #70)
+
+Agents can have configurable workflows that define step-by-step execution patterns.
+
+### How It Works
+
+1. **Agent config includes `workflow` section** in agent.yaml or artifact content
+2. **WorkflowRunner executes steps** sequentially with context passing
+3. **Steps can be code or LLM calls** - flexible execution model
+4. **Fallback to propose_action()** if no workflow configured
+
+### Configuration
+
+`agent.yaml` workflow section:
+
+```yaml
+workflow:
+  steps:
+    - name: "observe"
+      type: "llm"
+      prompt: "Analyze current world state"
+    - name: "decide"
+      type: "llm"
+      prompt: "Based on observations, choose an action"
+    - name: "act"
+      type: "code"
+      action: "execute_decision"
+  error_handling:
+    on_step_failure: "continue"  # or "abort"
+```
+
+### Key Methods
+
+| Method | Purpose |
+|--------|---------|
+| `has_workflow` | Property: whether agent has workflow configured |
+| `workflow_config` | Property: get workflow configuration |
+| `run_workflow(world_state)` | Execute workflow and return action |
+
+### Workflow Steps
+
+| Step Type | Description |
+|-----------|-------------|
+| `llm` | Call LLM with prompt, pass result to next step |
+| `code` | Execute predefined code action |
+
+### Integration with AgentLoop
+
+When `AgentLoop` executes an iteration:
+1. Check if agent `has_workflow`
+2. If yes, call `run_workflow()` instead of `propose_action()`
+3. If no, fall back to standard `propose_action()`
+
+See `src/agents/workflow.py` for WorkflowRunner implementation.
 
 ---
 
