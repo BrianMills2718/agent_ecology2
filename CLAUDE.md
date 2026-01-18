@@ -181,6 +181,23 @@ See `docs/GLOSSARY.md` for full definitions. Quick reference:
 
 Multiple Claude Code instances can work simultaneously on this codebase.
 
+### Session Identity
+
+**On startup, identify yourself:**
+```bash
+port=$CLAUDE_CODE_SSE_PORT && grep "^$port:" .claude/sessions.yaml
+```
+
+If your port isn't registered, ask the user to add it:
+```bash
+echo "$CLAUDE_CODE_SSE_PORT: session-name" >> .claude/sessions.yaml
+```
+
+This maps your unique port to a human-readable name (e.g., "meta", "plan70"). Use this when:
+- Reporting what you're working on
+- Identifying which instance should handle a task
+- Coordinating with other instances
+
 ### CRITICAL: Never Commit Directly to Main
 
 **All work MUST be on feature branches.** Commits directly to main will be orphaned when other instances push.
@@ -390,6 +407,8 @@ python scripts/check_claims.py --release --validate
 |-------|------|------|---------|--------|
 | main | 9 | Create genesis_debt_contract artifact (n | 2026-01-15T08:55 | Active |
 | plan-62-config-cleanup-v2 | 62 | Fix doc-code coupling for config magic n | 2026-01-17T23:12 | Active |
+| plan-72-enforcement | 72 | Enforce plan number exclusivity in CI | 2026-01-18T03:50 | Active |
+| plan-73-output-fix | 73 | Fix simulation output messaging and term | 2026-01-18T04:01 | Active |
 
 **Finding PRs to Review:**
 ```bash
