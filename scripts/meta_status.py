@@ -32,12 +32,33 @@ def run_cmd(cmd: list[str], cwd: str | None = None) -> tuple[bool, str]:
         return False, str(e)
 
 
+def get_git_toplevel() -> Path | None:
+    """Get the top-level git directory (main repo, not worktree)."""
+    success, output = run_cmd(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"])
+    if success and output:
+        # --git-common-dir returns path like /repo/.git for main, /repo/.git for worktrees
+        git_dir = Path(output)
+        if git_dir.name == ".git":
+            return git_dir.parent
+    return None
+
+
 def get_claims() -> list[dict]:
-    """Get active claims from .claude/active-work.yaml."""
-    claims_file = Path(".claude/active-work.yaml")
+    """Get active claims from .claude/active-work.yaml.
+
+    Always reads from the main repo (not worktree) to ensure consistent view.
+    """
+    # Try to find main repo first
+    main_repo = get_git_toplevel()
+    if main_repo:
+        claims_file = main_repo / ".claude" / "active-work.yaml"
+    else:
+        # Fallback to relative path
+        claims_file = Path(".claude/active-work.yaml")
+
     if not claims_file.exists():
         return []
-    
+
     try:
         with open(claims_file) as f:
             data = yaml.safe_load(f) or {}
@@ -107,24 +128,62 @@ def get_plan_progress() -> dict:
     return stats
 
 
+def extract_worktree_dir_name(path: str) -> str | None:
+    """Extract the directory name from a worktree path.
+
+    For /path/to/repo/worktrees/plan-91-foo, returns 'plan-91-foo'.
+    For main repo path, returns None.
+    """
+    if "/worktrees/" in path:
+        return path.split("/worktrees/")[-1]
+    return None
+
+
+def extract_plan_from_name(name: str) -> str | None:
+    """Extract plan number from a branch or directory name.
+
+    'plan-91-foo' -> '91'
+    'temporal-network-viz' -> None
+    """
+    import re
+    match = re.match(r"plan-(\d+)", name)
+    return match.group(1) if match else None
+
+
 def get_worktrees() -> list[dict]:
-    """Get git worktree information."""
+    """Get git worktree information.
+
+    Returns list of dicts with:
+        - path: Full filesystem path
+        - branch: Git branch name
+        - dir_name: Worktree directory name (None for main repo)
+        - dir_plan: Plan number extracted from directory name
+        - branch_plan: Plan number extracted from branch name
+    """
     success, output = run_cmd(["git", "worktree", "list", "--porcelain"])
     if not success:
         return []
 
     worktrees = []
-    current = {}
+    current: dict = {}
 
     for line in output.split("\n"):
         if line.startswith("worktree "):
             if current:
                 worktrees.append(current)
-            current = {"path": line[9:]}
+            path = line[9:]
+            dir_name = extract_worktree_dir_name(path)
+            current = {
+                "path": path,
+                "dir_name": dir_name,
+                "dir_plan": extract_plan_from_name(dir_name) if dir_name else None,
+            }
         elif line.startswith("HEAD "):
             current["head"] = line[5:]
         elif line.startswith("branch "):
-            current["branch"] = line[7:].replace("refs/heads/", "")
+            branch = line[7:].replace("refs/heads/", "")
+            current["branch"] = branch
+            current["branch_plan"] = extract_plan_from_name(branch)
         elif line == "bare":
             current["bare"] = True
         elif line == "detached":
@@ -251,20 +310,25 @@ def format_time_ago(iso_time: str) -> str:
 
 def identify_issues(claims: list, prs: list, plans: dict, worktrees: list) -> list[str]:
     """Identify potential issues needing attention."""
+    import re
     issues = []
-    
+
+    # Build lookup sets for claims (both cc_id and branch can be used)
+    claimed_cc_ids = {claim.get("cc_id") for claim in claims}
+    claimed_plans = {str(claim.get("plan")) for claim in claims if claim.get("plan")}
+
     # Stale claims (> 4 hours with no corresponding PR)
     for claim in claims:
         claimed_at = claim.get("claimed_at", "")
         plan_num = claim.get("plan")
-        
+
         # Check if there's a PR for this plan
         has_pr = any(
             f"Plan #{plan_num}" in pr.get("title", "") or
             f"plan-{plan_num}" in pr.get("headRefName", "")
             for pr in prs
         )
-        
+
         if not has_pr and claimed_at:
             try:
                 dt = datetime.fromisoformat(claimed_at.replace("Z", "+00:00"))
@@ -274,40 +338,62 @@ def identify_issues(claims: list, prs: list, plans: dict, worktrees: list) -> li
                     issues.append(f"Claim on Plan #{plan_num} is {hours:.0f}h old with no PR")
             except Exception:
                 pass
-    
+
     # PRs that might conflict (same plan number)
     plan_prs: dict[str, list] = {}
     for pr in prs:
         title = pr.get("title", "")
         branch = pr.get("headRefName", "")
-        
+
         # Extract plan number
-        import re
         match = re.search(r"Plan #(\d+)", title) or re.search(r"plan-(\d+)", branch)
         if match:
             plan_num = match.group(1)
             if plan_num not in plan_prs:
                 plan_prs[plan_num] = []
             plan_prs[plan_num].append(pr.get("number"))
-    
+
     for plan_num, pr_nums in plan_prs.items():
         if len(pr_nums) > 1:
             issues.append(f"Plan #{plan_num} has multiple PRs: {pr_nums} - may conflict")
-    
-    # Orphaned worktrees (no PR and no active claim)
-    claimed_branches = {claim.get("cc_id") for claim in claims}
-    for wt in worktrees:
-        if wt.get("path", "").endswith("/agent_ecology"):
-            continue  # Skip main
-        branch = wt.get("branch", "")
-        if not branch:
-            continue
-        has_pr = any(pr.get("headRefName") == branch for pr in prs)
-        has_claim = branch in claimed_branches
 
-        if not has_pr and not has_claim:
-            issues.append(f"Worktree '{branch}' has no PR and no claim - likely orphaned")
-    
+    # Worktree issues: orphaned and directory/branch mismatches
+    for wt in worktrees:
+        dir_name = wt.get("dir_name")
+        branch = wt.get("branch", "")
+        dir_plan = wt.get("dir_plan")
+        branch_plan = wt.get("branch_plan")
+
+        # Skip main worktree (has no dir_name)
+        if dir_name is None:
+            continue
+
+        # Check for directory/branch plan mismatch (different plan numbers)
+        if dir_plan and branch_plan and dir_plan != branch_plan:
+            issues.append(
+                f"Worktree mismatch: dir '{dir_name}' (Plan #{dir_plan}) "
+                f"contains branch '{branch}' (Plan #{branch_plan}) - reused worktree?"
+            )
+
+        # Check for orphaned worktrees
+        # A worktree is NOT orphaned if ANY of these are true:
+        # 1. Branch has an open PR
+        # 2. cc_id matches dir_name (claim by directory name)
+        # 3. cc_id matches branch (claim by branch name)
+        # 4. Plan number has an active claim
+        has_pr = any(pr.get("headRefName") == branch for pr in prs)
+        has_claim_by_dir = dir_name in claimed_cc_ids
+        has_claim_by_branch = branch in claimed_cc_ids
+        has_claim_by_plan = (
+            (dir_plan and dir_plan in claimed_plans) or
+            (branch_plan and branch_plan in claimed_plans)
+        )
+
+        if not has_pr and not has_claim_by_dir and not has_claim_by_branch and not has_claim_by_plan:
+            issues.append(
+                f"Orphaned worktree: '{dir_name}' (branch: {branch}) has no PR or claim"
+            )
+
     # Old PRs (> 24h)
     for pr in prs:
         created = pr.get("createdAt", "")
@@ -320,7 +406,7 @@ def identify_issues(claims: list, prs: list, plans: dict, worktrees: list) -> li
                     issues.append(f"PR #{pr.get('number')} is {hours:.0f}h old - needs merge or review?")
             except Exception:
                 pass
-    
+
     return issues
 
 
@@ -440,11 +526,23 @@ def print_status(brief: bool = False) -> None:
     if worktrees:
         print()
         for wt in worktrees:
-            path = wt.get("path", "?")
+            dir_name = wt.get("dir_name")
             branch = wt.get("branch", "detached")
-            is_main = path.endswith("/agent_ecology") and "worktrees" not in path
-            marker = " (main)" if is_main else ""
-            print(f"  - {branch}{marker}")
+            dir_plan = wt.get("dir_plan")
+            branch_plan = wt.get("branch_plan")
+
+            # Main worktree (no dir_name)
+            if dir_name is None:
+                print(f"  - main")
+                continue
+
+            # Check for mismatch
+            if dir_plan and branch_plan and dir_plan != branch_plan:
+                print(f"  - {dir_name} -> {branch} ⚠️ MISMATCH")
+            elif dir_name != branch:
+                print(f"  - {dir_name} -> {branch}")
+            else:
+                print(f"  - {branch}")
     print()
     
     # Recent commits
