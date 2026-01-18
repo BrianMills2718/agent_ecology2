@@ -203,24 +203,26 @@ async def run_with_dashboard(
         await asyncio.sleep(0.5)
 
 
-def run_dashboard_only(config: dict[str, Any]) -> None:
+def run_dashboard_only(config: dict[str, Any], open_browser: bool = True) -> None:
     """Run only the dashboard server (no simulation)."""
     from src.dashboard import run_dashboard
 
     dashboard_config = config.get("dashboard", {})
     host = dashboard_config.get("host", "0.0.0.0")
-    configured_port = dashboard_config.get("port", 8080)
-    port = find_free_port(configured_port)
-    if port != configured_port:
-        print(f"Port {configured_port} in use, using {port} instead")
+    port = dashboard_config.get("port", 8080)
     jsonl_file = dashboard_config.get("jsonl_file", "run.jsonl")
 
-    print(f"Starting dashboard server on http://localhost:{port}")
     print(f"Monitoring: {jsonl_file}")
     print("Press Ctrl+C to stop")
 
-    webbrowser.open(f"http://localhost:{port}")
-    run_dashboard(host=host, port=port, jsonl_path=jsonl_file)
+    # run_dashboard handles port conflicts and browser opening
+    run_dashboard(
+        host=host,
+        port=port,
+        jsonl_path=jsonl_file,
+        auto_port=True,
+        auto_open=open_browser,
+    )
 
 
 def main() -> None:
@@ -290,7 +292,7 @@ def main() -> None:
 
     # Dashboard-only mode
     if args.dashboard_only:
-        run_dashboard_only(config)
+        run_dashboard_only(config, open_browser=not args.no_browser)
         return
 
     # Load checkpoint if resuming

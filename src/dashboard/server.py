@@ -712,14 +712,59 @@ def create_app(
     return app
 
 
+def find_available_port(start_port: int = 8080, max_attempts: int = 100) -> int:
+    """Find an available port starting from start_port.
+
+    Tries ports sequentially until finding one that's available.
+    Returns the first available port.
+    """
+    import socket
+
+    for port in range(start_port, start_port + max_attempts):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("127.0.0.1", port))
+                return port
+        except OSError:
+            continue
+
+    raise RuntimeError(f"No available port found in range {start_port}-{start_port + max_attempts}")
+
+
 def run_dashboard(
     host: str = "0.0.0.0",
     port: int = 8080,
     jsonl_path: str = DEFAULT_JSONL_PATH,
     reload: bool = False,
+    auto_port: bool = True,
+    auto_open: bool = True,
 ) -> None:
-    """Run the dashboard server."""
+    """Run the dashboard server.
+
+    Args:
+        host: Host to bind to
+        port: Preferred port (will find next available if auto_port=True)
+        jsonl_path: Path to JSONL event log
+        reload: Enable uvicorn auto-reload
+        auto_port: If True, find next available port if preferred is taken
+        auto_open: If True, open browser automatically
+    """
     import uvicorn
+
+    if auto_port:
+        actual_port = find_available_port(port)
+        if actual_port != port:
+            print(f"Port {port} in use, using {actual_port} instead")
+        port = actual_port
+
+    url = f"http://{'127.0.0.1' if host == '0.0.0.0' else host}:{port}"
+    print(f"Starting dashboard at {url}")
+
+    if auto_open:
+        import webbrowser
+        import threading
+        # Open browser after short delay to let server start
+        threading.Timer(1.5, lambda: webbrowser.open(url)).start()
 
     app = create_app(jsonl_path=jsonl_path)
     uvicorn.run(
@@ -738,6 +783,8 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=8080, help="Port to bind to")
     parser.add_argument("--jsonl", default=DEFAULT_JSONL_PATH, help="Path to JSONL event log")
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
+    parser.add_argument("--no-auto-port", action="store_true", help="Disable automatic port selection")
+    parser.add_argument("--no-browser", action="store_true", help="Don't auto-open browser")
 
     args = parser.parse_args()
 
@@ -746,4 +793,6 @@ if __name__ == "__main__":
         port=args.port,
         jsonl_path=args.jsonl,
         reload=args.reload,
+        auto_port=not args.no_auto_port,
+        auto_open=not args.no_browser,
     )
