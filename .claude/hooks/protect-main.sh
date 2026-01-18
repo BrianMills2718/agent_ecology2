@@ -4,6 +4,11 @@
 #   1. The main directory (must use worktrees)
 #   2. Worktrees without an active claim (must claim before editing)
 #
+# Exceptions (allowed in main):
+#   - Coordination files (.claude/*, CLAUDE.md, .git/*, .claude_session)
+#   - Meta-process docs (docs/meta/*.md) - process patterns, not implementation
+#   - Plan files (docs/plans/NN_*.md) - if NEW or UNCLAIMED
+#
 # Exit codes:
 #   0 - Allow the operation
 #   2 - Block the operation
@@ -29,8 +34,39 @@ BASENAME=$(basename "$FILE_PATH")
 if [[ "$FILE_PATH" == *"/.claude/"* ]] || \
    [[ "$BASENAME" == "CLAUDE.md" ]] || \
    [[ "$FILE_PATH" == *"/.git/"* ]] || \
+   [[ "$FILE_PATH" == */docs/meta/*.md ]] || \
    [[ "$BASENAME" == ".claude_session" ]]; then
     exit 0  # Coordination files allowed
+fi
+
+# Allow plan files in main if NEW or UNCLAIMED
+# Pattern: docs/plans/NN_*.md where NN is digits
+if [[ "$FILE_PATH" =~ docs/plans/[0-9]+_.*\.md$ ]]; then
+    if [[ ! -f "$FILE_PATH" ]]; then
+        exit 0  # New plan file, allow creation
+    fi
+
+    # Existing plan file - check if claimed
+    # Extract plan number from filename (e.g., 85_inter_cc_messaging.md -> 85)
+    PLAN_NUM=$(basename "$FILE_PATH" | grep -oP '^\d+')
+
+    if [[ -n "$PLAN_NUM" ]]; then
+        CLAIMS_FILE="$(git rev-parse --show-toplevel)/.claude/active-work.yaml"
+        if [[ -f "$CLAIMS_FILE" ]]; then
+            # Check if any claim references this plan number
+            if grep -qE "plan:\s*$PLAN_NUM\s*$" "$CLAIMS_FILE" 2>/dev/null || \
+               grep -qE "plan:\s*['\"]?$PLAN_NUM['\"]?" "$CLAIMS_FILE" 2>/dev/null; then
+                # Plan is claimed - block edit
+                echo "BLOCKED: Plan #$PLAN_NUM is claimed by another instance" >&2
+                echo "" >&2
+                echo "Check claims: python scripts/check_claims.py --list" >&2
+                echo "File: $FILE_PATH" >&2
+                exit 2
+            fi
+        fi
+        # Plan not claimed - allow edit
+        exit 0
+    fi
 fi
 
 # Get the main repo root (not the worktree's root)
