@@ -330,8 +330,8 @@ genesis:
       status: { cost: 0, description: "Get auction status" }
       # ...
     auction:
-      bidding_window: 3
-      min_bid: 1
+      period: 10       # Ticks between auction resolutions
+      minimum_bid: 1   # Lowest accepted bid
       # ...
 ```
 

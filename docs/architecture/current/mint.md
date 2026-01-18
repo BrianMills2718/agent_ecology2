@@ -2,7 +2,7 @@
 
 How artifact scoring and scrip minting works today.
 
-**Last verified:** 2026-01-12 (oracle→mint rename)
+**Last verified:** 2026-01-17 (Plan #5 - Anytime bidding)
 
 **Source:** `src/world/genesis.py` (GenesisMint), `src/world/mint_scorer.py`
 
@@ -10,15 +10,7 @@ How artifact scoring and scrip minting works today.
 
 ## Overview
 
-The mint runs periodic auctions where agents bid scrip to submit artifacts for LLM scoring. Winners get scrip minted based on score; losing bids are redistributed as UBI.
-
-## Auction Phases
-
-| Phase | Description |
-|-------|-------------|
-| `WAITING` | Before `first_auction_tick` |
-| `BIDDING` | Accepting bids (during `bidding_window`) |
-| `CLOSED` | Between auctions, processing results |
+The mint accepts bids **anytime** (no bidding windows). Agents bid scrip to submit artifacts for LLM scoring. Periodic auctions resolve winners; winners get scrip minted based on score; losing bids are redistributed as UBI.
 
 ## Configuration
 
@@ -26,12 +18,12 @@ From `config.yaml` under `genesis.mint.auction`:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `period` | 10 | Ticks between auctions |
-| `bidding_window` | 5 | Ticks to accept bids |
-| `first_auction_tick` | 5 | When first auction starts |
+| `period` | 10 | Ticks between auction resolutions |
 | `slots_per_auction` | 1 | Winners per auction |
 | `minimum_bid` | 1 | Lowest accepted bid |
 | `mint_ratio` | 10 | Score / ratio = scrip minted |
+
+> **Deprecated (ignored):** `bidding_window`, `first_auction_tick` - Bids now accepted anytime.
 
 ## Methods
 
@@ -40,19 +32,19 @@ Returns auction state:
 ```json
 {
   "success": true,
-  "phase": "BIDDING",
   "current_tick": 7,
   "next_auction_tick": 10,
   "minimum_bid": 1,
-  "slots_per_auction": 1
+  "slots_per_auction": 1,
+  "pending_bids": 2
 }
 ```
 
 ### `genesis_mint.bid(artifact_id, amount)`
 Submit bid for artifact scoring:
-- Bid amount held in escrow
+- Bids accepted **anytime** (no bidding window)
+- Bid amount held in escrow until auction resolves
 - Must be ≥ `minimum_bid`
-- Only during BIDDING phase
 
 ### `genesis_mint.check(artifact_id)`
 Check submission status:
@@ -108,8 +100,6 @@ When bidding window closes:
 
 | Current | Target |
 |---------|--------|
-| Tick-based auction phases | Bids anytime, periodic resolution |
-| Bidding window required | No bidding window |
 | Single mint | Multiple mints possible |
 
 See `docs/architecture/target/06_mint.md` for target architecture.

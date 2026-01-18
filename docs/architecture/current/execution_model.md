@@ -146,7 +146,7 @@ This enables LLM-native monitoring: analyzing reasoning quality, extracting stra
 Called at start of each tick:
 
 1. Increment tick counter
-2. Reset flow resources for all principals
+2. Reset renewable resources for all principals
 3. Log tick event
 4. Return False if tick >= max_ticks
 

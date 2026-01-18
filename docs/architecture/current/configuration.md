@@ -166,10 +166,10 @@ genesis:
     id: genesis_mint
     mint_ratio: 10          # score / ratio = scrip minted
     auction:
-      period: 50            # Ticks between auctions
-      bidding_window: 10    # Duration of bidding phase
-      first_auction_tick: 50
+      period: 50            # Ticks between auction resolutions
       minimum_bid: 1
+      # bidding_window: 10    # DEPRECATED (ignored) - bids accepted anytime
+      # first_auction_tick: 50  # DEPRECATED (ignored) - bids accepted anytime
       # ...
 
   mcp:                      # MCP server artifacts (Plan #28)
@@ -336,7 +336,7 @@ world:
 # This will FAIL - constraint violation
 mint:
   auction:
-    bidding_window: 100  # Must be less than period (50)
+    minimum_bid: -1  # Must be >= 0
     period: 50
 ```
 
