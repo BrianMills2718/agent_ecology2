@@ -94,6 +94,7 @@ Master index of all gaps and their implementation plans.
 | 63 | [Artifact Dependencies](63_artifact_dependencies.md) | **High** | ✅ Complete | Dashboard capital structure |
 | 64 | [Dependency Graph Visualization](64_dependency_graph_viz.md) | Medium | 🚧 In Progress | #63 |
 | 65 | [Continuous Execution Primary](65_continuous_execution_primary.md) | **High** | 📋 Planned | Agent workflows |
+| 66 | [Genesis Split](66_genesis_split.md) | Medium | 🚧 In Progress | - |
 | 68 | [PR Review Enforcement](68_pr_review_enforcement.md) | **High** | 📋 Planned | Quality assurance |
 
 ---
