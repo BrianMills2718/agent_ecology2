@@ -111,6 +111,21 @@ git tag tick-based-v1 -m "Last version with tick-based execution model"
 - Integration tests: use short durations (5-10 seconds)
 - E2E tests: verify auctions work with wall-clock timing
 
+## Required Tests
+
+### Unit Tests
+- `tests/unit/test_mint_anytime.py::TestAnytimeBidding::test_bid_before_first_auction`
+- `tests/unit/test_mint_anytime.py::TestAnytimeBidding::test_continuous_bidding`
+- `tests/unit/test_mint_anytime.py::TestBidTimingForAuctions::test_early_bid_included_in_first_auction`
+- `tests/unit/test_mint_anytime.py::TestDeprecatedConfigWarnings::test_first_auction_delay_works`
+
+### Integration Tests
+- `tests/integration/test_mint_auction.py::TestMintAuctionPhases::test_phase_waiting_before_first_auction`
+- `tests/integration/test_mint_auction.py::TestMintAuctionPhases::test_phase_bidding_after_first_auction_delay`
+- `tests/integration/test_mint_auction.py::TestMintAuctionPhases::test_phase_closed_after_bidding_window`
+- `tests/integration/test_mint_auction.py::TestAuctionResolution::test_single_bidder_wins`
+- `tests/integration/test_mint_auction.py::TestUBIDistribution::test_ubi_distributed_to_all_agents`
+
 ## Rollback
 
 ```bash
