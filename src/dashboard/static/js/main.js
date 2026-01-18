@@ -213,8 +213,19 @@ document.addEventListener('keydown', (e) => {
         Dashboard.refresh();
     }
 
-    // Escape to close modals
+    // Escape to close modals and exit fullscreen
     if (e.key === 'Escape') {
+        // Exit fullscreen first
+        const fullscreenPanel = document.querySelector('.panel.fullscreen');
+        if (fullscreenPanel) {
+            fullscreenPanel.classList.remove('fullscreen');
+            // Re-fit network if it's the temporal panel
+            if (typeof TemporalNetworkPanel !== 'undefined' && TemporalNetworkPanel.network) {
+                setTimeout(() => TemporalNetworkPanel.network.fit(), 100);
+            }
+            return;
+        }
+
         AgentsPanel.closeModal();
         // Also close artifact modal
         const artifactModal = document.getElementById('artifact-modal');
@@ -224,5 +235,35 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+/**
+ * Toggle fullscreen mode for a panel
+ * @param {string} panelId - The ID of the panel element
+ */
+function toggleFullscreen(panelId) {
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+
+    panel.classList.toggle('fullscreen');
+
+    // Re-fit network visualization after resize
+    if (panelId === 'temporal-network-panel' && typeof TemporalNetworkPanel !== 'undefined') {
+        setTimeout(() => {
+            if (TemporalNetworkPanel.network) {
+                TemporalNetworkPanel.network.fit();
+            }
+        }, 100);
+    }
+
+    // Re-fit dependency graph after resize
+    if (panelId === 'dependency-graph-panel' && typeof DependencyGraphPanel !== 'undefined') {
+        setTimeout(() => {
+            if (DependencyGraphPanel.network) {
+                DependencyGraphPanel.network.fit();
+            }
+        }, 100);
+    }
+}
+
 // Export for use
 window.Dashboard = Dashboard;
+window.toggleFullscreen = toggleFullscreen;

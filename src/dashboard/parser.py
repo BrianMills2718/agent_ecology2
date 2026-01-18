@@ -1149,8 +1149,9 @@ class JSONLParser:
 
     def get_temporal_network_data(
         self,
-        tick_min: int | None = None,
-        tick_max: int | None = None,
+        time_min: str | None = None,
+        time_max: str | None = None,
+        time_bucket_seconds: int = 1,
     ) -> TemporalNetworkData:
         """Get artifact-centric temporal network data.
 
@@ -1165,14 +1166,47 @@ class JSONLParser:
         - Dependencies (artifact A depends on artifact B)
         - Ownership (which principal owns which artifact)
         - Creation (who created what)
+
+        Args:
+            time_min: ISO timestamp for earliest events (inclusive)
+            time_max: ISO timestamp for latest events (inclusive)
+            time_bucket_seconds: Size of time buckets for activity grouping
         """
+        from datetime import datetime, timedelta
+
         nodes: list[ArtifactNode] = []
         edges: list[ArtifactEdge] = []
-        activity_by_tick: dict[int, dict[str, int]] = {}
+        activity_by_time: dict[str, dict[str, int]] = {}
+        all_timestamps: list[str] = []
 
-        # Determine tick range
-        min_tick = tick_min if tick_min is not None else 0
-        max_tick = tick_max if tick_max is not None else self.state.current_tick
+        def bucket_timestamp(ts: str) -> str:
+            """Convert a timestamp to a bucket key."""
+            try:
+                dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                # Truncate to bucket size
+                bucket_seconds = (dt.second // time_bucket_seconds) * time_bucket_seconds
+                bucketed = dt.replace(second=bucket_seconds, microsecond=0)
+                return bucketed.isoformat()
+            except (ValueError, TypeError):
+                return ts
+
+        def in_time_range(ts: str) -> bool:
+            """Check if timestamp is within the specified range."""
+            if not ts:
+                return True  # Static edges (no timestamp) are always included
+            try:
+                dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                if time_min:
+                    min_dt = datetime.fromisoformat(time_min.replace("Z", "+00:00"))
+                    if dt < min_dt:
+                        return False
+                if time_max:
+                    max_dt = datetime.fromisoformat(time_max.replace("Z", "+00:00"))
+                    if dt > max_dt:
+                        return False
+                return True
+            except (ValueError, TypeError):
+                return True
 
         # Helper to determine artifact type
         def get_artifact_type(
@@ -1254,12 +1288,13 @@ class JSONLParser:
                 owner_id=artifact.owner_id,
                 executable=artifact.executable,
                 invocation_count=artifact.invocation_count,
+                created_at=artifact.created_at or None,
             ))
             seen_nodes.add(artifact_id)
 
         # Build edges from invocation events
         for inv in self.state.invocation_events:
-            if inv.tick < min_tick or inv.tick > max_tick:
+            if not in_time_range(inv.timestamp):
                 continue
 
             # Only add edge if both nodes exist
@@ -1268,19 +1303,21 @@ class JSONLParser:
                     from_id=inv.invoker_id,
                     to_id=inv.artifact_id,
                     edge_type="invocation",
-                    tick=inv.tick,
+                    timestamp=inv.timestamp,
                     weight=1,
                     details=f"{inv.invoker_id} invoked {inv.artifact_id}.{inv.method}",
                 ))
+                all_timestamps.append(inv.timestamp)
 
-            # Track activity by tick
-            if inv.tick not in activity_by_tick:
-                activity_by_tick[inv.tick] = {}
-            activity_by_tick[inv.tick][inv.invoker_id] = (
-                activity_by_tick[inv.tick].get(inv.invoker_id, 0) + 1
+            # Track activity by time bucket
+            bucket = bucket_timestamp(inv.timestamp)
+            if bucket not in activity_by_time:
+                activity_by_time[bucket] = {}
+            activity_by_time[bucket][inv.invoker_id] = (
+                activity_by_time[bucket].get(inv.invoker_id, 0) + 1
             )
 
-        # Build edges from artifact dependencies
+        # Build edges from artifact dependencies (static - no timestamp filter)
         for artifact_id, artifact in self.state.artifacts.items():
             for dep_id in artifact.depends_on:
                 if artifact_id in seen_nodes and dep_id in seen_nodes:
@@ -1288,19 +1325,19 @@ class JSONLParser:
                         from_id=artifact_id,
                         to_id=dep_id,
                         edge_type="dependency",
-                        tick=0,  # Dependencies are static
+                        timestamp="",  # Static dependency
                         weight=1,
                         details=f"{artifact_id} depends on {dep_id}",
                     ))
 
-        # Build edges from ownership (artifact → owner)
+        # Build edges from ownership (static - no timestamp filter)
         for artifact_id, artifact in self.state.artifacts.items():
             if artifact.owner_id and artifact.owner_id in seen_nodes:
                 edges.append(ArtifactEdge(
                     from_id=artifact_id,
                     to_id=artifact.owner_id,
                     edge_type="ownership",
-                    tick=0,  # Current ownership
+                    timestamp="",  # Current ownership state
                     weight=1,
                     details=f"{artifact_id} owned by {artifact.owner_id}",
                 ))
@@ -1308,22 +1345,30 @@ class JSONLParser:
         # Track activity from actions
         for agent_id, agent in self.state.agents.items():
             for action in agent.actions:
-                if action.tick < min_tick or action.tick > max_tick:
+                if not in_time_range(action.timestamp):
                     continue
-                if action.tick not in activity_by_tick:
-                    activity_by_tick[action.tick] = {}
-                activity_by_tick[action.tick][agent_id] = (
-                    activity_by_tick[action.tick].get(agent_id, 0) + 1
+                bucket = bucket_timestamp(action.timestamp)
+                if bucket not in activity_by_time:
+                    activity_by_time[bucket] = {}
+                activity_by_time[bucket][agent_id] = (
+                    activity_by_time[bucket].get(agent_id, 0) + 1
                 )
+                all_timestamps.append(action.timestamp)
 
-        # Calculate tick range
-        tick_range = (min_tick, max_tick)
+        # Calculate time range from actual timestamps
+        if all_timestamps:
+            sorted_ts = sorted(all_timestamps)
+            time_range = (sorted_ts[0], sorted_ts[-1])
+        else:
+            # Use start_time from simulation if no events
+            time_range = (self.state.start_time or "", self.state.start_time or "")
 
         return TemporalNetworkData(
             nodes=nodes,
             edges=edges,
-            tick_range=tick_range,
-            activity_by_tick=activity_by_tick,
+            time_range=time_range,
+            activity_by_time=activity_by_time,
             total_artifacts=len(nodes),
             total_interactions=len(edges),
+            time_bucket_seconds=time_bucket_seconds,
         )

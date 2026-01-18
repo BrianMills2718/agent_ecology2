@@ -1267,3 +1267,54 @@ body {
     color: var(--text-secondary);
     font-size: 0.8rem;
 }
+
+/* Fullscreen Mode */
+.fullscreen-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 1rem;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-left: auto;
+    transition: all 0.2s ease;
+}
+
+.fullscreen-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--accent-primary);
+}
+
+.panel.fullscreen {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    background: var(--bg-secondary);
+}
+
+.panel.fullscreen .panel-content {
+    height: calc(100vh - 60px) !important;
+    max-height: none !important;
+}
+
+.panel.fullscreen .temporal-network-container {
+    height: calc(100vh - 200px) !important;
+}
+
+.panel.fullscreen .temporal-heatmap {
+    max-height: 150px;
+}
+
+.panel.fullscreen .fullscreen-btn::after {
+    content: ' (ESC to exit)';
+    font-size: 0.7rem;
+}

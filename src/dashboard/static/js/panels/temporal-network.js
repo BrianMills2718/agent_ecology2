@@ -5,7 +5,7 @@
  * Features:
  * - Artifact-centric view (everything is an artifact)
  * - Temporal playback with play/pause controls
- * - Activity heatmap showing intensity by tick
+ * - Activity heatmap showing intensity by time window
  * - Multiple edge types (invocation, dependency, ownership)
  */
 
@@ -17,11 +17,14 @@ const TemporalNetworkPanel = {
 
     // Playback state
     isPlaying: false,
-    playbackSpeed: 500, // ms per tick
-    currentTick: 0,
-    minTick: 0,
-    maxTick: 0,
+    playbackSpeed: 500, // ms per time step
+    currentTimeIndex: 0,
+    timeBuckets: [], // Sorted array of time bucket keys
     playbackInterval: null,
+
+    // Time range
+    timeStart: null,
+    timeEnd: null,
 
     // Node colors by artifact type
     nodeColors: {
@@ -159,16 +162,21 @@ const TemporalNetworkPanel = {
             const response = await fetch('/api/temporal-network');
             this.data = await response.json();
 
-            // Set tick range
-            [this.minTick, this.maxTick] = this.data.tick_range;
-            this.currentTick = this.maxTick;
+            // Parse time range
+            [this.timeStart, this.timeEnd] = this.data.time_range;
+
+            // Extract and sort time buckets for playback
+            this.timeBuckets = Object.keys(this.data.activity_by_time).sort();
+
+            // Set current position to end
+            this.currentTimeIndex = Math.max(0, this.timeBuckets.length - 1);
 
             // Update controls
             this.updateSliderRange();
             this.updateStats();
 
-            // Render full graph
-            this.renderGraph(this.maxTick);
+            // Render full graph (all edges)
+            this.renderGraph(null); // null = show all
 
             // Render heatmap
             this.renderHeatmap();
@@ -177,14 +185,58 @@ const TemporalNetworkPanel = {
         }
     },
 
-    renderGraph(upToTick) {
+    /**
+     * Format timestamp for display
+     * @param {string} timestamp - ISO timestamp
+     * @param {boolean} showDate - Whether to include date
+     */
+    formatTime(timestamp, showDate = false) {
+        if (!timestamp) return 'N/A';
+        try {
+            const date = new Date(timestamp);
+            if (showDate) {
+                return date.toLocaleString();
+            }
+            return date.toLocaleTimeString();
+        } catch (e) {
+            return timestamp;
+        }
+    },
+
+    /**
+     * Get elapsed time from simulation start
+     * @param {string} timestamp - ISO timestamp
+     */
+    getElapsedTime(timestamp) {
+        if (!timestamp || !this.timeStart) return '';
+        try {
+            const current = new Date(timestamp);
+            const start = new Date(this.timeStart);
+            const diffMs = current - start;
+            const seconds = Math.floor(diffMs / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+
+            if (hours > 0) {
+                return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${seconds % 60}s`;
+            } else {
+                return `${seconds}s`;
+            }
+        } catch (e) {
+            return '';
+        }
+    },
+
+    renderGraph(upToTimestamp) {
         if (!this.data) return;
 
         // Clear existing
         this.nodes.clear();
         this.edges.clear();
 
-        // Add all nodes (artifacts exist regardless of tick)
+        // Add all nodes (artifacts exist regardless of time)
         const nodeData = this.data.nodes.map(node => ({
             id: node.id,
             label: node.label,
@@ -195,11 +247,14 @@ const TemporalNetworkPanel = {
         }));
         this.nodes.add(nodeData);
 
-        // Filter edges by tick and aggregate
+        // Filter edges by timestamp and aggregate
         const edgeMap = new Map();
         for (const edge of this.data.edges) {
-            // Include static edges (tick=0) and edges up to current tick
-            if (edge.tick > upToTick && edge.tick !== 0) continue;
+            // Static edges (no timestamp) are always included
+            // Dynamic edges are included if before upToTimestamp (or upToTimestamp is null = show all)
+            if (edge.timestamp && upToTimestamp) {
+                if (edge.timestamp > upToTimestamp) continue;
+            }
 
             const key = `${edge.from_id}->${edge.to_id}:${edge.edge_type}`;
             if (edgeMap.has(key)) {
@@ -213,7 +268,7 @@ const TemporalNetworkPanel = {
                     type: edge.edge_type,
                     weight: edge.weight,
                     count: 1,
-                    tick: edge.tick,
+                    timestamp: edge.timestamp,
                     details: edge.details,
                 });
             }
@@ -231,11 +286,14 @@ const TemporalNetworkPanel = {
         }));
         this.edges.add(edgeData);
 
-        // Update tick display
+        // Update time display
         if (this.sliderValue) {
-            this.sliderValue.textContent = upToTick >= this.maxTick
-                ? `Tick: All (${this.maxTick})`
-                : `Tick: ${upToTick}`;
+            if (upToTimestamp === null || this.currentTimeIndex >= this.timeBuckets.length - 1) {
+                this.sliderValue.textContent = `Time: All (${this.getElapsedTime(this.timeEnd)})`;
+            } else {
+                const elapsed = this.getElapsedTime(upToTimestamp);
+                this.sliderValue.textContent = `Time: +${elapsed}`;
+            }
         }
     },
 
@@ -281,6 +339,9 @@ const TemporalNetworkPanel = {
             }
             html += `Invocations: ${node.invocation_count}<br>`;
             html += `Executable: ${node.executable ? 'Yes' : 'No'}`;
+            if (node.created_at) {
+                html += `<br>Created: ${this.formatTime(node.created_at, true)}`;
+            }
         }
 
         return html;
@@ -289,7 +350,7 @@ const TemporalNetworkPanel = {
     renderHeatmap() {
         if (!this.heatmapContainer || !this.data) return;
 
-        const activity = this.data.activity_by_tick;
+        const activity = this.data.activity_by_time;
         if (Object.keys(activity).length === 0) {
             this.heatmapContainer.innerHTML = '<div class="no-data">No activity data</div>';
             return;
@@ -297,17 +358,20 @@ const TemporalNetworkPanel = {
 
         // Get all unique actors
         const actors = new Set();
-        for (const tickData of Object.values(activity)) {
-            for (const actor of Object.keys(tickData)) {
+        for (const timeData of Object.values(activity)) {
+            for (const actor of Object.keys(timeData)) {
                 actors.add(actor);
             }
         }
         const actorList = Array.from(actors).sort();
 
+        // Sort time buckets
+        const sortedBuckets = Object.keys(activity).sort();
+
         // Find max activity for color scaling
         let maxActivity = 1;
-        for (const tickData of Object.values(activity)) {
-            for (const count of Object.values(tickData)) {
+        for (const timeData of Object.values(activity)) {
+            for (const count of Object.values(timeData)) {
                 maxActivity = Math.max(maxActivity, count);
             }
         }
@@ -315,11 +379,13 @@ const TemporalNetworkPanel = {
         // Build heatmap HTML
         let html = '<div class="heatmap-grid">';
 
-        // Header row (ticks)
+        // Header row (time buckets)
         html += '<div class="heatmap-row header">';
         html += '<div class="heatmap-label"></div>';
-        for (let tick = this.minTick; tick <= this.maxTick; tick++) {
-            html += `<div class="heatmap-cell tick-header" data-tick="${tick}">${tick}</div>`;
+        for (let i = 0; i < sortedBuckets.length; i++) {
+            const bucket = sortedBuckets[i];
+            const elapsed = this.getElapsedTime(bucket);
+            html += `<div class="heatmap-cell time-header" data-time-index="${i}" title="${this.formatTime(bucket, true)}">${elapsed || 'Start'}</div>`;
         }
         html += '</div>';
 
@@ -328,17 +394,18 @@ const TemporalNetworkPanel = {
             html += '<div class="heatmap-row">';
             html += `<div class="heatmap-label" title="${actor}">${this.truncateLabel(actor)}</div>`;
 
-            for (let tick = this.minTick; tick <= this.maxTick; tick++) {
-                const count = (activity[tick] && activity[tick][actor]) || 0;
+            for (let i = 0; i < sortedBuckets.length; i++) {
+                const bucket = sortedBuckets[i];
+                const count = (activity[bucket] && activity[bucket][actor]) || 0;
                 const intensity = count / maxActivity;
                 const bgColor = this.getHeatmapColor(intensity);
 
                 html += `<div class="heatmap-cell"
-                    data-tick="${tick}"
+                    data-time-index="${i}"
                     data-actor="${actor}"
                     style="background-color: ${bgColor}"
-                    title="${actor}: ${count} actions at tick ${tick}"
-                    onclick="TemporalNetworkPanel.jumpToTick(${tick})"
+                    title="${actor}: ${count} actions at ${this.formatTime(bucket)}"
+                    onclick="TemporalNetworkPanel.jumpToTimeIndex(${i})"
                 ></div>`;
             }
             html += '</div>';
@@ -366,9 +433,9 @@ const TemporalNetworkPanel = {
     updateSliderRange() {
         if (!this.slider) return;
 
-        this.slider.min = this.minTick;
-        this.slider.max = this.maxTick;
-        this.slider.value = this.maxTick;
+        this.slider.min = 0;
+        this.slider.max = Math.max(0, this.timeBuckets.length - 1);
+        this.slider.value = this.slider.max;
     },
 
     updateStats() {
@@ -382,18 +449,22 @@ const TemporalNetworkPanel = {
 
     onSliderChange() {
         const value = parseInt(this.slider.value);
-        this.currentTick = value;
-        this.renderGraph(value);
-        this.highlightHeatmapTick(value);
+        this.currentTimeIndex = value;
+
+        const timestamp = this.timeBuckets[value] || null;
+        this.renderGraph(timestamp);
+        this.highlightHeatmapTime(value);
     },
 
-    jumpToTick(tick) {
-        this.currentTick = tick;
+    jumpToTimeIndex(index) {
+        this.currentTimeIndex = index;
         if (this.slider) {
-            this.slider.value = tick;
+            this.slider.value = index;
         }
-        this.renderGraph(tick);
-        this.highlightHeatmapTick(tick);
+
+        const timestamp = this.timeBuckets[index] || null;
+        this.renderGraph(timestamp);
+        this.highlightHeatmapTime(index);
 
         // Stop playback if playing
         if (this.isPlaying) {
@@ -401,14 +472,14 @@ const TemporalNetworkPanel = {
         }
     },
 
-    highlightHeatmapTick(tick) {
+    highlightHeatmapTime(timeIndex) {
         // Remove existing highlights
         document.querySelectorAll('.heatmap-cell.highlighted').forEach(el => {
             el.classList.remove('highlighted');
         });
 
-        // Add highlight to current tick column
-        document.querySelectorAll(`.heatmap-cell[data-tick="${tick}"]`).forEach(el => {
+        // Add highlight to current time column
+        document.querySelectorAll(`.heatmap-cell[data-time-index="${timeIndex}"]`).forEach(el => {
             el.classList.add('highlighted');
         });
     },
@@ -422,6 +493,8 @@ const TemporalNetworkPanel = {
     },
 
     startPlayback() {
+        if (this.timeBuckets.length === 0) return;
+
         this.isPlaying = true;
         if (this.playBtn) {
             this.playBtn.textContent = '⏸';
@@ -429,23 +502,25 @@ const TemporalNetworkPanel = {
         }
 
         // Reset to start if at end
-        if (this.currentTick >= this.maxTick) {
-            this.currentTick = this.minTick;
+        if (this.currentTimeIndex >= this.timeBuckets.length - 1) {
+            this.currentTimeIndex = 0;
         }
 
         this.playbackInterval = setInterval(() => {
-            this.currentTick++;
+            this.currentTimeIndex++;
 
-            if (this.currentTick > this.maxTick) {
+            if (this.currentTimeIndex >= this.timeBuckets.length) {
                 this.stopPlayback();
-                this.currentTick = this.maxTick;
+                this.currentTimeIndex = this.timeBuckets.length - 1;
             }
 
             if (this.slider) {
-                this.slider.value = this.currentTick;
+                this.slider.value = this.currentTimeIndex;
             }
-            this.renderGraph(this.currentTick);
-            this.highlightHeatmapTick(this.currentTick);
+
+            const timestamp = this.timeBuckets[this.currentTimeIndex] || null;
+            this.renderGraph(timestamp);
+            this.highlightHeatmapTime(this.currentTimeIndex);
         }, this.playbackSpeed);
     },
 
@@ -473,8 +548,8 @@ const TemporalNetworkPanel = {
 
     // Called when new events arrive via WebSocket
     refresh() {
-        // Only auto-refresh if not playing and showing all ticks
-        if (!this.isPlaying && this.currentTick >= this.maxTick) {
+        // Only auto-refresh if not playing and showing all time
+        if (!this.isPlaying && this.currentTimeIndex >= this.timeBuckets.length - 1) {
             this.loadData();
         }
     },

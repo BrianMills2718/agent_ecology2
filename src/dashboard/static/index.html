@@ -120,13 +120,14 @@
             <!-- Center Column: Network Graph and Activity Feed -->
             <div class="center-column">
                 <!-- Network Graph Panel -->
-                <section class="panel network-panel">
+                <section class="panel network-panel" id="network-panel">
                     <div class="panel-header">
                         <h2>Agent Interactions</h2>
                         <div class="network-controls">
                             <input type="range" id="tick-slider" min="0" max="100" value="100" class="tick-slider">
                             <span id="tick-slider-value">Tick: All</span>
                         </div>
+                        <button class="fullscreen-btn" onclick="toggleFullscreen('network-panel')" title="Toggle fullscreen">⛶</button>
                     </div>
                     <div class="panel-content network-container" id="network-container">
                         <!-- vis.js network renders here -->
@@ -140,16 +141,17 @@
                 </section>
 
                 <!-- Temporal Artifact Network Panel -->
-                <section class="panel temporal-network-panel">
+                <section class="panel temporal-network-panel" id="temporal-network-panel">
                     <div class="panel-header" id="temporal-network-toggle">
                         <h2>Temporal Artifact Network</h2>
                         <span id="temporal-stats" class="temporal-stats"></span>
+                        <button class="fullscreen-btn" onclick="toggleFullscreen('temporal-network-panel')" title="Toggle fullscreen">⛶</button>
                     </div>
                     <div class="panel-content" id="temporal-network-content">
                         <div class="temporal-controls">
                             <button id="temporal-play-btn" class="play-btn" title="Play">&#9654;</button>
-                            <input type="range" id="temporal-tick-slider" min="0" max="100" value="100" class="tick-slider temporal-slider">
-                            <span id="temporal-tick-value">Tick: All</span>
+                            <input type="range" id="temporal-tick-slider" min="0" max="100" value="100" class="time-slider temporal-slider">
+                            <span id="temporal-tick-value">Time: All</span>
                             <select id="temporal-speed" class="speed-select" title="Playback speed">
                                 <option value="1000">0.5x</option>
                                 <option value="500" selected>1x</option>
@@ -178,10 +180,11 @@
                 </section>
 
                 <!-- Artifact Dependency Graph Panel -->
-                <section class="panel dependency-panel collapsed">
+                <section class="panel dependency-panel collapsed" id="dependency-graph-panel">
                     <div class="panel-header" id="dependency-toggle">
                         <h2>Artifact Dependencies</h2>
                         <span class="collapse-icon">+</span>
+                        <button class="fullscreen-btn" onclick="toggleFullscreen('dependency-graph-panel'); event.stopPropagation();" title="Toggle fullscreen">⛶</button>
                     </div>
                     <div class="panel-content" id="dependency-content">
                         <div class="dependency-controls">

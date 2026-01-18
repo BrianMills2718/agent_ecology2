@@ -473,19 +473,22 @@ def create_app(
 
     @app.get("/api/temporal-network")
     async def get_temporal_network(
-        tick_min: int | None = Query(None, description="Min tick to include"),
-        tick_max: int | None = Query(None, description="Max tick to include"),
+        time_min: str | None = Query(None, description="Min ISO timestamp to include"),
+        time_max: str | None = Query(None, description="Max ISO timestamp to include"),
+        time_bucket_seconds: int = Query(1, ge=1, le=3600, description="Time bucket size for activity grouping"),
     ) -> dict[str, Any]:
         """Get artifact-centric temporal network data.
 
         This endpoint provides a richer view than /api/network:
         - ALL artifacts as nodes (not just agents)
         - Multiple edge types (invocation, dependency, ownership)
-        - Activity heatmap data by tick
+        - Activity heatmap data by time window
         - Suitable for temporal playback visualization
         """
         dashboard.parser.parse_incremental()
-        return dashboard.parser.get_temporal_network_data(tick_min, tick_max).model_dump()
+        return dashboard.parser.get_temporal_network_data(
+            time_min, time_max, time_bucket_seconds
+        ).model_dump()
 
     @app.get("/api/activity")
     async def get_activity_feed(

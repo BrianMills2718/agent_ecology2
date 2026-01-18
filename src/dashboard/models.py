@@ -338,7 +338,7 @@ class ArtifactNode(BaseModel):
     owner_id: str | None = None
     executable: bool = False
     invocation_count: int = 0
-    created_tick: int | None = None
+    created_at: str | None = None  # ISO timestamp
     # For agents specifically
     scrip: int = 0
     status: Literal["active", "low_resources", "frozen"] = "active"
@@ -349,7 +349,7 @@ class ArtifactEdge(BaseModel):
     from_id: str
     to_id: str
     edge_type: Literal["invocation", "ownership", "dependency", "creation", "transfer"]
-    tick: int
+    timestamp: str  # ISO format timestamp
     weight: int = 1
     details: str | None = None
 
@@ -358,12 +358,14 @@ class TemporalNetworkData(BaseModel):
     """Artifact-centric temporal network graph data."""
     nodes: list[ArtifactNode] = Field(default_factory=list)
     edges: list[ArtifactEdge] = Field(default_factory=list)
-    tick_range: tuple[int, int] = (0, 0)
-    # Activity counts per tick for heatmap
-    activity_by_tick: dict[int, dict[str, int]] = Field(default_factory=dict)
+    time_range: tuple[str, str] = ("", "")  # (start, end) ISO timestamps
+    # Activity counts per time bucket for heatmap (bucket key = ISO timestamp)
+    activity_by_time: dict[str, dict[str, int]] = Field(default_factory=dict)
     # Metadata
     total_artifacts: int = 0
     total_interactions: int = 0
+    # Time bucket size in seconds (for heatmap grouping)
+    time_bucket_seconds: int = 1
 
 
 # Activity Feed Models
