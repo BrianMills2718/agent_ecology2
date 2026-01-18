@@ -1,0 +1,8 @@
+# Session Identity Mapping
+# Maps CLAUDE_CODE_SSE_PORT to human-readable session name
+# Each CC instance has a unique port - use this to identify yourself
+#
+# Usage: Check $CLAUDE_CODE_SSE_PORT and look up your name here
+# Add new sessions: echo "PORT: name" >> .claude/sessions.yaml
+
+31290: meta
