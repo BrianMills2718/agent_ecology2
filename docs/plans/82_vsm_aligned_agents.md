@@ -62,6 +62,13 @@
 - src/agents/delta_3/system_prompt.md (create)
 - src/agents/epsilon_3/agent.yaml (create)
 - src/agents/epsilon_3/system_prompt.md (create)
+- src/agents/alpha/agent.yaml (modify)
+- src/agents/beta/agent.yaml (modify)
+- src/agents/gamma/agent.yaml (modify)
+- src/agents/delta/agent.yaml (modify)
+- src/agents/epsilon/agent.yaml (modify)
+- src/agents/alpha_2/agent.yaml (modify)
+- src/agents/beta_2/agent.yaml (modify)
 
 ---
 

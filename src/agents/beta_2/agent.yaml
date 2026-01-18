@@ -1,5 +1,5 @@
 id: beta_2
-enabled: true
+enabled: false  # Disabled - use beta_3 instead
 llm_model: "gemini/gemini-3-flash-preview"
 starting_credits: 100
 

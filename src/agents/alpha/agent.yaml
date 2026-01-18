@@ -1,5 +1,5 @@
 id: alpha
-enabled: true
+enabled: false  # Disabled - use alpha_3 instead
 llm_model: "gemini/gemini-3-flash-preview"
 starting_credits: 100
 
