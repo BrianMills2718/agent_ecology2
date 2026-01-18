@@ -101,19 +101,8 @@ Master index of all gaps and their implementation plans.
 | 71 | [Ownership Check](71_ownership_check.md) | **High** | ✅ Complete | Meta-process integrity |
 | 72 | [Plan Number Enforcement](72_plan_number_enforcement.md) | **High** | ✅ Complete | Meta-process integrity |
 | 73 | [Output Messaging Fix](73_output_messaging_fix.md) | **High** | ✅ Complete | - |
-| 74 | [Meta-Process Doc Fixes](74_meta_process_doc_fixes.md) | Medium | 📋 Planned | - |
-| 75 | [Autonomous Mint Resolution](75_autonomous_mint_resolution.md) | **Critical** | 📋 Planned | Emergent behavior |
-| 76 | [Simulation Metrics](76_simulation_metrics.md) | Medium | 📋 Planned | - |
-| 77 | [Genesis Coordinator](77_genesis_coordinator.md) | **High** | ✅ Complete | Cross-agent coordination |
-| 78 | [Emergence Monitoring](78_emergence_monitoring.md) | **High** | ✅ Complete | Strategic thinking detection |
-| 79 | [Time-Based Auctions](79_time_based_auctions.md) | Medium | 📋 Planned | Autonomous mode purity |
-| 80 | [Log Optimization](80_log_optimization.md) | Medium | 📋 Planned | - |
-| 81 | [Handbook Audit](81_handbook_audit.md) | Medium | 📋 Planned | Agent capability |
-| 82 | [VSM-Aligned Improved Agents](82_vsm_aligned_agents.md) | Medium | 🚧 In Progress | - |
 | 84 | [Float/Decimal Consistency](84_float_decimal_consistency.md) | Low | 📋 Deferred | - |
 | 85 | [Inter-CC Messaging](85_inter_cc_messaging.md) | Medium | 📋 Planned | Multi-CC collaboration |
-| 86 | [Interface Validation](86_interface_validation.md) | Medium | 📋 Planned | #14 |
-| 87 | [Meta-Process Coordination](87_meta_process_coordination_improvements.md) | Medium | ✅ Complete | Hook improvements |
 
 ---
 
