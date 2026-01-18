@@ -492,7 +492,7 @@ class SafeExecutor:
             return True, ""
         except SyntaxError as e:
             return False, f"Syntax error: {e}"
-        except Exception as e:
+        except Exception as e:  # exception-ok: user code can raise anything
             return False, f"Compilation failed: {e}"
 
     def execute(self, code: str, args: list[Any] | None = None) -> ExecutionResult:
@@ -521,7 +521,7 @@ class SafeExecutor:
             compiled = compile(code, '<agent_code>', 'exec')
         except SyntaxError as e:
             return {"success": False, "error": f"Syntax error: {e}"}
-        except Exception as e:
+        except Exception as e:  # exception-ok: user code can raise anything
             return {"success": False, "error": f"Compilation failed: {e}"}
 
         # Build controlled globals with full builtins and allowed modules
@@ -546,7 +546,7 @@ class SafeExecutor:
                 exec(compiled, controlled_globals)
         except TimeoutError:
             return {"success": False, "error": "Code definition timed out"}
-        except Exception as e:
+        except Exception as e:  # exception-ok: user code can raise anything
             return {
                 "success": False,
                 "error": f"Execution error: {type(e).__name__}: {e}"
@@ -586,7 +586,7 @@ class SafeExecutor:
                     "error": f"Argument error: {e}",
                     "execution_time_ms": execution_time_ms,
                 }
-            except Exception as e:
+            except Exception as e:  # exception-ok: user code can raise anything
                 execution_time_ms = (time.perf_counter() - start_time) * 1000
                 error_result = {
                     "success": False,
@@ -651,7 +651,7 @@ class SafeExecutor:
             compiled = compile(code, '<agent_code>', 'exec')
         except SyntaxError as e:
             return {"success": False, "error": f"Syntax error: {e}"}
-        except Exception as e:
+        except Exception as e:  # exception-ok: user code can raise anything
             return {"success": False, "error": f"Compilation failed: {e}"}
 
         # Build controlled globals with full builtins and allowed modules
@@ -723,7 +723,7 @@ class SafeExecutor:
                 exec(compiled, controlled_globals)
         except TimeoutError:
             return {"success": False, "error": "Code definition timed out"}
-        except Exception as e:
+        except Exception as e:  # exception-ok: user code can raise anything
             return {
                 "success": False,
                 "error": f"Execution error: {type(e).__name__}: {e}"
@@ -763,7 +763,7 @@ class SafeExecutor:
                     "error": f"Argument error: {e}",
                     "execution_time_ms": execution_time_ms,
                 }
-            except Exception as e:
+            except Exception as e:  # exception-ok: user code can raise anything
                 execution_time_ms = (time.perf_counter() - start_time) * 1000
                 error_result = {
                     "success": False,
@@ -845,7 +845,7 @@ class SafeExecutor:
             compiled = compile(code, '<agent_code>', 'exec')
         except SyntaxError as e:
             return {"success": False, "error": f"Syntax error: {e}"}
-        except Exception as e:
+        except Exception as e:  # exception-ok: user code can raise anything
             return {"success": False, "error": f"Compilation failed: {e}"}
 
         # Build controlled globals with full builtins and allowed modules
@@ -1061,7 +1061,7 @@ class SafeExecutor:
                 exec(compiled, controlled_globals)
         except TimeoutError:
             return {"success": False, "error": "Code definition timed out"}
-        except Exception as e:
+        except Exception as e:  # exception-ok: user code can raise anything
             return {
                 "success": False,
                 "error": f"Execution error: {type(e).__name__}: {e}"
@@ -1101,7 +1101,7 @@ class SafeExecutor:
                     "error": f"Argument error: {e}",
                     "execution_time_ms": execution_time_ms,
                 }
-            except Exception as e:
+            except Exception as e:  # exception-ok: user code can raise anything
                 execution_time_ms = (time.perf_counter() - start_time) * 1000
                 error_result = {
                     "success": False,
