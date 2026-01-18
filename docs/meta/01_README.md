@@ -29,6 +29,8 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 | [Human Review Pattern](22_human-review-pattern.md) | Risky changes merged without review | Medium |
 | [Plan Status Validation](23_plan-status-validation.md) | Status/content mismatch in plans | Low |
 | [Phased ADR Pattern](24_phased-adr-pattern.md) | Complex features need phased rollout | Medium |
+| [PR Review Process](25_pr-review-process.md) | Inconsistent review quality | Low |
+| [Ownership Respect](26_ownership-respect.md) | CC instances interfering with each other's work | Low |
 
 ## When to Use
 
@@ -39,6 +41,8 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 - PR Coordination - if multiple people/instances work in parallel
 - Worktree Enforcement - if multiple Claude Code instances share a repo
 - Rebase Workflow - when using worktrees for parallel work (prevents "reverted" changes)
+- PR Review Process - standardized review checklists
+- Ownership Respect - prevent CC instances from fixing each other's work
 
 **Add these when needed (more setup):**
 - Feature-Driven Development - comprehensive meta-process for verified progress, preventing AI drift/cheating

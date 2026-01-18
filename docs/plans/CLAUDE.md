@@ -114,6 +114,7 @@ Master index of all gaps and their implementation plans.
 | 85 | [Inter-CC Messaging](85_inter_cc_messaging.md) | Medium | 📋 Planned | Multi-CC collaboration |
 | 86 | [Interface Validation](86_interface_validation.md) | Medium | 📋 Planned | #14 |
 | 87 | [Meta-Process Coordination](87_meta_process_coordination_improvements.md) | Medium | ✅ Complete | Hook improvements |
+| 89 | [Plan Enforcement Hooks](89_plan_enforcement_hooks.md) | **High** | 📋 Planned | - |
 
 ---
 

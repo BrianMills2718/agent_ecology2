@@ -78,14 +78,32 @@ mkdir -p docs/plans
 
 ---
 
+## References Reviewed
+
+> **REQUIRED:** Cite specific code/docs reviewed before planning.
+> Forces exploration before coding - prevents guessing.
+
+- `src/world/executor.py:45-89` - existing action handling
+- `src/world/ledger.py:120-150` - balance update logic
+- `docs/architecture/current/actions.md` - action design
+- `CLAUDE.md` - project conventions
+
+---
+
+## Files Affected
+
+> **REQUIRED:** Declare upfront what files will be touched.
+> Creates traceability and enables claim-based file locking.
+> Note: Don't use backticks around paths - the parser needs plain text.
+
+- src/module.py (modify)
+- src/new_feature.py (create)
+- tests/test_feature.py (create)
+- config/schema.yaml (modify)
+
+---
+
 ## Plan
-
-### Changes Required
-
-| File | Change |
-|------|--------|
-| `src/module.py` | Add new function |
-| `config/config.yaml` | New setting |
 
 ### Steps
 
@@ -372,7 +390,8 @@ git commit -m "[Trivial] Fix formatting in config"
 |----------|--------|-----------|
 | Test requirement format | **Plain English + pytest path** | Both: description for humans, path for automation |
 | Trivial exemption | **`[Trivial]` prefix** | Reduces friction; CI validates size limits |
-| File lists in plans | **Optional** | Impractical to maintain upfront; derived from feature scope |
+| Files Affected section | **Required** | Forces planning, creates traceability, enables file-level claims |
+| References Reviewed section | **Required** | Forces exploration before coding, prevents CC guessing |
 
 ## Limitations
 

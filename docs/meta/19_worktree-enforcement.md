@@ -238,12 +238,114 @@ Adjust the error message to match your branch naming convention.
 - **Most Bash operations allowed:** Only `git worktree remove` is blocked (prevents shell breakage)
 - **Claims file location:** Reads claims from main repo's `.claude/active-work.yaml`, not worktree's copy
 
+## Plan Enforcement Hooks
+
+Two additional hooks enforce plan discipline when working in worktrees.
+
+### File Scope Enforcement
+
+The `check-file-scope.sh` hook blocks edits to files not declared in the plan's `## Files Affected` section.
+
+**Behavior:**
+- Extracts plan number from branch name (e.g., `plan-89-hooks` → Plan #89)
+- Reads the plan file's `## Files Affected` section
+- Blocks edits to undeclared files with helpful error message
+
+**Example block message:**
+```
+BLOCKED: File not in plan's declared scope
+
+Plan #89 does not list this file in 'Files Affected':
+  src/world/ledger.py
+
+To fix, update your plan file:
+  docs/plans/89_*.md
+
+Add to '## Files Affected' section:
+  - src/world/ledger.py (modify)
+
+This ensures all changes are planned and traceable.
+```
+
+**Exceptions (always allowed):**
+- `.claude/*` - Coordination files
+- `CLAUDE.md` files
+- `docs/plans/*` - Plan files themselves
+- Main branch (review only)
+- Branches without plan numbers (trivial work)
+
+### References Reviewed Warning
+
+The `check-references-reviewed.sh` hook warns (doesn't block) if the plan lacks exploration documentation.
+
+**Behavior:**
+- Only triggers on `src/` or `tests/` file edits
+- Checks for `## References Reviewed` section with at least 2 entries
+- Shows warning once per session (not on every edit)
+
+**Example warning:**
+```
+========================================
+⚠️  EXPLORATION WARNING
+========================================
+
+Plan #89 has insufficient 'References Reviewed' (0/2 minimum)
+
+Before implementing, you should:
+  1. Explore the existing codebase
+  2. Document what you reviewed in the plan
+
+Add to your plan file (docs/plans/89_*.md):
+
+  ## References Reviewed
+  - src/relevant/file.py:10-50 - description of what you learned
+  - docs/architecture/current/relevant.md - relevant design context
+
+This ensures you understand the codebase before changing it.
+(This warning appears once per session)
+========================================
+```
+
+### Hook Configuration
+
+Both hooks are registered in `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {"type": "command", "command": "bash .claude/hooks/protect-main.sh"},
+          {"type": "command", "command": "bash .claude/hooks/check-file-scope.sh"},
+          {"type": "command", "command": "bash .claude/hooks/check-references-reviewed.sh"}
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Supporting Script
+
+Both hooks use `scripts/parse_plan.py` to extract plan sections:
+
+```bash
+# Check if file is in plan scope
+python scripts/parse_plan.py --plan 89 --check-file src/world/ledger.py --json
+
+# Get references reviewed
+python scripts/parse_plan.py --plan 89 --references-reviewed --json
+```
+
 ## Related Patterns
 
 - [Rebase Workflow](20_rebase-workflow.md) - Keeps worktrees up-to-date before creating PRs
 - [Claim System](18_claim-system.md) - Coordinates which instance works on what
 - [Git Hooks](06_git-hooks.md) - Pre-commit validation before pushing
 - [PR Coordination](21_pr-coordination.md) - Tracks review requests across instances
+- [Plan Workflow](15_plan-workflow.md) - Plan template with Files Affected section
 
 ## Worktree Removal Protection
 

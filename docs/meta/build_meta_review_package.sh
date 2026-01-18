@@ -40,6 +40,9 @@ in recommended reading order for external review.
 21. [PR Coordination](#21-pr-coordination)
 22. [Human Review Pattern](#22-human-review-pattern)
 23. [Plan Status Validation](#23-plan-status-validation)
+24. [Phased ADR Pattern](#24-phased-adr-pattern)
+25. [PR Review Process](#25-pr-review-process)
+26. [Ownership Respect](#26-ownership-respect)
 
 ---
 
@@ -162,6 +165,18 @@ append_content "$META_DIR/22_human-review-pattern.md"
 # 23. Plan Status Validation
 append_section "23" "Plan Status Validation" "docs/meta/23_plan-status-validation.md"
 append_content "$META_DIR/23_plan-status-validation.md"
+
+# 24. Phased ADR Pattern
+append_section "24" "Phased ADR Pattern" "docs/meta/24_phased-adr-pattern.md"
+append_content "$META_DIR/24_phased-adr-pattern.md"
+
+# 25. PR Review Process
+append_section "25" "PR Review Process" "docs/meta/25_pr-review-process.md"
+append_content "$META_DIR/25_pr-review-process.md"
+
+# 26. Ownership Respect
+append_section "26" "Ownership Respect" "docs/meta/26_ownership-respect.md"
+append_content "$META_DIR/26_ownership-respect.md"
 
 echo "Generated: $OUTPUT"
 echo "Line count: $(wc -l < "$OUTPUT")"
