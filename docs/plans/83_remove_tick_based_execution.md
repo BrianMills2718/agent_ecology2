@@ -1,6 +1,6 @@
 # Plan 83: Remove Tick-Based Execution Model
 
-**Status:** Planned
+**Status:** 🚧 In Progress
 **Complexity:** High
 **Prerequisites:** None (but should tag current state first)
 
@@ -120,6 +120,21 @@ git checkout tick-based-v1
 # Partial recovery (specific file)
 git checkout tick-based-v1 -- src/world/world.py
 ```
+
+## Files Affected
+
+- src/config_schema.py (modify)
+- config/config.yaml (modify)
+- src/world/genesis/mint.py (modify)
+- src/world/world.py (modify)
+- src/simulation/runner.py (modify)
+- src/world/ledger.py (modify)
+- src/world/logger.py (modify)
+- src/agents/state_store.py (modify)
+- tests/integration/test_mint_auction.py (modify)
+- tests/unit/test_mint_anytime.py (modify)
+- tests/unit/test_world.py (modify)
+- docs/architecture/current/execution_model.md (modify)
 
 ## Notes
 

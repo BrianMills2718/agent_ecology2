@@ -2,10 +2,14 @@
 
 Implements periodic auctions where agents bid scrip to submit artifacts
 for LLM scoring. Winning bid is redistributed as UBI to all agents.
+
+Plan #83: All timing is now time-based (seconds), not tick-based.
+Auctions run on wall-clock time.
 """
 
 from __future__ import annotations
 
+import time
 from typing import Any, Callable
 
 from ...config import get_validated_config
@@ -22,12 +26,13 @@ class GenesisMint(GenesisArtifact):
     Implements periodic auctions where agents bid scrip to submit artifacts
     for LLM scoring. Winning bid is redistributed as UBI to all agents.
 
-    Auction phases:
-    - WAITING: Before first_auction_tick
-    - BIDDING: Accepting bids (bidding_window ticks)
-    - After bidding window: Resolve auction, score artifact, distribute UBI
+    Auction phases (Plan #83 - time-based):
+    - WAITING: Before first_auction_delay_seconds elapsed
+    - BIDDING: Accepting bids (bidding_window_seconds)
+    - CLOSED: After bidding window, before next auction period starts
 
     All configuration is in config.yaml under genesis.mint.auction.
+    All timing values are in seconds (float).
 
     Plan #44: GenesisMint now delegates to kernel primitives for bid storage
     and auction resolution. Timing (phases, windows) stays here as policy.
@@ -42,9 +47,9 @@ class GenesisMint(GenesisArtifact):
     artifact_store: ArtifactStore | None
     ledger: Any  # Ledger reference for bid escrow
 
-    # Auction timing state (policy - stays in GenesisMint)
-    _current_tick: int
-    _auction_start_tick: int | None
+    # Auction timing state (Plan #83 - time-based)
+    _simulation_start_time: float  # When simulation started (time.time())
+    _auction_start_time: float | None  # When current auction period started
     _auction_history: list[AuctionResult]  # Local history for status display
 
     # Legacy bid state (deprecated - kernel stores bids now)
@@ -54,11 +59,11 @@ class GenesisMint(GenesisArtifact):
     # Track submission IDs for bid updates (Plan #44)
     _submission_ids: dict[str, str]  # agent_id -> kernel submission_id
 
-    # Config
+    # Config (Plan #83 - time-based)
     _mint_ratio: int
-    _period: int
-    _bidding_window: int
-    _first_auction_tick: int
+    _period_seconds: float
+    _bidding_window_seconds: float
+    _first_auction_delay_seconds: float
     _slots_per_auction: int
     _minimum_bid: int
     _tie_breaking: str
@@ -74,7 +79,8 @@ class GenesisMint(GenesisArtifact):
         ubi_callback: Callable[[int, str | None], dict[str, int]] | None = None,
         artifact_store: ArtifactStore | None = None,
         ledger: Any = None,
-        genesis_config: GenesisConfig | None = None
+        genesis_config: GenesisConfig | None = None,
+        start_time: float | None = None
     ) -> None:
         """
         Args:
@@ -83,6 +89,7 @@ class GenesisMint(GenesisArtifact):
             artifact_store: ArtifactStore to look up submitted artifacts
             ledger: Ledger for bid escrow
             genesis_config: Optional genesis config (uses global if not provided)
+            start_time: Simulation start time (defaults to time.time())
         """
         import random
         self._random = random
@@ -105,9 +112,9 @@ class GenesisMint(GenesisArtifact):
         self.artifact_store = artifact_store
         self.ledger = ledger
 
-        # Auction timing state
-        self._current_tick = 0
-        self._auction_start_tick = None
+        # Auction timing state (Plan #83 - time-based)
+        self._simulation_start_time = start_time if start_time is not None else time.time()
+        self._auction_start_time = None
         self._auction_history = []
 
         # Legacy bid state (for backward compat during transition)
@@ -117,11 +124,11 @@ class GenesisMint(GenesisArtifact):
         # Kernel submission tracking (Plan #44)
         self._submission_ids = {}
 
-        # Config
+        # Config (Plan #83 - time-based)
         self._mint_ratio = mint_cfg.mint_ratio
-        self._period = mint_cfg.auction.period
-        self._bidding_window = mint_cfg.auction.bidding_window
-        self._first_auction_tick = mint_cfg.auction.first_auction_tick
+        self._period_seconds = mint_cfg.auction.period_seconds
+        self._bidding_window_seconds = mint_cfg.auction.bidding_window_seconds
+        self._first_auction_delay_seconds = mint_cfg.auction.first_auction_delay_seconds
         self._slots_per_auction = mint_cfg.auction.slots_per_auction
         self._minimum_bid = mint_cfg.auction.minimum_bid
         self._tie_breaking = mint_cfg.auction.tie_breaking
@@ -161,42 +168,70 @@ class GenesisMint(GenesisArtifact):
         """
         self._world = world
 
+    def _get_elapsed_seconds(self) -> float:
+        """Get seconds elapsed since simulation start."""
+        return time.time() - self._simulation_start_time
+
     def _get_phase(self) -> str:
-        """Get current auction phase."""
-        if self._current_tick < self._first_auction_tick:
+        """Get current auction phase (Plan #83 - time-based).
+
+        Returns:
+            "WAITING" - Before first_auction_delay_seconds elapsed
+            "BIDDING" - Accepting bids (within bidding_window_seconds)
+            "CLOSED" - After bidding window, waiting for next period
+        """
+        elapsed = self._get_elapsed_seconds()
+
+        # Before first auction delay - waiting
+        if elapsed < self._first_auction_delay_seconds:
             return "WAITING"
-        if self._auction_start_tick is None:
+
+        # No auction started yet (should start now)
+        if self._auction_start_time is None:
             return "WAITING"
-        ticks_since_start = self._current_tick - self._auction_start_tick
-        # Negative means we're waiting for next auction (start tick is in future)
-        if ticks_since_start < 0:
+
+        # Calculate time since this auction period started
+        time_since_auction_start = time.time() - self._auction_start_time
+
+        # Negative means we're waiting for next auction (start time is in future)
+        if time_since_auction_start < 0:
             return "CLOSED"
-        if ticks_since_start < self._bidding_window:
+
+        # Within bidding window
+        if time_since_auction_start < self._bidding_window_seconds:
             return "BIDDING"
+
         return "CLOSED"
 
     def _status(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
-        """Return auction status."""
+        """Return auction status (Plan #83 - time-based)."""
         phase = self._get_phase()
+        elapsed = self._get_elapsed_seconds()
+        now = time.time()
+
         result: dict[str, Any] = {
             "success": True,
             "mint": "genesis_mint",
             "type": "auction",
             "phase": phase,
-            "current_tick": self._current_tick,
-            "period": self._period,
-            "bidding_window": self._bidding_window,
-            "first_auction_tick": self._first_auction_tick,
+            "elapsed_seconds": round(elapsed, 1),
+            "period_seconds": self._period_seconds,
+            "bidding_window_seconds": self._bidding_window_seconds,
+            "first_auction_delay_seconds": self._first_auction_delay_seconds,
             "minimum_bid": self._minimum_bid,
             "slots_per_auction": self._slots_per_auction,
             "auctions_completed": len(self._auction_history),
         }
 
         if phase == "WAITING":
-            result["next_auction_tick"] = self._first_auction_tick
+            # Time until first auction starts
+            wait_remaining = self._first_auction_delay_seconds - elapsed
+            result["next_auction_in_seconds"] = round(max(0, wait_remaining), 1)
         elif phase == "BIDDING":
-            result["auction_start_tick"] = self._auction_start_tick
-            result["bidding_ends_tick"] = (self._auction_start_tick or 0) + self._bidding_window
+            if self._auction_start_time is not None:
+                time_in_bidding = now - self._auction_start_time
+                time_remaining = self._bidding_window_seconds - time_in_bidding
+                result["bidding_ends_in_seconds"] = round(max(0, time_remaining), 1)
             if self._show_bid_count:
                 result["bid_count"] = len(self._bids)
             # Show agent's own bid if they have one
@@ -206,7 +241,11 @@ class GenesisMint(GenesisArtifact):
                     "amount": self._bids[invoker_id]["amount"],
                 }
         elif phase == "CLOSED":
-            result["next_auction_tick"] = (self._auction_start_tick or 0) + self._period
+            if self._auction_start_time is not None:
+                # Time until next auction period starts
+                time_since_start = now - self._auction_start_time
+                next_auction_in = self._period_seconds - time_since_start
+                result["next_auction_in_seconds"] = round(max(0, next_auction_in), 1)
 
         if self._auction_history:
             last = self._auction_history[-1]
@@ -224,7 +263,7 @@ class GenesisMint(GenesisArtifact):
         """Submit a sealed bid during bidding window.
 
         Plan #44: Now delegates to kernel primitives for bid storage.
-        Timing (phases) stays here as policy.
+        Plan #83: Timing is now time-based, not tick-based.
         """
         if len(args) < 2:
             return {"success": False, "error": "bid requires [artifact_id, amount]"}
@@ -269,7 +308,7 @@ class GenesisMint(GenesisArtifact):
                     "agent_id": invoker_id,
                     "artifact_id": artifact_id,
                     "amount": amount,
-                    "tick_submitted": self._current_tick,
+                    "submitted_at": time.time(),  # Plan #83: Use timestamp
                 }
 
                 return {
@@ -314,12 +353,12 @@ class GenesisMint(GenesisArtifact):
                 self.ledger.credit_scrip(invoker_id, refund)
                 self._held_bids[invoker_id] = amount
 
-        # Record bid (legacy)
+        # Record bid (legacy) - Plan #83: use timestamp
         self._bids[invoker_id] = {
             "agent_id": invoker_id,
             "artifact_id": artifact_id,
             "amount": amount,
-            "tick_submitted": self._current_tick,
+            "submitted_at": time.time(),
         }
 
         return {
@@ -330,7 +369,7 @@ class GenesisMint(GenesisArtifact):
         }
 
     def _check(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
-        """Check bid or auction result status."""
+        """Check bid or auction result status (Plan #83 - time-based)."""
         # If agent has active bid, show it
         if invoker_id in self._bids:
             bid = self._bids[invoker_id]
@@ -340,7 +379,7 @@ class GenesisMint(GenesisArtifact):
                 "bid": {
                     "artifact_id": bid["artifact_id"],
                     "amount": bid["amount"],
-                    "tick_submitted": bid["tick_submitted"],
+                    "submitted_at": bid.get("submitted_at"),  # Plan #83: timestamp
                 },
                 "phase": self._get_phase(),
             }
@@ -395,33 +434,56 @@ class GenesisMint(GenesisArtifact):
 
         return result
 
-    def on_tick(self, tick: int) -> AuctionResult | None:
-        """Called by simulation runner at each tick.
+    def update(self) -> AuctionResult | None:
+        """Update auction state based on current time (Plan #83 - time-based).
 
-        Handles:
-        - Starting bidding windows
-        - Resolving auctions at end of bidding window
+        Call this periodically to:
+        - Start bidding windows when first_auction_delay_seconds elapses
+        - Resolve auctions when bidding_window_seconds ends
 
         Returns AuctionResult if an auction was resolved, None otherwise.
         """
-        self._current_tick = tick
+        now = time.time()
+        elapsed = self._get_elapsed_seconds()
+
+        # Not yet time for first auction
+        if elapsed < self._first_auction_delay_seconds:
+            return None
 
         # Check if we should start a new bidding window
-        if self._auction_start_tick is None:
-            if tick >= self._first_auction_tick:
-                self._auction_start_tick = tick
-                return None
-        else:
-            # Check if bidding window just ended
-            ticks_since_start = tick - self._auction_start_tick
-            if ticks_since_start == self._bidding_window:
+        if self._auction_start_time is None:
+            # Start first auction
+            self._auction_start_time = now
+            return None
+
+        # Calculate time since this auction period started
+        time_since_auction_start = now - self._auction_start_time
+
+        # Check if bidding window just ended (need to resolve)
+        if time_since_auction_start >= self._bidding_window_seconds:
+            # Check if we haven't already resolved this auction
+            # by seeing if we're past the bidding window but before next period
+            if time_since_auction_start < self._period_seconds:
                 # Resolve the auction
                 result = self._resolve_auction()
-                # Start next auction period
-                self._auction_start_tick = self._auction_start_tick + self._period
+                # Schedule next auction at the end of this period
+                self._auction_start_time = self._auction_start_time + self._period_seconds
                 return result
+            else:
+                # We're past the period - start a new auction
+                # This handles cases where update() wasn't called for a while
+                self._auction_start_time = now
+                return None
 
         return None
+
+    def on_tick(self, tick: int) -> AuctionResult | None:
+        """DEPRECATED: Use update() instead. Kept for backward compatibility.
+
+        Plan #83: Tick-based execution is deprecated. This method now
+        just calls update() and ignores the tick parameter.
+        """
+        return self.update()
 
     def _resolve_auction(self) -> AuctionResult:
         """Resolve the current auction and distribute rewards.
@@ -483,8 +545,8 @@ class GenesisMint(GenesisArtifact):
         if len(top_bidders) > 1:
             if self._tie_breaking == "random":
                 winner_bid = self._random.choice(top_bidders)
-            else:  # first_bid
-                winner_bid = min(top_bidders, key=lambda b: b["tick_submitted"])
+            else:  # first_bid - Plan #83: use submitted_at timestamp
+                winner_bid = min(top_bidders, key=lambda b: b.get("submitted_at", 0))
         else:
             winner_bid = sorted_bids[0]
 

@@ -1,13 +1,15 @@
 """Tests for Mint Auction System.
 
+Plan #83: Tests updated for time-based execution (no ticks).
+
 Tests the auction-based mint with:
 - Bidding during bidding window
-- Bid rejection outside window
 - Second-price (Vickrey) auction
 - UBI distribution
-- Tie-breaking
+- Time-based phase transitions
 """
 
+import time
 import pytest
 from src.world.ledger import Ledger
 from src.world.artifacts import ArtifactStore
@@ -15,10 +17,10 @@ from src.world.genesis import GenesisMint, create_genesis_artifacts
 
 
 class TestMintAuctionPhases:
-    """Test auction phase transitions."""
+    """Test auction phase transitions (Plan #83 - time-based)."""
 
     def test_phase_waiting_before_first_auction(self):
-        """Phase is WAITING before first_auction_tick."""
+        """Phase is WAITING before first_auction_delay_seconds."""
         ledger = Ledger()
         ledger.create_principal("agent_1", starting_scrip=100)
 
@@ -28,20 +30,22 @@ class TestMintAuctionPhases:
         def ubi_callback(amount: int, exclude: str | None) -> dict[str, int]:
             return ledger.distribute_ubi(amount, exclude)
 
+        # Create mint with current start time (just started)
         mint = GenesisMint(
             mint_callback=mint_callback,
             ubi_callback=ubi_callback,
             ledger=ledger,
+            start_time=time.time(),  # Just started
         )
 
-        # Before first_auction_tick (default 50)
-        mint.on_tick(10)
+        # Call update (won't start auction yet since not enough time passed)
+        mint.update()
         status = mint._status([], "agent_1")
         assert status["phase"] == "WAITING"
-        assert status["next_auction_tick"] == 50
+        assert "next_auction_in_seconds" in status
 
-    def test_phase_bidding_after_first_auction_tick(self):
-        """Phase is BIDDING after first_auction_tick."""
+    def test_phase_bidding_after_first_auction_delay(self):
+        """Phase is BIDDING after first_auction_delay_seconds (Plan #83)."""
         ledger = Ledger()
         ledger.create_principal("agent_1", starting_scrip=100)
 
@@ -51,19 +55,22 @@ class TestMintAuctionPhases:
         def ubi_callback(amount: int, exclude: str | None) -> dict[str, int]:
             return ledger.distribute_ubi(amount, exclude)
 
+        # Create mint with simulated past start time (past first_auction_delay)
+        # Default first_auction_delay_seconds is 30, so start 31s ago
         mint = GenesisMint(
             mint_callback=mint_callback,
             ubi_callback=ubi_callback,
             ledger=ledger,
+            start_time=time.time() - 31,
         )
 
-        # At first_auction_tick
-        mint.on_tick(50)
+        # Call update to trigger auction start
+        mint.update()
         status = mint._status([], "agent_1")
         assert status["phase"] == "BIDDING"
 
     def test_phase_closed_after_bidding_window(self):
-        """Phase is CLOSED after bidding window ends."""
+        """Phase is CLOSED after bidding window ends (Plan #83)."""
         ledger = Ledger()
         ledger.create_principal("agent_1", starting_scrip=100)
 
@@ -73,19 +80,22 @@ class TestMintAuctionPhases:
         def ubi_callback(amount: int, exclude: str | None) -> dict[str, int]:
             return ledger.distribute_ubi(amount, exclude)
 
+        # Create mint that started long enough ago to be past bidding window
+        # first_auction_delay=30s, bidding_window=30s, so need >60s elapsed
         mint = GenesisMint(
             mint_callback=mint_callback,
             ubi_callback=ubi_callback,
             ledger=ledger,
+            start_time=time.time() - 31,  # Past first auction delay
         )
 
-        # Start bidding
-        mint.on_tick(50)
-        # End bidding (tick 60, 10 ticks later)
-        mint.on_tick(60)  # This resolves the auction
+        # Start auction
+        mint.update()
 
-        # Next tick should be CLOSED (waiting for tick 100)
-        mint.on_tick(61)
+        # Manually set auction_start_time to simulate bidding window ended
+        # bidding_window_seconds is 30 by default
+        mint._auction_start_time = time.time() - 35  # 35s ago = past bidding window
+
         status = mint._status([], "agent_1")
         assert status["phase"] == "CLOSED"
 
@@ -112,9 +122,10 @@ class TestMintBidding:
             ubi_callback=ubi_callback,
             artifact_store=store,
             ledger=ledger,
+            start_time=time.time() - 31,  # Past first auction delay
         )
 
-        mint.on_tick(50)  # Start bidding
+        mint.update()  # Start bidding
         result = mint._bid(["my_tool", 20], "agent_1")
         assert result["success"] is True
         assert result["amount"] == 20
@@ -138,11 +149,12 @@ class TestMintBidding:
             ubi_callback=ubi_callback,
             artifact_store=store,
             ledger=ledger,
+            start_time=time.time(),  # Just started - still in WAITING
         )
 
-        mint.on_tick(10)  # Before first_auction_tick
+        mint.update()  # Phase is WAITING
         result = mint._bid(["my_tool", 20], "agent_1")
-        # Plan #5: Bids now accepted at any tick
+        # Plan #5: Bids now accepted at any time
         assert result["success"] is True
         assert result["amount"] == 20
 
@@ -165,9 +177,10 @@ class TestMintBidding:
             ubi_callback=ubi_callback,
             artifact_store=store,
             ledger=ledger,
+            start_time=time.time() - 31,
         )
 
-        mint.on_tick(50)
+        mint.update()
         mint._bid(["my_tool", 30], "agent_1")
 
         # Scrip should be held (deducted from balance)
@@ -192,16 +205,17 @@ class TestMintBidding:
             ubi_callback=ubi_callback,
             artifact_store=store,
             ledger=ledger,
+            start_time=time.time() - 31,
         )
 
-        mint.on_tick(50)
+        mint.update()
         result = mint._bid(["my_tool", 50], "agent_1")
         assert result["success"] is False
         assert "Insufficient" in result["error"]
 
 
 class TestAuctionResolution:
-    """Test auction resolution mechanics."""
+    """Test auction resolution mechanics (Plan #83 - time-based)."""
 
     def test_single_bidder_wins(self):
         """Single bidder wins and pays minimum bid."""
@@ -222,11 +236,15 @@ class TestAuctionResolution:
             ubi_callback=ubi_callback,
             artifact_store=store,
             ledger=ledger,
+            start_time=time.time() - 31,
         )
 
-        mint.on_tick(50)
+        mint.update()  # Start auction
         mint._bid(["my_tool", 30], "agent_1")
-        result = mint.on_tick(60)  # Resolve
+
+        # Simulate time passing past bidding window (30s default)
+        mint._auction_start_time = time.time() - 35
+        result = mint.update()  # Resolve
 
         assert result is not None
         assert result["winner_id"] == "agent_1"
@@ -254,12 +272,16 @@ class TestAuctionResolution:
             ubi_callback=ubi_callback,
             artifact_store=store,
             ledger=ledger,
+            start_time=time.time() - 31,
         )
 
-        mint.on_tick(50)
+        mint.update()  # Start auction
         mint._bid(["tool_1", 50], "agent_1")  # Higher bid
         mint._bid(["tool_2", 30], "agent_2")  # Lower bid
-        result = mint.on_tick(60)
+
+        # Simulate time passing past bidding window
+        mint._auction_start_time = time.time() - 35
+        result = mint.update()  # Resolve
 
         assert result["winner_id"] == "agent_1"
         assert result["price_paid"] == 30  # Second-price
@@ -286,9 +308,10 @@ class TestAuctionResolution:
             ubi_callback=ubi_callback,
             artifact_store=store,
             ledger=ledger,
+            start_time=time.time() - 31,
         )
 
-        mint.on_tick(50)
+        mint.update()  # Start auction
         mint._bid(["tool_1", 50], "agent_1")
         mint._bid(["tool_2", 30], "agent_2")
 
@@ -296,7 +319,9 @@ class TestAuctionResolution:
         assert ledger.get_scrip("agent_1") == 50
         assert ledger.get_scrip("agent_2") == 70
 
-        mint.on_tick(60)
+        # Simulate time passing and resolve
+        mint._auction_start_time = time.time() - 35
+        mint.update()
 
         # Loser (agent_2) gets full refund
         # Plus UBI share: 30 / 2 = 15
@@ -317,11 +342,15 @@ class TestAuctionResolution:
             mint_callback=mint_callback,
             ubi_callback=ubi_callback,
             ledger=ledger,
+            start_time=time.time() - 31,
         )
 
-        mint.on_tick(50)
+        mint.update()  # Start auction
         # No bids
-        result = mint.on_tick(60)
+
+        # Simulate time passing and resolve
+        mint._auction_start_time = time.time() - 35
+        result = mint.update()
 
         assert result is not None
         assert result["winner_id"] is None
@@ -352,17 +381,18 @@ class TestUBIDistribution:
             ubi_callback=ubi_callback,
             artifact_store=store,
             ledger=ledger,
+            start_time=time.time() - 31,
         )
 
-        mint.on_tick(50)
+        mint.update()  # Start auction
         mint._bid(["tool_1", 30], "agent_1")  # Only bidder
-        result = mint.on_tick(60)
+
+        # Simulate time passing and resolve
+        mint._auction_start_time = time.time() - 35
+        result = mint.update()
 
         # Price paid is minimum_bid (1) with single bidder
         # UBI: 1 / 3 = 0 per agent (integer division)
-        # Let me recalculate with higher bid to see UBI
-        # Actually with 1 scrip / 3 agents = 0 each with remainder 1
-        # First agent gets the remainder
         assert result["ubi_distributed"] is not None
 
     def test_scrip_conservation(self):
@@ -390,14 +420,18 @@ class TestUBIDistribution:
             ubi_callback=ubi_callback,
             artifact_store=store,
             ledger=ledger,
+            start_time=time.time() - 31,
         )
 
         initial_total = ledger.get_scrip("agent_1") + ledger.get_scrip("agent_2")
 
-        mint.on_tick(50)
+        mint.update()  # Start auction
         mint._bid(["tool_1", 50], "agent_1")
         mint._bid(["tool_2", 30], "agent_2")
-        mint.on_tick(60)
+
+        # Simulate time passing and resolve
+        mint._auction_start_time = time.time() - 35
+        mint.update()
 
         final_total = ledger.get_scrip("agent_1") + ledger.get_scrip("agent_2")
 
