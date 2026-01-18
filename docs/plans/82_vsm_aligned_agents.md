@@ -20,6 +20,7 @@
 - Adaptation triggers: Computed failure rates trigger strategy reconsideration
 - Goal hierarchies: Working memory schema supports strategic goals with subgoals
 - Full use of existing workflow and working memory infrastructure
+- **State machine workflows**: Explicit states with transitions for more sophisticated behavior
 
 **Why Medium:** Improves emergence potential without kernel changes. Uses existing infrastructure that's underutilized.
 
@@ -48,6 +49,9 @@
 - src/agents/_handbook/_index.md (modify)
 - src/world/world.py (modify)
 - src/agents/CLAUDE.md (modify)
+- src/agents/workflow.py (modify)
+- src/agents/state_machine.py (create)
+- tests/unit/test_state_machine.py (create)
 
 ---
 
