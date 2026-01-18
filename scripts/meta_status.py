@@ -112,10 +112,10 @@ def get_worktrees() -> list[dict]:
     success, output = run_cmd(["git", "worktree", "list", "--porcelain"])
     if not success:
         return []
-    
+
     worktrees = []
     current = {}
-    
+
     for line in output.split("\n"):
         if line.startswith("worktree "):
             if current:
@@ -129,11 +129,39 @@ def get_worktrees() -> list[dict]:
             current["bare"] = True
         elif line == "detached":
             current["detached"] = True
-    
+
     if current:
         worktrees.append(current)
-    
+
     return worktrees
+
+
+def get_current_branch() -> str:
+    """Get the current branch name (to identify self)."""
+    success, output = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+    return output if success else ""
+
+
+def get_my_identity() -> dict:
+    """Determine the current CC instance's identity for ownership checks.
+
+    Returns a dict with:
+      - branch: Current git branch
+      - is_main: True if on main branch (coordination mode, not implementation)
+      - cc_id: The CC-ID if we're in a worktree with a claim
+    """
+    branch = get_current_branch()
+    is_main = branch == "main"
+
+    # Try to find matching claim for current branch
+    claims = get_claims()
+    cc_id = None
+    for claim in claims:
+        if claim.get("branch") == branch:
+            cc_id = claim.get("cc_id")
+            break
+
+    return {"branch": branch, "is_main": is_main, "cc_id": cc_id}
 
 
 def get_recent_commits(limit: int = 5) -> list[dict]:
@@ -305,30 +333,42 @@ def print_status(brief: bool = False) -> None:
     worktrees = get_worktrees()
     commits = get_recent_commits()
     issues = identify_issues(claims, prs, plans, worktrees)
+    my_identity = get_my_identity()
 
     if brief:
         # One-line summary
         in_review = len([r for r in reviews if r.get("status") == "In Review"])
         print(f"Claims: {len(claims)} | PRs: {len(prs)} | Reviews: {in_review} active | Plans: {plans['complete']}/{plans['total']} | Issues: {len(issues)}")
         return
-    
+
     print("=" * 60)
     print("META-PROCESS STATUS")
     print("=" * 60)
+    print()
+
+    # Show current identity
+    if my_identity["is_main"]:
+        print("📍 You are on: main (coordination mode - read/review only)")
+    else:
+        print(f"📍 You are on: {my_identity['branch']}")
     print()
     
     # Claims
     print("## Active Claims")
     if claims:
         print()
-        print("| Branch | Plan | Task | Claimed |")
-        print("|--------|------|------|---------|")
+        print("| CC-ID | Plan | Task | Yours? |")
+        print("|-------|------|------|--------|")
         for claim in claims:
-            branch = claim.get("branch", "-")
+            cc_id = claim.get("cc_id", "-")
             plan = claim.get("plan", "-")
-            task = claim.get("task", "-")[:40]
-            claimed = format_time_ago(claim.get("claimed_at", ""))
-            print(f"| {branch} | #{plan} | {task} | {claimed} |")
+            task = claim.get("task", "-")[:35]
+
+            # Determine if this claim is "ours"
+            is_mine = cc_id == my_identity["cc_id"] or cc_id == my_identity["branch"]
+            ownership = "✓ YOURS" if is_mine else "NOT YOURS"
+
+            print(f"| {cc_id[:20]} | #{plan} | {task} | {ownership} |")
     else:
         print("No active claims.")
     print()
@@ -337,14 +377,20 @@ def print_status(brief: bool = False) -> None:
     print("## Open PRs")
     if prs:
         print()
-        print("| # | Title | Branch | Created |")
-        print("|---|-------|--------|---------|")
+        print("| # | Title | Owner | Yours? |")
+        print("|---|-------|-------|--------|")
         for pr in prs:
             num = pr.get("number", "?")
-            title = pr.get("title", "?")[:45]
-            branch = pr.get("headRefName", "?")[:25]
-            created = format_time_ago(pr.get("createdAt", ""))
-            print(f"| {num} | {title} | {branch} | {created} |")
+            title = pr.get("title", "?")[:40]
+            author = pr.get("author", {})
+            owner = author.get("login", "?") if isinstance(author, dict) else "?"
+            branch = pr.get("headRefName", "")
+
+            # Determine if this PR is "ours"
+            is_mine = branch == my_identity["branch"]
+            ownership = "✓ YOURS" if is_mine else "NOT YOURS"
+
+            print(f"| {num} | {title} | {owner} | {ownership} |")
     else:
         print("No open PRs.")
     print()

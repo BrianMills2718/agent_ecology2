@@ -304,12 +304,24 @@ Then address these in rough order (use judgment):
 
 | Priority | Why |
 |----------|-----|
+| **0. Check ownership** | Before acting on any PR/worktree, verify it's yours |
 | 1. Surface uncertainties | Wasted work is expensive - ask early |
 | 2. Merge passing PRs | Clears the queue, integrates completed work |
 | 3. Resolve PR conflicts | Keeps work mergeable |
 | 4. Review pending PRs | Unblocks other instances |
 | 5. Update stale documentation | Low risk, high value |
 | 6. New implementation | Requires a plan first (see below) |
+
+> **🚨 PRIORITY 0: OWNERSHIP CHECK**
+>
+> Before recommending ANY action on a PR, worktree, or claimed work:
+> 1. Check `meta_status.py` output for owner/claim info
+> 2. If owned by another instance → **DO NOT fix, merge, or modify**
+> 3. Only note status ("PR #X is blocked, owned by Y")
+> 4. Move on to work you CAN do
+>
+> **Allowed on others' work:** Read, review, provide feedback
+> **NOT allowed:** Fix CI, resolve conflicts, merge, complete claims
 
 **When recommending actions:** Always use the `/proceed` format to confirm alignment with priorities above.
 
