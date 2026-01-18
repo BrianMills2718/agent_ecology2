@@ -2,7 +2,7 @@
 
 Master index of all gaps and their implementation plans.
 
-**Last verified:** 2026-01-18 (Plan #68 PR template added)
+**Last verified:** 2026-01-18 (Plan #12 test references fixed)
 
 ---
 

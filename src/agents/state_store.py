@@ -29,9 +29,10 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from ..config import get_validated_config
 
@@ -129,8 +130,12 @@ class AgentStateStore:
             """)
             conn.commit()
 
-    def _connect(self) -> sqlite3.Connection:
-        """Create a new database connection with WAL mode."""
+    def _get_connection(self) -> sqlite3.Connection:
+        """Create a new database connection with WAL mode.
+
+        Note: Callers must explicitly close the connection when done.
+        Use _connect() context manager for automatic cleanup.
+        """
         timeout = get_validated_config().timeouts.state_store_lock
         conn = sqlite3.connect(
             str(self.db_path),
@@ -142,6 +147,19 @@ class AgentStateStore:
         # Enable foreign keys (good practice)
         conn.execute("PRAGMA foreign_keys=ON")
         return conn
+
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
+        """Context manager for database connections.
+
+        Ensures connections are properly closed after use, which is critical
+        for SQLite concurrency - unclosed connections hold locks.
+        """
+        conn = self._get_connection()
+        try:
+            yield conn
+        finally:
+            conn.close()
 
     def save(self, state: AgentState) -> None:
         """Save agent state to database.
