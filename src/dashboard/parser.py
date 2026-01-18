@@ -1191,8 +1191,17 @@ class JSONLParser:
         # Build nodes from ALL artifacts
         seen_nodes: set[str] = set()
 
-        # First, add all agents as nodes
+        # Collect all artifact IDs referenced in invocations (includes genesis)
+        invoked_artifacts: set[str] = set()
+        for inv in self.state.invocation_events:
+            if inv.artifact_id:
+                invoked_artifacts.add(inv.artifact_id)
+
+        # First, add all agents as nodes (skip empty IDs)
         for agent_id, agent in self.state.agents.items():
+            if not agent_id:  # Skip empty agent IDs
+                continue
+
             status: Literal["active", "low_resources", "frozen"] = "active"
             if agent.llm_tokens_used >= agent.llm_tokens_quota * 0.9:
                 status = "low_resources"
@@ -1211,7 +1220,27 @@ class JSONLParser:
             ))
             seen_nodes.add(agent_id)
 
-        # Then add all artifacts
+        # Add genesis artifacts that were invoked but not in agents list
+        for artifact_id in invoked_artifacts:
+            if artifact_id in seen_nodes:
+                continue
+            if artifact_id.startswith("genesis_"):
+                # Count invocations of this genesis artifact
+                inv_count = sum(
+                    1 for inv in self.state.invocation_events
+                    if inv.artifact_id == artifact_id
+                )
+                nodes.append(ArtifactNode(
+                    id=artifact_id,
+                    label=artifact_id,
+                    artifact_type="genesis",
+                    owner_id=None,
+                    executable=True,
+                    invocation_count=inv_count,
+                ))
+                seen_nodes.add(artifact_id)
+
+        # Then add all artifacts from state
         for artifact_id, artifact in self.state.artifacts.items():
             if artifact_id in seen_nodes:
                 continue
