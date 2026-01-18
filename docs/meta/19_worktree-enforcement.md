@@ -7,16 +7,19 @@ Multiple Claude Code instances working in the same directory causes:
 - Branch switches mid-edit
 - Merge conflicts from parallel uncommitted work
 - Lost work when instances don't coordinate
+- **Unclaimed worktrees** - Work happens without other instances knowing who's working on what
 
-Git worktrees solve this by giving each instance its own working directory, but there's no enforcement - instances can still accidentally edit the main directory.
+Git worktrees solve the isolation problem by giving each instance its own working directory, but there's no enforcement - instances can still accidentally edit the main directory or work in worktrees without claiming them.
 
 ## Solution
 
-Two-part enforcement:
+Three-part enforcement:
 
 1. **`make worktree` requires claiming** - The worktree creation script prompts for task description and plan number, creating a claim before the worktree. This ensures all instances can see what others are working on.
 
 2. **PreToolUse hook blocks edits in main** - A hook blocks Edit/Write operations when the target file is in the main repository directory (not a worktree).
+
+3. **PreToolUse hook blocks edits in unclaimed worktrees** - The same hook verifies that worktrees have an active claim before allowing edits. This prevents the "orphan work" problem where an instance edits files without claiming, leaving other instances unable to tell who's working there.
 
 ## Creating a Worktree (with mandatory claim)
 
@@ -122,6 +125,51 @@ Or use an existing worktree:
 
 The Edit/Write operation will be blocked, forcing the instance to use a worktree.
 
+## Claim Enforcement in Worktrees
+
+The hook also enforces that worktrees have active claims. If you try to edit a file in a worktree that has no matching claim in `.claude/active-work.yaml`:
+
+```
+BLOCKED: Worktree has no active claim
+
+Branch 'plan-64-impl' has no claim in .claude/active-work.yaml
+
+Create a claim first:
+  python scripts/check_claims.py --claim --task 'description' --id plan-64-impl
+
+Or if this is abandoned work, remove the worktree:
+  make worktree-remove BRANCH=plan-64-impl
+
+File: /path/to/file.py
+```
+
+### Why This Matters
+
+Without claim enforcement, a CC instance could:
+1. Use `git worktree add` directly (bypassing `make worktree`)
+2. Start editing files
+3. Other instances see "ACTIVE (no claim)" in `check_claims.py --list`
+4. No one knows who's working there or on what task
+
+With claim enforcement:
+- Edits are blocked until a claim exists
+- The instance must declare what they're working on
+- Other instances can see the task description
+- Coordination is maintained
+
+### How Claims Are Matched
+
+The hook matches the worktree's branch name against `cc_id` values in `.claude/active-work.yaml`:
+
+```yaml
+claims:
+- cc_id: plan-64-impl          # Must match branch name
+  task: Implement dependency graph
+  claimed_at: '2026-01-18T00:39:00Z'
+```
+
+If the worktree branch is `plan-64-impl`, the hook looks for `cc_id: plan-64-impl` in the claims file.
+
 ## Coordination Files (Whitelisted)
 
 The hook allows editing **coordination files** even in main directory:
@@ -153,10 +201,11 @@ Adjust the error message to match your branch naming convention.
 ## Limitations
 
 - **Requires jq:** The script uses `jq` to parse JSON input
-- **Path-based only:** Detects main vs worktree by path, not git internals
-- **Per-project:** Must configure `MAIN_DIR` for each project
-- **Read operations allowed:** Only blocks Edit/Write, not Read (intentional - reviewing main is fine)
+- **Git-based detection:** Uses `.git` file vs directory to detect worktrees
+- **Claim matching by branch name:** The `cc_id` in claims must match the worktree's branch name exactly
+- **Read operations allowed:** Only blocks Edit/Write, not Read (intentional - reviewing is fine)
 - **Most Bash operations allowed:** Only `git worktree remove` is blocked (prevents shell breakage)
+- **Claims file location:** Reads claims from main repo's `.claude/active-work.yaml`, not worktree's copy
 
 ## Related Patterns
 
