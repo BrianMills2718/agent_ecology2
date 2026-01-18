@@ -693,6 +693,78 @@ body {
 .legend-dot.ownership-transfer { background-color: #9c27b0; }
 .legend-dot.artifact-invoke { background-color: #ff9800; }
 
+/* Dependency Graph Panel */
+.dependency-panel {
+    flex: 1;
+    min-height: 250px;
+}
+
+.dependency-panel.collapsed {
+    flex: 0;
+    min-height: auto;
+}
+
+.dependency-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dependency-graph-container {
+    min-height: 200px;
+    height: 250px;
+    background-color: var(--bg-primary);
+    border-radius: 4px;
+}
+
+.dependency-metrics {
+    display: flex;
+    gap: 1rem;
+    flex: 1;
+}
+
+.dependency-metrics .metric {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+}
+
+.dependency-metrics .metric-label {
+    color: var(--text-secondary);
+}
+
+.dependency-metrics .metric-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.dependency-legend {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    padding: 0.5rem;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border-color);
+}
+
+.legend-dot.genesis { background-color: #ffd700; }
+.legend-dot.contract { background-color: #4caf50; }
+.legend-dot.executable { background-color: #2196f3; }
+.legend-dot.data { background-color: #9c27b0; }
+
+.graph-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--error);
+    font-size: 0.875rem;
+}
+
 /* Activity Feed Panel */
 .activity-panel {
     flex: 1;

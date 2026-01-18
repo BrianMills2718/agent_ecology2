@@ -139,6 +139,36 @@
                     </div>
                 </section>
 
+                <!-- Artifact Dependency Graph Panel -->
+                <section class="panel dependency-panel collapsed">
+                    <div class="panel-header" id="dependency-toggle">
+                        <h2>Artifact Dependencies</h2>
+                        <span class="collapse-icon">+</span>
+                    </div>
+                    <div class="panel-content" id="dependency-content">
+                        <div class="dependency-controls">
+                            <select id="dependency-filter" class="filter-select">
+                                <option value="">All Artifacts</option>
+                                <option value="genesis">Genesis Only</option>
+                                <option value="agent-created">Agent Created</option>
+                                <option value="with-deps">With Dependencies</option>
+                            </select>
+                            <div id="dependency-metrics" class="dependency-metrics">
+                                <!-- Metrics populated by JS -->
+                            </div>
+                        </div>
+                        <div class="dependency-graph-container" id="dependency-graph-container">
+                            <!-- vis.js dependency graph renders here -->
+                        </div>
+                        <div class="dependency-legend">
+                            <span class="legend-item"><span class="legend-dot genesis"></span> Genesis</span>
+                            <span class="legend-item"><span class="legend-dot contract"></span> Contract</span>
+                            <span class="legend-item"><span class="legend-dot executable"></span> Executable</span>
+                            <span class="legend-item"><span class="legend-dot data"></span> Data</span>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Activity Feed Panel -->
                 <section class="panel activity-panel">
                     <div class="panel-header">
@@ -346,6 +376,7 @@
     <script src="/static/js/panels/genesis.js"></script>
     <script src="/static/js/panels/controls.js"></script>
     <script src="/static/js/panels/network.js"></script>
+    <script src="/static/js/panels/dependency-graph.js"></script>
     <script src="/static/js/panels/activity.js"></script>
     <script src="/static/js/panels/thinking.js"></script>
     <script src="/static/js/main.js"></script>
