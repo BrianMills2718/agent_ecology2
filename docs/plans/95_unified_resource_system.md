@@ -47,16 +47,28 @@ Phase 2 (follow-up):
 
 ## Required Tests
 
-```
-tests/unit/test_resource_manager.py::TestResourceManagerInit
-tests/unit/test_resource_manager.py::TestResourceTypes
-tests/unit/test_resource_manager.py::TestPrincipalManagement
-tests/unit/test_resource_manager.py::TestBalanceOperations
-tests/unit/test_resource_manager.py::TestQuotaManagement
-tests/unit/test_resource_manager.py::TestRateLimiting
-tests/unit/test_resource_manager.py::TestTransfers
-tests/unit/test_resource_manager.py::TestReporting
-```
+- `tests/unit/test_resource_manager.py::TestResourceManagerInit::test_creates_empty_manager`
+- `tests/unit/test_resource_manager.py::TestResourceManagerInit::test_custom_rate_window`
+- `tests/unit/test_resource_manager.py::TestResourceTypes::test_register_depletable_resource`
+- `tests/unit/test_resource_manager.py::TestResourceTypes::test_register_allocatable_resource`
+- `tests/unit/test_resource_manager.py::TestResourceTypes::test_register_renewable_resource`
+- `tests/unit/test_resource_manager.py::TestResourceTypes::test_unknown_resource_type_is_none`
+- `tests/unit/test_resource_manager.py::TestPrincipalManagement::test_create_principal`
+- `tests/unit/test_resource_manager.py::TestPrincipalManagement::test_create_principal_empty`
+- `tests/unit/test_resource_manager.py::TestPrincipalManagement::test_principal_exists`
+- `tests/unit/test_resource_manager.py::TestBalanceOperations::test_get_balance`
+- `tests/unit/test_resource_manager.py::TestBalanceOperations::test_spend_success`
+- `tests/unit/test_resource_manager.py::TestBalanceOperations::test_spend_insufficient`
+- `tests/unit/test_resource_manager.py::TestQuotaManagement::test_set_quota`
+- `tests/unit/test_resource_manager.py::TestQuotaManagement::test_allocate_within_quota`
+- `tests/unit/test_resource_manager.py::TestQuotaManagement::test_allocate_exceeds_quota`
+- `tests/unit/test_resource_manager.py::TestRateLimiting::test_set_rate_limit`
+- `tests/unit/test_resource_manager.py::TestRateLimiting::test_consume_rate_limited`
+- `tests/unit/test_resource_manager.py::TestRateLimiting::test_consume_rate_limited_exceeds`
+- `tests/unit/test_resource_manager.py::TestTransfers::test_transfer_success`
+- `tests/unit/test_resource_manager.py::TestTransfers::test_transfer_insufficient`
+- `tests/unit/test_resource_manager.py::TestReporting::test_get_all_balances`
+- `tests/unit/test_resource_manager.py::TestReporting::test_get_principal_summary`
 
 ---
 
