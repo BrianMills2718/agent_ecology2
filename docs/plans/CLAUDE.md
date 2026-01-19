@@ -110,8 +110,8 @@ Master index of all gaps and their implementation plans.
 | 76 | [Simulation Metrics](76_simulation_metrics.md) | Medium | 📋 Planned | - |
 | 77 | [Genesis Coordinator](77_genesis_coordinator.md) | **High** | ✅ Complete | Cross-agent coordination |
 | 78 | [Emergence Monitoring](78_emergence_monitoring.md) | **High** | ✅ Complete | Strategic thinking detection |
-| 79 | [Time-Based Auctions](79_time_based_auctions.md) | Medium | 📋 Planned | Autonomous mode purity |
-| 80 | [Log Optimization](80_log_optimization.md) | Medium | ✅ Complete | - |
+| 79 | [Time-Based Auctions](79_time_based_auctions.md) | Medium | 🚧 In Progress | Autonomous mode purity |
+| 80 | [Log Optimization](80_log_optimization.md) | Medium | ✅ Planned | - |
 | 81 | [Handbook Audit](81_handbook_audit.md) | Medium | 📋 Planned | Agent capability |
 | 82 | [VSM-Aligned Improved Agents](82_vsm_aligned_agents.md) | Medium | ✅ Complete | - |
 | 83 | [Remove Tick-Based Execution](83_remove_tick_based_execution.md) | **High** | ✅ Complete | - |

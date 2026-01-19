@@ -477,14 +477,6 @@ class GenesisMint(GenesisArtifact):
 
         return None
 
-    def on_tick(self, tick: int) -> AuctionResult | None:
-        """DEPRECATED: Use update() instead. Kept for backward compatibility.
-
-        Plan #83: Tick-based execution is deprecated. This method now
-        just calls update() and ignores the tick parameter.
-        """
-        return self.update()
-
     def _resolve_auction(self) -> AuctionResult:
         """Resolve the current auction and distribute rewards.
 
