@@ -47,7 +47,7 @@ pytest tests/unit/test_ledger.py::TestTransfer::test_basic_transfer -v
 |------|---------|-------|-------|
 | **Unit** | Single class/function in isolation | Fast | None ideally |
 | **Integration** | Multiple components together | Medium | External APIs only |
-| **Acceptance** | Feature AC from acceptance_gates/*.yaml | Medium | Depends on feature |
+| **Acceptance** | Feature AC from meta/acceptance_gates/*.yaml | Medium | Depends on feature |
 | **E2E (smoke)** | Full simulation, mocked LLM | Fast | LLM mocked |
 | **E2E (real)** | Full simulation, real LLM | Slow | None |
 
@@ -60,7 +60,7 @@ Tests map to features via explicit markers (not directory structure):
 ```python
 import pytest
 
-@pytest.mark.feature("escrow")  # Maps to acceptance_gates/escrow.yaml
+@pytest.mark.feature("escrow")  # Maps to meta/acceptance_gates/escrow.yaml
 class TestEscrowFeature:
     def test_ac_1_successful_artifact_sale(self):
         """AC-1: Successful artifact sale via escrow."""
@@ -93,9 +93,9 @@ Feature acceptance tests live in `tests/integration/test_*_acceptance.py`:
 
 | File | Feature | Maps To |
 |------|---------|---------|
-| `test_escrow_acceptance.py` | escrow | acceptance_gates/escrow.yaml |
-| `test_rate_limiting_acceptance.py` | rate_limiting | acceptance_gates/rate_limiting.yaml |
-| `test_agent_loop_acceptance.py` | agent_loop | acceptance_gates/agent_loop.yaml |
+| `test_escrow_acceptance.py` | escrow | meta/acceptance_gates/escrow.yaml |
+| `test_rate_limiting_acceptance.py` | rate_limiting | meta/acceptance_gates/rate_limiting.yaml |
+| `test_agent_loop_acceptance.py` | agent_loop | meta/acceptance_gates/agent_loop.yaml |
 
 **Naming convention:** Test functions map to acceptance criteria:
 - `test_ac_1_*` → AC-1 from feature spec
@@ -105,7 +105,7 @@ Feature acceptance tests live in `tests/integration/test_*_acceptance.py`:
 
 - **Unit**: Testing logic in isolation (ledger math, policy checks)
 - **Integration**: Testing components work together (executor + ledger + artifacts)
-- **Acceptance**: Verify feature acceptance criteria from acceptance_gates/*.yaml
+- **Acceptance**: Verify feature acceptance criteria from meta/acceptance_gates/*.yaml
 - **E2E smoke**: CI - verify simulation runs without crashing
 - **E2E real**: Pre-release - verify real LLM integration works
 
@@ -137,7 +137,7 @@ When adding functionality:
 
 ## TDD Workflow
 
-See `docs/meta/03_testing-strategy.md` for full TDD workflow.
+See `meta/patterns/03_testing-strategy.md` for full TDD workflow.
 
 1. Define tests in plan's `## Required Tests` section
 2. Create test stubs (they will fail)
@@ -157,7 +157,7 @@ For releases: `pytest tests/ -v --run-external` (includes real E2E).
 
 ## Mocking Policy
 
-See `docs/meta/05_mocking-policy.md` for full policy.
+See `meta/patterns/05_mocking-policy.md` for full policy.
 
 **Summary:**
 - No mocks by default

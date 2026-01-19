@@ -79,6 +79,36 @@ meta/                           # NEW root directory
 
 ---
 
+## Files Affected
+
+- CLAUDE.md (modify)
+- docs/CLAUDE.md (modify)
+- scripts/doc_coupling.yaml (modify)
+- scripts/check_feature_coverage.py (modify)
+- scripts/validate_spec.py (modify)
+- scripts/check_claims.py (modify)
+- scripts/check_locked_files.py (modify)
+- scripts/complete_plan.py (modify)
+- scripts/parse_plan.py (modify)
+- .claude/hooks/protect-main.sh (modify)
+- hooks/CLAUDE.md (modify)
+- tests/unit/test_check_claims.py (modify)
+- tests/unit/test_template.py (modify)
+- tests/integration/test_mint_acceptance.py (modify)
+- tests/integration/test_escrow_acceptance.py (modify)
+- tests/integration/test_artifacts_acceptance.py (modify)
+- tests/integration/test_rate_limiting_acceptance.py (modify)
+- tests/integration/test_agent_loop_acceptance.py (modify)
+- tests/integration/test_agent_workflow.py (modify)
+- tests/integration/test_ledger_acceptance.py (modify)
+- tests/integration/test_contracts_acceptance.py (modify)
+- tests/conftest.py (modify)
+- meta/CLAUDE.md (create)
+- meta/patterns/01_README.md (create)
+- meta/acceptance_gates/CLAUDE.md (create)
+
+---
+
 ## Implementation Steps
 
 1. Create `meta/` directory structure

@@ -1,4 +1,4 @@
-"""Feature acceptance tests for agent_loop - maps to acceptance_gates/agent_loop.yaml.
+"""Feature acceptance tests for agent_loop - maps to meta/acceptance_gates/agent_loop.yaml.
 
 Run with: pytest --feature agent_loop tests/
 """
@@ -21,7 +21,7 @@ from src.world.rate_tracker import RateTracker
 
 @pytest.mark.feature("agent_loop")
 class TestAgentLoopFeature:
-    """Tests mapping to acceptance_gates/agent_loop.yaml acceptance criteria."""
+    """Tests mapping to meta/acceptance_gates/agent_loop.yaml acceptance criteria."""
 
     # AC-1: Agent loop starts and runs iterations (happy_path)
     @pytest.mark.asyncio
