@@ -38,6 +38,9 @@
 - config/schema.yaml (modify)
 - config/config.yaml (modify)
 - tests/unit/test_log_truncation.py (create)
+- docs/architecture/current/execution_model.md (modify)
+- docs/architecture/current/artifacts_executor.md (modify)
+- docs/architecture/current/configuration.md (modify)
 
 ---
 
