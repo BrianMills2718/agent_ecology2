@@ -1,7 +1,7 @@
 """Unit tests for template injection system.
 
 Tests the template rendering engine for Phase 2 context injection.
-Maps to acceptance criteria in acceptance_gates/agent_workflow.yaml (AC-8).
+Maps to acceptance criteria in meta/acceptance_gates/agent_workflow.yaml (AC-8).
 
 Run with: pytest tests/unit/test_template_injection.py -v
 """

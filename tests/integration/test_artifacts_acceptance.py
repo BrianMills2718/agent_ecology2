@@ -1,4 +1,4 @@
-"""Feature acceptance tests for artifacts - maps to acceptance_gates/artifacts.yaml.
+"""Feature acceptance tests for artifacts - maps to meta/acceptance_gates/artifacts.yaml.
 
 Run with: pytest --feature artifacts tests/
 """
@@ -13,7 +13,7 @@ from src.world.artifacts import Artifact, ArtifactStore, default_policy
 
 @pytest.mark.feature("artifacts")
 class TestArtifactsFeature:
-    """Tests mapping to acceptance_gates/artifacts.yaml acceptance criteria."""
+    """Tests mapping to meta/acceptance_gates/artifacts.yaml acceptance criteria."""
 
     # AC-1: Create artifact with required fields (happy_path)
     def test_ac_1_create_artifact_required_fields(self) -> None:
