@@ -143,8 +143,8 @@ async def run_with_dashboard(
         print(f"Port {configured_port} in use, using {port} instead")
     jsonl_file = dashboard_config.get("jsonl_file", "run.jsonl")
 
-    # Create dashboard app
-    app = create_app(jsonl_path=jsonl_file)
+    # Create dashboard app in live mode (new simulation - don't parse old logs)
+    app = create_app(jsonl_path=jsonl_file, live_mode=True)
 
     # Create uvicorn server config
     server_config = uvicorn.Config(

@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-19 (dashboard timestamp fix)
+**Last verified:** 2026-01-19 (dashboard live_mode)
 
 ---
 
@@ -217,6 +217,17 @@ logging:
 ## Dashboard
 
 Real-time web UI for monitoring simulation.
+
+### Modes
+
+| Mode | Flag | Behavior |
+|------|------|----------|
+| Live | `--dashboard` | Start empty, receive events as simulation runs |
+| Replay | `--dashboard-only` | Parse existing logs to view completed runs |
+
+The `live_mode` parameter controls this:
+- `live_mode=True`: New simulations - don't parse old logs at startup
+- `live_mode=False`: Replay mode - parse all existing events first
 
 ### Components
 
