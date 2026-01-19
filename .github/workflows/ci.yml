@@ -79,7 +79,7 @@ jobs:
       - name: Run pytest
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: pytest tests/ -v --tb=short
+        run: pip install pytest-timeout && pytest tests/ -v --tb=short --timeout=150
 
   mypy:
     needs: changes

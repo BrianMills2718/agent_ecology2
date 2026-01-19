@@ -127,6 +127,7 @@ Key methods still present:
 - tests/unit/test_dependency_graph.py (modify)
 - tests/unit/test_config_schema.py (modify)
 - Makefile (modify - add worktree protection)
+- .github/workflows/ci.yml (modify - add pytest timeout)
 - docs/architecture/current/execution_model.md (modify)
 - docs/architecture/current/resources.md (modify)
 - docs/architecture/current/supporting_systems.md (modify - doc coupling verification)
