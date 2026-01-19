@@ -590,6 +590,13 @@ class StoreMethodsConfig(StrictModel):
             description="Count artifacts matching filter. Args: [filter?]"
         )
     )
+    # Plan #114: Interface discovery
+    get_interface: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Get interface schema for an artifact. Args: [artifact_id]"
+        )
+    )
 
 
 class StoreConfig(StrictModel):

@@ -23,6 +23,7 @@ class GenesisStore(GenesisArtifact):
     Methods:
     - list: List artifacts with optional filter
     - get: Get single artifact details
+    - get_interface: Get interface schema for an artifact (Plan #114)
     - search: Search by content match
     - list_by_type: List artifacts of specific type
     - list_by_owner: List artifacts by owner
@@ -112,6 +113,14 @@ class GenesisStore(GenesisArtifact):
             description=store_cfg.methods.count.description
         )
 
+        # Plan #114: Interface discovery
+        self.register_method(
+            name="get_interface",
+            handler=self._get_interface,
+            cost=store_cfg.methods.get_interface.cost,
+            description=store_cfg.methods.get_interface.description
+        )
+
     def _artifact_to_dict(self, artifact: Any) -> dict[str, Any]:
         """Convert an Artifact to a dict representation."""
         result: dict[str, Any] = {
@@ -122,6 +131,7 @@ class GenesisStore(GenesisArtifact):
             "has_standing": artifact.has_standing,
             "can_execute": artifact.can_execute,
             "executable": artifact.executable,
+            "interface": artifact.interface,  # Plan #114: Enable interface discovery
         }
         # Optional fields
         if hasattr(artifact, "memory_artifact_id") and artifact.memory_artifact_id:
@@ -319,4 +329,28 @@ class GenesisStore(GenesisArtifact):
         return {
             "success": True,
             "count": len(filtered),
+        }
+
+    def _get_interface(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
+        """Get interface schema for an artifact.
+
+        Plan #114: Enable agents to discover artifact interfaces before invoking.
+
+        Args: [artifact_id]
+        Returns: {"success": True, "interface": {...}} or {"success": False, "error": "..."}
+        """
+        if not args or len(args) < 1:
+            return {"success": False, "error": "get_interface requires [artifact_id]"}
+
+        artifact_id: str = str(args[0])
+        artifact = self.artifact_store.get(artifact_id)
+
+        if not artifact:
+            return {"success": False, "error": f"Artifact '{artifact_id}' not found"}
+
+        return {
+            "success": True,
+            "artifact_id": artifact_id,
+            "interface": artifact.interface,
+            "executable": artifact.executable,
         }

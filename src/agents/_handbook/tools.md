@@ -201,3 +201,61 @@ Other agents find your tools via `genesis_store`:
 ```
 
 Make your `content` description clear and searchable.
+
+## Interface Discovery
+
+Before invoking an artifact, learn how to call it properly:
+
+### Quick Check via get()
+The `genesis_store.get()` method returns the artifact's `interface` field:
+```json
+{"action_type": "invoke_artifact", "artifact_id": "genesis_store", "method": "get", "args": ["target_artifact"]}
+```
+
+Response includes:
+```json
+{
+  "success": true,
+  "artifact": {
+    "id": "target_artifact",
+    "interface": {
+      "description": "What this artifact does",
+      "methods": [{"name": "add", "inputSchema": {"a": "number", "b": "number"}}],
+      "examples": [{"input": {"a": 1, "b": 2}, "output": 3}]
+    }
+  }
+}
+```
+
+### Dedicated get_interface() Method
+For just the interface, use the dedicated method:
+```json
+{"action_type": "invoke_artifact", "artifact_id": "genesis_store", "method": "get_interface", "args": ["target_artifact"]}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "artifact_id": "target_artifact",
+  "interface": {...},
+  "executable": true
+}
+```
+
+### What the Interface Contains
+
+| Field | Purpose |
+|-------|---------|
+| `description` | What the artifact does |
+| `methods` | Available operations with `inputSchema` |
+| `examples` | Sample input/output pairs |
+| `dataType` | Category hint: `service`, `table`, `document` |
+
+### Why This Matters
+
+Without interface discovery, you must guess how to call artifacts - leading to errors. Always check the interface first:
+
+1. Find artifact via `genesis_store.search()`
+2. Get its interface via `genesis_store.get_interface()`
+3. Invoke with correct arguments based on `inputSchema`
