@@ -2,7 +2,7 @@
 
 What we're building toward.
 
-**Last verified:** 2026-01-12
+**Last verified:** 2026-01-19
 
 **See current:** Access control is currently hardcoded policy fields on artifacts.
 
@@ -108,18 +108,66 @@ All contracts must implement `check_permission`:
 
 ---
 
+## Bootstrap Phase (ADR-0018)
+
+Genesis contracts (and all genesis artifacts) are created during a bootstrap phase in `World.__init__()`:
+
+```python
+class World:
+    def __init__(self):
+        self._bootstrapping = True
+        self._create_genesis_artifacts()  # No permission checks
+        self._bootstrapping = False       # Physics now applies
+```
+
+**Key points:**
+- Bootstrap is instantaneous (the constructor), not a time period
+- No permission checks during bootstrap
+- Once `World()` returns, bootstrap is over
+
+**Analogy:** Initial conditions of the universe aren't explained by physics. Physics describes what happens after the initial state exists.
+
+### Eris as Bootstrap Creator
+
+Genesis artifacts are created by `Eris`:
+
+```python
+genesis_freeware_contract = Artifact(
+    id="genesis_freeware_contract",
+    created_by="Eris",
+    access_contract_id="genesis_freeware_contract",  # Self-referential
+    ...
+)
+```
+
+**Why Eris?**
+- Greek goddess of discord and strife
+- Fits project philosophy: emergence over prescription, accept risk
+- `Eris` is registered as a principal that exists but cannot act post-bootstrap
+
+### Genesis Naming Convention
+
+| Suffix | Meaning | Example |
+|--------|---------|---------|
+| `_api` | Accessor to kernel state | `genesis_ledger_api`, `genesis_event_log_api` |
+| `_contract` | Access control contract | `genesis_freeware_contract`, `genesis_private_contract` |
+
+The `genesis_` prefix is reserved for system artifacts. Agents cannot create artifacts with this prefix.
+
+---
+
 ## Genesis Contracts
 
-Default contracts provided at system initialization.
+Default contracts provided at system initialization. **Genesis contracts are artifacts** - they have no special kernel privilege.
 
 | Contract | Behavior |
 |----------|----------|
-| `genesis_freeware` | Anyone reads/invokes, only creator writes/deletes |
-| `genesis_self_owned` | Only the artifact itself can access (for agent self-control) |
-| `genesis_private` | Only creator has any access |
-| `genesis_public` | Anyone can do anything |
+| `genesis_freeware_contract` | Anyone reads/invokes, only creator writes/deletes |
+| `genesis_self_owned_contract` | Only the artifact itself can access (for agent self-control) |
+| `genesis_private_contract` | Only creator has any access |
+| `genesis_public_contract` | Anyone can do anything |
 
-### genesis_freeware (Default)
+### genesis_freeware_contract (Default)
 
 ```python
 def check_permission(artifact_id, action, requester_id):
@@ -134,7 +182,7 @@ def check_permission(artifact_id, action, requester_id):
             return {"allowed": False, "reason": "Only creator can modify"}
 ```
 
-### genesis_self_owned
+### genesis_self_owned_contract
 
 ```python
 def check_permission(artifact_id, action, requester_id):
@@ -386,7 +434,7 @@ def check_permission(artifact_id, action, requester_id, artifact_content, contex
 
 ---
 
-## No Owner Bypass
+## No Owner Bypass (ADR-0016)
 
 The `access_contract_id` is the ONLY authority. There is no kernel-level owner bypass.
 
@@ -404,6 +452,8 @@ def can_access(artifact, action, requester):
 
 If you want owner-based access, your contract implements it. The kernel doesn't know what an "owner" is.
 
+**Note:** The kernel stores `created_by` (who created the artifact) but interprets it as historical fact, not authority. Contracts may choose to grant special access to the creator, but that's a policy decision, not kernel semantics. See ADR-0016.
+
 ---
 
 ## Performance Considerations
@@ -415,7 +465,7 @@ All contracts can opt into fast-path caching. No genesis privilege.
 ```python
 # Contract declares caching behavior
 {
-    "id": "genesis_freeware",
+    "id": "genesis_freeware_contract",
     "can_execute": True,
     "cache_policy": {
         "cacheable": True,
@@ -485,21 +535,25 @@ All deny → permanently locked
 
 **Consequence:** Creators are responsible for designing access control carefully. Orphaned artifacts remain forever, like lost Bitcoin.
 
-### Dangling Contracts (Open Question)
+### Dangling Contracts → Fail-Open (ADR-0017)
 
-What happens when an artifact's `access_contract_id` points to a deleted contract?
+When an artifact's `access_contract_id` points to a deleted contract, the system **fails open** to a configurable default contract (freeware by default).
 
-| Option | Behavior | Trade-off |
-|--------|----------|-----------|
-| Fail-open | Treat as public | Security risk |
-| Fail-closed | No access | Artifact locked forever |
-| Prevent deletion | Can't delete referenced contracts | Adds referential integrity complexity |
+| Scenario | Behavior |
+|----------|----------|
+| `access_contract_id` → deleted contract | Fall back to default contract |
+| `access_contract_id` → non-existent | Fall back to default contract |
 
-**Current position:** Undecided. Contracts that are referenced probably shouldn't be deletable, but this adds system complexity. Deferred to implementation phase.
+**Rationale:**
+- **Accept risk, observe outcomes**: Fail-closed is punitive without learning benefit
+- **Selection pressure still applies**: Your custom access control is gone - that's the consequence
+- **Maximum configurability**: Default contract is configurable per-world
+
+**Warning:** Loud logging occurs when this happens - artifacts falling back to default should be visible to operators.
 
 **Note:** This is different from orphan artifacts (contract exists but denies everyone). Dangling means the contract itself is gone.
 
-See DESIGN_CLARIFICATIONS.md for full discussion of considered alternatives.
+See ADR-0017 for full decision rationale.
 
 ---
 
@@ -515,6 +569,18 @@ See DESIGN_CLARIFICATIONS.md for full discussion of considered alternatives.
 - Access control logic (moved to contract code)
 
 ### New Components
-- Genesis contracts (genesis_freeware, etc.)
+- Genesis contracts (genesis_freeware_contract, etc.)
 - Contract invocation in permission checks
 - check_permission interface standard
+
+---
+
+## Related ADRs
+
+| ADR | Decision |
+|-----|----------|
+| ADR-0003 | Contracts can do anything (invoke, call LLM) |
+| ADR-0015 | Contracts are artifacts, no genesis privilege |
+| ADR-0016 | `created_by` replaces `owner_id` - kernel doesn't interpret ownership |
+| ADR-0017 | Dangling contracts fail-open to configurable default |
+| ADR-0018 | Bootstrap phase, Eris as creator, genesis naming convention |
