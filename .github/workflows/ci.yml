@@ -250,6 +250,9 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/check_plan_tests.py --all --strict
 
+      - name: Check plan completion evidence
+        run: python scripts/check_plan_completion.py --check-pr
+
       - name: Verify plan references in commits
         run: |
           UNPLANNED=$(git log origin/main..HEAD --oneline | grep -c '\[Unplanned\]' || true)

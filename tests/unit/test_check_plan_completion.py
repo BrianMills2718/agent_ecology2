@@ -85,3 +85,15 @@ class TestCheckPlanCompletion:
         )
         # With --warn-only, should always exit 0
         assert result.returncode == 0
+
+    def test_check_pr_runs(self):
+        """--check-pr runs without error."""
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT_PATH), "--check-pr"],
+            capture_output=True,
+            text=True,
+        )
+        # Should complete (exit code depends on whether there are issues)
+        assert result.returncode in [0, 1]
+        # Should have output about checking PR
+        assert "Checking PR" in result.stdout or "plans" in result.stdout.lower()

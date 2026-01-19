@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Check that merged plan commits have verification evidence.
+"""Check that plan completions have verification evidence.
 
 Plan #41 Gap 2: CI enforcement for complete_plan.py
 
 Usage:
-    # Check recent commits on main
-    python scripts/check_plan_completion.py --recent-commits 5
+    # Pre-merge CI check (fails if PR marks plan Complete without evidence)
+    python scripts/check_plan_completion.py --check-pr
+
+    # Check recent commits on main (post-merge, warn only)
+    python scripts/check_plan_completion.py --recent-commits 5 --warn-only
 
     # Check specific plan
     python scripts/check_plan_completion.py --plan 40
@@ -74,7 +77,8 @@ def check_plan_has_evidence(plan_number: int) -> tuple[bool, str]:
     has_verified = bool(re.search(r"\*\*Verified:\*\*\s+\d{4}-\d{2}-\d{2}", content))
 
     # Check for Complete status
-    is_complete = bool(re.search(r"\*\*Status:\*\*.*Complete|✅", content))
+    # Match: **Status:** ✅ Complete OR **Status:** Complete
+    is_complete = bool(re.search(r"\*\*Status:\*\*\s*(?:✅\s*)?Complete", content))
 
     if has_verified:
         return True, "Has verification evidence"
@@ -124,7 +128,8 @@ def list_missing_evidence() -> list[dict]:
         plan_num = int(match.group(1))
 
         # Check status
-        is_complete = bool(re.search(r"\*\*Status:\*\*.*Complete|✅", content))
+        # Match: **Status:** ✅ Complete OR **Status:** Complete
+        is_complete = bool(re.search(r"\*\*Status:\*\*\s*(?:✅\s*)?Complete", content))
         has_verified = bool(re.search(r"\*\*Verified:\*\*\s+\d{4}-\d{2}-\d{2}", content))
 
         if is_complete and not has_verified:
@@ -135,6 +140,76 @@ def list_missing_evidence() -> list[dict]:
             })
 
     return missing
+
+
+def get_pr_changed_plans() -> list[tuple[int, str]]:
+    """Get plan numbers that are being changed in current PR.
+
+    Returns list of (plan_number, status_in_pr) tuples for plans
+    where status is being set to Complete.
+
+    Only checks individual plan files (NN_name.md), not the index (CLAUDE.md).
+    """
+    # Get diff against main - exclude CLAUDE.md (auto-generated index)
+    result = subprocess.run(
+        ["git", "diff", "origin/main", "--", "docs/plans/[0-9]*.md"],
+        capture_output=True,
+        text=True,
+        cwd=Path(__file__).parent.parent
+    )
+    if result.returncode != 0:
+        return []
+
+    changed_plans = []
+    current_file = None
+    current_plan_num = None
+
+    for line in result.stdout.split("\n"):
+        # Track which file we're in
+        if line.startswith("+++ b/"):
+            filepath = line[6:]  # Remove "+++ b/" prefix
+            # Skip index file and template
+            if "CLAUDE.md" in filepath or "TEMPLATE.md" in filepath:
+                current_plan_num = None
+                current_file = None
+                continue
+            match = re.search(r"docs/plans/(\d+)_.*\.md", filepath)
+            if match:
+                current_plan_num = int(match.group(1))
+                current_file = filepath
+            else:
+                current_plan_num = None
+                current_file = None
+
+        # Look for status changes to Complete (added lines only)
+        if current_plan_num and line.startswith("+"):
+            # Check for Complete status being added
+            # Match: **Status:** ✅ Complete OR **Status:** Complete
+            if re.search(r"\*\*Status:\*\*\s*(?:✅\s*)?Complete", line):
+                changed_plans.append((current_plan_num, "Complete"))
+
+    return changed_plans
+
+
+def check_pr_completion() -> list[dict]:
+    """Check PR for plans being marked Complete without evidence.
+
+    Returns list of issues found.
+    """
+    changed = get_pr_changed_plans()
+    issues = []
+
+    for plan_num, status in changed:
+        if status == "Complete":
+            has_evidence, detail = check_plan_has_evidence(plan_num)
+            if not has_evidence:
+                issues.append({
+                    "plan": plan_num,
+                    "issue": detail,
+                    "fix": f"Run: python scripts/complete_plan.py --plan {plan_num}"
+                })
+
+    return issues
 
 
 def main() -> int:
@@ -159,6 +234,11 @@ def main() -> int:
         "--list-missing", "-l",
         action="store_true",
         help="List all Complete plans missing evidence"
+    )
+    parser.add_argument(
+        "--check-pr",
+        action="store_true",
+        help="Check if PR marks plans Complete without evidence (pre-merge CI)"
     )
     parser.add_argument(
         "--warn-only", "-w",
@@ -205,6 +285,23 @@ def main() -> int:
             exit_code = 1
         else:
             print("✅ All Complete plans have verification evidence.")
+
+    elif args.check_pr:
+        print("Checking PR for plans marked Complete without evidence...")
+        print("-" * 60)
+
+        issues = check_pr_completion()
+
+        if issues:
+            print(f"\n❌ Found {len(issues)} plan(s) marked Complete without verification:\n")
+            for issue in issues:
+                print(f"  Plan #{issue['plan']}: {issue['issue']}")
+                print(f"    Fix: {issue['fix']}")
+                print()
+            print("Plans must be completed using complete_plan.py to record evidence.")
+            exit_code = 1
+        else:
+            print("\n✅ No plans being marked Complete without evidence.")
 
     else:
         parser.print_help()
