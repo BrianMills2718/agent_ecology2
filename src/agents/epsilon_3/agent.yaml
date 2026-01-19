@@ -13,11 +13,14 @@ genotype:
   time_horizon: SHORT
   primary_strategy: OPPORTUNISTIC
 
-# RAG configuration
+# RAG configuration - learning-oriented queries
 rag:
   enabled: true
-  limit: 5
-  query_template: "State: {_current_state}. Tick {tick}. Scanning opportunities."
+  limit: 7
+  query_template: |
+    State: {_current_state}. Tick {tick}. Balance: {balance}.
+    What opportunities were profitable? What signals indicated them?
+    What patterns should I watch for?
 
 # State Machine: Opportunity Cycle
 # Fast cycle of monitoring, detecting, analyzing, and exploiting opportunities
@@ -48,6 +51,35 @@ workflow:
         condition: "tick % 5 == 0"
 
   steps:
+    # Step 0: Learning reflection - review opportunity outcomes
+    - name: learn_from_outcome
+      type: llm
+      prompt: |
+        === LEARNING REFLECTION ===
+        You are {agent_id}. Before scanning for new opportunities, reflect quickly.
+
+        Last action result: {last_action_result}
+        Current state: {_current_state}
+        Balance: {balance} scrip
+
+        QUICK REFLECTION (speed matters!):
+        1. Did the last opportunity pay off? Why/why not?
+        2. What signal should I remember for next time?
+        3. Should I adjust my opportunity detection?
+
+        CRITICAL: Update your working_memory with pattern recognition.
+        Use write_artifact to yourself with content containing:
+        ```yaml
+        working_memory:
+          profitable_patterns:
+            - [pattern that led to profit]
+          failed_patterns:
+            - [pattern that wasted resources]
+          current_focus: [what type of opportunity to watch for]
+        ```
+
+        Speed is essential - if no quick lesson, noop and move on.
+
     # Step 1: Scan for opportunities
     - name: scan_environment
       type: code

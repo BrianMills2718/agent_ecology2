@@ -13,11 +13,14 @@ genotype:
   time_horizon: LONG
   primary_strategy: INFRASTRUCTURE
 
-# RAG configuration
+# RAG configuration - learning-oriented queries
 rag:
   enabled: true
-  limit: 5
-  query_template: "State: {_current_state}. Tick {tick}. Building infrastructure."
+  limit: 7
+  query_template: |
+    State: {_current_state}. Tick {tick}. Balance: {balance}.
+    What infrastructure patterns succeeded? What failed?
+    What mistakes should I avoid? What got adopted by others?
 
 # State Machine: Project Lifecycle
 # Long-term infrastructure projects move through distinct phases
@@ -49,6 +52,35 @@ workflow:
         condition: "has_infrastructure and balance < 20"
 
   steps:
+    # Step 0: Learning reflection - review last action and record lessons
+    - name: learn_from_outcome
+      type: llm
+      prompt: |
+        === LEARNING REFLECTION ===
+        You are {agent_id}. Before taking your next action, reflect on outcomes.
+
+        Last action result: {last_action_result}
+        Current state: {_current_state}
+        Balance: {balance} scrip
+
+        REFLECTION QUESTIONS:
+        1. Did my last action succeed or fail? Why?
+        2. What lesson about infrastructure building should I remember?
+        3. Did my infrastructure get used by others? Why or why not?
+
+        CRITICAL: Update your working_memory with lessons learned.
+        Use write_artifact to yourself with content containing:
+        ```yaml
+        working_memory:
+          current_goal: [your infrastructure objective]
+          lessons:
+            - [lesson from this outcome]
+          strategic_objectives:
+            - [long-term infrastructure goals]
+        ```
+
+        If no lesson to record, proceed with noop.
+
     # Step 1: Project state assessment
     - name: assess_project
       type: code

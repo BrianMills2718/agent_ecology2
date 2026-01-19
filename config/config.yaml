@@ -404,14 +404,17 @@ agent:
   # Per-agent overrides in src/agents/<name>/agent.yaml
   rag:
     enabled: true                 # Set false to disable RAG entirely
-    limit: 5                      # Max memories to retrieve
+    limit: 7                      # Increased for richer context
     # Query template - variables: {tick}, {agent_id}, {balance}, {my_artifacts}, {other_agents}, {last_action}
     query_template: |
-      Tick {tick}. I am {agent_id} with {balance} scrip.
-      My artifacts: {my_artifacts}.
-      Other agents: {other_agents}.
-      {last_action}
-      What worked before? What should I try?
+      I am {agent_id} at tick {tick} with {balance} scrip.
+      My artifacts: {my_artifacts}. Last action: {last_action}
+
+      LEARNING QUERY:
+      - What strategies have worked for me before?
+      - What mistakes have I made that I should avoid?
+      - What patterns led to success vs failure?
+      - What should I do differently this time?
 
   # Error messages - configurable with handbook references
   # Use {placeholders} for dynamic values: {artifact_id}, {method}, {methods}, {escrow_id}
@@ -425,12 +428,12 @@ agent:
   # Working Memory (Plan #59) - Structured context for complex goal pursuit
   # Agents can store current_goal, progress, and lessons in their artifact content
   working_memory:
-    enabled: false                # Master switch - set true to enable
+    enabled: true                 # Master switch - enables strategic learning
     auto_inject: true             # Inject into prompt automatically when enabled
-    max_size_bytes: 2000          # Limit to prevent prompt bloat
-    include_in_rag: false         # Also include in semantic search?
+    max_size_bytes: 4000          # Increased for richer learning context
+    include_in_rag: true          # Include lessons in semantic search
     structured_format: true       # Enforce YAML schema vs freeform
-    warn_on_missing: false        # Log warning if agent has no working memory
+    warn_on_missing: true         # Log warning if agent has no working memory
 
   # Failure tracking (Plan #88) - Recent failures shown in prompt for learning
   failure_history_max: 5          # Max recent failures to track per agent

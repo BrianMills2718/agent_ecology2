@@ -13,11 +13,14 @@ genotype:
   time_horizon: MEDIUM
   primary_strategy: BUILD
 
-# RAG configuration
+# RAG configuration - learning-oriented queries
 rag:
   enabled: true
-  limit: 5
-  query_template: "State: {_current_state}. Tick {tick}. Building artifacts."
+  limit: 7
+  query_template: |
+    State: {_current_state}. Tick {tick}. Balance: {balance}.
+    What strategies worked for building artifacts?
+    What mistakes should I avoid? What patterns led to success?
 
 # State Machine: Build Cycle
 # Agents cycle through phases of creation
@@ -42,6 +45,36 @@ workflow:
         condition: "should_pivot"
 
   steps:
+    # Step 0: Learning reflection - review last action and record lessons
+    - name: learn_from_outcome
+      type: llm
+      prompt: |
+        === LEARNING REFLECTION ===
+        You are {agent_id}. Before taking your next action, reflect on what happened.
+
+        Last action result: {last_action_result}
+        Current state: {_current_state}
+        Balance: {balance} scrip
+
+        REFLECTION QUESTIONS:
+        1. Did my last action succeed or fail? Why?
+        2. What lesson should I remember from this outcome?
+        3. Should I adjust my strategy based on this?
+
+        CRITICAL: Update your working_memory with any lessons learned.
+        Use write_artifact to yourself with content containing:
+        ```yaml
+        working_memory:
+          current_goal: [your current objective]
+          lessons:
+            - [lesson from this outcome]
+            - [previous lessons to keep]
+          strategic_objectives:
+            - [what you're trying to achieve long-term]
+        ```
+
+        If no lesson to record, proceed with noop.
+
     # Step 1: Compute metrics (from alpha_2)
     - name: compute_metrics
       type: code
