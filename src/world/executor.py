@@ -69,8 +69,18 @@ def get_max_invoke_depth() -> int:
     return get_validated_config().executor.max_invoke_depth
 
 
+def get_max_contract_depth() -> int:
+    """Get max recursion depth for contract permission checks from config.
+
+    This limits how deep permission check chains can go to prevent
+    infinite recursion. Per Plan #100 and ADR-0018, default is 10.
+    """
+    return get_validated_config().executor.max_contract_depth
+
+
 # Legacy constant for backward compatibility
 DEFAULT_MAX_INVOKE_DEPTH = 5
+DEFAULT_MAX_CONTRACT_DEPTH = 10
 
 
 class ExecutionResult(TypedDict, total=False):
@@ -355,6 +365,7 @@ class SafeExecutor:
     timeout: int
     preloaded_modules: dict[str, ModuleType | _DatetimeModule]
     use_contracts: bool
+    max_contract_depth: int
     _contract_cache: dict[str, AccessContract | ExecutableContract]
     _ledger: "Ledger | None"
 
@@ -363,11 +374,13 @@ class SafeExecutor:
         timeout: int | None = None,
         use_contracts: bool = True,
         ledger: "Ledger | None" = None,
+        max_contract_depth: int | None = None,
     ) -> None:
         default_timeout: int = get("executor.timeout_seconds") or 5
         self.timeout = timeout or default_timeout
         self.preloaded_modules = get_preloaded_modules()
         self.use_contracts = use_contracts
+        self.max_contract_depth = max_contract_depth if max_contract_depth is not None else get_max_contract_depth()
         self._contract_cache = {}
         self._ledger = ledger
 
@@ -428,6 +441,7 @@ class SafeExecutor:
         caller: str,
         action: str,
         artifact: "Artifact",
+        contract_depth: int = 0,
     ) -> PermissionResult:
         """Check permission using artifact's access contract.
 
@@ -439,10 +453,19 @@ class SafeExecutor:
             caller: The principal requesting access
             action: The action being attempted (read, write, invoke, etc.)
             artifact: The artifact being accessed
+            contract_depth: Current depth of permission check chain (default 0).
+                Per Plan #100, prevents infinite recursion in permission checks.
 
         Returns:
             PermissionResult with allowed, reason, and optional cost
         """
+        # Check depth limit (Plan #100: prevent infinite recursion)
+        if contract_depth >= self.max_contract_depth:
+            return PermissionResult(
+                allowed=False,
+                reason=f"Contract permission check depth exceeded (depth={contract_depth}, limit={self.max_contract_depth})"
+            )
+
         # Get contract ID from artifact (default to freeware)
         contract_id = getattr(artifact, "access_contract_id", "genesis_contract_freeware")
         contract = self._get_contract(contract_id)

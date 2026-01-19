@@ -1144,3 +1144,109 @@ def check_permission(caller, action, target, context, ledger):
             "stranger", "read", self.artifact
         )
         assert result.allowed is False
+
+
+class TestContractDepthLimit:
+    """Tests for contract execution depth limiting (Plan #100).
+
+    Per ADR-0018 and Plan #100, contract execution depth must be tracked
+    to prevent infinite recursion in permission check chains.
+    """
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        from src.world.artifacts import Artifact
+        from src.world.executor import SafeExecutor
+        from src.world.ledger import Ledger
+
+        from decimal import Decimal
+
+        self.ledger = Ledger()
+        self.ledger.create_principal("test_user", Decimal("1000"))
+        self.ledger.create_principal("owner", Decimal("0"))
+
+        self.executor = SafeExecutor(timeout=5)
+        self.executor.set_ledger(self.ledger)
+
+        from datetime import datetime
+
+        # Create a basic artifact
+        self.artifact = Artifact(
+            id="test_artifact",
+            type="test",
+            content="test content",
+            owner_id="owner",
+            created_at=datetime.utcnow().isoformat(),
+            updated_at=datetime.utcnow().isoformat(),
+        )
+        self.artifact.access_contract_id = "genesis_contract_freeware"  # type: ignore[attr-defined]
+
+    def test_permission_check_at_depth_zero(self) -> None:
+        """Test that permission checks work at default depth 0."""
+        result = self.executor._check_permission_via_contract(
+            caller="test_user",
+            action="read",
+            artifact=self.artifact,
+        )
+        assert result.allowed is True
+
+    def test_permission_check_with_explicit_depth(self) -> None:
+        """Test that permission checks accept depth parameter."""
+        result = self.executor._check_permission_via_contract(
+            caller="test_user",
+            action="read",
+            artifact=self.artifact,
+            contract_depth=5,
+        )
+        assert result.allowed is True
+
+    def test_permission_denied_at_max_depth(self) -> None:
+        """Test that permission is denied when depth exceeds max_contract_depth."""
+        # Default max is 10, so depth 10 should be denied
+        result = self.executor._check_permission_via_contract(
+            caller="test_user",
+            action="read",
+            artifact=self.artifact,
+            contract_depth=10,
+        )
+        assert result.allowed is False
+        assert "depth" in result.reason.lower()
+
+    def test_depth_limit_configurable(self) -> None:
+        """Test that max_contract_depth is configurable."""
+        from src.world.executor import SafeExecutor
+
+        # Create executor with custom depth limit
+        executor = SafeExecutor(timeout=5, max_contract_depth=3)
+        executor.set_ledger(self.ledger)
+
+        # Depth 2 should work
+        result = executor._check_permission_via_contract(
+            caller="test_user",
+            action="read",
+            artifact=self.artifact,
+            contract_depth=2,
+        )
+        assert result.allowed is True
+
+        # Depth 3 should be denied (at limit)
+        result = executor._check_permission_via_contract(
+            caller="test_user",
+            action="read",
+            artifact=self.artifact,
+            contract_depth=3,
+        )
+        assert result.allowed is False
+
+    def test_depth_limit_error_message_informative(self) -> None:
+        """Test that depth limit error message is informative."""
+        result = self.executor._check_permission_via_contract(
+            caller="test_user",
+            action="read",
+            artifact=self.artifact,
+            contract_depth=10,
+        )
+        assert result.allowed is False
+        # Error message should mention depth and limit
+        assert "10" in result.reason or "depth" in result.reason.lower()
+        assert "exceeded" in result.reason.lower() or "limit" in result.reason.lower()

@@ -236,6 +236,7 @@ timeouts:
 executor:
   timeout_seconds: <number>     # Max time for agent code to run
   max_invoke_depth: <number>    # Maximum artifact invocation nesting depth (default: 5)
+  max_contract_depth: <number>  # Maximum contract permission check depth (default: 10, Plan #100)
   interface_validation: <string>  # 'none', 'warn', or 'strict' - validate invoke args against interface schema (Plan #86)
   allowed_imports:              # Whitelist of importable modules
     - math
