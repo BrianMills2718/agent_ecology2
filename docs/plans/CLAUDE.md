@@ -105,12 +105,12 @@ Master index of all gaps and their implementation plans.
 | 71 | [Ownership Check](71_ownership_check.md) | **High** | ✅ Complete | Meta-process integrity |
 | 72 | [Plan Number Enforcement](72_plan_number_enforcement.md) | **High** | ✅ Complete | Meta-process integrity |
 | 73 | [Output Messaging Fix](73_output_messaging_fix.md) | **High** | ✅ Complete | - |
-| 74 | [Meta-Process Doc Fixes](74_meta_process_doc_fixes.md) | Medium | 📋 Planned | - |
+| 74 | [Meta-Process Doc Fixes](74_meta_process_doc_fixes.md) | Medium | ✅ Complete | - |
 | 75 | [Autonomous Mint Resolution](75_autonomous_mint_resolution.md) | **Critical** | ✅ Complete | Emergent behavior |
 | 76 | [Simulation Metrics](76_simulation_metrics.md) | Medium | ✅ Complete | - |
 | 77 | [Genesis Coordinator](77_genesis_coordinator.md) | **High** | ✅ Complete | Cross-agent coordination |
 | 78 | [Emergence Monitoring](78_emergence_monitoring.md) | **High** | ✅ Complete | Strategic thinking detection |
-| 79 | [Time-Based Auctions](79_time_based_auctions.md) | Medium | 🚧 In Progress | Autonomous mode purity |
+| 79 | [Time-Based Auctions](79_time_based_auctions.md) | Medium | ✅ Complete | Autonomous mode purity |
 | 80 | [Log Optimization](80_log_optimization.md) | Medium | ✅ Planned | - |
 | 81 | [Handbook Audit](81_handbook_audit.md) | Medium | ✅ Complete | Agent capability |
 | 82 | [VSM-Aligned Improved Agents](82_vsm_aligned_agents.md) | Medium | ✅ Complete | - |
