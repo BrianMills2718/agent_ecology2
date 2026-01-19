@@ -117,7 +117,7 @@ Master index of all gaps and their implementation plans.
 | 83 | [Remove Tick-Based Execution](83_remove_tick_based_execution.md) | **High** | ✅ Complete | - |
 | 84 | [Float/Decimal Consistency](84_float_decimal_consistency.md) | Low | 📋 Deferred | - |
 | 85 | [Inter-CC Messaging](85_inter_cc_messaging.md) | Medium | ✅ Complete | Multi-CC collaboration |
-| 86 | [Interface Validation](86_interface_validation.md) | Medium | 📋 Planned | #14 |
+| 86 | [Interface Validation](86_interface_validation.md) | Medium | 🚧 In Progress | #14 |
 | 87 | [Meta-Process Coordination](87_meta_process_coordination_improvements.md) | Medium | ✅ Complete | Hook improvements |
 | 88 | [OODA Cognitive Logging](88_ooda_cognitive_logging.md) | **High** | ✅ Complete | Agent observability |
 | 89 | [Plan Enforcement Hooks](89_plan_enforcement_hooks.md) | **High** | ✅ Complete | - |

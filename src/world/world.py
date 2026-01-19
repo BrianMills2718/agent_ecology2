@@ -20,7 +20,7 @@ from .genesis import (
     create_genesis_artifacts, GenesisArtifact, GenesisRightsRegistry,
     GenesisMint, GenesisDebtContract, RightsConfig, SubmissionInfo
 )
-from .executor import get_executor
+from .executor import get_executor, validate_args_against_interface
 from .errors import ErrorCode, ErrorCategory
 from .rate_tracker import RateTracker
 from .invocation_registry import InvocationRegistry, InvocationRecord
@@ -894,6 +894,44 @@ class World:
                     error_code=ErrorCode.NOT_AUTHORIZED.value,
                     error_category=ErrorCategory.PERMISSION.value,
                     retriable=False,
+                )
+
+            # Plan #86: Interface validation
+            # Validate args against artifact's declared interface schema if available
+            from ..config import get_validated_config
+            validation_mode = get_validated_config().executor.interface_validation
+
+            # Convert args list to dict for validation (if args is a list, wrap it)
+            args_dict: dict[str, Any] = {}
+            if intent.args:
+                if isinstance(intent.args, dict):
+                    args_dict = intent.args
+                elif isinstance(intent.args, list) and len(intent.args) > 0:
+                    # For list args, create a dict with 'args' key
+                    args_dict = {"args": intent.args}
+
+            validation_result = validate_args_against_interface(
+                interface=artifact.interface,
+                method_name=method_name,
+                args=args_dict,
+                validation_mode=validation_mode,
+            )
+
+            if not validation_result.proceed:
+                # Strict mode - reject the invocation
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self._log_invoke_failure(
+                    intent.principal_id, artifact_id, method_name,
+                    duration_ms, "interface_validation_failed",
+                    validation_result.error_message
+                )
+                return ActionResult(
+                    success=False,
+                    message=f"Interface validation failed: {validation_result.error_message}",
+                    error_code=ErrorCode.INVALID_ARGUMENT.value,
+                    error_category=ErrorCategory.VALIDATION.value,
+                    retriable=False,
+                    error_details={"validation_error": validation_result.error_message},
                 )
 
             # Plan #15: Genesis method dispatch (if genesis_methods is set)

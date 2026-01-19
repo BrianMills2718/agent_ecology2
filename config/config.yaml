@@ -305,6 +305,7 @@ timeouts:
 executor:
   timeout_seconds: 5
   max_invoke_depth: 5            # Maximum artifact invocation nesting depth
+  interface_validation: warn     # Plan #86: 'none', 'warn', or 'strict'
   # NOTE: These modules are PRE-LOADED into the execution namespace.
   # This is NOT a security whitelist - agents can import any stdlib module.
   # Security boundary is the container, not code-level sandboxing.
