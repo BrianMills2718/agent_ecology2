@@ -15,14 +15,18 @@ from __future__ import annotations
 
 import builtins
 import json
+import logging
 import math
 import random
 import signal
 import time
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from types import FrameType, ModuleType
 from typing import Any, Callable, Generator, TypedDict
+
+import jsonschema
 
 from ..config import get, get_validated_config
 from .simulation_engine import measure_resources
@@ -83,10 +87,104 @@ class ExecutionResult(TypedDict, total=False):
     execution_time_ms: float
 
 
-class ValidationResult(TypedDict, total=False):
+class CodeValidationResult(TypedDict, total=False):
     """Result from code validation."""
     valid: bool
     error: str
+
+
+@dataclass
+class ValidationResult:
+    """Result from interface validation (Plan #86).
+
+    Attributes:
+        valid: Whether the arguments matched the interface schema
+        proceed: Whether to proceed with the invocation
+        skipped: Whether validation was skipped entirely
+        error_message: Description of validation failure (if any)
+    """
+    valid: bool
+    proceed: bool
+    skipped: bool
+    error_message: str
+
+
+# Logger for interface validation
+_logger = logging.getLogger(__name__)
+
+
+def validate_args_against_interface(
+    interface: dict[str, Any] | None,
+    method_name: str,
+    args: dict[str, Any],
+    validation_mode: str,
+) -> ValidationResult:
+    """Validate invocation arguments against artifact interface schema (Plan #86).
+
+    Args:
+        interface: The artifact's interface definition (MCP-compatible format)
+        method_name: The method being invoked
+        args: The arguments being passed
+        validation_mode: One of 'none', 'warn', or 'strict'
+
+    Returns:
+        ValidationResult indicating whether to proceed
+    """
+    # Mode 'none' - skip all validation
+    if validation_mode == "none":
+        return ValidationResult(valid=True, proceed=True, skipped=True, error_message="")
+
+    # No interface - skip validation
+    if interface is None:
+        return ValidationResult(valid=True, proceed=True, skipped=True, error_message="")
+
+    # Get tools array from interface
+    tools = interface.get("tools", [])
+    if not tools:
+        # No tools defined - skip validation
+        return ValidationResult(valid=True, proceed=True, skipped=True, error_message="")
+
+    # Find the method in tools
+    method_schema = None
+    for tool in tools:
+        if tool.get("name") == method_name:
+            method_schema = tool
+            break
+
+    if method_schema is None:
+        # Method not found in interface
+        error_msg = f"Method '{method_name}' not found in interface"
+        if validation_mode == "warn":
+            _logger.warning("Interface validation: %s", error_msg)
+            return ValidationResult(valid=False, proceed=True, skipped=False, error_message=error_msg)
+        else:  # strict
+            return ValidationResult(valid=False, proceed=False, skipped=False, error_message=error_msg)
+
+    # Get inputSchema from method
+    input_schema = method_schema.get("inputSchema")
+    if input_schema is None:
+        # No inputSchema - skip validation (method accepts anything)
+        return ValidationResult(valid=True, proceed=True, skipped=True, error_message="")
+
+    # Validate args against inputSchema using jsonschema
+    try:
+        jsonschema.validate(instance=args, schema=input_schema)
+        # Validation passed
+        return ValidationResult(valid=True, proceed=True, skipped=False, error_message="")
+    except jsonschema.ValidationError as e:
+        # Validation failed - extract meaningful error message
+        error_msg = str(e.message)
+
+        if validation_mode == "warn":
+            _logger.warning("Interface validation failed for '%s': %s", method_name, error_msg)
+            return ValidationResult(valid=False, proceed=True, skipped=False, error_message=error_msg)
+        else:  # strict
+            return ValidationResult(valid=False, proceed=False, skipped=False, error_message=error_msg)
+    except jsonschema.SchemaError as e:
+        # Schema itself is invalid - treat as skip
+        error_msg = f"Invalid interface schema: {e.message}"
+        _logger.error("Interface schema error: %s", error_msg)
+        return ValidationResult(valid=False, proceed=True, skipped=False, error_message=error_msg)
 
 
 # Create a simple datetime module-like object

@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-19 (Plan #97 - SQLite retry config)
+**Last verified:** 2026-01-19 (Plan #86 - interface validation)
 
 ---
 
@@ -195,12 +195,21 @@ genesis:
 ```yaml
 executor:
   timeout_seconds: 5
+  interface_validation: warn  # Plan #86: none, warn, or strict
   preloaded_imports:        # NOT a security whitelist
     - math
     - json
     - random
     - datetime
 ```
+
+**Interface Validation (Plan #86):**
+
+| Mode | Behavior |
+|------|----------|
+| `none` | Skip validation - trust interfaces |
+| `warn` | Log warning if args don't match schema, proceed anyway |
+| `strict` | Reject invoke if args don't match declared inputSchema |
 
 ### LLM
 

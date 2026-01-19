@@ -718,6 +718,11 @@ class ExecutorConfig(StrictModel):
         gt=0,
         description="Maximum artifact invocation nesting depth"
     )
+    interface_validation: str = Field(
+        default="warn",
+        pattern="^(none|warn|strict)$",
+        description="Interface validation mode: 'none' (skip), 'warn' (log), 'strict' (reject) - Plan #86"
+    )
     preloaded_imports: list[str] = Field(
         default_factory=lambda: ["math", "json", "random", "datetime"],
         description="Modules pre-loaded into execution namespace (NOT a security whitelist)"

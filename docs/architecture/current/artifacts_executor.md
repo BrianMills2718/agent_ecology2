@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-19 (Plan #80 - log truncation)
+**Last verified:** 2026-01-19 (Plan #86 - interface validation)
 
 ---
 
@@ -154,6 +154,62 @@ The `interface` field uses JSON format with conventional field names. These are 
 - Unknown structure shown as raw JSON
 
 See `docs/plans/53_interface_reserved_terms.md` for full specification.
+
+### Interface Validation (Plan #86)
+
+When artifacts define an `interface` with `tools` containing `inputSchema`, the executor can validate invocation arguments against the schema.
+
+**Configuration:**
+
+```yaml
+executor:
+  interface_validation: warn  # Options: none, warn, strict
+```
+
+| Mode | Behavior |
+|------|----------|
+| `none` | Skip all validation - trust interfaces |
+| `warn` | Log warning if args don't match schema, proceed anyway |
+| `strict` | Reject invoke if args don't match schema |
+
+**Validation Flow:**
+
+1. Get artifact's `interface` at invoke time
+2. Look up method in `interface.tools[]` by name
+3. Validate args against method's `inputSchema` using JSON Schema
+4. If invalid:
+   - `warn` mode: Log warning, continue execution
+   - `strict` mode: Return error, reject invocation
+
+**What Gets Validated:**
+
+| Check | Description |
+|-------|-------------|
+| Required fields | All fields in `inputSchema.required` must be present |
+| Type matching | Argument types must match `inputSchema.properties[*].type` |
+| Method existence | Method name must exist in `interface.tools[]` |
+
+**Error on Strict Mode:**
+
+```python
+{
+    "success": False,
+    "message": "Interface validation failed: 'name' is a required property",
+    "error_code": "invalid_argument",
+    "error_category": "validation",
+    "retriable": False
+}
+```
+
+**Skip Conditions:**
+
+Validation is skipped (proceeds with execution) when:
+- `interface_validation: none` in config
+- Artifact has no `interface` field
+- Interface has no `tools` array
+- Method not found in interface (warn only)
+- Method has no `inputSchema`
+
 ---
 
 ## Policy System
@@ -439,6 +495,7 @@ All intents include reasoning in their `to_dict()` output, so logged actions con
 | `src/world/executor.py` | `SafeExecutor` | Code execution |
 | `src/world/executor.py` | `get_executor()` | Singleton accessor |
 | `src/world/executor.py` | `DependencyWrapper`, `ExecutionContext` | Dependency injection (Plan #63) |
+| `src/world/executor.py` | `validate_args_against_interface()`, `ValidationResult` | Interface validation (Plan #86) |
 | `src/world/kernel_interface.py` | `KernelState`, `KernelActions` | Kernel interfaces for artifacts |
 | `src/world/actions.py` | `ActionResult`, `ActionIntent` | Action definitions and results |
 | `src/world/errors.py` | `ErrorCode`, `ErrorCategory` | Error response conventions |
