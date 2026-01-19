@@ -78,10 +78,12 @@ class TestRunnerOutputMode:
         assert "Max ticks" not in output
         assert "max ticks" not in output
 
-    def test_tick_mode_shows_ticks(self) -> None:
-        """Tick-based mode shows 'max ticks' information."""
+    def test_autonomous_mode_always_shown(self) -> None:
+        """Plan #102: Autonomous mode is always shown (tick-based mode removed)."""
         from src.simulation.runner import SimulationRunner
 
+        # Even with use_autonomous_loops=False, output should show Autonomous
+        # because tick-based mode was removed in Plan #102
         runner = self._create_mock_runner(use_autonomous_loops=False, max_ticks=50)
 
         # Capture stdout
@@ -91,12 +93,12 @@ class TestRunnerOutputMode:
 
         output = captured.getvalue()
 
-        # Should show tick mode with max ticks
-        assert "Tick-based" in output
-        assert "max ticks: 50" in output
+        # Plan #102: Always shows autonomous mode
+        assert "Autonomous" in output
 
-        # Should NOT show autonomous mode
-        assert "Autonomous" not in output
+        # Should NOT show tick-based mode
+        assert "Tick-based" not in output
+        assert "max ticks" not in output
 
 
 @pytest.mark.feature("runner_output")

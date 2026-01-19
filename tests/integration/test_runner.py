@@ -140,8 +140,8 @@ class TestCheckpointRestore:
             config = make_minimal_config(tmpdir)
             runner = SimulationRunner(config, checkpoint=checkpoint, verbose=False)
 
-            # Tick is restored to checkpoint.tick - 1 (because advance_tick increments)
-            assert runner.world.tick == 24
+            # Event counter (tick) is restored directly from checkpoint (Plan #102)
+            assert runner.world.tick == 25
 
     @patch("src.simulation.runner.load_agents")
     def test_restores_api_cost_from_checkpoint(self, mock_load: MagicMock) -> None:
@@ -319,8 +319,7 @@ class TestGetStatus:
 
             assert status["running"] is False
             assert status["paused"] is False
-            assert status["tick"] == 0
-            assert status["max_ticks"] == 10
+            assert status["event_count"] == 0  # Plan #102: renamed from "tick"
             assert status["agent_count"] == 2
             assert "api_cost" in status
             assert "max_api_cost" in status
@@ -581,17 +580,17 @@ class TestAutonomousMode:
     """Tests for autonomous agent loop execution (INT-003)."""
 
     @patch("src.simulation.runner.load_agents")
-    def test_autonomous_mode_disabled_by_default(self, mock_load: MagicMock) -> None:
-        """Autonomous mode is not used by default."""
+    def test_autonomous_mode_always_enabled(self, mock_load: MagicMock) -> None:
+        """Autonomous mode is always enabled (Plan #102: tick-based mode removed)."""
         mock_load.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
             runner = SimulationRunner(config, verbose=False)
 
-            assert runner.use_autonomous_loops is False
-            assert runner.world.use_autonomous_loops is False
-            assert runner.world.loop_manager is None
+            # Plan #102: Autonomous mode is always used
+            assert runner.use_autonomous_loops is True
+            assert runner.world.loop_manager is not None
 
     @patch("src.simulation.runner.load_agents")
     def test_autonomous_mode_enabled_from_config(self, mock_load: MagicMock) -> None:
@@ -648,20 +647,20 @@ class TestAutonomousMode:
             assert runner.world.rate_tracker.window_seconds == 120.0
 
     @patch("src.simulation.runner.load_agents")
-    def test_tick_based_mode_unchanged_when_flag_false(
+    def test_autonomous_mode_ignores_config_false(
         self, mock_load: MagicMock
     ) -> None:
-        """Tick-based mode works as before when autonomous mode is disabled."""
+        """Autonomous mode is used even if config says false (Plan #102)."""
         mock_load.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
-            config["execution"] = {"use_autonomous_loops": False}
+            config["execution"] = {"use_autonomous_loops": False}  # Ignored
             runner = SimulationRunner(config, verbose=False)
 
-            # Should be in tick-based mode
-            assert runner.use_autonomous_loops is False
-            assert runner.world.loop_manager is None
+            # Plan #102: Always uses autonomous mode
+            assert runner.use_autonomous_loops is True
+            assert runner.world.loop_manager is not None
 
     @patch("src.simulation.runner.load_agents")
     def test_create_agent_loop_with_config(self, mock_load: MagicMock) -> None:
@@ -735,16 +734,14 @@ class TestAutonomousMode:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
-            # Use tick-based mode for this test
-            config["execution"] = {"use_autonomous_loops": False}
             runner = SimulationRunner(config, verbose=False)
 
-            # Should have run method that accepts duration
+            # Plan #102: run() only accepts duration (max_ticks removed)
             import inspect
             sig = inspect.signature(runner.run)
             params = list(sig.parameters.keys())
             assert "duration" in params
-            assert "max_ticks" in params
+            assert "max_ticks" not in params  # Removed in Plan #102
 
 
 class TestAgentAliveProperty:

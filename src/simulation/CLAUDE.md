@@ -1,42 +1,48 @@
 # Simulation Module
 
-Orchestrates the tick loop and manages persistence.
+Orchestrates autonomous agent loops and manages persistence.
 
 ## Module Responsibilities
 
 | File | Responsibility |
 |------|----------------|
-| `runner.py` | Main SimulationRunner, tick loop, two-phase execution |
+| `runner.py` | Main SimulationRunner, autonomous agent loops |
 | `checkpoint.py` | Save/restore world state to JSON |
 | `types.py` | Type definitions for simulation |
+| `agent_loop.py` | Individual agent loop management |
 
-## Execution Model (Current)
+## Execution Model (Plan #102 - Autonomous Only)
 
-**Tick-synchronized, two-phase commit:**
+**Time-based autonomous execution:**
 
+Agents run independently in their own loops, resource-gated by RateTracker.
+Each agent loop:
+1. Check resource availability (rate limits)
+2. Get world state snapshot
+3. Decide action (LLM call)
+4. Execute action
+5. Sleep/backoff as needed
+6. Repeat
+
+```python
+# Autonomous mode: Each agent runs via AgentLoop
+from src.world.agent_loop import AgentLoopManager
+
+manager = AgentLoopManager(rate_tracker)
+for agent in agents:
+    manager.create_loop(agent_id, decide_fn, execute_fn)
+
+manager.start_all()  # Agents run continuously
+# RateTracker handles rate limiting via rolling windows
 ```
-1. advance_tick()           # Increment tick, reset flow resources
-2. oracle.on_tick()         # Resolve any pending auctions
-3. get_state_summary()      # Snapshot world state for agents
-4. PHASE 1: parallel think  # asyncio.gather() all agents
-5. PHASE 2: sequential exec # Randomized order for fairness
-6. Optional checkpoint      # Save state periodically
-7. Sleep rate_limit_delay   # Respect API rate limits
-8. Repeat
-```
+
+**Key characteristics:**
+- Agents run independently (no synchronization)
+- `RateTracker` for rolling-window rate limiting
+- Resource exhaustion pauses agent (doesn't crash)
+- Time-based auctions via periodic mint update
 
 ## Key Patterns
-
-### Two-Phase Commit
-```python
-# Phase 1: All agents think in parallel (no side effects)
-intents = await asyncio.gather(*[a.propose_action_async() for a in agents])
-
-# Phase 2: Execute in randomized order (side effects happen)
-random.shuffle(intents)
-for intent in intents:
-    world.execute_action(intent)
-```
 
 ### Checkpoint Round-Trip
 ```python
@@ -51,30 +57,8 @@ world = checkpoint.load("checkpoint.json")
 
 Changes to `runner.py` MUST update `docs/architecture/current/execution_model.md`.
 
-## Autonomous Execution Mode (Phase 2)
-
-When `execution.use_autonomous_loops: true`, agents run independently instead of tick-synchronized.
-
-```python
-# Autonomous mode: Each agent runs via AgentLoop
-from src.world.agent_loop import AgentLoopManager
-
-manager = AgentLoopManager(config)
-for agent in agents:
-    manager.start_loop(agent)
-
-# Loops run continuously, RateTracker replaces tick-based resource reset
-```
-
-Key differences from tick-based:
-- Agents run independently (no synchronization)
-- `RateTracker` for rolling-window rate limiting
-- Resource exhaustion pauses agent (doesn't crash)
-
-See `docs/architecture/current/execution_model.md` for full details.
-
 ## Testing
 
 ```bash
-pytest tests/test_runner.py tests/test_checkpoint.py -v
+pytest tests/integration/test_runner.py tests/test_checkpoint.py -v
 ```
