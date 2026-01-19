@@ -97,12 +97,10 @@ Reads don't need IMMEDIATE because they never upgrade to write locks.
 
 ## Required Tests
 
-```
-tests/unit/test_state_store.py::TestConcurrentReads::test_concurrent_reads_are_parallel
-tests/unit/test_state_store.py::TestConcurrentReads::test_read_during_write_succeeds
-tests/unit/test_state_store.py::TestConcurrentReads::test_write_during_read_succeeds
-tests/unit/test_state_store.py::TestAgentStateStore::test_concurrent_access (existing - should now pass reliably)
-```
+- `tests/unit/test_state_store.py::TestConcurrentReads::test_concurrent_reads_are_parallel`
+- `tests/unit/test_state_store.py::TestConcurrentReads::test_read_during_write_succeeds`
+- `tests/unit/test_state_store.py::TestConcurrentReads::test_write_during_read_succeeds`
+- `tests/unit/test_state_store.py::TestAgentStateStore::test_concurrent_access`
 
 ## Implementation Steps
 
