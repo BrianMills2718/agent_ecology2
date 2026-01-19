@@ -91,26 +91,51 @@ class TickSummaryCollector:
         self._scrip_transferred: int = 0
         self._artifacts_created: int = 0
         self._highlights: list[str] = []
+        # Per-agent tracking (Plan #76)
+        self._per_agent: dict[str, dict[str, int]] = {}
 
-    def record_action(self, action_type: str, success: bool = True) -> None:
+    def record_action(
+        self,
+        action_type: str,
+        success: bool = True,
+        agent_id: str | None = None,
+    ) -> None:
         """Record an action execution.
 
         Args:
             action_type: The type of action (e.g., "invoke", "write", "read")
             success: Whether the action succeeded
+            agent_id: Optional agent ID for per-agent tracking (Plan #76)
         """
         self._actions_executed += 1
         self._actions_by_type[action_type] = self._actions_by_type.get(action_type, 0) + 1
         if not success:
             self._errors += 1
 
-    def record_llm_tokens(self, count: int) -> None:
+        # Per-agent tracking (Plan #76)
+        if agent_id is not None:
+            if agent_id not in self._per_agent:
+                self._per_agent[agent_id] = {"actions": 0, "successes": 0, "failures": 0, "tokens": 0}
+            self._per_agent[agent_id]["actions"] += 1
+            if success:
+                self._per_agent[agent_id]["successes"] += 1
+            else:
+                self._per_agent[agent_id]["failures"] += 1
+
+    def record_llm_tokens(self, count: int, agent_id: str | None = None) -> None:
         """Record LLM token usage.
 
         Args:
             count: Number of tokens consumed
+            agent_id: Optional agent ID for per-agent tracking (Plan #76)
         """
         self._llm_tokens += count
+
+        # Per-agent tracking (Plan #76)
+        if agent_id is not None:
+            if agent_id not in self._per_agent:
+                self._per_agent[agent_id] = {"actions": 0, "successes": 0, "failures": 0, "tokens": 0}
+            self._per_agent[agent_id]["tokens"] += count
 
     def record_scrip_transfer(self, amount: int) -> None:
         """Record a scrip transfer.
@@ -155,6 +180,8 @@ class TickSummaryCollector:
             "artifacts_created": self._artifacts_created,
             "errors": self._errors,
             "highlights": self._highlights.copy(),
+            # Per-agent tracking (Plan #76)
+            "per_agent": {k: v.copy() for k, v in self._per_agent.items()},
         }
         self._reset()
         return summary

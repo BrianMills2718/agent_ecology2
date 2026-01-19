@@ -57,6 +57,9 @@ class AgentState:
     actions: list[ActionEvent] = field(default_factory=list)
     thinking_history: list[ThinkingEvent] = field(default_factory=list)
     artifacts_owned: list[str] = field(default_factory=list)
+    # Per-agent action tracking (Plan #76)
+    action_successes: int = 0
+    action_failures: int = 0
 
 
 @dataclass

@@ -1,4 +1,4 @@
-"""Tests for EventLogger per-run logging (Plan #56)
+"""Tests for EventLogger per-run logging (Plan #56) and per-agent metrics (Plan #76)
 
 TDD tests - write first, then implement.
 """
@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.world.logger import EventLogger
+from src.world.logger import EventLogger, TickSummaryCollector
 
 
 class TestPerRunLogging:
@@ -164,3 +164,77 @@ class TestEventLoggerBasics:
         event = json.loads(output_file.read_text().strip())
         assert "timestamp" in event
         assert "event_type" in event
+
+
+@pytest.mark.plans(76)
+class TestTickSummaryCollector:
+    """Test TickSummaryCollector per-agent tracking (Plan #76)"""
+
+    def test_per_agent_action_tracking(self) -> None:
+        """Per-agent stats accumulated correctly."""
+        collector = TickSummaryCollector()
+
+        # Record actions for multiple agents
+        collector.record_action("invoke", success=True, agent_id="alpha")
+        collector.record_action("invoke", success=True, agent_id="alpha")
+        collector.record_action("write", success=True, agent_id="beta")
+
+        summary = collector.finalize(tick=1, agents_active=2)
+
+        # Check per-agent stats exist
+        assert "per_agent" in summary
+        assert "alpha" in summary["per_agent"]
+        assert "beta" in summary["per_agent"]
+
+        # Check alpha's stats
+        assert summary["per_agent"]["alpha"]["actions"] == 2
+        assert summary["per_agent"]["alpha"]["successes"] == 2
+        assert summary["per_agent"]["alpha"]["failures"] == 0
+
+        # Check beta's stats
+        assert summary["per_agent"]["beta"]["actions"] == 1
+        assert summary["per_agent"]["beta"]["successes"] == 1
+
+    def test_per_agent_success_failure(self) -> None:
+        """Success/failure counted per agent."""
+        collector = TickSummaryCollector()
+
+        # Record mixed success/failure for one agent
+        collector.record_action("invoke", success=True, agent_id="alpha")
+        collector.record_action("invoke", success=False, agent_id="alpha")
+        collector.record_action("invoke", success=False, agent_id="alpha")
+
+        summary = collector.finalize(tick=1, agents_active=1)
+
+        assert summary["per_agent"]["alpha"]["actions"] == 3
+        assert summary["per_agent"]["alpha"]["successes"] == 1
+        assert summary["per_agent"]["alpha"]["failures"] == 2
+
+    def test_backward_compatible_without_agent_id(self) -> None:
+        """Existing code without agent_id still works."""
+        collector = TickSummaryCollector()
+
+        # Record without agent_id (backward compatible)
+        collector.record_action("invoke", success=True)
+        collector.record_action("write", success=False)
+
+        summary = collector.finalize(tick=1, agents_active=1)
+
+        # Total actions should still be tracked
+        assert summary["actions_executed"] == 2
+        assert summary["errors"] == 1
+
+    def test_per_agent_tokens(self) -> None:
+        """Per-agent token tracking."""
+        collector = TickSummaryCollector()
+
+        collector.record_llm_tokens(100, agent_id="alpha")
+        collector.record_llm_tokens(50, agent_id="alpha")
+        collector.record_llm_tokens(200, agent_id="beta")
+
+        summary = collector.finalize(tick=1, agents_active=2)
+
+        assert summary["per_agent"]["alpha"]["tokens"] == 150
+        assert summary["per_agent"]["beta"]["tokens"] == 200
+        # Total should also be tracked
+        assert summary["total_llm_tokens"] == 350
