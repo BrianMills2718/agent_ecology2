@@ -718,6 +718,11 @@ class ExecutorConfig(StrictModel):
         gt=0,
         description="Maximum artifact invocation nesting depth"
     )
+    max_contract_depth: int = Field(
+        default=10,
+        gt=0,
+        description="Maximum contract permission check depth (Plan #100)"
+    )
     interface_validation: str = Field(
         default="warn",
         pattern="^(none|warn|strict)$",

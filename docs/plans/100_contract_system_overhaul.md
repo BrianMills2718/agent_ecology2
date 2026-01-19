@@ -240,6 +240,27 @@ This is simpler than separate limits and prevents all forms of deep recursion.
 
 ## Files Affected
 
+<!-- Parser-compatible list (tables below for detail) -->
+- src/world/contracts.py (modify)
+- src/world/genesis_contracts.py (modify)
+- src/world/executor.py (modify)
+- src/world/artifacts.py (modify)
+- src/world/actions.py (modify)
+- src/world/world.py (modify)
+- src/world/ledger.py (modify)
+- config/schema.yaml (modify)
+- config/config.yaml (modify)
+- src/config_schema.py (modify)
+- tests/unit/test_contracts.py (modify)
+- tests/unit/test_genesis_contracts.py (modify)
+- tests/integration/test_contracts_acceptance.py (modify)
+- tests/integration/test_contracts_v1_acceptance.py (modify)
+- tests/unit/test_contract_caching.py (create)
+- tests/integration/test_custom_contracts.py (create)
+- docs/architecture/current/contracts.md (modify)
+- docs/architecture/target/05_contracts.md (modify)
+- docs/DESIGN_CLARIFICATIONS.md (modify)
+
 ### Core Implementation Files
 
 | File | Lines | Changes Required |
