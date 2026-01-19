@@ -13,6 +13,15 @@ SQLite is used because:
 - JSON1 extension for storing structured data
 - No external dependencies
 
+Concurrency Handling (Plan #97):
+    Write operations use retry logic with exponential backoff to handle
+    transient SQLite lock errors that can occur when multiple worker
+    threads/processes access the database concurrently. The retry
+    parameters are configurable via config:
+    - timeouts.state_store_retry_max: Max retry attempts (default: 5)
+    - timeouts.state_store_retry_base: Base delay in seconds (default: 0.1)
+    - timeouts.state_store_retry_max_delay: Max delay cap (default: 5.0)
+
 Usage:
     store = AgentStateStore(Path("state.db"))
 
@@ -28,13 +37,82 @@ Usage:
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator, TypeVar
 
 from ..config import get_validated_config
+
+logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
+
+
+def _with_retry(
+    func: Callable[[], T],
+    max_retries: int | None = None,
+    base_delay: float | None = None,
+    max_delay: float | None = None,
+) -> T:
+    """Execute a function with retry logic for SQLite lock errors.
+
+    Uses exponential backoff to handle transient 'database is locked' errors
+    that can occur when multiple threads/processes access SQLite concurrently.
+
+    Args:
+        func: Callable to execute
+        max_retries: Maximum retry attempts (uses config default if None)
+        base_delay: Initial backoff delay in seconds (uses config default if None)
+        max_delay: Maximum backoff delay cap (uses config default if None)
+
+    Returns:
+        The return value of func
+
+    Raises:
+        sqlite3.OperationalError: If func raises a non-lock error or
+            exceeds max_retries with lock errors
+    """
+    # Get defaults from config if not specified
+    config = get_validated_config()
+    if max_retries is None:
+        max_retries = config.timeouts.state_store_retry_max
+    if base_delay is None:
+        base_delay = config.timeouts.state_store_retry_base
+    if max_delay is None:
+        max_delay = config.timeouts.state_store_retry_max_delay
+
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            return func()
+        except sqlite3.OperationalError as e:
+            # Only retry on "database is locked" errors
+            if "database is locked" not in str(e):
+                raise
+
+            if attempt >= max_retries:
+                logger.warning(
+                    "SQLite lock error after %d attempts, giving up: %s",
+                    attempt,
+                    e,
+                )
+                raise
+
+            # Calculate delay with exponential backoff
+            delay = min(base_delay * (2 ** (attempt - 1)), max_delay)
+            logger.debug(
+                "SQLite lock error (attempt %d/%d), retrying in %.2fs: %s",
+                attempt,
+                max_retries,
+                delay,
+                e,
+            )
+            time.sleep(delay)
 
 
 @dataclass
@@ -165,21 +243,25 @@ class AgentStateStore:
         """Save agent state to database.
 
         Uses INSERT OR REPLACE to handle both new and existing agents.
+        Retries on transient SQLite lock errors with exponential backoff.
 
         Args:
             state: Agent state to save
         """
         state_json = json.dumps(state.to_dict())
 
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO agent_state (agent_id, state_json, updated_at)
-                VALUES (?, ?, CURRENT_TIMESTAMP)
-                """,
-                (state.agent_id, state_json),
-            )
-            conn.commit()
+        def do_save() -> None:
+            with self._connect() as conn:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO agent_state (agent_id, state_json, updated_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                    """,
+                    (state.agent_id, state_json),
+                )
+                conn.commit()
+
+        _with_retry(do_save)
 
     def load(self, agent_id: str) -> AgentState | None:
         """Load agent state from database.
@@ -206,15 +288,20 @@ class AgentStateStore:
     def delete(self, agent_id: str) -> None:
         """Delete agent state from database.
 
+        Retries on transient SQLite lock errors with exponential backoff.
+
         Args:
             agent_id: ID of agent to delete
         """
-        with self._connect() as conn:
-            conn.execute(
-                "DELETE FROM agent_state WHERE agent_id = ?",
-                (agent_id,),
-            )
-            conn.commit()
+        def do_delete() -> None:
+            with self._connect() as conn:
+                conn.execute(
+                    "DELETE FROM agent_state WHERE agent_id = ?",
+                    (agent_id,),
+                )
+                conn.commit()
+
+        _with_retry(do_delete)
 
     def list_agents(self) -> list[str]:
         """List all agent IDs in the store.
@@ -227,7 +314,13 @@ class AgentStateStore:
             return [row[0] for row in cursor.fetchall()]
 
     def clear(self) -> None:
-        """Delete all agent states (useful for testing)."""
-        with self._connect() as conn:
-            conn.execute("DELETE FROM agent_state")
-            conn.commit()
+        """Delete all agent states (useful for testing).
+
+        Retries on transient SQLite lock errors with exponential backoff.
+        """
+        def do_clear() -> None:
+            with self._connect() as conn:
+                conn.execute("DELETE FROM agent_state")
+                conn.commit()
+
+        _with_retry(do_clear)

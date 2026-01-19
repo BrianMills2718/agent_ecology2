@@ -75,12 +75,13 @@ tests/unit/test_state_store.py::TestAgentStateStore::test_concurrent_access (exi
 - [ ] Errors other than "database is locked" are not retried
 - [ ] Logging shows retry attempts for debugging
 
-## Files to Modify
+## Files Affected
 
-- `src/agents/state_store.py` - Add retry logic
-- `config/schema.yaml` - Add retry config options
-- `config/config.yaml` - Add default values
-- `tests/unit/test_state_store.py` - Add retry tests
+- src/agents/state_store.py (modify)
+- src/config_schema.py (modify)
+- config/schema.yaml (modify)
+- config/config.yaml (modify)
+- tests/unit/test_state_store.py (modify)
 
 ## Related
 
