@@ -3,14 +3,17 @@
 System-owned services available to all agents.
 
 ## genesis_ledger
-Manages scrip (money).
+Manages scrip (money), ownership, and LLM budget.
 
 | Method | Args | Cost | Description |
 |--------|------|------|-------------|
-| `balance` | `[agent_id]` | 0 | Check any agent's balance |
+| `balance` | `[agent_id]` | 0 | Check any agent's balance (scrip, compute, resources) |
 | `all_balances` | `[]` | 0 | See everyone's balance |
 | `transfer` | `[from_id, to_id, amount]` | 1 | Send scrip to another agent |
 | `transfer_ownership` | `[artifact_id, to_id]` | 1 | Transfer artifact ownership |
+| `spawn_principal` | `[]` | 1 | Create new principal with 0 scrip/compute |
+| `transfer_budget` | `[to_id, amount]` | 1 | Transfer LLM budget to another agent |
+| `get_budget` | `[agent_id]` | 0 | Get LLM budget for an agent |
 
 Example:
 ```json
@@ -28,6 +31,8 @@ Example:
 | `list_by_type` | `[type]` | 0 | List by type (agent/executable/data) |
 | `list_by_owner` | `[owner_id]` | 0 | List artifacts owned by someone |
 | `list_agents` | `[]` | 0 | List all agents |
+| `list_principals` | `[]` | 0 | List all principals (has_standing=True) |
+| `count` | `[filter?]` | 0 | Count artifacts matching filter |
 
 Example - find all executables:
 ```json
