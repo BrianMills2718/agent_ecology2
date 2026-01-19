@@ -499,36 +499,45 @@ def main() -> int:
 
     if args.all:
         exit_code = 0
-        # Only check plans that are "In Progress" or "Complete"
-        # Plans in "Planned", "Needs Plan", or "Blocked" status shouldn't
-        # have their tests enforced yet (TDD tests written when work starts)
-        active_statuses = ["In Progress", "Complete", "🚧", "✅"]
+        # Plan #109: Only RUN tests for In Progress plans
+        # Complete plans have their tests verified by pytest tests/ in the test job
+        # We just verify Complete plan tests EXIST (documentation check)
         in_progress_statuses = ["In Progress", "🚧"]
+        complete_statuses = ["Complete", "✅"]
 
         for plan_file in find_plan_files(plans_dir):
             plan = parse_plan_file(plan_file)
             if not plan:
                 continue
 
-            # Check if plan is in an active status
-            is_active = any(status in plan.status for status in active_statuses)
             is_in_progress = any(status in plan.status for status in in_progress_statuses)
+            is_complete = any(status in plan.status for status in complete_statuses)
 
-            if not is_active:
-                print(f"Skipping Plan #{plan.plan_number} ({plan.plan_name}) - status: {plan.status}")
+            # Skip plans that aren't In Progress or Complete
+            if not is_in_progress and not is_complete:
                 continue
 
-            # Plan #70: Always fail for In Progress plans without tests (was --strict only)
             has_tests = plan.new_tests or plan.existing_tests
+
+            # Plan #70: Fail for In Progress plans without tests
             if not has_tests:
                 if is_in_progress:
                     print(f"\n❌ Plan #{plan.plan_number} ({plan.plan_name}) is In Progress but has NO tests defined!")
                     print(f"   Add a '## Required Tests' section to: {plan.plan_file}")
                     exit_code = 1
-                else:
-                    # Complete plan: skip silently
-                    continue
+                # Complete plans without tests: skip silently
+                continue
 
+            # Plan #109: For Complete plans, only verify tests exist (don't run)
+            # The pytest tests/ job already runs all tests
+            if is_complete:
+                all_requirements = plan.new_tests + plan.existing_tests
+                missing = [r for r in all_requirements if not check_test_exists(r, project_root)]
+                if missing:
+                    print(f"Plan #{plan.plan_number} ({plan.plan_name}): {len(missing)} documented tests missing (non-blocking)")
+                continue
+
+            # In Progress plans: run tests (TDD enforcement)
             result = check_plan(plan, project_root, args.tdd, args.strict)
             if result != 0:
                 exit_code = 1
