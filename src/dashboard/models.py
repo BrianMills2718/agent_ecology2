@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Any, Literal
 
 
@@ -224,6 +224,14 @@ class RawEvent(BaseModel):
     timestamp: str
     event_type: str
     data: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("timestamp", mode="before")
+    @classmethod
+    def normalize_timestamp(cls, v: str | float | int) -> str:
+        """Accept both ISO string and Unix float timestamps."""
+        if isinstance(v, (int, float)):
+            return datetime.fromtimestamp(v).isoformat()
+        return v
 
 
 class EventFilter(BaseModel):

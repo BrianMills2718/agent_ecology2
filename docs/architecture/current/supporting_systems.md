@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-19 (Plan #76 - per-agent simulation metrics)
+**Last verified:** 2026-01-19 (dashboard timestamp fix)
 
 ---
 
@@ -225,7 +225,7 @@ Real-time web UI for monitoring simulation.
 | `server.py` | FastAPI server with WebSocket |
 | `parser.py` | JSONL parsing and state extraction |
 | `watcher.py` | File change detection (watchdog + polling fallback) |
-| `models.py` | Pydantic models for API responses |
+| `models.py` | Pydantic models for API responses (normalizes mixed timestamp formats) |
 | `static/` | HTML/CSS/JS frontend |
 
 ### Architecture
