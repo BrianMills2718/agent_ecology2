@@ -355,6 +355,7 @@ logging:
     code: 100                   # Code snippets in logs
     errors: 100                 # Error messages
     detailed: 500               # Detailed logs
+    result_data: 1000           # ActionResult.data in logs (Plan #80)
 
 # -----------------------------------------------------------------------------
 # MONITORING - Ecosystem health settings

@@ -971,6 +971,11 @@ class LoggingTruncationConfig(StrictModel):
         gt=0,
         description="Detailed log truncation limit"
     )
+    result_data: int = Field(
+        default=1000,
+        gt=0,
+        description="ActionResult.data truncation limit (Plan #80)"
+    )
 
 
 class LoggingConfig(StrictModel):
