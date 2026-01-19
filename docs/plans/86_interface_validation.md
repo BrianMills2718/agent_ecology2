@@ -63,6 +63,7 @@ executor:
 - tests/unit/test_interface_validation.py (create)
 - docs/architecture/current/artifacts_executor.md (modify)
 - docs/architecture/current/configuration.md (modify)
+- docs/architecture/current/execution_model.md (modify)
 - requirements.txt (modify)
 
 ---

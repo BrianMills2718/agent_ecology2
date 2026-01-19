@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-19 (Plan #95 - ResourceManager integration)
+**Last verified:** 2026-01-19 (Plan #86 - interface validation, Plan #95 - ResourceManager)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
