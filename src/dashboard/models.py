@@ -302,7 +302,7 @@ class Interaction(BaseModel):
     timestamp: str
     from_id: str
     to_id: str
-    interaction_type: Literal["scrip_transfer", "escrow_trade", "ownership_transfer", "artifact_invoke"]
+    interaction_type: Literal["scrip_transfer", "escrow_trade", "ownership_transfer", "artifact_invoke", "genesis_invoke"]
     amount: int | None = None  # For scrip transfers
     artifact_id: str | None = None  # For trades/ownership/invokes
     details: str | None = None  # Human-readable description
