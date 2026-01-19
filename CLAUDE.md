@@ -111,11 +111,10 @@ make kill                # Kill running simulations
 |----------|--------|-----|
 | 0 | **Check ownership** | Never touch others' work |
 | 1 | Surface uncertainties | Ask early, avoid wasted work |
-| 2 | Merge passing PRs | Clear the queue |
+| 2 | Merge your passing PRs | Clear the queue (self-merge after CI) |
 | 3 | Resolve PR conflicts | Keep work mergeable |
-| 4 | Review pending PRs | Unblock others |
-| 5 | Update stale docs | Low risk, high value |
-| 6 | New implementation | Requires a plan first |
+| 4 | Update stale docs | Low risk, high value |
+| 5 | New implementation | Requires a plan first |
 
 ### Commit Messages
 
@@ -131,13 +130,13 @@ make kill                # Kill running simulations
 ## Key Rules
 
 ### One Instance Per Directory
-- **Main (`agent_ecology/`)**: Reviews, coordination only - NO implementation
+- **Main (`agent_ecology/`)**: Coordination only - NO implementation
 - **Worktree (`worktrees/plan-NN-xxx/`)**: Implementation, commits, PRs
 
 ### Ownership
 - Check claims before acting on any PR/worktree
-- If owned by another instance: **read/review only**
-- After PR created: anyone can merge (PR is the handoff artifact)
+- If owned by another instance: **read only**
+- Self-merge your own PRs after CI passes (no review required)
 
 ### Plans
 - All significant work requires a plan in `docs/plans/NN_name.md`
@@ -292,7 +291,7 @@ Use the Read tool on that file if you need prior context.
 
 ---
 
-## Review Checklist
+## Pre-Merge Checklist
 
 - [ ] `make test` passes
 - [ ] `make mypy` passes
