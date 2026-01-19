@@ -1,6 +1,19 @@
 # Gap 74: Meta-Process Doc Fixes
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
+
+**Verified:** 2026-01-19
+**Verification Evidence:**
+```yaml
+completed_by: manual verification
+pr: "#319"
+commit: a7b8179
+changes:
+  - Removed sync_to_claude_md() function from scripts/check_claims.py
+  - Removed --sync argument
+  - Updated docs/meta/18_claim-system.md
+```
+
 **Priority:** Medium
 **Blocked By:** -
 **Blocks:** -
