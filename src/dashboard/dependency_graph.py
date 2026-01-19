@@ -15,7 +15,7 @@ Key concepts:
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from src.dashboard.models import (
@@ -80,7 +80,7 @@ def build_dependency_graph(artifacts: list[dict[str, Any]]) -> DependencyGraphDa
     depths = _calculate_depths(artifacts, artifact_ids)
 
     # Build nodes with computed values
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     for artifact in artifacts:
         artifact_id = artifact["artifact_id"]
         created_at_str = artifact.get("created_at", now.isoformat())
