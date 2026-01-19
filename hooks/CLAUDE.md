@@ -65,5 +65,5 @@ git commit --no-verify -m "..."
 
 ## Related
 
-- `docs/meta/06_git-hooks.md` - Full pattern documentation
+- `meta/patterns/06_git-hooks.md` - Full pattern documentation
 - `.github/workflows/ci.yml` - CI runs similar checks
