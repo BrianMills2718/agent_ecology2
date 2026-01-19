@@ -129,6 +129,8 @@ Master index of all gaps and their implementation plans.
 | 95 | [Unified Resource System](95_unified_resource_system.md) | **Critical** | ✅ Complete | Core economic mechanics |
 | 97 | [SQLite Concurrency Fix](97_sqlite_concurrency.md) | **High** | ✅ Complete | Concurrent state access |
 | 98 | [Robust Worktree Lifecycle](98_robust_worktree_lifecycle.md) | **High** | ✅ Complete | Meta-process reliability |
+| 101 | [Meta-Config Profiles](101_meta_config_profiles.md) | Medium | 📋 Planned | Config simplification |
+| 102 | [Complete Tick Removal](102_complete_tick_removal.md) | **High** | 📋 Planned | Finish Plan #83 |
 
 ---
 
