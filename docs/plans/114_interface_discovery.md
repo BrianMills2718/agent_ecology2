@@ -117,14 +117,12 @@ The interface contains:
 
 ## Files Affected
 
-| File | Change |
-|------|--------|
-| `src/world/genesis/store.py` | Add `interface` to `_artifact_to_dict()`, add `get_interface()` method |
-| `config/schema.yaml` | Add `get_interface` method config under `genesis.store.methods` |
-| `src/config_schema.py` | Add `get_interface` to StoreMethodsConfig |
-| `src/agents/_handbook/tools.md` | Add interface discovery guidance |
-| `tests/unit/test_genesis_store.py` | Test interface exposure and get_interface method |
-| `docs/architecture/current/genesis_artifacts.md` | Document new method |
+- src/world/genesis/store.py (modify)
+- config/schema.yaml (modify)
+- src/config_schema.py (modify)
+- src/agents/_handbook/tools.md (modify)
+- tests/unit/test_genesis_store.py (modify)
+- docs/architecture/current/genesis_artifacts.md (modify)
 
 ---
 
