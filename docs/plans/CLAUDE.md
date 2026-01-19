@@ -127,7 +127,7 @@ Master index of all gaps and their implementation plans.
 | 93 | [Agent Resource Visibility](93_agent_resource_visibility.md) | Medium | 📋 Deferred | #95 |
 | 94 | [PR Handoff Protocol](94_pr_handoff_protocol.md) | Medium | ✅ Complete | Coordination efficiency |
 | 95 | [Unified Resource System](95_unified_resource_system.md) | **Critical** | ✅ Complete | Core economic mechanics |
-| 97 | [SQLite Concurrency Fix](97_sqlite_concurrency.md) | **High** | 📋 Planned | Concurrent state access |
+| 97 | [SQLite Concurrency Fix](97_sqlite_concurrency.md) | **High** | ✅ Complete | Concurrent state access |
 | 98 | [Robust Worktree Lifecycle](98_robust_worktree_lifecycle.md) | **High** | 🚧 In Progress | Meta-process reliability |
 
 ---
