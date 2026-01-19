@@ -20,6 +20,7 @@ python_functions = ["test_*"]
 addopts = [
     "-v",
     "--tb=short",
+    "-p", "no:deepeval",  # Disable accidentally installed deepeval plugin
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
