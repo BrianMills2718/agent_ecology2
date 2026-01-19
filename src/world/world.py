@@ -347,7 +347,6 @@ class World:
         # Log world init
         default_quotas = self.rights_config.get("default_quotas", {})
         self.logger.log("world_init", {
-            "timestamp": time.time(),  # Plan #83: time-based logging
             "max_ticks": self.max_ticks,
             "rights": self.rights_config,
             "costs": self.costs,
@@ -403,7 +402,6 @@ class World:
         self.ledger.credit_scrip(principal_id, amount)
         self.logger.log("mint", {
             "tick": self.tick,
-            "timestamp": time.time(),  # Plan #83: time-based logging
             "principal_id": principal_id,
             "amount": amount,
             "scrip_after": self.ledger.get_scrip(principal_id)
@@ -463,7 +461,6 @@ class World:
 
         self.logger.log("mint_submission", {
             "tick": self.tick,
-            "timestamp": time.time(),  # Plan #83: time-based logging
             "submission_id": submission_id,
             "principal_id": principal_id,
             "artifact_id": artifact_id,
@@ -523,7 +520,6 @@ class World:
 
         self.logger.log("mint_cancellation", {
             "tick": self.tick,
-            "timestamp": time.time(),  # Plan #83: time-based logging
             "submission_id": submission_id,
             "principal_id": principal_id,
             "refunded": bid_amount,
@@ -645,7 +641,6 @@ class World:
 
         self.logger.log("mint_auction_resolved", {
             "tick": self.tick,
-            "timestamp": time.time(),  # Plan #83: time-based logging
             "winner_id": winner_id,
             "artifact_id": artifact_id,
             "winning_bid": winning_bid,
@@ -746,7 +741,6 @@ class World:
             max_data_size = 1000  # Default if not configured
         self.logger.log("action", {
             "tick": self.tick,
-            "timestamp": time.time(),  # Plan #83: time-based logging
             "intent": intent.to_dict(),
             "result": result.to_dict_truncated(max_data_size),
             "scrip_after": self.ledger.get_scrip(intent.principal_id)
@@ -1225,7 +1219,6 @@ class World:
         """Log a successful invocation and record in registry."""
         self.logger.log("invoke_success", {
             "tick": self.tick,
-            "timestamp": time.time(),  # Plan #83: time-based logging
             "invoker_id": invoker_id,
             "artifact_id": artifact_id,
             "method": method,
@@ -1253,7 +1246,6 @@ class World:
         """Log a failed invocation and record in registry."""
         self.logger.log("invoke_failure", {
             "tick": self.tick,
-            "timestamp": time.time(),  # Plan #83: time-based logging
             "invoker_id": invoker_id,
             "artifact_id": artifact_id,
             "method": method,
@@ -1322,7 +1314,6 @@ class World:
 
         self.logger.log("tick", {
             "tick": self.tick,
-            "timestamp": time.time(),  # Plan #83: time-based logging
             "compute": self.ledger.get_all_compute(),  # Backward compat log format
             "scrip": self.ledger.get_all_scrip(),
             "artifact_count": self.artifacts.count(),
@@ -1416,7 +1407,6 @@ class World:
         # Log the deletion
         self.logger.log("artifact_deleted", {
             "tick": self.tick,
-            "timestamp": time.time(),  # Plan #83: time-based logging
             "artifact_id": artifact_id,
             "deleted_by": requester_id,
             "deleted_at": artifact.deleted_at,
@@ -1593,7 +1583,6 @@ class World:
         """
         self.logger.log("agent_frozen", {
             "tick": self.tick,
-            "timestamp": time.time(),  # Plan #83: time-based logging
             "agent_id": agent_id,
             "reason": reason,
             "scrip_balance": self.ledger.get_scrip(agent_id),
@@ -1617,7 +1606,6 @@ class World:
         """
         self.logger.log("agent_unfrozen", {
             "tick": self.tick,
-            "timestamp": time.time(),  # Plan #83: time-based logging
             "agent_id": agent_id,
             "unfrozen_by": unfrozen_by,
             "resources_transferred": resources_transferred or {},
@@ -1649,7 +1637,6 @@ class World:
 
         self.logger.log("quota_set", {
             "tick": self.tick,
-            "timestamp": time.time(),  # Plan #83: time-based logging
             "principal_id": principal_id,
             "resource": resource,
             "amount": amount,
@@ -1746,7 +1733,6 @@ class World:
         self.logger.log(
             "library_installed",
             {
-                "timestamp": time.time(),  # Plan #83: time-based logging
                 "principal_id": principal_id,
                 "library": library_name,
                 "version": version,
