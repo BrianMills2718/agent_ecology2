@@ -204,6 +204,38 @@ class ActionResult:
             result["error_details"] = self.error_details
         return result
 
+    def to_dict_truncated(self, max_data_size: int = 1000) -> dict[str, Any]:
+        """Return dict representation with truncated data field for logging.
+
+        Plan #80: Prevents log file bloat from large ActionResult.data payloads.
+        The data field is replaced with truncation metadata if it exceeds max_data_size.
+
+        Args:
+            max_data_size: Maximum serialized size of data field (default 1000 chars)
+
+        Returns:
+            Dict with same structure as to_dict(), but data field may be truncated
+        """
+        result = self.to_dict()
+
+        # Don't truncate None data
+        if self.data is None:
+            return result
+
+        # Serialize data to check size
+        data_str = json.dumps(self.data)
+        if len(data_str) <= max_data_size:
+            return result
+
+        # Truncate: replace with metadata
+        preview_len = min(200, max_data_size // 5)  # Preview is 20% of max or 200 chars
+        result["data"] = {
+            "_truncated": True,
+            "original_size": len(data_str),
+            "preview": data_str[:preview_len] + "..." if len(data_str) > preview_len else data_str,
+        }
+        return result
+
 
 def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | str:
     """

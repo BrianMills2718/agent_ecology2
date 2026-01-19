@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-18 (Plan #83 - time-based execution)
+**Last verified:** 2026-01-19 (Plan #80 - log truncation)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

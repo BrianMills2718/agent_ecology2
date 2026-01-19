@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-18 (Plan #83 - time-based auction config)
+**Last verified:** 2026-01-19 (Plan #80 - log truncation)
 
 ---
 

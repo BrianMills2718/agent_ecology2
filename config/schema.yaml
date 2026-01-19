@@ -284,6 +284,7 @@ logging:
     code: <number>              # Code snippets in logs (default: 100)
     errors: <number>            # Error messages (default: 100)
     detailed: <number>          # Detailed logs (default: 500)
+    result_data: <number>       # ActionResult.data in logs (default: 1000, Plan #80)
 
 # -----------------------------------------------------------------------------
 # MONITORING

@@ -742,11 +742,15 @@ class World:
 
     def _log_action(self, intent: ActionIntent, result: ActionResult) -> None:
         """Log an action execution"""
+        # Plan #80: Use truncated result to prevent log file bloat
+        max_data_size = config_get("logging.truncation.result_data")
+        if not isinstance(max_data_size, int):
+            max_data_size = 1000  # Default if not configured
         self.logger.log("action", {
             "tick": self.tick,
             "timestamp": time.time(),  # Plan #83: time-based logging
             "intent": intent.to_dict(),
-            "result": result.to_dict(),
+            "result": result.to_dict_truncated(max_data_size),
             "scrip_after": self.ledger.get_scrip(intent.principal_id)
         })
 

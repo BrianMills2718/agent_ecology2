@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-18 (Plan #73 - datetime deprecation fix)
+**Last verified:** 2026-01-19 (Plan #80 - log truncation)
 
 ---
 
