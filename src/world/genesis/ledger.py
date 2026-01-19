@@ -34,6 +34,8 @@ class GenesisLedger(GenesisArtifact):
 
     ledger: Ledger
     artifact_store: ArtifactStore | None
+    # World reference for kernel delegation (Plan #111)
+    _world: Any
 
     def __init__(
         self,
@@ -51,6 +53,8 @@ class GenesisLedger(GenesisArtifact):
         )
         self.ledger = ledger
         self.artifact_store = artifact_store
+        # World reference for kernel delegation (Plan #111)
+        self._world: Any = None
 
         # Register methods with costs/descriptions from config
         self.register_method(
