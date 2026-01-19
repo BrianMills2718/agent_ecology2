@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-19 (added SKIP_ALL_PLAN_TESTS config option)
+Last verified: 2026-01-19 (added pre-merge plan completion evidence check)
 
 ---
 
@@ -109,7 +109,8 @@ Combines plan-related checks into a single job.
 2. **plan-exclusivity** - Ensures plan numbers are unique across open PRs (Plan #72)
 3. **plan-blockers** - Checks for stale blockers
 4. **plan-tests** - Validates plan test requirements (strict)
-5. **plan-required** - Ensures all commits have plan references
+5. **plan-completion-evidence** - Blocks PRs marking plans Complete without evidence (Plan #41)
+6. **plan-required** - Ensures all commits have plan references
 
 ```yaml
 - uses: actions/checkout@v4 (with fetch-depth: 0)
@@ -119,8 +120,8 @@ Combines plan-related checks into a single job.
 - python scripts/sync_plan_status.py --check
 - python scripts/check_plan_exclusivity.py --check
 - python scripts/check_plan_blockers.py --strict
-- python scripts/check_plan_tests.py --list
 - python scripts/check_plan_tests.py --all --strict
+- python scripts/check_plan_completion.py --check-pr
 - (inline plan-required check)
 ```
 
@@ -129,7 +130,7 @@ Combines plan-related checks into a single job.
 - Multiple open PRs using the same plan number
 - Plans blocked by completed plans (stale dependency chains)
 - Plans with missing required tests
-- In Progress plans without test definitions
+- PRs that mark plans Complete without verification evidence
 - Work without `[Plan #N]` or `[Trivial]` prefix
 
 ### 5. code-quality
