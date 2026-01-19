@@ -131,6 +131,11 @@ Master index of all gaps and their implementation plans.
 | 98 | [Robust Worktree Lifecycle](98_robust_worktree_lifecycle.md) | **High** | ✅ Complete | Meta-process reliability |
 | 99 | [SQLite Isolation Fix](99_sqlite_isolation_fix.md) | **High** | ✅ Complete | Proper read/write concurrency |
 | 100 | [Contract System Overhaul](100_contract_system_overhaul.md) | **High** | 📋 Deferred | Custom contracts, advanced access control |
+| 103 | [Meta-Process Doc Separation](103_meta_doc_separation.md) | Medium | 📋 Planned | Meta-process maintainability |
+| 104 | [Meta-Process Hooks Separation](104_meta_hooks_separation.md) | Low | 📋 Deferred | Meta-process maintainability |
+| 105 | [Meta-Process Scripts Separation](105_meta_scripts_separation.md) | Low | 📋 Deferred | Meta-process maintainability |
+| 106 | [CI Cost Reduction](106_ci_cost_reduction.md) | **High** | 📋 Planned | Reduce GitHub Actions costs |
+| 107 | [Temporal Network Visualization](107_temporal_network_viz.md) | **High** | 📋 Planned | Dashboard artifact network view |
 
 ---
 
