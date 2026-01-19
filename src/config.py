@@ -12,12 +12,12 @@ Usage:
     # Load and validate (call once at startup)
     load_config("config/config.yaml")
 
-    # Get values by dot-path (backward compatible)
-    max_ticks = get("world.max_ticks")
+    # Get values by dot-path
+    cost = get("costs.per_1k_input_tokens")
 
-    # Or use the typed config object
+    # Or use the typed config object (preferred)
     config = get_validated_config()
-    max_ticks = config.world.max_ticks
+    cost = config.costs.per_1k_input_tokens
 """
 
 from __future__ import annotations
@@ -133,11 +133,6 @@ def get_stock_resource(name: str, field: str = "total") -> Any:
     return get(f"resources.stock.{name}.{field}")
 
 
-def get_flow_resource(name: str, field: str = "per_tick") -> Any:
-    """Get a flow resource config value."""
-    return get(f"resources.flow.{name}.{field}")
-
-
 def get_genesis_config(artifact: str, field: str) -> Any:
     """Get a genesis artifact config value."""
     return get(f"genesis.{artifact}.{field}")
@@ -152,14 +147,19 @@ def compute_per_agent_quota(num_agents: int) -> PerAgentQuota:
 
     Returns:
         Dict with compute_quota, disk_quota, llm_budget_quota.
+
+    Note: compute_quota is now derived from rate_limiting config, not per_tick.
     """
     if num_agents <= 0:
         num_agents = 1
 
     config = get_validated_config()
 
-    # Compute (flow resource) - per tick, distributed equally
-    compute_total = config.resources.flow.compute.per_tick
+    # Compute quota from rate_limiting (time-based, replaces per_tick)
+    # Default to a sensible value if not configured
+    compute_total = int(config.rate_limiting.resources.llm_tokens.max_per_window)
+    if compute_total > 1_000_000:  # Effectively unlimited
+        compute_total = 1000  # Use reasonable default for quota calculation
 
     # Disk (stock resource) - total, distributed equally
     disk_total = int(config.resources.stock.disk.total)

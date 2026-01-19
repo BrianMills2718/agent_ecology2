@@ -14,11 +14,12 @@ class TestFixtures:
     def test_minimal_config_fixture(self, minimal_config):
         """Verify minimal_config fixture provides required keys."""
         assert "world" in minimal_config
-        assert "max_ticks" in minimal_config["world"]
+        # Note: max_ticks removed in Plan #102 - world section now optional/empty
         assert "costs" in minimal_config
         assert "logging" in minimal_config
         assert "principals" in minimal_config
         assert len(minimal_config["principals"]) >= 1
+        assert "rate_limiting" in minimal_config  # Required for compute
 
     def test_test_ledger_fixture(self, test_ledger):
         """Verify test_ledger fixture creates a valid Ledger."""
@@ -32,8 +33,8 @@ class TestFixtures:
     def test_test_world_fixture(self, test_world):
         """Verify test_world fixture creates a valid World."""
         assert isinstance(test_world, World)
-        assert test_world.tick == 0
-        assert test_world.max_ticks == 10
+        assert test_world.tick == 0  # Event counter starts at 0
+        # Note: max_ticks removed in Plan #102 - execution limits now time-based
         assert len(test_world.principal_ids) == 2
         assert "agent_1" in test_world.principal_ids
         assert "agent_2" in test_world.principal_ids

@@ -22,9 +22,14 @@ from src.world.actions import (
 
 @pytest.fixture
 def minimal_config():
-    """Minimal configuration for testing."""
+    """Minimal configuration for testing.
+
+    Note: max_ticks removed in Plan #102. Execution limits are now
+    time-based (duration) or cost-based (budget). Rate limiting must be
+    enabled for compute resources to be available.
+    """
     return {
-        "world": {"max_ticks": 5},
+        "world": {},
         "principals": [
             {"id": "agent_1", "starting_scrip": 100},
             {"id": "agent_2", "starting_scrip": 100},
@@ -40,6 +45,14 @@ def minimal_config():
         "logging": {
             "log_dir": "test_logs",
             "output_file": "test_logs/test.jsonl",
+        },
+        # Enable rate limiting for compute resources (Plan #102)
+        "rate_limiting": {
+            "enabled": True,
+            "window_seconds": 60.0,
+            "resources": {
+                "llm_tokens": {"max_per_window": 1000},
+            }
         },
     }
 
@@ -62,7 +75,6 @@ class TestWorldInitialization:
 
         # Basic initialization checks
         assert world.tick == 0
-        assert world.max_ticks == 5
         assert world.ledger is not None
         assert world.artifacts is not None
         assert world.logger is not None
@@ -101,57 +113,47 @@ class TestGenesisArtifacts:
         assert "transfer" in methods
 
 
-class TestAdvanceTick:
-    """Tests for World.advance_tick() behavior."""
+class TestEventCounter:
+    """Tests for World event counter (tick) behavior.
 
-    def test_advance_tick(self, world_with_temp_log):
-        """World.advance_tick() works and increments tick."""
+    Note: Plan #102 changed advance_tick() to a simple event counter incrementer.
+    It no longer has max_ticks limits or compute resets. Those are now handled
+    by time-based rate limiting.
+    """
+
+    def test_increment_event_counter(self, world_with_temp_log):
+        """increment_event_counter() works and increments tick."""
         world = world_with_temp_log
 
         assert world.tick == 0
 
-        # Advance tick
-        result = world.advance_tick()
-        assert result is True
+        # Increment counter
+        result = world.increment_event_counter()
+        assert result == 1
         assert world.tick == 1
 
-        # Advance again
-        result = world.advance_tick()
-        assert result is True
+        # Increment again
+        result = world.increment_event_counter()
+        assert result == 2
         assert world.tick == 2
 
-    def test_advance_tick_respects_max(self, world_with_temp_log):
-        """advance_tick() returns False when max_ticks reached."""
+    def test_advance_tick_deprecated_compat(self, world_with_temp_log):
+        """Deprecated advance_tick() still works for backward compatibility."""
         world = world_with_temp_log
 
-        # Advance to max
-        for _ in range(5):
-            result = world.advance_tick()
-            assert result is True
+        assert world.tick == 0
 
-        assert world.tick == 5
-
-        # Next advance should return False
+        # Advance tick (deprecated but should work)
         result = world.advance_tick()
-        assert result is False
-        assert world.tick == 5  # Tick should not increment beyond max
+        assert result is True  # Always returns True now (no max_ticks)
+        assert world.tick == 1
 
-    def test_advance_tick_resets_compute(self, world_with_temp_log):
-        """advance_tick() resets compute for all principals."""
-        world = world_with_temp_log
+        # Advance again - no limit
+        for _ in range(10):
+            result = world.advance_tick()
+            assert result is True  # Always True
 
-        # Advance tick to initialize compute
-        world.advance_tick()
-
-        # Spend some compute
-        initial_compute = world.ledger.get_compute("agent_1")
-        assert initial_compute > 0
-        world.ledger.spend_compute("agent_1", 10)
-        assert world.ledger.get_compute("agent_1") == initial_compute - 10
-
-        # Advance tick should reset compute
-        world.advance_tick()
-        assert world.ledger.get_compute("agent_1") == initial_compute
+        assert world.tick == 11  # No max_ticks limit
 
 
 class TestExecuteNoop:

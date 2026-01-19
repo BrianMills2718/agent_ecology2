@@ -90,8 +90,7 @@ class ArtifactState:
 class SimulationState:
     """Complete reconstructed simulation state."""
     # Progress
-    current_tick: int = 0
-    max_ticks: int = 100
+    current_tick: int = 0  # Event counter (not a limit)
     api_cost_spent: float = 0
     api_cost_limit: float = 1.0
     start_time: str | None = None
@@ -213,7 +212,7 @@ class JSONLParser:
     def _handle_world_init(self, event: dict[str, Any], timestamp: str) -> None:
         """Handle world initialization event."""
         self.state.start_time = timestamp
-        self.state.max_ticks = event.get("max_ticks", 100)
+        # Note: max_ticks removed in Plan #102 - execution is now time/budget based
 
         # Extract budget limit
         budget = event.get("budget", {})
@@ -370,8 +369,8 @@ class JSONLParser:
             if invoked_artifact_id and invoked_artifact_id in self.state.artifacts:
                 art = self.state.artifacts[invoked_artifact_id]
                 art.invocation_count += 1
-                # Track interaction if invoking another agent's artifact
-                if art.owner_id != agent_id and not art.owner_id.startswith("genesis_"):
+                # Track interaction if invoking another agent's artifact (including genesis)
+                if art.owner_id != agent_id:
                     self.state.interactions.append(Interaction(
                         tick=self.state.current_tick,
                         timestamp=timestamp,
@@ -381,6 +380,17 @@ class JSONLParser:
                         artifact_id=invoked_artifact_id,
                         details=f"{agent_id} invoked {invoked_artifact_id} owned by {art.owner_id}",
                     ))
+            # Also track direct invocations of genesis artifacts (they may not be in artifacts dict)
+            elif invoked_artifact_id and invoked_artifact_id.startswith("genesis_"):
+                self.state.interactions.append(Interaction(
+                    tick=self.state.current_tick,
+                    timestamp=timestamp,
+                    from_id=agent_id,
+                    to_id=invoked_artifact_id,  # Genesis artifact itself as target
+                    interaction_type="genesis_invoke",
+                    artifact_id=invoked_artifact_id,
+                    details=f"{agent_id} invoked {invoked_artifact_id}",
+                ))
 
         action = ActionEvent(
             tick=self.state.current_tick,
@@ -714,8 +724,13 @@ class JSONLParser:
         """Handle budget pause event."""
         self.state.status = "budget_exhausted"
 
-    def _handle_max_ticks(self, event: dict[str, Any], timestamp: str) -> None:
+    def _handle_simulation_complete(self, event: dict[str, Any], timestamp: str) -> None:
         """Handle simulation completion event."""
+        self.state.status = "completed"
+
+    # Keep for backward compat with old logs that have max_ticks events
+    def _handle_max_ticks(self, event: dict[str, Any], timestamp: str) -> None:
+        """Handle legacy max_ticks event (now simulation_complete)."""
         self.state.status = "completed"
 
     def get_agent_summary(self, agent_id: str) -> AgentSummary | None:
@@ -823,25 +838,24 @@ class JSONLParser:
     def get_progress(self) -> SimulationProgress:
         """Get simulation progress info."""
         elapsed = 0.0
-        tps = 0.0
+        events_per_sec = 0.0
         if self.state.start_time and self.state.current_tick > 0:
             from datetime import datetime
             try:
                 start = datetime.fromisoformat(self.state.start_time)
                 now = datetime.now()
                 elapsed = (now - start).total_seconds()
-                tps = self.state.current_tick / elapsed if elapsed > 0 else 0
+                events_per_sec = self.state.current_tick / elapsed if elapsed > 0 else 0
             except (ValueError, TypeError):
                 pass
 
         return SimulationProgress(
             current_tick=self.state.current_tick,
-            max_ticks=self.state.max_ticks,
             api_cost_spent=self.state.api_cost_spent,
             api_cost_limit=self.state.api_cost_limit,
             start_time=self.state.start_time,
             elapsed_seconds=elapsed,
-            ticks_per_second=tps,
+            events_per_second=events_per_sec,
             status=self.state.status,
         )
 

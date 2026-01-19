@@ -346,10 +346,11 @@ class TestEscrowIntegration:
             log_file = f.name
 
         config = {
-            'world': {'max_ticks': 10},
+            'world': {},
             'costs': {'actions': {}, 'default': 1},
             'logging': {'output_file': log_file},
-            'principals': [{'id': 'alice', 'starting_scrip': 100}]
+            'principals': [{'id': 'alice', 'starting_scrip': 100}],
+            'rate_limiting': {'enabled': True, 'window_seconds': 60.0, 'resources': {'llm_tokens': {'max_per_window': 1000}}}
         }
 
         world = World(config)
@@ -367,13 +368,14 @@ class TestEscrowIntegration:
             log_file = f.name
 
         config = {
-            'world': {'max_ticks': 10},
+            'world': {},
             'costs': {'actions': {}, 'default': 1},
             'logging': {'output_file': log_file},
             'principals': [
                 {'id': 'seller', 'starting_scrip': 50},
                 {'id': 'buyer', 'starting_scrip': 200}
-            ]
+            ],
+            'rate_limiting': {'enabled': True, 'window_seconds': 60.0, 'resources': {'llm_tokens': {'max_per_window': 1000}}}
         }
 
         world = World(config)
