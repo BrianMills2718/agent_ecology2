@@ -38,6 +38,9 @@
 - scripts/meta_status.py (modify)
 - CLAUDE.md (modify)
 - docs/meta/15_plan-workflow.md (modify)
+- tests/scripts/test_finish_pr.py (create)
+- tests/scripts/test_meta_status.py (modify)
+- docs/plans/CLAUDE.md (modify)
 
 ---
 
