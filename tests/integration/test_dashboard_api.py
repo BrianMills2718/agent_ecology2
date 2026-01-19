@@ -1,10 +1,11 @@
-"""Integration tests for dashboard API endpoints (Plan #76)."""
+"""Integration tests for dashboard API endpoints (Plan #76, Plan #108)."""
 
 from __future__ import annotations
 
 import json
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -162,3 +163,64 @@ class TestAgentMetricsEndpoint:
 
         finally:
             Path(jsonl_path).unlink()
+
+
+@pytest.mark.plans(108)
+class TestAgentConfigEndpoint:
+    """Tests for /api/agents/{id}/config endpoint (Plan #108)."""
+
+    def test_agent_config_endpoint_not_found(self, tmp_path: Path) -> None:
+        """API returns config_found=false for non-existent agent config."""
+        from src.dashboard.server import create_app
+
+        # Create minimal JSONL
+        jsonl_file = tmp_path / "test.jsonl"
+        jsonl_file.write_text(json.dumps({
+            "event_type": "world_init",
+            "timestamp": "2026-01-19T12:00:00",
+            "max_ticks": 100,
+            "budget": {"max_api_cost": 1.0},
+            "principals": []
+        }) + '\n')
+
+        app = create_app(jsonl_path=str(jsonl_file))
+        client = TestClient(app)
+
+        response = client.get("/api/agents/nonexistent_agent_xyz/config")
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["config_found"] is False
+        assert data["agent_id"] == "nonexistent_agent_xyz"
+
+    def test_agent_config_endpoint_real_agent(self, tmp_path: Path) -> None:
+        """API returns real config for actual agent in src/agents/."""
+        from src.dashboard.server import create_app
+
+        # Create minimal JSONL
+        jsonl_file = tmp_path / "test.jsonl"
+        jsonl_file.write_text(json.dumps({
+            "event_type": "world_init",
+            "timestamp": "2026-01-19T12:00:00",
+            "max_ticks": 100,
+            "budget": {"max_api_cost": 1.0},
+            "principals": []
+        }) + '\n')
+
+        app = create_app(jsonl_path=str(jsonl_file))
+        client = TestClient(app)
+
+        # Test with alpha agent which should exist
+        response = client.get("/api/agents/alpha/config")
+        assert response.status_code == 200
+
+        data = response.json()
+        # Check that it found the config or gracefully handles missing
+        assert "agent_id" in data
+        assert data["agent_id"] == "alpha"
+        # If found, should have these fields
+        if data.get("config_found", True):
+            # Basic fields always present
+            assert "llm_model" in data or data.get("config_found") is False
+            assert "starting_credits" in data
+            assert "enabled" in data

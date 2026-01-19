@@ -463,3 +463,27 @@ class EcosystemKPIsResponse(BaseModel):
     # Trends (last N ticks)
     scrip_velocity_trend: list[float] = Field(default_factory=list)
     activity_trend: list[float] = Field(default_factory=list)
+
+
+# Agent Configuration Display (Plan #108)
+
+
+class AgentConfigResponse(BaseModel):
+    """Agent configuration from YAML file for dashboard display."""
+
+    agent_id: str
+    llm_model: str | None = None
+    starting_credits: int = 100
+    enabled: bool = True
+    temperature: float | None = None
+    max_tokens: int | None = None
+    # Genotype traits (gen3 agents)
+    genotype: dict[str, str] | None = None
+    # RAG configuration
+    rag: dict[str, Any] | None = None
+    # Workflow configuration (state machine + steps)
+    workflow: dict[str, Any] | None = None
+    # Error handling config
+    error_handling: dict[str, Any] | None = None
+    # Whether config file was found
+    config_found: bool = True

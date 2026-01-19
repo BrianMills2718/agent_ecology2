@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-19 (dashboard live_mode)
+**Last verified:** 2026-01-19 (agent config endpoint - Plan #108)
 
 ---
 
@@ -272,6 +272,7 @@ The `live_mode` parameter controls this:
 | `/api/progress` | GET | Simulation progress only |
 | `/api/agents` | GET | Agent summaries |
 | `/api/agents/{id}` | GET | Agent details |
+| `/api/agents/{id}/config` | GET | Agent YAML configuration (Plan #108) |
 | `/api/agents/{id}/metrics` | GET | Per-agent computed metrics (Plan #76) |
 | `/api/artifacts` | GET | All artifacts |
 | `/api/artifacts/{id}/detail` | GET | Artifact details with content |

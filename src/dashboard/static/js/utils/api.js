@@ -50,6 +50,13 @@ const API = {
     },
 
     /**
+     * Get agent configuration from YAML (Plan #108)
+     */
+    async getAgentConfig(agentId) {
+        return this.get(`/api/agents/${encodeURIComponent(agentId)}/config`);
+    },
+
+    /**
      * Get all artifacts
      */
     async getArtifacts() {

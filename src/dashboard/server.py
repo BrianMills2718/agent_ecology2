@@ -282,6 +282,52 @@ def create_app(
             "success_rate": metrics.success_rate,
         }
 
+    @app.get("/api/agents/{agent_id}/config")
+    async def get_agent_config(agent_id: str) -> dict[str, Any]:
+        """Get agent configuration from YAML file (Plan #108).
+
+        Returns the full agent configuration for display in the dashboard,
+        including genotype traits, RAG settings, workflow, and state machine.
+        """
+        import yaml
+        from pathlib import Path
+
+        # Find agent config file
+        agents_dir = Path(__file__).parent.parent / "agents"
+        config_path = agents_dir / agent_id / "agent.yaml"
+
+        if not config_path.exists():
+            return {
+                "agent_id": agent_id,
+                "config_found": False,
+                "error": f"Config file not found for agent {agent_id}",
+            }
+
+        try:
+            with open(config_path) as f:
+                config = yaml.safe_load(f)
+
+            # Build response with all config fields
+            return {
+                "agent_id": config.get("id", agent_id),
+                "llm_model": config.get("llm_model"),
+                "starting_credits": config.get("starting_credits", 100),
+                "enabled": config.get("enabled", True),
+                "temperature": config.get("temperature"),
+                "max_tokens": config.get("max_tokens"),
+                "genotype": config.get("genotype"),
+                "rag": config.get("rag"),
+                "workflow": config.get("workflow"),
+                "error_handling": config.get("error_handling"),
+                "config_found": True,
+            }
+        except Exception as e:
+            return {
+                "agent_id": agent_id,
+                "config_found": False,
+                "error": f"Failed to load config: {str(e)}",
+            }
+
     @app.get("/api/artifacts")
     async def get_artifacts() -> list[dict[str, Any]]:
         """Get all artifacts."""
