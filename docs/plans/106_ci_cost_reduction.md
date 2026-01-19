@@ -1,6 +1,6 @@
 # Plan #106: CI Cost Reduction
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 
 **Priority:** High
 **Blocked By:** None
@@ -94,7 +94,7 @@ Add `--skip-pytest` flag that only validates plan test requirements exist withou
 ## Files Affected
 
 - `.github/workflows/ci.yml` (modify)
-- `scripts/check_plan_tests.py` (modify)
+- `docs/architecture/current/ci.md` (modify)
 
 ---
 

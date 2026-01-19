@@ -244,11 +244,9 @@ jobs:
       - name: Check for stale blockers
         run: python scripts/check_plan_blockers.py --strict
 
-      - name: Check plan tests
-        if: vars.SKIP_ALL_PLAN_TESTS != 'true'
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python scripts/check_plan_tests.py --all --strict
+      # Plan tests removed (Plan #106) - redundant with 'test' job
+      # The 'test' job runs full pytest which covers all plan-required tests
+      # Savings: ~9 minutes per CI run (~75% cost reduction)
 
       - name: Check plan completion evidence
         run: python scripts/check_plan_completion.py --check-pr
