@@ -126,7 +126,12 @@ const AgentsPanel = {
      */
     async showAgentDetail(agentId) {
         try {
-            const agent = await API.getAgent(agentId);
+            // Fetch agent data and config in parallel
+            const [agent, config] = await Promise.all([
+                API.getAgent(agentId),
+                API.getAgentConfig(agentId)
+            ]);
+
             if (agent.error) {
                 console.error(agent.error);
                 return;
@@ -210,12 +215,128 @@ const AgentsPanel = {
                 }
             }
 
+            // Update configuration (Plan #108)
+            const configEl = document.getElementById('modal-config');
+            if (configEl) {
+                configEl.innerHTML = this.renderConfig(config);
+            }
+
             // Show modal
             this.elements.modal.classList.remove('hidden');
 
         } catch (error) {
             console.error('Failed to load agent detail:', error);
         }
+    },
+
+    /**
+     * Render agent configuration as HTML (Plan #108)
+     */
+    renderConfig(config) {
+        if (!config || !config.config_found) {
+            return '<div class="config-not-found">Configuration not found</div>';
+        }
+
+        let html = '<div class="config-grid">';
+
+        // Basic model settings
+        html += '<div class="config-section">';
+        html += '<h4>Model Settings</h4>';
+        html += `<div class="config-item"><span class="config-label">LLM Model:</span> <span class="config-value">${this.escapeHtml(config.llm_model || 'default')}</span></div>`;
+        html += `<div class="config-item"><span class="config-label">Starting Credits:</span> <span class="config-value">${config.starting_credits}</span></div>`;
+        html += `<div class="config-item"><span class="config-label">Enabled:</span> <span class="config-value config-badge ${config.enabled ? 'enabled' : 'disabled'}">${config.enabled ? 'Yes' : 'No'}</span></div>`;
+        if (config.temperature !== null && config.temperature !== undefined) {
+            html += `<div class="config-item"><span class="config-label">Temperature:</span> <span class="config-value">${config.temperature}</span></div>`;
+        }
+        if (config.max_tokens !== null && config.max_tokens !== undefined) {
+            html += `<div class="config-item"><span class="config-label">Max Tokens:</span> <span class="config-value">${config.max_tokens}</span></div>`;
+        }
+        html += '</div>';
+
+        // Genotype traits (gen3 agents)
+        if (config.genotype && Object.keys(config.genotype).length > 0) {
+            html += '<div class="config-section">';
+            html += '<h4>Genotype Traits</h4>';
+            for (const [trait, value] of Object.entries(config.genotype)) {
+                html += `<div class="config-item"><span class="config-label">${this.escapeHtml(trait)}:</span> <span class="config-value config-badge trait">${this.escapeHtml(String(value))}</span></div>`;
+            }
+            html += '</div>';
+        }
+
+        // RAG configuration
+        if (config.rag) {
+            html += '<div class="config-section">';
+            html += '<h4>RAG Settings</h4>';
+            if (config.rag.enabled !== undefined) {
+                html += `<div class="config-item"><span class="config-label">Enabled:</span> <span class="config-value config-badge ${config.rag.enabled ? 'enabled' : 'disabled'}">${config.rag.enabled ? 'Yes' : 'No'}</span></div>`;
+            }
+            if (config.rag.top_k !== undefined) {
+                html += `<div class="config-item"><span class="config-label">Top K:</span> <span class="config-value">${config.rag.top_k}</span></div>`;
+            }
+            if (config.rag.similarity_threshold !== undefined) {
+                html += `<div class="config-item"><span class="config-label">Similarity Threshold:</span> <span class="config-value">${config.rag.similarity_threshold}</span></div>`;
+            }
+            html += '</div>';
+        }
+
+        // Workflow with state machine (gen3)
+        if (config.workflow) {
+            html += '<div class="config-section config-section-wide">';
+            html += '<h4>Workflow</h4>';
+
+            // State machine
+            if (config.workflow.state_machine) {
+                const sm = config.workflow.state_machine;
+                html += '<div class="config-subsection">';
+                html += '<h5>State Machine</h5>';
+                if (sm.initial_state) {
+                    html += `<div class="config-item"><span class="config-label">Initial State:</span> <span class="config-value config-badge state">${this.escapeHtml(sm.initial_state)}</span></div>`;
+                }
+                if (sm.states && Object.keys(sm.states).length > 0) {
+                    html += '<div class="config-states">';
+                    html += '<span class="config-label">States:</span>';
+                    html += '<div class="state-list">';
+                    for (const [state, stateConfig] of Object.entries(sm.states)) {
+                        const transitions = stateConfig.transitions ? Object.keys(stateConfig.transitions).join(', ') : 'none';
+                        html += `<div class="state-item"><span class="state-name">${this.escapeHtml(state)}</span> → ${this.escapeHtml(transitions)}</div>`;
+                    }
+                    html += '</div></div>';
+                }
+                html += '</div>';
+            }
+
+            // Workflow steps
+            if (config.workflow.steps && config.workflow.steps.length > 0) {
+                html += '<div class="config-subsection">';
+                html += '<h5>Steps</h5>';
+                html += '<ol class="workflow-steps">';
+                for (const step of config.workflow.steps) {
+                    const stepName = typeof step === 'string' ? step : (step.name || step.action || JSON.stringify(step));
+                    html += `<li>${this.escapeHtml(stepName)}</li>`;
+                }
+                html += '</ol></div>';
+            }
+            html += '</div>';
+        }
+
+        // Error handling
+        if (config.error_handling) {
+            html += '<div class="config-section">';
+            html += '<h4>Error Handling</h4>';
+            if (config.error_handling.max_retries !== undefined) {
+                html += `<div class="config-item"><span class="config-label">Max Retries:</span> <span class="config-value">${config.error_handling.max_retries}</span></div>`;
+            }
+            if (config.error_handling.backoff_factor !== undefined) {
+                html += `<div class="config-item"><span class="config-label">Backoff Factor:</span> <span class="config-value">${config.error_handling.backoff_factor}</span></div>`;
+            }
+            if (config.error_handling.fallback_action) {
+                html += `<div class="config-item"><span class="config-label">Fallback:</span> <span class="config-value">${this.escapeHtml(config.error_handling.fallback_action)}</span></div>`;
+            }
+            html += '</div>';
+        }
+
+        html += '</div>';
+        return html;
     },
 
     /**
