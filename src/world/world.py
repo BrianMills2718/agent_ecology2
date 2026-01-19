@@ -25,6 +25,7 @@ from .errors import ErrorCode, ErrorCategory
 from .rate_tracker import RateTracker
 from .invocation_registry import InvocationRegistry, InvocationRecord
 from .id_registry import IDRegistry
+from .resource_manager import ResourceManager, ResourceType
 
 from ..config import get as config_get, compute_per_agent_quota, PerAgentQuota
 
@@ -176,11 +177,9 @@ class World:
     _mint_submissions: dict[str, KernelMintSubmission]
     _mint_held_bids: dict[str, int]  # principal_id -> escrowed bid amount
     _mint_history: list[KernelMintResult]
-    # Quota state - kernel-level storage (Plan #42)
-    # Maps principal_id -> resource -> quota limit
-    _quota_limits: dict[str, dict[str, float]]
-    # Maps principal_id -> resource -> current usage
-    _quota_usage: dict[str, dict[str, float]]
+    # Unified resource management (Plan #95)
+    # Replaces _quota_limits and _quota_usage with ResourceManager
+    resource_manager: ResourceManager
     # Installed libraries per agent (Plan #29)
     # Maps principal_id -> list of (library_name, version)
     _installed_libraries: dict[str, list[tuple[str, str | None]]]
@@ -231,10 +230,9 @@ class World:
         else:
             self.logger = EventLogger(output_file=config["logging"]["output_file"])
 
-        # Kernel quota state (Plan #42)
+        # Unified resource manager (Plan #95)
         # Must be initialized BEFORE genesis artifacts since rights_registry delegates here
-        self._quota_limits = {}
-        self._quota_usage = {}
+        self.resource_manager = ResourceManager()
         # Installed libraries per agent (Plan #29)
         self._installed_libraries = {}
 
@@ -1595,6 +1593,7 @@ class World:
         """Set quota limit for a principal's resource.
 
         This is kernel state - quotas are physics, not genesis artifact state.
+        Delegates to ResourceManager (Plan #95).
 
         Args:
             principal_id: The principal to set quota for
@@ -1604,9 +1603,11 @@ class World:
         if amount < 0:
             raise ValueError(f"Quota amount must be >= 0, got {amount}")
 
-        if principal_id not in self._quota_limits:
-            self._quota_limits[principal_id] = {}
-        self._quota_limits[principal_id][resource] = amount
+        # Ensure principal exists in ResourceManager
+        if not self.resource_manager.principal_exists(principal_id):
+            self.resource_manager.create_principal(principal_id)
+
+        self.resource_manager.set_quota(principal_id, resource, amount)
 
         self.logger.log("quota_set", {
             "tick": self.tick,
@@ -1619,6 +1620,8 @@ class World:
     def get_quota(self, principal_id: str, resource: str) -> float:
         """Get quota limit for a principal's resource.
 
+        Delegates to ResourceManager (Plan #95).
+
         Args:
             principal_id: The principal to query
             resource: Resource name
@@ -1626,10 +1629,12 @@ class World:
         Returns:
             Quota limit, or 0.0 if not set
         """
-        return self._quota_limits.get(principal_id, {}).get(resource, 0.0)
+        return self.resource_manager.get_quota(principal_id, resource)
 
     def consume_quota(self, principal_id: str, resource: str, amount: float) -> bool:
         """Record resource usage against quota.
+
+        Delegates to ResourceManager.allocate() (Plan #95).
 
         Args:
             principal_id: The principal consuming resources
@@ -1642,22 +1647,18 @@ class World:
         if amount < 0:
             raise ValueError(f"Consumption amount must be >= 0, got {amount}")
 
-        quota = self.get_quota(principal_id, resource)
-        current_usage = self._quota_usage.get(principal_id, {}).get(resource, 0.0)
+        # Ensure principal exists in ResourceManager
+        if not self.resource_manager.principal_exists(principal_id):
+            self.resource_manager.create_principal(principal_id)
 
-        # Check if this would exceed quota
-        if current_usage + amount > quota:
-            return False
-
-        # Record usage
-        if principal_id not in self._quota_usage:
-            self._quota_usage[principal_id] = {}
-        self._quota_usage[principal_id][resource] = current_usage + amount
-
-        return True
+        # ResourceManager.allocate() checks balance + amount vs quota
+        return self.resource_manager.allocate(principal_id, resource, amount)
 
     def get_quota_usage(self, principal_id: str, resource: str) -> float:
         """Get current usage of a resource for a principal.
+
+        Delegates to ResourceManager.get_balance() (Plan #95).
+        In ResourceManager, quota usage is tracked via balances for allocatable resources.
 
         Args:
             principal_id: The principal to query
@@ -1666,10 +1667,12 @@ class World:
         Returns:
             Current usage, or 0.0 if none recorded
         """
-        return self._quota_usage.get(principal_id, {}).get(resource, 0.0)
+        return self.resource_manager.get_balance(principal_id, resource)
 
     def get_available_capacity(self, principal_id: str, resource: str) -> float:
         """Get remaining capacity (quota - usage) for a resource.
+
+        Delegates to ResourceManager.get_available_quota() (Plan #95).
 
         Args:
             principal_id: The principal to query
@@ -1678,9 +1681,7 @@ class World:
         Returns:
             Remaining capacity, or 0.0 if no quota set
         """
-        quota = self.get_quota(principal_id, resource)
-        usage = self.get_quota_usage(principal_id, resource)
-        return max(0.0, quota - usage)
+        return self.resource_manager.get_available_quota(principal_id, resource)
 
     # -------------------------------------------------------------------------
     # Library Installation (Plan #29)

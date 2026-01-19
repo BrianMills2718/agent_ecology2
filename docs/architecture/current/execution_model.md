@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-19 (Plan #79 - removed legacy tick-based auction code)
+**Last verified:** 2026-01-19 (Plan #95 - ResourceManager integration)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
