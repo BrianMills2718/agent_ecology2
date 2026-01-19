@@ -13,14 +13,19 @@ SQLite is used because:
 - JSON1 extension for storing structured data
 - No external dependencies
 
-Concurrency Handling (Plan #97):
-    Write operations use retry logic with exponential backoff to handle
-    transient SQLite lock errors that can occur when multiple worker
-    threads/processes access the database concurrently. The retry
-    parameters are configurable via config:
+Concurrency Handling (Plan #97 + Plan #99):
+    Read operations use DEFERRED isolation (default), allowing concurrent
+    readers via WAL mode. Write operations use IMMEDIATE isolation to
+    prevent deadlocks in read-then-write patterns.
+
+    Write operations also use retry logic with exponential backoff to handle
+    transient SQLite lock errors. The retry parameters are configurable:
     - timeouts.state_store_retry_max: Max retry attempts (default: 5)
     - timeouts.state_store_retry_base: Base delay in seconds (default: 0.1)
     - timeouts.state_store_retry_max_delay: Max delay cap (default: 5.0)
+
+    This separation enables true concurrent reads (WAL mode works as designed)
+    while writes serialize to prevent deadlocks.
 
 Usage:
     store = AgentStateStore(Path("state.db"))
@@ -208,16 +213,41 @@ class AgentStateStore:
             """)
             conn.commit()
 
-    def _get_connection(self) -> sqlite3.Connection:
-        """Create a new database connection with WAL mode.
+    def _get_read_connection(self) -> sqlite3.Connection:
+        """Create a connection for read-only operations (Plan #99).
+
+        Uses default DEFERRED isolation, which allows concurrent readers
+        via WAL mode. No write lock is acquired until a write is attempted.
 
         Note: Callers must explicitly close the connection when done.
-        Use _connect() context manager for automatic cleanup.
+        Use _connect_read() context manager for automatic cleanup.
         """
         timeout = get_validated_config().timeouts.state_store_lock
         conn = sqlite3.connect(
             str(self.db_path),
-            timeout=timeout,  # Wait for locks (from config)
+            timeout=timeout,
+            # DEFERRED (default): No lock until first write statement
+            # This allows concurrent readers in WAL mode
+        )
+        # Enable WAL mode for better concurrency
+        conn.execute("PRAGMA journal_mode=WAL")
+        # Enable foreign keys (good practice)
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
+
+    def _get_write_connection(self) -> sqlite3.Connection:
+        """Create a connection for write operations (Plan #99).
+
+        Uses IMMEDIATE isolation to acquire a write lock early, preventing
+        deadlocks in read-then-write patterns. Writes are serialized.
+
+        Note: Callers must explicitly close the connection when done.
+        Use _connect_write() context manager for automatic cleanup.
+        """
+        timeout = get_validated_config().timeouts.state_store_lock
+        conn = sqlite3.connect(
+            str(self.db_path),
+            timeout=timeout,
             isolation_level="IMMEDIATE",  # Acquire write lock early
         )
         # Enable WAL mode for better concurrency
@@ -227,13 +257,34 @@ class AgentStateStore:
         return conn
 
     @contextmanager
-    def _connect(self) -> Iterator[sqlite3.Connection]:
-        """Context manager for database connections.
+    def _connect_read(self) -> Iterator[sqlite3.Connection]:
+        """Context manager for read-only database connections.
 
-        Ensures connections are properly closed after use, which is critical
-        for SQLite concurrency - unclosed connections hold locks.
+        Allows concurrent readers via WAL mode. Use for load() and list_agents().
         """
-        conn = self._get_connection()
+        conn = self._get_read_connection()
+        try:
+            yield conn
+        finally:
+            conn.close()
+
+    @contextmanager
+    def _connect_write(self) -> Iterator[sqlite3.Connection]:
+        """Context manager for write database connections.
+
+        Uses IMMEDIATE isolation to prevent deadlocks. Use for save(), delete(), clear().
+        """
+        conn = self._get_write_connection()
+        try:
+            yield conn
+        finally:
+            conn.close()
+
+    # Legacy alias for _ensure_db which needs write access
+    @contextmanager
+    def _connect(self) -> Iterator[sqlite3.Connection]:
+        """Legacy context manager - uses write connection for backwards compatibility."""
+        conn = self._get_write_connection()
         try:
             yield conn
         finally:
@@ -243,6 +294,7 @@ class AgentStateStore:
         """Save agent state to database.
 
         Uses INSERT OR REPLACE to handle both new and existing agents.
+        Uses IMMEDIATE isolation via _connect_write() to prevent deadlocks.
         Retries on transient SQLite lock errors with exponential backoff.
 
         Args:
@@ -251,7 +303,7 @@ class AgentStateStore:
         state_json = json.dumps(state.to_dict())
 
         def do_save() -> None:
-            with self._connect() as conn:
+            with self._connect_write() as conn:
                 conn.execute(
                     """
                     INSERT OR REPLACE INTO agent_state (agent_id, state_json, updated_at)
@@ -266,18 +318,29 @@ class AgentStateStore:
     def load(self, agent_id: str) -> AgentState | None:
         """Load agent state from database.
 
+        Uses DEFERRED isolation via _connect_read() to allow concurrent readers.
+        This is a read-only operation that benefits from WAL mode concurrency.
+        Retries on transient SQLite lock errors (rare in WAL mode, but possible
+        during checkpoint operations).
+
         Args:
             agent_id: ID of agent to load
 
         Returns:
             AgentState if found, None otherwise
         """
-        with self._connect() as conn:
-            cursor = conn.execute(
-                "SELECT state_json FROM agent_state WHERE agent_id = ?",
-                (agent_id,),
-            )
-            row = cursor.fetchone()
+        row: tuple[str, ...] | None = None
+
+        def do_load() -> tuple[str, ...] | None:
+            with self._connect_read() as conn:
+                cursor = conn.execute(
+                    "SELECT state_json FROM agent_state WHERE agent_id = ?",
+                    (agent_id,),
+                )
+                result: tuple[str, ...] | None = cursor.fetchone()
+                return result
+
+        row = _with_retry(do_load)
 
         if row is None:
             return None
@@ -288,13 +351,14 @@ class AgentStateStore:
     def delete(self, agent_id: str) -> None:
         """Delete agent state from database.
 
+        Uses IMMEDIATE isolation via _connect_write() to prevent deadlocks.
         Retries on transient SQLite lock errors with exponential backoff.
 
         Args:
             agent_id: ID of agent to delete
         """
         def do_delete() -> None:
-            with self._connect() as conn:
+            with self._connect_write() as conn:
                 conn.execute(
                     "DELETE FROM agent_state WHERE agent_id = ?",
                     (agent_id,),
@@ -306,20 +370,29 @@ class AgentStateStore:
     def list_agents(self) -> list[str]:
         """List all agent IDs in the store.
 
+        Uses DEFERRED isolation via _connect_read() to allow concurrent readers.
+        This is a read-only operation that benefits from WAL mode concurrency.
+        Retries on transient SQLite lock errors (rare in WAL mode, but possible
+        during checkpoint operations).
+
         Returns:
             List of agent IDs
         """
-        with self._connect() as conn:
-            cursor = conn.execute("SELECT agent_id FROM agent_state ORDER BY agent_id")
-            return [row[0] for row in cursor.fetchall()]
+        def do_list() -> list[str]:
+            with self._connect_read() as conn:
+                cursor = conn.execute("SELECT agent_id FROM agent_state ORDER BY agent_id")
+                return [row[0] for row in cursor.fetchall()]
+
+        return _with_retry(do_list)
 
     def clear(self) -> None:
         """Delete all agent states (useful for testing).
 
+        Uses IMMEDIATE isolation via _connect_write() to prevent deadlocks.
         Retries on transient SQLite lock errors with exponential backoff.
         """
         def do_clear() -> None:
-            with self._connect() as conn:
+            with self._connect_write() as conn:
                 conn.execute("DELETE FROM agent_state")
                 conn.commit()
 
