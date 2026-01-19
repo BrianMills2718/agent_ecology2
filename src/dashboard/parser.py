@@ -40,6 +40,10 @@ from .models import (
     ArtifactDetail,
     InvocationEvent,
     InvocationStatsResponse,
+    # Temporal network models (Plan #107)
+    ArtifactNode,
+    ArtifactEdge,
+    TemporalNetworkData,
 )
 
 
@@ -1042,6 +1046,214 @@ class JSONLParser:
             edges=edges,
             interactions=interactions,
             tick_range=tick_range,
+        )
+
+    def get_temporal_network_data(
+        self,
+        time_min: str | None = None,
+        time_max: str | None = None,
+        time_bucket_seconds: int = 1,
+    ) -> TemporalNetworkData:
+        """Get artifact-centric temporal network data (Plan #107).
+
+        Unlike the agent-only network graph, this includes ALL artifacts as nodes:
+        - Agents (LLM-powered principals)
+        - Genesis artifacts (system services)
+        - Contracts (executable artifacts)
+        - Data artifacts (non-executable)
+
+        Edges represent:
+        - Invocations (who called what artifact, INCLUDING genesis)
+        - Ownership (which principal owns which artifact)
+
+        Args:
+            time_min: ISO timestamp for earliest events (inclusive)
+            time_max: ISO timestamp for latest events (inclusive)
+            time_bucket_seconds: Size of time buckets for activity grouping
+        """
+        from datetime import datetime
+
+        nodes: list[ArtifactNode] = []
+        edges: list[ArtifactEdge] = []
+        activity_by_time: dict[str, dict[str, int]] = {}
+        all_timestamps: list[str] = []
+
+        def bucket_timestamp(ts: str) -> str:
+            """Convert a timestamp to a bucket key."""
+            try:
+                dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                # Truncate to bucket size
+                bucket_seconds = (dt.second // time_bucket_seconds) * time_bucket_seconds
+                bucketed = dt.replace(second=bucket_seconds, microsecond=0)
+                return bucketed.isoformat()
+            except (ValueError, TypeError):
+                return ts
+
+        def in_time_range(ts: str) -> bool:
+            """Check if timestamp is within the specified range."""
+            if not ts:
+                return True
+            try:
+                dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                if time_min:
+                    min_dt = datetime.fromisoformat(time_min.replace("Z", "+00:00"))
+                    if dt < min_dt:
+                        return False
+                if time_max:
+                    max_dt = datetime.fromisoformat(time_max.replace("Z", "+00:00"))
+                    if dt > max_dt:
+                        return False
+                return True
+            except (ValueError, TypeError):
+                return True
+
+        def get_artifact_type(
+            artifact_id: str, artifact_state: ArtifactState | None
+        ) -> Literal["agent", "genesis", "contract", "data", "unknown"]:
+            """Determine artifact type from ID and state."""
+            if artifact_id.startswith("genesis_"):
+                return "genesis"
+            if artifact_id in self.state.agents:
+                return "agent"
+            if artifact_state:
+                if artifact_state.executable:
+                    return "contract"
+                return "data"
+            return "unknown"
+
+        seen_nodes: set[str] = set()
+
+        # Build nodes from agents
+        for agent_id, agent in self.state.agents.items():
+            if agent_id in seen_nodes:
+                continue
+            seen_nodes.add(agent_id)
+
+            status: Literal["active", "low_resources", "frozen"] = "active"
+            if agent.llm_tokens_used >= agent.llm_tokens_quota * 0.9:
+                status = "low_resources"
+            if agent.llm_tokens_used >= agent.llm_tokens_quota:
+                status = "frozen"
+
+            nodes.append(ArtifactNode(
+                id=agent_id,
+                label=agent_id,
+                artifact_type="agent",
+                owner_id=None,
+                executable=False,
+                invocation_count=0,
+                scrip=agent.scrip,
+                status=status,
+            ))
+
+        # Build nodes from artifacts (including genesis)
+        for artifact_id, artifact in self.state.artifacts.items():
+            if artifact_id in seen_nodes:
+                continue
+            seen_nodes.add(artifact_id)
+
+            nodes.append(ArtifactNode(
+                id=artifact_id,
+                label=artifact_id,
+                artifact_type=get_artifact_type(artifact_id, artifact),
+                owner_id=artifact.owner_id,
+                executable=artifact.executable,
+                invocation_count=artifact.invocation_count,
+                created_at=artifact.created_at,
+            ))
+
+        # Add genesis artifacts that might not be in state.artifacts
+        genesis_artifacts = [
+            "genesis_ledger", "genesis_mint", "genesis_store",
+            "genesis_escrow", "genesis_event_log", "genesis_handbook",
+            "genesis_debt_contract",
+        ]
+        for genesis_id in genesis_artifacts:
+            if genesis_id not in seen_nodes:
+                seen_nodes.add(genesis_id)
+                nodes.append(ArtifactNode(
+                    id=genesis_id,
+                    label=genesis_id,
+                    artifact_type="genesis",
+                    owner_id="system",
+                    executable=True,
+                    invocation_count=0,
+                ))
+
+        # Build invocation edges from invocation_events (includes genesis!)
+        invocation_counts: dict[tuple[str, str], int] = {}
+        for inv in self.state.invocation_events:
+            if not in_time_range(inv.timestamp):
+                continue
+
+            # Track for activity heatmap
+            bucket = bucket_timestamp(inv.timestamp)
+            if bucket not in activity_by_time:
+                activity_by_time[bucket] = {"invocations": 0, "total": 0}
+            activity_by_time[bucket]["invocations"] += 1
+            activity_by_time[bucket]["total"] += 1
+            all_timestamps.append(inv.timestamp)
+
+            # Aggregate invocations by (invoker, artifact)
+            key = (inv.invoker_id, inv.artifact_id)
+            invocation_counts[key] = invocation_counts.get(key, 0) + 1
+
+            # Ensure both nodes exist
+            if inv.invoker_id not in seen_nodes:
+                seen_nodes.add(inv.invoker_id)
+                nodes.append(ArtifactNode(
+                    id=inv.invoker_id,
+                    label=inv.invoker_id,
+                    artifact_type=get_artifact_type(inv.invoker_id, None),
+                ))
+            if inv.artifact_id not in seen_nodes:
+                seen_nodes.add(inv.artifact_id)
+                nodes.append(ArtifactNode(
+                    id=inv.artifact_id,
+                    label=inv.artifact_id,
+                    artifact_type=get_artifact_type(
+                        inv.artifact_id,
+                        self.state.artifacts.get(inv.artifact_id)
+                    ),
+                ))
+
+        # Create aggregated invocation edges
+        for (invoker, artifact), count in invocation_counts.items():
+            edges.append(ArtifactEdge(
+                from_id=invoker,
+                to_id=artifact,
+                edge_type="invocation",
+                timestamp="",  # Aggregated, no single timestamp
+                weight=count,
+                details=f"{invoker} invoked {artifact} {count}x",
+            ))
+
+        # Build ownership edges from artifacts
+        for artifact_id, artifact in self.state.artifacts.items():
+            if artifact.owner_id and artifact.owner_id != artifact_id:
+                edges.append(ArtifactEdge(
+                    from_id=artifact.owner_id,
+                    to_id=artifact_id,
+                    edge_type="ownership",
+                    timestamp=artifact.created_at or "",
+                    weight=1,
+                    details=f"{artifact.owner_id} owns {artifact_id}",
+                ))
+
+        # Calculate time range
+        time_range = ("", "")
+        if all_timestamps:
+            sorted_ts = sorted(all_timestamps)
+            time_range = (sorted_ts[0], sorted_ts[-1])
+
+        return TemporalNetworkData(
+            nodes=nodes,
+            edges=edges,
+            time_range=time_range,
+            activity_by_time=activity_by_time,
+            total_artifacts=len(nodes),
+            total_interactions=len(edges),
+            time_bucket_seconds=time_bucket_seconds,
         )
 
     def get_activity_feed(

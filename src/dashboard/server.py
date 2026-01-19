@@ -563,6 +563,28 @@ def create_app(
         dashboard.parser.parse_incremental()
         return dashboard.parser.get_network_graph_data(tick_max).model_dump()
 
+    @app.get("/api/temporal-network")
+    async def get_temporal_network(
+        time_min: str | None = Query(None, description="Min timestamp (ISO format)"),
+        time_max: str | None = Query(None, description="Max timestamp (ISO format)"),
+        time_bucket_seconds: int = Query(1, ge=1, le=3600, description="Time bucket size"),
+    ) -> dict[str, Any]:
+        """Get temporal network data showing ALL artifacts and their interactions (Plan #107).
+
+        Unlike /api/network which only shows agent-to-agent interactions,
+        this includes:
+        - All artifact types as nodes (agents, genesis, contracts, data)
+        - All invocations as edges (including genesis artifact calls)
+        - Ownership relationships
+        - Activity heatmap data by time bucket
+        """
+        dashboard.parser.parse_incremental()
+        return dashboard.parser.get_temporal_network_data(
+            time_min=time_min,
+            time_max=time_max,
+            time_bucket_seconds=time_bucket_seconds,
+        ).model_dump()
+
     @app.get("/api/activity")
     async def get_activity_feed(
         limit: int = Query(100, ge=1, le=500),

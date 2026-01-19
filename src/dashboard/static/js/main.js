@@ -33,10 +33,14 @@ const Dashboard = {
             if (typeof DependencyGraphPanel !== 'undefined') {
                 DependencyGraphPanel.init();
             }
+            if (typeof TemporalNetworkPanel !== 'undefined') {
+                TemporalNetworkPanel.init();
+            }
 
             // Set up collapsible panel toggles
             this.setupChartsToggle();
             this.setupDependencyToggle();
+            this.setupTemporalNetworkToggle();
 
             // Connect WebSocket
             window.wsManager.connect();
@@ -148,6 +152,9 @@ const Dashboard = {
         if (typeof DependencyGraphPanel !== 'undefined' && DependencyGraphPanel.refresh) {
             DependencyGraphPanel.refresh();
         }
+        if (typeof TemporalNetworkPanel !== 'undefined' && TemporalNetworkPanel.refresh) {
+            TemporalNetworkPanel.refresh();
+        }
     },
 
     /**
@@ -186,6 +193,34 @@ const Dashboard = {
                     // Refresh graph when expanded to ensure proper sizing
                     if (!panel.classList.contains('collapsed') && typeof DependencyGraphPanel !== 'undefined') {
                         setTimeout(() => DependencyGraphPanel.refresh(), 100);
+                    }
+                }
+            });
+        }
+    },
+
+    /**
+     * Set up collapsible temporal network panel (Plan #107)
+     */
+    setupTemporalNetworkToggle() {
+        const toggle = document.getElementById('temporal-network-toggle');
+        if (toggle) {
+            toggle.addEventListener('click', () => {
+                const panel = toggle.closest('.panel');
+                if (panel) {
+                    panel.classList.toggle('collapsed');
+                    const icon = panel.querySelector('.collapse-icon');
+                    if (icon) {
+                        icon.textContent = panel.classList.contains('collapsed') ? '+' : 'x';
+                    }
+                    // Refresh network when expanded to ensure proper sizing
+                    if (!panel.classList.contains('collapsed') && typeof TemporalNetworkPanel !== 'undefined') {
+                        setTimeout(() => {
+                            TemporalNetworkPanel.refresh();
+                            if (TemporalNetworkPanel.onShow) {
+                                TemporalNetworkPanel.onShow();
+                            }
+                        }, 100);
                     }
                 }
             });
