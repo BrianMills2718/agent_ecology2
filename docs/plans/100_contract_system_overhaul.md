@@ -50,9 +50,12 @@ The contract system is **partially implemented**:
 
 ## Open Questions and Uncertainties
 
-### Critical Design Decisions (Must Resolve Before Implementation)
+### Design Decisions (Resolved via Heuristics)
 
-#### 1. Dangling Contract Behavior
+The following decisions are resolved by applying the project's design heuristics from README.md and CLAUDE.md.
+
+#### 1. Dangling Contract Behavior → **RESOLVED: Fail-closed (Option B)**
+
 **Question:** What happens when `access_contract_id` points to a deleted contract?
 
 | Option | Pros | Cons |
@@ -61,59 +64,73 @@ The contract system is **partially implemented**:
 | **B: Fail-closed** | Secure - no unintended access | Artifacts locked forever |
 | **C: Prevent deletion** | Referential integrity | Adds complexity, contracts immortal |
 
-**Current position:** Undecided (docs say "deferred to implementation")
-**Recommendation:** Option B (fail-closed) aligns with "contracts are sole authority"
-**ADR needed:** Yes
+**Heuristics applied:**
+- **Fail Loud** (CLAUDE.md): Explicit denial better than silent access grant
+- **Selection pressure over protection** (README): Agents who choose bad contracts lose access - that's learning
+- **Observe, don't prevent** (README): Log the denial, let agents adapt
 
-#### 2. Contract Cost Model Semantics
+**Decision:** Option B. Artifacts with dangling contracts return explicit denial. Agents learn to use stable contracts.
+
+#### 2. Contract Cost Model Semantics → **RESOLVED: Simplified for V1**
+
 **Question:** How exactly does `cost_model` work?
 
-| Model | Who Pays | Use Case |
-|-------|----------|----------|
-| `invoker_pays` | Caller | Default - prevent spam |
-| `owner_pays` | Artifact owner | Public services |
-| `artifact_pays` | Artifact's balance | Self-sustaining services |
-| `split` | Configurable | Revenue sharing |
-| `custom` | Contract logic decides | Dynamic pricing |
+| Model | V1 Support | Notes |
+|-------|------------|-------|
+| `invoker_pays` | Yes | Default - caller pays |
+| `owner_pays` | Yes | Owner subsidizes access |
+| `artifact_pays` | No | Defer - artifacts don't hold scrip in V1 |
+| `split` | No | Defer - unnecessary complexity |
+| `custom` | No | Defer - contract can implement via `invoker_pays` |
 
-**Uncertainty:** How does `artifact_pays` work if artifacts don't have scrip balances?
-**Recommendation:** Clarify if artifacts can hold scrip, or if `artifact_pays` means owner's balance
+**Heuristics applied:**
+- **Pragmatism over purity** (README): Start with what we need, not what's elegant
+- **Minimal kernel, maximum flexibility** (README): Two cost models sufficient; agents can build more
 
-#### 3. Contract Caching Semantics
+**Decision:** V1 supports only `invoker_pays` (default) and `owner_pays`. Other models deferred.
+
+#### 3. Contract Caching Semantics → **RESOLVED: TTL-based, opt-in**
+
 **Question:** How does cache invalidation work?
 
-- **TTL-based:** Simple, but stale permissions possible
-- **Content-hash:** Invalidate when artifact/contract changes
-- **Explicit:** Contracts call `invalidate_cache()`
+**Heuristics applied:**
+- **Pragmatism over purity** (README): TTL is simple and works
+- **Maximum Configurability** (CLAUDE.md): Make TTL configurable per-contract
+- **Avoid defaults** (README): Caching should be opt-in, not default
 
-**Uncertainty:** What's the cache key? `(artifact_id, action, requester_id)`? Or contract-defined?
-**Recommendation:** Start with TTL-based (simplest), add content-hash for V2
+**Decision:**
+- Caching is **opt-in** via contract field `cache_policy: {ttl_seconds: N}`
+- No caching by default (explicit is better)
+- Cache key: `(artifact_id, action, requester_id, contract_version)`
+- Content-hash invalidation deferred to V2
 
-#### 4. LLM Access in Contracts
+#### 4. LLM Access in Contracts → **RESOLVED: Already approved (ADR-0003)**
+
 **Question:** Should contracts really be able to call LLMs?
 
-**Arguments for (from ADR-0003):**
-- LLMs are just API calls like weather APIs
-- Agents should choose complexity/cost tradeoff
-- System already non-deterministic
+**Heuristics applied:**
+- **When in doubt, contract decides** (README): Contracts can choose their complexity
+- **Emergence is the goal** (README): LLM-powered contracts enable new patterns
 
-**Arguments against:**
-- Non-deterministic permission checks
-- Cost uncertainty for callers
-- Griefing potential (expensive permission checks)
+**Decision:** Already approved in ADR-0003. Implement with:
+- Opt-in declaration: `capabilities: ["call_llm"]`
+- Extended timeout: 30s for contracts with LLM capability
+- Cost charged to invoker (prevents griefing)
 
-**Current position:** Approved in ADR-0003 with mitigations (timeout, depth limit, invoker pays)
-**Recommendation:** Implement but make it opt-in via contract declaration
+#### 5. Depth Limit Scope → **RESOLVED: Single unified counter**
 
-#### 5. Depth Limit Scope
-**Question:** Does MAX_PERMISSION_DEPTH=10 count:
-- Only permission checks?
-- All contract invocations?
-- Including artifact invocations from within contracts?
+**Question:** Does MAX_PERMISSION_DEPTH=10 count what?
 
-**Recommendation:** Separate limits:
-- `MAX_PERMISSION_DEPTH = 10` for permission check chains
-- `MAX_INVOKE_DEPTH = 5` (existing) for artifact invocations
+**Heuristics applied:**
+- **Minimal kernel, maximum flexibility** (README): One counter simpler than multiple
+- **Fail Loud** (CLAUDE.md): Explicit limit, explicit error when exceeded
+
+**Decision:** Single counter `MAX_CONTRACT_DEPTH = 10` that counts:
+- Permission check invocations
+- Contract-to-contract calls
+- Artifact invocations from within contracts
+
+This is simpler than separate limits and prevents all forms of deep recursion.
 
 ---
 
