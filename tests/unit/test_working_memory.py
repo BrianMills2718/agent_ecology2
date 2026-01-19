@@ -65,15 +65,15 @@ class TestWorkingMemoryInjection:
         assert "Build a price oracle" not in prompt
 
     @pytest.mark.plans([59])
-    def test_working_memory_default_disabled(self) -> None:
-        """Working memory injection should be disabled by default."""
+    def test_working_memory_default_enabled(self) -> None:
+        """Working memory injection should be enabled by default (changed in learning config)."""
         agent = Agent(
             agent_id="test",
             llm_model="gemini/gemini-3-flash-preview",
         )
 
-        # Default should be False (configurable)
-        assert agent.inject_working_memory is False
+        # Default is now True (enabled for learning)
+        assert agent.inject_working_memory is True
 
 
 class TestWorkingMemorySizeLimit:
@@ -209,3 +209,95 @@ class TestWorkingMemoryFromArtifact:
 
         memory = agent._extract_working_memory(artifact_content)
         assert memory is None
+
+
+class TestWorkingMemoryFromSeparateArtifact:
+    """Test loading working memory from {agent_id}_working_memory artifacts."""
+
+    @pytest.mark.plans([59])
+    def test_inject_from_separate_artifact_yaml_string(self) -> None:
+        """Agent should inject working memory from {id}_working_memory artifact with YAML string."""
+        agent = Agent(
+            agent_id="alpha_3",
+            llm_model="gemini/gemini-3-flash-preview",
+            inject_working_memory=True,
+        )
+
+        # No embedded working memory
+        assert agent._working_memory is None
+
+        # Simulate artifact list with separate working_memory artifact
+        artifacts = [
+            {
+                "id": "alpha_3_working_memory",
+                "type": "data",
+                "owner_id": "alpha_3",
+                "content": "working_memory:\n  current_goal: Build price oracle\n  lessons:\n    - Test lesson",
+            }
+        ]
+
+        world_state = {"tick": 1, "balances": {"alpha_3": 100}, "artifacts": artifacts}
+        prompt = agent.build_prompt(world_state)
+
+        # Working memory should be injected
+        assert "Your Working Memory" in prompt
+        assert "Build price oracle" in prompt
+        assert "Test lesson" in prompt
+
+    @pytest.mark.plans([59])
+    def test_inject_from_separate_artifact_dict(self) -> None:
+        """Agent should inject working memory from {id}_working_memory artifact with dict content."""
+        agent = Agent(
+            agent_id="beta_3",
+            llm_model="gemini/gemini-3-flash-preview",
+            inject_working_memory=True,
+        )
+
+        # Simulate artifact with dict content
+        artifacts = [
+            {
+                "id": "beta_3_working_memory",
+                "type": "data",
+                "owner_id": "beta_3",
+                "content": {
+                    "working_memory": {
+                        "current_goal": "Coordinate agents",
+                        "lessons": ["Lesson from dict"],
+                    }
+                },
+            }
+        ]
+
+        world_state = {"tick": 1, "balances": {"beta_3": 100}, "artifacts": artifacts}
+        prompt = agent.build_prompt(world_state)
+
+        # Working memory should be injected
+        assert "Your Working Memory" in prompt
+
+    @pytest.mark.plans([59])
+    def test_embedded_takes_precedence(self) -> None:
+        """Embedded working_memory should take precedence over separate artifact."""
+        agent = Agent(
+            agent_id="gamma_3",
+            llm_model="gemini/gemini-3-flash-preview",
+            inject_working_memory=True,
+        )
+
+        # Set embedded working memory
+        agent._working_memory = {"current_goal": "Embedded goal"}
+
+        # Also have separate artifact
+        artifacts = [
+            {
+                "id": "gamma_3_working_memory",
+                "type": "data",
+                "content": "working_memory:\n  current_goal: Artifact goal",
+            }
+        ]
+
+        world_state = {"tick": 1, "balances": {"gamma_3": 100}, "artifacts": artifacts}
+        prompt = agent.build_prompt(world_state)
+
+        # Embedded should be used, not artifact
+        assert "Embedded goal" in prompt
+        assert "Artifact goal" not in prompt
