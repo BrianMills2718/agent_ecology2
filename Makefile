@@ -1,7 +1,7 @@
 # Agent Ecology - Common Commands
 # Usage: make <target>
 
-.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge finish pr-merge-admin pr-list pr-view worktree worktree-quick worktree-remove worktree-remove-force clean-branches clean-branches-delete kill
+.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge finish pr-merge-admin pr-list pr-view worktree worktree-quick worktree-remove worktree-remove-force clean-branches clean-branches-delete kill ci-status ci-require ci-optional
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -154,3 +154,18 @@ clean-branches:  ## List stale remote branches (PRs already merged)
 
 clean-branches-delete:  ## Delete stale remote branches (PRs already merged)
 	python scripts/cleanup_branches.py --delete
+
+# CI Configuration
+ci-status:  ## Show current CI requirement status
+	@echo "Checking branch protection rules..."
+	@gh api repos/BrianMills2718/agent_ecology2/rulesets/11737543 --jq '.rules | map(.type) | if any(. == "required_status_checks") then "CI: REQUIRED (blocks merges)" else "CI: OPTIONAL (informational only)" end'
+
+ci-require:  ## Make CI required for merges (costs money when CI runs)
+	@echo "Enabling required CI checks..."
+	@gh api repos/BrianMills2718/agent_ecology2/rulesets/11737543 -X PUT --input - <<< '{"rules":[{"type":"deletion"},{"type":"non_fast_forward"},{"type":"pull_request","parameters":{"required_approving_review_count":0,"dismiss_stale_reviews_on_push":true,"require_code_owner_review":false,"require_last_push_approval":false,"required_review_thread_resolution":true,"allowed_merge_methods":["merge","squash","rebase"]}},{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":false,"do_not_enforce_on_create":false,"required_status_checks":[{"context":"plans"},{"context":"changes"},{"context":"fast-checks"}]}}]}' > /dev/null
+	@echo "✅ CI is now REQUIRED - merges blocked until CI passes"
+
+ci-optional:  ## Make CI optional (runs but doesn't block merges)
+	@echo "Making CI optional..."
+	@gh api repos/BrianMills2718/agent_ecology2/rulesets/11737543 -X PUT --input - <<< '{"rules":[{"type":"deletion"},{"type":"non_fast_forward"},{"type":"pull_request","parameters":{"required_approving_review_count":0,"dismiss_stale_reviews_on_push":true,"require_code_owner_review":false,"require_last_push_approval":false,"required_review_thread_resolution":true,"allowed_merge_methods":["merge","squash","rebase"]}}]}' > /dev/null
+	@echo "✅ CI is now OPTIONAL - merges work without waiting for CI"
