@@ -746,11 +746,38 @@ class Agent:
                 first_tick_section = f"\n## Getting Started\n{first_tick_hint}\n"
 
         # Working memory injection (Plan #59)
+        # Also check for {agent_id}_working_memory artifact if no embedded working_memory
         working_memory_section: str = ""
-        if self.inject_working_memory and self._working_memory:
-            formatted_wm = self._format_working_memory()
-            if formatted_wm:
-                working_memory_section = f"\n## Your Working Memory\n{formatted_wm}\n"
+        if self.inject_working_memory:
+            working_memory_to_inject: dict[str, Any] | None = self._working_memory
+
+            # If no embedded working_memory, try loading from {agent_id}_working_memory artifact
+            if not working_memory_to_inject:
+                memory_artifact_id = f"{self.agent_id}_working_memory"
+                for artifact in artifacts:
+                    if artifact.get('id') == memory_artifact_id:
+                        content = artifact.get('content', '')
+                        # Parse YAML content if it's a string
+                        if isinstance(content, str) and 'working_memory:' in content:
+                            working_memory_to_inject = {'raw': content}
+                        elif isinstance(content, dict):
+                            working_memory_to_inject = content.get('working_memory', content)
+                        break
+
+            if working_memory_to_inject:
+                if 'raw' in working_memory_to_inject:
+                    # Raw YAML string - inject as-is
+                    working_memory_section = f"\n## Your Working Memory\n{working_memory_to_inject['raw']}\n"
+                elif self._working_memory:
+                    # Use embedded working memory with standard formatter
+                    formatted_wm = self._format_working_memory()
+                    if formatted_wm:
+                        working_memory_section = f"\n## Your Working Memory\n{formatted_wm}\n"
+                else:
+                    # Format dict from artifact directly
+                    import yaml
+                    formatted_wm = yaml.dump(working_memory_to_inject, default_flow_style=False)
+                    working_memory_section = f"\n## Your Working Memory\n{formatted_wm}\n"
 
         prompt: str = f"""You are {self.agent_id} in a simulated world.
 
