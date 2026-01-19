@@ -6,7 +6,7 @@
 #
 # Exceptions (allowed in main):
 #   - Coordination files (.claude/*, CLAUDE.md, .git/*, .claude_session)
-#   - Meta-process docs (docs/meta/*.md) - process patterns, not implementation
+#   - Meta-process docs (meta/patterns/*.md) - process patterns, not implementation
 #   - Plan files (docs/plans/NN_*.md) - if NEW or UNCLAIMED
 #   - Files in claimed worktrees (worktrees/XXX/*) - if XXX has a claim
 #
@@ -35,7 +35,7 @@ BASENAME=$(basename "$FILE_PATH")
 if [[ "$FILE_PATH" == *"/.claude/"* ]] || \
    [[ "$BASENAME" == "CLAUDE.md" ]] || \
    [[ "$FILE_PATH" == *"/.git/"* ]] || \
-   [[ "$FILE_PATH" == */docs/meta/*.md ]] || \
+   [[ "$FILE_PATH" == */meta/patterns/*.md ]] || \
    [[ "$BASENAME" == ".claude_session" ]]; then
     exit 0  # Coordination files allowed
 fi

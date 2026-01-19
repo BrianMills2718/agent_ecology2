@@ -28,7 +28,7 @@ Plans with a "## Human Review Required" section cannot be completed
 without the --human-verified flag. This ensures humans verify things
 that automated tests cannot check (visual correctness, UX, etc.).
 
-See docs/meta/verification-enforcement.md for the full pattern.
+See meta/patterns/17_verification-enforcement.md for the full pattern.
 """
 
 import argparse

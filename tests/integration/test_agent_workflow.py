@@ -1,7 +1,7 @@
 """Integration tests for agent workflow execution.
 
 Tests the full workflow execution path: Agent -> WorkflowRunner -> LLM/Code steps.
-Maps to acceptance criteria in acceptance_gates/agent_workflow.yaml.
+Maps to acceptance criteria in meta/acceptance_gates/agent_workflow.yaml.
 
 Run with: pytest tests/integration/test_agent_workflow.py -v
 """

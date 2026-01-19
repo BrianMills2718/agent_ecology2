@@ -24,7 +24,7 @@ class TestSharedScope:
     """Tests for shared scope - files that never conflict."""
 
     def test_shared_feature_exists(self) -> None:
-        """The 'shared' feature should be defined in acceptance_gates/shared.yaml."""
+        """The 'shared' feature should be defined in meta/acceptance_gates/shared.yaml."""
         features = load_all_features()
         assert "shared" in features, "shared feature should be defined"
 

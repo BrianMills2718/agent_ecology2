@@ -1,4 +1,4 @@
-"""Feature acceptance tests for ledger - maps to acceptance_gates/ledger.yaml.
+"""Feature acceptance tests for ledger - maps to meta/acceptance_gates/ledger.yaml.
 
 Run with: pytest --feature ledger tests/
 """
@@ -13,7 +13,7 @@ from src.world.ledger import Ledger
 
 @pytest.mark.feature("ledger")
 class TestLedgerFeature:
-    """Tests mapping to acceptance_gates/ledger.yaml acceptance criteria."""
+    """Tests mapping to meta/acceptance_gates/ledger.yaml acceptance criteria."""
 
     # AC-1: Successful scrip transfer between principals (happy_path)
     def test_ac_1_successful_scrip_transfer(

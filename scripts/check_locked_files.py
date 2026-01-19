@@ -16,7 +16,7 @@ Usage:
     python scripts/check_locked_files.py --base abc123
 
     # Check specific feature file
-    python scripts/check_locked_files.py --base main --file acceptance_gates/escrow.yaml
+    python scripts/check_locked_files.py --base main --file meta/acceptance_gates/escrow.yaml
 """
 
 import argparse
@@ -224,7 +224,7 @@ def main() -> int:
     parser.add_argument(
         "--features-dir",
         type=Path,
-        default=Path("acceptance_gates"),
+        default=Path("meta/acceptance_gates"),
         help="Directory containing feature files",
     )
 

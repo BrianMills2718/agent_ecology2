@@ -1,4 +1,4 @@
-"""Feature acceptance tests for escrow - maps to acceptance_gates/escrow.yaml.
+"""Feature acceptance tests for escrow - maps to meta/acceptance_gates/escrow.yaml.
 
 Run with: pytest --feature escrow tests/
 """
@@ -14,7 +14,7 @@ from src.world.genesis import GenesisEscrow
 
 @pytest.mark.feature("escrow")
 class TestEscrowFeature:
-    """Tests mapping to acceptance_gates/escrow.yaml acceptance criteria."""
+    """Tests mapping to meta/acceptance_gates/escrow.yaml acceptance criteria."""
 
     # AC-1: Successful artifact sale via escrow (happy_path)
     def test_ac_1_successful_artifact_sale(
