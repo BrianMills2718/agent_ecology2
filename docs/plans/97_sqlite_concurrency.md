@@ -82,6 +82,8 @@ tests/unit/test_state_store.py::TestAgentStateStore::test_concurrent_access (exi
 - config/schema.yaml (modify)
 - config/config.yaml (modify)
 - tests/unit/test_state_store.py (modify)
+- docs/architecture/current/configuration.md (modify)
+- docs/plans/CLAUDE.md (modify)
 
 ## Related
 
