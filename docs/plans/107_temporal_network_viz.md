@@ -181,8 +181,93 @@ Key commits on branch to reference:
 
 ---
 
+## Phase 2: Gource Export for Simulation Playback
+
+Add ability to export simulation events as Gource-compatible logs, enabling polished animated visualizations of simulation evolution.
+
+### Why Gource?
+
+Gource provides a well-polished temporal visualization that shows:
+- Entities (agents, artifacts) as nodes in a tree
+- Interactions as "touches" from avatars
+- Time-lapse animation of the entire simulation
+- High-quality video export capability
+
+### Implementation
+
+#### New Files
+
+| File | Purpose |
+|------|---------|
+| `src/dashboard/gource_export.py` | Convert JSONL events to Gource custom log format |
+
+#### New Endpoint
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/export/gource` | GET | Download Gource-compatible log file |
+
+#### Gource Custom Log Format
+
+```
+timestamp|username|type|filepath
+```
+
+Mapping from simulation events:
+- `timestamp`: Unix timestamp from event
+- `username`: `agent_id` (the actor)
+- `type`: `A` (create artifact), `M` (invoke/modify), `D` (delete/transfer away)
+- `filepath`: `artifacts/{artifact_id}` or `agents/{agent_id}` tree structure
+
+#### Example Transformation
+
+**Input (JSONL):**
+```json
+{"event_type": "action", "timestamp": "2026-01-19T10:00:00Z", "agent_id": "alpha", "action_type": "invoke", "artifact_id": "genesis_store"}
+{"event_type": "action", "timestamp": "2026-01-19T10:00:05Z", "agent_id": "beta", "action_type": "write_artifact", "artifact_id": "beta_tool_1"}
+{"event_type": "action", "timestamp": "2026-01-19T10:00:10Z", "agent_id": "alpha", "action_type": "invoke", "artifact_id": "beta_tool_1"}
+```
+
+**Output (Gource log):**
+```
+1737280800|alpha|M|genesis/store
+1737280805|beta|A|artifacts/beta_tool_1
+1737280810|alpha|M|artifacts/beta_tool_1
+```
+
+#### Dashboard UI
+
+Add "Export for Gource" button to temporal network panel:
+- Downloads `.gource.log` file
+- Instructions tooltip: "Run: `gource --log-format custom simulation.gource.log`"
+
+### Usage
+
+```bash
+# Download from dashboard
+curl http://localhost:8080/api/export/gource > simulation.gource.log
+
+# Generate visualization
+gource --log-format custom -1280x720 simulation.gource.log
+
+# Export to video
+gource --log-format custom -1280x720 -o - simulation.gource.log | \
+  ffmpeg -y -r 60 -f image2pipe -vcodec ppm -i - -vcodec libx264 simulation.mp4
+```
+
+### Acceptance Criteria (Phase 2)
+
+1. **Export endpoint works**: `/api/export/gource` returns valid Gource log
+2. **All event types mapped**: Invocations, creations, transfers represented
+3. **Tree structure meaningful**: Genesis artifacts grouped, agent artifacts nested
+4. **Gource renders correctly**: Exported log produces valid visualization
+5. **Dashboard button**: UI provides easy export access
+
+---
+
 ## References
 
 - Branch: `temporal-network-viz` (local)
 - Current network panel: `src/dashboard/static/js/panels/network.js`
 - Dashboard docs: `docs/architecture/current/supporting_systems.md`
+- Gource custom log format: https://github.com/acaudwell/Gource/wiki/Custom-Log-Format
