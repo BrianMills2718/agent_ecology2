@@ -221,6 +221,157 @@ class TestAgentStateStore:
             assert len(final_state.turn_history) > 0
 
 
+class TestRetryLogic:
+    """Tests for SQLite retry logic with exponential backoff (Plan #97).
+
+    These tests use the _with_retry helper function directly, which is
+    more testable than trying to mock SQLite's C extension internals.
+    """
+
+    @pytest.mark.plans([97])
+    def test_retries_on_database_locked(self) -> None:
+        """Retry helper retries on 'database is locked' error.
+
+        Verifies that transient SQLite lock errors trigger retry behavior
+        rather than immediate failure.
+        """
+        from unittest.mock import patch
+        from src.agents.state_store import _with_retry
+
+        call_count = 0
+
+        def fail_twice_then_succeed() -> str:
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 2:  # Fail first 2 attempts
+                raise sqlite3.OperationalError("database is locked")
+            return "success"
+
+        with patch('time.sleep'):  # Don't actually sleep in tests
+            result = _with_retry(fail_twice_then_succeed)
+
+        assert result == "success"
+        assert call_count == 3, f"Expected 3 calls (2 failures + 1 success) but got {call_count}"
+
+    @pytest.mark.plans([97])
+    def test_gives_up_after_max_retries(self) -> None:
+        """Retry helper fails after max retry attempts.
+
+        Verifies that the retry mechanism has an upper bound and eventually
+        raises the error if it persists beyond max_retries.
+        """
+        from unittest.mock import patch
+        from src.agents.state_store import _with_retry
+
+        call_count = 0
+
+        def always_fail() -> None:
+            nonlocal call_count
+            call_count += 1
+            raise sqlite3.OperationalError("database is locked")
+
+        with patch('time.sleep'):  # Don't actually sleep
+            with pytest.raises(sqlite3.OperationalError, match="database is locked"):
+                _with_retry(always_fail, max_retries=5)
+
+        # Should have tried exactly max_retries times
+        assert call_count == 5, f"Expected 5 attempts but got {call_count}"
+
+    @pytest.mark.plans([97])
+    def test_exponential_backoff_timing(self) -> None:
+        """Retry delays follow exponential backoff pattern.
+
+        Verifies that delays between retries increase exponentially.
+        """
+        from unittest.mock import patch
+        from src.agents.state_store import _with_retry
+
+        sleep_calls: list[float] = []
+        call_count = 0
+
+        def track_sleep(duration: float) -> None:
+            sleep_calls.append(duration)
+
+        def fail_thrice_then_succeed() -> str:
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 3:  # Fail first 3 attempts
+                raise sqlite3.OperationalError("database is locked")
+            return "success"
+
+        with patch('time.sleep', side_effect=track_sleep):
+            result = _with_retry(fail_thrice_then_succeed, base_delay=0.1)
+
+        assert result == "success"
+        # Should have 3 sleep calls for 3 failures
+        assert len(sleep_calls) == 3, f"Expected 3 sleep calls but got {len(sleep_calls)}"
+
+        # Verify exponential growth: each delay should be >= previous * 2
+        # With base_delay=0.1: delays should be ~0.1, ~0.2, ~0.4
+        for i in range(1, len(sleep_calls)):
+            assert sleep_calls[i] >= sleep_calls[i - 1], \
+                f"Delay {i} ({sleep_calls[i]}) should be >= delay {i-1} ({sleep_calls[i-1]})"
+
+    @pytest.mark.plans([97])
+    def test_passes_through_other_errors(self) -> None:
+        """Non-lock errors are not retried.
+
+        Verifies that only 'database is locked' errors trigger retry logic,
+        while other errors propagate immediately.
+        """
+        from unittest.mock import patch
+        from src.agents.state_store import _with_retry
+
+        call_count = 0
+
+        def fail_with_io_error() -> None:
+            nonlocal call_count
+            call_count += 1
+            raise sqlite3.OperationalError("disk I/O error")
+
+        with patch('time.sleep'):
+            with pytest.raises(sqlite3.OperationalError, match="disk I/O error"):
+                _with_retry(fail_with_io_error)
+
+        # Should have only tried once (no retries for non-lock errors)
+        assert call_count == 1, f"Expected 1 call (no retry) but got {call_count}"
+
+    @pytest.mark.plans([97])
+    def test_respects_max_delay_cap(self) -> None:
+        """Exponential backoff respects maximum delay cap.
+
+        Verifies that delays don't exceed the configured max_delay.
+        """
+        from unittest.mock import patch
+        from src.agents.state_store import _with_retry
+
+        sleep_calls: list[float] = []
+        call_count = 0
+
+        def track_sleep(duration: float) -> None:
+            sleep_calls.append(duration)
+
+        def fail_many_times() -> str:
+            nonlocal call_count
+            call_count += 1
+            if call_count < 10:
+                raise sqlite3.OperationalError("database is locked")
+            return "success"
+
+        with patch('time.sleep', side_effect=track_sleep):
+            result = _with_retry(
+                fail_many_times,
+                max_retries=10,
+                base_delay=0.1,
+                max_delay=0.5,  # Cap at 0.5s
+            )
+
+        assert result == "success"
+        # All delays should be <= max_delay
+        for delay in sleep_calls:
+            assert delay <= 0.5, f"Delay {delay} exceeded max_delay of 0.5"
+
+
 class TestAgentSerialization:
     """Tests for Agent.to_state() and Agent.from_state() methods."""
 

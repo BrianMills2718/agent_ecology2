@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-19 (Plan #80 - log truncation)
+**Last verified:** 2026-01-19 (Plan #97 - SQLite retry config)
 
 ---
 
@@ -240,6 +240,26 @@ dashboard:
   static_dir: "src/dashboard/static"
   jsonl_file: "run.jsonl"
 ```
+
+### Timeouts (Plan #97)
+
+```yaml
+timeouts:
+  agent_loop_stop: 5.0            # AgentLoop stop timeout (seconds)
+  loop_manager_stop: 10.0         # AgentLoopManager stop_all timeout
+  simulation_shutdown: 5.0        # SimulationRunner shutdown timeout
+  mcp_server: 5.0                 # MCP server operations timeout
+  state_store_lock: 30.0          # SQLite lock timeout
+  state_store_retry_max: 5        # Max retry attempts for SQLite lock errors
+  state_store_retry_base: 0.1     # Base backoff delay (seconds)
+  state_store_retry_max_delay: 5.0  # Max backoff delay cap (seconds)
+  dashboard_server: 30.0          # Dashboard server operations timeout
+```
+
+**SQLite Retry Logic:** When multiple worker threads access the state store database concurrently, SQLite can throw `database is locked` errors under contention. The retry parameters control exponential backoff behavior:
+- Retries only on "database is locked" errors (other errors propagate immediately)
+- Delay doubles each attempt: base_delay * 2^(attempt-1), capped at max_delay
+- After max_retries, the error is raised
 
 ### Agent Prompt
 
