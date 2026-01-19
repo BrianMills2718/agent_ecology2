@@ -748,12 +748,12 @@ class Agent:
         # Working memory injection (Plan #59)
         # Also check for {agent_id}_working_memory artifact if no embedded working_memory
         working_memory_section: str = ""
+        memory_artifact_id = f"{self.agent_id}_working_memory"
         if self.inject_working_memory:
             working_memory_to_inject: dict[str, Any] | None = self._working_memory
 
             # If no embedded working_memory, try loading from {agent_id}_working_memory artifact
             if not working_memory_to_inject:
-                memory_artifact_id = f"{self.agent_id}_working_memory"
                 for artifact in artifacts:
                     if artifact.get('id') == memory_artifact_id:
                         content = artifact.get('content', '')
@@ -778,6 +778,15 @@ class Agent:
                     import yaml
                     formatted_wm = yaml.dump(working_memory_to_inject, default_flow_style=False)
                     working_memory_section = f"\n## Your Working Memory\n{formatted_wm}\n"
+            else:
+                # No working memory yet - tell agent how to create it
+                working_memory_section = f"""
+## Your Working Memory
+*No working memory found yet.*
+
+To start recording lessons, write to artifact `{memory_artifact_id}` with your lessons and goals.
+This will persist across your thinking cycles.
+"""
 
         prompt: str = f"""You are {self.agent_id} in a simulated world.
 
