@@ -15,6 +15,7 @@ const NetworkPanel = {
         escrow_trade: '#2196f3',
         ownership_transfer: '#9c27b0',
         artifact_invoke: '#ff9800',
+        genesis_invoke: '#00bcd4',  // Cyan for genesis artifact invocations
     },
 
     init() {

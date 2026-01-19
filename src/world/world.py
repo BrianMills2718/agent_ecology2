@@ -83,9 +83,9 @@ class CostsConfig(TypedDict, total=False):
     per_1k_output_tokens: int
 
 
-class WorldConfig(TypedDict):
-    """World configuration section."""
-    max_ticks: int
+class WorldConfig(TypedDict, total=False):
+    """World configuration section (now minimal - tick-based limits removed)."""
+    pass
 
 
 class ConfigDict(TypedDict, total=False):
@@ -155,8 +155,7 @@ class World:
     """The world kernel - manages state, executes actions, logs everything"""
 
     config: ConfigDict
-    tick: int
-    max_ticks: int
+    tick: int  # Event counter for logging (not for execution limits)
     costs: CostsConfig
     rights_config: RightsConfig
     ledger: Ledger
@@ -189,8 +188,7 @@ class World:
 
     def __init__(self, config: ConfigDict, run_id: str | None = None) -> None:
         self.config = config
-        self.tick = 0
-        self.max_ticks = config["world"]["max_ticks"]
+        self.tick = 0  # Event counter for logging (not for execution limits)
         self.costs = config["costs"]
 
         # Compute per-agent quotas from resource totals
@@ -205,10 +203,10 @@ class World:
         if "rights" in config and "default_quotas" in config["rights"]:
             self.rights_config = config["rights"]
         else:
-            # Build generic quotas from legacy format or computed values
+            # Build generic quotas from computed values (rate_limiting replaces per_tick)
             self.rights_config = {
                 "default_quotas": {
-                    "compute": float(quotas.get("compute_quota", config_get("resources.flow.compute.per_tick") or 50)),
+                    "compute": float(quotas.get("compute_quota", 50)),
                     "disk": float(quotas.get("disk_quota", config_get("resources.stock.disk.total") or 10000))
                 }
             }
@@ -348,7 +346,6 @@ class World:
         # Log world init
         default_quotas = self.rights_config.get("default_quotas", {})
         self.logger.log("world_init", {
-            "max_ticks": self.max_ticks,
             "rights": self.rights_config,
             "costs": self.costs,
             "principals": [
@@ -1269,63 +1266,30 @@ class World:
             error_type=error_type,
         ))
 
-    def advance_tick(self) -> bool:
+    def increment_event_counter(self) -> int:
+        """Increment the event counter and return the new value.
+
+        This replaces advance_tick() for logging purposes only.
+        Execution limits are now time-based (duration) or cost-based (budget).
         """
-        Advance to the next tick. Optionally renews FLOW RESOURCES for all principals.
-        Returns False if max_ticks reached.
-
-        .. deprecated:: Plan #83
-            This method is deprecated for time-based execution mode. In autonomous/duration
-            mode, use wall-clock time instead of tick-based progression. The mint system
-            now uses time-based auctions (see src/world/genesis/mint.py).
-
-        Resource reset behavior depends on use_rate_tracker:
-        - When use_rate_tracker=False (legacy): FLOW RESOURCES reset each tick based on quotas.
-        - When use_rate_tracker=True: Resources flow continuously via RateTracker, NO tick-based reset.
-
-        SCRIP (economic currency) is NEVER reset - it persists and accumulates.
-
-        See docs/RESOURCE_MODEL.md for design rationale.
-        """
-        if self.tick >= self.max_ticks:
-            return False
-
         self.tick += 1
 
-        # Update tick in debt contract if present
+        # Update tick in debt contract if present (for backward compat)
         debt_contract = self.genesis_artifacts.get("genesis_debt_contract")
         if isinstance(debt_contract, GenesisDebtContract):
             debt_contract.set_tick(self.tick)
 
-        # Only reset FLOW RESOURCES when NOT using rate tracker (legacy tick-based mode)
-        # When rate limiting is enabled, resources flow continuously via RateTracker
-        if not self.use_rate_tracker:
-            # Reset FLOW RESOURCES for all principals (use it or lose it)
-            # Only flow resources reset - scrip is persistent economic currency
-            for pid in self.principal_ids:
-                if self.rights_registry:
-                    # Use generic quota API - get all quotas for this principal
-                    all_quotas = self.rights_registry.get_all_quotas(pid)
-                    # Reset flow resources to their quotas
-                    # For now, only "compute" is a flow resource (resets each tick)
-                    # Stock resources like "disk" don't reset
-                    if "compute" in all_quotas:
-                        self.ledger.set_resource(pid, "llm_tokens", all_quotas["compute"])
-                else:
-                    # Fallback to config
-                    config_compute: int | None = config_get("resources.flow.compute.per_tick")
-                    default_quotas = self.rights_config.get("default_quotas", {})
-                    default_compute = default_quotas.get("compute", config_compute or 50)
-                    self.ledger.set_resource(pid, "llm_tokens", float(default_compute))
+        return self.tick
 
-        self.logger.log("tick", {
-            "tick": self.tick,
-            "compute": self.ledger.get_all_compute(),  # Backward compat log format
-            "scrip": self.ledger.get_all_scrip(),
-            "artifact_count": self.artifacts.count(),
-            "rate_tracker_mode": self.use_rate_tracker,
-        })
+    def advance_tick(self) -> bool:
+        """Increment event counter. Deprecated - use increment_event_counter().
 
+        .. deprecated:: Plan #102
+            This method is retained for backward compatibility with tests.
+            Execution limits are now time-based (duration) or cost-based (budget).
+            Always returns True (no max_ticks limit).
+        """
+        self.increment_event_counter()
         return True
 
     def get_state_summary(self) -> StateSummary:
@@ -1552,6 +1516,7 @@ class World:
         """Check if an agent is frozen (compute exhausted).
 
         An agent is frozen when their llm_tokens (compute) resource is <= 0.
+        With rate limiting enabled, checks the rate limiter's remaining capacity.
 
         Args:
             agent_id: ID of agent to check
@@ -1559,6 +1524,13 @@ class World:
         Returns:
             True if agent is frozen, False otherwise
         """
+        # Check rate limiter first (primary source of truth for compute)
+        remaining = self.ledger.get_resource_remaining(agent_id, "llm_tokens")
+        if remaining != float("inf"):
+            # Rate limiting is enabled - use rate limiter
+            return remaining <= 0
+
+        # Fallback to stock resource check (legacy mode)
         compute = self.ledger.get_resource(agent_id, "llm_tokens")
         return compute <= 0
 

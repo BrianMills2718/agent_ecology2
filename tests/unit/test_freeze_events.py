@@ -17,7 +17,7 @@ class TestAgentFrozenEvent:
             output_file = f.name
 
         config = {
-            "world": {"max_ticks": 10},
+            "world": {},
             "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 1},
             "logging": {"output_file": output_file},
             "principals": [
@@ -26,11 +26,16 @@ class TestAgentFrozenEvent:
             "rights": {
                 "default_quotas": {"compute": 10.0, "disk": 10000.0}  # Very low compute
             },
+            "rate_limiting": {
+                "enabled": True,
+                "window_seconds": 60.0,
+                "resources": {"llm_tokens": {"max_per_window": 100}}
+            },
         }
         world = World(config)
 
-        # Exhaust alice's compute
-        world.ledger.set_resource("alice", "llm_tokens", 0.0)
+        # Exhaust alice's compute via rate limiter
+        world.ledger.consume_resource("alice", "llm_tokens", 100)
 
         # Emit freeze event
         world.emit_agent_frozen("alice", reason="compute_exhausted")
@@ -52,7 +57,7 @@ class TestAgentFrozenEvent:
             output_file = f.name
 
         config = {
-            "world": {"max_ticks": 10},
+            "world": {},
             "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 1},
             "logging": {"output_file": output_file},
             "principals": [
@@ -60,6 +65,11 @@ class TestAgentFrozenEvent:
             ],
             "rights": {
                 "default_quotas": {"compute": 10.0, "disk": 10000.0}
+            },
+            "rate_limiting": {
+                "enabled": True,
+                "window_seconds": 60.0,
+                "resources": {"llm_tokens": {"max_per_window": 1000}}
             },
         }
         world = World(config)
@@ -90,7 +100,7 @@ class TestAgentUnfrozenEvent:
             output_file = f.name
 
         config = {
-            "world": {"max_ticks": 10},
+            "world": {},
             "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 1},
             "logging": {"output_file": output_file},
             "principals": [
@@ -98,6 +108,11 @@ class TestAgentUnfrozenEvent:
             ],
             "rights": {
                 "default_quotas": {"compute": 100.0, "disk": 10000.0}
+            },
+            "rate_limiting": {
+                "enabled": True,
+                "window_seconds": 60.0,
+                "resources": {"llm_tokens": {"max_per_window": 1000}}
             },
         }
         world = World(config)
@@ -123,7 +138,7 @@ class TestAgentUnfrozenEvent:
             output_file = f.name
 
         config = {
-            "world": {"max_ticks": 10},
+            "world": {},
             "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 1},
             "logging": {"output_file": output_file},
             "principals": [
@@ -132,6 +147,11 @@ class TestAgentUnfrozenEvent:
             ],
             "rights": {
                 "default_quotas": {"compute": 100.0, "disk": 10000.0}
+            },
+            "rate_limiting": {
+                "enabled": True,
+                "window_seconds": 60.0,
+                "resources": {"llm_tokens": {"max_per_window": 1000}}
             },
         }
         world = World(config)
@@ -209,7 +229,7 @@ class TestFreezeStateTracking:
             output_file = f.name
 
         config = {
-            "world": {"max_ticks": 10},
+            "world": {},
             "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 1},
             "logging": {"output_file": output_file},
             "principals": [
@@ -218,17 +238,22 @@ class TestFreezeStateTracking:
             "rights": {
                 "default_quotas": {"compute": 100.0, "disk": 10000.0}
             },
+            "rate_limiting": {
+                "enabled": True,
+                "window_seconds": 60.0,
+                "resources": {"llm_tokens": {"max_per_window": 1000}}
+            },
         }
         world = World(config)
 
-        # Initialize resources by starting first tick
-        world.advance_tick()
+        # Initialize event counter
+        world.increment_event_counter()
 
-        # Initially not frozen (has compute quota)
+        # Initially not frozen (rate limiter has capacity)
         assert world.is_agent_frozen("alice") is False
 
-        # Exhaust compute
-        world.ledger.set_resource("alice", "llm_tokens", 0.0)
+        # Exhaust compute via rate limiter
+        world.ledger.consume_resource("alice", "llm_tokens", 1000)
 
         # Now frozen
         assert world.is_agent_frozen("alice") is True
@@ -239,7 +264,7 @@ class TestFreezeStateTracking:
             output_file = f.name
 
         config = {
-            "world": {"max_ticks": 10},
+            "world": {},
             "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 1},
             "logging": {"output_file": output_file},
             "principals": [
@@ -250,15 +275,20 @@ class TestFreezeStateTracking:
             "rights": {
                 "default_quotas": {"compute": 100.0, "disk": 10000.0}
             },
+            "rate_limiting": {
+                "enabled": True,
+                "window_seconds": 60.0,
+                "resources": {"llm_tokens": {"max_per_window": 1000}}
+            },
         }
         world = World(config)
 
-        # Initialize resources by starting first tick
-        world.advance_tick()
+        # Initialize event counter
+        world.increment_event_counter()
 
         # Freeze alice and charlie (bob keeps compute)
-        world.ledger.set_resource("alice", "llm_tokens", 0.0)
-        world.ledger.set_resource("charlie", "llm_tokens", 0.0)
+        world.ledger.consume_resource("alice", "llm_tokens", 1000)
+        world.ledger.consume_resource("charlie", "llm_tokens", 1000)
 
         frozen = world.get_frozen_agents()
         assert set(frozen) == {"alice", "charlie"}

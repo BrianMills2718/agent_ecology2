@@ -39,7 +39,7 @@ class EcosystemKPIs:
     # Activity metrics
     active_agent_ratio: float = 0.0
     frozen_agent_count: int = 0
-    actions_per_tick: float = 0.0
+    actions_per_second: float = 0.0  # Time-based metric (Plan #102)
     thinking_cost_rate: float = 0.0
 
     # Market metrics
@@ -124,12 +124,14 @@ def count_frozen_agents(agents: list[dict[str, float]]) -> int:
 def calculate_active_agent_ratio(
     agents: list[dict[str, int | None]],
     current_tick: int,
-    threshold_ticks: int = 5,
+    threshold_events: int = 5,
 ) -> float:
     """Calculate ratio of agents that have acted recently.
 
     An agent is considered active if they have taken an action
-    within the last threshold_ticks ticks.
+    within the last threshold_events events. Note: This is based on
+    event count (tick) for backward compatibility - consider migrating
+    to time-based thresholds in future.
     """
     if not agents:
         return 0.0
@@ -137,7 +139,7 @@ def calculate_active_agent_ratio(
     active_count = 0
     for agent in agents:
         last_action = agent.get("last_action_tick")
-        if last_action is not None and (current_tick - last_action) <= threshold_ticks:
+        if last_action is not None and (current_tick - last_action) <= threshold_events:
             active_count += 1
 
     return active_count / len(agents)
@@ -214,10 +216,10 @@ def calculate_kpis(state: SimulationState) -> EcosystemKPIs:
     ]
     kpis.frozen_agent_count = count_frozen_agents(agent_dicts_for_frozen)
 
-    # Actions per tick
-    if state.current_tick > 0:
-        total_actions = sum(agent.action_count for agent in agents)
-        kpis.actions_per_tick = total_actions / state.current_tick
+    # Actions per second (time-based metric)
+    total_actions = sum(agent.action_count for agent in agents)
+    if elapsed_seconds > 0:
+        kpis.actions_per_second = total_actions / elapsed_seconds
 
     # Thinking cost rate (cost per second)
     total_thinking_cost = sum(

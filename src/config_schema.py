@@ -97,17 +97,6 @@ class StockResource(StrictModel):
     )
 
 
-class FlowResource(StrictModel):
-    """A rate-limited resource (refreshes per tick)."""
-
-    per_tick: int = Field(ge=0, description="Amount available per tick")
-    unit: str = Field(description="Unit of measurement")
-    distribution: Literal["equal"] = Field(
-        default="equal",
-        description="How to distribute among agents"
-    )
-
-
 class StockResources(StrictModel):
     """All stock (finite pool) resources."""
 
@@ -119,22 +108,10 @@ class StockResources(StrictModel):
     )
 
 
-class FlowResources(StrictModel):
-    """All flow (rate-limited) resources."""
-
-    compute: FlowResource = Field(
-        default_factory=lambda: FlowResource(per_tick=1000, unit="token_units")
-    )
-    bandwidth: FlowResource = Field(
-        default_factory=lambda: FlowResource(per_tick=0, unit="bytes")
-    )
-
-
 class ResourcesConfig(StrictModel):
-    """Resource configuration (stock and flow)."""
+    """Resource configuration (stock only - flow resources use rate_limiting)."""
 
     stock: StockResources = Field(default_factory=StockResources)
-    flow: FlowResources = Field(default_factory=FlowResources)
 
 
 # =============================================================================
@@ -1101,10 +1078,10 @@ class MonitoringConfig(StrictModel):
         default_factory=HealthScoringConfig,
         description="Health score calculation parameters"
     )
-    active_agent_threshold_ticks: int = Field(
-        default=5,
+    active_agent_threshold_seconds: float = Field(
+        default=60.0,
         gt=0,
-        description="Ticks of inactivity before agent considered inactive"
+        description="Seconds of inactivity before agent considered inactive"
     )
 
 
@@ -1113,13 +1090,15 @@ class MonitoringConfig(StrictModel):
 # =============================================================================
 
 class WorldConfig(StrictModel):
-    """World simulation configuration."""
+    """World simulation configuration.
 
-    max_ticks: int = Field(
-        default=100,
-        gt=0,
-        description="Maximum simulation ticks"
-    )
+    Note: max_ticks was removed in Plan #102. Use duration-based execution
+    via rate_limiting and execution.use_autonomous_loops instead.
+    """
+
+    # Placeholder to allow world: {} in config files without error
+    # All actual execution limits are in rate_limiting and budget sections
+    pass
 
 
 # =============================================================================

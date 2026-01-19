@@ -115,11 +115,12 @@ def minimal_config() -> ConfigDict:
 
     This provides the minimum required configuration to instantiate
     a World object without needing external config files.
+
+    Note: max_ticks removed in Plan #102. Execution limits are now
+    time-based (duration) or cost-based (budget). Rate limiting provides compute.
     """
     return {
-        "world": {
-            "max_ticks": 10
-        },
+        "world": {},
         "costs": {
             "per_1k_input_tokens": 1,
             "per_1k_output_tokens": 3
@@ -134,6 +135,11 @@ def minimal_config() -> ConfigDict:
         "rights": {
             "default_compute_quota": 50,
             "default_disk_quota": 10000
+        },
+        "rate_limiting": {
+            "enabled": True,
+            "window_seconds": 60.0,
+            "resources": {"llm_tokens": {"max_per_window": 1000}}
         }
     }
 
@@ -184,9 +190,7 @@ def empty_ledger() -> Ledger:
 def single_agent_config() -> ConfigDict:
     """Create a config with a single agent for simpler tests."""
     return {
-        "world": {
-            "max_ticks": 5
-        },
+        "world": {},
         "costs": {
             "per_1k_input_tokens": 1,
             "per_1k_output_tokens": 3
@@ -200,6 +204,11 @@ def single_agent_config() -> ConfigDict:
         "rights": {
             "default_compute_quota": 100,
             "default_disk_quota": 5000
+        },
+        "rate_limiting": {
+            "enabled": True,
+            "window_seconds": 60.0,
+            "resources": {"llm_tokens": {"max_per_window": 1000}}
         }
     }
 
@@ -233,7 +242,7 @@ def feature_world(tmp_path: Path) -> World:
     """
     log_file = tmp_path / "feature_test.jsonl"
     config: ConfigDict = {
-        "world": {"max_ticks": 100},
+        "world": {},
         "costs": {
             "per_1k_input_tokens": 1,
             "per_1k_output_tokens": 3,
@@ -247,10 +256,15 @@ def feature_world(tmp_path: Path) -> World:
         "rights": {
             "default_compute_quota": 100,
             "default_disk_quota": 10000
+        },
+        "rate_limiting": {
+            "enabled": True,
+            "window_seconds": 60.0,
+            "resources": {"llm_tokens": {"max_per_window": 1000}}
         }
     }
     world = World(config)
-    world.advance_tick()  # Initialize tick 1
+    world.increment_event_counter()  # Initialize event count
     return world
 
 

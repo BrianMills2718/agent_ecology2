@@ -19,7 +19,7 @@ from src.world.actions import WriteArtifactIntent
 def vulture_config():
     """Configuration for vulture observability tests."""
     return {
-        "world": {"max_ticks": 10},
+        "world": {},
         "principals": [
             {"id": "alice", "starting_scrip": 100},
             {"id": "bob", "starting_scrip": 200},
@@ -35,6 +35,11 @@ def vulture_config():
         "logging": {
             "log_dir": "test_logs",
             "output_file": "test_logs/test.jsonl",
+        },
+        "rate_limiting": {
+            "enabled": True,
+            "window_seconds": 60.0,
+            "resources": {"llm_tokens": {"max_per_window": 1000}}
         },
     }
 
@@ -180,21 +185,22 @@ class TestFrozenAgentList:
         """Can get list of all frozen agents in simulation."""
         world, _ = world_with_temp_log
 
-        # Initialize resources
-        world.advance_tick()
+        # Initialize event counter
+        world.increment_event_counter()
 
-        # Initially no one is frozen
+        # Initially no one is frozen (rate limiter has capacity)
         frozen = world.get_frozen_agents()
         assert frozen == []
 
-        # Freeze alice
-        world.ledger.set_resource("alice", "llm_tokens", 0.0)
+        # Freeze alice by exhausting all rate-limited tokens
+        # consume_resource uses rate tracker when enabled
+        world.ledger.consume_resource("alice", "llm_tokens", 1000)
 
         frozen = world.get_frozen_agents()
         assert frozen == ["alice"]
 
         # Freeze bob too
-        world.ledger.set_resource("bob", "llm_tokens", 0.0)
+        world.ledger.consume_resource("bob", "llm_tokens", 1000)
 
         frozen = world.get_frozen_agents()
         assert set(frozen) == {"alice", "bob"}

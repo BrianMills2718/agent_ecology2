@@ -43,14 +43,17 @@ const ProgressPanel = {
     update(progress) {
         if (!progress) return;
 
-        // Tick progress
-        const tickPercent = (progress.current_tick / progress.max_ticks) * 100;
+        // Elapsed time and event count (replaced tick counter)
+        const elapsed = progress.elapsed_seconds || 0;
+        const events = progress.current_tick || 0;  // current_tick is now event counter
         if (this.elements.tickDisplay) {
             this.elements.tickDisplay.textContent =
-                `Tick: ${progress.current_tick} / ${progress.max_ticks}`;
+                `${this.formatDuration(elapsed)} | ${events} events`;
         }
+        // Progress bar shows nothing useful without max_ticks - hide or repurpose
         if (this.elements.tickProgress) {
-            this.elements.tickProgress.style.width = `${tickPercent}%`;
+            // Could show time-based progress if we had a max_duration, for now just hide
+            this.elements.tickProgress.style.width = '0%';
         }
 
         // Status
@@ -69,10 +72,27 @@ const ProgressPanel = {
             this.elements.budgetProgress.style.width = `${Math.min(budgetPercent, 100)}%`;
         }
 
-        // Ticks per second
+        // Events per second (renamed from ticks per second)
         if (this.elements.tpsDisplay) {
-            this.elements.tpsDisplay.textContent =
-                `${progress.ticks_per_second.toFixed(2)} ticks/sec`;
+            const eps = progress.events_per_second || 0;
+            this.elements.tpsDisplay.textContent = `${eps.toFixed(2)} events/sec`;
+        }
+    },
+
+    /**
+     * Format duration in seconds to human-readable string
+     */
+    formatDuration(seconds) {
+        if (seconds < 60) {
+            return `${seconds.toFixed(0)}s`;
+        } else if (seconds < 3600) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}m ${secs}s`;
+        } else {
+            const hours = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${mins}m`;
         }
     },
 

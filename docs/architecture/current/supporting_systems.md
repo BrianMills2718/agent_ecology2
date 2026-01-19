@@ -2,7 +2,11 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
+<<<<<<< HEAD
 **Last verified:** 2026-01-19 (agent config endpoint - Plan #108)
+=======
+**Last verified:** 2026-01-19 (Plan #102: event feed fixes, progress time display, genesis network edges)
+>>>>>>> cf3cb37 ([Plan #102] Update doc coupling verification dates)
 
 ---
 

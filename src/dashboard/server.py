@@ -401,7 +401,7 @@ def create_app(
             "median_scrip": kpis.median_scrip,
             "active_agent_ratio": kpis.active_agent_ratio,
             "frozen_agent_count": kpis.frozen_agent_count,
-            "actions_per_tick": kpis.actions_per_tick,
+            "actions_per_second": kpis.actions_per_second,
             "thinking_cost_rate": kpis.thinking_cost_rate,
             "escrow_volume": kpis.escrow_volume,
             "escrow_active_listings": kpis.escrow_active_listings,

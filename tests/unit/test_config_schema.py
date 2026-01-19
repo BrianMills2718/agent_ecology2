@@ -21,7 +21,7 @@ class TestValidConfig:
     def test_empty_config_uses_defaults(self) -> None:
         """Empty config should use all defaults."""
         config = validate_config_dict({})
-        assert config.world.max_ticks == 100
+        # Note: max_ticks removed in Plan #102 - execution limits now time-based
         assert config.scrip.starting_amount == 100
         # Token costs use defaults
         assert config.costs.per_1k_input_tokens == 1
@@ -30,15 +30,15 @@ class TestValidConfig:
     def test_partial_config_merges_defaults(self) -> None:
         """Partial config should merge with defaults."""
         config = validate_config_dict({
-            "world": {"max_ticks": 50}
+            "budget": {"max_api_cost": 50.0}
         })
-        assert config.world.max_ticks == 50
+        assert config.budget.max_api_cost == 50.0
         assert config.scrip.starting_amount == 100  # Default
 
     def test_full_config_loads(self) -> None:
         """Full config file should load without errors."""
         config = load_validated_config("config/config.yaml")
-        assert config.world.max_ticks > 0
+        # Note: max_ticks removed in Plan #102, check other field
         assert config.llm.default_model != ""
 
     def test_nested_config_access(self) -> None:
@@ -64,33 +64,34 @@ class TestInvalidConfig:
         """Typos in config keys should be rejected (extra='forbid')."""
         with pytest.raises(ValidationError) as exc_info:
             validate_config_dict({
-                "wrold": {"max_ticks": 100}  # Typo: wrold instead of world
+                "budgett": {"max_api_cost": 100}  # Typo: budgett instead of budget
             })
-        assert "wrold" in str(exc_info.value)
+        assert "budgett" in str(exc_info.value)
 
     def test_wrong_type_rejected(self) -> None:
         """Wrong types should be rejected."""
         with pytest.raises(ValidationError) as exc_info:
             validate_config_dict({
-                "world": {"max_ticks": "not a number"}
+                "budget": {"max_api_cost": "not a number"}
             })
-        assert "max_ticks" in str(exc_info.value)
+        assert "max_api_cost" in str(exc_info.value)
 
     def test_negative_value_rejected(self) -> None:
         """Negative values where positive required should be rejected."""
         with pytest.raises(ValidationError) as exc_info:
             validate_config_dict({
-                "world": {"max_ticks": -5}
+                "costs": {"per_1k_input_tokens": -5}
             })
-        assert "max_ticks" in str(exc_info.value)
+        assert "per_1k_input_tokens" in str(exc_info.value)
 
     def test_zero_value_rejected_for_positive_fields(self) -> None:
         """Zero values where gt=0 required should be rejected."""
+        # genesis.mint.mint_ratio requires positive value
         with pytest.raises(ValidationError) as exc_info:
             validate_config_dict({
-                "world": {"max_ticks": 0}
+                "genesis": {"mint": {"mint_ratio": 0}}
             })
-        assert "max_ticks" in str(exc_info.value)
+        assert "mint_ratio" in str(exc_info.value)
 
     def test_negative_token_cost_rejected(self) -> None:
         """Negative token costs should be rejected."""
@@ -106,10 +107,10 @@ class TestInvalidConfig:
 class TestConfigDefaults:
     """Test default values are sensible."""
 
-    def test_default_max_ticks(self) -> None:
-        """Default max_ticks should be 100."""
+    def test_default_budget(self) -> None:
+        """Default max_api_cost should be 1.0 (schema default)."""
         config = AppConfig()
-        assert config.world.max_ticks == 100
+        assert config.budget.max_api_cost == 1.0
 
     def test_default_starting_scrip(self) -> None:
         """Default starting scrip should be 100."""
@@ -165,7 +166,7 @@ class TestConfigFileLoading:
         config = load_validated_config("config/config.yaml")
 
         # Check some expected values from the real config
-        assert config.world.max_ticks == 100
+        # Note: max_ticks removed in Plan #102 - world section now empty/optional
         assert config.llm.default_model == "gemini/gemini-3-flash-preview"
         assert config.budget.max_api_cost == 100.0  # Updated from 1.0 for Plan #57
 
@@ -183,7 +184,8 @@ class TestTypedAccess:
         config = AppConfig()
 
         # These should all work with IDE autocomplete
-        _ = config.world.max_ticks
+        # Note: max_ticks removed in Plan #102 - world section now empty/optional
+        _ = config.budget.max_api_cost
         _ = config.costs.per_1k_input_tokens
         _ = config.resources.stock.disk.total
         _ = config.genesis.mint.mint_ratio

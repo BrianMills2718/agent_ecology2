@@ -40,7 +40,7 @@ def healthy_kpis() -> EcosystemKPIs:
         median_scrip=500,
         active_agent_ratio=0.8,  # High activity
         frozen_agent_count=1,
-        actions_per_tick=5.0,
+        actions_per_second=5.0,  # Time-based metric (Plan #102)
         thinking_cost_rate=0.01,
         escrow_volume=1000,
         escrow_active_listings=5,

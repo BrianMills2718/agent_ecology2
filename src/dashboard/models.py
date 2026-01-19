@@ -200,13 +200,12 @@ class GenesisActivitySummary(BaseModel):
 
 class SimulationProgress(BaseModel):
     """Overall simulation progress."""
-    current_tick: int = 0
-    max_ticks: int = 100
+    current_tick: int = 0  # Event counter (not a limit)
     api_cost_spent: float = 0
     api_cost_limit: float = 1.0
     start_time: str | None = None
     elapsed_seconds: float = 0
-    ticks_per_second: float = 0
+    events_per_second: float = 0  # Renamed from ticks_per_second
     status: Literal["running", "paused", "completed", "budget_exhausted"] = "running"
 
 
@@ -303,7 +302,7 @@ class Interaction(BaseModel):
     timestamp: str
     from_id: str
     to_id: str
-    interaction_type: Literal["scrip_transfer", "escrow_trade", "ownership_transfer", "artifact_invoke"]
+    interaction_type: Literal["scrip_transfer", "escrow_trade", "ownership_transfer", "artifact_invoke", "genesis_invoke"]
     amount: int | None = None  # For scrip transfers
     artifact_id: str | None = None  # For trades/ownership/invokes
     details: str | None = None  # Human-readable description
@@ -442,7 +441,7 @@ class EcosystemKPIsResponse(BaseModel):
     # Activity metrics
     active_agent_ratio: float = 0.0
     frozen_agent_count: int = 0
-    actions_per_tick: float = 0.0
+    actions_per_second: float = 0.0  # Renamed from actions_per_tick
     thinking_cost_rate: float = 0.0
 
     # Market metrics

@@ -19,7 +19,7 @@ def world_config() -> dict[str, Any]:
         output_file = f.name
 
     return {
-        "world": {"max_ticks": 10},
+        "world": {},
         "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 1},
         "logging": {"output_file": output_file},
         "principals": [
@@ -28,6 +28,11 @@ def world_config() -> dict[str, Any]:
         ],
         "rights": {
             "default_quotas": {"compute": 100.0, "disk": 10000.0}
+        },
+        "rate_limiting": {
+            "enabled": True,
+            "window_seconds": 60.0,
+            "resources": {"llm_tokens": {"max_per_window": 1000}}
         },
     }
 
@@ -51,13 +56,17 @@ class TestKernelStateRead:
         assert state.get_balance("alice") == 100
 
     def test_get_resource_public(self, world: World) -> None:
-        """Any caller can read any principal's resources."""
+        """Any caller can read any principal's stock resources."""
         state = KernelState(world)
-        world.advance_tick()  # Initialize resources
+        world.increment_event_counter()
 
-        # Can read compute resources
-        assert state.get_resource("alice", "llm_tokens") == 100.0
-        assert state.get_resource("bob", "llm_tokens") == 100.0
+        # Set up test resources in ledger (disk is tracked by rights_registry, not ledger)
+        world.ledger.credit_resource("alice", "test_resource", 100.0)
+        world.ledger.credit_resource("bob", "test_resource", 200.0)
+
+        # Can read stock resources
+        assert state.get_resource("alice", "test_resource") == 100.0
+        assert state.get_resource("bob", "test_resource") == 200.0
 
     def test_list_artifacts_by_owner_public(self, world: World) -> None:
         """Any caller can list artifacts owned by any principal."""
@@ -144,19 +153,23 @@ class TestKernelActionsVerifyCaller:
         assert world.ledger.get_scrip("bob") == 200
 
     def test_transfer_resource_from_self(self, world: World) -> None:
-        """Can transfer resources from own account."""
+        """Can transfer stock resources from own account."""
         actions = KernelActions(world)
-        world.advance_tick()  # Initialize resources
+        world.increment_event_counter()
 
-        # Alice transfers compute to Bob
+        # Set up test resources in ledger (disk is tracked by rights_registry)
+        world.ledger.credit_resource("alice", "test_resource", 100.0)
+        world.ledger.credit_resource("bob", "test_resource", 100.0)
+
+        # Alice transfers test_resource to Bob
         result = actions.transfer_resource(
-            caller_id="alice", to="bob", resource="llm_tokens", amount=30.0
+            caller_id="alice", to="bob", resource="test_resource", amount=30.0
         )
         assert result is True
 
         # Verify resources changed
-        assert world.ledger.get_resource("alice", "llm_tokens") == 70.0
-        assert world.ledger.get_resource("bob", "llm_tokens") == 130.0
+        assert world.ledger.get_resource("alice", "test_resource") == 70.0
+        assert world.ledger.get_resource("bob", "test_resource") == 130.0
 
 
 class TestKernelInterfaceEquality:

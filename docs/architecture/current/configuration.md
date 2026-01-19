@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-19 (Plan #86 - interface validation)
+**Last verified:** 2026-01-19 (Plan #102 - doc coupling verification)
 
 ---
 

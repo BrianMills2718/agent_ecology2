@@ -130,14 +130,14 @@ class TestActiveAgentRatio:
         """All agents active should return 1.0."""
         from src.dashboard.kpis import calculate_active_agent_ratio
 
-        # All agents have recent actions (within threshold)
+        # All agents have recent actions (within threshold events)
         current_tick = 10
         agents = [
             {"last_action_tick": 9},
             {"last_action_tick": 8},
             {"last_action_tick": 10},
         ]
-        ratio = calculate_active_agent_ratio(agents, current_tick, threshold_ticks=5)
+        ratio = calculate_active_agent_ratio(agents, current_tick, threshold_events=5)
         assert ratio == pytest.approx(1.0)
 
     def test_active_ratio_none_active(self) -> None:
@@ -146,17 +146,17 @@ class TestActiveAgentRatio:
 
         current_tick = 100
         agents = [
-            {"last_action_tick": 10},  # 90 ticks ago
-            {"last_action_tick": 5},   # 95 ticks ago
+            {"last_action_tick": 10},  # 90 events ago
+            {"last_action_tick": 5},   # 95 events ago
         ]
-        ratio = calculate_active_agent_ratio(agents, current_tick, threshold_ticks=5)
+        ratio = calculate_active_agent_ratio(agents, current_tick, threshold_events=5)
         assert ratio == pytest.approx(0.0)
 
     def test_active_ratio_empty(self) -> None:
         """No agents should return 0.0."""
         from src.dashboard.kpis import calculate_active_agent_ratio
 
-        ratio = calculate_active_agent_ratio([], current_tick=10, threshold_ticks=5)
+        ratio = calculate_active_agent_ratio([], current_tick=10, threshold_events=5)
         assert ratio == 0.0
 
 

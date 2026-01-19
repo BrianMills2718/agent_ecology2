@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-18 (Plan #88 - OODA cognitive logging)
+**Last verified:** 2026-01-19 (Plan #102 - doc coupling verification)
 
 **See target:** [../target/agents.md](../target/agents.md)
 

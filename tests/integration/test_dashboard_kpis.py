@@ -58,7 +58,7 @@ class TestKpiEndpoint:
             assert "median_scrip" in data
             assert "active_agent_ratio" in data
             assert "frozen_agent_count" in data
-            assert "actions_per_tick" in data
+            assert "actions_per_second" in data  # Renamed from actions_per_tick in Plan #102
             assert "escrow_active_listings" in data
             assert "llm_budget_remaining" in data
             assert "artifact_diversity" in data

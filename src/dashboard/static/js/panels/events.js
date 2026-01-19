@@ -137,14 +137,22 @@ const EventsPanel = {
                 return `${data.principal_id}: ${data.reason}`;
 
             case 'action':
+                // Handle both formats: wrapped in intent object or flat
                 const intent = data.intent || {};
-                return `${intent.principal_id}: ${intent.action_type}${intent.artifact_id ? ' -> ' + intent.artifact_id : ''}`;
+                const principalId = intent.principal_id || data.agent_id || data.principal_id || 'unknown';
+                const actionType = intent.action_type || data.action_type || 'action';
+                const artifactId = intent.artifact_id || data.artifact_id;
+                return `${principalId}: ${actionType}${artifactId ? ' -> ' + artifactId : ''}`;
 
             case 'intent_rejected':
                 return `${data.principal_id}: ${data.error}`;
 
             case 'mint':
-                return `${data.artifact_id}: score=${data.score}, minted=${data.scrip_minted}`;
+                // Handle both old format (artifact_id, score, scrip_minted) and new (principal_id, amount)
+                if (data.artifact_id) {
+                    return `${data.artifact_id}: score=${data.score || 0}, minted=${data.scrip_minted || 0}`;
+                }
+                return `${data.principal_id || 'unknown'}: minted ${data.amount || 0} scrip`;
 
             case 'world_init':
                 return `Initialized with ${(data.principals || []).length} agents`;

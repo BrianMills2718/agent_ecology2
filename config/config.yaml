@@ -18,16 +18,8 @@ resources:
       total: 500000             # bytes total (100KB per agent with 5 agents)
       unit: bytes
       distribution: equal
-
-  flow:  # Rate-limited, refresh per tick (LEGACY - used when rate_limiting.enabled=false)
-    compute:                    # LLM token budget (legacy name, see rate_limiting.resources.llm_tokens)
-      per_tick: 1000            # token-units available per tick
-      unit: token_units         # 1 token_unit = ~1K tokens at base rate
-      distribution: equal
-    bandwidth:
-      per_tick: 0               # 0 = disabled for now
-      unit: bytes
-      distribution: equal
+  # Note: Flow resources (per_tick) removed in Plan #102
+  # Use rate_limiting section for time-based resource limits
 
 # -----------------------------------------------------------------------------
 # SCRIP - Economic currency (not a resource)
@@ -386,7 +378,7 @@ monitoring:
     critical_penalty: 0.2
     trend_threshold: 0.1
     trend_history_ticks: 10
-  active_agent_threshold_ticks: 5
+  active_agent_threshold_seconds: 60.0
 
 # -----------------------------------------------------------------------------
 # AGENT PROMPTS - What agents see in their context
@@ -457,8 +449,11 @@ memory:
 # -----------------------------------------------------------------------------
 # WORLD
 # -----------------------------------------------------------------------------
-world:
-  max_ticks: 100
+# Note: max_ticks removed in Plan #102. Use duration-based execution:
+# - budget.max_api_cost for cost-based termination
+# - rate_limiting for resource limits
+# - --duration flag for time-based runs
+world: {}
 
 # -----------------------------------------------------------------------------
 # BUDGET - Global API limit
