@@ -32,9 +32,6 @@ Usage:
     # Verify a specific branch has a claim (for pre-push hook)
     python scripts/check_claims.py --verify-branch my-branch
 
-    # Sync YAML to CLAUDE.md table
-    python scripts/check_claims.py --sync
-
     # Clean up old completed entries (>24h)
     python scripts/check_claims.py --cleanup
 
@@ -808,52 +805,6 @@ def release_claim(
     return True
 
 
-def sync_to_claude_md(claims: list[dict]) -> bool:
-    """Sync claims from YAML to CLAUDE.md Active Work table."""
-    if not CLAUDE_MD_PATH.exists():
-        print(f"Error: {CLAUDE_MD_PATH} not found")
-        return False
-
-    content = CLAUDE_MD_PATH.read_text()
-
-    # Build new table rows
-    if not claims:
-        rows = "| - | - | - | - | - |\n"
-    else:
-        rows = ""
-        for claim in claims:
-            cc_id = claim.get("cc_id", "?")
-            plan = claim.get("plan", "-")
-            if plan is None:
-                plan = "-"
-            task = claim.get("task", "")[:40]
-            claimed = claim.get("claimed_at", "")[:16]  # Truncate to minute
-            status = "Active"
-            rows += f"| {cc_id} | {plan} | {task} | {claimed} | {status} |\n"
-
-    # Replace table content - match the header and separator, then all following rows
-    # Separator row is distinguished by having only dashes and pipes, no spaces between pipes
-    pattern = (
-        r"(\*\*Active Work:\*\*\n"
-        r"<!--.*?-->\n"  # Comment (non-greedy, handles > in content)
-        r"\|[^\n]+\|\n"  # Header row
-        r"\|[-|]+\|\n)"  # Separator row (only dashes and pipes)
-        r"(?:\|[^\n]+\|\n)*"  # Data rows (to be replaced)
-    )
-
-    replacement = r"\1" + rows
-
-    new_content, count = re.subn(pattern, replacement, content)
-
-    if count == 0:
-        print("Warning: Could not find Active Work table in CLAUDE.md")
-        return False
-
-    CLAUDE_MD_PATH.write_text(new_content)
-    print(f"Synced {len(claims)} claim(s) to CLAUDE.md")
-    return True
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Manage active work claims for multi-CC coordination",
@@ -897,11 +848,6 @@ def main() -> int:
     parser.add_argument(
         "--commit",
         help="Commit hash when releasing (optional)"
-    )
-    parser.add_argument(
-        "--sync",
-        action="store_true",
-        help="Sync YAML claims to CLAUDE.md table"
     )
     parser.add_argument(
         "--cleanup",
@@ -1064,8 +1010,6 @@ def main() -> int:
         if instance_id == "main":
             print("Warning: Claiming on 'main' branch. Consider using a feature branch.")
         success = add_claim(data, instance_id, args.plan, args.feature, args.task, force=args.force)
-        if success:
-            sync_to_claude_md(data["claims"])
         return 0 if success else 1
 
     # Handle release
@@ -1074,13 +1018,7 @@ def main() -> int:
             data, instance_id, args.commit,
             validate=args.validate, force=args.force
         )
-        if success:
-            sync_to_claude_md(data["claims"])
         return 0 if success else 1
-
-    # Handle sync
-    if args.sync:
-        return 0 if sync_to_claude_md(claims) else 1
 
     # Handle list
     if args.list:
