@@ -298,6 +298,8 @@ executor:
   timeout_seconds: 5
   max_invoke_depth: 5            # Maximum artifact invocation nesting depth
   max_contract_depth: 10         # Maximum contract permission check depth (Plan #100)
+  contract_timeout: 5            # Default contract permission check timeout (Plan #100)
+  contract_llm_timeout: 30       # Timeout for contracts with call_llm capability (Plan #100)
   interface_validation: warn     # Plan #86: 'none', 'warn', or 'strict'
   # NOTE: These modules are PRE-LOADED into the execution namespace.
   # This is NOT a security whitelist - agents can import any stdlib module.

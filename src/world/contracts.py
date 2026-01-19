@@ -269,6 +269,30 @@ CONTRACT_ALLOWED_MODULES: dict[str, Any] = {
 }
 
 
+def _get_contract_timeout_from_config() -> int:
+    """Get default contract timeout from config.
+
+    Returns 5 seconds if config is unavailable (during early startup or tests).
+    """
+    try:
+        from src.config import get_validated_config
+        return get_validated_config().executor.contract_timeout
+    except Exception:
+        return 5  # Fallback default
+
+
+def _get_contract_llm_timeout_from_config() -> int:
+    """Get contract LLM timeout from config.
+
+    Returns 30 seconds if config is unavailable (during early startup or tests).
+    """
+    try:
+        from src.config import get_validated_config
+        return get_validated_config().executor.contract_llm_timeout
+    except Exception:
+        return 30  # Fallback default
+
+
 @dataclass
 class ExecutableContract:
     """A contract with executable code for dynamic permission logic.
@@ -307,13 +331,24 @@ def check_permission(caller, action, target, context, ledger):
         contract_id: Unique identifier for this contract
         contract_type: Always "executable" for this contract type
         code: Python code defining check_permission function
-        timeout: Maximum execution time in seconds (default: 1)
+        timeout: Maximum execution time in seconds (default from config: 5s, or 30s for LLM-capable)
+        capabilities: List of capabilities this contract uses (e.g., ["call_llm"])
     """
 
     contract_id: str
     code: str
     contract_type: str = "executable"
-    timeout: int = 1  # 1 second default timeout for contract execution
+    timeout: int | None = None  # None means use config default
+    capabilities: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        """Set default timeout based on capabilities if not explicitly provided."""
+        if self.timeout is None:
+            # Use LLM timeout if contract has call_llm capability
+            if "call_llm" in self.capabilities:
+                self.timeout = _get_contract_llm_timeout_from_config()
+            else:
+                self.timeout = _get_contract_timeout_from_config()
 
     def _validate_code(self) -> tuple[bool, str]:
         """Validate that code can be compiled and has check_permission function.

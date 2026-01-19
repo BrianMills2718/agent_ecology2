@@ -707,6 +707,16 @@ class ExecutorConfig(StrictModel):
         gt=0,
         description="Maximum contract permission check depth (Plan #100)"
     )
+    contract_timeout: int = Field(
+        default=5,
+        gt=0,
+        description="Default contract permission check timeout in seconds (Plan #100)"
+    )
+    contract_llm_timeout: int = Field(
+        default=30,
+        gt=0,
+        description="Timeout for contracts with call_llm capability (Plan #100)"
+    )
     interface_validation: str = Field(
         default="warn",
         pattern="^(none|warn|strict)$",
