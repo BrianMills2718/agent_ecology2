@@ -62,6 +62,7 @@ executor:
 - src/world/world.py (modify)
 - tests/unit/test_interface_validation.py (create)
 - docs/architecture/current/artifacts_executor.md (modify)
+- docs/architecture/current/configuration.md (modify)
 - requirements.txt (modify)
 
 ---
