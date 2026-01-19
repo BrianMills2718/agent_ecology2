@@ -329,15 +329,16 @@ class AgentStateStore:
         Returns:
             AgentState if found, None otherwise
         """
-        row: tuple[str] | None = None
+        row: tuple[str, ...] | None = None
 
-        def do_load() -> tuple[str] | None:
+        def do_load() -> tuple[str, ...] | None:
             with self._connect_read() as conn:
                 cursor = conn.execute(
                     "SELECT state_json FROM agent_state WHERE agent_id = ?",
                     (agent_id,),
                 )
-                return cursor.fetchone()  # type: ignore[return-value]
+                result: tuple[str, ...] | None = cursor.fetchone()
+                return result
 
         row = _with_retry(do_load)
 
