@@ -3,7 +3,7 @@
 Handles:
 - World and agent initialization
 - Checkpoint restore
-- Tick loop with two-phase commit
+- Autonomous agent loops with time-based rate limiting
 - Budget tracking
 - Dynamic agent creation
 """
@@ -47,7 +47,7 @@ class SimulationRunner:
 
     Encapsulates all simulation state and logic:
     - World, agents, and physics engine
-    - Two-phase commit tick execution
+    - Autonomous agent loops with time-based rate limiting
     - Budget tracking and checkpointing
     - Dynamic agent creation for spawned principals
     - Pause/resume control for dashboard integration
@@ -79,7 +79,7 @@ class SimulationRunner:
             config: Configuration dictionary
             max_agents: Limit number of agents (optional)
             verbose: Print progress (default True)
-            delay: Seconds between ticks (defaults to config value)
+            delay: Rate limit delay (defaults to config value)
             checkpoint: Checkpoint data to resume from (optional)
         """
         self.config = config
@@ -124,19 +124,18 @@ class SimulationRunner:
         self.agents = self._create_agents(agent_configs)
 
         # Autonomous loop support (INT-003)
-        # Store reference to the flag for convenience
-        self.use_autonomous_loops = self.world.use_autonomous_loops
+        # Plan #102: Tick-based mode removed - always use autonomous loops
+        self.use_autonomous_loops = True
 
-        # Create AgentLoopManager if autonomous mode is enabled
-        if self.use_autonomous_loops:
-            # Need a RateTracker for resource gating
-            # Use world's rate_tracker if available, otherwise create one
-            rate_tracker = self.world.rate_tracker
-            if rate_tracker is None:
-                # Create a default rate tracker for autonomous mode
-                rate_tracker = RateTracker(window_seconds=60.0)
-                self.world.rate_tracker = rate_tracker
-            self.world.loop_manager = AgentLoopManager(rate_tracker)
+        # Create AgentLoopManager (always needed in autonomous mode)
+        # Need a RateTracker for resource gating
+        # Use world's rate_tracker if available, otherwise create one
+        rate_tracker = self.world.rate_tracker
+        if rate_tracker is None:
+            # Create a default rate tracker for autonomous mode
+            rate_tracker = RateTracker(window_seconds=60.0)
+            self.world.rate_tracker = rate_tracker
+        self.world.loop_manager = AgentLoopManager(rate_tracker)
 
         # Worker pool support (Plan #53)
         execution_config = config.get("execution", {})
@@ -180,8 +179,9 @@ class SimulationRunner:
         Properly restores agent artifacts with their principal capabilities
         (has_standing, can_execute, memory_artifact_id) for unified ontology.
         """
-        # Restore tick (subtract 1 because advance_tick increments before first iteration)
-        self.world.tick = checkpoint["tick"] - 1
+        # Restore event counter from checkpoint (legacy name: tick)
+        # In autonomous mode this is used for event ordering in logs, not execution control
+        self.world.tick = checkpoint.get("tick", 0)
 
         # Restore balances
         for agent_id, balance_info in checkpoint["balances"].items():
@@ -211,7 +211,7 @@ class SimulationRunner:
 
         if self.verbose:
             print("=== Resuming from checkpoint ===")
-            print(f"Previous tick: {checkpoint['tick']}")
+            print(f"Event counter: {checkpoint.get('tick', 0)}")
             print(f"Previous reason: {checkpoint['reason']}")
             print(f"Cumulative API cost: ${self.engine.cumulative_api_cost:.4f}")
             print(f"Restored artifacts: {len(checkpoint['artifacts'])}")
@@ -774,13 +774,7 @@ class SimulationRunner:
             return
 
         print("=== Agent Ecology Simulation ===")
-
-        # Show mode-appropriate timing info
-        if self.use_autonomous_loops:
-            print("Mode: Autonomous (agents run independently)")
-        else:
-            print(f"Mode: Tick-based (max ticks: {self.world.max_ticks})")
-
+        print("Mode: Autonomous (agents run independently)")
         print(f"Agents: {[a.agent_id for a in self.agents]}")
 
         # Show LLM budget (the real depletable resource)
@@ -804,7 +798,7 @@ class SimulationRunner:
             return
 
         print("=== Simulation Complete ===")
-        print(f"Final tick: {self.world.tick}")
+        print(f"Events logged: {self.world.tick}")
         print(f"Final scrip: {self.world.ledger.get_all_scrip()}")
         print(f"Total artifacts: {self.world.artifacts.count()}")
         print(f"Log file: {self.config['logging']['output_file']}")
@@ -838,8 +832,7 @@ class SimulationRunner:
         return {
             "running": self._running,
             "paused": self._paused,
-            "tick": self.world.tick,
-            "max_ticks": self.world.max_ticks,
+            "event_count": self.world.tick,  # Monotonic event counter (legacy: tick)
             "agent_count": len(self.agents),
             "api_cost": self.engine.cumulative_api_cost,
             "max_api_cost": self.engine.max_api_cost,
@@ -847,16 +840,15 @@ class SimulationRunner:
 
     async def run(
         self,
-        max_ticks: int | None = None,
         duration: float | None = None,
     ) -> World:
         """Run the simulation asynchronously.
 
-        Dispatches to either autonomous or tick-based mode based on config.
+        Runs in autonomous mode where agents operate independently with
+        time-based rate limiting. Legacy tick-based mode was removed in Plan #102.
 
         Args:
-            max_ticks: Maximum ticks to run (tick-based mode, optional)
-            duration: Maximum seconds to run (autonomous mode, optional)
+            duration: Maximum seconds to run (optional, runs until stopped if not provided)
 
         Returns:
             The World instance after simulation completes.
@@ -866,159 +858,13 @@ class SimulationRunner:
         self._print_startup_info()
 
         try:
-            if self.use_autonomous_loops:
-                await self._run_autonomous(duration)
-            else:
-                await self._run_tick_based(max_ticks)
+            await self._run_autonomous(duration)
         finally:
             self._running = False
             SimulationRunner._active_runner = None
 
         self._print_final_summary()
         return self.world
-
-    async def _run_tick_based(self, max_ticks: int | None = None) -> None:
-        """Run simulation in tick-based mode (legacy).
-
-        Uses parallel agent thinking via asyncio.gather().
-
-        Args:
-            max_ticks: Maximum ticks to run (optional, uses config value if not provided)
-        """
-        # Use provided max_ticks or fall back to world's max_ticks
-        target_max_ticks = max_ticks or self.world.max_ticks
-
-        while self.world.tick < target_max_ticks and self.world.advance_tick():
-            # Wait if paused
-            await self._pause_event.wait()
-
-            if self.verbose:
-                print(f"--- Tick {self.world.tick} ---")
-
-            # Initialize tick summary collector (Plan #60)
-            self._tick_collector = TickSummaryCollector()
-
-            # Handle mint auction (resolve auctions, start bidding windows)
-            mint_result = self._handle_mint_update()
-            if mint_result and self.verbose:
-                if mint_result.get("winner_id"):
-                    print(f"  [AUCTION] Winner: {mint_result['winner_id']}, "
-                          f"paid {mint_result['price_paid']} scrip, "
-                          f"score: {mint_result.get('score')}, "
-                          f"minted: {mint_result['scrip_minted']}")
-                elif mint_result.get("error"):
-                    print(f"  [AUCTION] {mint_result['error']}")
-
-            # Check for spawned principals
-            new_agents = self._check_for_new_principals()
-            self.agents.extend(new_agents)
-
-            # Capture state snapshot (Two-Phase Commit: Observe)
-            tick_state: StateSummary = self.world.get_state_summary()
-
-            # Check budget before thinking
-            if self.engine.is_budget_exhausted():
-                checkpoint_file = save_checkpoint(
-                    self.world, self.agents, self.engine.cumulative_api_cost,
-                    self.config, "budget_exhausted"
-                )
-                if self.verbose:
-                    print("\n=== BUDGET EXHAUSTED ===")
-                    print(f"API cost: ${self.engine.cumulative_api_cost:.4f} >= ${self.engine.max_api_cost:.2f}")
-                    print(f"Checkpoint saved to: {checkpoint_file}")
-                self.world.logger.log(
-                    "budget_pause",
-                    {
-                        "tick": self.world.tick,
-                        "cumulative_api_cost": self.engine.cumulative_api_cost,
-                        "max_api_cost": self.engine.max_api_cost,
-                        "checkpoint_file": checkpoint_file,
-                    },
-                )
-                return
-
-            # PHASE 1: Parallel thinking
-            if self.use_worker_pool and self._worker_pool is not None:
-                # Pool mode: Use worker pool for process-isolated turns
-                if self.verbose:
-                    print(f"  [PHASE 1/POOL] {len(self.agents)} agents thinking via pool...")
-
-                # Convert world state summary to dict format expected by pool
-                # StateSummary is a TypedDict, so cast to dict[str, Any]
-                world_state_dict: dict[str, Any] = dict(tick_state)
-
-                # Run all agents through the pool
-                agent_ids = [agent.agent_id for agent in self.agents]
-                pool_results = self._worker_pool.run_tick(
-                    agent_ids=agent_ids,
-                    world_state=world_state_dict,
-                )
-
-                # Convert pool results to proposals
-                proposals = self._process_pool_results(pool_results)
-            else:
-                # Traditional mode: Use asyncio.gather
-                if self.verbose:
-                    print(f"  [PHASE 1] {len(self.agents)} agents thinking in parallel...")
-
-                thinking_tasks = [
-                    self._think_agent(agent, tick_state)
-                    for agent in self.agents
-                ]
-                thinking_results = await asyncio.gather(*thinking_tasks)
-
-                # Process results
-                proposals = self._process_thinking_results(thinking_results)
-
-            # PHASE 2: Execute in random order
-            self._execute_proposals(proposals)
-
-            # Inter-tick delay
-            if self.delay > 0:
-                await asyncio.sleep(self.delay)
-
-            # Periodic checkpoint saving
-            checkpoint_interval: int = self.config.get("budget", {}).get("checkpoint_interval", 10)
-            if checkpoint_interval > 0 and self.world.tick % checkpoint_interval == 0:
-                checkpoint_file = save_checkpoint(
-                    self.world, self.agents, self.engine.cumulative_api_cost,
-                    self.config, f"periodic_tick_{self.world.tick}"
-                )
-                if self.verbose:
-                    print(f"  [CHECKPOINT] Saved to {checkpoint_file}")
-
-            # Log tick summary (Plan #60)
-            if self._tick_collector and self.world.logger.summary_logger:
-                summary = self._tick_collector.finalize(
-                    tick=self.world.tick,
-                    agents_active=len(proposals),  # Agents that produced valid proposals
-                )
-                self.world.logger.summary_logger.log_tick_summary(
-                    tick=summary["tick"],
-                    agents_active=summary["agents_active"],
-                    actions_executed=summary["actions_executed"],
-                    actions_by_type=summary["actions_by_type"],
-                    total_llm_tokens=summary["total_llm_tokens"],
-                    total_scrip_transferred=summary["total_scrip_transferred"],
-                    artifacts_created=summary["artifacts_created"],
-                    errors=summary["errors"],
-                    highlights=summary["highlights"],
-                )
-
-            if self.verbose:
-                print(f"  End of tick. Scrip: {self.world.ledger.get_all_scrip()}")
-                print()
-
-        # Save final checkpoint if configured
-        checkpoint_on_end: bool = self.config.get("budget", {}).get("checkpoint_on_end", True)
-        if checkpoint_on_end:
-            checkpoint_file = save_checkpoint(
-                self.world, self.agents, self.engine.cumulative_api_cost,
-                self.config, "simulation_complete"
-            )
-            if self.verbose:
-                print(f"\n=== SIMULATION COMPLETE ===")
-                print(f"Checkpoint saved to: {checkpoint_file}")
 
     async def _run_autonomous(self, duration: float | None = None) -> None:
         """Run simulation in autonomous mode with independent agent loops.

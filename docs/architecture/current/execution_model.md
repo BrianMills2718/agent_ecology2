@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-19 (Plan #83 - timestamp fix, Plan #86, Plan #95)
+**Last verified:** 2026-01-19 (Plan #102 - tick-based mode removed)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
@@ -32,75 +32,16 @@ See `docs/architecture/current/agents.md` for artifact-backed agent details.
 
 ---
 
-## Execution Modes
+## Execution Mode
 
-**Default: Autonomous mode** (`use_autonomous_loops: true`)
+**Autonomous mode only** (Plan #102 - tick-based mode removed)
 - Agents run independently via `AgentLoop`
 - Resource-gated by `RateTracker` (rolling window)
 - No tick synchronization
+- Time-based auctions via periodic mint update
 
-**Legacy: Tick-synchronized mode** (`--ticks N` CLI flag)
-- Runner controls when agents think and act
-- Two-phase commit per tick
-- Useful for debugging/deterministic replay
-
----
-
-## Tick-Synchronized Execution (Legacy Mode)
-
-When using `--ticks N`, agents do NOT act autonomously. The runner controls when agents think and act.
-
-### Main Loop (`SimulationRunner.run()`)
-
-```python
-while self.world.advance_tick():
-    # Phase 1: Parallel thinking
-    results = await asyncio.gather(*[agent.think() for agent in agents])
-
-    # Phase 2: Sequential randomized execution
-    random.shuffle(proposals)
-    for proposal in proposals:
-        execute(proposal)
-
-    # Rate limit delay
-    await asyncio.sleep(self.delay)  # Default: 15 seconds
-```
-
----
-
-## Two-Phase Commit
-
-### Phase 1: Observe (Parallel)
-
-**`SimulationRunner.run()` thinking phase**
-
-1. Check per-agent `llm_budget` if configured (Plan #12)
-2. Capture world state snapshot via `get_state_summary()`
-3. All agents see IDENTICAL state (snapshot consistency)
-4. Agents think in parallel via `asyncio.gather()`
-5. Each produces an action proposal
-6. Thinking cost deducted from compute AND per-agent `llm_budget` (if configured)
-
-```python
-tick_state = self.world.get_state_summary()
-thinking_tasks = [self._think_agent(agent, tick_state) for agent in self.agents]
-thinking_results = await asyncio.gather(*thinking_tasks)
-```
-
-### Phase 2: Execute (Sequential Randomized)
-
-**`SimulationRunner.run()` execution phase**
-
-1. Shuffle proposals randomly (prevents ordering exploits)
-2. Execute each action sequentially
-3. World state mutates between executions
-4. Later actions see effects of earlier ones
-
-```python
-random.shuffle(proposals)
-for proposal in proposals:
-    result = self.world.execute_action(proposal)
-```
+> **Note:** Legacy tick-based mode (`--ticks N`) was removed in Plan #102.
+> Use `--duration N` for time-limited runs.
 
 ---
 
@@ -186,163 +127,102 @@ Bids are accepted at any time, not just during the BIDDING phase. Early bids are
 
 ---
 
-## Tick Lifecycle (Legacy Mode)
+## Summary Logging (Plan #60)
 
-> **Note:** `advance_tick()` is deprecated for time-based execution (Plan #83).
-> In autonomous/duration mode, use wall-clock time instead of tick-based progression.
-
-### advance_tick() (`World.advance_tick()`)
-
-Called at start of each tick:
-
-1. Increment tick counter
-2. Reset renewable resources for all principals
-3. Log tick event
-4. Return False if tick >= max_ticks
-
-```python
-def advance_tick(self) -> bool:
-    if self.tick >= self.max_ticks:
-        return False
-    self.tick += 1
-
-    # Reset flow resources to quota
-    for pid in self.principal_ids:
-        quota = self.rights_registry.get_all_quotas(pid).get("compute", 50)
-        self.ledger.set_resource(pid, "llm_tokens", quota)
-
-    return True
-```
-
----
-
-## Tick Summary Logging (Plan #60)
-
-Each tick-based run generates summary statistics for observability via `TickSummaryCollector`.
+Summary statistics are logged for observability via `SummaryLogger`.
 
 ### What's Tracked
 
 | Metric | Description |
 |--------|-------------|
 | `agents_active` | Agents that produced valid proposals |
-| `actions_executed` | Total actions in Phase 2 |
+| `actions_executed` | Total actions executed |
 | `actions_by_type` | Breakdown by action type (read, write, invoke, noop) |
 | `total_llm_tokens` | Combined input+output tokens for all agents |
 | `total_scrip_transferred` | Scrip moved via genesis_ledger invocations |
-| `artifacts_created` | New artifacts written this tick |
+| `artifacts_created` | New artifacts written |
 | `errors` | Failed action count |
 | `highlights` | Notable events (artifact creation, etc.) |
-
-### Collection Points
-
-```
-1. advance_tick()              # Tick starts
-2. _tick_collector = new       # Initialize collector
-3. Phase 1: _think_agent()     # Record LLM tokens
-4. Phase 2: _execute_proposals() # Record actions, transfers, artifacts
-5. _tick_collector.finalize()  # Compute summary
-6. summary_logger.log_tick_summary() # Write to summary.jsonl
-```
 
 ### Output
 
 Summary data written to `summary.jsonl` via `SummaryLogger`:
 
 ```json
-{"type": "tick_summary", "tick": 5, "agents_active": 3, "actions_executed": 3,
+{"type": "action_summary", "agents_active": 3, "actions_executed": 3,
  "actions_by_type": {"invoke_artifact": 2, "write_artifact": 1},
  "total_llm_tokens": 4523, "total_scrip_transferred": 100, ...}
 ```
 
-Use `python scripts/view_log.py --summary` to view aggregated tick summaries.
+Use `python scripts/view_log.py --summary` to view aggregated summaries.
 
 ---
 
 ## Timing
 
+In autonomous mode, each agent loop iteration:
+
 | Phase | Duration |
 |-------|----------|
-| Thinking (Phase 1) | ~2-10 seconds (LLM latency) |
-| Execution (Phase 2) | ~milliseconds |
-| Inter-tick delay | 15 seconds (configurable) |
-| **Total per tick** | ~17-25 seconds |
+| Thinking | ~2-10 seconds (LLM latency) |
+| Execution | ~milliseconds |
+| Loop delay | Configurable (`min_loop_delay`) |
 
 ### Rate Limiting
 
-- `config.llm.rate_limit_delay`: Delay between ticks (default 15s)
-- Purpose: Avoid hitting LLM API rate limits
-- Can be reduced for faster iteration
+Resource-gated by `RateTracker` with rolling windows:
+- `rate_limiting.window_seconds`: Rolling window size (default 60s)
+- `rate_limiting.resources.llm_calls.max_per_window`: Max LLM calls per window
 
 ---
 
 ## Key Files
-
-### Autonomous Mode (Primary)
 
 | File | Key Functions | Description |
 |------|---------------|-------------|
 | `src/simulation/agent_loop.py` | `AgentLoop._execute_iteration()` | **Primary integration point** for agent features |
 | `src/simulation/agent_loop.py` | `AgentLoopManager` | Manages agent loops lifecycle |
 | `src/agents/rate_tracker.py` | `RateTracker` | Rolling window resource gating |
+| `src/simulation/runner.py` | `SimulationRunner.run()` | Main entry point (autonomous only) |
 | `src/world/world.py` | `World.execute_action()` | Action dispatcher |
 | `src/world/actions.py` | `parse_intent_from_json()` | Action parsing (the "narrow waist") |
-
-### Tick Mode (Debug)
-
-| File | Key Functions | Description |
-|------|---------------|-------------|
-| `src/simulation/runner.py` | `SimulationRunner.run()` | Legacy tick loop (includes Phase 1 parallel gather) |
-| `src/simulation/runner.py` | `SimulationRunner._think_agent()` | Single agent thinking |
-| `src/simulation/runner.py` | `SimulationRunner._execute_proposals()` | Phase 2 sequential execution |
-| `src/world/world.py` | `World.advance_tick()` | Tick lifecycle |
 
 ---
 
 ## Implications
 
-### Autonomous Mode (Default)
+### Autonomous Mode (Only Mode)
 - Agents decide their own pace via `AgentLoop`
-- Resource exhaustion (RateTracker) gates actions, not ticks
+- Resource exhaustion (RateTracker) gates actions
 - Efficient agents can act more frequently → selection pressure
 - Strategy diversity: fast/slow strategies emerge naturally
 
-### Tick Mode (Debug Only)
-- Agents don't decide when to act
-- System triggers all agents each tick
-- No agent can act more/less frequently than others
-- Useful for deterministic testing and debugging
-
-### Snapshot Consistency (Tick Mode Only)
-- All agents see same world state within a tick
-- No races during thinking phase
-- Races resolved in Phase 2 by randomized order
-
 ---
 
-## Autonomous Execution Mode (Default)
+## Autonomous Execution Details
 
-Autonomous mode is the default (`execution.use_autonomous_loops: true`). Agents run independently via `AgentLoop`, resource-gated by `RateTracker`.
+Agents run independently via `AgentLoop`, resource-gated by `RateTracker`.
 
 ### CLI Usage
 
 ```bash
-# Run autonomous mode for 60 seconds (default)
+# Run autonomous mode for 60 seconds
 python run.py --duration 60
 
 # Run autonomous mode with dashboard
 python run.py --duration 120 --dashboard
 
-# Run legacy tick-based mode (for debugging)
-python run.py --ticks 10
+# Run indefinitely (until budget exhausted or Ctrl+C)
+python run.py
 ```
 
 ### Configuration
 
 ```yaml
 execution:
-  use_autonomous_loops: false  # Enable via --duration or --autonomous CLI flags
+  use_autonomous_loops: true  # Always true (Plan #102)
 rate_limiting:
-  enabled: false  # Enable RateTracker
+  enabled: true
   window_seconds: 60.0
   resources:
     llm_calls:
@@ -354,7 +234,7 @@ rate_limiting:
 1. Each agent gets an `AgentLoop` from `AgentLoopManager`
 2. Loops run continuously via `asyncio.create_task()`
 3. Resource exhaustion pauses agent (doesn't crash)
-4. `RateTracker` replaces tick-based resource reset
+4. `RateTracker` handles all rate limiting
 
 ### AgentLoop States
 
@@ -381,9 +261,9 @@ execution:
 
 | Current | Target |
 |---------|--------|
-| Autonomous default (ADR-0014) | Autonomous default ✅ |
-| Optional RateTracker | RateTracker always on |
-| Tick resets flow resources | Rolling window only |
+| Autonomous only (Plan #102) | Autonomous only ✅ |
+| RateTracker enabled | RateTracker always on ✅ |
+| Rolling window rate limiting | Rolling window only ✅ |
 
 See `docs/architecture/target/02_execution_model.md` for target architecture.
 
