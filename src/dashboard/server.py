@@ -16,7 +16,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from .parser import JSONLParser
-from .kpis import calculate_kpis, EcosystemKPIs
+from .kpis import calculate_kpis, EcosystemKPIs, compute_agent_metrics, AgentMetrics
 from .auditor import assess_health, AuditorThresholds, HealthReport
 from .dependency_graph import build_dependency_graph
 from ..config import get_validated_config
@@ -235,6 +235,31 @@ def create_app(
         if detail:
             return detail.model_dump()
         return {"error": f"Agent {agent_id} not found"}
+
+    @app.get("/api/agents/{agent_id}/metrics")
+    async def get_agent_metrics(agent_id: str) -> dict[str, Any]:
+        """Get computed metrics for a single agent (Plan #76).
+
+        Returns per-agent metrics including:
+        - total_actions: Total actions taken
+        - success_rate: Ratio of successful actions
+        - ticks_since_action: Dormancy indicator
+        - is_frozen: Whether agent exhausted LLM tokens
+        - scrip_balance: Current scrip balance
+        """
+        dashboard.parser.parse_incremental()
+        metrics = compute_agent_metrics(dashboard.parser.state, agent_id)
+        if metrics is None:
+            return {"error": f"Agent {agent_id} not found"}
+        return {
+            "agent_id": agent_id,
+            "total_actions": metrics.total_actions,
+            "last_action_tick": metrics.last_action_tick,
+            "ticks_since_action": metrics.ticks_since_action,
+            "is_frozen": metrics.is_frozen,
+            "scrip_balance": metrics.scrip_balance,
+            "success_rate": metrics.success_rate,
+        }
 
     @app.get("/api/artifacts")
     async def get_artifacts() -> list[dict[str, Any]]:

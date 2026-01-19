@@ -216,3 +216,115 @@ class TestEcosystemKPIs:
         assert kpis.median_scrip == 200
         assert kpis.frozen_agent_count == 1
         assert kpis.gini_coefficient >= 0  # Just check it's calculated
+
+
+@pytest.mark.plans(76)
+class TestAgentMetrics:
+    """Tests for per-agent metrics (Plan #76)"""
+
+    def test_compute_agent_metrics(self) -> None:
+        """KPI calculation for individual agents."""
+        from src.dashboard.kpis import compute_agent_metrics, AgentMetrics
+        from src.dashboard.parser import SimulationState, AgentState
+
+        # Create state with agent that has action history
+        state = SimulationState()
+        state.current_tick = 20
+
+        agent = AgentState(
+            agent_id="alpha",
+            scrip=500,
+            llm_tokens_used=80.0,
+            llm_tokens_quota=100.0,
+            action_count=15,
+            last_action_tick=18,
+        )
+        state.agents = {"alpha": agent}
+
+        metrics = compute_agent_metrics(state, "alpha")
+
+        assert isinstance(metrics, AgentMetrics)
+        assert metrics.total_actions == 15
+        assert metrics.last_action_tick == 18
+        assert metrics.ticks_since_action == 2  # 20 - 18
+        assert metrics.is_frozen is False
+        assert metrics.scrip_balance == 500
+
+    def test_dormancy_calculation(self) -> None:
+        """Ticks since last action calculated correctly."""
+        from src.dashboard.kpis import compute_agent_metrics
+        from src.dashboard.parser import SimulationState, AgentState
+
+        state = SimulationState()
+        state.current_tick = 100
+
+        # Agent that hasn't acted in a while
+        agent = AgentState(
+            agent_id="dormant",
+            scrip=100,
+            llm_tokens_used=0.0,
+            llm_tokens_quota=100.0,
+            action_count=5,
+            last_action_tick=50,  # 50 ticks ago
+        )
+        state.agents = {"dormant": agent}
+
+        metrics = compute_agent_metrics(state, "dormant")
+        assert metrics.ticks_since_action == 50
+
+    def test_success_rate_calculation(self) -> None:
+        """Agent success rate calculated from action history."""
+        from src.dashboard.kpis import compute_agent_metrics
+        from src.dashboard.parser import SimulationState, AgentState
+
+        state = SimulationState()
+        state.current_tick = 10
+
+        # Agent with tracked successes/failures
+        agent = AgentState(
+            agent_id="mixed",
+            scrip=100,
+            llm_tokens_used=50.0,
+            llm_tokens_quota=100.0,
+            action_count=10,
+            action_successes=7,
+            action_failures=3,
+            last_action_tick=10,
+        )
+        state.agents = {"mixed": agent}
+
+        metrics = compute_agent_metrics(state, "mixed")
+        assert metrics.success_rate == pytest.approx(0.7)  # 7/10
+
+    def test_frozen_agent_detection(self) -> None:
+        """Frozen agent correctly identified in metrics."""
+        from src.dashboard.kpis import compute_agent_metrics
+        from src.dashboard.parser import SimulationState, AgentState
+
+        state = SimulationState()
+        state.current_tick = 10
+
+        # Frozen agent (used all tokens)
+        agent = AgentState(
+            agent_id="frozen",
+            scrip=100,
+            llm_tokens_used=100.0,
+            llm_tokens_quota=100.0,
+            action_count=5,
+            last_action_tick=8,
+        )
+        state.agents = {"frozen": agent}
+
+        metrics = compute_agent_metrics(state, "frozen")
+        assert metrics.is_frozen is True
+
+    def test_agent_not_found(self) -> None:
+        """Returns None for unknown agent."""
+        from src.dashboard.kpis import compute_agent_metrics
+        from src.dashboard.parser import SimulationState
+
+        state = SimulationState()
+        state.agents = {}
+
+        metrics = compute_agent_metrics(state, "nonexistent")
+        assert metrics is None

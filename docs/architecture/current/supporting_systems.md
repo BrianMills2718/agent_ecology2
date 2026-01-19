@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-18 (Plan #73 - datetime deprecation fix)
+**Last verified:** 2026-01-19 (Plan #76 - per-agent simulation metrics)
 
 ---
 
@@ -102,17 +102,19 @@ class SummaryLogger:
     ) -> None
 ```
 
-**`TickSummaryCollector`** - `logger.py:74-160` - Accumulates metrics within a tick
+**`TickSummaryCollector`** - `logger.py:74-187` - Accumulates metrics within a tick
 
 ```python
 class TickSummaryCollector:
-    def record_action(self, action_type: str, success: bool = True)
-    def record_llm_tokens(self, count: int)
+    def record_action(self, action_type: str, success: bool = True, agent_id: str | None = None)
+    def record_llm_tokens(self, count: int, agent_id: str | None = None)
     def record_scrip_transfer(self, amount: int)
     def record_artifact_created(self)
     def add_highlight(self, text: str)
     def finalize(self, tick: int, agents_active: int) -> dict
 ```
+
+When `agent_id` is provided, per-agent stats are tracked and included in `finalize()` output under `per_agent` key (Plan #76).
 
 ### Summary Format (summary.jsonl)
 
@@ -259,6 +261,7 @@ Real-time web UI for monitoring simulation.
 | `/api/progress` | GET | Simulation progress only |
 | `/api/agents` | GET | Agent summaries |
 | `/api/agents/{id}` | GET | Agent details |
+| `/api/agents/{id}/metrics` | GET | Per-agent computed metrics (Plan #76) |
 | `/api/artifacts` | GET | All artifacts |
 | `/api/artifacts/{id}/detail` | GET | Artifact details with content |
 | `/api/artifacts/{id}/invocations` | GET | Invocation statistics for artifact |
@@ -322,7 +325,7 @@ dashboard:
 | `src/dashboard/watcher.py` | `PollingWatcher` | File change detection |
 | `src/dashboard/models.py` | Pydantic models | API response types |
 | `src/dashboard/auditor.py` | `HealthReport`, `assess_health()` | Health assessment |
-| `src/dashboard/kpis.py` | `EcosystemKPIs`, `calculate_kpis()` | KPI calculations |
+| `src/dashboard/kpis.py` | `EcosystemKPIs`, `calculate_kpis()`, `AgentMetrics`, `compute_agent_metrics()` | KPI calculations |
 | `src/world/invocation_registry.py` | `InvocationRegistry`, `InvocationRecord` | Invocation tracking |
 
 ---

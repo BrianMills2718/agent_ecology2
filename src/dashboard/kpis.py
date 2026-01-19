@@ -15,6 +15,18 @@ if TYPE_CHECKING:
 
 
 @dataclass
+class AgentMetrics:
+    """Per-agent computed metrics (Plan #76)."""
+
+    total_actions: int = 0
+    last_action_tick: int | None = None
+    ticks_since_action: int = 0
+    is_frozen: bool = False
+    scrip_balance: int = 0
+    success_rate: float = 0.0
+
+
+@dataclass
 class EcosystemKPIs:
     """Computed ecosystem health metrics."""
 
@@ -263,3 +275,41 @@ def calculate_kpis(state: SimulationState) -> EcosystemKPIs:
         ]
 
     return kpis
+
+
+def compute_agent_metrics(state: SimulationState, agent_id: str) -> AgentMetrics | None:
+    """Compute metrics for a specific agent (Plan #76).
+
+    Args:
+        state: The current simulation state from the parser.
+        agent_id: The ID of the agent to compute metrics for.
+
+    Returns:
+        AgentMetrics for the agent, or None if agent not found.
+    """
+    agent = state.agents.get(agent_id)
+    if agent is None:
+        return None
+
+    # Calculate ticks since last action
+    ticks_since_action = 0
+    if agent.last_action_tick is not None:
+        ticks_since_action = state.current_tick - agent.last_action_tick
+
+    # Determine if agent is frozen (exhausted LLM tokens)
+    is_frozen = agent.llm_tokens_used >= agent.llm_tokens_quota
+
+    # Calculate success rate from action history
+    success_rate = 0.0
+    total_tracked = agent.action_successes + agent.action_failures
+    if total_tracked > 0:
+        success_rate = agent.action_successes / total_tracked
+
+    return AgentMetrics(
+        total_actions=agent.action_count,
+        last_action_tick=agent.last_action_tick,
+        ticks_since_action=ticks_since_action,
+        is_frozen=is_frozen,
+        scrip_balance=agent.scrip,
+        success_rate=success_rate,
+    )
