@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-19 (added pre-merge plan completion evidence check)
+Last verified: 2026-01-19 (Plan #106 - removed duplicate pytest from plans job)
 
 ---
 
@@ -108,7 +108,7 @@ Combines plan-related checks into a single job.
 1. **plan-status-sync** - Verifies plan statuses are consistent
 2. **plan-exclusivity** - Ensures plan numbers are unique across open PRs (Plan #72)
 3. **plan-blockers** - Checks for stale blockers
-4. **plan-tests** - Validates plan test requirements (strict)
+4. ~~plan-tests~~ - Removed in Plan #106 (redundant with test job)
 5. **plan-completion-evidence** - Blocks PRs marking plans Complete without evidence (Plan #41)
 6. **plan-required** - Ensures all commits have plan references
 
@@ -120,7 +120,7 @@ Combines plan-related checks into a single job.
 - python scripts/sync_plan_status.py --check
 - python scripts/check_plan_exclusivity.py --check
 - python scripts/check_plan_blockers.py --strict
-- python scripts/check_plan_tests.py --all --strict
+# Removed (Plan #106) - redundant with test job
 - python scripts/check_plan_completion.py --check-pr
 - (inline plan-required check)
 ```
