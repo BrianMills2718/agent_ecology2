@@ -96,17 +96,29 @@ class DashboardApp:
         jsonl_path: str | Path = DEFAULT_JSONL_PATH,
         static_dir: str | Path = DEFAULT_STATIC_DIR,
         config_path: str | Path = DEFAULT_CONFIG_PATH,
+        live_mode: bool = False,
     ) -> None:
+        """Initialize dashboard app.
+
+        Args:
+            jsonl_path: Path to the JSONL event log file
+            static_dir: Path to static assets directory
+            config_path: Path to config file
+            live_mode: If True, start with empty state and only show new events
+                      (for new simulations). If False, parse existing logs first
+                      (for --dashboard-only or resuming).
+        """
         self.jsonl_path = Path(jsonl_path)
         self.static_dir = Path(static_dir)
         self.config_path = Path(config_path)
+        self.live_mode = live_mode
 
         self.parser = JSONLParser(self.jsonl_path)
         self.watcher = PollingWatcher(self.jsonl_path)  # poll_interval from config
         self.connection_manager = ConnectionManager()
 
-        # Initial parse
-        if self.jsonl_path.exists():
+        # Only parse existing logs if not in live mode (viewing old runs)
+        if not live_mode and self.jsonl_path.exists():
             self.parser.parse_full()
 
     async def on_file_change(self) -> None:
@@ -155,8 +167,17 @@ def create_app(
     jsonl_path: str | Path = DEFAULT_JSONL_PATH,
     static_dir: str | Path = DEFAULT_STATIC_DIR,
     config_path: str | Path = DEFAULT_CONFIG_PATH,
+    live_mode: bool = False,
 ) -> FastAPI:
-    """Create and configure the FastAPI application."""
+    """Create and configure the FastAPI application.
+
+    Args:
+        jsonl_path: Path to the JSONL event log file
+        static_dir: Path to static assets directory
+        config_path: Path to config file
+        live_mode: If True, start with empty state for new simulations.
+                  If False, parse existing logs (for --dashboard-only).
+    """
 
     app = FastAPI(
         title="Agent Ecology Dashboard",
@@ -174,7 +195,7 @@ def create_app(
     )
 
     # Dashboard app state
-    dashboard = DashboardApp(jsonl_path, static_dir, config_path)
+    dashboard = DashboardApp(jsonl_path, static_dir, config_path, live_mode=live_mode)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -726,11 +747,12 @@ def run_dashboard(
     port: int = 8080,
     jsonl_path: str = DEFAULT_JSONL_PATH,
     reload: bool = False,
+    live_mode: bool = False,
 ) -> None:
     """Run the dashboard server."""
     import uvicorn
 
-    app = create_app(jsonl_path=jsonl_path)
+    app = create_app(jsonl_path=jsonl_path, live_mode=live_mode)
     uvicorn.run(
         app,
         host=host,
