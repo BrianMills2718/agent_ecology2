@@ -106,6 +106,7 @@ Key methods still present:
 - src/dashboard/static/js/panels/progress.js (modify - show time not ticks)
 - src/dashboard/static/js/panels/agents.js (modify - resource tracking)
 - src/dashboard/static/js/panels/network.js (modify - include genesis)
+- src/dashboard/dependency_graph.py (modify - fix timezone handling)
 - tests/conftest.py (modify - remove max_ticks from fixtures)
 - tests/unit/test_world.py (modify)
 - tests/unit/test_runner.py (modify)

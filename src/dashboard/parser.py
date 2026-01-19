@@ -983,6 +983,8 @@ class JSONLParser:
 
         # Build nodes from agents
         nodes: list[NetworkNode] = []
+        node_ids: set[str] = set()
+
         for agent_id, agent in self.state.agents.items():
             status: Literal["active", "low_resources", "frozen"] = "active"
             if agent.llm_tokens_used >= agent.llm_tokens_quota * 0.9:
@@ -1001,6 +1003,19 @@ class JSONLParser:
                 scrip=agent.scrip,
                 status=status,
             ))
+            node_ids.add(agent_id)
+
+        # Add genesis artifacts as nodes if they appear in interactions
+        for interaction in interactions:
+            if interaction.to_id.startswith("genesis_") and interaction.to_id not in node_ids:
+                nodes.append(NetworkNode(
+                    id=interaction.to_id,
+                    label=interaction.to_id.replace("genesis_", ""),  # Shorter label
+                    node_type="genesis",
+                    scrip=0,
+                    status="active",
+                ))
+                node_ids.add(interaction.to_id)
 
         # Build edges from interactions
         edges: list[NetworkEdge] = []
