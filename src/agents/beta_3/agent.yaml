@@ -13,11 +13,14 @@ genotype:
   time_horizon: LONG
   primary_strategy: INTEGRATE
 
-# RAG configuration
+# RAG configuration - learning-oriented queries
 rag:
   enabled: true
-  limit: 5
-  query_template: "State: {_current_state}. Tick {tick}. Integrating systems."
+  limit: 7
+  query_template: |
+    State: {_current_state}. Tick {tick}. Balance: {balance}.
+    What integration patterns worked? What failed?
+    What strategic approaches led to success?
 
 # State Machine: Goal Hierarchy
 # Three levels of planning granularity
@@ -45,6 +48,36 @@ workflow:
         condition: "tick % 20 == 0"
 
   steps:
+    # Step 0: Learning reflection - review outcomes and record lessons
+    - name: learn_from_outcome
+      type: llm
+      prompt: |
+        === LEARNING REFLECTION ===
+        You are {agent_id}. Before taking your next action, reflect on outcomes.
+
+        Last action result: {last_action_result}
+        Current state: {_current_state}
+        Balance: {balance} scrip
+
+        REFLECTION QUESTIONS:
+        1. Did my last action succeed or fail? Why?
+        2. What lesson about integration/strategy should I remember?
+        3. Am I making progress toward my strategic goal?
+
+        CRITICAL: Update your working_memory with lessons learned.
+        Use write_artifact to yourself with content containing:
+        ```yaml
+        working_memory:
+          strategic_goal: [your overarching objective]
+          current_subgoal: [immediate focus]
+          lessons:
+            - [lesson from this outcome]
+          subgoal_progress:
+            completed: [list of completed subgoals]
+        ```
+
+        If no lesson to record, proceed with noop.
+
     # Step 1: Load goals from working memory
     - name: load_goals
       type: code

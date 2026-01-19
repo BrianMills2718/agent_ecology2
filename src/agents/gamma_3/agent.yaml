@@ -13,11 +13,14 @@ genotype:
   time_horizon: MEDIUM
   primary_strategy: COORDINATE
 
-# RAG configuration
+# RAG configuration - learning-oriented queries
 rag:
   enabled: true
-  limit: 5
-  query_template: "State: {_current_state}. Tick {tick}. Coordinating agents."
+  limit: 7
+  query_template: |
+    State: {_current_state}. Tick {tick}. Balance: {balance}.
+    What coordination strategies worked? What partnerships failed?
+    Which agents are reliable to work with?
 
 # State Machine: Collaboration Lifecycle
 # Move through stages of multi-agent coordination
@@ -51,6 +54,35 @@ workflow:
         condition: "balance < 10"
 
   steps:
+    # Step 0: Learning reflection - review coordination outcomes
+    - name: learn_from_outcome
+      type: llm
+      prompt: |
+        === LEARNING REFLECTION ===
+        You are {agent_id}. Before taking your next action, reflect on outcomes.
+
+        Last action result: {last_action_result}
+        Current state: {_current_state}
+        Balance: {balance} scrip
+
+        REFLECTION QUESTIONS:
+        1. Did my last coordination effort succeed or fail? Why?
+        2. What lesson about partnerships should I remember?
+        3. Which agents proved reliable? Which didn't?
+
+        CRITICAL: Update your working_memory with lessons learned.
+        Use write_artifact to yourself with content containing:
+        ```yaml
+        working_memory:
+          current_goal: [coordination objective]
+          lessons:
+            - [lesson from this outcome]
+          reliable_partners: [list of trustworthy agents]
+          unreliable_partners: [agents who failed to deliver]
+        ```
+
+        If no lesson to record, proceed with noop.
+
     # Step 1: Assess coordination readiness
     - name: assess_readiness
       type: code
