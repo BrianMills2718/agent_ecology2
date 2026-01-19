@@ -211,6 +211,33 @@ class TestWorkingMemoryFromArtifact:
         assert memory is None
 
 
+class TestWorkingMemoryHint:
+    """Test working memory hint when no memory exists yet."""
+
+    @pytest.mark.plans([59])
+    def test_shows_hint_when_no_working_memory(self) -> None:
+        """Agent should see hint about creating working_memory when none exists."""
+        agent = Agent(
+            agent_id="delta_3",
+            llm_model="gemini/gemini-3-flash-preview",
+            inject_working_memory=True,
+        )
+
+        # No working memory set
+        assert agent._working_memory is None
+
+        # No working_memory artifact either
+        artifacts: list[dict[str, str]] = []
+
+        world_state = {"tick": 1, "balances": {"delta_3": 100}, "artifacts": artifacts}
+        prompt = agent.build_prompt(world_state)
+
+        # Should show hint about creating working_memory
+        assert "Your Working Memory" in prompt
+        assert "No working memory found yet" in prompt
+        assert "delta_3_working_memory" in prompt
+
+
 class TestWorkingMemoryFromSeparateArtifact:
     """Test loading working memory from {agent_id}_working_memory artifacts."""
 

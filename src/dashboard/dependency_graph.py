@@ -91,6 +91,9 @@ def build_dependency_graph(artifacts: list[dict[str, Any]]) -> DependencyGraphDa
                 created_at = created_at_str
             else:
                 created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+            # Ensure timezone-aware for comparison with now
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
         except (ValueError, AttributeError):
             created_at = now
 
