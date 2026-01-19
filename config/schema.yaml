@@ -171,6 +171,9 @@ genesis:
       count:
         cost: <number>          # Count artifacts matching filter
         description: <string>
+      get_interface:             # Plan #114: Interface discovery
+        cost: <number>          # Get interface schema for an artifact
+        description: <string>
 
 # -----------------------------------------------------------------------------
 # RATE LIMITING

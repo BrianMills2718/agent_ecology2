@@ -177,9 +177,10 @@ during a specific bidding window. Auctions still resolve on schedule.
 
 | Method | Cost (compute) | Description |
 |--------|----------------|-------------|
-| `list(filter?)` | 0 | List artifacts with optional filter |
-| `get(artifact_id)` | 0 | Get single artifact details |
-| `search(query, field?, limit?)` | 0 | Search artifacts by content match |
+| `list(filter?)` | 0 | List artifacts with optional filter (includes `interface` field) |
+| `get(artifact_id)` | 0 | Get single artifact details (includes `interface` field) |
+| `get_interface(artifact_id)` | 0 | Get interface schema for an artifact (Plan #114) |
+| `search(query, field?, limit?)` | 0 | Search artifacts by content match (includes `interface` field) |
 | `list_by_type(type)` | 0 | List artifacts of specific type |
 | `list_by_owner(owner_id)` | 0 | List artifacts by owner |
 | `list_agents()` | 0 | List all agent artifacts |
@@ -203,6 +204,8 @@ during a specific bidding window. Auctions still resolve on schedule.
 - Simple string search (no vector/semantic search - agents can build that capability)
 - Returns dicts, not Artifact objects (consistent with other genesis methods)
 - Pagination via limit/offset for large artifact counts
+- Interface discovery enabled (Plan #114): `get()`, `list()`, `search()` all return `interface` field
+- Dedicated `get_interface()` method for quick schema lookup before invocation
 
 ---
 
