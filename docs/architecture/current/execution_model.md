@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-19 (Plan #102 - tick-based mode removed)
+**Last verified:** 2026-01-19 (Plan #102 - tick-based mode removed, event counter clarified)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

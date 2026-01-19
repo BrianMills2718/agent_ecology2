@@ -129,6 +129,9 @@ Key methods still present:
 - Makefile (modify - add worktree protection)
 - docs/architecture/current/execution_model.md (modify)
 - docs/architecture/current/resources.md (modify)
+- docs/architecture/current/supporting_systems.md (modify - doc coupling verification)
+- docs/architecture/current/agents.md (modify - doc coupling verification)
+- docs/architecture/current/configuration.md (modify - doc coupling verification)
 - CLAUDE.md (modify - update terminology and add worktree exit rule)
 - docs/GLOSSARY.md (modify - deprecate tick)
 
