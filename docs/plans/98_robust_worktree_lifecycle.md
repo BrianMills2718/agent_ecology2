@@ -63,14 +63,14 @@
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/test_finish_pr.py` | `test_worktree_detection` | Detects worktree vs main repo |
-| `tests/test_finish_pr.py` | `test_refuses_from_worktree` | Blocks execution from worktree |
+| `tests/unit/test_finish_pr.py` | `test_detects_worktree_by_git_file` | Detects worktree vs main repo |
+| `tests/unit/test_finish_pr.py` | `test_refuses_from_worktree` | Blocks execution from worktree |
 
 ### Existing Tests (Must Pass)
 
 | Test Pattern | Why |
 |--------------|-----|
-| `tests/test_meta_status.py` | Meta status still works |
+| `tests/scripts/test_meta_status.py` | Meta status still works |
 
 ---
 
