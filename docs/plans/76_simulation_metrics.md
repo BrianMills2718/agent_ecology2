@@ -97,6 +97,7 @@ class AgentMetrics:
 - tests/unit/test_logger.py (modify)
 - tests/unit/test_kpis.py (modify)
 - tests/integration/test_dashboard_api.py (create)
+- docs/architecture/current/supporting_systems.md (modify)
 
 ---
 
