@@ -147,8 +147,7 @@ CI checks that PR branches were claimed. Currently informational, will become st
 
 | File | Purpose |
 |------|---------|
-| `.claude/active-work.yaml` | Machine-readable claim storage |
-| `CLAUDE.md` | Human-readable Active Work table |
+| `.claude/active-work.yaml` | Machine-readable claim storage (local, not git-tracked) |
 | `scripts/check_claims.py` | Claim management script |
 | `acceptance_gates/*.yaml` | Feature definitions with code mappings |
 
