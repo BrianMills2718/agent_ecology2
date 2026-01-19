@@ -2,7 +2,7 @@
 
 **Decision rationale archive.** This file records WHY decisions were made, not WHAT the current design is.
 
-**Last updated:** 2026-01-14 (Archived historical discussions)
+**Last updated:** 2026-01-19 (Contract system ADRs added)
 
 ---
 
@@ -34,6 +34,7 @@
 13. [Resolved Questions](#resolved-questions)
 14. [Deferred Concerns](#deferred-concerns-v-n)
 15. [Approved Architecture Decisions](#approved-architecture-decisions-2026-01-13)
+16. [Contract System Design Decisions](#contract-system-design-decisions-2026-01-19)
 
 ---
 
@@ -572,5 +573,91 @@ Approved with brief verification:
 4. All decisions reflected in target architecture docs
 
 **Source:** Target architecture review session (2026-01-13)
+
+---
+
+## Contract System Design Decisions (2026-01-19)
+
+Comprehensive contract architecture review resulted in four new ADRs.
+
+### ADR-0015: Contracts as Artifacts
+
+**Problem:** Genesis contracts were Python classes with implicit privileges (instant execution, priority lookup, immortality).
+
+**Decision:** All contracts are artifacts. No mechanical privileges for genesis contracts.
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Genesis contracts | Python classes | Artifacts with `type="contract"` |
+| Execution | Fast path in Python | Same sandbox as user contracts |
+| Caching | No | Opt-in via `cache_policy` |
+| Lookup priority | Hardcoded first | None |
+
+**Heuristics applied:**
+- **Minimal kernel, maximum flexibility**: Kernel provides physics, not policy
+- **Selection pressure over protection**: Contracts earn trust, not granted
+
+### ADR-0016: created_by Replaces owner_id
+
+**Problem:** `owner_id` field was ambiguous - kernel interpreted it for access control, creating owner bypass.
+
+**Decision:** Kernel stores `created_by` as historical fact, not authority. Contracts interpret it as they wish.
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Field name | `owner_id` | `created_by` |
+| Kernel interpretation | Authority (bypass) | None |
+| Access control | Kernel + contract | Contract only |
+
+**Example:**
+```python
+# Kernel behavior - NO bypass
+def can_access(artifact, action, requester):
+    return check_contract(artifact.access_contract_id, ...)  # Only contracts decide
+
+# Contract behavior - MAY grant creator access
+def check_permission(artifact_id, action, requester_id, context):
+    if requester_id == context["created_by"]:
+        return {"allowed": True}  # Contract policy, not kernel
+```
+
+### ADR-0017: Dangling Contracts Fail-Open
+
+**Problem:** What happens when `access_contract_id` points to deleted contract?
+
+| Option | Verdict | Reason |
+|--------|---------|--------|
+| Fail-closed | ❌ Rejected | Punitive without learning benefit |
+| Fail-open | ✅ Accepted | Accept risk, observe outcomes |
+| Prevent deletion | ❌ Rejected | Unnecessary complexity |
+
+**Decision:** Fall back to configurable default contract (freeware by default). Log loudly.
+
+**Heuristics applied:**
+- **Accept risk, observe outcomes**: Selection pressure still applies - your custom access control is gone
+- **Maximum configurability**: Default contract is configurable per-world
+
+### ADR-0018: Bootstrap Phase and Eris
+
+**Problem:** Chicken-and-egg - genesis contracts need access control, but access control needs contracts.
+
+**Decisions:**
+
+1. **Bootstrap phase** during `World.__init__()` only (instantaneous, not a time period)
+2. **Eris** as bootstrap creator - goddess of discord, fits emergence philosophy
+3. **Self-referential contracts** - genesis contracts govern themselves
+4. **Reserved `genesis_` prefix** - prevents ID collisions
+5. **Naming convention** - `_api` for kernel accessors, `_contract` for contracts
+
+### Additional Pragmatic Decisions
+
+| Decision | Resolution | Heuristic |
+|----------|------------|-----------|
+| Contract type | Advisory validation (duck typing at runtime) | Pragmatism over purity |
+| Contract caching | Opt-in via `cache_policy`, TTL-based | Avoid defaults |
+| Cost model V1 | `invoker_pays` and `owner_pays` only | Minimal viable |
+| Contract depth limit | Single counter `MAX_CONTRACT_DEPTH = 10` | Minimal kernel |
+
+**Source:** Contract architecture review session (2026-01-19)
 
 ---

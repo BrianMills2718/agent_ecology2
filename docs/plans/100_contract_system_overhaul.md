@@ -20,17 +20,20 @@ Major overhaul of the contract system to fully realize the target architecture w
 
 ### Current State
 
-The contract system is **partially implemented**:
+The contract system is **partially implemented** with significant gaps:
 
 | Aspect | Status | Notes |
 |--------|--------|-------|
-| Genesis contracts (4) | ✅ Done | freeware, self_owned, private, public |
+| Genesis contracts (4) | ⚠️ Partial | Python classes, not artifacts (see ADR-0015) |
 | `access_contract_id` field | ✅ Done | Artifacts point to contracts |
-| Permission checking via contracts | ✅ Done | `_check_permission_via_contract()` |
-| Owner bypass removed | ✅ Done | Contracts are sole authority |
+| Permission checking via contracts | ⚠️ Partial | Executor uses contracts; World.py bypasses them |
+| Owner bypass removed | ❌ NOT Done | `artifact.can_write()` has owner bypass (line 219-220) |
 | Basic sandbox | ✅ Done | 1s timeout, restricted builtins |
 | ExecutableContract class | ✅ Done | Dynamic code execution |
 | ReadOnlyLedger | ✅ Done | Safe ledger access in contracts |
+| `owner_id` field | ⚠️ Problematic | Should be `created_by` (see ADR-0016) |
+
+**Critical Issue:** World.py uses `artifact.can_read/write/invoke()` methods which have hardcoded owner bypasses, not contracts. The target architecture states contracts are the ONLY authority.
 
 ### Target State (Not Yet Implemented)
 
@@ -54,22 +57,22 @@ The contract system is **partially implemented**:
 
 The following decisions are resolved by applying the project's design heuristics from README.md and CLAUDE.md.
 
-#### 1. Dangling Contract Behavior → **RESOLVED: Fail-closed (Option B)**
+#### 1. Dangling Contract Behavior → **RESOLVED: Fail-open (Option A)** *(Updated 2026-01-19)*
 
 **Question:** What happens when `access_contract_id` points to a deleted contract?
 
 | Option | Pros | Cons |
 |--------|------|------|
-| **A: Fail-open** | Artifacts stay accessible | Security risk - deletion grants access |
-| **B: Fail-closed** | Secure - no unintended access | Artifacts locked forever |
+| **A: Fail-open** | Artifacts stay accessible, configurable default | Security implication if restrictive contract deleted |
+| **B: Fail-closed** | Secure - no unintended access | Artifacts locked forever - punitive |
 | **C: Prevent deletion** | Referential integrity | Adds complexity, contracts immortal |
 
 **Heuristics applied:**
-- **Fail Loud** (CLAUDE.md): Explicit denial better than silent access grant
-- **Selection pressure over protection** (README): Agents who choose bad contracts lose access - that's learning
-- **Observe, don't prevent** (README): Log the denial, let agents adapt
+- **Accept risk, observe outcomes** (README): Fail-closed is punitive without learning benefit
+- **Maximum Configurability** (CLAUDE.md): Default contract should be configurable
+- **Selection pressure** still exists: your custom access control is gone
 
-**Decision:** Option B. Artifacts with dangling contracts return explicit denial. Agents learn to use stable contracts.
+**Decision:** Option A. Fall back to configurable default contract (freeware by default). Log loudly. See ADR-0017.
 
 #### 2. Contract Cost Model Semantics → **RESOLVED: Simplified for V1**
 
@@ -131,6 +134,37 @@ The following decisions are resolved by applying the project's design heuristics
 - Artifact invocations from within contracts
 
 This is simpler than separate limits and prevents all forms of deep recursion.
+
+#### 6. Bootstrap Phase and Genesis Creator → **RESOLVED: Eris at t=0** *(Added 2026-01-19)*
+
+**Question:** How do we create genesis contracts if contracts require contracts for access control?
+
+**Heuristics applied:**
+- **Physics-first** (README): Initial conditions aren't explained by physics
+- **Emergence is the goal** (README): Chaos as creative force fits project philosophy
+
+**Decision:** Bootstrap phase during `World.__init__()` only (instantaneous). Genesis artifacts created by `Eris` (goddess of discord). See ADR-0018.
+
+#### 7. Genesis Naming Convention → **RESOLVED: Suffix-based** *(Added 2026-01-19)*
+
+**Question:** How do we distinguish genesis artifacts by role?
+
+| Suffix | Meaning | Example |
+|--------|---------|---------|
+| `_api` | Accessor to kernel state | `genesis_ledger_api`, `genesis_event_log_api` |
+| `_contract` | Access control contract | `genesis_freeware_contract`, `genesis_private_contract` |
+
+**Decision:** Use suffixes to clarify role. Reserved `genesis_` prefix for system artifacts. See ADR-0018.
+
+#### 8. Contract Type Validation → **RESOLVED: Advisory, not enforced** *(Added 2026-01-19)*
+
+**Question:** Should contract type be strictly validated at creation?
+
+**Heuristics applied:**
+- **Pragmatism over purity** (README): Don't let elegance obstruct goals
+- **Duck typing** works: Any artifact implementing `check_permission` can be a contract
+
+**Decision:** `type="contract"` triggers interface validation at creation (must have `check_permission`), but runtime uses duck typing. Artifacts can become contracts by implementing the interface.
 
 ---
 
@@ -384,6 +418,10 @@ This is simpler than separate limits and prevents all forms of deep recursion.
 - `docs/architecture/target/05_contracts.md` - Target contract architecture
 - `docs/architecture/current/contracts.md` - Current implementation
 - `docs/adr/0003-contracts-can-do-anything.md` - Capability decision
+- `docs/adr/0015-contracts-as-artifacts.md` - Contracts are artifacts, no genesis privilege
+- `docs/adr/0016-created-by-not-owner.md` - Replace owner_id with created_by
+- `docs/adr/0017-dangling-contracts-fail-open.md` - Fail-open to configurable default
+- `docs/adr/0018-bootstrap-and-eris.md` - Bootstrap phase, Eris, naming conventions
 
 ### Related Plans
 - Plan #14: Artifact Interface Schema (complete) - Interface validation
