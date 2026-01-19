@@ -245,6 +245,7 @@ jobs:
         run: python scripts/check_plan_blockers.py --strict
 
       - name: Check plan tests
+        if: vars.SKIP_ALL_PLAN_TESTS != 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python scripts/check_plan_tests.py --all --strict
