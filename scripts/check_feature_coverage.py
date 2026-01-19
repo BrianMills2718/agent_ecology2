@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check that source files are assigned to features.
 
-Scans acceptance_gates/*.yaml for code: sections and compares against actual
+Scans meta/acceptance_gates/*.yaml for code: sections and compares against actual
 source files in src/ and scripts/. Reports unassigned files.
 
 Exit codes:
@@ -112,7 +112,7 @@ def main() -> int:
     parser.add_argument(
         "--features-dir",
         type=Path,
-        default=Path("acceptance_gates"),
+        default=Path("meta/acceptance_gates"),
         help="Directory containing feature files",
     )
     parser.add_argument(
@@ -176,7 +176,7 @@ def main() -> int:
 
     if unassigned_count > 0:
         print(f"\n{unassigned_count} file(s) not assigned to any feature")
-        print("Add these files to a feature's 'code:' section in acceptance_gates/*.yaml")
+        print("Add these files to a feature's 'code:' section in meta/acceptance_gates/*.yaml")
 
         if args.warn_only:
             return 2

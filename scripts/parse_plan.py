@@ -104,12 +104,13 @@ def get_active_plan_number() -> int | None:
 def find_plan_file(plan_number: int) -> Path | None:
     """Find the plan file for a given plan number.
 
-    Checks both main repo and current worktree (if different).
+    Checks current worktree first, then main repo.
+    This allows worktree-specific plan updates to be found before they're merged.
     """
-    # Check locations in order of preference
+    # Check locations in order of preference - worktree first
     locations = [
+        Path.cwd() / "docs/plans",  # Current worktree (may have uncommitted changes)
         get_main_repo_root() / "docs/plans",  # Main repo (shared)
-        Path.cwd() / "docs/plans",  # Current worktree
     ]
 
     # Dedupe while preserving order

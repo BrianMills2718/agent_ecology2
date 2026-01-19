@@ -206,9 +206,11 @@ agent_ecology/
   tests/                    # pytest suite
   docs/
     plans/                  # Implementation plans (gaps)
-    meta/                   # Reusable process patterns
     adr/                    # Architecture Decision Records
     architecture/           # current/ and target/ state
+  meta/
+    patterns/               # Reusable meta-process patterns
+    acceptance_gates/       # Feature specifications (YAML)
 ```
 
 ---
@@ -267,7 +269,8 @@ python scripts/check_messages.py --archive <id>
 | Doc | Purpose |
 |-----|---------|
 | `docs/plans/` | Implementation plans (gap tracking) |
-| `docs/meta/` | Reusable process patterns |
+| `meta/patterns/` | Reusable meta-process patterns |
+| `meta/acceptance_gates/` | Feature specifications (YAML) |
 | `docs/adr/` | Architecture Decision Records |
 | `docs/architecture/current/` | What IS implemented |
 | `docs/architecture/target/` | What we WANT |
@@ -312,7 +315,7 @@ Use the Read tool on that file if you need prior context.
 |-----|---------|
 | `README.md` | Full philosophy, theoretical grounding |
 | `docs/plans/CLAUDE.md` | Plan index and template |
-| `docs/meta/01_README.md` | Meta-pattern index |
+| `meta/patterns/01_README.md` | Meta-pattern index |
 | `docs/GLOSSARY.md` | Canonical terminology |
 | `scripts/CLAUDE.md` | Script usage reference |
 | `config/schema.yaml` | All config options |

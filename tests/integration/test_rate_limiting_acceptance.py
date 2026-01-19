@@ -1,4 +1,4 @@
-"""Feature acceptance tests for rate_limiting - maps to acceptance_gates/rate_limiting.yaml.
+"""Feature acceptance tests for rate_limiting - maps to meta/acceptance_gates/rate_limiting.yaml.
 
 Run with: pytest --feature rate_limiting tests/
 """
@@ -13,7 +13,7 @@ from src.world.rate_tracker import RateTracker
 
 @pytest.mark.feature("rate_limiting")
 class TestRateLimitingFeature:
-    """Tests mapping to acceptance_gates/rate_limiting.yaml acceptance criteria."""
+    """Tests mapping to meta/acceptance_gates/rate_limiting.yaml acceptance criteria."""
 
     # AC-1: Consume within limit (happy_path)
     def test_ac_1_consume_within_limit(self) -> None:

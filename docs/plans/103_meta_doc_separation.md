@@ -90,6 +90,8 @@ meta/                           # NEW root directory
 - scripts/check_locked_files.py (modify)
 - scripts/complete_plan.py (modify)
 - scripts/parse_plan.py (modify)
+- .claude/hooks/protect-main.sh (modify)
+- hooks/CLAUDE.md (modify)
 - tests/unit/test_check_claims.py (modify)
 - tests/unit/test_template.py (modify)
 - tests/integration/test_mint_acceptance.py (modify)
