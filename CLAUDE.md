@@ -33,17 +33,17 @@ make lint-suggest        # Show which docs need updates
 
 ### Finishing Work
 ```bash
-make rebase              # Rebase onto origin/main
 make pr-ready            # Rebase + push (run before PR)
 make pr                  # Create PR (opens browser)
-make release             # Release claim with validation
+# After CI passes, complete everything with ONE command from main:
+cd /path/to/main && make finish BRANCH=plan-XX PR=N  # Merge + cleanup (MUST run from main!)
 ```
 
 ### PR Management
 ```bash
 make pr-list             # List open PRs
 make pr-view PR=123      # View PR details
-make merge PR=123        # Merge PR (validates CI, pulls main)
+make merge PR=123        # Merge only (use 'make finish' instead for full cleanup)
 ```
 
 ### Claims
@@ -83,26 +83,29 @@ make kill                # Kill running simulations
 
 ## Meta-Process Workflow
 
-### The Complete Cycle
+### The Complete Cycle (4 Steps)
+
+**CC does everything autonomously - no human intervention needed.**
 
 ```
-1. CHECK STATUS     -->  python scripts/meta_status.py
+1. START            -->  make worktree (claim + create isolated workspace)
        |
-2. CLAIM + WORKTREE -->  make worktree (interactive)
+2. IMPLEMENT        -->  Edit files, write tests first (TDD)
        |
-3. IMPLEMENT        -->  Edit files, write tests first (TDD)
+3. VERIFY           -->  make check (all CI checks locally)
        |
-4. VERIFY           -->  make check (all CI checks)
-       |
-5. PR READY         -->  make pr-ready (rebase + push)
-       |
-6. CREATE PR        -->  make pr (or gh pr create)
-       |
-7. RELEASE CLAIM    -->  make release
-       |
-8. REVIEW/MERGE     -->  make merge PR=N (anyone can merge after PR exists)
-       |
-9. CLEANUP          -->  make worktree-remove BRANCH=name
+4. SHIP             -->  make pr-ready && make pr
+                         [wait for CI to pass]
+                         cd /path/to/main && make finish BRANCH=X PR=N
+```
+
+**Step 4 detail:** After CI passes, run `make finish` FROM MAIN (not from worktree).
+This single command: merges PR + releases claim + deletes worktree.
+The `cd` MUST be in the same bash command to prevent shell CWD issues.
+
+Example:
+```bash
+cd /home/brian/brian_projects/agent_ecology2 && make finish BRANCH=plan-98-robust-worktree PR=321
 ```
 
 ### Work Priorities (in order)
