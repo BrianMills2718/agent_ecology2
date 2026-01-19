@@ -108,3 +108,4 @@ Phase 2 (follow-up):
 ## Notes
 
 Originally Plan #92 but renumbered due to collision with Worktree/Branch Mismatch Detection.
+
