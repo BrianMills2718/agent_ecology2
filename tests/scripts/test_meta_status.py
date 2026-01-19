@@ -6,6 +6,7 @@ Plan #92: Worktree/Branch Mismatch Detection
 import pytest
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 # Add scripts to path for import
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
@@ -98,10 +99,11 @@ class TestWorktreeBranchMismatchDetection:
 
 
 @pytest.mark.plans([92])
+@patch("meta_status.remote_branch_exists", return_value=True)  # mock-ok: Test uses fake branches that don't exist on remote
 class TestOrphanDetectionUsesBothDirAndBranch:
     """Test that orphan detection checks both directory name AND branch against claims."""
 
-    def test_not_orphaned_when_claim_matches_dir_name(self) -> None:
+    def test_not_orphaned_when_claim_matches_dir_name(self, mock_remote: object) -> None:
         """Worktree claimed by directory name should not be orphaned."""
         claims = [
             {"cc_id": "plan-86-ooda-logging", "plan": 86, "task": "Logging"}
@@ -124,7 +126,7 @@ class TestOrphanDetectionUsesBothDirAndBranch:
         # Should report mismatch but NOT orphan (claim matches dir)
         assert len(orphan_issues) == 0
 
-    def test_not_orphaned_when_claim_matches_branch(self) -> None:
+    def test_not_orphaned_when_claim_matches_branch(self, mock_remote: object) -> None:
         """Worktree claimed by branch name should not be orphaned."""
         claims = [
             {"cc_id": "plan-88-ooda-fresh", "plan": 88, "task": "Fresh"}
@@ -147,7 +149,7 @@ class TestOrphanDetectionUsesBothDirAndBranch:
         # Should report mismatch but NOT orphan (claim matches branch)
         assert len(orphan_issues) == 0
 
-    def test_not_orphaned_when_claim_matches_plan_number(self) -> None:
+    def test_not_orphaned_when_claim_matches_plan_number(self, mock_remote: object) -> None:
         """Worktree claimed by plan number (any identifier) should not be orphaned."""
         claims = [
             {"cc_id": "some-other-id", "plan": 86, "task": "Work on 86"}
@@ -170,7 +172,7 @@ class TestOrphanDetectionUsesBothDirAndBranch:
         # Not orphan because claim has plan 86 which matches dir_plan
         assert len(orphan_issues) == 0
 
-    def test_orphaned_when_no_matching_claim(self) -> None:
+    def test_orphaned_when_no_matching_claim(self, mock_remote: object) -> None:
         """Worktree with no matching claim by any identifier is orphaned."""
         claims = [
             {"cc_id": "unrelated-claim", "plan": 99, "task": "Something else"}
@@ -193,7 +195,7 @@ class TestOrphanDetectionUsesBothDirAndBranch:
         assert len(orphan_issues) == 1
         assert "plan-50-feature" in orphan_issues[0]
 
-    def test_not_orphaned_when_pr_exists(self) -> None:
+    def test_not_orphaned_when_pr_exists(self, mock_remote: object) -> None:
         """Worktree with open PR is not orphaned even without claim."""
         claims: list = []
         prs = [
@@ -215,7 +217,7 @@ class TestOrphanDetectionUsesBothDirAndBranch:
         orphan_issues = [i for i in issues if "orphan" in i.lower()]
         assert len(orphan_issues) == 0
 
-    def test_main_worktree_never_orphaned(self) -> None:
+    def test_main_worktree_never_orphaned(self, mock_remote: object) -> None:
         """Main worktree (no dir_name) should never be reported as orphaned."""
         claims: list = []
         prs: list = []

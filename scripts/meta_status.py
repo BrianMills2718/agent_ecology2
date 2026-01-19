@@ -201,6 +201,12 @@ def get_current_branch() -> str:
     return output if success else ""
 
 
+def remote_branch_exists(branch: str) -> bool:
+    """Check if a branch exists on the remote."""
+    success, output = run_cmd(["git", "ls-remote", "--heads", "origin", branch])
+    return success and bool(output.strip())
+
+
 def get_my_identity() -> dict:
     """Determine the current CC instance's identity for ownership checks.
 
@@ -374,6 +380,19 @@ def identify_issues(claims: list, prs: list, plans: dict, worktrees: list) -> li
                 f"Worktree mismatch: dir '{dir_name}' (Plan #{dir_plan}) "
                 f"contains branch '{branch}' (Plan #{branch_plan}) - reused worktree?"
             )
+
+        # Check for merged worktrees (detached HEAD or remote branch deleted)
+        # These are safe to cleanup - the PR was merged and branch deleted
+        is_detached = wt.get("detached", False)
+        remote_exists = remote_branch_exists(branch) if branch and not is_detached else True
+
+        if is_detached or not remote_exists:
+            reason = "detached HEAD" if is_detached else "branch deleted from remote (likely merged)"
+            issues.append(
+                f"🧹 Merged worktree: '{dir_name}' ({reason}) - safe to cleanup with: "
+                f"make worktree-remove BRANCH={dir_name}"
+            )
+            continue  # Skip other orphan checks for merged worktrees
 
         # Check for orphaned worktrees
         # A worktree is NOT orphaned if ANY of these are true:

@@ -274,36 +274,34 @@ vim docs/plans/33_my_feature.md
 vim docs/plans/CLAUDE.md
 ```
 
-### Implementing a plan
+### Implementing a plan (4-step workflow)
 
 ```bash
-# 1. Check dependencies
-cat docs/plans/33_my_feature.md | grep "Blocked By"
+# 1. START - Claim + create isolated workspace
+make worktree              # Interactive: claim + create worktree
+# You're now in worktrees/plan-33-my-feature/
 
-# 2. Update status
-# In plan file: **Status:** 🚧 In Progress
-# In index: same
+# 2. IMPLEMENT - TDD approach
+python scripts/check_plan_tests.py --plan 33 --tdd  # See what tests to write
+# Write tests first (they fail), then implement until they pass
+# Update plan status: **Status:** 🚧 In Progress
 
-# 3. TDD - see what tests to write
-python scripts/check_plan_tests.py --plan 33 --tdd
+# 3. VERIFY - All CI checks locally
+make check                 # Runs: test, mypy, lint, doc-coupling
 
-# 4. Write tests (they fail initially)
-vim tests/test_feature.py
+# 4. SHIP - PR + merge + cleanup (all automated)
+make pr-ready && make pr   # Rebase, push, create PR
+# Wait for CI to pass, then FROM MAIN (not worktree):
+cd /path/to/main && make finish BRANCH=plan-33-my-feature PR=N
+# This single command: merges PR + releases claim + deletes worktree + pulls main
+```
 
-# 5. Implement until tests pass
-vim src/feature.py
-pytest tests/test_feature.py -v
+**Critical:** The `make finish` command MUST run from main, not from the worktree.
+The `cd` and `make finish` must be in the same bash command to prevent shell CWD issues.
 
-# 6. Verify all requirements
-python scripts/check_plan_tests.py --plan 33
-pytest tests/
-python -m mypy src/
-
-# 7. Update status to Complete
-# In plan file AND index
-
-# 8. Commit with plan reference
-git commit -m "[Plan #33] Implement my feature"
+Example:
+```bash
+cd /home/user/project && make finish BRANCH=plan-33-my-feature PR=123
 ```
 
 ### Checking plan status

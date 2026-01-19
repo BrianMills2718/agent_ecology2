@@ -1,7 +1,7 @@
 # Agent Ecology - Common Commands
 # Usage: make <target>
 
-.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge pr-merge-admin pr-list pr-view worktree worktree-quick worktree-remove worktree-remove-force clean-branches clean-branches-delete kill
+.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge finish pr-merge-admin pr-list pr-view worktree worktree-quick worktree-remove worktree-remove-force clean-branches clean-branches-delete kill
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -114,6 +114,10 @@ pr-create:  ## Create PR from CLI (usage: make pr-create TITLE="Fix bug" BODY="D
 merge:  ## Merge PR (usage: make merge PR=5)
 	@if [ -z "$(PR)" ]; then echo "Usage: make merge PR=5"; exit 1; fi
 	python scripts/merge_pr.py $(PR)
+
+finish:  ## Complete PR lifecycle: merge + cleanup (usage: make finish BRANCH=plan-XX PR=N) - RUN FROM MAIN!
+	@if [ -z "$(BRANCH)" ] || [ -z "$(PR)" ]; then echo "Usage: make finish BRANCH=plan-XX PR=N"; exit 1; fi
+	python scripts/finish_pr.py --branch $(BRANCH) --pr $(PR)
 
 pr-merge-admin:  ## Merge PR bypassing checks (usage: make pr-merge-admin PR=5)
 	@if [ -z "$(PR)" ]; then echo "Usage: make pr-merge-admin PR=5"; exit 1; fi
