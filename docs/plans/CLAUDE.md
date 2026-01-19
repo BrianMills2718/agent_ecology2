@@ -129,6 +129,7 @@ Master index of all gaps and their implementation plans.
 | 95 | [Unified Resource System](95_unified_resource_system.md) | **Critical** | ✅ Complete | Core economic mechanics |
 | 97 | [SQLite Concurrency Fix](97_sqlite_concurrency.md) | **High** | ✅ Complete | Concurrent state access |
 | 98 | [Robust Worktree Lifecycle](98_robust_worktree_lifecycle.md) | **High** | 🚧 In Progress | Meta-process reliability |
+| 100 | [Contract System Overhaul](100_contract_system_overhaul.md) | **High** | 📋 Deferred | Custom contracts, advanced access control |
 
 ---
 
