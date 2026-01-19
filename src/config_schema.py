@@ -61,17 +61,17 @@ class TimeoutsConfig(StrictModel):
         description="SQLite lock timeout in seconds"
     )
     state_store_retry_max: int = Field(
-        default=5,
+        default=10,
         ge=1,
         description="Max retry attempts for SQLite lock errors"
     )
     state_store_retry_base: float = Field(
-        default=0.1,
+        default=0.05,
         gt=0,
         description="Base backoff delay in seconds for SQLite retries"
     )
     state_store_retry_max_delay: float = Field(
-        default=5.0,
+        default=2.0,
         gt=0,
         description="Maximum backoff delay cap in seconds for SQLite retries"
     )
