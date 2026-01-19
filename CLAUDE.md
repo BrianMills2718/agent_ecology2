@@ -319,10 +319,9 @@ Use the Read tool on that file if you need prior context.
 
 ## Active Work
 
-<!-- Auto-synced from .claude/active-work.yaml -->
-| CC-ID | Plan | Task | Claimed | Status |
-|-------|------|------|---------|--------|
-| plan-86-ooda-logging | 88 | Plan #88: Fix CI issues | 2026-01-18T16:47 | Active |
-| plan-92-worktree-validation | 92 | Plan #92: Worktree/Branch Mismatch Detec | 2026-01-18T16:54 | Active |
-| main | 91 | Plan #91: Acceptance gate terminology cl | 2026-01-18T16:59 | Active |
-| plan-83-remove-ticks | 83 | Plan #83: Remove tick-based execution | 2026-01-18T19:51 | Active |
+Check current claims with:
+```bash
+python scripts/check_claims.py --list
+```
+
+Claims are stored locally in `.claude/active-work.yaml` (not tracked in git) to prevent conflicts when PRs merge.

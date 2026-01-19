@@ -150,9 +150,3 @@ clean-branches:  ## List stale remote branches (PRs already merged)
 
 clean-branches-delete:  ## Delete stale remote branches (PRs already merged)
 	python scripts/cleanup_branches.py --delete
-
-clean-branches:  ## List stale remote branches (PRs already merged)
-	python scripts/cleanup_branches.py
-
-clean-branches-delete:  ## Delete stale remote branches (PRs already merged)
-	python scripts/cleanup_branches.py --delete
