@@ -259,16 +259,21 @@ timeouts:
   simulation_shutdown: 5.0        # SimulationRunner shutdown timeout
   mcp_server: 5.0                 # MCP server operations timeout
   state_store_lock: 30.0          # SQLite lock timeout
-  state_store_retry_max: 5        # Max retry attempts for SQLite lock errors
-  state_store_retry_base: 0.1     # Base backoff delay (seconds)
-  state_store_retry_max_delay: 5.0  # Max backoff delay cap (seconds)
+  state_store_retry_max: 10       # Max retry attempts for SQLite lock errors
+  state_store_retry_base: 0.05    # Base backoff delay (seconds)
+  state_store_retry_max_delay: 2.0  # Max backoff delay cap (seconds)
   dashboard_server: 30.0          # Dashboard server operations timeout
 ```
+
+**SQLite Isolation Levels (Plan #99):** The state store uses different isolation levels for reads and writes to maximize concurrency:
+- **Reads** (`load()`, `list_agents()`): Use DEFERRED isolation (default), allowing concurrent readers via WAL mode
+- **Writes** (`save()`, `delete()`, `clear()`): Use IMMEDIATE isolation to prevent deadlocks in read-then-write patterns
 
 **SQLite Retry Logic:** When multiple worker threads access the state store database concurrently, SQLite can throw `database is locked` errors under contention. The retry parameters control exponential backoff behavior:
 - Retries only on "database is locked" errors (other errors propagate immediately)
 - Delay doubles each attempt: base_delay * 2^(attempt-1), capped at max_delay
 - After max_retries, the error is raised
+- Both read and write operations use retry logic for robustness during checkpoint operations
 
 ### Agent Prompt
 

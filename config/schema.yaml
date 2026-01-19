@@ -224,9 +224,9 @@ timeouts:
   simulation_shutdown: <number> # SimulationRunner shutdown timeout (seconds, default: 5.0)
   mcp_server: <number>          # MCP server operations timeout (seconds, default: 5.0)
   state_store_lock: <number>    # SQLite lock timeout (seconds, default: 30.0)
-  state_store_retry_max: <int>       # Max retry attempts for SQLite lock errors (default: 5)
-  state_store_retry_base: <number>   # Base backoff delay seconds (default: 0.1)
-  state_store_retry_max_delay: <number>  # Max backoff delay seconds (default: 5.0)
+  state_store_retry_max: <int>       # Max retry attempts for SQLite lock errors (default: 10)
+  state_store_retry_base: <number>   # Base backoff delay seconds (default: 0.05)
+  state_store_retry_max_delay: <number>  # Max backoff delay seconds (default: 2.0)
   dashboard_server: <number>    # Dashboard server operations timeout (seconds, default: 30.0)
 
 # -----------------------------------------------------------------------------
