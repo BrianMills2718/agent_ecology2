@@ -19,11 +19,13 @@
 
 ## Files Affected
 
-- `src/world/resource_manager.py` (create)
-- `src/world/ledger.py` (modify)
-- `src/world/rate_tracker.py` (modify - keep but integrate)
-- `src/world/world.py` (modify)
-- `tests/unit/test_resource_manager.py` (create)
+- src/world/resource_manager.py (create)
+- src/world/ledger.py (modify)
+- src/world/rate_tracker.py (modify)
+- src/world/world.py (modify)
+- tests/unit/test_resource_manager.py (create)
+- tests/integration/test_resource_integration.py (create)
+- docs/architecture/current/execution_model.md (modify)
 
 ---
 
@@ -47,6 +49,7 @@ Phase 2 (follow-up):
 
 ## Required Tests
 
+### Phase 1 - Unit Tests
 - `tests/unit/test_resource_manager.py::TestResourceManagerInit::test_creates_empty_manager`
 - `tests/unit/test_resource_manager.py::TestResourceManagerInit::test_custom_rate_window`
 - `tests/unit/test_resource_manager.py::TestResourceTypes::test_register_depletable_resource`
@@ -70,6 +73,18 @@ Phase 2 (follow-up):
 - `tests/unit/test_resource_manager.py::TestReporting::test_get_all_balances`
 - `tests/unit/test_resource_manager.py::TestReporting::test_get_principal_summary`
 
+### Phase 2 - Integration Tests
+- `tests/integration/test_resource_integration.py::TestWorldResourceManagerIntegration::test_world_has_resource_manager`
+- `tests/integration/test_resource_integration.py::TestWorldResourceManagerIntegration::test_set_quota_updates_resource_manager`
+- `tests/integration/test_resource_integration.py::TestWorldResourceManagerIntegration::test_get_quota_reads_from_resource_manager`
+- `tests/integration/test_resource_integration.py::TestWorldResourceManagerIntegration::test_consume_quota_uses_resource_manager_allocate`
+- `tests/integration/test_resource_integration.py::TestWorldResourceManagerIntegration::test_consume_quota_respects_limit`
+- `tests/integration/test_resource_integration.py::TestWorldResourceManagerIntegration::test_get_available_capacity_uses_resource_manager`
+- `tests/integration/test_resource_integration.py::TestWorldResourceManagerIntegration::test_multiple_resources_tracked_independently`
+- `tests/integration/test_resource_integration.py::TestWorldResourceManagerIntegration::test_multiple_principals_tracked_independently`
+- `tests/integration/test_resource_integration.py::TestResourceManagerInWorld::test_resource_manager_principal_created_on_set_quota`
+- `tests/integration/test_resource_integration.py::TestResourceManagerInWorld::test_resource_manager_principal_created_on_consume_quota`
+
 ---
 
 ## Progress
@@ -79,6 +94,14 @@ Phase 2 (follow-up):
 - Created `tests/unit/test_resource_manager.py` with 34 passing tests
 - ResourceType enum: DEPLETABLE, ALLOCATABLE, RENEWABLE
 - All balance, quota, rate limiting, transfer, and reporting operations working
+
+### Phase 2 Complete (2026-01-19)
+- Integrated ResourceManager into World for quota management
+- World.set_quota/get_quota/consume_quota/get_quota_usage/get_available_capacity now delegate to ResourceManager
+- Removed `_quota_limits` and `_quota_usage` dicts from World (replaced by ResourceManager)
+- Created integration tests verifying World-ResourceManager integration (10 tests)
+- All existing kernel quota tests (13) continue to pass
+- Note: Ledger integration deferred to follow-up work - Ledger continues to work independently
 
 ---
 
