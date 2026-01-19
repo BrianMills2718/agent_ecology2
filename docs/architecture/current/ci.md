@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-18 (auto-sync plan index via post-merge CI)
+Last verified: 2026-01-19 (added SKIP_ALL_PLAN_TESTS config option)
 
 ---
 
