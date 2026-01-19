@@ -430,6 +430,7 @@ class GenesisMint(GenesisArtifact):
                     "status": "scored",
                     "submitter": last["winner_id"],
                     "score": last["score"],
+                    "score_reason": last.get("score_reason"),
                 }
 
         return result
@@ -495,6 +496,7 @@ class GenesisMint(GenesisArtifact):
                 "winning_bid": kernel_result.get("winning_bid", 0),
                 "price_paid": kernel_result.get("price_paid", 0),
                 "score": kernel_result.get("score"),
+                "score_reason": kernel_result.get("score_reason"),
                 "scrip_minted": kernel_result.get("scrip_minted", 0),
                 "ubi_distributed": kernel_result.get("ubi_distributed", {}),
                 "error": kernel_result.get("error"),

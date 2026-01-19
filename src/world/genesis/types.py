@@ -172,13 +172,14 @@ class BidInfo(TypedDict):
     submitted_at: float  # Plan #83: wall-clock timestamp
 
 
-class AuctionResult(TypedDict):
+class AuctionResult(TypedDict, total=False):
     """Result of an auction resolution."""
     winner_id: str | None
     artifact_id: str | None
     winning_bid: int
     price_paid: int  # Second-price
     score: int | None
+    score_reason: str | None  # LLM's explanation for the score
     scrip_minted: int
     ubi_distributed: dict[str, int]
     error: str | None

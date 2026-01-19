@@ -797,11 +797,18 @@ class SimulationRunner:
         if not self.verbose:
             return
 
+        # Count actual events from the log file
+        log_path = self.world.logger.output_path
+        try:
+            event_count = sum(1 for _ in open(log_path))
+        except (FileNotFoundError, IOError):
+            event_count = 0
+
         print("=== Simulation Complete ===")
-        print(f"Events logged: {self.world.tick}")
+        print(f"Events logged: {event_count}")
         print(f"Final scrip: {self.world.ledger.get_all_scrip()}")
         print(f"Total artifacts: {self.world.artifacts.count()}")
-        print(f"Log file: {self.config['logging']['output_file']}")
+        print(f"Log file: {log_path}")
 
     def pause(self) -> None:
         """Pause the simulation after the current tick completes."""

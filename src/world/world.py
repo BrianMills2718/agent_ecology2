@@ -134,6 +134,7 @@ class KernelMintResult(TypedDict, total=False):
     winning_bid: int
     price_paid: int  # Second-price auction
     score: int | None
+    score_reason: str | None  # LLM's explanation for the score
     scrip_minted: int
     ubi_distributed: dict[str, int]
     error: str | None
@@ -588,12 +589,14 @@ class World:
 
         # Score the artifact
         score: int | None = None
+        score_reason: str | None = None
         scrip_minted = 0
         error: str | None = None
 
         if _mock_score is not None:
             # Testing mode - use provided score
             score = _mock_score
+            score_reason = "Mock score for testing"
             mint_ratio = 10  # Default, could come from config
             scrip_minted = score // mint_ratio
             if scrip_minted > 0:
@@ -612,6 +615,7 @@ class World:
                     )
                     if score_result["success"]:
                         score = score_result["score"]
+                        score_reason = score_result.get("reason")
                         mint_ratio = 10  # Could come from config
                         scrip_minted = score // mint_ratio
                         if scrip_minted > 0:
@@ -629,6 +633,7 @@ class World:
             winning_bid=winning_bid,
             price_paid=price_paid,
             score=score,
+            score_reason=score_reason,
             scrip_minted=scrip_minted,
             ubi_distributed=ubi_distribution,
             error=error,
@@ -646,6 +651,7 @@ class World:
             "winning_bid": winning_bid,
             "price_paid": price_paid,
             "score": score,
+            "score_reason": score_reason,
             "scrip_minted": scrip_minted,
             "error": error,
         })
