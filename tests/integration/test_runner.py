@@ -385,12 +385,12 @@ class TestCreateAgents:
             assert runner.agents[0].llm_model == "my-custom-model"
 
 
-class TestHandleMintTick:
-    """Tests for _handle_mint_tick method."""
+class TestHandleMintUpdate:
+    """Tests for _handle_mint_update method (Plan #79)."""
 
     @patch("src.simulation.runner.load_agents")
     def test_returns_none_when_no_mint(self, mock_load: MagicMock) -> None:
-        """_handle_mint_tick returns None when mint not configured."""
+        """_handle_mint_update returns None when mint not configured."""
         mock_load.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -403,24 +403,24 @@ class TestHandleMintTick:
             if "genesis_mint" in runner.world.genesis_artifacts:
                 del runner.world.genesis_artifacts["genesis_mint"]
 
-            result = runner._handle_mint_tick()
+            result = runner._handle_mint_update()
 
             assert result is None
 
     @patch("src.simulation.runner.load_agents")
-    def test_returns_none_when_mint_has_no_on_tick(self, mock_load: MagicMock) -> None:
-        """_handle_mint_tick returns None for mints without on_tick."""
+    def test_returns_none_when_mint_has_no_update(self, mock_load: MagicMock) -> None:
+        """_handle_mint_update returns None for mints without update method."""
         mock_load.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
             runner = SimulationRunner(config, verbose=False)
 
-            # Replace mint with mock without on_tick
-            mock_mint = MagicMock(spec=[])  # No on_tick attribute
+            # Replace mint with mock without update attribute
+            mock_mint = MagicMock(spec=[])  # No update attribute
             runner.world.genesis_artifacts["genesis_mint"] = mock_mint
 
-            result = runner._handle_mint_tick()
+            result = runner._handle_mint_update()
 
             assert result is None
 

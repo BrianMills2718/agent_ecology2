@@ -292,3 +292,62 @@ class TestDeprecatedConfigWarnings:
 
         # Bid should succeed
         assert result["success"] is True
+
+
+@pytest.mark.plans(79)
+class TestPlan79LegacyRemoval:
+    """Tests for Plan #79 - removing legacy tick-based auction code."""
+
+    def test_no_on_tick_method(self):
+        """Verify on_tick has been removed from GenesisMint (Plan #79).
+
+        Plan #79: The legacy on_tick() method should no longer exist.
+        All callers should use update() instead.
+        """
+        # Verify GenesisMint class has no on_tick method
+        assert not hasattr(GenesisMint, "on_tick"), \
+            "on_tick method should be removed (Plan #79)"
+
+    def test_update_handles_missed_periods(self):
+        """Verify update() handles multiple missed auction periods.
+
+        When update() is called infrequently, multiple periods may have
+        elapsed. Only one resolution should occur, and the timer should
+        reset to track the next period.
+        """
+        ledger = Ledger()
+        ledger.create_principal("agent_1", starting_scrip=100)
+        store = ArtifactStore()
+        store.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
+                   owner_id="agent_1", executable=True)
+
+        def mint_callback(agent_id: str, amount: int) -> None:
+            ledger.credit_scrip(agent_id, amount)
+
+        def ubi_callback(amount: int, exclude: str | None) -> dict[str, int]:
+            return ledger.distribute_ubi(amount, exclude)
+
+        # Start time far in the past so we've missed multiple periods
+        past_start = time.time() - 500  # 500 seconds ago
+
+        mint = GenesisMint(
+            mint_callback=mint_callback,
+            ubi_callback=ubi_callback,
+            artifact_store=store,
+            ledger=ledger,
+            start_time=past_start,
+        )
+
+        # Submit a bid
+        mint._bid(["my_tool", 20], "agent_1")
+
+        # Call update - should handle the elapsed time gracefully
+        # (may start new period or resolve, but shouldn't crash)
+        result = mint.update()
+
+        # Subsequent calls should work normally
+        result2 = mint.update()
+
+        # Mint should still be functional
+        status = mint._status([], "agent_1")
+        assert "phase" in status

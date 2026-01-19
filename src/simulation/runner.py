@@ -330,31 +330,6 @@ class SimulationRunner:
 
         return new_agents
 
-    def _handle_mint_tick(self) -> AuctionResult | None:
-        """Handle mint auction tick (legacy tick-based mode).
-
-        Calls the mint's on_tick method to:
-        - Start new bidding windows
-        - Resolve completed auctions
-        - Distribute UBI from winning bids
-
-        Returns:
-            AuctionResult dict if an auction was resolved, None otherwise.
-        """
-        mint = self.world.genesis_artifacts.get("genesis_mint")
-        if mint is None:
-            return None
-
-        # Check if mint has on_tick method (auction-based mint)
-        if not hasattr(mint, "on_tick"):
-            return None
-
-        # Cast to GenesisMint since we verified it has on_tick
-        result = cast(GenesisMint, mint).on_tick(self.world.tick)
-
-        self._log_mint_result(result)
-        return result
-
     def _handle_mint_update(self) -> AuctionResult | None:
         """Handle mint auction update (Plan #83 - time-based).
 
@@ -923,8 +898,8 @@ class SimulationRunner:
             # Initialize tick summary collector (Plan #60)
             self._tick_collector = TickSummaryCollector()
 
-            # Handle mint auction tick (resolve auctions, start bidding windows)
-            mint_result = self._handle_mint_tick()
+            # Handle mint auction (resolve auctions, start bidding windows)
+            mint_result = self._handle_mint_update()
             if mint_result and self.verbose:
                 if mint_result.get("winner_id"):
                     print(f"  [AUCTION] Winner: {mint_result['winner_id']}, "
