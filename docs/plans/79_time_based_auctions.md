@@ -48,6 +48,7 @@ Edge cases to test:
 - tests/unit/test_mint_anytime.py (modify)
 - tests/integration/test_mint_auction.py (modify)
 - tests/integration/test_runner.py (modify)
+- docs/architecture/current/execution_model.md (modify)
 
 ---
 
