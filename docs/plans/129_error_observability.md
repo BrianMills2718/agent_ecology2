@@ -1,9 +1,11 @@
-# Plan #118: Error Observability
+# Plan #129: Error Observability
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** Debugging efficiency, operational awareness
+
+**Scope:** Phases 1-3 only (startup validation, error aggregation, console summary). Dashboard integration deferred.
 
 ## Problem
 
@@ -146,16 +148,15 @@ def get_error_suggestion(error_message: str) -> str | None:
     return None
 ```
 
-## Files Modified
+## Files Affected
 
-| File | Change |
-|------|--------|
-| `run.py` | Add startup validation, shutdown summary |
-| `src/simulation/runner.py` | Add ErrorStats tracking |
-| `src/dashboard/server.py` | Add `/api/errors` endpoint |
-| `src/dashboard/kpis.py` | Add error rate KPIs |
-| `src/dashboard/static/index.html` | Add error panel UI |
-| `src/dashboard/models.py` | Add error response models |
+- run.py (modify - startup validation, shutdown summary)
+- src/simulation/runner.py (modify - ErrorStats tracking)
+- src/simulation/types.py (modify - add ErrorStats dataclass)
+- docs/plans/129_error_observability.md (create - this plan, renumbered from 118)
+- docs/plans/118_computed_plan_status.md (modify - mark as Deferred)
+
+*Dashboard integration (Phases 4-6) deferred to future plan.*
 
 ## Testing
 
@@ -172,12 +173,11 @@ pytest tests/integration/test_error_reporting.py -v
 # 3. Check dashboard error panel
 ```
 
-## Acceptance Criteria
+## Acceptance Criteria (Phases 1-3)
 
 - [ ] Startup warns if configured LLM model is invalid/unavailable
+- [ ] Errors tracked during simulation (type, agent, message)
 - [ ] Shutdown prints error summary with counts by type
-- [ ] Dashboard shows error count and recent errors
-- [ ] Error rate tracked in ecosystem KPIs
 - [ ] Common errors include actionable suggestions
 
 ## Notes

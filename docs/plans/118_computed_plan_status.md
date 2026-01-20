@@ -1,9 +1,11 @@
 # Plan 118: Computed Plan Status from Git History
 
-**Status:** 📋 Planned
-**Priority:** High
+**Status:** 📋 Deferred
+**Priority:** Low
 **Blocked By:** None
-**Blocks:** Meta-process reliability
+**Blocks:** None
+
+**Deferred Reason:** The `plan_progress.py --tasks` mode already exists but has zero adoption (only this plan file has the required `<!-- tasks: -->` markers). The problem (internal table drift) is rare and low-impact. Most plans don't need detailed phase tracking - simpler to use top-level status. See Plan #129 notes for full analysis.
 
 ---
 

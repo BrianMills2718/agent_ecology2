@@ -53,6 +53,106 @@ def load_config(config_path: str = "config/config.yaml") -> dict[str, Any]:
         return result
 
 
+# =============================================================================
+# ERROR OBSERVABILITY (Plan #129)
+# =============================================================================
+
+# Known model patterns for validation
+KNOWN_MODEL_PREFIXES = [
+    "gemini/",
+    "openai/",
+    "anthropic/",
+    "gpt-",
+    "claude-",
+    "gemini-",
+]
+
+# Error suggestions for common issues
+ERROR_SUGGESTIONS: dict[str, str] = {
+    "RateLimitError": "API rate limit hit. Options: 1) Wait and retry, 2) Reduce concurrent agents, 3) Increase rate_limit_delay in config",
+    "RESOURCE_EXHAUSTED": "API quota exhausted. Check your billing at https://ai.google.dev/ or https://platform.openai.com/",
+    "quota": "API quota exhausted. Check your billing dashboard.",
+    "AuthenticationError": "Invalid API key. Check GEMINI_API_KEY or OPENAI_API_KEY in .env",
+    "invalid_api_key": "Invalid API key. Check your .env file.",
+    "BadRequestError": "Invalid request to LLM API. Check model name and parameters.",
+    "properties.*non-empty": "Schema incompatible with model. The interface field may need adjustment.",
+    "model_not_found": "Model not found. Check the model name in config.yaml",
+    "context_length_exceeded": "Prompt too long. Reduce agent memory or prompt size.",
+}
+
+
+def get_error_suggestion(error_message: str) -> str | None:
+    """Get actionable suggestion for an error message.
+
+    Returns suggestion string or None if no match found.
+    """
+    import re
+    error_lower = error_message.lower()
+    for pattern, suggestion in ERROR_SUGGESTIONS.items():
+        if pattern.lower() in error_lower or re.search(pattern, error_message, re.IGNORECASE):
+            return suggestion
+    return None
+
+
+def validate_llm_config(config: dict[str, Any], verbose: bool = True) -> list[str]:
+    """Validate LLM configuration at startup.
+
+    Checks:
+    - Model name looks valid (known prefix)
+    - API key environment variable is set
+
+    Returns list of warning messages (empty if all OK).
+    """
+    warnings_list: list[str] = []
+
+    llm_config = config.get("llm", {})
+    default_model = llm_config.get("default_model", "")
+
+    # Check model name looks valid
+    if default_model:
+        has_known_prefix = any(
+            default_model.startswith(prefix) or prefix in default_model
+            for prefix in KNOWN_MODEL_PREFIXES
+        )
+        if not has_known_prefix:
+            warnings_list.append(
+                f"Unknown model format: '{default_model}'. "
+                f"Expected prefixes: {', '.join(KNOWN_MODEL_PREFIXES[:3])}..."
+            )
+
+    # Check for API key based on model
+    import os
+    if "gemini" in default_model.lower():
+        if not os.environ.get("GEMINI_API_KEY"):
+            warnings_list.append(
+                "GEMINI_API_KEY not set in environment. "
+                "Add it to .env file or export it."
+            )
+    elif "openai" in default_model.lower() or "gpt" in default_model.lower():
+        if not os.environ.get("OPENAI_API_KEY"):
+            warnings_list.append(
+                "OPENAI_API_KEY not set in environment. "
+                "Add it to .env file or export it."
+            )
+    elif "anthropic" in default_model.lower() or "claude" in default_model.lower():
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            warnings_list.append(
+                "ANTHROPIC_API_KEY not set in environment. "
+                "Add it to .env file or export it."
+            )
+
+    # Print warnings if verbose
+    if verbose and warnings_list:
+        print("\n" + "=" * 60)
+        print("LLM CONFIGURATION WARNINGS")
+        print("=" * 60)
+        for warning in warnings_list:
+            print(f"  - {warning}")
+        print("=" * 60 + "\n")
+
+    return warnings_list
+
+
 def find_free_port(start_port: int, max_attempts: int = 10) -> int:
     """Find a free port starting from start_port."""
     for offset in range(max_attempts):
@@ -282,6 +382,9 @@ def main() -> None:
     args: argparse.Namespace = parser.parse_args()
 
     config: dict[str, Any] = load_config(args.config)
+
+    # Validate LLM config at startup (Plan #129)
+    validate_llm_config(config, verbose=not args.quiet)
 
     if args.ticks:
         config["world"]["max_ticks"] = args.ticks
