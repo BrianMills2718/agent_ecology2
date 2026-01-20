@@ -800,7 +800,8 @@ class SimulationRunner:
         # Count actual events from the log file
         log_path = self.world.logger.output_path
         try:
-            event_count = sum(1 for _ in open(log_path))
+            with open(log_path) as f:
+                event_count = sum(1 for _ in f)
         except (FileNotFoundError, IOError):
             event_count = 0
 
