@@ -260,13 +260,27 @@ class GenesisLedger(GenesisArtifact):
 
             # Security check: can only transfer artifacts you own
             if metadata["created_by"] != invoker_id:
-                return permission_error(
-                    f"Cannot transfer {artifact_id} - you are not the owner (owner is {metadata['created_by']})",
-                    code=ErrorCode.NOT_OWNER,
-                    artifact_id=artifact_id,
-                    owner=metadata["created_by"],
-                    invoker=invoker_id,
-                )
+                current_owner = metadata["created_by"]
+                # Prescriptive error: if in escrow, tell them what to do next
+                if current_owner == "genesis_escrow":
+                    return permission_error(
+                        f"{artifact_id} is in escrow (you already transferred it). "
+                        f"NEXT STEPS: Use genesis_escrow.check(['{artifact_id}']) to see listing status, "
+                        f"or genesis_escrow.cancel(['{artifact_id}']) to reclaim it.",
+                        code=ErrorCode.NOT_OWNER,
+                        artifact_id=artifact_id,
+                        owner=current_owner,
+                        invoker=invoker_id,
+                    )
+                else:
+                    return permission_error(
+                        f"Cannot transfer {artifact_id} - you are not the owner (owner is {current_owner}). "
+                        f"You may need to purchase it first via genesis_escrow.purchase(['{artifact_id}']).",
+                        code=ErrorCode.NOT_OWNER,
+                        artifact_id=artifact_id,
+                        owner=current_owner,
+                        invoker=invoker_id,
+                    )
 
             # Perform the transfer via kernel
             success = kernel_actions.transfer_ownership(invoker_id, artifact_id, to_id)
@@ -302,13 +316,27 @@ class GenesisLedger(GenesisArtifact):
 
         # Security check: can only transfer artifacts you own
         if artifact.created_by != invoker_id:
-            return permission_error(
-                f"Cannot transfer {artifact_id} - you are not the owner (owner is {artifact.created_by})",
-                code=ErrorCode.NOT_OWNER,
-                artifact_id=artifact_id,
-                owner=artifact.created_by,
-                invoker=invoker_id,
-            )
+            current_owner = artifact.created_by
+            # Prescriptive error: if in escrow, tell them what to do next
+            if current_owner == "genesis_escrow":
+                return permission_error(
+                    f"{artifact_id} is in escrow (you already transferred it). "
+                    f"NEXT STEPS: Use genesis_escrow.check(['{artifact_id}']) to see listing status, "
+                    f"or genesis_escrow.cancel(['{artifact_id}']) to reclaim it.",
+                    code=ErrorCode.NOT_OWNER,
+                    artifact_id=artifact_id,
+                    owner=current_owner,
+                    invoker=invoker_id,
+                )
+            else:
+                return permission_error(
+                    f"Cannot transfer {artifact_id} - you are not the owner (owner is {current_owner}). "
+                    f"You may need to purchase it first via genesis_escrow.purchase(['{artifact_id}']).",
+                    code=ErrorCode.NOT_OWNER,
+                    artifact_id=artifact_id,
+                    owner=current_owner,
+                    invoker=invoker_id,
+                )
 
         # Perform the transfer
         success = self.artifact_store.transfer_ownership(artifact_id, invoker_id, to_id)

@@ -140,7 +140,12 @@ class GenesisEscrow(GenesisArtifact):
 
         # Check not already listed
         if artifact_id in self.listings and self.listings[artifact_id]["status"] == "active":
-            return {"success": False, "error": f"Artifact {artifact_id} is already listed"}
+            listing = self.listings[artifact_id]
+            return {
+                "success": False,
+                "error": f"{artifact_id} is already listed for sale at price {listing['price']}. "
+                         f"NEXT STEPS: Wait for a buyer, or cancel with genesis_escrow.cancel(['{artifact_id}'])."
+            }
 
         # Create listing
         self.listings[artifact_id] = {
