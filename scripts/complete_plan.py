@@ -38,6 +38,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Plan #136: Timeout for test subprocess calls to prevent hanging forever
+TEST_TIMEOUT_SECONDS = 300  # 5 minutes
+
 
 def find_plan_file(plan_number: int, plans_dir: Path) -> Path | None:
     """Find a plan file by number."""
@@ -105,12 +108,18 @@ def run_unit_tests(project_root: Path, verbose: bool = True) -> tuple[bool, str]
     if verbose:
         print("\n[1/4] Running unit tests...")
 
-    result = subprocess.run(
-        ["pytest", "tests/", "--ignore=tests/e2e/", "-v", "--tb=short"],
-        cwd=project_root,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["pytest", "tests/", "--ignore=tests/e2e/", "-v", "--tb=short"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=TEST_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        if verbose:
+            print(f"    TIMEOUT: Tests did not complete within {TEST_TIMEOUT_SECONDS}s")
+        return False, f"timeout after {TEST_TIMEOUT_SECONDS}s"
 
     # Extract summary from output
     output = result.stdout + result.stderr
@@ -148,12 +157,18 @@ def run_e2e_tests(project_root: Path, verbose: bool = True) -> tuple[bool, str]:
     if verbose:
         print("\n[2/4] Running E2E smoke tests...")
 
-    result = subprocess.run(
-        ["pytest", "tests/e2e/test_smoke.py", "-v", "--tb=short"],
-        cwd=project_root,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["pytest", "tests/e2e/test_smoke.py", "-v", "--tb=short"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=TEST_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        if verbose:
+            print(f"    TIMEOUT: Tests did not complete within {TEST_TIMEOUT_SECONDS}s")
+        return False, f"timeout after {TEST_TIMEOUT_SECONDS}s"
 
     output = result.stdout + result.stderr
 
@@ -197,12 +212,18 @@ def run_real_e2e_tests(project_root: Path, verbose: bool = True) -> tuple[bool, 
     if verbose:
         print("\n[3/4] Running real E2E tests (actual LLM calls)...")
 
-    result = subprocess.run(
-        ["pytest", "tests/e2e/test_real_e2e.py", "-v", "--tb=short", "--run-external"],
-        cwd=project_root,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["pytest", "tests/e2e/test_real_e2e.py", "-v", "--tb=short", "--run-external"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=TEST_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        if verbose:
+            print(f"    TIMEOUT: Tests did not complete within {TEST_TIMEOUT_SECONDS}s")
+        return False, f"timeout after {TEST_TIMEOUT_SECONDS}s"
 
     output = result.stdout + result.stderr
 
@@ -233,12 +254,18 @@ def check_doc_coupling(project_root: Path, verbose: bool = True) -> tuple[bool, 
     if verbose:
         print("\n[4/4] Checking doc-code coupling...")
 
-    result = subprocess.run(
-        ["python", "scripts/check_doc_coupling.py", "--strict"],
-        cwd=project_root,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["python", "scripts/check_doc_coupling.py", "--strict"],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=60,  # Doc coupling check should be quick
+        )
+    except subprocess.TimeoutExpired:
+        if verbose:
+            print("    TIMEOUT: Doc coupling check did not complete within 60s")
+        return False, "timeout after 60s"
 
     if "VIOLATIONS" in result.stdout or "VIOLATIONS" in result.stderr:
         if verbose:

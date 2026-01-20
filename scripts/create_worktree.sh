@@ -25,26 +25,56 @@ echo "Current claims:"
 python scripts/check_claims.py --list
 echo ""
 
-# Check PR queue depth (enforce priority order: merge before new work)
-OPEN_PRS=$(gh pr list --state open 2>/dev/null | wc -l || echo "0")
-if [ "$OPEN_PRS" -gt 3 ]; then
-    echo -e "${YELLOW}========================================"
-    echo "WARNING: $OPEN_PRS open PRs in queue"
-    echo "========================================${NC}"
-    echo ""
-    echo "Meta-process priority order says:"
-    echo "  Priority 2: Merge passing PRs"
-    echo "  Priority 6: New implementation (last)"
-    echo ""
-    echo "Open PRs:"
-    gh pr list --state open
-    echo ""
-    read -p "Continue creating worktree anyway? (y/N): " PR_RESPONSE
-    if [[ ! "$PR_RESPONSE" =~ ^[Yy]$ ]]; then
-        echo "Aborting. Merge existing PRs first with:"
-        echo "  gh pr merge <number> --squash --delete-branch"
-        exit 0
+# Plan #136: Check for YOUR open PRs (ones matching your claims)
+# Configurable via WARN_OPEN_PRS: warn (default), block, none
+WARN_OPEN_PRS=${WARN_OPEN_PRS:-warn}
+
+if [ "$WARN_OPEN_PRS" != "none" ]; then
+    # Get list of your claimed branch names
+    CLAIMED_BRANCHES=$(python scripts/check_claims.py --list 2>/dev/null | grep -E "^\s+plan-" | awk '{print $1}' || echo "")
+
+    # Check if any of your claimed branches have open PRs
+    YOUR_PRS=""
+    if [ -n "$CLAIMED_BRANCHES" ]; then
+        for branch in $CLAIMED_BRANCHES; do
+            PR_INFO=$(gh pr list --state open --head "$branch" --json number,title,headRefName 2>/dev/null || echo "")
+            if [ -n "$PR_INFO" ] && [ "$PR_INFO" != "[]" ]; then
+                PR_NUM=$(echo "$PR_INFO" | grep -o '"number":[0-9]*' | grep -o '[0-9]*')
+                PR_TITLE=$(echo "$PR_INFO" | grep -o '"title":"[^"]*"' | sed 's/"title":"//;s/"$//')
+                YOUR_PRS="${YOUR_PRS}  - #${PR_NUM}: ${PR_TITLE} (${branch})\n"
+            fi
+        done
     fi
+
+    if [ -n "$YOUR_PRS" ]; then
+        echo -e "${YELLOW}======================================================================${NC}"
+        echo -e "${YELLOW}!! WARNING: YOU HAVE OPEN PRs THAT SHOULD BE MERGED FIRST${NC}"
+        echo -e "${YELLOW}======================================================================${NC}"
+        echo ""
+        echo -e "$YOUR_PRS"
+        echo ""
+        echo "Merge with: make finish BRANCH=<branch> PR=<number>"
+        echo ""
+
+        if [ "$WARN_OPEN_PRS" = "block" ]; then
+            echo -e "${RED}BLOCKED: WARN_OPEN_PRS=block prevents creating new worktrees${NC}"
+            echo "Set WARN_OPEN_PRS=warn or WARN_OPEN_PRS=none to override"
+            exit 1
+        else
+            read -p "Continue creating worktree anyway? (y/N): " PR_RESPONSE
+            if [[ ! "$PR_RESPONSE" =~ ^[Yy]$ ]]; then
+                echo "Aborting. Merge existing PRs first."
+                exit 0
+            fi
+            echo ""
+        fi
+    fi
+fi
+
+# Also warn if overall PR queue is deep (original check)
+OPEN_PRS=$(gh pr list --state open 2>/dev/null | wc -l || echo "0")
+if [ "$OPEN_PRS" -gt 5 ]; then
+    echo -e "${YELLOW}Note: $OPEN_PRS total open PRs in repository${NC}"
     echo ""
 fi
 
