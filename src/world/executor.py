@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from .ledger import Ledger
     from .artifacts import Artifact, ArtifactStore
     from .world import World
+    from .contracts import PermissionCache
 
 # Import contracts module for permission checking
 from .contracts import (

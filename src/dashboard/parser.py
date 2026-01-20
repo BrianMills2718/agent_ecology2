@@ -1340,14 +1340,14 @@ class JSONLParser:
                 ))
 
         # Create aggregated invocation edges
-        for (invoker, artifact), count in invocation_counts.items():
+        for (invoker, target_artifact_id), count in invocation_counts.items():
             edges.append(ArtifactEdge(
                 from_id=invoker,
-                to_id=artifact,
+                to_id=target_artifact_id,
                 edge_type="invocation",
                 timestamp="",  # Aggregated, no single timestamp
                 weight=count,
-                details=f"{invoker} invoked {artifact} {count}x",
+                details=f"{invoker} invoked {target_artifact_id} {count}x",
             ))
 
         # Build ownership edges from artifacts

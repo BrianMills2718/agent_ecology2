@@ -9,7 +9,7 @@ This genesis artifact makes LLM model access scarce and tradeable:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 from ...config import get_validated_config
 from ...config_schema import GenesisConfig
@@ -459,7 +459,7 @@ class GenesisModelRegistry(GenesisArtifact):
                 })
 
         # Sort by remaining capacity (highest first)
-        available.sort(key=lambda x: x["remaining"], reverse=True)
+        available.sort(key=lambda x: cast(int, x["remaining"]), reverse=True)
 
         return {
             "success": True,

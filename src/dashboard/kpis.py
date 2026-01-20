@@ -10,7 +10,7 @@ import math
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 from .models import EmergenceMetrics
 
@@ -325,7 +325,7 @@ def compute_agent_metrics(state: SimulationState, agent_id: str) -> AgentMetrics
 
 
 def calculate_coordination_density(
-    interactions: list[object], agent_count: int
+    interactions: Sequence[object], agent_count: int
 ) -> float:
     """Calculate coordination density: interactions / (n × (n-1)).
 
@@ -536,7 +536,7 @@ def calculate_capital_depth(state: SimulationState) -> int:
 
 
 def calculate_coalition_count(
-    interactions: list[object], agent_ids: list[str]
+    interactions: Sequence[object], agent_ids: list[str]
 ) -> int:
     """Count coalitions (clusters of interacting agents).
 
