@@ -103,7 +103,7 @@ def compute_thought_capture(events: list[dict]) -> dict:
     for e in events:
         if e.get("event_type") == "thinking":
             total += 1
-            tp = e.get("thought_process", "")
+            tp = e.get("reasoning") or e.get("thought_process", "")
             if tp and tp.strip():
                 captured += 1
 
