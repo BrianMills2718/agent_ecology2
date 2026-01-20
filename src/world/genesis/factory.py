@@ -98,7 +98,8 @@ def create_genesis_artifacts(
             default_quotas = rights_config["default_quotas"]
         else:
             # Build from legacy keys with config fallback
-            compute_fallback: int = get("resources.flow.compute.per_tick") or 50
+            # Note: compute uses rate_limiting now, not per_tick
+            compute_fallback: int = 50
             disk_fallback: int = get("resources.stock.disk.total") or 10000
             default_compute = rights_config.get("default_compute_quota",
                               rights_config.get("default_flow_quota", compute_fallback))
