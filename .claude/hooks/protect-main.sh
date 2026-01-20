@@ -118,8 +118,11 @@ if [[ "$FILE_PATH" =~ docs/plans/[0-9]+_.*\.md$ ]]; then
     if [[ -n "$PLAN_NUM" ]]; then
         CLAIMS_FILE="$MAIN_REPO_ROOT/.claude/active-work.yaml"
         if [[ -f "$CLAIMS_FILE" ]]; then
-            if grep -qE "plan:\s*$PLAN_NUM\s*$" "$CLAIMS_FILE" 2>/dev/null || \
-               grep -qE "plan:\s*['\"]?$PLAN_NUM['\"]?" "$CLAIMS_FILE" 2>/dev/null; then
+            # Extract only the active claims section (between 'claims:' and 'completed:')
+            # This avoids false positives from completed claims
+            ACTIVE_CLAIMS=$(sed -n '/^claims:/,/^completed:/{ /^completed:/d; p; }' "$CLAIMS_FILE" 2>/dev/null)
+            if echo "$ACTIVE_CLAIMS" | grep -qE "plan:\s*$PLAN_NUM\s*$" 2>/dev/null || \
+               echo "$ACTIVE_CLAIMS" | grep -qE "plan:\s*['\"]?$PLAN_NUM['\"]?" 2>/dev/null; then
                 echo "BLOCKED: Plan #$PLAN_NUM is claimed by another instance" >&2
                 echo "" >&2
                 echo "Check claims: python scripts/check_claims.py --list" >&2
