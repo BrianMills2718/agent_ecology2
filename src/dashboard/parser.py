@@ -302,7 +302,12 @@ class JSONLParser:
             thought_process=thought_process if thought_process else None,
         )
         self.state.agents[agent_id].thinking_history.append(thinking)
-        self._current_tick_llm_tokens += event.get("thinking_cost", 0)
+        thinking_cost = event.get("thinking_cost", 0)
+        self._current_tick_llm_tokens += thinking_cost
+        # Accumulate actual API cost (USD) from LLM calls
+        self.state.api_cost_spent += event.get("api_cost", 0.0)
+        # Update per-agent LLM tokens used (for autonomous mode without tick events)
+        self.state.agents[agent_id].llm_tokens_used += thinking_cost
 
     def _handle_thinking_failed(self, event: dict[str, Any], timestamp: str) -> None:
         """Handle failed thinking event."""
@@ -319,6 +324,8 @@ class JSONLParser:
             error=event.get("reason", ""),
         )
         self.state.agents[agent_id].thinking_history.append(thinking)
+        # Failed thinking may still have API costs
+        self.state.api_cost_spent += event.get("api_cost", 0.0)
 
     def _handle_action(self, event: dict[str, Any], timestamp: str) -> None:
         """Handle action execution event."""
