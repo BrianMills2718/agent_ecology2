@@ -1,6 +1,7 @@
 # Plan #133: Dashboard Autonomous Mode Fixes
 
-**Status:** 📋 Planned
+**Status:** 🔄 In Progress
+**PR:** #460
 **Priority:** High
 **Blocked By:** None
 **Blocks:** Simulation observability
