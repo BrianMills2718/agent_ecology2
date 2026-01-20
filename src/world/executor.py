@@ -19,6 +19,7 @@ import logging
 import math
 import random
 import signal
+import sys
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, replace as dataclass_replace
@@ -795,6 +796,39 @@ class SafeExecutor:
         for name, module in self.preloaded_modules.items():
             controlled_globals[name] = module
 
+        # Plan #140: Create Action class for agent-expected API
+        # In this simple execute() context, most methods return errors
+        class Action:
+            """Agent-friendly wrapper (limited context version)."""
+
+            def invoke_artifact(
+                self,
+                artifact_id: str,
+                method: str = "run",
+                args: list[Any] | None = None
+            ) -> dict[str, Any]:
+                return {
+                    "success": False,
+                    "error": "invoke not available in this context",
+                    "result": None,
+                    "price_paid": 0
+                }
+
+            def pay(self, target: str, amount: int) -> dict[str, Any]:
+                return {"success": False, "error": "pay not available"}
+
+            def get_balance(self) -> int:
+                return 0
+
+            def get_kernel_state(self) -> Any:
+                return None
+
+        # Inject actions module
+        actions_module = ModuleType("actions")
+        actions_module.Action = Action  # type: ignore[attr-defined]
+        sys.modules["actions"] = actions_module
+        controlled_globals["Action"] = Action
+
         # Execute the code definition (creates the run function)
         # Use single namespace so imports work correctly
         try:
@@ -1287,6 +1321,74 @@ class SafeExecutor:
                     }
 
             controlled_globals["invoke"] = invoke
+
+        # Plan #140: Create Action class that wraps injected functions
+        # This matches the API pattern agents naturally expect: from actions import Action
+        class Action:
+            """Agent-friendly wrapper for sandbox functions.
+
+            Agents naturally write code like:
+                from actions import Action
+                action = Action()
+                result = action.invoke_artifact("target", args=[1, 2])
+
+            This class provides that API by wrapping the bare functions.
+            """
+
+            def invoke_artifact(
+                self,
+                artifact_id: str,
+                method: str = "run",
+                args: list[Any] | None = None
+            ) -> dict[str, Any]:
+                """Invoke another artifact.
+
+                Args:
+                    artifact_id: ID of artifact to invoke
+                    method: Method name (currently only "run" is supported)
+                    args: Arguments to pass to run()
+
+                Returns:
+                    Dict with success, result, error, price_paid
+                """
+                if "invoke" not in controlled_globals:
+                    return {
+                        "success": False,
+                        "error": "invoke not available in this context",
+                        "result": None,
+                        "price_paid": 0
+                    }
+                return controlled_globals["invoke"](artifact_id, *(args or []))
+
+            def pay(self, target: str, amount: int) -> dict[str, Any]:
+                """Transfer scrip to another principal.
+
+                Args:
+                    target: ID of recipient
+                    amount: Amount to transfer
+
+                Returns:
+                    Dict with success and details
+                """
+                if "pay" not in controlled_globals:
+                    return {"success": False, "error": "pay not available"}
+                return controlled_globals["pay"](target, amount)
+
+            def get_balance(self) -> int:
+                """Get this artifact's current scrip balance."""
+                if "get_balance" not in controlled_globals:
+                    return 0
+                return controlled_globals["get_balance"]()
+
+            def get_kernel_state(self) -> Any:
+                """Get access to kernel_state for read operations."""
+                return controlled_globals.get("kernel_state")
+
+        # Inject actions module so "from actions import Action" works
+        actions_module = ModuleType("actions")
+        actions_module.Action = Action  # type: ignore[attr-defined]
+        sys.modules["actions"] = actions_module
+        controlled_globals["Action"] = Action  # Also available directly
 
         # Build execution context with resolved dependencies (Plan #63)
         if artifact_id and artifact_store:
