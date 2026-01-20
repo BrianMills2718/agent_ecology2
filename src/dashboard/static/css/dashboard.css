@@ -1437,3 +1437,125 @@ body {
     text-align: center;
     color: var(--error);
 }
+
+/* Interaction Modal (Plan #110 Phase 3.1) */
+
+.interaction-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.interaction-stat {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem;
+    background-color: var(--bg-tertiary);
+    border-radius: 6px;
+    min-width: 120px;
+}
+
+.interaction-stat .stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.interaction-stat .stat-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.interaction-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.interaction-item {
+    padding: 0.75rem;
+    background-color: var(--bg-tertiary);
+    border-radius: 6px;
+    border-left: 3px solid var(--border-color);
+}
+
+.interaction-item.scrip_transfer {
+    border-left-color: #4caf50;
+}
+
+.interaction-item.escrow_trade {
+    border-left-color: #2196f3;
+}
+
+.interaction-item.ownership_transfer {
+    border-left-color: #9c27b0;
+}
+
+.interaction-item.artifact_invoke {
+    border-left-color: #ff9800;
+}
+
+.interaction-item.genesis_invoke {
+    border-left-color: #00bcd4;
+}
+
+.interaction-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.interaction-type {
+    font-weight: 600;
+    text-transform: capitalize;
+    color: var(--text-primary);
+}
+
+.interaction-tick {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.interaction-details {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.interaction-direction {
+    font-family: monospace;
+}
+
+.interaction-amount {
+    color: #4caf50;
+    font-weight: 500;
+}
+
+.interaction-artifact {
+    color: #ff9800;
+    font-family: monospace;
+}
+
+.interaction-description {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* High-Lindy Highlighting (Plan #110 Phase 3.3) */
+
+.lindy-highlight {
+    animation: lindy-pulse 2s ease-in-out infinite;
+}
+
+@keyframes lindy-pulse {
+    0%, 100% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
+    50% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.8); }
+}

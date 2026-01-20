@@ -6,6 +6,7 @@ const NetworkPanel = {
     network: null,
     nodes: null,
     edges: null,
+    edgeMetadata: new Map(),  // Store edge metadata for click handling
     currentTick: null,
     maxTick: 100,
 
@@ -82,6 +83,9 @@ const NetworkPanel = {
             if (params.nodes.length > 0) {
                 const nodeId = params.nodes[0];
                 this.onNodeClick(nodeId);
+            } else if (params.edges.length > 0) {
+                const edgeId = params.edges[0];
+                this.onEdgeClick(edgeId);
             }
         });
 
@@ -90,6 +94,14 @@ const NetworkPanel = {
         });
 
         this.network.on('blurNode', () => {
+            this.container.style.cursor = 'default';
+        });
+
+        this.network.on('hoverEdge', (params) => {
+            this.container.style.cursor = 'pointer';
+        });
+
+        this.network.on('blurEdge', () => {
             this.container.style.cursor = 'default';
         });
 
@@ -121,6 +133,7 @@ const NetworkPanel = {
         // Clear existing data
         this.nodes.clear();
         this.edges.clear();
+        this.edgeMetadata.clear();
 
         // Add nodes
         const nodeData = data.nodes.map(node => ({
@@ -151,15 +164,25 @@ const NetworkPanel = {
             }
         }
 
-        // Convert to vis.js edges
-        const edgeData = Array.from(edgeMap.values()).map((edge, idx) => ({
-            id: idx,
-            from: edge.from,
-            to: edge.to,
-            color: { color: this.edgeColors[edge.type] || '#888' },
-            width: Math.min(1 + Math.log(edge.count + 1) * 2, 8),
-            title: `${edge.type}: ${edge.count} interaction(s)`,
-        }));
+        // Convert to vis.js edges and store metadata
+        const edgeData = Array.from(edgeMap.values()).map((edge, idx) => {
+            // Store metadata for click handling
+            this.edgeMetadata.set(idx, {
+                from: edge.from,
+                to: edge.to,
+                type: edge.type,
+                count: edge.count,
+            });
+
+            return {
+                id: idx,
+                from: edge.from,
+                to: edge.to,
+                color: { color: this.edgeColors[edge.type] || '#888' },
+                width: Math.min(1 + Math.log(edge.count + 1) * 2, 8),
+                title: `${edge.type}: ${edge.count} interaction(s) (click for details)`,
+            };
+        });
         this.edges.add(edgeData);
 
         // Fit the network to view
@@ -225,6 +248,147 @@ const NetworkPanel = {
         if (typeof AgentsPanel !== 'undefined' && AgentsPanel.showAgentModal) {
             AgentsPanel.showAgentModal(nodeId);
         }
+    },
+
+    async onEdgeClick(edgeId) {
+        // Get edge metadata
+        const metadata = this.edgeMetadata.get(edgeId);
+        if (!metadata) return;
+
+        const { from, to } = metadata;
+
+        try {
+            // Fetch pairwise interactions from API
+            const response = await fetch(`/api/agents/interactions?from_agent=${encodeURIComponent(from)}&to_agent=${encodeURIComponent(to)}`);
+            const data = await response.json();
+
+            // Show the interaction modal
+            this.showInteractionModal(data);
+        } catch (err) {
+            console.error('Failed to load interaction data:', err);
+        }
+    },
+
+    showInteractionModal(data) {
+        // Get or create modal
+        let modal = document.getElementById('interaction-modal');
+        if (!modal) {
+            modal = this.createInteractionModal();
+            document.body.appendChild(modal);
+        }
+
+        // Populate modal
+        const title = modal.querySelector('#interaction-modal-title');
+        const summary = modal.querySelector('#interaction-modal-summary');
+        const list = modal.querySelector('#interaction-modal-list');
+
+        title.textContent = `${data.from_agent} <-> ${data.to_agent}`;
+
+        // Build summary
+        let summaryHtml = `
+            <div class="interaction-stat">
+                <span class="stat-label">Total Interactions:</span>
+                <span class="stat-value">${data.total_count}</span>
+            </div>
+            <div class="interaction-stat">
+                <span class="stat-label">Direction:</span>
+                <span class="stat-value">${data.bidirectional ? 'Bidirectional' : 'One-way'}</span>
+            </div>
+        `;
+
+        if (data.scrip_transfers > 0) {
+            summaryHtml += `
+                <div class="interaction-stat">
+                    <span class="stat-label">Scrip Transfers:</span>
+                    <span class="stat-value">${data.scrip_transfers} (${data.scrip_total} total)</span>
+                </div>
+            `;
+        }
+        if (data.escrow_trades > 0) {
+            summaryHtml += `
+                <div class="interaction-stat">
+                    <span class="stat-label">Escrow Trades:</span>
+                    <span class="stat-value">${data.escrow_trades}</span>
+                </div>
+            `;
+        }
+        if (data.artifact_invocations > 0) {
+            summaryHtml += `
+                <div class="interaction-stat">
+                    <span class="stat-label">Artifact Invocations:</span>
+                    <span class="stat-value">${data.artifact_invocations}</span>
+                </div>
+            `;
+        }
+        if (data.genesis_invocations > 0) {
+            summaryHtml += `
+                <div class="interaction-stat">
+                    <span class="stat-label">Genesis Invocations:</span>
+                    <span class="stat-value">${data.genesis_invocations}</span>
+                </div>
+            `;
+        }
+        summary.innerHTML = summaryHtml;
+
+        // Build interaction list (most recent first)
+        const interactions = [...data.interactions].reverse().slice(0, 50);
+        list.innerHTML = interactions.map(i => `
+            <div class="interaction-item ${i.interaction_type}">
+                <div class="interaction-header">
+                    <span class="interaction-type">${i.interaction_type.replace(/_/g, ' ')}</span>
+                    <span class="interaction-tick">Tick ${i.tick}</span>
+                </div>
+                <div class="interaction-details">
+                    <span class="interaction-direction">${i.from_id} -> ${i.to_id}</span>
+                    ${i.amount ? `<span class="interaction-amount">${i.amount} scrip</span>` : ''}
+                    ${i.artifact_id ? `<span class="interaction-artifact">${i.artifact_id}</span>` : ''}
+                </div>
+                ${i.details ? `<div class="interaction-description">${i.details}</div>` : ''}
+            </div>
+        `).join('');
+
+        // Show modal
+        modal.classList.remove('hidden');
+    },
+
+    createInteractionModal() {
+        const modal = document.createElement('div');
+        modal.id = 'interaction-modal';
+        modal.className = 'modal hidden';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="interaction-modal-title">Interactions</h2>
+                    <button class="modal-close" id="interaction-modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-section">
+                        <h3>Summary</h3>
+                        <div class="interaction-summary" id="interaction-modal-summary">
+                        </div>
+                    </div>
+                    <div class="modal-section">
+                        <h3>Recent Interactions</h3>
+                        <div class="interaction-list scrollable" id="interaction-modal-list">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Close button handler
+        modal.querySelector('#interaction-modal-close').addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+
+        // Click outside to close
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+
+        return modal;
     },
 
     // Called when new events arrive via WebSocket
