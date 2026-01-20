@@ -1,6 +1,6 @@
 id: beta
 enabled: false  # Disabled - use beta_3 instead
-llm_model: "gemini/gemini-2.5-flash"
+llm_model: "gemini/gemini-2.0-flash"
 starting_credits: 100
 
 # Genotype traits:
