@@ -35,9 +35,9 @@
 
 ## Files Affected
 
-- `config/schema.yaml` (modify)
-- `config/config.yaml` (modify)
-- `docs/architecture/current/genesis_artifacts.md` (modify)
+- config/schema.yaml (modify)
+- config/config.yaml (modify)
+- docs/architecture/current/genesis_artifacts.md (modify)
 
 ---
 

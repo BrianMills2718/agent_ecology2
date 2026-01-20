@@ -21,16 +21,8 @@ resources:
       unit: bytes
       distribution: equal
 
-  # Flow resources: rate-limited, refresh per tick
-  flow:
-    compute:                    # LLM token budget (stored as "llm_tokens" in ledger)
-      per_tick: <number>        # Token-units available per tick (~1K tokens each)
-      unit: token_units
-      distribution: equal       # Quota per agent
-    bandwidth:
-      per_tick: <number>        # Bytes of network I/O per tick
-      unit: bytes
-      distribution: equal
+  # Note: Flow resources (per_tick) removed in Plan #102
+  # Use rate_limiting section for time-based resource limits instead
 
 # -----------------------------------------------------------------------------
 # SCRIP
@@ -182,6 +174,21 @@ genesis:
       get_interface:             # Plan #114: Interface discovery
         cost: <number>          # Get interface schema for an artifact
         description: <string>
+
+  # MCP servers for external tool access
+  mcp:
+    fetch:
+      enabled: <boolean>          # Enable HTTP fetch capability
+      command: <string>           # Command to run MCP server (e.g., "npx")
+      args: <list>                # Arguments for command (e.g., ["@anthropic/mcp-server-fetch"])
+    web_search:
+      enabled: <boolean>          # Enable Brave web search (requires BRAVE_API_KEY env var)
+      command: <string>
+      args: <list>
+    filesystem:
+      enabled: <boolean>          # Enable sandboxed file I/O
+      command: <string>
+      args: <list>                # Args include sandbox path (e.g., ["@anthropic/mcp-server-filesystem", "/tmp/agent_sandbox"])
 
 # -----------------------------------------------------------------------------
 # RATE LIMITING
@@ -337,7 +344,7 @@ monitoring:
     critical_penalty: <number>  # Penalty per critical (default: 0.2)
     trend_threshold: <number>   # Threshold for trend detection (default: 0.1)
     trend_history_ticks: <number>  # Ticks of history to analyze (default: 10)
-  active_agent_threshold_ticks: <number>  # Ticks of inactivity before agent considered inactive (default: 5)
+  active_agent_threshold_seconds: <number>  # Seconds of inactivity before agent considered inactive (default: 60.0)
 
 # -----------------------------------------------------------------------------
 # WORLD
@@ -354,6 +361,8 @@ budget:
   max_api_cost: <number>        # $ limit for global simulation (0 = unlimited)
   per_agent_budget: <number>    # $ limit per agent (Plan #12, 0 = no enforcement)
   checkpoint_file: <string>     # Where to save state on pause
+  checkpoint_interval: <number> # Save checkpoint every N ticks (0 = disable)
+  checkpoint_on_end: <boolean>  # Save checkpoint when simulation ends normally (default: true)
 
 # -----------------------------------------------------------------------------
 # LIBRARIES

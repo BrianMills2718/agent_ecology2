@@ -144,9 +144,9 @@ during a specific bidding window. Auctions still resolve on schedule.
 | Method | Cost (compute) | Description |
 |--------|----------------|-------------|
 | `issue(creditor, principal, rate, due_tick)` | 1 | Create debt request (debtor initiates) |
-| `accept(debt_id)` | 1 | Creditor accepts debt |
-| `repay(debt_id, amount)` | 1 | Debtor pays back (partial or full) |
-| `collect(debt_id)` | 1 | Creditor collects after due_tick |
+| `accept(debt_id)` | 0 | Creditor accepts debt |
+| `repay(debt_id, amount)` | 0 | Debtor pays back (partial or full) |
+| `collect(debt_id)` | 0 | Creditor collects after due_tick |
 | `transfer_creditor(debt_id, new_creditor)` | 1 | Sell debt rights to another |
 | `check(debt_id)` | 0 | Get debt status with current_owed |
 | `list_debts(principal_id)` | 0 | List debts for a principal |
