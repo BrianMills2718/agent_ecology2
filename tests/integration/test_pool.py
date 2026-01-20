@@ -44,11 +44,15 @@ class TestWorkerPool:
 
                 with patch("src.agents.agent.LLMProvider") as mock_llm:
                     mock_instance = MagicMock()
-                    # Mock generate() to return a response-like object
-                    mock_response = MagicMock()
-                    mock_response.action.model_dump.return_value = {"action": "noop"}
-                    mock_response.reasoning = "Test thought"
-                    mock_instance.generate.return_value = mock_response
+                    # Mock generate() to return a FlatActionResponse-like object
+                    # that converts to ActionResponse via to_action_response()
+                    mock_flat_response = MagicMock()
+                    mock_action_response = MagicMock()
+                    mock_action_response.action.model_dump.return_value = {"action": "noop"}
+                    mock_action_response.reasoning = "Test thought"
+                    # to_action_response() returns the action response
+                    mock_flat_response.to_action_response.return_value = mock_action_response
+                    mock_instance.generate.return_value = mock_flat_response
                     mock_instance.last_usage = {"input_tokens": 50, "output_tokens": 25, "total_tokens": 75, "cost": 0.001}
                     mock_llm.return_value = mock_instance
 
@@ -137,11 +141,15 @@ class TestWorkerPool:
 
                 with patch("src.agents.agent.LLMProvider") as mock_llm:
                     mock_instance = MagicMock()
-                    # Mock generate() to return a response-like object
-                    mock_response = MagicMock()
-                    mock_response.action.model_dump.return_value = {"action": "noop"}
-                    mock_response.reasoning = "Test thought"
-                    mock_instance.generate.return_value = mock_response
+                    # Mock generate() to return a FlatActionResponse-like object
+                    # that converts to ActionResponse via to_action_response()
+                    mock_flat_response = MagicMock()
+                    mock_action_response = MagicMock()
+                    mock_action_response.action.model_dump.return_value = {"action": "noop"}
+                    mock_action_response.reasoning = "Test thought"
+                    # to_action_response() returns the action response
+                    mock_flat_response.to_action_response.return_value = mock_action_response
+                    mock_instance.generate.return_value = mock_flat_response
                     mock_instance.last_usage = {"input_tokens": 50, "output_tokens": 25, "total_tokens": 75, "cost": 0.001}
                     mock_llm.return_value = mock_instance
 
@@ -192,11 +200,15 @@ class TestWorkerPoolScaling:
 
                 with patch("src.agents.agent.LLMProvider") as mock_llm:
                     mock_instance = MagicMock()
-                    # Mock generate() to return a response-like object
-                    mock_response = MagicMock()
-                    mock_response.action.model_dump.return_value = {"action": "noop"}
-                    mock_response.reasoning = "Test thought"
-                    mock_instance.generate.return_value = mock_response
+                    # Mock generate() to return a FlatActionResponse-like object
+                    # that converts to ActionResponse via to_action_response()
+                    mock_flat_response = MagicMock()
+                    mock_action_response = MagicMock()
+                    mock_action_response.action.model_dump.return_value = {"action": "noop"}
+                    mock_action_response.reasoning = "Test thought"
+                    # to_action_response() returns the action response
+                    mock_flat_response.to_action_response.return_value = mock_action_response
+                    mock_instance.generate.return_value = mock_flat_response
                     mock_instance.last_usage = {"input_tokens": 50, "output_tokens": 25, "total_tokens": 75, "cost": 0.001}
                     mock_llm.return_value = mock_instance
 
