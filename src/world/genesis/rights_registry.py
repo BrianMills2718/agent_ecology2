@@ -333,3 +333,64 @@ class GenesisRightsRegistry(GenesisArtifact):
             "from_new_quota": self._legacy_quotas[from_id][resource],
             "to_new_quota": self._legacy_quotas[to_id][resource]
         }
+
+    def get_interface(self) -> dict[str, Any]:
+        """Get detailed interface schema for the rights registry (Plan #114)."""
+        return {
+            "description": self.description,
+            "dataType": "service",
+            "tools": [
+                {
+                    "name": "check_quota",
+                    "description": "Check quotas for a specific agent (compute, disk, etc.)",
+                    "cost": self.methods["check_quota"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "agent_id": {
+                                "type": "string",
+                                "description": "ID of the agent to check quotas for"
+                            }
+                        },
+                        "required": ["agent_id"]
+                    }
+                },
+                {
+                    "name": "all_quotas",
+                    "description": "Get quotas for all agents in the system",
+                    "cost": self.methods["all_quotas"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                },
+                {
+                    "name": "transfer_quota",
+                    "description": "Transfer quota to another agent. Can only transfer FROM yourself.",
+                    "cost": self.methods["transfer_quota"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "from_id": {
+                                "type": "string",
+                                "description": "Source agent ID (must be the invoker)"
+                            },
+                            "to_id": {
+                                "type": "string",
+                                "description": "Destination agent ID"
+                            },
+                            "resource": {
+                                "type": "string",
+                                "description": "Resource type to transfer (e.g., 'compute', 'disk')"
+                            },
+                            "amount": {
+                                "type": "number",
+                                "description": "Amount of quota to transfer",
+                                "minimum": 0
+                            }
+                        },
+                        "required": ["from_id", "to_id", "resource", "amount"]
+                    }
+                }
+            ]
+        }

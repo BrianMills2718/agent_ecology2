@@ -243,6 +243,7 @@ executor:
   contract_timeout: <number>    # Default contract permission check timeout (default: 5s, Plan #100)
   contract_llm_timeout: <number> # Timeout for contracts with call_llm capability (default: 30s, Plan #100)
   interface_validation: <string>  # 'none', 'warn', or 'strict' - validate invoke args against interface schema (Plan #86)
+  require_interface_for_executables: <bool>  # Require interface schema when creating executables (default: true, Plan #114)
   allowed_imports:              # Whitelist of importable modules
     - math
     - json

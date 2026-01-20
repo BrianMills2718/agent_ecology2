@@ -327,3 +327,90 @@ class GenesisEscrow(GenesisArtifact):
             "listings": active,
             "count": len(active)
         }
+
+    def get_interface(self) -> dict[str, Any]:
+        """Get detailed interface schema for the escrow (Plan #114)."""
+        return {
+            "description": self.description,
+            "dataType": "service",
+            "tools": [
+                {
+                    "name": "deposit",
+                    "description": "Deposit an artifact into escrow for sale. IMPORTANT: First transfer ownership to escrow via genesis_ledger.transfer_ownership(artifact_id, 'genesis_escrow')",
+                    "cost": self.methods["deposit"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "artifact_id": {
+                                "type": "string",
+                                "description": "ID of artifact to sell (must already be owned by escrow)"
+                            },
+                            "price": {
+                                "type": "integer",
+                                "description": "Sale price in scrip",
+                                "minimum": 1
+                            },
+                            "buyer_id": {
+                                "type": "string",
+                                "description": "Optional: restrict purchase to specific buyer"
+                            }
+                        },
+                        "required": ["artifact_id", "price"]
+                    }
+                },
+                {
+                    "name": "purchase",
+                    "description": "Purchase an artifact from escrow. Transfers scrip to seller, ownership to buyer.",
+                    "cost": self.methods["purchase"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "artifact_id": {
+                                "type": "string",
+                                "description": "ID of artifact to purchase"
+                            }
+                        },
+                        "required": ["artifact_id"]
+                    }
+                },
+                {
+                    "name": "cancel",
+                    "description": "Cancel an escrow listing and return artifact to seller. Only seller can cancel.",
+                    "cost": self.methods["cancel"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "artifact_id": {
+                                "type": "string",
+                                "description": "ID of artifact listing to cancel"
+                            }
+                        },
+                        "required": ["artifact_id"]
+                    }
+                },
+                {
+                    "name": "check",
+                    "description": "Check the status of an escrow listing",
+                    "cost": self.methods["check"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "artifact_id": {
+                                "type": "string",
+                                "description": "ID of artifact to check"
+                            }
+                        },
+                        "required": ["artifact_id"]
+                    }
+                },
+                {
+                    "name": "list_active",
+                    "description": "List all active escrow listings",
+                    "cost": self.methods["list_active"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            ]
+        }

@@ -139,6 +139,11 @@ class TestWriteArtifactErrors:
 
     def test_write_invalid_code(self, world_with_agent: World) -> None:
         """Write with invalid executable code returns INVALID_ARGUMENT error."""
+        # Plan #114: Include interface for executable artifacts
+        interface = {
+            "description": "A test service",
+            "tools": [{"name": "run", "description": "Run the service", "inputSchema": {"type": "object"}}]
+        }
         intent = WriteArtifactIntent(
             principal_id="alice",
             artifact_id="bad_service",
@@ -147,6 +152,7 @@ class TestWriteArtifactErrors:
             executable=True,
             price=1,
             code="def run(*args): return 1  # Missing newline at end causes issues",
+            interface=interface,
         )
         # Note: The actual validation depends on executor.validate_code()
         # This test verifies the error structure if validation fails
@@ -218,6 +224,11 @@ class TestInvokeArtifactErrors:
 
     def test_invoke_permission_denied(self, world_with_agent: World) -> None:
         """Invoke without permission returns NOT_AUTHORIZED error."""
+        # Plan #114: Include interface for executable artifacts
+        interface = {
+            "description": "A private service",
+            "tools": [{"name": "run", "description": "Run the service", "inputSchema": {"type": "object"}}]
+        }
         # Create a private executable
         write_intent = WriteArtifactIntent(
             principal_id="alice",
@@ -228,6 +239,7 @@ class TestInvokeArtifactErrors:
             price=0,
             code="def run(*args): return 'secret'",
             policy={"allow_invoke": []},  # No one but owner
+            interface=interface,
         )
         world_with_agent.execute_action(write_intent)
 
@@ -247,6 +259,11 @@ class TestInvokeArtifactErrors:
 
     def test_invoke_insufficient_scrip(self, world_with_agent: World) -> None:
         """Invoke with insufficient scrip returns INSUFFICIENT_FUNDS error."""
+        # Plan #114: Include interface for executable artifacts
+        interface = {
+            "description": "An expensive service",
+            "tools": [{"name": "run", "description": "Run the service", "inputSchema": {"type": "object"}}]
+        }
         # Create an expensive executable
         write_intent = WriteArtifactIntent(
             principal_id="alice",
@@ -256,6 +273,7 @@ class TestInvokeArtifactErrors:
             executable=True,
             price=200,  # More than Bob has
             code="def run(*args): return 'expensive result'",
+            interface=interface,
         )
         world_with_agent.execute_action(write_intent)
 

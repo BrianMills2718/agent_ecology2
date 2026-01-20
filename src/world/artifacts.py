@@ -475,12 +475,15 @@ class ArtifactStore:
         policy: dict[str, Any] | None = None,
         depends_on: list[str] | None = None,
         depth_limit: int = 10,
+        interface: dict[str, Any] | None = None,
+        require_interface: bool = False,
     ) -> Artifact:
         """Create or update an artifact. Returns the artifact.
 
         For executable artifacts, set executable=True and provide:
         - price: Service fee paid to owner on invocation (or use policy["invoke_price"])
         - code: Python code containing a run() function
+        - interface: (Plan #114) Interface schema describing methods/inputs
 
         Policy dict controls access:
         - read_price: cost to read
@@ -490,9 +493,21 @@ class ArtifactStore:
         Dependencies (Plan #63):
         - depends_on: List of artifact IDs this artifact depends on
         - depth_limit: Maximum transitive dependency depth (default 10)
+
+        Interface requirement (Plan #114):
+        - interface: JSON schema describing artifact's methods and inputs
+        - require_interface: If True, raise error for executables without interface
         """
         now = datetime.now(timezone.utc).isoformat()
         depends_on = depends_on or []
+
+        # Plan #114: Validate interface requirement for executables
+        if executable and require_interface and interface is None:
+            raise ValueError(
+                f"Interface schema required for executable artifact '{artifact_id}'. "
+                "Provide an interface dict with 'description' and 'tools' keys describing "
+                "the artifact's methods and their input schemas."
+            )
 
         # Validate dependencies (Plan #63)
         if depends_on:
@@ -516,6 +531,8 @@ class ArtifactStore:
             artifact.code = code
             artifact.policy = artifact_policy
             artifact.depends_on = depends_on
+            if interface is not None:
+                artifact.interface = interface
         else:
             # Create new - register with ID registry if available (Plan #7)
             if self.id_registry is not None:
@@ -535,6 +552,7 @@ class ArtifactStore:
                 code=code,
                 policy=artifact_policy,
                 depends_on=depends_on,
+                interface=interface,
             )
             self.artifacts[artifact_id] = artifact
 
@@ -743,6 +761,8 @@ class ArtifactStore:
         price: int = 0,
         code: str = "",
         policy: dict[str, Any] | None = None,
+        interface: dict[str, Any] | None = None,
+        require_interface: bool = False,
     ) -> WriteResult:
         """Write an artifact and return a standardized result.
 
@@ -759,20 +779,32 @@ class ArtifactStore:
             price: Service fee for invocation (for executables)
             code: Python code with run() function (for executables)
             policy: Optional access control policy
+            interface: (Plan #114) Interface schema for executables
+            require_interface: (Plan #114) If True, require interface for executables
 
         Returns:
             WriteResult with success=True and artifact data, or success=False on error
         """
-        self.write(
-            artifact_id=artifact_id,
-            type=artifact_type,
-            content=content,
-            owner_id=owner_id,
-            executable=executable,
-            price=price,
-            code=code,
-            policy=policy,
-        )
+        try:
+            self.write(
+                artifact_id=artifact_id,
+                type=artifact_type,
+                content=content,
+                owner_id=owner_id,
+                executable=executable,
+                price=price,
+                code=code,
+                policy=policy,
+                interface=interface,
+                require_interface=require_interface,
+            )
+        except ValueError as e:
+            # Plan #114: Handle interface requirement validation
+            return {
+                "success": False,
+                "message": str(e),
+                "data": {"artifact_id": artifact_id, "error": str(e)},
+            }
 
         if executable:
             return {

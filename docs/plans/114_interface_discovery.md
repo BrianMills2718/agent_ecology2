@@ -118,10 +118,21 @@ The interface contains:
 ## Files Affected
 
 - src/world/genesis/store.py (modify)
+- src/world/genesis/escrow.py (modify)
+- src/world/genesis/mint.py (modify)
+- src/world/genesis/debt_contract.py (modify)
+- src/world/genesis/event_log.py (modify)
+- src/world/genesis/rights_registry.py (modify)
+- src/world/artifacts.py (modify)
+- src/world/actions.py (modify)
+- src/world/world.py (modify)
+- src/agents/models.py (modify)
 - config/schema.yaml (modify)
 - src/config_schema.py (modify)
 - src/agents/_handbook/tools.md (modify)
 - tests/unit/test_genesis_store.py (modify)
+- tests/unit/test_interface_discovery.py (create)
+- tests/integration/test_narrow_waist_errors.py (modify)
 - docs/architecture/current/genesis_artifacts.md (modify)
 
 ---

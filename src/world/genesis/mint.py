@@ -635,3 +635,50 @@ class GenesisMint(GenesisArtifact):
         # This is a simplified mock for backward compat in tests
         # In auction mode, scoring happens automatically during resolution
         return True
+
+    def get_interface(self) -> dict[str, Any]:
+        """Get detailed interface schema for the mint (Plan #114)."""
+        return {
+            "description": self.description,
+            "dataType": "service",
+            "tools": [
+                {
+                    "name": "status",
+                    "description": "Get current auction status including phase, timing, and last auction results",
+                    "cost": self.methods["status"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                },
+                {
+                    "name": "bid",
+                    "description": "Submit a sealed bid for an artifact. Bids are held until auction resolution.",
+                    "cost": self.methods["bid"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "artifact_id": {
+                                "type": "string",
+                                "description": "ID of the artifact to bid on"
+                            },
+                            "amount": {
+                                "type": "integer",
+                                "description": "Bid amount in scrip (must meet minimum bid requirement)",
+                                "minimum": 1
+                            }
+                        },
+                        "required": ["artifact_id", "amount"]
+                    }
+                },
+                {
+                    "name": "check",
+                    "description": "Check your current bid status or recent auction results",
+                    "cost": self.methods["check"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            ]
+        }
