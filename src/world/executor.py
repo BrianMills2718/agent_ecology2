@@ -195,8 +195,9 @@ def validate_args_against_interface(
             break
 
     if method_schema is None:
-        # Method not found in interface
-        error_msg = f"Method '{method_name}' not found in interface"
+        # Method not found in interface - include available methods in error
+        available_methods = [t.get("name") for t in tools if t.get("name")]
+        error_msg = f"Method '{method_name}' not found in interface. Available methods: {available_methods}"
         if validation_mode == "warn":
             _logger.warning("Interface validation: %s", error_msg)
             return ValidationResult(valid=False, proceed=True, skipped=False, error_message=error_msg)
@@ -215,8 +216,12 @@ def validate_args_against_interface(
         # Validation passed
         return ValidationResult(valid=True, proceed=True, skipped=False, error_message="")
     except jsonschema.ValidationError as e:
-        # Validation failed - extract meaningful error message
-        error_msg = str(e.message)
+        # Validation failed - include schema info for debugging
+        base_error = str(e.message)
+        # Extract required fields and properties for helpful error
+        required = input_schema.get("required", [])
+        properties = list(input_schema.get("properties", {}).keys())
+        error_msg = f"{base_error}. Method '{method_name}' expects: required={required}, properties={properties}"
 
         if validation_mode == "warn":
             _logger.warning("Interface validation failed for '%s': %s", method_name, error_msg)
