@@ -993,7 +993,8 @@ Your response should include:
 
         # Plan #88: Track recent failures for learning from mistakes
         if not success:
-            failure_entry = f"{action_type}: {message[:100]}"
+            # Include more of the error message - 200 chars captures prescriptive hints
+            failure_entry = f"{action_type}: {message[:200]}"
             self.failure_history.append(failure_entry)
             # Keep only the most recent failures
             if len(self.failure_history) > self._failure_history_max:
