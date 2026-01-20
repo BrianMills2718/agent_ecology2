@@ -1,6 +1,6 @@
 # Plan #116: Enforce make finish from Main
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** Meta-process integrity
