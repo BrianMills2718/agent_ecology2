@@ -37,6 +37,42 @@ class PolicyDict(BaseModel):
     allow_invoke: list[str] = Field(default_factory=lambda: ["*"])
 
 
+# Plan #128: Typed interface schema models for Gemini compatibility
+# Gemini rejects schemas with empty properties for OBJECT type.
+# Using typed models ensures the generated JSON schema has defined properties.
+
+
+class InterfaceInputSchema(BaseModel):
+    """JSON Schema for tool input parameters.
+
+    Gemini-compatible: typed fields instead of dict[str, Any].
+    """
+
+    type: str = "object"
+    properties: dict[str, dict[str, str]] = Field(default_factory=dict)
+    required: list[str] = Field(default_factory=list)
+
+
+class InterfaceTool(BaseModel):
+    """Tool definition in an artifact's interface."""
+
+    name: str
+    description: str = ""
+    inputSchema: InterfaceInputSchema = Field(default_factory=InterfaceInputSchema)
+
+
+class InterfaceSchema(BaseModel):
+    """Schema for executable artifact interface.
+
+    Defines the tools/methods an artifact exposes, in MCP-compatible format.
+    Plan #114: Interface Discovery.
+    Plan #128: Gemini-compatible typed schema.
+    """
+
+    description: str = ""
+    tools: list[InterfaceTool] = Field(default_factory=list)
+
+
 class WriteArtifactAction(BaseModel):
     """Create or update an artifact."""
 
@@ -112,7 +148,7 @@ class FlatAction(BaseModel):
     executable: bool = False
     price: int = 0
     code: str = ""
-    interface: dict[str, Any] | None = None  # Plan #114: Interface schema for executables
+    interface: InterfaceSchema | None = None  # Plan #128: Typed schema for Gemini compatibility
     # For invoke_artifact
     method: str = ""
     args: list[ArgValue] = Field(default_factory=list)
@@ -151,7 +187,8 @@ class FlatAction(BaseModel):
                 executable=self.executable,
                 price=self.price,
                 code=self.code,
-                interface=self.interface,
+                # Convert InterfaceSchema to dict for internal use
+                interface=self.interface.model_dump() if self.interface else None,
             )
         elif self.action_type == "invoke_artifact":
             return InvokeArtifactAction(
@@ -239,6 +276,9 @@ __all__ = [
     "NoopAction",
     "ReadArtifactAction",
     "PolicyDict",
+    "InterfaceInputSchema",
+    "InterfaceTool",
+    "InterfaceSchema",
     "WriteArtifactAction",
     "InvokeArtifactAction",
     "Action",
