@@ -105,32 +105,40 @@ if [[ -f "$MAIN_DIR/.git" ]]; then
     fi
 fi
 
-# Allow plan files in main if NEW or UNCLAIMED
+# Allow plan files in main if NEW or editable by this session
 # Pattern: docs/plans/NN_*.md where NN is digits
+# Plan #134: Use session-based ownership check
 if [[ "$FILE_PATH" =~ docs/plans/[0-9]+_.*\.md$ ]]; then
     if [[ ! -f "$FILE_PATH" ]]; then
         exit 0  # New plan file, allow creation
     fi
 
-    # Existing plan file - check if claimed
+    # Existing plan file - check session ownership
     PLAN_NUM=$(basename "$FILE_PATH" | grep -oP '^\d+')
 
     if [[ -n "$PLAN_NUM" ]]; then
-        CLAIMS_FILE="$MAIN_REPO_ROOT/.claude/active-work.yaml"
-        if [[ -f "$CLAIMS_FILE" ]]; then
-            # Extract only the active claims section (between 'claims:' and 'completed:')
-            # This avoids false positives from completed claims
-            ACTIVE_CLAIMS=$(sed -n '/^claims:/,/^completed:/{ /^completed:/d; p; }' "$CLAIMS_FILE" 2>/dev/null)
-            if echo "$ACTIVE_CLAIMS" | grep -qE "plan:\s*$PLAN_NUM\s*$" 2>/dev/null || \
-               echo "$ACTIVE_CLAIMS" | grep -qE "plan:\s*['\"]?$PLAN_NUM['\"]?" 2>/dev/null; then
-                echo "BLOCKED: Plan #$PLAN_NUM is claimed by another instance" >&2
-                echo "" >&2
-                echo "Check claims: python scripts/check_claims.py --list" >&2
-                echo "File: $FILE_PATH" >&2
-                exit 2
-            fi
+        # Use session-based check (Plan #134: Session Identity)
+        # This checks: unclaimed, owned by this session, or owner session is stale
+        if python "$MAIN_REPO_ROOT/scripts/check_claims.py" --check-plan-session "$PLAN_NUM" >/dev/null 2>&1; then
+            # Also update heartbeat when editing a plan
+            python "$MAIN_REPO_ROOT/scripts/check_claims.py" --heartbeat --working-on "Plan #$PLAN_NUM" >/dev/null 2>&1 || true
+            exit 0  # Session check passed - allow edit
+        else
+            # Get info about who owns it
+            OWNER_INFO=$(python "$MAIN_REPO_ROOT/scripts/check_claims.py" --check-plan-session "$PLAN_NUM" 2>&1 || true)
+            echo "BLOCKED: Plan #$PLAN_NUM is claimed by another active session" >&2
+            echo "" >&2
+            echo "$OWNER_INFO" >&2
+            echo "" >&2
+            echo "Options:" >&2
+            echo "  1. Wait for owner session to become stale (30 min inactivity)" >&2
+            echo "  2. Work on a different plan" >&2
+            echo "  3. Coordinate with the other session" >&2
+            echo "" >&2
+            echo "Check claims: python scripts/check_claims.py --list" >&2
+            echo "File: $FILE_PATH" >&2
+            exit 2
         fi
-        exit 0  # Plan not claimed - allow edit
     fi
 fi
 
