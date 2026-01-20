@@ -1,6 +1,6 @@
 # Plan #129: Error Observability
 
-**Status:** 🚧 In Progress
+**Status:** ✅ Complete
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** Debugging efficiency, operational awareness
@@ -175,10 +175,10 @@ pytest tests/integration/test_error_reporting.py -v
 
 ## Acceptance Criteria (Phases 1-3)
 
-- [ ] Startup warns if configured LLM model is invalid/unavailable
-- [ ] Errors tracked during simulation (type, agent, message)
-- [ ] Shutdown prints error summary with counts by type
-- [ ] Common errors include actionable suggestions
+- [x] Startup warns if configured LLM model is invalid/unavailable
+- [x] Errors tracked during simulation (type, agent, message)
+- [x] Shutdown prints error summary with counts by type
+- [x] Common errors include actionable suggestions
 
 ## Notes
 
