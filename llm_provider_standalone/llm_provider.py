@@ -372,8 +372,16 @@ class LLMProvider:
                 if obj.get('type') == 'object':
                     if 'additionalProperties' not in obj:
                         obj['additionalProperties'] = False
-                    # Ensure all properties are required
-                    if 'properties' in obj:
+                    # Gemini requires OBJECT types to have non-empty properties
+                    # If no properties defined (e.g., dict[str, Any]), convert to string
+                    # to accept JSON strings instead
+                    if 'properties' not in obj or not obj['properties']:
+                        obj['type'] = 'string'
+                        obj.pop('additionalProperties', None)
+                        obj.pop('properties', None)
+                        obj.pop('required', None)
+                    else:
+                        # Ensure all properties are required
                         if 'required' not in obj:
                             obj['required'] = list(obj['properties'].keys())
                         else:
