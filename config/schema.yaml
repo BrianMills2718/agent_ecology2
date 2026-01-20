@@ -394,6 +394,7 @@ dashboard:
   max_events_cache: <number>    # Max events to cache in memory
   debounce_delay_ms: <number>   # File watcher debounce delay (default: 100)
   poll_interval: <number>       # Polling interval in seconds (default: 0.5)
+  use_polling: <bool>           # Use polling instead of watchdog (WSL compat, default: false)
 
 # -----------------------------------------------------------------------------
 # ID GENERATION
