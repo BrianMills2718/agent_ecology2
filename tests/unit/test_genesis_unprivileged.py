@@ -103,67 +103,67 @@ def get_genesis_files() -> list[Path]:
 class TestGenesisUnprivileged:
     """Tests verifying genesis artifacts don't have privileged access."""
 
-    def test_ledger_no_create_principal_direct_call(self) -> None:
-        """genesis_ledger should not call self.ledger.create_principal() directly.
+    def test_ledger_has_set_world_method(self) -> None:
+        """genesis_ledger should have set_world() for kernel delegation (Plan #111)."""
+        from src.world.genesis.ledger import GenesisLedger
 
-        Instead, it should use KernelActions.create_principal() when that's available.
-        This ensures agent-built artifacts can provide the same functionality.
+        assert hasattr(GenesisLedger, "set_world"), (
+            "GenesisLedger should have set_world() method for kernel delegation"
+        )
+
+    def test_ledger_uses_kernel_when_world_set(self) -> None:
+        """genesis_ledger should use KernelActions when _world is set.
+
+        Plan #111: When _world is set, spawn_principal and transfer_ownership
+        should use KernelActions instead of direct ledger/artifact_store access.
         """
-        ledger_file = Path("src/world/genesis/ledger.py")
-        privileged = analyze_file_for_privileged_access(ledger_file)
+        # Verify the code checks for _world in the spawn_principal method
+        source_file = Path("src/world/genesis/ledger.py")
+        with open(source_file) as f:
+            source = f.read()
 
-        create_principal_calls = [
-            p for p in privileged
-            if "create_principal" in p["path"]
-        ]
+        # Verify kernel interface import and usage in spawn_principal
+        assert "if self._world is not None:" in source, (
+            "genesis_ledger should check _world before privileged operations"
+        )
+        assert "from ..kernel_interface import KernelActions" in source, (
+            "genesis_ledger should import KernelActions for kernel delegation"
+        )
+        assert "kernel_actions.create_principal" in source, (
+            "genesis_ledger should use KernelActions.create_principal()"
+        )
+        assert "kernel_actions.transfer_ownership" in source, (
+            "genesis_ledger should use KernelActions.transfer_ownership()"
+        )
 
-        # This test will fail until we fix genesis_ledger
-        # After fix: assert len(create_principal_calls) == 0
-        if create_principal_calls:
-            pytest.skip(
-                f"genesis_ledger still has {len(create_principal_calls)} "
-                f"privileged create_principal calls - to be fixed"
-            )
+    def test_escrow_has_set_world_method(self) -> None:
+        """genesis_escrow should have set_world() for kernel delegation (Plan #111)."""
+        from src.world.genesis.escrow import GenesisEscrow
 
-    def test_ledger_no_direct_artifact_store_transfer(self) -> None:
-        """genesis_ledger should not call self.artifact_store.transfer_ownership() directly.
+        assert hasattr(GenesisEscrow, "set_world"), (
+            "GenesisEscrow should have set_world() method for kernel delegation"
+        )
 
-        Instead, it should use KernelActions.transfer_ownership() when available.
+    def test_escrow_uses_kernel_when_world_set(self) -> None:
+        """genesis_escrow should use KernelActions when _world is set.
+
+        Plan #111: When _world is set, purchase and cancel should use
+        KernelActions instead of direct ledger/artifact_store access.
         """
-        ledger_file = Path("src/world/genesis/ledger.py")
-        privileged = analyze_file_for_privileged_access(ledger_file)
+        source_file = Path("src/world/genesis/escrow.py")
+        with open(source_file) as f:
+            source = f.read()
 
-        transfer_calls = [
-            p for p in privileged
-            if "transfer_ownership" in p["path"]
-        ]
-
-        if transfer_calls:
-            pytest.skip(
-                f"genesis_ledger still has {len(transfer_calls)} "
-                f"privileged transfer_ownership calls - to be fixed"
-            )
-
-    def test_escrow_no_direct_transfer_ownership(self) -> None:
-        """genesis_escrow should use kernel interface for ownership transfers.
-
-        Escrow performs ownership transfers as part of trading, which should
-        go through KernelActions.transfer_ownership() rather than direct
-        artifact_store access.
-        """
-        escrow_file = Path("src/world/genesis/escrow.py")
-        privileged = analyze_file_for_privileged_access(escrow_file)
-
-        transfer_calls = [
-            p for p in privileged
-            if "transfer_ownership" in p["path"]
-        ]
-
-        if transfer_calls:
-            pytest.skip(
-                f"genesis_escrow still has {len(transfer_calls)} "
-                f"privileged transfer_ownership calls - to be fixed"
-            )
+        # Verify kernel interface import and usage
+        assert "if self._world is not None:" in source, (
+            "genesis_escrow should check _world before privileged operations"
+        )
+        assert "kernel_actions.transfer_ownership" in source, (
+            "genesis_escrow should use KernelActions.transfer_ownership()"
+        )
+        assert "kernel_actions.transfer_scrip" in source, (
+            "genesis_escrow should use KernelActions.transfer_scrip()"
+        )
 
     def test_store_uses_kernel_interface(self) -> None:
         """genesis_store should use kernel interface for artifact discovery.
