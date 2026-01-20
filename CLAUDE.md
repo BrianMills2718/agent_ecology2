@@ -77,8 +77,6 @@ make kill                # Kill running simulations
 | `validate_plan.py --plan N` | Pre-implementation validation |
 | `check_doc_coupling.py --suggest` | Which docs to update |
 | `sync_plan_status.py --check` | Validate plan statuses |
-| `check_messages.py --list` | Check inbox for CC messages |
-| `send_message.py --to X --type info --subject "Y" --content "Z"` | Send message to another CC |
 
 ---
 
@@ -144,7 +142,8 @@ make finish BRANCH=plan-98-robust-worktree PR=321
 
 ### Ownership
 - Check claims before acting on any PR/worktree
-- If owned by another instance: **read only**
+- If owned by another instance: **read only**, move on to other work
+- **Don't offer to help or message other CCs about their active work** - just work on something else
 - **NEVER clean up worktrees you don't own** - breaks their shell (CWD becomes invalid)
 - Self-merge your own PRs when ready (no review required)
 - Only the owner should run `make finish` to merge + cleanup their worktree
@@ -257,20 +256,26 @@ See `docs/GLOSSARY.md` for full definitions.
 
 ---
 
-## Inter-CC Messaging
+## Inter-CC Messaging (Disabled by Default)
 
+Optional async messaging between CC instances. **Disabled by default.**
+
+To enable, set in `.claude/meta-config.yaml`:
+```yaml
+inter_cc_messaging: true
+```
+
+When enabled:
 ```bash
 # Send message
 python scripts/send_message.py --to <recipient> --type <type> --subject "Subject" --content "Content"
-# Types: suggestion, question, handoff, info, review-request
 
 # Check inbox
 python scripts/check_messages.py --list
 python scripts/check_messages.py --ack     # Acknowledge (required before editing)
-python scripts/check_messages.py --archive <id>
 ```
 
-**Blocking:** Unread messages block Edit/Write until acknowledged.
+When enabled, unread messages block Edit/Write until acknowledged.
 
 ---
 

@@ -16,6 +16,15 @@ if [[ -z "$MAIN_REPO_ROOT" ]]; then
     exit 0  # Not in a git repo
 fi
 
+# Check if inter-CC messaging is enabled (default: disabled)
+CONFIG_FILE="$MAIN_REPO_ROOT/.claude/meta-config.yaml"
+if [[ -f "$CONFIG_FILE" ]]; then
+    MESSAGING_ENABLED=$(grep "^inter_cc_messaging:" "$CONFIG_FILE" 2>/dev/null | awk '{print $2}')
+    if [[ "$MESSAGING_ENABLED" != "true" ]]; then
+        exit 0  # Messaging disabled, skip inbox notification
+    fi
+fi
+
 # Session marker - unique per port or PID
 SESSION_ID="${CLAUDE_CODE_SSE_PORT:-$$}"
 MARKER_FILE="/tmp/claude-inbox-notified-$SESSION_ID"

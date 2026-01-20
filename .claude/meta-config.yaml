@@ -1,0 +1,7 @@
+# Meta-process configuration
+# These settings control Claude Code coordination features
+
+# Inter-CC messaging system (Plan #85)
+# When enabled, CCs can send async messages to each other
+# Hooks will block Edit/Write if unread messages exist
+inter_cc_messaging: false
