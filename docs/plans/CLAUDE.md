@@ -142,6 +142,7 @@ Master index of all gaps and their implementation plans.
 | 114 | [Interface Discovery](114_interface_discovery.md) | **High** | ✅ Complete | Cross-agent collaboration |
 | 115 | [Worktree Ownership Enforcement](115_worktree_ownership_enforcement.md) | **High** | ✅ Complete | Multi-CC worktree safety |
 | 116 | [Enforce Finish From Main](116_enforce_finish_from_main.md) | Medium | ✅ Complete | Meta-process integrity |
+| 123 | [Safe Expression Evaluator](123_safe_expression_evaluator.md) | **Critical** | ✅ Complete | Replace eval() with safe evaluator |
 
 ---
 
