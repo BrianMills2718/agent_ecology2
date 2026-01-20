@@ -1,6 +1,6 @@
 # Plan #130: Automatic Post-Merge Cleanup
 
-**Status:** 🚧 In Progress
+**Status:** ✅ Complete
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** Meta-process reliability
@@ -113,11 +113,11 @@ Modify `meta_status.py` to:
 
 ## Verification
 
-- [ ] `cleanup_orphaned_worktrees.py` correctly identifies orphans
-- [ ] Script handles non-standard worktree locations
-- [ ] `make clean-worktrees` safely removes orphaned worktrees
-- [ ] `meta_status.py` reports orphans in "Needs Attention" section
-- [ ] No false positives (active work incorrectly flagged)
+- [x] `cleanup_orphaned_worktrees.py` correctly identifies orphans
+- [x] Script handles non-standard worktree locations (uses `git worktree list`)
+- [x] `make clean-worktrees` safely removes orphaned worktrees
+- [x] `meta_status.py` reports orphans in "Needs Attention" section
+- [x] No false positives (warns about uncommitted changes before cleanup)
 
 ## Notes
 
