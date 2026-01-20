@@ -1,6 +1,6 @@
 # Plan #84: Float/Decimal Consistency
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 **Priority:** Low
 **Blocks:** None
 

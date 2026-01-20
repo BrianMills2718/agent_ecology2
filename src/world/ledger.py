@@ -9,6 +9,15 @@ Two separate systems:
 Resources are defined in config and can be extended without code changes.
 Principals can be any string ID - agents OR artifacts.
 
+Precision Strategy (Plan #84):
+    - Resources are STORED as float for API simplicity and JSON compatibility
+    - Arithmetic operations use DECIMAL internally via _decimal_add/_decimal_sub
+    - This avoids float precision errors (e.g., 0.1 + 0.2 != 0.3) while
+      maintaining a simple float interface for callers
+    - Scrip is stored as int (discrete currency units) - no precision issues
+    - This hybrid approach is intentional: float storage for simplicity,
+      Decimal arithmetic for correctness
+
 See docs/RESOURCE_MODEL.md for full design rationale.
 """
 
@@ -52,12 +61,20 @@ def _from_decimal(value: Decimal) -> float:
 
 
 def _decimal_add(a: float, b: float) -> float:
-    """Add two floats using Decimal arithmetic for precision."""
+    """Add two floats using Decimal arithmetic for precision.
+
+    Part of the hybrid precision strategy: accepts/returns float for API
+    simplicity, but uses Decimal internally to avoid accumulation errors.
+    """
     return _from_decimal(_to_decimal(a) + _to_decimal(b))
 
 
 def _decimal_sub(a: float, b: float) -> float:
-    """Subtract two floats using Decimal arithmetic for precision."""
+    """Subtract two floats using Decimal arithmetic for precision.
+
+    Part of the hybrid precision strategy: accepts/returns float for API
+    simplicity, but uses Decimal internally to avoid accumulation errors.
+    """
     return _from_decimal(_to_decimal(a) - _to_decimal(b))
 
 

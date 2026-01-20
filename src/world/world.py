@@ -192,6 +192,10 @@ class World:
         self.costs = config["costs"]
 
         # Compute per-agent quotas from resource totals
+        # Precision note (Plan #84): Quotas are typically whole numbers (compute units,
+        # disk bytes) or simple decimals (llm_budget dollars). No Decimal arithmetic
+        # needed here - precision issues only arise from repeated add/subtract operations,
+        # which happen in ledger.py (where Decimal helpers are used).
         num_agents = len(config.get("principals", []))
         empty_quotas: PerAgentQuota = {"compute_quota": 0, "disk_quota": 0, "llm_budget_quota": 0.0}
         quotas: PerAgentQuota = compute_per_agent_quota(num_agents) if num_agents > 0 else empty_quotas
