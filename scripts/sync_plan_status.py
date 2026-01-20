@@ -151,7 +151,7 @@ def check_content_consistency() -> list[dict]:
     """
     issues = []
 
-    plan_files = sorted(PLANS_DIR.glob("[0-9][0-9]_*.md"))
+    plan_files = sorted(PLANS_DIR.glob("[0-9]*_*.md"))
 
     for pf in plan_files:
         plan = parse_plan_status(pf)
@@ -225,7 +225,7 @@ def check_consistency() -> list[dict]:
     issues = []
 
     # Get all plan files
-    plan_files = sorted(PLANS_DIR.glob("[0-9][0-9]_*.md"))
+    plan_files = sorted(PLANS_DIR.glob("[0-9]*_*.md"))
 
     # Parse each plan file
     plan_statuses = {}
@@ -275,7 +275,7 @@ def sync_index_to_plans() -> int:
     content = INDEX_FILE.read_text()
 
     # Get plan file statuses
-    plan_files = sorted(PLANS_DIR.glob("[0-9][0-9]_*.md"))
+    plan_files = sorted(PLANS_DIR.glob("[0-9]*_*.md"))
     plan_statuses = {}
     for pf in plan_files:
         status = parse_plan_status(pf)
@@ -298,22 +298,27 @@ def sync_index_to_plans() -> int:
         plan = plan_statuses[plan_num]
         new_status = plan["status_emoji"]
 
-        # Check if status already contains text after emoji
+        # Check if status already contains custom suffix (not standard status names)
         old_status = cells[3]
-        status_text = ""
+        custom_suffix = ""
+        standard_names = {name.lower() for name in STATUS_MAP.values()}
         for emoji in STATUS_MAP.keys():
             if emoji in old_status:
                 # Extract any text after the emoji
                 parts = old_status.split(emoji, 1)
                 if len(parts) > 1:
-                    status_text = parts[1].strip()
+                    suffix = parts[1].strip()
+                    # Only preserve non-standard suffixes (e.g., "Post-V1", "Deferred")
+                    if suffix.lower() not in standard_names:
+                        custom_suffix = suffix
                 break
 
-        # Rebuild the status cell
-        if status_text:
-            cells[3] = f"{new_status} {status_text}"
+        # Rebuild the status cell with new emoji and appropriate text
+        new_status_text = STATUS_MAP.get(new_status, "")
+        if custom_suffix:
+            cells[3] = f"{new_status} {custom_suffix}"
         else:
-            cells[3] = f"{new_status} {STATUS_MAP.get(new_status, '')}"
+            cells[3] = f"{new_status} {new_status_text}"
 
         return "| " + " | ".join(cells) + " |"
 
@@ -336,7 +341,7 @@ def sync_index_to_plans() -> int:
 
 def list_statuses() -> None:
     """List all plan statuses."""
-    plan_files = sorted(PLANS_DIR.glob("[0-9][0-9]_*.md"))
+    plan_files = sorted(PLANS_DIR.glob("[0-9]*_*.md"))
 
     print("Plan Statuses:")
     print("-" * 60)
