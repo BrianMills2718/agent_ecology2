@@ -1403,3 +1403,303 @@ def check_permission(caller, action, target, context, ledger):
         # Should have empty capabilities by default
         assert hasattr(contract, 'capabilities')
         assert contract.capabilities == []
+
+
+class TestContractPermissionCaching:
+    """Tests for TTL-based permission caching (Plan #100 Phase 2).
+
+    Per Plan #100:
+    - Caching is opt-in via contract field `cache_policy: {ttl_seconds: N}`
+    - No caching by default (explicit is better)
+    - Cache key: (artifact_id, action, requester_id, contract_version)
+    """
+
+    def test_cache_policy_field_exists(self) -> None:
+        """Test that ExecutableContract accepts cache_policy field."""
+        contract = ExecutableContract(
+            contract_id="cached_contract",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": True, "reason": "ok", "cost": 0}
+''',
+            cache_policy={"ttl_seconds": 60}
+        )
+
+        assert hasattr(contract, 'cache_policy')
+        assert contract.cache_policy == {"ttl_seconds": 60}
+
+    def test_no_cache_policy_by_default(self) -> None:
+        """Test that contracts have no cache_policy by default."""
+        contract = ExecutableContract(
+            contract_id="uncached_contract",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": True, "reason": "ok", "cost": 0}
+'''
+        )
+
+        # Should have None cache_policy by default (no caching)
+        assert contract.cache_policy is None
+
+    def test_cache_policy_ttl_seconds_required(self) -> None:
+        """Test that cache_policy must have ttl_seconds."""
+        contract = ExecutableContract(
+            contract_id="valid_cache",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": True, "reason": "ok", "cost": 0}
+''',
+            cache_policy={"ttl_seconds": 30}
+        )
+
+        assert contract.cache_policy is not None
+        assert contract.cache_policy["ttl_seconds"] == 30
+
+    def test_permission_cache_stores_results(self) -> None:
+        """Test that permission cache stores results when cache_policy is set."""
+        from src.world.contracts import PermissionCache
+
+        cache = PermissionCache()
+        result = PermissionResult(allowed=True, reason="cached", cost=0)
+
+        # Store a result
+        cache_key = ("artifact_1", "read", "user_1", "v1")
+        cache.put(cache_key, result, ttl_seconds=60)
+
+        # Should retrieve the same result
+        cached = cache.get(cache_key)
+        assert cached is not None
+        assert cached.allowed == result.allowed
+        assert cached.reason == result.reason
+
+    def test_permission_cache_respects_ttl(self) -> None:
+        """Test that cached results expire after TTL."""
+        from src.world.contracts import PermissionCache
+        import time
+
+        cache = PermissionCache()
+        result = PermissionResult(allowed=True, reason="cached", cost=0)
+
+        # Store with 0.1 second TTL
+        cache_key = ("artifact_1", "read", "user_1", "v1")
+        cache.put(cache_key, result, ttl_seconds=0.1)
+
+        # Should be present immediately
+        assert cache.get(cache_key) is not None
+
+        # Wait for expiry
+        time.sleep(0.15)
+
+        # Should be expired
+        assert cache.get(cache_key) is None
+
+    def test_permission_cache_miss_returns_none(self) -> None:
+        """Test that cache miss returns None."""
+        from src.world.contracts import PermissionCache
+
+        cache = PermissionCache()
+        cache_key = ("nonexistent", "read", "user", "v1")
+
+        assert cache.get(cache_key) is None
+
+    def test_permission_cache_key_components(self) -> None:
+        """Test that cache key includes all required components."""
+        from src.world.contracts import PermissionCache
+
+        cache = PermissionCache()
+        result = PermissionResult(allowed=True, reason="test", cost=0)
+
+        # Store with specific key
+        key1 = ("artifact_1", "read", "user_1", "v1")
+        cache.put(key1, result, ttl_seconds=60)
+
+        # Different artifact should miss
+        key2 = ("artifact_2", "read", "user_1", "v1")
+        assert cache.get(key2) is None
+
+        # Different action should miss
+        key3 = ("artifact_1", "write", "user_1", "v1")
+        assert cache.get(key3) is None
+
+        # Different user should miss
+        key4 = ("artifact_1", "read", "user_2", "v1")
+        assert cache.get(key4) is None
+
+        # Different version should miss
+        key5 = ("artifact_1", "read", "user_1", "v2")
+        assert cache.get(key5) is None
+
+        # Original key should still hit
+        assert cache.get(key1) is not None
+
+    def test_executor_uses_cache_when_policy_set(self) -> None:
+        """Test that executor uses permission cache when contract has cache_policy."""
+        from src.world.executor import SafeExecutor
+        from src.world.artifacts import Artifact
+        from datetime import datetime
+
+        ledger = Ledger()
+        ledger.create_principal("test_user", starting_scrip=100)
+        ledger.create_principal("owner", starting_scrip=0)
+
+        executor = SafeExecutor(timeout=5, use_contracts=True, ledger=ledger)
+
+        # Create contract with cache_policy
+        contract = ExecutableContract(
+            contract_id="cached_contract",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": True, "reason": "cached result", "cost": 0}
+''',
+            cache_policy={"ttl_seconds": 60}
+        )
+        executor.register_executable_contract(contract)
+
+        artifact = Artifact(
+            id="test_artifact",
+            type="test",
+            content="test",
+            owner_id="owner",
+            created_at=datetime.utcnow().isoformat(),
+            updated_at=datetime.utcnow().isoformat(),
+        )
+        artifact.access_contract_id = "cached_contract"  # type: ignore[attr-defined]
+
+        # Permission cache should be empty before first call
+        cache_key = ("test_artifact", "read", "test_user", "v1")
+        assert executor._permission_cache.get(cache_key) is None
+
+        # First call should execute contract and populate cache
+        result1 = executor._check_permission_via_contract(
+            "test_user", "read", artifact
+        )
+        assert result1.allowed is True
+        assert "cached result" in result1.reason
+
+        # Permission cache should now have the result
+        cached_result = executor._permission_cache.get(cache_key)
+        assert cached_result is not None
+        assert cached_result.allowed is True
+        assert "cached result" in cached_result.reason
+
+        # Second call should use cache (same result)
+        result2 = executor._check_permission_via_contract(
+            "test_user", "read", artifact
+        )
+        assert result2.allowed is True
+        assert "cached result" in result2.reason
+
+    def test_executor_no_cache_without_policy(self) -> None:
+        """Test that executor does not cache when contract has no cache_policy."""
+        from src.world.executor import SafeExecutor
+        from src.world.artifacts import Artifact
+        from datetime import datetime
+
+        ledger = Ledger()
+        ledger.create_principal("test_user", starting_scrip=100)
+        ledger.create_principal("owner", starting_scrip=0)
+
+        executor = SafeExecutor(timeout=5, use_contracts=True, ledger=ledger)
+
+        # Create contract WITHOUT cache_policy
+        contract = ExecutableContract(
+            contract_id="uncached_contract",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": True, "reason": "not cached", "cost": 0}
+'''
+            # No cache_policy
+        )
+        executor.register_executable_contract(contract)
+
+        artifact = Artifact(
+            id="test_artifact",
+            type="test",
+            content="test",
+            owner_id="owner",
+            created_at=datetime.utcnow().isoformat(),
+            updated_at=datetime.utcnow().isoformat(),
+        )
+        artifact.access_contract_id = "uncached_contract"  # type: ignore[attr-defined]
+
+        # First call
+        result1 = executor._check_permission_via_contract(
+            "test_user", "read", artifact
+        )
+        assert result1.allowed is True
+
+        # Permission cache should be empty (no cache_policy)
+        cache_key = ("test_artifact", "read", "test_user", "v1")
+        assert executor._permission_cache.get(cache_key) is None
+
+        # Second call
+        result2 = executor._check_permission_via_contract(
+            "test_user", "read", artifact
+        )
+        assert result2.allowed is True
+
+        # Permission cache should still be empty
+        assert executor._permission_cache.get(cache_key) is None
+
+    def test_cache_invalidated_on_different_context(self) -> None:
+        """Test that cache respects different request contexts."""
+        from src.world.contracts import PermissionCache
+
+        cache = PermissionCache()
+        result1 = PermissionResult(allowed=True, reason="allowed", cost=0)
+        result2 = PermissionResult(allowed=False, reason="denied", cost=0)
+
+        # Same artifact but different callers
+        key1 = ("artifact_1", "read", "alice", "v1")
+        key2 = ("artifact_1", "read", "bob", "v1")
+
+        cache.put(key1, result1, ttl_seconds=60)
+        cache.put(key2, result2, ttl_seconds=60)
+
+        # Should get correct result for each caller
+        assert cache.get(key1).allowed is True
+        assert cache.get(key2).allowed is False
+
+    def test_cache_clear_removes_all_entries(self) -> None:
+        """Test that cache can be cleared."""
+        from src.world.contracts import PermissionCache
+
+        cache = PermissionCache()
+        result = PermissionResult(allowed=True, reason="test", cost=0)
+
+        cache.put(("a1", "read", "u1", "v1"), result, ttl_seconds=60)
+        cache.put(("a2", "read", "u2", "v1"), result, ttl_seconds=60)
+
+        assert cache.get(("a1", "read", "u1", "v1")) is not None
+        assert cache.get(("a2", "read", "u2", "v1")) is not None
+
+        cache.clear()
+
+        assert cache.get(("a1", "read", "u1", "v1")) is None
+        assert cache.get(("a2", "read", "u2", "v1")) is None
+
+    def test_executor_permission_cache_configurable(self) -> None:
+        """Test that executor permission cache can be enabled/disabled."""
+        from src.world.executor import SafeExecutor
+
+        # Default executor should have permission cache enabled
+        executor = SafeExecutor(timeout=5, use_contracts=True)
+        assert hasattr(executor, '_permission_cache')
+
+        # Should be able to clear cache
+        executor.clear_permission_cache()
+
+    def test_contract_version_affects_cache_key(self) -> None:
+        """Test that contract version is part of cache key."""
+        from src.world.contracts import PermissionCache
+
+        cache = PermissionCache()
+        result_v1 = PermissionResult(allowed=True, reason="v1", cost=0)
+        result_v2 = PermissionResult(allowed=False, reason="v2", cost=0)
+
+        # Same artifact/action/user but different contract versions
+        cache.put(("artifact", "read", "user", "v1"), result_v1, ttl_seconds=60)
+        cache.put(("artifact", "read", "user", "v2"), result_v2, ttl_seconds=60)
+
+        assert cache.get(("artifact", "read", "user", "v1")).allowed is True
+        assert cache.get(("artifact", "read", "user", "v2")).allowed is False

@@ -368,6 +368,7 @@ class SafeExecutor:
     max_contract_depth: int
     _contract_cache: dict[str, AccessContract | ExecutableContract]
     _ledger: "Ledger | None"
+    _permission_cache: "PermissionCache"
 
     def __init__(
         self,
@@ -383,6 +384,9 @@ class SafeExecutor:
         self.max_contract_depth = max_contract_depth if max_contract_depth is not None else get_max_contract_depth()
         self._contract_cache = {}
         self._ledger = ledger
+        # Permission cache for TTL-based caching (Plan #100 Phase 2)
+        from src.world.contracts import PermissionCache
+        self._permission_cache = PermissionCache()
 
     def set_ledger(self, ledger: "Ledger") -> None:
         """Set the ledger for executable contract permission checks.
@@ -394,6 +398,14 @@ class SafeExecutor:
             ledger: The ledger instance to use
         """
         self._ledger = ledger
+
+    def clear_permission_cache(self) -> None:
+        """Clear all cached permission results.
+
+        Useful when contracts are updated or for testing.
+        Plan #100 Phase 2: TTL-based permission caching.
+        """
+        self._permission_cache.clear()
 
     def _get_contract(
         self, contract_id: str
@@ -449,6 +461,10 @@ class SafeExecutor:
         contracts (dynamic code). Executable contracts receive read-only
         ledger access for balance checks.
 
+        Plan #100 Phase 2: Supports TTL-based caching for contracts with
+        cache_policy. Caching is opt-in - contracts without cache_policy
+        are never cached.
+
         Args:
             caller: The principal requesting access
             action: The action being attempted (read, write, invoke, etc.)
@@ -479,6 +495,21 @@ class SafeExecutor:
                 reason=f"Unknown action: {action}"
             )
 
+        # Plan #100 Phase 2: Check permission cache for ExecutableContracts with cache_policy
+        cache_key = None
+        cache_policy = None
+        if isinstance(contract, ExecutableContract) and contract.cache_policy is not None:
+            cache_policy = contract.cache_policy
+            # Cache key: (artifact_id, action, requester_id, contract_version)
+            # Contract version is "v1" for now (versioning to be added later)
+            contract_version = getattr(contract, "version", "v1")
+            cache_key = (artifact.id, action, caller, contract_version)
+
+            # Check cache
+            cached_result = self._permission_cache.get(cache_key)
+            if cached_result is not None:
+                return cached_result
+
         # Build context for contract
         context: dict[str, object] = {
             "owner": artifact.owner_id,
@@ -488,13 +519,21 @@ class SafeExecutor:
 
         # ExecutableContracts need ledger access for balance checks
         if isinstance(contract, ExecutableContract):
-            return contract.check_permission(
+            result = contract.check_permission(
                 caller=caller,
                 action=perm_action,
                 target=artifact.id,
                 context=context,
                 ledger=self._ledger,
             )
+
+            # Store in cache if cache_policy is set
+            if cache_key is not None and cache_policy is not None:
+                ttl_seconds = cache_policy.get("ttl_seconds", 0)
+                if ttl_seconds > 0:
+                    self._permission_cache.put(cache_key, result, ttl_seconds)
+
+            return result
 
         # Genesis/static contracts use standard interface
         return contract.check_permission(

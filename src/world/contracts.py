@@ -220,6 +220,73 @@ class ContractTimeoutError(Exception):
     pass
 
 
+# Type alias for cache key: (artifact_id, action, requester_id, contract_version)
+CacheKey = tuple[str, str, str, str]
+
+
+class PermissionCache:
+    """TTL-based cache for permission check results.
+
+    Per Plan #100 Phase 2:
+    - Caching is opt-in via contract field `cache_policy: {ttl_seconds: N}`
+    - No caching by default
+    - Cache key: (artifact_id, action, requester_id, contract_version)
+
+    Attributes:
+        _cache: Dict mapping cache keys to (result, expiry_time) tuples
+    """
+
+    def __init__(self) -> None:
+        """Initialize empty permission cache."""
+        self._cache: dict[CacheKey, tuple[PermissionResult, float]] = {}
+
+    def get(self, key: CacheKey) -> Optional[PermissionResult]:
+        """Get cached permission result if not expired.
+
+        Args:
+            key: Cache key tuple (artifact_id, action, requester_id, contract_version)
+
+        Returns:
+            Cached PermissionResult if found and not expired, None otherwise
+        """
+        if key not in self._cache:
+            return None
+
+        result, expiry_time = self._cache[key]
+        current_time = time_module.time()
+
+        if current_time >= expiry_time:
+            # Entry expired, remove it
+            del self._cache[key]
+            return None
+
+        return result
+
+    def put(
+        self,
+        key: CacheKey,
+        result: PermissionResult,
+        ttl_seconds: float,
+    ) -> None:
+        """Store permission result in cache with TTL.
+
+        Args:
+            key: Cache key tuple (artifact_id, action, requester_id, contract_version)
+            result: PermissionResult to cache
+            ttl_seconds: Time-to-live in seconds
+        """
+        expiry_time = time_module.time() + ttl_seconds
+        self._cache[key] = (result, expiry_time)
+
+    def clear(self) -> None:
+        """Remove all entries from cache."""
+        self._cache.clear()
+
+    def size(self) -> int:
+        """Return number of entries in cache (including expired)."""
+        return len(self._cache)
+
+
 def _contract_timeout_handler(signum: int, frame: FrameType | None) -> None:
     """Signal handler for contract execution timeout."""
     raise ContractTimeoutError("Contract execution timed out")
@@ -333,6 +400,8 @@ def check_permission(caller, action, target, context, ledger):
         code: Python code defining check_permission function
         timeout: Maximum execution time in seconds (default from config: 5s, or 30s for LLM-capable)
         capabilities: List of capabilities this contract uses (e.g., ["call_llm"])
+        cache_policy: Optional caching policy (e.g., {"ttl_seconds": 60}).
+                      If None, no caching. Per Plan #100: caching is opt-in.
     """
 
     contract_id: str
@@ -340,6 +409,7 @@ def check_permission(caller, action, target, context, ledger):
     contract_type: str = "executable"
     timeout: int | None = None  # None means use config default
     capabilities: list[str] = field(default_factory=list)
+    cache_policy: Optional[dict[str, Any]] = None  # e.g., {"ttl_seconds": 60}
 
     def __post_init__(self) -> None:
         """Set default timeout based on capabilities if not explicitly provided."""
