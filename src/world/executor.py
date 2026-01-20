@@ -823,6 +823,9 @@ class SafeExecutor:
             def get_kernel_state(self) -> Any:
                 return None
 
+            def read_artifact(self, artifact_id: str) -> dict[str, Any]:
+                return {"success": False, "error": "read_artifact not available in this context"}
+
         # Inject actions module
         actions_module = ModuleType("actions")
         actions_module.Action = Action  # type: ignore[attr-defined]
@@ -1383,6 +1386,34 @@ class SafeExecutor:
             def get_kernel_state(self) -> Any:
                 """Get access to kernel_state for read operations."""
                 return controlled_globals.get("kernel_state")
+
+            def read_artifact(self, artifact_id: str) -> dict[str, Any]:
+                """Read another artifact's content.
+
+                Args:
+                    artifact_id: ID of artifact to read
+
+                Returns:
+                    Dict with success, content, and artifact metadata
+                """
+                if artifact_store is None:
+                    return {"success": False, "error": "read_artifact not available in this context"}
+
+                target = artifact_store.get(artifact_id)
+                if target is None:
+                    return {"success": False, "error": f"Artifact {artifact_id} not found"}
+
+                if target.deleted:
+                    return {"success": False, "error": f"Artifact {artifact_id} has been deleted"}
+
+                return {
+                    "success": True,
+                    "artifact_id": artifact_id,
+                    "content": target.content,
+                    "type": target.artifact_type,
+                    "created_by": target.created_by,
+                    "executable": target.executable,
+                }
 
         # Inject actions module so "from actions import Action" works
         actions_module = ModuleType("actions")

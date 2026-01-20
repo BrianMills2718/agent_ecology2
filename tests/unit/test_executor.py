@@ -336,3 +336,18 @@ def run():
         assert "artifact_id" in result["result"]
         assert "method" in result["result"]
         assert "args" in result["result"]
+
+    def test_action_read_artifact_without_context(self, executor: SafeExecutor) -> None:
+        """Action.read_artifact should return error when artifact_store not available."""
+        code = """
+def run():
+    from actions import Action
+    action = Action()
+    result = action.read_artifact("some_artifact")
+    return result
+"""
+        result = executor.execute(code)
+
+        assert result["success"] is True
+        assert result["result"]["success"] is False
+        assert "not available" in result["result"]["error"]
