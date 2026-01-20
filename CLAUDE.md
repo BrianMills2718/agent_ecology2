@@ -25,8 +25,8 @@ make worktree-remove BRANCH=name  # Safe removal (checks uncommitted changes)
 make test                # Run pytest
 make test-quick          # Quick test (no traceback)
 make mypy                # Type checking
-make check               # All CI checks locally
-make check-quick         # Fast CI checks
+make check               # All checks locally
+make check-quick         # Fast checks
 make lint                # Doc-code coupling check
 make lint-suggest        # Show which docs need updates
 ```
@@ -35,7 +35,7 @@ make lint-suggest        # Show which docs need updates
 ```bash
 make pr-ready            # Rebase + push (run before PR)
 make pr                  # Create PR (opens browser)
-# After CI passes, complete everything with ONE command from main:
+# Complete everything with ONE command from main:
 cd /path/to/main && make finish BRANCH=plan-XX PR=N  # Merge + cleanup (MUST run from main!)
 ```
 
@@ -92,14 +92,13 @@ make kill                # Kill running simulations
        |
 2. IMPLEMENT        -->  Edit files, write tests first (TDD)
        |
-3. VERIFY           -->  make check (all CI checks locally)
+3. VERIFY           -->  make test && make lint (run checks locally)
        |
 4. SHIP             -->  make pr-ready && make pr
-                         [wait for CI to pass]
                          cd /path/to/main && make finish BRANCH=X PR=N
 ```
 
-**Step 4 detail:** After CI passes, run `make finish` FROM MAIN (not from worktree).
+**Step 4 detail:** Run `make finish` FROM MAIN (not from worktree).
 This single command: merges PR + releases claim + deletes worktree.
 The `cd` MUST be in the same bash command to prevent shell CWD issues.
 
@@ -114,7 +113,7 @@ cd /home/brian/brian_projects/agent_ecology2 && make finish BRANCH=plan-98-robus
 |----------|--------|-----|
 | 0 | **Check ownership** | Never touch others' work |
 | 1 | Surface uncertainties | Ask early, avoid wasted work |
-| 2 | Merge your passing PRs | Clear the queue (self-merge after CI) |
+| 2 | Merge your ready PRs | Clear the queue (self-merge when ready) |
 | 3 | Resolve PR conflicts | Keep work mergeable |
 | 4 | Update stale docs | Low risk, high value |
 | 5 | New implementation | Requires a plan first |
@@ -126,7 +125,7 @@ cd /home/brian/brian_projects/agent_ecology2 && make finish BRANCH=plan-98-robus
 [Trivial] Fix typo          # For tiny changes (<20 lines, no src/ changes)
 ```
 
-**CI enforces:** `[Plan #N]` or `[Trivial]` required.
+**Convention:** `[Plan #N]` or `[Trivial]` required for all commits.
 
 ---
 
@@ -139,7 +138,7 @@ cd /home/brian/brian_projects/agent_ecology2 && make finish BRANCH=plan-98-robus
 ### Ownership
 - Check claims before acting on any PR/worktree
 - If owned by another instance: **read only**
-- Self-merge your own PRs after CI passes (no review required)
+- Self-merge your own PRs when ready (no review required)
 
 ### Plans
 - All significant work requires a plan in `docs/plans/NN_name.md`
@@ -276,13 +275,13 @@ python scripts/check_messages.py --archive <id>
 | `docs/architecture/target/` | What we WANT |
 | `docs/GLOSSARY.md` | Canonical terminology |
 
-### Doc-Code Coupling (CI Enforced)
+### Doc-Code Coupling
 
 ```bash
 python scripts/check_doc_coupling.py --suggest  # Show which docs to update
 ```
 
-Source-to-doc mappings in `scripts/doc_coupling.yaml`.
+Source-to-doc mappings in `scripts/doc_coupling.yaml`. Run `make lint` to check.
 
 ---
 
