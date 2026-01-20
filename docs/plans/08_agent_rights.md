@@ -1,31 +1,28 @@
 # Gap 8: Agent Rights Trading
 
-**Status:** 📋 Planned (Post-V1)
+**Status:** 🚧 In Progress
 **Priority:** Low
-**Blocked By:** #100 (Contract System Overhaul)
+**Blocked By:** None (#100 completed 2026-01-20)
 **Blocks:** None
 
 ---
 
 ## Gap
 
-**Current:** Agent configuration is stored in artifacts and tradeable, but:
-- Config changes only take effect on simulation restart (no dynamic reload)
-- Access control uses hardcoded owner bypass, not contracts
+**Current:** Agent configuration is stored in artifacts and tradeable, but config changes only take effect on simulation restart (no dynamic reload).
 
-**Target:** Agents can trade control rights over their configuration with contract-based access control and dynamic config reload.
+**Target:** Agents can trade control rights over their configuration with dynamic config reload.
 
 ---
 
-## Already Implemented (as of 2026-01)
+## Already Implemented
 
 | Feature | Status | Location |
 |---------|--------|----------|
 | Agent config in artifact `content` | ✅ Done | `agent.py:_load_from_artifact()` |
 | Config readable via `read_artifact` | ✅ Done | Standard artifact read |
 | Config writable via `write_artifact` | ✅ Done | Standard artifact write |
-| Owner can modify (hardcoded bypass) | ✅ Done | `artifacts.py:can_write()` |
-| Non-owners blocked from write | ✅ Done | Policy-based |
+| Contract-based permission checking | ✅ Done | `executor._check_permission()` (Plan #100) |
 | Trading via escrow | ✅ Done | `genesis_escrow` |
 | Basic documentation | ✅ Done | `handbook_self.md` |
 
@@ -33,33 +30,16 @@
 
 ## Remaining Gap
 
-### 1. Dynamic Config Reload
+### Dynamic Config Reload
 Currently `_load_from_artifact()` is only called at agent construction. If agent A buys agent B and modifies B's config, B continues with old config until simulation restart.
 
 **Needed:** Agents reload config from their artifact each loop iteration.
 
-### 2. Contract-Based Access Control
-Currently, owner bypass is hardcoded in `can_write()`. The target architecture uses contracts as the ONLY authority for access control.
-
-**Needed:** Config modification rights should be gated by contracts, enabling patterns like:
-- "Only my employer can change my goals"
-- "Config changes require payment"
-- "Delegate config rights without transferring ownership"
-
----
-
-## Why Blocked by #100
-
-Plan #100 (Contract System Overhaul) addresses the fundamental access control model:
-- Removes hardcoded owner bypass from `can_write()`
-- Makes contracts the sole authority for permissions
-- Handles dangling contract references
-
-Implementing dynamic config reload now would just reload static JSON with hardcoded owner checks. The real value comes when contracts can dynamically gate config modifications.
-
-**Sequence:**
-1. #100 completes → contracts are the authority
-2. #8 implements → dynamic reload + contract-gated config rights
+**Use cases enabled:**
+- "Only my employer can change my goals" (contract-gated, implemented by #100)
+- "Config changes require payment" (contract-gated, implemented by #100)
+- "Delegate config rights without transferring ownership" (contract-gated, implemented by #100)
+- **New:** Changes take effect immediately, not on restart
 
 ---
 
@@ -88,11 +68,11 @@ If agents are artifacts, and artifacts are tradeable via contracts, agent config
 
 ### Mechanism
 
-Agent config stored as artifact content. Trading works via `genesis_escrow`. Access control via contracts (after #100).
+Agent config stored as artifact content. Trading works via `genesis_escrow`. Access control via contracts (Plan #100).
 
 ---
 
-## Plan (Post #100)
+## Plan
 
 ### Phase 1: Dynamic Config Reload
 
@@ -100,13 +80,7 @@ Agent config stored as artifact content. Trading works via `genesis_escrow`. Acc
 2. Call reload at start of each agent loop iteration
 3. Handle gracefully if artifact deleted/inaccessible
 
-### Phase 2: Contract-Gated Config Rights
-
-1. Remove reliance on owner bypass for config modification
-2. Use contract-based `can_write` checks (enabled by #100)
-3. Document contract patterns for config delegation
-
-### Phase 3: Documentation
+### Phase 2: Documentation
 
 1. Update handbook with trading patterns
 2. Add examples of config delegation via contracts
@@ -116,19 +90,16 @@ Agent config stored as artifact content. Trading works via `genesis_escrow`. Acc
 ## Required Tests
 
 ```
-tests/unit/test_agent_rights.py::test_owner_can_modify_config
-tests/unit/test_agent_rights.py::test_non_owner_cannot_modify
-tests/unit/test_agent_rights.py::test_trade_transfers_control
-tests/unit/test_agent_rights.py::test_config_reload_on_loop
-tests/unit/test_agent_rights.py::test_contract_gated_config_write
+tests/unit/test_agent_rights.py::test_config_reload_picks_up_changes
+tests/unit/test_agent_rights.py::test_config_reload_handles_missing_artifact
+tests/unit/test_agent_rights.py::test_config_reload_handles_invalid_json
 ```
 
 ---
 
 ## Verification
 
-- [ ] Dynamic config reload implemented
-- [ ] Config changes take effect within one loop iteration
-- [ ] Contract-based access control for config (requires #100)
-- [ ] Tests pass
-- [ ] Docs updated
+- [x] Dynamic config reload implemented (`agent.py:reload_from_artifact()`)
+- [x] Config changes take effect within one loop iteration (`runner.py:_agent_decide_action()` calls reload)
+- [x] Tests pass (5 tests in `test_agent_rights.py`)
+- [x] Docs updated (`handbook_self.md` - Trading Agent Control section)
