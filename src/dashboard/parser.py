@@ -470,16 +470,26 @@ class JSONLParser:
         # Handle genesis artifact results
         result = event.get("result", {})
         if isinstance(result, dict):
-            self._process_genesis_result(result, agent_id, intent, timestamp)
+            success = result.get("success", False)
+            self._process_genesis_result(result, agent_id, intent, timestamp, success)
 
     def _process_genesis_result(
         self,
         result: dict[str, Any],
         agent_id: str,
         intent: dict[str, Any],
-        timestamp: str
+        timestamp: str,
+        success: bool = False
     ) -> None:
-        """Process results from genesis artifact invocations."""
+        """Process results from genesis artifact invocations.
+
+        Args:
+            result: The result dict from the action
+            agent_id: The agent that performed the action
+            intent: The action intent
+            timestamp: When the action occurred
+            success: Whether the action succeeded (used to filter failed operations)
+        """
         artifact_id = intent.get("artifact_id", "")
         method = intent.get("method", "")
 
@@ -547,12 +557,15 @@ class JSONLParser:
                     description=f"{agent_id} spawned new principal {new_id}",
                 ))
 
-        # Ownership transfers
+        # Ownership transfers - only record successful, non-self transfers
         elif artifact_id == "genesis_ledger" and method == "transfer_ownership":
             args = intent.get("args", [])
-            if len(args) >= 2:
+            if len(args) >= 2 and success:
                 transferred_artifact = str(args[0])
                 to_id = str(args[1])
+                # Skip self-transfers (agent transferring to themselves)
+                if agent_id == to_id:
+                    return
                 ownership_transfer = OwnershipTransfer(
                     artifact_id=transferred_artifact,
                     from_id=agent_id,
