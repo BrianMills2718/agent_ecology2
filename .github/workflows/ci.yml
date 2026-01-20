@@ -1,11 +1,16 @@
 name: CI
 
+# =============================================================================
+# CI TRIGGERS - Currently DISABLED (manual only)
+# To re-enable automatic CI: uncomment pull_request and push sections below
+# =============================================================================
 on:
-  pull_request:
-    branches: [main]
-  # Only run post-merge on main (lightweight check only)
-  push:
-    branches: [main]
+  workflow_dispatch:  # Manual trigger only (Actions tab → Run workflow)
+  # Uncomment below to re-enable automatic CI:
+  # pull_request:
+  #   branches: [main]
+  # push:
+  #   branches: [main]
 
 # Permissions needed for dorny/paths-filter and other actions
 permissions:
