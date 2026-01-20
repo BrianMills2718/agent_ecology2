@@ -2,7 +2,7 @@
 
 System-provided artifacts that exist at world initialization.
 
-**Last verified:** 2026-01-18 (Plan #66 - Genesis split into package)
+**Last verified:** 2026-01-20 (Added genesis_model_registry - Plan #113)
 
 ---
 
@@ -206,6 +206,29 @@ during a specific bidding window. Auctions still resolve on schedule.
 - Pagination via limit/offset for large artifact counts
 - Interface discovery enabled (Plan #114): `get()`, `list()`, `search()` all return `interface` field
 - Dedicated `get_interface()` method for quick schema lookup before invocation
+
+---
+
+### genesis_model_registry
+
+**Purpose:** LLM model access management as tradeable resource (Plan #113)
+
+**File:** `src/world/genesis/model_registry.py` (`GenesisModelRegistry` class)
+
+| Method | Cost (compute) | Description |
+|--------|----------------|-------------|
+| `list_models()` | 0 | List all available models with properties |
+| `get_quota(agent_id, model_id)` | 0 | Get remaining quota for agent on model |
+| `transfer_quota(to_agent, model_id, amount)` | 0 | Transfer model quota to another agent |
+| `get_available_models(agent_id)` | 0 | Get models agent has quota for |
+
+**Design:**
+- Transforms LLM model access into a scarce, tradeable resource
+- Enables emergence of model markets and access trading
+- Agents can specialize (e.g., one agent accumulates GPT-4 quota for complex tasks)
+- Quota transfers use same pattern as scrip transfers
+
+**Config:** Model quotas configured in `config/config.yaml` under agent settings.
 
 ---
 
