@@ -151,7 +151,8 @@ if [[ "$CWD" == */worktrees/* ]]; then
     fi
 
     # Block make merge from worktree (suggest finish from main)
-    if echo "$COMMAND" | grep -qE '(^|&&|\|\||;)\s*make\s+merge(\s|$)'; then
+    # Pattern includes optional -C flag: make -C /path merge
+    if echo "$COMMAND" | grep -qE '(^|&&|\|\||;)\s*make\s+(-C\s+\S+\s+)?merge(\s|$)'; then
         PR_NUM=$(echo "$COMMAND" | grep -oE 'PR=[0-9]+' | grep -oE '[0-9]+' || echo "")
 
         if [[ -n "$PR_NUM" ]]; then
