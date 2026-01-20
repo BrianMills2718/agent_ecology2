@@ -29,8 +29,6 @@ jobs:
       enabled: ${{ steps.check.outputs.enabled }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          sparse-checkout: .github
       - id: check
         run: |
           if [ -f ".github/ci-disabled" ]; then
