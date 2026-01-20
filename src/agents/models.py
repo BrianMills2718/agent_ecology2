@@ -47,22 +47,34 @@ class InterfaceInputSchema(BaseModel):
     """JSON Schema for tool input parameters.
 
     Gemini-compatible: typed fields instead of dict[str, Any].
+    Uses Any for property values since JSON Schema allows nested structures.
     """
 
     type: str = "object"
-    properties: dict[str, dict[str, str]] = Field(default_factory=dict)
+    properties: dict[str, Any] = Field(default_factory=dict)
     required: list[str] = Field(default_factory=list)
 
     @field_validator("properties", mode="before")
     @classmethod
-    def parse_properties_string(cls, v: Any) -> dict[str, dict[str, str]]:  # noqa: ANN401
+    def parse_properties_string(cls, v: Any) -> dict[str, Any]:  # noqa: ANN401
         """Parse JSON string to dict if needed.
 
         Gemini sometimes returns nested objects as JSON strings instead of
         actual objects. This validator auto-parses them.
+
+        Handles two edge cases:
+        1. Regular JSON strings: '{"key": "value"}'
+        2. Double-escaped strings: '{\\"key\\": \\"value\\"}'
         """
         if isinstance(v, str):
-            return json.loads(v)
+            # Try parsing as-is first
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                # Handle double-escaped JSON (e.g., from Gemini)
+                # Replace \\" with " and try again
+                unescaped = v.replace('\\"', '"')
+                return json.loads(unescaped)
         return v
 
 
