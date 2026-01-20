@@ -438,7 +438,7 @@ def calculate_reuse_ratio(state: SimulationState) -> float:
             invoker_id = interaction.from_id
             if artifact_id:
                 artifact = state.artifacts.get(artifact_id)
-                if artifact and artifact.owner_id != invoker_id:
+                if artifact and artifact.created_by != invoker_id:
                     invoked_by_others.add(artifact_id)
 
     artifacts_used_by_others = len(invoked_by_others)

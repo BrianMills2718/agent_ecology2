@@ -359,7 +359,7 @@ class ArtifactMemory:
             # Create memory artifact if it doesn't exist
             memory_artifact = create_memory_artifact(
                 memory_id=memory_id,
-                owner_id=agent_id,
+                created_by=agent_id,
             )
             self._store.artifacts[memory_id] = memory_artifact
             return {"history": [], "knowledge": {}}
@@ -389,7 +389,7 @@ class ArtifactMemory:
             from ..world.artifacts import create_memory_artifact
             artifact = create_memory_artifact(
                 memory_id=memory_id,
-                owner_id=agent_id,
+                created_by=agent_id,
             )
             self._store.artifacts[memory_id] = artifact
 

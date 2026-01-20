@@ -66,14 +66,14 @@ class GenesisArtifact:
 
     id: str
     type: str
-    owner_id: str
+    created_by: str
     description: str
     methods: dict[str, GenesisMethod]
 
     def __init__(self, artifact_id: str, description: str) -> None:
         self.id = artifact_id
         self.type = "genesis"
-        self.owner_id = SYSTEM_OWNER
+        self.created_by = SYSTEM_OWNER
         self.description = description
         self.methods = {}
 
@@ -128,7 +128,7 @@ class GenesisArtifact:
         return {
             "id": self.id,
             "type": self.type,
-            "owner_id": self.owner_id,
+            "created_by": self.created_by,
             "content": self.description,
             "methods": self.list_methods()
         }

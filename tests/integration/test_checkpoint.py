@@ -59,7 +59,7 @@ class TestSaveCheckpoint:
                 "id": "test_artifact",
                 "type": "data",
                 "content": "test content",
-                "owner_id": "alice",
+                "created_by": "alice",
             }
             world.artifacts.artifacts = {"test_artifact": artifact}
 
@@ -262,14 +262,14 @@ class TestCheckpointRoundTrip:
                 "id": "data_artifact",
                 "type": "data",
                 "content": "some data content",
-                "owner_id": "alice",
+                "created_by": "alice",
             }
             artifact2 = MagicMock()
             artifact2.to_dict.return_value = {
                 "id": "exec_artifact",
                 "type": "executable",
                 "content": "A useful tool",
-                "owner_id": "bob",
+                "created_by": "bob",
                 "executable": True,
                 "price": 10,
                 "code": "def run(x): return x * 2",

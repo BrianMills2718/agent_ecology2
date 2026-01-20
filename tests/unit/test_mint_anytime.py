@@ -28,7 +28,7 @@ class TestAnytimeBidding:
         ledger.create_principal("agent_1", starting_scrip=100)
         store = ArtifactStore()
         store.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
-                   owner_id="agent_1", executable=True)
+                   created_by="agent_1", executable=True)
 
         def mint_callback(agent_id: str, amount: int) -> None:
             ledger.credit_scrip(agent_id, amount)
@@ -61,7 +61,7 @@ class TestAnytimeBidding:
         ledger.create_principal("agent_1", starting_scrip=100)
         store = ArtifactStore()
         store.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
-                   owner_id="agent_1", executable=True)
+                   created_by="agent_1", executable=True)
 
         def mint_callback(agent_id: str, amount: int) -> None:
             ledger.credit_scrip(agent_id, amount)
@@ -101,7 +101,7 @@ class TestAnytimeBidding:
         ledger.create_principal("agent_1", starting_scrip=100)
         store = ArtifactStore()
         store.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
-                   owner_id="agent_1", executable=True)
+                   created_by="agent_1", executable=True)
 
         mint = GenesisMint(
             mint_callback=lambda a, am: ledger.credit_scrip(a, am),
@@ -119,7 +119,7 @@ class TestAnytimeBidding:
         ledger2.create_principal("agent_1", starting_scrip=100)
         store2 = ArtifactStore()
         store2.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
-                    owner_id="agent_1", executable=True)
+                    created_by="agent_1", executable=True)
 
         mint2 = GenesisMint(
             mint_callback=lambda a, am: ledger2.credit_scrip(a, am),
@@ -137,7 +137,7 @@ class TestAnytimeBidding:
         ledger3.create_principal("agent_1", starting_scrip=100)
         store3 = ArtifactStore()
         store3.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
-                    owner_id="agent_1", executable=True)
+                    created_by="agent_1", executable=True)
 
         mint3 = GenesisMint(
             mint_callback=lambda a, am: ledger3.credit_scrip(a, am),
@@ -166,7 +166,7 @@ class TestBidTimingForAuctions:
         ledger.create_principal("agent_1", starting_scrip=100)
         store = ArtifactStore()
         store.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
-                   owner_id="agent_1", executable=True)
+                   created_by="agent_1", executable=True)
 
         def mint_callback(agent_id: str, amount: int) -> None:
             ledger.credit_scrip(agent_id, amount)
@@ -210,9 +210,9 @@ class TestBidTimingForAuctions:
         ledger.create_principal("agent_2", starting_scrip=100)
         store = ArtifactStore()
         store.write("tool_1", "code", "def run(args, ctx): return {'result': 1}",
-                   owner_id="agent_1", executable=True)
+                   created_by="agent_1", executable=True)
         store.write("tool_2", "code", "def run(args, ctx): return {'result': 2}",
-                   owner_id="agent_2", executable=True)
+                   created_by="agent_2", executable=True)
 
         def mint_callback(agent_id: str, amount: int) -> None:
             ledger.credit_scrip(agent_id, amount)
@@ -270,7 +270,7 @@ class TestDeprecatedConfigWarnings:
         ledger.create_principal("agent_1", starting_scrip=100)
         store = ArtifactStore()
         store.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
-                   owner_id="agent_1", executable=True)
+                   created_by="agent_1", executable=True)
 
         def mint_callback(agent_id: str, amount: int) -> None:
             ledger.credit_scrip(agent_id, amount)
@@ -319,7 +319,7 @@ class TestPlan79LegacyRemoval:
         ledger.create_principal("agent_1", starting_scrip=100)
         store = ArtifactStore()
         store.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
-                   owner_id="agent_1", executable=True)
+                   created_by="agent_1", executable=True)
 
         def mint_callback(agent_id: str, amount: int) -> None:
             ledger.credit_scrip(agent_id, amount)

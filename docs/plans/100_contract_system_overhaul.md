@@ -94,46 +94,37 @@ executor:
 
 ## Files Affected
 
-### Core Changes (permission routing)
-| File | Changes |
-|------|---------|
-| `src/world/artifacts.py` | Add `access_contract_id`, rename `owner_id`→`created_by`, delete `can_*()` methods (32 refs) |
-| `src/world/world.py` | Use `executor._check_permission()` instead of `artifact.can_*()` (13 refs) |
-| `src/world/executor.py` | Ensure `_check_permission` is accessible, handle default contract (5 refs) |
-| `src/world/genesis_contracts.py` | Update to use `created_by` in context |
-| `src/world/kernel_interface.py` | Rename owner_id references (8 refs) |
-
-### Genesis Artifacts
-| File | Changes |
-|------|---------|
-| `src/world/genesis/store.py` | Rename owner_id (10 refs) |
-| `src/world/genesis/ledger.py` | Rename owner_id (6 refs) |
-| `src/world/genesis/base.py` | Rename owner_id (3 refs) |
-| `src/world/genesis/escrow.py` | Rename owner_id (1 ref) |
-| `src/world/genesis/types.py` | Rename owner_id (1 ref) |
-
-### Agents
-| File | Changes |
-|------|---------|
-| `src/agents/agent.py` | Rename owner_id (4 refs) |
-| `src/agents/memory.py` | Rename owner_id (2 refs) |
-| `src/agents/loader.py` | Rename owner_id (2 refs) |
-
-### Dashboard
-| File | Changes |
-|------|---------|
-| `src/dashboard/parser.py` | Rename owner_id (15 refs) |
-| `src/dashboard/models.py` | Rename owner_id (3 refs) |
-| `src/dashboard/server.py` | Rename owner_id (1 ref) |
-| `src/dashboard/kpis.py` | Rename owner_id (1 ref) |
-
-### Other
-| File | Changes |
-|------|---------|
-| `src/simulation/runner.py` | Rename owner_id (3 refs) |
-| `src/config_schema.py` | Add `default_access_contract` config (1 ref) |
-| `config/schema.yaml` | Document new config |
-| `tests/**` | Fix tests that rely on owner bypass |
+- src/world/artifacts.py (modify)
+- src/world/actions.py (modify)
+- src/world/world.py (modify)
+- src/world/executor.py (modify)
+- src/world/genesis_contracts.py (modify)
+- src/world/kernel_interface.py (modify)
+- src/world/contracts.py (modify)
+- src/world/genesis/store.py (modify)
+- src/world/genesis/ledger.py (modify)
+- src/world/genesis/base.py (modify)
+- src/world/genesis/escrow.py (modify)
+- src/world/genesis/types.py (modify)
+- src/agents/agent.py (modify)
+- src/agents/memory.py (modify)
+- src/agents/loader.py (modify)
+- src/agents/_handbook/self.md (modify)
+- src/agents/_handbook/genesis.md (modify)
+- src/agents/beta/agent.yaml (modify)
+- src/agents/beta_2/agent.yaml (modify)
+- src/dashboard/parser.py (modify)
+- src/dashboard/models.py (modify)
+- src/dashboard/server.py (modify)
+- src/dashboard/kpis.py (modify)
+- src/dashboard/static/js/panels/artifacts.js (modify)
+- src/dashboard/static/js/panels/activity.js (modify)
+- src/dashboard/static/js/panels/temporal-network.js (modify)
+- src/simulation/runner.py (modify)
+- src/simulation/checkpoint.py (modify)
+- src/config_schema.py (modify)
+- config/schema.yaml (modify)
+- tests (modify)
 
 ---
 

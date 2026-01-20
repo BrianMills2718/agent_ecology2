@@ -59,7 +59,7 @@ class TestGenesisInArtifactStore:
             assert artifact is not None, f"{genesis_id} not in artifact store"
             assert artifact.type == "genesis"
             assert artifact.executable is True
-            assert artifact.owner_id == "system"
+            assert artifact.created_by == "system"
 
     def test_genesis_has_methods(self, world: World) -> None:
         """Genesis artifacts in store should have genesis_methods attached."""

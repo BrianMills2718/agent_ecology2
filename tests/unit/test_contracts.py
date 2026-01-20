@@ -1050,7 +1050,7 @@ class TestExecutableContractWithExecutor:
             id="test_artifact",
             type="test",
             content="test content",
-            owner_id="owner",
+            created_by="owner",
             created_at=datetime.utcnow().isoformat(),
             updated_at=datetime.utcnow().isoformat(),
         )
@@ -1175,7 +1175,7 @@ class TestContractDepthLimit:
             id="test_artifact",
             type="test",
             content="test content",
-            owner_id="owner",
+            created_by="owner",
             created_at=datetime.utcnow().isoformat(),
             updated_at=datetime.utcnow().isoformat(),
         )
@@ -1559,7 +1559,7 @@ def check_permission(caller, action, target, context, ledger):
             id="test_artifact",
             type="test",
             content="test",
-            owner_id="owner",
+            created_by="owner",
             created_at=datetime.utcnow().isoformat(),
             updated_at=datetime.utcnow().isoformat(),
         )
@@ -1616,7 +1616,7 @@ def check_permission(caller, action, target, context, ledger):
             id="test_artifact",
             type="test",
             content="test",
-            owner_id="owner",
+            created_by="owner",
             created_at=datetime.utcnow().isoformat(),
             updated_at=datetime.utcnow().isoformat(),
         )
@@ -1729,7 +1729,7 @@ class TestDanglingContractHandling:
             id="test_artifact",
             type="test",
             content="test content",
-            owner_id="owner",
+            created_by="owner",
             created_at=datetime.utcnow().isoformat(),
             updated_at=datetime.utcnow().isoformat(),
         )

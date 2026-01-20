@@ -36,7 +36,7 @@ from src.config_schema import GenesisConfig, StoreConfig
 def make_artifact(
     artifact_id: str,
     artifact_type: str,
-    owner_id: str,
+    created_by: str,
     content: Any,
     has_standing: bool = False,
     can_execute: bool = False,
@@ -46,7 +46,7 @@ def make_artifact(
     return Artifact(
         id=artifact_id,
         type=artifact_type,
-        owner_id=owner_id,
+        created_by=created_by,
         content=content,
         created_at=now,
         updated_at=now,
@@ -67,7 +67,7 @@ class TestGenesisStoreBasics:
         store.artifacts["agent_alice"] = make_artifact(
             artifact_id="agent_alice",
             artifact_type="agent",
-            owner_id="agent_alice",
+            created_by="agent_alice",
             content={"name": "Alice"},
             has_standing=True,
             can_execute=True,
@@ -75,7 +75,7 @@ class TestGenesisStoreBasics:
         store.artifacts["agent_bob"] = make_artifact(
             artifact_id="agent_bob",
             artifact_type="agent",
-            owner_id="agent_bob",
+            created_by="agent_bob",
             content={"name": "Bob"},
             has_standing=True,
             can_execute=True,
@@ -83,7 +83,7 @@ class TestGenesisStoreBasics:
         store.artifacts["data_weather"] = make_artifact(
             artifact_id="data_weather",
             artifact_type="data",
-            owner_id="agent_alice",
+            created_by="agent_alice",
             content={"weather": "sunny", "temperature": 72},
             has_standing=False,
             can_execute=False,
@@ -91,7 +91,7 @@ class TestGenesisStoreBasics:
         store.artifacts["tool_calculator"] = make_artifact(
             artifact_id="tool_calculator",
             artifact_type="executable",
-            owner_id="agent_bob",
+            created_by="agent_bob",
             content="def calculate(a, b): return a + b",
             has_standing=False,
             can_execute=True,
@@ -99,7 +99,7 @@ class TestGenesisStoreBasics:
         store.artifacts["contract_escrow_helper"] = make_artifact(
             artifact_id="contract_escrow_helper",
             artifact_type="contract",
-            owner_id="system",
+            created_by="system",
             content={"type": "contract"},
             has_standing=True,  # Contract with standing (a principal)
             can_execute=False,
@@ -179,7 +179,7 @@ class TestListWithOwnerFilter(TestGenesisStoreBasics):
         # Alice owns: agent_alice, data_weather
         assert len(artifacts) == 2
         for artifact in artifacts:
-            assert artifact["owner_id"] == "agent_alice"
+            assert artifact["created_by"] == "agent_alice"
 
     def test_list_by_owner_method(self, genesis_store: GenesisStore) -> None:
         """Verify list_by_owner method works."""
@@ -208,7 +208,7 @@ class TestGetReturnsArtifact(TestGenesisStoreBasics):
 
         assert artifact["id"] == "agent_alice"
         assert artifact["type"] == "agent"
-        assert artifact["owner_id"] == "agent_alice"
+        assert artifact["created_by"] == "agent_alice"
         assert artifact["has_standing"] is True
         assert artifact["can_execute"] is True
 
@@ -456,7 +456,7 @@ class TestMethodRegistration:
 
     def test_owner_is_system(self, genesis_store: GenesisStore) -> None:
         """Verify genesis_store is owned by system."""
-        assert genesis_store.owner_id == "system"
+        assert genesis_store.created_by == "system"
 
 
 class TestPaginationSupport:
@@ -470,7 +470,7 @@ class TestPaginationSupport:
             store.artifacts[f"data_{i:02d}"] = make_artifact(
                 artifact_id=f"data_{i:02d}",
                 artifact_type="data",
-                owner_id="owner",
+                created_by="owner",
                 content=f"data {i}",
             )
         return store

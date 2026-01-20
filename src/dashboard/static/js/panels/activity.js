@@ -160,7 +160,7 @@ const ActivityPanel = {
                     </div>
                     <div class="info-item">
                         <span class="info-label">Owner</span>
-                        <span class="info-value">${artifact.owner_id}</span>
+                        <span class="info-value">${artifact.created_by}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Executable</span>

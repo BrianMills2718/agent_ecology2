@@ -717,14 +717,14 @@ class TestArtifactMemoryWithAgentArtifact:
         # Create memory artifact first
         memory = create_memory_artifact(
             memory_id="agent_1_memory",
-            owner_id="agent_1",
+            created_by="agent_1",
         )
         store.artifacts[memory.id] = memory
 
         # Create agent artifact with memory link
         agent = create_agent_artifact(
             agent_id="agent_1",
-            owner_id="agent_1",
+            created_by="agent_1",
             agent_config={},
             memory_artifact_id="agent_1_memory",
         )
@@ -755,7 +755,7 @@ class TestArtifactMemoryWithAgentArtifact:
         """Memory artifact is owned by the agent."""
         memory = store.get("agent_1_memory")
         assert memory is not None
-        assert memory.owner_id == "agent_1"
+        assert memory.created_by == "agent_1"
 
 
 class TestArtifactMemoryHistoryLimit:
@@ -915,14 +915,14 @@ class TestAgentWithArtifactMemory:
         # Create memory first
         memory = create_memory_artifact(
             memory_id="linked_agent_memory",
-            owner_id="linked_agent",
+            created_by="linked_agent",
         )
         store.artifacts[memory.id] = memory
 
         # Create agent with memory link
         artifact = create_agent_artifact(
             agent_id="linked_agent",
-            owner_id="linked_agent",
+            created_by="linked_agent",
             agent_config={"llm_model": "test-model"},
             memory_artifact_id="linked_agent_memory",
         )

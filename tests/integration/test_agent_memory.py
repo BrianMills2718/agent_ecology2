@@ -93,5 +93,5 @@ class TestAgentSelfUpdate:
         if result.success:
             # If it succeeded, verify ownership allows it
             artifact_b = world.artifacts.get(agent_b)
-            owner = artifact_b.owner_id if artifact_b else None
+            owner = artifact_b.created_by if artifact_b else None
             assert owner == agent_a, "Write succeeded but agent_a doesn't own agent_b"

@@ -153,7 +153,7 @@ class AccessContract(Protocol):
             target: The artifact_id being accessed.
             context: Optional additional context about the access attempt.
                     Standard context keys:
-                    - 'owner': Current owner of the target artifact
+                    - 'created_by': Current owner of the target artifact
                     - 'artifact_type': Type of the target artifact
                     - 'caller_type': Type of the calling principal
                     - 'tick': Current simulation tick

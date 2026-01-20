@@ -194,7 +194,7 @@ class SimulationRunner:
                 artifact_id=artifact_data["id"],
                 type=artifact_data.get("type", "data"),
                 content=artifact_data.get("content", ""),
-                owner_id=artifact_data.get("owner_id", "system"),
+                created_by=artifact_data.get("created_by", "system"),
                 executable=artifact_data.get("executable", False),
                 price=artifact_data.get("price", 0),
                 code=artifact_data.get("code", ""),
@@ -298,7 +298,7 @@ class SimulationRunner:
             memory_id = f"{principal_id}_memory"
             memory_artifact = create_memory_artifact(
                 memory_id=memory_id,
-                owner_id=principal_id,
+                created_by=principal_id,
             )
             self.world.artifacts.artifacts[memory_id] = memory_artifact
 
@@ -310,7 +310,7 @@ class SimulationRunner:
             }
             agent_artifact = create_agent_artifact(
                 agent_id=principal_id,
-                owner_id=principal_id,  # Self-owned
+                created_by=principal_id,  # Self-created
                 agent_config=agent_config,
                 memory_artifact_id=memory_id,
             )

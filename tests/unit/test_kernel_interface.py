@@ -89,7 +89,7 @@ class TestKernelStateRead:
 
         metadata = state.get_artifact_metadata("test_art")
         assert metadata is not None
-        assert metadata["owner_id"] == "alice"
+        assert metadata["created_by"] == "alice"
         assert metadata["type"] == "generic"
         assert "id" in metadata
 

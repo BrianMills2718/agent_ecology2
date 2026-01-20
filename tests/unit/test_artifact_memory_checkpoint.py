@@ -18,7 +18,7 @@ def restore_artifact(store: ArtifactStore, artifact_data: dict[str, Any]) -> Non
         artifact_id=artifact_data["id"],
         type=artifact_data.get("type", "data"),
         content=artifact_data.get("content", ""),
-        owner_id=artifact_data.get("owner_id", "system"),
+        created_by=artifact_data.get("created_by", "system"),
         executable=artifact_data.get("executable", False),
         price=artifact_data.get("price", 0),
         code=artifact_data.get("code", ""),

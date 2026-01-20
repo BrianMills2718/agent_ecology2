@@ -258,7 +258,7 @@ class TestWorkingMemoryFromSeparateArtifact:
             {
                 "id": "alpha_3_working_memory",
                 "type": "data",
-                "owner_id": "alpha_3",
+                "created_by": "alpha_3",
                 "content": "working_memory:\n  current_goal: Build price oracle\n  lessons:\n    - Test lesson",
             }
         ]
@@ -285,7 +285,7 @@ class TestWorkingMemoryFromSeparateArtifact:
             {
                 "id": "beta_3_working_memory",
                 "type": "data",
-                "owner_id": "beta_3",
+                "created_by": "beta_3",
                 "content": {
                     "working_memory": {
                         "current_goal": "Coordinate agents",

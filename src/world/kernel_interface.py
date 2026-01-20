@@ -73,16 +73,16 @@ class KernelState:
         """
         return self._world.ledger.get_resource(principal_id, "llm_budget")
 
-    def list_artifacts_by_owner(self, owner_id: str) -> list[str]:
+    def list_artifacts_by_owner(self, created_by: str) -> list[str]:
         """List artifact IDs owned by a principal.
 
         Args:
-            owner_id: The owner to query
+            created_by: The owner to query
 
         Returns:
             List of artifact IDs (empty if none found)
         """
-        return self._world.artifacts.get_artifacts_by_owner(owner_id)
+        return self._world.artifacts.get_artifacts_by_owner(created_by)
 
     def get_artifact_metadata(self, artifact_id: str) -> dict[str, Any] | None:
         """Get artifact metadata (not content).
@@ -91,7 +91,7 @@ class KernelState:
             artifact_id: The artifact to query
 
         Returns:
-            Dict with id, type, owner_id, etc. or None if not found
+            Dict with id, type, created_by, etc. or None if not found
         """
         artifact = self._world.artifacts.get(artifact_id)
         if artifact is None:
@@ -100,7 +100,7 @@ class KernelState:
         return {
             "id": artifact.id,
             "type": artifact.type,
-            "owner_id": artifact.owner_id,
+            "created_by": artifact.created_by,
             "executable": artifact.executable,
             "created_at": artifact.created_at,
             "updated_at": artifact.updated_at,
@@ -126,7 +126,7 @@ class KernelState:
         policy = artifact.policy or {}
         allow_read = policy.get("allow_read", True)
 
-        if not allow_read and artifact.owner_id != caller_id:
+        if not allow_read and artifact.created_by != caller_id:
             return None
 
         return artifact.content
@@ -315,7 +315,7 @@ class KernelActions:
 
         if existing is not None:
             # Update existing - must be owner
-            if existing.owner_id != caller_id:
+            if existing.created_by != caller_id:
                 return False
             existing.content = content
             return True
@@ -549,7 +549,7 @@ class KernelActions:
             return False
 
         # Verify caller is the current owner
-        if artifact.owner_id != caller_id:
+        if artifact.created_by != caller_id:
             return False
 
         # Perform the transfer

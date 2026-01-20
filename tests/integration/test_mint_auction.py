@@ -109,7 +109,7 @@ class TestMintBidding:
         ledger.create_principal("agent_1", starting_scrip=100)
         store = ArtifactStore()
         store.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
-                   owner_id="agent_1", executable=True)
+                   created_by="agent_1", executable=True)
 
         def mint_callback(agent_id: str, amount: int) -> None:
             ledger.credit_scrip(agent_id, amount)
@@ -136,7 +136,7 @@ class TestMintBidding:
         ledger.create_principal("agent_1", starting_scrip=100)
         store = ArtifactStore()
         store.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
-                   owner_id="agent_1", executable=True)
+                   created_by="agent_1", executable=True)
 
         def mint_callback(agent_id: str, amount: int) -> None:
             ledger.credit_scrip(agent_id, amount)
@@ -164,7 +164,7 @@ class TestMintBidding:
         ledger.create_principal("agent_1", starting_scrip=100)
         store = ArtifactStore()
         store.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
-                   owner_id="agent_1", executable=True)
+                   created_by="agent_1", executable=True)
 
         def mint_callback(agent_id: str, amount: int) -> None:
             ledger.credit_scrip(agent_id, amount)
@@ -192,7 +192,7 @@ class TestMintBidding:
         ledger.create_principal("agent_1", starting_scrip=10)
         store = ArtifactStore()
         store.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
-                   owner_id="agent_1", executable=True)
+                   created_by="agent_1", executable=True)
 
         def mint_callback(agent_id: str, amount: int) -> None:
             ledger.credit_scrip(agent_id, amount)
@@ -223,7 +223,7 @@ class TestAuctionResolution:
         ledger.create_principal("agent_1", starting_scrip=100)
         store = ArtifactStore()
         store.write("my_tool", "code", "def run(args, ctx): return {'result': 1}",
-                   owner_id="agent_1", executable=True)
+                   created_by="agent_1", executable=True)
 
         def mint_callback(agent_id: str, amount: int) -> None:
             ledger.credit_scrip(agent_id, amount)
@@ -257,9 +257,9 @@ class TestAuctionResolution:
         ledger.create_principal("agent_2", starting_scrip=100)
         store = ArtifactStore()
         store.write("tool_1", "code", "def run(args, ctx): return {'result': 1}",
-                   owner_id="agent_1", executable=True)
+                   created_by="agent_1", executable=True)
         store.write("tool_2", "code", "def run(args, ctx): return {'result': 2}",
-                   owner_id="agent_2", executable=True)
+                   created_by="agent_2", executable=True)
 
         def mint_callback(agent_id: str, amount: int) -> None:
             ledger.credit_scrip(agent_id, amount)
@@ -293,9 +293,9 @@ class TestAuctionResolution:
         ledger.create_principal("agent_2", starting_scrip=100)
         store = ArtifactStore()
         store.write("tool_1", "code", "def run(args, ctx): return {'result': 1}",
-                   owner_id="agent_1", executable=True)
+                   created_by="agent_1", executable=True)
         store.write("tool_2", "code", "def run(args, ctx): return {'result': 2}",
-                   owner_id="agent_2", executable=True)
+                   created_by="agent_2", executable=True)
 
         def mint_callback(agent_id: str, amount: int) -> None:
             ledger.credit_scrip(agent_id, amount)
@@ -368,7 +368,7 @@ class TestUBIDistribution:
         ledger.create_principal("agent_3", starting_scrip=100)
         store = ArtifactStore()
         store.write("tool_1", "code", "def run(args, ctx): return {'result': 1}",
-                   owner_id="agent_1", executable=True)
+                   created_by="agent_1", executable=True)
 
         def mint_callback(agent_id: str, amount: int) -> None:
             ledger.credit_scrip(agent_id, amount)
@@ -402,9 +402,9 @@ class TestUBIDistribution:
         ledger.create_principal("agent_2", starting_scrip=100)
         store = ArtifactStore()
         store.write("tool_1", "code", "def run(args, ctx): return {'result': 1}",
-                   owner_id="agent_1", executable=True)
+                   created_by="agent_1", executable=True)
         store.write("tool_2", "code", "def run(args, ctx): return {'result': 2}",
-                   owner_id="agent_2", executable=True)
+                   created_by="agent_2", executable=True)
 
         minted = [0]
 

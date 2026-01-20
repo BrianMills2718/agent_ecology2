@@ -612,7 +612,7 @@ class StoreMethodsConfig(StrictModel):
     list_by_owner: MethodConfig = Field(
         default_factory=lambda: MethodConfig(
             cost=0,
-            description="List artifacts by owner. Args: [owner_id]"
+            description="List artifacts by owner. Args: [created_by]"
         )
     )
     list_agents: MethodConfig = Field(

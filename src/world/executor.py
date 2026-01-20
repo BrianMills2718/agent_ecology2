@@ -595,7 +595,7 @@ class SafeExecutor:
 
         # Build context for contract
         context: dict[str, object] = {
-            "owner": artifact.owner_id,
+            "created_by": artifact.created_by,
             "artifact_type": artifact.type,
             "artifact_id": artifact.id,
         }
@@ -678,7 +678,7 @@ class SafeExecutor:
             return (False, f"legacy: unknown action {action}")
 
         context: dict[str, object] = {
-            "owner": artifact.owner_id,
+            "created_by": artifact.created_by,
             "artifact_type": artifact.type,
             "artifact_id": artifact.id,
         }
@@ -1228,7 +1228,7 @@ class SafeExecutor:
 
                 # Determine price: contract cost (if any) + artifact price
                 price = target.price
-                owner_id = target.owner_id
+                created_by = target.created_by
 
                 # If using contracts and target has a contract, check for additional cost
                 contract_cost = 0
@@ -1263,9 +1263,9 @@ class SafeExecutor:
 
                 if nested_result.get("success"):
                     # Pay total cost to owner (only on success)
-                    if total_cost > 0 and owner_id != caller_id:
+                    if total_cost > 0 and created_by != caller_id:
                         ledger.deduct_scrip(caller_id, total_cost)
-                        ledger.credit_scrip(owner_id, total_cost)
+                        ledger.credit_scrip(created_by, total_cost)
 
                     return {
                         "success": True,

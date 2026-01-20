@@ -47,13 +47,13 @@ class TestReadArtifactErrors:
 
     def test_read_access_denied_error(self, world_with_agent: World) -> None:
         """Read with denied access returns NOT_AUTHORIZED error."""
-        # Create an artifact with restricted read access
+        # Create an artifact with private contract (only owner can access)
         write_intent = WriteArtifactIntent(
             principal_id="alice",
             artifact_id="private_artifact",
             artifact_type="data",
             content="Secret content",
-            policy={"allow_read": []},  # No one but owner can read
+            access_contract_id="genesis_contract_private",  # Only owner can access
         )
         world_with_agent.execute_action(write_intent)
 
@@ -229,7 +229,7 @@ class TestInvokeArtifactErrors:
             "description": "A private service",
             "tools": [{"name": "run", "description": "Run the service", "inputSchema": {"type": "object"}}]
         }
-        # Create a private executable
+        # Create a private executable (only owner can access)
         write_intent = WriteArtifactIntent(
             principal_id="alice",
             artifact_id="private_service",
@@ -238,7 +238,7 @@ class TestInvokeArtifactErrors:
             executable=True,
             price=0,
             code="def run(*args): return 'secret'",
-            policy={"allow_invoke": []},  # No one but owner
+            access_contract_id="genesis_contract_private",  # Only owner can access
             interface=interface,
         )
         world_with_agent.execute_action(write_intent)

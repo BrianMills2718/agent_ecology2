@@ -72,7 +72,7 @@ class ActionResult(TypedDict, total=False):
 class ArtifactInfo(TypedDict, total=False):
     """Information about an artifact in world state."""
     id: str
-    owner_id: str
+    created_by: str
     type: str
     executable: bool
     price: int
@@ -427,7 +427,7 @@ class Agent:
         # Create agent artifact (self-owned by default)
         artifact = create_agent_artifact(
             agent_id=self.agent_id,
-            owner_id=self._artifact.owner_id if self._artifact else self.agent_id,
+            created_by=self._artifact.created_by if self._artifact else self.agent_id,
             agent_config=config,
             memory_artifact_id=memory_artifact_id,
         )
@@ -595,7 +595,7 @@ class Agent:
         balance: int = world_state.get('balances', {}).get(self.agent_id, 0)
         artifacts: list[dict[str, Any]] = world_state.get('artifacts', [])
         my_artifacts: list[str] = [a.get('id', '?') for a in artifacts
-                                    if a.get('owner_id') == self.agent_id]
+                                    if a.get('created_by') == self.agent_id]
         other_agents: list[str] = [p for p in world_state.get('balances', {}).keys()
                                    if p != self.agent_id]
 
@@ -636,7 +636,7 @@ class Agent:
         if artifacts:
             artifact_lines: list[str] = []
             for a in artifacts:
-                line: str = f"- {a.get('id', '?')} (owner: {a.get('owner_id', '?')}, type: {a.get('type', '?')})"
+                line: str = f"- {a.get('id', '?')} (owner: {a.get('created_by', '?')}, type: {a.get('type', '?')})"
                 if a.get('executable'):
                     line += f" [EXECUTABLE, price: {a.get('price', 0)}]"
                 if a.get('methods'):  # Genesis artifacts

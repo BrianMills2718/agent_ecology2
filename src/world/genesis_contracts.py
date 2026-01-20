@@ -70,12 +70,12 @@ class FreewareContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'owner' key for write/delete/transfer checks
+            context: Must contain 'created_by' key for write/delete/transfer checks
 
         Returns:
             PermissionResult with decision
         """
-        owner = context.get("owner") if context else None
+        owner = context.get("created_by") if context else None
 
         # Open access actions - anyone can perform these
         if action in (
@@ -134,12 +134,12 @@ class SelfOwnedContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'owner' key
+            context: Must contain 'created_by' key
 
         Returns:
             PermissionResult with decision
         """
-        owner = context.get("owner") if context else None
+        owner = context.get("created_by") if context else None
 
         # Self-access: artifact accessing itself
         if caller == target:
@@ -185,12 +185,12 @@ class PrivateContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'owner' key
+            context: Must contain 'created_by' key
 
         Returns:
             PermissionResult with decision
         """
-        owner = context.get("owner") if context else None
+        owner = context.get("created_by") if context else None
 
         # Only owner has access
         if caller == owner:

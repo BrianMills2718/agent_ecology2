@@ -276,7 +276,7 @@ class World:
                 artifact_id=genesis_id,
                 type="genesis",
                 content=genesis.description,
-                owner_id="system",
+                created_by="system",
                 executable=True,
             )
             # Attach genesis methods for dispatch
@@ -414,7 +414,7 @@ class World:
                     artifact_id=artifact_id,
                     type="documentation",
                     content=content,
-                    owner_id="system",
+                    created_by="system",
                     executable=False,
                 )
 
@@ -454,7 +454,7 @@ class World:
         artifact = self.artifacts.get(artifact_id)
         if artifact is None:
             raise ValueError(f"Artifact {artifact_id} not found")
-        if artifact.owner_id != principal_id:
+        if artifact.created_by != principal_id:
             raise ValueError(f"Principal {principal_id} is not owner of {artifact_id}")
         if not artifact.executable:
             raise ValueError(f"Artifact {artifact_id} is not executable")
@@ -698,8 +698,10 @@ class World:
             # Check regular artifacts first
             artifact = self.artifacts.get(intent.artifact_id)
             if artifact:
-                # Check read permission (policy)
-                if not artifact.can_read(intent.principal_id):
+                # Check read permission via contracts
+                executor = get_executor()
+                allowed, reason = executor._check_permission(intent.principal_id, "read", artifact)
+                if not allowed:
                     result = ActionResult(
                         success=False,
                         message=get_error_message("access_denied_read", artifact_id=intent.artifact_id),
@@ -723,10 +725,10 @@ class World:
                         # Pay read_price to owner (economic transfer -> SCRIP)
                         if read_price > 0:
                             self.ledger.deduct_scrip(intent.principal_id, read_price)
-                            self.ledger.credit_scrip(artifact.owner_id, read_price)
+                            self.ledger.credit_scrip(artifact.created_by, read_price)
                         result = ActionResult(
                             success=True,
-                            message=f"Read artifact {intent.artifact_id}" + (f" (paid {read_price} scrip to {artifact.owner_id})" if read_price > 0 else ""),
+                            message=f"Read artifact {intent.artifact_id}" + (f" (paid {read_price} scrip to {artifact.created_by})" if read_price > 0 else ""),
                             data={"artifact": artifact.to_dict(), "read_price_paid": read_price}
                         )
             # Check genesis artifacts (always public, free)
@@ -795,16 +797,19 @@ class World:
                 retriable=False,
             )
 
-        # Check write permission for existing artifacts (policy-based)
+        # Check write permission for existing artifacts via contracts
         existing = self.artifacts.get(intent.artifact_id)
-        if existing and not existing.can_write(intent.principal_id):
-            return ActionResult(
-                success=False,
-                message=get_error_message("access_denied_write", artifact_id=intent.artifact_id),
-                error_code=ErrorCode.NOT_AUTHORIZED.value,
-                error_category=ErrorCategory.PERMISSION.value,
-                retriable=False,
-            )
+        if existing:
+            executor = get_executor()
+            allowed, reason = executor._check_permission(intent.principal_id, "write", existing)
+            if not allowed:
+                return ActionResult(
+                    success=False,
+                    message=get_error_message("access_denied_write", artifact_id=intent.artifact_id),
+                    error_code=ErrorCode.NOT_AUTHORIZED.value,
+                    error_category=ErrorCategory.PERMISSION.value,
+                    retriable=False,
+                )
 
         # Calculate disk bytes
         new_size = len(intent.content.encode('utf-8')) + len(intent.code.encode('utf-8'))
@@ -849,13 +854,14 @@ class World:
             artifact_id=intent.artifact_id,
             artifact_type=intent.artifact_type,
             content=intent.content,
-            owner_id=intent.principal_id,
+            created_by=intent.principal_id,
             executable=intent.executable,
             price=intent.price,
             code=intent.code,
             policy=intent.policy,
             interface=intent.interface,
             require_interface=bool(require_interface),
+            access_contract_id=intent.access_contract_id,
         )
 
         # Track resource consumption (disk bytes written)
@@ -910,13 +916,15 @@ class World:
                     error_details={"artifact_id": artifact_id, "executable": False},
                 )
 
-            # Check invoke permission (policy-based)
-            if not artifact.can_invoke(intent.principal_id):
+            # Check invoke permission via contracts
+            executor = get_executor()
+            allowed, reason = executor._check_permission(intent.principal_id, "invoke", artifact)
+            if not allowed:
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 self._log_invoke_failure(
                     intent.principal_id, artifact_id, method_name,
                     duration_ms, "permission_denied",
-                    "Access denied"
+                    reason
                 )
                 return ActionResult(
                     success=False,
@@ -1068,7 +1076,7 @@ class World:
             # Regular artifact code execution path
             # Price (SCRIP) - economic payment to owner
             price = artifact.price
-            owner_id = artifact.owner_id
+            created_by = artifact.created_by
 
             # Caller pays for physical resources
             resource_payer = intent.principal_id
@@ -1139,9 +1147,9 @@ class World:
                         self.ledger.spend_resource(resource_payer, resource, amount)
 
                 # Pay price to owner from SCRIP (only on success)
-                if price > 0 and owner_id != intent.principal_id:
+                if price > 0 and created_by != intent.principal_id:
                     self.ledger.deduct_scrip(intent.principal_id, price)
-                    self.ledger.credit_scrip(owner_id, price)
+                    self.ledger.credit_scrip(created_by, price)
 
                 self._log_invoke_success(
                     intent.principal_id, artifact_id, method_name,
@@ -1149,11 +1157,11 @@ class World:
                 )
                 return ActionResult(
                     success=True,
-                    message=f"Invoked {artifact_id}" + (f" (paid {price} scrip to {owner_id})" if price > 0 else ""),
+                    message=f"Invoked {artifact_id}" + (f" (paid {price} scrip to {created_by})" if price > 0 else ""),
                     data={
                         "result": exec_result.get("result"),
                         "price_paid": price,
-                        "owner": owner_id
+                        "owner": created_by
                     },
                     resources_consumed=resources_consumed if resources_consumed else None,
                     charged_to=resource_payer,
@@ -1430,7 +1438,7 @@ class World:
             return {"success": False, "error": f"Artifact {artifact_id} is already deleted"}
 
         # Check ownership
-        if artifact.owner_id != requester_id:
+        if artifact.created_by != requester_id:
             return {"success": False, "error": "Only owner can delete artifact"}
 
         # Soft delete - mark as tombstone
@@ -1468,7 +1476,7 @@ class World:
         if artifact.deleted:
             return {
                 "id": artifact.id,
-                "owner_id": artifact.owner_id,
+                "created_by": artifact.created_by,
                 "deleted": True,
                 "deleted_at": artifact.deleted_at,
                 "deleted_by": artifact.deleted_by,

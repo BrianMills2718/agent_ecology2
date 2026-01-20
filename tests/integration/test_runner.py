@@ -173,8 +173,8 @@ class TestCheckpointRestore:
             "balances": {},
             "cumulative_api_cost": 0.0,
             "artifacts": [
-                {"id": "art1", "type": "data", "content": "hello", "owner_id": "system"},
-                {"id": "art2", "type": "tool", "content": "tool desc", "owner_id": "agent"},
+                {"id": "art1", "type": "data", "content": "hello", "created_by": "system"},
+                {"id": "art2", "type": "tool", "content": "tool desc", "created_by": "agent"},
             ],
             "agent_ids": [],
             "reason": "test",
