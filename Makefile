@@ -1,6 +1,10 @@
 # Agent Ecology - Common Commands
 # Usage: make <target>
 
+# Get the main repo directory (first worktree listed is always main)
+# This ensures we always use main's scripts, not potentially stale worktree copies
+MAIN_DIR := $(shell git worktree list | head -1 | awk '{print $$1}')
+
 .PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge finish pr-merge-admin pr-list pr-view worktree worktree-quick worktree-remove worktree-remove-force clean-branches clean-branches-delete kill ci-status ci-require ci-optional
 
 help:  ## Show this help
@@ -90,11 +94,11 @@ worktree-list:  ## List active worktrees
 
 worktree-remove:  ## Remove a worktree safely (usage: make worktree-remove BRANCH=feature-name)
 	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree-remove BRANCH=feature-name"; exit 1; fi
-	python scripts/safe_worktree_remove.py worktrees/$(BRANCH)
+	python $(MAIN_DIR)/scripts/safe_worktree_remove.py $(MAIN_DIR)/worktrees/$(BRANCH)
 
 worktree-remove-force:  ## Force remove worktree (LOSES uncommitted changes!)
 	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree-remove-force BRANCH=feature-name"; exit 1; fi
-	python scripts/safe_worktree_remove.py --force worktrees/$(BRANCH)
+	python $(MAIN_DIR)/scripts/safe_worktree_remove.py --force $(MAIN_DIR)/worktrees/$(BRANCH)
 
 rebase:  ## Rebase current branch onto latest origin/main
 	git fetch origin
@@ -113,11 +117,11 @@ pr-create:  ## Create PR from CLI (usage: make pr-create TITLE="Fix bug" BODY="D
 
 merge:  ## Merge PR (usage: make merge PR=5)
 	@if [ -z "$(PR)" ]; then echo "Usage: make merge PR=5"; exit 1; fi
-	python scripts/merge_pr.py $(PR)
+	python $(MAIN_DIR)/scripts/merge_pr.py $(PR)
 
 finish:  ## Complete PR lifecycle: merge + cleanup (usage: make finish BRANCH=plan-XX PR=N) - RUN FROM MAIN!
 	@if [ -z "$(BRANCH)" ] || [ -z "$(PR)" ]; then echo "Usage: make finish BRANCH=plan-XX PR=N"; exit 1; fi
-	python scripts/finish_pr.py --branch $(BRANCH) --pr $(PR)
+	cd $(MAIN_DIR) && python $(MAIN_DIR)/scripts/finish_pr.py --branch $(BRANCH) --pr $(PR)
 
 pr-merge-admin:  ## Merge PR bypassing checks (usage: make pr-merge-admin PR=5)
 	@if [ -z "$(PR)" ]; then echo "Usage: make pr-merge-admin PR=5"; exit 1; fi
