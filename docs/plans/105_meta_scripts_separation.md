@@ -1,10 +1,12 @@
 # Plan 105: Meta-Process Scripts Separation
 
-**Status:** 📋 Deferred
+**Status:** ✅ Superseded
 
 **Priority:** Low
 **Blocked By:** #103, #104
 **Blocks:** None
+
+**Superseded By:** Script separation is premature optimization. When extracting the meta-process as a reusable template, a proper design (path injection, pip package, or config-driven) will be needed - not just moving files. Do extraction design when actually extracting.
 
 ---
 
