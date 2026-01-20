@@ -22,6 +22,7 @@ logging.getLogger("mem0.memory.main").setLevel(logging.WARNING)
 logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 
 import sys
+import shutil
 import asyncio
 import webbrowser
 import yaml
@@ -31,6 +32,12 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+
+# Clear llm_provider_standalone cache to ensure fresh code on every run
+# (prevents stale bytecode issues after code changes)
+_llm_cache = Path(__file__).parent / "llm_provider_standalone" / "__pycache__"
+if _llm_cache.exists():
+    shutil.rmtree(_llm_cache)
 
 # Load environment variables
 load_dotenv()
