@@ -27,6 +27,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from src.agents.safe_eval import try_safe_eval_condition
+
 logger = logging.getLogger(__name__)
 
 
@@ -164,12 +166,9 @@ class WorkflowStateMachine:
             if transition.from_state != "*" and transition.from_state != self.current_state:
                 continue
 
-            # Check condition if present
+            # Check condition if present using safe expression evaluator (Plan #123)
             if transition.condition and context:
-                try:
-                    if not eval(transition.condition, {}, context):  # noqa: S307
-                        continue
-                except Exception:
+                if not try_safe_eval_condition(transition.condition, context, default=False):
                     continue
 
             return True

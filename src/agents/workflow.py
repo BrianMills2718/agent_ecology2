@@ -28,6 +28,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, TYPE_CHECKING
 
+from src.agents.safe_eval import SafeExpressionError, safe_eval_condition
+
 if TYPE_CHECKING:
     from llm_provider import LLMProvider
 
@@ -261,14 +263,14 @@ class WorkflowRunner:
                 )
                 return {"success": True, "skipped": True, "reason": "state_condition"}
 
-        # Check run_if condition
+        # Check run_if condition using safe expression evaluator (Plan #123)
         if step.run_if:
             try:
-                should_run = eval(step.run_if, {}, context)  # noqa: S307
+                should_run = safe_eval_condition(step.run_if, context)
                 if not should_run:
                     logger.debug(f"Step '{step.name}' skipped (run_if=False)")
                     return {"success": True, "skipped": True}
-            except Exception as e:
+            except SafeExpressionError as e:
                 logger.warning(f"Step '{step.name}' run_if eval failed: {e}")
                 return {"success": True, "skipped": True}
 
