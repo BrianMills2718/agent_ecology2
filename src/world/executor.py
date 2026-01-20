@@ -21,7 +21,7 @@ import random
 import signal
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace as dataclass_replace
 from datetime import datetime, timedelta
 from types import FrameType, ModuleType
 from typing import Any, Callable, Generator, TypedDict
@@ -369,6 +369,7 @@ class SafeExecutor:
     _contract_cache: dict[str, AccessContract | ExecutableContract]
     _ledger: "Ledger | None"
     _permission_cache: "PermissionCache"
+    _dangling_contract_count: int
 
     def __init__(
         self,
@@ -387,6 +388,8 @@ class SafeExecutor:
         # Permission cache for TTL-based caching (Plan #100 Phase 2)
         from src.world.contracts import PermissionCache
         self._permission_cache = PermissionCache()
+        # Dangling contract counter for observability (Plan #100 Phase 2, ADR-0017)
+        self._dangling_contract_count = 0
 
     def set_ledger(self, ledger: "Ledger") -> None:
         """Set the ledger for executable contract permission checks.
@@ -407,6 +410,62 @@ class SafeExecutor:
         """
         self._permission_cache.clear()
 
+    def get_dangling_contract_count(self) -> int:
+        """Get count of dangling contract fallbacks that have occurred.
+
+        Plan #100 Phase 2, ADR-0017: Observable degradation for dangling contracts.
+        """
+        return self._dangling_contract_count
+
+    def _get_contract_with_fallback_info(
+        self, contract_id: str
+    ) -> tuple[AccessContract | ExecutableContract, bool, str | None]:
+        """Get contract by ID, with info about whether fallback was used.
+
+        Checks genesis contracts first, then falls back to configurable
+        default if not found. Also supports ExecutableContracts registered
+        via register_executable_contract().
+
+        Plan #100 Phase 2, ADR-0017: Dangling contracts fail open to default.
+
+        Args:
+            contract_id: The contract ID to look up
+
+        Returns:
+            Tuple of (contract, is_fallback, original_contract_id)
+            - contract: The contract instance (never None)
+            - is_fallback: True if this is a fallback due to missing contract
+            - original_contract_id: The original ID if fallback occurred, else None
+        """
+        if contract_id in self._contract_cache:
+            return self._contract_cache[contract_id], False, None
+
+        # Check genesis contracts
+        contract = get_contract_by_id(contract_id)
+        if contract:
+            self._contract_cache[contract_id] = contract
+            return contract, False, None
+
+        # Contract not found - use configurable default (ADR-0017)
+        self._dangling_contract_count += 1
+
+        # Log warning for observability
+        logger = logging.getLogger(__name__)
+        default_contract_id = get("contracts.default_on_missing") or "genesis_contract_freeware"
+        logger.warning(
+            f"Dangling contract: '{contract_id}' not found, "
+            f"falling back to '{default_contract_id}'"
+        )
+
+        # Get the default contract
+        contract = get_contract_by_id(default_contract_id)
+        if not contract:
+            contract = get_genesis_contract("freeware")
+
+        # Cache the original ID pointing to fallback contract
+        self._contract_cache[contract_id] = contract
+        return contract, True, contract_id
+
     def _get_contract(
         self, contract_id: str
     ) -> AccessContract | ExecutableContract:
@@ -422,18 +481,7 @@ class SafeExecutor:
         Returns:
             The contract instance (never None - falls back to freeware)
         """
-        if contract_id in self._contract_cache:
-            return self._contract_cache[contract_id]
-
-        # Check genesis contracts
-        contract = get_contract_by_id(contract_id)
-        if contract:
-            self._contract_cache[contract_id] = contract
-            return contract
-
-        # Fall back to freeware if not found
-        contract = get_genesis_contract("freeware")
-        self._contract_cache[contract_id] = contract
+        contract, _, _ = self._get_contract_with_fallback_info(contract_id)
         return contract
 
     def register_executable_contract(self, contract: ExecutableContract) -> None:
@@ -484,7 +532,9 @@ class SafeExecutor:
 
         # Get contract ID from artifact (default to freeware)
         contract_id = getattr(artifact, "access_contract_id", "genesis_contract_freeware")
-        contract = self._get_contract(contract_id)
+        contract, is_fallback, original_contract_id = self._get_contract_with_fallback_info(
+            contract_id
+        )
 
         # Convert action string to PermissionAction
         try:
@@ -532,16 +582,24 @@ class SafeExecutor:
                 ttl_seconds = cache_policy.get("ttl_seconds", 0)
                 if ttl_seconds > 0:
                     self._permission_cache.put(cache_key, result, ttl_seconds)
+        else:
+            # Genesis/static contracts use standard interface
+            result = contract.check_permission(
+                caller=caller,
+                action=perm_action,
+                target=artifact.id,
+                context=context,
+            )
 
-            return result
+        # Plan #100 ADR-0017: Add dangling contract info to conditions for observability
+        if is_fallback and original_contract_id is not None:
+            # Merge with existing conditions if any
+            new_conditions: dict[str, object] = dict(result.conditions or {})
+            new_conditions["dangling_contract"] = True
+            new_conditions["original_contract_id"] = original_contract_id
+            result = dataclass_replace(result, conditions=new_conditions)
 
-        # Genesis/static contracts use standard interface
-        return contract.check_permission(
-            caller=caller,
-            action=perm_action,
-            target=artifact.id,
-            context=context,
-        )
+        return result
 
     def _check_permission_legacy(
         self,
