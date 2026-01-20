@@ -1,6 +1,6 @@
 # Plan #139: Dashboard Bug Fixes and Improvements
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 **Priority:** High
 **Blocked By:** None
 **Blocks:** Dashboard usability
