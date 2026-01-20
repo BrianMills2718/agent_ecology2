@@ -314,14 +314,37 @@ def format_time_ago(iso_time: str) -> str:
         return iso_time
 
 
-def identify_issues(claims: list, prs: list, plans: dict, worktrees: list) -> list[str]:
-    """Identify potential issues needing attention."""
+def identify_issues(claims: list, prs: list, plans: dict, worktrees: list, my_identity: dict | None = None) -> list[str]:
+    """Identify potential issues needing attention.
+
+    Args:
+        claims: List of active claims
+        prs: List of open PRs
+        plans: Plan progress dict
+        worktrees: List of worktree info dicts
+        my_identity: Current CC's identity (from get_my_identity())
+    """
     import re
     issues = []
 
     # Build lookup sets for claims (both cc_id and branch can be used)
     claimed_cc_ids = {claim.get("cc_id") for claim in claims}
     claimed_plans = {str(claim.get("plan")) for claim in claims if claim.get("plan")}
+
+    # Build mappings for ownership checks
+    # Map worktree dir_name -> claim owner cc_id
+    worktree_to_owner: dict[str, str] = {}
+    for claim in claims:
+        cc_id = claim.get("cc_id", "")
+        # The cc_id often matches the worktree dir name
+        if cc_id:
+            worktree_to_owner[cc_id] = cc_id
+        # Also check worktree_path if present
+        wt_path = claim.get("worktree_path", "")
+        if wt_path:
+            from pathlib import Path
+            dir_name = Path(wt_path).name
+            worktree_to_owner[dir_name] = cc_id
 
     # Stale claims (> 4 hours with no corresponding PR)
     for claim in claims:
@@ -382,16 +405,36 @@ def identify_issues(claims: list, prs: list, plans: dict, worktrees: list) -> li
             )
 
         # Check for merged worktrees (detached HEAD or remote branch deleted)
-        # These are safe to cleanup - the PR was merged and branch deleted
         is_detached = wt.get("detached", False)
         remote_exists = remote_branch_exists(branch) if branch and not is_detached else True
 
         if is_detached or not remote_exists:
             reason = "detached HEAD" if is_detached else "branch deleted from remote (likely merged)"
-            issues.append(
-                f"🧹 Merged worktree: '{dir_name}' ({reason}) - safe to cleanup with: "
-                f"make worktree-remove BRANCH={dir_name}"
+
+            # Check ownership - only safe to cleanup if YOU own it
+            owner = worktree_to_owner.get(dir_name) or worktree_to_owner.get(branch, "")
+            my_cc_id = my_identity.get("cc_id") if my_identity else None
+            my_branch = my_identity.get("branch") if my_identity else None
+
+            # Determine if this is "yours"
+            is_yours = (
+                (owner and my_cc_id and owner == my_cc_id) or
+                (owner and my_branch and owner == my_branch) or
+                (not owner and my_branch == "main")  # Unclaimed worktrees can be cleaned from main
             )
+
+            if is_yours or not owner:
+                # Safe to cleanup - you own it or it's unclaimed
+                issues.append(
+                    f"🧹 Merged worktree: '{dir_name}' ({reason}) - safe to cleanup with: "
+                    f"make worktree-remove BRANCH={dir_name}"
+                )
+            else:
+                # NOT yours - leave it alone
+                issues.append(
+                    f"🧹 Merged worktree: '{dir_name}' ({reason})\n"
+                    f"      Owner: {owner} (NOT YOURS) - leave alone, owner should cleanup"
+                )
             continue  # Skip other orphan checks for merged worktrees
 
         # Check for orphaned worktrees
@@ -437,8 +480,8 @@ def print_status(brief: bool = False) -> None:
     plans = get_plan_progress()
     worktrees = get_worktrees()
     commits = get_recent_commits()
-    issues = identify_issues(claims, prs, plans, worktrees)
     my_identity = get_my_identity()
+    issues = identify_issues(claims, prs, plans, worktrees, my_identity)
 
     if brief:
         # One-line summary
