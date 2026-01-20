@@ -1,10 +1,28 @@
 # Plan #90: Full Cognitive Schema Configurability
 
-**Status:** 📋 Post-V1
+**Status:** ❌ Won't Do
 **Priority:** Low
 **Depends on:** Plan #88 (OODA Cognitive Logging)
 
-## Problem Statement
+## Resolution (Plan #132)
+
+**Why Won't Do:**
+
+Plan #132 standardized on a single `reasoning` field and removed the cognitive_schema config entirely. The rationale:
+
+1. **Workflow system provides real flexibility** - Agents can define arbitrary multi-step workflows with custom prompts, states, and code execution. This is where cognitive flexibility should live, not in response field naming.
+
+2. **Response format is just packaging** - Whether the reasoning field is called `thought_process`, `reasoning`, or `situation_assessment + action_rationale` doesn't change agent capabilities. It's cosmetic.
+
+3. **OODA-the-loop vs OODA-the-format** - The OODA decision cycle (Observe-Orient-Decide-Act) should be a workflow pattern, not a response format. Calling response fields "situation_assessment" doesn't make the agent use OODA methodology.
+
+4. **Complexity without value** - Dynamic Pydantic model generation, schema validation, per-agent schema selection - all complexity for what amounts to field renaming.
+
+The standard response format is now: `{reasoning: str, action: ActionField}`
+
+---
+
+## Original Problem Statement (Historical)
 
 Plan #88 introduces a simple toggle between "simple" and "ooda" cognitive schemas. However, baking specific cognitive models into the kernel violates the "minimal kernel, maximum flexibility" principle.
 

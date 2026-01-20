@@ -1442,10 +1442,7 @@ class AgentConfig(StrictModel):
         ge=0,
         description="Max recent failures to track per agent (Plan #88)"
     )
-    cognitive_schema: Literal["simple", "ooda"] = Field(
-        default="simple",
-        description="Cognitive response schema (Plan #88): 'simple' = thought_process + action, 'ooda' = situation_assessment + action_rationale + action"
-    )
+    # Plan #132: Removed cognitive_schema - single standardized response format with 'reasoning' field
 
 
 # =============================================================================

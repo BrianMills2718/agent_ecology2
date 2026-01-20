@@ -1,30 +1,28 @@
-"""Tests for cognitive schema and reasoning field propagation (Plan #88)."""
+"""Tests for reasoning field and failure tracking (Plan #88, updated by Plan #132)."""
 
 import pytest
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 from src.agents.agent import Agent
 from src.agents.models import (
     FlatActionResponse,
     FlatAction,
-    FlatOODAResponse,
-    OODAResponse,
 )
 from src.agents.schema import ActionType
 
 
 class TestReasoningFieldPropagation:
-    """Test that thought_process is properly passed as reasoning to actions."""
+    """Test that reasoning is properly passed to actions (Plan #132)."""
 
     @pytest.mark.asyncio
-    async def test_propose_action_async_returns_thought_process(self) -> None:
-        """propose_action_async should return thought_process in result dict."""
+    async def test_propose_action_async_returns_reasoning(self) -> None:
+        """propose_action_async should return reasoning in result dict."""
         agent = Agent(agent_id="test", llm_model="gemini/gemini-3-flash-preview")
 
-        # Mock LLM response with thought_process
+        # Mock LLM response with reasoning
         mock_response = FlatActionResponse(
-            thought_process="This is my reasoning for this action",
+            reasoning="This is my reasoning for this action",
             action=FlatAction(action_type="noop"),
         )
 
@@ -39,17 +37,17 @@ class TestReasoningFieldPropagation:
         world_state = {"tick": 1, "balances": {"test": 100}}
         result = await agent.propose_action_async(world_state)
 
-        # Verify thought_process is in result at top level
-        assert "thought_process" in result, f"Result keys: {result.keys()}"
-        assert result["thought_process"] == "This is my reasoning for this action"
+        # Verify reasoning is in result at top level
+        assert "reasoning" in result, f"Result keys: {result.keys()}"
+        assert result["reasoning"] == "This is my reasoning for this action"
 
     @pytest.mark.asyncio
-    async def test_proposal_structure_has_thought_process(self) -> None:
-        """Verify the proposal dict structure includes thought_process."""
+    async def test_proposal_structure_has_reasoning(self) -> None:
+        """Verify the proposal dict structure includes reasoning."""
         agent = Agent(agent_id="test", llm_model="gemini/gemini-3-flash-preview")
 
         mock_response = FlatActionResponse(
-            thought_process="My detailed thinking",
+            reasoning="My detailed thinking",
             action=FlatAction(action_type="read_artifact", artifact_id="test_artifact"),
         )
 
@@ -66,12 +64,12 @@ class TestReasoningFieldPropagation:
 
         # Verify full structure
         assert "action" in result
-        assert "thought_process" in result
+        assert "reasoning" in result
         assert "usage" in result
 
-        # Verify thought_process can be extracted
-        thought_process = result.get("thought_process", "")
-        assert thought_process == "My detailed thinking"
+        # Verify reasoning can be extracted
+        reasoning = result.get("reasoning", "")
+        assert reasoning == "My detailed thinking"
 
 
 class TestRecentFailuresTracking:
@@ -143,151 +141,3 @@ class TestRecentFailuresTracking:
         prompt = agent.build_prompt(world_state)
 
         assert "Recent Failures" not in prompt
-
-
-class TestOODASchema:
-    """Test OODA cognitive schema functionality (Plan #88)."""
-
-    def test_ooda_response_model_fields(self) -> None:
-        """OODAResponse should have situation_assessment and action_rationale."""
-        from src.agents.models import NoopAction
-
-        ooda = OODAResponse(
-            situation_assessment="I see 5 agents active with 100 scrip each",
-            action_rationale="Reading the handbook first to understand available actions",
-            action=NoopAction(),
-        )
-
-        assert ooda.situation_assessment == "I see 5 agents active with 100 scrip each"
-        assert ooda.action_rationale == "Reading the handbook first to understand available actions"
-        assert ooda.action.action_type == "noop"
-
-    def test_flat_ooda_response_converts_to_ooda_response(self) -> None:
-        """FlatOODAResponse should convert to OODAResponse properly."""
-        flat_ooda = FlatOODAResponse(
-            situation_assessment="Market analysis: escrow has 3 items",
-            action_rationale="Buy cheapest item to resell at profit",
-            action=FlatAction(action_type="invoke_artifact", artifact_id="escrow", method="purchase", args=["item1"]),
-        )
-
-        ooda = flat_ooda.to_ooda_response()
-
-        assert ooda.situation_assessment == "Market analysis: escrow has 3 items"
-        assert ooda.action_rationale == "Buy cheapest item to resell at profit"
-        assert ooda.action.action_type == "invoke_artifact"
-
-    @pytest.mark.asyncio
-    async def test_ooda_mode_returns_ooda_fields(self) -> None:
-        """When cognitive_schema=ooda, propose_action_async returns OODA fields."""
-        agent = Agent(agent_id="test", llm_model="gemini/gemini-3-flash-preview")
-
-        # Mock OODA response
-        mock_ooda = FlatOODAResponse(
-            situation_assessment="Current state analysis here",
-            action_rationale="Noop because learning phase",
-            action=FlatAction(action_type="noop"),
-        )
-
-        agent.llm.generate_async = AsyncMock(return_value=mock_ooda)  # mock-ok: testing schema selection, not LLM
-        agent.llm.last_usage = {
-            "input_tokens": 100,
-            "output_tokens": 50,
-            "total_tokens": 150,
-            "cost": 0.001,
-        }
-
-        world_state: dict[str, Any] = {"tick": 1, "balances": {"test": 100}}
-
-        # Patch config to use OODA schema
-        with patch("src.agents.agent.config_get") as mock_config:
-            mock_config.return_value = "ooda"
-            result = await agent.propose_action_async(world_state)
-
-        # Verify OODA fields are present
-        assert "situation_assessment" in result
-        assert "action_rationale" in result
-        assert result["situation_assessment"] == "Current state analysis here"
-        assert result["action_rationale"] == "Noop because learning phase"
-
-        # Verify thought_process is a combination for backwards compat
-        assert "thought_process" in result
-        assert "Current state analysis here" in result["thought_process"]
-        assert "Noop because learning phase" in result["thought_process"]
-
-    @pytest.mark.asyncio
-    async def test_simple_mode_returns_thought_process_only(self) -> None:
-        """When cognitive_schema=simple, propose_action_async returns only thought_process."""
-        agent = Agent(agent_id="test", llm_model="gemini/gemini-3-flash-preview")
-
-        # Mock simple response
-        mock_simple = FlatActionResponse(
-            thought_process="Simple reasoning here",
-            action=FlatAction(action_type="noop"),
-        )
-
-        agent.llm.generate_async = AsyncMock(return_value=mock_simple)  # mock-ok: testing schema selection, not LLM
-        agent.llm.last_usage = {
-            "input_tokens": 100,
-            "output_tokens": 50,
-            "total_tokens": 150,
-            "cost": 0.001,
-        }
-
-        world_state: dict[str, Any] = {"tick": 1, "balances": {"test": 100}}
-
-        # Patch config to use simple schema (default)
-        with patch("src.agents.agent.config_get") as mock_config:
-            mock_config.return_value = "simple"
-            result = await agent.propose_action_async(world_state)
-
-        # Verify only thought_process is present, not OODA fields
-        assert "thought_process" in result
-        assert result["thought_process"] == "Simple reasoning here"
-        assert "situation_assessment" not in result
-        assert "action_rationale" not in result
-
-    @pytest.mark.asyncio
-    async def test_config_toggle_switches_schema(self) -> None:
-        """Cognitive schema config should switch between simple and OODA models."""
-        agent = Agent(agent_id="test", llm_model="gemini/gemini-3-flash-preview")
-
-        # Track which response model was requested
-        requested_models: list[type] = []
-
-        async def capture_generate(prompt: str, response_model: type) -> Any:
-            requested_models.append(response_model)
-            if response_model == FlatOODAResponse:
-                return FlatOODAResponse(
-                    situation_assessment="test",
-                    action_rationale="test",
-                    action=FlatAction(action_type="noop"),
-                )
-            else:
-                return FlatActionResponse(
-                    thought_process="test",
-                    action=FlatAction(action_type="noop"),
-                )
-
-        agent.llm.generate_async = capture_generate  # mock-ok: testing model selection logic
-        agent.llm.last_usage = {
-            "input_tokens": 100,
-            "output_tokens": 50,
-            "total_tokens": 150,
-            "cost": 0.001,
-        }
-
-        world_state: dict[str, Any] = {"tick": 1, "balances": {"test": 100}}
-
-        # Test with simple schema
-        with patch("src.agents.agent.config_get") as mock_config:
-            mock_config.return_value = "simple"
-            await agent.propose_action_async(world_state)
-
-        assert requested_models[-1] == FlatActionResponse
-
-        # Test with OODA schema
-        with patch("src.agents.agent.config_get") as mock_config:
-            mock_config.return_value = "ooda"
-            await agent.propose_action_async(world_state)
-
-        assert requested_models[-1] == FlatOODAResponse

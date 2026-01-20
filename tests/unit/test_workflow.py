@@ -97,7 +97,7 @@ class TestLLMStepExecution:
         # mock-ok: LLM calls are expensive, mock for unit test
         mock_llm = MagicMock()
         mock_llm.generate.return_value = MagicMock(
-            thought_process="I should build something",
+            reasoning="I should build something",
             action=MagicMock(model_dump=lambda: {"action_type": "noop"})
         )
         runner = WorkflowRunner(llm_provider=mock_llm)
@@ -123,7 +123,7 @@ class TestLLMStepExecution:
         # mock-ok: LLM calls are expensive
         mock_llm = MagicMock()
         mock_llm.generate.return_value = MagicMock(
-            thought_process="Save money",
+            reasoning="Save money",
             action=MagicMock(model_dump=lambda: {"action_type": "noop"})
         )
         runner = WorkflowRunner(llm_provider=mock_llm)
@@ -150,7 +150,7 @@ class TestLLMStepExecution:
         mock_llm = MagicMock()
         # Create real response objects so model_dump works
         action = WriteArtifactAction(action_type="write_artifact", artifact_id="test", content="data")
-        response = ActionResponse(thought_process="Build an artifact", action=action)
+        response = ActionResponse(reasoning="Build an artifact", action=action)
         mock_llm.generate.return_value = response
         runner = WorkflowRunner(llm_provider=mock_llm)
         context: dict[str, Any] = {}
@@ -159,7 +159,7 @@ class TestLLMStepExecution:
 
         # Response stored under step name
         assert "think" in context
-        assert context["think"]["thought_process"] == "Build an artifact"
+        assert context["think"]["reasoning"] == "Build an artifact"
 
 
 class TestConditionalExecution:
@@ -225,7 +225,7 @@ class TestErrorHandling:
         mock_llm.generate.side_effect = [
             Exception("Network error"),
             MagicMock(
-                thought_process="Success",
+                reasoning="Success",
                 action=MagicMock(model_dump=lambda: {"action_type": "noop"})
             ),
         ]
@@ -329,7 +329,7 @@ class TestWorkflowExecution:
         mock_llm = MagicMock()
         # Create real response objects so model_dump works
         action = ReadArtifactAction(action_type="read_artifact", artifact_id="test")
-        response = ActionResponse(thought_process="I should read", action=action)
+        response = ActionResponse(reasoning="I should read", action=action)
         mock_llm.generate.return_value = response
         runner = WorkflowRunner(llm_provider=mock_llm)
 

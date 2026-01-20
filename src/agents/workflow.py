@@ -378,7 +378,7 @@ class WorkflowRunner:
 
                 # Store response in context under step name
                 result_data = {
-                    "thought_process": response.thought_process,
+                    "reasoning": response.reasoning,
                     "action": response.action.model_dump(),
                 }
                 context[step.name] = result_data
@@ -386,7 +386,7 @@ class WorkflowRunner:
                 logger.debug(f"LLM step '{step.name}' executed successfully")
                 return {
                     "success": True,
-                    "thought_process": response.thought_process,
+                    "reasoning": response.reasoning,
                     "action": response.action.model_dump(),
                 }
 

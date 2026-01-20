@@ -142,21 +142,21 @@ class TestActionResponse:
     """Tests for ActionResponse model."""
 
     def test_action_response_valid(self) -> None:
-        """ActionResponse can be created with thought_process and action."""
+        """ActionResponse can be created with reasoning and action."""
         response = ActionResponse(
-            thought_process="I should do nothing this tick.",
+            reasoning="I should do nothing this tick.",
             action=NoopAction()
         )
-        assert response.thought_process == "I should do nothing this tick."
+        assert response.reasoning == "I should do nothing this tick."
         assert response.action.action_type == "noop"
 
     def test_action_response_with_dict_action(self) -> None:
         """ActionResponse coerces dict to appropriate action type."""
         response = ActionResponse(
-            thought_process="Reading the ledger.",
+            reasoning="Reading the ledger.",
             action={"action_type": "read_artifact", "artifact_id": "genesis_ledger"}
         )
-        assert response.thought_process == "Reading the ledger."
+        assert response.reasoning == "Reading the ledger."
         assert response.action.action_type == "read_artifact"
         assert response.action.artifact_id == "genesis_ledger"
 
@@ -164,14 +164,14 @@ class TestActionResponse:
         """ActionResponse coerces all action types from dicts."""
         # Test noop
         resp_noop = ActionResponse(
-            thought_process="Noop",
+            reasoning="Noop",
             action={"action_type": "noop"}
         )
         assert resp_noop.action.action_type == "noop"
 
         # Test write_artifact
         resp_write = ActionResponse(
-            thought_process="Writing",
+            reasoning="Writing",
             action={
                 "action_type": "write_artifact",
                 "artifact_id": "test",
@@ -182,7 +182,7 @@ class TestActionResponse:
 
         # Test invoke_artifact
         resp_invoke = ActionResponse(
-            thought_process="Invoking",
+            reasoning="Invoking",
             action={
                 "action_type": "invoke_artifact",
                 "artifact_id": "test",
@@ -201,7 +201,7 @@ class TestInvalidActionType:
         # This will then fail Pydantic validation
         with pytest.raises(ValidationError):
             ActionResponse(
-                thought_process="Unknown action",
+                reasoning="Unknown action",
                 action={"action_type": "unknown_action", "data": "test"}
             )
 

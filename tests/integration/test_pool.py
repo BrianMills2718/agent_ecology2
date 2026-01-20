@@ -47,7 +47,7 @@ class TestWorkerPool:
                     # Mock generate() to return a response-like object
                     mock_response = MagicMock()
                     mock_response.action.model_dump.return_value = {"action": "noop"}
-                    mock_response.thought_process = "Test thought"
+                    mock_response.reasoning = "Test thought"
                     mock_instance.generate.return_value = mock_response
                     mock_instance.last_usage = {"input_tokens": 50, "output_tokens": 25, "total_tokens": 75, "cost": 0.001}
                     mock_llm.return_value = mock_instance
@@ -140,7 +140,7 @@ class TestWorkerPool:
                     # Mock generate() to return a response-like object
                     mock_response = MagicMock()
                     mock_response.action.model_dump.return_value = {"action": "noop"}
-                    mock_response.thought_process = "Test thought"
+                    mock_response.reasoning = "Test thought"
                     mock_instance.generate.return_value = mock_response
                     mock_instance.last_usage = {"input_tokens": 50, "output_tokens": 25, "total_tokens": 75, "cost": 0.001}
                     mock_llm.return_value = mock_instance
@@ -195,7 +195,7 @@ class TestWorkerPoolScaling:
                     # Mock generate() to return a response-like object
                     mock_response = MagicMock()
                     mock_response.action.model_dump.return_value = {"action": "noop"}
-                    mock_response.thought_process = "Test thought"
+                    mock_response.reasoning = "Test thought"
                     mock_instance.generate.return_value = mock_response
                     mock_instance.last_usage = {"input_tokens": 50, "output_tokens": 25, "total_tokens": 75, "cost": 0.001}
                     mock_llm.return_value = mock_instance

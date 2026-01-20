@@ -42,7 +42,7 @@ from pydantic import ValidationError
 from llm_provider import LLMProvider
 from .schema import ACTION_SCHEMA, ActionType
 from .memory import AgentMemory, ArtifactMemory, get_memory
-from .models import ActionResponse, FlatActionResponse, OODAResponse, FlatOODAResponse
+from .models import ActionResponse, FlatActionResponse
 from ..config import get as config_get
 
 if TYPE_CHECKING:
@@ -60,10 +60,7 @@ class TokenUsage(TypedDict):
 class ActionResult(TypedDict, total=False):
     """Result from propose_action method."""
     action: dict[str, Any]
-    thought_process: str
-    # Plan #88: OODA schema fields (only present when cognitive_schema=ooda)
-    situation_assessment: str
-    action_rationale: str
+    reasoning: str  # Plan #132: Standardized field name
     error: str
     raw_response: str | None
     usage: TokenUsage
@@ -879,7 +876,7 @@ This will persist across your thinking cycles.
 
 Based on the current state and your memories, decide what action to take.
 Your response should include:
-- thought_process: Your internal reasoning about the situation
+- reasoning: Your reasoning for the action you choose
 - action: The action to execute (with action_type and relevant parameters)
 """
         return prompt
@@ -892,63 +889,34 @@ Your response should include:
         For Gemini models, uses FlatActionResponse to avoid discriminated union issues.
 
         Returns a dict with:
-          - 'action' (valid action dict) and 'thought_process' (str), or 'error' (string)
+          - 'action' (valid action dict) and 'reasoning' (str), or 'error' (string)
           - 'usage' (token usage: input_tokens, output_tokens, total_tokens, cost)
-          - OODA mode also includes 'situation_assessment' and 'action_rationale'
         """
         prompt: str = self.build_prompt(world_state)
 
         # Update tick in log metadata
         self.llm.extra_metadata["tick"] = world_state.get("tick", 0)
 
-        # Plan #88: Check cognitive schema config
-        cognitive_schema: str = config_get("agent.cognitive_schema") or "simple"
-
         try:
-            if cognitive_schema == "ooda":
-                # OODA mode: Use OODAResponse with situation_assessment + action_rationale
-                if self._is_gemini_model():
-                    flat_ooda: FlatOODAResponse = self.llm.generate(
-                        prompt,
-                        response_model=FlatOODAResponse
-                    )
-                    ooda_response: OODAResponse = flat_ooda.to_ooda_response()
-                else:
-                    ooda_response = self.llm.generate(
-                        prompt,
-                        response_model=OODAResponse
-                    )
-                usage: TokenUsage = self.llm.last_usage.copy()
-
-                return {
-                    "action": ooda_response.action.model_dump(),
-                    # For backwards compatibility, combine OODA fields into thought_process
-                    "thought_process": f"{ooda_response.situation_assessment}\n\nAction rationale: {ooda_response.action_rationale}",
-                    # OODA-specific fields
-                    "situation_assessment": ooda_response.situation_assessment,
-                    "action_rationale": ooda_response.action_rationale,
-                    "usage": usage
-                }
+            # Plan #132: Single response format with standardized 'reasoning' field
+            if self._is_gemini_model():
+                flat_response: FlatActionResponse = self.llm.generate(
+                    prompt,
+                    response_model=FlatActionResponse
+                )
+                response: ActionResponse = flat_response.to_action_response()
             else:
-                # Simple mode (default): Use FlatActionResponse/ActionResponse
-                if self._is_gemini_model():
-                    flat_response: FlatActionResponse = self.llm.generate(
-                        prompt,
-                        response_model=FlatActionResponse
-                    )
-                    response: ActionResponse = flat_response.to_action_response()
-                else:
-                    response = self.llm.generate(
-                        prompt,
-                        response_model=ActionResponse
-                    )
-                usage = self.llm.last_usage.copy()
+                response = self.llm.generate(
+                    prompt,
+                    response_model=ActionResponse
+                )
+            usage: TokenUsage = self.llm.last_usage.copy()
 
-                return {
-                    "action": response.action.model_dump(),
-                    "thought_process": response.thought_process,
-                    "usage": usage
-                }
+            return {
+                "action": response.action.model_dump(),
+                "reasoning": response.reasoning,
+                "usage": usage
+            }
         except ValidationError as e:
             # Pydantic validation failed
             usage = self.llm.last_usage.copy()
@@ -972,63 +940,34 @@ Your response should include:
         enabling multiple agents to think concurrently with asyncio.gather().
 
         Returns same structure as propose_action():
-          - 'action' (valid action dict) and 'thought_process' (str), or 'error' (string)
+          - 'action' (valid action dict) and 'reasoning' (str), or 'error' (string)
           - 'usage' (token usage: input_tokens, output_tokens, total_tokens, cost)
-          - OODA mode also includes 'situation_assessment' and 'action_rationale'
         """
         prompt: str = self.build_prompt(world_state)
 
         # Update tick in log metadata
         self.llm.extra_metadata["tick"] = world_state.get("tick", 0)
 
-        # Plan #88: Check cognitive schema config
-        cognitive_schema: str = config_get("agent.cognitive_schema") or "simple"
-
         try:
-            if cognitive_schema == "ooda":
-                # OODA mode: Use OODAResponse with situation_assessment + action_rationale
-                if self._is_gemini_model():
-                    flat_ooda: FlatOODAResponse = await self.llm.generate_async(
-                        prompt,
-                        response_model=FlatOODAResponse
-                    )
-                    ooda_response: OODAResponse = flat_ooda.to_ooda_response()
-                else:
-                    ooda_response = await self.llm.generate_async(
-                        prompt,
-                        response_model=OODAResponse
-                    )
-                usage: TokenUsage = self.llm.last_usage.copy()
-
-                return {
-                    "action": ooda_response.action.model_dump(),
-                    # For backwards compatibility, combine OODA fields into thought_process
-                    "thought_process": f"{ooda_response.situation_assessment}\n\nAction rationale: {ooda_response.action_rationale}",
-                    # OODA-specific fields
-                    "situation_assessment": ooda_response.situation_assessment,
-                    "action_rationale": ooda_response.action_rationale,
-                    "usage": usage
-                }
+            # Plan #132: Single response format with standardized 'reasoning' field
+            if self._is_gemini_model():
+                flat_response: FlatActionResponse = await self.llm.generate_async(
+                    prompt,
+                    response_model=FlatActionResponse
+                )
+                response: ActionResponse = flat_response.to_action_response()
             else:
-                # Simple mode (default): Use FlatActionResponse/ActionResponse
-                if self._is_gemini_model():
-                    flat_response: FlatActionResponse = await self.llm.generate_async(
-                        prompt,
-                        response_model=FlatActionResponse
-                    )
-                    response: ActionResponse = flat_response.to_action_response()
-                else:
-                    response = await self.llm.generate_async(
-                        prompt,
-                        response_model=ActionResponse
-                    )
-                usage = self.llm.last_usage.copy()
+                response = await self.llm.generate_async(
+                    prompt,
+                    response_model=ActionResponse
+                )
+            usage: TokenUsage = self.llm.last_usage.copy()
 
-                return {
-                    "action": response.action.model_dump(),
-                    "thought_process": response.thought_process,
-                    "usage": usage
-                }
+            return {
+                "action": response.action.model_dump(),
+                "reasoning": response.reasoning,
+                "usage": usage
+            }
         except ValidationError as e:
             # Pydantic validation failed
             usage = self.llm.last_usage.copy()
@@ -1102,7 +1041,7 @@ Your response should include:
             Result dict with:
                 - success: Whether workflow completed
                 - action: Action to execute (or None)
-                - thought_process: Agent's reasoning
+                - reasoning: Agent's reasoning
                 - error: Error message if failed
         """
         from .workflow import WorkflowRunner, WorkflowConfig
@@ -1119,7 +1058,7 @@ Your response should include:
             return {
                 "success": True,
                 "action": legacy_result.get("action"),
-                "thought_process": legacy_result.get("thought_process", ""),
+                "reasoning": legacy_result.get("reasoning", ""),
             }
 
         # Build workflow context from world state

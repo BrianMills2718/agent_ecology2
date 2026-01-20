@@ -442,10 +442,7 @@ agent:
   # Failure tracking (Plan #88) - Recent failures shown in prompt for learning
   failure_history_max: 5          # Max recent failures to track per agent
 
-  # Cognitive schema (Plan #88) - Response format for agent reasoning
-  # "simple" = thought_process + action (default, backward compatible)
-  # "ooda" = situation_assessment + action_rationale + action (OODA loop aligned)
-  cognitive_schema: "simple"
+  # Plan #132: Removed cognitive_schema - single standardized response format with 'reasoning' field
 
 # -----------------------------------------------------------------------------
 # MEMORY - Mem0/Qdrant configuration

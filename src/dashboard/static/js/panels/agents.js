@@ -196,8 +196,8 @@ const AgentsPanel = {
             if (thinkingEl) {
                 if (agent.thinking_history && agent.thinking_history.length > 0) {
                     thinkingEl.innerHTML = agent.thinking_history.slice(-10).reverse().map(thought => {
-                        const preview = thought.thought_process
-                            ? this.escapeHtml(thought.thought_process.substring(0, 150)) + (thought.thought_process.length > 150 ? '...' : '')
+                        const preview = thought.reasoning
+                            ? this.escapeHtml(thought.reasoning.substring(0, 150)) + (thought.reasoning.length > 150 ? '...' : '')
                             : '<em>No reasoning content</em>';
                         return `
                             <div class="modal-thinking-item">

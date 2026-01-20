@@ -36,7 +36,7 @@ class TestAsyncProposalBasics:
 
         # Mock the LLM provider's generate_async method
         mock_response = FlatActionResponse(
-            thought_process="test thinking",
+            reasoning="test thinking",
             action=FlatAction(action_type="noop"),
         )
 
@@ -60,7 +60,7 @@ class TestAsyncProposalBasics:
         agent = Agent(agent_id="test", llm_model="gemini/gemini-3-flash-preview")
 
         mock_response = FlatActionResponse(
-            thought_process="test",
+            reasoning="test",
             action=FlatAction(action_type="noop"),
         )
 
@@ -92,7 +92,7 @@ class TestParallelThinking:
         ]
 
         mock_response = FlatActionResponse(
-            thought_process="parallel thinking",
+            reasoning="parallel thinking",
             action=FlatAction(action_type="noop"),
         )
 
@@ -146,7 +146,7 @@ class TestAsyncErrorHandling:
 
         # Create a proper ValidationError by trying to validate bad data
         try:
-            FlatActionResponse(thought_process="test", action="not_a_flat_action")  # type: ignore
+            FlatActionResponse(reasoning="test", action="not_a_flat_action")  # type: ignore
         except ValidationError as e:
             validation_error = e
 
