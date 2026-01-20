@@ -579,3 +579,72 @@ class EmergenceMetrics(BaseModel):
     agent_specializations: dict[str, dict[str, int]] = Field(
         default_factory=dict
     )  # agent_id -> {action_type: count}
+
+
+# Pairwise Interactions (Plan #110 Phase 3.1)
+
+
+class PairwiseInteractionSummary(BaseModel):
+    """Summary of interactions between two specific agents."""
+
+    from_agent: str
+    to_agent: str
+    interactions: list[Interaction] = Field(default_factory=list)
+    total_count: int = 0
+
+    # Breakdown by type
+    scrip_transfers: int = 0
+    scrip_total: int = 0  # Total scrip transferred
+    escrow_trades: int = 0
+    ownership_transfers: int = 0
+    artifact_invocations: int = 0
+    genesis_invocations: int = 0
+
+    # Bidirectional summary
+    bidirectional: bool = False  # True if both directions exist
+
+
+# Capital Flow (Plan #110 Phase 3.4)
+
+
+class CapitalFlowNode(BaseModel):
+    """Node in capital flow sankey diagram."""
+
+    id: str
+    name: str
+    node_type: Literal["agent", "genesis", "artifact"] = "agent"
+
+
+class CapitalFlowLink(BaseModel):
+    """Link in capital flow sankey diagram."""
+
+    source: str
+    target: str
+    value: int  # Total scrip transferred
+    count: int = 1  # Number of transfers
+
+
+class CapitalFlowData(BaseModel):
+    """Data for capital flow sankey visualization."""
+
+    nodes: list[CapitalFlowNode] = Field(default_factory=list)
+    links: list[CapitalFlowLink] = Field(default_factory=list)
+    time_range: tuple[str, str] = ("", "")  # ISO timestamps
+    total_flow: int = 0
+
+
+# Standard Library Detection (Plan #110 Phase 3.3)
+
+
+class StandardArtifact(BaseModel):
+    """Artifact with high Lindy score (standard library candidate)."""
+
+    artifact_id: str
+    name: str
+    owner: str
+    artifact_type: str
+    lindy_score: float  # age_days × unique_invokers
+    age_days: float
+    unique_invokers: int
+    total_invocations: int
+    is_genesis: bool = False
