@@ -61,6 +61,8 @@ genesis:
       enabled: true
     debt_contract:
       enabled: true
+    model_registry:
+      enabled: true
 
   # Genesis Ledger - balance queries and transfers
   ledger:
