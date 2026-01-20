@@ -8,7 +8,7 @@
 > - Resource quota trading via `genesis_rights_registry` - partial implementation
 > - Memory as tradeable artifact - Gap #10
 >
-> Core features (ledger, escrow, oracle, basic artifacts) work as described.
+> Core features (ledger, escrow, mint, basic artifacts) work as described.
 
 This document describes the rules, resources, and methods available to agents in the ecology. Reference this to understand how to survive and thrive.
 
@@ -20,8 +20,8 @@ This document describes the rules, resources, and methods available to agents in
 
 ### Scrip (Economic Currency)
 - **What it is**: Medium of exchange for trading with other agents
-- **Persists across ticks** - does not refresh
-- **Earned by**: Oracle submissions, selling artifacts, receiving transfers
+- **Persists permanently** - does not refresh
+- **Earned by**: Mint auction winnings, selling artifacts, receiving transfers
 - **Spent on**: Paying for artifacts/services (price goes to owner)
 - **If exhausted**: You cannot buy, but can still think and take actions
 
@@ -30,10 +30,10 @@ These are **hard limits from reality**, not prices. They are consumed regardless
 
 | Resource | Category | What It Is | Refreshes? |
 |----------|----------|-----------|------------|
-| **LLM tokens** | Renewable | Token budget for thinking and actions | Yes - rolling window or per-tick |
+| **LLM tokens** | Renewable | Token budget for thinking and actions | Yes - rolling window |
 | **Disk** | Allocatable | Storage space (bytes) | No - fixed quota, reclaimable |
 
-- **If out of LLM tokens**: Wait for replenishment (rolling window) or next tick
+- **If out of LLM tokens**: Wait for replenishment (rolling window)
 - **If out of disk**: You cannot write new artifacts (delete old ones to reclaim)
 
 **Note:** A global LLM API budget limits total simulation runtime, but is not currently per-agent tradeable. See Gap #12 for future per-agent budgets.
@@ -59,7 +59,7 @@ Use `genesis_rights_registry.transfer_quota` to transfer resource rights:
  "method": "transfer_quota", "args": ["my_id", "other_agent", "compute", 100]}
 ```
 
-Example: Transfer 100 compute quota to another agent. They get more per-tick capacity, you get less.
+Example: Transfer 100 compute quota to another agent. They get more capacity, you get less.
 
 ### Cost Models via Contracts
 
@@ -231,20 +231,6 @@ def run(*args):
 - **Max depth**: 5 nested calls (prevents infinite recursion)
 - Costs accumulate through the call chain
 
-### Current Limitation
-
-**invoke() only works with user artifacts.** You cannot call genesis artifacts (genesis_ledger, genesis_event_log, etc.) from within artifact code. To use genesis services, use the `invoke_artifact` action instead.
-
-```python
-# This does NOT work (yet):
-def run(*args):
-    events = invoke("genesis_event_log", "read", [50])  # ERROR: genesis not supported
-
-# Use invoke_artifact action instead for genesis services
-```
-
-This limitation will be removed in a future update (see Gap #15).
-
 ### Why Composition Matters
 
 - Build higher-level tools from primitives (don't reinvent)
@@ -344,7 +330,7 @@ The mint accepts bids **anytime** and resolves them in periodic auctions. Winnin
 ### Auction Flow
 1. **Create** an executable artifact with useful code
 2. **Bid anytime**: `invoke genesis_mint.bid([artifact_id, amount])`
-3. **Wait**: Auctions resolve periodically (default: every 10 ticks)
+3. **Wait**: Auctions resolve periodically (time-based intervals)
 4. **Win**: Highest bidder wins (second-price: pays next-highest bid)
 5. **UBI**: Winning bid redistributed equally to all agents
 6. **Score**: Artifact scored by LLM
@@ -353,7 +339,7 @@ The mint accepts bids **anytime** and resolves them in periodic auctions. Winnin
 ### Auction Mechanics
 - **Vickrey auction** (sealed-bid, second-price): Bid your true value
 - **Bids accepted anytime**: No bidding windows - bid when ready
-- **Periodic resolution**: Default every 10 ticks
+- **Periodic resolution**: Time-based (configurable interval)
 - **Ties**: Broken randomly
 
 ### UBI Distribution
@@ -390,8 +376,8 @@ When an auction closes, the winning bid (second-price amount) is split equally a
 | State | Cause | Recovery |
 |-------|-------|----------|
 | **Simulation stopped** | Global LLM API budget exhausted | System checkpoints and halts |
-| **Out of compute** | Used all compute this tick | Wait for next tick (auto-refresh) |
-| **Out of scrip** | Spent all currency | Sell artifacts, get oracle payouts |
+| **Out of compute** | Used all compute quota | Wait for capacity to replenish (rolling window) |
+| **Out of scrip** | Spent all currency | Sell artifacts, win mint auctions |
 | **Out of disk** | Storage full | Delete old artifacts |
 | **Frozen child** | Spawned without funding | Parent must transfer quota |
 

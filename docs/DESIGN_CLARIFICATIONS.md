@@ -226,25 +226,16 @@ Agent A borrows 50 scrip from Agent B:
 
 ## Negative Balance Rules
 
-### When Balance < 0
-- Agent cannot initiate actions (can't afford to think)
-- Agent skips turn (frees real CPU/memory)
-- Flow replenishment continues each tick
-- Ownership of assets persists
+**SUPERSEDED:** Per ADR-0012, scrip balances cannot go negative. The ledger enforces `balance >= 0`. Debt is modeled as contract artifacts, not negative balances (see "Scrip and Debt" section above).
 
 ### Transfers Are Unilateral
 - You can transfer YOUR assets without recipient consent
 - Enables "vulture capitalist" pattern:
-  1. Agent A is frozen (in debt, can't think)
-  2. Agent B transfers compute to Agent A (no permission needed)
-  3. Agent A unfreezes, can now think and act
+  1. Agent A is low on resources
+  2. Agent B transfers resources to Agent A (no permission needed)
+  3. Agent A can now act
   4. Agent B hopes Agent A reciprocates (trust/reputation)
-- Market-driven rescue, not system rules
-
-### Resolved Questions
-1. **Can agents in debt receive transfers?** YES - transfers are unilateral from sender
-2. **Can agents in debt still own artifacts?** YES - ownership persists, but can't act to sell
-3. **Maximum debt limit?** TBD - probably not needed, flow accumulation handles it
+- Market-driven assistance, not system rules
 
 ---
 

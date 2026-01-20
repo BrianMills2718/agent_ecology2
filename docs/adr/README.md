@@ -72,6 +72,10 @@ To update governance:
 | [0012](0012-scrip-non-negative.md) | Scrip non-negative | Accepted |
 | [0013](0013-configurable-agent-workflows.md) | Configurable agent workflows | Accepted |
 | [0014](0014-continuous-execution-primary.md) | Continuous execution as primary model | Accepted |
+| [0015](0015-contracts-as-artifacts.md) | Contracts as Artifacts | Accepted |
+| [0016](0016-created-by-not-owner.md) | created_by Replaces owner_id | Accepted |
+| [0017](0017-dangling-contracts-fail-open.md) | Dangling Contracts Fail Open | Accepted |
+| [0018](0018-bootstrap-and-eris.md) | Bootstrap Phase and Eris | Accepted |
 
 ---
 
