@@ -46,6 +46,9 @@ const Dashboard = {
             this.setupDependencyToggle();
             this.setupTemporalNetworkToggle();
 
+            // Plan #139: Set up fullscreen buttons on panels
+            this.setupFullscreenButtons();
+
             // Connect WebSocket
             window.wsManager.connect();
 
@@ -252,6 +255,89 @@ const Dashboard = {
                 }
             });
         }
+    },
+
+    /**
+     * Set up fullscreen buttons on panels (Plan #139)
+     */
+    setupFullscreenButtons() {
+        // Add fullscreen button to all panels with visualizations
+        const panelsWithFullscreen = [
+            '.network-panel',
+            '.temporal-network-panel',
+            '.dependency-panel',
+            '.charts-panel',
+            '.emergence-panel'
+        ];
+
+        panelsWithFullscreen.forEach(selector => {
+            const panel = document.querySelector(selector);
+            if (panel) {
+                const header = panel.querySelector('.panel-header');
+                if (header) {
+                    // Check if button already exists
+                    if (!header.querySelector('.fullscreen-btn')) {
+                        const btn = document.createElement('button');
+                        btn.className = 'fullscreen-btn';
+                        btn.title = 'Toggle fullscreen';
+                        btn.innerHTML = '&#x26F6;'; // Unicode expand icon
+                        btn.addEventListener('click', (e) => {
+                            e.stopPropagation(); // Don't trigger collapse
+                            this.togglePanelFullscreen(panel);
+                        });
+                        // Insert before the collapse icon if present, otherwise at end
+                        const collapseIcon = header.querySelector('.collapse-icon');
+                        if (collapseIcon) {
+                            header.insertBefore(btn, collapseIcon);
+                        } else {
+                            header.appendChild(btn);
+                        }
+                    }
+                }
+            }
+        });
+    },
+
+    /**
+     * Toggle fullscreen mode for a panel (Plan #139)
+     */
+    togglePanelFullscreen(panel) {
+        const wasFullscreen = panel.classList.contains('fullscreen');
+        panel.classList.toggle('fullscreen');
+
+        // If entering fullscreen, make sure panel is not collapsed
+        if (!wasFullscreen) {
+            panel.classList.remove('collapsed');
+            const collapseIcon = panel.querySelector('.collapse-icon');
+            if (collapseIcon) {
+                collapseIcon.textContent = 'x';
+            }
+        }
+
+        // Trigger resize for vis.js networks
+        setTimeout(() => {
+            if (typeof NetworkPanel !== 'undefined' && NetworkPanel.network) {
+                NetworkPanel.network.fit();
+            }
+            if (typeof TemporalNetworkPanel !== 'undefined' && TemporalNetworkPanel.network) {
+                TemporalNetworkPanel.network.fit();
+            }
+            if (typeof DependencyGraphPanel !== 'undefined' && DependencyGraphPanel.network) {
+                DependencyGraphPanel.network.fit();
+            }
+        }, 100);
+    },
+
+    /**
+     * Exit fullscreen mode for any fullscreen panel
+     */
+    exitFullscreen() {
+        const fullscreenPanel = document.querySelector('.panel.fullscreen');
+        if (fullscreenPanel) {
+            fullscreenPanel.classList.remove('fullscreen');
+            return true;
+        }
+        return false;
     }
 };
 
@@ -275,8 +361,13 @@ document.addEventListener('keydown', (e) => {
         Dashboard.refresh();
     }
 
-    // Escape to close modals
+    // Escape to close modals and exit fullscreen
     if (e.key === 'Escape') {
+        // First try to exit fullscreen
+        if (Dashboard.exitFullscreen()) {
+            return;
+        }
+        // Then close modals
         AgentsPanel.closeModal();
         // Also close artifact modal
         const artifactModal = document.getElementById('artifact-modal');

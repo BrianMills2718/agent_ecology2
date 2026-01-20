@@ -76,11 +76,14 @@ const EmergencePanel = {
     async refresh() {
         try {
             const response = await fetch('/api/emergence');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
             const metrics = await response.json();
             this.render(metrics);
         } catch (error) {
             console.error('Failed to load emergence metrics:', error);
-            this.renderError();
+            this.renderError(error.message);
         }
     },
 
@@ -240,11 +243,13 @@ const EmergencePanel = {
     /**
      * Render error state
      */
-    renderError() {
+    renderError(message = '') {
         if (!this.elements.metricsGrid) return;
+        const detail = message ? `<div class="error-detail">${message}</div>` : '';
         this.elements.metricsGrid.innerHTML = `
             <div class="emergence-error">
                 Failed to load emergence metrics
+                ${detail}
             </div>
         `;
     },
