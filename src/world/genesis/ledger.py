@@ -34,6 +34,8 @@ class GenesisLedger(GenesisArtifact):
 
     ledger: Ledger
     artifact_store: ArtifactStore | None
+    # World reference for kernel delegation (Plan #111)
+    _world: Any
 
     def __init__(
         self,
@@ -51,6 +53,8 @@ class GenesisLedger(GenesisArtifact):
         )
         self.ledger = ledger
         self.artifact_store = artifact_store
+        # World reference for kernel delegation (Plan #111)
+        self._world: Any = None
 
         # Register methods with costs/descriptions from config
         self.register_method(
@@ -101,6 +105,14 @@ class GenesisLedger(GenesisArtifact):
             cost=ledger_cfg.methods.get_budget.cost,
             description=ledger_cfg.methods.get_budget.description
         )
+
+    def set_world(self, world: Any) -> None:
+        """Set world reference for kernel delegation (Plan #111).
+
+        When set, this enables unprivileged access via KernelActions
+        instead of direct Ledger/ArtifactStore calls.
+        """
+        self._world = world
 
     def _balance(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Get balance for an agent (resources and scrip)."""
@@ -197,8 +209,17 @@ class GenesisLedger(GenesisArtifact):
         # Generate a unique principal ID
         new_id = f"agent_{uuid.uuid4().hex[:8]}"
 
-        # Create ledger entry with 0 scrip, 0 compute
-        self.ledger.create_principal(new_id, starting_scrip=0, starting_compute=0)
+        # Plan #111: Use kernel interface when world is set
+        if self._world is not None:
+            from ..kernel_interface import KernelActions
+            kernel_actions = KernelActions(self._world)
+            success = kernel_actions.create_principal(new_id, starting_scrip=0, starting_compute=0)
+            if not success:
+                # Principal already exists (unlikely with UUID)
+                return {"success": False, "error": f"Principal {new_id} already exists"}
+        else:
+            # Legacy path: direct ledger access
+            self.ledger.create_principal(new_id, starting_scrip=0, starting_compute=0)
 
         return {"success": True, "principal_id": new_id}
 
@@ -222,6 +243,48 @@ class GenesisLedger(GenesisArtifact):
         artifact_id: str = args[0]
         to_id: str = args[1]
 
+        # Plan #111: Use kernel interface when world is set
+        if self._world is not None:
+            from ..kernel_interface import KernelActions, KernelState
+            kernel_state = KernelState(self._world)
+            kernel_actions = KernelActions(self._world)
+
+            # Check artifact exists
+            metadata = kernel_state.get_artifact_metadata(artifact_id)
+            if metadata is None:
+                return resource_error(
+                    f"Artifact {artifact_id} not found",
+                    code=ErrorCode.NOT_FOUND,
+                    artifact_id=artifact_id,
+                )
+
+            # Security check: can only transfer artifacts you own
+            if metadata["owner_id"] != invoker_id:
+                return permission_error(
+                    f"Cannot transfer {artifact_id} - you are not the owner (owner is {metadata['owner_id']})",
+                    code=ErrorCode.NOT_OWNER,
+                    artifact_id=artifact_id,
+                    owner=metadata["owner_id"],
+                    invoker=invoker_id,
+                )
+
+            # Perform the transfer via kernel
+            success = kernel_actions.transfer_ownership(invoker_id, artifact_id, to_id)
+            if success:
+                return {
+                    "success": True,
+                    "artifact_id": artifact_id,
+                    "from_owner": invoker_id,
+                    "to_owner": to_id
+                }
+            else:
+                return resource_error(
+                    "Transfer failed",
+                    code=ErrorCode.NOT_FOUND,
+                    artifact_id=artifact_id,
+                )
+
+        # Legacy path: direct artifact_store access
         if not self.artifact_store:
             return resource_error(
                 "Artifact store not configured",

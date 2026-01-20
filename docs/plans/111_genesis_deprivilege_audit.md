@@ -1,6 +1,6 @@
 # Gap 111: Genesis Deprivilege Audit
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** **High**
 **Blocked By:** -
 **Blocks:** -
@@ -32,14 +32,14 @@
 
 ## Files Affected
 
-- `src/world/kernel_interface.py` (modify) - Add missing capability methods
-- `src/world/genesis/ledger.py` (modify) - Remove privileged access, use KernelActions
-- `src/world/genesis/mint.py` (modify) - Audit and remove privileges
-- `src/world/genesis/escrow.py` (modify) - Audit and remove privileges
-- `src/world/genesis/store.py` (modify) - Audit and remove privileges
-- `src/world/genesis/rights_registry.py` (modify) - Audit and remove privileges
-- `tests/unit/test_genesis_unprivileged.py` (create) - Verify no privileged access
-- `tests/integration/test_no_genesis_simulation.py` (create) - Simulation works without genesis
+- src/world/kernel_interface.py (modify) - Add missing capability methods
+- src/world/genesis/ledger.py (modify) - Remove privileged access, use KernelActions
+- src/world/genesis/mint.py (modify) - Audit and remove privileges
+- src/world/genesis/escrow.py (modify) - Audit and remove privileges
+- src/world/genesis/store.py (modify) - Audit and remove privileges
+- src/world/genesis/rights_registry.py (modify) - Audit and remove privileges
+- tests/unit/test_genesis_unprivileged.py (create) - Verify no privileged access
+- tests/integration/test_no_genesis_simulation.py (create) - Simulation works without genesis
 
 ---
 

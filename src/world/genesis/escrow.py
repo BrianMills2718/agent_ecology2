@@ -31,6 +31,8 @@ class GenesisEscrow(GenesisArtifact):
     ledger: Ledger
     artifact_store: ArtifactStore
     listings: dict[str, EscrowListing]
+    # World reference for kernel delegation (Plan #111)
+    _world: Any
 
     def __init__(
         self,
@@ -55,6 +57,8 @@ class GenesisEscrow(GenesisArtifact):
         self.ledger = ledger
         self.artifact_store = artifact_store
         self.listings = {}
+        # World reference for kernel delegation (Plan #111)
+        self._world: Any = None
 
         # Register methods with costs/descriptions from config
         self.register_method(
@@ -91,6 +95,14 @@ class GenesisEscrow(GenesisArtifact):
             cost=escrow_cfg.methods.list_active.cost,
             description=escrow_cfg.methods.list_active.description
         )
+
+    def set_world(self, world: Any) -> None:
+        """Set world reference for kernel delegation (Plan #111).
+
+        When set, this enables unprivileged access via KernelActions
+        instead of direct Ledger/ArtifactStore calls.
+        """
+        self._world = world
 
     def _deposit(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Deposit an artifact into escrow for sale.
@@ -178,23 +190,49 @@ class GenesisEscrow(GenesisArtifact):
         price = listing["price"]
         seller_id = listing["seller_id"]
 
-        # Check buyer can afford
-        if not self.ledger.can_afford_scrip(invoker_id, price):
-            return {
-                "success": False,
-                "error": f"Insufficient scrip. Need {price}, have {self.ledger.get_scrip(invoker_id)}"
-            }
+        # Plan #111: Use kernel interface when world is set
+        if self._world is not None:
+            from ..kernel_interface import KernelActions, KernelState
+            kernel_state = KernelState(self._world)
+            kernel_actions = KernelActions(self._world)
 
-        # Execute the trade atomically:
-        # 1. Transfer scrip from buyer to seller
-        if not self.ledger.transfer_scrip(invoker_id, seller_id, price):
-            return {"success": False, "error": "Scrip transfer failed"}
+            # Check buyer can afford
+            buyer_balance = kernel_state.get_balance(invoker_id)
+            if buyer_balance < price:
+                return {
+                    "success": False,
+                    "error": f"Insufficient scrip. Need {price}, have {buyer_balance}"
+                }
 
-        # 2. Transfer ownership from escrow to buyer
-        if not self.artifact_store.transfer_ownership(artifact_id, self.id, invoker_id):
-            # Rollback scrip transfer
-            self.ledger.transfer_scrip(seller_id, invoker_id, price)
-            return {"success": False, "error": "Ownership transfer failed (scrip refunded)"}
+            # Execute the trade atomically:
+            # 1. Transfer scrip from buyer to seller
+            if not kernel_actions.transfer_scrip(invoker_id, seller_id, price):
+                return {"success": False, "error": "Scrip transfer failed"}
+
+            # 2. Transfer ownership from escrow to buyer
+            if not kernel_actions.transfer_ownership(self.id, artifact_id, invoker_id):
+                # Rollback scrip transfer
+                kernel_actions.transfer_scrip(seller_id, invoker_id, price)
+                return {"success": False, "error": "Ownership transfer failed (scrip refunded)"}
+        else:
+            # Legacy path: direct ledger/artifact_store access
+            # Check buyer can afford
+            if not self.ledger.can_afford_scrip(invoker_id, price):
+                return {
+                    "success": False,
+                    "error": f"Insufficient scrip. Need {price}, have {self.ledger.get_scrip(invoker_id)}"
+                }
+
+            # Execute the trade atomically:
+            # 1. Transfer scrip from buyer to seller
+            if not self.ledger.transfer_scrip(invoker_id, seller_id, price):
+                return {"success": False, "error": "Scrip transfer failed"}
+
+            # 2. Transfer ownership from escrow to buyer
+            if not self.artifact_store.transfer_ownership(artifact_id, self.id, invoker_id):
+                # Rollback scrip transfer
+                self.ledger.transfer_scrip(seller_id, invoker_id, price)
+                return {"success": False, "error": "Ownership transfer failed (scrip refunded)"}
 
         # Mark listing as completed
         listing["status"] = "completed"
@@ -235,7 +273,15 @@ class GenesisEscrow(GenesisArtifact):
             return {"success": False, "error": f"Listing is not active (status: {listing['status']})"}
 
         # Return ownership to seller
-        if not self.artifact_store.transfer_ownership(artifact_id, self.id, invoker_id):
+        # Plan #111: Use kernel interface when world is set
+        if self._world is not None:
+            from ..kernel_interface import KernelActions
+            kernel_actions = KernelActions(self._world)
+            success = kernel_actions.transfer_ownership(self.id, artifact_id, invoker_id)
+        else:
+            success = self.artifact_store.transfer_ownership(artifact_id, self.id, invoker_id)
+
+        if not success:
             return {"success": False, "error": "Failed to return ownership to seller"}
 
         # Mark as cancelled

@@ -495,3 +495,64 @@ class KernelActions:
             "message": f"Installed '{library_name}' (quota cost: {estimated_size} bytes)",
             "quota_cost": estimated_size,
         }
+
+    # -------------------------------------------------------------------------
+    # Principal Management (Plan #111)
+    # -------------------------------------------------------------------------
+
+    def create_principal(
+        self, principal_id: str, starting_scrip: int = 0, starting_compute: int = 0
+    ) -> bool:
+        """Create a new principal with optional starting resources.
+
+        This enables genesis artifacts (and agent-built artifacts) to spawn
+        new principals without privileged access to the Ledger.
+
+        Args:
+            principal_id: ID for the new principal (must be unique)
+            starting_scrip: Initial scrip balance (default 0)
+            starting_compute: Initial compute allocation (default 0)
+
+        Returns:
+            True if principal created, False if already exists
+        """
+        # Check if principal already exists
+        if self._world.ledger.principal_exists(principal_id):
+            return False
+
+        # Create the principal via ledger
+        self._world.ledger.create_principal(
+            principal_id,
+            starting_scrip=starting_scrip,
+            starting_compute=starting_compute
+        )
+        return True
+
+    def transfer_ownership(
+        self, caller_id: str, artifact_id: str, new_owner: str
+    ) -> bool:
+        """Transfer ownership of an artifact to a new owner.
+
+        This enables genesis artifacts (and agent-built artifacts) to transfer
+        ownership without privileged access to ArtifactStore.
+
+        Args:
+            caller_id: Current owner requesting the transfer
+            artifact_id: Artifact to transfer
+            new_owner: New owner principal ID
+
+        Returns:
+            True if transfer succeeded, False otherwise
+        """
+        artifact = self._world.artifacts.get(artifact_id)
+        if artifact is None:
+            return False
+
+        # Verify caller is the current owner
+        if artifact.owner_id != caller_id:
+            return False
+
+        # Perform the transfer
+        return self._world.artifacts.transfer_ownership(
+            artifact_id, caller_id, new_owner
+        )
