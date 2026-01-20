@@ -26,6 +26,7 @@ from .rate_tracker import RateTracker
 from .invocation_registry import InvocationRegistry, InvocationRecord
 from .id_registry import IDRegistry
 from .resource_manager import ResourceManager, ResourceType
+from .resource_metrics import ResourceMetricsProvider
 
 from ..config import get as config_get, compute_per_agent_quota, PerAgentQuota
 
@@ -149,6 +150,7 @@ class StateSummary(TypedDict):
     quotas: dict[str, QuotaInfo]
     mint_submissions: dict[str, MintSubmissionStatus]
     recent_events: list[dict[str, Any]]
+    resource_metrics: dict[str, dict[str, Any]]  # Plan #93: Agent resource visibility
 
 
 class World:
@@ -180,6 +182,9 @@ class World:
     # Unified resource management (Plan #95)
     # Replaces _quota_limits and _quota_usage with ResourceManager
     resource_manager: ResourceManager
+    # Resource metrics for visibility (Plan #93)
+    resource_metrics_provider: ResourceMetricsProvider
+    _simulation_start_time: float
     # Installed libraries per agent (Plan #29)
     # Maps principal_id -> list of (library_name, version)
     _installed_libraries: dict[str, list[tuple[str, str | None]]]
@@ -236,6 +241,23 @@ class World:
         # Unified resource manager (Plan #95)
         # Must be initialized BEFORE genesis artifacts since rights_registry delegates here
         self.resource_manager = ResourceManager()
+
+        # Resource metrics provider for visibility (Plan #93)
+        # Provides read-only aggregation of resource metrics for agent prompts
+        self._simulation_start_time = time.time()
+        self.resource_metrics_provider = ResourceMetricsProvider(
+            initial_allocations={
+                "llm_budget": float(quotas.get("llm_budget_quota", 0.0)),
+                "disk": float(quotas.get("disk_quota", 0)),
+                "compute": float(quotas.get("compute_quota", 0)),
+            },
+            resource_units={
+                "llm_budget": "dollars",
+                "disk": "bytes",
+                "compute": "units",
+            },
+        )
+
         # Installed libraries per agent (Plan #29)
         self._installed_libraries = {}
 
@@ -1331,13 +1353,44 @@ class World:
                     "score": sub.get("score") if sub.get("status") == "scored" else None
                 }
 
+        # Get resource metrics for all agents (Plan #93)
+        # Note: We iterate over principal_ids since World doesn't have agents dict
+        # LLM stats will be supplemented in build_prompt()
+        resource_metrics: dict[str, dict[str, Any]] = {}
+        for agent_id in self.principal_ids:
+            if agent_id.startswith("genesis_"):
+                continue  # Skip genesis artifacts
+            metrics = self.resource_metrics_provider.get_agent_metrics(
+                agent_id=agent_id,
+                ledger_resources=self.ledger.resources,
+                agents={},  # World doesn't have access to agents; LLM stats added in build_prompt
+                start_time=self._simulation_start_time,
+                visibility_config=None,  # Use default (verbose) for state summary
+            )
+            resource_metrics[agent_id] = {
+                "timestamp": metrics.timestamp,
+                "resources": {
+                    name: {
+                        "resource_name": rm.resource_name,
+                        "unit": rm.unit,
+                        "remaining": rm.remaining,
+                        "initial": rm.initial,
+                        "spent": rm.spent,
+                        "percentage": rm.percentage,
+                        "burn_rate": rm.burn_rate,
+                    }
+                    for name, rm in metrics.resources.items()
+                },
+            }
+
         return {
             "tick": self.tick,
             "balances": self.ledger.get_all_balances(),
             "artifacts": all_artifacts,
             "quotas": quotas,
             "mint_submissions": mint_status,
-            "recent_events": self.get_recent_events(10)
+            "recent_events": self.get_recent_events(10),
+            "resource_metrics": resource_metrics,
         }
 
     def get_recent_events(self, n: int = 20) -> list[dict[str, Any]]:

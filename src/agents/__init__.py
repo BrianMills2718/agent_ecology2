@@ -1,7 +1,7 @@
 # Agents package
 from .agent import Agent, ActionResult, TokenUsage, WorldState
 from .schema import ACTION_SCHEMA, ActionType, validate_action_json
-from .loader import load_agents, list_agents, AgentConfig
+from .loader import load_agents, list_agents, AgentConfig, VisibilityConfigDict
 from .memory import AgentMemory, ArtifactMemory, get_memory
 from .models import (
     Action,
@@ -25,6 +25,7 @@ __all__: list[str] = [
     "load_agents",
     "list_agents",
     "AgentConfig",
+    "VisibilityConfigDict",
     "AgentMemory",
     "ArtifactMemory",
     "get_memory",

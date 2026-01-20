@@ -34,6 +34,13 @@ class RAGConfigDict(TypedDict, total=False):
     query_template: str
 
 
+class VisibilityConfigDict(TypedDict, total=False):
+    """Resource visibility configuration from agent.yaml (Plan #93)."""
+    resources: list[str]  # Which resources to show (None = use system default)
+    detail_level: str  # "minimal", "standard", or "verbose"
+    see_others: bool  # Whether to see other agents' resources
+
+
 class AgentConfig(TypedDict, total=False):
     """Configuration for an agent."""
     id: str
@@ -44,6 +51,7 @@ class AgentConfig(TypedDict, total=False):
     temperature: float | None
     max_tokens: int | None
     rag: RAGConfigDict | None
+    visibility: VisibilityConfigDict | None  # Plan #93: Resource visibility config
 
 
 class AgentYamlConfig(TypedDict, total=False):
@@ -55,6 +63,7 @@ class AgentYamlConfig(TypedDict, total=False):
     temperature: float
     max_tokens: int
     rag: RAGConfigDict
+    visibility: VisibilityConfigDict  # Plan #93: Resource visibility config
 
 
 def load_agents(agents_dir: str | None = None, prompts_dir: str | None = None) -> list[AgentConfig]:
@@ -114,6 +123,8 @@ def load_agents(agents_dir: str | None = None, prompts_dir: str | None = None) -
             "max_tokens": config.get("max_tokens"),
             # Per-agent RAG config (None = use global defaults)
             "rag": config.get("rag"),
+            # Per-agent visibility config (Plan #93: None = use global defaults)
+            "visibility": config.get("visibility"),
         }
 
         agents.append(agent)

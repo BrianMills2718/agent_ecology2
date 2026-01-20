@@ -108,10 +108,52 @@ class StockResources(StrictModel):
     )
 
 
+class VisibilityDefaults(StrictModel):
+    """Default visibility settings for agents."""
+
+    resources: list[str] = Field(
+        default=["llm_budget", "disk"],
+        description="Resources to show by default"
+    )
+    detail_level: Literal["minimal", "standard", "verbose"] = Field(
+        default="standard",
+        description="Default detail level: minimal (remaining), standard (core), verbose (all)"
+    )
+    see_others: bool = Field(
+        default=False,
+        description="Whether agents see other agents' resources by default"
+    )
+
+
+class VisibilityConfig(StrictModel):
+    """Resource visibility configuration (Plan #93)."""
+
+    enabled: bool = Field(
+        default=True,
+        description="Enable resource visibility in agent context"
+    )
+    compute_metrics: list[str] = Field(
+        default=[
+            "remaining", "initial", "spent", "percentage",
+            "tokens_in", "tokens_out", "total_requests",
+            "avg_cost_per_request", "burn_rate"
+        ],
+        description="Metrics to compute (affects performance)"
+    )
+    defaults: VisibilityDefaults = Field(
+        default_factory=VisibilityDefaults,
+        description="Default visibility settings for agents"
+    )
+
+
 class ResourcesConfig(StrictModel):
     """Resource configuration (stock only - flow resources use rate_limiting)."""
 
     stock: StockResources = Field(default_factory=StockResources)
+    visibility: VisibilityConfig = Field(
+        default_factory=VisibilityConfig,
+        description="Resource visibility configuration (Plan #93)"
+    )
 
 
 # =============================================================================

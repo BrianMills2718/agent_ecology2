@@ -2,7 +2,7 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-01-16 (Plan #53 - Added cpu_seconds, memory_bytes resources)
+**Last verified:** 2026-01-20 (Plan #93 - Added Agent Resource Visibility)
 
 **See target:** [../target/resources.md](../target/resources.md)
 
@@ -324,3 +324,96 @@ if memory_used > memory_quota:
 | CPU time | time.process_time() | ~90% | Shared runtime overhead |
 
 **Note:** The ~10% error from shared Python runtime is realistic - agents pay for their infrastructure overhead.
+
+---
+
+## Agent Resource Visibility (Plan #93)
+
+Agents see detailed resource metrics in their prompts to enable self-regulation and resource-aware decision making.
+
+### Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| `ResourceMetricsProvider` | `src/world/resource_metrics.py` | Read-only aggregation of metrics |
+| `ResourceVisibilityConfig` | `src/world/resource_metrics.py` | Per-agent visibility configuration |
+| `VisibilityConfigDict` | `src/agents/loader.py` | Agent.yaml visibility config schema |
+
+### Data Sources
+
+The `ResourceMetricsProvider` aggregates from multiple sources:
+- `Ledger.resources` - Current balances (llm_budget, disk, compute)
+- `Agent.llm.get_usage_stats()` - Token counts, cost tracking
+- Config - Initial allocations for percentage calculations
+
+### Detail Levels
+
+| Level | Shows |
+|-------|-------|
+| `minimal` | Remaining only |
+| `standard` | Remaining, initial, spent, percentage |
+| `verbose` | All metrics including burn rate, tokens in/out |
+
+### Configuration
+
+**System defaults** in `config/config.yaml`:
+```yaml
+resources:
+  visibility:
+    enabled: true
+    defaults:
+      resources: ["llm_budget", "disk"]
+      detail_level: "standard"
+      see_others: false
+```
+
+**Per-agent overrides** in `src/agents/<name>/agent.yaml`:
+```yaml
+visibility:
+  resources: ["llm_budget"]  # Only show llm_budget
+  detail_level: "verbose"    # Show all metrics
+  see_others: false          # Only own metrics
+```
+
+### Prompt Injection
+
+Resource metrics appear in agent prompts under `## Resource Consumption`:
+
+```
+## Resource Consumption
+- LLM Budget: $0.0850 / $0.1000 (85.0% remaining)
+  - Spent: $0.0150
+  - Burn rate: $0.000025/second
+- Disk: 5000 / 10000 bytes (50.0% remaining)
+```
+
+### StateSummary Integration
+
+`World.get_state_summary()` includes `resource_metrics` dict:
+```python
+{
+    "agent_1": {
+        "timestamp": 1737345600.0,
+        "resources": {
+            "llm_budget": {
+                "resource_name": "llm_budget",
+                "unit": "dollars",
+                "remaining": 0.085,
+                "initial": 0.10,
+                "spent": 0.015,
+                "percentage": 85.0,
+                "burn_rate": 0.000025
+            }
+        }
+    }
+}
+```
+
+### Key Files
+
+| File | Functions | Description |
+|------|-----------|-------------|
+| `src/world/resource_metrics.py` | `ResourceMetricsProvider.get_agent_metrics()` | Metrics aggregation |
+| `src/world/world.py` | `World.get_state_summary()` | Includes resource_metrics |
+| `src/agents/agent.py` | `Agent.build_prompt()` | Formats metrics for prompt |
+| `src/agents/loader.py` | `load_agents()` | Loads visibility config from agent.yaml |

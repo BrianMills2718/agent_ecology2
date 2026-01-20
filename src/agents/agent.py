@@ -660,6 +660,37 @@ class Agent:
 - Disk used: {quotas.get('disk_used', 0)} bytes
 - Disk available: {quotas.get('disk_available', 10000)} bytes"""
 
+        # Plan #93: Resource visibility metrics
+        # Shows detailed resource consumption for agent self-regulation
+        resource_metrics_section: str = ""
+        resource_metrics_data: dict[str, Any] = world_state.get('resource_metrics', {}).get(self.agent_id, {})
+        if resource_metrics_data and resource_metrics_data.get('resources'):
+            metrics_lines: list[str] = ["## Resource Consumption"]
+            resources_data: dict[str, Any] = resource_metrics_data.get('resources', {})
+            for resource_name, metrics in resources_data.items():
+                remaining = metrics.get('remaining', 0)
+                initial = metrics.get('initial', 0)
+                percentage = metrics.get('percentage', 100)
+                unit = metrics.get('unit', 'units')
+                spent = metrics.get('spent', 0)
+                burn_rate = metrics.get('burn_rate')
+
+                # Format based on resource type
+                if resource_name == 'llm_budget':
+                    metrics_lines.append(f"- LLM Budget: ${remaining:.4f} / ${initial:.4f} ({percentage:.1f}% remaining)")
+                    if spent > 0:
+                        metrics_lines.append(f"  - Spent: ${spent:.4f}")
+                    if burn_rate and burn_rate > 0:
+                        metrics_lines.append(f"  - Burn rate: ${burn_rate:.6f}/second")
+                elif resource_name == 'disk':
+                    metrics_lines.append(f"- Disk: {remaining:.0f} / {initial:.0f} {unit} ({percentage:.1f}% remaining)")
+                elif resource_name == 'compute':
+                    metrics_lines.append(f"- Compute: {remaining:.0f} / {initial:.0f} {unit} ({percentage:.1f}% remaining)")
+                else:
+                    metrics_lines.append(f"- {resource_name}: {remaining} / {initial} {unit} ({percentage:.1f}% remaining)")
+
+            resource_metrics_section = "\n".join(metrics_lines)
+
         # Format mint submissions
         mint_subs: dict[str, Any] = world_state.get('mint_submissions', {})
         mint_info: str
@@ -799,6 +830,7 @@ This will persist across your thinking cycles.
 - Tick: {world_state.get('tick', 0)}
 - Your scrip: {world_state.get('balances', {}).get(self.agent_id, 0)}
 {quota_info}
+{resource_metrics_section}
 
 ## World Summary
 - Artifacts: {len(artifacts)} total ({genesis_count} genesis, {executable_count} executable, {data_count} data)
