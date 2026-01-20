@@ -12,6 +12,7 @@ const DependencyGraphPanel = {
     edges: null,
     container: null,
     metrics: null,
+    standardArtifacts: new Map(),  // artifact_id -> lindy_score
 
     // Node colors by type
     nodeColors: {
@@ -113,11 +114,29 @@ const DependencyGraphPanel = {
 
     async loadData() {
         try {
-            const response = await fetch('/api/artifacts/dependency-graph');
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+            // Fetch both dependency graph and standard artifacts in parallel
+            const [graphResponse, standardsResponse] = await Promise.all([
+                fetch('/api/artifacts/dependency-graph'),
+                fetch('/api/artifacts/standards?limit=50'),
+            ]);
+
+            if (!graphResponse.ok) {
+                throw new Error(`HTTP ${graphResponse.status}`);
             }
-            const data = await response.json();
+
+            const data = await graphResponse.json();
+
+            // Update standard artifacts map for highlighting
+            this.standardArtifacts.clear();
+            if (standardsResponse.ok) {
+                const standards = await standardsResponse.json();
+                for (const artifact of standards) {
+                    if (artifact.lindy_score > 0) {
+                        this.standardArtifacts.set(artifact.artifact_id, artifact.lindy_score);
+                    }
+                }
+            }
+
             this.updateGraph(data);
             this.updateMetrics(data.metrics);
         } catch (err) {
@@ -153,14 +172,21 @@ const DependencyGraphPanel = {
         const filteredNodeIds = new Set(filteredNodes.map(n => n.id));
 
         // Add nodes
-        const nodeData = filteredNodes.map(node => ({
-            id: node.id,
-            label: this.truncateLabel(node.id),
-            color: this.getNodeColor(node),
-            size: this.getNodeSize(node),
-            title: this.getNodeTooltip(node),
-            level: node.depth || 0,  // Use depth for hierarchical layout
-        }));
+        const nodeData = filteredNodes.map(node => {
+            const lindyScore = this.standardArtifacts.get(node.id);
+            const isHighLindy = lindyScore && lindyScore > 0;
+
+            return {
+                id: node.id,
+                label: this.truncateLabel(node.id),
+                color: this.getNodeColor(node),
+                size: this.getNodeSize(node),
+                title: this.getNodeTooltip(node, lindyScore),
+                level: node.depth || 0,  // Use depth for hierarchical layout
+                borderWidth: isHighLindy ? 4 : 2,  // Thicker border for high-Lindy
+                borderWidthSelected: isHighLindy ? 5 : 3,
+            };
+        });
         this.nodes.add(nodeData);
 
         // Add edges (only between filtered nodes)
@@ -188,19 +214,36 @@ const DependencyGraphPanel = {
     },
 
     getNodeColor(node) {
+        // Check if this is a high-Lindy artifact (standard library candidate)
+        const lindyScore = this.standardArtifacts.get(node.id);
+        const isHighLindy = lindyScore && lindyScore > 0;
+
+        let baseColor;
         if (node.is_genesis) {
-            return this.nodeColors.genesis;
+            baseColor = this.nodeColors.genesis;
+        } else if (node.type === 'contract') {
+            baseColor = this.nodeColors.contract;
+        } else if (node.is_executable) {
+            baseColor = this.nodeColors.executable;
+        } else if (node.type === 'data') {
+            baseColor = this.nodeColors.data;
+        } else {
+            baseColor = this.nodeColors.default;
         }
-        if (node.type === 'contract') {
-            return this.nodeColors.contract;
+
+        // Add golden highlight for high-Lindy artifacts
+        if (isHighLindy) {
+            return {
+                background: baseColor.background,
+                border: '#ffd700',  // Gold border
+                highlight: {
+                    background: baseColor.background,
+                    border: '#ffea00',  // Brighter gold on hover
+                },
+            };
         }
-        if (node.is_executable) {
-            return this.nodeColors.executable;
-        }
-        if (node.type === 'data') {
-            return this.nodeColors.data;
-        }
-        return this.nodeColors.default;
+
+        return baseColor;
     },
 
     getNodeSize(node) {
@@ -210,7 +253,7 @@ const DependencyGraphPanel = {
         return baseSize + Math.min(Math.log(invocations + 1) * 5, 20);
     },
 
-    getNodeTooltip(node) {
+    getNodeTooltip(node, lindyScore = null) {
         let html = `<strong>${node.id}</strong><br>`;
         html += `Type: ${node.type || 'unknown'}<br>`;
         html += `Owner: ${node.owner || 'none'}<br>`;
@@ -223,8 +266,11 @@ const DependencyGraphPanel = {
         if (node.invocation_count) {
             html += `Invocations: ${node.invocation_count}<br>`;
         }
-        if (node.lindy_score) {
-            html += `Lindy Score: ${node.lindy_score.toFixed(1)}`;
+        // Use Lindy score from standards API if available
+        const score = lindyScore || node.lindy_score;
+        if (score) {
+            html += `<span style="color: #ffd700;">Lindy Score: ${score.toFixed(1)}</span><br>`;
+            html += `<em style="color: #ffd700;">Standard Library Candidate</em>`;
         }
         return html;
     },
