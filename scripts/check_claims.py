@@ -52,14 +52,22 @@ Special Cases:
 """
 
 import argparse
+import os
 import re
+import socket
 import subprocess
 import sys
+import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+
+# Session identity configuration
+STALENESS_MINUTES = 30  # Sessions with no activity for this long are considered stale
+SESSION_DIR_NAME = "sessions"
 
 
 def get_main_repo_root() -> Path:
@@ -105,6 +113,144 @@ def get_git_toplevel() -> Path:
 
 # Use current git toplevel for features (branch-specific)
 FEATURES_DIR = get_git_toplevel() / "meta/acceptance_gates"
+
+# Session directory for session identity tracking
+SESSIONS_DIR = _MAIN_ROOT / ".claude" / SESSION_DIR_NAME
+
+
+def get_session_file_name() -> str:
+    """Generate session file name based on hostname and PID."""
+    hostname = socket.gethostname()
+    pid = os.getpid()
+    return f"{hostname}-{pid}.session"
+
+
+def get_session_file_path() -> Path:
+    """Get the full path to this process's session file."""
+    return SESSIONS_DIR / get_session_file_name()
+
+
+def load_session(session_file: Path) -> dict[str, Any] | None:
+    """Load a session from file."""
+    if not session_file.exists():
+        return None
+    try:
+        with open(session_file) as f:
+            return yaml.safe_load(f) or {}
+    except (yaml.YAMLError, OSError):
+        return None
+
+
+def save_session(session_file: Path, data: dict[str, Any]) -> None:
+    """Save session data to file."""
+    session_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(session_file, "w") as f:
+        yaml.dump(data, f, default_flow_style=False)
+
+
+def get_or_create_session() -> dict[str, Any]:
+    """Get existing session or create a new one.
+
+    Returns the session data dict with:
+    - session_id: UUID string
+    - hostname: Machine hostname
+    - pid: Process ID
+    - started_at: ISO timestamp
+    - last_activity: ISO timestamp
+    """
+    session_file = get_session_file_path()
+    session = load_session(session_file)
+
+    if session and session.get("session_id"):
+        # Update last_activity
+        session["last_activity"] = datetime.now(timezone.utc).isoformat()
+        save_session(session_file, session)
+        return session
+
+    # Create new session
+    now = datetime.now(timezone.utc).isoformat()
+    session = {
+        "session_id": str(uuid.uuid4()),
+        "hostname": socket.gethostname(),
+        "pid": os.getpid(),
+        "started_at": now,
+        "last_activity": now,
+        "working_on": None,
+    }
+    save_session(session_file, session)
+    return session
+
+
+def get_session_id() -> str:
+    """Get the session ID for the current process, creating if needed."""
+    session = get_or_create_session()
+    return session["session_id"]
+
+
+def is_session_stale(
+    session_id: str,
+    staleness_minutes: int = STALENESS_MINUTES,
+) -> tuple[bool, dict[str, Any] | None]:
+    """Check if a session is stale (no activity for N minutes).
+
+    Args:
+        session_id: The session ID to check
+        staleness_minutes: Minutes of inactivity before considered stale
+
+    Returns:
+        (is_stale, session_data) - session_data is None if session not found
+    """
+    if not SESSIONS_DIR.exists():
+        return True, None
+
+    # Find session file by session_id
+    for session_file in SESSIONS_DIR.glob("*.session"):
+        session = load_session(session_file)
+        if session and session.get("session_id") == session_id:
+            last_activity = session.get("last_activity")
+            if not last_activity:
+                return True, session
+
+            try:
+                last_time = datetime.fromisoformat(last_activity)
+                # Ensure timezone aware
+                if last_time.tzinfo is None:
+                    last_time = last_time.replace(tzinfo=timezone.utc)
+
+                now = datetime.now(timezone.utc)
+                age = now - last_time
+
+                if age > timedelta(minutes=staleness_minutes):
+                    return True, session
+                return False, session
+            except ValueError:
+                return True, session
+
+    # Session not found
+    return True, None
+
+
+def update_session_heartbeat(working_on: str | None = None) -> dict[str, Any]:
+    """Update the session's last_activity timestamp.
+
+    Args:
+        working_on: Optional description of current work (e.g., "Plan #134")
+
+    Returns:
+        Updated session data
+    """
+    session_file = get_session_file_path()
+    session = load_session(session_file)
+
+    if not session:
+        session = get_or_create_session()
+    else:
+        session["last_activity"] = datetime.now(timezone.utc).isoformat()
+        if working_on is not None:
+            session["working_on"] = working_on
+        save_session(session_file, session)
+
+    return session
 
 
 def load_all_features() -> dict[str, dict[str, Any]]:
@@ -614,6 +760,7 @@ def add_claim(
     files: list[str] | None = None,
     worktree_path: str | None = None,
     force: bool = False,
+    session_id: str | None = None,
 ) -> bool:
     """Add a new claim.
 
@@ -626,6 +773,7 @@ def add_claim(
         files: Specific files being worked on (optional)
         worktree_path: Path to worktree (for session tracking, Plan #52)
         force: Force claim despite conflicts
+        session_id: Session ID for ownership verification (Plan #134)
     """
     # Check for existing claim by this instance
     for claim in data["claims"]:
@@ -682,10 +830,15 @@ def add_claim(
             return False
         print("\n--force specified, proceeding despite conflict.\n")
 
+    # Get session ID if not provided (Plan #134: Session Identity)
+    if session_id is None:
+        session_id = get_session_id()
+
     new_claim: dict[str, Any] = {
         "cc_id": cc_id,
         "task": task,
         "claimed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "session_id": session_id,
     }
 
     if plan:
@@ -754,8 +907,18 @@ def release_claim(
     commit: str | None = None,
     validate: bool = False,
     force: bool = False,
+    session_id: str | None = None,
 ) -> bool:
-    """Release a claim and move to completed."""
+    """Release a claim and move to completed.
+
+    Args:
+        data: Claims data structure
+        cc_id: Instance identifier to release
+        commit: Optional commit hash to record
+        validate: Run TDD validation before release
+        force: Force release despite ownership or validation failures
+        session_id: Session ID for ownership verification (Plan #134)
+    """
     claim_to_remove = None
 
     for claim in data["claims"]:
@@ -766,6 +929,32 @@ def release_claim(
     if not claim_to_remove:
         print(f"No active claim found for {cc_id}")
         return False
+
+    # Ownership verification (Plan #134: Session Identity)
+    # Only the session that created the claim can release it
+    claim_session = claim_to_remove.get("session_id")
+    if claim_session and not force:
+        # Get current session ID if not provided
+        if session_id is None:
+            session_id = get_session_id()
+
+        if claim_session != session_id:
+            # Check if the owning session is stale
+            is_stale, stale_session = is_session_stale(claim_session)
+
+            if is_stale:
+                print(f"Note: Claim owner session is stale, allowing takeover")
+            else:
+                print("=" * 60)
+                print("❌ OWNERSHIP VERIFICATION FAILED")
+                print("=" * 60)
+                print(f"\nClaim owned by session: {claim_session[:8]}...")
+                print(f"Your session:           {session_id[:8]}...")
+                print("\nYou can only release claims you own.")
+                print("\nIf the owner session is gone, wait for it to become stale")
+                print(f"(no activity for {STALENESS_MINUTES} minutes) or use --force.")
+                print("\nUse --force to release anyway (NOT recommended).")
+                return False
 
     # Run validation if requested
     plan = claim_to_remove.get("plan")
@@ -898,6 +1087,27 @@ def main() -> int:
         metavar="BRANCH",
         help="CI mode: verify a specific branch has an active claim (exit 1 if not)"
     )
+    parser.add_argument(
+        "--check-plan-session",
+        type=int,
+        metavar="PLAN",
+        help="Check if plan is claimable (unclaimed or owned by this session). Exit 0=ok, 1=blocked"
+    )
+    parser.add_argument(
+        "--get-session-id",
+        action="store_true",
+        help="Print current session ID"
+    )
+    parser.add_argument(
+        "--heartbeat",
+        action="store_true",
+        help="Update session heartbeat (call periodically to prevent staleness)"
+    )
+    parser.add_argument(
+        "--working-on",
+        type=str,
+        help="Description of current work (used with --heartbeat)"
+    )
 
     args = parser.parse_args()
 
@@ -906,6 +1116,57 @@ def main() -> int:
 
     # Determine instance ID (explicit or from branch)
     instance_id = args.id or get_current_branch()
+
+    # Handle get-session-id (Plan #134)
+    if args.get_session_id:
+        session_id = get_session_id()
+        print(session_id)
+        return 0
+
+    # Handle heartbeat (Plan #134)
+    if args.heartbeat:
+        session = update_session_heartbeat(args.working_on)
+        print(f"Heartbeat updated for session {session['session_id'][:8]}...")
+        return 0
+
+    # Handle check-plan-session (Plan #134)
+    # Used by protect-main.sh to check if a plan can be edited by this session
+    if args.check_plan_session:
+        plan_num = args.check_plan_session
+        my_session = get_session_id()
+
+        # Find claim for this plan
+        plan_claim = None
+        for claim in claims:
+            if claim.get("plan") == plan_num:
+                plan_claim = claim
+                break
+
+        if not plan_claim:
+            # Plan not claimed - ok to edit
+            print(f"Plan #{plan_num}: unclaimed, ok to edit")
+            return 0
+
+        claim_session = plan_claim.get("session_id")
+        if not claim_session:
+            # Legacy claim without session ID - allow (backwards compat)
+            print(f"Plan #{plan_num}: legacy claim (no session), ok to edit")
+            return 0
+
+        if claim_session == my_session:
+            # We own this claim
+            print(f"Plan #{plan_num}: owned by this session, ok to edit")
+            return 0
+
+        # Check if owner session is stale
+        stale, _ = is_session_stale(claim_session)
+        if stale:
+            print(f"Plan #{plan_num}: owner session stale, ok to take over")
+            return 0
+
+        # Blocked - another active session owns this
+        print(f"Plan #{plan_num}: blocked - owned by active session {claim_session[:8]}...")
+        return 1
 
     # Handle check-deps
     if args.check_deps:
