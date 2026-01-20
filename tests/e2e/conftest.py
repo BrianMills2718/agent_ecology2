@@ -77,13 +77,13 @@ def e2e_config(tmp_path: Path) -> dict[str, Any]:
     """Create E2E test configuration.
 
     Uses minimal settings for fast test execution.
+    Plan #109: Removed max_ticks (tick mode removed in Plan #102).
+    Tests must call run_sync(duration=X) with a short duration.
     """
     log_file = tmp_path / "e2e_test.jsonl"
 
     return {
-        "world": {
-            "max_ticks": 2,  # Minimal ticks for speed
-        },
+        "world": {},  # Plan #102: max_ticks removed, use duration param instead
         "costs": {
             "per_1k_input_tokens": 1,
             "per_1k_output_tokens": 3,
@@ -111,9 +111,7 @@ def e2e_config(tmp_path: Path) -> dict[str, Any]:
         "rate_limiting": {
             "enabled": False,
         },
-        "execution": {
-            "use_autonomous_loops": False,
-        },
+        # Plan #102: use_autonomous_loops removed - runner is always autonomous now
     }
 
 
