@@ -75,6 +75,7 @@ Thumbs.db
 # to prevent claim state from being overwritten when PRs merge
 !.claude/handoff_template.md
 !.claude/settings.json
+!.claude/meta-config.yaml
 !.claude/hooks/
 !.claude/commands/
 !.claude/messages/
