@@ -499,8 +499,10 @@ def check_permission(caller, action, target, context, ledger):
             controlled_globals[name] = module
 
         # Execute the code definition (creates the check_permission function)
+        # Note: self.timeout is always set after __post_init__, but mypy doesn't know
+        effective_timeout = self.timeout if self.timeout is not None else 5
         try:
-            with _contract_timeout_context(self.timeout):
+            with _contract_timeout_context(effective_timeout):
                 exec(compiled, controlled_globals)
         except ContractTimeoutError:
             return PermissionResult(
@@ -534,7 +536,7 @@ def check_permission(caller, action, target, context, ledger):
 
         # Call check_permission with contract context
         try:
-            with _contract_timeout_context(self.timeout):
+            with _contract_timeout_context(effective_timeout):
                 result = check_func(caller, action_str, target, ctx, readonly_ledger)
         except ContractTimeoutError:
             return PermissionResult(
