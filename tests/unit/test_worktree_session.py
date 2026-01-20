@@ -109,7 +109,8 @@ class TestWorktreeRemovalBlocking:
             claims_file=claims_with_worktree,
         )
         assert should_block is True
-        assert reason == "claim"
+        # Reason is "ownership" because we're not running from the claimed context
+        assert reason == "ownership"
 
         should_block, reason, _ = should_block_removal(
             "/tmp/worktrees/plan-52-test",
