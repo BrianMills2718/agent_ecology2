@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-19 (Plan #86 - interface validation)
+**Last verified:** 2026-01-19 (Plan #112 - JSON arg parsing)
 
 ---
 
@@ -303,6 +303,33 @@ Executes agent-created code with timeout protection.
 |------------|---------|-------------|
 | `executor.timeout_seconds` | 5 | Max execution time |
 | `executor.preloaded_imports` | `[math, json, random, datetime]` | Pre-loaded modules |
+
+### JSON Argument Parsing (Plan #112)
+
+LLMs often generate JSON strings when passing dict/list arguments (e.g., `'{"id": "foo"}'` instead of `{"id": "foo"}`). The executor auto-parses these before calling `run()`:
+
+```python
+# Agent sends: args=['register', '{"id": "x"}']
+# Artifact receives: args=['register', {"id": "x"}]
+```
+
+**Parsing Rules:**
+
+| Input | Output | Reason |
+|-------|--------|--------|
+| `'{"a": 1}'` | `{"a": 1}` | Valid JSON dict |
+| `'[1, 2, 3]'` | `[1, 2, 3]` | Valid JSON list |
+| `'hello'` | `'hello'` | Not JSON |
+| `'123'` | `'123'` | JSON but not dict/list |
+| `'true'` | `'true'` | JSON but not dict/list |
+| `42` | `42` | Already non-string |
+
+**Key behavior:**
+- Only strings are parsed
+- Only strings that parse to dict or list are converted
+- Numbers, bools, and primitive JSON stay as strings
+- Non-JSON strings pass through unchanged
+- Applied in all three execute methods
 
 ### Execution Methods
 
