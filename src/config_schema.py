@@ -1400,6 +1400,28 @@ class ErrorMessagesConfig(StrictModel):
     )
 
 
+class InterfaceDiscoveryConfig(StrictModel):
+    """Configuration for how agents discover artifact interfaces (Plan #137).
+
+    Controls agent behavior when invoking unfamiliar artifacts - whether to
+    check interfaces first or learn from error feedback.
+    """
+
+    mode: Literal["try_and_learn", "check_first", "hybrid"] = Field(
+        default="try_and_learn",
+        description=(
+            "Interface discovery strategy: "
+            "'try_and_learn' (default) - invoke and learn from errors, "
+            "'check_first' - always call get_interface before invoking, "
+            "'hybrid' - check for complex methods, try simple ones"
+        )
+    )
+    cache_in_memory: bool = Field(
+        default=True,
+        description="Cache learned interfaces in working memory for reuse"
+    )
+
+
 class WorkingMemoryConfig(StrictModel):
     """Configuration for agent working memory (Plan #59).
 
@@ -1441,6 +1463,10 @@ class AgentConfig(StrictModel):
     rag: RAGConfig = Field(default_factory=RAGConfig)
     errors: ErrorMessagesConfig = Field(default_factory=ErrorMessagesConfig)
     working_memory: WorkingMemoryConfig = Field(default_factory=WorkingMemoryConfig)
+    interface_discovery: InterfaceDiscoveryConfig = Field(
+        default_factory=InterfaceDiscoveryConfig,
+        description="Interface discovery behavior (Plan #137)"
+    )
     failure_history_max: int = Field(
         default=5,
         ge=0,
@@ -1684,6 +1710,8 @@ __all__ = [
     "AgentPromptConfig",
     "RAGConfig",
     "ErrorMessagesConfig",
+    "InterfaceDiscoveryConfig",
+    "WorkingMemoryConfig",
     "IdGenerationConfig",
     # Functions
     "load_validated_config",

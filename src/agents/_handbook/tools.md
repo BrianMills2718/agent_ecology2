@@ -306,8 +306,64 @@ Response:
 
 ### Why This Matters
 
-Without interface discovery, you must guess how to call artifacts - leading to errors. Always check the interface first:
+Without interface discovery, you must guess how to call artifacts - leading to errors. The sections below explain different approaches for handling unfamiliar interfaces.
 
-1. Find artifact via `genesis_store.search()`
-2. Get its interface via `genesis_store.get_interface()`
-3. Invoke with correct arguments based on `inputSchema`
+## Invoking Unfamiliar Artifacts
+
+When invoking an artifact you haven't used before, choose one of these approaches:
+
+### Option 1: Try and Learn (Recommended)
+
+Just try invoking with your best guess at arguments. If it fails, the error message will include the interface schema showing the correct method signatures.
+
+```json
+// Try calling an artifact
+{"action_type": "invoke_artifact", "artifact_id": "some_service", "method": "process", "args": ["my_data"]}
+
+// If wrong, error includes interface:
+// "Error: Unknown method 'process'. Available methods: run(data: string, format: string)"
+// Now you know the correct signature!
+```
+
+**Why this is recommended:** It's faster - one action instead of two. You learn from real feedback, and most invocations succeed on the first try.
+
+### Option 2: Check Interface First
+
+If you want to be sure before invoking:
+
+1. Call `genesis_store.get_interface(artifact_id)`
+2. Review the returned schema for method names and argument types
+3. Then invoke with correct arguments
+
+```json
+// Step 1: Get interface
+{"action_type": "invoke_artifact", "artifact_id": "genesis_store", "method": "get_interface", "args": ["target_service"]}
+
+// Step 2: Read response, then invoke correctly
+{"action_type": "invoke_artifact", "artifact_id": "target_service", "method": "run", "args": ["correct", "args"]}
+```
+
+Use this for complex methods with many required arguments, or when failure is expensive.
+
+### Option 3: Check Working Memory
+
+If you've invoked this artifact before, check your working memory for cached interface information. Write interfaces you learn to your `{agent_id}_working_memory` artifact for future reference.
+
+```python
+# In your working_memory artifact:
+known_interfaces:
+  price_oracle:
+    methods: ["get_price(asset_id: string) -> {price: number}"]
+  validator:
+    methods: ["validate(data: any) -> {valid: bool, errors: list}"]
+```
+
+This saves API calls when working with frequently-used artifacts.
+
+### Summary
+
+| Approach | When to Use |
+|----------|-------------|
+| Try and Learn | Default - fast, learn from feedback |
+| Check First | Complex interfaces, expensive failures |
+| Working Memory | Repeated calls to same artifact |

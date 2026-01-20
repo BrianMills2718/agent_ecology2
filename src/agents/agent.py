@@ -614,10 +614,6 @@ class Agent:
         """Set whether agent should continue running."""
         self._alive = value
 
-    def _is_gemini_model(self) -> bool:
-        """Check if using a Gemini model (requires flat action schema)."""
-        return "gemini" in self.llm_model.lower()
-
     def build_prompt(self, world_state: dict[str, Any]) -> str:
         """Build the prompt for the LLM (events require genesis_event_log)"""
         # Extract world state for RAG context
@@ -898,18 +894,14 @@ Your response should include:
         self.llm.extra_metadata["tick"] = world_state.get("tick", 0)
 
         try:
-            # Plan #132: Single response format with standardized 'reasoning' field
-            if self._is_gemini_model():
-                flat_response: FlatActionResponse = self.llm.generate(
-                    prompt,
-                    response_model=FlatActionResponse
-                )
-                response: ActionResponse = flat_response.to_action_response()
-            else:
-                response = self.llm.generate(
-                    prompt,
-                    response_model=ActionResponse
-                )
+            # Plan #137: Always use FlatActionResponse for all providers
+            # This avoids Gemini's anyOf/oneOf schema limitations while working
+            # with all providers (OpenAI, Anthropic, Gemini, etc.)
+            flat_response: FlatActionResponse = self.llm.generate(
+                prompt,
+                response_model=FlatActionResponse
+            )
+            response: ActionResponse = flat_response.to_action_response()
             usage: TokenUsage = self.llm.last_usage.copy()
 
             return {
@@ -949,18 +941,14 @@ Your response should include:
         self.llm.extra_metadata["tick"] = world_state.get("tick", 0)
 
         try:
-            # Plan #132: Single response format with standardized 'reasoning' field
-            if self._is_gemini_model():
-                flat_response: FlatActionResponse = await self.llm.generate_async(
-                    prompt,
-                    response_model=FlatActionResponse
-                )
-                response: ActionResponse = flat_response.to_action_response()
-            else:
-                response = await self.llm.generate_async(
-                    prompt,
-                    response_model=ActionResponse
-                )
+            # Plan #137: Always use FlatActionResponse for all providers
+            # This avoids Gemini's anyOf/oneOf schema limitations while working
+            # with all providers (OpenAI, Anthropic, Gemini, etc.)
+            flat_response: FlatActionResponse = await self.llm.generate_async(
+                prompt,
+                response_model=FlatActionResponse
+            )
+            response: ActionResponse = flat_response.to_action_response()
             usage: TokenUsage = self.llm.last_usage.copy()
 
             return {
