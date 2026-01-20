@@ -72,9 +72,6 @@ if echo "$COMMAND" | grep -qE 'git\s+worktree\s+remove'; then
     echo "" >&2
     echo "Use the safe removal command instead:" >&2
     echo "  make worktree-remove BRANCH=<branch-name>" >&2
-    echo "" >&2
-    echo "Or if you must remove manually:" >&2
-    echo "  python scripts/safe_worktree_remove.py <worktree-path>" >&2
     exit 2
 fi
 
