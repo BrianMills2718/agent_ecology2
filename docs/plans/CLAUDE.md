@@ -42,7 +42,7 @@ Master index of all gaps and their implementation plans.
 | 5 | [Oracle Anytime Bidding](05_oracle_anytime.md) | Medium | ✅ Complete | - |
 | 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | ✅ Complete | #7,#8,#14,#16 |
 | 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | ✅ Complete | - |
-| 8 | [Agent Rights Trading](08_agent_rights.md) | Low | 📋 Post-V1 | - |
+| 8 | [Agent Rights Trading](08_agent_rights.md) | Low | 🚧 Post-V1 | - |
 | 9 | [Scrip Debt Contracts](09_scrip_debt.md) | Low | ✅ Complete | - |
 | 10 | [Memory Persistence](10_memory_persistence.md) | Low | ✅ Complete | - |
 | 11 | [Terminology Cleanup](11_terminology.md) | Medium | ✅ Complete | #12 |
@@ -124,7 +124,7 @@ Master index of all gaps and their implementation plans.
 | 90 | [Cognitive Schema Configurability](90_cognitive_schema_configurability.md) | Low | 📋 Post-V1 | #88 |
 | 91 | [Acceptance Gate Cleanup](91_acceptance_gate_cleanup.md) | **High** | ✅ Complete | Meta-process clarity |
 | 92 | [Worktree/Branch Mismatch Detection](92_worktree_branch_validation.md) | **High** | ✅ Complete | Meta-process integrity |
-| 93 | [Agent Resource Visibility](93_agent_resource_visibility.md) | Medium | 📋 Deferred | #95 |
+| 93 | [Agent Resource Visibility](93_agent_resource_visibility.md) | Medium | ✅ Complete | #95 |
 | 94 | [PR Handoff Protocol](94_pr_handoff_protocol.md) | Medium | ✅ Complete | Coordination efficiency |
 | 95 | [Unified Resource System](95_unified_resource_system.md) | **Critical** | ✅ Complete | Core economic mechanics |
 | 97 | [SQLite Concurrency Fix](97_sqlite_concurrency.md) | **High** | ✅ Complete | Concurrent state access |
@@ -132,8 +132,8 @@ Master index of all gaps and their implementation plans.
 | 99 | [SQLite Isolation Fix](99_sqlite_isolation_fix.md) | **High** | ✅ Complete | Proper read/write concurrency |
 | 100 | [Contract System Overhaul](100_contract_system_overhaul.md) | **High** | ✅ Complete | Custom contracts, advanced access control |
 | 103 | [Meta-Process Doc Separation](103_meta_doc_separation.md) | Medium | ✅ Complete | Meta-process maintainability |
-| 104 | [Meta-Process Hooks Separation](104_meta_hooks_separation.md) | Low | 📋 Deferred | Meta-process maintainability |
-| 105 | [Meta-Process Scripts Separation](105_meta_scripts_separation.md) | Low | 📋 Deferred | Meta-process maintainability |
+| 104 | [Meta-Process Hooks Separation](104_meta_hooks_separation.md) | Low | ✅ Deferred | Meta-process maintainability |
+| 105 | [Meta-Process Scripts Separation](105_meta_scripts_separation.md) | Low | ✅ Deferred | Meta-process maintainability |
 | 106 | [CI Cost Reduction](106_ci_cost_reduction.md) | **High** | ✅ Complete | Reduce GitHub Actions costs |
 | 107 | [Temporal Network Visualization](107_temporal_network_viz.md) | **High** | ✅ Complete | Dashboard artifact network view |
 | 111 | [Genesis Deprivilege Audit](111_genesis_deprivilege_audit.md) | **High** | ✅ Complete | Ensure genesis uses kernel interfaces |

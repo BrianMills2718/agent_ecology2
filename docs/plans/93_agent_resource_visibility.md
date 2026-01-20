@@ -1,6 +1,19 @@
 # Plan 93: Agent Resource Visibility
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
+
+**Verified:** 2026-01-20T17:52:58Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-01-20T17:52:58Z
+tests:
+  unit: 1930 passed, 10 skipped, 1 warning in 78.74s (0:01:18)
+  e2e_smoke: PASSED (11.11s)
+  e2e_real: skipped (--skip-real-e2e)
+  doc_coupling: passed
+commit: 31c21c8
+```
 **Priority:** Medium
 **Blocked By:** None (was #95, now complete)
 **Blocks:** None
