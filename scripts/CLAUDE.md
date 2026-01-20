@@ -14,6 +14,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `check_claims.py` | Manage active work claims (scope-based) |
 | `merge_pr.py` | Merge PRs via GitHub CLI |
 | `cleanup_branches.py` | Delete stale remote branches (merged PRs) |
+| `cleanup_orphaned_worktrees.py` | Find/clean orphaned worktrees (merged PRs) |
 | `check_feature_coverage.py` | Verify all src files assigned to features |
 | `check_locked_files.py` | Protect locked acceptance criteria |
 | `check_new_code_tests.py` | Verify new code has test coverage |
@@ -98,6 +99,14 @@ python scripts/cleanup_branches.py           # List stale branches
 python scripts/cleanup_branches.py --delete  # Delete stale branches
 python scripts/cleanup_branches.py --all     # Include abandoned PRs too
 # Run periodically to keep branch count low
+
+# Worktree cleanup (orphaned worktrees from merged PRs)
+python scripts/cleanup_orphaned_worktrees.py         # Report orphaned worktrees
+python scripts/cleanup_orphaned_worktrees.py --auto  # Auto-cleanup (safe only)
+python scripts/cleanup_orphaned_worktrees.py --force # Force cleanup (loses uncommitted!)
+# Or via make:
+make clean-worktrees                         # Report orphans
+make clean-worktrees-auto                    # Auto-cleanup
 ```
 
 ## Configuration
