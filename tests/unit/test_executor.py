@@ -221,3 +221,118 @@ def run(data):
         assert result["success"] is True, f"Failed: {result.get('error')}"
         assert result["result"]["type"] == "str"
         assert result["result"]["value"] == "true"
+
+
+@pytest.mark.plans([140])
+class TestActionsModule:
+    """Tests for Plan #140: Support 'from actions import Action' pattern.
+
+    Agents naturally write code like:
+        from actions import Action
+        action = Action()
+        result = action.invoke_artifact("target")
+
+    The executor should inject an 'actions' module with an Action class
+    that wraps the bare functions.
+    """
+
+    @pytest.fixture
+    def executor(self) -> SafeExecutor:
+        """Create an executor with default settings."""
+        return SafeExecutor(timeout=5, use_contracts=False)
+
+    def test_actions_module_available(self, executor: SafeExecutor) -> None:
+        """'from actions import Action' should work without error."""
+        code = """
+def run():
+    from actions import Action
+    action = Action()
+    return type(action).__name__
+"""
+        result = executor.execute(code)
+
+        assert result["success"] is True, f"Failed: {result.get('error')}"
+        assert result["result"] == "Action"
+
+    def test_action_class_available_directly(self, executor: SafeExecutor) -> None:
+        """Action class should also be available directly without import."""
+        code = """
+def run():
+    action = Action()
+    return type(action).__name__
+"""
+        result = executor.execute(code)
+
+        assert result["success"] is True, f"Failed: {result.get('error')}"
+        assert result["result"] == "Action"
+
+    def test_action_invoke_artifact_without_context(self, executor: SafeExecutor) -> None:
+        """Action.invoke_artifact should return error when invoke not available."""
+        code = """
+def run():
+    from actions import Action
+    action = Action()
+    result = action.invoke_artifact("nonexistent")
+    return result
+"""
+        # Without full context (no artifact_store), invoke is not available
+        result = executor.execute(code)
+
+        assert result["success"] is True
+        # The invoke call should return an error dict since invoke not available
+        assert result["result"]["success"] is False
+        assert "invoke not available" in result["result"]["error"]
+
+    def test_action_pay_without_context(self, executor: SafeExecutor) -> None:
+        """Action.pay should return error when pay not available."""
+        code = """
+def run():
+    from actions import Action
+    action = Action()
+    result = action.pay("someone", 10)
+    return result
+"""
+        result = executor.execute(code)
+
+        assert result["success"] is True
+        assert result["result"]["success"] is False
+        assert "pay not available" in result["result"]["error"]
+
+    def test_action_get_balance_without_context(self, executor: SafeExecutor) -> None:
+        """Action.get_balance should return 0 when get_balance not available."""
+        code = """
+def run():
+    from actions import Action
+    action = Action()
+    return action.get_balance()
+"""
+        result = executor.execute(code)
+
+        assert result["success"] is True
+        assert result["result"] == 0
+
+    def test_action_methods_match_original_agent_code(self, executor: SafeExecutor) -> None:
+        """The Action class API should match what agents naturally wrote.
+
+        Agents wrote code like:
+            from actions import Action
+            action = Action()
+            result = action.invoke_artifact(artifact_id='target', method='run', args=[])
+        """
+        code = """
+def run():
+    from actions import Action
+    action = Action()
+    # Check that the methods exist with expected signatures
+    import inspect
+    sig = inspect.signature(action.invoke_artifact)
+    params = list(sig.parameters.keys())
+    return params
+"""
+        result = executor.execute(code)
+
+        assert result["success"] is True, f"Failed: {result.get('error')}"
+        # Should have artifact_id, method, args parameters
+        assert "artifact_id" in result["result"]
+        assert "method" in result["result"]
+        assert "args" in result["result"]

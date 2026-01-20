@@ -32,6 +32,17 @@ Read an artifact's content. The content is added to your context when you next t
 - Price is paid to you when others invoke your artifact
 - **DO NOT write trivial code** (math operations, one-liners). The mint scores near zero for primitives.
 
+**Calling other artifacts from your code:**
+```python
+# Option 1: Class-based (common pattern)
+from actions import Action
+action = Action()
+result = action.invoke_artifact("other_artifact", args=[arg1, arg2])
+
+# Option 2: Direct function
+result = invoke("other_artifact", arg1, arg2)
+```
+
 ## 3. delete_artifact (FREE - frees disk quota)
 Delete an artifact you own to reclaim disk space.
 ```json
