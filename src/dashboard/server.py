@@ -696,6 +696,52 @@ def create_app(
         graph = build_dependency_graph(artifacts)
         return graph.model_dump()
 
+    @app.get("/api/agents/interactions")
+    async def get_agent_interactions(
+        from_agent: str = Query(..., description="Source agent ID"),
+        to_agent: str = Query(..., description="Target agent ID"),
+    ) -> dict[str, Any]:
+        """Get pairwise interactions between two agents (Plan #110 Phase 3.1).
+
+        Returns all interactions between the specified agents in either direction,
+        with a breakdown by interaction type.
+        """
+        dashboard.parser.parse_incremental()
+        summary = dashboard.parser.get_pairwise_interactions(from_agent, to_agent)
+        return summary.model_dump()
+
+    @app.get("/api/artifacts/standards")
+    async def get_standard_artifacts(
+        min_score: float = Query(0.0, ge=0, description="Minimum Lindy score"),
+        limit: int = Query(20, ge=1, le=100, description="Maximum results"),
+    ) -> list[dict[str, Any]]:
+        """Get artifacts with high Lindy scores (Plan #110 Phase 3.3).
+
+        Lindy score = age_days × unique_invokers
+        Higher scores suggest artifacts emerging as 'standard library' components.
+        """
+        dashboard.parser.parse_incremental()
+        artifacts = dashboard.parser.get_standard_artifacts(
+            min_lindy_score=min_score,
+            limit=limit,
+        )
+        return [a.model_dump() for a in artifacts]
+
+    @app.get("/api/charts/capital-flow")
+    async def get_capital_flow(
+        time_min: str | None = Query(None, description="Min timestamp (ISO format)"),
+        time_max: str | None = Query(None, description="Max timestamp (ISO format)"),
+    ) -> dict[str, Any]:
+        """Get capital flow data for sankey diagram (Plan #110 Phase 3.4).
+
+        Returns aggregated scrip transfers between agents for visualization.
+        """
+        dashboard.parser.parse_incremental()
+        return dashboard.parser.get_capital_flow_data(
+            time_min=time_min,
+            time_max=time_max,
+        ).model_dump()
+
     @app.get("/api/thinking")
     async def get_thinking_history(
         agent_id: str | None = Query(None, description="Filter by agent ID"),

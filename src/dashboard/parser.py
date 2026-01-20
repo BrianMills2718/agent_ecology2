@@ -44,6 +44,12 @@ from .models import (
     ArtifactNode,
     ArtifactEdge,
     TemporalNetworkData,
+    # Plan #110 Phase 3 models
+    PairwiseInteractionSummary,
+    CapitalFlowData,
+    CapitalFlowNode,
+    CapitalFlowLink,
+    StandardArtifact,
 )
 
 
@@ -1426,3 +1432,227 @@ class JSONLParser:
             avg_duration_ms=avg_duration,
             failure_types=failure_types,
         )
+
+    def get_pairwise_interactions(
+        self,
+        from_agent: str,
+        to_agent: str,
+    ) -> PairwiseInteractionSummary:
+        """Get all interactions between two specific agents (Plan #110 Phase 3.1).
+
+        Args:
+            from_agent: The source agent ID
+            to_agent: The target agent ID
+
+        Returns:
+            PairwiseInteractionSummary with all interactions and breakdown
+        """
+        # Filter interactions for this pair (either direction)
+        pair_interactions = [
+            i for i in self.state.interactions
+            if (i.from_id == from_agent and i.to_id == to_agent) or
+               (i.from_id == to_agent and i.to_id == from_agent)
+        ]
+
+        # Sort by timestamp
+        pair_interactions.sort(key=lambda x: (x.tick, x.timestamp))
+
+        # Count by type
+        scrip_transfers = 0
+        scrip_total = 0
+        escrow_trades = 0
+        ownership_transfers = 0
+        artifact_invocations = 0
+        genesis_invocations = 0
+
+        # Track if bidirectional
+        has_from_to = False
+        has_to_from = False
+
+        for interaction in pair_interactions:
+            if interaction.from_id == from_agent:
+                has_from_to = True
+            else:
+                has_to_from = True
+
+            if interaction.interaction_type == "scrip_transfer":
+                scrip_transfers += 1
+                scrip_total += interaction.amount or 0
+            elif interaction.interaction_type == "escrow_trade":
+                escrow_trades += 1
+            elif interaction.interaction_type == "ownership_transfer":
+                ownership_transfers += 1
+            elif interaction.interaction_type == "artifact_invoke":
+                artifact_invocations += 1
+            elif interaction.interaction_type == "genesis_invoke":
+                genesis_invocations += 1
+
+        return PairwiseInteractionSummary(
+            from_agent=from_agent,
+            to_agent=to_agent,
+            interactions=pair_interactions,
+            total_count=len(pair_interactions),
+            scrip_transfers=scrip_transfers,
+            scrip_total=scrip_total,
+            escrow_trades=escrow_trades,
+            ownership_transfers=ownership_transfers,
+            artifact_invocations=artifact_invocations,
+            genesis_invocations=genesis_invocations,
+            bidirectional=has_from_to and has_to_from,
+        )
+
+    def get_capital_flow_data(
+        self,
+        time_min: str | None = None,
+        time_max: str | None = None,
+    ) -> CapitalFlowData:
+        """Get capital flow data for sankey diagram (Plan #110 Phase 3.4).
+
+        Aggregates scrip transfers between agents for visualization.
+
+        Args:
+            time_min: Optional ISO timestamp filter (inclusive)
+            time_max: Optional ISO timestamp filter (inclusive)
+
+        Returns:
+            CapitalFlowData with nodes and aggregated links
+        """
+        from datetime import datetime
+
+        # Filter transfers by time
+        transfers = [
+            t for t in self.state.ledger_transfers
+        ]
+
+        if time_min:
+            try:
+                min_dt = datetime.fromisoformat(time_min)
+                transfers = [
+                    t for t in transfers
+                    if datetime.fromisoformat(t.timestamp) >= min_dt
+                ]
+            except ValueError:
+                pass
+
+        if time_max:
+            try:
+                max_dt = datetime.fromisoformat(time_max)
+                transfers = [
+                    t for t in transfers
+                    if datetime.fromisoformat(t.timestamp) <= max_dt
+                ]
+            except ValueError:
+                pass
+
+        # Build nodes from unique participants
+        node_ids: set[str] = set()
+        for t in transfers:
+            node_ids.add(t.from_id)
+            node_ids.add(t.to_id)
+
+        nodes: list[CapitalFlowNode] = []
+        for node_id in node_ids:
+            node_type: Literal["agent", "genesis", "artifact"] = "agent"
+            if node_id.startswith("genesis_"):
+                node_type = "genesis"
+            elif node_id in self.state.artifacts:
+                node_type = "artifact"
+
+            nodes.append(CapitalFlowNode(
+                id=node_id,
+                name=node_id,
+                node_type=node_type,
+            ))
+
+        # Aggregate links (source -> target -> total value)
+        link_aggregates: dict[tuple[str, str], tuple[int, int]] = {}  # (value, count)
+        for t in transfers:
+            key = (t.from_id, t.to_id)
+            current_value, current_count = link_aggregates.get(key, (0, 0))
+            link_aggregates[key] = (current_value + t.amount, current_count + 1)
+
+        links: list[CapitalFlowLink] = []
+        for (source, target), (value, count) in link_aggregates.items():
+            links.append(CapitalFlowLink(
+                source=source,
+                target=target,
+                value=value,
+                count=count,
+            ))
+
+        # Calculate time range
+        time_range = ("", "")
+        if transfers:
+            timestamps = [t.timestamp for t in transfers]
+            time_range = (min(timestamps), max(timestamps))
+
+        total_flow = sum(t.amount for t in transfers)
+
+        return CapitalFlowData(
+            nodes=nodes,
+            links=links,
+            time_range=time_range,
+            total_flow=total_flow,
+        )
+
+    def get_standard_artifacts(
+        self,
+        min_lindy_score: float = 0.0,
+        limit: int = 20,
+    ) -> list[StandardArtifact]:
+        """Get artifacts with high Lindy scores (Plan #110 Phase 3.3).
+
+        Lindy score = age_days × unique_invokers
+        Higher scores indicate artifacts that are both old and widely used,
+        suggesting they may be emerging as "standard library" components.
+
+        Args:
+            min_lindy_score: Minimum Lindy score to include
+            limit: Maximum number of artifacts to return
+
+        Returns:
+            List of StandardArtifact sorted by Lindy score descending
+        """
+        from datetime import datetime
+
+        now = datetime.now()
+        results: list[StandardArtifact] = []
+
+        for artifact_id, artifact in self.state.artifacts.items():
+            # Calculate age in days
+            try:
+                created = datetime.fromisoformat(artifact.created_at)
+                age_days = (now - created).total_seconds() / 86400
+            except (ValueError, TypeError):
+                age_days = 0.0
+
+            # Count unique invokers
+            invokers: set[str] = set()
+            total_invocations = 0
+            for inv in self.state.invocation_events:
+                if inv.artifact_id == artifact_id:
+                    invokers.add(inv.invoker_id)
+                    total_invocations += 1
+
+            unique_invokers = len(invokers)
+
+            # Calculate Lindy score
+            lindy_score = age_days * unique_invokers
+
+            if lindy_score >= min_lindy_score:
+                results.append(StandardArtifact(
+                    artifact_id=artifact_id,
+                    name=artifact_id,
+                    owner=artifact.owner_id,
+                    artifact_type=artifact.artifact_type,
+                    lindy_score=lindy_score,
+                    age_days=age_days,
+                    unique_invokers=unique_invokers,
+                    total_invocations=total_invocations,
+                    is_genesis=artifact_id.startswith("genesis_"),
+                ))
+
+        # Sort by Lindy score descending
+        results.sort(key=lambda x: x.lindy_score, reverse=True)
+
+        return results[:limit]
