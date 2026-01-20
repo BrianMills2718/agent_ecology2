@@ -19,12 +19,36 @@ concurrency:
 
 jobs:
   # =============================================================================
+  # CI Toggle - Check if CI is enabled via .github/ci-disabled file
+  # To disable CI: create .github/ci-disabled
+  # To enable CI: delete .github/ci-disabled
+  # =============================================================================
+  ci-enabled:
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github
+      - id: check
+        run: |
+          if [ -f ".github/ci-disabled" ]; then
+            echo "::notice::CI is DISABLED via .github/ci-disabled file"
+            echo "enabled=false" >> $GITHUB_OUTPUT
+          else
+            echo "CI is enabled"
+            echo "enabled=true" >> $GITHUB_OUTPUT
+          fi
+
+  # =============================================================================
   # Change Detection - Determines which jobs need to run
   # Saves minutes by skipping expensive jobs for docs-only changes
   # =============================================================================
   changes:
+    needs: ci-enabled
+    if: needs.ci-enabled.outputs.enabled == 'true' && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     outputs:
       code: ${{ steps.filter.outputs.code }}
       docs: ${{ steps.filter.outputs.docs }}
@@ -50,8 +74,8 @@ jobs:
   # Core Quality Gates (test + mypy) - Only on code changes
   # =============================================================================
   test:
-    needs: changes
-    if: needs.changes.outputs.code == 'true'
+    needs: [ci-enabled, changes]
+    if: needs.ci-enabled.outputs.enabled == 'true' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -82,8 +106,8 @@ jobs:
         run: pip install pytest-timeout && pytest tests/ -v --tb=short --timeout=150
 
   mypy:
-    needs: changes
-    if: needs.changes.outputs.code == 'true'
+    needs: [ci-enabled, changes]
+    if: needs.ci-enabled.outputs.enabled == 'true' && needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -117,8 +141,8 @@ jobs:
   # Combines: docs, code-quality, meta checks
   # =============================================================================
   fast-checks:
-    needs: changes
-    if: always() && github.event_name == 'pull_request' && !cancelled()
+    needs: [ci-enabled, changes]
+    if: needs.ci-enabled.outputs.enabled == 'true' && github.event_name == 'pull_request' && !cancelled()
     runs-on: ubuntu-latest
 
     steps:
@@ -207,8 +231,8 @@ jobs:
   # Plan Checks - Runs for all PRs
   # =============================================================================
   plans:
-    needs: changes
-    if: always() && github.event_name == 'pull_request' && !cancelled()
+    needs: [ci-enabled, changes]
+    if: needs.ci-enabled.outputs.enabled == 'true' && github.event_name == 'pull_request' && !cancelled()
     runs-on: ubuntu-latest
 
     steps:
@@ -278,6 +302,7 @@ jobs:
   # =============================================================================
   # Post-Merge (lightweight - only on main push)
   # Auto-syncs plan index to prevent PR conflicts
+  # Note: post-merge runs even when CI is disabled (it's cheap and important)
   # =============================================================================
   post-merge:
     runs-on: ubuntu-latest
