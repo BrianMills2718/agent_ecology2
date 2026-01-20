@@ -1,6 +1,6 @@
 # Plan #137: Agent IRR Improvements
 
-**Status:** 🚧 In Progress
+**Status:** ✅ Complete
 **Priority:** High
 **Blocked By:** None
 **Blocks:** Agent capability improvements
@@ -156,13 +156,13 @@ pytest tests/e2e/test_smoke.py -v
 
 ## Acceptance Criteria
 
-- [ ] `_is_gemini_model()` method removed from agent.py
-- [ ] All response model conditionals removed
-- [ ] FlatActionResponse used for all providers
-- [ ] Interface discovery section added to handbook
-- [ ] interface_discovery config schema added
-- [ ] At least one gen 3 agent has improved state machine example
-- [ ] All tests pass
+- [x] `_is_gemini_model()` method removed from agent.py
+- [x] All response model conditionals removed
+- [x] FlatActionResponse used for all providers
+- [x] Interface discovery section added to handbook
+- [x] interface_discovery config schema added
+- [x] At least one gen 3 agent has improved state machine example
+- [x] All tests pass
 
 ## Notes
 
