@@ -139,7 +139,7 @@ Master index of all gaps and their implementation plans.
 | 111 | [Genesis Deprivilege Audit](111_genesis_deprivilege_audit.md) | **High** | ✅ Complete | Ensure genesis uses kernel interfaces |
 | 112 | [JSON Arg Parsing](112_json_arg_parsing.md) | **High** | ✅ Complete | Auto-parse JSON strings in invoke args |
 | 113 | [Contractable Model Access](113_contractable_model_access.md) | **High** | ✅ Complete | LLM model access as tradeable resource |
-| 114 | [Interface Discovery](114_interface_discovery.md) | **High** | 📋 Planned | Cross-agent collaboration |
+| 114 | [Interface Discovery](114_interface_discovery.md) | **High** | ✅ Complete | Cross-agent collaboration |
 | 115 | [Worktree Ownership Enforcement](115_worktree_ownership_enforcement.md) | **High** | ✅ Complete | Multi-CC worktree safety |
 | 116 | [Enforce Finish From Main](116_enforce_finish_from_main.md) | Medium | ✅ Complete | Meta-process integrity |
 
