@@ -28,6 +28,7 @@ from .event_log import GenesisEventLog
 from .escrow import GenesisEscrow
 from .debt_contract import GenesisDebtContract
 from .store import GenesisStore
+from .model_registry import GenesisModelRegistry
 
 
 def create_genesis_artifacts(
@@ -140,6 +141,11 @@ def create_genesis_artifacts(
         )
         artifacts[genesis_debt.id] = genesis_debt
 
+    # Add model registry if enabled (Plan #113)
+    if cfg.artifacts.model_registry.enabled:
+        genesis_model_registry = GenesisModelRegistry(genesis_config=cfg)
+        artifacts[genesis_model_registry.id] = genesis_model_registry
+
     # Add MCP artifacts if any are enabled
     from ..mcp_bridge import create_mcp_artifacts
     mcp_artifacts = create_mcp_artifacts(cfg.mcp)
@@ -157,6 +163,7 @@ def create_genesis_artifacts(
         "genesis_store": "genesis_store_api",
         "genesis_event_log": "genesis_event_log_api",
         "genesis_escrow": "genesis_escrow_contract",
+        "genesis_model_registry": "genesis_model_registry_api",
     }
     for old_name, new_name in alias_mapping.items():
         if old_name in artifacts:

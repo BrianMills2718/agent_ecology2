@@ -180,6 +180,7 @@ class GenesisArtifactsEnabled(StrictModel):
     escrow: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
     store: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
     debt_contract: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
+    model_registry: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
 
 
 class LedgerMethodsConfig(StrictModel):
@@ -671,6 +672,69 @@ class McpConfig(StrictModel):
     )
 
 
+class ModelRegistryMethodsConfig(StrictModel):
+    """Genesis model registry method configurations."""
+
+    list_models: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="List available models and their properties. Args: []"
+        )
+    )
+    get_quota: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Check agent's quota for a model. Args: [agent_id, model_id]"
+        )
+    )
+    request_access: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=1,
+            description="Request quota allocation from pool. Args: [agent_id, model_id, amount]"
+        )
+    )
+    release_quota: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Release unused quota back to pool. Args: [agent_id, model_id, amount]"
+        )
+    )
+    transfer_quota: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=1,
+            description="Transfer quota to another agent. Args: [to_agent, model_id, amount]"
+        )
+    )
+    get_available_models: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Get models agent has capacity for. Args: [agent_id]"
+        )
+    )
+    consume: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Record usage against quota. Args: [agent_id, model_id, amount]"
+        )
+    )
+
+
+class ModelRegistryConfig(StrictModel):
+    """Genesis model registry configuration."""
+
+    artifact_id: str = Field(
+        default="genesis_model_registry",
+        description="Artifact ID for the model registry"
+    )
+    description: str = Field(
+        default="Model access management - list models, check/transfer quotas",
+        description="Description of the model registry"
+    )
+    methods: ModelRegistryMethodsConfig = Field(
+        default_factory=ModelRegistryMethodsConfig
+    )
+
+
 class GenesisConfig(StrictModel):
     """Configuration for all genesis artifacts."""
 
@@ -682,6 +746,7 @@ class GenesisConfig(StrictModel):
     escrow: EscrowConfig = Field(default_factory=EscrowConfig)
     store: StoreConfig = Field(default_factory=StoreConfig)
     debt_contract: DebtContractConfig = Field(default_factory=DebtContractConfig)
+    model_registry: ModelRegistryConfig = Field(default_factory=ModelRegistryConfig)
     mcp: McpConfig = Field(default_factory=McpConfig)
 
 

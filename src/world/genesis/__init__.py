@@ -71,6 +71,7 @@ from .event_log import GenesisEventLog
 from .escrow import GenesisEscrow
 from .debt_contract import GenesisDebtContract
 from .store import GenesisStore
+from .model_registry import GenesisModelRegistry
 
 # Factory function
 from .factory import create_genesis_artifacts
@@ -129,6 +130,7 @@ __all__ = [
     "GenesisEscrow",
     "GenesisDebtContract",
     "GenesisStore",
+    "GenesisModelRegistry",
     # Factory
     "create_genesis_artifacts",
 ]

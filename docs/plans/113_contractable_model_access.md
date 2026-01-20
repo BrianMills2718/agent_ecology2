@@ -33,14 +33,16 @@
 
 ## Files Affected
 
-- `src/world/genesis/model_registry.py` (create) - Genesis artifact for model registration
-- `src/world/model_access.py` (create) - Model access tracking and quota management
-- `src/agents/agent.py` (modify) - Model selection logic
-- `src/world/genesis.py` (modify) - Register genesis_model_registry
-- `config/config.yaml` (modify) - Multi-model configuration
-- `config/schema.yaml` (modify) - Schema for model configs
-- `tests/unit/test_model_access.py` (create) - Unit tests
-- `tests/integration/test_model_contracts.py` (create) - Contract integration tests
+- src/world/genesis/model_registry.py (create) - Genesis artifact for model registration
+- src/world/genesis/factory.py (modify) - Create genesis_model_registry
+- src/world/genesis/__init__.py (modify) - Export GenesisModelRegistry
+- src/world/model_access.py (create) - Model access tracking and quota management
+- src/config_schema.py (modify) - Add ModelRegistryConfig and models config
+- src/agents/agent.py (modify) - Model selection logic
+- config/config.yaml (modify) - Multi-model configuration
+- config/schema.yaml (modify) - Schema for model configs
+- tests/unit/test_model_access.py (create) - Unit tests
+- tests/integration/test_model_contracts.py (create) - Contract integration tests
 
 ---
 
