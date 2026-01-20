@@ -48,3 +48,7 @@ workflow:
         Short time horizon - prefer quick wins over long investments.
 
         Respond with your chosen action.
+
+# Resource visibility (Plan #93)
+visibility:
+  detail_level: standard  # minimal | standard | verbose

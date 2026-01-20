@@ -190,3 +190,7 @@ workflow:
 error_handling:
   default_on_failure: skip  # Speed over reliability
   max_retries: 1
+
+# Resource visibility (Plan #93)
+visibility:
+  detail_level: standard  # minimal | standard | verbose

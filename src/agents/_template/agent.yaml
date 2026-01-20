@@ -9,3 +9,7 @@ starting_credits: 100
 # Optional overrides (uncomment to use)
 # temperature: 0.7
 # max_tokens: 500
+
+# Resource visibility (Plan #93)
+visibility:
+  detail_level: standard  # minimal | standard | verbose

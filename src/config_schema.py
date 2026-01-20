@@ -111,9 +111,9 @@ class StockResources(StrictModel):
 class VisibilityDefaults(StrictModel):
     """Default visibility settings for agents."""
 
-    resources: list[str] = Field(
-        default=["llm_budget", "disk"],
-        description="Resources to show by default"
+    resources: list[str] | None = Field(
+        default=None,
+        description="Resources to show by default (None = all resources)"
     )
     detail_level: Literal["minimal", "standard", "verbose"] = Field(
         default="standard",
