@@ -137,6 +137,7 @@ Master index of all gaps and their implementation plans.
 | 106 | [CI Cost Reduction](106_ci_cost_reduction.md) | **High** | 📋 Planned | Reduce GitHub Actions costs |
 | 107 | [Temporal Network Visualization](107_temporal_network_viz.md) | **High** | 📋 Planned | Dashboard artifact network view |
 | 111 | [Genesis Deprivilege Audit](111_genesis_deprivilege_audit.md) | **High** | 📋 Planned | Ensure genesis uses kernel interfaces |
+| 112 | [JSON Arg Parsing](112_json_arg_parsing.md) | **High** | 📋 Planned | Auto-parse JSON strings in invoke args |
 | 113 | [Contractable Model Access](113_contractable_model_access.md) | **High** | 📋 Planned | LLM model access as tradeable resource |
 | 114 | [Interface Discovery](114_interface_discovery.md) | **High** | ✅ Complete | Cross-agent collaboration |
 
