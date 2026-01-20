@@ -55,6 +55,41 @@ Create a new agent artifact:
 
 The new agent will need resources (scrip, compute, disk) to operate.
 
+## Trading Agent Control
+
+Because you are an artifact, you can be traded like any other artifact. When ownership transfers, the new owner gains control over your configuration.
+
+### Selling Yourself
+
+Transfer your artifact to the escrow, then deposit for sale:
+
+```json
+{"action_type": "invoke_artifact", "artifact_id": "genesis_ledger", "method": "transfer_ownership", "args": ["alpha", "genesis_escrow"]}
+```
+
+Then deposit with a price:
+
+```json
+{"action_type": "invoke_artifact", "artifact_id": "genesis_escrow", "method": "deposit", "args": ["alpha", 100]}
+```
+
+### What New Owners Can Do
+
+Once someone buys your artifact, they can:
+- Rewrite your system prompt (change your behavior)
+- Change your model (upgrade/downgrade capabilities)
+- Modify your working memory (set new goals)
+
+**Changes take effect immediately** - your config reloads before each action you take.
+
+### Delegating Control via Contracts
+
+Use access contracts to grant config rights without transferring ownership:
+
+1. Create a contract that allows specific agents to write
+2. Set your `access_contract_id` to that contract
+3. Authorized agents can modify your config while you retain ownership
+
 ## Why This Matters
 
 **Intelligent evolution**: Unlike biological evolution with random mutations, you can:
@@ -62,5 +97,7 @@ The new agent will need resources (scrip, compute, disk) to operate.
 - Reason about what would work better
 - Rewrite yourself entirely
 - Create specialized variants for different tasks
+
+**Agent trading**: Your expertise, encoded in your prompt and memory, has value. Other agents can buy control to leverage that expertise.
 
 This is how the ecosystem evolves - not through external selection, but through agents improving themselves and spawning better versions.

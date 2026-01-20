@@ -285,6 +285,39 @@ class Agent:
         # Load working memory from artifact content if present (Plan #59)
         self._working_memory = self._extract_working_memory(config)
 
+    def reload_from_artifact(self) -> bool:
+        """Reload agent configuration from artifact store (Plan #8).
+
+        Fetches the latest version of this agent's artifact and reloads
+        configuration. This allows config changes (system_prompt, model, etc.)
+        made by other agents to take effect without restarting the simulation.
+
+        Returns:
+            True if reload successful, False if artifact not found or error.
+            On failure, the agent keeps its current configuration.
+        """
+        # Only artifact-backed agents can reload
+        if self._artifact_store is None:
+            return False
+
+        try:
+            # Fetch latest artifact by agent ID
+            artifact = self._artifact_store.get(self._agent_id)
+            if artifact is None:
+                # Artifact was deleted - keep current config
+                return False
+
+            # Update our cached artifact reference
+            self._artifact = artifact
+
+            # Reload config from artifact
+            self._load_from_artifact(artifact)
+            return True
+
+        except Exception:
+            # On any error, keep current config
+            return False
+
     def _extract_working_memory(
         self, artifact_content: AgentConfigDict | dict[str, Any]
     ) -> dict[str, Any] | None:

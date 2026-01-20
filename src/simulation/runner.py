@@ -1004,6 +1004,10 @@ class SimulationRunner:
         Returns:
             Action dict or None if agent chose to skip.
         """
+        # Reload config from artifact before each decision (Plan #8)
+        # This allows config changes made by other agents to take effect
+        agent.reload_from_artifact()
+
         # Get current world state
         tick_state = self.world.get_state_summary()
 
