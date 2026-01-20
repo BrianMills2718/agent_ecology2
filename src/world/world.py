@@ -13,7 +13,7 @@ from .logger import EventLogger
 from .actions import (
     ActionIntent, ActionResult, ActionType,
     NoopIntent, ReadArtifactIntent, WriteArtifactIntent,
-    InvokeArtifactIntent, DeleteArtifactIntent
+    EditArtifactIntent, InvokeArtifactIntent, DeleteArtifactIntent
 )
 # NOTE: TransferIntent removed - all transfers via genesis_ledger.transfer()
 from .genesis import (
@@ -752,6 +752,9 @@ class World:
         elif isinstance(intent, WriteArtifactIntent):
             result = self._execute_write(intent)
 
+        elif isinstance(intent, EditArtifactIntent):
+            result = self._execute_edit(intent)
+
         elif isinstance(intent, InvokeArtifactIntent):
             result = self._execute_invoke(intent)
 
@@ -874,6 +877,92 @@ class World:
             message=write_result["message"],
             data=write_result["data"],
             resources_consumed=resources_consumed if resources_consumed else None,
+            charged_to=intent.principal_id,
+        )
+
+    def _execute_edit(self, intent: EditArtifactIntent) -> ActionResult:
+        """Execute an edit_artifact action.
+
+        Plan #131: Claude Code-style editing using old_string/new_string replacement.
+
+        Handles:
+        - Protection of genesis artifacts
+        - Write permission checks (policy-based)
+        - Uniqueness validation (old_string must appear exactly once)
+        - Artifact editing via ArtifactStore.edit_artifact()
+        """
+        # Protect genesis artifacts from modification
+        if intent.artifact_id in self.genesis_artifacts:
+            return ActionResult(
+                success=False,
+                message=f"Cannot modify system artifact {intent.artifact_id}",
+                error_code=ErrorCode.NOT_AUTHORIZED.value,
+                error_category=ErrorCategory.PERMISSION.value,
+                retriable=False,
+            )
+
+        # Check if artifact exists
+        existing = self.artifacts.get(intent.artifact_id)
+        if not existing:
+            return ActionResult(
+                success=False,
+                message=f"Artifact '{intent.artifact_id}' not found",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+                error_details={"artifact_id": intent.artifact_id},
+            )
+
+        # Check write permission via contracts
+        executor = get_executor()
+        allowed, reason = executor._check_permission(intent.principal_id, "write", existing)
+        if not allowed:
+            return ActionResult(
+                success=False,
+                message=get_error_message("access_denied_write", artifact_id=intent.artifact_id),
+                error_code=ErrorCode.NOT_AUTHORIZED.value,
+                error_category=ErrorCategory.PERMISSION.value,
+                retriable=False,
+            )
+
+        # Execute the edit
+        edit_result: WriteResult = self.artifacts.edit_artifact(
+            artifact_id=intent.artifact_id,
+            old_string=intent.old_string,
+            new_string=intent.new_string,
+        )
+
+        if not edit_result["success"]:
+            # Determine appropriate error code based on the error
+            error_data = edit_result.get("data") or {}
+            error_type = error_data.get("error", "")
+
+            if error_type == "not_unique":
+                error_code = ErrorCode.INVALID_ARGUMENT.value
+                error_category = ErrorCategory.VALIDATION.value
+            elif error_type == "not_found_in_content":
+                error_code = ErrorCode.INVALID_ARGUMENT.value
+                error_category = ErrorCategory.VALIDATION.value
+            elif error_type == "deleted":
+                error_code = ErrorCode.NOT_FOUND.value
+                error_category = ErrorCategory.RESOURCE.value
+            else:
+                error_code = ErrorCode.INVALID_ARGUMENT.value
+                error_category = ErrorCategory.VALIDATION.value
+
+            return ActionResult(
+                success=False,
+                message=edit_result["message"],
+                error_code=error_code,
+                error_category=error_category,
+                retriable=False,
+                error_details=error_data,
+            )
+
+        return ActionResult(
+            success=True,
+            message=edit_result["message"],
+            data=edit_result["data"],
             charged_to=intent.principal_id,
         )
 

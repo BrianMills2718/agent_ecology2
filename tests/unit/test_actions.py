@@ -8,6 +8,8 @@ import pytest
 from src.world.actions import (
     ActionIntent,
     ActionType,
+    DeleteArtifactIntent,
+    EditArtifactIntent,
     InvokeArtifactIntent,
     NoopIntent,
     ReadArtifactIntent,
@@ -74,16 +76,34 @@ class TestActionIntentReasoning:
         assert intent.artifact_id == "genesis_ledger"
         assert intent.method == "transfer"
 
+    def test_edit_intent_accepts_reasoning(self) -> None:
+        """EditArtifactIntent should accept and store reasoning (Plan #131)"""
+        intent = EditArtifactIntent(
+            principal_id="agent1",
+            artifact_id="my_doc",
+            old_string="old value",
+            new_string="new value",
+            reasoning="Fixing typo in document"
+        )
+
+        assert intent.reasoning == "Fixing typo in document"
+        assert intent.artifact_id == "my_doc"
+        assert intent.old_string == "old value"
+        assert intent.new_string == "new value"
+        assert intent.action_type == ActionType.EDIT_ARTIFACT
+
     def test_reasoning_defaults_to_empty_string(self) -> None:
         """All intents should default reasoning to empty string"""
         noop = NoopIntent("agent1")
         read = ReadArtifactIntent("agent1", "artifact1")
         write = WriteArtifactIntent("agent1", "artifact1", "generic", "content")
+        edit = EditArtifactIntent("agent1", "artifact1", "old", "new")
         invoke = InvokeArtifactIntent("agent1", "artifact1", "method")
 
         assert noop.reasoning == ""
         assert read.reasoning == ""
         assert write.reasoning == ""
+        assert edit.reasoning == ""
         assert invoke.reasoning == ""
 
 
@@ -130,6 +150,17 @@ class TestParseIntentReasoning:
         assert isinstance(intent, InvokeArtifactIntent)
         assert intent.reasoning == "Checking my balance"
 
+    def test_parse_edit_intent_with_reasoning(self) -> None:
+        """parse_intent_from_json should extract reasoning for edit_artifact (Plan #131)"""
+        json_str = '{"action_type": "edit_artifact", "artifact_id": "my_doc", "old_string": "old text", "new_string": "new text", "reasoning": "Fixing typo"}'
+        intent = parse_intent_from_json("agent1", json_str)
+
+        assert isinstance(intent, EditArtifactIntent)
+        assert intent.reasoning == "Fixing typo"
+        assert intent.artifact_id == "my_doc"
+        assert intent.old_string == "old text"
+        assert intent.new_string == "new text"
+
 
 class TestIntentToDictReasoning:
     """Tests for reasoning in to_dict() output"""
@@ -169,6 +200,19 @@ class TestIntentToDictReasoning:
 
         assert result["reasoning"] == "Payment for service"
 
+    def test_edit_intent_to_dict_includes_reasoning(self) -> None:
+        """EditArtifactIntent.to_dict() should include reasoning (Plan #131)"""
+        intent = EditArtifactIntent(
+            "agent1", "my_doc", "old text", "new text",
+            reasoning="Fixing typo"
+        )
+        result = intent.to_dict()
+
+        assert result["reasoning"] == "Fixing typo"
+        assert result["artifact_id"] == "my_doc"
+        assert result["old_string"] == "old text"
+        assert result["new_string"] == "new text"
+
     def test_empty_reasoning_still_in_dict(self) -> None:
         """Even empty reasoning should be in to_dict() output"""
         intent = NoopIntent("agent1")
@@ -176,3 +220,64 @@ class TestIntentToDictReasoning:
 
         assert "reasoning" in result
         assert result["reasoning"] == ""
+
+
+class TestEditArtifactParsing:
+    """Tests for edit_artifact parsing validation (Plan #131)"""
+
+    def test_parse_edit_requires_artifact_id(self) -> None:
+        """edit_artifact requires artifact_id"""
+        json_str = '{"action_type": "edit_artifact", "old_string": "old", "new_string": "new"}'
+        result = parse_intent_from_json("agent1", json_str)
+
+        assert isinstance(result, str)
+        assert "artifact_id" in result.lower()
+
+    def test_parse_edit_requires_old_string(self) -> None:
+        """edit_artifact requires old_string"""
+        json_str = '{"action_type": "edit_artifact", "artifact_id": "doc", "new_string": "new"}'
+        result = parse_intent_from_json("agent1", json_str)
+
+        assert isinstance(result, str)
+        assert "old_string" in result.lower()
+
+    def test_parse_edit_requires_new_string(self) -> None:
+        """edit_artifact requires new_string"""
+        json_str = '{"action_type": "edit_artifact", "artifact_id": "doc", "old_string": "old"}'
+        result = parse_intent_from_json("agent1", json_str)
+
+        assert isinstance(result, str)
+        assert "new_string" in result.lower()
+
+    def test_parse_edit_rejects_same_strings(self) -> None:
+        """edit_artifact rejects when old_string equals new_string"""
+        json_str = '{"action_type": "edit_artifact", "artifact_id": "doc", "old_string": "same", "new_string": "same"}'
+        result = parse_intent_from_json("agent1", json_str)
+
+        assert isinstance(result, str)
+        assert "different" in result.lower() or "same" in result.lower()
+
+    def test_parse_edit_valid_intent(self) -> None:
+        """edit_artifact with all required fields creates valid intent"""
+        json_str = '{"action_type": "edit_artifact", "artifact_id": "doc", "old_string": "old", "new_string": "new"}'
+        result = parse_intent_from_json("agent1", json_str)
+
+        assert isinstance(result, EditArtifactIntent)
+        assert result.artifact_id == "doc"
+        assert result.old_string == "old"
+        assert result.new_string == "new"
+        assert result.principal_id == "agent1"
+
+    def test_edit_intent_to_dict_truncates_long_strings(self) -> None:
+        """EditArtifactIntent.to_dict() should truncate long old_string/new_string"""
+        long_string = "x" * 200
+        intent = EditArtifactIntent(
+            "agent1", "doc", long_string, long_string + "y"
+        )
+        result = intent.to_dict()
+
+        # Should be truncated to ~100 chars with "..."
+        assert len(result["old_string"]) < 110
+        assert result["old_string"].endswith("...")
+        assert len(result["new_string"]) < 110
+        assert result["new_string"].endswith("...")

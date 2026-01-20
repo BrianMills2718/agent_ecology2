@@ -766,3 +766,80 @@ class ArtifactStore:
                 "message": f"Wrote artifact {artifact_id}",
                 "data": {"artifact_id": artifact_id},
             }
+
+    def edit_artifact(
+        self,
+        artifact_id: str,
+        old_string: str,
+        new_string: str,
+    ) -> WriteResult:
+        """Edit an artifact using Claude Code-style string replacement.
+
+        Plan #131: Enables precise, surgical edits without rewriting entire content.
+        Uses old_string/new_string approach where old_string must be unique.
+
+        Args:
+            artifact_id: The artifact to edit
+            old_string: The string to find and replace (must be unique in content)
+            new_string: The string to replace it with
+
+        Returns:
+            WriteResult with success=True if edit applied, False on error
+
+        Errors:
+            - Artifact not found
+            - Artifact is deleted
+            - old_string not found in content
+            - old_string appears multiple times (not unique)
+            - old_string equals new_string (no-op)
+        """
+        # Get the artifact
+        artifact = self.get(artifact_id)
+        if artifact is None:
+            return {
+                "success": False,
+                "message": f"Artifact '{artifact_id}' not found",
+                "data": {"artifact_id": artifact_id, "error": "not_found"},
+            }
+
+        # Check if deleted
+        if artifact.deleted:
+            return {
+                "success": False,
+                "message": f"Artifact '{artifact_id}' has been deleted",
+                "data": {"artifact_id": artifact_id, "error": "deleted"},
+            }
+
+        # Check if old_string equals new_string
+        if old_string == new_string:
+            return {
+                "success": False,
+                "message": "old_string and new_string must be different",
+                "data": {"artifact_id": artifact_id, "error": "no_change"},
+            }
+
+        # Check for old_string in content
+        count = artifact.content.count(old_string)
+        if count == 0:
+            return {
+                "success": False,
+                "message": f"old_string not found in artifact '{artifact_id}'",
+                "data": {"artifact_id": artifact_id, "error": "not_found_in_content"},
+            }
+
+        if count > 1:
+            return {
+                "success": False,
+                "message": f"old_string appears {count} times in artifact '{artifact_id}' (must be unique)",
+                "data": {"artifact_id": artifact_id, "error": "not_unique", "count": count},
+            }
+
+        # Apply the edit
+        artifact.content = artifact.content.replace(old_string, new_string, 1)
+        artifact.updated_at = datetime.now(timezone.utc).isoformat()
+
+        return {
+            "success": True,
+            "message": f"Edited artifact '{artifact_id}'",
+            "data": {"artifact_id": artifact_id},
+        }

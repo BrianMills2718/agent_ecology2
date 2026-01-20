@@ -1,6 +1,9 @@
 # World kernel package
 from .world import World
-from .actions import ActionIntent, NoopIntent, ReadArtifactIntent, WriteArtifactIntent, InvokeArtifactIntent
+from .actions import (
+    ActionIntent, NoopIntent, ReadArtifactIntent, WriteArtifactIntent,
+    EditArtifactIntent, InvokeArtifactIntent, DeleteArtifactIntent
+)
 # NOTE: TransferIntent removed - all transfers via genesis_ledger.transfer()
 from .ledger import Ledger
 from .artifacts import ArtifactStore, Artifact, WriteResult
@@ -21,7 +24,8 @@ from .genesis_contracts import (
 
 __all__ = [
     "World",
-    "ActionIntent", "NoopIntent", "ReadArtifactIntent", "WriteArtifactIntent", "InvokeArtifactIntent",
+    "ActionIntent", "NoopIntent", "ReadArtifactIntent", "WriteArtifactIntent",
+    "EditArtifactIntent", "InvokeArtifactIntent", "DeleteArtifactIntent",
     "Ledger",
     "ArtifactStore", "Artifact", "WriteResult",
     "EventLogger",
