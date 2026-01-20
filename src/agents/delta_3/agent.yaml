@@ -2,7 +2,7 @@
 # Project lifecycle states for long-term infrastructure building
 id: delta_3
 enabled: true
-llm_model: "gemini/gemini-3-flash-preview"
+llm_model: "gemini/gemini-2.5-flash"
 starting_credits: 100
 
 # Genotype: Infrastructure Builder (same as delta lineage)

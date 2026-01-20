@@ -1,6 +1,6 @@
 id: epsilon
 enabled: false  # Disabled - use epsilon_3 instead
-llm_model: "gemini/gemini-3-flash-preview"
+llm_model: "gemini/gemini-2.5-flash"
 starting_credits: 100
 
 # Genotype traits:

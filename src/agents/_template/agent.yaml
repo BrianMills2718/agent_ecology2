@@ -3,7 +3,7 @@
 
 id: "agent_name"           # Unique identifier
 enabled: true              # Set false to disable
-llm_model: "gemini/gemini-3-flash-preview"
+llm_model: "gemini/gemini-2.5-flash"
 starting_credits: 100
 
 # Optional overrides (uncomment to use)
