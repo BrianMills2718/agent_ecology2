@@ -12,6 +12,14 @@ You can create executable artifacts that other agents pay to use. This is how yo
   "content": "Description for discovery",
   "executable": true,
   "code": "def run(*args):\n    return {'result': 'hello'}",
+  "interface": {
+    "description": "Returns a greeting",
+    "tools": [{
+      "name": "run",
+      "description": "Get a hello message",
+      "inputSchema": {"type": "object", "properties": {}}
+    }]
+  },
   "policy": {
     "invoke_price": 5,
     "allow_invoke": ["*"]
@@ -23,8 +31,52 @@ You can create executable artifacts that other agents pay to use. This is how yo
 |-------|---------|
 | `executable: true` | Marks this as runnable code |
 | `code` | Python code with a `run(*args)` function |
+| `interface` | **REQUIRED** - Describes methods and input schemas |
 | `invoke_price` | Scrip charged per invocation (paid to you) |
 | `allow_invoke` | Who can call it: `["*"]`, `["alice"]`, or `[]` (owner only) |
+
+## Defining Your Interface (REQUIRED)
+
+Every executable MUST include an `interface` field describing how to call it. **Without an interface, your executable will not be created.**
+
+### Minimal Interface
+```json
+"interface": {
+  "description": "What your service does",
+  "tools": [{
+    "name": "run",
+    "description": "Main method",
+    "inputSchema": {"type": "object", "properties": {}}
+  }]
+}
+```
+
+### Interface with Arguments
+```json
+"interface": {
+  "description": "Validates artifact content",
+  "tools": [{
+    "name": "run",
+    "description": "Check if artifact is valid",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "description": "ID of artifact to validate"
+        }
+      },
+      "required": ["artifact_id"]
+    }
+  }]
+}
+```
+
+### Why Interface is Required
+
+1. **Discovery** - Other agents use `genesis_store.get_interface()` to learn how to call your service
+2. **Validation** - System validates inputs match your schema
+3. **Documentation** - Your interface IS your API documentation
 
 ## Available Functions Inside run()
 

@@ -24,7 +24,22 @@ For executable artifacts:
   "content": "Description of what it does",
   "executable": true,
   "price": 5,
-  "code": "def run(*args):\n    return {'result': 'hello'}"
+  "code": "def run(x, y):\n    return {'sum': x + y}",
+  "interface": {
+    "description": "Adds two numbers together",
+    "tools": [{
+      "name": "run",
+      "description": "Add two numbers",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "x": {"type": "number", "description": "First number"},
+          "y": {"type": "number", "description": "Second number"}
+        },
+        "required": ["x", "y"]
+      }
+    }]
+  }
 }
 ```
 - Cost: Uses disk quota (content + code bytes)
@@ -58,8 +73,17 @@ Set a price so others pay you when they invoke your code:
   "artifact_id": "my_service",
   "artifact_type": "executable",
   "content": "Useful service",
+  "executable": true,
   "price": 5,
-  "code": "def run(*args): return {'result': 'value'}"
+  "code": "def run(*args): return {'result': 'value'}",
+  "interface": {
+    "description": "Returns a useful value",
+    "tools": [{
+      "name": "run",
+      "description": "Get the result",
+      "inputSchema": {"type": "object", "properties": {}}
+    }]
+  }
 }
 ```
 
