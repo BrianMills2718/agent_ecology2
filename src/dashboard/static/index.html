@@ -139,6 +139,27 @@
                     </div>
                 </section>
 
+                <!-- Temporal Network Panel (Plan #107) -->
+                <section class="panel temporal-network-panel collapsed">
+                    <div class="panel-header" id="temporal-network-toggle">
+                        <h2>Artifact Network</h2>
+                        <span class="collapse-icon">+</span>
+                    </div>
+                    <div class="panel-content" id="temporal-network-content">
+                        <div class="temporal-network-container" id="temporal-network-container">
+                            <!-- vis.js temporal network renders here -->
+                        </div>
+                        <div class="temporal-network-footer">
+                            <div class="temporal-network-stats" id="temporal-network-stats">
+                                <!-- Stats populated by JS -->
+                            </div>
+                            <div class="temporal-network-legend" id="temporal-network-legend">
+                                <!-- Legend populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Artifact Dependency Graph Panel -->
                 <section class="panel dependency-panel collapsed">
                     <div class="panel-header" id="dependency-toggle">
@@ -385,6 +406,7 @@
     <script src="/static/js/panels/dependency-graph.js"></script>
     <script src="/static/js/panels/activity.js"></script>
     <script src="/static/js/panels/thinking.js"></script>
+    <script src="/static/js/panels/temporal-network.js"></script>
     <script src="/static/js/main.js"></script>
 </body>
 </html>

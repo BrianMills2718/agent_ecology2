@@ -765,6 +765,88 @@ body {
     font-size: 0.875rem;
 }
 
+/* Temporal Network Panel (Plan #107) */
+.temporal-network-panel {
+    flex: 1;
+    min-height: 250px;
+}
+
+.temporal-network-panel.collapsed {
+    flex: 0;
+    min-height: auto;
+}
+
+.temporal-network-container {
+    min-height: 250px;
+    height: 300px;
+    background-color: var(--bg-primary);
+    border-radius: 4px;
+}
+
+.temporal-network-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.temporal-network-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0 0.5rem;
+    font-size: 0.75rem;
+}
+
+.temporal-network-stats .stat-row {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.temporal-network-stats .stat-label {
+    color: var(--text-secondary);
+}
+
+.temporal-network-stats .stat-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.temporal-network-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.temporal-network-legend .legend-section {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.temporal-network-legend .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.temporal-network-legend .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid;
+}
+
+.temporal-network-legend .legend-line {
+    width: 20px;
+    height: 3px;
+    border-radius: 2px;
+}
+
 /* Activity Feed Panel */
 .activity-panel {
     flex: 1;

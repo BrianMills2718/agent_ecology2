@@ -335,6 +335,63 @@ class NetworkGraphData(BaseModel):
     tick_range: tuple[int, int] = (0, 0)
 
 
+# Temporal Network Models (Plan #107)
+
+
+class ArtifactNode(BaseModel):
+    """Node representing any artifact in the temporal network.
+
+    Unlike NetworkNode which only shows agents, this includes ALL artifacts:
+    agents, genesis services, contracts, and data artifacts.
+    """
+    id: str
+    label: str
+    artifact_type: Literal["agent", "genesis", "contract", "data", "unknown"] = "unknown"
+    owner_id: str | None = None
+    executable: bool = False
+    invocation_count: int = 0
+    created_at: str | None = None  # ISO timestamp
+    # For agents specifically
+    scrip: int = 0
+    status: Literal["active", "low_resources", "frozen"] = "active"
+
+
+class ArtifactEdge(BaseModel):
+    """Edge representing relationship between artifacts.
+
+    Supports multiple edge types for richer visualization:
+    - invocation: A called B
+    - ownership: A owns B
+    - dependency: A depends on B (from artifact metadata)
+    - creation: A created B
+    - transfer: ownership transferred from A to B
+    """
+    from_id: str
+    to_id: str
+    edge_type: Literal["invocation", "ownership", "dependency", "creation", "transfer"]
+    timestamp: str  # ISO format timestamp
+    weight: int = 1
+    details: str | None = None
+
+
+class TemporalNetworkData(BaseModel):
+    """Artifact-centric temporal network graph data.
+
+    Provides a complete view of the artifact ecosystem over time,
+    including all artifacts as nodes and multiple relationship types as edges.
+    """
+    nodes: list[ArtifactNode] = Field(default_factory=list)
+    edges: list[ArtifactEdge] = Field(default_factory=list)
+    time_range: tuple[str, str] = ("", "")  # (start, end) ISO timestamps
+    # Activity counts per time bucket for heatmap (bucket key = ISO timestamp)
+    activity_by_time: dict[str, dict[str, int]] = Field(default_factory=dict)
+    # Metadata
+    total_artifacts: int = 0
+    total_interactions: int = 0
+    # Time bucket size in seconds (for heatmap grouping)
+    time_bucket_seconds: int = 1
+
+
 # Activity Feed Models
 
 class ActivityItem(BaseModel):
