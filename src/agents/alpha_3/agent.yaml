@@ -2,7 +2,7 @@
 # Extends alpha_2's self-audit with explicit build cycle states
 id: alpha_3
 enabled: true
-llm_model: "gemini/gemini-2.5-flash"
+llm_model: "gemini/gemini-2.0-flash"
 starting_credits: 100
 
 # Genotype: Builder/Creator (same as alpha lineage)

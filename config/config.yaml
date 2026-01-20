@@ -331,7 +331,7 @@ validation:
 # MINT SCORER
 # -----------------------------------------------------------------------------
 mint_scorer:
-  model: "gemini/gemini-2.5-flash"
+  model: "gemini/gemini-2.0-flash"
   timeout: 30
   max_content_length: 200000
   score_bounds:
@@ -343,12 +343,12 @@ mint_scorer:
 # LLM
 # -----------------------------------------------------------------------------
 llm:
-  default_model: "gemini/gemini-2.5-flash"
+  default_model: "gemini/gemini-2.0-flash"
   timeout: 60
   rate_limit_delay: 5  # Reduced from 15s for faster iteration
   # Models that agents are allowed to use (for future self-modification)
   allowed_models:
-    - "gemini/gemini-2.5-flash"
+    - "gemini/gemini-2.0-flash"
 
 # -----------------------------------------------------------------------------
 # LOGGING
@@ -451,7 +451,7 @@ agent:
 # MEMORY - Mem0/Qdrant configuration
 # -----------------------------------------------------------------------------
 memory:
-  llm_model: "gemini-2.5-flash"      # Model for Mem0's LLM (no provider prefix)
+  llm_model: "gemini-2.0-flash"      # Model for Mem0's LLM (no provider prefix)
   embedding_model: "models/text-embedding-004"
   embedding_dims: 768
   temperature: 0.1

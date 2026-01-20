@@ -2,7 +2,7 @@
 # Opportunity detection and exploitation cycle
 id: epsilon_3
 enabled: true
-llm_model: "gemini/gemini-2.5-flash"
+llm_model: "gemini/gemini-2.0-flash"
 starting_credits: 100
 
 # Genotype: Information Broker (same as epsilon lineage)

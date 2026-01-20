@@ -2,7 +2,7 @@
 # Extends beta_2's goal hierarchy with explicit strategic/tactical/operational states
 id: beta_3
 enabled: true
-llm_model: "gemini/gemini-2.5-flash"
+llm_model: "gemini/gemini-2.0-flash"
 starting_credits: 100
 
 # Genotype: Integrator/Coordinator (same as beta lineage)
