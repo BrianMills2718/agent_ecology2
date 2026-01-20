@@ -544,3 +544,38 @@ class AgentConfigResponse(BaseModel):
     error_handling: dict[str, Any] | None = None
     # Whether config file was found
     config_found: bool = True
+
+
+# Emergence Observability Metrics (Plan #110 Phase 3)
+
+
+class EmergenceMetrics(BaseModel):
+    """Metrics for detecting emergent organization patterns.
+
+    These metrics measure structural properties of the agent ecosystem
+    to detect emergent coordination, specialization, and infrastructure building.
+    """
+
+    # Network metrics
+    coordination_density: float = 0.0  # interactions / (n × (n-1))
+    coalition_count: int = 0  # Number of interaction clusters
+
+    # Specialization metrics
+    specialization_index: float = 0.0  # std_dev of action type distributions
+
+    # Infrastructure metrics
+    reuse_ratio: float = 0.0  # artifacts_used_by_others / total_artifacts
+    genesis_independence: float = 0.0  # non_genesis_ops / total_ops
+    capital_depth: int = 0  # max(dependency_chain_length)
+
+    # Metadata
+    agent_count: int = 0
+    total_interactions: int = 0
+    total_artifacts: int = 0
+    genesis_invocations: int = 0
+    non_genesis_invocations: int = 0
+
+    # Per-agent specialization data (for drill-down)
+    agent_specializations: dict[str, dict[str, int]] = Field(
+        default_factory=dict
+    )  # agent_id -> {action_type: count}

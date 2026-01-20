@@ -1327,3 +1327,113 @@ body {
 .workflow-steps li {
     padding: 0.125rem 0;
 }
+
+/* Emergence Metrics Panel (Plan #110 Phase 3) */
+
+.emergence-panel {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.emergence-panel.collapsed .panel-content {
+    display: none;
+}
+
+.emergence-metrics-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.5rem;
+}
+
+.emergence-metric {
+    background-color: var(--bg-tertiary);
+    border-radius: 6px;
+    padding: 0.75rem;
+}
+
+.emergence-metric .metric-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+    cursor: help;
+}
+
+.emergence-metric .metric-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.emergence-metric .metric-sublabel {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.emergence-metric .metric-bar {
+    height: 6px;
+    background-color: var(--bg-primary);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.emergence-metric .metric-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-secondary), var(--accent-primary));
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.emergence-metric .metric-bar-fill.specialization {
+    background: linear-gradient(90deg, #2196F3, #00BCD4);
+}
+
+.emergence-metric .metric-bar-fill.reuse {
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+}
+
+.emergence-metric .metric-bar-fill.independence {
+    background: linear-gradient(90deg, #9C27B0, #E91E63);
+}
+
+.emergence-metric .metric-bar-fill.depth {
+    background: linear-gradient(90deg, #FF9800, #FFC107);
+}
+
+.emergence-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+    background-color: var(--bg-tertiary);
+    border-radius: 6px;
+}
+
+.emergence-stats .stat-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+}
+
+.emergence-stats .stat-label {
+    color: var(--text-secondary);
+}
+
+.emergence-stats .stat-value {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.emergence-chart-container {
+    height: 200px;
+    padding: 0.5rem;
+}
+
+.emergence-error {
+    padding: 1rem;
+    text-align: center;
+    color: var(--error);
+}

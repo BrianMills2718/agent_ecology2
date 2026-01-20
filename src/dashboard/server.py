@@ -16,7 +16,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from .parser import JSONLParser
-from .kpis import calculate_kpis, EcosystemKPIs, compute_agent_metrics, AgentMetrics
+from .kpis import calculate_kpis, EcosystemKPIs, compute_agent_metrics, AgentMetrics, calculate_emergence_metrics
 from .auditor import assess_health, AuditorThresholds, HealthReport
 from .dependency_graph import build_dependency_graph
 from ..config import get_validated_config
@@ -415,6 +415,22 @@ def create_app(
             "scrip_velocity_trend": kpis.scrip_velocity_trend,
             "activity_trend": kpis.activity_trend,
         }
+
+    @app.get("/api/emergence")
+    async def get_emergence_metrics() -> dict[str, Any]:
+        """Get emergence observability metrics (Plan #110 Phase 3).
+
+        Returns computed metrics for detecting emergent organization patterns:
+        - coordination_density: How connected the agent network is
+        - specialization_index: How differentiated agents are
+        - reuse_ratio: How much agents use each other's artifacts
+        - genesis_independence: Ecosystem maturity (non-genesis ops ratio)
+        - capital_depth: Max dependency chain length
+        - coalition_count: Number of distinct agent clusters
+        """
+        dashboard.parser.parse_incremental()
+        metrics = calculate_emergence_metrics(dashboard.parser.state)
+        return metrics.model_dump()
 
     # Store previous KPIs for trend calculation
     _prev_kpis: EcosystemKPIs | None = None

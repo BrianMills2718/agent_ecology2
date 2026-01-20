@@ -6,9 +6,13 @@ capital flow, and emergence patterns.
 
 from __future__ import annotations
 
+import math
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING
+
+from .models import EmergenceMetrics
 
 if TYPE_CHECKING:
     from .parser import SimulationState
@@ -314,4 +318,326 @@ def compute_agent_metrics(state: SimulationState, agent_id: str) -> AgentMetrics
         is_frozen=is_frozen,
         scrip_balance=agent.scrip,
         success_rate=success_rate,
+    )
+
+
+# Emergence Metrics (Plan #110 Phase 3)
+
+
+def calculate_coordination_density(
+    interactions: list[object], agent_count: int
+) -> float:
+    """Calculate coordination density: interactions / (n × (n-1)).
+
+    Measures how connected the agent network is. A value of 1.0 means
+    every agent has interacted with every other agent at least once.
+
+    Args:
+        interactions: List of Interaction objects
+        agent_count: Number of agents
+
+    Returns:
+        Coordination density between 0.0 and 1.0+
+        (can exceed 1.0 if there are many interactions per pair)
+    """
+    if agent_count < 2:
+        return 0.0
+
+    # Count unique agent pairs that have interacted
+    interacted_pairs: set[tuple[str, str]] = set()
+    for interaction in interactions:
+        from_id = getattr(interaction, "from_id", "")
+        to_id = getattr(interaction, "to_id", "")
+        if from_id and to_id and from_id != to_id:
+            # Normalize pair order for bidirectional counting
+            pair = tuple(sorted([from_id, to_id]))
+            interacted_pairs.add(pair)  # type: ignore[arg-type]
+
+    max_possible_pairs = agent_count * (agent_count - 1) // 2
+    if max_possible_pairs == 0:
+        return 0.0
+
+    return len(interacted_pairs) / max_possible_pairs
+
+
+def calculate_specialization_index(
+    agent_action_counts: dict[str, dict[str, int]]
+) -> float:
+    """Calculate specialization index from agent action distributions.
+
+    Higher values indicate agents are more specialized (focused on
+    certain action types). Lower values indicate generalist behavior.
+
+    Uses the coefficient of variation (std_dev / mean) of each agent's
+    action type distribution, averaged across agents.
+
+    Args:
+        agent_action_counts: {agent_id: {action_type: count}}
+
+    Returns:
+        Specialization index (0.0 = all generalists, higher = more specialized)
+    """
+    if not agent_action_counts:
+        return 0.0
+
+    specialization_scores: list[float] = []
+
+    for agent_id, action_counts in agent_action_counts.items():
+        if not action_counts:
+            continue
+
+        counts = list(action_counts.values())
+        if len(counts) < 2:
+            # If agent only does one action type, they're maximally specialized
+            specialization_scores.append(1.0)
+            continue
+
+        mean = sum(counts) / len(counts)
+        if mean == 0:
+            continue
+
+        variance = sum((c - mean) ** 2 for c in counts) / len(counts)
+        std_dev = math.sqrt(variance)
+
+        # Coefficient of variation
+        cv = std_dev / mean
+        specialization_scores.append(cv)
+
+    if not specialization_scores:
+        return 0.0
+
+    return sum(specialization_scores) / len(specialization_scores)
+
+
+def calculate_reuse_ratio(state: SimulationState) -> float:
+    """Calculate artifact reuse ratio.
+
+    reuse_ratio = artifacts_used_by_others / total_artifacts
+
+    Measures infrastructure building - higher values indicate agents
+    are creating artifacts that others find useful.
+
+    Args:
+        state: The simulation state
+
+    Returns:
+        Reuse ratio between 0.0 and 1.0
+    """
+    if not state.artifacts:
+        return 0.0
+
+    # Count artifacts that have been invoked by agents other than the owner
+    artifacts_used_by_others = 0
+
+    # Build a set of artifact IDs that have been invoked by non-owners
+    invoked_by_others: set[str] = set()
+
+    for interaction in state.interactions:
+        if interaction.interaction_type in ("artifact_invoke", "genesis_invoke"):
+            artifact_id = interaction.artifact_id
+            invoker_id = interaction.from_id
+            if artifact_id:
+                artifact = state.artifacts.get(artifact_id)
+                if artifact and artifact.owner_id != invoker_id:
+                    invoked_by_others.add(artifact_id)
+
+    artifacts_used_by_others = len(invoked_by_others)
+
+    # Count non-genesis artifacts
+    non_genesis_artifacts = sum(
+        1 for art in state.artifacts.values()
+        if not art.artifact_id.startswith("genesis_")
+    )
+
+    if non_genesis_artifacts == 0:
+        return 0.0
+
+    return artifacts_used_by_others / non_genesis_artifacts
+
+
+def calculate_genesis_independence(state: SimulationState) -> float:
+    """Calculate genesis independence ratio.
+
+    genesis_independence = non_genesis_ops / total_ops
+
+    Measures ecosystem maturity - higher values indicate agents are
+    using each other's artifacts rather than just genesis services.
+
+    Args:
+        state: The simulation state
+
+    Returns:
+        Genesis independence ratio between 0.0 and 1.0
+    """
+    genesis_invocations = 0
+    non_genesis_invocations = 0
+
+    for interaction in state.interactions:
+        if interaction.interaction_type == "genesis_invoke":
+            genesis_invocations += 1
+        elif interaction.interaction_type == "artifact_invoke":
+            artifact_id = interaction.artifact_id
+            if artifact_id and artifact_id.startswith("genesis_"):
+                genesis_invocations += 1
+            else:
+                non_genesis_invocations += 1
+
+    total = genesis_invocations + non_genesis_invocations
+    if total == 0:
+        return 0.0
+
+    return non_genesis_invocations / total
+
+
+def calculate_capital_depth(state: SimulationState) -> int:
+    """Calculate capital depth (max dependency chain length).
+
+    Measures how deep the capital structure is - longer chains indicate
+    more sophisticated tool-building and composition.
+
+    Args:
+        state: The simulation state
+
+    Returns:
+        Maximum dependency chain length (0 if no dependencies)
+    """
+    # Build dependency graph from artifact dependencies
+    dependencies: dict[str, set[str]] = defaultdict(set)
+
+    for artifact_id, artifact in state.artifacts.items():
+        # Check if artifact has dependency metadata
+        if hasattr(artifact, "dependencies") and artifact.dependencies:
+            for dep_id in artifact.dependencies:
+                dependencies[artifact_id].add(dep_id)
+
+    if not dependencies:
+        return 0
+
+    # Calculate max depth using BFS from each node
+    def get_depth(artifact_id: str, visited: set[str]) -> int:
+        if artifact_id in visited:
+            return 0  # Cycle detection
+        if artifact_id not in dependencies:
+            return 0
+
+        visited.add(artifact_id)
+        max_dep_depth = 0
+        for dep_id in dependencies[artifact_id]:
+            dep_depth = get_depth(dep_id, visited.copy())
+            max_dep_depth = max(max_dep_depth, dep_depth)
+        return max_dep_depth + 1
+
+    max_depth = 0
+    for artifact_id in dependencies:
+        depth = get_depth(artifact_id, set())
+        max_depth = max(max_depth, depth)
+
+    return max_depth
+
+
+def calculate_coalition_count(
+    interactions: list[object], agent_ids: list[str]
+) -> int:
+    """Count coalitions (clusters of interacting agents).
+
+    Uses connected components in the interaction graph.
+
+    Args:
+        interactions: List of Interaction objects
+        agent_ids: List of all agent IDs
+
+    Returns:
+        Number of distinct coalitions (clusters)
+    """
+    if not agent_ids:
+        return 0
+
+    # Build adjacency list
+    adj: dict[str, set[str]] = {agent_id: set() for agent_id in agent_ids}
+
+    for interaction in interactions:
+        from_id = getattr(interaction, "from_id", "")
+        to_id = getattr(interaction, "to_id", "")
+        if from_id in adj and to_id in adj and from_id != to_id:
+            adj[from_id].add(to_id)
+            adj[to_id].add(from_id)
+
+    # Find connected components using DFS
+    visited: set[str] = set()
+    coalition_count = 0
+
+    def dfs(agent_id: str) -> None:
+        visited.add(agent_id)
+        for neighbor in adj[agent_id]:
+            if neighbor not in visited:
+                dfs(neighbor)
+
+    for agent_id in agent_ids:
+        if agent_id not in visited:
+            dfs(agent_id)
+            coalition_count += 1
+
+    return coalition_count
+
+
+def calculate_emergence_metrics(state: SimulationState) -> EmergenceMetrics:
+    """Calculate all emergence observability metrics.
+
+    Args:
+        state: The simulation state from the parser
+
+    Returns:
+        EmergenceMetrics with all computed values
+    """
+    agents = list(state.agents.values())
+    agent_ids = list(state.agents.keys())
+    agent_count = len(agents)
+
+    # Build agent action type distributions
+    agent_action_counts: dict[str, dict[str, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
+
+    for action in state.all_actions:
+        agent_id = getattr(action, "agent_id", "")
+        action_type = getattr(action, "action_type", "")
+        if agent_id and action_type:
+            agent_action_counts[agent_id][action_type] += 1
+
+    # Count genesis vs non-genesis invocations
+    genesis_invocations = 0
+    non_genesis_invocations = 0
+
+    for interaction in state.interactions:
+        if interaction.interaction_type == "genesis_invoke":
+            genesis_invocations += 1
+        elif interaction.interaction_type == "artifact_invoke":
+            artifact_id = interaction.artifact_id
+            if artifact_id and artifact_id.startswith("genesis_"):
+                genesis_invocations += 1
+            else:
+                non_genesis_invocations += 1
+
+    return EmergenceMetrics(
+        # Network metrics
+        coordination_density=calculate_coordination_density(
+            state.interactions, agent_count
+        ),
+        coalition_count=calculate_coalition_count(state.interactions, agent_ids),
+        # Specialization metrics
+        specialization_index=calculate_specialization_index(
+            dict(agent_action_counts)
+        ),
+        # Infrastructure metrics
+        reuse_ratio=calculate_reuse_ratio(state),
+        genesis_independence=calculate_genesis_independence(state),
+        capital_depth=calculate_capital_depth(state),
+        # Metadata
+        agent_count=agent_count,
+        total_interactions=len(state.interactions),
+        total_artifacts=len(state.artifacts),
+        genesis_invocations=genesis_invocations,
+        non_genesis_invocations=non_genesis_invocations,
+        # Per-agent specialization data
+        agent_specializations=dict(agent_action_counts),
     )
