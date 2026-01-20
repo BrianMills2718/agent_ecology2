@@ -69,6 +69,25 @@ if echo "$COMMAND" | grep -qE '(^|&&|\|\||;)\s*make\s+(merge|finish)(\s|$)'; the
         echo "This ensures proper cleanup of the worktree you're currently in." >&2
         exit 2
     fi
+
+    # When running make merge from main, suggest make finish instead
+    if echo "$COMMAND" | grep -qE '(^|&&|\|\||;)\s*make\s+merge(\s|$)'; then
+        # Extract PR number if present
+        PR_NUM=$(echo "$COMMAND" | grep -oE 'PR=[0-9]+' | grep -oE '[0-9]+' || echo "N")
+        BRANCH_ARG=$(echo "$COMMAND" | grep -oE 'BRANCH=[^ ]+' | cut -d= -f2 || echo "")
+
+        echo "SUGGESTION: Consider using 'make finish' instead of 'make merge'" >&2
+        echo "" >&2
+        echo "  make finish BRANCH=${BRANCH_ARG:-<branch>} PR=$PR_NUM" >&2
+        echo "" >&2
+        echo "make finish provides the complete workflow:" >&2
+        echo "  1. Merge the PR" >&2
+        echo "  2. Release the claim" >&2
+        echo "  3. Delete the worktree" >&2
+        echo "  4. Pull latest main" >&2
+        echo "" >&2
+        # Allow but warn (exit 0)
+    fi
 fi
 
 exit 0
