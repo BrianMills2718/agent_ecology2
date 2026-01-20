@@ -216,3 +216,7 @@ workflow:
 error_handling:
   default_on_failure: retry
   max_retries: 2
+
+# Resource visibility (Plan #93)
+visibility:
+  detail_level: standard  # minimal | standard | verbose

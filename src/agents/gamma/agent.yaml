@@ -47,3 +47,7 @@ workflow:
         Transfer scrip to build relationships. Connect agents who could benefit.
 
         Respond with your chosen action.
+
+# Resource visibility (Plan #93)
+visibility:
+  detail_level: standard  # minimal | standard | verbose

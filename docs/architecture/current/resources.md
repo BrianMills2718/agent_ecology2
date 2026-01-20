@@ -362,7 +362,7 @@ resources:
   visibility:
     enabled: true
     defaults:
-      resources: ["llm_budget", "disk"]
+      resources: null         # null = all resources (llm_budget, disk, compute)
       detail_level: "standard"
       see_others: false
 ```
@@ -370,7 +370,7 @@ resources:
 **Per-agent overrides** in `src/agents/<name>/agent.yaml`:
 ```yaml
 visibility:
-  resources: ["llm_budget"]  # Only show llm_budget
+  resources: ["llm_budget"]  # Only show llm_budget (default: all)
   detail_level: "verbose"    # Show all metrics
   see_others: false          # Only own metrics
 ```
@@ -385,6 +385,7 @@ Resource metrics appear in agent prompts under `## Resource Consumption`:
   - Spent: $0.0150
   - Burn rate: $0.000025/second
 - Disk: 5000 / 10000 bytes (50.0% remaining)
+- Compute: 450 / 500 units (90.0% remaining)
 ```
 
 ### StateSummary Integration

@@ -121,3 +121,7 @@ workflow:
         5. noop - Do nothing this tick
 
         Execute your strategy. Choose your next action.
+
+# Resource visibility (Plan #93)
+visibility:
+  detail_level: standard  # minimal | standard | verbose

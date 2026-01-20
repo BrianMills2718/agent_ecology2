@@ -138,3 +138,7 @@ workflow:
           },
           'last_strategic_review': tick if should_review_strategy else wm.get('last_strategic_review', 0)
         }
+
+# Resource visibility (Plan #93)
+visibility:
+  detail_level: standard  # minimal | standard | verbose

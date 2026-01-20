@@ -55,3 +55,7 @@ workflow:
         and have few artifacts, CREATE something useful like a tool or service.
 
         Respond with your chosen action.
+
+# Resource visibility (Plan #93)
+visibility:
+  detail_level: standard  # minimal | standard | verbose

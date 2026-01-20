@@ -57,3 +57,7 @@ workflow:
         Only create artifacts if you've learned a reliable pattern.
 
         Respond with your chosen action.
+
+# Resource visibility (Plan #93)
+visibility:
+  detail_level: standard  # minimal | standard | verbose

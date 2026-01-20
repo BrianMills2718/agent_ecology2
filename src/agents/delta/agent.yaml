@@ -48,3 +48,7 @@ workflow:
         High risk tolerance - invest heavily in early ticks.
 
         Respond with your chosen action.
+
+# Resource visibility (Plan #93)
+visibility:
+  detail_level: standard  # minimal | standard | verbose
