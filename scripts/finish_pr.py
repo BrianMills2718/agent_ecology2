@@ -171,6 +171,19 @@ def remove_worktree(worktree_path: Path) -> tuple[bool, str]:
     return True, "Removed"
 
 
+def check_worktree_clean(worktree_path: Path) -> tuple[bool, str]:
+    """Check if worktree has uncommitted changes."""
+    result = run_cmd(
+        ["git", "-C", str(worktree_path), "status", "--porcelain"],
+        check=False,
+    )
+    if result.returncode != 0:
+        return True, ""  # Can't check, assume clean
+    if result.stdout.strip():
+        return False, result.stdout.strip()
+    return True, ""
+
+
 def finish_pr(branch: str, pr_number: int, check_ci: bool = False) -> bool:
     """Complete the full PR lifecycle."""
 
@@ -198,7 +211,34 @@ def finish_pr(branch: str, pr_number: int, check_ci: bool = False) -> bool:
             return False
         print("✅ CI checks passed")
 
-    # Step 2: Merge PR
+    # Step 2: Remove worktree FIRST (before merge, so branch can be deleted)
+    worktree_path = find_worktree_path(branch)
+    if worktree_path:
+        # Check for uncommitted changes
+        clean, changes = check_worktree_clean(worktree_path)
+        if not clean:
+            print(f"❌ Worktree has uncommitted changes:")
+            for line in changes.split("\n")[:5]:
+                print(f"   {line}")
+            print()
+            print("Commit or stash changes first, then retry.")
+            return False
+
+        print(f"🧹 Removing worktree at {worktree_path}...")
+        # Remove session marker if present (we're the owner finishing our own work)
+        session_marker = worktree_path / ".claude_session"
+        if session_marker.exists():
+            session_marker.unlink()
+        remove_ok, remove_msg = remove_worktree(worktree_path)
+        if remove_ok:
+            print("✅ Worktree removed")
+        else:
+            print(f"⚠️  Could not remove worktree: {remove_msg}")
+            print(f"   Remove manually: git worktree remove --force {worktree_path}")
+            print("   Then retry: make finish ...")
+            return False
+
+    # Step 3: Merge PR (now safe - branch not in use by worktree)
     print(f"🔀 Merging PR #{pr_number}...")
     merge_ok, merge_msg = merge_pr(pr_number)
     if not merge_ok:
@@ -206,7 +246,7 @@ def finish_pr(branch: str, pr_number: int, check_ci: bool = False) -> bool:
         return False
     print("✅ PR merged")
 
-    # Step 3: Mark plan as complete (if this is a plan branch)
+    # Step 4: Mark plan as complete (if this is a plan branch)
     plan_num = extract_plan_number(branch)
     if plan_num:
         print(f"📋 Marking Plan #{plan_num} as complete...")
@@ -217,25 +257,12 @@ def finish_pr(branch: str, pr_number: int, check_ci: bool = False) -> bool:
             print(f"⚠️  Could not mark plan complete: {complete_msg}")
             print("   Run manually: python scripts/complete_plan.py --plan", plan_num)
 
-    # Step 4: Release claim
+    # Step 5: Release claim
     print(f"🔓 Releasing claim for {branch}...")
     if release_claim(branch):
         print("✅ Claim released")
     else:
         print("⚠️  No claim to release (or already released)")
-
-    # Step 5: Remove worktree
-    worktree_path = find_worktree_path(branch)
-    if worktree_path:
-        print(f"🧹 Removing worktree at {worktree_path}...")
-        remove_ok, remove_msg = remove_worktree(worktree_path)
-        if remove_ok:
-            print("✅ Worktree removed")
-        else:
-            print(f"⚠️  Could not remove worktree: {remove_msg}")
-            print(f"   Remove manually: git worktree remove {worktree_path}")
-    else:
-        print("ℹ️  No local worktree found for this branch")
 
     # Step 6: Pull main
     print("📥 Pulling latest main...")
