@@ -63,6 +63,8 @@ Genesis artifacts could theoretically be replaced with alternative interfaces. T
 
 ### 4. State should be DB-backed
 
+> **Note:** This decision was superseded by ADR-0006 (Minimal External Dependencies), which decided to stay in-memory for v1 and skip SQLite entirely in favor of PostgreSQL when multi-container scaling is needed.
+
 System state (Ledger, Artifact store, Event log, Rights registry) should be persisted to SQLite with WAL for crash safety, not just in-memory with checkpoints.
 
 ## Consequences
@@ -72,13 +74,13 @@ System state (Ledger, Artifact store, Event log, Rights registry) should be pers
 - **Clearer terminology** - "Mint" accurately describes currency creation
 - **Correct security model** - Minting is properly protected as system-level
 - **Better architecture understanding** - Clear separation of state vs interfaces
-- **Crash safety** - DB-backed state with proper durability guarantees
+- **Crash safety** - ~~DB-backed state with proper durability guarantees~~ (superseded by ADR-0006)
 
 ### Negative
 
 - **Terminology migration** - 34+ files reference "oracle"
 - **Code changes** - Refactoring oracle → mint in implementation
-- **DB complexity** - Adding SQLite dependency and migration logic
+- **DB complexity** - ~~Adding SQLite dependency and migration logic~~ (superseded by ADR-0006)
 
 ### Neutral
 
@@ -89,4 +91,5 @@ System state (Ledger, Artifact store, Event log, Rights registry) should be pers
 ## Related
 
 - ADR-0001: Everything is an Artifact (clarifies what genesis artifacts are)
+- ADR-0006: Minimal External Dependencies (supersedes Decision 4 re: storage)
 - Gap #34: Oracle → Mint Rename (code refactoring)
