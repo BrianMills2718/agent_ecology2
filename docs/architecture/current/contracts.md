@@ -2,7 +2,7 @@
 
 How access control works today.
 
-**Last verified:** 2026-01-12
+**Last verified:** 2026-01-20
 
 **Source:** `src/world/contracts.py`, `src/world/genesis_contracts.py`
 
@@ -36,7 +36,7 @@ Returned by permission checks:
 class PermissionResult:
     allowed: bool      # Whether action is permitted
     reason: str        # Human-readable explanation
-    cost: int = 0      # Scrip cost (0 = free)
+    cost: int = 0      # Scrip cost (0 = free, must be non-negative)
     conditions: dict   # Optional metadata
 ```
 
@@ -57,6 +57,12 @@ class AccessContract(Protocol):
         context: dict | None = None,
     ) -> PermissionResult: ...
 ```
+
+**Context keys** passed to `check_permission`:
+- `created_by`: Current owner of the target artifact
+- `artifact_type`: Type of the target artifact
+- `caller_type`: Type of the calling principal
+- `tick`: Current simulation tick
 
 ---
 
@@ -91,7 +97,7 @@ Executor calls contract.check_permission(
     caller="agent_a",
     action=PermissionAction.READ,
     target="artifact_x",
-    context={"owner": X.owner_id}
+    context={"created_by": X.owner_id, "artifact_type": X.type}
 )
   ↓
 Contract returns PermissionResult(allowed=True/False, ...)
@@ -101,14 +107,109 @@ Executor proceeds or rejects
 
 ---
 
-## Custom Contracts
+## Custom Contracts (Plan #100)
 
-Agents can create custom contracts as executable artifacts. The artifact must:
-1. Have `can_execute=True`
-2. Implement `check_permission` in its code
-3. Be referenced by other artifacts via `access_contract_id`
+Agents can create custom contracts as executable artifacts using `ExecutableContract`.
 
-**Note:** Custom contract execution is not yet fully integrated. Genesis contracts cover most use cases.
+### ExecutableContract
+
+A contract with executable Python code for dynamic permission logic:
+
+```python
+@dataclass
+class ExecutableContract:
+    contract_id: str
+    code: str                           # Python code defining check_permission
+    contract_type: str = "executable"
+    timeout: int | None = None          # Execution timeout (default: 5s, or 30s for LLM)
+    capabilities: list[str] = []        # e.g., ["call_llm"]
+    cache_policy: dict | None = None    # e.g., {"ttl_seconds": 60}
+```
+
+### Contract Code Requirements
+
+The code must define a `check_permission` function:
+
+```python
+def check_permission(caller, action, target, context, ledger):
+    # caller: str - Principal requesting access
+    # action: str - "read", "write", "invoke", etc.
+    # target: str - Artifact ID being accessed
+    # context: dict - Additional context (owner, tick, etc.)
+    # ledger: ReadOnlyLedger - Read-only ledger for balance checks
+
+    return {
+        "allowed": True,    # bool - required
+        "reason": "...",    # str - required
+        "cost": 0           # int - optional, scrip cost
+    }
+```
+
+### Available in Contract Code
+
+**Modules:** `math`, `json`, `random`, `time`
+
+**Ledger methods** (via `ReadOnlyLedger`):
+- `ledger.get_scrip(principal_id)` - Get scrip balance
+- `ledger.can_afford_scrip(principal_id, amount)` - Check affordability
+- `ledger.get_resource(principal_id, resource)` - Get resource balance
+- `ledger.can_spend_resource(principal_id, resource, amount)` - Check resource
+- `ledger.get_all_resources(principal_id)` - All resource balances
+- `ledger.principal_exists(principal_id)` - Check if principal exists
+
+### Security Sandboxing
+
+Contract code runs in a restricted environment:
+- **Dangerous builtins removed:** `open`, `exec`, `eval`, `compile`, `__import__`, `input`, `breakpoint`, `exit`, `quit`
+- **Timeout protection:** Default 5 seconds (30s if `call_llm` capability)
+- **Read-only ledger access:** Cannot modify balances
+
+### Error Handling
+
+| Exception | When |
+|-----------|------|
+| `ContractExecutionError` | General execution failure |
+| `ContractTimeoutError` | Contract code exceeds timeout |
+
+---
+
+## Permission Caching (Plan #100 Phase 2)
+
+`PermissionCache` provides opt-in TTL-based caching for permission results.
+
+```python
+class PermissionCache:
+    def get(key: CacheKey) -> PermissionResult | None
+    def put(key: CacheKey, result: PermissionResult, ttl_seconds: float)
+    def clear()
+    def size() -> int
+```
+
+**Cache key:** `(artifact_id, action, requester_id, contract_version)`
+
+**Opt-in:** Contracts specify caching via `cache_policy: {"ttl_seconds": N}`. No caching by default.
+
+---
+
+## Example: Pay-Per-Use Contract
+
+```python
+ExecutableContract(
+    contract_id="pay_per_use",
+    code='''
+def check_permission(caller, action, target, context, ledger):
+    price = 10
+    if action == "read":
+        price = 5  # Cheaper for reads
+
+    if not ledger.can_afford_scrip(caller, price):
+        return {"allowed": False, "reason": "Insufficient scrip", "cost": 0}
+
+    return {"allowed": True, "reason": f"Paid {price} scrip", "cost": price}
+''',
+    cache_policy={"ttl_seconds": 60}  # Cache results for 1 minute
+)
+```
 
 ---
 
@@ -116,9 +217,9 @@ Agents can create custom contracts as executable artifacts. The artifact must:
 
 | Current | Target |
 |---------|--------|
-| Genesis contracts are Python classes | Contracts are artifacts |
-| Custom contracts partially supported | Full custom contract support |
-| No contract caching | Contract results cacheable |
-| No LLM in contracts | Contracts can call LLM |
+| Genesis contracts are Python classes | Contracts are artifacts (partially done) |
+| Custom contracts fully supported | ✅ Done (Plan #100) |
+| Permission caching available | ✅ Done (Plan #100) |
+| No LLM in contracts | Contracts can call LLM (capability exists) |
 
 See `docs/architecture/target/05_contracts.md` for target architecture.

@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-19 (Plan #102 - tick-based mode removed, event counter clarified)
+**Last verified:** 2026-01-20 (Plan #131 - edit/delete actions added)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
@@ -45,18 +45,28 @@ See `docs/architecture/current/agents.md` for artifact-backed agent details.
 
 ---
 
-## The Narrow Waist: 4 Action Types + Reasoning
+## The Narrow Waist: 6 Action Types + Reasoning
 
-All agent actions must be one of these 4 types (`src/world/actions.py`):
+All agent actions must be one of these 6 types (`src/world/actions.py`):
 
 | Action Type | Purpose |
 |-------------|---------|
 | `noop` | Do nothing |
 | `read_artifact` | Read artifact content |
-| `write_artifact` | Create/update artifact |
+| `write_artifact` | Create/update artifact (full replacement) |
+| `edit_artifact` | Surgical edit of artifact content (Plan #131) |
 | `invoke_artifact` | Call method on artifact |
+| `delete_artifact` | Delete artifact and free disk quota |
 
 **Note:** There is no `transfer` action. All transfers go through `genesis_ledger.transfer()`.
+
+### Edit vs Write (Plan #131)
+
+- **`write_artifact`**: Replaces entire content (like `cat > file`)
+- **`edit_artifact`**: Surgical string replacement (like Claude Code's Edit tool)
+  - Requires `old_string` and `new_string` parameters
+  - Fails if `old_string` not found or not unique
+  - More efficient for small changes to large artifacts
 
 ### Reasoning Field (Plan #49)
 

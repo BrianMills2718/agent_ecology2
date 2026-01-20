@@ -573,7 +573,7 @@ class Ledger:
     def distribute_ubi(self, amount: int, exclude: str | None = None) -> dict[str, int]:
         """Distribute scrip equally among all agent principals (UBI).
 
-        Used for oracle auction: winning bid is redistributed to all agents.
+        Used for mint auction: winning bid is redistributed to all agents.
 
         Args:
             amount: Total scrip to distribute

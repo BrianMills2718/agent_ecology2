@@ -15,7 +15,7 @@ These docs describe what IS implemented today. They are the source of truth for 
 | `execution_model.md` | Tick loop, two-phase commit, timing |
 | `agents.md` | Agent lifecycle, thinking, memory |
 | `resources.md` | Flow/stock resources, scrip, ledger |
-| `genesis_artifacts.md` | System services (ledger, oracle, escrow) |
+| `genesis_artifacts.md` | System services (ledger, mint, escrow) |
 | `artifacts_executor.md` | Artifact storage, policies, code execution |
 | `configuration.md` | Config loading, Pydantic validation |
 | `supporting_systems.md` | Checkpoint, logging, dashboard |

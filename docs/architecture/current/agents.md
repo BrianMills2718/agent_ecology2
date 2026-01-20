@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-19 (Plan #102 - doc coupling verification)
+**Last verified:** 2026-01-20 (removed --ticks reference, Plan #102 compliance)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -31,7 +31,7 @@ AgentLoop._execute_iteration():
 
 **Integration point:** New agent-internal features (workflows, intelligence patterns) hook into `AgentLoop._execute_iteration()`.
 
-**Debug mode:** Use `--ticks N` for deterministic tick-based execution where all agents are synchronized.
+**Duration mode:** Use `--duration N` to run for N seconds. Agents run autonomously (no tick synchronization).
 
 ---
 
