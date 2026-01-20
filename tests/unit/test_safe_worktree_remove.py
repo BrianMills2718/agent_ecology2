@@ -138,3 +138,161 @@ class TestRemoveWorktree:
 
         result = remove_worktree("/nonexistent/path/12345", force=False)
         assert result is False
+
+
+class TestOwnershipCheck:
+    """Tests for ownership check in should_block_removal (Plan #115)."""
+
+    def test_blocks_removal_if_different_owner(self, tmp_path: Path) -> None:
+        """Removal should be blocked when claim owner differs from current CC."""
+        import sys
+        import yaml
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
+        from safe_worktree_remove import should_block_removal
+
+        # Create a claims file with a claim owned by "other-cc"
+        claims_file = tmp_path / "active-work.yaml"
+        worktree_path = tmp_path / "worktrees" / "plan-99-feature"
+        worktree_path.mkdir(parents=True)
+
+        claims_data = {
+            "claims": [{
+                "cc_id": "other-cc-instance",
+                "task": "Working on something",
+                "plan": 99,
+                "worktree_path": str(worktree_path),
+            }]
+        }
+        claims_file.write_text(yaml.dump(claims_data))
+
+        # Current CC identity differs from claim owner
+        my_identity = {
+            "branch": "plan-115-worktree-ownership",
+            "is_main": False,
+            "cwd": "plan-115-worktree-ownership",
+        }
+
+        # Should block with "ownership" reason
+        should_block, reason, info = should_block_removal(
+            str(worktree_path),
+            force=False,
+            claims_file=claims_file,
+            my_identity=my_identity,
+        )
+
+        assert should_block is True
+        assert reason == "ownership"
+        assert info is not None
+        assert info.get("cc_id") == "other-cc-instance"
+
+    def test_allows_removal_if_same_owner(self, tmp_path: Path) -> None:
+        """Removal should be allowed (not blocked by ownership) when owner matches."""
+        import sys
+        import yaml
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
+        from safe_worktree_remove import should_block_removal
+
+        # Create a claims file with a claim owned by current CC
+        claims_file = tmp_path / "active-work.yaml"
+        worktree_path = tmp_path / "worktrees" / "plan-99-feature"
+        worktree_path.mkdir(parents=True)
+
+        claims_data = {
+            "claims": [{
+                "cc_id": "plan-99-feature",  # Same as current CC
+                "task": "Working on something",
+                "plan": 99,
+                "worktree_path": str(worktree_path),
+            }]
+        }
+        claims_file.write_text(yaml.dump(claims_data))
+
+        # Current CC identity matches claim owner
+        my_identity = {
+            "branch": "plan-99-feature",
+            "is_main": False,
+            "cwd": "plan-99-feature",
+        }
+
+        # Should block with "claim" reason (same owner but still claimed),
+        # NOT "ownership" reason
+        should_block, reason, info = should_block_removal(
+            str(worktree_path),
+            force=False,
+            claims_file=claims_file,
+            my_identity=my_identity,
+        )
+
+        assert should_block is True
+        assert reason == "claim"  # Not "ownership"
+        assert info is not None
+
+    def test_no_claim_allows_removal(self, tmp_path: Path) -> None:
+        """No claim means no ownership block."""
+        import sys
+        import yaml
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
+        from safe_worktree_remove import should_block_removal
+
+        # Create empty claims file
+        claims_file = tmp_path / "active-work.yaml"
+        worktree_path = tmp_path / "worktrees" / "plan-99-feature"
+        worktree_path.mkdir(parents=True)
+
+        claims_data = {"claims": []}
+        claims_file.write_text(yaml.dump(claims_data))
+
+        my_identity = {
+            "branch": "main",
+            "is_main": True,
+            "cwd": "agent_ecology2",
+        }
+
+        # Should not block (no claim)
+        should_block, reason, info = should_block_removal(
+            str(worktree_path),
+            force=False,
+            claims_file=claims_file,
+            my_identity=my_identity,
+        )
+
+        assert should_block is False
+        assert reason == ""
+
+    def test_force_bypasses_ownership_check(self, tmp_path: Path) -> None:
+        """Force flag should bypass ownership check."""
+        import sys
+        import yaml
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
+        from safe_worktree_remove import should_block_removal
+
+        # Create a claims file with a claim owned by different CC
+        claims_file = tmp_path / "active-work.yaml"
+        worktree_path = tmp_path / "worktrees" / "plan-99-feature"
+        worktree_path.mkdir(parents=True)
+
+        claims_data = {
+            "claims": [{
+                "cc_id": "other-cc-instance",
+                "task": "Working on something",
+                "plan": 99,
+                "worktree_path": str(worktree_path),
+            }]
+        }
+        claims_file.write_text(yaml.dump(claims_data))
+
+        my_identity = {
+            "branch": "main",
+            "is_main": True,
+            "cwd": "agent_ecology2",
+        }
+
+        # With force=True, should not block
+        should_block, reason, info = should_block_removal(
+            str(worktree_path),
+            force=True,
+            claims_file=claims_file,
+            my_identity=my_identity,
+        )
+
+        assert should_block is False

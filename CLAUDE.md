@@ -138,7 +138,9 @@ cd /home/brian/brian_projects/agent_ecology2 && make finish BRANCH=plan-98-robus
 ### Ownership
 - Check claims before acting on any PR/worktree
 - If owned by another instance: **read only**
+- **NEVER clean up worktrees you don't own** - breaks their shell (CWD becomes invalid)
 - Self-merge your own PRs when ready (no review required)
+- Only the owner should run `make finish` to merge + cleanup their worktree
 
 ### Plans
 - All significant work requires a plan in `docs/plans/NN_name.md`

@@ -91,6 +91,25 @@ def get_main_repo_root() -> Path:
         return Path.cwd()
 
 
+def get_current_cc_identity() -> dict[str, Any]:
+    """Get the current CC instance's identity.
+
+    Returns dict with:
+        - branch: Current git branch name
+        - is_main: True if on main branch
+        - cwd: Current working directory name
+    """
+    # Get current branch
+    success, branch = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+    branch = branch if success else ""
+
+    return {
+        "branch": branch,
+        "is_main": branch == "main",
+        "cwd": Path.cwd().name,
+    }
+
+
 def check_worktree_claimed(
     worktree_path: str,
     claims_file: Path | None = None,
@@ -174,27 +193,50 @@ def should_block_removal(
     worktree_path: str,
     force: bool = False,
     claims_file: Path | None = None,
+    my_identity: dict[str, Any] | None = None,
 ) -> tuple[bool, str, dict[str, Any] | None]:
     """Determine if worktree removal should be blocked.
 
-    Checks two conditions:
-    1. Active claim in .claude/active-work.yaml
-    2. Recent session marker (< 24h old) - indicates active Claude session
+    Checks three conditions (Plan #115: Worktree Ownership Enforcement):
+    1. Ownership mismatch - claim exists but belongs to different CC instance
+    2. Active claim in .claude/active-work.yaml (same owner)
+    3. Recent session marker (< 24h old) - indicates active Claude session
 
     Args:
         worktree_path: Path to the worktree
         force: If True, don't block (still returns info)
         claims_file: Optional path to claims file (for testing)
+        my_identity: Optional identity dict (for testing), otherwise auto-detected
 
     Returns:
         (should_block, reason, info) where:
         - should_block: True if removal should be blocked (and force=False)
-        - reason: "claim", "session_marker", or "" if not blocked
+        - reason: "ownership", "claim", "session_marker", or "" if not blocked
         - info: claim dict or session marker info
     """
+    # Get current CC identity for ownership comparison
+    if my_identity is None:
+        my_identity = get_current_cc_identity()
+
     # Check for active claims first
     is_claimed, claim_info = check_worktree_claimed(worktree_path, claims_file)
-    if is_claimed and not force:
+
+    if is_claimed and claim_info and not force:
+        # Check if the claim owner matches our identity
+        claim_owner = claim_info.get("cc_id", "")
+
+        # Match by branch name or directory name
+        my_branch = my_identity.get("branch", "")
+        my_cwd = my_identity.get("cwd", "")
+
+        # Owner matches if our branch/cwd matches the claim's cc_id
+        is_mine = claim_owner and (claim_owner == my_branch or claim_owner == my_cwd)
+
+        if not is_mine:
+            # Different owner - block with ownership reason
+            return True, "ownership", claim_info
+
+        # Same owner but still claimed - block with claim reason
         return True, "claim", claim_info
 
     # Check for recent session marker
@@ -218,7 +260,31 @@ def remove_worktree(worktree_path: str, force: bool = False) -> bool:
         return False
 
     # Check for active claims or recent session marker (Plan #52: Worktree Session Tracking)
+    # Extended with ownership check (Plan #115: Worktree Ownership Enforcement)
     block, reason, info = should_block_removal(worktree_path, force)
+
+    # Ownership block is the strongest - you should NEVER remove someone else's worktree
+    if block and reason == "ownership" and info:
+        cc_id = info.get("cc_id", "unknown")
+        task = info.get("task", "")[:50]
+        plan = info.get("plan")
+        print(f"❌ BLOCKED: Worktree owned by another CC instance!")
+        print(f"   Owner: {cc_id}")
+        if plan:
+            print(f"   Plan: #{plan}")
+        print(f"   Task: {task}")
+        print()
+        print("   You cannot remove worktrees you don't own.")
+        print("   The owner's shell will break if you remove their worktree.")
+        print()
+        print("   This worktree belongs to another Claude Code instance.")
+        print("   Let the OWNER clean up their own worktree (from main).")
+        print()
+        print("   If the owner is gone and cleanup is needed:")
+        print(f"   1. Have the owner run: cd /path/to/main && make finish BRANCH=... PR=...")
+        print(f"   2. Or release their claim: python scripts/check_claims.py --release --id {cc_id}")
+        print(f"   3. Then force remove (DANGEROUS): python scripts/safe_worktree_remove.py --force {worktree_path}")
+        return False
 
     if block and reason == "claim" and info:
         cc_id = info.get("cc_id", "unknown")
