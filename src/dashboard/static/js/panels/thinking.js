@@ -26,8 +26,19 @@ class ThinkingPanel {
             });
         }
 
-        // Initial load
-        this.refresh();
+        // Plan #133: Register for WebSocket updates to refresh agent filter
+        // when new agents appear during simulation
+        if (window.wsManager) {
+            window.wsManager.on('state_update', () => {
+                this.updateAgentFilter();
+            });
+            window.wsManager.on('initial_state', () => {
+                this.updateAgentFilter();
+            });
+        }
+
+        // Initial load - update agent filter first, then refresh content
+        this.updateAgentFilter().then(() => this.refresh());
     }
 
     async refresh() {

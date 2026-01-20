@@ -94,6 +94,8 @@ class ArtifactState:
     interface: dict[str, Any] | None = None
     # Artifact dependencies (Plan #63)
     depends_on: list[str] = field(default_factory=list)
+    # Access control contract (Plan #133)
+    access_contract_id: str = "genesis_contract_freeware"
 
 
 @dataclass
@@ -388,6 +390,7 @@ class JSONLParser:
                     content=content[:10000] if content else None,  # Cap at 10KB
                     interface=intent.get("interface"),  # Plan #54: Interface for discoverability
                     depends_on=intent.get("depends_on", []),  # Plan #63: Artifact dependencies
+                    access_contract_id=intent.get("access_contract_id", "genesis_contract_freeware"),  # Plan #133
                 )
                 if artifact_id not in self.state.agents[agent_id].artifacts_owned:
                     self.state.agents[agent_id].artifacts_owned.append(artifact_id)
@@ -861,6 +864,7 @@ class JSONLParser:
                 updated_at=art.updated_at,
                 mint_score=art.mint_score,
                 mint_status=art.mint_status,
+                access_contract_id=art.access_contract_id,  # Plan #133
             )
             for art in self.state.artifacts.values()
         ]
@@ -886,21 +890,33 @@ class JSONLParser:
         )
 
     def get_progress(self) -> SimulationProgress:
-        """Get simulation progress info."""
+        """Get simulation progress info.
+
+        Plan #133: Fixed for autonomous mode - count actions instead of ticks.
+        In autonomous mode there are no tick events, so current_tick stays 0.
+        Instead, count total actions across all agents as the event count.
+        """
         elapsed = 0.0
         events_per_sec = 0.0
-        if self.state.start_time and self.state.current_tick > 0:
+
+        # Count total actions across all agents (works in autonomous mode)
+        total_actions = sum(a.action_count for a in self.state.agents.values())
+        # Use action count if available, otherwise fall back to current_tick
+        event_count = total_actions if total_actions > 0 else self.state.current_tick
+
+        # Calculate elapsed time - removed current_tick > 0 requirement (Plan #133)
+        if self.state.start_time:
             from datetime import datetime
             try:
                 start = datetime.fromisoformat(self.state.start_time)
                 now = datetime.now()
                 elapsed = (now - start).total_seconds()
-                events_per_sec = self.state.current_tick / elapsed if elapsed > 0 else 0
+                events_per_sec = event_count / elapsed if elapsed > 0 else 0
             except (ValueError, TypeError):
                 pass
 
         return SimulationProgress(
-            current_tick=self.state.current_tick,
+            current_tick=event_count,  # Now shows action count in autonomous mode
             api_cost_spent=self.state.api_cost_spent,
             api_cost_limit=self.state.api_cost_limit,
             start_time=self.state.start_time,
@@ -1354,6 +1370,7 @@ class JSONLParser:
             ownership_history=art.ownership_history,
             invocation_history=art.invocation_history[-50:],  # Last 50
             interface=art.interface,
+            access_contract_id=art.access_contract_id,  # Plan #133
         )
 
     def get_invocations(

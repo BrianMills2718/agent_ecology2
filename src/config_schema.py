@@ -1307,6 +1307,10 @@ class DashboardConfig(StrictModel):
         gt=0,
         description="Polling interval in seconds"
     )
+    use_polling: bool = Field(
+        default=False,
+        description="Use polling instead of watchdog for file changes (WSL compatibility)"
+    )
 
 
 # =============================================================================

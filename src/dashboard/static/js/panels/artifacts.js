@@ -172,6 +172,21 @@ const ArtifactsPanel = {
     },
 
     /**
+     * Format access contract ID for display (Plan #133)
+     */
+    formatAccessContract(contractId) {
+        if (!contractId) return 'Unknown';
+        // Make contract names more readable
+        const names = {
+            'genesis_contract_freeware': 'Freeware (public read/invoke)',
+            'genesis_contract_self_owned': 'Self-Owned (owner only)',
+            'genesis_contract_private': 'Private (no access)',
+            'genesis_contract_public': 'Public (full access)',
+        };
+        return names[contractId] || contractId;
+    },
+
+    /**
      * Show artifact detail modal
      */
     async showArtifactDetail(artifactId) {
@@ -201,8 +216,12 @@ const ArtifactsPanel = {
                             <span class="info-value">${this.escapeHtml(detail.artifact_type)}</span>
                         </div>
                         <div class="info-item">
-                            <span class="info-label">Owner</span>
+                            <span class="info-label">Created By</span>
                             <span class="info-value">${this.escapeHtml(detail.created_by)}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Access</span>
+                            <span class="info-value">${this.formatAccessContract(detail.access_contract_id)}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Price</span>

@@ -522,6 +522,7 @@ dashboard:
   max_events_cache: 10000
   debounce_delay_ms: 100        # File watcher debounce delay
   poll_interval: 0.5            # Polling interval seconds
+  use_polling: false            # Use polling instead of watchdog (enable for WSL compatibility)
 
 # -----------------------------------------------------------------------------
 # ID GENERATION

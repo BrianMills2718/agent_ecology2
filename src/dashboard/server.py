@@ -120,7 +120,9 @@ class DashboardApp:
         self.live_mode = live_mode
 
         self.parser = JSONLParser(self.jsonl_path)
-        self.watcher = PollingWatcher(self.jsonl_path)  # poll_interval from config
+        # Plan #133: Use polling watcher for WSL compatibility
+        # Watchdog-based file watching is unreliable on WSL2
+        self.watcher = PollingWatcher(self.jsonl_path)
         self.connection_manager = ConnectionManager()
 
         # Plan #125: Moved from create_app() nonlocal for cleaner state management
