@@ -31,6 +31,14 @@ make lint                # Doc-code coupling check
 make lint-suggest        # Show which docs need updates
 ```
 
+### Simulation & Dashboard
+```bash
+make run                 # Run simulation (TICKS=10 AGENTS=2)
+make dash                # View existing run.jsonl in dashboard
+make dash-run            # Run simulation with dashboard (TICKS=10)
+make kill                # Stop running simulation
+```
+
 ### Finishing Work
 ```bash
 make pr-ready            # Rebase + push (run before PR)
@@ -60,7 +68,6 @@ make clean               # Remove __pycache__, .pytest_cache
 make clean-claims        # Remove old completed claims
 make clean-branches      # List stale remote branches
 make clean-branches-delete  # Delete stale remote branches
-make kill                # Kill running simulations
 ```
 ---
 
