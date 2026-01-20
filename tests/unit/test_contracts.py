@@ -1703,3 +1703,174 @@ def check_permission(caller, action, target, context, ledger):
 
         assert cache.get(("artifact", "read", "user", "v1")).allowed is True
         assert cache.get(("artifact", "read", "user", "v2")).allowed is False
+
+
+class TestDanglingContractHandling:
+    """Tests for dangling contract handling (Plan #100 Phase 2, ADR-0017).
+
+    When an artifact's access_contract_id points to a deleted/missing contract,
+    the system should fail open to a configurable default contract.
+    """
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        from src.world.executor import SafeExecutor
+        from src.world.artifacts import Artifact
+        from datetime import datetime
+
+        self.ledger = Ledger()
+        self.ledger.create_principal("test_user", starting_scrip=100)
+        self.ledger.create_principal("owner", starting_scrip=0)
+
+        self.executor = SafeExecutor(timeout=5, use_contracts=True, ledger=self.ledger)
+
+        # Create artifact with a non-existent contract
+        self.artifact = Artifact(
+            id="test_artifact",
+            type="test",
+            content="test content",
+            owner_id="owner",
+            created_at=datetime.utcnow().isoformat(),
+            updated_at=datetime.utcnow().isoformat(),
+        )
+        self.artifact.access_contract_id = "deleted_contract_xyz"  # type: ignore[attr-defined]
+
+    def test_missing_contract_falls_back_to_default(self) -> None:
+        """Test that missing contract falls back to default (freeware)."""
+        # Access should succeed because freeware allows reads
+        result = self.executor._check_permission_via_contract(
+            "test_user", "read", self.artifact
+        )
+        assert result.allowed is True
+        # Should indicate it's using freeware fallback
+        assert "freeware" in result.reason.lower()
+
+    def test_missing_contract_logs_warning(self) -> None:
+        """Test that missing contract logs a warning."""
+        import logging
+
+        # Capture warnings
+        with self.assertLogs('src.world.executor', level='WARNING') as cm:
+            self.executor._check_permission_via_contract(
+                "test_user", "read", self.artifact
+            )
+
+        # Should have logged a warning about dangling contract
+        assert any("dangling" in log.lower() or "missing" in log.lower() for log in cm.output)
+
+    def test_dangling_contract_info_returned(self) -> None:
+        """Test that dangling contract information is available."""
+        result = self.executor._check_permission_via_contract(
+            "test_user", "read", self.artifact
+        )
+
+        # The result should indicate it was a fallback
+        assert result.allowed is True
+        # Conditions should contain dangling info (for observability)
+        assert result.conditions is not None
+        assert result.conditions.get("dangling_contract") is True
+        assert result.conditions.get("original_contract_id") == "deleted_contract_xyz"
+
+    def test_default_contract_configurable(self) -> None:
+        """Test that default contract for dangling refs is configurable."""
+        from src.config import get
+
+        # Default should be freeware
+        default = get("contracts.default_on_missing")
+        assert default == "genesis_contract_freeware"
+
+    def test_private_artifact_accessible_after_contract_deletion(self) -> None:
+        """Test that previously private artifact becomes accessible via freeware."""
+        # Set artifact to use a "private" contract that doesn't exist
+        self.artifact.access_contract_id = "deleted_private_contract"  # type: ignore[attr-defined]
+
+        # With freeware fallback, reads should be allowed
+        result = self.executor._check_permission_via_contract(
+            "test_user", "read", self.artifact
+        )
+        assert result.allowed is True
+
+        # But writes should still be denied (freeware requires ownership)
+        result = self.executor._check_permission_via_contract(
+            "test_user", "write", self.artifact
+        )
+        assert result.allowed is False
+
+    def test_owner_can_still_write_after_contract_deletion(self) -> None:
+        """Test that owner retains write access via freeware fallback."""
+        self.artifact.access_contract_id = "deleted_contract"  # type: ignore[attr-defined]
+
+        # Owner should be able to write (freeware allows owner writes)
+        result = self.executor._check_permission_via_contract(
+            "owner", "write", self.artifact
+        )
+        assert result.allowed is True
+
+    def test_executor_has_dangling_contract_tracking(self) -> None:
+        """Test that executor can report dangling contract occurrences."""
+        # First access with dangling contract
+        self.executor._check_permission_via_contract(
+            "test_user", "read", self.artifact
+        )
+
+        # Executor should track dangling contracts for observability
+        assert hasattr(self.executor, 'get_dangling_contract_count')
+        count = self.executor.get_dangling_contract_count()
+        assert count >= 1
+
+    def test_valid_contract_does_not_trigger_dangling_logic(self) -> None:
+        """Test that valid contracts don't trigger dangling contract handling."""
+        # Use a valid genesis contract
+        self.artifact.access_contract_id = "genesis_contract_freeware"  # type: ignore[attr-defined]
+
+        result = self.executor._check_permission_via_contract(
+            "test_user", "read", self.artifact
+        )
+
+        # Should not have dangling contract conditions
+        assert result.allowed is True
+        if result.conditions:
+            assert result.conditions.get("dangling_contract") is not True
+
+    # Helper for assertLogs context manager
+    def assertLogs(self, logger_name: str, level: str = 'WARNING'):
+        """Context manager for capturing logs."""
+        import logging
+        return _LogCapture(logger_name, level)
+
+
+class _LogCapture:
+    """Helper class for capturing log messages in tests."""
+
+    def __init__(self, logger_name: str, level: str):
+        import logging
+        self.logger_name = logger_name
+        self.level = getattr(logging, level)
+        self.handler: logging.Handler | None = None
+        self.output: list[str] = []
+
+    def __enter__(self) -> "_LogCapture":
+        import logging
+
+        class ListHandler(logging.Handler):
+            def __init__(self, output_list: list[str]):
+                super().__init__()
+                self.output_list = output_list
+
+            def emit(self, record: logging.LogRecord) -> None:
+                self.output_list.append(self.format(record))
+
+        logger = logging.getLogger(self.logger_name)
+        self.handler = ListHandler(self.output)
+        self.handler.setLevel(self.level)
+        logger.addHandler(self.handler)
+        self._original_level = logger.level
+        logger.setLevel(self.level)
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        import logging
+        logger = logging.getLogger(self.logger_name)
+        if self.handler:
+            logger.removeHandler(self.handler)
+        logger.setLevel(self._original_level)

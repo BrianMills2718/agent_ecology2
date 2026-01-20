@@ -250,6 +250,13 @@ executor:
     - datetime
 
 # -----------------------------------------------------------------------------
+# CONTRACTS
+# Contract system configuration (Plan #100, ADR-0017)
+# -----------------------------------------------------------------------------
+contracts:
+  default_on_missing: <string>  # Default contract when access_contract_id is missing/deleted (default: genesis_contract_freeware)
+
+# -----------------------------------------------------------------------------
 # VALIDATION
 # Input validation limits to prevent DoS attacks
 # -----------------------------------------------------------------------------

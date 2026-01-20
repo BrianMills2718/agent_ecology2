@@ -312,6 +312,12 @@ executor:
     - datetime
 
 # -----------------------------------------------------------------------------
+# CONTRACTS - Contract system configuration (Plan #100, ADR-0017)
+# -----------------------------------------------------------------------------
+contracts:
+  default_on_missing: genesis_contract_freeware  # Fallback for dangling contracts
+
+# -----------------------------------------------------------------------------
 # VALIDATION - Input validation limits to prevent DoS
 # -----------------------------------------------------------------------------
 validation:

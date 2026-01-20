@@ -1414,6 +1414,19 @@ class LibrariesConfig(StrictModel):
 
 
 # =============================================================================
+# CONTRACTS CONFIG
+# =============================================================================
+
+class ContractsConfig(StrictModel):
+    """Contract system configuration (Plan #100, ADR-0017)."""
+
+    default_on_missing: str = Field(
+        default="genesis_contract_freeware",
+        description="Default contract to use when access_contract_id points to deleted/missing contract"
+    )
+
+
+# =============================================================================
 # ROOT CONFIG MODEL
 # =============================================================================
 
@@ -1429,6 +1442,7 @@ class AppConfig(StrictModel):
     genesis: GenesisConfig = Field(default_factory=GenesisConfig)
     timeouts: TimeoutsConfig = Field(default_factory=TimeoutsConfig)
     executor: ExecutorConfig = Field(default_factory=ExecutorConfig)
+    contracts: ContractsConfig = Field(default_factory=ContractsConfig)
     validation: ValidationConfig = Field(default_factory=ValidationConfig)
     rate_limiting: RateLimitingConfig = Field(default_factory=RateLimitingConfig)
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
