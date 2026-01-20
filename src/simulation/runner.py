@@ -1010,7 +1010,21 @@ class SimulationRunner:
         # Call the agent's propose method
         result = await agent.propose_action_async(cast(dict[str, Any], tick_state))
 
-        # Track API cost
+        # Check for error FIRST - don't log thinking events for failed LLM calls (Plan #121)
+        if "error" in result:
+            # Log thinking_failed event instead of empty thinking event
+            self.world.logger.log(
+                "thinking_failed",
+                {
+                    "tick": self.world.tick,
+                    "principal_id": agent.agent_id,
+                    "reason": "llm_call_failed",
+                    "error": result.get("error", ""),
+                },
+            )
+            return None
+
+        # Track API cost (only for successful calls)
         usage = result.get("usage") or {"cost": 0.0, "input_tokens": 0, "output_tokens": 0}
         api_cost = usage.get("cost", 0.0)
         input_tokens = usage.get("input_tokens", 0)
@@ -1019,6 +1033,15 @@ class SimulationRunner:
 
         # Log thinking event for dashboard with OODA fields when present (Plan #88)
         thought_process = result.get("thought_process", "")
+
+        # Plan #121: Warn if thought_process is empty despite successful LLM call
+        if not thought_process.strip():
+            import logging
+            logging.getLogger(__name__).warning(
+                f"Empty thought_process for {agent.agent_id} despite successful LLM call "
+                f"(tokens: {input_tokens}/{output_tokens})"
+            )
+
         thinking_data: dict[str, Any] = {
             "tick": self.world.tick,
             "principal_id": agent.agent_id,
@@ -1034,10 +1057,6 @@ class SimulationRunner:
             thinking_data["action_rationale"] = result["action_rationale"]
 
         self.world.logger.log("thinking", thinking_data)
-
-        # Check for error
-        if "error" in result:
-            return None
 
         # Return the action dict
         return result.get("action")
