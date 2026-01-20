@@ -2,7 +2,7 @@
 
 Canonical terminology for Agent Ecology.
 
-**Last updated:** 2026-01-18
+**Last updated:** 2026-01-20
 
 ---
 
@@ -29,6 +29,27 @@ Everything is an artifact. Other entity types are artifacts with specific proper
 | **Principal** | Any artifact with standing (can hold resources, bear costs) | `has_standing=true` |
 | **Contract** | Executable artifact that answers permission questions | `can_execute=true`, implements `check_permission` |
 | **Genesis Artifact** | Artifact created at system initialization | Prefixed with `genesis_`, solves cold-start |
+
+### Artifact Properties
+
+All artifacts have these metadata fields (see `src/world/artifacts.py`):
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | str | Unique artifact identifier |
+| `content` | str | Artifact content (code, data, config) |
+| `access_contract_id` | str | Governing contract for permissions |
+| `created_by` | str | Principal who created the artifact |
+| `created_at` | datetime | Creation timestamp |
+| `updated_at` | datetime | Last modification timestamp |
+| `deleted_by` | str \| None | Principal who deleted (if deleted) |
+| `has_standing` | bool | Can hold resources/bear costs |
+| `can_execute` | bool | Can be invoked as executable |
+| `executable` | bool | Has executable code |
+| `is_memory` | bool | Is a memory artifact |
+| `memory_artifact_id` | str \| None | Linked memory artifact (for agents) |
+| `depends_on` | list[str] | Artifact dependencies (Plan #63) |
+| `genesis_methods` | dict | Method dispatch for genesis artifacts |
 
 **Key relationships:**
 - Agent ⊂ Principal ⊂ Artifact
@@ -79,15 +100,22 @@ Renewable resources use a **rolling window rate tracker**: usage tracked over ti
 
 ## Actions (Narrow Waist)
 
-Only 3 action types (plus noop):
+Six action types (Plan #131):
 
 | Action | Purpose | Costs |
 |--------|---------|-------|
+| **noop** | Do nothing | None |
 | **read_artifact** | Read artifact content | May cost scrip (read_price) |
-| **write_artifact** | Create/update artifact | Disk quota |
+| **write_artifact** | Create/replace artifact | Disk quota |
+| **edit_artifact** | Surgical string replacement | Disk quota (Plan #131) |
 | **invoke_artifact** | Call method on artifact | Scrip fee + compute |
+| **delete_artifact** | Remove artifact, free disk | None (frees disk quota) |
 
 **No direct transfer action.** Transfers happen via: `invoke_artifact("genesis_ledger", "transfer", [...])`
+
+**Edit vs Write (Plan #131):**
+- `write_artifact`: Full replacement (like `cat > file`)
+- `edit_artifact`: Surgical change (like Claude Code's Edit tool, requires `old_string`/`new_string`)
 
 ---
 

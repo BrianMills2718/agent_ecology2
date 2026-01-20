@@ -33,7 +33,7 @@ The Agent Ecology is a multi-agent system where LLM-powered agents observe share
 | [execution_model.md](execution_model.md) | Tick loop, two-phase commit, timing |
 | [agents.md](agents.md) | Agent lifecycle, thinking, memory |
 | [resources.md](resources.md) | Flow/stock resources, scrip, costs |
-| [genesis_artifacts.md](genesis_artifacts.md) | System services (ledger, oracle, etc.) |
+| [genesis_artifacts.md](genesis_artifacts.md) | System services (ledger, mint, escrow, etc.) |
 | [artifacts_executor.md](artifacts_executor.md) | Artifact storage, policies, code execution |
 | [configuration.md](configuration.md) | Config loading, validation, Pydantic schema |
 | [supporting_systems.md](supporting_systems.md) | Checkpoint, logging, dashboard |

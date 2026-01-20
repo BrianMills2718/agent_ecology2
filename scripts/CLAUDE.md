@@ -4,28 +4,69 @@ Utility scripts for development and CI. All scripts support `--help` for options
 
 ## Script Summary
 
+### Core Workflow Scripts
+
 | Script | Purpose |
 |--------|---------|
-| `check_doc_coupling.py` | Verify docs updated when source changes |
+| `meta_status.py` | **Dashboard**: claims, PRs, progress, issues |
+| `check_claims.py` | Manage active work claims (scope-based) |
+| `finish_pr.py` | Complete PR lifecycle: merge + cleanup + release claim |
+| `merge_pr.py` | Merge PRs via GitHub CLI |
+| `complete_plan.py` | Mark plan complete (runs tests, records evidence) |
+| `safe_worktree_remove.py` | Safely remove worktrees (checks for uncommitted changes) |
+
+### Plan Management
+
+| Script | Purpose |
+|--------|---------|
 | `check_plan_tests.py` | Verify/run plan test requirements |
 | `check_plan_blockers.py` | Detect stale blockers (blocked by complete plans) |
 | `check_plan_exclusivity.py` | Enforce unique plan numbers across open PRs |
+| `check_plan_overlap.py` | Detect overlapping plan implementations |
+| `check_plan_completion.py` | Verify plan completion requirements |
+| `validate_plan.py` | Pre-implementation validation gate |
+| `validate_plan_completion.py` | Validate plan completion evidence |
+| `parse_plan.py` | Parse plan file structure |
+| `plan_progress.py` | Show plan implementation progress |
+| `sync_plan_status.py` | Sync plan status + validate content consistency |
+
+### Documentation & Quality
+
+| Script | Purpose |
+|--------|---------|
+| `check_doc_coupling.py` | Verify docs updated when source changes |
+| `check_adr_requirement.py` | Check if ADR is required for changes |
+| `sync_governance.py` | Sync ADR governance headers |
 | `check_mock_usage.py` | Detect suspicious mock patterns in tests |
-| `check_claims.py` | Manage active work claims (scope-based) |
-| `merge_pr.py` | Merge PRs via GitHub CLI |
-| `cleanup_branches.py` | Delete stale remote branches (merged PRs) |
-| `cleanup_orphaned_worktrees.py` | Find/clean orphaned worktrees (merged PRs) |
+| `check_mock_tests.py` | Detect mock usage in test files |
 | `check_feature_coverage.py` | Verify all src files assigned to features |
 | `check_locked_files.py` | Protect locked acceptance criteria |
 | `check_new_code_tests.py` | Verify new code has test coverage |
-| `sync_plan_status.py` | Sync plan status + validate content consistency |
-| `sync_governance.py` | Sync ADR governance headers |
-| `validate_plan.py` | Pre-implementation validation gate |
 | `validate_spec.py` | Validate feature spec YAML format |
-| `complete_plan.py` | Mark plan complete (runs tests, records evidence) |
-| `plan_progress.py` | Show plan implementation progress |
+| `validate_code_map.py` | Validate code mapping files |
+
+### Inter-CC Messaging
+
+| Script | Purpose |
+|--------|---------|
+| `check_messages.py` | Check inbox for CC messages (`--list`, `--ack`, `--archive`) |
+| `send_message.py` | Send message to another CC instance |
+| `session_manager.py` | Manage CC session identity |
+
+### Cleanup & Analysis
+
+| Script | Purpose |
+|--------|---------|
+| `cleanup_branches.py` | Delete stale remote branches (merged PRs) |
+| `cleanup_orphaned_worktrees.py` | Find/clean orphaned worktrees (merged PRs) |
+| `analyze_run.py` | Analyze simulation run results |
 | `view_log.py` | Parse run.jsonl events |
 | `concat_for_review.py` | Concatenate files for review |
+
+### Setup
+
+| Script | Purpose |
+|--------|---------|
 | `setup_hooks.sh` | Install git hooks |
 
 Config files: `doc_coupling.yaml`, `governance.yaml`

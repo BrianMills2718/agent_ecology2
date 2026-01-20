@@ -138,5 +138,5 @@ pytest tests/e2e/ -v --run-external -k "feature_name"
 
 ## Related
 
-- `docs/meta/13_feature-driven-development.md` - Full pattern details
-- `docs/meta/17_verification-enforcement.md` - How completion is verified
+- `meta/patterns/13_acceptance-gate-driven-development.md` - Full pattern details
+- `meta/patterns/17_verification-enforcement.md` - How completion is verified
