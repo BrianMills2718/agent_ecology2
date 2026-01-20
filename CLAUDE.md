@@ -35,8 +35,9 @@ make lint-suggest        # Show which docs need updates
 ```bash
 make pr-ready            # Rebase + push (run before PR)
 make pr                  # Create PR (opens browser)
-# Complete everything with ONE command from main:
-cd /path/to/main && make finish BRANCH=plan-XX PR=N  # Merge + cleanup (MUST run from main!)
+# Complete from main - cd MUST be separate (not cd && make):
+cd /path/to/main         # Step 1: Change shell CWD
+make finish BRANCH=plan-XX PR=N  # Step 2: Merge + cleanup + auto-complete
 ```
 
 ### PR Management
@@ -95,16 +96,22 @@ make kill                # Kill running simulations
 3. VERIFY           -->  make test && make lint (run checks locally)
        |
 4. SHIP             -->  make pr-ready && make pr
-                         cd /path/to/main && make finish BRANCH=X PR=N
+                         cd /path/to/main  (SEPARATE command first!)
+                         make finish BRANCH=X PR=N
 ```
 
 **Step 4 detail:** Run `make finish` FROM MAIN (not from worktree).
-This single command: merges PR + releases claim + deletes worktree.
-The `cd` MUST be in the same bash command to prevent shell CWD issues.
+This command: merges PR + auto-completes plan + releases claim + deletes worktree.
 
-Example:
+**CRITICAL:** The `cd` must be a SEPARATE command, not `cd && make finish`.
+Why: `cd X && make Y` runs in a subshell - it doesn't change your shell's CWD.
+If you run `cd && make finish` from a worktree, your shell CWD stays in the
+(now deleted) worktree, breaking all subsequent bash commands.
+
+Example (TWO commands):
 ```bash
-cd /home/brian/brian_projects/agent_ecology2 && make finish BRANCH=plan-98-robust-worktree PR=321
+cd /home/brian/brian_projects/agent_ecology2
+make finish BRANCH=plan-98-robust-worktree PR=321
 ```
 
 ### Work Priorities (in order)
@@ -228,6 +235,7 @@ agent_ecology/
 | `genesis_debt_contract` | Non-privileged credit/lending |
 | `genesis_event_log` | Passive observability |
 | `genesis_handbook` | Seeded documentation for agents |
+| `genesis_model_registry` | LLM model access as contractable resource |
 
 ---
 
