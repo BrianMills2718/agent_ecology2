@@ -1,6 +1,6 @@
 # Plan 119: Documentation Consistency Fixes
 
-**Status:** 🚧 In Progress
+**Status:** ✅ Complete
 
 **Priority:** Medium
 **Blocked By:** None
@@ -61,11 +61,11 @@ Add missing ADRs to index:
 
 ## Verification
 
-- [ ] ADR README lists all 18 ADRs
-- [ ] AGENT_HANDBOOK has no "oracle" references (except historical context)
-- [ ] AGENT_HANDBOOK has no "per-tick" execution model references
-- [ ] DESIGN_CLARIFICATIONS has no "Balance < 0" behavior descriptions
-- [ ] All docs consistent with ADR-0004, ADR-0012, ADR-0014, ADR-0016
+- [x] ADR README lists all 18 ADRs
+- [x] AGENT_HANDBOOK has no "oracle" references (except historical context)
+- [x] AGENT_HANDBOOK has no "per-tick" execution model references
+- [x] DESIGN_CLARIFICATIONS has no "Balance < 0" behavior descriptions (marked SUPERSEDED)
+- [x] All docs consistent with ADR-0004, ADR-0012, ADR-0014, ADR-0016
 
 ---
 
