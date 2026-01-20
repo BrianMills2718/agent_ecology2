@@ -1,6 +1,6 @@
 # Plan #124: Config Documentation Sync
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 **Priority:** **High**
 **Blocked By:** None
 **Blocks:** None
@@ -113,17 +113,20 @@ Not needed - documentation-only changes.
 ## Verification
 
 ### Tests & Quality
-- [ ] All tests pass: `pytest tests/`
-- [ ] Schema validates against config: schema matches actual config structure
+- [x] All tests pass: `pytest tests/` (config schema tests: 18 passed)
+- [x] Schema validates against config: schema matches actual config structure
 
 ### Documentation
-- [ ] Doc-coupling check passes: `python scripts/check_doc_coupling.py`
-- [ ] All config options documented in schema
-- [ ] Costs match between config and docs
+- [x] Doc-coupling check passes: `python scripts/check_doc_coupling.py`
+- [x] All config options documented in schema
+- [x] Costs match between config and docs
 
 ### Completion Ceremony
-- [ ] Plan file status → `✅ Complete`
-- [ ] `plans/CLAUDE.md` index → `✅ Complete`
+- [x] Plan file status → `✅ Complete`
+- [x] `plans/CLAUDE.md` index → `✅ Complete`
+
+### Completion Evidence
+- **PR:** #440 - Merged 2026-01-20
 
 ---
 
