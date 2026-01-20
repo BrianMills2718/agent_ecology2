@@ -259,6 +259,24 @@ def remove_worktree(worktree_path: str, force: bool = False) -> bool:
         print(f"❌ Worktree path does not exist: {worktree_path}")
         return False
 
+    # Check if we're currently inside the worktree we're trying to delete
+    # This would break our shell (CWD becomes invalid after deletion)
+    try:
+        current_dir = os.getcwd()
+        worktree_abs = os.path.abspath(worktree_path)
+        if current_dir.startswith(worktree_abs):
+            print("❌ BLOCKED: Cannot delete worktree you're currently in!")
+            print(f"   Your shell CWD: {current_dir}")
+            print(f"   Worktree path:  {worktree_abs}")
+            print()
+            print("   This would break your shell. First run:")
+            print("   cd /home/brian/brian_projects/agent_ecology2")
+            print("   Then retry the removal.")
+            return False
+    except OSError:
+        # getcwd() can fail if CWD is already invalid
+        pass
+
     # Check for active claims or recent session marker (Plan #52: Worktree Session Tracking)
     # Extended with ownership check (Plan #115: Worktree Ownership Enforcement)
     block, reason, info = should_block_removal(worktree_path, force)
