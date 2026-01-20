@@ -37,11 +37,13 @@ This has security implications:
 
 ## Files Affected
 
-- `src/agents/workflow.py` (modify)
-- `src/agents/state_machine.py` (modify)
-- `pyproject.toml` (modify - add simpleeval dependency)
-- `tests/unit/test_workflow.py` (modify)
-- `tests/unit/test_state_machine.py` (modify)
+- src/agents/workflow.py (modify)
+- src/agents/state_machine.py (modify)
+- src/agents/safe_eval.py (create - safe evaluator helper)
+- requirements.txt (modify - add simpleeval dependency)
+- tests/unit/test_workflow.py (modify)
+- tests/unit/test_state_machine.py (modify)
+- tests/unit/test_safe_eval.py (create - security tests)
 
 ---
 
