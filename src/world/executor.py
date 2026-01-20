@@ -83,6 +83,39 @@ DEFAULT_MAX_INVOKE_DEPTH = 5
 DEFAULT_MAX_CONTRACT_DEPTH = 10
 
 
+def _parse_json_args(args: list[Any]) -> list[Any]:
+    """Parse JSON strings in args to Python objects.
+
+    LLMs often generate JSON strings for dict arguments (e.g., '{"id": "foo"}').
+    This auto-converts them to proper Python types before passing to artifacts.
+
+    Plan #112: Fixes repeated 'str' object has no attribute 'get' errors.
+
+    Args:
+        args: List of arguments, some may be JSON strings
+
+    Returns:
+        List with JSON strings parsed to dicts/lists where valid.
+        Plain strings and non-JSON values pass through unchanged.
+    """
+    parsed: list[Any] = []
+    for arg in args:
+        if isinstance(arg, str):
+            try:
+                result = json.loads(arg)
+                # Only convert if result is dict or list
+                # (avoid converting "123" to 123 or "true" to True)
+                if isinstance(result, (dict, list)):
+                    parsed.append(result)
+                else:
+                    parsed.append(arg)
+            except (json.JSONDecodeError, ValueError):
+                parsed.append(arg)
+        else:
+            parsed.append(arg)
+    return parsed
+
+
 class ExecutionResult(TypedDict, total=False):
     """Result from code execution.
 
@@ -720,6 +753,9 @@ class SafeExecutor:
         if not callable(run_func):
             return {"success": False, "error": "run is not callable"}
 
+        # Plan #112: Parse JSON strings in args to Python objects
+        args = _parse_json_args(args)
+
         # Call run() with args, measuring resource usage via ResourceMeasurer
         start_time = time.perf_counter()
         execution_time_ms: float = 0.0
@@ -896,6 +932,9 @@ class SafeExecutor:
         run_func = controlled_globals["run"]
         if not callable(run_func):
             return {"success": False, "error": "run is not callable"}
+
+        # Plan #112: Parse JSON strings in args to Python objects
+        args = _parse_json_args(args)
 
         # Call run() with args, measuring resource usage via ResourceMeasurer
         start_time = time.perf_counter()
@@ -1234,6 +1273,9 @@ class SafeExecutor:
         run_func = controlled_globals["run"]
         if not callable(run_func):
             return {"success": False, "error": "run is not callable"}
+
+        # Plan #112: Parse JSON strings in args to Python objects
+        args = _parse_json_args(args)
 
         # Call run() with args, measuring resource usage via ResourceMeasurer
         start_time = time.perf_counter()

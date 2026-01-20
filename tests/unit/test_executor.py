@@ -103,3 +103,121 @@ def run():
         resources = result["resources_consumed"]
         assert "cpu_seconds" in resources
         assert "llm_tokens" not in resources
+
+
+class TestJSONArgParsing:
+    """Tests for Plan #112: Auto-parse JSON string arguments.
+
+    LLMs often generate JSON strings for dict arguments. The executor
+    should auto-convert them to proper Python types before passing to run().
+    """
+
+    @pytest.fixture
+    def executor(self) -> SafeExecutor:
+        """Create an executor with default settings."""
+        return SafeExecutor(timeout=5, use_contracts=False)
+
+    def test_json_string_arg_parsed_to_dict(self, executor: SafeExecutor) -> None:
+        """JSON dict string '{"a": 1}' should be parsed to {"a": 1}."""
+        code = """
+def run(data):
+    # If data is a string, this would fail with AttributeError
+    return data.get("a")
+"""
+        result = executor.execute(code, args=['{"a": 1}'])
+
+        assert result["success"] is True, f"Failed: {result.get('error')}"
+        assert result["result"] == 1
+
+    def test_json_string_list_parsed(self, executor: SafeExecutor) -> None:
+        """JSON list string '[1, 2, 3]' should be parsed to [1, 2, 3]."""
+        code = """
+def run(items):
+    # If items is a string, len() would return character count, not list length
+    return len(items)
+"""
+        result = executor.execute(code, args=['[1, 2, 3]'])
+
+        assert result["success"] is True, f"Failed: {result.get('error')}"
+        assert result["result"] == 3
+
+    def test_plain_string_unchanged(self, executor: SafeExecutor) -> None:
+        """Plain string 'hello' should remain 'hello', not parsed."""
+        code = """
+def run(message):
+    return message
+"""
+        result = executor.execute(code, args=['hello'])
+
+        assert result["success"] is True, f"Failed: {result.get('error')}"
+        assert result["result"] == "hello"
+
+    def test_mixed_args_parsed(self, executor: SafeExecutor) -> None:
+        """Mixed args: plain string + JSON string should be handled correctly."""
+        code = """
+def run(action, data):
+    # action should be 'register' (string)
+    # data should be {"id": "x"} (dict)
+    return f"{action}:{data.get('id')}"
+"""
+        result = executor.execute(code, args=['register', '{"id": "x"}'])
+
+        assert result["success"] is True, f"Failed: {result.get('error')}"
+        assert result["result"] == "register:x"
+
+    def test_nested_json_parsed(self, executor: SafeExecutor) -> None:
+        """Nested JSON structures should be fully parsed."""
+        code = """
+def run(data):
+    return data["outer"]["inner"]
+"""
+        result = executor.execute(code, args=['{"outer": {"inner": "value"}}'])
+
+        assert result["success"] is True, f"Failed: {result.get('error')}"
+        assert result["result"] == "value"
+
+    def test_json_with_array_parsed(self, executor: SafeExecutor) -> None:
+        """JSON with arrays should be fully parsed."""
+        code = """
+def run(data):
+    return data["items"][1]
+"""
+        result = executor.execute(code, args=['{"items": [10, 20, 30]}'])
+
+        assert result["success"] is True, f"Failed: {result.get('error')}"
+        assert result["result"] == 20
+
+    def test_non_string_args_unchanged(self, executor: SafeExecutor) -> None:
+        """Non-string args (int, dict, list) should pass through unchanged."""
+        code = """
+def run(num, data, items):
+    return num + data["a"] + items[0]
+"""
+        result = executor.execute(code, args=[10, {"a": 5}, [3]])
+
+        assert result["success"] is True, f"Failed: {result.get('error')}"
+        assert result["result"] == 18
+
+    def test_json_number_string_unchanged(self, executor: SafeExecutor) -> None:
+        """'123' should stay string, not become int. Only dict/list JSON is converted."""
+        code = """
+def run(data):
+    return {"type": type(data).__name__, "value": data}
+"""
+        result = executor.execute(code, args=['123'])
+
+        assert result["success"] is True, f"Failed: {result.get('error')}"
+        assert result["result"]["type"] == "str"
+        assert result["result"]["value"] == "123"
+
+    def test_json_boolean_string_unchanged(self, executor: SafeExecutor) -> None:
+        """'true' and 'false' should stay as strings, not become Python bools."""
+        code = """
+def run(data):
+    return {"type": type(data).__name__, "value": data}
+"""
+        result = executor.execute(code, args=['true'])
+
+        assert result["success"] is True, f"Failed: {result.get('error')}"
+        assert result["result"]["type"] == "str"
+        assert result["result"]["value"] == "true"

@@ -28,9 +28,9 @@
 
 ## Files Affected
 
-- `src/world/executor.py` (modify) - Add JSON string parsing in invoke path
-- `tests/unit/test_executor.py` (modify) - Add tests for JSON arg parsing
-- `src/agents/schema.py` (modify, optional) - Clarify args can be JSON strings
+- src/world/executor.py (modify)
+- tests/unit/test_executor.py (modify)
+- src/agents/schema.py (modify)
 
 ---
 
