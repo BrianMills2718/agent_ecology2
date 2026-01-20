@@ -598,11 +598,12 @@ def calculate_emergence_metrics(state: SimulationState) -> EmergenceMetrics:
         lambda: defaultdict(int)
     )
 
-    for action in state.all_actions:
-        agent_id = getattr(action, "agent_id", "")
-        action_type = getattr(action, "action_type", "")
-        if agent_id and action_type:
-            agent_action_counts[agent_id][action_type] += 1
+    # Build action counts from each agent's action history
+    for agent_id, agent in state.agents.items():
+        for action in agent.actions:
+            action_type = getattr(action, "action_type", "")
+            if action_type:
+                agent_action_counts[agent_id][action_type] += 1
 
     # Count genesis vs non-genesis invocations
     genesis_invocations = 0
