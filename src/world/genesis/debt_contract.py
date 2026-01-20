@@ -466,3 +466,149 @@ class GenesisDebtContract(GenesisArtifact):
             "debts": list(self.debts.values()),
             "count": len(self.debts)
         }
+
+    def get_interface(self) -> dict[str, Any]:
+        """Get detailed interface schema for the debt contract (Plan #114)."""
+        return {
+            "description": self.description,
+            "dataType": "service",
+            "tools": [
+                {
+                    "name": "issue",
+                    "description": "Issue a new debt. Invoker becomes the debtor. Creditor must call accept to activate.",
+                    "cost": self.methods["issue"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "creditor_id": {
+                                "type": "string",
+                                "description": "ID of the creditor (who will be owed money)"
+                            },
+                            "principal": {
+                                "type": "integer",
+                                "description": "Amount to borrow",
+                                "minimum": 1
+                            },
+                            "interest_rate": {
+                                "type": "number",
+                                "description": "Per-tick interest rate (e.g., 0.01 = 1% per tick)",
+                                "minimum": 0
+                            },
+                            "due_tick": {
+                                "type": "integer",
+                                "description": "Tick when debt is due"
+                            }
+                        },
+                        "required": ["creditor_id", "principal", "interest_rate", "due_tick"]
+                    }
+                },
+                {
+                    "name": "accept",
+                    "description": "Accept a pending debt (creditor must call). Activates the debt.",
+                    "cost": self.methods["accept"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "debt_id": {
+                                "type": "string",
+                                "description": "ID of the pending debt to accept"
+                            }
+                        },
+                        "required": ["debt_id"]
+                    }
+                },
+                {
+                    "name": "repay",
+                    "description": "Repay debt (debtor pays creditor). Transfers scrip automatically.",
+                    "cost": self.methods["repay"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "debt_id": {
+                                "type": "string",
+                                "description": "ID of the debt to repay"
+                            },
+                            "amount": {
+                                "type": "integer",
+                                "description": "Amount to repay",
+                                "minimum": 1
+                            }
+                        },
+                        "required": ["debt_id", "amount"]
+                    }
+                },
+                {
+                    "name": "collect",
+                    "description": "Collect overdue debt (creditor can seize assets if debt is past due)",
+                    "cost": self.methods["collect"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "debt_id": {
+                                "type": "string",
+                                "description": "ID of the overdue debt to collect"
+                            }
+                        },
+                        "required": ["debt_id"]
+                    }
+                },
+                {
+                    "name": "transfer_creditor",
+                    "description": "Transfer creditor rights to another principal (sell your debt receivable)",
+                    "cost": self.methods["transfer_creditor"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "debt_id": {
+                                "type": "string",
+                                "description": "ID of the debt to transfer"
+                            },
+                            "new_creditor_id": {
+                                "type": "string",
+                                "description": "ID of the new creditor"
+                            }
+                        },
+                        "required": ["debt_id", "new_creditor_id"]
+                    }
+                },
+                {
+                    "name": "check",
+                    "description": "Check status of a specific debt including current amount owed",
+                    "cost": self.methods["check"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "debt_id": {
+                                "type": "string",
+                                "description": "ID of the debt to check"
+                            }
+                        },
+                        "required": ["debt_id"]
+                    }
+                },
+                {
+                    "name": "list_debts",
+                    "description": "List all debts for a specific principal (as debtor or creditor)",
+                    "cost": self.methods["list_debts"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "principal_id": {
+                                "type": "string",
+                                "description": "ID of the principal to list debts for"
+                            }
+                        },
+                        "required": ["principal_id"]
+                    }
+                },
+                {
+                    "name": "list_all",
+                    "description": "List all debts in the system",
+                    "cost": self.methods["list_all"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            ]
+        }

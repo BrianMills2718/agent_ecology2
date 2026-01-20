@@ -787,6 +787,10 @@ class ExecutorConfig(StrictModel):
         pattern="^(none|warn|strict)$",
         description="Interface validation mode: 'none' (skip), 'warn' (log), 'strict' (reject) - Plan #86"
     )
+    require_interface_for_executables: bool = Field(
+        default=True,
+        description="Require interface schema when creating executable artifacts - Plan #114"
+    )
     preloaded_imports: list[str] = Field(
         default_factory=lambda: ["math", "json", "random", "datetime"],
         description="Modules pre-loaded into execution namespace (NOT a security whitelist)"

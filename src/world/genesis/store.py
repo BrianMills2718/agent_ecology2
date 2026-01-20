@@ -354,3 +354,149 @@ class GenesisStore(GenesisArtifact):
             "interface": artifact.interface,
             "executable": artifact.executable,
         }
+
+    def get_interface(self) -> dict[str, Any]:
+        """Get detailed interface schema for the store (Plan #114)."""
+        return {
+            "description": self.description,
+            "dataType": "service",
+            "tools": [
+                {
+                    "name": "list",
+                    "description": "List all artifacts with optional filtering by type, owner, standing, etc.",
+                    "cost": self.methods["list"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "filter": {
+                                "type": "object",
+                                "description": "Optional filter object",
+                                "properties": {
+                                    "type": {"type": "string", "description": "Filter by artifact type"},
+                                    "owner": {"type": "string", "description": "Filter by owner_id"},
+                                    "has_standing": {"type": "boolean", "description": "Filter by standing (principals)"},
+                                    "can_execute": {"type": "boolean", "description": "Filter by executability"},
+                                    "limit": {"type": "integer", "description": "Max results to return"},
+                                    "offset": {"type": "integer", "description": "Skip first N results"}
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "get",
+                    "description": "Get full details of a specific artifact including its interface",
+                    "cost": self.methods["get"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "artifact_id": {
+                                "type": "string",
+                                "description": "ID of artifact to retrieve"
+                            }
+                        },
+                        "required": ["artifact_id"]
+                    }
+                },
+                {
+                    "name": "search",
+                    "description": "Search artifacts by content match",
+                    "cost": self.methods["search"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "Search string (case-insensitive)"
+                            },
+                            "field": {
+                                "type": "string",
+                                "description": "Optional: search only in this field"
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": "Optional: max results to return"
+                            }
+                        },
+                        "required": ["query"]
+                    }
+                },
+                {
+                    "name": "list_by_type",
+                    "description": "List artifacts of a specific type",
+                    "cost": self.methods["list_by_type"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "description": "Artifact type to filter by"
+                            }
+                        },
+                        "required": ["type"]
+                    }
+                },
+                {
+                    "name": "list_by_owner",
+                    "description": "List artifacts owned by a specific principal",
+                    "cost": self.methods["list_by_owner"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "owner_id": {
+                                "type": "string",
+                                "description": "Owner's principal ID"
+                            }
+                        },
+                        "required": ["owner_id"]
+                    }
+                },
+                {
+                    "name": "list_agents",
+                    "description": "List all agents (principals that can execute)",
+                    "cost": self.methods["list_agents"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                },
+                {
+                    "name": "list_principals",
+                    "description": "List all principals (entities with standing)",
+                    "cost": self.methods["list_principals"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                },
+                {
+                    "name": "count",
+                    "description": "Count artifacts matching a filter",
+                    "cost": self.methods["count"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "filter": {
+                                "type": "object",
+                                "description": "Same filter format as list (excluding limit/offset)"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "get_interface",
+                    "description": "Get the interface schema for any artifact to learn how to invoke it",
+                    "cost": self.methods["get_interface"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "artifact_id": {
+                                "type": "string",
+                                "description": "ID of artifact to get interface for"
+                            }
+                        },
+                        "required": ["artifact_id"]
+                    }
+                }
+            ]
+        }

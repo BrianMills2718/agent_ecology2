@@ -813,6 +813,11 @@ class World:
                     error_details={"validation_error": error},
                 )
 
+        # Plan #114: Get interface requirement config
+        require_interface = config_get("executor.require_interface_for_executables")
+        if require_interface is None:
+            require_interface = True  # Default to requiring interfaces
+
         # Write the artifact
         write_result: WriteResult = self.artifacts.write_artifact(
             artifact_id=intent.artifact_id,
@@ -823,6 +828,8 @@ class World:
             price=intent.price,
             code=intent.code,
             policy=intent.policy,
+            interface=intent.interface,
+            require_interface=bool(require_interface),
         )
 
         # Track resource consumption (disk bytes written)

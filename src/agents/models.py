@@ -48,6 +48,7 @@ class WriteArtifactAction(BaseModel):
     price: int = 0
     code: str = ""
     policy: PolicyDict | None = None
+    interface: dict[str, Any] | None = None  # Plan #114: Interface schema for executables
 
     @field_validator("code")
     @classmethod
@@ -111,6 +112,7 @@ class FlatAction(BaseModel):
     executable: bool = False
     price: int = 0
     code: str = ""
+    interface: dict[str, Any] | None = None  # Plan #114: Interface schema for executables
     # For invoke_artifact
     method: str = ""
     args: list[ArgValue] = Field(default_factory=list)
@@ -149,6 +151,7 @@ class FlatAction(BaseModel):
                 executable=self.executable,
                 price=self.price,
                 code=self.code,
+                interface=self.interface,
             )
         elif self.action_type == "invoke_artifact":
             return InvokeArtifactAction(

@@ -90,3 +90,33 @@ class GenesisEventLog(GenesisArtifact):
             "total_available": len(all_events),
             "warning": "Reading events costs input tokens when you next think. Be strategic about what you read."
         }
+
+    def get_interface(self) -> dict[str, Any]:
+        """Get detailed interface schema for the event log (Plan #114)."""
+        return {
+            "description": self.description,
+            "dataType": "service",
+            "tools": [
+                {
+                    "name": "read",
+                    "description": "Read recent events from the world log. Free in scrip but costs input tokens.",
+                    "cost": self.methods["read"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "offset": {
+                                "type": "integer",
+                                "description": "Skip this many events from the end (default 0)",
+                                "minimum": 0
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": f"Return at most this many events (max {self._max_per_read})",
+                                "minimum": 1,
+                                "maximum": self._max_per_read
+                            }
+                        }
+                    }
+                }
+            ]
+        }
