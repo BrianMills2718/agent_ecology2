@@ -42,7 +42,7 @@ Master index of all gaps and their implementation plans.
 | 5 | [Oracle Anytime Bidding](05_oracle_anytime.md) | Medium | ✅ Complete | - |
 | 6 | [Unified Artifact Ontology](06_unified_ontology.md) | Medium | ✅ Complete | #7,#8,#14,#16 |
 | 7 | [Single ID Namespace](07_single_id_namespace.md) | Low | ✅ Complete | - |
-| 8 | [Agent Rights Trading](08_agent_rights.md) | Low | 🚧 Post-V1 | - |
+| 8 | [Agent Rights Trading](08_agent_rights.md) | Low | ✅ Post-V1 | - |
 | 9 | [Scrip Debt Contracts](09_scrip_debt.md) | Low | ✅ Complete | - |
 | 10 | [Memory Persistence](10_memory_persistence.md) | Low | ✅ Complete | - |
 | 11 | [Terminology Cleanup](11_terminology.md) | Medium | ✅ Complete | #12 |
@@ -121,7 +121,7 @@ Master index of all gaps and their implementation plans.
 | 87 | [Meta-Process Coordination](87_meta_process_coordination_improvements.md) | Medium | ✅ Complete | Hook improvements |
 | 88 | [OODA Cognitive Logging](88_ooda_cognitive_logging.md) | **High** | ✅ Complete | Agent observability |
 | 89 | [Plan Enforcement Hooks](89_plan_enforcement_hooks.md) | **High** | ✅ Complete | - |
-| 90 | [Cognitive Schema Configurability](90_cognitive_schema_configurability.md) | Low | 📋 Post-V1 | #88 |
+| 90 | [Cognitive Schema Configurability](90_cognitive_schema_configurability.md) | Low | ❌ Post-V1 | #88 |
 | 91 | [Acceptance Gate Cleanup](91_acceptance_gate_cleanup.md) | **High** | ✅ Complete | Meta-process clarity |
 | 92 | [Worktree/Branch Mismatch Detection](92_worktree_branch_validation.md) | **High** | ✅ Complete | Meta-process integrity |
 | 93 | [Agent Resource Visibility](93_agent_resource_visibility.md) | Medium | ✅ Complete | #95 |
