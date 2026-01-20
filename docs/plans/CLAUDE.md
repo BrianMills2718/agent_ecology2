@@ -111,7 +111,7 @@ Master index of all gaps and their implementation plans.
 | 77 | [Genesis Coordinator](77_genesis_coordinator.md) | **High** | ✅ Complete | Cross-agent coordination |
 | 78 | [Emergence Monitoring](78_emergence_monitoring.md) | **High** | ✅ Complete | Strategic thinking detection |
 | 79 | [Time-Based Auctions](79_time_based_auctions.md) | Medium | ✅ Complete | Autonomous mode purity |
-| 80 | [Log Optimization](80_log_optimization.md) | Medium | ✅ Planned | - |
+| 80 | [Log Optimization](80_log_optimization.md) | Medium | ✅ Complete | - |
 | 81 | [Handbook Audit](81_handbook_audit.md) | Medium | ✅ Complete | Agent capability |
 | 82 | [VSM-Aligned Improved Agents](82_vsm_aligned_agents.md) | Medium | ✅ Complete | - |
 | 83 | [Remove Tick-Based Execution](83_remove_tick_based_execution.md) | **High** | ✅ Complete | - |
@@ -138,8 +138,8 @@ Master index of all gaps and their implementation plans.
 | 107 | [Temporal Network Visualization](107_temporal_network_viz.md) | **High** | ✅ Complete | Dashboard artifact network view |
 | 111 | [Genesis Deprivilege Audit](111_genesis_deprivilege_audit.md) | **High** | ✅ Complete | Ensure genesis uses kernel interfaces |
 | 112 | [JSON Arg Parsing](112_json_arg_parsing.md) | **High** | ✅ Complete | Auto-parse JSON strings in invoke args |
-| 113 | [Contractable Model Access](113_contractable_model_access.md) | **High** | 📋 Planned | LLM model access as tradeable resource |
-| 114 | [Interface Discovery](114_interface_discovery.md) | **High** | ✅ Complete | Cross-agent collaboration |
+| 113 | [Contractable Model Access](113_contractable_model_access.md) | **High** | ✅ Complete | LLM model access as tradeable resource |
+| 114 | [Interface Discovery](114_interface_discovery.md) | **High** | 📋 Planned | Cross-agent collaboration |
 | 115 | [Worktree Ownership Enforcement](115_worktree_ownership_enforcement.md) | **High** | ✅ Complete | Multi-CC worktree safety |
 | 116 | [Enforce Finish From Main](116_enforce_finish_from_main.md) | Medium | ✅ Complete | Meta-process integrity |
 

@@ -93,7 +93,7 @@ def get_plan_progress() -> dict:
     
     stats = {"total": 0, "complete": 0, "in_progress": 0, "planned": 0, "plans": []}
     
-    for plan_file in sorted(plans_dir.glob("[0-9][0-9]_*.md")):
+    for plan_file in sorted(plans_dir.glob("[0-9]*_*.md")):
         content = plan_file.read_text()
         plan_num = plan_file.name.split("_")[0]
         

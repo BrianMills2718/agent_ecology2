@@ -118,7 +118,7 @@ def list_missing_evidence() -> list[dict]:
     plans_dir = Path(__file__).parent.parent / "docs" / "plans"
     missing = []
 
-    for plan_file in sorted(plans_dir.glob("[0-9][0-9]_*.md")):
+    for plan_file in sorted(plans_dir.glob("[0-9]*_*.md")):
         content = plan_file.read_text()
 
         # Extract plan number
