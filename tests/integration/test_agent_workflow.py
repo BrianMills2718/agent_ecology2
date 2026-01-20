@@ -49,7 +49,7 @@ class TestAgentRunsWorkflow:
 
         # mock-ok: LLM calls are expensive, mock for integration test
         mock_response = FlatActionResponse(
-            thought_process="Testing workflow",
+            reasoning="Testing workflow",
             action=FlatAction(action_type="noop"),
         )
         agent.llm.generate = MagicMock(return_value=mock_response)
@@ -89,7 +89,7 @@ class TestWorkflowProducesAction:
 
         # mock-ok: LLM calls are expensive
         mock_response = FlatActionResponse(
-            thought_process="Reading handbook",
+            reasoning="Reading handbook",
             action=FlatAction(
                 action_type="read_artifact",
                 artifact_id="genesis_handbook",
@@ -138,7 +138,7 @@ class TestWorkflowCodeStepSetsContext:
 
         # mock-ok: LLM calls are expensive
         mock_response = FlatActionResponse(
-            thought_process="Executing priority",
+            reasoning="Executing priority",
             action=FlatAction(action_type="noop"),
         )
         agent.llm.generate = MagicMock(return_value=mock_response)
@@ -224,7 +224,7 @@ class TestAgentFallbackWithoutWorkflow:
 
         # mock-ok: LLM calls are expensive
         mock_response = FlatActionResponse(
-            thought_process="Legacy path",
+            reasoning="Legacy path",
             action=FlatAction(action_type="noop"),
         )
         agent.llm.generate = MagicMock(return_value=mock_response)

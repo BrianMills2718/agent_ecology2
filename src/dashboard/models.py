@@ -86,7 +86,7 @@ class ThinkingEvent(BaseModel):
     thinking_cost: float = 0
     success: bool = True
     error: str | None = None
-    thought_process: str | None = None  # Agent's reasoning/thinking content
+    reasoning: str | None = None  # Agent's reasoning (Plan #132: standardized field)
 
 
 class InvocationEvent(BaseModel):

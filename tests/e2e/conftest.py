@@ -18,7 +18,7 @@ from src.agents.models import FlatActionResponse, FlatAction
 def mock_llm_response() -> FlatActionResponse:
     """Create a standard mock LLM response."""
     return FlatActionResponse(
-        thought_process="I will perform a noop action to observe the world state.",
+        reasoning="I will perform a noop action to observe the world state.",
         action=FlatAction(action_type="noop"),
     )
 

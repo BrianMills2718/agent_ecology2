@@ -1,11 +1,11 @@
-"""Integration tests for OODA cognitive logging (Plan #88).
+"""Integration tests for reasoning field propagation (Plan #88, updated by Plan #132).
 
-Tests that the thought_process field is properly propagated through
-the simulation runner to become the reasoning field in action events.
+Tests that the reasoning field is properly propagated through
+the simulation runner to action events.
 """
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 from typing import Any
 
 from src.agents.agent import Agent
@@ -16,15 +16,15 @@ class TestReasoningPropagation:
     """Test reasoning field propagation through the runner."""
 
     @pytest.mark.asyncio
-    async def test_thinking_result_has_thought_process(self) -> None:
-        """ThinkingResult from _process_agent_thinking should include thought_process."""
+    async def test_thinking_result_has_reasoning(self) -> None:
+        """ThinkingResult from _process_agent_thinking should include reasoning."""
         # This tests the data structure that feeds into _process_thinking_results
 
         agent = Agent(agent_id="test", llm_model="gemini/gemini-3-flash-preview")
 
-        # Mock LLM response with thought_process
+        # Mock LLM response with reasoning
         mock_response = FlatActionResponse(
-            thought_process="My reasoning for this action",
+            reasoning="My reasoning for this action",
             action=FlatAction(action_type="noop"),
         )
 
@@ -42,14 +42,14 @@ class TestReasoningPropagation:
 
         # Verify structure matches what runner expects
         assert "action" in proposal
-        assert "thought_process" in proposal
-        assert proposal["thought_process"] == "My reasoning for this action"
+        assert "reasoning" in proposal
+        assert proposal["reasoning"] == "My reasoning for this action"
 
-        # This is the structure the runner uses at line 539:
-        # thought_process = result.get("proposal", {}).get("thought_process", "")
+        # This is the structure the runner uses:
+        # reasoning = result.get("proposal", {}).get("reasoning", "")
         # The "proposal" key wraps this structure, so:
         result: dict[str, Any] = {"proposal": proposal}
-        extracted = result.get("proposal", {}).get("thought_process", "")
+        extracted = result.get("proposal", {}).get("reasoning", "")
         assert extracted == "My reasoning for this action"
 
     @pytest.mark.asyncio
@@ -58,7 +58,7 @@ class TestReasoningPropagation:
         agent = Agent(agent_id="test", llm_model="gemini/gemini-3-flash-preview")
 
         mock_response = FlatActionResponse(
-            thought_process="Detailed thinking about what to do",
+            reasoning="Detailed thinking about what to do",
             action=FlatAction(action_type="read_artifact", artifact_id="test"),
         )
 
@@ -74,7 +74,6 @@ class TestReasoningPropagation:
         proposal = await agent.propose_action_async(world_state)
 
         # Simulate the structure created by _process_thinking_results
-        # at line 569-574
         action_proposal: dict[str, Any] = {
             "agent": agent,
             "proposal": proposal,  # This is the raw proposal from propose_action_async
@@ -82,10 +81,10 @@ class TestReasoningPropagation:
             "api_cost": 0.001,
         }
 
-        # Simulate the extraction in _execute_proposals at line 699-701
+        # Simulate the extraction in _execute_proposals (Plan #132: standardized)
         extracted_proposal = action_proposal["proposal"]
         action_dict: dict[str, Any] = extracted_proposal["action"]
-        action_dict["reasoning"] = extracted_proposal.get("thought_process", "")
+        action_dict["reasoning"] = extracted_proposal.get("reasoning", "")
 
         # Verify the reasoning is populated
         assert action_dict["reasoning"] == "Detailed thinking about what to do"
@@ -95,7 +94,7 @@ class TestReasoningPropagation:
         """Full end-to-end test of reasoning propagation through the system.
 
         This tests the exact flow:
-        1. propose_action_async returns thought_process
+        1. propose_action_async returns reasoning
         2. _process_thinking_results stores it in proposal
         3. _execute_proposals extracts it as reasoning
         4. parse_intent_from_json creates ActionIntent with reasoning
@@ -107,7 +106,7 @@ class TestReasoningPropagation:
         agent = Agent(agent_id="test_agent", llm_model="gemini/gemini-3-flash-preview")
 
         mock_response = FlatActionResponse(
-            thought_process="I am reading this to learn more",
+            reasoning="I am reading this to learn more",
             action=FlatAction(action_type="read_artifact", artifact_id="handbook"),
         )
 
@@ -130,14 +129,14 @@ class TestReasoningPropagation:
             "api_cost": 0.001,
         }
 
-        # Simulate _execute_proposals extracting reasoning
+        # Simulate _execute_proposals extracting reasoning (Plan #132: standardized)
         extracted_proposal = action_proposal["proposal"]
         action_dict = extracted_proposal["action"].copy()  # Copy to avoid mutation
-        action_dict["reasoning"] = extracted_proposal.get("thought_process", "")
+        action_dict["reasoning"] = extracted_proposal.get("reasoning", "")
 
         # Verify reasoning is set BEFORE parsing
         assert action_dict["reasoning"] == "I am reading this to learn more", \
-            f"Reasoning not set in action_dict! Keys: {action_dict.keys()}, thought_process in proposal: {'thought_process' in extracted_proposal}"
+            f"Reasoning not set in action_dict! Keys: {action_dict.keys()}, reasoning in proposal: {'reasoning' in extracted_proposal}"
 
         # Now parse the intent
         action_json = json.dumps(action_dict)

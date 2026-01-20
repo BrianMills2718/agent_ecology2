@@ -305,7 +305,7 @@ class JSONLParser:
         if agent_id not in self.state.agents:
             self.state.agents[agent_id] = AgentState(agent_id=agent_id)
 
-        thought_process = event.get("thought_process", "")
+        reasoning = event.get("reasoning", "")
 
         thinking = ThinkingEvent(
             tick=self.state.current_tick,
@@ -315,7 +315,7 @@ class JSONLParser:
             output_tokens=event.get("output_tokens", 0),
             thinking_cost=event.get("thinking_cost", 0),
             success=True,
-            thought_process=thought_process if thought_process else None,
+            reasoning=reasoning if reasoning else None,
         )
         self.state.agents[agent_id].thinking_history.append(thinking)
         thinking_cost = event.get("thinking_cost", 0)
