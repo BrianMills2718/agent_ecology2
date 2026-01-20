@@ -270,17 +270,27 @@ class JSONLParser:
             if agent_id in scrip:
                 agent.scrip = scrip[agent_id]
 
-            # Record history for charts
+            # Record history for charts (include timestamp for time-based display)
             if agent_id not in self.state.llm_tokens_history:
                 self.state.llm_tokens_history[agent_id] = []
             self.state.llm_tokens_history[agent_id].append(
-                ChartDataPoint(tick=tick, value=agent.llm_tokens_used, label=agent_id)
+                ChartDataPoint(
+                    tick=tick,
+                    value=agent.llm_tokens_used,
+                    label=agent_id,
+                    timestamp=timestamp,
+                )
             )
 
             if agent_id not in self.state.scrip_history:
                 self.state.scrip_history[agent_id] = []
             self.state.scrip_history[agent_id].append(
-                ChartDataPoint(tick=tick, value=float(agent.scrip), label=agent_id)
+                ChartDataPoint(
+                    tick=tick,
+                    value=float(agent.scrip),
+                    label=agent_id,
+                    timestamp=timestamp,
+                )
             )
 
     def _handle_thinking(self, event: dict[str, Any], timestamp: str) -> None:
@@ -308,6 +318,18 @@ class JSONLParser:
         self.state.api_cost_spent += event.get("api_cost", 0.0)
         # Update per-agent LLM tokens used (for autonomous mode without tick events)
         self.state.agents[agent_id].llm_tokens_used += thinking_cost
+
+        # Record chart history for autonomous mode (time-based instead of tick-based)
+        if agent_id not in self.state.llm_tokens_history:
+            self.state.llm_tokens_history[agent_id] = []
+        self.state.llm_tokens_history[agent_id].append(
+            ChartDataPoint(
+                tick=self.state.current_tick,
+                value=self.state.agents[agent_id].llm_tokens_used,
+                label=agent_id,
+                timestamp=timestamp,
+            )
+        )
 
     def _handle_thinking_failed(self, event: dict[str, Any], timestamp: str) -> None:
         """Handle failed thinking event."""
@@ -424,6 +446,17 @@ class JSONLParser:
         # Track scrip changes
         if "scrip_after" in event:
             self.state.agents[agent_id].scrip = event.get("scrip_after", 0)
+            # Record scrip history for charts (time-based for autonomous mode)
+            if agent_id not in self.state.scrip_history:
+                self.state.scrip_history[agent_id] = []
+            self.state.scrip_history[agent_id].append(
+                ChartDataPoint(
+                    tick=self.state.current_tick,
+                    value=float(self.state.agents[agent_id].scrip),
+                    label=agent_id,
+                    timestamp=timestamp,
+                )
+            )
 
         # Handle genesis artifact results
         result = event.get("result", {})

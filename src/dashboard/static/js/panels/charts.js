@@ -78,7 +78,7 @@ const ChartsPanel = {
                     x: {
                         title: {
                             display: true,
-                            text: 'Tick',
+                            text: 'Time',
                             color: '#a0a0a0'
                         },
                         ticks: { color: '#a0a0a0' },
@@ -119,6 +119,19 @@ const ChartsPanel = {
     },
 
     /**
+     * Format timestamp for display on x-axis
+     */
+    formatTimestamp(ts) {
+        if (!ts) return '';
+        try {
+            const date = new Date(ts);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        } catch {
+            return ts;
+        }
+    },
+
+    /**
      * Update the chart with current data
      */
     updateChart() {
@@ -132,24 +145,45 @@ const ChartsPanel = {
             return;
         }
 
-        // Get all ticks (x-axis labels)
-        const allTicks = new Set();
-        data.agents.forEach(agent => {
-            agent.data.forEach(point => allTicks.add(point.tick));
-        });
-        data.totals.forEach(point => allTicks.add(point.tick));
+        // Check if we have timestamps (autonomous mode) or just ticks
+        const hasTimestamps = data.agents.some(agent =>
+            agent.data.some(point => point.timestamp)
+        );
 
-        const sortedTicks = Array.from(allTicks).sort((a, b) => a - b);
-        this.chart.data.labels = sortedTicks;
+        // Get all x-axis values (timestamps or ticks)
+        const allXValues = new Set();
+        data.agents.forEach(agent => {
+            agent.data.forEach(point => {
+                allXValues.add(hasTimestamps ? point.timestamp : point.tick);
+            });
+        });
+        data.totals.forEach(point => {
+            allXValues.add(hasTimestamps ? point.timestamp : point.tick);
+        });
+
+        // Sort x-axis values
+        const sortedXValues = Array.from(allXValues).sort((a, b) => {
+            if (hasTimestamps) {
+                return new Date(a) - new Date(b);
+            }
+            return a - b;
+        });
+
+        // Format labels (use time format for timestamps)
+        this.chart.data.labels = hasTimestamps
+            ? sortedXValues.map(ts => this.formatTimestamp(ts))
+            : sortedXValues;
 
         // Create datasets for each agent
         const datasets = data.agents.map((agent, index) => {
             const color = this.colors[index % this.colors.length];
-            const dataMap = new Map(agent.data.map(p => [p.tick, p.value]));
+            const dataMap = new Map(agent.data.map(p =>
+                [hasTimestamps ? p.timestamp : p.tick, p.value]
+            ));
 
             return {
                 label: agent.agent_id,
-                data: sortedTicks.map(tick => dataMap.get(tick) || 0),
+                data: sortedXValues.map(x => dataMap.get(x) || 0),
                 borderColor: color,
                 backgroundColor: color.replace('0.8', '0.2'),
                 fill: false,
@@ -159,10 +193,12 @@ const ChartsPanel = {
 
         // Add total line if available
         if (data.totals.length > 0) {
-            const totalMap = new Map(data.totals.map(p => [p.tick, p.value]));
+            const totalMap = new Map(data.totals.map(p =>
+                [hasTimestamps ? p.timestamp : p.tick, p.value]
+            ));
             datasets.push({
                 label: 'Total',
-                data: sortedTicks.map(tick => totalMap.get(tick) || 0),
+                data: sortedXValues.map(x => totalMap.get(x) || 0),
                 borderColor: 'rgba(255, 255, 255, 0.8)',
                 backgroundColor: 'rgba(255, 255, 255, 0.2)',
                 borderDash: [5, 5],

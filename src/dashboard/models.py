@@ -258,6 +258,7 @@ class ChartDataPoint(BaseModel):
     tick: int
     value: float
     label: str | None = None
+    timestamp: str | None = None  # ISO timestamp for time-based charts
 
 
 class AgentChartData(BaseModel):
