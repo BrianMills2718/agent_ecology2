@@ -5,6 +5,11 @@
 **Blocked By:** None
 **Blocks:** Agent ability to create executables, mint submissions
 
+## Files Affected
+
+- src/agents/_handbook/actions.md (modify)
+- src/agents/_handbook/tools.md (modify)
+
 ## Problem
 
 Agents are trying to create executable artifacts but failing with:
