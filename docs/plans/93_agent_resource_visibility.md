@@ -46,17 +46,18 @@ Missing: `llm_budget` (dollars), token breakdowns, cost metrics, burn rates.
 
 ## Files Affected
 
-- `src/world/resource_metrics.py` (create) - ResourceMetricsProvider component
-- `src/world/world.py` (modify) - Add resource_metrics to StateSummary
-- `src/agents/agent.py` (modify) - Use metrics in build_prompt(), load visibility config
-- `src/agents/loader.py` (modify) - Parse resource_visibility from agent.yaml
-- `src/agents/models.py` (modify) - Add ResourceVisibilityConfig model
-- `src/config_schema.py` (modify) - Add visibility config to ResourcesConfig
-- `config/config.yaml` (modify) - Add default visibility settings
-- `config/schema.yaml` (modify) - Document new config options
-- `tests/unit/test_resource_metrics.py` (create) - Unit tests for ResourceMetricsProvider
-- `tests/integration/test_resource_visibility.py` (create) - Integration tests
-- `docs/architecture/current/resources.md` (modify) - Document visibility system
+- src/world/resource_metrics.py (create) - ResourceMetricsProvider component
+- src/world/world.py (modify) - Add resource_metrics to StateSummary
+- src/agents/agent.py (modify) - Use metrics in build_prompt(), load visibility config
+- src/agents/loader.py (modify) - Parse resource_visibility from agent.yaml
+- src/agents/__init__.py (modify) - Export VisibilityConfigDict
+- src/agents/models.py (modify) - Add ResourceVisibilityConfig model
+- src/config_schema.py (modify) - Add visibility config to ResourcesConfig
+- config/config.yaml (modify) - Add default visibility settings
+- config/schema.yaml (modify) - Document new config options
+- tests/unit/test_resource_metrics.py (create) - Unit tests for ResourceMetricsProvider
+- tests/integration/test_resource_visibility.py (create) - Integration tests
+- docs/architecture/current/resources.md (modify) - Document visibility system
 
 ---
 
