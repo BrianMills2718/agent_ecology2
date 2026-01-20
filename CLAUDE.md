@@ -150,6 +150,7 @@ cd /home/brian/brian_projects/agent_ecology2 && make finish BRANCH=plan-98-robus
 ### Never
 - Commit directly to main (use feature branches)
 - Use `git worktree rmv` directly (use `make worktree-remove`)
+- Use `gh pr merge` directly (use `make merge PR=N` or `make finish`)
 - Skip the claim when creating worktrees (use `make worktree`)
 
 ---
