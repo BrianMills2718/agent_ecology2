@@ -1250,3 +1250,156 @@ class TestContractDepthLimit:
         # Error message should mention depth and limit
         assert "10" in result.reason or "depth" in result.reason.lower()
         assert "exceeded" in result.reason.lower() or "limit" in result.reason.lower()
+
+
+class TestContractTimeoutConfiguration:
+    """Tests for contract timeout configuration (Plan #100).
+
+    Per Plan #100 Phase 2:
+    - Base permission checks: 5 seconds (configurable from config)
+    - Contracts with `call_llm` capability: 30 seconds
+    - Configurable per contract via `timeout_seconds` field
+    """
+
+    def test_default_timeout_from_config(self) -> None:
+        """Test that ExecutableContract uses config-based default timeout."""
+        # Contract without explicit timeout should use config default (5s)
+        contract = ExecutableContract(
+            contract_id="default_timeout",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": True, "reason": "ok", "cost": 0}
+'''
+        )
+
+        # Default should be 5 seconds from config, not hardcoded 1 second
+        from src.config import get_validated_config
+        expected_default = get_validated_config().executor.contract_timeout
+        assert contract.timeout == expected_default
+        assert contract.timeout == 5  # Plan specifies 5s default
+
+    def test_custom_timeout_per_contract(self) -> None:
+        """Test that contracts can override default timeout."""
+        contract = ExecutableContract(
+            contract_id="custom_timeout",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": True, "reason": "ok", "cost": 0}
+''',
+            timeout=10  # Custom timeout
+        )
+
+        assert contract.timeout == 10
+
+    def test_llm_capability_extended_timeout(self) -> None:
+        """Test that contracts declaring LLM capability get extended timeout."""
+        # Contract with call_llm capability should default to 30 seconds
+        contract = ExecutableContract(
+            contract_id="llm_contract",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": True, "reason": "ok", "cost": 0}
+''',
+            capabilities=["call_llm"]  # Declares LLM capability
+        )
+
+        # Should default to 30 seconds for LLM contracts
+        from src.config import get_validated_config
+        expected_llm_timeout = get_validated_config().executor.contract_llm_timeout
+        assert contract.timeout == expected_llm_timeout
+        assert contract.timeout == 30  # Plan specifies 30s for LLM
+
+    def test_llm_capability_can_override_timeout(self) -> None:
+        """Test that LLM contracts can still set custom timeout."""
+        contract = ExecutableContract(
+            contract_id="llm_custom_timeout",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": True, "reason": "ok", "cost": 0}
+''',
+            capabilities=["call_llm"],
+            timeout=60  # Explicit override
+        )
+
+        # Explicit timeout should override LLM default
+        assert contract.timeout == 60
+
+    def test_timeout_enforcement_uses_configured_value(self) -> None:
+        """Test that timeout is actually enforced using configured value."""
+        # Create a contract that sleeps for 2 seconds
+        # Note: time module is pre-loaded in CONTRACT_ALLOWED_MODULES, no import needed
+        contract = ExecutableContract(
+            contract_id="slow_contract",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    # time module is already available (pre-loaded)
+    time.sleep(2)
+    return {"allowed": True, "reason": "ok", "cost": 0}
+''',
+            timeout=1  # 1 second timeout - should fail
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+
+        # Should timeout
+        assert result.allowed is False
+        assert "timed out" in result.reason.lower()
+
+    def test_no_timeout_with_sufficient_time(self) -> None:
+        """Test that contract completes when given sufficient time."""
+        # Create a contract that sleeps briefly
+        # Note: time module is pre-loaded in CONTRACT_ALLOWED_MODULES, no import needed
+        contract = ExecutableContract(
+            contract_id="quick_contract",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    # time module is already available (pre-loaded)
+    time.sleep(0.1)  # 100ms sleep
+    return {"allowed": True, "reason": "completed", "cost": 0}
+''',
+            timeout=5  # 5 second timeout - plenty of time
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+
+        # Should complete successfully
+        assert result.allowed is True
+        assert "completed" in result.reason
+
+    def test_capabilities_field_exists(self) -> None:
+        """Test that ExecutableContract accepts capabilities field."""
+        contract = ExecutableContract(
+            contract_id="capable_contract",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": True, "reason": "ok", "cost": 0}
+''',
+            capabilities=["call_llm", "invoke_artifact"]
+        )
+
+        # Should have capabilities attribute
+        assert hasattr(contract, 'capabilities')
+        assert "call_llm" in contract.capabilities
+        assert "invoke_artifact" in contract.capabilities
+
+    def test_empty_capabilities_by_default(self) -> None:
+        """Test that contracts have no capabilities by default."""
+        contract = ExecutableContract(
+            contract_id="basic_contract",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return {"allowed": True, "reason": "ok", "cost": 0}
+'''
+        )
+
+        # Should have empty capabilities by default
+        assert hasattr(contract, 'capabilities')
+        assert contract.capabilities == []
