@@ -53,6 +53,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash .claude/hooks/check-cwd-valid.sh",
+            "timeout": 3000
+          },
+          {
+            "type": "command",
             "command": "bash .claude/hooks/block-worktree-remove.sh",
             "timeout": 5000
           },

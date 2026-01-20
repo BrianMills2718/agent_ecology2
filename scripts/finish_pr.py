@@ -116,6 +116,27 @@ def release_claim(branch: str) -> bool:
     return result.returncode == 0
 
 
+
+def extract_plan_number(branch: str) -> str | None:
+    """Extract plan number from branch name like 'plan-113-model-access'."""
+    if not branch.startswith("plan-"):
+        return None
+    parts = branch.split("-")
+    if len(parts) >= 2 and parts[1].isdigit():
+        return parts[1]
+    return None
+
+
+def complete_plan(plan_number: str) -> tuple[bool, str]:
+    """Mark a plan as complete using complete_plan.py."""
+    result = run_cmd(
+        ["python", "scripts/complete_plan.py", "--plan", plan_number],
+        check=False,
+    )
+    if result.returncode != 0:
+        return False, result.stderr or result.stdout or "Unknown error"
+    return True, "Completed"
+
 def find_worktree_path(branch: str) -> Path | None:
     """Find the worktree path for a branch."""
     result = run_cmd(["git", "worktree", "list", "--porcelain"], check=False)
@@ -185,14 +206,25 @@ def finish_pr(branch: str, pr_number: int, check_ci: bool = False) -> bool:
         return False
     print("✅ PR merged")
 
-    # Step 3: Release claim
+    # Step 3: Mark plan as complete (if this is a plan branch)
+    plan_num = extract_plan_number(branch)
+    if plan_num:
+        print(f"📋 Marking Plan #{plan_num} as complete...")
+        complete_ok, complete_msg = complete_plan(plan_num)
+        if complete_ok:
+            print(f"✅ Plan #{plan_num} marked complete")
+        else:
+            print(f"⚠️  Could not mark plan complete: {complete_msg}")
+            print("   Run manually: python scripts/complete_plan.py --plan", plan_num)
+
+    # Step 4: Release claim
     print(f"🔓 Releasing claim for {branch}...")
     if release_claim(branch):
         print("✅ Claim released")
     else:
         print("⚠️  No claim to release (or already released)")
 
-    # Step 4: Remove worktree
+    # Step 5: Remove worktree
     worktree_path = find_worktree_path(branch)
     if worktree_path:
         print(f"🧹 Removing worktree at {worktree_path}...")
@@ -205,7 +237,7 @@ def finish_pr(branch: str, pr_number: int, check_ci: bool = False) -> bool:
     else:
         print("ℹ️  No local worktree found for this branch")
 
-    # Step 5: Pull main
+    # Step 6: Pull main
     print("📥 Pulling latest main...")
     run_cmd(["git", "pull", "--rebase", "origin", "main"], check=False)
     print("✅ Main updated")
