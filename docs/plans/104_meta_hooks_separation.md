@@ -1,10 +1,12 @@
 # Plan 104: Meta-Process Hooks Separation
 
-**Status:** 📋 Deferred
+**Status:** ✅ Superseded
 
 **Priority:** Low
 **Blocked By:** #103
-**Blocks:** #105
+**Blocks:** None
+
+**Superseded By:** Claude Code hooks (`.claude/hooks/`) now provide primary enforcement. Git hooks are redundant defense-in-depth that rarely trigger when CC follows the rules. Consolidating on CC hooks simplifies the meta-process and improves portability.
 
 ---
 
