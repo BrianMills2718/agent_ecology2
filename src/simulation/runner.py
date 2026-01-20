@@ -1065,20 +1065,6 @@ class SimulationRunner:
         # Execute via world
         result = self.world.execute_action(intent)
 
-        # Log action event for dashboard
-        self.world.logger.log(
-            "action",
-            {
-                "tick": self.world.tick,
-                "agent_id": agent.agent_id,
-                "action_type": action.get("action_type", "noop"),
-                "artifact_id": action.get("artifact_id", ""),
-                "method": action.get("method", ""),
-                "success": result.success,
-                "message": result.message,
-            },
-        )
-
         # Record the action for the agent
         action_type = action.get("action_type", "noop")
         agent.set_last_result(action_type, result.success, result.message, result.data)
