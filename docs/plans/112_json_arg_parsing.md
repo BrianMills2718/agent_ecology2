@@ -1,6 +1,6 @@
 # Gap 112: Auto-Parse JSON String Arguments
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 **Priority:** **High**
 **Blocked By:** -
 **Blocks:** -
