@@ -1,4 +1,4 @@
-# Plan #115: Enforce make finish from Main
+# Plan #116: Enforce make finish from Main
 
 **Status:** 📋 Planned
 **Priority:** Medium
