@@ -108,10 +108,14 @@ Why: `cd X && make Y` runs in a subshell - it doesn't change your shell's CWD.
 If you run `cd && make finish` from a worktree, your shell CWD stays in the
 (now deleted) worktree, breaking all subsequent bash commands.
 
+**If you forget:** The hook will block you and save the command to `.claude/pending-finish.sh`.
+After `cd` to main, just run: `bash .claude/pending-finish.sh`
+
 Example (TWO commands):
 ```bash
 cd /home/brian/brian_projects/agent_ecology2
 make finish BRANCH=plan-98-robust-worktree PR=321
+# Or after cd: bash .claude/pending-finish.sh
 ```
 
 ### Work Priorities (in order)
