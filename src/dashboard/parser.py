@@ -543,9 +543,13 @@ class JSONLParser:
         if artifact_id == "genesis_ledger" and method == "transfer":
             args = intent.get("args", [])
             if len(args) >= 3:
-                from_id = str(args[0])
-                to_id = str(args[1])
-                amount = int(args[2])
+                try:
+                    from_id = str(args[0])
+                    to_id = str(args[1])
+                    amount = int(args[2])
+                except (ValueError, TypeError):
+                    # Args format doesn't match expected transfer format, skip
+                    return
                 transfer = LedgerTransfer(
                     from_id=from_id,
                     to_id=to_id,
