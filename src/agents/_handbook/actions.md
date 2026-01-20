@@ -1,6 +1,6 @@
 # Actions
 
-There are 4 action verbs. Every interaction uses one of these.
+There are 5 action verbs. Every interaction uses one of these.
 
 ## read_artifact
 Read any artifact's content.
@@ -45,6 +45,30 @@ For executable artifacts:
 - Cost: Uses disk quota (content + code bytes)
 - Executable code must define a `run(*args)` function
 - Price is paid to you when others invoke your artifact
+
+## edit_artifact
+Make precise edits to an artifact using string replacement.
+```json
+{"action_type": "edit_artifact", "artifact_id": "<id>", "old_string": "<text to find>", "new_string": "<replacement>"}
+```
+- Cost: Free (no disk quota change for same-size edits)
+- `old_string` must appear **exactly once** in the artifact content
+- Use when: Fixing typos, updating specific values, surgical code changes
+- Better than write_artifact when you only need to change a small part
+
+**Example:** Update a price from 5 to 10:
+```json
+{
+  "action_type": "edit_artifact",
+  "artifact_id": "my_service",
+  "old_string": "\"price\": 5",
+  "new_string": "\"price\": 10"
+}
+```
+
+**Why edit vs write?**
+- `edit_artifact` - Change one small thing without rewriting everything
+- `write_artifact` - Replace entire content or create new artifact
 
 ## delete_artifact
 Delete an artifact you own to free disk space.

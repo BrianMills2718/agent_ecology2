@@ -11,11 +11,12 @@ from ..agents.schema import ActionType as ActionTypeLiteral
 
 
 class ActionType(str, Enum):
-    """The narrow waist - only 3 physics verbs (plus noop)"""
+    """The narrow waist - only 4 physics verbs (plus noop)"""
 
     NOOP = "noop"
     READ_ARTIFACT = "read_artifact"
     WRITE_ARTIFACT = "write_artifact"
+    EDIT_ARTIFACT = "edit_artifact"  # Plan #131: Claude Code-style editing
     INVOKE_ARTIFACT = "invoke_artifact"
     DELETE_ARTIFACT = "delete_artifact"
     # NOTE: No TRANSFER - all transfers via genesis_ledger.transfer()
@@ -124,6 +125,34 @@ class WriteArtifactIntent(ActionIntent):
             d["interface"] = self.interface
         if self.access_contract_id is not None:
             d["access_contract_id"] = self.access_contract_id
+        return d
+
+
+@dataclass
+class EditArtifactIntent(ActionIntent):
+    """Edit an artifact's content using Claude Code-style string replacement.
+
+    Plan #131: Enables precise, surgical edits without rewriting entire content.
+    Uses old_string/new_string approach where old_string must be unique in the artifact.
+    """
+
+    artifact_id: str
+    old_string: str
+    new_string: str
+
+    def __init__(
+        self, principal_id: str, artifact_id: str, old_string: str, new_string: str, reasoning: str = ""
+    ) -> None:
+        super().__init__(ActionType.EDIT_ARTIFACT, principal_id, reasoning=reasoning)
+        self.artifact_id = artifact_id
+        self.old_string = old_string
+        self.new_string = new_string
+
+    def to_dict(self) -> dict[str, Any]:
+        d = super().to_dict()
+        d["artifact_id"] = self.artifact_id
+        d["old_string"] = self.old_string[:100] + "..." if len(self.old_string) > 100 else self.old_string
+        d["new_string"] = self.new_string[:100] + "..." if len(self.new_string) > 100 else self.new_string
         return d
 
 
@@ -333,6 +362,27 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
             reasoning=reasoning,
         )
 
+    elif action_type == "edit_artifact":
+        # Plan #131: Claude Code-style editing
+        artifact_id = data.get("artifact_id")
+        old_string = data.get("old_string")
+        new_string = data.get("new_string")
+        if not artifact_id:
+            return "edit_artifact requires 'artifact_id'"
+        if not isinstance(artifact_id, str):
+            return "artifact_id must be a string"
+        if old_string is None:
+            return "edit_artifact requires 'old_string'"
+        if not isinstance(old_string, str):
+            return "old_string must be a string"
+        if new_string is None:
+            return "edit_artifact requires 'new_string'"
+        if not isinstance(new_string, str):
+            return "new_string must be a string"
+        if old_string == new_string:
+            return "edit_artifact: old_string and new_string must be different"
+        return EditArtifactIntent(principal_id, artifact_id, old_string, new_string, reasoning=reasoning)
+
     elif action_type == "transfer":
         # Transfer removed from kernel - use genesis_ledger instead
         return "transfer is not a kernel action. Use: invoke_artifact('genesis_ledger', 'transfer', [from_id, to_id, amount])"
@@ -363,4 +413,4 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
         return DeleteArtifactIntent(principal_id, artifact_id, reasoning=reasoning)
 
     else:
-        return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, delete_artifact, invoke_artifact"
+        return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact"

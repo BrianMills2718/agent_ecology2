@@ -5,11 +5,12 @@ from typing import Any, Literal
 
 from ..config import get
 
-# Literal type for valid action types (narrow waist: only 4 verbs)
+# Literal type for valid action types (narrow waist: only 5 verbs)
 ActionType = Literal[
     "noop",
     "read_artifact",
     "write_artifact",
+    "edit_artifact",  # Plan #131: Claude Code-style editing
     "delete_artifact",
     "invoke_artifact",
 ]
@@ -21,7 +22,7 @@ ActionValidationResult = dict[str, Any] | str
 ACTION_SCHEMA: str = """
 You must respond with a single JSON object representing your action.
 
-## Available Actions (4 verbs)
+## Available Actions (5 verbs)
 
 1. read_artifact - Read artifact content
    {"action_type": "read_artifact", "artifact_id": "<id>"}
@@ -30,10 +31,14 @@ You must respond with a single JSON object representing your action.
    {"action_type": "write_artifact", "artifact_id": "<id>", "artifact_type": "<type>", "content": "<content>"}
    For executable: add "executable": true, "price": <scrip>, "code": "<python with run(*args) function>"
 
-3. delete_artifact - Delete artifact you own (frees disk quota)
+3. edit_artifact - Edit artifact using string replacement (Plan #131)
+   {"action_type": "edit_artifact", "artifact_id": "<id>", "old_string": "<text to find>", "new_string": "<replacement>"}
+   Note: old_string must appear exactly once in the artifact content.
+
+4. delete_artifact - Delete artifact you own (frees disk quota)
    {"action_type": "delete_artifact", "artifact_id": "<id>"}
 
-4. invoke_artifact - Call artifact method
+5. invoke_artifact - Call artifact method
    {"action_type": "invoke_artifact", "artifact_id": "<id>", "method": "<method>", "args": [...]}
 
 ## Genesis Artifacts (System)
@@ -108,7 +113,7 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
         return "Response must be a JSON object"
 
     action_type: ActionType | str = data.get("action_type", "").lower()
-    if action_type not in ["noop", "read_artifact", "write_artifact", "delete_artifact", "invoke_artifact"]:
+    if action_type not in ["noop", "read_artifact", "write_artifact", "edit_artifact", "delete_artifact", "invoke_artifact"]:
         if action_type == "transfer":
             return "transfer is not a kernel action. Use: invoke_artifact('genesis_ledger', 'transfer', [from_id, to_id, amount])"
         return f"Invalid action_type: {action_type}"
@@ -131,6 +136,24 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
         artifact_id = str(data.get("artifact_id", ""))
         if len(artifact_id) > max_artifact_id_length:
             return f"artifact_id exceeds max length ({max_artifact_id_length} chars)"
+
+    elif action_type == "edit_artifact":
+        # Plan #131: Claude Code-style editing
+        if not data.get("artifact_id"):
+            return "edit_artifact requires 'artifact_id'"
+        artifact_id = str(data.get("artifact_id", ""))
+        if len(artifact_id) > max_artifact_id_length:
+            return f"artifact_id exceeds max length ({max_artifact_id_length} chars)"
+        if data.get("old_string") is None:
+            return "edit_artifact requires 'old_string'"
+        if not isinstance(data.get("old_string"), str):
+            return "edit_artifact 'old_string' must be a string"
+        if data.get("new_string") is None:
+            return "edit_artifact requires 'new_string'"
+        if not isinstance(data.get("new_string"), str):
+            return "edit_artifact 'new_string' must be a string"
+        if data.get("old_string") == data.get("new_string"):
+            return "edit_artifact: old_string and new_string must be different"
 
     elif action_type == "delete_artifact":
         if not data.get("artifact_id"):
