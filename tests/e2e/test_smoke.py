@@ -1,7 +1,9 @@
 """E2E smoke tests - verify basic simulation functionality.
 
-These tests ensure the simulation runs without errors in both
-tick-based and autonomous modes. Uses mocked LLM calls.
+These tests ensure the simulation runs without errors in
+autonomous mode. Uses mocked LLM calls.
+
+Plan #109: Updated for autonomous-only execution (tick mode removed in Plan #102).
 
 Run with:
     pytest tests/e2e/test_smoke.py -v
@@ -9,7 +11,6 @@ Run with:
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -18,9 +19,12 @@ import pytest
 from src.simulation.runner import SimulationRunner
 from src.world import World
 
+# Default test duration in seconds (short for fast tests)
+TEST_DURATION = 0.5
 
-class TestTickModeSmoke:
-    """Smoke tests for tick-based execution mode."""
+
+class TestSimulationSmoke:
+    """Smoke tests for simulation execution."""
 
     def test_simulation_starts(
         self,
@@ -32,27 +36,26 @@ class TestTickModeSmoke:
         assert runner is not None
         assert runner.world is not None
 
-    def test_tick_mode_completes(
+    def test_simulation_completes(
         self,
         mock_llm: MagicMock,
         e2e_config: dict[str, Any],
     ) -> None:
-        """Tick-based simulation completes without error."""
+        """Simulation completes without error."""
         runner = SimulationRunner(e2e_config, verbose=False)
-        world = runner.run_sync()
+        world = runner.run_sync(duration=TEST_DURATION)
 
-        # Verify simulation ran
-        assert world.tick >= 1
+        # Verify simulation completed
         assert isinstance(world, World)
 
-    def test_tick_mode_creates_artifacts(
+    def test_simulation_creates_artifacts(
         self,
         mock_llm: MagicMock,
         e2e_config: dict[str, Any],
     ) -> None:
-        """Tick-based simulation has genesis artifacts."""
+        """Simulation has genesis artifacts."""
         runner = SimulationRunner(e2e_config, verbose=False)
-        world = runner.run_sync()
+        world = runner.run_sync(duration=TEST_DURATION)
 
         # Genesis artifacts should exist (stored in genesis_artifacts dict)
         assert len(world.genesis_artifacts) > 0
@@ -60,15 +63,15 @@ class TestTickModeSmoke:
         # Check for expected genesis artifacts
         assert "genesis_ledger" in world.genesis_artifacts
 
-    def test_tick_mode_tracks_balances(
+    def test_simulation_tracks_balances(
         self,
         mock_llm: MagicMock,
         e2e_config: dict[str, Any],
     ) -> None:
-        """Tick-based simulation tracks agent balances."""
+        """Simulation tracks agent balances."""
         # Use max_agents=1 to limit to single agent for predictable test
         runner = SimulationRunner(e2e_config, max_agents=1, verbose=False)
-        world = runner.run_sync()
+        world = runner.run_sync(duration=TEST_DURATION)
 
         # At least one agent should have balance tracked
         balances = world.ledger.get_all_scrip()
@@ -119,11 +122,11 @@ class TestIntegrationSmoke:
     ) -> None:
         """World state summary can be retrieved."""
         runner = SimulationRunner(e2e_config, verbose=False)
-        runner.run_sync()
+        runner.run_sync(duration=TEST_DURATION)
 
         state = runner.world.get_state_summary()
 
-        assert "tick" in state
+        assert "tick" in state  # Still present for backward compat
         assert "balances" in state
         assert "artifacts" in state
 
@@ -140,7 +143,7 @@ class TestIntegrationSmoke:
         runner = SimulationRunner(e2e_config, verbose=False)
 
         # This should not raise
-        world = runner.run_sync()
+        world = runner.run_sync(duration=TEST_DURATION)
 
         # Verify we got a valid result
         assert world is not None

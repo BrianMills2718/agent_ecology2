@@ -1109,12 +1109,16 @@ class SimulationRunner:
             self._worker_pool = None
         self._running = False
 
-    def run_sync(self) -> World:
+    def run_sync(self, duration: float | None = None) -> World:
         """Run the simulation synchronously.
 
         Wrapper around run() using asyncio.run().
 
+        Args:
+            duration: Maximum seconds to run (passed to run()). If None,
+                runs until stopped. For tests, use a short duration like 0.5s.
+
         Returns:
             The World instance after simulation completes.
         """
-        return asyncio.run(self.run())
+        return asyncio.run(self.run(duration=duration))
