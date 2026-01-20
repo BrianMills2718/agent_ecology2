@@ -5,7 +5,7 @@
 # This ensures we always use main's scripts, not potentially stale worktree copies
 MAIN_DIR := $(shell git worktree list | head -1 | awk '{print $$1}')
 
-.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge finish pr-merge-admin pr-list pr-view worktree worktree-quick worktree-remove worktree-remove-force clean-branches clean-branches-delete clean-worktrees clean-worktrees-auto kill ci-status ci-require ci-optional run dash dash-run
+.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge finish pr-merge-admin pr-list pr-view worktree worktree-quick worktree-remove worktree-remove-force clean-branches clean-branches-delete clean-worktrees clean-worktrees-auto kill ci-status ci-require ci-optional run dash dash-run analyze
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -142,6 +142,9 @@ dash:  ## View existing run.jsonl in dashboard (no simulation)
 
 dash-run:  ## Run simulation with dashboard (usage: make dash-run TICKS=10)
 	python run.py --dashboard --ticks $(or $(TICKS),10) --agents $(or $(AGENTS),1)
+
+analyze:  ## Analyze simulation run (usage: make analyze RUN=logs/latest)
+	python scripts/analyze_run.py $(or $(RUN),logs/latest)
 
 # Cleanup
 clean:  ## Remove generated files
