@@ -35,6 +35,7 @@ from .types import (
     CheckpointData,
     ActionProposal,
     ThinkingResult,
+    ErrorStats,
 )
 from .checkpoint import save_checkpoint
 from .agent_loop import AgentLoopManager, AgentLoopConfig
@@ -90,6 +91,9 @@ class SimulationRunner:
 
         # Generate run ID for log organization
         self.run_id = datetime.now().strftime("run_%Y%m%d_%H%M%S")
+
+        # Error tracking (Plan #129)
+        self.error_stats = ErrorStats()
 
         # Initialize engine
         self.engine = SimulationEngine.from_config(config)
@@ -480,6 +484,12 @@ class SimulationRunner:
                 reason = result.get("skip_reason", "unknown")
                 error = result.get("error", "")
 
+                # Record error for summary (Plan #129)
+                if "llm_error" in reason and error:
+                    self._record_error("llm_error", agent.agent_id, error)
+                elif "intent_rejected" in reason and error:
+                    self._record_error("intent_rejected", agent.agent_id, error)
+
                 if "insufficient_compute" in reason:
                     self.world.logger.log(
                         "thinking_failed",
@@ -599,6 +609,7 @@ class SimulationRunner:
             if not result.get("success", False):
                 # Turn failed
                 error = result.get("error", "unknown error")
+                self._record_error("pool_turn_failed", agent_id, error)  # Plan #129
                 self.world.logger.log(
                     "pool_turn_failed",
                     {
@@ -622,17 +633,19 @@ class SimulationRunner:
 
             # Handle error responses from propose_action
             if "error" in action_result and "action" not in action_result:
+                error_msg = action_result.get("error", "")
+                self._record_error("propose_action_error", agent_id, error_msg)  # Plan #129
                 self.world.logger.log(
                     "thinking_failed",
                     {
                         "tick": self.world.tick,
                         "principal_id": agent_id,
                         "reason": "propose_action_error",
-                        "error": action_result.get("error", ""),
+                        "error": error_msg,
                     },
                 )
                 if self.verbose:
-                    print(f"    {agent_id}: ERROR: {action_result.get('error', '')[:100]}")
+                    print(f"    {agent_id}: ERROR: {error_msg[:100]}")
                 continue
 
             # Extract usage info for cost tracking
@@ -792,6 +805,62 @@ class SimulationRunner:
         print(f"Starting scrip: {self.world.ledger.get_all_scrip()}")
         print()
 
+    def _record_error(
+        self,
+        error_type: str,
+        agent_id: str,
+        message: str,
+    ) -> None:
+        """Record an error for the error summary (Plan #129).
+
+        Args:
+            error_type: Category of error (e.g., 'llm_error', 'intent_rejected')
+            agent_id: The agent that encountered the error
+            message: The error message
+        """
+        # Import here to avoid circular import
+        from run import get_error_suggestion
+
+        suggestion = get_error_suggestion(message)
+        self.error_stats.record_error(error_type, agent_id, message, suggestion)
+
+    def _print_error_summary(self) -> None:
+        """Print error summary at end of simulation (Plan #129)."""
+        stats = self.error_stats
+        if stats.total_errors == 0:
+            return
+
+        print("\n" + "=" * 60)
+        print("SIMULATION ERROR SUMMARY")
+        print("=" * 60)
+        print(f"Total errors: {stats.total_errors}")
+
+        if stats.by_type:
+            print("\nBy type:")
+            for error_type, count in sorted(
+                stats.by_type.items(), key=lambda x: -x[1]
+            ):
+                pct = count * 100 / stats.total_errors
+                print(f"  {error_type}: {count} ({pct:.0f}%)")
+
+        if stats.by_agent:
+            print("\nBy agent:")
+            for agent_id, count in sorted(
+                stats.by_agent.items(), key=lambda x: -x[1]
+            )[:5]:  # Top 5 agents
+                print(f"  {agent_id}: {count}")
+
+        if stats.recent_errors:
+            print("\nMost recent error:")
+            recent = stats.recent_errors[-1]
+            print(f"  Type: {recent.error_type}")
+            print(f"  Agent: {recent.agent_id}")
+            print(f"  Message: {recent.message[:200]}")
+            if recent.suggestion:
+                print(f"  Suggestion: {recent.suggestion}")
+
+        print("=" * 60)
+
     def _print_final_summary(self) -> None:
         """Print simulation completion summary."""
         if not self.verbose:
@@ -810,6 +879,9 @@ class SimulationRunner:
         print(f"Final scrip: {self.world.ledger.get_all_scrip()}")
         print(f"Total artifacts: {self.world.artifacts.count()}")
         print(f"Log file: {log_path}")
+
+        # Print error summary (Plan #129)
+        self._print_error_summary()
 
     def pause(self) -> None:
         """Pause the simulation after the current tick completes."""
