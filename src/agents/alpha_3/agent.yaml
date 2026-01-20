@@ -1,5 +1,10 @@
-# alpha_3: Builder with State Machine
+# alpha_3: Builder with IRR-Inspired State Machine
 # Extends alpha_2's self-audit with explicit build cycle states
+# Incorporates IRR (Iterative Reading-then-Reasoning) pattern:
+# - observing: gather context and evidence
+# - discovering: check interfaces before invoking unfamiliar artifacts
+# - ideating/designing/implementing/testing: build cycle
+# - reflecting: learn from outcomes
 id: alpha_3
 enabled: true
 llm_model: "gemini/gemini-2.0-flash"
@@ -13,6 +18,12 @@ genotype:
   time_horizon: MEDIUM
   primary_strategy: BUILD
 
+# Interface discovery configuration (Plan #137)
+# Guides how this agent handles unfamiliar artifacts
+interface_discovery:
+  mode: try_and_learn  # try_and_learn | check_first | hybrid
+  cache_in_memory: true  # remember interfaces in working memory
+
 # RAG configuration - learning-oriented queries
 rag:
   enabled: true
@@ -22,13 +33,24 @@ rag:
     What strategies worked for building artifacts?
     What mistakes should I avoid? What patterns led to success?
 
-# State Machine: Build Cycle
-# Agents cycle through phases of creation
+# State Machine: IRR-Inspired Build Cycle (Plan #137)
+# Combines evidence-gathering (IRR) with creation phases
 workflow:
   state_machine:
-    states: ["ideating", "designing", "implementing", "testing"]
-    initial_state: "ideating"
+    states: ["observing", "discovering", "ideating", "designing", "implementing", "testing", "reflecting"]
+    initial_state: "observing"
     transitions:
+      # IRR pattern: observe -> discover -> act
+      - from: "observing"
+        to: "discovering"
+        condition: "needs_interface_info"
+      - from: "observing"
+        to: "ideating"
+        condition: "has_context"
+      - from: "discovering"
+        to: "ideating"
+        condition: "has_evidence"
+      # Build cycle: ideate -> design -> implement -> test
       - from: "ideating"
         to: "designing"
         condition: "has_idea"
@@ -38,16 +60,82 @@ workflow:
       - from: "implementing"
         to: "testing"
       - from: "testing"
-        to: "ideating"
-      # Allow pivots
+        to: "reflecting"
+      # Reflection and learning
+      - from: "reflecting"
+        to: "observing"
+      # Allow pivots from any state
       - from: "*"
-        to: "ideating"
+        to: "observing"
         condition: "should_pivot"
 
   steps:
-    # Step 0: Learning reflection - review last action and record lessons
+    # Step 0: Observing phase - gather context and evidence (IRR pattern)
+    - name: observe
+      type: llm
+      in_state: "observing"
+      prompt: |
+        === IRR: OBSERVING PHASE ===
+        You are {agent_id}, gathering context before acting.
+
+        Current state:
+        - Balance: {balance} scrip
+        - Your artifacts: {my_artifacts}
+
+        Last action result: {last_action_result}
+
+        OBSERVATION TASK:
+        1. What do you know about the current ecosystem?
+        2. What artifacts exist that might be useful?
+        3. Do you need to learn any interfaces before proceeding?
+
+        If you need to discover how to use an unfamiliar artifact,
+        transition to "discovering" state.
+        If you have enough context, proceed to "ideating".
+
+        Available actions:
+        - read_artifact to inspect existing artifacts
+        - invoke genesis_store.search() to find relevant artifacts
+        - noop to continue observing
+      transition_to: "ideating"
+
+    # Step 1: Discovering phase - check interfaces before invoking
+    - name: discover
+      type: llm
+      in_state: "discovering"
+      prompt: |
+        === IRR: DISCOVERING PHASE ===
+        You are {agent_id}, learning how to use unfamiliar artifacts.
+
+        DISCOVERY TASK:
+        Before invoking an artifact you haven't used before, you can:
+
+        Option 1 (Recommended): Try and Learn
+        - Just invoke it with your best guess
+        - If it fails, the error shows the correct interface
+
+        Option 2: Check First
+        - Call genesis_store.get_interface([artifact_id])
+        - Read the returned schema, then invoke correctly
+
+        Option 3: Check Working Memory
+        - Look in your {agent_id}_working_memory artifact
+        - You may have cached the interface previously
+
+        After discovering interfaces, cache them to working memory:
+        ```yaml
+        known_interfaces:
+          artifact_name:
+            methods: ["method(arg: type) -> return"]
+        ```
+
+        Once you have the interface info, proceed to ideating.
+      transition_to: "ideating"
+
+    # Step 2: Learning reflection - review last action and record lessons
     - name: learn_from_outcome
       type: llm
+      in_state: "reflecting"
       prompt: |
         === LEARNING REFLECTION ===
         You are {agent_id}. Before taking your next action, reflect on what happened.
@@ -74,8 +162,9 @@ workflow:
         ```
 
         If no lesson to record, proceed with noop.
+      transition_to: "observing"
 
-    # Step 1: Compute metrics (from alpha_2)
+    # Step 3: Compute metrics (from alpha_2)
     - name: compute_metrics
       type: code
       code: |
@@ -89,6 +178,9 @@ workflow:
         should_pivot = success_rate < 0.3 or stuck_in_loop
         has_idea = balance >= 20
         has_design = balance >= 15
+        has_context = True  # After observing, we have context
+        has_evidence = True  # After discovering, we have evidence
+        needs_interface_info = False  # Set by agent during observe
 
     # Step 2: Ideation phase - generate ideas
     - name: ideate
