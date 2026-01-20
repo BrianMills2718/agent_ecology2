@@ -469,6 +469,13 @@ def identify_issues(claims: list, prs: list, plans: dict, worktrees: list, my_id
             except Exception:
                 pass
 
+    # Count merged/orphaned worktrees and suggest batch cleanup
+    merged_count = sum(1 for i in issues if "Merged worktree:" in i or "Orphaned worktree:" in i)
+    if merged_count > 1:
+        issues.append(
+            f"💡 Multiple orphaned worktrees ({merged_count}) - run 'make clean-worktrees' for batch cleanup"
+        )
+
     return issues
 
 
