@@ -1559,3 +1559,63 @@ body {
     0%, 100% { box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
     50% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.8); }
 }
+
+/* Fullscreen Panel Mode (Plan #139) */
+
+.panel-header .fullscreen-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    font-size: 1rem;
+    transition: color 0.2s ease;
+    margin-left: auto;
+    margin-right: 0.5rem;
+}
+
+.panel-header .fullscreen-btn:hover {
+    color: var(--text-primary);
+}
+
+.panel.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    border-radius: 0;
+    margin: 0;
+    max-height: none;
+    height: 100vh;
+    width: 100vw;
+}
+
+.panel.fullscreen .panel-content {
+    flex: 1;
+    height: calc(100vh - 50px);
+    max-height: none;
+}
+
+.panel.fullscreen .network-container,
+.panel.fullscreen .dependency-graph-container,
+.panel.fullscreen .temporal-network-container,
+.panel.fullscreen .chart-container canvas {
+    height: calc(100vh - 120px) !important;
+}
+
+/* Hide other panels when one is fullscreen */
+.dashboard:has(.panel.fullscreen) .panel:not(.fullscreen) {
+    display: none;
+}
+
+.dashboard:has(.panel.fullscreen) .header,
+.dashboard:has(.panel.fullscreen) .progress-section {
+    display: none;
+}
+
+.dashboard:has(.panel.fullscreen) .main-grid {
+    display: block;
+    padding: 0;
+}

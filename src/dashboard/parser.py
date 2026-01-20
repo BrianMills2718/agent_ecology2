@@ -159,6 +159,9 @@ class JSONLParser:
         self._current_tick_scrip_transfers: int = 0
         self._current_tick_artifacts: int = 0
         self._current_tick_mints: int = 0
+        # Plan #139: Token to compute cost conversion
+        self._per_1k_input_cost: float = 1.0  # Default: 1 compute per 1K input tokens
+        self._per_1k_output_cost: float = 3.0  # Default: 3 compute per 1K output tokens
 
     def parse_full(self) -> SimulationState:
         """Parse the entire file from the beginning."""
@@ -230,17 +233,49 @@ class JSONLParser:
         budget = event.get("budget", {})
         self.state.api_cost_limit = budget.get("max_api_cost", 1.0)
 
+        # Plan #139: Extract token-to-compute costs for percentage calculations
+        costs = event.get("costs", {})
+        self._per_1k_input_cost = float(costs.get("per_1k_input_tokens", 1.0))
+        self._per_1k_output_cost = float(costs.get("per_1k_output_tokens", 3.0))
+
         # Initialize agents from principals
+        # Plan #139: Preserve existing quotas set by quota_set events
         principals = event.get("principals", [])
         for p in principals:
             agent_id = p.get("id", "")
             if agent_id:
+                # Get existing agent if quota_set events already created it
+                existing = self.state.agents.get(agent_id)
                 self.state.agents[agent_id] = AgentState(
                     agent_id=agent_id,
                     scrip=p.get("starting_scrip", 0),
-                    llm_tokens_quota=p.get("compute_quota", 0),  # Legacy field name in events
-                    disk_quota=p.get("disk_quota", 0),
+                    # Use existing quota if set by quota_set, else use world_init value
+                    llm_tokens_quota=existing.llm_tokens_quota if existing and existing.llm_tokens_quota > 0 else p.get("compute_quota", 0),
+                    disk_quota=existing.disk_quota if existing and existing.disk_quota > 0 else p.get("disk_quota", 0),
                 )
+
+    def _handle_quota_set(self, event: dict[str, Any], timestamp: str) -> None:
+        """Handle quota_set event to populate disk/compute quotas.
+
+        Plan #139: Events look like:
+        {"event_type": "quota_set", "principal_id": "alpha_3", "resource": "disk", "amount": 100000.0}
+        {"event_type": "quota_set", "principal_id": "alpha_3", "resource": "compute", "amount": 200.0}
+        """
+        principal_id = event.get("principal_id", "")
+        resource = event.get("resource", "")
+        amount = event.get("amount", 0.0)
+
+        if not principal_id:
+            return
+
+        # Create agent if not exists
+        if principal_id not in self.state.agents:
+            self.state.agents[principal_id] = AgentState(agent_id=principal_id)
+
+        if resource == "disk":
+            self.state.agents[principal_id].disk_quota = amount
+        elif resource == "compute":
+            self.state.agents[principal_id].llm_tokens_quota = amount
 
     def _handle_tick(self, event: dict[str, Any], timestamp: str) -> None:
         """Handle tick event - snapshot of state."""
@@ -308,24 +343,35 @@ class JSONLParser:
             self.state.agents[agent_id] = AgentState(agent_id=agent_id)
 
         reasoning = event.get("reasoning", "")
+        input_tokens = event.get("input_tokens", 0)
+        output_tokens = event.get("output_tokens", 0)
+
+        # Plan #139: Estimate API cost from tokens if not provided
+        # Uses Sonnet pricing: $3/1M input, $15/1M output
+        api_cost = event.get("api_cost", 0.0)
+        if api_cost == 0.0 and (input_tokens > 0 or output_tokens > 0):
+            api_cost = (input_tokens * 3 + output_tokens * 15) / 1_000_000
 
         thinking = ThinkingEvent(
             tick=self.state.current_tick,
             timestamp=timestamp,
             agent_id=agent_id,
-            input_tokens=event.get("input_tokens", 0),
-            output_tokens=event.get("output_tokens", 0),
-            thinking_cost=event.get("thinking_cost", 0),
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            thinking_cost=api_cost,  # Use estimated cost
             success=True,
             reasoning=reasoning if reasoning else None,
         )
         self.state.agents[agent_id].thinking_history.append(thinking)
-        thinking_cost = event.get("thinking_cost", 0)
-        self._current_tick_llm_tokens += thinking_cost
+        # Plan #139: Convert tokens to compute units using world_init costs
+        # compute_cost = (input_tokens / 1000 * per_1k_input) + (output_tokens / 1000 * per_1k_output)
+        compute_cost = (input_tokens / 1000 * self._per_1k_input_cost) + \
+                      (output_tokens / 1000 * self._per_1k_output_cost)
+        self._current_tick_llm_tokens += compute_cost
         # Accumulate actual API cost (USD) from LLM calls
-        self.state.api_cost_spent += event.get("api_cost", 0.0)
-        # Update per-agent LLM tokens used (for autonomous mode without tick events)
-        self.state.agents[agent_id].llm_tokens_used += thinking_cost
+        self.state.api_cost_spent += api_cost
+        # Update per-agent compute used (for autonomous mode without tick events)
+        self.state.agents[agent_id].llm_tokens_used += compute_cost
 
         # Record chart history for autonomous mode (time-based instead of tick-based)
         if agent_id not in self.state.llm_tokens_history:
@@ -916,10 +962,14 @@ class JSONLParser:
 
         # Calculate elapsed time - removed current_tick > 0 requirement (Plan #133)
         if self.state.start_time:
-            from datetime import datetime
+            from datetime import datetime, timezone
             try:
                 start = datetime.fromisoformat(self.state.start_time)
-                now = datetime.now()
+                # Plan #139: Handle timezone-aware timestamps properly
+                if start.tzinfo is not None:
+                    now = datetime.now(timezone.utc)
+                else:
+                    now = datetime.now()
                 elapsed = (now - start).total_seconds()
                 events_per_sec = event_count / elapsed if elapsed > 0 else 0
             except (ValueError, TypeError):
