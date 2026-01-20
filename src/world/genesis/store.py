@@ -126,7 +126,7 @@ class GenesisStore(GenesisArtifact):
         result: dict[str, Any] = {
             "id": artifact.id,
             "type": artifact.type,
-            "owner_id": artifact.owner_id,
+            "created_by": artifact.created_by,
             "content": artifact.content,
             "has_standing": artifact.has_standing,
             "can_execute": artifact.can_execute,
@@ -153,7 +153,7 @@ class GenesisStore(GenesisArtifact):
 
         # Filter by owner
         if "owner" in filter_dict:
-            filtered = [a for a in filtered if a.owner_id == filter_dict["owner"]]
+            filtered = [a for a in filtered if a.created_by == filter_dict["owner"]]
 
         # Filter by has_standing
         if "has_standing" in filter_dict:
@@ -184,7 +184,7 @@ class GenesisStore(GenesisArtifact):
 
         Args: [filter?] where filter is a dict with optional keys:
         - type: filter by artifact type
-        - owner: filter by owner_id
+        - owner: filter by created_by
         - has_standing: filter by has_standing (True/False)
         - can_execute: filter by can_execute (True/False)
         - limit: max results to return
@@ -283,13 +283,13 @@ class GenesisStore(GenesisArtifact):
     def _list_by_owner(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """List artifacts by owner.
 
-        Args: [owner_id]
+        Args: [created_by]
         """
         if not args or len(args) < 1:
-            return {"success": False, "error": "list_by_owner requires [owner_id]"}
+            return {"success": False, "error": "list_by_owner requires [created_by]"}
 
-        owner_id: str = str(args[0])
-        return self._list([{"owner": owner_id}], invoker_id)
+        created_by: str = str(args[0])
+        return self._list([{"owner": created_by}], invoker_id)
 
     def _list_agents(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """List all agent artifacts.
@@ -373,7 +373,7 @@ class GenesisStore(GenesisArtifact):
                                 "description": "Optional filter object",
                                 "properties": {
                                     "type": {"type": "string", "description": "Filter by artifact type"},
-                                    "owner": {"type": "string", "description": "Filter by owner_id"},
+                                    "owner": {"type": "string", "description": "Filter by created_by"},
                                     "has_standing": {"type": "boolean", "description": "Filter by standing (principals)"},
                                     "can_execute": {"type": "boolean", "description": "Filter by executability"},
                                     "limit": {"type": "integer", "description": "Max results to return"},
@@ -443,12 +443,12 @@ class GenesisStore(GenesisArtifact):
                     "inputSchema": {
                         "type": "object",
                         "properties": {
-                            "owner_id": {
+                            "created_by": {
                                 "type": "string",
                                 "description": "Owner's principal ID"
                             }
                         },
-                        "required": ["owner_id"]
+                        "required": ["created_by"]
                     }
                 },
                 {

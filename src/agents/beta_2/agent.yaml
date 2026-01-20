@@ -46,7 +46,7 @@ workflow:
         should_review_strategy = (tick % 10 == 0) or subgoal_stuck
 
         # Ecosystem analysis
-        other_artifacts = [a for a in artifacts if a.get('owner_id') != agent_id]
+        other_artifacts = [a for a in artifacts if a.get('created_by') != agent_id]
         has_tools_to_use = len(other_artifacts) > 0
 
     # Step 2: Strategic review (periodic or when stuck)

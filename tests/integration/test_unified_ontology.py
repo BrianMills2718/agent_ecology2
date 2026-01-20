@@ -50,7 +50,7 @@ class TestArtifactOntologyProperties:
         """Agent artifacts have has_standing=True and can_execute=True."""
         artifact = create_agent_artifact(
             agent_id="test_agent",
-            owner_id="test_agent",
+            created_by="test_agent",
             agent_config={"system_prompt": "Test prompt"},
         )
 
@@ -63,7 +63,7 @@ class TestArtifactOntologyProperties:
         """Memory artifacts have has_standing=False and can_execute=False."""
         artifact = create_memory_artifact(
             memory_id="test_memory",
-            owner_id="test_agent",
+            created_by="test_agent",
         )
 
         assert artifact.has_standing is False
@@ -78,7 +78,7 @@ class TestArtifactOntologyProperties:
             artifact_id="test_data",
             type="data",
             content="some content",
-            owner_id="test_agent",
+            created_by="test_agent",
         )
 
         assert artifact.has_standing is False
@@ -161,7 +161,7 @@ class TestLoadAgentsFromStore:
         # Create agent artifact directly
         agent_artifact = create_agent_artifact(
             agent_id="store_agent",
-            owner_id="store_agent",
+            created_by="store_agent",
             agent_config={"system_prompt": "I am a test agent"},
         )
         store.artifacts["store_agent"] = agent_artifact
@@ -179,7 +179,7 @@ class TestLoadAgentsFromStore:
         # Create agent artifact
         agent_artifact = create_agent_artifact(
             agent_id="real_agent",
-            owner_id="real_agent",
+            created_by="real_agent",
             agent_config={},
         )
         store.artifacts["real_agent"] = agent_artifact
@@ -189,7 +189,7 @@ class TestLoadAgentsFromStore:
             artifact_id="data_artifact",
             type="data",
             content="not an agent",
-            owner_id="system",
+            created_by="system",
         )
 
         # Create memory artifact (not an agent)
@@ -209,7 +209,7 @@ class TestAgentArtifactBacking:
         """Agent.from_artifact creates artifact-backed agent."""
         artifact = create_agent_artifact(
             agent_id="backed_agent",
-            owner_id="backed_agent",
+            created_by="backed_agent",
             agent_config={"system_prompt": "Test"},
         )
 
@@ -231,7 +231,7 @@ class TestAgentArtifactBacking:
         # Start with artifact-backed agent
         original = create_agent_artifact(
             agent_id="round_trip",
-            owner_id="round_trip",
+            created_by="round_trip",
             agent_config={"system_prompt": "Original prompt"},
         )
         agent = Agent.from_artifact(original)
@@ -383,7 +383,7 @@ class TestCheckpointPreservesArtifacts:
         # Add agent artifact to store
         agent_artifact = create_agent_artifact(
             agent_id="checkpoint_agent",
-            owner_id="checkpoint_agent",
+            created_by="checkpoint_agent",
             agent_config={"system_prompt": "Test"},
         )
         world.artifacts.artifacts["checkpoint_agent"] = agent_artifact

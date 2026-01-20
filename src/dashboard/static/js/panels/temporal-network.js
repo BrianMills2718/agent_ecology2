@@ -206,8 +206,8 @@ const TemporalNetworkPanel = {
     buildNodeTooltip(node) {
         let tooltip = `<strong>${node.id}</strong><br>`;
         tooltip += `Type: ${node.artifact_type}<br>`;
-        if (node.owner_id) {
-            tooltip += `Owner: ${node.owner_id}<br>`;
+        if (node.created_by) {
+            tooltip += `Owner: ${node.created_by}<br>`;
         }
         if (node.invocation_count > 0) {
             tooltip += `Invocations: ${node.invocation_count}<br>`;

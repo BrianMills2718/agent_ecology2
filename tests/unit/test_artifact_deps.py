@@ -22,7 +22,7 @@ class TestArtifactDependsOnField:
             id="test_artifact",
             type="service",
             content="test content",
-            owner_id="test_owner",
+            created_by="test_owner",
             created_at=now,
             updated_at=now,
         )
@@ -38,7 +38,7 @@ class TestArtifactDependsOnField:
             id="pipeline",
             type="service",
             content="pipeline code",
-            owner_id="test_owner",
+            created_by="test_owner",
             created_at=now,
             updated_at=now,
             depends_on=["helper_lib", "data_processor"],
@@ -53,7 +53,7 @@ class TestArtifactDependsOnField:
             id="pipeline",
             type="service",
             content="test",
-            owner_id="owner",
+            created_by="owner",
             created_at=now,
             updated_at=now,
             depends_on=["helper"],
@@ -70,7 +70,7 @@ class TestArtifactDependsOnField:
             id="simple",
             type="data",
             content="test",
-            owner_id="owner",
+            created_by="owner",
             created_at=now,
             updated_at=now,
             depends_on=[],
@@ -97,7 +97,7 @@ class TestArtifactStoreWithDependencies:
             artifact_id="helper_lib",
             type="library",
             content="def helper(): return 42",
-            owner_id="alice",
+            created_by="alice",
             executable=True,
             code="def run(): return 42",
         )
@@ -111,7 +111,7 @@ class TestArtifactStoreWithDependencies:
             artifact_id="pipeline",
             type="service",
             content="pipeline using helper",
-            owner_id="alice",
+            created_by="alice",
             executable=True,
             code="def run(args, context): return context.dependencies['helper_lib'].invoke()",
             depends_on=["helper_lib"],
@@ -126,7 +126,7 @@ class TestArtifactStoreWithDependencies:
                 artifact_id="pipeline",
                 type="service",
                 content="broken pipeline",
-                owner_id="alice",
+                created_by="alice",
                 depends_on=["nonexistent"],
             )
 
@@ -147,7 +147,7 @@ class TestCycleDetection:
                 artifact_id="self_loop",
                 type="service",
                 content="broken",
-                owner_id="alice",
+                created_by="alice",
                 depends_on=["self_loop"],  # Self-reference
             )
 
@@ -158,7 +158,7 @@ class TestCycleDetection:
             artifact_id="artifact_a",
             type="service",
             content="a",
-            owner_id="alice",
+            created_by="alice",
         )
 
         # Create B depending on A
@@ -166,7 +166,7 @@ class TestCycleDetection:
             artifact_id="artifact_b",
             type="service",
             content="b",
-            owner_id="alice",
+            created_by="alice",
             depends_on=["artifact_a"],
         )
 
@@ -176,7 +176,7 @@ class TestCycleDetection:
                 artifact_id="artifact_a",
                 type="service",
                 content="a updated",
-                owner_id="alice",
+                created_by="alice",
                 depends_on=["artifact_b"],
             )
 
@@ -187,20 +187,20 @@ class TestCycleDetection:
             artifact_id="a",
             type="service",
             content="a",
-            owner_id="alice",
+            created_by="alice",
         )
         store.write(
             artifact_id="b",
             type="service",
             content="b",
-            owner_id="alice",
+            created_by="alice",
             depends_on=["a"],
         )
         store.write(
             artifact_id="c",
             type="service",
             content="c",
-            owner_id="alice",
+            created_by="alice",
             depends_on=["b"],
         )
 
@@ -210,7 +210,7 @@ class TestCycleDetection:
                 artifact_id="a",
                 type="service",
                 content="a updated",
-                owner_id="alice",
+                created_by="alice",
                 depends_on=["c"],
             )
 
@@ -223,16 +223,16 @@ class TestCycleDetection:
         #  \ /
         #   D
 
-        store.write(artifact_id="d", type="s", content="d", owner_id="alice")
+        store.write(artifact_id="d", type="s", content="d", created_by="alice")
         store.write(
-            artifact_id="b", type="s", content="b", owner_id="alice", depends_on=["d"]
+            artifact_id="b", type="s", content="b", created_by="alice", depends_on=["d"]
         )
         store.write(
-            artifact_id="c", type="s", content="c", owner_id="alice", depends_on=["d"]
+            artifact_id="c", type="s", content="c", created_by="alice", depends_on=["d"]
         )
         # A depends on both B and C (diamond pattern - valid)
         artifact_a = store.write(
-            artifact_id="a", type="s", content="a", owner_id="alice", depends_on=["b", "c"]
+            artifact_id="a", type="s", content="a", created_by="alice", depends_on=["b", "c"]
         )
 
         assert artifact_a.depends_on == ["b", "c"]
@@ -253,13 +253,13 @@ class TestDepthLimit:
         # Create chain: a1 → a2 → a3 → ... → a11 (depth 10)
 
         # Build chain up to depth 10 (should succeed)
-        store.write(artifact_id="a1", type="s", content="1", owner_id="alice")
+        store.write(artifact_id="a1", type="s", content="1", created_by="alice")
         for i in range(2, 11):
             store.write(
                 artifact_id=f"a{i}",
                 type="s",
                 content=str(i),
-                owner_id="alice",
+                created_by="alice",
                 depends_on=[f"a{i-1}"],
             )
 
@@ -269,19 +269,19 @@ class TestDepthLimit:
                 artifact_id="a11",
                 type="s",
                 content="11",
-                owner_id="alice",
+                created_by="alice",
                 depends_on=["a10"],
             )
 
     def test_depth_within_limit_allowed(self, store: ArtifactStore) -> None:
         """Chain within depth limit should be allowed."""
         # Create short chain: a → b → c (depth 2)
-        store.write(artifact_id="a", type="s", content="a", owner_id="alice")
+        store.write(artifact_id="a", type="s", content="a", created_by="alice")
         store.write(
-            artifact_id="b", type="s", content="b", owner_id="alice", depends_on=["a"]
+            artifact_id="b", type="s", content="b", created_by="alice", depends_on=["a"]
         )
         artifact_c = store.write(
-            artifact_id="c", type="s", content="c", owner_id="alice", depends_on=["b"]
+            artifact_id="c", type="s", content="c", created_by="alice", depends_on=["b"]
         )
 
         assert artifact_c.depends_on == ["b"]
@@ -300,14 +300,14 @@ class TestGenesisAsDependency:
             artifact_id="genesis_ledger",
             type="genesis",
             content="ledger service",
-            owner_id="system",
+            created_by="system",
             executable=True,
         )
         store.write(
             artifact_id="genesis_store",
             type="genesis",
             content="store service",
-            owner_id="system",
+            created_by="system",
             executable=True,
         )
         return store
@@ -320,7 +320,7 @@ class TestGenesisAsDependency:
             artifact_id="my_service",
             type="service",
             content="service using genesis",
-            owner_id="alice",
+            created_by="alice",
             executable=True,
             code="def run(args, context): return context.dependencies['genesis_ledger'].invoke('get_balance')",
             depends_on=["genesis_ledger"],
@@ -336,7 +336,7 @@ class TestGenesisAsDependency:
             artifact_id="multi_service",
             type="service",
             content="service using multiple genesis",
-            owner_id="alice",
+            created_by="alice",
             depends_on=["genesis_ledger", "genesis_store"],
         )
 

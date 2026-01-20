@@ -134,7 +134,7 @@ class TestAgentIsArtifact:
         # Create agent artifact (factory function from artifacts.py)
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={"model": "test", "system_prompt": "You are a test agent."}
         )
 
@@ -266,7 +266,7 @@ class TestWorldIntegration:
                 artifact_id="alice",  # Same as principal
                 type="data",
                 content="some data",
-                owner_id="system",
+                created_by="system",
             )
 
         assert exc_info.value.entity_id == "alice"
@@ -290,7 +290,7 @@ class TestWorldIntegration:
             artifact_id="my_artifact",
             type="data",
             content="original content",
-            owner_id="system",
+            created_by="system",
         )
 
         # Updating it should work fine (no collision error)
@@ -298,7 +298,7 @@ class TestWorldIntegration:
             artifact_id="my_artifact",
             type="data",
             content="updated content",
-            owner_id="system",
+            created_by="system",
         )
 
         # Verify it was updated
@@ -324,7 +324,7 @@ class TestWorldIntegration:
             artifact_id="my_artifact",
             type="data",
             content="some data",
-            owner_id="system",
+            created_by="system",
         )
 
         # Should be registered

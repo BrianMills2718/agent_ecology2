@@ -15,7 +15,7 @@ from src.world.artifacts import Artifact, ArtifactStore
 def make_artifact(
     artifact_id: str,
     code: str,
-    owner_id: str = "owner",
+    created_by: str = "owner",
     price: int = 0,
     executable: bool = True,
     allow_invoke: list[str] | None = None,
@@ -33,7 +33,7 @@ def make_artifact(
         id=artifact_id,
         type="code",
         content=f"Test artifact {artifact_id}",
-        owner_id=owner_id,
+        created_by=created_by,
         created_at=now,
         updated_at=now,
         executable=executable,
@@ -90,7 +90,7 @@ def run(*args):
 def run(*args):
     return "success"
 """
-        target = make_artifact("paid_service", target_code, owner_id="owner", price=10)
+        target = make_artifact("paid_service", target_code, created_by="owner", price=10)
         self.store.artifacts["paid_service"] = target
 
         caller_code = """
@@ -272,7 +272,7 @@ def run(*args):
         target = make_artifact(
             "restricted",
             target_code,
-            owner_id="owner",  # Only owner can invoke
+            created_by="owner",  # Only owner can invoke
         )
         # Use private contract - only owner can access
         target.access_contract_id = "genesis_contract_private"  # type: ignore[attr-defined]
@@ -369,7 +369,7 @@ def run(*args):
 def run(*args):
     raise RuntimeError("Fail!")
 """
-        target = make_artifact("failing", target_code, owner_id="owner", price=50)
+        target = make_artifact("failing", target_code, created_by="owner", price=50)
         self.store.artifacts["failing"] = target
 
         caller_code = """

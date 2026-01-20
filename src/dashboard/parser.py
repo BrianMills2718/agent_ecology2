@@ -77,7 +77,7 @@ class ArtifactState:
     """Internal state tracking for an artifact."""
     artifact_id: str
     artifact_type: str
-    owner_id: str
+    created_by: str
     executable: bool = False
     price: int = 0
     size_bytes: int = 0
@@ -379,7 +379,7 @@ class JSONLParser:
                 self.state.artifacts[artifact_id] = ArtifactState(
                     artifact_id=artifact_id,
                     artifact_type=intent.get("artifact_type", "unknown"),
-                    owner_id=agent_id,
+                    created_by=agent_id,
                     executable=intent.get("executable", False),
                     price=intent.get("price", 0),
                     size_bytes=len(content),
@@ -409,15 +409,15 @@ class JSONLParser:
                 art = self.state.artifacts[invoked_artifact_id]
                 art.invocation_count += 1
                 # Track interaction if invoking another agent's artifact (including genesis)
-                if art.owner_id != agent_id:
+                if art.created_by != agent_id:
                     self.state.interactions.append(Interaction(
                         tick=self.state.current_tick,
                         timestamp=timestamp,
                         from_id=agent_id,
-                        to_id=art.owner_id,
+                        to_id=art.created_by,
                         interaction_type="artifact_invoke",
                         artifact_id=invoked_artifact_id,
-                        details=f"{agent_id} invoked {invoked_artifact_id} owned by {art.owner_id}",
+                        details=f"{agent_id} invoked {invoked_artifact_id} created by {art.created_by}",
                     ))
             # Also track direct invocations of genesis artifacts (they may not be in artifacts dict)
             elif invoked_artifact_id and invoked_artifact_id.startswith("genesis_"):
@@ -557,9 +557,9 @@ class JSONLParser:
                     timestamp=timestamp,
                 )
                 self.state.ownership_transfers.append(ownership_transfer)
-                # Update artifact owner and history
+                # Update artifact created_by and history
                 if transferred_artifact in self.state.artifacts:
-                    self.state.artifacts[transferred_artifact].owner_id = to_id
+                    self.state.artifacts[transferred_artifact].created_by = to_id
                     self.state.artifacts[transferred_artifact].ownership_history.append(ownership_transfer)
 
                 # Track interaction
@@ -853,7 +853,7 @@ class JSONLParser:
             ArtifactInfo(
                 artifact_id=art.artifact_id,
                 artifact_type=art.artifact_type,
-                owner_id=art.owner_id,
+                created_by=art.created_by,
                 executable=art.executable,
                 price=art.price,
                 size_bytes=art.size_bytes,
@@ -1185,7 +1185,7 @@ class JSONLParser:
                 id=agent_id,
                 label=agent_id,
                 artifact_type="agent",
-                owner_id=None,
+                created_by=None,
                 executable=False,
                 invocation_count=0,
                 scrip=agent.scrip,
@@ -1202,7 +1202,7 @@ class JSONLParser:
                 id=artifact_id,
                 label=artifact_id,
                 artifact_type=get_artifact_type(artifact_id, artifact),
-                owner_id=artifact.owner_id,
+                created_by=artifact.created_by,
                 executable=artifact.executable,
                 invocation_count=artifact.invocation_count,
                 created_at=artifact.created_at,
@@ -1221,7 +1221,7 @@ class JSONLParser:
                     id=genesis_id,
                     label=genesis_id,
                     artifact_type="genesis",
-                    owner_id="system",
+                    created_by="system",
                     executable=True,
                     invocation_count=0,
                 ))
@@ -1276,14 +1276,14 @@ class JSONLParser:
 
         # Build ownership edges from artifacts
         for artifact_id, artifact in self.state.artifacts.items():
-            if artifact.owner_id and artifact.owner_id != artifact_id:
+            if artifact.created_by and artifact.created_by != artifact_id:
                 edges.append(ArtifactEdge(
-                    from_id=artifact.owner_id,
+                    from_id=artifact.created_by,
                     to_id=artifact_id,
                     edge_type="ownership",
                     timestamp=artifact.created_at or "",
                     weight=1,
-                    details=f"{artifact.owner_id} owns {artifact_id}",
+                    details=f"{artifact.created_by} owns {artifact_id}",
                 ))
 
         # Calculate time range
@@ -1340,7 +1340,7 @@ class JSONLParser:
         return ArtifactDetail(
             artifact_id=art.artifact_id,
             artifact_type=art.artifact_type,
-            owner_id=art.owner_id,
+            created_by=art.created_by,
             executable=art.executable,
             price=art.price,
             size_bytes=art.size_bytes,
@@ -1643,7 +1643,7 @@ class JSONLParser:
                 results.append(StandardArtifact(
                     artifact_id=artifact_id,
                     name=artifact_id,
-                    owner=artifact.owner_id,
+                    owner=artifact.created_by,
                     artifact_type=artifact.artifact_type,
                     lindy_score=lindy_score,
                     age_days=age_days,

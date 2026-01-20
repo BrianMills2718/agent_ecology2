@@ -87,19 +87,19 @@ class TestResourcePolicyLogic:
     def test_caller_pays_default(self):
         """Default resource_policy is caller_pays."""
         resource_policy = "caller_pays"
-        owner_id = "alice"
+        created_by = "alice"
         caller_id = "bob"
 
-        payer = owner_id if resource_policy == "owner_pays" else caller_id
+        payer = created_by if resource_policy == "owner_pays" else caller_id
         assert payer == "bob"
 
     def test_owner_pays_policy(self):
         """owner_pays policy charges owner instead of caller."""
         resource_policy = "owner_pays"
-        owner_id = "alice"
+        created_by = "alice"
         caller_id = "bob"
 
-        payer = owner_id if resource_policy == "owner_pays" else caller_id
+        payer = created_by if resource_policy == "owner_pays" else caller_id
         assert payer == "alice"
 
 

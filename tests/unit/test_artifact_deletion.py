@@ -17,7 +17,7 @@ class TestArtifactDeletionFields:
             id="test",
             type="generic",
             content="test content",
-            owner_id="alice",
+            created_by="alice",
             created_at="2026-01-14T00:00:00",
             updated_at="2026-01-14T00:00:00",
         )
@@ -31,7 +31,7 @@ class TestArtifactDeletionFields:
             id="test",
             type="generic",
             content="test content",
-            owner_id="alice",
+            created_by="alice",
             created_at="2026-01-14T00:00:00",
             updated_at="2026-01-14T00:00:00",
             deleted=True,
@@ -49,7 +49,7 @@ class TestArtifactDeletionFields:
             id="test",
             type="generic",
             content="test content",
-            owner_id="alice",
+            created_by="alice",
             created_at="2026-01-14T00:00:00",
             updated_at="2026-01-14T00:00:00",
         )
@@ -86,7 +86,7 @@ class TestDeleteArtifactOwnerOnly:
             artifact_id="alice_artifact",
             type="generic",
             content="alice's stuff",
-            owner_id="alice",
+            created_by="alice",
         )
 
         # Alice can delete
@@ -124,7 +124,7 @@ class TestDeleteArtifactOwnerOnly:
             artifact_id="bob_artifact",
             type="generic",
             content="bob's stuff",
-            owner_id="bob",
+            created_by="bob",
         )
 
         # Alice cannot delete bob's artifact
@@ -215,7 +215,7 @@ class TestInvokeDeletedArtifactFails:
             artifact_id="exec_artifact",
             type="service",
             content="A service",
-            owner_id="alice",
+            created_by="alice",
             executable=True,
             code="def run(ctx): return {'result': 'ok'}",
         )
@@ -304,7 +304,7 @@ class TestReadDeletedArtifactReturnsTombstone:
             artifact_id="test_artifact",
             type="generic",
             content="test content",
-            owner_id="alice",
+            created_by="alice",
         )
         world.delete_artifact("test_artifact", "alice")
 
@@ -341,7 +341,7 @@ class TestWriteDeletedArtifactFails:
             artifact_id="test_artifact",
             type="generic",
             content="test content",
-            owner_id="alice",
+            created_by="alice",
         )
         world.delete_artifact("test_artifact", "alice")
 

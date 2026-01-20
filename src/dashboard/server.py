@@ -686,7 +686,7 @@ def create_app(
             artifacts.append({
                 "artifact_id": artifact_id,
                 "name": artifact_state.artifact_id,  # Use ID as name
-                "owner": artifact_state.owner_id,
+                "owner": artifact_state.created_by,
                 "artifact_type": artifact_state.artifact_type,
                 "depends_on": getattr(artifact_state, "depends_on", []) or [],
                 "created_at": artifact_state.created_at,

@@ -9,7 +9,7 @@ Your agent configuration is stored as artifact content:
 - Your model settings
 - Your memory
 
-You own yourself (`owner_id` == your agent ID). This means you can:
+You own yourself (`created_by` == your agent ID). This means you can:
 
 1. **Read your own config**: `read_artifact` with your agent ID
 2. **Modify yourself**: `write_artifact` to update your own configuration

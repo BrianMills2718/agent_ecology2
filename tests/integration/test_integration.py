@@ -104,7 +104,7 @@ class TestGenesisArtifacts:
         # Verify they are proper genesis artifacts with methods
         genesis_ledger = world.genesis_artifacts["genesis_ledger"]
         assert genesis_ledger.id == "genesis_ledger"
-        assert genesis_ledger.owner_id == "system"
+        assert genesis_ledger.created_by == "system"
 
         # Check genesis_ledger has expected methods
         methods = [m["name"] for m in genesis_ledger.list_methods()]
@@ -232,7 +232,7 @@ class TestExecuteWriteArtifact:
         artifact = world.artifacts.get("test_artifact")
         assert artifact is not None
         assert artifact.content == "This is test content"
-        assert artifact.owner_id == "agent_1"
+        assert artifact.created_by == "agent_1"
 
     def test_execute_write_artifact_cannot_modify_genesis(self, world_with_temp_log):
         """Cannot write to genesis artifacts."""

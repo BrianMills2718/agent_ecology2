@@ -4,9 +4,17 @@ import pytest
 from pathlib import Path
 
 
-from src.world.artifacts import ArtifactStore
+from src.world.artifacts import Artifact, ArtifactStore
 from src.world.ledger import Ledger
 from src.world.genesis import GenesisLedger
+from src.world.executor import get_executor
+
+
+def check_permission(agent_id: str, action: str, artifact: Artifact) -> bool:
+    """Check permission via the executor's contract-based system."""
+    executor = get_executor()
+    allowed, reason = executor._check_permission(agent_id, action, artifact)
+    return allowed
 
 
 class TestArtifactStoreOwnershipTransfer:
@@ -58,7 +66,7 @@ class TestArtifactStoreOwnershipTransfer:
 
         artifact = store.get("artifact_1")
         assert artifact is not None
-        assert artifact.owner_id == "bob"
+        assert artifact.created_by == "bob"
         assert artifact.content == "content here"
         assert artifact.type == "code"
         assert artifact.executable is True
@@ -179,10 +187,10 @@ class TestOwnershipTransferEdgeCases:
 
         artifact = store.get("artifact_1")
         assert artifact is not None
-        # Alice should no longer have write access
-        assert not artifact.can_write("alice")
-        # Bob should have write access
-        assert artifact.can_write("bob")
+        # Alice should no longer have write access (via freeware contract, only creator can write)
+        assert check_permission("alice", "write", artifact) is False
+        # Bob should have write access (now the creator)
+        assert check_permission("bob", "write", artifact) is True
 
     def test_new_owner_can_write(self) -> None:
         """New owner can modify artifact after transfer."""
@@ -194,7 +202,8 @@ class TestOwnershipTransferEdgeCases:
         # Bob updates the artifact
         artifact = store.get("artifact_1")
         assert artifact is not None
-        assert artifact.can_write("bob")
+        # Via freeware contract, creator can write
+        assert check_permission("bob", "write", artifact) is True
 
     def test_transfer_executable_artifact(self) -> None:
         """Can transfer executable artifacts."""
@@ -214,7 +223,7 @@ class TestOwnershipTransferEdgeCases:
         assert result is True
         artifact = store.get("service_1")
         assert artifact is not None
-        assert artifact.owner_id == "bob"
+        assert artifact.created_by == "bob"
         assert artifact.executable is True
         # Price payments should now go to bob
         assert artifact.price == 5

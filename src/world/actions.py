@@ -81,6 +81,8 @@ class WriteArtifactIntent(ActionIntent):
     policy: dict[str, Any] | None = None
     # Interface schema for executables (Plan #114)
     interface: dict[str, Any] | None = None
+    # Access contract ID (Plan #100)
+    access_contract_id: str | None = None
 
     def __init__(
         self,
@@ -93,6 +95,7 @@ class WriteArtifactIntent(ActionIntent):
         code: str = "",
         policy: dict[str, Any] | None = None,
         interface: dict[str, Any] | None = None,
+        access_contract_id: str | None = None,
         reasoning: str = "",
     ) -> None:
         super().__init__(ActionType.WRITE_ARTIFACT, principal_id, reasoning=reasoning)
@@ -104,6 +107,7 @@ class WriteArtifactIntent(ActionIntent):
         self.code = code
         self.policy = policy
         self.interface = interface
+        self.access_contract_id = access_contract_id
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
@@ -118,6 +122,8 @@ class WriteArtifactIntent(ActionIntent):
             d["policy"] = self.policy
         if self.interface is not None:
             d["interface"] = self.interface
+        if self.access_contract_id is not None:
+            d["access_contract_id"] = self.access_contract_id
         return d
 
 

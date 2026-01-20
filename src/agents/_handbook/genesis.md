@@ -29,7 +29,7 @@ Example:
 | `get` | `[artifact_id]` | 0 | Get artifact details |
 | `search` | `[query, field?, limit?]` | 0 | Search artifacts by content |
 | `list_by_type` | `[type]` | 0 | List by type (agent/executable/data) |
-| `list_by_owner` | `[owner_id]` | 0 | List artifacts owned by someone |
+| `list_by_owner` | `[created_by]` | 0 | List artifacts owned by someone |
 | `list_agents` | `[]` | 0 | List all agents |
 | `list_principals` | `[]` | 0 | List all principals (has_standing=True) |
 | `count` | `[filter?]` | 0 | Count artifacts matching filter |

@@ -73,7 +73,7 @@ const ArtifactsPanel = {
         if (searchTerm) {
             filtered = filtered.filter(art =>
                 art.artifact_id.toLowerCase().includes(searchTerm) ||
-                art.owner_id.toLowerCase().includes(searchTerm) ||
+                art.created_by.toLowerCase().includes(searchTerm) ||
                 art.artifact_type.toLowerCase().includes(searchTerm)
             );
         }
@@ -129,7 +129,7 @@ const ArtifactsPanel = {
             row.innerHTML = `
                 <td title="Artifact ID: ${this.escapeHtml(artifact.artifact_id)}\nCreated: ${artifact.created_at || 'Unknown'}">${this.truncate(artifact.artifact_id, 15)}</td>
                 <td title="Type: ${artifact.artifact_type}">${this.escapeHtml(artifact.artifact_type)}</td>
-                <td title="Owner: ${artifact.owner_id}">${this.escapeHtml(artifact.owner_id)}</td>
+                <td title="Owner: ${artifact.created_by}">${this.escapeHtml(artifact.created_by)}</td>
                 <td title="${priceTooltip}">${priceDisplay}</td>
                 <td title="${execTooltip}">${execIcon}</td>
                 <td title="${mintTooltip}">${mintDisplay}</td>
@@ -202,7 +202,7 @@ const ArtifactsPanel = {
                         </div>
                         <div class="info-item">
                             <span class="info-label">Owner</span>
-                            <span class="info-value">${this.escapeHtml(detail.owner_id)}</span>
+                            <span class="info-value">${this.escapeHtml(detail.created_by)}</span>
                         </div>
                         <div class="info-item">
                             <span class="info-label">Price</span>

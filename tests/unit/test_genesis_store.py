@@ -38,7 +38,7 @@ def artifact_with_interface(artifact_store: ArtifactStore) -> Artifact:
         artifact_id="test_calculator",
         type="executable",
         content="Calculator artifact",
-        owner_id="alice",
+        created_by="alice",
         executable=True,
         code="def run(*args): return args[0] + args[1]",
     )
@@ -54,7 +54,7 @@ def artifact_without_interface(artifact_store: ArtifactStore) -> Artifact:
         artifact_id="test_data",
         type="data",
         content="Some data content",
-        owner_id="bob",
+        created_by="bob",
         executable=False,
     )
     return artifact_store.get("test_data")

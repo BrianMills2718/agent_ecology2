@@ -146,7 +146,7 @@ class GenesisArtifactDict(TypedDict):
     """Dictionary representation of a genesis artifact."""
     id: str
     type: str
-    owner_id: str
+    created_by: str
     content: str
     methods: list[MethodInfo]
 

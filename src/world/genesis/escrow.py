@@ -132,7 +132,7 @@ class GenesisEscrow(GenesisArtifact):
             return {"success": False, "error": f"Artifact {artifact_id} not found"}
 
         # Verify escrow owns the artifact (seller must have transferred first)
-        if artifact.owner_id != self.id:
+        if artifact.created_by != self.id:
             return {
                 "success": False,
                 "error": _get_error_message("escrow_not_owner", artifact_id=artifact_id, escrow_id=self.id)

@@ -196,7 +196,7 @@ def create_agent_artifacts(
             memory_id = f"{agent_id}_memory"
             memory_artifact = create_memory_artifact(
                 memory_id=memory_id,
-                owner_id=agent_id,  # Agent owns its memory
+                created_by=agent_id,  # Agent owns its memory
             )
             store.artifacts[memory_id] = memory_artifact
             memory_artifact_id = memory_id
@@ -213,7 +213,7 @@ def create_agent_artifacts(
         # Create agent artifact (self-owned)
         agent_artifact = create_agent_artifact(
             agent_id=agent_id,
-            owner_id=agent_id,  # Self-owned
+            created_by=agent_id,  # Self-owned
             agent_config=agent_config_dict,
             memory_artifact_id=memory_artifact_id,
         )

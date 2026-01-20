@@ -52,7 +52,7 @@ class ArtifactInfo(BaseModel):
     """Artifact information."""
     artifact_id: str
     artifact_type: str
-    owner_id: str
+    created_by: str
     executable: bool = False
     price: int = 0
     size_bytes: int = 0
@@ -348,7 +348,7 @@ class ArtifactNode(BaseModel):
     id: str
     label: str
     artifact_type: Literal["agent", "genesis", "contract", "data", "unknown"] = "unknown"
-    owner_id: str | None = None
+    created_by: str | None = None
     executable: bool = False
     invocation_count: int = 0
     created_at: str | None = None  # ISO timestamp
@@ -424,7 +424,7 @@ class ArtifactDetail(BaseModel):
     """Full artifact detail with content."""
     artifact_id: str
     artifact_type: str
-    owner_id: str
+    created_by: str
     executable: bool = False
     price: int = 0
     size_bytes: int = 0

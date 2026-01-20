@@ -19,7 +19,7 @@ from src.world.ledger import Ledger
 def make_artifact(
     artifact_id: str,
     code: str,
-    owner_id: str = "owner",
+    created_by: str = "owner",
     price: int = 0,
     depends_on: list[str] | None = None,
 ) -> Artifact:
@@ -36,7 +36,7 @@ def make_artifact(
         id=artifact_id,
         type="code",
         content=f"Test artifact {artifact_id}",
-        owner_id=owner_id,
+        created_by=created_by,
         created_at=now,
         updated_at=now,
         executable=True,

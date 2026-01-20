@@ -43,7 +43,7 @@ class TestArtifactPrincipalFields:
             id="test_artifact",
             type="data",
             content="test content",
-            owner_id="owner_1",
+            created_by="owner_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
         )
@@ -55,7 +55,7 @@ class TestArtifactPrincipalFields:
             id="test_artifact",
             type="data",
             content="test content",
-            owner_id="owner_1",
+            created_by="owner_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
         )
@@ -67,7 +67,7 @@ class TestArtifactPrincipalFields:
             id="test_artifact",
             type="data",
             content="test content",
-            owner_id="owner_1",
+            created_by="owner_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
         )
@@ -79,7 +79,7 @@ class TestArtifactPrincipalFields:
             id="dao_1",
             type="dao",
             content="{}",
-            owner_id="dao_1",
+            created_by="dao_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             has_standing=True,
@@ -92,7 +92,7 @@ class TestArtifactPrincipalFields:
             id="agent_1",
             type="agent",
             content="{}",
-            owner_id="agent_1",
+            created_by="agent_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             can_execute=True,
@@ -105,7 +105,7 @@ class TestArtifactPrincipalFields:
             id="agent_1",
             type="agent",
             content="{}",
-            owner_id="agent_1",
+            created_by="agent_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             memory_artifact_id="agent_1_memory",
@@ -122,7 +122,7 @@ class TestIsPrincipalProperty:
             id="data_1",
             type="data",
             content="test",
-            owner_id="owner_1",
+            created_by="owner_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             has_standing=False,
@@ -135,7 +135,7 @@ class TestIsPrincipalProperty:
             id="dao_1",
             type="dao",
             content="{}",
-            owner_id="dao_1",
+            created_by="dao_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             has_standing=True,
@@ -149,7 +149,7 @@ class TestIsPrincipalProperty:
             id="dao_1",
             type="dao",
             content="{}",
-            owner_id="dao_1",
+            created_by="dao_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             has_standing=True,
@@ -162,7 +162,7 @@ class TestIsPrincipalProperty:
             id="agent_1",
             type="agent",
             content="{}",
-            owner_id="agent_1",
+            created_by="agent_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             has_standing=True,
@@ -180,7 +180,7 @@ class TestIsAgentProperty:
             id="data_1",
             type="data",
             content="test",
-            owner_id="owner_1",
+            created_by="owner_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
         )
@@ -192,7 +192,7 @@ class TestIsAgentProperty:
             id="dao_1",
             type="dao",
             content="{}",
-            owner_id="dao_1",
+            created_by="dao_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             has_standing=True,
@@ -208,7 +208,7 @@ class TestIsAgentProperty:
             id="code_1",
             type="code",
             content="{}",
-            owner_id="owner_1",
+            created_by="owner_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             has_standing=False,
@@ -222,7 +222,7 @@ class TestIsAgentProperty:
             id="agent_1",
             type="agent",
             content="{}",
-            owner_id="agent_1",
+            created_by="agent_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             has_standing=True,
@@ -238,7 +238,7 @@ class TestCreateAgentArtifact:
         """Verify factory creates artifact with type='agent'."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={"model": "test"},
         )
         assert agent.type == "agent"
@@ -247,34 +247,34 @@ class TestCreateAgentArtifact:
         """Verify factory uses provided agent_id."""
         agent = create_agent_artifact(
             agent_id="my_agent",
-            owner_id="owner",
+            created_by="owner",
             agent_config={},
         )
         assert agent.id == "my_agent"
 
     def test_creates_artifact_with_correct_owner(self) -> None:
-        """Verify factory uses provided owner_id."""
+        """Verify factory uses provided created_by."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="different_owner",
+            created_by="different_owner",
             agent_config={},
         )
-        assert agent.owner_id == "different_owner"
+        assert agent.created_by == "different_owner"
 
     def test_creates_self_owned_agent(self) -> None:
         """Verify can create self-owned agent (owner == id)."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
         )
-        assert agent.owner_id == agent.id
+        assert agent.created_by == agent.id
 
     def test_has_standing_is_true(self) -> None:
         """Verify factory sets has_standing=True."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
         )
         assert agent.has_standing is True
@@ -283,7 +283,7 @@ class TestCreateAgentArtifact:
         """Verify factory sets can_execute=True."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
         )
         assert agent.can_execute is True
@@ -292,7 +292,7 @@ class TestCreateAgentArtifact:
         """Verify created artifact reports is_agent=True."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
         )
         assert agent.is_agent is True
@@ -301,7 +301,7 @@ class TestCreateAgentArtifact:
         """Verify created artifact reports is_principal=True."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
         )
         assert agent.is_principal is True
@@ -311,7 +311,7 @@ class TestCreateAgentArtifact:
         config = {"model": "gpt-4", "system_prompt": "You are helpful."}
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config=config,
         )
         stored_config = json.loads(agent.content)
@@ -321,7 +321,7 @@ class TestCreateAgentArtifact:
         """Verify memory_artifact_id defaults to None."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
         )
         assert agent.memory_artifact_id is None
@@ -330,7 +330,7 @@ class TestCreateAgentArtifact:
         """Verify memory_artifact_id can be provided."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
             memory_artifact_id="agent_001_memory",
         )
@@ -340,7 +340,7 @@ class TestCreateAgentArtifact:
         """Verify default access is self-owned (restrictive)."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
         )
         # Self-owned means empty allow lists (owner always implicitly allowed)
@@ -351,7 +351,7 @@ class TestCreateAgentArtifact:
         """Verify freeware access opens read access."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
             access_contract_id="genesis_contract_freeware",
         )
@@ -362,7 +362,7 @@ class TestCreateAgentArtifact:
         """Verify public access opens all access."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
             access_contract_id="genesis_contract_public",
         )
@@ -374,7 +374,7 @@ class TestCreateAgentArtifact:
         """Verify factory sets created_at and updated_at."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
         )
         assert agent.created_at is not None
@@ -385,7 +385,7 @@ class TestCreateAgentArtifact:
         """Verify agents don't use executable code path."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
         )
         assert agent.executable is False
@@ -394,7 +394,7 @@ class TestCreateAgentArtifact:
         """Verify agents don't have inline code."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
         )
         assert agent.code == ""
@@ -407,7 +407,7 @@ class TestCreateMemoryArtifact:
         """Verify factory creates artifact with type='memory'."""
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
         )
         assert memory.type == "memory"
 
@@ -415,23 +415,23 @@ class TestCreateMemoryArtifact:
         """Verify factory uses provided memory_id."""
         memory = create_memory_artifact(
             memory_id="my_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
         )
         assert memory.id == "my_memory"
 
     def test_creates_artifact_with_correct_owner(self) -> None:
-        """Verify factory uses provided owner_id."""
+        """Verify factory uses provided created_by."""
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
         )
-        assert memory.owner_id == "agent_001"
+        assert memory.created_by == "agent_001"
 
     def test_has_standing_is_false(self) -> None:
         """Verify memory cannot own things."""
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
         )
         assert memory.has_standing is False
 
@@ -439,7 +439,7 @@ class TestCreateMemoryArtifact:
         """Verify memory cannot execute."""
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
         )
         assert memory.can_execute is False
 
@@ -447,7 +447,7 @@ class TestCreateMemoryArtifact:
         """Verify memory is not an agent."""
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
         )
         assert memory.is_agent is False
 
@@ -455,7 +455,7 @@ class TestCreateMemoryArtifact:
         """Verify memory is not a principal."""
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
         )
         assert memory.is_principal is False
 
@@ -463,7 +463,7 @@ class TestCreateMemoryArtifact:
         """Verify default content has history and knowledge."""
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
         )
         content = json.loads(memory.content)
         assert "history" in content
@@ -479,7 +479,7 @@ class TestCreateMemoryArtifact:
         }
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
             initial_content=initial,
         )
         content = json.loads(memory.content)
@@ -489,7 +489,7 @@ class TestCreateMemoryArtifact:
         """Verify memory uses self-owned (private) access."""
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
         )
         # Private access: empty allow lists
         assert memory.policy["allow_read"] == []
@@ -499,7 +499,7 @@ class TestCreateMemoryArtifact:
         """Verify memory doesn't have its own memory."""
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
         )
         assert memory.memory_artifact_id is None
 
@@ -507,7 +507,7 @@ class TestCreateMemoryArtifact:
         """Verify factory sets timestamps."""
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
         )
         assert memory.created_at is not None
         assert memory.updated_at is not None
@@ -521,30 +521,30 @@ class TestAgentOwnsMemory:
         # Create memory first
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
         )
 
         # Create agent with link to memory
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={"model": "test"},
             memory_artifact_id="agent_001_memory",
         )
 
         # Verify relationships
         assert agent.memory_artifact_id == memory.id
-        assert memory.owner_id == agent.id
+        assert memory.created_by == agent.id
 
     def test_agent_is_principal_memory_is_not(self) -> None:
         """Verify only agent is principal, not memory."""
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
         )
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
             memory_artifact_id="agent_001_memory",
         )
@@ -562,7 +562,7 @@ class TestToDictWithNewFields:
             id="data_1",
             type="data",
             content="test",
-            owner_id="owner_1",
+            created_by="owner_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
         )
@@ -575,7 +575,7 @@ class TestToDictWithNewFields:
             id="agent_1",
             type="agent",
             content="{}",
-            owner_id="agent_1",
+            created_by="agent_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             has_standing=True,
@@ -589,7 +589,7 @@ class TestToDictWithNewFields:
             id="data_1",
             type="data",
             content="test",
-            owner_id="owner_1",
+            created_by="owner_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
         )
@@ -602,7 +602,7 @@ class TestToDictWithNewFields:
             id="agent_1",
             type="agent",
             content="{}",
-            owner_id="agent_1",
+            created_by="agent_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             can_execute=True,
@@ -616,7 +616,7 @@ class TestToDictWithNewFields:
             id="data_1",
             type="data",
             content="test",
-            owner_id="owner_1",
+            created_by="owner_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
         )
@@ -629,7 +629,7 @@ class TestToDictWithNewFields:
             id="agent_1",
             type="agent",
             content="{}",
-            owner_id="agent_1",
+            created_by="agent_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             memory_artifact_id="agent_1_memory",
@@ -641,7 +641,7 @@ class TestToDictWithNewFields:
         """Verify agent artifact to_dict includes all relevant fields."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={"model": "test"},
             memory_artifact_id="agent_001_memory",
         )
@@ -649,7 +649,7 @@ class TestToDictWithNewFields:
 
         assert d["id"] == "agent_001"
         assert d["type"] == "agent"
-        assert d["owner_id"] == "agent_001"
+        assert d["created_by"] == "agent_001"
         assert d["has_standing"] is True
         assert d["can_execute"] is True
         assert d["memory_artifact_id"] == "agent_001_memory"
@@ -667,7 +667,7 @@ class TestArtifactStoreWithAgents:
         """Verify agent artifact can be stored."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={"model": "test"},
         )
         store.artifacts[agent.id] = agent
@@ -680,7 +680,7 @@ class TestArtifactStoreWithAgents:
         """Verify memory artifact can be stored."""
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
         )
         store.artifacts[memory.id] = memory
 
@@ -692,11 +692,11 @@ class TestArtifactStoreWithAgents:
         """Verify agent and memory can be stored together."""
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
         )
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
             memory_artifact_id="agent_001_memory",
         )
@@ -716,7 +716,7 @@ class TestArtifactStoreWithAgents:
         # Verify memory is owned by agent
         retrieved_memory = store.get("agent_001_memory")
         assert retrieved_memory is not None
-        assert retrieved_memory.owner_id == "agent_001"
+        assert retrieved_memory.created_by == "agent_001"
 
     def test_list_by_owner_includes_agent_artifacts(
         self, store: ArtifactStore
@@ -724,11 +724,11 @@ class TestArtifactStoreWithAgents:
         """Verify list_by_owner includes agent and memory artifacts."""
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
-            owner_id="agent_001",
+            created_by="agent_001",
         )
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
             memory_artifact_id="agent_001_memory",
         )
@@ -752,7 +752,7 @@ class TestNonAgentArtifact:
             id="contract_1",
             type="contract",
             content="def run(): pass",
-            owner_id="owner_1",
+            created_by="owner_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             executable=True,
@@ -767,7 +767,7 @@ class TestNonAgentArtifact:
             id="data_1",
             type="data",
             content="some data",
-            owner_id="owner_1",
+            created_by="owner_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
         )
@@ -787,7 +787,7 @@ class TestAgentTransfer:
         """Verify agent ownership can be transferred via standard mechanism."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={},
         )
         store.artifacts[agent.id] = agent
@@ -802,7 +802,7 @@ class TestAgentTransfer:
         assert success is True
         transferred = store.get("agent_001")
         assert transferred is not None
-        assert transferred.owner_id == "new_owner"
+        assert transferred.created_by == "new_owner"
         # Still an agent after transfer
         assert transferred.is_agent is True
 
@@ -810,7 +810,7 @@ class TestAgentTransfer:
         """Verify transferred agent retains its capabilities."""
         agent = create_agent_artifact(
             agent_id="agent_001",
-            owner_id="agent_001",
+            created_by="agent_001",
             agent_config={"model": "gpt-4"},
             memory_artifact_id="agent_001_memory",
         )
@@ -848,7 +848,7 @@ class TestAgentFromArtifact:
         # Create agent artifact
         artifact = create_agent_artifact(
             agent_id="test_agent",
-            owner_id="test_agent",
+            created_by="test_agent",
             agent_config={"llm_model": "test-model", "system_prompt": "Test prompt"},
         )
         store.artifacts[artifact.id] = artifact
@@ -872,7 +872,7 @@ class TestAgentFromArtifact:
         }
         artifact = create_agent_artifact(
             agent_id="config_agent",
-            owner_id="config_agent",
+            created_by="config_agent",
             agent_config=config,
         )
         store.artifacts[artifact.id] = artifact
@@ -892,7 +892,7 @@ class TestAgentFromArtifact:
             id="data_artifact",
             type="data",
             content="some data",
-            owner_id="owner",
+            created_by="owner",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
         )
@@ -908,14 +908,14 @@ class TestAgentFromArtifact:
         # Create memory artifact
         memory = create_memory_artifact(
             memory_id="agent_memory",
-            owner_id="linked_agent",
+            created_by="linked_agent",
         )
         store.artifacts[memory.id] = memory
 
         # Create agent with memory link
         artifact = create_agent_artifact(
             agent_id="linked_agent",
-            owner_id="linked_agent",
+            created_by="linked_agent",
             agent_config={},
             memory_artifact_id="agent_memory",
         )
@@ -945,7 +945,7 @@ class TestAgentToArtifact:
         assert artifact.id == "serialize_agent"
         assert artifact.is_agent is True
         assert artifact.type == "agent"
-        assert artifact.owner_id == "serialize_agent"  # Self-owned by default
+        assert artifact.created_by == "serialize_agent"  # Self-owned by default
 
     def test_to_artifact_preserves_config(self) -> None:
         """Verify to_artifact() preserves agent config."""
@@ -1158,7 +1158,7 @@ class TestAgentLoaderArtifacts:
             artifact_id="data_item",
             type="data",
             content="some data",
-            owner_id="someone",
+            created_by="someone",
         )
 
         agents = load_agents_from_store(store)
@@ -1206,7 +1206,7 @@ class TestAgentArtifactIntegration:
         # Create agent artifact
         artifact = create_agent_artifact(
             agent_id="transfer_agent",
-            owner_id="original_owner",
+            created_by="original_owner",
             agent_config={"llm_model": "transfer-model"},
         )
         store.artifacts[artifact.id] = artifact
@@ -1219,4 +1219,4 @@ class TestAgentArtifactIntegration:
 
         # Agent ID should be artifact ID, not owner
         assert agent.agent_id == "transfer_agent"
-        assert agent.artifact.owner_id == "new_owner"  # type: ignore[union-attr]
+        assert agent.artifact.created_by == "new_owner"  # type: ignore[union-attr]

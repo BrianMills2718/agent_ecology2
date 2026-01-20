@@ -259,12 +259,12 @@ class GenesisLedger(GenesisArtifact):
                 )
 
             # Security check: can only transfer artifacts you own
-            if metadata["owner_id"] != invoker_id:
+            if metadata["created_by"] != invoker_id:
                 return permission_error(
-                    f"Cannot transfer {artifact_id} - you are not the owner (owner is {metadata['owner_id']})",
+                    f"Cannot transfer {artifact_id} - you are not the owner (owner is {metadata['created_by']})",
                     code=ErrorCode.NOT_OWNER,
                     artifact_id=artifact_id,
-                    owner=metadata["owner_id"],
+                    owner=metadata["created_by"],
                     invoker=invoker_id,
                 )
 
@@ -301,12 +301,12 @@ class GenesisLedger(GenesisArtifact):
             )
 
         # Security check: can only transfer artifacts you own
-        if artifact.owner_id != invoker_id:
+        if artifact.created_by != invoker_id:
             return permission_error(
-                f"Cannot transfer {artifact_id} - you are not the owner (owner is {artifact.owner_id})",
+                f"Cannot transfer {artifact_id} - you are not the owner (owner is {artifact.created_by})",
                 code=ErrorCode.NOT_OWNER,
                 artifact_id=artifact_id,
-                owner=artifact.owner_id,
+                owner=artifact.created_by,
                 invoker=invoker_id,
             )
 

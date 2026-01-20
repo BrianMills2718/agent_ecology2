@@ -38,7 +38,7 @@ class ArtifactDict(TypedDict, total=False):
     id: str
     type: str
     content: str
-    owner_id: str
+    created_by: str
     created_at: str
     updated_at: str
     executable: bool
@@ -123,7 +123,7 @@ class Artifact:
     id: str
     type: str
     content: str
-    owner_id: str
+    created_by: str
     created_at: str
     updated_at: str
     # Executable artifact fields
@@ -152,6 +152,9 @@ class Artifact:
     # List of artifact IDs this artifact depends on
     # Dependencies are resolved and injected at invocation time
     depends_on: list[str] = field(default_factory=list)
+    # Access contract for permission checking (Plan #100: Contract System Overhaul)
+    # All permissions are checked via contracts - no hardcoded owner bypass
+    access_contract_id: str = "genesis_contract_freeware"
 
     @property
     def price(self) -> int:
@@ -190,79 +193,12 @@ class Artifact:
         """
         return self.has_standing and self.can_execute
 
-    def can_read(self, agent_id: str) -> bool:
-        """Check if agent can read this artifact
-
-        Raises NotImplementedError if policy uses @contract reference (V2 feature).
-        """
-        allow: PolicyAllow = self.policy.get("allow_read", ["*"])
-
-        # V2: Contract-based policy (deferred)
-        if is_contract_reference(allow):
-            raise NotImplementedError(
-                f"Dynamic policy contracts not yet supported. "
-                f"Artifact '{self.id}' uses contract '{allow}' for read access. "
-                f"V2 will invoke the contract with (requester={agent_id}, action='read', target={self.id})"
-            )
-
-        # V1: Static list policy (fast path)
-        if isinstance(allow, list):
-            return "*" in allow or agent_id in allow or agent_id == self.owner_id
-        return agent_id == self.owner_id
-
-    def can_write(self, agent_id: str) -> bool:
-        """Check if agent can write to this artifact
-
-        Owner always has write access.
-        Raises NotImplementedError if policy uses @contract reference (V2 feature).
-        """
-        if agent_id == self.owner_id:
-            return True
-
-        allow: PolicyAllow = self.policy.get("allow_write", [])
-
-        # V2: Contract-based policy (deferred)
-        if is_contract_reference(allow):
-            raise NotImplementedError(
-                f"Dynamic policy contracts not yet supported. "
-                f"Artifact '{self.id}' uses contract '{allow}' for write access. "
-                f"V2 will invoke the contract with (requester={agent_id}, action='write', target={self.id})"
-            )
-
-        # V1: Static list policy (fast path)
-        if isinstance(allow, list):
-            return agent_id in allow
-        return False
-
-    def can_invoke(self, agent_id: str) -> bool:
-        """Check if agent can invoke this artifact
-
-        Raises NotImplementedError if policy uses @contract reference (V2 feature).
-        """
-        if not self.executable:
-            return False
-
-        allow: PolicyAllow = self.policy.get("allow_invoke", ["*"])
-
-        # V2: Contract-based policy (deferred)
-        if is_contract_reference(allow):
-            raise NotImplementedError(
-                f"Dynamic policy contracts not yet supported. "
-                f"Artifact '{self.id}' uses contract '{allow}' for invoke access. "
-                f"V2 will invoke the contract with (requester={agent_id}, action='invoke', target={self.id})"
-            )
-
-        # V1: Static list policy (fast path)
-        if isinstance(allow, list):
-            return "*" in allow or agent_id in allow or agent_id == self.owner_id
-        return agent_id == self.owner_id
-
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
             "id": self.id,
             "type": self.type,
             "content": self.content,
-            "owner_id": self.owner_id,
+            "created_by": self.created_by,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
@@ -297,7 +233,7 @@ class Artifact:
 
 def create_agent_artifact(
     agent_id: str,
-    owner_id: str,
+    created_by: str,
     agent_config: dict[str, Any],
     memory_artifact_id: str | None = None,
     access_contract_id: str = "genesis_contract_self_owned",
@@ -312,7 +248,7 @@ def create_agent_artifact(
 
     Args:
         agent_id: Unique ID for the agent
-        owner_id: Who owns this agent (can be self-owned: owner_id == agent_id)
+        created_by: Who owns this agent (can be self-owned: created_by == agent_id)
         agent_config: Agent configuration stored as content (model, prompt, etc.)
         memory_artifact_id: Optional linked memory artifact
         access_contract_id: Access control contract (default: self_owned)
@@ -323,7 +259,7 @@ def create_agent_artifact(
     Example:
         >>> agent = create_agent_artifact(
         ...     agent_id="agent_001",
-        ...     owner_id="agent_001",  # Self-owned
+        ...     created_by="agent_001",  # Self-owned
         ...     agent_config={"model": "gpt-4", "system_prompt": "You are helpful."}
         ... )
         >>> agent.is_agent
@@ -360,7 +296,7 @@ def create_agent_artifact(
         id=agent_id,
         type="agent",
         content=content,
-        owner_id=owner_id,
+        created_by=created_by,
         created_at=now,
         updated_at=now,
         executable=False,  # Agents don't use the executable code path
@@ -374,7 +310,7 @@ def create_agent_artifact(
 
 def create_memory_artifact(
     memory_id: str,
-    owner_id: str,
+    created_by: str,
     initial_content: dict[str, Any] | None = None,
 ) -> Artifact:
     """Factory function to create a memory artifact.
@@ -392,7 +328,7 @@ def create_memory_artifact(
 
     Args:
         memory_id: Unique ID for the memory artifact
-        owner_id: Who owns this memory (usually the agent)
+        created_by: Who owns this memory (usually the agent)
         initial_content: Initial memory content (default: empty history/knowledge)
 
     Returns:
@@ -401,7 +337,7 @@ def create_memory_artifact(
     Example:
         >>> memory = create_memory_artifact(
         ...     memory_id="agent_001_memory",
-        ...     owner_id="agent_001",
+        ...     created_by="agent_001",
         ... )
         >>> memory.is_agent
         False
@@ -427,7 +363,7 @@ def create_memory_artifact(
         id=memory_id,
         type="memory",
         content=content,
-        owner_id=owner_id,
+        created_by=created_by,
         created_at=now,
         updated_at=now,
         executable=False,
@@ -468,7 +404,7 @@ class ArtifactStore:
         artifact_id: str,
         type: str,
         content: str,
-        owner_id: str,
+        created_by: str,
         executable: bool = False,
         price: int = 0,
         code: str = "",
@@ -477,6 +413,7 @@ class ArtifactStore:
         depth_limit: int = 10,
         interface: dict[str, Any] | None = None,
         require_interface: bool = False,
+        access_contract_id: str | None = None,
     ) -> Artifact:
         """Create or update an artifact. Returns the artifact.
 
@@ -497,6 +434,9 @@ class ArtifactStore:
         Interface requirement (Plan #114):
         - interface: JSON schema describing artifact's methods and inputs
         - require_interface: If True, raise error for executables without interface
+
+        Access contract (Plan #100):
+        - access_contract_id: Contract ID for permission checking (default: genesis_contract_freeware)
         """
         now = datetime.now(timezone.utc).isoformat()
         depends_on = depends_on or []
@@ -533,6 +473,8 @@ class ArtifactStore:
             artifact.depends_on = depends_on
             if interface is not None:
                 artifact.interface = interface
+            if access_contract_id is not None:
+                artifact.access_contract_id = access_contract_id
         else:
             # Create new - register with ID registry if available (Plan #7)
             if self.id_registry is not None:
@@ -541,11 +483,13 @@ class ArtifactStore:
                 # Determine entity type for registry
                 entity_type: EntityType = "genesis" if type == "genesis" else "artifact"
                 self.id_registry.register(artifact_id, entity_type)
+            # Determine access contract - use provided or default
+            contract_id = access_contract_id if access_contract_id else "genesis_contract_freeware"
             artifact = Artifact(
                 id=artifact_id,
                 type=type,
                 content=content,
-                owner_id=owner_id,
+                created_by=created_by,
                 created_at=now,
                 updated_at=now,
                 executable=executable,
@@ -553,6 +497,7 @@ class ArtifactStore:
                 policy=artifact_policy,
                 depends_on=depends_on,
                 interface=interface,
+                access_contract_id=contract_id,
             )
             self.artifacts[artifact_id] = artifact
 
@@ -665,7 +610,7 @@ class ArtifactStore:
     def get_owner(self, artifact_id: str) -> str | None:
         """Get owner of an artifact"""
         artifact = self.get(artifact_id)
-        return artifact.owner_id if artifact else None
+        return artifact.created_by if artifact else None
 
     def list_all(self, include_deleted: bool = False) -> list[dict[str, Any]]:
         """List all artifacts.
@@ -690,30 +635,30 @@ class ArtifactStore:
             artifact.code.encode("utf-8")
         )
 
-    def get_owner_usage(self, owner_id: str) -> int:
+    def get_owner_usage(self, created_by: str) -> int:
         """Get total disk usage for an owner in bytes.
         
         Deleted artifacts do not count toward disk usage (Plan #57).
         """
         total = 0
         for artifact in self.artifacts.values():
-            if artifact.owner_id == owner_id and not artifact.deleted:
+            if artifact.created_by == created_by and not artifact.deleted:
                 total += len(artifact.content.encode("utf-8")) + len(
                     artifact.code.encode("utf-8")
                 )
         return total
 
-    def list_by_owner(self, owner_id: str) -> list[dict[str, Any]]:
+    def list_by_owner(self, created_by: str) -> list[dict[str, Any]]:
         """List all artifacts owned by a principal"""
-        return [a.to_dict() for a in self.artifacts.values() if a.owner_id == owner_id]
+        return [a.to_dict() for a in self.artifacts.values() if a.created_by == created_by]
 
     def get_artifacts_by_owner(
-        self, owner_id: str, include_deleted: bool = False
+        self, created_by: str, include_deleted: bool = False
     ) -> list[str]:
         """Get artifact IDs owned by a principal.
 
         Args:
-            owner_id: Principal ID to query
+            created_by: Principal ID to query
             include_deleted: If True, include deleted artifacts (Plan #18)
 
         Returns:
@@ -721,7 +666,7 @@ class ArtifactStore:
         """
         result = []
         for artifact_id, artifact in self.artifacts.items():
-            if artifact.owner_id == owner_id:
+            if artifact.created_by == created_by:
                 if include_deleted or not artifact.deleted:
                     result.append(artifact_id)
         return result
@@ -733,7 +678,7 @@ class ArtifactStore:
 
         Args:
             artifact_id: The artifact to transfer
-            from_id: Current owner (must match artifact.owner_id)
+            from_id: Current owner (must match artifact.created_by)
             to_id: New owner
 
         Returns:
@@ -744,11 +689,11 @@ class ArtifactStore:
             return False
 
         # Verify from_id is the current owner
-        if artifact.owner_id != from_id:
+        if artifact.created_by != from_id:
             return False
 
         # Transfer ownership
-        artifact.owner_id = to_id
+        artifact.created_by = to_id
         return True
 
     def write_artifact(
@@ -756,13 +701,14 @@ class ArtifactStore:
         artifact_id: str,
         artifact_type: str,
         content: str,
-        owner_id: str,
+        created_by: str,
         executable: bool = False,
         price: int = 0,
         code: str = "",
         policy: dict[str, Any] | None = None,
         interface: dict[str, Any] | None = None,
         require_interface: bool = False,
+        access_contract_id: str | None = None,
     ) -> WriteResult:
         """Write an artifact and return a standardized result.
 
@@ -774,13 +720,14 @@ class ArtifactStore:
             artifact_id: Unique identifier for the artifact
             artifact_type: Type of artifact (e.g., "generic", "code")
             content: The artifact content
-            owner_id: Owner principal ID
+            created_by: Owner principal ID
             executable: Whether the artifact is executable
             price: Service fee for invocation (for executables)
             code: Python code with run() function (for executables)
             policy: Optional access control policy
             interface: (Plan #114) Interface schema for executables
             require_interface: (Plan #114) If True, require interface for executables
+            access_contract_id: (Plan #100) Contract ID for permission checking
 
         Returns:
             WriteResult with success=True and artifact data, or success=False on error
@@ -790,13 +737,14 @@ class ArtifactStore:
                 artifact_id=artifact_id,
                 type=artifact_type,
                 content=content,
-                owner_id=owner_id,
+                created_by=created_by,
                 executable=executable,
                 price=price,
                 code=code,
                 policy=policy,
                 interface=interface,
                 require_interface=require_interface,
+                access_contract_id=access_contract_id,
             )
         except ValueError as e:
             # Plan #114: Handle interface requirement validation
