@@ -74,6 +74,13 @@ Modify `meta_status.py` to:
 2. Suggest cleanup commands
 3. Optionally auto-clean with confirmation
 
+## Files Affected
+
+- scripts/cleanup_orphaned_worktrees.py (create)
+- Makefile (modify)
+- scripts/meta_status.py (modify)
+- scripts/CLAUDE.md (modify)
+
 ## Files to Create/Modify
 
 | File | Change |
