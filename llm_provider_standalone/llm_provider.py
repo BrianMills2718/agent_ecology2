@@ -29,6 +29,9 @@ from pydantic import BaseModel
 from jinja2 import Environment, Template
 from dotenv import load_dotenv
 
+# Suppress LiteLLM's verbose "Give Feedback" messages
+litellm.suppress_debug_info = True
+
 # Load environment variables
 load_dotenv()
 
