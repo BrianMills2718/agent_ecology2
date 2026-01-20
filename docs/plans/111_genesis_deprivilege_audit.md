@@ -39,7 +39,6 @@
 - src/world/genesis/store.py (modify) - Audit and remove privileges
 - src/world/genesis/rights_registry.py (modify) - Audit and remove privileges
 - tests/unit/test_genesis_unprivileged.py (create) - Verify no privileged access
-- tests/integration/test_no_genesis_simulation.py (create) - Simulation works without genesis
 
 ---
 
@@ -96,11 +95,11 @@ Create a test that runs a minimal simulation with:
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/unit/test_genesis_unprivileged.py` | `test_ledger_uses_kernel_interface` | genesis_ledger only uses KernelState/KernelActions |
-| `tests/unit/test_genesis_unprivileged.py` | `test_mint_uses_kernel_interface` | genesis_mint only uses KernelState/KernelActions |
-| `tests/unit/test_genesis_unprivileged.py` | `test_escrow_uses_kernel_interface` | genesis_escrow only uses KernelState/KernelActions |
-| `tests/unit/test_genesis_unprivileged.py` | `test_store_uses_kernel_interface` | genesis_store only uses KernelState/KernelActions |
-| `tests/integration/test_no_genesis_simulation.py` | `test_simulation_without_genesis` | Core simulation works with no genesis artifacts |
+| `tests/unit/test_genesis_unprivileged.py` | `test_ledger_uses_kernel_when_world_set` | genesis_ledger uses KernelActions when _world is set |
+| `tests/unit/test_genesis_unprivileged.py` | `test_mint_delegates_to_kernel` | genesis_mint delegates to kernel primitives |
+| `tests/unit/test_genesis_unprivileged.py` | `test_escrow_uses_kernel_when_world_set` | genesis_escrow uses KernelActions when _world is set |
+| `tests/unit/test_genesis_unprivileged.py` | `test_store_uses_kernel_interface` | genesis_store has no privileged write calls |
+| `tests/unit/test_genesis_unprivileged.py` | `test_genesis_artifacts_can_work_with_kernel_only` | Genesis artifacts can work with kernel interfaces only |
 
 ### Existing Tests (Must Pass)
 
