@@ -7,8 +7,9 @@
 # 1. No direct GitHub merge CLI - must use make merge/finish
 # 2. No direct python scripts/safe_worktree_remove.py - must use make worktree-remove
 # 3. No direct python scripts/finish_pr.py - must use make finish
-# 4. No merge/finish/worktree-remove from inside a worktree
-# 5. Must cd to main FIRST (separate command), then run finish
+# 4. No direct python scripts/merge_pr.py - must use make merge/finish
+# 5. No merge/finish/worktree-remove from inside a worktree
+# 6. Must cd to main FIRST (separate command), then run finish
 #
 # Exit codes:
 #   0 - Allow the operation
@@ -67,6 +68,25 @@ if echo "$COMMAND" | grep -qE '(^|&&|;|\|)\s*python[3]?\s+scripts/finish_pr\.py'
     echo "" >&2
     echo "Use the proper command instead:" >&2
     echo "  make finish BRANCH=$BRANCH PR=$PR_NUM" >&2
+    exit 2
+fi
+
+# Block direct calls to merge_pr.py (must use make merge or make finish)
+# This script cleans up worktrees after merge, which can break shell CWD
+# Also ensures we use main's version of the script, not a stale worktree copy
+if echo "$COMMAND" | grep -qE '(^|&&|;|\|)\s*python[3]?\s+(scripts/)?merge_pr\.py'; then
+    PR_NUM=$(echo "$COMMAND" | grep -oE '[0-9]+' | head -1 || echo "N")
+
+    echo "BLOCKED: Direct script call is not allowed" >&2
+    echo "" >&2
+    echo "Running 'python scripts/merge_pr.py' directly may:" >&2
+    echo "  - Use a stale copy from your worktree instead of main" >&2
+    echo "  - Break your shell if CWD is in a worktree being cleaned up" >&2
+    echo "" >&2
+    echo "Use the proper command instead:" >&2
+    echo "  make merge PR=$PR_NUM" >&2
+    echo "Or for full workflow (from main):" >&2
+    echo "  make finish BRANCH=<branch> PR=$PR_NUM" >&2
     exit 2
 fi
 
