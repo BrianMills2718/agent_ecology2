@@ -31,6 +31,7 @@
 - src/world/executor.py (modify)
 - tests/unit/test_executor.py (modify)
 - src/agents/schema.py (modify)
+- docs/architecture/current/artifacts_executor.md (modify)
 
 ---
 
