@@ -1,6 +1,6 @@
 # Plan #141: Fix merge hook gap for `make -C` pattern
 
-**Status:** in_progress
+**Status:** complete
 **Priority:** high
 **Complexity:** trivial
 
@@ -56,6 +56,6 @@ None - this is a hook script, manual verification is sufficient.
 
 ## Acceptance Criteria
 
-- [ ] `make -C /main merge PR=N` from worktree is blocked
-- [ ] `make merge PR=N` from worktree is still blocked
-- [ ] `make merge PR=N` from main still works
+- [x] `make -C /main merge PR=N` from worktree is blocked
+- [x] `make merge PR=N` from worktree is still blocked
+- [x] `make merge PR=N` from main still works
