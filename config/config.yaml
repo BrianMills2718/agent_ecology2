@@ -303,6 +303,7 @@ executor:
   contract_timeout: 5            # Default contract permission check timeout (Plan #100)
   contract_llm_timeout: 30       # Timeout for contracts with call_llm capability (Plan #100)
   interface_validation: warn     # Plan #86: 'none', 'warn', or 'strict'
+  require_interface_for_executables: true  # Plan #114: Require interface schema when creating executables
   # NOTE: These modules are PRE-LOADED into the execution namespace.
   # This is NOT a security whitelist - agents can import any stdlib module.
   # Security boundary is the container, not code-level sandboxing.
