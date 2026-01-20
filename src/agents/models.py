@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -51,6 +52,18 @@ class InterfaceInputSchema(BaseModel):
     type: str = "object"
     properties: dict[str, dict[str, str]] = Field(default_factory=dict)
     required: list[str] = Field(default_factory=list)
+
+    @field_validator("properties", mode="before")
+    @classmethod
+    def parse_properties_string(cls, v: Any) -> dict[str, dict[str, str]]:  # noqa: ANN401
+        """Parse JSON string to dict if needed.
+
+        Gemini sometimes returns nested objects as JSON strings instead of
+        actual objects. This validator auto-parses them.
+        """
+        if isinstance(v, str):
+            return json.loads(v)
+        return v
 
 
 class InterfaceTool(BaseModel):
