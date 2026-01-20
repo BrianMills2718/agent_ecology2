@@ -143,6 +143,7 @@ Master index of all gaps and their implementation plans.
 | 115 | [Worktree Ownership Enforcement](115_worktree_ownership_enforcement.md) | **High** | ✅ Complete | Multi-CC worktree safety |
 | 116 | [Enforce Finish From Main](116_enforce_finish_from_main.md) | Medium | ✅ Complete | Meta-process integrity |
 | 123 | [Safe Expression Evaluator](123_safe_expression_evaluator.md) | **Critical** | ✅ Complete | Replace eval() with safe evaluator |
+| 124 | [Config Documentation Sync](124_config_doc_sync.md) | **High** | ✅ Complete | Sync config files with docs |
 
 ---
 
