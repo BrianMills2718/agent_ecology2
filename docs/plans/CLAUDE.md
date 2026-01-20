@@ -134,7 +134,7 @@ Master index of all gaps and their implementation plans.
 | 103 | [Meta-Process Doc Separation](103_meta_doc_separation.md) | Medium | 📋 Planned | Meta-process maintainability |
 | 104 | [Meta-Process Hooks Separation](104_meta_hooks_separation.md) | Low | 📋 Deferred | Meta-process maintainability |
 | 105 | [Meta-Process Scripts Separation](105_meta_scripts_separation.md) | Low | 📋 Deferred | Meta-process maintainability |
-| 106 | [CI Cost Reduction](106_ci_cost_reduction.md) | **High** | 📋 Planned | Reduce GitHub Actions costs |
+| 106 | [CI Cost Reduction](106_ci_cost_reduction.md) | **High** | ✅ Complete | Reduce GitHub Actions costs |
 | 107 | [Temporal Network Visualization](107_temporal_network_viz.md) | **High** | ✅ Complete | Dashboard artifact network view |
 | 111 | [Genesis Deprivilege Audit](111_genesis_deprivilege_audit.md) | **High** | ✅ Complete | Ensure genesis uses kernel interfaces |
 | 112 | [JSON Arg Parsing](112_json_arg_parsing.md) | **High** | ✅ Complete | Auto-parse JSON strings in invoke args |
