@@ -973,238 +973,13 @@ class World:
                 )
 
             # Plan #15: Genesis method dispatch (if genesis_methods is set)
+            # Plan #125: Extracted to _invoke_genesis_method for clarity
             if artifact.genesis_methods is not None:
-                method = artifact.genesis_methods.get(method_name)
-                if not method:
-                    duration_ms = (time.perf_counter() - start_time) * 1000
-                    self._log_invoke_failure(
-                        intent.principal_id, artifact_id, method_name,
-                        duration_ms, "method_not_found",
-                        f"Method {method_name} not found"
-                    )
-                    return ActionResult(
-                        success=False,
-                        message=get_error_message(
-                            "method_not_found",
-                            method=method_name,
-                            artifact_id=artifact_id,
-                            methods=list(artifact.genesis_methods.keys())
-                        ),
-                        error_code=ErrorCode.NOT_FOUND.value,
-                        error_category=ErrorCategory.RESOURCE.value,
-                        retriable=False,
-                        error_details={"method": method_name, "artifact_id": artifact_id},
-                    )
-
-                # Genesis method costs are COMPUTE (physical resource, not scrip)
-                if method.cost > 0 and not self.ledger.can_spend_compute(intent.principal_id, method.cost):
-                    duration_ms = (time.perf_counter() - start_time) * 1000
-                    self._log_invoke_failure(
-                        intent.principal_id, artifact_id, method_name,
-                        duration_ms, "insufficient_compute",
-                        f"Cannot afford method cost: {method.cost}"
-                    )
-                    return ActionResult(
-                        success=False,
-                        message=f"Cannot afford method cost: {method.cost} compute (have {self.ledger.get_compute(intent.principal_id)})",
-                        error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
-                        error_category=ErrorCategory.RESOURCE.value,
-                        retriable=True,
-                        error_details={"required": method.cost, "available": self.ledger.get_compute(intent.principal_id)},
-                    )
-
-                # Deduct compute cost FIRST (always paid, even on failure)
-                resources_consumed: dict[str, float] = {}
-                if method.cost > 0:
-                    self.ledger.spend_compute(intent.principal_id, method.cost)
-                    resources_consumed["llm_tokens"] = float(method.cost)
-
-                # Execute the genesis method
-                try:
-                    result_data: dict[str, Any] = method.handler(args, intent.principal_id)
-                    duration_ms = (time.perf_counter() - start_time) * 1000
-
-                    if result_data.get("success"):
-                        self._log_invoke_success(
-                            intent.principal_id, artifact_id, method_name,
-                            duration_ms, type(result_data.get("result")).__name__
-                        )
-                        return ActionResult(
-                            success=True,
-                            message=f"Invoked {artifact_id}.{method_name}",
-                            data=result_data,
-                            resources_consumed=resources_consumed if resources_consumed else None,
-                            charged_to=intent.principal_id,
-                        )
-                    else:
-                        error_code = result_data.get("code", ErrorCode.RUNTIME_ERROR.value)
-                        error_category = result_data.get("category", ErrorCategory.EXECUTION.value)
-                        retriable = result_data.get("retriable", False)
-                        self._log_invoke_failure(
-                            intent.principal_id, artifact_id, method_name,
-                            duration_ms, "method_failed",
-                            result_data.get("error", "Method failed")
-                        )
-                        return ActionResult(
-                            success=False,
-                            message=result_data.get("error", "Method failed"),
-                            resources_consumed=resources_consumed if resources_consumed else None,
-                            charged_to=intent.principal_id,
-                            error_code=error_code,
-                            error_category=error_category,
-                            retriable=retriable,
-                            error_details=result_data.get("details"),
-                        )
-                except Exception as e:
-                    duration_ms = (time.perf_counter() - start_time) * 1000
-                    self._log_invoke_failure(
-                        intent.principal_id, artifact_id, method_name,
-                        duration_ms, "exception",
-                        str(e)
-                    )
-                    return ActionResult(
-                        success=False,
-                        message=f"Method execution error: {str(e)}",
-                        resources_consumed=resources_consumed if resources_consumed else None,
-                        charged_to=intent.principal_id,
-                        error_code=ErrorCode.RUNTIME_ERROR.value,
-                        error_category=ErrorCategory.EXECUTION.value,
-                        retriable=False,
-                        error_details={"exception": str(e)},
-                    )
+                return self._invoke_genesis_method(intent, artifact, method_name, args, start_time)
 
             # Regular artifact code execution path
-            # Price (SCRIP) - economic payment to owner
-            price = artifact.price
-            created_by = artifact.created_by
-
-            # Caller pays for physical resources
-            resource_payer = intent.principal_id
-
-            # Check if caller can afford the price (scrip)
-            if price > 0 and not self.ledger.can_afford_scrip(intent.principal_id, price):
-                duration_ms = (time.perf_counter() - start_time) * 1000
-                self._log_invoke_failure(
-                    intent.principal_id, artifact_id, method_name,
-                    duration_ms, "insufficient_scrip",
-                    f"Insufficient scrip for price: need {price}"
-                )
-                return ActionResult(
-                    success=False,
-                    message=f"Insufficient scrip for price: need {price}, have {self.ledger.get_scrip(intent.principal_id)}",
-                    error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
-                    error_category=ErrorCategory.RESOURCE.value,
-                    retriable=True,
-                    error_details={"required": price, "available": self.ledger.get_scrip(intent.principal_id)},
-                )
-
-            # Execute the code with invoke() capability for composition
-            # Pass world for kernel interface injection (Plan #39 - Genesis Unprivilege)
-            executor = get_executor()
-            exec_result = executor.execute_with_invoke(
-                code=artifact.code,
-                args=args,
-                caller_id=intent.principal_id,
-                artifact_id=artifact_id,
-                ledger=self.ledger,
-                artifact_store=self.artifacts,
-                world=self,
-            )
-
-            # Extract resource consumption from executor
-            resources_consumed = exec_result.get("resources_consumed", {})
-            duration_ms = exec_result.get("execution_time_ms", (time.perf_counter() - start_time) * 1000)
-
-            # Resources use different tracking mechanisms:
-            # - Rate-limited (renewable via rolling window): cpu_seconds
-            # - Balance-based (depletable): llm_tokens, disk_bytes, etc.
-            rate_limited_resources = {"cpu_seconds"}
-
-            if exec_result.get("success"):
-                # Deduct physical resources from caller
-                for resource, amount in resources_consumed.items():
-                    if resource in rate_limited_resources:
-                        # Rate-limited resource: record in rolling window rate tracker
-                        # This tracks usage over time; agent blocked when window limit exceeded
-                        self.ledger.consume_resource(resource_payer, resource, amount)
-                    elif not self.ledger.can_spend_resource(resource_payer, resource, amount):
-                        self._log_invoke_failure(
-                            intent.principal_id, artifact_id, method_name,
-                            duration_ms, "insufficient_resource",
-                            f"Insufficient {resource}: need {amount}"
-                        )
-                        return ActionResult(
-                            success=False,
-                            message=f"Insufficient {resource}: need {amount}",
-                            resources_consumed=resources_consumed,
-                            charged_to=resource_payer,
-                            error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
-                            error_category=ErrorCategory.RESOURCE.value,
-                            retriable=True,
-                            error_details={"resource": resource, "required": amount},
-                        )
-                    else:
-                        self.ledger.spend_resource(resource_payer, resource, amount)
-
-                # Pay price to owner from SCRIP (only on success)
-                if price > 0 and created_by != intent.principal_id:
-                    self.ledger.deduct_scrip(intent.principal_id, price)
-                    self.ledger.credit_scrip(created_by, price)
-
-                self._log_invoke_success(
-                    intent.principal_id, artifact_id, method_name,
-                    duration_ms, type(exec_result.get("result")).__name__
-                )
-                return ActionResult(
-                    success=True,
-                    message=f"Invoked {artifact_id}" + (f" (paid {price} scrip to {created_by})" if price > 0 else ""),
-                    data={
-                        "result": exec_result.get("result"),
-                        "price_paid": price,
-                        "owner": created_by
-                    },
-                    resources_consumed=resources_consumed if resources_consumed else None,
-                    charged_to=resource_payer,
-                )
-            else:
-                # Execution failed - still charge resources (they were consumed)
-                for resource, amount in resources_consumed.items():
-                    if resource in rate_limited_resources:
-                        # Rate-limited: record in rolling window
-                        self.ledger.consume_resource(resource_payer, resource, amount)
-                    elif self.ledger.can_spend_resource(resource_payer, resource, amount):
-                        self.ledger.spend_resource(resource_payer, resource, amount)
-
-                error_msg = exec_result.get("error", "Unknown error")
-                # Determine error type and code from error message
-                error_type = "execution"
-                error_code = ErrorCode.RUNTIME_ERROR.value
-                error_category = ErrorCategory.EXECUTION.value
-                retriable = False
-                if "timed out" in error_msg.lower():
-                    error_type = "timeout"
-                    error_code = ErrorCode.TIMEOUT.value
-                    retriable = True  # Timeout might not happen on retry
-                elif "syntax" in error_msg.lower():
-                    error_type = "validation"
-                    error_code = ErrorCode.SYNTAX_ERROR.value
-                    error_category = ErrorCategory.VALIDATION.value
-
-                self._log_invoke_failure(
-                    intent.principal_id, artifact_id, method_name,
-                    duration_ms, error_type, error_msg
-                )
-                return ActionResult(
-                    success=False,
-                    message=f"Execution failed: {error_msg}",
-                    data={"error": error_msg},
-                    resources_consumed=resources_consumed if resources_consumed else None,
-                    charged_to=resource_payer,
-                    error_code=error_code,
-                    error_category=error_category,
-                    retriable=retriable,
-                    error_details={"artifact_id": artifact_id, "error": error_msg},
-                )
+            # Plan #125: Extracted to _invoke_user_artifact for clarity
+            return self._invoke_user_artifact(intent, artifact, method_name, args, start_time)
 
         # Artifact not found
         duration_ms = (time.perf_counter() - start_time) * 1000
@@ -1306,6 +1081,274 @@ class World:
             duration_ms=duration_ms,
             error_type=error_type,
         ))
+
+    def _invoke_genesis_method(
+        self,
+        intent: InvokeArtifactIntent,
+        artifact: Artifact,
+        method_name: str,
+        args: Any,
+        start_time: float,
+    ) -> ActionResult:
+        """Execute a genesis artifact method.
+
+        Plan #125: Extracted from _execute_invoke() for clarity.
+
+        Handles:
+        - Method lookup in genesis_methods
+        - Compute affordability check
+        - Compute cost deduction
+        - Method execution with error handling
+        """
+        artifact_id = intent.artifact_id
+
+        # genesis_methods is guaranteed non-None here (caller checks)
+        assert artifact.genesis_methods is not None
+        method = artifact.genesis_methods.get(method_name)
+        if not method:
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            self._log_invoke_failure(
+                intent.principal_id, artifact_id, method_name,
+                duration_ms, "method_not_found",
+                f"Method {method_name} not found"
+            )
+            return ActionResult(
+                success=False,
+                message=get_error_message(
+                    "method_not_found",
+                    method=method_name,
+                    artifact_id=artifact_id,
+                    methods=list(artifact.genesis_methods.keys())
+                ),
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+                error_details={"method": method_name, "artifact_id": artifact_id},
+            )
+
+        # Genesis method costs are COMPUTE (physical resource, not scrip)
+        if method.cost > 0 and not self.ledger.can_spend_compute(intent.principal_id, method.cost):
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            self._log_invoke_failure(
+                intent.principal_id, artifact_id, method_name,
+                duration_ms, "insufficient_compute",
+                f"Cannot afford method cost: {method.cost}"
+            )
+            return ActionResult(
+                success=False,
+                message=f"Cannot afford method cost: {method.cost} compute (have {self.ledger.get_compute(intent.principal_id)})",
+                error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=True,
+                error_details={"required": method.cost, "available": self.ledger.get_compute(intent.principal_id)},
+            )
+
+        # Deduct compute cost FIRST (always paid, even on failure)
+        resources_consumed: dict[str, float] = {}
+        if method.cost > 0:
+            self.ledger.spend_compute(intent.principal_id, method.cost)
+            resources_consumed["llm_tokens"] = float(method.cost)
+
+        # Execute the genesis method
+        try:
+            result_data: dict[str, Any] = method.handler(args, intent.principal_id)
+            duration_ms = (time.perf_counter() - start_time) * 1000
+
+            if result_data.get("success"):
+                self._log_invoke_success(
+                    intent.principal_id, artifact_id, method_name,
+                    duration_ms, type(result_data.get("result")).__name__
+                )
+                return ActionResult(
+                    success=True,
+                    message=f"Invoked {artifact_id}.{method_name}",
+                    data=result_data,
+                    resources_consumed=resources_consumed if resources_consumed else None,
+                    charged_to=intent.principal_id,
+                )
+            else:
+                error_code = result_data.get("code", ErrorCode.RUNTIME_ERROR.value)
+                error_category = result_data.get("category", ErrorCategory.EXECUTION.value)
+                retriable = result_data.get("retriable", False)
+                self._log_invoke_failure(
+                    intent.principal_id, artifact_id, method_name,
+                    duration_ms, "method_failed",
+                    result_data.get("error", "Method failed")
+                )
+                return ActionResult(
+                    success=False,
+                    message=result_data.get("error", "Method failed"),
+                    resources_consumed=resources_consumed if resources_consumed else None,
+                    charged_to=intent.principal_id,
+                    error_code=error_code,
+                    error_category=error_category,
+                    retriable=retriable,
+                    error_details=result_data.get("details"),
+                )
+        except Exception as e:
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            self._log_invoke_failure(
+                intent.principal_id, artifact_id, method_name,
+                duration_ms, "exception",
+                str(e)
+            )
+            return ActionResult(
+                success=False,
+                message=f"Method execution error: {str(e)}",
+                resources_consumed=resources_consumed if resources_consumed else None,
+                charged_to=intent.principal_id,
+                error_code=ErrorCode.RUNTIME_ERROR.value,
+                error_category=ErrorCategory.EXECUTION.value,
+                retriable=False,
+                error_details={"exception": str(e)},
+            )
+
+    def _invoke_user_artifact(
+        self,
+        intent: InvokeArtifactIntent,
+        artifact: Artifact,
+        method_name: str,
+        args: Any,
+        start_time: float,
+    ) -> ActionResult:
+        """Execute a user-defined artifact method.
+
+        Plan #125: Extracted from _execute_invoke() for clarity.
+
+        Handles:
+        - Scrip price affordability check
+        - Code execution via executor
+        - Resource consumption tracking
+        - Price payment to owner
+        """
+        artifact_id = intent.artifact_id
+        price = artifact.price
+        created_by = artifact.created_by
+        resource_payer = intent.principal_id
+
+        # Check if caller can afford the price (scrip)
+        if price > 0 and not self.ledger.can_afford_scrip(intent.principal_id, price):
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            self._log_invoke_failure(
+                intent.principal_id, artifact_id, method_name,
+                duration_ms, "insufficient_scrip",
+                f"Insufficient scrip for price: need {price}"
+            )
+            return ActionResult(
+                success=False,
+                message=f"Insufficient scrip for price: need {price}, have {self.ledger.get_scrip(intent.principal_id)}",
+                error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=True,
+                error_details={"required": price, "available": self.ledger.get_scrip(intent.principal_id)},
+            )
+
+        # Execute the code with invoke() capability for composition
+        # Pass world for kernel interface injection (Plan #39 - Genesis Unprivilege)
+        executor = get_executor()
+        exec_result = executor.execute_with_invoke(
+            code=artifact.code,
+            args=args,
+            caller_id=intent.principal_id,
+            artifact_id=artifact_id,
+            ledger=self.ledger,
+            artifact_store=self.artifacts,
+            world=self,
+        )
+
+        # Extract resource consumption from executor
+        resources_consumed = exec_result.get("resources_consumed", {})
+        duration_ms = exec_result.get("execution_time_ms", (time.perf_counter() - start_time) * 1000)
+
+        # Resources use different tracking mechanisms:
+        # - Rate-limited (renewable via rolling window): cpu_seconds
+        # - Balance-based (depletable): llm_tokens, disk_bytes, etc.
+        rate_limited_resources = {"cpu_seconds"}
+
+        if exec_result.get("success"):
+            # Deduct physical resources from caller
+            for resource, amount in resources_consumed.items():
+                if resource in rate_limited_resources:
+                    # Rate-limited resource: record in rolling window rate tracker
+                    self.ledger.consume_resource(resource_payer, resource, amount)
+                elif not self.ledger.can_spend_resource(resource_payer, resource, amount):
+                    self._log_invoke_failure(
+                        intent.principal_id, artifact_id, method_name,
+                        duration_ms, "insufficient_resource",
+                        f"Insufficient {resource}: need {amount}"
+                    )
+                    return ActionResult(
+                        success=False,
+                        message=f"Insufficient {resource}: need {amount}",
+                        resources_consumed=resources_consumed,
+                        charged_to=resource_payer,
+                        error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
+                        error_category=ErrorCategory.RESOURCE.value,
+                        retriable=True,
+                        error_details={"resource": resource, "required": amount},
+                    )
+                else:
+                    self.ledger.spend_resource(resource_payer, resource, amount)
+
+            # Pay price to owner from SCRIP (only on success)
+            if price > 0 and created_by != intent.principal_id:
+                self.ledger.deduct_scrip(intent.principal_id, price)
+                self.ledger.credit_scrip(created_by, price)
+
+            self._log_invoke_success(
+                intent.principal_id, artifact_id, method_name,
+                duration_ms, type(exec_result.get("result")).__name__
+            )
+            return ActionResult(
+                success=True,
+                message=f"Invoked {artifact_id}" + (f" (paid {price} scrip to {created_by})" if price > 0 else ""),
+                data={
+                    "result": exec_result.get("result"),
+                    "price_paid": price,
+                    "owner": created_by
+                },
+                resources_consumed=resources_consumed if resources_consumed else None,
+                charged_to=resource_payer,
+            )
+        else:
+            # Execution failed - still charge resources (they were consumed)
+            for resource, amount in resources_consumed.items():
+                if resource in rate_limited_resources:
+                    # Rate-limited: record in rolling window
+                    self.ledger.consume_resource(resource_payer, resource, amount)
+                elif self.ledger.can_spend_resource(resource_payer, resource, amount):
+                    self.ledger.spend_resource(resource_payer, resource, amount)
+
+            error_msg = exec_result.get("error", "Unknown error")
+            # Determine error type and code from error message
+            error_type = "execution"
+            error_code = ErrorCode.RUNTIME_ERROR.value
+            error_category = ErrorCategory.EXECUTION.value
+            retriable = False
+            if "timed out" in error_msg.lower():
+                error_type = "timeout"
+                error_code = ErrorCode.TIMEOUT.value
+                retriable = True
+            elif "syntax" in error_msg.lower():
+                error_type = "validation"
+                error_code = ErrorCode.SYNTAX_ERROR.value
+                error_category = ErrorCategory.VALIDATION.value
+
+            self._log_invoke_failure(
+                intent.principal_id, artifact_id, method_name,
+                duration_ms, error_type, error_msg
+            )
+            return ActionResult(
+                success=False,
+                message=f"Execution failed: {error_msg}",
+                data={"error": error_msg},
+                resources_consumed=resources_consumed if resources_consumed else None,
+                charged_to=resource_payer,
+                error_code=error_code,
+                error_category=error_category,
+                retriable=retriable,
+                error_details={"artifact_id": artifact_id, "error": error_msg},
+            )
 
     def increment_event_counter(self) -> int:
         """Increment the event counter and return the new value.

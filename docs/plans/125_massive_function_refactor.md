@@ -37,11 +37,11 @@
 
 ## Files Affected
 
-- `src/world/executor.py` (modify)
-- `src/world/world.py` (modify)
-- `src/dashboard/server.py` (modify)
-- `src/agents/agent.py` (modify)
-- `src/dashboard/parser.py` (modify)
+- src/world/executor.py (modify)
+- src/world/world.py (modify)
+- src/dashboard/server.py (modify)
+- src/agents/agent.py (modify)
+- src/dashboard/parser.py (modify)
 
 ---
 

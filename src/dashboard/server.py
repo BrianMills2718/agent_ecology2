@@ -1,11 +1,14 @@
-"""FastAPI server for the agent ecology dashboard."""
+"""FastAPI server for the agent ecology dashboard.
+
+Plan #125: Routes are organized into helper registration functions for maintainability.
+"""
 
 from __future__ import annotations
 
 import asyncio
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -20,6 +23,9 @@ from .kpis import calculate_kpis, EcosystemKPIs, compute_agent_metrics, AgentMet
 from .auditor import assess_health, AuditorThresholds, HealthReport
 from .dependency_graph import build_dependency_graph
 from ..config import get_validated_config
+
+if TYPE_CHECKING:
+    from .watcher import PollingWatcher
 
 # Import simulation runner for control (may not be available)
 try:
@@ -117,6 +123,9 @@ class DashboardApp:
         self.watcher = PollingWatcher(self.jsonl_path)  # poll_interval from config
         self.connection_manager = ConnectionManager()
 
+        # Plan #125: Moved from create_app() nonlocal for cleaner state management
+        self.prev_kpis: EcosystemKPIs | None = None
+
         # Only parse existing logs if not in live mode (viewing old runs)
         if not live_mode and self.jsonl_path.exists():
             self.parser.parse_full()
@@ -161,6 +170,123 @@ class DashboardApp:
                 return yaml.safe_load(f) or {}
         except Exception:
             return {}
+
+
+# Plan #125: Helper functions to organize route registration
+
+
+def _register_simulation_routes(app: FastAPI, dashboard: DashboardApp) -> None:
+    """Register simulation control routes.
+
+    Plan #125: Extracted from create_app() for clarity.
+    Handles /api/simulation/* endpoints for pause/resume control.
+    """
+
+    @app.get("/api/simulation/status")
+    async def get_simulation_status() -> dict[str, Any]:
+        """Get simulation runner status."""
+        if not HAS_SIMULATION or SimulationRunner is None:
+            return {"available": False, "reason": "Simulation module not loaded"}
+
+        runner = SimulationRunner.get_active()
+        if runner is None:
+            return {"available": True, "running": False, "reason": "No active simulation"}
+
+        return {
+            "available": True,
+            **runner.get_status()
+        }
+
+    @app.post("/api/simulation/pause")
+    async def pause_simulation() -> dict[str, Any]:
+        """Pause the running simulation."""
+        if not HAS_SIMULATION or SimulationRunner is None:
+            raise HTTPException(status_code=503, detail="Simulation module not available")
+
+        runner = SimulationRunner.get_active()
+        if runner is None:
+            raise HTTPException(status_code=404, detail="No active simulation")
+
+        if runner.is_paused:
+            return {"status": "already_paused", "tick": runner.world.tick}
+
+        runner.pause()
+
+        # Broadcast pause to all clients
+        await dashboard.connection_manager.broadcast({
+            "type": "simulation_control",
+            "data": {"action": "paused", "tick": runner.world.tick}
+        })
+
+        return {"status": "paused", "tick": runner.world.tick}
+
+    @app.post("/api/simulation/resume")
+    async def resume_simulation() -> dict[str, Any]:
+        """Resume a paused simulation."""
+        if not HAS_SIMULATION or SimulationRunner is None:
+            raise HTTPException(status_code=503, detail="Simulation module not available")
+
+        runner = SimulationRunner.get_active()
+        if runner is None:
+            raise HTTPException(status_code=404, detail="No active simulation")
+
+        if not runner.is_paused:
+            return {"status": "already_running", "tick": runner.world.tick}
+
+        runner.resume()
+
+        # Broadcast resume to all clients
+        await dashboard.connection_manager.broadcast({
+            "type": "simulation_control",
+            "data": {"action": "resumed", "tick": runner.world.tick}
+        })
+
+        return {"status": "running", "tick": runner.world.tick}
+
+
+def _register_websocket_routes(app: FastAPI, dashboard: DashboardApp) -> None:
+    """Register WebSocket endpoint.
+
+    Plan #125: Extracted from create_app() for clarity.
+    Handles real-time streaming updates to dashboard clients.
+    """
+
+    @app.websocket("/ws")
+    async def websocket_endpoint(websocket: WebSocket) -> None:
+        """WebSocket endpoint for real-time updates."""
+        await dashboard.connection_manager.connect(websocket)
+
+        # Send initial state
+        dashboard.parser.parse_incremental()
+        try:
+            await websocket.send_json({
+                "type": "initial_state",
+                "data": {
+                    "progress": dashboard.parser.get_progress().model_dump(),
+                    "agents": [a.model_dump() for a in dashboard.parser.get_all_agent_summaries()],
+                    "artifacts": [a.model_dump() for a in dashboard.parser.get_all_artifacts()],
+                },
+            })
+
+            # Keep connection alive and wait for messages
+            dashboard_timeout = get_validated_config().timeouts.dashboard_server
+            while True:
+                try:
+                    data = await asyncio.wait_for(
+                        websocket.receive_text(),
+                        timeout=dashboard_timeout
+                    )
+                    # Handle ping/pong for keepalive
+                    if data == "ping":
+                        await websocket.send_text("pong")
+                except asyncio.TimeoutError:
+                    # Send keepalive ping
+                    await websocket.send_text("ping")
+
+        except WebSocketDisconnect:
+            pass
+        finally:
+            dashboard.connection_manager.disconnect(websocket)
 
 
 def create_app(
@@ -432,9 +558,6 @@ def create_app(
         metrics = calculate_emergence_metrics(dashboard.parser.state)
         return metrics.model_dump()
 
-    # Store previous KPIs for trend calculation
-    _prev_kpis: EcosystemKPIs | None = None
-
     @app.get("/api/health")
     async def get_health() -> dict[str, Any]:
         """Get ecosystem health report.
@@ -442,8 +565,6 @@ def create_app(
         Returns health assessment based on KPIs with threshold-based
         status (healthy/warning/critical), concerns, and trends.
         """
-        nonlocal _prev_kpis
-
         dashboard.parser.parse_incremental()
         kpis = calculate_kpis(dashboard.parser.state)
 
@@ -453,10 +574,11 @@ def create_app(
         # Count total agents for ratio calculations
         total_agents = len(dashboard.parser.state.agents)
 
-        report = assess_health(kpis, _prev_kpis, thresholds, total_agents=max(1, total_agents))
+        # Plan #125: prev_kpis now stored on DashboardApp instance
+        report = assess_health(kpis, dashboard.prev_kpis, thresholds, total_agents=max(1, total_agents))
 
         # Update previous KPIs for next trend calculation
-        _prev_kpis = kpis
+        dashboard.prev_kpis = kpis
 
         return {
             "timestamp": report.timestamp,
@@ -771,103 +893,9 @@ def create_app(
             "total_count": len(all_thinking),
         }
 
-    @app.get("/api/simulation/status")
-    async def get_simulation_status() -> dict[str, Any]:
-        """Get simulation runner status."""
-        if not HAS_SIMULATION or SimulationRunner is None:
-            return {"available": False, "reason": "Simulation module not loaded"}
-
-        runner = SimulationRunner.get_active()
-        if runner is None:
-            return {"available": True, "running": False, "reason": "No active simulation"}
-
-        return {
-            "available": True,
-            **runner.get_status()
-        }
-
-    @app.post("/api/simulation/pause")
-    async def pause_simulation() -> dict[str, Any]:
-        """Pause the running simulation."""
-        if not HAS_SIMULATION or SimulationRunner is None:
-            raise HTTPException(status_code=503, detail="Simulation module not available")
-
-        runner = SimulationRunner.get_active()
-        if runner is None:
-            raise HTTPException(status_code=404, detail="No active simulation")
-
-        if runner.is_paused:
-            return {"status": "already_paused", "tick": runner.world.tick}
-
-        runner.pause()
-
-        # Broadcast pause to all clients
-        await dashboard.connection_manager.broadcast({
-            "type": "simulation_control",
-            "data": {"action": "paused", "tick": runner.world.tick}
-        })
-
-        return {"status": "paused", "tick": runner.world.tick}
-
-    @app.post("/api/simulation/resume")
-    async def resume_simulation() -> dict[str, Any]:
-        """Resume a paused simulation."""
-        if not HAS_SIMULATION or SimulationRunner is None:
-            raise HTTPException(status_code=503, detail="Simulation module not available")
-
-        runner = SimulationRunner.get_active()
-        if runner is None:
-            raise HTTPException(status_code=404, detail="No active simulation")
-
-        if not runner.is_paused:
-            return {"status": "already_running", "tick": runner.world.tick}
-
-        runner.resume()
-
-        # Broadcast resume to all clients
-        await dashboard.connection_manager.broadcast({
-            "type": "simulation_control",
-            "data": {"action": "resumed", "tick": runner.world.tick}
-        })
-
-        return {"status": "running", "tick": runner.world.tick}
-
-    @app.websocket("/ws")
-    async def websocket_endpoint(websocket: WebSocket) -> None:
-        """WebSocket endpoint for real-time updates."""
-        await dashboard.connection_manager.connect(websocket)
-
-        # Send initial state
-        dashboard.parser.parse_incremental()
-        try:
-            await websocket.send_json({
-                "type": "initial_state",
-                "data": {
-                    "progress": dashboard.parser.get_progress().model_dump(),
-                    "agents": [a.model_dump() for a in dashboard.parser.get_all_agent_summaries()],
-                    "artifacts": [a.model_dump() for a in dashboard.parser.get_all_artifacts()],
-                },
-            })
-
-            # Keep connection alive and wait for messages
-            dashboard_timeout = get_validated_config().timeouts.dashboard_server
-            while True:
-                try:
-                    data = await asyncio.wait_for(
-                        websocket.receive_text(),
-                        timeout=dashboard_timeout
-                    )
-                    # Handle ping/pong for keepalive
-                    if data == "ping":
-                        await websocket.send_text("pong")
-                except asyncio.TimeoutError:
-                    # Send keepalive ping
-                    await websocket.send_text("ping")
-
-        except WebSocketDisconnect:
-            pass
-        finally:
-            dashboard.connection_manager.disconnect(websocket)
+    # Plan #125: Extracted route groups for maintainability
+    _register_simulation_routes(app, dashboard)
+    _register_websocket_routes(app, dashboard)
 
     return app
 
