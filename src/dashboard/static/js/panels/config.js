@@ -85,7 +85,7 @@ const ConfigPanel = {
             const stock = config.resources.stock || {};
             html += '<div class="config-section"><h4>Resources (Flow)</h4>' +
                 this.renderItems({
-                    'Compute/Tick': flow.compute?.per_tick || 'N/A',
+                    'Compute Quota': flow.compute?.per_tick || 'N/A',
                     'LLM Rate': flow.llm_rate?.per_minute || 'N/A'
                 }) + '</div>' +
                 '<div class="config-section"><h4>Resources (Stock)</h4>' +
