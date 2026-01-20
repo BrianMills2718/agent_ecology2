@@ -244,6 +244,22 @@
 
             <!-- Right Column: Genesis and Events -->
             <div class="right-column">
+                <!-- Emergence Metrics Panel (Plan #110 Phase 3) -->
+                <section class="panel emergence-panel collapsed">
+                    <div class="panel-header" id="emergence-toggle">
+                        <h2>Emergence Metrics</h2>
+                        <span class="collapse-icon">+</span>
+                    </div>
+                    <div class="panel-content" id="emergence-content">
+                        <div class="emergence-metrics-grid" id="emergence-metrics-grid">
+                            <!-- Populated by JS -->
+                        </div>
+                        <div class="emergence-chart-container">
+                            <canvas id="emergence-specialization-chart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Genesis Panel -->
                 <section class="panel genesis-panel">
                     <div class="panel-header">
@@ -407,6 +423,7 @@
     <script src="/static/js/panels/activity.js"></script>
     <script src="/static/js/panels/thinking.js"></script>
     <script src="/static/js/panels/temporal-network.js"></script>
+    <script src="/static/js/panels/emergence.js"></script>
     <script src="/static/js/main.js"></script>
 </body>
 </html>

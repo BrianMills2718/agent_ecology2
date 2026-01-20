@@ -36,9 +36,13 @@ const Dashboard = {
             if (typeof TemporalNetworkPanel !== 'undefined') {
                 TemporalNetworkPanel.init();
             }
+            if (typeof EmergencePanel !== 'undefined') {
+                EmergencePanel.init();
+            }
 
             // Set up collapsible panel toggles
             this.setupChartsToggle();
+            this.setupEmergenceToggle();
             this.setupDependencyToggle();
             this.setupTemporalNetworkToggle();
 
@@ -221,6 +225,29 @@ const Dashboard = {
                                 TemporalNetworkPanel.onShow();
                             }
                         }, 100);
+                    }
+                }
+            });
+        }
+    },
+
+    /**
+     * Set up collapsible emergence metrics panel (Plan #110 Phase 3)
+     */
+    setupEmergenceToggle() {
+        const toggle = document.getElementById('emergence-toggle');
+        if (toggle) {
+            toggle.addEventListener('click', () => {
+                const panel = toggle.closest('.panel');
+                if (panel) {
+                    panel.classList.toggle('collapsed');
+                    const icon = panel.querySelector('.collapse-icon');
+                    if (icon) {
+                        icon.textContent = panel.classList.contains('collapsed') ? '+' : 'x';
+                    }
+                    // Refresh emergence metrics when expanded
+                    if (!panel.classList.contains('collapsed') && typeof EmergencePanel !== 'undefined') {
+                        setTimeout(() => EmergencePanel.refresh(), 100);
                     }
                 }
             });
