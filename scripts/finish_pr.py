@@ -150,7 +150,7 @@ def remove_worktree(worktree_path: Path) -> tuple[bool, str]:
     return True, "Removed"
 
 
-def finish_pr(branch: str, pr_number: int, skip_ci_check: bool = False) -> bool:
+def finish_pr(branch: str, pr_number: int, check_ci: bool = False) -> bool:
     """Complete the full PR lifecycle."""
 
     # Step 0: Verify we're in main, not a worktree
@@ -168,16 +168,14 @@ def finish_pr(branch: str, pr_number: int, skip_ci_check: bool = False) -> bool:
     print(f"🏁 Finishing PR #{pr_number} (branch: {branch})")
     print()
 
-    # Step 1: Check CI status
-    if not skip_ci_check:
+    # Step 1: Check CI status (disabled by default - CI is optional)
+    if check_ci:
         print("📋 Checking CI status...")
         ci_ok, ci_msg = check_pr_ci_status(pr_number)
         if not ci_ok:
             print(f"❌ CI check failed: {ci_msg}")
             return False
         print("✅ CI checks passed")
-    else:
-        print("⚠️  Skipping CI check (--skip-ci-check)")
 
     # Step 2: Merge PR
     print(f"🔀 Merging PR #{pr_number}...")
@@ -235,14 +233,14 @@ def main() -> int:
         help="PR number"
     )
     parser.add_argument(
-        "--skip-ci-check",
+        "--check-ci",
         action="store_true",
-        help="Skip CI status check (use with caution)"
+        help="Enable CI status check before merge (disabled by default)"
     )
 
     args = parser.parse_args()
 
-    success = finish_pr(args.branch, args.pr, args.skip_ci_check)
+    success = finish_pr(args.branch, args.pr, args.check_ci)
     return 0 if success else 1
 
 
