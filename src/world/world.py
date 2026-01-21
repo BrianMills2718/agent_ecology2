@@ -875,6 +875,18 @@ class World:
         if net_new_bytes > 0:
             resources_consumed["disk_bytes"] = float(net_new_bytes)
 
+        # Plan #151: Emit disk allocation event on successful write
+        if write_result["success"] and net_new_bytes > 0 and self.rights_registry:
+            used_after = self.rights_registry.get_disk_used(intent.principal_id)
+            quota = self.rights_registry.get_disk_quota(intent.principal_id)
+            self.logger.log_resource_allocated(
+                principal_id=intent.principal_id,
+                resource="disk",
+                amount=float(net_new_bytes),
+                used_after=float(used_after),
+                quota=float(quota),
+            )
+
         return ActionResult(
             success=write_result["success"],
             message=write_result["message"],
@@ -1833,6 +1845,9 @@ class World:
             "last_action_tick": last_action_tick or self.tick,
         })
 
+        # Plan #151: Emit agent_state event per ADR-0020
+        self._emit_agent_state(agent_id, frozen_reason=reason)
+
     def emit_agent_unfrozen(
         self,
         agent_id: str,
@@ -1852,6 +1867,52 @@ class World:
             "unfrozen_by": unfrozen_by,
             "resources_transferred": resources_transferred or {},
         })
+
+        # Plan #151: Emit agent_state event per ADR-0020
+        self._emit_agent_state(agent_id)
+
+    def _emit_agent_state(self, agent_id: str, frozen_reason: str | None = None) -> None:
+        """Emit an agent_state event with full resource info (Plan #151, ADR-0020).
+
+        Args:
+            agent_id: The agent whose state changed
+            frozen_reason: If frozen, the reason why
+        """
+        # Determine status
+        if self.is_agent_frozen(agent_id):
+            status = "frozen"
+        else:
+            status = "active"
+
+        # Build resource state
+        resources: dict[str, dict[str, float]] = {}
+
+        # LLM tokens (renewable)
+        llm_tokens_used = self.ledger.get_resource(agent_id, "llm_tokens")
+        if self.rights_registry:
+            llm_tokens_quota = self.rights_registry.get_compute_quota(agent_id)
+            resources["llm_tokens"] = {
+                "used": float(llm_tokens_used),
+                "quota": float(llm_tokens_quota),
+                "remaining": float(llm_tokens_quota - llm_tokens_used),
+            }
+
+        # Disk (allocatable)
+        if self.rights_registry:
+            disk_used = self.rights_registry.get_disk_used(agent_id)
+            disk_quota = self.rights_registry.get_disk_quota(agent_id)
+            resources["disk"] = {
+                "used": float(disk_used),
+                "quota": float(disk_quota),
+            }
+
+        self.logger.log_agent_state(
+            agent_id=agent_id,
+            status=status,
+            scrip=float(self.ledger.get_scrip(agent_id)),
+            resources=resources,
+            frozen_reason=frozen_reason,
+        )
 
     # -------------------------------------------------------------------------
     # Kernel Quota Primitives (Plan #42)
