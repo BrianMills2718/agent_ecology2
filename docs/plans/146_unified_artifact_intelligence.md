@@ -372,19 +372,19 @@ async def _llm_transition(self, agent, step):
 
 ## Files Affected
 
-- `src/agents/agent.py` (modify) - Add new artifact ID fields
-- `src/agents/memory.py` (modify) - Remove Qdrant, use artifacts
-- `src/agents/workflow.py` (modify) - Support artifact references
-- `src/simulation/runner.py` (modify) - New execution flow
-- `src/world/artifacts.py` (modify) - New artifact types
-- `src/world/genesis.py` (modify) - Add new genesis artifacts
-- `src/world/genesis/genesis_embedder.py` (create)
-- `src/world/genesis/genesis_memory_search.py` (create)
-- `src/world/genesis/genesis_memory_add.py` (create)
-- `src/world/genesis/genesis_prompt_library.py` (create)
-- `tests/test_memory_artifacts.py` (create)
-- `tests/test_prompt_artifacts.py` (create)
-- `tests/test_llm_transitions.py` (create)
+- src/agents/agent.py (modify) - Add new artifact ID fields
+- src/agents/memory.py (modify) - Remove Qdrant, use artifacts
+- src/agents/workflow.py (modify) - Support artifact references
+- src/simulation/runner.py (modify) - New execution flow
+- src/world/artifacts.py (modify) - New artifact types
+- src/world/genesis/factory.py (modify) - Register new genesis artifacts
+- src/world/genesis/__init__.py (modify) - Export new genesis artifacts
+- src/world/genesis/embedder.py (create) - Embedding generation service
+- src/world/genesis/memory.py (create) - Memory operations service
+- src/world/genesis/genesis_prompt_library.py (create)
+- tests/unit/test_genesis_memory.py (create) - Memory artifact tests
+- tests/test_prompt_artifacts.py (create)
+- tests/test_llm_transitions.py (create)
 
 ## Required Tests
 

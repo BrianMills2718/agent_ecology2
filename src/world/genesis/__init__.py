@@ -72,6 +72,8 @@ from .escrow import GenesisEscrow
 from .debt_contract import GenesisDebtContract
 from .store import GenesisStore
 from .model_registry import GenesisModelRegistry
+from .embedder import GenesisEmbedder  # Plan #146
+from .memory import GenesisMemory  # Plan #146
 
 # Factory function
 from .factory import create_genesis_artifacts
@@ -131,6 +133,8 @@ __all__ = [
     "GenesisDebtContract",
     "GenesisStore",
     "GenesisModelRegistry",
+    "GenesisEmbedder",  # Plan #146
+    "GenesisMemory",  # Plan #146
     # Factory
     "create_genesis_artifacts",
 ]
