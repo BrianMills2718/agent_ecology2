@@ -5,6 +5,34 @@ Common fixtures for testing the agent ecology simulation.
 
 from __future__ import annotations
 
+# Load environment variables from .env before any tests run
+# Tries current directory first, then main repo location for worktrees
+from pathlib import Path
+from dotenv import load_dotenv
+
+def _find_main_repo_env() -> Path | None:
+    """Find .env in main repo if we're in a worktree."""
+    git_file = Path.cwd() / ".git"
+    if git_file.is_file():
+        # Worktree: .git is a file pointing to main repo
+        # Format: "gitdir: /path/to/main/.git/worktrees/branch-name"
+        content = git_file.read_text().strip()
+        if content.startswith("gitdir:"):
+            git_path = Path(content.split(": ", 1)[1])
+            # Navigate up from .git/worktrees/branch to main repo
+            main_repo = git_path.parent.parent.parent
+            main_env = main_repo / ".env"
+            if main_env.exists():
+                return main_env
+    return None
+
+# Try to load from current directory
+if not load_dotenv():
+    # Fallback: try main repo location (for worktrees)
+    main_env = _find_main_repo_env()
+    if main_env:
+        load_dotenv(main_env)
+
 import tempfile
 from pathlib import Path
 from typing import Any
