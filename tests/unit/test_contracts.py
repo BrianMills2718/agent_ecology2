@@ -34,8 +34,10 @@ class TestPermissionAction:
     """Tests for the PermissionAction enum."""
 
     def test_all_actions_defined(self) -> None:
-        """Verify all expected actions are defined."""
-        expected_actions = {"read", "write", "execute", "invoke", "delete", "transfer"}
+        """Verify all expected actions are defined (ADR-0019 + legacy)."""
+        # ADR-0019 defines: read, write, edit, invoke, delete
+        # Legacy: execute, transfer (kept for backward compatibility)
+        expected_actions = {"read", "write", "edit", "execute", "invoke", "delete", "transfer"}
         actual_actions = {action.value for action in PermissionAction}
         assert actual_actions == expected_actions
 
@@ -43,6 +45,7 @@ class TestPermissionAction:
         """Verify actions have correct string values."""
         assert PermissionAction.READ.value == "read"
         assert PermissionAction.WRITE.value == "write"
+        assert PermissionAction.EDIT.value == "edit"  # ADR-0019
         assert PermissionAction.EXECUTE.value == "execute"
         assert PermissionAction.INVOKE.value == "invoke"
         assert PermissionAction.DELETE.value == "delete"
@@ -52,6 +55,7 @@ class TestPermissionAction:
         """Verify actions can be created from strings."""
         assert PermissionAction("read") == PermissionAction.READ
         assert PermissionAction("write") == PermissionAction.WRITE
+        assert PermissionAction("edit") == PermissionAction.EDIT  # ADR-0019
         assert PermissionAction("invoke") == PermissionAction.INVOKE
 
     def test_action_invalid_string_raises(self) -> None:
@@ -327,6 +331,7 @@ class TestPermissionActionUsagePatterns:
         )
         modify_actions = (
             PermissionAction.WRITE,
+            PermissionAction.EDIT,  # ADR-0019: edit is a modify action
             PermissionAction.DELETE,
             PermissionAction.TRANSFER,
         )
@@ -341,8 +346,9 @@ class TestPermissionActionUsagePatterns:
     def test_action_iteration(self) -> None:
         """Verify PermissionAction can be iterated."""
         actions = list(PermissionAction)
-        assert len(actions) == 6
+        assert len(actions) == 7  # ADR-0019 added EDIT action
         assert PermissionAction.READ in actions
+        assert PermissionAction.EDIT in actions  # ADR-0019
 
     def test_action_membership_check(self) -> None:
         """Verify membership checks work with different types."""

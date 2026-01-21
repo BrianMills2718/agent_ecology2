@@ -54,16 +54,22 @@ class PermissionAction(str, Enum):
 
     All artifact operations map to one of these actions for permission checking.
     Using str, Enum allows JSON serialization and string comparison.
+
+    ADR-0019 defines five kernel actions: read, write, edit, invoke, delete.
+    EXECUTE and TRANSFER are kept for backward compatibility but may be deprecated.
     """
 
     READ = "read"
     """Read the artifact's content."""
 
     WRITE = "write"
-    """Modify the artifact's content or metadata."""
+    """Create or replace artifact content entirely."""
+
+    EDIT = "edit"
+    """Surgical modification of artifact content (ADR-0019)."""
 
     EXECUTE = "execute"
-    """Execute artifact code (for executable artifacts)."""
+    """Execute artifact code (for executable artifacts). Legacy - use INVOKE."""
 
     INVOKE = "invoke"
     """Invoke an artifact's service interface."""
@@ -72,7 +78,7 @@ class PermissionAction(str, Enum):
     """Delete the artifact entirely."""
 
     TRANSFER = "transfer"
-    """Transfer ownership to another principal."""
+    """Transfer ownership to another principal. Legacy - may be deprecated."""
 
 
 @dataclass

@@ -1556,11 +1556,15 @@ class LibrariesConfig(StrictModel):
 # =============================================================================
 
 class ContractsConfig(StrictModel):
-    """Contract system configuration (Plan #100, ADR-0017)."""
+    """Contract system configuration (Plan #100, ADR-0017, ADR-0019)."""
 
+    default_when_null: str = Field(
+        default="creator_only",
+        description="Behavior when access_contract_id is NULL. Options: 'creator_only' (only creator can access, ADR-0019 default), 'freeware' (legacy behavior)"
+    )
     default_on_missing: str = Field(
         default="genesis_contract_freeware",
-        description="Default contract to use when access_contract_id points to deleted/missing contract"
+        description="Default contract to use when access_contract_id points to deleted/missing contract (ADR-0017)"
     )
 
 

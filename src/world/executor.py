@@ -613,6 +613,8 @@ class SafeExecutor:
         action: str,
         artifact: "Artifact",
         contract_depth: int = 0,
+        method: str | None = None,
+        args: list[Any] | None = None,
     ) -> PermissionResult:
         """Check permission using artifact's access contract.
 
@@ -671,12 +673,14 @@ class SafeExecutor:
             if cached_result is not None:
                 return cached_result
 
-        # Build context for contract
+        # Build context for contract (ADR-0019: minimal context)
         context: dict[str, object] = {
-            "created_by": artifact.created_by,
-            "artifact_type": artifact.type,
-            "artifact_id": artifact.id,
+            "target_created_by": artifact.created_by,  # Pragmatic: commonly needed
         }
+        # Add method and args for invoke actions (ADR-0019)
+        if action == "invoke":
+            context["method"] = method
+            context["args"] = args if args is not None else []
 
         # ExecutableContracts need ledger access for balance checks
         if isinstance(contract, ExecutableContract):
@@ -774,31 +778,51 @@ class SafeExecutor:
         caller: str,
         action: str,
         artifact: "Artifact",
+        method: str | None = None,
+        args: list[Any] | None = None,
     ) -> tuple[bool, str]:
         """Check if caller has permission for action on artifact.
 
-        Uses contracts when use_contracts=True AND the artifact has an
-        access_contract_id attribute. Otherwise falls back to legacy policy.
-        This provides backward compatibility for artifacts without contracts.
+        Permission checking follows ADR-0019:
+        1. If access_contract_id is set: use that contract
+        2. If access_contract_id is NULL: use configurable default (creator_only or freeware)
+        3. If access_contract_id points to deleted contract: use default_on_missing
 
         Args:
             caller: The principal requesting access
             action: The action being attempted
             artifact: The artifact being accessed
+            method: Method name (for invoke actions, per ADR-0019)
+            args: Arguments (for invoke actions, per ADR-0019)
 
         Returns:
             Tuple of (allowed, reason)
         """
-        # Only use contract-based checking if:
-        # 1. use_contracts is enabled
-        # 2. The artifact has an explicit access_contract_id attribute
-        has_contract = hasattr(artifact, "access_contract_id") and artifact.access_contract_id is not None
+        # Check if artifact has an explicit access_contract_id
+        has_contract_attr = hasattr(artifact, "access_contract_id")
+        contract_id = getattr(artifact, "access_contract_id", None) if has_contract_attr else None
 
-        if self.use_contracts and has_contract:
-            result = self._check_permission_via_contract(caller, action, artifact)
+        # Case 1: Artifact has a non-null contract - use contract-based checking
+        if self.use_contracts and contract_id is not None:
+            result = self._check_permission_via_contract(caller, action, artifact, method=method, args=args)
             return (result.allowed, result.reason)
 
-        # Legacy policy-based check (for backward compatibility)
+        # Case 2: Artifact has NULL contract (ADR-0019)
+        # Use configurable default behavior
+        if has_contract_attr and contract_id is None:
+            default_behavior = config_get("contracts.default_when_null")
+            if default_behavior is None:
+                default_behavior = "creator_only"  # ADR-0019 default
+
+            if default_behavior == "creator_only":
+                # Only creator has full access, all others blocked
+                owner = getattr(artifact, "created_by", None)
+                if caller == owner:
+                    return (True, "null contract: creator access")
+                return (False, f"null contract: only creator '{owner}' can access (caller: {caller})")
+            # else: fall through to legacy/freeware behavior
+
+        # Legacy policy-based check (for backward compatibility or freeware default)
         return self._check_permission_legacy(caller, action, artifact)
 
     def validate_code(self, code: str) -> tuple[bool, str]:
@@ -1329,14 +1353,20 @@ class SafeExecutor:
                         "price_paid": 0
                     }
 
-                # Check invoke permission (caller, not this artifact)
-                # _check_permission handles contract vs legacy decision internally
-                allowed, reason = self._check_permission(caller_id, "invoke", target)
+                # Check invoke permission using IMMEDIATE caller (this artifact)
+                # ADR-0019: When A→B→C, C's contract sees B as caller, not A
+                # artifact_id is the current artifact (immediate caller)
+                # caller_id is the original agent (used for billing, not permission)
+                immediate_caller = artifact_id if artifact_id else caller_id
+                # ADR-0019: pass method ("run") and args in context
+                allowed, reason = self._check_permission(
+                    immediate_caller, "invoke", target, method="run", args=list(invoke_args)
+                )
                 if not allowed:
                     return {
                         "success": False,
                         "result": None,
-                        "error": f"Caller {caller_id} not allowed to invoke {target_artifact_id}: {reason}",
+                        "error": f"Caller {immediate_caller} not allowed to invoke {target_artifact_id}: {reason}",
                         "price_paid": 0
                     }
 
@@ -1346,11 +1376,12 @@ class SafeExecutor:
 
                 # If using contracts and target has a contract, check for additional cost
                 contract_cost = 0
-                cost_payer = caller_id  # Default: caller pays
+                cost_payer = caller_id  # Default: original caller pays (billing uses original)
                 has_contract = hasattr(target, "access_contract_id") and target.access_contract_id is not None
                 if self.use_contracts and has_contract:
+                    # Use immediate caller for permission/cost check per ADR-0019
                     perm_result = self._check_permission_via_contract(
-                        caller_id, "invoke", target
+                        immediate_caller, "invoke", target, method="run", args=list(invoke_args)
                     )
                     contract_cost = perm_result.cost
                     # Contract can specify alternate payer (Plan #140)

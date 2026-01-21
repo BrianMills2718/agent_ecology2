@@ -75,7 +75,8 @@ class FreewareContract:
         Returns:
             PermissionResult with decision
         """
-        owner = context.get("created_by") if context else None
+        # ADR-0019: context uses target_created_by (with fallback for legacy)
+        owner = context.get("target_created_by") or context.get("created_by") if context else None
 
         # Open access actions - anyone can perform these
         if action in (
@@ -85,9 +86,10 @@ class FreewareContract:
         ):
             return PermissionResult(allowed=True, reason="freeware: open access")
 
-        # Owner-only actions
+        # Owner-only actions (ADR-0019: includes EDIT)
         if action in (
             PermissionAction.WRITE,
+            PermissionAction.EDIT,
             PermissionAction.DELETE,
             PermissionAction.TRANSFER,
         ):
@@ -134,12 +136,13 @@ class SelfOwnedContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'created_by' key
+            context: Must contain 'target_created_by' key (ADR-0019)
 
         Returns:
             PermissionResult with decision
         """
-        owner = context.get("created_by") if context else None
+        # ADR-0019: context uses target_created_by (with fallback for legacy)
+        owner = context.get("target_created_by") or context.get("created_by") if context else None
 
         # Self-access: artifact accessing itself
         if caller == target:
@@ -185,12 +188,13 @@ class PrivateContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'created_by' key
+            context: Must contain 'target_created_by' key (ADR-0019)
 
         Returns:
             PermissionResult with decision
         """
-        owner = context.get("created_by") if context else None
+        # ADR-0019: context uses target_created_by (with fallback for legacy)
+        owner = context.get("target_created_by") or context.get("created_by") if context else None
 
         # Only owner has access
         if caller == owner:

@@ -916,13 +916,13 @@ class World:
                 error_details={"artifact_id": intent.artifact_id},
             )
 
-        # Check write permission via contracts
+        # Check edit permission via contracts (ADR-0019: edit is distinct from write)
         executor = get_executor()
-        allowed, reason = executor._check_permission(intent.principal_id, "write", existing)
+        allowed, reason = executor._check_permission(intent.principal_id, "edit", existing)
         if not allowed:
             return ActionResult(
                 success=False,
-                message=get_error_message("access_denied_write", artifact_id=intent.artifact_id),
+                message=get_error_message("access_denied_edit", artifact_id=intent.artifact_id),
                 error_code=ErrorCode.NOT_AUTHORIZED.value,
                 error_category=ErrorCategory.PERMISSION.value,
                 retriable=False,
@@ -1008,9 +1008,11 @@ class World:
                     error_details={"artifact_id": artifact_id, "executable": False},
                 )
 
-            # Check invoke permission via contracts
+            # Check invoke permission via contracts (ADR-0019: pass method/args in context)
             executor = get_executor()
-            allowed, reason = executor._check_permission(intent.principal_id, "invoke", artifact)
+            allowed, reason = executor._check_permission(
+                intent.principal_id, "invoke", artifact, method=method_name, args=args
+            )
             if not allowed:
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 self._log_invoke_failure(
