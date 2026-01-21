@@ -218,17 +218,28 @@ Two distinct concepts with different homes:
 
 What happens when `access_contract_id` points to a deleted contract?
 
-### Decision: Fail-Closed
+### Decision: Fail-Open (ADR-0017, ADR-0019)
 
 | Option | Behavior | Decision |
 |--------|----------|----------|
-| Fail-open | Treat as public | **Rejected** - security risk |
-| Fail-closed | Deny all access | **Accepted** |
+| Fail-open | Fall back to configurable default | **Accepted** |
+| Fail-closed | Deny all access | **Rejected** - too punitive |
 | Prevent deletion | Can't delete referenced contracts | **Rejected** - too complex |
 
-**Consequence:** Orphaned artifacts remain forever, like lost Bitcoin. Creator responsibility.
+**Behavior:** When contract is deleted, artifact falls back to configurable default contract (freeware by default).
 
-**Rationale:** Security > convenience. Adding referential integrity significantly complicates the kernel.
+**Consequence:** Custom access control is lost (selection pressure preserved), but artifact remains accessible.
+
+**Rationale:** Accept risk, observe outcomes. Fail-closed is punitive without learning benefit.
+
+### Null vs Dangling
+
+| Scenario | Behavior |
+|----------|----------|
+| `access_contract_id = null` | Default policy: creator has full rights, others blocked |
+| `access_contract_id` → deleted | Fall back to configurable default contract |
+
+See ADR-0019 for the unified permission architecture.
 
 ---
 
@@ -432,4 +443,5 @@ These need separate design discussions:
 - `genesis_freeware` -> `freeware_contract`
 
 ### Breaking Changes
-- Artifacts without valid `access_contract_id` become inaccessible (fail-closed)
+- Artifacts with dangling `access_contract_id` fall back to configurable default (ADR-0017, ADR-0019)
+- Artifacts with null `access_contract_id` use default policy (creator-only)

@@ -121,14 +121,32 @@ Six action types (Plan #131):
 
 ## Contracts
 
-**Contracts can do anything.** Invoker pays all costs.
+**Contracts can do anything.** Invoker pays all costs. See ADR-0019 for unified architecture.
 
 | Term | Definition |
 |------|------------|
 | **access_contract_id** | Field on every artifact pointing to its governing contract |
 | **check_permission** | Required method contracts implement to answer permission questions |
+| **immediate caller** | When A→B→C, C's contract sees B (not A) as the caller |
+| **null contract** | When `access_contract_id` is null, default: creator has full rights, others blocked |
+| **dangling contract** | When `access_contract_id` points to deleted contract, falls back to configurable default |
 
-Common patterns: Freeware, Self-owned, Gatekeeper, Escrow, Paywall.
+**Five Kernel Actions** (all contract-checked, see ADR-0019):
+
+| Action | Description |
+|--------|-------------|
+| `read` | Read artifact content |
+| `write` | Create/replace artifact |
+| `edit` | Surgical content modification |
+| `invoke` | Call method on artifact (includes method/args in context) |
+| `delete` | Remove artifact |
+
+**Contract Context** (what kernel provides):
+- `caller`, `action`, `target`, `target_created_by` - always provided
+- `method`, `args` - only for invoke
+- Everything else (balances, history) → contracts fetch via invoke
+
+Common contract patterns: Freeware, Self-owned, Gatekeeper, Escrow, Paywall.
 
 ---
 
