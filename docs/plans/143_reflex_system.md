@@ -1,6 +1,6 @@
 # Plan 143: Reflex System (System 1 Fast Path)
 
-**Status:** 📋 Planned
+**Status:** 🔄 In Review (PR #496)
 **Priority:** High
 **Blocked By:** None
 **Blocks:** Agent self-optimization, high-frequency trading
