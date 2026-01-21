@@ -1,6 +1,6 @@
 # Plan #144: Per-Entity Activity Timelines
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** None
