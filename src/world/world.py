@@ -1892,7 +1892,7 @@ class World:
         # LLM tokens (renewable)
         llm_tokens_used = self.ledger.get_resource(agent_id, "llm_tokens")
         if self.rights_registry:
-            llm_tokens_quota = self.rights_registry.get_compute_quota(agent_id)
+            llm_tokens_quota = self.rights_registry.get_llm_tokens_quota(agent_id)
             resources["llm_tokens"] = {
                 "used": float(llm_tokens_used),
                 "quota": float(llm_tokens_quota),
