@@ -121,6 +121,7 @@ class AgentConfigDict(TypedDict, total=False):
     rag: RAGConfigDict
     workflow: WorkflowConfigDict
     reflex_artifact_id: str | None  # Plan #143: Reference to reflex artifact
+    longterm_memory_artifact_id: str | None  # Plan #146: Reference to longterm memory artifact
 
 
 class Agent:
@@ -162,6 +163,9 @@ class Agent:
 
     # Reflex configuration (Plan #143)
     _reflex_artifact_id: str | None
+
+    # Long-term memory configuration (Plan #146)
+    _longterm_memory_artifact_id: str | None
 
     def __init__(
         self,
@@ -209,6 +213,7 @@ class Agent:
         self._action_schema = action_schema or ACTION_SCHEMA  # Fall back to default
         self._workflow_config = None  # Plan #69: Workflow config
         self._reflex_artifact_id = None  # Plan #143: Reflex artifact reference
+        self._longterm_memory_artifact_id = None  # Plan #146: Long-term memory artifact reference
 
         # If artifact-backed, load config from artifact content
         if artifact is not None:
@@ -287,6 +292,10 @@ class Agent:
         # Load reflex artifact ID if present (Plan #143)
         if "reflex_artifact_id" in config:
             self._reflex_artifact_id = config["reflex_artifact_id"]
+
+        # Load long-term memory artifact ID if present (Plan #146)
+        if "longterm_memory_artifact_id" in config:
+            self._longterm_memory_artifact_id = config["longterm_memory_artifact_id"]
 
         # Load working memory from artifact content if present (Plan #59)
         self._working_memory = self._extract_working_memory(config)
@@ -1029,6 +1038,23 @@ Your response should include:
     def has_reflex(self) -> bool:
         """Whether this agent has a configured reflex."""
         return self._reflex_artifact_id is not None
+
+    # --- Long-term Memory methods (Plan #146) ---
+
+    @property
+    def longterm_memory_artifact_id(self) -> str | None:
+        """ID of the agent's long-term memory artifact, or None."""
+        return self._longterm_memory_artifact_id
+
+    @longterm_memory_artifact_id.setter
+    def longterm_memory_artifact_id(self, value: str | None) -> None:
+        """Set long-term memory artifact ID."""
+        self._longterm_memory_artifact_id = value
+
+    @property
+    def has_longterm_memory(self) -> bool:
+        """Whether this agent has a configured long-term memory artifact."""
+        return self._longterm_memory_artifact_id is not None
 
     # --- Workflow methods (Plan #69 - ADR-0013) ---
 

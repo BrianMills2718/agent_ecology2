@@ -29,6 +29,8 @@ from .escrow import GenesisEscrow
 from .debt_contract import GenesisDebtContract
 from .store import GenesisStore
 from .model_registry import GenesisModelRegistry
+from .embedder import GenesisEmbedder
+from .memory import GenesisMemory
 
 
 def create_genesis_artifacts(
@@ -147,6 +149,20 @@ def create_genesis_artifacts(
         genesis_model_registry = GenesisModelRegistry(genesis_config=cfg)
         artifacts[genesis_model_registry.id] = genesis_model_registry
 
+    # Add embedder (Plan #146: Unified Artifact Intelligence)
+    # Always enabled for now - provides embedding generation for semantic memory
+    genesis_embedder = GenesisEmbedder(genesis_config=cfg)
+    artifacts[genesis_embedder.id] = genesis_embedder
+
+    # Add memory manager (Plan #146: Unified Artifact Intelligence)
+    # Always enabled for now - provides semantic memory operations
+    if artifact_store:
+        genesis_memory = GenesisMemory(
+            artifact_store=artifact_store,
+            genesis_config=cfg
+        )
+        artifacts[genesis_memory.id] = genesis_memory
+
     # Add MCP artifacts if any are enabled
     from ..mcp_bridge import create_mcp_artifacts
     mcp_artifacts = create_mcp_artifacts(cfg.mcp)
@@ -165,6 +181,8 @@ def create_genesis_artifacts(
         "genesis_event_log": "genesis_event_log_api",
         "genesis_escrow": "genesis_escrow_contract",
         "genesis_model_registry": "genesis_model_registry_api",
+        "genesis_embedder": "genesis_embedder_api",  # Plan #146
+        "genesis_memory": "genesis_memory_api",  # Plan #146
     }
     for old_name, new_name in alias_mapping.items():
         if old_name in artifacts:
