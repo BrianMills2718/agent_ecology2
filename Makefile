@@ -133,15 +133,15 @@ pr-list:  ## List open PRs
 pr-view:  ## View PR details (usage: make pr-view PR=5)
 	@if [ -z "$(PR)" ]; then GIT_CONFIG_NOSYSTEM=1 gh pr view; else GIT_CONFIG_NOSYSTEM=1 gh pr view $(PR); fi
 
-# Simulation
-run:  ## Run simulation (usage: make run TICKS=10 AGENTS=2)
-	python run.py --ticks $(or $(TICKS),10) --agents $(or $(AGENTS),1)
+# Simulation (continuous/autonomous mode)
+run:  ## Run simulation (usage: make run DURATION=60 AGENTS=2)
+	python run.py --duration $(or $(DURATION),60) --agents $(or $(AGENTS),1)
 
 dash:  ## View existing run.jsonl in dashboard (no simulation)
 	python run.py --dashboard-only
 
-dash-run:  ## Run simulation with dashboard (usage: make dash-run TICKS=10)
-	python run.py --dashboard --ticks $(or $(TICKS),10) --agents $(or $(AGENTS),1)
+dash-run:  ## Run simulation with dashboard (usage: make dash-run DURATION=60)
+	python run.py --dashboard --duration $(or $(DURATION),60) --agents $(or $(AGENTS),1)
 
 analyze:  ## Analyze simulation run (usage: make analyze RUN=logs/latest)
 	python scripts/analyze_run.py $(or $(RUN),logs/latest)

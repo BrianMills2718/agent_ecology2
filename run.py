@@ -3,8 +3,8 @@
 Agent Ecology - Main runner script
 
 Usage:
-    python run.py                    # Run with defaults from config/config.yaml
-    python run.py --ticks 10         # Override max ticks
+    python run.py                    # Run with defaults (autonomous mode)
+    python run.py --duration 60      # Run for 60 seconds
     python run.py --agents 1         # Run with only first N agents
     python run.py --dashboard        # Run with HTML dashboard (opens browser)
     python run.py --dashboard-only   # Only run dashboard (view existing run.jsonl)
@@ -170,7 +170,6 @@ def run_simulation(
     config: dict[str, Any],
     max_agents: int | None = None,
     verbose: bool = True,
-    delay: float | None = None,
     checkpoint: CheckpointData | None = None,
     duration: float | None = None,
 ) -> World:
@@ -180,7 +179,6 @@ def run_simulation(
         config: Configuration dictionary
         max_agents: Limit number of agents (optional)
         verbose: Print progress (default True)
-        delay: Seconds between ticks (defaults to config value)
         checkpoint: Checkpoint data to resume from (optional)
         duration: Seconds to run in autonomous mode (optional)
 
@@ -191,7 +189,6 @@ def run_simulation(
         config=config,
         max_agents=max_agents,
         verbose=verbose,
-        delay=delay,
         checkpoint=checkpoint,
     )
     return asyncio.run(runner.run(duration=duration))
@@ -201,7 +198,6 @@ async def run_simulation_async(
     config: dict[str, Any],
     max_agents: int | None = None,
     verbose: bool = True,
-    delay: float | None = None,
     checkpoint: CheckpointData | None = None,
     duration: float | None = None,
 ) -> World:
@@ -211,7 +207,6 @@ async def run_simulation_async(
         config: Configuration dictionary
         max_agents: Limit number of agents (optional)
         verbose: Print progress (default True)
-        delay: Seconds between ticks (defaults to config value)
         checkpoint: Checkpoint data to resume from (optional)
         duration: Seconds to run in autonomous mode (optional)
 
@@ -222,7 +217,6 @@ async def run_simulation_async(
         config=config,
         max_agents=max_agents,
         verbose=verbose,
-        delay=delay,
         checkpoint=checkpoint,
     )
     return await runner.run(duration=duration)
@@ -232,7 +226,6 @@ async def run_with_dashboard(
     config: dict[str, Any],
     max_agents: int | None = None,
     verbose: bool = True,
-    delay: float | None = None,
     checkpoint: CheckpointData | None = None,
     open_browser: bool = True,
     duration: float | None = None,
@@ -267,7 +260,6 @@ async def run_with_dashboard(
         config=config,
         max_agents=max_agents,
         verbose=verbose,
-        delay=delay,
         checkpoint=checkpoint,
     )
 
@@ -337,15 +329,8 @@ def main() -> None:
     parser.add_argument(
         "--config", default="config/config.yaml", help="Path to config file"
     )
-    parser.add_argument("--ticks", type=int, help="Override max ticks")
     parser.add_argument("--agents", type=int, help="Limit number of agents")
     parser.add_argument("--quiet", action="store_true", help="Suppress output")
-    parser.add_argument(
-        "--delay",
-        type=float,
-        default=None,
-        help="Delay between ticks (defaults to config value)",
-    )
     parser.add_argument(
         "--resume",
         type=str,
@@ -386,9 +371,6 @@ def main() -> None:
     # Validate LLM config at startup (Plan #129)
     validate_llm_config(config, verbose=not args.quiet)
 
-    if args.ticks:
-        config["world"]["max_ticks"] = args.ticks
-
     # Enable autonomous mode if --duration or --autonomous specified
     if args.duration or args.autonomous:
         if "execution" not in config:
@@ -416,7 +398,6 @@ def main() -> None:
             config,
             max_agents=args.agents,
             verbose=not args.quiet,
-            delay=args.delay,
             checkpoint=checkpoint,
             open_browser=not args.no_browser,
             duration=args.duration,
@@ -426,7 +407,6 @@ def main() -> None:
             config,
             max_agents=args.agents,
             verbose=not args.quiet,
-            delay=args.delay,
             checkpoint=checkpoint,
             duration=args.duration,
         )

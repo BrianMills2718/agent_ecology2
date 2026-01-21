@@ -33,9 +33,9 @@ make lint-suggest        # Show which docs need updates
 
 ### Simulation & Dashboard
 ```bash
-make run                 # Run simulation (TICKS=10 AGENTS=2)
+make run                 # Run simulation (DURATION=60 AGENTS=2)
 make dash                # View existing run.jsonl in dashboard
-make dash-run            # Run simulation with dashboard (TICKS=10)
+make dash-run            # Run simulation with dashboard (DURATION=60)
 make kill                # Stop running simulation
 ```
 
