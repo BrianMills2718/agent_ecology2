@@ -65,7 +65,9 @@ class ThinkingPanel {
 
         try {
             const response = await fetch('/api/agents');
-            const agents = await response.json();
+            const data = await response.json();
+            // Handle paginated response {agents: [], total: N} from Plan #142
+            const agents = Array.isArray(data) ? data : (data.agents || []);
 
             // Preserve current selection
             const currentValue = this.agentFilter.value;
