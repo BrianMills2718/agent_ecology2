@@ -37,15 +37,11 @@ from .contracts import AccessContract, PermissionAction, PermissionResult
 
 @dataclass
 class FreewareContract:
-    """Freeware access contract.
+    """Freeware access contract (ADR-0019).
 
     Access rules:
-    - READ: Anyone can read
-    - EXECUTE: Anyone can execute
-    - INVOKE: Anyone can invoke
-    - WRITE: Only owner can write
-    - DELETE: Only owner can delete
-    - TRANSFER: Only owner can transfer
+    - READ, INVOKE: Anyone can access
+    - WRITE, EDIT, DELETE: Only owner can modify
 
     This is the default contract for shared artifacts. It allows broad
     read access while preserving owner control over modifications.
@@ -70,7 +66,7 @@ class FreewareContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'target_created_by' key for write/edit/delete/transfer checks
+            context: Must contain 'target_created_by' key for write/edit/delete checks
 
         Returns:
             PermissionResult with decision
@@ -78,20 +74,11 @@ class FreewareContract:
         owner = context.get("target_created_by") if context else None
 
         # Open access actions - anyone can perform these
-        if action in (
-            PermissionAction.READ,
-            PermissionAction.EXECUTE,
-            PermissionAction.INVOKE,
-        ):
+        if action in (PermissionAction.READ, PermissionAction.INVOKE):
             return PermissionResult(allowed=True, reason="freeware: open access")
 
-        # Owner-only actions (ADR-0019: includes EDIT)
-        if action in (
-            PermissionAction.WRITE,
-            PermissionAction.EDIT,
-            PermissionAction.DELETE,
-            PermissionAction.TRANSFER,
-        ):
+        # Owner-only actions
+        if action in (PermissionAction.WRITE, PermissionAction.EDIT, PermissionAction.DELETE):
             if caller == owner:
                 return PermissionResult(allowed=True, reason="freeware: owner access")
             return PermissionResult(

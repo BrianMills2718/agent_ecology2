@@ -34,10 +34,9 @@ class TestPermissionAction:
     """Tests for the PermissionAction enum."""
 
     def test_all_actions_defined(self) -> None:
-        """Verify all expected actions are defined (ADR-0019 + legacy)."""
-        # ADR-0019 defines: read, write, edit, invoke, delete
-        # Legacy: execute, transfer (kept for backward compatibility)
-        expected_actions = {"read", "write", "edit", "execute", "invoke", "delete", "transfer"}
+        """Verify all expected actions are defined (ADR-0019)."""
+        # ADR-0019 defines five kernel actions
+        expected_actions = {"read", "write", "edit", "invoke", "delete"}
         actual_actions = {action.value for action in PermissionAction}
         assert actual_actions == expected_actions
 
@@ -45,18 +44,17 @@ class TestPermissionAction:
         """Verify actions have correct string values."""
         assert PermissionAction.READ.value == "read"
         assert PermissionAction.WRITE.value == "write"
-        assert PermissionAction.EDIT.value == "edit"  # ADR-0019
-        assert PermissionAction.EXECUTE.value == "execute"
+        assert PermissionAction.EDIT.value == "edit"
         assert PermissionAction.INVOKE.value == "invoke"
         assert PermissionAction.DELETE.value == "delete"
-        assert PermissionAction.TRANSFER.value == "transfer"
 
     def test_action_from_string(self) -> None:
         """Verify actions can be created from strings."""
         assert PermissionAction("read") == PermissionAction.READ
         assert PermissionAction("write") == PermissionAction.WRITE
-        assert PermissionAction("edit") == PermissionAction.EDIT  # ADR-0019
+        assert PermissionAction("edit") == PermissionAction.EDIT
         assert PermissionAction("invoke") == PermissionAction.INVOKE
+        assert PermissionAction("delete") == PermissionAction.DELETE
 
     def test_action_invalid_string_raises(self) -> None:
         """Verify invalid action strings raise ValueError."""
@@ -75,7 +73,7 @@ class TestPermissionAction:
 
     def test_action_in_collection(self) -> None:
         """Verify actions can be used in collections."""
-        read_actions = {PermissionAction.READ, PermissionAction.EXECUTE}
+        read_actions = {PermissionAction.READ, PermissionAction.INVOKE}
         assert PermissionAction.READ in read_actions
         assert PermissionAction.WRITE not in read_actions
 
@@ -323,18 +321,9 @@ class TestPermissionActionUsagePatterns:
     """Tests for common usage patterns with PermissionAction."""
 
     def test_action_grouping(self) -> None:
-        """Verify common action groupings work as expected."""
-        read_only_actions = (
-            PermissionAction.READ,
-            PermissionAction.EXECUTE,
-            PermissionAction.INVOKE,
-        )
-        modify_actions = (
-            PermissionAction.WRITE,
-            PermissionAction.EDIT,  # ADR-0019: edit is a modify action
-            PermissionAction.DELETE,
-            PermissionAction.TRANSFER,
-        )
+        """Verify common action groupings work as expected (ADR-0019)."""
+        read_only_actions = (PermissionAction.READ, PermissionAction.INVOKE)
+        modify_actions = (PermissionAction.WRITE, PermissionAction.EDIT, PermissionAction.DELETE)
 
         # Verify no overlap
         assert set(read_only_actions).isdisjoint(set(modify_actions))
@@ -346,9 +335,9 @@ class TestPermissionActionUsagePatterns:
     def test_action_iteration(self) -> None:
         """Verify PermissionAction can be iterated."""
         actions = list(PermissionAction)
-        assert len(actions) == 7  # ADR-0019 added EDIT action
+        assert len(actions) == 5  # ADR-0019: read, write, edit, invoke, delete
         assert PermissionAction.READ in actions
-        assert PermissionAction.EDIT in actions  # ADR-0019
+        assert PermissionAction.EDIT in actions
 
     def test_action_membership_check(self) -> None:
         """Verify membership checks work with different types."""

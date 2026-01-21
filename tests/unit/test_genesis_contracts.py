@@ -1,7 +1,7 @@
-"""Unit tests for genesis contracts.
+"""Unit tests for genesis contracts (ADR-0019).
 
 Tests each of the four genesis contracts defined in src/world/genesis_contracts.py:
-- FreewareContract: Open read/execute/invoke, owner-only write/delete/transfer
+- FreewareContract: Open read/invoke, owner-only write/edit/delete
 - SelfOwnedContract: Self or owner access only
 - PrivateContract: Owner-only access
 - PublicContract: Open access for all actions
@@ -68,18 +68,6 @@ class TestFreewareContract:
         assert result.allowed is True
         assert "open access" in result.reason
 
-    def test_execute_anyone(
-        self, contract: FreewareContract, context: dict[str, object]
-    ) -> None:
-        """Verify anyone can execute freeware artifacts."""
-        result = contract.check_permission(
-            caller="any_agent",
-            action=PermissionAction.EXECUTE,
-            target="artifact_1",
-            context=context,
-        )
-        assert result.allowed is True
-
     def test_invoke_anyone(
         self, contract: FreewareContract, context: dict[str, object]
     ) -> None:
@@ -137,30 +125,6 @@ class TestFreewareContract:
         result = contract.check_permission(
             caller="other_agent",
             action=PermissionAction.DELETE,
-            target="artifact_1",
-            context=context,
-        )
-        assert result.allowed is False
-
-    def test_transfer_owner(
-        self, contract: FreewareContract, context: dict[str, object]
-    ) -> None:
-        """Verify owner can transfer freeware artifacts."""
-        result = contract.check_permission(
-            caller="owner_agent",
-            action=PermissionAction.TRANSFER,
-            target="artifact_1",
-            context=context,
-        )
-        assert result.allowed is True
-
-    def test_transfer_other_denied(
-        self, contract: FreewareContract, context: dict[str, object]
-    ) -> None:
-        """Verify non-owner cannot transfer freeware artifacts."""
-        result = contract.check_permission(
-            caller="other_agent",
-            action=PermissionAction.TRANSFER,
             target="artifact_1",
             context=context,
         )
@@ -392,21 +356,13 @@ class TestPublicContract:
 
     def test_dangerous_actions_allowed(self, contract: PublicContract) -> None:
         """Verify even dangerous actions are allowed (intentional)."""
-        # Delete allowed
+        # Delete allowed by anyone
         delete_result = contract.check_permission(
             caller="random_agent",
             action=PermissionAction.DELETE,
             target="artifact_1",
         )
         assert delete_result.allowed is True
-
-        # Transfer allowed
-        transfer_result = contract.check_permission(
-            caller="random_agent",
-            action=PermissionAction.TRANSFER,
-            target="artifact_1",
-        )
-        assert transfer_result.allowed is True
 
 
 class TestGenesisContractsRegistry:

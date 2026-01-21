@@ -50,13 +50,10 @@ if TYPE_CHECKING:
 
 
 class PermissionAction(str, Enum):
-    """Actions that can be performed on artifacts.
+    """Actions that can be performed on artifacts (ADR-0019).
 
-    All artifact operations map to one of these actions for permission checking.
+    All artifact operations map to one of these five kernel actions.
     Using str, Enum allows JSON serialization and string comparison.
-
-    ADR-0019 defines five kernel actions: read, write, edit, invoke, delete.
-    EXECUTE and TRANSFER are kept for backward compatibility but may be deprecated.
     """
 
     READ = "read"
@@ -66,19 +63,13 @@ class PermissionAction(str, Enum):
     """Create or replace artifact content entirely."""
 
     EDIT = "edit"
-    """Surgical modification of artifact content (ADR-0019)."""
-
-    EXECUTE = "execute"
-    """Execute artifact code (for executable artifacts). Legacy - use INVOKE."""
+    """Surgical modification of artifact content."""
 
     INVOKE = "invoke"
-    """Invoke an artifact's service interface."""
+    """Invoke an artifact's service interface (includes execution)."""
 
     DELETE = "delete"
     """Delete the artifact entirely."""
-
-    TRANSFER = "transfer"
-    """Transfer ownership to another principal. Legacy - may be deprecated."""
 
 
 @dataclass

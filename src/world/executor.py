@@ -722,16 +722,13 @@ class SafeExecutor:
         action: str,
         artifact: "Artifact",
     ) -> tuple[bool, str]:
-        """Legacy permission check using inline policy dict.
+        """Legacy permission check using freeware contract.
 
         DEPRECATED: Legacy mode is deprecated. All artifacts should use
         access_contract_id for permission checking. When an artifact lacks
-        a contract, the executor falls back to freeware contract semantics:
-        - READ, EXECUTE, INVOKE: Anyone can access
-        - WRITE, DELETE, TRANSFER: Only owner can access
-
-        This function now delegates to freeware contract instead of
-        implementing custom logic. Owner bypass has been removed per CAP-003.
+        the access_contract_id attribute, falls back to freeware semantics:
+        - READ, INVOKE: Anyone can access
+        - WRITE, EDIT, DELETE: Only owner can access
 
         Args:
             caller: The principal requesting access
