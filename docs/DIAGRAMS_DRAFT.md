@@ -2,120 +2,134 @@
 
 For review - these will be integrated into the README.
 
-## Single Agent Internal Architecture
+## Single Agent Architecture
 
 ```mermaid
 graph TD
-    subgraph Agent["Agent: Market Maker"]
-        LLM[LLM Core]
-
+    subgraph Agent["Agent"]
         subgraph Workflow["State Machine"]
-            S1[monitor] -->|signal detected| S2[analyze]
-            S2 -->|opportunity found| S3[plan]
-            S3 -->|plan ready| S4[execute]
-            S4 -->|complete| S1
-            S2 -->|no opportunity| S1
+            S1[observe] -->|"new info"| S2[analyze]
+            S2 -->|"insight"| S3[plan]
+            S3 -->|"ready"| S4[act]
+            S4 -->|"result"| S5[learn]
+            S5 --> S1
+            S2 -->|"uncertain"| S1
         end
 
-        subgraph Memory["Memory Artifacts"]
-            RAG[(RAG Store)]
-            KG[(Knowledge Graph)]
-            Work[Working Memory]
+        subgraph Knowledge["Knowledge Artifacts"]
+            RAG[(Experience<br/>Memory)]
+            KG[(Knowledge<br/>Graph)]
+            Work[Working<br/>Memory]
         end
 
         subgraph Tools["Self-Built Tools"]
-            T1[price_checker]
-            T2[risk_scorer]
-            T3[order_builder]
+            T1[artifact_searcher]
+            T2[contract_analyzer]
+            T3[strategy_evaluator]
         end
 
-        LLM --> Workflow
-        Workflow -->|query| RAG
-        Workflow -->|lookup| KG
-        Workflow -->|invoke| Tools
-        Tools -->|results| Workflow
+        subgraph Config["Config (tradeable)"]
+            Prompt[system_prompt]
+            Model[model_choice]
+            Params[parameters]
+        end
+
+        Workflow -->|"recall"| RAG
+        Workflow -->|"query relationships"| KG
+        Workflow -->|"current context"| Work
+        Workflow -->|"invoke"| Tools
+        S5 -->|"store insight"| RAG
+        S5 -->|"update relations"| KG
     end
 ```
 
-## Capital Structure (Code Dependencies)
+## Capital Structure
+
+Shows how agents build artifacts that increase their collective capability. Two different high-level capabilities share underlying infrastructure - like how steel serves both auto and construction industries.
 
 ```mermaid
 graph BT
-    subgraph Primitives["Primitive Tools"]
-        JSON[json_parser]
-        HTTP[http_client]
-        Math[math_utils]
-        String[string_fmt]
-        Store[kv_store]
+    subgraph Foundation["Foundation Tools"]
+        Parse[text_parser]
+        Embed[embedder]
+        Store[vector_store]
+        Graph[graph_db]
+        Reason[inference_engine]
     end
 
-    subgraph Libraries["Composed Libraries"]
-        API[api_client]
-        Validate[data_validator]
-        Cache[cache_layer]
-        Report[report_builder]
+    subgraph Knowledge["Knowledge Infrastructure"]
+        KG[knowledge_graph_builder]
+        Retriever[semantic_retriever]
+        Patterns[pattern_detector]
     end
 
-    subgraph Modules["Functional Modules"]
-        Monitor[market_monitor]
-        Executor[trade_executor]
-        Notifier[alert_system]
+    subgraph Understanding["Understanding Layer"]
+        EntityEx[entity_extractor]
+        RelationEx[relation_extractor]
+        Summarizer[context_summarizer]
     end
 
-    subgraph Product["Product"]
-        Bot[trading_bot]
+    subgraph Capabilities["Agent Capabilities"]
+        Strategic[strategic_planner]
+        Social[social_modeler]
     end
 
-    JSON -->|"parse responses"| API
-    HTTP -->|"raw requests"| API
+    Parse -->|"tokenized text"| Embed
+    Embed -->|"vectors"| Store
+    Embed -->|"vectors"| Graph
 
-    JSON -->|"schema check"| Validate
-    Math -->|"range check"| Validate
+    Store -->|"similarity search"| Retriever
+    Graph -->|"structured data"| KG
+    Reason -->|"inference rules"| KG
 
-    Store -->|"read/write"| Cache
-    JSON -->|"serialize"| Cache
+    KG -->|"entity context"| EntityEx
+    Retriever -->|"relevant docs"| EntityEx
+    KG -->|"known relations"| RelationEx
+    Patterns -->|"templates"| RelationEx
 
-    String -->|"templates"| Report
-    Math -->|"calculations"| Report
+    Store -->|"historical"| Patterns
+    Reason -->|"logic"| Patterns
 
-    API -->|"market data"| Monitor
-    Cache -->|"historical"| Monitor
-    Validate -->|"clean data"| Monitor
+    EntityEx -->|"entities"| Summarizer
+    RelationEx -->|"relations"| Summarizer
+    Retriever -->|"context"| Summarizer
 
-    API -->|"order submission"| Executor
-    Validate -->|"order validation"| Executor
+    Summarizer -->|"world model"| Strategic
+    KG -->|"causal chains"| Strategic
+    Patterns -->|"what worked"| Strategic
+    Reason -->|"planning"| Strategic
 
-    Report -->|"format alerts"| Notifier
-    API -->|"send alerts"| Notifier
-
-    Monitor -->|"signals"| Bot
-    Executor -->|"execution"| Bot
-    Notifier -->|"notifications"| Bot
+    Summarizer -->|"agent profiles"| Social
+    KG -->|"interaction history"| Social
+    Patterns -->|"behavior patterns"| Social
+    Reason -->|"prediction"| Social
 ```
+
+**Key insight**: `knowledge_graph_builder`, `semantic_retriever`, and `pattern_detector` are shared infrastructure. Both `strategic_planner` (for planning actions) and `social_modeler` (for understanding other agents) depend on them. Building better knowledge infrastructure benefits ALL higher-level capabilities.
 
 ## Organization Structure (Ostrom/DAO Style)
 
 ```mermaid
 graph TD
     subgraph Commons["Shared Commons"]
-        Treasury[(Shared Treasury)]
-        Knowledge[(Knowledge Base)]
-        Infra[Shared Infrastructure]
+        Treasury[(Shared<br/>Treasury)]
+        Knowledge[(Collective<br/>Knowledge)]
+        Infra[Shared<br/>Infrastructure]
     end
 
     subgraph Governance["Governance Layer"]
-        Access[Access Contract]
-        Voting[Voting Contract]
-        Dispute[Dispute Resolution]
+        Access[Access Contract<br/>who can use what]
+        Voting[Voting Contract<br/>how rules change]
+        Dispute[Dispute Contract<br/>conflict resolution]
     end
 
-    subgraph WorkGroups["Work Groups"]
+    subgraph WorkGroups["Overlapping Work Groups"]
         subgraph Guild1["Research Guild"]
             A1[Agent A]
             A2[Agent B]
         end
 
-        subgraph Guild2["Trading Guild"]
+        subgraph Guild2["Building Guild"]
             A3[Agent C]
             A4[Agent D]
         end
@@ -125,85 +139,30 @@ graph TD
         end
     end
 
-    subgraph JointVentures["Cross-Guild Projects"]
-        JV1[Joint Project X]
-        JV2[Joint Project Y]
+    subgraph JointVentures["Cross-Guild Collaborations"]
+        JV1[Project Alpha]
+        JV2[Project Beta]
     end
 
     Access -->|"governs"| Treasury
     Access -->|"governs"| Knowledge
-    Voting -->|"modifies"| Access
-    Dispute -->|"resolves"| Voting
+    Voting -->|"can modify"| Access
+    Dispute -->|"appeals to"| Voting
 
-    A1 & A2 -->|"contribute"| Knowledge
-    A3 & A4 -->|"contribute"| Treasury
+    A1 & A2 -->|"contribute findings"| Knowledge
+    A3 & A4 -->|"contribute scrip"| Treasury
     A5 -->|"maintains"| Infra
 
-    Guild1 -->|"research for"| JV1
-    Guild2 -->|"capital for"| JV1
-    Guild2 -->|"execution for"| JV2
-    Guild3 -->|"infra for"| JV1 & JV2
+    Guild1 -->|"research"| JV1
+    Guild2 -->|"building"| JV1
+    Guild2 -->|"building"| JV2
+    Guild3 -->|"infra"| JV1 & JV2
 
-    JV1 -->|"profits to"| Treasury
-    JV2 -->|"profits to"| Treasury
+    JV1 -->|"returns"| Treasury
+    JV2 -->|"returns"| Treasury
+
+    A2 -.->|"also member"| Guild2
+    A4 -.->|"also member"| Guild3
 ```
 
-## Action Chain (Immediate Caller Model)
-
-```mermaid
-sequenceDiagram
-    participant A as Agent A
-    participant B as Artifact B<br/>(escrow)
-    participant C as Artifact C<br/>(ledger)
-
-    A->>B: invoke(deposit, 100)
-    Note over B: B's contract checks:<br/>caller = A ✓
-
-    B->>C: invoke(transfer, A→escrow, 100)
-    Note over C: C's contract checks:<br/>caller = B (not A!)
-
-    C-->>B: success
-    B-->>A: deposit confirmed
-
-    Note over A,C: C never sees A directly.<br/>B is the immediate caller.<br/>This enables trustless delegation.
-```
-
-## The Narrow Waist (5 Actions)
-
-```mermaid
-graph LR
-    subgraph Agents
-        A1[Agent 1]
-        A2[Agent 2]
-        A3[Agent N]
-    end
-
-    subgraph Actions["5 Actions<br/>(the narrow waist)"]
-        direction TB
-        invoke[invoke]
-        read[read]
-        write[write]
-        edit[edit]
-        delete[delete]
-    end
-
-    subgraph Artifacts
-        Art1[Ledger]
-        Art2[Escrow]
-        Art3[Custom Code]
-        Art4[Memory]
-        Art5[Contract]
-    end
-
-    A1 & A2 & A3 --> invoke
-    A1 & A2 & A3 --> read
-    A1 & A2 & A3 --> write
-    A1 & A2 & A3 --> edit
-    A1 & A2 & A3 --> delete
-
-    invoke --> Art1 & Art2 & Art3
-    read --> Art1 & Art2 & Art3 & Art4 & Art5
-    write --> Art3 & Art4
-    edit --> Art3 & Art4
-    delete --> Art3 & Art4
-```
+**Key features**: Overlapping membership (A2 in two guilds), shared commons with governance, joint ventures that combine capabilities, dispute resolution without central authority.
