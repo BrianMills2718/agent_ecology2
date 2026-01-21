@@ -186,6 +186,8 @@ class AgentLoop:
     _wake_condition: WakeCondition | None = field(default=None, init=False)
     _wake_event: asyncio.Event = field(default_factory=asyncio.Event, init=False)
     _iteration_count: int = field(default=0, init=False)
+    _crash_reason: str | None = field(default=None, init=False)
+    _voluntary_shutdown: bool = field(default=False, init=False)
 
     @property
     def state(self) -> AgentState:
@@ -211,6 +213,31 @@ class AgentLoop:
     def iteration_count(self) -> int:
         """Total number of iterations executed."""
         return self._iteration_count
+
+    @property
+    def crash_reason(self) -> str | None:
+        """Reason for crash if loop stopped due to error."""
+        return self._crash_reason
+
+    @crash_reason.setter
+    def crash_reason(self, value: str | None) -> None:
+        """Set crash reason (used by supervisor on restart)."""
+        self._crash_reason = value
+
+    @property
+    def voluntary_shutdown(self) -> bool:
+        """Whether agent requested voluntary shutdown."""
+        return self._voluntary_shutdown
+
+    @voluntary_shutdown.setter
+    def voluntary_shutdown(self, value: bool) -> None:
+        """Set voluntary shutdown flag."""
+        self._voluntary_shutdown = value
+
+    @consecutive_errors.setter
+    def consecutive_errors(self, value: int) -> None:
+        """Set consecutive error count (used by supervisor on restart)."""
+        self._consecutive_errors = value
 
     async def start(self) -> None:
         """Start the autonomous loop.
@@ -361,10 +388,12 @@ class AgentLoop:
                     delay = min(delay * 2, self.config.max_loop_delay)
 
                     if self._consecutive_errors >= self.config.max_consecutive_errors:
+                        error_msg = result.get("error", "max_consecutive_errors reached")
                         logger.error(
                             f"Agent {self.agent_id} hit error limit "
-                            f"({self._consecutive_errors}), pausing"
+                            f"({self._consecutive_errors}), pausing: {error_msg}"
                         )
+                        self._crash_reason = f"error_limit: {error_msg}"
                         self._state = AgentState.PAUSED
 
                 await asyncio.sleep(delay)
@@ -628,3 +657,24 @@ class AgentLoopManager:
             Dict mapping agent_id to AgentState
         """
         return {agent_id: loop.state for agent_id, loop in self._loops.items()}
+
+    @property
+    def loops(self) -> dict[str, AgentLoop]:
+        """Access to all loops (for supervisor monitoring)."""
+        return self._loops
+
+    async def start_loop(self, agent_id: str) -> None:
+        """Start a single agent loop.
+
+        Used by supervisor to restart a stopped/paused agent.
+
+        Args:
+            agent_id: ID of the agent to start
+
+        Raises:
+            ValueError: If loop not found
+        """
+        loop = self._loops.get(agent_id)
+        if loop is None:
+            raise ValueError(f"No loop found for agent {agent_id}")
+        await loop.start()

@@ -199,14 +199,13 @@ def _is_smart_death(self, agent_id: str) -> bool:
 
 ## Files Affected
 
-| File | Change |
-|------|--------|
-| `src/simulation/supervisor.py` | NEW - Supervisor implementation |
-| `src/simulation/agent_loop.py` | Expose crash reason |
-| `src/simulation/runner.py` | Integrate supervisor |
-| `config/schema.yaml` | Restart policy config |
-| `src/dashboard/parser.py` | Parse supervisor events |
-| `src/dashboard/server.py` | Supervisor API endpoints |
+- src/simulation/supervisor.py (create)
+- src/simulation/agent_loop.py (modify)
+- src/simulation/runner.py (modify)
+- config/schema.yaml (modify)
+- src/dashboard/parser.py (modify)
+- src/dashboard/server.py (modify)
+- tests/test_supervisor.py (create)
 
 ---
 
