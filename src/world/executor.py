@@ -759,10 +759,9 @@ class SafeExecutor:
         except ValueError:
             return (False, f"legacy: unknown action {action}")
 
+        # ADR-0019: minimal context with target_created_by
         context: dict[str, object] = {
-            "created_by": artifact.created_by,
-            "artifact_type": artifact.type,
-            "artifact_id": artifact.id,
+            "target_created_by": artifact.created_by,
         }
 
         result = freeware.check_permission(

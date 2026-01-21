@@ -40,8 +40,8 @@ class TestFreewareContract:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Create standard context with created_by."""
-        return {"created_by": "owner_agent"}
+        """Create standard context with target_created_by."""
+        return {"target_created_by": "owner_agent"}
 
     def test_contract_id(self, contract: FreewareContract) -> None:
         """Verify contract has correct ID."""
@@ -188,8 +188,8 @@ class TestSelfOwnedContract:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Create standard context with created_by."""
-        return {"created_by": "owner_agent"}
+        """Create standard context with target_created_by."""
+        return {"target_created_by": "owner_agent"}
 
     def test_contract_id(self, contract: SelfOwnedContract) -> None:
         """Verify contract has correct ID."""
@@ -291,8 +291,8 @@ class TestPrivateContract:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Create standard context with created_by."""
-        return {"created_by": "owner_agent"}
+        """Create standard context with target_created_by."""
+        return {"target_created_by": "owner_agent"}
 
     def test_contract_id(self, contract: PrivateContract) -> None:
         """Verify contract has correct ID."""
@@ -375,7 +375,7 @@ class TestPublicContract:
                 caller="any_agent",
                 action=action,
                 target="artifact_1",
-                context={"created_by": "someone_else"},
+                context={"target_created_by": "someone_else"},
             )
             assert result.allowed is True, f"Public should allow {action}"
             assert "open access" in result.reason
@@ -543,8 +543,8 @@ class TestContractComparison:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Standard context with created_by."""
-        return {"created_by": "owner_agent"}
+        """Standard context with target_created_by."""
+        return {"target_created_by": "owner_agent"}
 
     def test_owner_always_allowed_except_public(
         self, all_contracts: dict[str, AccessContract], context: dict[str, object]

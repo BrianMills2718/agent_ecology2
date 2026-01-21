@@ -158,16 +158,13 @@ class AccessContract(Protocol):
 
         Args:
             caller: The principal (agent/artifact) requesting access.
-                   This is the principal_id of whoever initiated the action.
-            action: The action being attempted (read, write, invoke, etc.).
+                   For nested invokes, this is the immediate caller (ADR-0019).
+            action: The action being attempted (read, write, edit, invoke, delete).
             target: The artifact_id being accessed.
-            context: Optional additional context about the access attempt.
-                    Standard context keys:
-                    - 'created_by': Current owner of the target artifact
-                    - 'artifact_type': Type of the target artifact
-                    - 'caller_type': Type of the calling principal
-                    - 'tick': Current simulation tick
-                    - Additional keys may be added by specific contracts
+            context: Additional context about the access attempt (ADR-0019):
+                    - 'target_created_by': Creator of the target artifact
+                    - 'method': Method name (invoke only)
+                    - 'args': Method arguments (invoke only)
 
         Returns:
             PermissionResult with:
@@ -394,7 +391,7 @@ class ExecutableContract:
         - reason: str - Human-readable explanation
         - cost: int - Scrip cost for the action (default 0)
         - payer: str|None - Principal who pays the cost (default: caller pays)
-            Contracts can specify alternate payers like context["created_by"],
+            Contracts can specify alternate payers like context["target_created_by"],
             a sponsor from artifact metadata, or any principal with standing.
 
     Available modules in contract code:

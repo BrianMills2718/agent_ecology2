@@ -70,7 +70,7 @@ class FreewareContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'created_by' key for write/delete/transfer checks
+            context: Must contain 'target_created_by' key for write/edit/delete/transfer checks
 
         Returns:
             PermissionResult with decision
