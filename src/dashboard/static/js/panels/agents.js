@@ -1,5 +1,5 @@
 /**
- * Agents status panel
+ * Agents status panel with pagination (Plan #142)
  */
 
 const AgentsPanel = {
@@ -7,10 +7,16 @@ const AgentsPanel = {
         tbody: null,
         countBadge: null,
         modal: null,
-        modalClose: null
+        modalClose: null,
+        pagination: null
     },
 
     agents: [],
+    
+    // Pagination state (Plan #142)
+    currentPage: 1,
+    rowsPerPage: 25,
+    totalAgents: 0,
 
     /**
      * Initialize the agents panel
@@ -20,6 +26,7 @@ const AgentsPanel = {
         this.elements.countBadge = document.getElementById('agent-count');
         this.elements.modal = document.getElementById('agent-modal');
         this.elements.modalClose = document.getElementById('modal-close');
+        this.elements.pagination = document.getElementById('agents-pagination');
 
         // Modal close handler
         if (this.elements.modalClose) {
@@ -40,7 +47,7 @@ const AgentsPanel = {
         // Listen for state updates
         window.wsManager.on('initial_state', (data) => {
             if (data.agents) {
-                this.updateAll(data.agents);
+                this.updateAll(data.agents, data.total || data.agents.length);
             }
         });
 
@@ -53,11 +60,12 @@ const AgentsPanel = {
     /**
      * Update all agents
      */
-    updateAll(agents) {
+    updateAll(agents, total = null) {
         this.agents = agents;
+        this.totalAgents = total !== null ? total : agents.length;
 
         if (this.elements.countBadge) {
-            this.elements.countBadge.textContent = agents.length;
+            this.elements.countBadge.textContent = this.totalAgents;
         }
 
         if (!this.elements.tbody) return;
@@ -93,6 +101,55 @@ const AgentsPanel = {
 
         // Update timeline agent filter
         this.updateTimelineFilter(agents);
+        
+        // Render pagination controls (Plan #142)
+        this.renderPagination();
+    },
+
+    /**
+     * Render pagination controls (Plan #142)
+     */
+    renderPagination() {
+        if (!this.elements.pagination) return;
+
+        const totalPages = Math.ceil(this.totalAgents / this.rowsPerPage);
+        
+        if (totalPages <= 1) {
+            this.elements.pagination.innerHTML = '';
+            return;
+        }
+
+        this.elements.pagination.innerHTML = `
+            <button class="page-btn" data-action="prev" ${this.currentPage <= 1 ? 'disabled' : ''}>&lt;</button>
+            <span class="page-info">Page ${this.currentPage} of ${totalPages}</span>
+            <button class="page-btn" data-action="next" ${this.currentPage >= totalPages ? 'disabled' : ''}>&gt;</button>
+            <select class="rows-per-page">
+                <option value="25" ${this.rowsPerPage === 25 ? 'selected' : ''}>25</option>
+                <option value="50" ${this.rowsPerPage === 50 ? 'selected' : ''}>50</option>
+                <option value="100" ${this.rowsPerPage === 100 ? 'selected' : ''}>100</option>
+            </select>
+        `;
+
+        // Add event listeners
+        this.elements.pagination.querySelector('[data-action="prev"]')?.addEventListener('click', () => {
+            if (this.currentPage > 1) {
+                this.currentPage--;
+                this.load();
+            }
+        });
+
+        this.elements.pagination.querySelector('[data-action="next"]')?.addEventListener('click', () => {
+            if (this.currentPage < totalPages) {
+                this.currentPage++;
+                this.load();
+            }
+        });
+
+        this.elements.pagination.querySelector('.rows-per-page')?.addEventListener('change', (e) => {
+            this.rowsPerPage = parseInt(e.target.value);
+            this.currentPage = 1; // Reset to first page
+            this.load();
+        });
     },
 
     /**
@@ -349,12 +406,19 @@ const AgentsPanel = {
     },
 
     /**
-     * Load agents from API
+     * Load agents from API with pagination (Plan #142)
      */
     async load() {
         try {
-            const agents = await API.getAgents();
-            this.updateAll(agents);
+            const offset = (this.currentPage - 1) * this.rowsPerPage;
+            const response = await API.getAgents(this.rowsPerPage, offset);
+            
+            // Handle both old (array) and new (object with pagination) response formats
+            if (Array.isArray(response)) {
+                this.updateAll(response);
+            } else {
+                this.updateAll(response.agents, response.total);
+            }
         } catch (error) {
             console.error('Failed to load agents:', error);
         }

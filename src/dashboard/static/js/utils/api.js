@@ -1,5 +1,6 @@
 /**
  * REST API client for the dashboard
+ * Updated with pagination support (Plan #142)
  */
 
 const API = {
@@ -36,10 +37,14 @@ const API = {
     },
 
     /**
-     * Get all agents
+     * Get agents with optional pagination (Plan #142)
      */
-    async getAgents() {
-        return this.get('/api/agents');
+    async getAgents(limit = null, offset = null) {
+        const params = new URLSearchParams();
+        if (limit !== null) params.set('limit', limit);
+        if (offset !== null) params.set('offset', offset);
+        const query = params.toString();
+        return this.get(`/api/agents${query ? '?' + query : ''}`);
     },
 
     /**
@@ -57,10 +62,15 @@ const API = {
     },
 
     /**
-     * Get all artifacts
+     * Get artifacts with optional pagination and search (Plan #142)
      */
-    async getArtifacts() {
-        return this.get('/api/artifacts');
+    async getArtifacts(limit = null, offset = null, search = null) {
+        const params = new URLSearchParams();
+        if (limit !== null) params.set('limit', limit);
+        if (offset !== null) params.set('offset', offset);
+        if (search) params.set('search', search);
+        const query = params.toString();
+        return this.get(`/api/artifacts${query ? '?' + query : ''}`);
     },
 
     /**

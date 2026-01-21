@@ -58,13 +58,14 @@ The dashboard needs three improvements for better observability at scale:
 
 ## Files Affected
 
-- `src/dashboard/kpis.py` - Add trend fields, extend history
-- `src/dashboard/server.py` - Pagination params, WebSocket KPI broadcast
-- `src/dashboard/static/js/panels/agents.js` - Pagination controls
-- `src/dashboard/static/js/panels/artifacts.js` - Pagination controls
-- `src/dashboard/static/js/panels/emergence.js` - Sparklines, WebSocket listener
-- `src/dashboard/static/index.html` - Pagination control HTML
-- `src/dashboard/static/css/dashboard.css` - Sparkline and pagination styles
+- src/dashboard/kpis.py (modify) - Add trend fields, extend history
+- src/dashboard/server.py (modify) - Pagination params, WebSocket KPI broadcast
+- src/dashboard/static/js/panels/agents.js (modify) - Pagination controls
+- src/dashboard/static/js/panels/artifacts.js (modify) - Pagination controls
+- src/dashboard/static/js/panels/emergence.js (modify) - Sparklines, WebSocket listener
+- src/dashboard/static/index.html (modify) - Pagination control HTML
+- src/dashboard/static/css/dashboard.css (modify) - Sparkline and pagination styles
+- src/dashboard/static/js/api.js (modify) - Add pagination parameters to API calls
 
 ---
 

@@ -1,13 +1,6 @@
 /**
  * Emergence Metrics panel - displays ecosystem emergence indicators (Plan #110 Phase 3)
- *
- * Shows metrics that help observe emergent organization patterns:
- * - Coordination density: How connected the agent network is
- * - Specialization index: How differentiated agents are
- * - Reuse ratio: Infrastructure building indicator
- * - Genesis independence: Ecosystem maturity
- * - Capital depth: Dependency chain length
- * - Coalition count: Number of distinct agent clusters
+ * Updated with KPI sparklines and WebSocket support (Plan #142)
  */
 
 const EmergencePanel = {
@@ -22,6 +15,18 @@ const EmergencePanel = {
     isCollapsed: true,
     refreshInterval: null,
     chart: null,
+    
+    // KPI history for sparklines (Plan #142)
+    kpiHistory: {
+        gini_coefficient: [],
+        active_agent_ratio: [],
+        scrip_velocity: [],
+        frozen_agent_count: [],
+        coordination_density: [],
+        specialization_index: []
+    },
+    maxHistoryLength: 30,
+    sparklineCharts: {},
 
     /**
      * Initialize the emergence panel
@@ -38,6 +43,11 @@ const EmergencePanel = {
             this.elements.toggle.addEventListener('click', () => this.toggleCollapse());
         }
 
+        // Listen for WebSocket KPI updates (Plan #142)
+        if (window.wsManager) {
+            window.wsManager.on('kpi_update', (data) => this.handleKPIUpdate(data));
+        }
+
         // Load initial data
         this.refresh();
 
@@ -47,6 +57,42 @@ const EmergencePanel = {
                 this.refresh();
             }
         }, 5000);
+    },
+
+    /**
+     * Handle WebSocket KPI update (Plan #142)
+     */
+    handleKPIUpdate(data) {
+        const { kpis, emergence } = data;
+        
+        // Update history buffers
+        if (kpis) {
+            this.addToHistory('gini_coefficient', kpis.gini_coefficient);
+            this.addToHistory('active_agent_ratio', kpis.active_agent_ratio);
+            this.addToHistory('scrip_velocity', kpis.scrip_velocity);
+            this.addToHistory('frozen_agent_count', kpis.frozen_agent_count);
+        }
+        if (emergence) {
+            this.addToHistory('coordination_density', emergence.coordination_density);
+            this.addToHistory('specialization_index', emergence.specialization_index);
+        }
+        
+        // Update display if not collapsed
+        if (!this.isCollapsed && emergence) {
+            this.render(emergence);
+        }
+    },
+
+    /**
+     * Add value to history buffer
+     */
+    addToHistory(key, value) {
+        if (this.kpiHistory[key] !== undefined) {
+            this.kpiHistory[key].push(value);
+            if (this.kpiHistory[key].length > this.maxHistoryLength) {
+                this.kpiHistory[key].shift();
+            }
+        }
     },
 
     /**
@@ -88,18 +134,83 @@ const EmergencePanel = {
     },
 
     /**
+     * Create a sparkline chart
+     */
+    createSparkline(canvasId, data, color = '#4CAF50') {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || data.length < 2) return null;
+
+        // Destroy existing chart
+        if (this.sparklineCharts[canvasId]) {
+            this.sparklineCharts[canvasId].destroy();
+        }
+
+        const ctx = canvas.getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map((_, i) => i),
+                datasets: [{
+                    data: data,
+                    borderColor: color,
+                    borderWidth: 1.5,
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                },
+                scales: {
+                    x: { display: false },
+                    y: { display: false }
+                },
+                animation: false
+            }
+        });
+
+        this.sparklineCharts[canvasId] = chart;
+        return chart;
+    },
+
+    /**
+     * Get trend indicator (up/down/stable)
+     */
+    getTrendIndicator(data) {
+        if (data.length < 2) return '';
+        const recent = data.slice(-5);
+        const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
+        const prev = data.slice(-10, -5);
+        if (prev.length === 0) return '';
+        const prevAvg = prev.reduce((a, b) => a + b, 0) / prev.length;
+        
+        const change = (avg - prevAvg) / (prevAvg || 1);
+        if (change > 0.05) return '<span class="trend-up">↑</span>';
+        if (change < -0.05) return '<span class="trend-down">↓</span>';
+        return '<span class="trend-stable">→</span>';
+    },
+
+    /**
      * Render metrics data
      */
     render(metrics) {
         if (!this.elements.metricsGrid) return;
 
-        // Build metrics display
+        // Build metrics display with sparklines
         const html = `
             <div class="emergence-metric">
                 <div class="metric-label" title="How connected the agent network is (unique agent pairs / possible pairs)">
-                    Coordination Density
+                    Coordination Density ${this.getTrendIndicator(this.kpiHistory.coordination_density)}
                 </div>
-                <div class="metric-value">${this.formatPercent(metrics.coordination_density)}</div>
+                <div class="metric-value-row">
+                    <span class="metric-value">${this.formatPercent(metrics.coordination_density)}</span>
+                    <canvas id="sparkline-coordination" class="sparkline-chart"></canvas>
+                </div>
                 <div class="metric-bar">
                     <div class="metric-bar-fill" style="width: ${Math.min(100, metrics.coordination_density * 100)}%"></div>
                 </div>
@@ -107,9 +218,12 @@ const EmergencePanel = {
 
             <div class="emergence-metric">
                 <div class="metric-label" title="How specialized agents are (coefficient of variation of action distributions)">
-                    Specialization Index
+                    Specialization Index ${this.getTrendIndicator(this.kpiHistory.specialization_index)}
                 </div>
-                <div class="metric-value">${metrics.specialization_index.toFixed(2)}</div>
+                <div class="metric-value-row">
+                    <span class="metric-value">${metrics.specialization_index.toFixed(2)}</span>
+                    <canvas id="sparkline-specialization" class="sparkline-chart"></canvas>
+                </div>
                 <div class="metric-bar">
                     <div class="metric-bar-fill specialization" style="width: ${Math.min(100, metrics.specialization_index * 50)}%"></div>
                 </div>
@@ -174,6 +288,12 @@ const EmergencePanel = {
         `;
 
         this.elements.metricsGrid.innerHTML = html;
+
+        // Render sparklines after DOM update
+        setTimeout(() => {
+            this.createSparkline('sparkline-coordination', this.kpiHistory.coordination_density, '#4CAF50');
+            this.createSparkline('sparkline-specialization', this.kpiHistory.specialization_index, '#2196F3');
+        }, 0);
 
         // Render specialization chart if we have agent data
         if (this.elements.specializationChart && metrics.agent_specializations) {
@@ -271,6 +391,10 @@ const EmergencePanel = {
         if (this.chart) {
             this.chart.destroy();
         }
+        // Cleanup sparkline charts
+        Object.values(this.sparklineCharts).forEach(chart => {
+            if (chart) chart.destroy();
+        });
     }
 };
 
