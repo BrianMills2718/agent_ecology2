@@ -1691,3 +1691,106 @@ body {
 .trend-stable {
     color: #a0a0a0;
 }
+
+/* ===== Plan #145: Dashboard Quick Wins ===== */
+
+/* Alerts Banner */
+.alerts-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 2rem;
+    background: linear-gradient(90deg, var(--warning) 0%, #f57c00 100%);
+    color: #1a1a2e;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.alerts-banner.critical {
+    background: linear-gradient(90deg, var(--error) 0%, #c62828 100%);
+    color: white;
+}
+
+.alerts-banner.hidden {
+    display: none;
+}
+
+.alerts-content {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.alert-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.alert-item .alert-icon {
+    font-size: 1rem;
+}
+
+.alerts-dismiss {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.alerts-dismiss:hover {
+    opacity: 1;
+}
+
+/* Export Button */
+.export-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: auto;
+}
+
+.export-btn:hover {
+    background: var(--accent-secondary);
+    color: var(--text-primary);
+}
+
+/* Frozen Status Tooltip */
+.status-frozen {
+    position: relative;
+    cursor: help;
+}
+
+.status-frozen[data-reason]::after {
+    content: attr(data-reason);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+    z-index: 1000;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+}
+
+.status-frozen[data-reason]:hover::after {
+    opacity: 1;
+    visibility: visible;
+}

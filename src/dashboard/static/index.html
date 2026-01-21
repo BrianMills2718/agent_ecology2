@@ -31,6 +31,14 @@
             </div>
         </header>
 
+        <!-- Alerts Banner (Plan #145) -->
+        <div id="alerts-banner" class="alerts-banner hidden">
+            <div class="alerts-content" id="alerts-content">
+                <!-- Populated by JS -->
+            </div>
+            <button class="alerts-dismiss" id="alerts-dismiss" title="Dismiss alerts">&times;</button>
+        </div>
+
         <!-- Progress Bar -->
         <section class="progress-section">
             <div class="progress-container">
@@ -62,6 +70,7 @@
                     <div class="panel-header">
                         <h2>Agents</h2>
                         <span id="agent-count" class="count-badge">0</span>
+                        <button id="agents-export" class="export-btn" title="Export to CSV">Export</button>
                     </div>
                     <div class="panel-content">
                         <table class="data-table" id="agents-table">
@@ -88,6 +97,7 @@
                     <div class="panel-header">
                         <h2>Artifacts</h2>
                         <span id="artifact-count" class="count-badge">0</span>
+                        <button id="artifacts-export" class="export-btn" title="Export to CSV">Export</button>
                     </div>
                     <div class="panel-controls">
                         <input type="text" id="artifact-search" placeholder="Search artifacts..." class="search-input">
@@ -446,6 +456,7 @@
     <script src="/static/js/panels/thinking.js"></script>
     <script src="/static/js/panels/temporal-network.js"></script>
     <script src="/static/js/panels/emergence.js"></script>
+    <script src="/static/js/alerts.js"></script>
     <script src="/static/js/main.js"></script>
 </body>
 </html>

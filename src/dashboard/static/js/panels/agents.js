@@ -44,6 +44,12 @@ const AgentsPanel = {
             });
         }
 
+        // Plan #145: Export button handler
+        const exportBtn = document.getElementById('agents-export');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.exportToCSV());
+        }
+
         // Listen for state updates
         window.wsManager.on('initial_state', (data) => {
             if (data.agents) {
@@ -87,12 +93,27 @@ const AgentsPanel = {
                 : agent.status === 'low_resources' ? 'status-low-resources'
                 : 'status-frozen';
 
+            // Plan #145: Add frozen diagnostic reason
+            let frozenReason = '';
+            if (agent.status === 'frozen') {
+                if (llmTokensPercent >= 100) {
+                    frozenReason = 'LLM tokens exhausted';
+                } else if (agent.scrip <= 0) {
+                    frozenReason = 'Out of scrip';
+                } else if (diskPercent >= 100) {
+                    frozenReason = 'Disk quota exceeded';
+                } else {
+                    frozenReason = 'Resources depleted';
+                }
+            }
+            const statusAttr = frozenReason ? ` data-reason="${frozenReason}"` : '';
+
             row.innerHTML = `
                 <td>${this.escapeHtml(agent.agent_id)}</td>
                 <td>${agent.scrip}</td>
                 <td>${llmTokensPercent}%</td>
                 <td>${diskPercent}%</td>
-                <td class="${statusClass}">${agent.status}</td>
+                <td class="${statusClass}"${statusAttr}>${agent.status}</td>
                 <td>${agent.action_count}</td>
             `;
 
@@ -468,6 +489,47 @@ const AgentsPanel = {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    },
+
+    /**
+     * Export agents to CSV (Plan #145)
+     */
+    exportToCSV() {
+        if (this.agents.length === 0) {
+            alert('No agents to export');
+            return;
+        }
+
+        // CSV header
+        const headers = ['ID', 'Scrip', 'LLM Tokens Used', 'LLM Tokens Quota', 'Disk Used', 'Disk Quota', 'Status', 'Actions'];
+        const rows = [headers.join(',')];
+
+        // CSV rows
+        this.agents.forEach(agent => {
+            const row = [
+                `"${agent.agent_id}"`,
+                agent.scrip,
+                agent.llm_tokens_used,
+                agent.llm_tokens_quota,
+                agent.disk_used,
+                agent.disk_quota,
+                agent.status,
+                agent.action_count
+            ];
+            rows.push(row.join(','));
+        });
+
+        // Create download
+        const csv = rows.join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `agents_export_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 };
 
