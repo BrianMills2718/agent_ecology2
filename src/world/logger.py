@@ -196,12 +196,15 @@ class EventLogger:
        - logs/{run_id}/summary.jsonl (companion SummaryLogger)
        - logs/latest -> {run_id} (symlink)
     2. Legacy mode (output_file only): Single file, overwritten each run
+
+    Plan #151: Added sequence counter and resource event helpers per ADR-0020.
     """
 
     output_path: Path
     summary_logger: SummaryLogger | None
     _logs_dir: Path | None
     _run_id: str | None
+    _sequence: int  # Monotonic event counter (Plan #151)
 
     def __init__(
         self,
@@ -219,6 +222,7 @@ class EventLogger:
         self._logs_dir = Path(logs_dir) if logs_dir else None
         self._run_id = run_id
         self.summary_logger = None  # Set in _setup_per_run_logging if applicable
+        self._sequence = 0  # Plan #151: monotonic event counter
 
         if logs_dir and run_id:
             # Per-run mode: create timestamped directory
@@ -268,14 +272,133 @@ class EventLogger:
         self.output_path.write_text("")
 
     def log(self, event_type: str, data: dict[str, Any]) -> None:
-        """Log an event to the JSONL file"""
+        """Log an event to the JSONL file.
+
+        Plan #151: All events now include a monotonic 'sequence' field
+        for ordering. The 'tick' field is retained for backwards compatibility
+        but should be considered deprecated per ADR-0020.
+        """
+        self._sequence += 1
         event: dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
+            "sequence": self._sequence,  # Plan #151: monotonic counter
             "event_type": event_type,
             **data,
         }
         with open(self.output_path, "a") as f:
             f.write(json.dumps(event) + "\n")
+
+    # ========== Plan #151: Resource Event Helpers (ADR-0020) ==========
+
+    def log_resource_consumed(
+        self,
+        principal_id: str,
+        resource: str,
+        amount: float,
+        balance_after: float,
+        quota: float | None = None,
+        rate_window_remaining: float | None = None,
+    ) -> None:
+        """Log consumption of a renewable (rate-limited) resource.
+
+        Args:
+            principal_id: The agent/artifact consuming the resource
+            resource: Resource name (e.g., "llm_tokens")
+            amount: Amount consumed
+            balance_after: Balance after consumption
+            quota: Optional quota limit
+            rate_window_remaining: Optional remaining capacity in rate window
+        """
+        data: dict[str, Any] = {
+            "principal_id": principal_id,
+            "resource": resource,
+            "amount": amount,
+            "balance_after": balance_after,
+        }
+        if quota is not None:
+            data["quota"] = quota
+        if rate_window_remaining is not None:
+            data["rate_window_remaining"] = rate_window_remaining
+        self.log("resource_consumed", data)
+
+    def log_resource_allocated(
+        self,
+        principal_id: str,
+        resource: str,
+        amount: float,
+        used_after: float,
+        quota: float,
+    ) -> None:
+        """Log allocation of an allocatable (quota-based) resource.
+
+        Args:
+            principal_id: The agent/artifact allocating the resource
+            resource: Resource name (e.g., "disk")
+            amount: Amount allocated (can be negative for deallocation)
+            used_after: Total usage after allocation
+            quota: Quota limit
+        """
+        self.log("resource_allocated", {
+            "principal_id": principal_id,
+            "resource": resource,
+            "amount": amount,
+            "used_after": used_after,
+            "quota": quota,
+        })
+
+    def log_resource_spent(
+        self,
+        principal_id: str,
+        resource: str,
+        amount: float,
+        balance_after: float,
+    ) -> None:
+        """Log spending of a depletable resource.
+
+        Args:
+            principal_id: The agent/artifact spending the resource
+            resource: Resource name (e.g., "llm_budget")
+            amount: Amount spent
+            balance_after: Balance after spending
+        """
+        self.log("resource_spent", {
+            "principal_id": principal_id,
+            "resource": resource,
+            "amount": amount,
+            "balance_after": balance_after,
+        })
+
+    def log_agent_state(
+        self,
+        agent_id: str,
+        status: str,
+        scrip: float,
+        resources: dict[str, dict[str, float]],
+        frozen_reason: str | None = None,
+    ) -> None:
+        """Log agent state change.
+
+        Args:
+            agent_id: The agent whose state changed
+            status: Current status ("active", "frozen", "terminated")
+            scrip: Current scrip balance
+            resources: Resource state dict with structure:
+                {
+                    "llm_tokens": {"used": X, "quota": Y, "rate_remaining": Z},
+                    "llm_budget": {"used": X, "initial": Y},
+                    "disk": {"used": X, "quota": Y}
+                }
+            frozen_reason: If frozen, the reason why
+        """
+        data: dict[str, Any] = {
+            "agent_id": agent_id,
+            "status": status,
+            "scrip": scrip,
+            "resources": resources,
+        }
+        if frozen_reason is not None:
+            data["frozen_reason"] = frozen_reason
+        self.log("agent_state", data)
 
     def read_recent(self, n: int | None = None) -> list[dict[str, Any]]:
         """Read the last N events from the log.

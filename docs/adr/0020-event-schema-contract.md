@@ -162,7 +162,7 @@ If data is missing, show "N/A" or "No data", not "0%".
 ## Implementation
 
 1. **Plan #149:** Dashboard architecture refactor - clean separation of parser/state/metrics
-2. **Plan #150:** Backend event emission - emit resource events on every change
+2. **Plan #151:** Backend event emission - emit resource events on every change
 3. **Migration:** Dashboard supports both old and new event formats during transition
 
 ## Related

@@ -1,4 +1,4 @@
-# Plan #150: Backend Event Emission
+# Plan #151: Backend Event Emission
 
 **Status:** 📋 Planned
 **Priority:** High
@@ -127,7 +127,7 @@ grep "resource_allocated\|resource_consumed\|resource_spent" logs/latest/events.
 ## Verification
 
 ### Tests & Quality
-- [ ] All required tests pass: `python scripts/check_plan_tests.py --plan 150`
+- [ ] All required tests pass: `python scripts/check_plan_tests.py --plan 151`
 - [ ] Full test suite passes: `pytest tests/`
 - [ ] Type check passes: `python -m mypy src/world/ --ignore-missing-imports`
 
