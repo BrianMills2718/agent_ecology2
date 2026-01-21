@@ -386,7 +386,7 @@ class SimulationRunner:
 
         Returns ThinkingResult with proposal or skip/error info.
         """
-        compute_before: int = self.world.ledger.get_compute(agent.agent_id)
+        llm_tokens_before: int = self.world.ledger.get_llm_tokens(agent.agent_id)
 
         # Check per-agent LLM budget (Plan #12)
         # If agent has llm_budget allocated but it's exhausted, skip thinking
@@ -558,7 +558,7 @@ class SimulationRunner:
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
                 "thinking_cost": thinking_cost,
-                "compute_after": self.world.ledger.get_compute(agent.agent_id),
+                "llm_tokens_after": self.world.ledger.get_llm_tokens(agent.agent_id),
                 "reasoning": reasoning,
             }
 

@@ -96,7 +96,7 @@ def e2e_config(tmp_path: Path) -> dict[str, Any]:
             {"id": "test_agent_1", "starting_scrip": 100},
         ],
         "rights": {
-            "default_compute_quota": 100,
+            "default_llm_tokens_quota": 100,
             "default_disk_quota": 10000,
         },
         "llm": {

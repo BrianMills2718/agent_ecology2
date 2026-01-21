@@ -123,14 +123,13 @@ class GenesisLedger(GenesisArtifact):
                 required=["agent_id"],
             )
         agent_id: str = args[0]
-        compute = self.ledger.get_compute(agent_id)
+        llm_tokens = self.ledger.get_llm_tokens(agent_id)
         return {
             "success": True,
             "agent_id": agent_id,
-            "flow": compute,  # Backward compat
-            "compute": compute,  # Clearer name
+            "llm_tokens": llm_tokens,
             "scrip": self.ledger.get_scrip(agent_id),
-            "resources": self.ledger.get_all_resources(agent_id)  # New: all resources
+            "resources": self.ledger.get_all_resources(agent_id)
         }
 
     def _all_balances(self, args: list[Any], invoker_id: str) -> dict[str, Any]:

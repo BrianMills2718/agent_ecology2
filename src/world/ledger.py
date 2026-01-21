@@ -84,13 +84,9 @@ class BalanceInfo(TypedDict):
     resources: dict[str, float]
 
 
-class LegacyBalanceInfo(TypedDict):
-    """Legacy balance format for backward compatibility.
-
-    NOTE: "compute" is a misnomer - it contains llm_tokens, not CPU time.
-    Use BalanceInfo with get_all_balances_full() for correct terminology.
-    """
-    compute: int  # Actually llm_tokens - misnomer kept for backward compat
+class SimpleBalanceInfo(TypedDict):
+    """Simple balance format with llm_tokens and scrip."""
+    llm_tokens: int
     scrip: int
 
 
@@ -454,17 +450,18 @@ class Ledger:
             self.scrip[to_id] += amount
             return True
 
-    # ===== BACKWARD COMPATIBILITY (compute = llm_tokens) =====
-    # Plan #140: "compute" is a misnomer - these operate on llm_tokens.
-    # Per glossary: cpu_rate = CPU seconds (renewable), llm_tokens = LLM tokens/min.
-    # Use resource-based methods (get_resource, spend_resource) instead.
+    # ===== LLM TOKENS (mode-aware convenience methods) =====
+    # These methods are mode-aware: they use RateTracker when rate limiting
+    # is enabled, otherwise fall back to tick-based resource tracking.
 
-    def get_compute(self, principal_id: str) -> int:
-        """DEPRECATED: Use get_resource(principal_id, 'llm_tokens').
+    def get_llm_tokens(self, principal_id: str) -> int:
+        """Get available LLM tokens for a principal.
 
-        Misnomer: "compute" actually means llm_tokens, not CPU time.
         Mode-aware: Uses RateTracker remaining capacity when rate limiting
         is enabled, otherwise uses tick-based balance.
+
+        Returns:
+            Available tokens (int). Returns 999999 if unlimited.
         """
         if self.use_rate_tracker and self.rate_tracker:
             remaining = self.get_resource_remaining(principal_id, "llm_tokens")
@@ -474,10 +471,9 @@ class Ledger:
             return int(remaining)
         return int(self.get_resource(principal_id, "llm_tokens"))
 
-    def can_spend_compute(self, principal_id: str, amount: int) -> bool:
-        """DEPRECATED: Use can_spend_resource(principal_id, 'llm_tokens', amount).
+    def can_spend_llm_tokens(self, principal_id: str, amount: int) -> bool:
+        """Check if principal can afford to spend LLM tokens.
 
-        Misnomer: "compute" actually means llm_tokens, not CPU time.
         Mode-aware: Uses RateTracker capacity check when rate limiting
         is enabled, otherwise uses tick-based balance check.
         """
@@ -485,40 +481,38 @@ class Ledger:
             return self.check_resource_capacity(principal_id, "llm_tokens", float(amount))
         return self.can_spend_resource(principal_id, "llm_tokens", float(amount))
 
-    def spend_compute(self, principal_id: str, amount: int) -> bool:
-        """DEPRECATED: Use spend_resource(principal_id, 'llm_tokens', amount).
+    def spend_llm_tokens(self, principal_id: str, amount: int) -> bool:
+        """Spend LLM tokens for a principal.
 
-        Misnomer: "compute" actually means llm_tokens, not CPU time.
         Mode-aware: Uses RateTracker consumption when rate limiting
         is enabled, otherwise uses tick-based balance deduction.
+
+        Returns:
+            True if successful, False if insufficient tokens.
         """
         if self.use_rate_tracker and self.rate_tracker:
             return self.consume_resource(principal_id, "llm_tokens", float(amount))
         return self.spend_resource(principal_id, "llm_tokens", float(amount))
 
-    def reset_compute(self, principal_id: str, compute_quota: int) -> None:
-        """DEPRECATED: Use set_resource(principal_id, 'llm_tokens', quota).
+    def reset_llm_tokens(self, principal_id: str, quota: int) -> None:
+        """Reset LLM token balance for a principal.
 
-        Note: When rate limiting is enabled (use_rate_tracker=True), tick-based
-        resource resets should not be used. Resources flow continuously via
-        RateTracker instead. This method will emit a warning if called when
-        rate tracking is enabled.
+        Note: When rate limiting is enabled, tick-based resets should not
+        be used. Resources flow continuously via RateTracker instead.
+        This method will emit a warning if called when rate tracking is enabled.
         """
         if self.use_rate_tracker:
             warnings.warn(
-                "reset_compute() called with rate limiting enabled. "
+                "reset_llm_tokens() called with rate limiting enabled. "
                 "Tick-based resource resets are deprecated when using RateTracker. "
                 "Resources should flow continuously via rolling windows instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
-        self.set_resource(principal_id, "llm_tokens", float(compute_quota))
+        self.set_resource(principal_id, "llm_tokens", float(quota))
 
-    def get_all_compute(self) -> dict[str, int]:
-        """DEPRECATED: Use get_all_resources() for resource snapshots.
-
-        Misnomer: "compute" actually means llm_tokens, not CPU time.
-        """
+    def get_all_llm_tokens(self) -> dict[str, int]:
+        """Get snapshot of all LLM token balances."""
         result: dict[str, int] = {}
         for pid, resources in self.resources.items():
             result[pid] = int(resources.get("llm_tokens", 0))
@@ -526,16 +520,13 @@ class Ledger:
 
     # ===== REPORTING =====
 
-    def get_all_balances(self) -> dict[str, LegacyBalanceInfo]:
-        """DEPRECATED: Use get_all_balances_full() for correct terminology.
-
-        Legacy format with "compute" misnomer (actually llm_tokens).
-        """
-        result: dict[str, LegacyBalanceInfo] = {}
+    def get_all_balances(self) -> dict[str, SimpleBalanceInfo]:
+        """Get snapshot of all balances with llm_tokens and scrip."""
+        result: dict[str, SimpleBalanceInfo] = {}
         all_principals = set(self.resources.keys()) | set(self.scrip.keys())
         for pid in all_principals:
             result[pid] = {
-                "compute": int(self.get_resource(pid, "llm_tokens")),
+                "llm_tokens": int(self.get_resource(pid, "llm_tokens")),
                 "scrip": self.scrip.get(pid, 0),
             }
         return result
@@ -767,6 +758,6 @@ class Ledger:
         cost = self.calculate_thinking_cost(
             input_tokens, output_tokens, rate_input, rate_output
         )
-        # Use mode-aware spend_compute (RateTracker or tick-based)
-        success = self.spend_compute(principal_id, cost)
+        # Use mode-aware spend_llm_tokens (RateTracker or tick-based)
+        success = self.spend_llm_tokens(principal_id, cost)
         return success, cost

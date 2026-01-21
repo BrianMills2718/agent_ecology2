@@ -66,13 +66,15 @@ def load_checkpoint(checkpoint_file: str) -> CheckpointData | None:
     balances: dict[str, BalanceInfo] = {}
     for agent_id, balance_data in raw_balances.items():
         if isinstance(balance_data, dict):
+            # Support both old "compute" key and new "llm_tokens" key
+            llm_tokens = int(balance_data.get("llm_tokens", balance_data.get("compute", 0)))
             balances[agent_id] = {
-                "compute": int(balance_data.get("compute", 0)),
+                "llm_tokens": llm_tokens,
                 "scrip": int(balance_data.get("scrip", 0)),
             }
         else:
             # Legacy format: just scrip value as int
-            balances[agent_id] = {"compute": 0, "scrip": int(balance_data)}
+            balances[agent_id] = {"llm_tokens": 0, "scrip": int(balance_data)}
 
     checkpoint: CheckpointData = {
         "tick": int(data["tick"]),

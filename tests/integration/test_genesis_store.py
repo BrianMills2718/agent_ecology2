@@ -357,7 +357,7 @@ class TestRegisteredInGenesisArtifacts:
             mint_callback=mint_callback,
             artifact_store=artifact_store,
             logger=logger,
-            rights_config={"default_quotas": {"compute": 100.0, "disk": 10000.0}}
+            rights_config={"default_quotas": {"llm_tokens": 100.0, "disk": 10000.0}}
         )
 
         # genesis_store should be in the created artifacts
@@ -395,7 +395,7 @@ class TestRegisteredInGenesisArtifacts:
             mint_callback=mint_callback,
             artifact_store=artifact_store,
             logger=logger,
-            rights_config={"default_quotas": {"compute": 100.0, "disk": 10000.0}},
+            rights_config={"default_quotas": {"llm_tokens": 100.0, "disk": 10000.0}},
             genesis_config=config
         )
 

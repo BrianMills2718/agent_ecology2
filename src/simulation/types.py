@@ -69,7 +69,7 @@ class PrincipalConfig(TypedDict):
 class BalanceInfo(TypedDict):
     """Balance information for an agent."""
 
-    compute: int
+    llm_tokens: int
     scrip: int
 
 
