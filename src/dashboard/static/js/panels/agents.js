@@ -278,6 +278,43 @@ const AgentsPanel = {
                 configEl.innerHTML = this.renderConfig(config);
             }
 
+            // Update activity timeline (Plan #144)
+            const activityEl = document.getElementById('modal-activity');
+            if (activityEl) {
+                try {
+                    const activityResp = await fetch(`/api/activity?agent_id=${encodeURIComponent(agentId)}&limit=50`);
+                    const activityData = await activityResp.json();
+                    if (activityData.items && activityData.items.length > 0) {
+                        const icons = {
+                            artifact_created: '📦',
+                            artifact_updated: '📝',
+                            escrow_listed: '🏷️',
+                            escrow_purchased: '🤝',
+                            escrow_cancelled: '❌',
+                            scrip_transfer: '💰',
+                            ownership_transfer: '🔑',
+                            mint_result: '⭐',
+                            thinking: '💭',
+                            action: '⚡',
+                        };
+                        activityEl.innerHTML = activityData.items.map(item => {
+                            const icon = icons[item.activity_type] || '•';
+                            return `
+                                <div class="modal-list-item">
+                                    <span class="activity-tick">${item.tick}</span>
+                                    <span class="activity-icon">${icon}</span>
+                                    <span class="activity-text">${item.description}</span>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        activityEl.innerHTML = '<div class="modal-list-item">No activity recorded</div>';
+                    }
+                } catch (err) {
+                    activityEl.innerHTML = '<div class="modal-list-item">Failed to load activity</div>';
+                }
+            }
+
             // Show modal
             this.elements.modal.classList.remove('hidden');
 
