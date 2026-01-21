@@ -4,6 +4,7 @@ Plan #125: Routes are organized into helper registration functions for maintaina
 """
 
 from __future__ import annotations
+from dataclasses import asdict
 
 import asyncio
 import json
@@ -143,6 +144,7 @@ class DashboardApp:
                     "data": event.model_dump(),
                 })
 
+
             # Also broadcast updated state summary
             await self.connection_manager.broadcast({
                 "type": "state_update",
@@ -150,6 +152,21 @@ class DashboardApp:
                     "progress": self.parser.get_progress().model_dump(),
                     "agent_count": len(self.parser.state.agents),
                     "artifact_count": len(self.parser.state.artifacts),
+                },
+            })
+
+
+
+            # Broadcast KPI update (Plan #142)
+            kpis = calculate_kpis(self.parser.state)
+            emergence = calculate_emergence_metrics(self.parser.state)
+            health = assess_health(self.parser.state, self.thresholds)
+            await self.connection_manager.broadcast({
+                "type": "kpi_update",
+                "data": {
+                    "kpis": asdict(kpis),
+                    "emergence": asdict(emergence),
+                    "health": asdict(health),
                 },
             })
 
@@ -198,6 +215,7 @@ def _register_simulation_routes(app: FastAPI, dashboard: DashboardApp) -> None:
             "available": True,
             **runner.get_status()
         }
+
 
     @app.post("/api/simulation/pause")
     async def pause_simulation() -> dict[str, Any]:
@@ -269,6 +287,7 @@ def _register_websocket_routes(app: FastAPI, dashboard: DashboardApp) -> None:
                     "artifacts": [a.model_dump() for a in dashboard.parser.get_all_artifacts()],
                 },
             })
+
 
             # Keep connection alive and wait for messages
             dashboard_timeout = get_validated_config().timeouts.dashboard_server
@@ -364,6 +383,7 @@ def create_app(
             ],
         }
 
+
     @app.get("/api/progress")
     async def get_progress() -> dict[str, Any]:
         """Get simulation progress only."""
@@ -371,10 +391,21 @@ def create_app(
         return dashboard.parser.get_progress().model_dump()
 
     @app.get("/api/agents")
-    async def get_agents() -> list[dict[str, Any]]:
-        """Get all agent summaries."""
+    async def get_agents(
+        limit: int = Query(25, ge=1, le=100),
+        offset: int = Query(0, ge=0),
+    ) -> dict[str, Any]:
+        """Get agent summaries with pagination (Plan #142)."""
         dashboard.parser.parse_incremental()
-        return [a.model_dump() for a in dashboard.parser.get_all_agent_summaries()]
+        all_agents = dashboard.parser.get_all_agent_summaries()
+        total = len(all_agents)
+        paginated = all_agents[offset:offset + limit]
+        return {
+            "agents": [a.model_dump() for a in paginated],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
 
     @app.get("/api/agents/{agent_id}")
     async def get_agent(agent_id: str) -> dict[str, Any]:
@@ -410,6 +441,7 @@ def create_app(
             "success_rate": metrics.success_rate,
         }
 
+
     @app.get("/api/agents/{agent_id}/config")
     async def get_agent_config(agent_id: str) -> dict[str, Any]:
         """Get agent configuration from YAML file (Plan #108).
@@ -431,6 +463,7 @@ def create_app(
                 "error": f"Config file not found for agent {agent_id}",
             }
 
+
         try:
             with open(config_path) as f:
                 config = yaml.safe_load(f)
@@ -449,6 +482,7 @@ def create_app(
                 "error_handling": config.get("error_handling"),
                 "config_found": True,
             }
+
         except Exception as e:
             return {
                 "agent_id": agent_id,
@@ -456,11 +490,29 @@ def create_app(
                 "error": f"Failed to load config: {str(e)}",
             }
 
+
     @app.get("/api/artifacts")
-    async def get_artifacts() -> list[dict[str, Any]]:
-        """Get all artifacts."""
+    async def get_artifacts(
+        limit: int = Query(25, ge=1, le=100),
+        offset: int = Query(0, ge=0),
+        search: str | None = Query(None, description="Search by artifact ID"),
+    ) -> dict[str, Any]:
+        """Get artifacts with pagination and search (Plan #142)."""
         dashboard.parser.parse_incremental()
-        return [a.model_dump() for a in dashboard.parser.get_all_artifacts()]
+        all_artifacts = dashboard.parser.get_all_artifacts()
+        
+        # Apply search filter if provided
+        if search:
+            all_artifacts = [a for a in all_artifacts if search.lower() in a.artifact_id.lower()]
+        
+        total = len(all_artifacts)
+        paginated = all_artifacts[offset:offset + limit]
+        return {
+            "artifacts": [a.model_dump() for a in paginated],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
 
     @app.get("/api/events")
     async def get_events(
@@ -542,7 +594,11 @@ def create_app(
             "artifact_diversity": kpis.artifact_diversity,
             "scrip_velocity_trend": kpis.scrip_velocity_trend,
             "activity_trend": kpis.activity_trend,
+            "gini_coefficient_trend": kpis.gini_coefficient_trend,
+            "active_agent_ratio_trend": kpis.active_agent_ratio_trend,
+            "frozen_count_trend": kpis.frozen_count_trend,
         }
+
 
     @app.get("/api/emergence")
     async def get_emergence_metrics() -> dict[str, Any]:
@@ -595,6 +651,7 @@ def create_app(
                     "severity": c.severity,
                     "message": c.message,
                 }
+
                 for c in report.concerns
             ],
             "kpis": {
@@ -607,6 +664,7 @@ def create_app(
             },
         }
 
+
     @app.get("/api/config")
     async def get_config() -> dict[str, Any]:
         """Get simulation configuration."""
@@ -618,6 +676,7 @@ def create_app(
             "world": config.get("world", {}),
             "budget": config.get("budget", {}),
         }
+
 
     @app.get("/api/ticks")
     async def get_tick_summaries() -> list[dict[str, Any]]:
@@ -642,6 +701,7 @@ def create_app(
                 "summaries": [],
             }
 
+
         # Parse summary.jsonl
         summaries: list[dict[str, Any]] = []
         try:
@@ -656,6 +716,7 @@ def create_app(
                 "summaries": [],
             }
 
+
         if not summaries:
             return {
                 "available": True,
@@ -663,6 +724,7 @@ def create_app(
                 "summaries": [],
                 "totals": {},
             }
+
 
         # Aggregate stats
         totals = {
@@ -673,6 +735,7 @@ def create_app(
             "total_artifacts_created": sum(s.get("artifacts_created", 0) for s in summaries),
             "total_errors": sum(s.get("errors", 0) for s in summaries),
         }
+
 
         # Action type breakdown
         action_types: dict[str, int] = {}
@@ -694,6 +757,7 @@ def create_app(
             "totals": totals,
             "highlights": all_highlights[-50:],  # Last 50 highlights
         }
+
 
     @app.get("/api/network")
     async def get_network_graph(
@@ -817,6 +881,7 @@ def create_app(
                 "unique_invokers": unique_invokers,
             })
 
+
         graph = build_dependency_graph(artifacts)
         return graph.model_dump()
 
@@ -894,6 +959,7 @@ def create_app(
             "items": all_thinking[:limit],
             "total_count": len(all_thinking),
         }
+
 
     # Plan #125: Extracted route groups for maintainability
     _register_simulation_routes(app, dashboard)

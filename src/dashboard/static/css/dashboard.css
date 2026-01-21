@@ -1619,3 +1619,75 @@ body {
     display: block;
     padding: 0;
 }
+
+/* Plan #142: Pagination controls */
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 8px 0;
+}
+
+.page-btn {
+    background: var(--accent-color, #0f4c75);
+    border: none;
+    color: #e0e0e0;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.page-btn:hover:not(:disabled) {
+    background: var(--accent-highlight, #1a6da8);
+}
+
+.page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.page-info {
+    color: #a0a0a0;
+    font-size: 12px;
+    margin: 0 8px;
+}
+
+.rows-per-page {
+    background: var(--bg-secondary, #16213e);
+    border: 1px solid var(--border-color, #333);
+    color: #e0e0e0;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+/* Plan #142: Sparkline charts */
+.sparkline-chart {
+    width: 60px;
+    height: 20px;
+    margin-left: 8px;
+}
+
+.metric-value-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Plan #142: Trend indicators */
+.trend-up {
+    color: #4CAF50;
+    font-weight: bold;
+}
+
+.trend-down {
+    color: #f44336;
+    font-weight: bold;
+}
+
+.trend-stable {
+    color: #a0a0a0;
+}

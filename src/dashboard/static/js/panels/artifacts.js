@@ -1,5 +1,5 @@
 /**
- * Artifacts catalog panel
+ * Artifacts catalog panel with pagination (Plan #142)
  */
 
 const ArtifactsPanel = {
@@ -7,10 +7,16 @@ const ArtifactsPanel = {
         tbody: null,
         countBadge: null,
         searchInput: null,
-        filterSelect: null
+        filterSelect: null,
+        pagination: null
     },
 
     artifacts: [],
+    
+    // Pagination state (Plan #142)
+    currentPage: 1,
+    rowsPerPage: 25,
+    totalArtifacts: 0,
 
     /**
      * Initialize the artifacts panel
@@ -20,17 +26,24 @@ const ArtifactsPanel = {
         this.elements.countBadge = document.getElementById('artifact-count');
         this.elements.searchInput = document.getElementById('artifact-search');
         this.elements.filterSelect = document.getElementById('artifact-filter');
+        this.elements.pagination = document.getElementById('artifacts-pagination');
 
-        // Search handler
+        // Search handler - debounced
+        let searchTimeout;
         if (this.elements.searchInput) {
             this.elements.searchInput.addEventListener('input', () => {
-                this.render();
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    this.currentPage = 1; // Reset to first page on search
+                    this.load();
+                }, 300);
             });
         }
 
         // Filter handler
         if (this.elements.filterSelect) {
             this.elements.filterSelect.addEventListener('change', () => {
+                this.currentPage = 1; // Reset to first page on filter
                 this.render();
             });
         }
@@ -38,7 +51,7 @@ const ArtifactsPanel = {
         // Listen for state updates
         window.wsManager.on('initial_state', (data) => {
             if (data.artifacts) {
-                this.updateAll(data.artifacts);
+                this.updateAll(data.artifacts, data.total || data.artifacts.length);
             }
         });
 
@@ -50,14 +63,61 @@ const ArtifactsPanel = {
     /**
      * Update all artifacts
      */
-    updateAll(artifacts) {
+    updateAll(artifacts, total = null) {
         this.artifacts = artifacts;
+        this.totalArtifacts = total !== null ? total : artifacts.length;
 
         if (this.elements.countBadge) {
-            this.elements.countBadge.textContent = artifacts.length;
+            this.elements.countBadge.textContent = this.totalArtifacts;
         }
 
         this.render();
+    },
+
+    /**
+     * Render pagination controls (Plan #142)
+     */
+    renderPagination() {
+        if (!this.elements.pagination) return;
+
+        const totalPages = Math.ceil(this.totalArtifacts / this.rowsPerPage);
+        
+        if (totalPages <= 1) {
+            this.elements.pagination.innerHTML = '';
+            return;
+        }
+
+        this.elements.pagination.innerHTML = `
+            <button class="page-btn" data-action="prev" ${this.currentPage <= 1 ? 'disabled' : ''}>&lt;</button>
+            <span class="page-info">Page ${this.currentPage} of ${totalPages}</span>
+            <button class="page-btn" data-action="next" ${this.currentPage >= totalPages ? 'disabled' : ''}>&gt;</button>
+            <select class="rows-per-page">
+                <option value="25" ${this.rowsPerPage === 25 ? 'selected' : ''}>25</option>
+                <option value="50" ${this.rowsPerPage === 50 ? 'selected' : ''}>50</option>
+                <option value="100" ${this.rowsPerPage === 100 ? 'selected' : ''}>100</option>
+            </select>
+        `;
+
+        // Add event listeners
+        this.elements.pagination.querySelector('[data-action="prev"]')?.addEventListener('click', () => {
+            if (this.currentPage > 1) {
+                this.currentPage--;
+                this.load();
+            }
+        });
+
+        this.elements.pagination.querySelector('[data-action="next"]')?.addEventListener('click', () => {
+            if (this.currentPage < totalPages) {
+                this.currentPage++;
+                this.load();
+            }
+        });
+
+        this.elements.pagination.querySelector('.rows-per-page')?.addEventListener('change', (e) => {
+            this.rowsPerPage = parseInt(e.target.value);
+            this.currentPage = 1;
+            this.load();
+        });
     },
 
     /**
@@ -68,17 +128,7 @@ const ArtifactsPanel = {
 
         let filtered = this.artifacts;
 
-        // Apply search filter
-        const searchTerm = this.elements.searchInput?.value?.toLowerCase() || '';
-        if (searchTerm) {
-            filtered = filtered.filter(art =>
-                art.artifact_id.toLowerCase().includes(searchTerm) ||
-                art.created_by.toLowerCase().includes(searchTerm) ||
-                art.artifact_type.toLowerCase().includes(searchTerm)
-            );
-        }
-
-        // Apply type filter
+        // Apply type filter (client-side for now)
         const typeFilter = this.elements.filterSelect?.value || '';
         if (typeFilter) {
             filtered = filtered.filter(art =>
@@ -115,7 +165,6 @@ const ArtifactsPanel = {
             const isGenesis = artifact.artifact_id.startsWith('genesis_');
 
             if (artifact.executable && !isGenesis) {
-                // Executable user artifacts may have dynamic pricing via code
                 priceDisplay = artifact.price > 0 ? `${artifact.price}*` : '0*';
                 priceTooltip = `Base price: ${artifact.price} scrip\n* Executable artifacts may compute dynamic fees`;
             } else if (artifact.price > 0) {
@@ -140,15 +189,26 @@ const ArtifactsPanel = {
 
             this.elements.tbody.appendChild(row);
         });
+
+        // Render pagination
+        this.renderPagination();
     },
 
     /**
-     * Load artifacts from API
+     * Load artifacts from API with pagination (Plan #142)
      */
     async load() {
         try {
-            const artifacts = await API.getArtifacts();
-            this.updateAll(artifacts);
+            const offset = (this.currentPage - 1) * this.rowsPerPage;
+            const search = this.elements.searchInput?.value || '';
+            const response = await API.getArtifacts(this.rowsPerPage, offset, search);
+            
+            // Handle both old (array) and new (object with pagination) response formats
+            if (Array.isArray(response)) {
+                this.updateAll(response);
+            } else {
+                this.updateAll(response.artifacts, response.total);
+            }
         } catch (error) {
             console.error('Failed to load artifacts:', error);
         }
@@ -176,7 +236,6 @@ const ArtifactsPanel = {
      */
     formatAccessContract(contractId) {
         if (!contractId) return 'Unknown';
-        // Make contract names more readable
         const names = {
             'genesis_contract_freeware': 'Freeware (public read/invoke)',
             'genesis_contract_self_owned': 'Self-Owned (owner only)',

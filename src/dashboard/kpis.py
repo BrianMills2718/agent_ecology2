@@ -64,6 +64,9 @@ class EcosystemKPIs:
     # Trends (last N ticks)
     scrip_velocity_trend: list[float] = field(default_factory=list)
     activity_trend: list[float] = field(default_factory=list)
+    gini_coefficient_trend: list[float] = field(default_factory=list)
+    active_agent_ratio_trend: list[float] = field(default_factory=list)
+    frozen_count_trend: list[int] = field(default_factory=list)
 
 
 def calculate_gini_coefficient(balances: list[int]) -> float:
@@ -266,8 +269,8 @@ def calculate_kpis(state: SimulationState) -> EcosystemKPIs:
     artifact_types = set(art.artifact_type for art in state.artifacts.values())
     kpis.artifact_diversity = len(artifact_types)
 
-    # Calculate trends from tick summaries (last 10 ticks)
-    recent_summaries = state.tick_summaries[-10:]
+    # Calculate trends from tick summaries (last 30 ticks)
+    recent_summaries = state.tick_summaries[-30:]
     if recent_summaries:
         # Activity trend
         kpis.activity_trend = [
