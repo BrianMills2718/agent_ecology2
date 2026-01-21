@@ -332,3 +332,153 @@ class TestAgentReflexIntegration:
         }
 
         assert config.get("reflex_artifact_id") == "my_reflex"
+
+
+class TestRunnerReflexIntegration:
+    """Tests for SimulationRunner reflex integration."""
+
+    @pytest.fixture
+    def world_with_reflex(self, test_world):
+        """Add a reflex artifact to the test world."""
+        from datetime import datetime
+
+        # Create reflex artifact using the artifacts store's write method
+        reflex_code = '''
+def reflex(context):
+    # Auto-noop if balance > 50
+    if context.get("balance", 0) > 50:
+        return {"action_type": "noop", "reason": "reflex fired"}
+    return None
+'''
+        test_world.artifacts.write(
+            artifact_id="test_reflex",
+            type="reflex",
+            content=reflex_code,
+            created_by="agent_1",
+            executable=True,
+        )
+
+        return test_world
+
+    @pytest.mark.asyncio
+    async def test_try_reflex_fires(self, world_with_reflex) -> None:
+        """Test that _try_reflex returns action when reflex fires."""
+        from src.agents.agent import Agent
+        import types
+
+        world = world_with_reflex
+
+        # Create agent with reflex
+        agent = Agent(agent_id="agent_1")  # Use existing principal
+        agent.reflex_artifact_id = "test_reflex"
+
+        # Create a mock runner (we only need the _try_reflex method)
+        class MockRunner:
+            def __init__(self, world):
+                self.world = world
+                self.verbose = False
+
+        runner = MockRunner(world)
+        from src.simulation.runner import SimulationRunner
+
+        runner._try_reflex = types.MethodType(SimulationRunner._try_reflex, runner)
+
+        action = await runner._try_reflex(agent)
+
+        assert action is not None
+        assert action["action_type"] == "noop"
+        assert action.get("reason") == "reflex fired"
+
+    @pytest.mark.asyncio
+    async def test_try_reflex_no_reflex_returns_none(self, world_with_reflex) -> None:
+        """Test that _try_reflex returns None when agent has no reflex."""
+        from src.agents.agent import Agent
+        import types
+
+        world = world_with_reflex
+
+        # Create agent WITHOUT reflex
+        agent = Agent(agent_id="agent_1")
+        # Note: no reflex_artifact_id set
+
+        class MockRunner:
+            def __init__(self, world):
+                self.world = world
+                self.verbose = False
+
+        runner = MockRunner(world)
+        from src.simulation.runner import SimulationRunner
+
+        runner._try_reflex = types.MethodType(SimulationRunner._try_reflex, runner)
+
+        action = await runner._try_reflex(agent)
+
+        assert action is None
+
+    @pytest.mark.asyncio
+    async def test_try_reflex_missing_artifact_returns_none(
+        self, world_with_reflex
+    ) -> None:
+        """Test that _try_reflex returns None when reflex artifact doesn't exist."""
+        from src.agents.agent import Agent
+        import types
+
+        world = world_with_reflex
+
+        # Create agent with reflex pointing to non-existent artifact
+        agent = Agent(agent_id="agent_1")
+        agent.reflex_artifact_id = "nonexistent_reflex"
+
+        class MockRunner:
+            def __init__(self, world):
+                self.world = world
+                self.verbose = False
+
+        runner = MockRunner(world)
+        from src.simulation.runner import SimulationRunner
+
+        runner._try_reflex = types.MethodType(SimulationRunner._try_reflex, runner)
+
+        action = await runner._try_reflex(agent)
+
+        assert action is None
+
+    @pytest.mark.asyncio
+    async def test_try_reflex_none_return_falls_through(
+        self, world_with_reflex
+    ) -> None:
+        """Test that reflex returning None falls through to LLM."""
+        from src.agents.agent import Agent
+        import types
+
+        world = world_with_reflex
+
+        # Create a reflex that always returns None
+        reflex_code = '''
+def reflex(context):
+    return None  # Always fall through to LLM
+'''
+        world.artifacts.write(
+            artifact_id="always_none_reflex",
+            type="reflex",
+            content=reflex_code,
+            created_by="agent_1",
+            executable=True,
+        )
+
+        agent = Agent(agent_id="agent_1")
+        agent.reflex_artifact_id = "always_none_reflex"
+
+        class MockRunner:
+            def __init__(self, world):
+                self.world = world
+                self.verbose = False
+
+        runner = MockRunner(world)
+        from src.simulation.runner import SimulationRunner
+
+        runner._try_reflex = types.MethodType(SimulationRunner._try_reflex, runner)
+
+        action = await runner._try_reflex(agent)
+
+        assert action is None  # Should fall through

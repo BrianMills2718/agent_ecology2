@@ -344,9 +344,9 @@ def build_reflex_context(
 
     # Get owned artifacts
     owned_artifacts: list[str] = []
-    for artifact in world.artifacts.list_all():
-        if artifact.created_by == agent_id:
-            owned_artifacts.append(artifact.id)
+    for artifact_dict in world.artifacts.list_all():
+        if artifact_dict.get("created_by") == agent_id:
+            owned_artifacts.append(artifact_dict["id"])
 
     # Get pending escrow deals (if escrow exists)
     pending_purchases: list[dict[str, Any]] = []

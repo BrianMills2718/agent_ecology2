@@ -41,6 +41,7 @@ from .checkpoint import save_checkpoint
 from .agent_loop import AgentLoopManager, AgentLoopConfig
 from .pool import WorkerPool, PoolConfig
 from ..agents.state_store import AgentStateStore
+from ..agents.reflex import ReflexExecutor, build_reflex_context
 
 
 class SimulationRunner:
@@ -1050,6 +1051,7 @@ class SimulationRunner:
         """Decide callback for agent loop.
 
         Calls the agent's propose_action_async and returns the action dict.
+        If agent has a reflex, tries reflex first (Plan #143).
 
         Args:
             agent: The agent making the decision.
@@ -1063,6 +1065,11 @@ class SimulationRunner:
 
         # Get current world state
         tick_state = self.world.get_state_summary()
+
+        # Plan #143: Check reflex before LLM
+        reflex_action = await self._try_reflex(agent)
+        if reflex_action is not None:
+            return reflex_action
 
         # Call the agent's propose method
         result = await agent.propose_action_async(cast(dict[str, Any], tick_state))
@@ -1147,6 +1154,85 @@ class SimulationRunner:
             "message": result.message,
             "data": result.data,
         }
+
+    async def _try_reflex(self, agent: Agent) -> dict[str, Any] | None:
+        """Try to execute agent's reflex before LLM (Plan #143).
+
+        If agent has a reflex_artifact_id, loads the reflex code from the
+        artifact and executes it. If the reflex fires (returns an action),
+        returns it to skip the LLM call.
+
+        Args:
+            agent: The agent to check reflex for.
+
+        Returns:
+            Action dict if reflex fired, None to fall through to LLM.
+        """
+        # Check if agent has a reflex
+        if not agent.has_reflex:
+            return None
+
+        reflex_artifact_id = agent.reflex_artifact_id
+        if not reflex_artifact_id:
+            return None
+
+        # Load reflex artifact
+        reflex_artifact = self.world.artifacts.get(reflex_artifact_id)
+        if not reflex_artifact:
+            # Log missing reflex artifact (soft reference)
+            self.world.logger.log(
+                "reflex_error",
+                {
+                    "tick": self.world.tick,
+                    "principal_id": agent.agent_id,
+                    "reflex_artifact_id": reflex_artifact_id,
+                    "error": "reflex artifact not found",
+                },
+            )
+            return None
+
+        # Get reflex code from artifact content
+        reflex_code = reflex_artifact.content
+        if not reflex_code:
+            return None
+
+        # Build reflex context
+        context = build_reflex_context(agent.agent_id, self.world)
+
+        # Execute reflex
+        executor = ReflexExecutor()
+        result = executor.execute(reflex_code, context)
+
+        # Log reflex execution
+        self.world.logger.log(
+            "reflex_executed",
+            {
+                "tick": self.world.tick,
+                "principal_id": agent.agent_id,
+                "reflex_artifact_id": reflex_artifact_id,
+                "fired": result.fired,
+                "execution_time_ms": result.execution_time_ms,
+                "error": result.error,
+            },
+        )
+
+        # If reflex fired, return the action
+        if result.fired and result.action is not None:
+            if self.verbose:
+                print(
+                    f"    {agent.agent_id}: REFLEX fired "
+                    f"({result.execution_time_ms:.1f}ms)"
+                )
+            return result.action
+
+        # Reflex didn't fire - fall through to LLM
+        if result.error:
+            if self.verbose:
+                print(
+                    f"    {agent.agent_id}: REFLEX error: {result.error[:100]}"
+                )
+
+        return None
 
     async def shutdown(self, timeout: float | None = None) -> None:
         """Gracefully stop the simulation.
