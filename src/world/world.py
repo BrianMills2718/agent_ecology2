@@ -451,6 +451,9 @@ class World:
             ValueError: If validation fails (insufficient scrip, not owner, etc.)
         """
         # Validate artifact exists and is owned by principal
+        # NOTE: This created_by check is kept for mint submission. Per ADR-0016,
+        # this could be contract-based (check "submit_for_mint" permission) but
+        # mint is a kernel system. Future work could make this contract-based.
         artifact = self.artifacts.get(artifact_id)
         if artifact is None:
             raise ValueError(f"Artifact {artifact_id} not found")
@@ -1093,34 +1096,81 @@ class World:
         )
 
     def _execute_delete(self, intent: DeleteArtifactIntent) -> ActionResult:
-        """Execute a delete_artifact action (Plan #57).
+        """Execute a delete_artifact action (Plan #57, #140).
 
-        Soft deletes an artifact, freeing disk quota for the owner.
-        Only the artifact owner can delete. Genesis artifacts cannot be deleted.
+        Soft deletes an artifact, freeing disk quota.
+        Permission is checked via the artifact's access contract (Plan #140).
+        Genesis artifacts cannot be deleted.
         """
-        result = self.delete_artifact(intent.artifact_id, intent.principal_id)
-        
-        if result.get("success"):
-            # Calculate freed disk space
-            artifact = self.artifacts.get(intent.artifact_id)
-            freed_bytes = 0
-            if artifact:
-                freed_bytes = len(artifact.content.encode("utf-8")) + len(artifact.code.encode("utf-8"))
-            
-            return ActionResult(
-                success=True,
-                message=f"Deleted artifact {intent.artifact_id}",
-                data={"artifact_id": intent.artifact_id, "freed_bytes": freed_bytes},
-            )
-        else:
+        # Check if genesis artifact (kernel-level protection, not policy)
+        if intent.artifact_id.startswith("genesis_"):
             return ActionResult(
                 success=False,
-                message=result.get("error", "Delete failed"),
-                error_code=ErrorCode.NOT_AUTHORIZED.value if "owner" in result.get("error", "") else ErrorCode.NOT_FOUND.value,
-                error_category=ErrorCategory.PERMISSION.value if "owner" in result.get("error", "") else ErrorCategory.RESOURCE.value,
+                message="Cannot delete genesis artifacts",
+                error_code=ErrorCode.NOT_AUTHORIZED.value,
+                error_category=ErrorCategory.PERMISSION.value,
                 retriable=False,
                 error_details={"artifact_id": intent.artifact_id},
             )
+
+        # Check if artifact exists
+        artifact = self.artifacts.get(intent.artifact_id)
+        if not artifact:
+            return ActionResult(
+                success=False,
+                message=f"Artifact {intent.artifact_id} not found",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+                error_details={"artifact_id": intent.artifact_id},
+            )
+
+        # Check if already deleted
+        if artifact.deleted:
+            return ActionResult(
+                success=False,
+                message=f"Artifact {intent.artifact_id} is already deleted",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+                error_details={"artifact_id": intent.artifact_id},
+            )
+
+        # Plan #140: Check delete permission via contract (not hardcoded created_by check)
+        executor = get_executor()
+        allowed, reason = executor._check_permission(intent.principal_id, "delete", artifact)
+        if not allowed:
+            return ActionResult(
+                success=False,
+                message=f"Delete not permitted: {reason}",
+                error_code=ErrorCode.NOT_AUTHORIZED.value,
+                error_category=ErrorCategory.PERMISSION.value,
+                retriable=False,
+                error_details={"artifact_id": intent.artifact_id},
+            )
+
+        # Calculate freed disk space before deletion
+        freed_bytes = len(artifact.content.encode("utf-8")) + len(artifact.code.encode("utf-8"))
+
+        # Perform soft delete
+        from datetime import datetime, timezone
+        artifact.deleted = True
+        artifact.deleted_at = datetime.now(timezone.utc).isoformat()
+        artifact.deleted_by = intent.principal_id
+
+        # Log the deletion
+        self.logger.log("artifact_deleted", {
+            "tick": self.tick,
+            "artifact_id": intent.artifact_id,
+            "deleted_by": intent.principal_id,
+            "deleted_at": artifact.deleted_at,
+        })
+
+        return ActionResult(
+            success=True,
+            message=f"Deleted artifact {intent.artifact_id}",
+            data={"artifact_id": intent.artifact_id, "freed_bytes": freed_bytes},
+        )
 
     def _log_invoke_success(
         self,
@@ -1550,7 +1600,8 @@ class World:
     def delete_artifact(self, artifact_id: str, requester_id: str) -> dict[str, Any]:
         """Delete an artifact (soft delete with tombstone).
 
-        Only the artifact owner can delete. Genesis artifacts cannot be deleted.
+        Permission is checked via the artifact's access contract (Plan #140).
+        Genesis artifacts cannot be deleted (kernel-level protection).
 
         Args:
             artifact_id: ID of artifact to delete
@@ -1561,8 +1612,9 @@ class World:
             {"success": False, "error": "..."} on failure
         """
         from datetime import datetime, timezone
+        from src.world.executor import get_executor
 
-        # Check if genesis artifact
+        # Check if genesis artifact (kernel-level protection)
         if artifact_id.startswith("genesis_"):
             return {"success": False, "error": "Cannot delete genesis artifacts"}
 
@@ -1575,9 +1627,11 @@ class World:
         if artifact.deleted:
             return {"success": False, "error": f"Artifact {artifact_id} is already deleted"}
 
-        # Check ownership
-        if artifact.created_by != requester_id:
-            return {"success": False, "error": "Only owner can delete artifact"}
+        # Plan #140: Check delete permission via contract (not hardcoded created_by check)
+        executor = get_executor()
+        allowed, reason = executor._check_permission(requester_id, "delete", artifact)
+        if not allowed:
+            return {"success": False, "error": f"Delete not permitted: {reason}"}
 
         # Soft delete - mark as tombstone
         artifact.deleted = True

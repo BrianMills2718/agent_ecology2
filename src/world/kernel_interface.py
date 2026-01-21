@@ -108,7 +108,7 @@ class KernelState:
         }
 
     def read_artifact(self, artifact_id: str, caller_id: str) -> str | None:
-        """Read artifact content (access controlled).
+        """Read artifact content (access controlled via contracts).
 
         Args:
             artifact_id: The artifact to read
@@ -117,16 +117,16 @@ class KernelState:
         Returns:
             Artifact content if access allowed, None otherwise
         """
+        from src.world.executor import get_executor
+
         artifact = self._world.artifacts.get(artifact_id)
         if artifact is None:
             return None
 
-        # Check access - for now, default is public read
-        # TODO: Implement proper access control via artifact policy
-        policy = artifact.policy or {}
-        allow_read = policy.get("allow_read", True)
-
-        if not allow_read and artifact.created_by != caller_id:
+        # Plan #140: Check permission via contract (not hardcoded created_by check)
+        executor = get_executor()
+        allowed, _reason = executor._check_permission(caller_id, "read", artifact)
+        if not allowed:
             return None
 
         return artifact.content
@@ -300,10 +300,10 @@ class KernelActions:
         content: str,
         artifact_type: str = "generic",
     ) -> bool:
-        """Write or update an artifact owned by caller.
+        """Write or update an artifact (access controlled via contracts).
 
         Args:
-            caller_id: Who is writing (must own artifact or create new)
+            caller_id: Who is writing
             artifact_id: Artifact to write
             content: New content
             artifact_type: Type if creating new
@@ -311,11 +311,15 @@ class KernelActions:
         Returns:
             True if write succeeded, False otherwise
         """
+        from src.world.executor import get_executor
+
         existing = self._world.artifacts.get(artifact_id)
 
         if existing is not None:
-            # Update existing - must be owner
-            if existing.created_by != caller_id:
+            # Update existing - check permission via contract (Plan #140)
+            executor = get_executor()
+            allowed, _reason = executor._check_permission(caller_id, "write", existing)
+            if not allowed:
                 return False
             existing.content = content
             return True
@@ -536,6 +540,11 @@ class KernelActions:
         This enables genesis artifacts (and agent-built artifacts) to transfer
         ownership without privileged access to ArtifactStore.
 
+        NOTE: Per ADR-0016, created_by should be immutable and ownership
+        should be tracked in artifact metadata. This method is kept for
+        escrow compatibility but should be refactored to use a separate
+        controlled_by field in a future plan.
+
         Args:
             caller_id: Current owner requesting the transfer
             artifact_id: Artifact to transfer
@@ -548,7 +557,7 @@ class KernelActions:
         if artifact is None:
             return False
 
-        # Verify caller is the current owner
+        # Verify caller is the current owner (kept for escrow - see docstring)
         if artifact.created_by != caller_id:
             return False
 
