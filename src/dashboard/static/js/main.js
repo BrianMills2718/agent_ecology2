@@ -49,6 +49,14 @@ const Dashboard = {
             // Plan #139: Set up fullscreen buttons on panels
             this.setupFullscreenButtons();
 
+            // Plan #145: Initialize alerts manager
+            if (typeof AlertsManager !== 'undefined') {
+                AlertsManager.init();
+            }
+
+            // Plan #145: Restore panel state from localStorage
+            this.restorePanelState();
+
             // Connect WebSocket
             window.wsManager.connect();
 
@@ -178,6 +186,8 @@ const Dashboard = {
                     if (icon) {
                         icon.textContent = panel.classList.contains('collapsed') ? '+' : 'x';
                     }
+                    // Save state (Plan #145)
+                    this.savePanelState('charts-panel', panel.classList.contains('collapsed'));
                 }
             });
         }
@@ -197,6 +207,8 @@ const Dashboard = {
                     if (icon) {
                         icon.textContent = panel.classList.contains('collapsed') ? '+' : 'x';
                     }
+                    // Save state (Plan #145)
+                    this.savePanelState('dependency-panel', panel.classList.contains('collapsed'));
                     // Refresh graph when expanded to ensure proper sizing
                     if (!panel.classList.contains('collapsed') && typeof DependencyGraphPanel !== 'undefined') {
                         setTimeout(() => DependencyGraphPanel.refresh(), 100);
@@ -220,6 +232,8 @@ const Dashboard = {
                     if (icon) {
                         icon.textContent = panel.classList.contains('collapsed') ? '+' : 'x';
                     }
+                    // Save state (Plan #145)
+                    this.savePanelState('temporal-network-panel', panel.classList.contains('collapsed'));
                     // Refresh network when expanded to ensure proper sizing
                     if (!panel.classList.contains('collapsed') && typeof TemporalNetworkPanel !== 'undefined') {
                         setTimeout(() => {
@@ -248,6 +262,8 @@ const Dashboard = {
                     if (icon) {
                         icon.textContent = panel.classList.contains('collapsed') ? '+' : 'x';
                     }
+                    // Save state (Plan #145)
+                    this.savePanelState('emergence-panel', panel.classList.contains('collapsed'));
                     // Refresh emergence metrics when expanded
                     if (!panel.classList.contains('collapsed') && typeof EmergencePanel !== 'undefined') {
                         setTimeout(() => EmergencePanel.refresh(), 100);
@@ -338,6 +354,68 @@ const Dashboard = {
             return true;
         }
         return false;
+    },
+
+    /**
+     * Save panel collapsed state to localStorage (Plan #145)
+     */
+    savePanelState(panelId, collapsed) {
+        try {
+            const state = JSON.parse(localStorage.getItem('dashboard_panel_state') || '{}');
+            state[panelId] = { collapsed };
+            localStorage.setItem('dashboard_panel_state', JSON.stringify(state));
+        } catch (e) {
+            console.warn('Failed to save panel state:', e);
+        }
+    },
+
+    /**
+     * Restore panel collapsed state from localStorage (Plan #145)
+     */
+    restorePanelState() {
+        try {
+            const state = JSON.parse(localStorage.getItem('dashboard_panel_state') || '{}');
+
+            Object.entries(state).forEach(([panelId, panelState]) => {
+                if (panelState.collapsed) {
+                    const panel = document.getElementById(panelId) ||
+                                  document.querySelector(`.${panelId}`);
+                    if (panel) {
+                        panel.classList.add('collapsed');
+                        const icon = panel.querySelector('.collapse-icon');
+                        if (icon) {
+                            icon.textContent = '+';
+                        }
+                    }
+                }
+            });
+        } catch (e) {
+            console.warn('Failed to restore panel state:', e);
+        }
+    },
+
+    /**
+     * Generic panel toggle with state persistence (Plan #145)
+     */
+    togglePanel(panelSelector, toggleSelector) {
+        const toggle = document.querySelector(toggleSelector);
+        if (toggle) {
+            toggle.addEventListener('click', () => {
+                const panel = toggle.closest('.panel');
+                if (panel) {
+                    panel.classList.toggle('collapsed');
+                    const icon = panel.querySelector('.collapse-icon');
+                    if (icon) {
+                        icon.textContent = panel.classList.contains('collapsed') ? '+' : 'x';
+                    }
+                    // Save state (Plan #145)
+                    const panelClass = Array.from(panel.classList).find(c => c.endsWith('-panel'));
+                    if (panelClass) {
+                        this.savePanelState(panelClass, panel.classList.contains('collapsed'));
+                    }
+                }
+            });
+        }
     }
 };
 

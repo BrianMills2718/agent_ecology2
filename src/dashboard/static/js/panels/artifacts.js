@@ -48,6 +48,12 @@ const ArtifactsPanel = {
             });
         }
 
+        // Plan #145: Export button handler
+        const exportBtn = document.getElementById('artifacts-export');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.exportToCSV());
+        }
+
         // Listen for state updates
         window.wsManager.on('initial_state', (data) => {
             if (data.artifacts) {
@@ -334,6 +340,46 @@ const ArtifactsPanel = {
         } catch (error) {
             console.error('Failed to load artifact detail:', error);
         }
+    },
+
+    /**
+     * Export artifacts to CSV (Plan #145)
+     */
+    exportToCSV() {
+        if (this.artifacts.length === 0) {
+            alert('No artifacts to export');
+            return;
+        }
+
+        // CSV header
+        const headers = ['ID', 'Type', 'Created By', 'Price', 'Executable', 'Mint Score', 'Size (bytes)'];
+        const rows = [headers.join(',')];
+
+        // CSV rows
+        this.artifacts.forEach(artifact => {
+            const row = [
+                `"${artifact.artifact_id}"`,
+                artifact.artifact_type || '',
+                `"${artifact.created_by || ''}"`,
+                artifact.price || 0,
+                artifact.executable ? 'Yes' : 'No',
+                artifact.mint_score !== null ? artifact.mint_score.toFixed(1) : '',
+                artifact.size_bytes || 0
+            ];
+            rows.push(row.join(','));
+        });
+
+        // Create download
+        const csv = rows.join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `artifacts_export_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 };
 
