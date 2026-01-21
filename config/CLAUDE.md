@@ -19,7 +19,7 @@ All runtime configuration lives here. No magic numbers in code.
 | `genesis` | Which genesis artifacts enabled, method costs |
 | `executor` | Timeout, preloaded imports |
 | `llm` | Default model, timeout, rate limit delay |
-| `world` | max_ticks |
+| `execution` | Autonomous loop settings |
 | `budget` | Global API cost limit, checkpoint settings |
 | `dashboard` | Server host/port |
 | `memory` | Qdrant/Mem0 settings |
@@ -48,8 +48,9 @@ Schema has sensible defaults for everything. You only need to specify overrides:
 
 ```yaml
 # Minimal config - everything else uses defaults
-world:
-  max_ticks: 50
+# Simulation runs in autonomous mode by default (no tick limits)
+execution:
+  use_autonomous_loops: true
 ```
 
 ## Doc Coupling
