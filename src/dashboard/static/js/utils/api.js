@@ -7,15 +7,21 @@ const API = {
     baseUrl: '',
 
     /**
-     * Make a GET request to the API
+     * Make a GET request to the API with latency tracking (Plan #147)
      */
     async get(endpoint) {
+        const startTime = Date.now();
         try {
             const response = await fetch(`${this.baseUrl}${endpoint}`);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            return await response.json();
+            const result = await response.json();
+            // Track API latency (Plan #147)
+            if (window.wsManager && window.wsManager.trackApiLatency) {
+                window.wsManager.trackApiLatency(startTime);
+            }
+            return result;
         } catch (error) {
             console.error(`API error on ${endpoint}:`, error);
             throw error;

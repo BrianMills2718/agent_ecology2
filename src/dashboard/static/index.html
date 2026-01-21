@@ -13,6 +13,12 @@
         <!-- Header -->
         <header class="header">
             <h1>Agent Ecology Dashboard</h1>
+            <div class="global-search-container">
+                <input type="text" id="global-search" class="global-search-input" placeholder="Search agents, artifacts..." autocomplete="off">
+                <div id="search-results" class="search-results hidden">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
             <div class="header-controls">
                 <div class="simulation-controls" id="sim-controls">
                     <button id="btn-pause" class="control-btn pause" title="Pause Simulation">
@@ -27,6 +33,13 @@
                 <div class="connection-status">
                     <span id="ws-status" class="status-indicator disconnected"></span>
                     <span id="ws-status-text">Disconnected</span>
+                </div>
+                <div class="latency-display" id="latency-display">
+                    <span class="latency-label">WS:</span>
+                    <span id="ws-latency" class="latency-value">--</span>
+                    <span class="latency-sep">|</span>
+                    <span class="latency-label">API:</span>
+                    <span id="api-latency" class="latency-value">--</span>
                 </div>
             </div>
         </header>
@@ -70,12 +83,14 @@
                     <div class="panel-header">
                         <h2>Agents</h2>
                         <span id="agent-count" class="count-badge">0</span>
+                        <button id="compare-agents-btn" class="compare-btn hidden" title="Compare selected agents">Compare</button>
                         <button id="agents-export" class="export-btn" title="Export to CSV">Export</button>
                     </div>
                     <div class="panel-content">
                         <table class="data-table" id="agents-table">
                             <thead>
                                 <tr>
+                                    <th class="compare-header" title="Select agents to compare"></th>
                                     <th title="Agent identifier">ID</th>
                                     <th title="Economic currency - used to pay for artifacts and trade">Scrip</th>
                                     <th title="LLM budget remaining (in $)">Budget</th>
@@ -403,6 +418,19 @@
             </div>
         </div>
 
+        <!-- Agent Comparison Modal (Plan #147) -->
+        <div id="compare-modal" class="modal hidden">
+            <div class="modal-content modal-wide">
+                <div class="modal-header">
+                    <h2>Agent Comparison</h2>
+                    <button class="modal-close" id="compare-modal-close">&times;</button>
+                </div>
+                <div class="modal-body" id="compare-body">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+
         <!-- Artifact Detail Modal -->
         <div id="artifact-modal" class="modal hidden">
             <div class="modal-content modal-wide">
@@ -457,6 +485,7 @@
     <script src="/static/js/panels/temporal-network.js"></script>
     <script src="/static/js/panels/emergence.js"></script>
     <script src="/static/js/alerts.js"></script>
+    <script src="/static/js/search.js"></script>
     <script src="/static/js/main.js"></script>
 </body>
 </html>

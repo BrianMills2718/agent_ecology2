@@ -963,6 +963,85 @@ def create_app(
         }
 
 
+    @app.get("/api/search")
+    async def global_search(
+        q: str = Query(..., min_length=1, description="Search query"),
+        limit: int = Query(20, ge=1, le=50, description="Max results per category"),
+    ) -> dict[str, Any]:
+        """Global search across agents, artifacts, and events (Plan #147).
+
+        Searches by ID and content across all entity types.
+        Returns categorized results with relevance.
+        """
+        dashboard.parser.parse_incremental()
+        query = q.lower()
+
+        results: dict[str, list[dict[str, Any]]] = {
+            "agents": [],
+            "artifacts": [],
+            "events": [],
+        }
+
+        # Search agents
+        for agent_id, agent_state in dashboard.parser.state.agents.items():
+            if query in agent_id.lower():
+                results["agents"].append({
+                    "id": agent_id,
+                    "type": "agent",
+                    "status": agent_state.status,
+                    "scrip": agent_state.scrip,
+                    "match_type": "id",
+                })
+                if len(results["agents"]) >= limit:
+                    break
+
+        # Search artifacts
+        for artifact_id, artifact_state in dashboard.parser.state.artifacts.items():
+            if query in artifact_id.lower():
+                results["artifacts"].append({
+                    "id": artifact_id,
+                    "type": "artifact",
+                    "artifact_type": artifact_state.artifact_type,
+                    "created_by": artifact_state.created_by,
+                    "match_type": "id",
+                })
+            elif artifact_state.content and query in artifact_state.content.lower():
+                results["artifacts"].append({
+                    "id": artifact_id,
+                    "type": "artifact",
+                    "artifact_type": artifact_state.artifact_type,
+                    "created_by": artifact_state.created_by,
+                    "match_type": "content",
+                })
+            if len(results["artifacts"]) >= limit:
+                break
+
+        # Search events (most recent first, limited scan)
+        events_to_scan = dashboard.parser.state.all_events[-500:]  # Last 500 events
+        for event in reversed(events_to_scan):
+            event_str = json.dumps(event.model_dump()).lower()
+            if query in event_str:
+                results["events"].append({
+                    "id": f"event-{event.tick}-{event.event_type}",
+                    "type": "event",
+                    "event_type": event.event_type,
+                    "tick": event.tick,
+                    "agent_id": getattr(event, "agent_id", None),
+                    "match_type": "content",
+                })
+                if len(results["events"]) >= limit:
+                    break
+
+        return {
+            "query": q,
+            "results": results,
+            "counts": {
+                "agents": len(results["agents"]),
+                "artifacts": len(results["artifacts"]),
+                "events": len(results["events"]),
+            },
+        }
+
     # Plan #125: Extracted route groups for maintainability
     _register_simulation_routes(app, dashboard)
     _register_websocket_routes(app, dashboard)
