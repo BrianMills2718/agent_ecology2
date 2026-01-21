@@ -344,16 +344,6 @@ def get_preloaded_modules() -> dict[str, ModuleType | _DatetimeModule]:
     }
 
 
-# Backward compatibility alias
-def get_allowed_modules() -> dict[str, ModuleType | _DatetimeModule]:
-    """DEPRECATED: Use get_preloaded_modules()"""
-    return get_preloaded_modules()
-
-
-# Default for backward compatibility
-ALLOWED_MODULES: dict[str, ModuleType | _DatetimeModule] = AVAILABLE_MODULES
-
-
 class ExecutionError(Exception):
     """Error during code execution"""
     pass

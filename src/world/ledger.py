@@ -514,26 +514,6 @@ class Ledger:
             )
         self.set_resource(principal_id, "llm_tokens", float(compute_quota))
 
-    def get_flow(self, principal_id: str) -> int:
-        """DEPRECATED: Use get_resource(principal_id, 'llm_tokens')."""
-        return self.get_compute(principal_id)
-
-    def can_spend_flow(self, principal_id: str, amount: int) -> bool:
-        """DEPRECATED: Use can_spend_resource()."""
-        return self.can_spend_compute(principal_id, amount)
-
-    def spend_flow(self, principal_id: str, amount: int) -> bool:
-        """DEPRECATED: Use spend_resource()."""
-        return self.spend_compute(principal_id, amount)
-
-    def reset_flow(self, principal_id: str, quota: int) -> None:
-        """DEPRECATED: Use set_resource()."""
-        self.reset_compute(principal_id, quota)
-
-    def get_all_flow(self) -> dict[str, int]:
-        """DEPRECATED: Use get_all_compute()."""
-        return self.get_all_compute()
-
     def get_all_compute(self) -> dict[str, int]:
         """DEPRECATED: Use get_all_resources() for resource snapshots.
 
