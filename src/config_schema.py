@@ -282,16 +282,6 @@ class LedgerConfig(StrictModel):
     )
     methods: LedgerMethodsConfig = Field(default_factory=LedgerMethodsConfig)
 
-    # Legacy support
-    transfer_fee: int | None = Field(default=None, description="DEPRECATED: Use methods.transfer.cost")
-
-    @model_validator(mode="after")
-    def migrate_legacy_transfer_fee(self) -> "LedgerConfig":
-        """Migrate legacy transfer_fee to methods.transfer.cost."""
-        if self.transfer_fee is not None:
-            self.methods.transfer.cost = self.transfer_fee
-        return self
-
 
 class MintMethodsConfig(StrictModel):
     """Genesis mint method configurations."""
@@ -428,16 +418,6 @@ class RightsRegistryConfig(StrictModel):
         description="Artifact description"
     )
     methods: RightsRegistryMethodsConfig = Field(default_factory=RightsRegistryMethodsConfig)
-
-    # Legacy support
-    transfer_fee: int | None = Field(default=None, description="DEPRECATED: Use methods.transfer_quota.cost")
-
-    @model_validator(mode="after")
-    def migrate_legacy_transfer_fee(self) -> "RightsRegistryConfig":
-        """Migrate legacy transfer_fee to methods.transfer_quota.cost."""
-        if self.transfer_fee is not None:
-            self.methods.transfer_quota.cost = self.transfer_fee
-        return self
 
 
 class EventLogMethodsConfig(StrictModel):

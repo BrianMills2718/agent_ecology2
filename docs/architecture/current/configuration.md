@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-19 (Plan #102 - doc coupling verification)
+**Last verified:** 2026-01-21 (Plan #148 - ADR-0019 Audit, removed legacy transfer_fee)
 
 ---
 
@@ -373,18 +373,6 @@ mint:
   auction:
     minimum_bid: -1  # Must be >= 0
     period: 50
-```
-
-### Legacy Support
-
-Old config keys are auto-migrated:
-
-```python
-@model_validator(mode="after")
-def migrate_legacy_transfer_fee(self) -> "LedgerConfig":
-    if self.transfer_fee is not None:
-        self.methods.transfer.cost = self.transfer_fee
-    return self
 ```
 
 ---

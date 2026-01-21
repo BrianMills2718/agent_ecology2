@@ -64,6 +64,7 @@ class ActionResult(TypedDict, total=False):
     error: str
     raw_response: str | None
     usage: TokenUsage
+    model: str  # Which LLM model was used
 
 
 class ArtifactInfo(TypedDict, total=False):
@@ -933,7 +934,8 @@ Your response should include:
             return {
                 "action": response.action.model_dump(),
                 "reasoning": response.reasoning,
-                "usage": usage
+                "usage": usage,
+                "model": self.llm_model,
             }
         except ValidationError as e:
             # Pydantic validation failed
@@ -980,7 +982,8 @@ Your response should include:
             return {
                 "action": response.action.model_dump(),
                 "reasoning": response.reasoning,
-                "usage": usage
+                "usage": usage,
+                "model": self.llm_model,
             }
         except ValidationError as e:
             # Pydantic validation failed

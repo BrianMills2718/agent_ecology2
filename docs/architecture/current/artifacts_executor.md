@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-19 (Plan #112 - JSON arg parsing)
+**Last verified:** 2026-01-21 (Plan #148 - ADR-0019 Audit, contract default)
 
 ---
 
@@ -577,16 +577,9 @@ class Artifact:
 
 ---
 
-## Contract-Based Permission Checks (Phase 2)
+## Contract-Based Permission Checks
 
-When `executor.use_contracts: true`, permission checks use contract system.
-
-### Configuration
-
-```yaml
-executor:
-  use_contracts: false  # Enable contract-based permissions
-```
+Permission checks use the contract system by default (`use_contracts=True`).
 
 ### Check Flow
 

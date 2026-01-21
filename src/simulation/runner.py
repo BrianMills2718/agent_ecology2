@@ -44,6 +44,20 @@ from ..agents.state_store import AgentStateStore
 from ..agents.reflex import ReflexExecutor, build_reflex_context
 
 
+def _derive_provider(model: str) -> str:
+    """Derive LLM provider from model name (pragmatic heuristic)."""
+    model_lower = model.lower()
+    if "claude" in model_lower or "anthropic" in model_lower:
+        return "anthropic"
+    elif "gpt" in model_lower or "openai" in model_lower:
+        return "openai"
+    elif "gemini" in model_lower or "google" in model_lower:
+        return "google"
+    elif "llama" in model_lower or "meta" in model_lower:
+        return "meta"
+    return "unknown"
+
+
 class SimulationRunner:
     """Orchestrates the agent ecology simulation.
 
@@ -551,12 +565,18 @@ class SimulationRunner:
             proposal_data = result.get("proposal", {})
             reasoning = proposal_data.get("reasoning", "")
 
-            # Build thinking event data
+            # Build thinking event data with full observability
+            model = agent.llm_model
+            provider = _derive_provider(model)
+
             thinking_data: dict[str, Any] = {
                 "tick": self.world.tick,
                 "principal_id": agent.agent_id,
+                "model": model,
+                "provider": provider,
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
+                "api_cost": api_cost,
                 "thinking_cost": thinking_cost,
                 "llm_tokens_after": self.world.ledger.get_llm_tokens(agent.agent_id),
                 "reasoning": reasoning,
@@ -661,11 +681,17 @@ class SimulationRunner:
 
             # Log the thinking (Plan #132: standardized reasoning field)
             reasoning = action_result.get("reasoning", "")
+            model = action_result.get("model", "unknown")
+            provider = _derive_provider(model)
+
             thinking_data: dict[str, Any] = {
                 "tick": self.world.tick,
                 "principal_id": agent_id,
+                "model": model,
+                "provider": provider,
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
+                "api_cost": api_cost,
                 "thinking_cost": input_tokens + output_tokens,
                 "cpu_seconds": result.get("cpu_seconds", 0),
                 "memory_bytes": result.get("memory_bytes", 0),
@@ -1106,11 +1132,17 @@ class SimulationRunner:
                 f"(tokens: {input_tokens}/{output_tokens})"
             )
 
+        model = result.get("model", agent.llm_model)
+        provider = _derive_provider(model)
+
         thinking_data: dict[str, Any] = {
             "tick": self.world.tick,
             "principal_id": agent.agent_id,
+            "model": model,
+            "provider": provider,
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
+            "api_cost": api_cost,
             "thinking_cost": 0,
             "reasoning": reasoning,
         }

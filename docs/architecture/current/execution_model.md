@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-20 (Plan #131 - edit/delete actions added)
+**Last verified:** 2026-01-21 (Plan #148 - ADR-0019 Audit, thinking event observability)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

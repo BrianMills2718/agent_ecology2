@@ -112,7 +112,7 @@ def get(key: str, default: Any = None) -> Any:
     Examples:
         get("resources.stock.llm_budget.total")
         get("costs.actions.noop")
-        get("genesis.ledger.transfer_fee")
+        get("genesis.ledger.methods.transfer.cost")
     """
     config: dict[str, Any] = get_config()
     keys: list[str] = key.split(".")

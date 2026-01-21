@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-20 (Plan #139: quota_set handler, API cost estimation, fullscreen mode)
+**Last verified:** 2026-01-21 (Plan #148 - ADR-0019 Audit, compute->llm_tokens terminology)
 
 ---
 
@@ -41,7 +41,7 @@ path = save_checkpoint(
 ```python
 CheckpointData = {
     "tick": int,
-    "balances": dict[str, BalanceInfo],  # {agent_id: {compute, scrip}}
+    "balances": dict[str, BalanceInfo],  # {agent_id: {llm_tokens, scrip}}
     "cumulative_api_cost": float,
     "artifacts": list[dict],             # Artifact dicts
     "agent_ids": list[str],
@@ -155,28 +155,28 @@ In per-run mode, `EventLogger` creates a companion `SummaryLogger` at `logs/{run
 | `tick` | Start of each tick | `world.py` |
 | `action` | Agent action executed | `world.py` |
 | `thinking` | Agent thinking completed | `runner.py` |
-| `thinking_failed` | Agent ran out of compute | `runner.py` |
+| `thinking_failed` | Agent LLM call failed | `runner.py` |
 | `intent_rejected` | Invalid action rejected | `runner.py` |
 | `mint_auction` | Auction resolved | `runner.py` |
 | `mint` | Scrip minted | `world.py` |
 | `world_init` | World initialized | `world.py` |
 | `budget_pause` | API budget exhausted | `runner.py` |
-| `agent_frozen` | Agent exhausts compute | `world.py` |
+| `agent_frozen` | Agent exhausts llm_tokens | `world.py` |
 | `agent_unfrozen` | Agent resources restored | `world.py` |
 
 ### Vulture Observability Events (Plan #26)
 
 Events for market-based rescue of frozen agents.
 
-**AGENT_FROZEN Event** - Emitted when an agent exhausts compute:
+**AGENT_FROZEN Event** - Emitted when an agent exhausts llm_tokens:
 ```json
 {
     "event_type": "agent_frozen",
     "tick": 1500,
     "agent_id": "alice",
-    "reason": "compute_exhausted",
+    "reason": "llm_tokens_exhausted",
     "scrip_balance": 200,
-    "compute_remaining": 0,
+    "llm_tokens_remaining": 0,
     "owned_artifacts": ["art_1", "art_2"],
     "last_action_tick": 1480
 }
@@ -190,14 +190,14 @@ Events for market-based rescue of frozen agents.
     "agent_id": "alice",
     "unfrozen_by": "vulture_bob",
     "resources_transferred": {
-        "compute": 100,
+        "llm_tokens": 100,
         "scrip": 0
     }
 }
 ```
 
 **World API Methods:**
-- `world.is_agent_frozen(agent_id)` - Check if agent has compute <= 0
+- `world.is_agent_frozen(agent_id)` - Check if agent has llm_tokens <= 0
 - `world.get_frozen_agents()` - List all frozen agents
 - `world.emit_agent_frozen(agent_id, reason)` - Log AGENT_FROZEN event
 - `world.emit_agent_unfrozen(agent_id, unfrozen_by, resources)` - Log AGENT_UNFROZEN event
@@ -281,7 +281,7 @@ The `live_mode` parameter controls this:
 | `/api/invocations` | GET | Filtered invocation events |
 | `/api/events` | GET | Filtered events |
 | `/api/genesis` | GET | Genesis artifact activity |
-| `/api/charts/compute` | GET | Compute utilization chart data |
+| `/api/charts/llm_tokens` | GET | LLM token utilization chart data |
 | `/api/charts/scrip` | GET | Scrip balance chart data |
 | `/api/charts/flow` | GET | Economic flow visualization |
 | `/api/kpis` | GET | Ecosystem health KPIs |
