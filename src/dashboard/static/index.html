@@ -78,7 +78,7 @@
                                 <tr>
                                     <th title="Agent identifier">ID</th>
                                     <th title="Economic currency - used to pay for artifacts and trade">Scrip</th>
-                                    <th title="Compute usage % this tick (refreshes each tick)">Compute</th>
+                                    <th title="LLM token usage % (accumulated from thinking)">LLM</th>
                                     <th title="Disk storage usage % (permanent, doesn't refresh)">Disk</th>
                                     <th title="Agent status: active, low_resources, or frozen">Status</th>
                                     <th title="Total actions taken by this agent">Actions</th>
@@ -254,7 +254,7 @@
                     </div>
                     <div class="panel-content chart-container" id="charts-content">
                         <div class="chart-tabs">
-                            <button class="tab-btn active" data-chart="compute">Compute</button>
+                            <button class="tab-btn active" data-chart="compute">LLM Tokens</button>
                             <button class="tab-btn" data-chart="scrip">Scrip</button>
                         </div>
                         <canvas id="resource-chart"></canvas>
