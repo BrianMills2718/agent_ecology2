@@ -1346,19 +1346,23 @@ class SafeExecutor:
 
                 # If using contracts and target has a contract, check for additional cost
                 contract_cost = 0
+                cost_payer = caller_id  # Default: caller pays
                 has_contract = hasattr(target, "access_contract_id") and target.access_contract_id is not None
                 if self.use_contracts and has_contract:
                     perm_result = self._check_permission_via_contract(
                         caller_id, "invoke", target
                     )
                     contract_cost = perm_result.cost
+                    # Contract can specify alternate payer (Plan #140)
+                    if perm_result.payer is not None:
+                        cost_payer = perm_result.payer
 
                 total_cost = price + contract_cost
-                if total_cost > 0 and not ledger.can_afford_scrip(caller_id, total_cost):
+                if total_cost > 0 and not ledger.can_afford_scrip(cost_payer, total_cost):
                     return {
                         "success": False,
                         "result": None,
-                        "error": f"Caller has insufficient scrip for total cost {total_cost}",
+                        "error": f"Payer {cost_payer} has insufficient scrip for total cost {total_cost}",
                         "price_paid": 0
                     }
 
@@ -1376,9 +1380,10 @@ class SafeExecutor:
                 )
 
                 if nested_result.get("success"):
-                    # Pay total cost to owner (only on success)
-                    if total_cost > 0 and created_by != caller_id:
-                        ledger.deduct_scrip(caller_id, total_cost)
+                    # Pay total cost to artifact creator (only on success)
+                    # Plan #140: Use contract-specified payer instead of hardcoded caller
+                    if total_cost > 0 and created_by != cost_payer:
+                        ledger.deduct_scrip(cost_payer, total_cost)
                         ledger.credit_scrip(created_by, total_cost)
 
                     return {

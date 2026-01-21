@@ -85,8 +85,12 @@ class BalanceInfo(TypedDict):
 
 
 class LegacyBalanceInfo(TypedDict):
-    """Legacy balance format for backward compatibility."""
-    compute: int
+    """Legacy balance format for backward compatibility.
+
+    NOTE: "compute" is a misnomer - it contains llm_tokens, not CPU time.
+    Use BalanceInfo with get_all_balances_full() for correct terminology.
+    """
+    compute: int  # Actually llm_tokens - misnomer kept for backward compat
     scrip: int
 
 
@@ -451,10 +455,14 @@ class Ledger:
             return True
 
     # ===== BACKWARD COMPATIBILITY (compute = llm_tokens) =====
+    # Plan #140: "compute" is a misnomer - these operate on llm_tokens.
+    # Per glossary: cpu_rate = CPU seconds (renewable), llm_tokens = LLM tokens/min.
+    # Use resource-based methods (get_resource, spend_resource) instead.
 
     def get_compute(self, principal_id: str) -> int:
-        """Get available LLM tokens for a principal.
+        """DEPRECATED: Use get_resource(principal_id, 'llm_tokens').
 
+        Misnomer: "compute" actually means llm_tokens, not CPU time.
         Mode-aware: Uses RateTracker remaining capacity when rate limiting
         is enabled, otherwise uses tick-based balance.
         """
@@ -467,8 +475,9 @@ class Ledger:
         return int(self.get_resource(principal_id, "llm_tokens"))
 
     def can_spend_compute(self, principal_id: str, amount: int) -> bool:
-        """Check if principal can spend LLM tokens.
+        """DEPRECATED: Use can_spend_resource(principal_id, 'llm_tokens', amount).
 
+        Misnomer: "compute" actually means llm_tokens, not CPU time.
         Mode-aware: Uses RateTracker capacity check when rate limiting
         is enabled, otherwise uses tick-based balance check.
         """
@@ -477,8 +486,9 @@ class Ledger:
         return self.can_spend_resource(principal_id, "llm_tokens", float(amount))
 
     def spend_compute(self, principal_id: str, amount: int) -> bool:
-        """Spend LLM tokens from a principal.
+        """DEPRECATED: Use spend_resource(principal_id, 'llm_tokens', amount).
 
+        Misnomer: "compute" actually means llm_tokens, not CPU time.
         Mode-aware: Uses RateTracker consumption when rate limiting
         is enabled, otherwise uses tick-based balance deduction.
         """
@@ -525,7 +535,10 @@ class Ledger:
         return self.get_all_compute()
 
     def get_all_compute(self) -> dict[str, int]:
-        """Get snapshot of all llm_tokens balances (backward compat)."""
+        """DEPRECATED: Use get_all_resources() for resource snapshots.
+
+        Misnomer: "compute" actually means llm_tokens, not CPU time.
+        """
         result: dict[str, int] = {}
         for pid, resources in self.resources.items():
             result[pid] = int(resources.get("llm_tokens", 0))
@@ -534,7 +547,10 @@ class Ledger:
     # ===== REPORTING =====
 
     def get_all_balances(self) -> dict[str, LegacyBalanceInfo]:
-        """Get snapshot of all balances (legacy format for backward compat)."""
+        """DEPRECATED: Use get_all_balances_full() for correct terminology.
+
+        Legacy format with "compute" misnomer (actually llm_tokens).
+        """
         result: dict[str, LegacyBalanceInfo] = {}
         all_principals = set(self.resources.keys()) | set(self.scrip.keys())
         for pid in all_principals:

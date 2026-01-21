@@ -86,12 +86,16 @@ class PermissionResult:
         allowed: Whether the action is permitted.
         reason: Human-readable explanation of the decision.
         cost: Scrip cost to perform the action (0 = free).
+        payer: Principal who pays the cost. If None, caller pays (default).
+            Contracts can specify an alternate payer (e.g., artifact creator,
+            a sponsor tracked in metadata, or the artifact itself if it has standing).
         conditions: Optional additional conditions or metadata.
     """
 
     allowed: bool
     reason: str
     cost: int = 0
+    payer: Optional[str] = None
     conditions: Optional[dict[str, object]] = field(default=None)
 
     def __post_init__(self) -> None:
@@ -369,15 +373,23 @@ class ExecutableContract:
 
     The code must define a check_permission function with signature:
         def check_permission(caller, action, target, context, ledger):
-            # Return dict with: allowed (bool), reason (str), cost (int)
+            # Return dict with: allowed (bool), reason (str), cost (int), payer (str|None)
             return {"allowed": True, "reason": "Access granted", "cost": 0}
 
     Contract code has access to:
         - caller: str - Principal requesting access
         - action: str - The action being attempted (read, write, invoke, etc.)
         - target: str - Artifact ID being accessed
-        - context: dict - Additional context (owner, artifact_type, tick, etc.)
+        - context: dict - Additional context (created_by, artifact_type, tick, etc.)
         - ledger: ReadOnlyLedger - Read-only ledger for balance checks
+
+    Return dict fields:
+        - allowed: bool - Whether the action is permitted
+        - reason: str - Human-readable explanation
+        - cost: int - Scrip cost for the action (default 0)
+        - payer: str|None - Principal who pays the cost (default: caller pays)
+            Contracts can specify alternate payers like context["created_by"],
+            a sponsor from artifact metadata, or any principal with standing.
 
     Available modules in contract code:
         - math, json, random, time
@@ -559,6 +571,7 @@ def check_permission(caller, action, target, context, ledger):
         allowed = result.get("allowed", False)
         reason = result.get("reason", "No reason provided")
         cost = result.get("cost", 0)
+        payer = result.get("payer")  # Plan #140: Contract-specified payer
 
         # Validate types
         if not isinstance(allowed, bool):
@@ -573,11 +586,15 @@ def check_permission(caller, action, target, context, ledger):
                 cost = int(cost)
             except (TypeError, ValueError):
                 cost = 0
+        # Validate payer is string or None
+        if payer is not None and not isinstance(payer, str):
+            payer = None  # Ignore invalid payer, default to caller
 
         return PermissionResult(
             allowed=allowed,
             reason=reason,
             cost=max(0, cost),  # Ensure non-negative
+            payer=payer,
         )
 
     def check_permission(
