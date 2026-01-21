@@ -205,6 +205,14 @@
                                 <option value="ownership_transfer">Ownership</option>
                                 <option value="mint_result">Mints</option>
                             </select>
+                            <select id="activity-agent-filter" class="filter-select">
+                                <option value="">All Agents</option>
+                                <!-- Populated by JS -->
+                            </select>
+                            <select id="activity-artifact-filter" class="filter-select">
+                                <option value="">All Artifacts</option>
+                                <!-- Populated by JS -->
+                            </select>
                         </div>
                     </div>
                     <div class="panel-content scrollable" id="activity-content">
@@ -375,6 +383,12 @@
                             <!-- Populated by JS -->
                         </div>
                     </div>
+                    <div class="modal-section">
+                        <h3>Activity Timeline</h3>
+                        <div class="modal-list scrollable" id="modal-activity">
+                            <!-- Populated by JS (Plan #144) -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -403,6 +417,12 @@
                         <h3>Ownership History</h3>
                         <div class="modal-list" id="artifact-modal-ownership">
                             <!-- Populated by JS -->
+                        </div>
+                    </div>
+                    <div class="modal-section">
+                        <h3>Activity Timeline</h3>
+                        <div class="modal-list scrollable" id="artifact-modal-activity">
+                            <!-- Populated by JS (Plan #144) -->
                         </div>
                     </div>
                 </div>

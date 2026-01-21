@@ -794,7 +794,8 @@ def create_app(
         limit: int = Query(100, ge=1, le=500),
         offset: int = Query(0, ge=0),
         types: str | None = Query(None, description="Comma-separated activity types"),
-        agent_id: str | None = Query(None),
+        agent_id: str | None = Query(None, description="Filter by agent ID"),
+        artifact_id: str | None = Query(None, description="Filter by artifact ID (Plan #144)"),
     ) -> dict[str, Any]:
         """Get activity feed with filtering."""
         dashboard.parser.parse_incremental()
@@ -804,6 +805,7 @@ def create_app(
             offset=offset,
             activity_types=types_list,
             agent_id=agent_id,
+            artifact_id=artifact_id,
         ).model_dump()
 
     @app.get("/api/artifacts/{artifact_id}/detail")

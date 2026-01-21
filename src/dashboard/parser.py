@@ -1388,8 +1388,17 @@ class JSONLParser:
         offset: int = 0,
         activity_types: list[str] | None = None,
         agent_id: str | None = None,
+        artifact_id: str | None = None,
     ) -> ActivityFeed:
-        """Get activity feed with filtering."""
+        """Get activity feed with filtering.
+
+        Args:
+            limit: Maximum items to return
+            offset: Items to skip
+            activity_types: Filter by activity type
+            agent_id: Filter by agent (includes target_id matches)
+            artifact_id: Filter by artifact (Plan #144)
+        """
         items = self.state.activity_items
 
         # Filter by type
@@ -1402,6 +1411,10 @@ class JSONLParser:
                 i for i in items
                 if i.agent_id == agent_id or i.target_id == agent_id
             ]
+
+        # Filter by artifact (Plan #144)
+        if artifact_id:
+            items = [i for i in items if i.artifact_id == artifact_id]
 
         # Sort by tick descending (most recent first)
         items = sorted(items, key=lambda x: (x.tick, x.timestamp), reverse=True)
