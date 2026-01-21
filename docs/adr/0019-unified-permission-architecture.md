@@ -102,25 +102,35 @@ The kernel provides **minimal** context to contracts:
 
 ```python
 context = {
-    "caller": str,      # Who is making the request
-    "action": str,      # read | write | edit | invoke | delete
-    "target": str,      # Artifact ID being accessed
-    "method": str,      # Only for invoke
-    "args": list,       # Only for invoke
+    "caller": str,             # Who is making the request
+    "action": str,             # read | write | edit | invoke | delete
+    "target": str,             # Artifact ID being accessed
+    "target_created_by": str,  # Creator of target (pragmatic - already on artifact)
+    "method": str,             # Only for invoke
+    "args": list,              # Only for invoke
 }
 ```
 
-**Contracts invoke other artifacts to get more info:**
+**What's included:**
+- `caller`, `action`, `target` - always provided
+- `target_created_by` - pragmatic inclusion (already stored on artifact, commonly needed)
+- `method`, `args` - only for invoke action
+
+**What's NOT included (contracts fetch via invoke):**
+- Caller's balance → `invoke("genesis_ledger", "balance", [caller])`
+- Contribution history → `invoke("genesis_event_log", "query", [...])`
+- Other artifact metadata → `invoke("genesis_store", "get", [artifact_id])`
+
+**Example contract fetching additional context:**
 
 ```python
 def check_permission(caller, action, target, context):
-    # Need caller's balance? Invoke ledger
+    # context already has target_created_by
+    if caller == context["target_created_by"]:
+        return {"allowed": True, "reason": "Creator access"}
+
+    # Need more info? Invoke other artifacts
     balance = invoke("genesis_ledger", "balance", [caller])
-
-    # Need contribution history? Invoke event log
-    history = invoke("genesis_event_log", "query", [{"caller": caller}])
-
-    # Make decision based on gathered info
     if balance < 100:
         return {"allowed": False, "reason": "Insufficient balance"}
     return {"allowed": True}
@@ -128,8 +138,8 @@ def check_permission(caller, action, target, context):
 
 **Rationale:**
 - Minimal kernel (heuristic: kernel provides physics, not policy)
-- Maximum flexibility (contracts get what they need)
-- Pragmatic (genesis helpers can bundle common queries)
+- Pragmatic (`target_created_by` avoids extra invoke for common case)
+- Maximum flexibility (contracts fetch what else they need)
 
 ### 7. Kernel Optimization for Freeware
 

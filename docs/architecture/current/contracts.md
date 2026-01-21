@@ -61,11 +61,12 @@ class AccessContract(Protocol):
     ) -> PermissionResult: ...
 ```
 
-**Context keys** passed to `check_permission`:
-- `created_by`: Current owner of the target artifact
+**Context keys** passed to `check_permission` (current implementation):
+- `created_by`: Creator of the target artifact
 - `artifact_type`: Type of the target artifact
 - `caller_type`: Type of the calling principal
-- `tick`: Current simulation tick
+
+**Note:** ADR-0019 specifies minimal context: `caller`, `action`, `target`, `target_created_by`, `method`/`args` (invoke only). Current implementation may provide additional keys. Target is for contracts to fetch extra info via invoke.
 
 ---
 
@@ -245,6 +246,7 @@ Key ADRs governing the contract system:
 ### Key Principles (ADR-0019)
 
 1. **Immediate Caller Model**: When A→B→C, C's contract checks if B (not A) has permission
-2. **Minimal Context**: Kernel provides only caller, action, target, method/args (for invoke)
+2. **Minimal Context**: Kernel provides caller, action, target, target_created_by, method/args (for invoke)
 3. **Null Contract Default**: When `access_contract_id` is null, creator has full rights, others blocked
-4. **Contracts Fetch Context**: Contracts invoke other artifacts (ledger, event_log) for additional info
+4. **Dangling Contract Fallback**: When contract is deleted, falls back to configurable default (freeware)
+5. **Contracts Fetch Context**: Contracts invoke other artifacts (ledger, event_log) for balances, history, etc.

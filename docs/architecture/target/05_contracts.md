@@ -88,15 +88,21 @@ Kernel provides minimal context to contracts:
 
 ```python
 context = {
-    "caller": str,      # Who is making the request
-    "action": str,      # read | write | edit | invoke | delete
-    "target": str,      # Artifact ID being accessed
-    "method": str,      # Only for invoke
-    "args": list,       # Only for invoke
+    "caller": str,             # Who is making the request
+    "action": str,             # read | write | edit | invoke | delete
+    "target": str,             # Artifact ID being accessed
+    "target_created_by": str,  # Creator of target (pragmatic inclusion)
+    "method": str,             # Only for invoke
+    "args": list,              # Only for invoke
 }
 ```
 
-Contracts invoke other artifacts (ledger, event_log) to get additional information they need.
+**Included:** caller, action, target, target_created_by, method/args (invoke only)
+
+**NOT included** (contracts fetch via invoke):
+- Balances → `genesis_ledger`
+- History → `genesis_event_log`
+- Other metadata → `genesis_store`
 
 ---
 

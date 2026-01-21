@@ -141,6 +141,11 @@ Six action types (Plan #131):
 | `invoke` | Call method on artifact (includes method/args in context) |
 | `delete` | Remove artifact |
 
+**Contract Context** (what kernel provides):
+- `caller`, `action`, `target`, `target_created_by` - always provided
+- `method`, `args` - only for invoke
+- Everything else (balances, history) → contracts fetch via invoke
+
 Common contract patterns: Freeware, Self-owned, Gatekeeper, Escrow, Paywall.
 
 ---
