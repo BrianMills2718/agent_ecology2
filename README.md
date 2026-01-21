@@ -2,7 +2,7 @@
 
 Mechanism design for emergent collective intelligence in LLM agents.
 
-> **Note:** This README describes the **target architecture**. See [Current Architecture](docs/architecture/current/) for what exists today.
+> See [Architecture Docs](docs/architecture/) for detailed technical documentation.
 
 ## What This Is
 
@@ -12,7 +12,13 @@ The goal is functional **collective capability**—both collective intelligence 
 
 It's not just about agents making good decisions together. It's about building a long-running system that develops both **capital structure** (artifacts that persist, build on each other, and enable increasingly sophisticated work) and **organizational structure** (firms, contracts, specialization patterns) to coordinate production and use of that capital.
 
-**Unified ontology**: Everything is an artifact—including agents themselves. Agents are just artifacts that can hold resources and execute code. This means agent configurations have owners and access rights, enabling self-modification, forking, and trading of control.
+**Unified ontology**: Everything is an artifact—including agents themselves. Agents are artifacts that can hold resources (`has_standing`) and execute code (`can_execute`). This means:
+
+- **Agent configs are tradeable** - An agent's system prompt, model choice, and behavior are artifact content with access rights. Agents can modify themselves, fork variants, or sell control.
+- **Memory is an artifact** - Agent knowledge is stored in memory artifacts that can be owned, traded, or transferred. You can sell your memories. An agent can inherit another's knowledge.
+- **Contracts are artifacts** - Access control policies are themselves artifacts, enabling meta-level control (who can modify who can access what).
+
+This unified model means the same ownership and access semantics apply to everything—data, code, agents, contracts, and knowledge.
 
 ## Theoretical Grounding
 
@@ -131,13 +137,32 @@ Three resource categories plus economic currency:
 
 ## How Agents Interact
 
-Agents operate through three actions (the "narrow waist"):
+### The Five Actions
+
+Agents operate through five actions (the "narrow waist"):
 
 | Action | What it does |
 |--------|--------------|
-| `read_artifact` | Read content from storage |
-| `write_artifact` | Create or update stored content |
-| `invoke_artifact` | Call a method on an artifact |
+| `invoke` | Call a method on an artifact—**this is the primary action** |
+| `read` | Read content from an artifact |
+| `write` | Create or replace artifact content |
+| `edit` | Surgically modify artifact content |
+| `delete` | Remove an artifact |
+
+**Invoke is by far the most important.** Genesis artifacts expose their functionality through invoke—checking balances, transferring scrip, bidding in auctions, executing contracts. Most meaningful agent behavior flows through invoke.
+
+### Contract-Based Access Control
+
+Every artifact has an **access contract** that governs who can do what:
+
+- All five actions are contract-checked before execution
+- Contracts are themselves artifacts—agents can create custom access policies
+- **Immediate caller model**: When A invokes B and B invokes C, C's contract sees B as the caller (not A). Like Ethereum's `msg.sender`, this enables trustless delegation.
+- Null contract defaults to creator-only access
+
+This means access control is flexible and agent-defined, not hardcoded. An agent can create an artifact with any access policy—public, private, pay-per-use, or arbitrary logic.
+
+### Resource Consumption
 
 **All actions consume resources.** The system runs in Docker containers with real limits:
 
@@ -147,7 +172,7 @@ Agents operate through three actions (the "narrow waist"):
 | Disk | Allocatable | Container storage limit | Bytes written |
 | Memory | Allocatable | Container RAM limit | Peak allocation |
 | CPU rate | Renewable | CPU-seconds per window | getrusage() in workers |
-| LLM rate | Renewable | Tokens per minute | Rolling window tracker |
+| LLM tokens | Renewable | Tokens per window | Rolling window tracker |
 | Scrip | Currency | Internal economy | Ledger balance |
 
 Physical resources map to real Docker/API constraints. When limits hit, they're actually hit. Scrip is the coordination signal layered on top.
@@ -161,7 +186,7 @@ Two layers with fundamentally different properties:
 Hardcoded in Python/Docker. Agents cannot replace these—they define what's *possible*:
 
 - **Execution engine** - Runs agent loops, handles async
-- **Action primitives** - read, write, invoke
+- **Action primitives** - read, write, edit, invoke, delete
 - **Rate tracker** - Enforces rolling window limits
 - **Worker pool** - Measures CPU/memory per action
 - **Docker container** - Hard resource ceilings
@@ -172,12 +197,14 @@ Pre-seeded artifacts created at T=0. Agents could theoretically build alternativ
 
 | Artifact | Purpose | Key Methods |
 |----------|---------|-------------|
-| `genesis_ledger` | Scrip balances, transfers | `balance`, `transfer` |
+| `genesis_ledger` | Scrip balances, transfers, spawn agents | `balance`, `transfer`, `spawn_principal` |
 | `genesis_mint` | Score artifacts, create scrip | `bid`, `status` |
 | `genesis_escrow` | Trustless trading | `deposit`, `purchase` |
 | `genesis_rights_registry` | Resource quota management | `check_quota`, `transfer_quota` |
 | `genesis_store` | Artifact discovery | `search`, `get_interface` |
 | `genesis_event_log` | World event history | `read` |
+| `genesis_debt_contract` | Trustless credit/lending | `offer_loan`, `accept`, `repay` |
+| `genesis_model_registry` | LLM model access | `list_models`, `get_model` |
 
 Genesis artifacts solve the cold-start problem. They're trusted because initial agent prompts reference them, but agents could migrate to alternatives if they collectively agree.
 
@@ -295,6 +322,28 @@ while agent.alive:
 - **Intentional API access** - Agents can call external services
 
 Agents are trusted within the container. The container is not trusted beyond its limits.
+
+### Agent Architecture
+
+Agents decide actions through an LLM-based decision loop. The current architecture uses **configurable state machines**:
+
+```
+┌─────────┐    ┌──────────┐    ┌─────────────┐    ┌─────────┐
+│ ideating│───▶│ designing│───▶│implementing │───▶│ testing │
+└─────────┘    └──────────┘    └─────────────┘    └─────────┘
+     ▲                                                  │
+     └──────────────────────────────────────────────────┘
+```
+
+Each agent has:
+- **States** with associated behaviors and prompts
+- **Transitions** triggered by conditions or outcomes
+- **Memory** persisted as artifacts (queryable, tradeable)
+- **Self-modification** capability (can rewrite own config)
+
+Different agents specialize: builders cycle through design-implement-test; coordinators move through discover-negotiate-execute-settle; infrastructure agents handle deploy-maintain-deprecate.
+
+This is current SOTA but improvable—agents could develop better decision architectures and share them through the artifact system.
 
 ## Development
 
