@@ -233,6 +233,23 @@ execution:
                                           # - "block": Block until capacity available using wait_for_capacity
 
 # -----------------------------------------------------------------------------
+# SUPERVISOR
+# Agent supervisor for automatic crash recovery (Plan #145)
+# -----------------------------------------------------------------------------
+supervisor:
+  enabled: <boolean>              # Enable supervisor monitoring (default: true)
+  check_interval: <number>        # Seconds between agent checks (default: 1.0)
+  restart_policy:
+    max_restarts_per_hour: <number>    # Max restarts per agent per hour (default: 10)
+    initial_backoff_seconds: <number>  # Initial backoff delay (default: 5.0)
+    max_backoff_seconds: <number>      # Max backoff delay (default: 300.0)
+    backoff_multiplier: <number>       # Backoff multiplier (default: 2.0)
+    jitter_factor: <number>            # Randomness factor (default: 0.1)
+    restart_on_error: <boolean>        # Restart on runtime errors (default: true)
+    restart_on_timeout: <boolean>      # Restart on timeouts (default: true)
+    restart_on_resource_exhaustion: <boolean>  # Restart on resource exhaustion (default: false)
+
+# -----------------------------------------------------------------------------
 # TIMEOUTS
 # Consolidated timeout values for all components
 # -----------------------------------------------------------------------------
