@@ -20,7 +20,7 @@ from .genesis import (
     create_genesis_artifacts, GenesisArtifact, GenesisRightsRegistry,
     GenesisMint, GenesisDebtContract, RightsConfig, SubmissionInfo
 )
-from .executor import get_executor, validate_args_against_interface
+from .executor import get_executor, validate_args_against_interface, convert_positional_to_named_args
 from .errors import ErrorCode, ErrorCategory
 from .rate_tracker import RateTracker
 from .invocation_registry import InvocationRegistry, InvocationRecord
@@ -1028,14 +1028,20 @@ class World:
             from ..config import get_validated_config
             validation_mode = get_validated_config().executor.interface_validation
 
-            # Convert args list to dict for validation (if args is a list, wrap it)
+            # Convert args list to named dict for validation
+            # Maps positional args like ["genesis_ledger"] to {"artifact_id": "genesis_ledger"}
+            # based on the interface schema's property names
             args_dict: dict[str, Any] = {}
             if intent.args:
                 if isinstance(intent.args, dict):
                     args_dict = intent.args
                 elif isinstance(intent.args, list) and len(intent.args) > 0:
-                    # For list args, create a dict with 'args' key
-                    args_dict = {"args": intent.args}
+                    # Use interface schema to map positional args to named properties
+                    args_dict = convert_positional_to_named_args(
+                        interface=artifact.interface,
+                        method_name=method_name,
+                        args=intent.args,
+                    )
 
             validation_result = validate_args_against_interface(
                 interface=artifact.interface,

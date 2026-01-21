@@ -158,6 +158,77 @@ class ValidationResult:
 _logger = logging.getLogger(__name__)
 
 
+def convert_positional_to_named_args(
+    interface: dict[str, Any] | None,
+    method_name: str,
+    args: list[Any],
+) -> dict[str, Any]:
+    """Convert positional args list to named args dict based on interface schema.
+
+    When agents pass args as a list like ["genesis_ledger"], and the interface
+    schema expects named properties like {"artifact_id": "..."}, this function
+    maps positional arguments to the expected property names.
+
+    Args:
+        interface: The artifact's interface definition (MCP-compatible format)
+        method_name: The method being invoked
+        args: Positional arguments as a list
+
+    Returns:
+        Dict mapping property names to values, or {"args": args} as fallback
+    """
+    if not interface or not args:
+        return {"args": args} if args else {}
+
+    # Get tools array from interface
+    tools = interface.get("tools", [])
+    if not tools:
+        return {"args": args}
+
+    # Find the method schema
+    method_schema = None
+    for tool in tools:
+        if tool.get("name") == method_name:
+            method_schema = tool
+            break
+
+    if method_schema is None:
+        return {"args": args}
+
+    # Get inputSchema
+    input_schema = method_schema.get("inputSchema")
+    if not input_schema or input_schema.get("type") != "object":
+        return {"args": args}
+
+    # Get property names - prefer 'required' order, then fall back to 'properties' keys
+    properties = input_schema.get("properties", {})
+    required = input_schema.get("required", [])
+
+    # Use required fields first (in order), then add any non-required properties
+    param_names: list[str] = list(required)
+    for prop_name in properties.keys():
+        if prop_name not in param_names:
+            param_names.append(prop_name)
+
+    if not param_names:
+        return {"args": args}
+
+    # Map positional args to property names
+    result: dict[str, Any] = {}
+    for i, arg in enumerate(args):
+        if i < len(param_names):
+            result[param_names[i]] = arg
+        else:
+            # More args than properties - can't map, fall back
+            _logger.debug(
+                "More positional args (%d) than schema properties (%d) for method '%s'",
+                len(args), len(param_names), method_name
+            )
+            return {"args": args}
+
+    return result
+
+
 def validate_args_against_interface(
     interface: dict[str, Any] | None,
     method_name: str,
