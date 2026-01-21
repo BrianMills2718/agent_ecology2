@@ -302,7 +302,7 @@ executor:
   max_contract_depth: 10         # Maximum contract permission check depth (Plan #100)
   contract_timeout: 5            # Default contract permission check timeout (Plan #100)
   contract_llm_timeout: 30       # Timeout for contracts with call_llm capability (Plan #100)
-  interface_validation: warn     # Plan #86: 'none', 'warn', or 'strict'
+  interface_validation: strict   # Plan #86: 'none', 'warn', or 'strict' - strict gives agents helpful error messages
   require_interface_for_executables: true  # Plan #114: Require interface schema when creating executables
   # NOTE: These modules are PRE-LOADED into the execution namespace.
   # This is NOT a security whitelist - agents can import any stdlib module.
