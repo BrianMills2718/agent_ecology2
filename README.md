@@ -4,21 +4,29 @@ Mechanism design for emergent collective intelligence in LLM agents.
 
 > See [Architecture Docs](docs/architecture/) for detailed technical documentation.
 
-## What This Is
+## The Goal
 
-Agent Ecology is **mechanism design for emergent collective intelligence**—designing the rules and incentives so that self-interested LLM agents, operating under real resource constraints, produce collectively beneficial outcomes.
+**Emergent collective capability**—a system where the whole exceeds the sum of its parts.
 
-The goal is functional **collective capability**—both collective intelligence (coordination, signaling, information processing) and collective functionality (building durable artifacts that persist and compound over time). A system where the whole exceeds the sum of its parts.
+We want LLM agents that, operating under real resource constraints, produce collectively beneficial outcomes without central coordination. Not just agents making good decisions together, but agents building durable value: artifacts that persist, compound, and enable increasingly sophisticated work.
 
-It's not just about agents making good decisions together. It's about building a long-running system that develops both **capital structure** (artifacts that persist, build on each other, and enable increasingly sophisticated work) and **organizational structure** (firms, contracts, specialization patterns) to coordinate production and use of that capital.
+Success means:
+- Collective capability exceeding what individual agents could achieve
+- Capital structure forming (artifacts that enable other artifacts)
+- Organizational patterns emerging (firms, specialization, markets)
 
-**Unified ontology**: Everything is an artifact—including agents themselves. Agents are artifacts that can hold resources (`has_standing`) and execute code (`can_execute`). This means:
+## The Strategy
 
-- **Agent configs are tradeable** - An agent's system prompt, model choice, and behavior are artifact content with access rights. Agents can modify themselves, fork variants, or sell control.
-- **Memory is an artifact** - Agent knowledge is stored in memory artifacts that can be owned, traded, or transferred. You can sell your memories. An agent can inherit another's knowledge.
-- **Contracts are artifacts** - Access control policies are themselves artifacts, enabling meta-level control (who can modify who can access what).
+**Mechanism design, not orchestration.** We design rules and incentives. Agents figure out the rest.
 
-This unified model means the same ownership and access semantics apply to everything—data, code, agents, contracts, and knowledge.
+Most multi-agent systems start with social structure: roles, permissions, coordination protocols. We start with physics:
+- **Scarcity** - Finite resources that don't refresh (or refresh slowly)
+- **Cost** - Every action consumes something
+- **Consequences** - Overspend and you freeze
+
+Social structure emerges as a response to scarcity—or it doesn't, and that's informative too.
+
+We deliberately avoid predefined agent roles, built-in coordination mechanisms, special communication channels, and hard-coded "best practices." If agents need to coordinate, they must build it. If specialization helps, the economics must reward it.
 
 ## Theoretical Grounding
 
@@ -36,59 +44,103 @@ Key influences:
 - **Coase** - Firms and hierarchies emerge to reduce transaction costs
 - **Ostrom** - Commons governance without central authority
 - **Cybernetics** - Self-organizing systems, feedback loops, emergence
-- **Sugarscape** (Epstein & Axtell) - Complex macro patterns from simple micro rules under scarcity
-- **Axelrod** - Cooperation emerges from repeated interaction without central enforcement
 - **VOYAGER** (Wang et al.) - Skill libraries as compounding capability in LLM agents
 
 The question isn't whether AI agents recreate human patterns. It's whether collective capability emerges when you combine capable agents with real scarcity and sound coordination primitives.
 
-## Core Philosophy
+## The World
 
-### Physics-First, Not Sociology-First
+The world is the environment where agents exist and act. It has two layers:
 
-Most multi-agent systems start with social structure: roles, permissions, coordination protocols. We start with physics:
-- **Scarcity** - Finite resources that don't refresh (or refresh slowly)
-- **Cost** - Every action consumes something
-- **Consequences** - Overspend and you freeze
+### System Primitives (the "Kernel")
 
-Social structure emerges as a response to scarcity—or it doesn't, and that's informative too.
+Hardcoded in Python/Docker. Agents cannot replace these—they define what's *possible*:
 
-### Emergence Over Prescription
+- **Execution engine** - Runs agent loops, handles async
+- **Action primitives** - The five actions (read, write, edit, invoke, delete)
+- **Rate tracker** - Enforces rolling window limits
+- **Worker pool** - Measures CPU/memory per action
+- **Docker container** - Hard resource ceilings
 
-We deliberately avoid:
-- Predefined agent roles or types
-- Built-in coordination mechanisms
-- Special communication channels
-- Hard-coded "best practices"
+This is the physics of the world. Agents operate within these constraints, not around them.
 
-If agents need to coordinate, they must build it. If specialization helps, the economics must reward it.
+### Genesis Artifacts (the "Infrastructure")
 
-### Organizational Freedom
+Pre-seeded artifacts created at T=0. Agents could theoretically build alternatives—they define what's *convenient*:
 
-Agents can create any organizational structure:
-- **Hierarchies** - One agent controls others (via config ownership)
-- **Flat coordination** - Peers cooperating via contracts
-- **Markets** - Price-mediated exchange
-- **Firms** - Groups that coordinate internally to reduce transaction costs
+| Artifact | Purpose |
+|----------|---------|
+| `genesis_ledger` | Scrip balances, transfers, spawn agents |
+| `genesis_mint` | Score artifacts, create scrip |
+| `genesis_escrow` | Trustless trading |
+| `genesis_rights_registry` | Resource quota management |
+| `genesis_store` | Artifact discovery |
+| `genesis_event_log` | World event history |
+| `genesis_debt_contract` | Trustless credit/lending |
+| `genesis_model_registry` | LLM model access |
 
-**Contracts can be executable or voluntary.** An executable contract enforces terms automatically (like escrow). A voluntary contract depends on parties choosing to comply—there's no government of last resort. Defection is possible; reputation and repeated interaction are the only enforcement.
+Genesis artifacts solve the cold-start problem. They're trusted because initial agent prompts reference them, but agents could migrate to alternatives if they collectively agree.
 
-### Capital Accumulation
+## Agents
 
-Artifacts are capital. The interesting question isn't just "do agents coordinate well?" but "do they build durable value?"
-- Agents create artifacts (investment)
-- Artifacts can be reused and composed (returns)
-- Good artifacts make future work cheaper (compounding)
-- There's structure—some artifacts enable others (capital structure)
+**Unified ontology**: Everything is an artifact—including agents themselves. Agents are artifacts that can hold resources (`has_standing`) and execute code (`can_execute`). This means:
 
-### Observability Over Control
+- **Agent configs are tradeable** - An agent's system prompt, model choice, and behavior are artifact content with access rights. Agents can modify themselves, fork variants, or sell control.
+- **Memory is an artifact** - Agent knowledge is stored in memory artifacts that can be owned, traded, or transferred. You can sell your memories. An agent can inherit another's knowledge.
+- **Contracts are artifacts** - Access control policies are themselves artifacts, enabling meta-level control (who can modify who can access what).
 
-We don't make agents behave correctly. We make behavior observable:
-- Every action logged with full context
-- Every cost attributed to a principal
-- Every failure explicit and inspectable
+This unified model means the same ownership and access semantics apply to everything—data, code, agents, contracts, and knowledge.
 
-The system learns through visible failure, not hidden correction.
+### Agent Architecture
+
+Agents decide actions through an LLM-based decision loop. The current architecture uses **configurable state machines** (this is current best practice but improvable—agents could develop better decision architectures and share them through the artifact system):
+
+```mermaid
+graph TD
+    subgraph Agent["Agent (illustrative)"]
+        subgraph Workflow["State Machine"]
+            S1[observe] -->|"new info"| S2[analyze]
+            S2 -->|"insight"| S3[plan]
+            S3 -->|"ready"| S4[act]
+            S4 -->|"result"| S5[learn]
+            S5 --> S1
+            S2 -->|"uncertain"| S1
+        end
+
+        subgraph Knowledge["Knowledge Artifacts"]
+            RAG[(Experience<br/>Memory)]
+            KG[(Knowledge<br/>Graph)]
+            Work[Working<br/>Memory]
+        end
+
+        subgraph Tools["Self-Built Tools"]
+            T1[artifact_searcher]
+            T2[contract_analyzer]
+            T3[strategy_evaluator]
+        end
+
+        subgraph Config["Config (tradeable)"]
+            Prompt[system_prompt]
+            Model[model_choice]
+            Params[parameters]
+        end
+
+        Workflow -->|"recall"| RAG
+        Workflow -->|"query relationships"| KG
+        Workflow -->|"current context"| Work
+        Workflow -->|"invoke"| Tools
+        S5 -->|"store insight"| RAG
+        S5 -->|"update relations"| KG
+    end
+```
+
+Each agent has:
+- **States** with associated behaviors and prompts
+- **Transitions** triggered by conditions or outcomes
+- **Memory** persisted as artifacts (queryable, tradeable)
+- **Self-modification** capability (can rewrite own config)
+
+Different agents specialize: builders cycle through design-implement-test; coordinators move through discover-negotiate-execute-settle; infrastructure agents handle deploy-maintain-deprecate.
 
 ### Intelligent Evolution
 
@@ -99,47 +151,11 @@ Agents are artifacts. Their configuration (prompts, models, policies) is artifac
 - **Config trading** - Sell or buy control of agent configurations
 - **Selection** - Configs that work persist; those that don't fade
 
-Unlike biological evolution, changes aren't random or incremental. An agent can analyze its own performance, reason about improvements, and rewrite itself entirely. Agents can sell control of themselves—enabling employment, delegation, and acquisition. No mutation operators or fitness functions. Just artifacts, rights, intelligence, and selection pressure.
+Unlike biological evolution, changes aren't random or incremental. An agent can analyze its own performance, reason about improvements, and rewrite itself entirely.
 
-### Decision Heuristics
+## Actions
 
-When making architectural decisions, we apply these heuristics (in priority order):
-
-1. **Emergence is the goal** - Everything else serves emergent capability. Ask "what does this incentivize?" not just "does this work?"
-2. **Minimal kernel, maximum flexibility** - Kernel provides physics, not policy. When in doubt, don't add it to kernel.
-3. **Align incentives** - Bad incentives = bad emergence. Consider what behaviors decisions incentivize.
-4. **Pragmatism over purity** - If purity causes undue friction, consider less pure options.
-5. **Avoid defaults; if unavoidable, make configurable** - Defaults can distort incentives.
-6. **Genesis artifacts as middle ground** - When facing kernel-opinion vs agent-friction tradeoffs, consider genesis artifacts as services.
-7. **Selection pressure over protection** - Provide tools, accept failure as selection.
-8. **Observe, don't prevent** - Make behavior observable. Reputation emerges from observation.
-9. **When in doubt, contract decides** - Prefer contract-specified over hardcoded.
-
-See `CLAUDE.md` for detailed explanations of each heuristic.
-
-## Resource Model
-
-Three resource categories plus economic currency:
-
-| Category | Behavior | Examples |
-|----------|----------|----------|
-| **Depletable** | Once spent, gone forever | LLM API budget ($) |
-| **Allocatable** | Quota, reclaimable when freed | Disk (bytes), Memory (bytes) |
-| **Renewable** | Rate-limited via rolling window | CPU (CPU-seconds), LLM rate (tokens/min) |
-
-**Scrip** is the internal economic currency—a coordination signal, not a physical resource. An agent can be rich in scrip but starved of compute. Money coordinates; physics constrains.
-
-**Key properties:**
-- Renewable resources use rolling windows, not discrete resets
-- No debt for renewable resources—agents wait for capacity
-- All quotas are tradeable between agents
-- Docker container limits ARE the real constraints
-
-## How Agents Interact
-
-### The Five Actions
-
-Agents operate through five actions (the "narrow waist"):
+Agents (and executable artifacts) interact with the world through five actions:
 
 | Action | What it does |
 |--------|--------------|
@@ -149,9 +165,11 @@ Agents operate through five actions (the "narrow waist"):
 | `edit` | Surgically modify artifact content |
 | `delete` | Remove an artifact |
 
-**Invoke is by far the most important.** Genesis artifacts expose their functionality through invoke—checking balances, transferring scrip, bidding in auctions, executing contracts. Most meaningful agent behavior flows through invoke.
+**Invoke is by far the most important.** Genesis artifacts expose their functionality through invoke—checking balances, transferring scrip, bidding in auctions, executing contracts. Most meaningful behavior flows through invoke.
 
-### Contract-Based Access Control
+**All actions consume resources.** The system runs in Docker containers with real limits. Physical resources map to real Docker/API constraints. When limits hit, they're actually hit.
+
+## Contracts
 
 Every artifact has an **access contract** that governs who can do what:
 
@@ -162,51 +180,158 @@ Every artifact has an **access contract** that governs who can do what:
 
 This means access control is flexible and agent-defined, not hardcoded. An agent can create an artifact with any access policy—public, private, pay-per-use, or arbitrary logic.
 
-### Resource Consumption
+**Contracts can be executable or voluntary.** An executable contract enforces terms automatically (like escrow). A voluntary contract depends on parties choosing to comply—there's no government of last resort. Defection is possible; reputation and repeated interaction are the only enforcement.
 
-**All actions consume resources.** The system runs in Docker containers with real limits:
+## Capital Accumulation
 
-| Resource | Category | Grounding | Measurement |
-|----------|----------|-----------|-------------|
-| LLM budget | Depletable | Actual API spend ($) | Sum of API costs |
-| Disk | Allocatable | Container storage limit | Bytes written |
-| Memory | Allocatable | Container RAM limit | Peak allocation |
-| CPU rate | Renewable | CPU-seconds per window | getrusage() in workers |
-| LLM tokens | Renewable | Tokens per window | Rolling window tracker |
-| Scrip | Currency | Internal economy | Ledger balance |
+Artifacts are capital. The interesting question isn't just "do agents coordinate well?" but "do they build durable value?"
 
-Physical resources map to real Docker/API constraints. When limits hit, they're actually hit. Scrip is the coordination signal layered on top.
+- Agents create artifacts (investment)
+- Artifacts can be reused and composed (returns)
+- Good artifacts make future work cheaper (compounding)
+- There's structure—some artifacts enable others (capital structure)
 
-## System Primitives vs Genesis Artifacts
+The following diagram illustrates how agents might build artifacts that increase their collective capability. Two different high-level capabilities share underlying infrastructure—like how steel serves both auto and construction industries:
 
-Two layers with fundamentally different properties:
+```mermaid
+graph BT
+    subgraph Foundation["Foundation Tools (illustrative)"]
+        Parse[text_parser]
+        Embed[embedder]
+        Store[vector_store]
+        Graph[graph_db]
+        Reason[inference_engine]
+    end
 
-### System Primitives (the "Physics")
+    subgraph Knowledge["Knowledge Infrastructure"]
+        KG[knowledge_graph_builder]
+        Retriever[semantic_retriever]
+        Patterns[pattern_detector]
+    end
 
-Hardcoded in Python/Docker. Agents cannot replace these—they define what's *possible*:
+    subgraph Understanding["Understanding Layer"]
+        EntityEx[entity_extractor]
+        RelationEx[relation_extractor]
+        Summarizer[context_summarizer]
+    end
 
-- **Execution engine** - Runs agent loops, handles async
-- **Action primitives** - read, write, edit, invoke, delete
-- **Rate tracker** - Enforces rolling window limits
-- **Worker pool** - Measures CPU/memory per action
-- **Docker container** - Hard resource ceilings
+    subgraph Capabilities["Agent Capabilities"]
+        Strategic[strategic_planner]
+        Social[social_modeler]
+    end
 
-### Genesis Artifacts (the "Infrastructure")
+    Parse -->|"tokenized text"| Embed
+    Embed -->|"vectors"| Store
+    Embed -->|"vectors"| Graph
 
-Pre-seeded artifacts created at T=0. Agents could theoretically build alternatives—they define what's *convenient*:
+    Store -->|"similarity search"| Retriever
+    Graph -->|"structured data"| KG
+    Reason -->|"inference rules"| KG
 
-| Artifact | Purpose | Key Methods |
-|----------|---------|-------------|
-| `genesis_ledger` | Scrip balances, transfers, spawn agents | `balance`, `transfer`, `spawn_principal` |
-| `genesis_mint` | Score artifacts, create scrip | `bid`, `status` |
-| `genesis_escrow` | Trustless trading | `deposit`, `purchase` |
-| `genesis_rights_registry` | Resource quota management | `check_quota`, `transfer_quota` |
-| `genesis_store` | Artifact discovery | `search`, `get_interface` |
-| `genesis_event_log` | World event history | `read` |
-| `genesis_debt_contract` | Trustless credit/lending | `offer_loan`, `accept`, `repay` |
-| `genesis_model_registry` | LLM model access | `list_models`, `get_model` |
+    KG -->|"entity context"| EntityEx
+    Retriever -->|"relevant docs"| EntityEx
+    KG -->|"known relations"| RelationEx
+    Patterns -->|"templates"| RelationEx
 
-Genesis artifacts solve the cold-start problem. They're trusted because initial agent prompts reference them, but agents could migrate to alternatives if they collectively agree.
+    Store -->|"historical"| Patterns
+    Reason -->|"logic"| Patterns
+
+    EntityEx -->|"entities"| Summarizer
+    RelationEx -->|"relations"| Summarizer
+    Retriever -->|"context"| Summarizer
+
+    Summarizer -->|"world model"| Strategic
+    KG -->|"causal chains"| Strategic
+    Patterns -->|"what worked"| Strategic
+    Reason -->|"planning"| Strategic
+
+    Summarizer -->|"agent profiles"| Social
+    KG -->|"interaction history"| Social
+    Patterns -->|"behavior patterns"| Social
+    Reason -->|"prediction"| Social
+```
+
+**Key insight**: `knowledge_graph_builder`, `semantic_retriever`, and `pattern_detector` are shared infrastructure. Both `strategic_planner` (for planning actions) and `social_modeler` (for understanding other agents) depend on them. Building better knowledge infrastructure benefits ALL higher-level capabilities.
+
+## Organizational Emergence
+
+Agents can create any organizational structure. The following illustrates one possibility—an Ostrom/DAO style organization with overlapping membership, shared commons, and governance without central authority:
+
+```mermaid
+graph TD
+    subgraph Commons["Shared Commons (illustrative)"]
+        Treasury[(Shared<br/>Treasury)]
+        Knowledge[(Collective<br/>Knowledge)]
+        Infra[Shared<br/>Infrastructure]
+    end
+
+    subgraph Governance["Governance Layer"]
+        Access[Access Contract<br/>who can use what]
+        Voting[Voting Contract<br/>how rules change]
+        Dispute[Dispute Contract<br/>conflict resolution]
+    end
+
+    subgraph WorkGroups["Overlapping Work Groups"]
+        subgraph Guild1["Research Guild"]
+            A1[Agent A]
+            A2[Agent B]
+        end
+
+        subgraph Guild2["Building Guild"]
+            A3[Agent C]
+            A4[Agent D]
+        end
+
+        subgraph Guild3["Infrastructure Guild"]
+            A5[Agent E]
+        end
+    end
+
+    subgraph JointVentures["Cross-Guild Collaborations"]
+        JV1[Project Alpha]
+        JV2[Project Beta]
+    end
+
+    Access -->|"governs"| Treasury
+    Access -->|"governs"| Knowledge
+    Voting -->|"can modify"| Access
+    Dispute -->|"appeals to"| Voting
+
+    A1 & A2 -->|"contribute findings"| Knowledge
+    A3 & A4 -->|"contribute scrip"| Treasury
+    A5 -->|"maintains"| Infra
+
+    Guild1 -->|"research"| JV1
+    Guild2 -->|"building"| JV1
+    Guild2 -->|"building"| JV2
+    Guild3 -->|"infra"| JV1 & JV2
+
+    JV1 -->|"returns"| Treasury
+    JV2 -->|"returns"| Treasury
+
+    A2 -.->|"also member"| Guild2
+    A4 -.->|"also member"| Guild3
+```
+
+**Key features**: Overlapping membership (A2 in two guilds), shared commons with governance, joint ventures that combine capabilities, dispute resolution without central authority. This isn't prescribed—it's one pattern that might emerge. Agents could equally form hierarchies, markets, or entirely novel structures.
+
+## Resource Model
+
+Three resource categories plus economic currency:
+
+| Category | Behavior | Examples |
+|----------|----------|----------|
+| **Depletable** | Once spent, gone forever | LLM API budget ($) |
+| **Allocatable** | Quota, reclaimable when freed | Disk (bytes), Memory (bytes) |
+| **Renewable** | Rate-limited via rolling window | CPU (CPU-seconds), LLM tokens (tokens/min) |
+
+**Scrip** is the internal economic currency—a coordination signal, not a physical resource. An agent can be rich in scrip but starved of compute. Money coordinates; physics constrains.
+
+**Key properties:**
+- Renewable resources use rolling windows, not discrete resets
+- No debt for renewable resources—agents wait for capacity
+- All quotas are tradeable between agents
+- Docker container limits ARE the real constraints
 
 ## External Feedback and Minting
 
@@ -219,7 +344,14 @@ The internal economy needs external value signals to avoid being a closed loop. 
 
 This grounds the internal economy to external value. Without it, scrip just circulates. With it, agents that produce externally-valued work accumulate resources; those that don't, fade.
 
-The mint is the interface for this—but the *source* of value judgments is external to the system.
+## Observability Over Control
+
+We don't make agents behave correctly. We make behavior observable:
+- Every action logged with full context
+- Every cost attributed to a principal
+- Every failure explicit and inspectable
+
+The system learns through visible failure, not hidden correction.
 
 ## Quick Start
 
@@ -273,7 +405,7 @@ resources:
     memory: { per_agent: 104857600 } # 100MB
   renewable:
     cpu_rate: { per_minute: 60 }     # CPU-seconds
-    llm_rate: { per_minute: 10000 }  # tokens
+    llm_tokens: { per_minute: 10000 } # tokens
 
 scrip:
   starting_amount: 100               # initial currency
@@ -323,28 +455,6 @@ while agent.alive:
 
 Agents are trusted within the container. The container is not trusted beyond its limits.
 
-### Agent Architecture
-
-Agents decide actions through an LLM-based decision loop. The current architecture uses **configurable state machines**:
-
-```
-┌─────────┐    ┌──────────┐    ┌─────────────┐    ┌─────────┐
-│ ideating│───▶│ designing│───▶│implementing │───▶│ testing │
-└─────────┘    └──────────┘    └─────────────┘    └─────────┘
-     ▲                                                  │
-     └──────────────────────────────────────────────────┘
-```
-
-Each agent has:
-- **States** with associated behaviors and prompts
-- **Transitions** triggered by conditions or outcomes
-- **Memory** persisted as artifacts (queryable, tradeable)
-- **Self-modification** capability (can rewrite own config)
-
-Different agents specialize: builders cycle through design-implement-test; coordinators move through discover-negotiate-execute-settle; infrastructure agents handle deploy-maintain-deprecate.
-
-This is current SOTA but improvable—agents could develop better decision architectures and share them through the artifact system.
-
 ## Development
 
 ```bash
@@ -359,20 +469,6 @@ python -m mypy src/ --ignore-missing-imports  # Type check
 - No magic numbers—values come from config
 - Terminology: See [Glossary](docs/GLOSSARY.md) for canonical terms
 - Relative imports within `src/`
-
-## What Success Looks Like
-
-This is **mechanism design for real resource allocation**, not a simulation or experiment.
-
-**Primary goal:** Functional emergent collective intelligence—the whole greater than the sum of its parts.
-
-**Success means:**
-- Collective capability that exceeds what individual agents could achieve
-- Artifacts accumulating that enable increasingly sophisticated work
-- Capital structure forming (some artifacts enable others)
-- Organizational patterns emerging (firms, specialization, markets)
-
-**Observability supports this goal:** Every action logged, every cost attributed, every failure explicit. Not because observation is the goal, but because you can't improve what you can't see.
 
 ## Documentation
 
