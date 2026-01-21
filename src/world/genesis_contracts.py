@@ -75,8 +75,7 @@ class FreewareContract:
         Returns:
             PermissionResult with decision
         """
-        # ADR-0019: context uses target_created_by (with fallback for legacy)
-        owner = context.get("target_created_by") or context.get("created_by") if context else None
+        owner = context.get("target_created_by") if context else None
 
         # Open access actions - anyone can perform these
         if action in (
@@ -141,8 +140,7 @@ class SelfOwnedContract:
         Returns:
             PermissionResult with decision
         """
-        # ADR-0019: context uses target_created_by (with fallback for legacy)
-        owner = context.get("target_created_by") or context.get("created_by") if context else None
+        owner = context.get("target_created_by") if context else None
 
         # Self-access: artifact accessing itself
         if caller == target:
@@ -193,8 +191,7 @@ class PrivateContract:
         Returns:
             PermissionResult with decision
         """
-        # ADR-0019: context uses target_created_by (with fallback for legacy)
-        owner = context.get("target_created_by") or context.get("created_by") if context else None
+        owner = context.get("target_created_by") if context else None
 
         # Only owner has access
         if caller == owner:

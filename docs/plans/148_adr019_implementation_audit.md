@@ -238,7 +238,7 @@ Genesis contracts should use same code path as user contracts.
 - [x] Remove `artifact_type` from context (not in ADR spec)
 - [x] Remove `artifact_id` from context (target passed separately)
 - [x] Add `method` and `args` to context for invoke actions
-- [x] Updated genesis_contracts.py with fallback for legacy key
+- [x] Updated genesis_contracts.py to use target_created_by
 
 ### Phase 5: Edit Action ✅ COMPLETE
 
@@ -297,7 +297,6 @@ Genesis contracts should use same code path as user contracts.
 
 - All phases complete
 - Implementation aligns with ADR-0019 specification
-- Backward compatibility maintained via fallback for legacy context keys
 
 ## Related
 
