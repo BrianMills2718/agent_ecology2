@@ -111,10 +111,10 @@ const API = {
     },
 
     /**
-     * Get compute chart data
+     * Get LLM tokens chart data
      */
     async getComputeChart() {
-        return this.get('/api/charts/compute');
+        return this.get('/api/charts/llm_tokens');
     },
 
     /**

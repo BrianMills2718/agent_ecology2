@@ -210,7 +210,7 @@ const ChartsPanel = {
         this.chart.data.datasets = datasets;
 
         // Update y-axis label
-        const yLabel = this.currentChart === 'compute' ? 'Compute Used'
+        const yLabel = this.currentChart === 'compute' ? 'LLM Tokens Used'
             : this.currentChart === 'scrip' ? 'Scrip Balance'
             : 'Value';
         this.chart.options.scales.y.title.text = yLabel;

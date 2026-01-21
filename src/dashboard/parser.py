@@ -846,6 +846,87 @@ class JSONLParser:
         """Handle legacy max_ticks event (now simulation_complete)."""
         self.state.status = "completed"
 
+    # ========== Plan #152: Resource Event Handlers ==========
+
+    def _handle_resource_allocated(self, event: dict[str, Any], timestamp: str) -> None:
+        """Handle resource_allocated event (Plan #152).
+
+        Updates disk_used from resource allocation events emitted by backend.
+        Example event:
+        {"event_type": "resource_allocated", "principal_id": "alpha_3",
+         "resource": "disk", "amount": 315.0, "used_after": 10619.0, "quota": 100000.0}
+        """
+        principal_id = event.get("principal_id", "")
+        resource = event.get("resource", "")
+        used_after = event.get("used_after", 0.0)
+
+        if not principal_id:
+            return
+
+        # Create agent if not exists
+        if principal_id not in self.state.agents:
+            self.state.agents[principal_id] = AgentState(agent_id=principal_id)
+
+        if resource == "disk":
+            self.state.agents[principal_id].disk_used = used_after
+
+    def _handle_resource_consumed(self, event: dict[str, Any], timestamp: str) -> None:
+        """Handle resource_consumed event (Plan #152).
+
+        Updates llm_tokens_used from resource consumption events.
+        Example event:
+        {"event_type": "resource_consumed", "principal_id": "alpha_3",
+         "resource": "llm_tokens", "amount": 5.0, "balance_after": 195.0}
+        """
+        principal_id = event.get("principal_id", "")
+        resource = event.get("resource", "")
+        balance_after = event.get("balance_after", 0.0)
+        quota = event.get("quota", 0.0)
+
+        if not principal_id:
+            return
+
+        # Create agent if not exists
+        if principal_id not in self.state.agents:
+            self.state.agents[principal_id] = AgentState(agent_id=principal_id)
+
+        if resource in ("llm_tokens", "compute"):
+            # Used = quota - remaining balance
+            if quota > 0:
+                self.state.agents[principal_id].llm_tokens_used = quota - balance_after
+            else:
+                # If no quota in event, just track the balance decrease
+                self.state.agents[principal_id].llm_tokens_used = balance_after
+
+    def _handle_agent_state(self, event: dict[str, Any], timestamp: str) -> None:
+        """Handle agent_state event (Plan #152).
+
+        Full agent state snapshot, emitted on freeze/unfreeze.
+        """
+        agent_id = event.get("agent_id", "")
+        if not agent_id:
+            return
+
+        if agent_id not in self.state.agents:
+            self.state.agents[agent_id] = AgentState(agent_id=agent_id)
+
+        agent = self.state.agents[agent_id]
+
+        # Update from event data
+        agent.scrip = event.get("scrip", agent.scrip)
+
+        resources = event.get("resources", {})
+        if "llm_tokens" in resources:
+            llm = resources["llm_tokens"]
+            agent.llm_tokens_used = llm.get("used", agent.llm_tokens_used)
+            if llm.get("quota", 0) > 0:
+                agent.llm_tokens_quota = llm["quota"]
+        if "disk" in resources:
+            disk = resources["disk"]
+            agent.disk_used = disk.get("used", agent.disk_used)
+            if disk.get("quota", 0) > 0:
+                agent.disk_quota = disk["quota"]
+
     def get_agent_summary(self, agent_id: str) -> AgentSummary | None:
         """Get summary for a single agent."""
         agent = self.state.agents.get(agent_id)
