@@ -120,6 +120,7 @@ class AgentConfigDict(TypedDict, total=False):
     action_schema: str
     rag: RAGConfigDict
     workflow: WorkflowConfigDict
+    reflex_artifact_id: str | None  # Plan #143: Reference to reflex artifact
 
 
 class Agent:
@@ -158,6 +159,9 @@ class Agent:
 
     # Workflow configuration (Plan #69 - ADR-0013)
     _workflow_config: WorkflowConfigDict | None
+
+    # Reflex configuration (Plan #143)
+    _reflex_artifact_id: str | None
 
     def __init__(
         self,
@@ -204,6 +208,7 @@ class Agent:
         self._system_prompt = system_prompt
         self._action_schema = action_schema or ACTION_SCHEMA  # Fall back to default
         self._workflow_config = None  # Plan #69: Workflow config
+        self._reflex_artifact_id = None  # Plan #143: Reflex artifact reference
 
         # If artifact-backed, load config from artifact content
         if artifact is not None:
@@ -278,6 +283,10 @@ class Agent:
         # Load workflow config if present (Plan #69)
         if "workflow" in config:
             self._workflow_config = config["workflow"]
+
+        # Load reflex artifact ID if present (Plan #143)
+        if "reflex_artifact_id" in config:
+            self._reflex_artifact_id = config["reflex_artifact_id"]
 
         # Load working memory from artifact content if present (Plan #59)
         self._working_memory = self._extract_working_memory(config)
@@ -1003,6 +1012,23 @@ Your response should include:
     def record_observation(self, observation: str) -> None:
         """Record an observation to memory"""
         self.memory.record_observation(self.agent_id, observation)
+
+    # --- Reflex methods (Plan #143) ---
+
+    @property
+    def reflex_artifact_id(self) -> str | None:
+        """ID of the agent's reflex artifact, or None."""
+        return self._reflex_artifact_id
+
+    @reflex_artifact_id.setter
+    def reflex_artifact_id(self, value: str | None) -> None:
+        """Set reflex artifact ID."""
+        self._reflex_artifact_id = value
+
+    @property
+    def has_reflex(self) -> bool:
+        """Whether this agent has a configured reflex."""
+        return self._reflex_artifact_id is not None
 
     # --- Workflow methods (Plan #69 - ADR-0013) ---
 

@@ -1,6 +1,6 @@
 # Plan 143: Reflex System (System 1 Fast Path)
 
-**Status:** 📋 Planned
+**Status:** 🔄 In Review (PR #496)
 **Priority:** High
 **Blocked By:** None
 **Blocks:** Agent self-optimization, high-frequency trading
@@ -186,15 +186,14 @@ This creates a market for optimized reflexes.
 
 ## Files Affected
 
-| File | Change |
-|------|--------|
-| `src/world/artifacts.py` | Add "reflex" artifact type |
-| `src/agents/agent.py` | Add reflex_artifact_id field |
-| `src/agents/reflex.py` | NEW - Reflex executor |
-| `src/simulation/agent_loop.py` | Reflex check before LLM |
-| `src/simulation/runner.py` | Build reflex context |
-| `src/world/genesis/store.py` | Agent config updates |
-| `config/schema.yaml` | Reflex config options |
+- src/world/artifacts.py (modify)
+- src/agents/agent.py (modify)
+- src/agents/reflex.py (create)
+- src/simulation/agent_loop.py (modify)
+- src/simulation/runner.py (modify)
+- src/world/genesis/store.py (modify)
+- config/schema.yaml (modify)
+- tests/test_reflex.py (create)
 
 ---
 
