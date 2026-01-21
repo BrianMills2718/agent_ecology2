@@ -45,7 +45,21 @@ from ..agents.reflex import ReflexExecutor, build_reflex_context
 
 
 def _derive_provider(model: str) -> str:
-    """Derive LLM provider from model name (pragmatic heuristic)."""
+    """Derive LLM provider from model name using LiteLLM's model registry.
+
+    Uses litellm.get_model_info() for authoritative provider detection,
+    with string-matching fallback for unknown models.
+    """
+    # Try LiteLLM's model registry first (authoritative source)
+    try:
+        import litellm
+        info = litellm.get_model_info(model)
+        if info and "litellm_provider" in info:
+            return str(info["litellm_provider"])
+    except Exception:
+        pass  # Fall through to heuristic
+
+    # Fallback: string matching for models not in LiteLLM registry
     model_lower = model.lower()
     if "claude" in model_lower or "anthropic" in model_lower:
         return "anthropic"
