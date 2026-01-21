@@ -2,7 +2,9 @@
 
 How access control works today.
 
-**Last verified:** 2026-01-20
+**Last verified:** 2026-01-21
+
+**See also:** ADR-0019 (Unified Permission Architecture)
 
 **Source:** `src/world/contracts.py`, `src/world/genesis_contracts.py`
 
@@ -16,16 +18,17 @@ Contracts determine who can access artifacts. Every artifact has an `access_cont
 
 ### PermissionAction
 
-Actions that can be checked:
+Actions that can be checked (see ADR-0019 for canonical list):
 
 | Action | Description |
 |--------|-------------|
 | `READ` | Read artifact content |
-| `WRITE` | Modify artifact |
-| `EXECUTE` | Execute artifact code |
-| `INVOKE` | Call artifact's service interface |
+| `WRITE` | Create/replace artifact content |
+| `EDIT` | Surgical content modification |
+| `INVOKE` | Call artifact's service interface (method + args) |
 | `DELETE` | Delete artifact |
-| `TRANSFER` | Transfer ownership |
+
+**Note:** Only `INVOKE` includes method/args in context. See ADR-0019 for full context specification.
 
 ### PermissionResult
 
@@ -223,3 +226,25 @@ def check_permission(caller, action, target, context, ledger):
 | No LLM in contracts | Contracts can call LLM (capability exists) |
 
 See `docs/architecture/target/05_contracts.md` for target architecture.
+
+---
+
+## Architecture Decisions
+
+Key ADRs governing the contract system:
+
+| ADR | Decision |
+|-----|----------|
+| ADR-0003 | Contracts can do anything (invoke other artifacts, call LLM) |
+| ADR-0015 | Contracts are artifacts, no genesis privilege |
+| ADR-0016 | `created_by` replaces `owner_id` |
+| ADR-0017 | Dangling contracts fail-open to configurable default |
+| ADR-0018 | Bootstrap phase, Eris as creator |
+| ADR-0019 | Unified permission architecture (consolidates above) |
+
+### Key Principles (ADR-0019)
+
+1. **Immediate Caller Model**: When A→B→C, C's contract checks if B (not A) has permission
+2. **Minimal Context**: Kernel provides only caller, action, target, method/args (for invoke)
+3. **Null Contract Default**: When `access_contract_id` is null, creator has full rights, others blocked
+4. **Contracts Fetch Context**: Contracts invoke other artifacts (ledger, event_log) for additional info

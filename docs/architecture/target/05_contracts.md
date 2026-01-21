@@ -2,7 +2,7 @@
 
 What we're building toward.
 
-**Last verified:** 2026-01-19
+**Last verified:** 2026-01-21
 
 **See current:** Access control is currently hardcoded policy fields on artifacts.
 
@@ -60,6 +60,44 @@ Simple permission checks (can_read, can_invoke, can_write) cost zero compute. Ra
 
 See DESIGN_CLARIFICATIONS.md for full cost model discussion.
 
+### Kernel Actions (ADR-0019)
+
+Five primitive actions, all contract-checked:
+
+| Action | Purpose | Context Includes |
+|--------|---------|------------------|
+| `read` | Read artifact content | caller, action, target |
+| `write` | Create/replace artifact | caller, action, target |
+| `edit` | Surgical content modification | caller, action, target |
+| `invoke` | Call method on artifact | caller, action, target, method, args |
+| `delete` | Remove artifact | caller, action, target |
+
+Only `invoke` includes method and args in context.
+
+### Immediate Caller Model (ADR-0019)
+
+When A invokes B, and B invokes C:
+- B's contract checks: "can A invoke B?"
+- C's contract checks: "can B invoke C?"
+
+The **immediate caller** is checked, not the original caller. Delegation is explicit (update contracts) not implicit.
+
+### Minimal Context (ADR-0019)
+
+Kernel provides minimal context to contracts:
+
+```python
+context = {
+    "caller": str,      # Who is making the request
+    "action": str,      # read | write | edit | invoke | delete
+    "target": str,      # Artifact ID being accessed
+    "method": str,      # Only for invoke
+    "args": list,       # Only for invoke
+}
+```
+
+Contracts invoke other artifacts (ledger, event_log) to get additional information they need.
+
 ---
 
 ## Required Interface
@@ -79,7 +117,7 @@ All contracts must implement `check_permission`:
             },
             "action": {
                 "type": "string",
-                "enum": ["read", "write", "invoke", "delete", "transfer"],
+                "enum": ["read", "write", "edit", "invoke", "delete"],
                 "description": "Action being attempted"
             },
             "requester_id": {
@@ -175,7 +213,7 @@ def check_permission(artifact_id, action, requester_id):
 
     if action in ["read", "invoke"]:
         return {"allowed": True, "reason": "Open access"}
-    else:  # write, delete, transfer
+    else:  # write, edit, delete
         if requester_id == artifact.created_by:
             return {"allowed": True, "reason": "Creator access"}
         else:
@@ -226,7 +264,7 @@ def check_permission(artifact_id, action, requester_id):
     "can_execute": True,
     "content": """
 def check_permission(artifact_id, action, requester_id):
-    if action in ["write", "delete", "transfer"]:
+    if action in ["write", "edit", "delete"]:
         # Require 2 of 3 signatures
         required = ["alice", "bob", "carol"]
         signatures = get_signatures(artifact_id, action)
@@ -584,3 +622,4 @@ See ADR-0017 for full decision rationale.
 | ADR-0016 | `created_by` replaces `owner_id` - kernel doesn't interpret ownership |
 | ADR-0017 | Dangling contracts fail-open to configurable default |
 | ADR-0018 | Bootstrap phase, Eris as creator, genesis naming convention |
+| ADR-0019 | Unified permission architecture (consolidates above) |
