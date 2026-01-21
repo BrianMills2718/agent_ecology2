@@ -125,6 +125,10 @@ def load_agents(agents_dir: str | None = None, prompts_dir: str | None = None) -
             "rag": config.get("rag"),
             # Per-agent visibility config (Plan #93: None = use global defaults)
             "visibility": config.get("visibility"),
+            # Workflow configuration (Plan #70)
+            "workflow": config.get("workflow"),
+            # Prompt components (Plan #150)
+            "components": config.get("components"),
         }
 
         agents.append(agent)
@@ -209,6 +213,10 @@ def create_agent_artifacts(
         }
         if config.get("rag"):
             agent_config_dict["rag"] = config["rag"]
+        if config.get("workflow"):
+            agent_config_dict["workflow"] = config["workflow"]
+        if config.get("components"):
+            agent_config_dict["components"] = config["components"]
 
         # Create agent artifact (self-owned)
         agent_artifact = create_agent_artifact(

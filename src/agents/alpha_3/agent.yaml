@@ -24,6 +24,13 @@ interface_discovery:
   mode: try_and_learn  # try_and_learn | check_first | hybrid
   cache_in_memory: true  # remember interfaces in working memory
 
+# Prompt components (Plan #150)
+# Modular behavioral traits injected into workflow prompts
+components:
+  traits:
+    - buy_before_build      # Check market before building
+    - economic_participant  # Encourage transactions
+
 # RAG configuration - learning-oriented queries
 rag:
   enabled: true

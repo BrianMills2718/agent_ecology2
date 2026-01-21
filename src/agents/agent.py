@@ -161,6 +161,9 @@ class Agent:
     # Workflow configuration (Plan #69 - ADR-0013)
     _workflow_config: WorkflowConfigDict | None
 
+    # Component configuration (Plan #150 - Prompt Component Library)
+    _components_config: dict[str, list[str]] | None
+
     # Reflex configuration (Plan #143)
     _reflex_artifact_id: str | None
 
@@ -212,6 +215,7 @@ class Agent:
         self._system_prompt = system_prompt
         self._action_schema = action_schema or ACTION_SCHEMA  # Fall back to default
         self._workflow_config = None  # Plan #69: Workflow config
+        self._components_config = None  # Plan #150: Prompt component config
         self._reflex_artifact_id = None  # Plan #143: Reflex artifact reference
         self._longterm_memory_artifact_id = None  # Plan #146: Long-term memory artifact reference
 
@@ -288,6 +292,10 @@ class Agent:
         # Load workflow config if present (Plan #69)
         if "workflow" in config:
             self._workflow_config = config["workflow"]
+
+        # Load components config if present (Plan #150)
+        if "components" in config:
+            self._components_config = config["components"]
 
         # Load reflex artifact ID if present (Plan #143)
         if "reflex_artifact_id" in config:
@@ -1105,8 +1113,20 @@ Your response should include:
         # Build workflow context from world state
         context = self._build_workflow_context(world_state)
 
+        # Inject components into workflow config if present (Plan #150)
+        workflow_dict = dict(self._workflow_config)  # type: ignore
+        if self._components_config:
+            from .component_loader import (
+                load_agent_components,
+                inject_components_into_workflow,
+            )
+            traits, goals = load_agent_components(self._components_config)
+            workflow_dict = inject_components_into_workflow(
+                workflow_dict, traits=traits, goals=goals
+            )
+
         # Parse and run workflow
-        config = WorkflowConfig.from_dict(self._workflow_config)  # type: ignore
+        config = WorkflowConfig.from_dict(workflow_dict)
         runner = WorkflowRunner(llm_provider=self.llm)
         workflow_result = runner.run_workflow(config, context)
 
