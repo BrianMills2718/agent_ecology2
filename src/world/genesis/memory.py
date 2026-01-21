@@ -270,16 +270,20 @@ class GenesisMemory(GenesisArtifact):
         if error:
             return resource_error(error, code=ErrorCode.NOT_FOUND)
 
-        # Check ownership - only owner can add entries
+        # Check write permission via contract (ADR-0019: use contracts, not hardcoded checks)
         if self._artifact_store:
             artifact = self._artifact_store.get(memory_id)
-            if artifact and artifact.created_by != invoker_id:
-                return permission_error(
-                    f"Cannot add to memory owned by '{artifact.created_by}'",
-                    code=ErrorCode.NOT_AUTHORIZED,
-                    invoker=invoker_id,
-                    owner=artifact.created_by,
-                )
+            if artifact:
+                # Use executor to check permission via target artifact's contract
+                from ..executor import get_executor
+                executor = get_executor()
+                allowed, reason = executor._check_permission(invoker_id, "write", artifact)
+                if not allowed:
+                    return permission_error(
+                        f"Cannot add to memory: {reason}",
+                        code=ErrorCode.NOT_AUTHORIZED,
+                        invoker=invoker_id,
+                    )
 
         # Generate embedding
         embedding = self._generate_embedding(text, invoker_id)
@@ -398,16 +402,20 @@ class GenesisMemory(GenesisArtifact):
         if error:
             return resource_error(error, code=ErrorCode.NOT_FOUND)
 
-        # Check ownership - only owner can delete entries
+        # Check write permission via contract (ADR-0019: use contracts, not hardcoded checks)
+        # Deleting entries is a write operation on the memory artifact
         if self._artifact_store:
             artifact = self._artifact_store.get(memory_id)
-            if artifact and artifact.created_by != invoker_id:
-                return permission_error(
-                    f"Cannot delete from memory owned by '{artifact.created_by}'",
-                    code=ErrorCode.NOT_AUTHORIZED,
-                    invoker=invoker_id,
-                    owner=artifact.created_by,
-                )
+            if artifact:
+                from ..executor import get_executor
+                executor = get_executor()
+                allowed, reason = executor._check_permission(invoker_id, "write", artifact)
+                if not allowed:
+                    return permission_error(
+                        f"Cannot delete from memory: {reason}",
+                        code=ErrorCode.NOT_AUTHORIZED,
+                        invoker=invoker_id,
+                    )
 
         if not content:
             return resource_error(

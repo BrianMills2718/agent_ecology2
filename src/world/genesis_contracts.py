@@ -37,15 +37,11 @@ from .contracts import AccessContract, PermissionAction, PermissionResult
 
 @dataclass
 class FreewareContract:
-    """Freeware access contract.
+    """Freeware access contract (ADR-0019).
 
     Access rules:
-    - READ: Anyone can read
-    - EXECUTE: Anyone can execute
-    - INVOKE: Anyone can invoke
-    - WRITE: Only owner can write
-    - DELETE: Only owner can delete
-    - TRANSFER: Only owner can transfer
+    - READ, INVOKE: Anyone can access
+    - WRITE, EDIT, DELETE: Only owner can modify
 
     This is the default contract for shared artifacts. It allows broad
     read access while preserving owner control over modifications.
@@ -70,27 +66,19 @@ class FreewareContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'created_by' key for write/delete/transfer checks
+            context: Must contain 'target_created_by' key for write/edit/delete checks
 
         Returns:
             PermissionResult with decision
         """
-        owner = context.get("created_by") if context else None
+        owner = context.get("target_created_by") if context else None
 
         # Open access actions - anyone can perform these
-        if action in (
-            PermissionAction.READ,
-            PermissionAction.EXECUTE,
-            PermissionAction.INVOKE,
-        ):
+        if action in (PermissionAction.READ, PermissionAction.INVOKE):
             return PermissionResult(allowed=True, reason="freeware: open access")
 
         # Owner-only actions
-        if action in (
-            PermissionAction.WRITE,
-            PermissionAction.DELETE,
-            PermissionAction.TRANSFER,
-        ):
+        if action in (PermissionAction.WRITE, PermissionAction.EDIT, PermissionAction.DELETE):
             if caller == owner:
                 return PermissionResult(allowed=True, reason="freeware: owner access")
             return PermissionResult(
@@ -134,12 +122,12 @@ class SelfOwnedContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'created_by' key
+            context: Must contain 'target_created_by' key (ADR-0019)
 
         Returns:
             PermissionResult with decision
         """
-        owner = context.get("created_by") if context else None
+        owner = context.get("target_created_by") if context else None
 
         # Self-access: artifact accessing itself
         if caller == target:
@@ -185,12 +173,12 @@ class PrivateContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'created_by' key
+            context: Must contain 'target_created_by' key (ADR-0019)
 
         Returns:
             PermissionResult with decision
         """
-        owner = context.get("created_by") if context else None
+        owner = context.get("target_created_by") if context else None
 
         # Only owner has access
         if caller == owner:

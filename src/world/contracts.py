@@ -50,9 +50,9 @@ if TYPE_CHECKING:
 
 
 class PermissionAction(str, Enum):
-    """Actions that can be performed on artifacts.
+    """Actions that can be performed on artifacts (ADR-0019).
 
-    All artifact operations map to one of these actions for permission checking.
+    All artifact operations map to one of these five kernel actions.
     Using str, Enum allows JSON serialization and string comparison.
     """
 
@@ -60,19 +60,16 @@ class PermissionAction(str, Enum):
     """Read the artifact's content."""
 
     WRITE = "write"
-    """Modify the artifact's content or metadata."""
+    """Create or replace artifact content entirely."""
 
-    EXECUTE = "execute"
-    """Execute artifact code (for executable artifacts)."""
+    EDIT = "edit"
+    """Surgical modification of artifact content."""
 
     INVOKE = "invoke"
-    """Invoke an artifact's service interface."""
+    """Invoke an artifact's service interface (includes execution)."""
 
     DELETE = "delete"
     """Delete the artifact entirely."""
-
-    TRANSFER = "transfer"
-    """Transfer ownership to another principal."""
 
 
 @dataclass
@@ -152,16 +149,13 @@ class AccessContract(Protocol):
 
         Args:
             caller: The principal (agent/artifact) requesting access.
-                   This is the principal_id of whoever initiated the action.
-            action: The action being attempted (read, write, invoke, etc.).
+                   For nested invokes, this is the immediate caller (ADR-0019).
+            action: The action being attempted (read, write, edit, invoke, delete).
             target: The artifact_id being accessed.
-            context: Optional additional context about the access attempt.
-                    Standard context keys:
-                    - 'created_by': Current owner of the target artifact
-                    - 'artifact_type': Type of the target artifact
-                    - 'caller_type': Type of the calling principal
-                    - 'tick': Current simulation tick
-                    - Additional keys may be added by specific contracts
+            context: Additional context about the access attempt (ADR-0019):
+                    - 'target_created_by': Creator of the target artifact
+                    - 'method': Method name (invoke only)
+                    - 'args': Method arguments (invoke only)
 
         Returns:
             PermissionResult with:
@@ -388,7 +382,7 @@ class ExecutableContract:
         - reason: str - Human-readable explanation
         - cost: int - Scrip cost for the action (default 0)
         - payer: str|None - Principal who pays the cost (default: caller pays)
-            Contracts can specify alternate payers like context["created_by"],
+            Contracts can specify alternate payers like context["target_created_by"],
             a sponsor from artifact metadata, or any principal with standing.
 
     Available modules in contract code:

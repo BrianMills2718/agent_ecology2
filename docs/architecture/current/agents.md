@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-20 (removed --ticks reference, Plan #102 compliance)
+**Last verified:** 2026-01-21 (Plan #148 - ADR-0019 Audit, model field in ActionResult)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -341,7 +341,7 @@ Agents can only propose 4 action types:
 |---------|--------|
 | LLM timeout | Skip with "llm_error" |
 | LLM parse error | Skip with "llm_error" |
-| Insufficient compute | Skip with "insufficient_compute" |
+| Insufficient llm_tokens | Skip with "insufficient_llm_tokens" |
 | Invalid action | Skip with "intent_rejected" |
 
 ### Execution Failures

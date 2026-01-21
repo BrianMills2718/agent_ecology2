@@ -26,8 +26,8 @@ class TestKpiEndpoint:
                 "max_ticks": 100,
                 "budget": {"max_api_cost": 1.0},
                 "principals": [
-                    {"id": "alice", "starting_scrip": 100, "compute_quota": 100, "disk_quota": 1000},
-                    {"id": "bob", "starting_scrip": 200, "compute_quota": 100, "disk_quota": 1000},
+                    {"id": "alice", "starting_scrip": 100, "llm_tokens_quota": 100, "disk_quota": 1000},
+                    {"id": "bob", "starting_scrip": 200, "llm_tokens_quota": 100, "disk_quota": 1000},
                 ]
             }) + '\n')
 
@@ -36,7 +36,7 @@ class TestKpiEndpoint:
                 "event_type": "tick",
                 "timestamp": "2026-01-13T12:00:01",
                 "tick": 1,
-                "compute": {"alice": 80, "bob": 50},
+                "llm_tokens": {"alice": 80, "bob": 50},
                 "scrip": {"alice": 100, "bob": 200},
             }) + '\n')
 
@@ -86,7 +86,7 @@ class TestKpiEndpoint:
                 "max_ticks": 100,
                 "budget": {"max_api_cost": 1.0},
                 "principals": [
-                    {"id": "alice", "starting_scrip": 100, "compute_quota": 100, "disk_quota": 1000},
+                    {"id": "alice", "starting_scrip": 100, "llm_tokens_quota": 100, "disk_quota": 1000},
                 ]
             }) + '\n')
 
@@ -96,7 +96,7 @@ class TestKpiEndpoint:
                     "event_type": "tick",
                     "timestamp": f"2026-01-13T12:00:0{tick}",
                     "tick": tick,
-                    "compute": {"alice": 100 - tick * 10},
+                    "llm_tokens": {"alice": 100 - tick * 10},
                     "scrip": {"alice": 100},
                 }) + '\n')
 

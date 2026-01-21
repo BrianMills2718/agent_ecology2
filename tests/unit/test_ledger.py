@@ -29,14 +29,14 @@ class TestInitialBalances:
         ledger.create_principal("agent_1", starting_scrip=100, starting_compute=500)
 
         assert ledger.get_scrip("agent_1") == 100
-        assert ledger.get_compute("agent_1") == 500
+        assert ledger.get_llm_tokens("agent_1") == 500
 
     def test_initial_balances_default_compute(self, ledger: Ledger) -> None:
         """Verify agents can be created with default compute of 0."""
         ledger.create_principal("agent_1", starting_scrip=100)
 
         assert ledger.get_scrip("agent_1") == 100
-        assert ledger.get_compute("agent_1") == 0
+        assert ledger.get_llm_tokens("agent_1") == 0
 
     def test_initial_balances_zero_values(self, ledger: Ledger) -> None:
         """Verify agents can be created with 0 starting scrip and compute.
@@ -46,7 +46,7 @@ class TestInitialBalances:
         ledger.create_principal("spawned_agent", starting_scrip=0, starting_compute=0)
 
         assert ledger.get_scrip("spawned_agent") == 0
-        assert ledger.get_compute("spawned_agent") == 0
+        assert ledger.get_llm_tokens("spawned_agent") == 0
         # Verify the agent exists in the ledger
         assert "spawned_agent" in ledger.get_all_balances()
 
@@ -55,9 +55,9 @@ class TestInitialBalances:
     ) -> None:
         """Verify multiple agents have independent balances."""
         assert ledger_with_agents.get_scrip("agent_a") == 100
-        assert ledger_with_agents.get_compute("agent_a") == 500
+        assert ledger_with_agents.get_llm_tokens("agent_a") == 500
         assert ledger_with_agents.get_scrip("agent_b") == 50
-        assert ledger_with_agents.get_compute("agent_b") == 300
+        assert ledger_with_agents.get_llm_tokens("agent_b") == 300
 
 
 class TestGetScrip:
@@ -78,12 +78,12 @@ class TestGetCompute:
 
     def test_get_compute(self, ledger_with_agents: Ledger) -> None:
         """Test get_compute returns correct value."""
-        assert ledger_with_agents.get_compute("agent_a") == 500
-        assert ledger_with_agents.get_compute("agent_b") == 300
+        assert ledger_with_agents.get_llm_tokens("agent_a") == 500
+        assert ledger_with_agents.get_llm_tokens("agent_b") == 300
 
     def test_get_compute_unknown_agent(self, ledger: Ledger) -> None:
         """Test get_compute returns 0 for unknown agent."""
-        assert ledger.get_compute("unknown_agent") == 0
+        assert ledger.get_llm_tokens("unknown_agent") == 0
 
 
 class TestTransferScrip:
@@ -175,7 +175,7 @@ class TestDeductThinkingCost:
 
         assert success is True
         assert cost == 2
-        assert ledger_with_agents.get_compute("agent_a") == 498
+        assert ledger_with_agents.get_llm_tokens("agent_a") == 498
 
     def test_deduct_thinking_cost_rounds_up(self, ledger_with_agents: Ledger) -> None:
         """Thinking cost rounds up to nearest integer."""
@@ -190,7 +190,7 @@ class TestDeductThinkingCost:
 
         assert success is True
         assert cost == 1
-        assert ledger_with_agents.get_compute("agent_a") == 499
+        assert ledger_with_agents.get_llm_tokens("agent_a") == 499
 
     def test_deduct_thinking_cost_insufficient(
         self, ledger_with_agents: Ledger
@@ -209,7 +209,7 @@ class TestDeductThinkingCost:
         assert success is False
         assert cost == 1000
         # Compute should remain unchanged
-        assert ledger_with_agents.get_compute("agent_a") == 500
+        assert ledger_with_agents.get_llm_tokens("agent_a") == 500
 
 
 class TestResetCompute:
@@ -218,21 +218,21 @@ class TestResetCompute:
     def test_reset_compute(self, ledger_with_agents: Ledger) -> None:
         """Verify compute resets each tick."""
         # First spend some compute
-        ledger_with_agents.spend_compute("agent_a", 200)
-        assert ledger_with_agents.get_compute("agent_a") == 300
+        ledger_with_agents.spend_llm_tokens("agent_a", 200)
+        assert ledger_with_agents.get_llm_tokens("agent_a") == 300
 
         # Reset compute to quota
-        ledger_with_agents.reset_compute("agent_a", 1000)
+        ledger_with_agents.reset_llm_tokens("agent_a", 1000)
 
-        assert ledger_with_agents.get_compute("agent_a") == 1000
+        assert ledger_with_agents.get_llm_tokens("agent_a") == 1000
 
     def test_reset_compute_to_lower_value(self, ledger_with_agents: Ledger) -> None:
         """Reset compute can set to lower value than current."""
-        assert ledger_with_agents.get_compute("agent_a") == 500
+        assert ledger_with_agents.get_llm_tokens("agent_a") == 500
 
-        ledger_with_agents.reset_compute("agent_a", 100)
+        ledger_with_agents.reset_llm_tokens("agent_a", 100)
 
-        assert ledger_with_agents.get_compute("agent_a") == 100
+        assert ledger_with_agents.get_llm_tokens("agent_a") == 100
 
 
 class TestMintScrip:
@@ -272,9 +272,9 @@ class TestCanAfford:
 
     def test_can_spend_compute(self, ledger_with_agents: Ledger) -> None:
         """Test can_spend_compute returns correct value."""
-        assert ledger_with_agents.can_spend_compute("agent_a", 250) is True
-        assert ledger_with_agents.can_spend_compute("agent_a", 500) is True
-        assert ledger_with_agents.can_spend_compute("agent_a", 501) is False
+        assert ledger_with_agents.can_spend_llm_tokens("agent_a", 250) is True
+        assert ledger_with_agents.can_spend_llm_tokens("agent_a", 500) is True
+        assert ledger_with_agents.can_spend_llm_tokens("agent_a", 501) is False
 
 
 class TestGetAllBalances:
@@ -287,9 +287,9 @@ class TestGetAllBalances:
         assert "agent_a" in balances
         assert "agent_b" in balances
         assert balances["agent_a"]["scrip"] == 100
-        assert balances["agent_a"]["compute"] == 500
+        assert balances["agent_a"]["llm_tokens"] == 500
         assert balances["agent_b"]["scrip"] == 50
-        assert balances["agent_b"]["compute"] == 300
+        assert balances["agent_b"]["llm_tokens"] == 300
 
     def test_get_all_scrip(self, ledger_with_agents: Ledger) -> None:
         """Test get_all_scrip returns scrip snapshot."""
@@ -299,7 +299,7 @@ class TestGetAllBalances:
 
     def test_get_all_compute(self, ledger_with_agents: Ledger) -> None:
         """Test get_all_compute returns compute snapshot."""
-        compute = ledger_with_agents.get_all_compute()
+        compute = ledger_with_agents.get_all_llm_tokens()
 
         assert compute == {"agent_a": 500, "agent_b": 300}
 
@@ -434,12 +434,12 @@ class TestRateTrackerIntegration:
         ledger.create_principal("agent1", starting_scrip=100, starting_compute=500)
 
         # Spend some compute
-        ledger.spend_compute("agent1", 200)
-        assert ledger.get_compute("agent1") == 300
+        ledger.spend_llm_tokens("agent1", 200)
+        assert ledger.get_llm_tokens("agent1") == 300
 
         # Reset should work
-        ledger.reset_compute("agent1", 1000)
-        assert ledger.get_compute("agent1") == 1000
+        ledger.reset_llm_tokens("agent1", 1000)
+        assert ledger.get_llm_tokens("agent1") == 1000
 
     def test_reset_compute_with_rate_tracker_enabled(self) -> None:
         """reset_compute sets tick balance but get_compute returns RateTracker capacity.
@@ -457,16 +457,16 @@ class TestRateTrackerIntegration:
         ledger.create_principal("agent1", starting_scrip=100, starting_compute=500)
 
         # get_compute returns RateTracker capacity, not tick-based balance
-        assert ledger.get_compute("agent1") == 1000  # Full RateTracker capacity
+        assert ledger.get_llm_tokens("agent1") == 1000  # Full RateTracker capacity
 
         # Reset compute sets the tick-based balance (legacy API)
-        ledger.reset_compute("agent1", 2000)
+        ledger.reset_llm_tokens("agent1", 2000)
         # But get_compute still returns RateTracker capacity
-        assert ledger.get_compute("agent1") == 1000
+        assert ledger.get_llm_tokens("agent1") == 1000
 
         # Consuming via RateTracker reduces capacity
-        ledger.spend_compute("agent1", 100)
-        assert ledger.get_compute("agent1") == 900
+        ledger.spend_llm_tokens("agent1", 100)
+        assert ledger.get_llm_tokens("agent1") == 900
 
     @pytest.mark.asyncio
     async def test_wait_for_resource_immediate_success(self) -> None:
@@ -562,13 +562,13 @@ class TestRateTrackerIntegration:
         # Should emit a deprecation warning
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            ledger.reset_compute("agent1", 1000)
+            ledger.reset_llm_tokens("agent1", 1000)
             assert len(w) == 1
             assert issubclass(w[0].category, DeprecationWarning)
             assert "rate limiting enabled" in str(w[0].message)
 
         # get_compute returns RateTracker capacity (500), not tick balance (1000)
-        assert ledger.get_compute("agent1") == 500
+        assert ledger.get_llm_tokens("agent1") == 500
 
     def test_reset_compute_no_warning_when_rate_tracker_disabled(self) -> None:
         """reset_compute does NOT warn when rate limiting is disabled (legacy mode)."""
@@ -580,12 +580,12 @@ class TestRateTrackerIntegration:
         # Should NOT emit a deprecation warning in legacy mode
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            ledger.reset_compute("agent1", 1000)
+            ledger.reset_llm_tokens("agent1", 1000)
             # Filter for DeprecationWarnings only
             dep_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
             assert len(dep_warnings) == 0
 
-        assert ledger.get_compute("agent1") == 1000
+        assert ledger.get_llm_tokens("agent1") == 1000
 
 
 class TestCpuSecondsResourceType:

@@ -22,7 +22,7 @@ class GenesisRightsRegistry(GenesisArtifact):
     Quotas are kernel state, not genesis artifact state.
 
     Supports generic resources defined in config. Common resources:
-    - compute: LLM tokens per tick (renews each tick)
+    - llm_tokens: LLM tokens per tick (renews each tick)
     - disk: Bytes of storage (fixed pool)
 
     See docs/RESOURCE_MODEL.md for full design rationale.
@@ -69,7 +69,7 @@ class GenesisRightsRegistry(GenesisArtifact):
             # Backward compat: build from positional args
             self.default_quotas = {}
             if default_compute > 0:
-                self.default_quotas["compute"] = float(default_compute)
+                self.default_quotas["llm_tokens"] = float(default_compute)
             if default_disk > 0:
                 self.default_quotas["disk"] = float(default_disk)
 
@@ -186,10 +186,9 @@ class GenesisRightsRegistry(GenesisArtifact):
         self.ensure_agent(agent_id)
         return dict(self._legacy_quotas[agent_id])
 
-    # Backward compat: compute = "compute" resource
-    def get_compute_quota(self, agent_id: str) -> int:
-        """Get compute quota (tokens/tick) for an agent."""
-        return int(self.get_quota(agent_id, "compute"))
+    def get_llm_tokens_quota(self, agent_id: str) -> int:
+        """Get LLM tokens quota (tokens/tick) for an agent."""
+        return int(self.get_quota(agent_id, "llm_tokens"))
 
     # Backward compat: disk = "disk" resource
     def get_disk_quota(self, agent_id: str) -> int:
@@ -208,10 +207,10 @@ class GenesisRightsRegistry(GenesisArtifact):
         used = self.get_disk_used(agent_id)
         return (used + additional_bytes) <= quota
 
-    # Backward compat aliases
+    # Backward compat aliases (can be removed - no callers)
     def get_flow_quota(self, agent_id: str) -> int:
-        """DEPRECATED: Use get_compute_quota()."""
-        return self.get_compute_quota(agent_id)
+        """DEPRECATED: Use get_llm_tokens_quota()."""
+        return self.get_llm_tokens_quota(agent_id)
 
     def get_stock_quota(self, agent_id: str) -> int:
         """DEPRECATED: Use get_disk_quota()."""

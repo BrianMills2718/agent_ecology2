@@ -250,7 +250,7 @@ class JSONLParser:
                     agent_id=agent_id,
                     scrip=p.get("starting_scrip", 0),
                     # Use existing quota if set by quota_set, else use world_init value
-                    llm_tokens_quota=existing.llm_tokens_quota if existing and existing.llm_tokens_quota > 0 else p.get("compute_quota", 0),
+                    llm_tokens_quota=existing.llm_tokens_quota if existing and existing.llm_tokens_quota > 0 else p.get("llm_tokens_quota", p.get("compute_quota", 0)),
                     disk_quota=existing.disk_quota if existing and existing.disk_quota > 0 else p.get("disk_quota", 0),
                 )
 
@@ -259,7 +259,7 @@ class JSONLParser:
 
         Plan #139: Events look like:
         {"event_type": "quota_set", "principal_id": "alpha_3", "resource": "disk", "amount": 100000.0}
-        {"event_type": "quota_set", "principal_id": "alpha_3", "resource": "compute", "amount": 200.0}
+        {"event_type": "quota_set", "principal_id": "alpha_3", "resource": "llm_tokens", "amount": 200.0}
         """
         principal_id = event.get("principal_id", "")
         resource = event.get("resource", "")
@@ -274,7 +274,7 @@ class JSONLParser:
 
         if resource == "disk":
             self.state.agents[principal_id].disk_quota = amount
-        elif resource == "compute":
+        elif resource in ("llm_tokens", "compute"):  # Accept both for backward compat
             self.state.agents[principal_id].llm_tokens_quota = amount
 
     def _handle_tick(self, event: dict[str, Any], timestamp: str) -> None:
@@ -303,8 +303,8 @@ class JSONLParser:
         self._current_tick_artifacts = 0
         self._current_tick_mints = 0
 
-        # Update balances from tick event (legacy field name "compute" in events)
-        llm_tokens = event.get("compute", {})  # Legacy field name
+        # Update balances from tick event
+        llm_tokens = event.get("llm_tokens", event.get("compute", {}))  # Support both keys
         scrip = event.get("scrip", {})
 
         for agent_id, agent in self.state.agents.items():

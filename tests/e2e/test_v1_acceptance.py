@@ -60,7 +60,7 @@ def v1_config(tmp_path: Path) -> dict[str, Any]:
             {"id": "beta", "starting_scrip": 200},
         ],
         "rights": {
-            "default_compute_quota": 100,
+            "default_llm_tokens_quota": 100,
             "default_disk_quota": 10000,
         },
         "llm": {

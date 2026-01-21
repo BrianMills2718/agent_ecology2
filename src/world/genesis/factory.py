@@ -103,12 +103,13 @@ def create_genesis_artifacts(
             # Note: compute uses rate_limiting now, not per_tick
             compute_fallback: int = 50
             disk_fallback: int = get("resources.stock.disk.total") or 10000
-            default_compute = rights_config.get("default_compute_quota",
-                              rights_config.get("default_flow_quota", compute_fallback))
+            default_llm_tokens = rights_config.get("default_llm_tokens_quota",
+                              rights_config.get("default_compute_quota",
+                              rights_config.get("default_flow_quota", compute_fallback)))
             default_disk = rights_config.get("default_disk_quota",
                            rights_config.get("default_stock_quota", disk_fallback))
             default_quotas = {
-                "compute": float(default_compute),
+                "llm_tokens": float(default_llm_tokens),
                 "disk": float(default_disk)
             }
 

@@ -31,7 +31,7 @@ class TestTemporalNetworkEndpoint:
                             {
                                 "id": "alice",
                                 "starting_scrip": 100,
-                                "compute_quota": 100,
+                                "llm_tokens_quota": 100,
                                 "disk_quota": 1000,
                             },
                         ],
@@ -140,7 +140,7 @@ class TestTemporalNetworkEndpoint:
                             {
                                 "id": "alice",
                                 "starting_scrip": 100,
-                                "compute_quota": 100,
+                                "llm_tokens_quota": 100,
                                 "disk_quota": 1000,
                             },
                         ],
@@ -251,8 +251,8 @@ class TestAgentMetricsEndpoint:
                 "max_ticks": 100,
                 "budget": {"max_api_cost": 1.0},
                 "principals": [
-                    {"id": "alice", "starting_scrip": 100, "compute_quota": 100, "disk_quota": 1000},
-                    {"id": "bob", "starting_scrip": 200, "compute_quota": 100, "disk_quota": 1000},
+                    {"id": "alice", "starting_scrip": 100, "llm_tokens_quota": 100, "disk_quota": 1000},
+                    {"id": "bob", "starting_scrip": 200, "llm_tokens_quota": 100, "disk_quota": 1000},
                 ]
             }) + '\n')
 
@@ -261,7 +261,7 @@ class TestAgentMetricsEndpoint:
                 "event_type": "tick",
                 "timestamp": "2026-01-13T12:00:01",
                 "tick": 1,
-                "compute": {"alice": 80, "bob": 100},
+                "llm_tokens": {"alice": 80, "bob": 100},
                 "scrip": {"alice": 100, "bob": 200},
             }) + '\n')
 
@@ -282,7 +282,7 @@ class TestAgentMetricsEndpoint:
                 "event_type": "tick",
                 "timestamp": "2026-01-13T12:00:10",
                 "tick": 2,
-                "compute": {"alice": 60, "bob": 100},
+                "llm_tokens": {"alice": 60, "bob": 100},
                 "scrip": {"alice": 100, "bob": 200},
             }) + '\n')
 
@@ -329,7 +329,7 @@ class TestAgentMetricsEndpoint:
                 "max_ticks": 100,
                 "budget": {"max_api_cost": 1.0},
                 "principals": [
-                    {"id": "alice", "starting_scrip": 100, "compute_quota": 100, "disk_quota": 1000},
+                    {"id": "alice", "starting_scrip": 100, "llm_tokens_quota": 100, "disk_quota": 1000},
                 ]
             }) + '\n')
             jsonl_path = f.name
@@ -359,7 +359,7 @@ class TestAgentMetricsEndpoint:
                 "max_ticks": 100,
                 "budget": {"max_api_cost": 1.0},
                 "principals": [
-                    {"id": "frozen_agent", "starting_scrip": 100, "compute_quota": 100, "disk_quota": 1000},
+                    {"id": "frozen_agent", "starting_scrip": 100, "llm_tokens_quota": 100, "disk_quota": 1000},
                 ]
             }) + '\n')
 
@@ -368,7 +368,7 @@ class TestAgentMetricsEndpoint:
                 "event_type": "tick",
                 "timestamp": "2026-01-13T12:00:01",
                 "tick": 1,
-                "compute": {"frozen_agent": 0},  # 0 remaining = quota exhausted
+                "llm_tokens": {"frozen_agent": 0},  # 0 remaining = quota exhausted
                 "scrip": {"frozen_agent": 100},
             }) + '\n')
 

@@ -106,7 +106,7 @@ class BalanceInfo(TypedDict):
 
 class QuotaInfo(TypedDict):
     """Quota information for an agent."""
-    compute_quota: int
+    llm_tokens_quota: int
     disk_quota: int
     disk_used: int
     disk_available: int
@@ -202,7 +202,7 @@ class World:
         # needed here - precision issues only arise from repeated add/subtract operations,
         # which happen in ledger.py (where Decimal helpers are used).
         num_agents = len(config.get("principals", []))
-        empty_quotas: PerAgentQuota = {"compute_quota": 0, "disk_quota": 0, "llm_budget_quota": 0.0}
+        empty_quotas: PerAgentQuota = {"llm_tokens_quota": 0, "disk_quota": 0, "llm_budget_quota": 0.0}
         quotas: PerAgentQuota = compute_per_agent_quota(num_agents) if num_agents > 0 else empty_quotas
 
         # Rights configuration (Layer 2: Means of Production)
@@ -215,7 +215,7 @@ class World:
             # Build generic quotas from computed values (rate_limiting replaces per_tick)
             self.rights_config = {
                 "default_quotas": {
-                    "compute": float(quotas.get("compute_quota", 50)),
+                    "llm_tokens": float(quotas.get("llm_tokens_quota", 50)),
                     "disk": float(quotas.get("disk_quota", config_get("resources.stock.disk.total") or 10000))
                 }
             }
@@ -249,12 +249,12 @@ class World:
             initial_allocations={
                 "llm_budget": float(quotas.get("llm_budget_quota", 0.0)),
                 "disk": float(quotas.get("disk_quota", 0)),
-                "compute": float(quotas.get("compute_quota", 0)),
+                "llm_tokens": float(quotas.get("llm_tokens_quota", 0)),
             },
             resource_units={
                 "llm_budget": "dollars",
                 "disk": "bytes",
-                "compute": "units",
+                "llm_tokens": "tokens",
             },
         )
 
@@ -378,7 +378,7 @@ class World:
                 {
                     "id": p["id"],
                     "starting_scrip": p.get("starting_scrip", p.get("starting_credits", default_starting_scrip)),
-                    "compute_quota": int(default_quotas.get("compute", quotas.get("compute_quota", 50)))
+                    "llm_tokens_quota": int(default_quotas.get("llm_tokens", quotas.get("llm_tokens_quota", 50)))
                 }
                 for p in config["principals"]
             ]
@@ -916,13 +916,13 @@ class World:
                 error_details={"artifact_id": intent.artifact_id},
             )
 
-        # Check write permission via contracts
+        # Check edit permission via contracts (ADR-0019: edit is distinct from write)
         executor = get_executor()
-        allowed, reason = executor._check_permission(intent.principal_id, "write", existing)
+        allowed, reason = executor._check_permission(intent.principal_id, "edit", existing)
         if not allowed:
             return ActionResult(
                 success=False,
-                message=get_error_message("access_denied_write", artifact_id=intent.artifact_id),
+                message=get_error_message("access_denied_edit", artifact_id=intent.artifact_id),
                 error_code=ErrorCode.NOT_AUTHORIZED.value,
                 error_category=ErrorCategory.PERMISSION.value,
                 retriable=False,
@@ -1008,9 +1008,11 @@ class World:
                     error_details={"artifact_id": artifact_id, "executable": False},
                 )
 
-            # Check invoke permission via contracts
+            # Check invoke permission via contracts (ADR-0019: pass method/args in context)
             executor = get_executor()
-            allowed, reason = executor._check_permission(intent.principal_id, "invoke", artifact)
+            allowed, reason = executor._check_permission(
+                intent.principal_id, "invoke", artifact, method=method_name, args=args
+            )
             if not allowed:
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 self._log_invoke_failure(
@@ -1271,27 +1273,27 @@ class World:
                 error_details={"method": method_name, "artifact_id": artifact_id},
             )
 
-        # Genesis method costs are COMPUTE (physical resource, not scrip)
-        if method.cost > 0 and not self.ledger.can_spend_compute(intent.principal_id, method.cost):
+        # Genesis method costs are LLM tokens (physical resource, not scrip)
+        if method.cost > 0 and not self.ledger.can_spend_llm_tokens(intent.principal_id, method.cost):
             duration_ms = (time.perf_counter() - start_time) * 1000
             self._log_invoke_failure(
                 intent.principal_id, artifact_id, method_name,
-                duration_ms, "insufficient_compute",
+                duration_ms, "insufficient_llm_tokens",
                 f"Cannot afford method cost: {method.cost}"
             )
             return ActionResult(
                 success=False,
-                message=f"Cannot afford method cost: {method.cost} compute (have {self.ledger.get_compute(intent.principal_id)})",
+                message=f"Cannot afford method cost: {method.cost} llm_tokens (have {self.ledger.get_llm_tokens(intent.principal_id)})",
                 error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
                 error_category=ErrorCategory.RESOURCE.value,
                 retriable=True,
-                error_details={"required": method.cost, "available": self.ledger.get_compute(intent.principal_id)},
+                error_details={"required": method.cost, "available": self.ledger.get_llm_tokens(intent.principal_id)},
             )
 
-        # Deduct compute cost FIRST (always paid, even on failure)
+        # Deduct LLM token cost FIRST (always paid, even on failure)
         resources_consumed: dict[str, float] = {}
         if method.cost > 0:
-            self.ledger.spend_compute(intent.principal_id, method.cost)
+            self.ledger.spend_llm_tokens(intent.principal_id, method.cost)
             resources_consumed["llm_tokens"] = float(method.cost)
 
         # Execute the genesis method
@@ -1532,7 +1534,7 @@ class World:
         if self.rights_registry:
             for pid in self.principal_ids:
                 quotas[pid] = {
-                    "compute_quota": self.rights_registry.get_compute_quota(pid),
+                    "llm_tokens_quota": self.rights_registry.get_llm_tokens_quota(pid),
                     "disk_quota": self.rights_registry.get_disk_quota(pid),
                     "disk_used": self.rights_registry.get_disk_used(pid),
                     "disk_available": self.rights_registry.get_disk_quota(pid) - self.rights_registry.get_disk_used(pid)

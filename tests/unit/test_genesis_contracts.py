@@ -1,7 +1,7 @@
-"""Unit tests for genesis contracts.
+"""Unit tests for genesis contracts (ADR-0019).
 
 Tests each of the four genesis contracts defined in src/world/genesis_contracts.py:
-- FreewareContract: Open read/execute/invoke, owner-only write/delete/transfer
+- FreewareContract: Open read/invoke, owner-only write/edit/delete
 - SelfOwnedContract: Self or owner access only
 - PrivateContract: Owner-only access
 - PublicContract: Open access for all actions
@@ -40,8 +40,8 @@ class TestFreewareContract:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Create standard context with created_by."""
-        return {"created_by": "owner_agent"}
+        """Create standard context with target_created_by."""
+        return {"target_created_by": "owner_agent"}
 
     def test_contract_id(self, contract: FreewareContract) -> None:
         """Verify contract has correct ID."""
@@ -67,18 +67,6 @@ class TestFreewareContract:
         )
         assert result.allowed is True
         assert "open access" in result.reason
-
-    def test_execute_anyone(
-        self, contract: FreewareContract, context: dict[str, object]
-    ) -> None:
-        """Verify anyone can execute freeware artifacts."""
-        result = contract.check_permission(
-            caller="any_agent",
-            action=PermissionAction.EXECUTE,
-            target="artifact_1",
-            context=context,
-        )
-        assert result.allowed is True
 
     def test_invoke_anyone(
         self, contract: FreewareContract, context: dict[str, object]
@@ -142,30 +130,6 @@ class TestFreewareContract:
         )
         assert result.allowed is False
 
-    def test_transfer_owner(
-        self, contract: FreewareContract, context: dict[str, object]
-    ) -> None:
-        """Verify owner can transfer freeware artifacts."""
-        result = contract.check_permission(
-            caller="owner_agent",
-            action=PermissionAction.TRANSFER,
-            target="artifact_1",
-            context=context,
-        )
-        assert result.allowed is True
-
-    def test_transfer_other_denied(
-        self, contract: FreewareContract, context: dict[str, object]
-    ) -> None:
-        """Verify non-owner cannot transfer freeware artifacts."""
-        result = contract.check_permission(
-            caller="other_agent",
-            action=PermissionAction.TRANSFER,
-            target="artifact_1",
-            context=context,
-        )
-        assert result.allowed is False
-
     def test_no_context_owner_check(self, contract: FreewareContract) -> None:
         """Verify write fails gracefully without context."""
         result = contract.check_permission(
@@ -188,8 +152,8 @@ class TestSelfOwnedContract:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Create standard context with created_by."""
-        return {"created_by": "owner_agent"}
+        """Create standard context with target_created_by."""
+        return {"target_created_by": "owner_agent"}
 
     def test_contract_id(self, contract: SelfOwnedContract) -> None:
         """Verify contract has correct ID."""
@@ -291,8 +255,8 @@ class TestPrivateContract:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Create standard context with created_by."""
-        return {"created_by": "owner_agent"}
+        """Create standard context with target_created_by."""
+        return {"target_created_by": "owner_agent"}
 
     def test_contract_id(self, contract: PrivateContract) -> None:
         """Verify contract has correct ID."""
@@ -375,7 +339,7 @@ class TestPublicContract:
                 caller="any_agent",
                 action=action,
                 target="artifact_1",
-                context={"created_by": "someone_else"},
+                context={"target_created_by": "someone_else"},
             )
             assert result.allowed is True, f"Public should allow {action}"
             assert "open access" in result.reason
@@ -392,21 +356,13 @@ class TestPublicContract:
 
     def test_dangerous_actions_allowed(self, contract: PublicContract) -> None:
         """Verify even dangerous actions are allowed (intentional)."""
-        # Delete allowed
+        # Delete allowed by anyone
         delete_result = contract.check_permission(
             caller="random_agent",
             action=PermissionAction.DELETE,
             target="artifact_1",
         )
         assert delete_result.allowed is True
-
-        # Transfer allowed
-        transfer_result = contract.check_permission(
-            caller="random_agent",
-            action=PermissionAction.TRANSFER,
-            target="artifact_1",
-        )
-        assert transfer_result.allowed is True
 
 
 class TestGenesisContractsRegistry:
@@ -543,8 +499,8 @@ class TestContractComparison:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Standard context with created_by."""
-        return {"created_by": "owner_agent"}
+        """Standard context with target_created_by."""
+        return {"target_created_by": "owner_agent"}
 
     def test_owner_always_allowed_except_public(
         self, all_contracts: dict[str, AccessContract], context: dict[str, object]

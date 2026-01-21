@@ -161,7 +161,7 @@ def minimal_config() -> ConfigDict:
             {"id": "agent_2", "starting_scrip": 100}
         ],
         "rights": {
-            "default_compute_quota": 50,
+            "default_llm_tokens_quota": 50,
             "default_disk_quota": 10000
         },
         "rate_limiting": {
@@ -230,7 +230,7 @@ def single_agent_config() -> ConfigDict:
             {"id": "solo_agent", "starting_scrip": 500}
         ],
         "rights": {
-            "default_compute_quota": 100,
+            "default_llm_tokens_quota": 100,
             "default_disk_quota": 5000
         },
         "rate_limiting": {
@@ -282,7 +282,7 @@ def feature_world(tmp_path: Path) -> World:
             {"id": "charlie", "starting_scrip": 200},
         ],
         "rights": {
-            "default_compute_quota": 100,
+            "default_llm_tokens_quota": 100,
             "default_disk_quota": 10000
         },
         "rate_limiting": {

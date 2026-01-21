@@ -472,18 +472,18 @@ class TestAdvanceTickResourceReset:
 
             # Set initial compute
             runner.world.ledger.set_resource("agent", "llm_tokens", 1000.0)
-            assert runner.world.ledger.get_compute("agent") == 1000
+            assert runner.world.ledger.get_llm_tokens("agent") == 1000
 
             # Spend some compute
-            runner.world.ledger.spend_compute("agent", 600)
-            assert runner.world.ledger.get_compute("agent") == 400
+            runner.world.ledger.spend_llm_tokens("agent", 600)
+            assert runner.world.ledger.get_llm_tokens("agent") == 400
 
             # Advance tick should reset compute (legacy mode)
             runner.world.advance_tick()
 
             # Compute should be reset to quota (based on config)
             # In legacy mode, compute resets to default_quotas.compute or config value
-            assert runner.world.ledger.get_compute("agent") > 0  # Reset happened
+            assert runner.world.ledger.get_llm_tokens("agent") > 0  # Reset happened
 
     @patch("src.simulation.runner.load_agents")
     def test_advance_tick_no_reset_when_rate_tracker_enabled(
@@ -507,17 +507,17 @@ class TestAdvanceTickResourceReset:
             runner = SimulationRunner(config, verbose=False)
 
             # get_compute returns RateTracker remaining (full capacity initially)
-            assert runner.world.ledger.get_compute("agent") == 1000
+            assert runner.world.ledger.get_llm_tokens("agent") == 1000
 
             # Spend some compute (consumes from RateTracker)
-            runner.world.ledger.spend_compute("agent", 600)
-            assert runner.world.ledger.get_compute("agent") == 400
+            runner.world.ledger.spend_llm_tokens("agent", 600)
+            assert runner.world.ledger.get_llm_tokens("agent") == 400
 
             # Advance tick should NOT affect RateTracker (no reset)
             runner.world.advance_tick()
 
             # Compute should remain at 400 (RateTracker, not tick-based)
-            assert runner.world.ledger.get_compute("agent") == 400
+            assert runner.world.ledger.get_llm_tokens("agent") == 400
 
     @patch("src.simulation.runner.load_agents")
     def test_world_use_rate_tracker_flag_from_config(self, mock_load: MagicMock) -> None:

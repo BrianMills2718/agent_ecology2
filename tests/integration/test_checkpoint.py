@@ -27,7 +27,7 @@ class TestSaveCheckpoint:
             # Create mock world
             world = MagicMock()
             world.tick = 5
-            world.ledger.get_all_balances.return_value = {"agent_a": {"compute": 100, "scrip": 50}}
+            world.ledger.get_all_balances.return_value = {"agent_a": {"llm_tokens": 100, "scrip": 50}}
             world.artifacts.artifacts = {}
 
             # Create mock agents
@@ -49,8 +49,8 @@ class TestSaveCheckpoint:
             world = MagicMock()
             world.tick = 10
             world.ledger.get_all_balances.return_value = {
-                "alice": {"compute": 100, "scrip": 200},
-                "bob": {"compute": 50, "scrip": 75},
+                "alice": {"llm_tokens": 100, "scrip": 200},
+                "bob": {"llm_tokens": 50, "scrip": 75},
             }
 
             # Mock artifact
@@ -114,8 +114,8 @@ class TestLoadCheckpoint:
             data = {
                 "tick": 25,
                 "balances": {
-                    "alice": {"compute": 100, "scrip": 200},
-                    "bob": {"compute": 50, "scrip": 75},
+                    "alice": {"llm_tokens": 100, "scrip": 200},
+                    "bob": {"llm_tokens": 50, "scrip": 75},
                 },
                 "cumulative_api_cost": 0.75,
                 "artifacts": [],
@@ -129,9 +129,9 @@ class TestLoadCheckpoint:
 
             assert result is not None
             assert result["tick"] == 25
-            assert result["balances"]["alice"]["compute"] == 100
+            assert result["balances"]["alice"]["llm_tokens"] == 100
             assert result["balances"]["alice"]["scrip"] == 200
-            assert result["balances"]["bob"]["compute"] == 50
+            assert result["balances"]["bob"]["llm_tokens"] == 50
             assert result["balances"]["bob"]["scrip"] == 75
             assert result["cumulative_api_cost"] == 0.75
             assert result["reason"] == "test_reason"
@@ -160,9 +160,9 @@ class TestLoadCheckpoint:
 
             assert result is not None
             # Legacy format: compute defaults to 0, scrip is the int value
-            assert result["balances"]["alice"]["compute"] == 0
+            assert result["balances"]["alice"]["llm_tokens"] == 0
             assert result["balances"]["alice"]["scrip"] == 200
-            assert result["balances"]["bob"]["compute"] == 0
+            assert result["balances"]["bob"]["llm_tokens"] == 0
             assert result["balances"]["bob"]["scrip"] == 75
 
     def test_loads_artifacts(self) -> None:
@@ -223,9 +223,9 @@ class TestCheckpointRoundTrip:
             world = MagicMock()
             world.tick = 1
             world.ledger.get_all_balances.return_value = {
-                "alice": {"compute": 100, "scrip": 500},
-                "bob": {"compute": 75, "scrip": 250},
-                "charlie": {"compute": 0, "scrip": 1000},
+                "alice": {"llm_tokens": 100, "scrip": 500},
+                "bob": {"llm_tokens": 75, "scrip": 250},
+                "charlie": {"llm_tokens": 0, "scrip": 1000},
             }
             world.artifacts.artifacts = {}
 
@@ -239,11 +239,11 @@ class TestCheckpointRoundTrip:
             loaded = load_checkpoint(str(checkpoint_path))
 
             assert loaded is not None
-            assert loaded["balances"]["alice"]["compute"] == 100
+            assert loaded["balances"]["alice"]["llm_tokens"] == 100
             assert loaded["balances"]["alice"]["scrip"] == 500
-            assert loaded["balances"]["bob"]["compute"] == 75
+            assert loaded["balances"]["bob"]["llm_tokens"] == 75
             assert loaded["balances"]["bob"]["scrip"] == 250
-            assert loaded["balances"]["charlie"]["compute"] == 0
+            assert loaded["balances"]["charlie"]["llm_tokens"] == 0
             assert loaded["balances"]["charlie"]["scrip"] == 1000
 
     def test_artifacts_round_trip(self) -> None:

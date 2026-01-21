@@ -33,7 +33,7 @@ from .config_schema import AppConfig, load_validated_config, validate_config_dic
 class PerAgentQuota(TypedDict):
     """Per-agent resource quotas computed from distribution."""
 
-    compute_quota: int
+    llm_tokens_quota: int
     disk_quota: int
     llm_budget_quota: float
 
@@ -112,7 +112,7 @@ def get(key: str, default: Any = None) -> Any:
     Examples:
         get("resources.stock.llm_budget.total")
         get("costs.actions.noop")
-        get("genesis.ledger.transfer_fee")
+        get("genesis.ledger.methods.transfer.cost")
     """
     config: dict[str, Any] = get_config()
     keys: list[str] = key.split(".")
@@ -146,20 +146,20 @@ def compute_per_agent_quota(num_agents: int) -> PerAgentQuota:
         num_agents: Number of agents to distribute resources among.
 
     Returns:
-        Dict with compute_quota, disk_quota, llm_budget_quota.
+        Dict with llm_tokens_quota, disk_quota, llm_budget_quota.
 
-    Note: compute_quota is now derived from rate_limiting config, not per_tick.
+    Note: llm_tokens_quota is derived from rate_limiting config.
     """
     if num_agents <= 0:
         num_agents = 1
 
     config = get_validated_config()
 
-    # Compute quota from rate_limiting (time-based, replaces per_tick)
+    # LLM tokens quota from rate_limiting (time-based)
     # Default to a sensible value if not configured
-    compute_total = int(config.rate_limiting.resources.llm_tokens.max_per_window)
-    if compute_total > 1_000_000:  # Effectively unlimited
-        compute_total = 1000  # Use reasonable default for quota calculation
+    llm_tokens_total = int(config.rate_limiting.resources.llm_tokens.max_per_window)
+    if llm_tokens_total > 1_000_000:  # Effectively unlimited
+        llm_tokens_total = 1000  # Use reasonable default for quota calculation
 
     # Disk (stock resource) - total, distributed equally
     disk_total = int(config.resources.stock.disk.total)
@@ -168,7 +168,7 @@ def compute_per_agent_quota(num_agents: int) -> PerAgentQuota:
     llm_total = config.resources.stock.llm_budget.total
 
     return {
-        "compute_quota": compute_total // num_agents,
+        "llm_tokens_quota": llm_tokens_total // num_agents,
         "disk_quota": disk_total // num_agents,
         "llm_budget_quota": llm_total / num_agents,
     }

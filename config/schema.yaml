@@ -284,10 +284,15 @@ executor:
 
 # -----------------------------------------------------------------------------
 # CONTRACTS
-# Contract system configuration (Plan #100, ADR-0017)
+# Contract system configuration (Plan #100, ADR-0017, ADR-0019)
 # -----------------------------------------------------------------------------
 contracts:
-  default_on_missing: <string>  # Default contract when access_contract_id is missing/deleted (default: genesis_contract_freeware)
+  default_when_null: <string>   # Behavior when access_contract_id is NULL (default: creator_only)
+                                # Options: creator_only | freeware
+                                # - creator_only: Only creator can access (ADR-0019 default)
+                                # - freeware: Use freeware contract semantics (legacy)
+  default_on_missing: <string>  # Default contract when access_contract_id points to DELETED contract
+                                # (default: genesis_contract_freeware, per ADR-0017)
 
 # -----------------------------------------------------------------------------
 # VALIDATION

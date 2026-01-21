@@ -2,7 +2,7 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-01-20 (Plan #93 - Added Agent Resource Visibility)
+**Last verified:** 2026-01-21 (Plan #148 - ADR-0019 Audit, compute->llm_tokens cleanup)
 
 **See target:** [../target/resources.md](../target/resources.md)
 

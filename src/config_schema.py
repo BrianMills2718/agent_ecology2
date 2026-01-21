@@ -282,16 +282,6 @@ class LedgerConfig(StrictModel):
     )
     methods: LedgerMethodsConfig = Field(default_factory=LedgerMethodsConfig)
 
-    # Legacy support
-    transfer_fee: int | None = Field(default=None, description="DEPRECATED: Use methods.transfer.cost")
-
-    @model_validator(mode="after")
-    def migrate_legacy_transfer_fee(self) -> "LedgerConfig":
-        """Migrate legacy transfer_fee to methods.transfer.cost."""
-        if self.transfer_fee is not None:
-            self.methods.transfer.cost = self.transfer_fee
-        return self
-
 
 class MintMethodsConfig(StrictModel):
     """Genesis mint method configurations."""
@@ -428,16 +418,6 @@ class RightsRegistryConfig(StrictModel):
         description="Artifact description"
     )
     methods: RightsRegistryMethodsConfig = Field(default_factory=RightsRegistryMethodsConfig)
-
-    # Legacy support
-    transfer_fee: int | None = Field(default=None, description="DEPRECATED: Use methods.transfer_quota.cost")
-
-    @model_validator(mode="after")
-    def migrate_legacy_transfer_fee(self) -> "RightsRegistryConfig":
-        """Migrate legacy transfer_fee to methods.transfer_quota.cost."""
-        if self.transfer_fee is not None:
-            self.methods.transfer_quota.cost = self.transfer_fee
-        return self
 
 
 class EventLogMethodsConfig(StrictModel):
@@ -1556,11 +1536,15 @@ class LibrariesConfig(StrictModel):
 # =============================================================================
 
 class ContractsConfig(StrictModel):
-    """Contract system configuration (Plan #100, ADR-0017)."""
+    """Contract system configuration (Plan #100, ADR-0017, ADR-0019)."""
 
+    default_when_null: str = Field(
+        default="creator_only",
+        description="Behavior when access_contract_id is NULL. Options: 'creator_only' (only creator can access, ADR-0019 default), 'freeware' (legacy behavior)"
+    )
     default_on_missing: str = Field(
         default="genesis_contract_freeware",
-        description="Default contract to use when access_contract_id points to deleted/missing contract"
+        description="Default contract to use when access_contract_id points to deleted/missing contract (ADR-0017)"
     )
 
 
