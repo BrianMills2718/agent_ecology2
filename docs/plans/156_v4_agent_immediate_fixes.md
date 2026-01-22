@@ -1,6 +1,19 @@
 # Plan #156: V4 Agent Immediate Fixes
 
-**Status:** in_progress
+**Status:** ✅ Complete
+
+**Verified:** 2026-01-22T20:38:05Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-01-22T20:38:05Z
+tests:
+  unit: 2098 passed, 10 skipped, 3 warnings in 47.78s
+  e2e_smoke: PASSED (4.74s)
+  e2e_real: skipped (--skip-real-e2e)
+  doc_coupling: passed
+commit: 4ed4afb
+```
 **Priority:** High
 **Created:** 2026-01-22
 **Branch:** plan-156-v4-agent-fixes
