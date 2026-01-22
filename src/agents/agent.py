@@ -674,7 +674,12 @@ class Agent:
         """Build the prompt for the LLM (events require genesis_event_log)"""
         # Extract world state for RAG context
         tick: int = world_state.get('tick', 0)
-        balance: int = world_state.get('balances', {}).get(self.agent_id, 0)
+        # Balance may be dict {'llm_tokens': int, 'scrip': int} or just int
+        balance_data = world_state.get('balances', {}).get(self.agent_id, 0)
+        if isinstance(balance_data, dict):
+            balance: int = balance_data.get('scrip', 0)
+        else:
+            balance = balance_data
         artifacts: list[dict[str, Any]] = world_state.get('artifacts', [])
         my_artifacts: list[str] = [a.get('id', '?') for a in artifacts
                                     if a.get('created_by') == self.agent_id]
