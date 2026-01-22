@@ -34,6 +34,17 @@ class AgentSummary(BaseModel):
     status: Literal["active", "low_resources", "frozen"] = "active"
     action_count: int = 0
     last_action_tick: int | None = None
+    # Plan #153: LLM budget tracking in $
+    llm_budget_initial: float = 0.0
+    llm_budget_spent: float = 0.0
+    llm_budget_remaining: float = 0.0
+
+
+class LLMBudgetInfo(BaseModel):
+    """LLM budget information (Plan #153)."""
+    initial: float = 0.0  # Starting budget in $
+    spent: float = 0.0  # Total spent in $
+    remaining: float = 0.0  # Budget left in $
 
 
 class AgentDetail(BaseModel):
@@ -42,6 +53,7 @@ class AgentDetail(BaseModel):
     scrip: int = 0
     llm_tokens: ResourceBalance
     disk: ResourceBalance
+    llm_budget: LLMBudgetInfo = Field(default_factory=LLMBudgetInfo)  # Plan #153
     status: Literal["active", "low_resources", "frozen"] = "active"
     actions: list[ActionEvent] = Field(default_factory=list)
     artifacts_owned: list[str] = Field(default_factory=list)

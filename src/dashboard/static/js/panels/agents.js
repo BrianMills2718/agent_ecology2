@@ -82,9 +82,15 @@ const AgentsPanel = {
             const row = document.createElement('tr');
             row.addEventListener('click', () => this.showAgentDetail(agent.agent_id));
 
-            const llmTokensPercent = agent.llm_tokens_quota > 0
-                ? (agent.llm_tokens_used / agent.llm_tokens_quota * 100).toFixed(0)
-                : 0;
+            // Plan #153: Budget-based display
+            const budgetRemaining = agent.llm_budget_remaining || 0;
+            const budgetInitial = agent.llm_budget_initial || 0;
+            const budgetDisplay = budgetInitial > 0
+                ? `$${budgetRemaining.toFixed(2)}/$${budgetInitial.toFixed(2)}`
+                : (agent.llm_tokens_quota > 0
+                    ? `${((agent.llm_tokens_used / agent.llm_tokens_quota) * 100).toFixed(0)}%`
+                    : '0%');
+
             const diskPercent = agent.disk_quota > 0
                 ? (agent.disk_used / agent.disk_quota * 100).toFixed(0)
                 : 0;
@@ -96,7 +102,9 @@ const AgentsPanel = {
             // Plan #145: Add frozen diagnostic reason
             let frozenReason = '';
             if (agent.status === 'frozen') {
-                if (llmTokensPercent >= 100) {
+                if (budgetInitial > 0 && budgetRemaining <= 0) {
+                    frozenReason = 'LLM budget exhausted';
+                } else if (agent.llm_tokens_quota > 0 && agent.llm_tokens_used >= agent.llm_tokens_quota) {
                     frozenReason = 'LLM tokens exhausted';
                 } else if (agent.scrip <= 0) {
                     frozenReason = 'Out of scrip';
@@ -111,7 +119,7 @@ const AgentsPanel = {
             row.innerHTML = `
                 <td>${this.escapeHtml(agent.agent_id)}</td>
                 <td>${agent.scrip}</td>
-                <td>${llmTokensPercent}%</td>
+                <td>${budgetDisplay}</td>
                 <td>${diskPercent}%</td>
                 <td class="${statusClass}"${statusAttr}>${agent.status}</td>
                 <td>${agent.action_count}</td>
@@ -218,18 +226,26 @@ const AgentsPanel = {
             // Update modal title
             document.getElementById('modal-agent-id').textContent = agentId;
 
-            // Update balances
+            // Update balances (Plan #153: show budget prominently)
             const balancesEl = document.getElementById('modal-balances');
             if (balancesEl) {
+                // Plan #153: Show budget if available, fallback to tokens
+                const budgetHtml = agent.llm_budget && agent.llm_budget.initial > 0
+                    ? `<div class="modal-stat">
+                        <div class="modal-stat-label">LLM Budget</div>
+                        <div class="modal-stat-value">$${agent.llm_budget.remaining.toFixed(4)} / $${agent.llm_budget.initial.toFixed(2)}</div>
+                       </div>`
+                    : `<div class="modal-stat">
+                        <div class="modal-stat-label">LLM Tokens</div>
+                        <div class="modal-stat-value">${agent.llm_tokens.current.toFixed(0)}/${agent.llm_tokens.quota}</div>
+                       </div>`;
+
                 balancesEl.innerHTML = `
                     <div class="modal-stat">
                         <div class="modal-stat-label">Scrip</div>
                         <div class="modal-stat-value">${agent.scrip}</div>
                     </div>
-                    <div class="modal-stat">
-                        <div class="modal-stat-label">LLM Tokens</div>
-                        <div class="modal-stat-value">${agent.llm_tokens.current.toFixed(0)}/${agent.llm_tokens.quota}</div>
-                    </div>
+                    ${budgetHtml}
                     <div class="modal-stat">
                         <div class="modal-stat-label">Disk</div>
                         <div class="modal-stat-value">${agent.disk.used.toFixed(0)}/${agent.disk.quota}</div>
@@ -492,7 +508,7 @@ const AgentsPanel = {
     },
 
     /**
-     * Export agents to CSV (Plan #145)
+     * Export agents to CSV (Plan #145, #153)
      */
     exportToCSV() {
         if (this.agents.length === 0) {
@@ -500,8 +516,8 @@ const AgentsPanel = {
             return;
         }
 
-        // CSV header
-        const headers = ['ID', 'Scrip', 'LLM Tokens Used', 'LLM Tokens Quota', 'Disk Used', 'Disk Quota', 'Status', 'Actions'];
+        // CSV header (Plan #153: added budget columns)
+        const headers = ['ID', 'Scrip', 'Budget Initial', 'Budget Spent', 'Budget Remaining', 'LLM Tokens Used', 'LLM Tokens Quota', 'Disk Used', 'Disk Quota', 'Status', 'Actions'];
         const rows = [headers.join(',')];
 
         // CSV rows
@@ -509,6 +525,9 @@ const AgentsPanel = {
             const row = [
                 `"${agent.agent_id}"`,
                 agent.scrip,
+                agent.llm_budget_initial || 0,
+                agent.llm_budget_spent || 0,
+                agent.llm_budget_remaining || 0,
                 agent.llm_tokens_used,
                 agent.llm_tokens_quota,
                 agent.disk_used,

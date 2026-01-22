@@ -24,6 +24,7 @@ from .models import (
     OwnershipTransfer,
     ResourceBalance,
     AgentDetail,
+    LLMBudgetInfo,  # Plan #153
     TickSummary,
     ChartDataPoint,
     AgentChartData,
@@ -70,6 +71,9 @@ class AgentState:
     # Per-agent action tracking (Plan #76)
     action_successes: int = 0
     action_failures: int = 0
+    # LLM budget tracking (Plan #153)
+    llm_budget_initial: float = 0.0  # Starting budget in $
+    llm_budget_spent: float = 0.0  # Total spent in $
 
 
 @dataclass
@@ -276,6 +280,8 @@ class JSONLParser:
             self.state.agents[principal_id].disk_quota = amount
         elif resource in ("llm_tokens", "compute"):  # Accept both for backward compat
             self.state.agents[principal_id].llm_tokens_quota = amount
+        elif resource == "llm_budget":  # Plan #153: LLM budget in $
+            self.state.agents[principal_id].llm_budget_initial = amount
 
     def _handle_tick(self, event: dict[str, Any], timestamp: str) -> None:
         """Handle tick event - snapshot of state."""
@@ -372,6 +378,16 @@ class JSONLParser:
         self.state.api_cost_spent += api_cost
         # Update per-agent compute used (for autonomous mode without tick events)
         self.state.agents[agent_id].llm_tokens_used += compute_cost
+
+        # Plan #153: Track LLM budget spent
+        self.state.agents[agent_id].llm_budget_spent += api_cost
+        # Use llm_budget_after if available (more accurate - from backend)
+        llm_budget_after = event.get("llm_budget_after")
+        if llm_budget_after is not None:
+            # Calculate spent as initial - remaining
+            initial = self.state.agents[agent_id].llm_budget_initial
+            if initial > 0:
+                self.state.agents[agent_id].llm_budget_spent = initial - llm_budget_after
 
         # Record chart history for autonomous mode (time-based instead of tick-based)
         if agent_id not in self.state.llm_tokens_history:
@@ -934,10 +950,20 @@ class JSONLParser:
             return None
 
         status: Literal["active", "low_resources", "frozen"] = "active"
-        if agent.llm_tokens_used >= agent.llm_tokens_quota * 0.9:
-            status = "low_resources"
-        if agent.llm_tokens_used >= agent.llm_tokens_quota:
-            status = "frozen"
+        # Plan #153: Check budget status (budget is primary constraint now)
+        budget_remaining = agent.llm_budget_initial - agent.llm_budget_spent
+        if agent.llm_budget_initial > 0:
+            # Budget-based status
+            if budget_remaining <= agent.llm_budget_initial * 0.1:
+                status = "low_resources"
+            if budget_remaining <= 0:
+                status = "frozen"
+        elif agent.llm_tokens_quota > 0:
+            # Fallback to token-based status (legacy)
+            if agent.llm_tokens_used >= agent.llm_tokens_quota * 0.9:
+                status = "low_resources"
+            if agent.llm_tokens_used >= agent.llm_tokens_quota:
+                status = "frozen"
 
         return AgentSummary(
             agent_id=agent.agent_id,
@@ -949,6 +975,10 @@ class JSONLParser:
             status=status,
             action_count=agent.action_count,
             last_action_tick=agent.last_action_tick,
+            # Plan #153: LLM budget info
+            llm_budget_initial=agent.llm_budget_initial,
+            llm_budget_spent=agent.llm_budget_spent,
+            llm_budget_remaining=budget_remaining,
         )
 
     def get_all_agent_summaries(self) -> list[AgentSummary]:
@@ -966,11 +996,21 @@ class JSONLParser:
         if not agent:
             return None
 
+        # Plan #153: Check budget status (budget is primary constraint now)
+        budget_remaining = agent.llm_budget_initial - agent.llm_budget_spent
         status: Literal["active", "low_resources", "frozen"] = "active"
-        if agent.llm_tokens_used >= agent.llm_tokens_quota * 0.9:
-            status = "low_resources"
-        if agent.llm_tokens_used >= agent.llm_tokens_quota:
-            status = "frozen"
+        if agent.llm_budget_initial > 0:
+            # Budget-based status
+            if budget_remaining <= agent.llm_budget_initial * 0.1:
+                status = "low_resources"
+            if budget_remaining <= 0:
+                status = "frozen"
+        elif agent.llm_tokens_quota > 0:
+            # Fallback to token-based status (legacy)
+            if agent.llm_tokens_used >= agent.llm_tokens_quota * 0.9:
+                status = "low_resources"
+            if agent.llm_tokens_used >= agent.llm_tokens_quota:
+                status = "frozen"
 
         return AgentDetail(
             agent_id=agent.agent_id,
@@ -984,6 +1024,11 @@ class JSONLParser:
                 current=agent.disk_quota - agent.disk_used,
                 quota=agent.disk_quota,
                 used=agent.disk_used,
+            ),
+            llm_budget=LLMBudgetInfo(  # Plan #153
+                initial=agent.llm_budget_initial,
+                spent=agent.llm_budget_spent,
+                remaining=budget_remaining,
             ),
             status=status,
             actions=agent.actions[-100:],  # Last 100 actions

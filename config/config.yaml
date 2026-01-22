@@ -28,15 +28,58 @@ scrip:
   starting_amount: 100
 
 # -----------------------------------------------------------------------------
-# COSTS - Token costs for thinking (real physical costs)
+# COSTS - DEPRECATED (Plan #153)
 # -----------------------------------------------------------------------------
-# Actions themselves are free. Real costs come from:
-# - LLM tokens (thinking) - costs from your budget
-# - Disk usage (writing) - costs from your disk quota
-# - Genesis method costs (configurable per-method below)
+# These abstract "compute cost" rates are deprecated. The system now uses
+# actual dollar costs from the models.pricing section below.
+# Kept for backward compatibility - will be ignored.
 costs:
-  per_1k_input_tokens: 1    # Compute cost per 1K input tokens
-  per_1k_output_tokens: 3   # Compute cost per 1K output tokens
+  per_1k_input_tokens: 1    # DEPRECATED - use models.pricing
+  per_1k_output_tokens: 3   # DEPRECATED - use models.pricing
+
+# -----------------------------------------------------------------------------
+# MODEL PRICING - Per-model costs for LLM calls (Plan #153)
+# -----------------------------------------------------------------------------
+# Real dollar costs per model. Used for:
+# 1. Pre-flight budget checks (can agent afford this call?)
+# 2. Post-call deductions (actual cost from budget)
+# 3. Dashboard display (estimated tokens remaining)
+#
+# If a model isn't listed here, LiteLLM's pricing is used as fallback.
+# Prices are in dollars per 1 million tokens.
+models:
+  pricing:
+    # Google - very cheap
+    gemini/gemini-2.0-flash:
+      input_per_1m: 0.075     # $0.075 per 1M input tokens
+      output_per_1m: 0.30     # $0.30 per 1M output tokens
+    gemini/gemini-1.5-flash:
+      input_per_1m: 0.075
+      output_per_1m: 0.30
+    gemini/gemini-1.5-pro:
+      input_per_1m: 1.25
+      output_per_1m: 5.00
+    # Anthropic - moderate
+    anthropic/claude-3-5-sonnet-20241022:
+      input_per_1m: 3.0
+      output_per_1m: 15.0
+    anthropic/claude-3-haiku-20240307:
+      input_per_1m: 0.25
+      output_per_1m: 1.25
+    # OpenAI - expensive
+    openai/gpt-4o:
+      input_per_1m: 2.50
+      output_per_1m: 10.0
+    openai/gpt-4o-mini:
+      input_per_1m: 0.15
+      output_per_1m: 0.60
+    openai/gpt-4-turbo:
+      input_per_1m: 10.0
+      output_per_1m: 30.0
+  # Default pricing for unknown models (conservative estimate)
+  default_pricing:
+    input_per_1m: 3.0       # Assume Sonnet-level pricing
+    output_per_1m: 15.0
 
 # -----------------------------------------------------------------------------
 # GENESIS ARTIFACTS - System services (fully configurable)

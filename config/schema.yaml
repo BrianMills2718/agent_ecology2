@@ -41,8 +41,22 @@ scrip:
 # - Genesis method costs (configurable per-method below)
 # -----------------------------------------------------------------------------
 costs:
-  per_1k_input_tokens: <number>   # Compute cost per 1K input tokens
-  per_1k_output_tokens: <number>  # Compute cost per 1K output tokens
+  per_1k_input_tokens: <number>   # DEPRECATED - use models.pricing (Plan #153)
+  per_1k_output_tokens: <number>  # DEPRECATED - use models.pricing (Plan #153)
+
+# -----------------------------------------------------------------------------
+# MODEL PRICING (Plan #153)
+# Per-model costs for LLM budget management
+# Prices are in dollars per 1 million tokens
+# -----------------------------------------------------------------------------
+models:
+  pricing:
+    <model_name>:                 # e.g., "gemini/gemini-2.0-flash"
+      input_per_1m: <number>      # $ per 1M input tokens
+      output_per_1m: <number>     # $ per 1M output tokens
+  default_pricing:
+    input_per_1m: <number>        # Fallback for unknown models
+    output_per_1m: <number>
 
 # -----------------------------------------------------------------------------
 # GENESIS ARTIFACTS

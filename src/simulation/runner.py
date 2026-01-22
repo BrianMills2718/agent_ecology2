@@ -462,7 +462,7 @@ class SimulationRunner:
             return {
                 "agent": agent,
                 "skipped": True,
-                "skip_reason": f"insufficient_compute (cost {thinking_cost} > {compute_before})",
+                "skip_reason": f"insufficient_compute (cost {thinking_cost} > {llm_tokens_before})",
                 "thinking_cost": thinking_cost,
                 "api_cost": api_cost,
                 "input_tokens": input_tokens,
@@ -503,11 +503,9 @@ class SimulationRunner:
             # Track global and per-agent costs (Plan #12)
             self.engine.track_api_cost(api_cost, agent_id=agent.agent_id)
 
-            # Deduct from agent's llm_budget resource if allocated (Plan #12)
+            # Deduct from agent's llm_budget resource if allocated (Plan #12, #153)
             if api_cost > 0:
-                self.world.ledger.spend_resource(
-                    agent.agent_id, "llm_budget", api_cost
-                )
+                self.world.ledger.deduct_llm_cost(agent.agent_id, api_cost)
 
             if result.get("skipped"):
                 reason = result.get("skip_reason", "unknown")
@@ -593,14 +591,16 @@ class SimulationRunner:
                 "api_cost": api_cost,
                 "thinking_cost": thinking_cost,
                 "llm_tokens_after": self.world.ledger.get_llm_tokens(agent.agent_id),
+                "llm_budget_after": self.world.ledger.get_llm_budget(agent.agent_id),  # Plan #153
                 "reasoning": reasoning,
             }
 
             self.world.logger.log("thinking", thinking_data)
 
             if self.verbose:
-                cost_str = f" (${api_cost:.4f}, total: ${self.engine.cumulative_api_cost:.4f})" if api_cost > 0 else ""
-                print(f"    {agent.agent_id}: {input_tokens} in, {output_tokens} out -> {thinking_cost} compute{cost_str}")
+                budget_remaining = self.world.ledger.get_llm_budget(agent.agent_id)
+                cost_str = f" (${api_cost:.4f}, budget: ${budget_remaining:.4f})" if api_cost > 0 else ""
+                print(f"    {agent.agent_id}: {input_tokens} in, {output_tokens} out{cost_str}")
 
             proposals.append({
                 "agent": agent,
@@ -684,10 +684,10 @@ class SimulationRunner:
             input_tokens = usage.get("input_tokens", 0)
             output_tokens = usage.get("output_tokens", 0)
 
-            # Track costs
+            # Track costs (Plan #153: use deduct_llm_cost)
             self.engine.track_api_cost(api_cost, agent_id=agent_id)
             if api_cost > 0:
-                self.world.ledger.spend_resource(agent_id, "llm_budget", api_cost)
+                self.world.ledger.deduct_llm_cost(agent_id, api_cost)
 
             # Track LLM tokens for summary (Plan #60)
             if self._tick_collector:
@@ -707,6 +707,7 @@ class SimulationRunner:
                 "output_tokens": output_tokens,
                 "api_cost": api_cost,
                 "thinking_cost": input_tokens + output_tokens,
+                "llm_budget_after": self.world.ledger.get_llm_budget(agent_id),  # Plan #153
                 "cpu_seconds": result.get("cpu_seconds", 0),
                 "memory_bytes": result.get("memory_bytes", 0),
                 "reasoning": reasoning,
@@ -715,7 +716,8 @@ class SimulationRunner:
             self.world.logger.log("thinking", thinking_data)
 
             if self.verbose:
-                cost_str = f" (${api_cost:.4f})" if api_cost > 0 else ""
+                budget_remaining = self.world.ledger.get_llm_budget(agent_id)
+                cost_str = f" (${api_cost:.4f}, budget: ${budget_remaining:.4f})" if api_cost > 0 else ""
                 print(f"    {agent_id}: {input_tokens} in, {output_tokens} out{cost_str}")
 
             # Create proposal (Plan #132: standardized reasoning field)
