@@ -177,21 +177,63 @@ class ScripConfig(StrictModel):
 class CostsConfig(StrictModel):
     """Token cost configurations.
 
-    Actions themselves are free. Real costs come from:
-    - LLM tokens (thinking) - costs from compute budget
-    - Disk usage (writing) - costs from disk quota
-    - Genesis method costs (configured per-method)
+    DEPRECATED (Plan #153): These abstract "compute cost" rates are deprecated.
+    The system now uses actual dollar costs from models.pricing.
+    Kept for backward compatibility - will be ignored.
     """
 
     per_1k_input_tokens: int = Field(
         default=1,
         ge=0,
-        description="Compute cost per 1K input tokens"
+        description="DEPRECATED - use models.pricing (Plan #153)"
     )
     per_1k_output_tokens: int = Field(
         default=3,
         ge=0,
-        description="Compute cost per 1K output tokens"
+        description="DEPRECATED - use models.pricing (Plan #153)"
+    )
+
+
+# =============================================================================
+# MODEL PRICING (Plan #153)
+# =============================================================================
+
+class ModelPricingEntry(StrictModel):
+    """Pricing for a specific LLM model.
+
+    Prices are in dollars per 1 million tokens.
+    """
+
+    input_per_1m: float = Field(
+        default=3.0,
+        ge=0,
+        description="$ per 1 million input tokens"
+    )
+    output_per_1m: float = Field(
+        default=15.0,
+        ge=0,
+        description="$ per 1 million output tokens"
+    )
+
+
+class ModelsConfig(StrictModel):
+    """Model pricing configuration (Plan #153).
+
+    Used for:
+    1. Pre-flight budget checks (can agent afford this call?)
+    2. Post-call deductions (actual cost from budget)
+    3. Dashboard display (estimated tokens remaining)
+
+    If a model isn't listed, LiteLLM's pricing is used as fallback.
+    """
+
+    pricing: dict[str, ModelPricingEntry] = Field(
+        default_factory=dict,
+        description="Per-model pricing (model_name -> pricing)"
+    )
+    default_pricing: ModelPricingEntry = Field(
+        default_factory=lambda: ModelPricingEntry(input_per_1m=3.0, output_per_1m=15.0),
+        description="Fallback pricing for unknown models"
     )
 
 
@@ -1561,6 +1603,7 @@ class AppConfig(StrictModel):
     resources: ResourcesConfig = Field(default_factory=ResourcesConfig)
     scrip: ScripConfig = Field(default_factory=ScripConfig)
     costs: CostsConfig = Field(default_factory=CostsConfig)
+    models: ModelsConfig = Field(default_factory=ModelsConfig)  # Plan #153
     genesis: GenesisConfig = Field(default_factory=GenesisConfig)
     timeouts: TimeoutsConfig = Field(default_factory=TimeoutsConfig)
     executor: ExecutorConfig = Field(default_factory=ExecutorConfig)

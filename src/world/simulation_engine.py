@@ -44,6 +44,17 @@ class ThinkingCostResult(TypedDict):
     total_cost: int
 
 
+class CostEstimateResult(TypedDict):
+    """Result of cost estimation for an LLM call (Plan #153)."""
+
+    model: str
+    input_tokens: int
+    output_tokens: int
+    input_cost: float  # in dollars
+    output_cost: float  # in dollars
+    total_cost: float  # in dollars
+
+
 class BudgetCheckResult(TypedDict):
     """Result of budget check."""
 
@@ -51,6 +62,14 @@ class BudgetCheckResult(TypedDict):
     cumulative_cost: float
     max_cost: float
     remaining: float
+
+
+@dataclass
+class ModelPricing:
+    """Pricing for a single model (Plan #153)."""
+
+    input_per_1m: float = 3.0  # $ per 1 million input tokens
+    output_per_1m: float = 15.0  # $ per 1 million output tokens
 
 
 @dataclass
@@ -62,16 +81,19 @@ class SimulationEngine:
     - Token-to-compute cost conversion
     - API budget tracking
     - Thinking affordability checks
+    - LLM call cost estimation (Plan #153)
 
     This is a pure calculator - it does not modify world state.
     run.py remains responsible for orchestration and state mutation.
 
     Attributes:
-        rate_input: Compute cost per 1K input tokens (default: 1)
-        rate_output: Compute cost per 1K output tokens (default: 3)
+        rate_input: Compute cost per 1K input tokens (default: 1) [DEPRECATED]
+        rate_output: Compute cost per 1K output tokens (default: 3) [DEPRECATED]
         max_api_cost: Maximum API cost in dollars, 0 = unlimited (default: 0)
         cumulative_api_cost: Running total of API costs (default: 0)
         per_agent_costs: Per-agent cumulative API costs (Plan #12)
+        model_pricing: Per-model pricing (Plan #153)
+        default_pricing: Default pricing for unknown models (Plan #153)
     """
 
     rate_input: int = 1
@@ -79,6 +101,8 @@ class SimulationEngine:
     max_api_cost: float = 0.0
     cumulative_api_cost: float = field(default=0.0)
     per_agent_costs: dict[str, float] = field(default_factory=dict)
+    model_pricing: dict[str, ModelPricing] = field(default_factory=dict)
+    default_pricing: ModelPricing = field(default_factory=ModelPricing)
 
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> SimulationEngine:
@@ -86,9 +110,11 @@ class SimulationEngine:
         Factory method to create engine from config dict.
 
         Extracts relevant values from:
-        - config["costs"]["per_1k_input_tokens"]
-        - config["costs"]["per_1k_output_tokens"]
+        - config["costs"]["per_1k_input_tokens"] (deprecated)
+        - config["costs"]["per_1k_output_tokens"] (deprecated)
         - config["budget"]["max_api_cost"]
+        - config["models"]["pricing"] (Plan #153)
+        - config["models"]["default_pricing"] (Plan #153)
 
         Args:
             config: Configuration dictionary (typically from config.yaml)
@@ -98,12 +124,32 @@ class SimulationEngine:
         """
         costs = config.get("costs", {})
         budget = config.get("budget", {})
+        models = config.get("models", {})
+
+        # Load per-model pricing (Plan #153)
+        model_pricing: dict[str, ModelPricing] = {}
+        pricing_dict = models.get("pricing", {})
+        for model_name, prices in pricing_dict.items():
+            if isinstance(prices, dict):
+                model_pricing[model_name] = ModelPricing(
+                    input_per_1m=prices.get("input_per_1m", 3.0),
+                    output_per_1m=prices.get("output_per_1m", 15.0),
+                )
+
+        # Load default pricing (Plan #153)
+        default_dict = models.get("default_pricing", {})
+        default_pricing = ModelPricing(
+            input_per_1m=default_dict.get("input_per_1m", 3.0),
+            output_per_1m=default_dict.get("output_per_1m", 15.0),
+        )
 
         return cls(
             rate_input=costs.get("per_1k_input_tokens", 1),
             rate_output=costs.get("per_1k_output_tokens", 3),
             max_api_cost=budget.get("max_api_cost", 0.0),
             cumulative_api_cost=0.0,
+            model_pricing=model_pricing,
+            default_pricing=default_pricing,
         )
 
     def calculate_thinking_cost(
@@ -205,6 +251,68 @@ class SimulationEngine:
         """
         result = self.calculate_thinking_cost(input_tokens, output_tokens)
         return (available_compute >= result["total_cost"], result["total_cost"])
+
+    def get_model_pricing(self, model: str) -> ModelPricing:
+        """
+        Get pricing for a specific model (Plan #153).
+
+        Looks up model in pricing dict, falls back to default_pricing.
+
+        Args:
+            model: Model identifier (e.g., "gemini/gemini-2.0-flash")
+
+        Returns:
+            ModelPricing with input_per_1m and output_per_1m rates
+        """
+        return self.model_pricing.get(model, self.default_pricing)
+
+    def estimate_call_cost(
+        self, model: str, input_tokens: int, output_tokens: int
+    ) -> CostEstimateResult:
+        """
+        Estimate the dollar cost of an LLM call (Plan #153).
+
+        Uses per-model pricing from config, falls back to default.
+
+        Args:
+            model: Model identifier (e.g., "gemini/gemini-2.0-flash")
+            input_tokens: Number of input tokens
+            output_tokens: Number of output tokens
+
+        Returns:
+            CostEstimateResult with model, tokens, and costs in dollars
+        """
+        pricing = self.get_model_pricing(model)
+
+        input_cost = (input_tokens / 1_000_000) * pricing.input_per_1m
+        output_cost = (output_tokens / 1_000_000) * pricing.output_per_1m
+
+        return {
+            "model": model,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "input_cost": input_cost,
+            "output_cost": output_cost,
+            "total_cost": input_cost + output_cost,
+        }
+
+    def can_afford_llm_call(
+        self, budget_remaining: float, model: str, estimated_input: int, estimated_output: int
+    ) -> tuple[bool, float]:
+        """
+        Pre-flight check: can agent afford an LLM call? (Plan #153)
+
+        Args:
+            budget_remaining: Agent's remaining LLM budget in dollars
+            model: Model to be used
+            estimated_input: Estimated input tokens
+            estimated_output: Estimated output tokens
+
+        Returns:
+            (can_afford, estimated_cost): Tuple of affordability and estimated cost
+        """
+        estimate = self.estimate_call_cost(model, estimated_input, estimated_output)
+        return (budget_remaining >= estimate["total_cost"], estimate["total_cost"])
 
     def reset_budget(self, starting_cost: float = 0.0) -> None:
         """
@@ -355,7 +463,9 @@ def measure_resources() -> Generator[ResourceMeasurer, None, None]:
 
 __all__ = [
     "SimulationEngine",
+    "ModelPricing",
     "ThinkingCostResult",
+    "CostEstimateResult",
     "BudgetCheckResult",
     "ResourceUsage",
     "ResourceMeasurer",

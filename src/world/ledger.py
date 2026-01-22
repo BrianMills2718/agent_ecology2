@@ -752,6 +752,8 @@ class Ledger:
         Mode-aware: Uses RateTracker consumption when rate limiting is enabled,
         otherwise uses tick-based balance deduction.
 
+        DEPRECATED: Use deduct_llm_cost() instead for dollar-based budgets (Plan #153).
+
         Returns:
             (success, cost): Whether deduction succeeded and the cost amount
         """
@@ -761,3 +763,72 @@ class Ledger:
         # Use mode-aware spend_llm_tokens (RateTracker or tick-based)
         success = self.spend_llm_tokens(principal_id, cost)
         return success, cost
+
+    # ===== LLM BUDGET (Plan #153) =====
+    # Dollar-based budget constraint - THE primary LLM resource limit.
+    # Token capacity is derived from budget / model_cost_per_token.
+
+    def get_llm_budget(self, principal_id: str) -> float:
+        """Get remaining LLM budget in dollars for a principal (Plan #153).
+
+        Args:
+            principal_id: ID of the principal
+
+        Returns:
+            Remaining budget in dollars
+        """
+        return self.get_resource(principal_id, "llm_budget")
+
+    def can_afford_llm_call(self, principal_id: str, estimated_cost: float) -> bool:
+        """Pre-flight check: can principal afford the estimated LLM cost? (Plan #153)
+
+        Args:
+            principal_id: ID of the principal
+            estimated_cost: Estimated cost in dollars
+
+        Returns:
+            True if budget >= estimated_cost
+        """
+        return self.get_llm_budget(principal_id) >= estimated_cost
+
+    def deduct_llm_cost(self, principal_id: str, actual_cost: float) -> bool:
+        """Deduct actual LLM cost from principal's budget (Plan #153).
+
+        Called after LLM call completes with the actual cost.
+
+        Args:
+            principal_id: ID of the principal
+            actual_cost: Actual cost in dollars from the API
+
+        Returns:
+            True if successful (should always succeed post-call)
+        """
+        return self.spend_resource(principal_id, "llm_budget", actual_cost)
+
+    async def deduct_llm_cost_async(self, principal_id: str, actual_cost: float) -> bool:
+        """Async thread-safe deduct LLM cost from budget (Plan #153).
+
+        Args:
+            principal_id: ID of the principal
+            actual_cost: Actual cost in dollars from the API
+
+        Returns:
+            True if successful
+        """
+        return await self.spend_resource_async(principal_id, "llm_budget", actual_cost)
+
+    def get_llm_budget_info(self, principal_id: str) -> dict[str, float]:
+        """Get LLM budget info including remaining and spent (Plan #153).
+
+        Args:
+            principal_id: ID of the principal
+
+        Returns:
+            Dict with 'remaining' and 'initial' budget amounts
+        """
+        remaining = self.get_llm_budget(principal_id)
+        # Initial budget would need to be tracked separately or from config
+        # For now, we just return remaining
+        return {
+            "remaining": remaining,
+        }
