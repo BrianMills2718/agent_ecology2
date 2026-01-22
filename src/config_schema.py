@@ -1500,6 +1500,11 @@ class AgentConfig(StrictModel):
         ge=0,
         description="Max recent failures to track per agent (Plan #88)"
     )
+    action_history_max: int = Field(
+        default=15,
+        ge=0,
+        description="Max recent actions to track per agent for loop detection (Plan #156)"
+    )
     # Plan #132: Removed cognitive_schema - single standardized response format with 'reasoning' field
 
 
