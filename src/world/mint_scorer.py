@@ -18,7 +18,7 @@ import json
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import TypedDict
+from typing import Callable, TypedDict
 
 # Add llm_provider_standalone to path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -107,7 +107,8 @@ class MintScorer:
         self,
         artifact_id: str,
         artifact_type: str,
-        content: str
+        content: str,
+        is_budget_exhausted: Callable[[], bool] | None = None,
     ) -> ScoringResult:
         """
         Score an artifact using LLM evaluation.
@@ -116,6 +117,7 @@ class MintScorer:
             artifact_id: The artifact's ID
             artifact_type: Type of artifact (e.g., "text", "executable")
             content: The artifact's content
+            is_budget_exhausted: Optional callback to check if budget is exhausted
 
         Returns:
             Dict with:
@@ -124,6 +126,15 @@ class MintScorer:
             - reason: str (explanation)
             - error: str (if failed)
         """
+        # Check budget before making LLM call (defense in depth)
+        if is_budget_exhausted is not None and is_budget_exhausted():
+            return {
+                "success": False,
+                "score": 0,
+                "reason": "",
+                "error": "LLM budget exhausted - scoring skipped"
+            }
+
         # Check for duplicate content (originality check)
         content_hash = self._compute_content_hash(content)
         if content_hash in self._seen_hashes:
