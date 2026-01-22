@@ -173,6 +173,7 @@ class World:
     # Resource metrics for visibility (Plan #93)
     resource_metrics_provider: ResourceMetricsProvider
     _simulation_start_time: float
+    _simulation_duration: float | None  # Plan #157: Total duration for time awareness
     # Installed libraries per agent (Plan #29)
     # Maps principal_id -> list of (library_name, version)
     _installed_libraries: dict[str, list[tuple[str, str | None]]]
@@ -233,6 +234,7 @@ class World:
         # Resource metrics provider for visibility (Plan #93)
         # Provides read-only aggregation of resource metrics for agent prompts
         self._simulation_start_time = time.time()
+        self._simulation_duration = None  # Plan #157: Set by runner when duration known
         self.resource_metrics_provider = ResourceMetricsProvider(
             initial_allocations={
                 "llm_budget": float(quotas.get("llm_budget_quota", 0.0)),
@@ -1342,6 +1344,15 @@ class World:
                 },
             }
 
+        # Plan #157: Time context for goal clarity
+        elapsed = time.time() - self._simulation_start_time
+        time_context: dict[str, Any] = {
+            "elapsed_seconds": elapsed,
+            "duration_seconds": self._simulation_duration,
+            "time_remaining_seconds": (self._simulation_duration - elapsed) if self._simulation_duration else None,
+            "progress_percent": (elapsed / self._simulation_duration * 100) if self._simulation_duration else None,
+        }
+
         return {
             "tick": self.tick,
             "balances": self.ledger.get_all_balances(),
@@ -1350,7 +1361,12 @@ class World:
             "mint_submissions": mint_status,
             "recent_events": self.get_recent_events(10),
             "resource_metrics": resource_metrics,
+            "time_context": time_context,  # Plan #157
         }
+
+    def set_simulation_duration(self, duration: float) -> None:
+        """Set the total simulation duration for time awareness (Plan #157)."""
+        self._simulation_duration = duration
 
     def get_recent_events(self, n: int = 20) -> list[dict[str, Any]]:
         """Get recent events from the log"""

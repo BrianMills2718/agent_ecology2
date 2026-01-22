@@ -1070,6 +1070,8 @@ class SimulationRunner:
 
         try:
             if duration is not None:
+                # Plan #157: Tell world about duration for time awareness
+                self.world.set_simulation_duration(duration)
                 # Run for specified duration, checking budget periodically
                 if self.verbose:
                     print(f"  [AUTONOMOUS] Running for {duration} seconds...")
