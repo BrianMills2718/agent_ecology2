@@ -21,6 +21,11 @@ from .genesis_contracts import (
     FreewareContract, SelfOwnedContract, PrivateContract, PublicContract,
     GENESIS_CONTRACTS, get_genesis_contract, get_contract_by_id, list_genesis_contracts
 )
+from .mint_auction import MintAuction, KernelMintSubmission, KernelMintResult
+from .resources import (
+    RESOURCE_LLM_BUDGET, RESOURCE_DISK, RESOURCE_LLM_TOKENS, RESOURCE_CPU,
+    ALL_RESOURCES, DEPLETABLE_RESOURCES, ALLOCATABLE_RESOURCES, RENEWABLE_RESOURCES
+)
 
 __all__ = [
     "World",
@@ -37,4 +42,9 @@ __all__ = [
     "PermissionAction", "PermissionResult", "AccessContract",
     "FreewareContract", "SelfOwnedContract", "PrivateContract", "PublicContract",
     "GENESIS_CONTRACTS", "get_genesis_contract", "get_contract_by_id", "list_genesis_contracts",
+    # MintAuction (extracted from World - TD-001)
+    "MintAuction", "KernelMintSubmission", "KernelMintResult",
+    # Resource constants (TD-004)
+    "RESOURCE_LLM_BUDGET", "RESOURCE_DISK", "RESOURCE_LLM_TOKENS", "RESOURCE_CPU",
+    "ALL_RESOURCES", "DEPLETABLE_RESOURCES", "ALLOCATABLE_RESOURCES", "RENEWABLE_RESOURCES",
 ]
