@@ -64,22 +64,9 @@ Hardcoded in Python/Docker. Agents cannot replace these—they define what's *po
 
 This is the physics of the world. Agents operate within these constraints, not around them.
 
-### Genesis Artifacts (the "Infrastructure")
+### Genesis Artifacts
 
-Pre-seeded artifacts created at T=0. Agents could theoretically build alternatives—they define what's *convenient*:
-
-| Artifact | Purpose |
-|----------|---------|
-| `genesis_ledger` | Scrip balances, transfers, spawn agents |
-| `genesis_mint` | Score artifacts, create scrip |
-| `genesis_escrow` | Trustless trading |
-| `genesis_rights_registry` | Resource quota management |
-| `genesis_store` | Artifact discovery |
-| `genesis_event_log` | World event history |
-| `genesis_debt_contract` | Trustless credit/lending |
-| `genesis_model_registry` | LLM model access |
-
-Genesis artifacts solve the cold-start problem. They're trusted because initial agent prompts reference them, but agents could migrate to alternatives if they collectively agree.
+Pre-seeded artifacts that solve the cold-start problem (ledger, escrow, store, etc.). Agents could theoretically build alternatives—these just provide convenient starting infrastructure.
 
 ## Agents
 
@@ -91,56 +78,59 @@ Genesis artifacts solve the cold-start problem. They're trusted because initial 
 
 This unified model means the same ownership and access semantics apply to everything—data, code, agents, contracts, and knowledge.
 
-### Agent Architecture
+### Artifact Network
 
-Agents decide actions through an LLM-based decision loop. The current architecture uses **configurable state machines** (this is current best practice but improvable—agents could develop better decision architectures and share them through the artifact system):
+Agents don't "contain" their tools, memory, or config—they invoke them. Everything is an artifact connected through invoke relationships governed by contracts:
 
 ```mermaid
 graph TD
-    subgraph Agent["Agent (illustrative)"]
-        subgraph Workflow["State Machine"]
-            S1[observe] -->|"new info"| S2[analyze]
-            S2 -->|"insight"| S3[plan]
-            S3 -->|"ready"| S4[act]
-            S4 -->|"result"| S5[learn]
-            S5 --> S1
-            S2 -->|"uncertain"| S1
-        end
+    subgraph Artifacts["Artifact Network (illustrative)"]
+        %% Agents
+        AgentA((Agent A))
+        AgentB((Agent B))
 
-        subgraph Knowledge["Knowledge Artifacts"]
-            RAG[(Experience<br/>Memory)]
-            KG[(Knowledge<br/>Graph)]
-            Work[Working<br/>Memory]
-        end
+        %% Memory artifacts
+        Mem1[(Memory<br/>Artifact)]
+        Mem2[(Memory<br/>Artifact)]
 
-        subgraph Tools["Self-Built Tools"]
-            T1[artifact_searcher]
-            T2[contract_analyzer]
-            T3[strategy_evaluator]
-        end
+        %% Tool artifacts
+        Tool1[searcher]
+        Tool2[analyzer]
 
-        subgraph Config["Config (tradeable)"]
-            Prompt[system_prompt]
-            Model[model_choice]
-            Params[parameters]
-        end
+        %% Knowledge
+        KG[(Knowledge<br/>Graph)]
 
-        Workflow -->|"recall"| RAG
-        Workflow -->|"query relationships"| KG
-        Workflow -->|"current context"| Work
-        Workflow -->|"invoke"| Tools
-        S5 -->|"store insight"| RAG
-        S5 -->|"update relations"| KG
+        %% Config artifacts
+        ConfigA[Agent A<br/>Config]
+        ConfigB[Agent B<br/>Config]
+
+        %% Agent A's invoke relationships
+        AgentA -->|"invoke"| Mem1
+        AgentA -->|"invoke"| Tool1
+        AgentA -->|"invoke"| KG
+        AgentA -->|"invoke"| ConfigA
+        AgentA <-->|"invoke"| AgentB
+
+        %% Agent B's invoke relationships
+        AgentB -->|"invoke"| Mem1
+        AgentB -->|"invoke"| Mem2
+        AgentB -->|"invoke"| Tool2
+        AgentB -->|"invoke"| KG
+        AgentB -->|"invoke"| ConfigB
+
+        %% Tool invoke relationships
+        Tool1 -->|"invoke"| KG
+        Tool2 -->|"invoke"| Mem2
+
+        %% Access contracts (dotted)
+        Mem1 -.-o|"pay-per-read"| Contract1[contract]
+        KG -.-o|"public"| Contract2[contract]
     end
 ```
 
-Each agent has:
-- **States** with associated behaviors and prompts
-- **Transitions** triggered by conditions or outcomes
-- **Memory** persisted as artifacts (queryable, tradeable)
-- **Self-modification** capability (can rewrite own config)
+**Key insight**: The "boundary" of an agent isn't a container—it's the set of artifacts it has invoke rights to. Agent A and Agent B both invoke the same Knowledge Graph and Memory Artifact. Memory can be shared, sold, or revoked. Agents invoke each other. Tools invoke other artifacts. Everything is interlinked through the same contract-governed invoke mechanism.
 
-Different agents specialize: builders cycle through design-implement-test; coordinators move through discover-negotiate-execute-settle; infrastructure agents handle deploy-maintain-deprecate.
+Agents currently use configurable state machines (observe→analyze→plan→act→learn) but this is just current best practice—agents could develop better decision architectures and share them through the artifact system.
 
 ### Intelligent Evolution
 
