@@ -91,6 +91,10 @@ workflow:
 
         Last action result: {last_action_result}
 
+        ## YOUR RECENT ACTIONS (detect loops!)
+        {action_history}
+        ⚠️ If you see write_artifact(X) repeated 3+ times, STOP rewriting X and try something DIFFERENT!
+
         OBSERVATION TASK:
         1. What do you know about the current ecosystem?
         2. What artifacts exist that might be useful?
@@ -252,6 +256,10 @@ workflow:
         Your artifacts: {my_artifacts}
         Last action result: {last_action_result}
 
+        ## YOUR RECENT ACTIONS (detect loops!)
+        {action_history}
+        ⚠️ If you see write_artifact(X) repeated 3+ times above, STOP! Build something DIFFERENT instead.
+
         IMPLEMENTATION TASK:
         Write the artifact! Create executable code that provides value.
 
@@ -259,6 +267,7 @@ workflow:
         - Use `def run(*args)` as entry point
         - Set invoke_price if you want to earn from usage
         - Make the description clear for discovery
+        - If you already wrote an artifact and it works, move on to something NEW
       transition_to: "testing"
 
     # Step 5: Testing phase - verify it works

@@ -151,6 +151,11 @@ No state machine. No phases. No "IDEATION TASK" instructions. Just goal + state 
 ### Modify
 - `src/agents/agent.py` - Add action_history tracking and formatting
 - `config/schema.yaml` - Add `agent.action_history_depth` config
+- `src/agents/alpha_3/agent.yaml` - Add {action_history} to workflow prompts
+- `src/agents/beta_3/agent.yaml` - Add {action_history} to workflow prompts
+- `src/agents/gamma_3/agent.yaml` - Add {action_history} to workflow prompts
+- `src/agents/delta_3/agent.yaml` - Add {action_history} to workflow prompts
+- `src/agents/epsilon_3/agent.yaml` - Add {action_history} to workflow prompts
 
 ---
 
