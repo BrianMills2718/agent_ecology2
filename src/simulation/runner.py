@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import random
+import time
 from datetime import datetime
 from typing import Any, cast, get_args, TYPE_CHECKING
 
@@ -128,6 +129,11 @@ class SimulationRunner:
         self.engine = SimulationEngine.from_config(config)
         if checkpoint:
             self.engine.reset_budget(checkpoint["cumulative_api_cost"])
+
+        # Runtime timeout backstop (0 = unlimited)
+        budget_config = config.get("budget", {})
+        self.max_runtime_seconds: int = budget_config.get("max_runtime_seconds", 3600)
+        self._run_start_time: float | None = None  # Set when run() is called
 
         # Load agent configs
         agent_configs: list[AgentConfig] = load_agents()
@@ -818,6 +824,15 @@ class SimulationRunner:
         if self.engine.max_api_cost > 0:
             print(f"LLM budget: ${self.engine.max_api_cost:.2f}")
 
+        # Show runtime limit (hard backstop)
+        if self.max_runtime_seconds > 0:
+            hours = self.max_runtime_seconds // 3600
+            mins = (self.max_runtime_seconds % 3600) // 60
+            if hours > 0:
+                print(f"Runtime limit: {hours}h {mins}m")
+            else:
+                print(f"Runtime limit: {mins}m")
+
         # Show rate limit info if rate limiting is enabled
         rate_config = self.config.get("rate_limiting", {})
         if rate_config.get("enabled", False):
@@ -940,7 +955,21 @@ class SimulationRunner:
             "agent_count": len(self.agents),
             "api_cost": self.engine.cumulative_api_cost,
             "max_api_cost": self.engine.max_api_cost,
+            "max_runtime_seconds": self.max_runtime_seconds,
         }
+
+    def is_runtime_exceeded(self) -> bool:
+        """Check if maximum runtime has been exceeded.
+
+        Returns:
+            True if max_runtime_seconds > 0 and elapsed time exceeds it.
+        """
+        if self.max_runtime_seconds <= 0:
+            return False  # Unlimited runtime
+        if self._run_start_time is None:
+            return False  # Run hasn't started yet
+        elapsed = time.time() - self._run_start_time
+        return elapsed >= self.max_runtime_seconds
 
     async def run(
         self,
@@ -959,6 +988,7 @@ class SimulationRunner:
         """
         SimulationRunner._active_runner = self
         self._running = True
+        self._run_start_time = time.time()  # Track runtime for timeout
         self._print_startup_info()
 
         try:
@@ -1015,6 +1045,12 @@ class SimulationRunner:
                                   f"(${self.engine.cumulative_api_cost:.2f} >= "
                                   f"${self.engine.max_api_cost:.2f})")
                         break
+                    # Check runtime timeout (hard backstop)
+                    if self.is_runtime_exceeded():
+                        if self.verbose:
+                            print(f"  [AUTONOMOUS] Runtime timeout "
+                                  f"({self.max_runtime_seconds}s exceeded)")
+                        break
                     # Check if duration exceeded
                     elapsed = asyncio.get_event_loop().time() - start_time
                     if elapsed >= duration:
@@ -1022,7 +1058,7 @@ class SimulationRunner:
                     # Sleep for short interval to allow budget checks
                     await asyncio.sleep(min(0.5, duration - elapsed))
             else:
-                # Run until all agents stop, budget exhausted, or interrupted
+                # Run until all agents stop, budget exhausted, timeout, or interrupted
                 if self.verbose:
                     print(f"  [AUTONOMOUS] Running until all agents stop...")
                 while self.world.loop_manager.running_count > 0:
@@ -1032,6 +1068,12 @@ class SimulationRunner:
                             print(f"  [AUTONOMOUS] Budget exhausted "
                                   f"(${self.engine.cumulative_api_cost:.2f} >= "
                                   f"${self.engine.max_api_cost:.2f})")
+                        break
+                    # Check runtime timeout (hard backstop)
+                    if self.is_runtime_exceeded():
+                        if self.verbose:
+                            print(f"  [AUTONOMOUS] Runtime timeout "
+                                  f"({self.max_runtime_seconds}s exceeded)")
                         break
                     # Wait if paused
                     await self._pause_event.wait()

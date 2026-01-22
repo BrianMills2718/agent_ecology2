@@ -108,9 +108,9 @@ class TestConfigDefaults:
     """Test default values are sensible."""
 
     def test_default_budget(self) -> None:
-        """Default max_api_cost should be 1.0 (schema default)."""
+        """Default max_api_cost should be 0.50 (safe default)."""
         config = AppConfig()
-        assert config.budget.max_api_cost == 1.0
+        assert config.budget.max_api_cost == 0.50
 
     def test_default_starting_scrip(self) -> None:
         """Default starting scrip should be 100."""
@@ -168,7 +168,8 @@ class TestConfigFileLoading:
         # Check some expected values from the real config
         # Note: max_ticks removed in Plan #102 - world section now empty/optional
         assert config.llm.default_model == "gemini/gemini-2.0-flash"
-        assert config.budget.max_api_cost == 100.0  # Updated from 1.0 for Plan #57
+        assert config.budget.max_api_cost == 0.50  # Safe default to prevent runaway costs
+        assert config.budget.max_runtime_seconds == 3600  # 1 hour hard timeout
 
     def test_missing_file_raises_error(self) -> None:
         """Missing config file should raise FileNotFoundError."""

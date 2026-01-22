@@ -51,6 +51,9 @@ class TestRunnerOutputMode:
         runner.engine = MagicMock()
         runner.engine.max_api_cost = max_api_cost
 
+        # Runtime timeout
+        runner.max_runtime_seconds = 3600
+
         # Mock agents
         runner.agents = [MagicMock(agent_id="alice"), MagicMock(agent_id="bob")]
 
@@ -131,6 +134,9 @@ class TestRunnerOutputTerminology:
         runner.engine = MagicMock()
         runner.engine.max_api_cost = 5.0
 
+        # Runtime timeout
+        runner.max_runtime_seconds = 3600
+
         # Mock agents
         runner.agents = [MagicMock(agent_id="alice")]
 
@@ -200,6 +206,7 @@ class TestRunnerOutputTerminology:
         runner.world.ledger.get_all_scrip.return_value = {}
         runner.engine = MagicMock()
         runner.engine.max_api_cost = 0
+        runner.max_runtime_seconds = 3600
         runner.agents = []
 
         # Capture stdout

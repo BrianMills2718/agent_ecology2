@@ -7,6 +7,11 @@ Run with:
     pytest tests/e2e/test_real_e2e.py -v --run-external
 
 Cost estimate: ~$0.01-0.05 per full test run
+
+SAFETY: Each test has:
+- max_api_cost: $0.10 budget cap
+- max_runtime_seconds: 60s hard timeout
+- pytest timeout: 120s per test
 """
 
 from __future__ import annotations
@@ -22,7 +27,11 @@ from src.world import World
 
 
 # Skip all tests in this module unless --run-external is passed
-pytestmark = pytest.mark.external
+# Also set a 120 second timeout per test as ultimate backstop
+pytestmark = [
+    pytest.mark.external,
+    pytest.mark.timeout(120),  # Hard timeout per test
+]
 
 
 @pytest.fixture
@@ -59,6 +68,7 @@ def real_e2e_config(tmp_path: Path) -> dict[str, Any]:
         },
         "budget": {
             "max_api_cost": 0.10,  # Cap at $0.10 for safety
+            "max_runtime_seconds": 60,  # Hard timeout: 60 seconds per test
             "checkpoint_interval": 0,
             "checkpoint_on_end": False,
         },

@@ -508,10 +508,11 @@ memory:
 world: {}
 
 # -----------------------------------------------------------------------------
-# BUDGET - Global API limit
+# BUDGET - Global API limit and runtime backstops
 # -----------------------------------------------------------------------------
 budget:
-  max_api_cost: 100.00          # $ (0 = unlimited)
+  max_api_cost: 0.50            # $ (0 = unlimited). Default $0.50 for safety.
+  max_runtime_seconds: 3600     # Hard timeout in seconds (0 = unlimited). Default 1 hour.
   checkpoint_file: "checkpoint.json"
   checkpoint_interval: 10       # Save checkpoint every N ticks (0 = disable)
   checkpoint_on_end: true       # Save checkpoint when simulation ends normally

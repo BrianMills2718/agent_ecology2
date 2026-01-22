@@ -847,3 +847,97 @@ class TestBudgetExhaustion:
             # Track cost to exceed limit
             runner.engine.track_api_cost(0.60)  # Total: $1.10
             assert runner.engine.is_budget_exhausted() is True
+
+
+class TestRuntimeTimeout:
+    """Tests for runtime timeout backstop."""
+
+    @patch("src.simulation.runner.load_agents")
+    def test_runtime_timeout_config_loaded(self, mock_load: MagicMock) -> None:
+        """max_runtime_seconds is loaded from config."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            config["budget"]["max_runtime_seconds"] = 1800  # 30 minutes
+            runner = SimulationRunner(config, verbose=False)
+
+            assert runner.max_runtime_seconds == 1800
+
+    @patch("src.simulation.runner.load_agents")
+    def test_runtime_timeout_default(self, mock_load: MagicMock) -> None:
+        """max_runtime_seconds defaults to 3600 (1 hour) if not specified."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            del config["budget"]  # Remove budget config entirely
+            runner = SimulationRunner(config, verbose=False)
+
+            # Default should be 3600 (1 hour)
+            assert runner.max_runtime_seconds == 3600
+
+    @patch("src.simulation.runner.load_agents")
+    def test_is_runtime_exceeded_before_start(self, mock_load: MagicMock) -> None:
+        """is_runtime_exceeded returns False before run starts."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            config["budget"]["max_runtime_seconds"] = 10
+            runner = SimulationRunner(config, verbose=False)
+
+            # Before run(), _run_start_time is None
+            assert runner._run_start_time is None
+            assert runner.is_runtime_exceeded() is False
+
+    @patch("src.simulation.runner.load_agents")
+    def test_is_runtime_exceeded_unlimited(self, mock_load: MagicMock) -> None:
+        """is_runtime_exceeded returns False when max_runtime_seconds is 0."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            config["budget"]["max_runtime_seconds"] = 0  # Unlimited
+            runner = SimulationRunner(config, verbose=False)
+
+            # Even if we fake a start time far in the past, should return False for unlimited
+            import time
+            runner._run_start_time = time.time() - 10000  # 10000 seconds ago
+            assert runner.is_runtime_exceeded() is False
+
+    @patch("src.simulation.runner.load_agents")
+    def test_autonomous_loop_checks_runtime(self, mock_load: MagicMock) -> None:
+        """_run_autonomous exits when runtime exceeded."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            config["budget"]["max_runtime_seconds"] = 1  # 1 second timeout
+            config["budget"]["max_api_cost"] = 1000  # High budget so it doesn't trigger
+            runner = SimulationRunner(config, verbose=False)
+
+            import asyncio
+            import time
+
+            start = time.time()
+            # Run with long duration - should exit early due to runtime timeout
+            asyncio.run(runner.run(duration=10.0))
+            elapsed = time.time() - start
+
+            # Should exit after ~1-2 seconds (runtime timeout), not 10 seconds
+            assert elapsed < 5.0, f"Expected exit due to runtime timeout, took {elapsed}s"
+
+    @patch("src.simulation.runner.load_agents")
+    def test_status_includes_runtime_limit(self, mock_load: MagicMock) -> None:
+        """get_status includes max_runtime_seconds."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            config["budget"]["max_runtime_seconds"] = 7200
+            runner = SimulationRunner(config, verbose=False)
+
+            status = runner.get_status()
+            assert "max_runtime_seconds" in status
+            assert status["max_runtime_seconds"] == 7200
