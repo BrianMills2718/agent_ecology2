@@ -239,6 +239,11 @@ class Agent:
         self.failure_history: list[str] = []
         self._failure_history_max: int = config_get("agent.failure_history_max") or 5
 
+        # Plan #156: Track action history for loop detection
+        # Agents see their last N actions to detect repetitive behavior
+        self.action_history: list[str] = []
+        self._action_history_max: int = config_get("agent.action_history_max") or 15
+
         # RAG config: per-agent overrides merged with global defaults
         global_rag: dict[str, Any] = config_get("agent.rag") or {}
         self._rag_config: RAGConfigDict = {
@@ -404,6 +409,21 @@ class Agent:
             result = result.strip() + "\n[...truncated]"
 
         return result
+
+    def _format_action_history(self) -> str:
+        """Format action history for injection into prompt (Plan #156).
+
+        Returns numbered list of recent actions with outcomes.
+        Agent can scan this to detect loops (same action repeated).
+        """
+        if not self.action_history:
+            return "(No actions yet)"
+
+        lines: list[str] = []
+        for i, action in enumerate(self.action_history, 1):
+            lines.append(f"{i}. {action}")
+
+        return "\n".join(lines)
 
     @classmethod
     def from_artifact(
@@ -1020,6 +1040,15 @@ Your response should include:
             except (TypeError, ValueError):
                 pass  # Skip if data isn't JSON serializable
 
+        # Plan #156: Track action history for loop detection
+        # Compact format: action_type(target) → STATUS: brief_message
+        brief_msg = message[:80] if len(message) > 80 else message
+        history_entry = f"{action_type} → {status}: {brief_msg}"
+        self.action_history.append(history_entry)
+        # Keep only the most recent actions
+        if len(self.action_history) > self._action_history_max:
+            self.action_history = self.action_history[-self._action_history_max:]
+
         # Plan #88: Track recent failures for learning from mistakes
         if not success:
             # Include more of the error message - 200 chars captures prescriptive hints
@@ -1157,13 +1186,22 @@ Your response should include:
                 self.agent_id, query, limit=rag_limit
             )
 
+        # Plan #156: Compute my_artifacts list for context
+        my_artifacts: list[str] = [
+            a.get("id", "?") for a in artifacts
+            if a.get("created_by") == self.agent_id
+        ]
+
         return {
             "agent_id": self.agent_id,
             "tick": tick,
             "balance": balance,
             "artifacts": artifacts,
+            "my_artifacts": my_artifacts,  # Plan #156: Agent's own artifacts
             "memories": memories,
             "last_action_result": self.last_action_result or "(No previous action)",
+            "action_history": self._format_action_history(),  # Plan #156: Loop detection
+            "action_history_length": self._action_history_max,  # Plan #156: For prompt display
             "system_prompt": self._system_prompt,
             "goal": self._system_prompt,  # Alias for convenience
             "self": self,  # Allow workflow steps to call agent methods

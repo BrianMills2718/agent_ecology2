@@ -486,6 +486,9 @@ agent:
   # Failure tracking (Plan #88) - Recent failures shown in prompt for learning
   failure_history_max: 5          # Max recent failures to track per agent
 
+  # Action history (Plan #156) - Recent actions shown in prompt for loop detection
+  action_history_max: 15          # Max recent actions to track per agent
+
   # Plan #132: Removed cognitive_schema - single standardized response format with 'reasoning' field
 
 # -----------------------------------------------------------------------------
