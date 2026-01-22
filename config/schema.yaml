@@ -394,7 +394,8 @@ world:
 # API spending limits (global and per-agent)
 # -----------------------------------------------------------------------------
 budget:
-  max_api_cost: <number>        # $ limit for global simulation (0 = unlimited)
+  max_api_cost: <number>        # $ limit for global simulation (0 = unlimited). Default $0.50
+  max_runtime_seconds: <number> # Hard timeout in seconds (0 = unlimited). Default 3600 (1 hour)
   per_agent_budget: <number>    # $ limit per agent (Plan #12, 0 = no enforcement)
   checkpoint_file: <string>     # Where to save state on pause
   checkpoint_interval: <number> # Save checkpoint every N ticks (0 = disable)

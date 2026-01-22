@@ -1259,9 +1259,15 @@ class BudgetConfig(StrictModel):
     """API budget configuration."""
 
     max_api_cost: float = Field(
-        default=1.0,
+        default=0.50,
         ge=0,
-        description="Maximum API cost in dollars (0 = unlimited)"
+        description="Maximum API cost in dollars (0 = unlimited). Default $0.50 for safety."
+    )
+    max_runtime_seconds: int = Field(
+        default=3600,
+        ge=0,
+        description="Maximum simulation runtime in seconds (0 = unlimited). Default 1 hour. "
+                    "Hard backstop to prevent runaway processes."
     )
     checkpoint_file: str = Field(
         default="checkpoint.json",
