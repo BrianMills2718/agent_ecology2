@@ -159,6 +159,9 @@ class SimulationRunner:
         if checkpoint:
             self._restore_checkpoint(checkpoint)
 
+        # Wire up cost tracking callbacks for genesis embedder (Plan #153)
+        self._wire_embedder_cost_callbacks()
+
         # Initialize agents
         self.agents = self._create_agents(agent_configs)
 
@@ -211,6 +214,40 @@ class SimulationRunner:
 
         # Summary logging (Plan #60)
         self._tick_collector: TickSummaryCollector | None = None
+
+    def _wire_embedder_cost_callbacks(self) -> None:
+        """Wire up cost tracking callbacks for genesis artifacts.
+
+        This integrates all genesis artifact API costs into the global budget
+        tracking system, including:
+        - Embedder: embedding API calls
+        - Mint (genesis): scorer LLM calls during artifact evaluation
+        - MintAuction (kernel): scorer LLM calls during auction resolution
+        """
+        from ..world.genesis.embedder import GenesisEmbedder
+        from ..world.genesis.mint import GenesisMint
+
+        # Wire up embedder callbacks
+        embedder = self.world.genesis_artifacts.get("genesis_embedder")
+        if embedder is not None and isinstance(embedder, GenesisEmbedder):
+            embedder.set_cost_callbacks(
+                is_budget_exhausted=self.engine.is_budget_exhausted,
+                track_api_cost=lambda cost: self.engine.track_api_cost(cost),
+            )
+
+        # Wire up genesis mint scorer callbacks
+        mint = self.world.genesis_artifacts.get("genesis_mint")
+        if mint is not None and isinstance(mint, GenesisMint):
+            mint.set_cost_callbacks(
+                is_budget_exhausted=self.engine.is_budget_exhausted,
+                track_api_cost=lambda cost: self.engine.track_api_cost(cost),
+            )
+
+        # Wire up kernel mint auction scorer callbacks
+        self.world.mint_auction.set_cost_callbacks(
+            is_budget_exhausted=self.engine.is_budget_exhausted,
+            track_api_cost=lambda cost: self.engine.track_api_cost(cost),
+        )
 
     def _restore_checkpoint(self, checkpoint: CheckpointData) -> None:
         """Restore world state from checkpoint.

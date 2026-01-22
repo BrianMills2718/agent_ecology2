@@ -73,6 +73,10 @@ class GenesisMint(GenesisArtifact):
 
     _scorer: Any  # MintScorer, lazy-loaded
 
+    # Cost tracking callbacks (Plan #153)
+    _is_budget_exhausted: Callable[[], bool] | None
+    _track_api_cost: Callable[[float], None] | None
+
     def __init__(
         self,
         mint_callback: Callable[[str, int], None] | None = None,
@@ -138,6 +142,10 @@ class GenesisMint(GenesisArtifact):
 
         self._scorer = None
 
+        # Cost tracking callbacks (Plan #153)
+        self._is_budget_exhausted = None
+        self._track_api_cost = None
+
         # Register methods
         self.register_method(
             name="status",
@@ -167,6 +175,23 @@ class GenesisMint(GenesisArtifact):
         kernel primitive access without circular imports.
         """
         self._world = world
+
+    def set_cost_callbacks(
+        self,
+        is_budget_exhausted: Callable[[], bool] | None = None,
+        track_api_cost: Callable[[float], None] | None = None,
+    ) -> None:
+        """Set budget check and cost tracking callbacks for scoring LLM calls.
+
+        The mint uses LLM to score artifacts during auctions. These callbacks
+        integrate scoring costs into the global budget tracking system.
+
+        Args:
+            is_budget_exhausted: Callback returning True if budget is exhausted
+            track_api_cost: Callback to track API cost in dollars
+        """
+        self._is_budget_exhausted = is_budget_exhausted
+        self._track_api_cost = track_api_cost
 
     def _get_elapsed_seconds(self) -> float:
         """Get seconds elapsed since simulation start."""
@@ -595,8 +620,16 @@ class GenesisMint(GenesisArtifact):
                     score_result = self._scorer.score_artifact(
                         artifact_id=artifact_id,
                         artifact_type=artifact.type,
-                        content=artifact.content
+                        content=artifact.content,
+                        is_budget_exhausted=self._is_budget_exhausted,
                     )
+
+                    # Track scorer's LLM cost (Plan #153)
+                    if self._track_api_cost is not None and hasattr(self._scorer, 'llm'):
+                        scorer_cost = self._scorer.llm.last_usage.get("cost", 0.0)
+                        if scorer_cost > 0:
+                            self._track_api_cost(scorer_cost)
+
                     if score_result["success"]:
                         score = score_result["score"]
                         scrip_minted = score // self._mint_ratio

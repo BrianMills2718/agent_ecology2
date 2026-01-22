@@ -9,7 +9,7 @@ This genesis artifact provides embedding generation as a paid service:
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Callable
 
 from ...config import get as config_get
 from ...config_schema import GenesisConfig
@@ -39,6 +39,8 @@ class GenesisEmbedder(GenesisArtifact):
     _embedding_dims: int
     _cost_per_embedding: int
     _world: Any  # World reference for kernel delegation
+    _is_budget_exhausted: Callable[[], bool] | None
+    _track_api_cost: Callable[[float], None] | None
 
     def __init__(
         self,
@@ -63,6 +65,8 @@ class GenesisEmbedder(GenesisArtifact):
         self._embedding_dims = embedding_dims or default_dims
         self._cost_per_embedding = cost_per_embedding
         self._world = None
+        self._is_budget_exhausted = None
+        self._track_api_cost = None
 
         artifact_id = "genesis_embedder"
         description = "Generate text embeddings for semantic search. Costs scrip per embedding."
@@ -98,6 +102,25 @@ class GenesisEmbedder(GenesisArtifact):
         """Set world reference for kernel delegation."""
         self._world = world
 
+    def set_cost_callbacks(
+        self,
+        is_budget_exhausted: Callable[[], bool] | None = None,
+        track_api_cost: Callable[[float], None] | None = None,
+    ) -> None:
+        """Set budget check and cost tracking callbacks.
+
+        These callbacks integrate embedding costs with the global budget system.
+        When set, the embedder will:
+        1. Check if budget is exhausted before making API calls
+        2. Track the API cost after successful calls
+
+        Args:
+            is_budget_exhausted: Callback returning True if budget is exhausted
+            track_api_cost: Callback to track API cost in dollars
+        """
+        self._is_budget_exhausted = is_budget_exhausted
+        self._track_api_cost = track_api_cost
+
     def _generate_embedding(self, text: str) -> list[float]:
         """Generate embedding vector for text using LiteLLM.
 
@@ -110,6 +133,11 @@ class GenesisEmbedder(GenesisArtifact):
         Raises:
             Exception if embedding generation fails
         """
+        # Check budget before making API call
+        if self._is_budget_exhausted is not None and self._is_budget_exhausted():
+            logger.warning("Embedding skipped: budget exhausted")
+            return [0.0] * self._embedding_dims
+
         try:
             # Use LiteLLM for embedding generation (same as llm_provider)
             import litellm
@@ -123,6 +151,23 @@ class GenesisEmbedder(GenesisArtifact):
                 model=model,
                 input=[text],
             )
+
+            # Track API cost if callback is set
+            if self._track_api_cost is not None:
+                # Try to get cost from litellm response
+                api_cost = 0.0
+                if hasattr(response, '_hidden_params'):
+                    api_cost = response._hidden_params.get('response_cost', 0.0) or 0.0
+                # If no cost available, estimate based on tokens
+                # Embedding models are typically ~$0.0001/1K tokens
+                if api_cost == 0.0 and hasattr(response, 'usage'):
+                    usage = response.usage
+                    if hasattr(usage, 'total_tokens'):
+                        # Conservative estimate: $0.0001 per 1K tokens
+                        api_cost = usage.total_tokens * 0.0001 / 1000
+                if api_cost > 0:
+                    self._track_api_cost(api_cost)
+                    logger.debug(f"Embedding API cost tracked: ${api_cost:.6f}")
 
             # Extract embedding from response
             if hasattr(response, 'data') and len(response.data) > 0:
