@@ -798,6 +798,16 @@ class Agent:
 {failure_lines}
 """
 
+        # Plan #156: Format action history for loop detection
+        action_history_section: str = ""
+        if self.action_history:
+            action_history_section = f"""
+## Your Recent Actions (detect loops!)
+{self._format_action_history()}
+
+CRITICAL: If you see the same action repeated 3+ times above, STOP and try something different!
+"""
+
         # Format recent events (short-term history for situational awareness)
         recent_events: list[dict[str, Any]] = world_state.get('recent_events', [])
         recent_events_count: int = config_get("agent.prompt.recent_events_count") or 5
@@ -895,7 +905,7 @@ This will persist across your thinking cycles.
         prompt: str = f"""You are {self.agent_id} in a simulated world.
 
 {self.system_prompt}
-{first_tick_section}{working_memory_section}{action_feedback}{recent_failures_section}
+{first_tick_section}{working_memory_section}{action_feedback}{recent_failures_section}{action_history_section}
 ## Your Memories
 {memories}
 
