@@ -681,6 +681,22 @@ class Agent:
         other_agents: list[str] = [p for p in world_state.get('balances', {}).keys()
                                    if p != self.agent_id]
 
+        # Plan #157: Extract time context for goal clarity
+        time_context = world_state.get('time_context', {})
+        time_remaining = time_context.get('time_remaining_seconds')
+        progress = time_context.get('progress_percent')
+        time_remaining_str = "(unknown)"
+        if time_remaining is not None:
+            mins, secs = divmod(int(time_remaining), 60)
+            time_remaining_str = f"{mins}m {secs}s" if mins else f"{secs}s"
+        progress_str = f"{progress:.0f}%" if progress is not None else "unknown"
+
+        # Plan #157: Track starting balance for revenue calculation
+        if self._starting_balance is None:
+            self._starting_balance = float(balance)
+        revenue = float(balance) - self._starting_balance
+        success_rate_str = f"{self.successful_actions}/{self.actions_taken}" if self.actions_taken > 0 else "0/0"
+
         # Include last action context if available
         last_action_info: str = ""
         if self.last_action_result:
@@ -911,7 +927,13 @@ To start recording lessons, write to artifact `{memory_artifact_id}` with your l
 This will persist across your thinking cycles.
 """
 
-        prompt: str = f"""You are {self.agent_id} in a simulated world.
+        prompt: str = f"""=== GOAL: Maximize scrip balance by simulation end ===
+You are {self.agent_id}. Time remaining: {time_remaining_str} ({progress_str} complete)
+
+## YOUR PERFORMANCE
+- Balance: {balance} scrip (revenue: {revenue:+.0f})
+- Actions: {success_rate_str} successful
+- Artifacts created: {len(my_artifacts)}
 
 {self.system_prompt}
 {first_tick_section}{working_memory_section}{action_feedback}{recent_failures_section}{action_history_section}
