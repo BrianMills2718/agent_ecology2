@@ -1003,15 +1003,36 @@ class SimulationRunner:
 
         try:
             if duration is not None:
-                # Run for specified duration
+                # Run for specified duration, checking budget periodically
                 if self.verbose:
                     print(f"  [AUTONOMOUS] Running for {duration} seconds...")
-                await asyncio.sleep(duration)
+                start_time = asyncio.get_event_loop().time()
+                while True:
+                    # Check budget exhaustion (critical fix for runaway costs)
+                    if self.engine.is_budget_exhausted():
+                        if self.verbose:
+                            print(f"  [AUTONOMOUS] Budget exhausted "
+                                  f"(${self.engine.cumulative_api_cost:.2f} >= "
+                                  f"${self.engine.max_api_cost:.2f})")
+                        break
+                    # Check if duration exceeded
+                    elapsed = asyncio.get_event_loop().time() - start_time
+                    if elapsed >= duration:
+                        break
+                    # Sleep for short interval to allow budget checks
+                    await asyncio.sleep(min(0.5, duration - elapsed))
             else:
-                # Run until all agents stop or interrupted
+                # Run until all agents stop, budget exhausted, or interrupted
                 if self.verbose:
                     print(f"  [AUTONOMOUS] Running until all agents stop...")
                 while self.world.loop_manager.running_count > 0:
+                    # Check budget exhaustion (critical fix for runaway costs)
+                    if self.engine.is_budget_exhausted():
+                        if self.verbose:
+                            print(f"  [AUTONOMOUS] Budget exhausted "
+                                  f"(${self.engine.cumulative_api_cost:.2f} >= "
+                                  f"${self.engine.max_api_cost:.2f})")
+                        break
                     # Wait if paused
                     await self._pause_event.wait()
                     await asyncio.sleep(1.0)
@@ -1101,6 +1122,10 @@ class SimulationRunner:
         Returns:
             Action dict or None if agent chose to skip.
         """
+        # Check global budget before making LLM call (defense in depth)
+        if self.engine.is_budget_exhausted():
+            return None  # Skip LLM call, budget exceeded
+
         # Reload config from artifact before each decision (Plan #8)
         # This allows config changes made by other agents to take effect
         agent.reload_from_artifact()

@@ -775,3 +775,75 @@ class TestAgentAliveProperty:
             # Can also set back to True
             agent.alive = True
             assert agent.alive is True
+
+
+class TestBudgetExhaustion:
+    """Tests for global budget exhaustion checks (critical bug fix)."""
+
+    @patch("src.simulation.runner.load_agents")
+    def test_agent_decide_skips_when_budget_exhausted(
+        self, mock_load: MagicMock
+    ) -> None:
+        """_agent_decide_action returns None when global budget exhausted."""
+        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            config["budget"]["max_api_cost"] = 0.01  # Very low budget
+            runner = SimulationRunner(config, verbose=False)
+
+            # Exhaust the budget
+            runner.engine.track_api_cost(0.02)  # Over the $0.01 limit
+
+            # Verify budget is exhausted
+            assert runner.engine.is_budget_exhausted() is True
+
+            # _agent_decide_action should return None
+            import asyncio
+            result = asyncio.run(runner._agent_decide_action(runner.agents[0]))
+            assert result is None
+
+    @patch("src.simulation.runner.load_agents")
+    def test_autonomous_loop_checks_budget(self, mock_load: MagicMock) -> None:
+        """_run_autonomous checks budget exhaustion in loop."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            config["budget"]["max_api_cost"] = 0.01
+            runner = SimulationRunner(config, verbose=False)
+
+            # Exhaust budget before run
+            runner.engine.track_api_cost(0.02)
+
+            # Run should exit quickly due to budget exhaustion
+            import asyncio
+            import time
+
+            start = time.time()
+            asyncio.run(runner._run_autonomous(duration=5.0))  # Would be 5s if no budget check
+            elapsed = time.time() - start
+
+            # Should exit well before 5 seconds due to budget check
+            assert elapsed < 2.0, f"Expected quick exit due to budget exhaustion, took {elapsed}s"
+
+    @patch("src.simulation.runner.load_agents")
+    def test_engine_budget_exhaustion_check(self, mock_load: MagicMock) -> None:
+        """is_budget_exhausted returns correct values."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            config["budget"]["max_api_cost"] = 1.0
+            runner = SimulationRunner(config, verbose=False)
+
+            # Not exhausted initially
+            assert runner.engine.is_budget_exhausted() is False
+
+            # Track cost below limit
+            runner.engine.track_api_cost(0.50)
+            assert runner.engine.is_budget_exhausted() is False
+
+            # Track cost to exceed limit
+            runner.engine.track_api_cost(0.60)  # Total: $1.10
+            assert runner.engine.is_budget_exhausted() is True
