@@ -1052,8 +1052,18 @@ Your response should include:
 
         # Plan #156: Track action history for loop detection
         # Compact format: action_type(target) → STATUS: brief_message
-        brief_msg = message[:80] if len(message) > 80 else message
-        history_entry = f"{action_type} → {status}: {brief_msg}"
+        # Extract target (artifact_id, method) from data for better loop detection
+        target: str = ""
+        if data:
+            artifact_id = data.get("artifact_id", "")
+            method = data.get("method", "")
+            if artifact_id and method:
+                target = f"({artifact_id}.{method})"
+            elif artifact_id:
+                target = f"({artifact_id})"
+
+        brief_msg = message[:60] if len(message) > 60 else message
+        history_entry = f"{action_type}{target} → {status}: {brief_msg}"
         self.action_history.append(history_entry)
         # Keep only the most recent actions
         if len(self.action_history) > self._action_history_max:

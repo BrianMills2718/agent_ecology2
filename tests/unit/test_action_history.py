@@ -114,3 +114,67 @@ class TestActionHistoryInContext:
         assert "invoke" in context["action_history"].lower()
         assert "action_history_length" in context
         assert context["action_history_length"] == agent._action_history_max
+
+
+class TestActionHistoryWithTarget:
+    """Test action history includes artifact_id for loop detection."""
+
+    def test_history_includes_artifact_id(self) -> None:
+        """History entry includes artifact_id when provided in data."""
+        agent = Agent(
+            agent_id="test_agent",
+            system_prompt="Test",
+        )
+
+        # Simulate write_artifact with artifact_id in data
+        agent.set_last_result(
+            "write_artifact",
+            True,
+            "Wrote artifact",
+            data={"artifact_id": "factorial_calculator"}
+        )
+
+        assert len(agent.action_history) == 1
+        assert "factorial_calculator" in agent.action_history[0]
+        assert "write_artifact(factorial_calculator)" in agent.action_history[0]
+
+    def test_history_includes_method_for_invoke(self) -> None:
+        """History entry includes method name for invoke actions."""
+        agent = Agent(
+            agent_id="test_agent",
+            system_prompt="Test",
+        )
+
+        # Simulate invoke_artifact with artifact_id and method in data
+        agent.set_last_result(
+            "invoke_artifact",
+            True,
+            "Invoked method",
+            data={"artifact_id": "genesis_store", "method": "search"}
+        )
+
+        assert len(agent.action_history) == 1
+        assert "genesis_store.search" in agent.action_history[0]
+        assert "invoke_artifact(genesis_store.search)" in agent.action_history[0]
+
+    def test_repeated_same_artifact_visible(self) -> None:
+        """Agent can see when same artifact is written multiple times."""
+        agent = Agent(
+            agent_id="test_agent",
+            system_prompt="Test",
+        )
+
+        # Write same artifact 3 times
+        for _ in range(3):
+            agent.set_last_result(
+                "write_artifact",
+                True,
+                "Wrote artifact",
+                data={"artifact_id": "my_tool"}
+            )
+
+        formatted = agent._format_action_history()
+
+        # Should clearly show 3 writes to same artifact
+        assert formatted.count("my_tool") == 3
+        assert formatted.count("write_artifact(my_tool)") == 3
