@@ -8,15 +8,20 @@ const AgentsPanel = {
         countBadge: null,
         modal: null,
         modalClose: null,
-        pagination: null
+        pagination: null,
+        compareModal: null,
+        compareBtn: null
     },
 
     agents: [],
-    
+
     // Pagination state (Plan #142)
     currentPage: 1,
     rowsPerPage: 25,
     totalAgents: 0,
+
+    // Comparison state (Plan #147)
+    selectedForComparison: [],
 
     /**
      * Initialize the agents panel
@@ -50,6 +55,27 @@ const AgentsPanel = {
             exportBtn.addEventListener('click', () => this.exportToCSV());
         }
 
+        // Plan #147: Comparison modal handlers
+        this.elements.compareModal = document.getElementById('compare-modal');
+        this.elements.compareBtn = document.getElementById('compare-agents-btn');
+
+        if (this.elements.compareBtn) {
+            this.elements.compareBtn.addEventListener('click', () => this.showComparisonModal());
+        }
+
+        const compareModalClose = document.getElementById('compare-modal-close');
+        if (compareModalClose) {
+            compareModalClose.addEventListener('click', () => this.closeCompareModal());
+        }
+
+        if (this.elements.compareModal) {
+            this.elements.compareModal.addEventListener('click', (e) => {
+                if (e.target === this.elements.compareModal) {
+                    this.closeCompareModal();
+                }
+            });
+        }
+
         // Listen for state updates
         window.wsManager.on('initial_state', (data) => {
             if (data.agents) {
@@ -80,7 +106,7 @@ const AgentsPanel = {
 
         agents.forEach(agent => {
             const row = document.createElement('tr');
-            row.addEventListener('click', () => this.showAgentDetail(agent.agent_id));
+            row.dataset.agentId = agent.agent_id;
 
             // Plan #153: Budget-based display
             const budgetRemaining = agent.llm_budget_remaining || 0;
@@ -116,7 +142,13 @@ const AgentsPanel = {
             }
             const statusAttr = frozenReason ? ` data-reason="${frozenReason}"` : '';
 
+            // Plan #147: Add compare checkbox
+            const isSelected = this.selectedForComparison.includes(agent.agent_id);
+
             row.innerHTML = `
+                <td class="compare-cell">
+                    <input type="checkbox" class="compare-checkbox" data-agent-id="${agent.agent_id}" ${isSelected ? 'checked' : ''} title="Select for comparison">
+                </td>
                 <td>${this.escapeHtml(agent.agent_id)}</td>
                 <td>${agent.scrip}</td>
                 <td>${budgetDisplay}</td>
@@ -124,6 +156,20 @@ const AgentsPanel = {
                 <td class="${statusClass}"${statusAttr}>${agent.status}</td>
                 <td>${agent.action_count}</td>
             `;
+
+            // Click on row (but not checkbox) to show detail
+            row.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('compare-checkbox')) {
+                    this.showAgentDetail(agent.agent_id);
+                }
+            });
+
+            // Checkbox handler
+            const checkbox = row.querySelector('.compare-checkbox');
+            checkbox.addEventListener('change', (e) => {
+                e.stopPropagation();
+                this.toggleCompareSelection(agent.agent_id, e.target.checked);
+            });
 
             this.elements.tbody.appendChild(row);
         });
@@ -505,6 +551,181 @@ const AgentsPanel = {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    },
+
+    /**
+     * Toggle agent selection for comparison (Plan #147)
+     */
+    toggleCompareSelection(agentId, selected) {
+        if (selected) {
+            if (!this.selectedForComparison.includes(agentId)) {
+                // Limit to 2 agents
+                if (this.selectedForComparison.length >= 2) {
+                    // Deselect the oldest selection
+                    const oldId = this.selectedForComparison.shift();
+                    const oldCheckbox = document.querySelector(`.compare-checkbox[data-agent-id="${oldId}"]`);
+                    if (oldCheckbox) oldCheckbox.checked = false;
+                }
+                this.selectedForComparison.push(agentId);
+            }
+        } else {
+            this.selectedForComparison = this.selectedForComparison.filter(id => id !== agentId);
+        }
+        this.updateCompareButton();
+    },
+
+    /**
+     * Update compare button visibility (Plan #147)
+     */
+    updateCompareButton() {
+        if (this.elements.compareBtn) {
+            if (this.selectedForComparison.length === 2) {
+                this.elements.compareBtn.classList.remove('hidden');
+                this.elements.compareBtn.textContent = `Compare (${this.selectedForComparison[0]} vs ${this.selectedForComparison[1]})`;
+            } else {
+                this.elements.compareBtn.classList.add('hidden');
+            }
+        }
+    },
+
+    /**
+     * Show comparison modal (Plan #147)
+     */
+    async showComparisonModal() {
+        if (this.selectedForComparison.length !== 2) return;
+
+        try {
+            const [agent1, agent2] = await Promise.all([
+                API.getAgent(this.selectedForComparison[0]),
+                API.getAgent(this.selectedForComparison[1])
+            ]);
+
+            if (agent1.error || agent2.error) {
+                console.error('Failed to load agents for comparison');
+                return;
+            }
+
+            this.renderComparison(agent1, agent2);
+            this.elements.compareModal.classList.remove('hidden');
+
+        } catch (error) {
+            console.error('Failed to load comparison data:', error);
+        }
+    },
+
+    /**
+     * Render comparison content (Plan #147)
+     */
+    renderComparison(agent1, agent2) {
+        const compareBody = document.getElementById('compare-body');
+        if (!compareBody) return;
+
+        // Define comparison metrics
+        const metrics = [
+            { label: 'Status', key: 'status', format: (v) => v },
+            { label: 'Scrip', key: 'scrip', format: (v) => v.toFixed(2), compare: true },
+            { label: 'LLM Tokens Used', key: 'llm_tokens', subkey: 'current', format: (v) => v.toFixed(0), compare: true },
+            { label: 'LLM Tokens Quota', key: 'llm_tokens', subkey: 'quota', format: (v) => v },
+            { label: 'Disk Used', key: 'disk', subkey: 'used', format: (v) => v.toFixed(0), compare: true },
+            { label: 'Disk Quota', key: 'disk', subkey: 'quota', format: (v) => v },
+            { label: 'Actions', key: 'action_count', format: (v) => v, compare: true },
+            { label: 'Artifacts Owned', key: 'artifacts_owned', format: (v) => v?.length || 0, compare: true },
+        ];
+
+        let html = `
+            <table class="compare-table">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th class="agent-col">${this.escapeHtml(agent1.agent_id)}</th>
+                        <th class="agent-col">${this.escapeHtml(agent2.agent_id)}</th>
+                        <th class="diff-col">Difference</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        for (const metric of metrics) {
+            let val1 = metric.subkey ? agent1[metric.key]?.[metric.subkey] : agent1[metric.key];
+            let val2 = metric.subkey ? agent2[metric.key]?.[metric.subkey] : agent2[metric.key];
+
+            const formatted1 = metric.format(val1);
+            const formatted2 = metric.format(val2);
+
+            let diffHtml = '-';
+            let diffClass = '';
+            if (metric.compare && typeof val1 === 'number' && typeof val2 === 'number') {
+                const diff = val1 - val2;
+                if (diff > 0) {
+                    diffHtml = `+${diff.toFixed(2)}`;
+                    diffClass = 'diff-positive';
+                } else if (diff < 0) {
+                    diffHtml = diff.toFixed(2);
+                    diffClass = 'diff-negative';
+                } else {
+                    diffHtml = '0';
+                    diffClass = 'diff-neutral';
+                }
+            }
+
+            html += `
+                <tr>
+                    <td class="metric-label">${metric.label}</td>
+                    <td class="metric-value">${formatted1}</td>
+                    <td class="metric-value">${formatted2}</td>
+                    <td class="metric-diff ${diffClass}">${diffHtml}</td>
+                </tr>
+            `;
+        }
+
+        html += '</tbody></table>';
+
+        // Recent actions comparison
+        html += `
+            <div class="compare-section">
+                <h4>Recent Actions</h4>
+                <div class="compare-actions-grid">
+                    <div class="compare-actions-col">
+                        <h5>${this.escapeHtml(agent1.agent_id)}</h5>
+                        ${this.renderRecentActions(agent1.actions)}
+                    </div>
+                    <div class="compare-actions-col">
+                        <h5>${this.escapeHtml(agent2.agent_id)}</h5>
+                        ${this.renderRecentActions(agent2.actions)}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        compareBody.innerHTML = html;
+    },
+
+    /**
+     * Render recent actions for comparison (Plan #147)
+     */
+    renderRecentActions(actions) {
+        if (!actions || actions.length === 0) {
+            return '<div class="no-actions">No actions</div>';
+        }
+
+        return actions.slice(-5).reverse().map(action => {
+            const statusClass = action.success ? 'success' : 'failed';
+            return `
+                <div class="compare-action-item">
+                    <span class="action-tick">T${action.tick}</span>
+                    <span class="action-type ${statusClass}">${action.action_type}</span>
+                </div>
+            `;
+        }).join('');
+    },
+
+    /**
+     * Close comparison modal (Plan #147)
+     */
+    closeCompareModal() {
+        if (this.elements.compareModal) {
+            this.elements.compareModal.classList.add('hidden');
+        }
     },
 
     /**

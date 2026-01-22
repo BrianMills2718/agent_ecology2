@@ -16,6 +16,10 @@ class WebSocketManager {
             disconnect: []
         };
         this.pingInterval = null;
+        // Plan #147: Latency tracking
+        this.lastPingTime = null;
+        this.wsLatency = null;
+        this.apiLatency = null;
     }
 
     /**
@@ -62,12 +66,16 @@ class WebSocketManager {
      * Handle incoming WebSocket message
      */
     handleMessage(data) {
-        // Handle ping/pong
+        // Handle ping/pong with latency tracking (Plan #147)
         if (data === 'ping') {
             this.ws.send('pong');
             return;
         }
         if (data === 'pong') {
+            if (this.lastPingTime) {
+                this.wsLatency = Date.now() - this.lastPingTime;
+                this.updateLatencyDisplay();
+            }
             return;
         }
 
@@ -144,14 +152,25 @@ class WebSocketManager {
     }
 
     /**
-     * Start ping interval for keepalive
+     * Start ping interval for keepalive and latency tracking (Plan #147)
      */
     startPing() {
+        // Send initial ping immediately
+        this.sendPing();
+
         this.pingInterval = setInterval(() => {
-            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                this.ws.send('ping');
-            }
-        }, 25000);
+            this.sendPing();
+        }, 5000); // More frequent for latency display
+    }
+
+    /**
+     * Send ping and record time (Plan #147)
+     */
+    sendPing() {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.lastPingTime = Date.now();
+            this.ws.send('ping');
+        }
     }
 
     /**
@@ -199,6 +218,41 @@ class WebSocketManager {
             this.ws.close();
             this.ws = null;
         }
+    }
+
+    /**
+     * Update latency display (Plan #147)
+     */
+    updateLatencyDisplay() {
+        const wsLatencyEl = document.getElementById('ws-latency');
+        const apiLatencyEl = document.getElementById('api-latency');
+
+        if (wsLatencyEl && this.wsLatency !== null) {
+            wsLatencyEl.textContent = `${this.wsLatency}ms`;
+            wsLatencyEl.className = 'latency-value ' + this.getLatencyClass(this.wsLatency);
+        }
+
+        if (apiLatencyEl && this.apiLatency !== null) {
+            apiLatencyEl.textContent = `${this.apiLatency}ms`;
+            apiLatencyEl.className = 'latency-value ' + this.getLatencyClass(this.apiLatency);
+        }
+    }
+
+    /**
+     * Get CSS class for latency value (Plan #147)
+     */
+    getLatencyClass(latency) {
+        if (latency < 100) return 'latency-good';
+        if (latency < 500) return 'latency-ok';
+        return 'latency-slow';
+    }
+
+    /**
+     * Track API latency (Plan #147) - call this from API wrapper
+     */
+    trackApiLatency(startTime) {
+        this.apiLatency = Date.now() - startTime;
+        this.updateLatencyDisplay();
     }
 }
 
