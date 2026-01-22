@@ -79,6 +79,24 @@ class MintAuction:
         self._held_bids: dict[str, int] = {}  # principal_id -> escrowed bid amount
         self._history: list[KernelMintResult] = []
 
+        # Cost tracking callbacks (Plan #153)
+        self._is_budget_exhausted: Callable[[], bool] | None = None
+        self._track_api_cost: Callable[[float], None] | None = None
+
+    def set_cost_callbacks(
+        self,
+        is_budget_exhausted: Callable[[], bool] | None = None,
+        track_api_cost: Callable[[float], None] | None = None,
+    ) -> None:
+        """Set budget check and cost tracking callbacks for scorer LLM calls.
+
+        Args:
+            is_budget_exhausted: Callback returning True if budget is exhausted
+            track_api_cost: Callback to track API cost in dollars
+        """
+        self._is_budget_exhausted = is_budget_exhausted
+        self._track_api_cost = track_api_cost
+
     @property
     def tick(self) -> int:
         """Current simulation tick."""
@@ -302,8 +320,16 @@ class MintAuction:
                     score_result = scorer.score_artifact(
                         artifact_id=artifact_id,
                         artifact_type=artifact.type,
-                        content=artifact.content
+                        content=artifact.content,
+                        is_budget_exhausted=self._is_budget_exhausted,
                     )
+
+                    # Track scorer's LLM cost (Plan #153)
+                    if self._track_api_cost is not None and hasattr(scorer, 'llm'):
+                        scorer_cost = scorer.llm.last_usage.get("cost", 0.0)
+                        if scorer_cost > 0:
+                            self._track_api_cost(scorer_cost)
+
                     if score_result["success"]:
                         score = score_result["score"]
                         score_reason = score_result.get("reason")

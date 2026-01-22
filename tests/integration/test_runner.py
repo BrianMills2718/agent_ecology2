@@ -941,3 +941,107 @@ class TestRuntimeTimeout:
             status = runner.get_status()
             assert "max_runtime_seconds" in status
             assert status["max_runtime_seconds"] == 7200
+
+
+class TestCostCallbackWiring:
+    """Tests for cost callback wiring (Plan #153)."""
+
+    @patch("src.simulation.runner.load_agents")
+    def test_embedder_cost_callbacks_wired(self, mock_load: MagicMock) -> None:
+        """Genesis embedder has cost callbacks wired."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            runner = SimulationRunner(config, verbose=False)
+
+            # Check embedder has callbacks set
+            embedder = runner.world.genesis_artifacts.get("genesis_embedder")
+            assert embedder is not None
+            assert embedder._is_budget_exhausted is not None
+            assert embedder._track_api_cost is not None
+
+    @patch("src.simulation.runner.load_agents")
+    def test_mint_cost_callbacks_wired(self, mock_load: MagicMock) -> None:
+        """Genesis mint has cost callbacks wired."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            runner = SimulationRunner(config, verbose=False)
+
+            # Check genesis mint has callbacks set
+            mint = runner.world.genesis_artifacts.get("genesis_mint")
+            assert mint is not None
+            assert mint._is_budget_exhausted is not None
+            assert mint._track_api_cost is not None
+
+    @patch("src.simulation.runner.load_agents")
+    def test_mint_auction_cost_callbacks_wired(self, mock_load: MagicMock) -> None:
+        """Kernel mint auction has cost callbacks wired."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            runner = SimulationRunner(config, verbose=False)
+
+            # Check mint auction has callbacks set
+            assert runner.world.mint_auction._is_budget_exhausted is not None
+            assert runner.world.mint_auction._track_api_cost is not None
+
+    @patch("src.simulation.runner.load_agents")
+    def test_embedder_callback_tracks_cost(self, mock_load: MagicMock) -> None:
+        """Embedder cost callback updates engine cumulative cost."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            runner = SimulationRunner(config, verbose=False)
+
+            initial_cost = runner.engine.cumulative_api_cost
+            embedder = runner.world.genesis_artifacts.get("genesis_embedder")
+
+            # Manually trigger cost callback (simulating what embedder does after API call)
+            embedder._track_api_cost(0.001)
+
+            assert runner.engine.cumulative_api_cost == initial_cost + 0.001
+
+    @patch("src.simulation.runner.load_agents")
+    def test_mint_callback_tracks_cost(self, mock_load: MagicMock) -> None:
+        """Mint cost callback updates engine cumulative cost."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            runner = SimulationRunner(config, verbose=False)
+
+            initial_cost = runner.engine.cumulative_api_cost
+            mint = runner.world.genesis_artifacts.get("genesis_mint")
+
+            # Manually trigger cost callback (simulating what scorer does)
+            mint._track_api_cost(0.05)
+
+            assert runner.engine.cumulative_api_cost == initial_cost + 0.05
+
+    @patch("src.simulation.runner.load_agents")
+    def test_budget_exhausted_callback_returns_engine_state(
+        self, mock_load: MagicMock
+    ) -> None:
+        """Budget exhausted callback returns engine's budget state."""
+        mock_load.return_value = []
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config = make_minimal_config(tmpdir)
+            config["budget"]["max_api_cost"] = 0.10  # Low budget
+            runner = SimulationRunner(config, verbose=False)
+
+            embedder = runner.world.genesis_artifacts.get("genesis_embedder")
+
+            # Initially budget not exhausted
+            assert embedder._is_budget_exhausted() is False
+
+            # Exhaust budget
+            runner.engine.track_api_cost(0.15)
+
+            # Now callback should return True
+            assert embedder._is_budget_exhausted() is True
