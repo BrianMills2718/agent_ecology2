@@ -82,27 +82,26 @@ workflow:
       type: llm
       in_state: "observing"
       prompt: |
-        === IRR: OBSERVING PHASE ===
-        You are {agent_id}, gathering context before acting.
+        === GOAL: Maximize scrip balance by simulation end ===
+        You are {agent_id}. Time remaining: {time_remaining} ({progress_percent} complete)
 
-        Current state:
-        - Balance: {balance} scrip
-        - Your artifacts: {my_artifacts}
+        ## YOUR PERFORMANCE
+        - Balance: {balance} scrip (revenue: {revenue_earned:+.0f})
+        - Actions: {success_rate} successful
+        - Artifacts completed: {artifacts_completed}
 
-        Last action result: {last_action_result}
-
-        ## YOUR RECENT ACTIONS (detect loops!)
+        ## YOUR RECENT ACTIONS
         {action_history}
-        ⚠️ If you see write_artifact(X) repeated 3+ times, STOP rewriting X and try something DIFFERENT!
 
-        OBSERVATION TASK:
-        1. What do you know about the current ecosystem?
-        2. What artifacts exist that might be useful?
-        3. Do you need to learn any interfaces before proceeding?
+        Last result: {last_action_result}
 
-        If you need to discover how to use an unfamiliar artifact,
-        transition to "discovering" state.
-        If you have enough context, proceed to "ideating".
+        ## STRATEGIC QUESTION
+        Given your time remaining and performance so far:
+        - Is your current approach working? (Look at success rate and revenue)
+        - Should you continue, pivot, or ship what you have?
+
+        If you've been stuck on the same artifact (3+ writes), ABANDON it and try something new.
+        Every action that doesn't earn revenue is wasted time.
 
         Available actions:
         - read_artifact to inspect existing artifacts
@@ -143,36 +142,42 @@ workflow:
         Once you have the interface info, proceed to ideating.
       transition_to: "ideating"
 
-    # Step 2: Learning reflection - review last action and record lessons
-    - name: learn_from_outcome
+    # Step 2: Strategic reflection - LLM-informed pivot decision (Plan #157)
+    - name: strategic_reflect
       type: llm
       in_state: "reflecting"
       prompt: |
-        === LEARNING REFLECTION ===
-        You are {agent_id}. Before taking your next action, reflect on what happened.
+        === STRATEGIC DECISION: Continue or Pivot? ===
+        Time remaining: {time_remaining} | Success rate: {success_rate} | Revenue: {revenue_earned:+.0f}
 
-        Last action result: {last_action_result}
-        Current state: {_current_state}
-        Balance: {balance} scrip
+        ## YOUR RECENT ACTIONS
+        {action_history}
 
-        REFLECTION QUESTIONS:
-        1. Did my last action succeed or fail? Why?
-        2. What lesson should I remember from this outcome?
-        3. Should I adjust my strategy based on this?
+        ## LAST RESULT
+        {last_action_result}
 
-        CRITICAL: Update your working_memory with any lessons learned.
-        Use write_artifact to yourself with content containing:
-        ```yaml
-        working_memory:
-          current_goal: [your current objective]
-          lessons:
-            - [lesson from this outcome]
-            - [previous lessons to keep]
-          strategic_objectives:
-            - [what you're trying to achieve long-term]
-        ```
+        ## DECISION REQUIRED
+        Based on your performance and time remaining, choose ONE:
 
-        If no lesson to record, proceed with noop.
+        A) CONTINUE current approach
+           - You're making progress (recent successes, revenue increasing)
+           - The current artifact is almost working
+           - Worth one more try
+
+        B) PIVOT to something new
+           - You've been stuck (3+ attempts, same errors)
+           - No revenue earned from this approach
+           - Time is running out - try something simpler
+
+        C) SHIP and move on
+           - Current artifact works (even if imperfect)
+           - Move to a new opportunity
+           - Don't over-optimize one thing
+
+        YOUR ACTION:
+        - If CONTINUE: invoke/write to improve current artifact
+        - If PIVOT: write a DIFFERENT artifact (new name, new function)
+        - If SHIP: use noop and let the mint auction evaluate your work
       transition_to: "observing"
 
     # Step 3: Compute metrics (from alpha_2)
@@ -246,28 +251,26 @@ workflow:
       type: llm
       in_state: "implementing"
       prompt: |
-        === BUILD CYCLE: IMPLEMENTATION ===
-        You are {agent_id}, a builder in implementation phase.
-
-        Current state:
-        - Tick: {tick}
-        - Balance: {balance} scrip
+        === IMPLEMENTATION: Ship something that works ===
+        Time remaining: {time_remaining} | Actions: {success_rate} successful | Artifacts: {artifacts_completed}
 
         Your artifacts: {my_artifacts}
-        Last action result: {last_action_result}
+        Last result: {last_action_result}
 
-        ## YOUR RECENT ACTIONS (detect loops!)
+        ## RECENT ACTIONS
         {action_history}
-        ⚠️ If you see write_artifact(X) repeated 3+ times above, STOP! Build something DIFFERENT instead.
 
-        IMPLEMENTATION TASK:
-        Write the artifact! Create executable code that provides value.
+        ## DECISION POINT
+        Look at your recent actions above. Ask yourself:
+        1. Am I making progress or spinning on the same problem?
+        2. Is this artifact worth more time, or should I ship it as-is and move on?
+        3. With {time_remaining} left, what's the best use of my next action?
 
-        Remember:
-        - Use `def run(*args)` as entry point
-        - Set invoke_price if you want to earn from usage
-        - Make the description clear for discovery
-        - If you already wrote an artifact and it works, move on to something NEW
+        RULES:
+        - If you've written the same artifact 3+ times, STOP and build something ELSE
+        - A working simple artifact > a broken complex one
+        - Use `def run(*args)` as entry point with proper interface schema
+        - Ship fast, iterate later (if there's time)
       transition_to: "testing"
 
     # Step 5: Testing phase - verify it works
@@ -275,25 +278,21 @@ workflow:
       type: llm
       in_state: "testing"
       prompt: |
-        === BUILD CYCLE: TESTING ===
-        You are {agent_id}, a builder in testing phase.
-
-        Current state:
-        - Tick: {tick}
-        - Balance: {balance} scrip
-        - Success rate: {success_rate:.0%}
+        === TESTING: Does it work? ===
+        Time remaining: {time_remaining} | Artifacts completed: {artifacts_completed}
 
         Your artifacts: {my_artifacts}
-        Last action result: {last_action_result}
+        Last result: {last_action_result}
 
-        TESTING TASK:
-        1. Invoke your artifact to test it
-        2. Check the result
-        3. Decide: iterate or ship?
+        ## RECENT ACTIONS
+        {action_history}
 
-        If it works, cycle back to ideating.
-        If it fails, you may need to redesign.
-      transition_to: "ideating"
+        TEST YOUR ARTIFACT:
+        - Invoke it to verify it works
+        - If it fails, note the error for reflection
+
+        After testing, you'll reflect on whether to continue, pivot, or ship.
+      transition_to: "reflecting"
 
 error_handling:
   default_on_failure: retry

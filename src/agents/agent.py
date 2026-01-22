@@ -244,6 +244,15 @@ class Agent:
         self.action_history: list[str] = []
         self._action_history_max: int = config_get("agent.action_history_max") or 15
 
+        # Plan #157: Opportunity cost tracking
+        # Track metrics so agent can reason about time/effort spent
+        self.actions_taken: int = 0
+        self.successful_actions: int = 0
+        self.failed_actions: int = 0
+        self.revenue_earned: float = 0.0  # Scrip earned from invocations/mint
+        self.artifacts_completed: int = 0  # Artifacts that succeeded on first write
+        self._starting_balance: float | None = None  # Set on first action to track revenue
+
         # RAG config: per-agent overrides merged with global defaults
         global_rag: dict[str, Any] = config_get("agent.rag") or {}
         self._rag_config: RAGConfigDict = {
@@ -1078,6 +1087,21 @@ Your response should include:
             if len(self.failure_history) > self._failure_history_max:
                 self.failure_history = self.failure_history[-self._failure_history_max:]
 
+        # Plan #157: Track opportunity cost metrics
+        self.actions_taken += 1
+        if success:
+            self.successful_actions += 1
+            # Track successful artifact creation (not rewrites)
+            if action_type == "write_artifact" and data:
+                artifact_id = data.get("artifact_id", "")
+                # Count as "completed" if this is a new artifact (not a rewrite)
+                # We detect rewrites by checking if artifact_id appears in previous history
+                is_rewrite = any(f"({artifact_id})" in h for h in self.action_history[:-1])
+                if not is_rewrite:
+                    self.artifacts_completed += 1
+        else:
+            self.failed_actions += 1
+
     def record_observation(self, observation: str) -> None:
         """Record an observation to memory"""
         self.memory.record_observation(self.agent_id, observation)
@@ -1212,6 +1236,31 @@ Your response should include:
             if a.get("created_by") == self.agent_id
         ]
 
+        # Plan #157: Time context for goal clarity
+        time_context = world_state.get("time_context", {})
+        time_remaining = time_context.get("time_remaining_seconds")
+        progress_percent = time_context.get("progress_percent")
+        duration = time_context.get("duration_seconds")
+
+        # Format time for human readability
+        time_remaining_str = "(unknown)"
+        if time_remaining is not None:
+            mins, secs = divmod(int(time_remaining), 60)
+            time_remaining_str = f"{mins}m {secs}s" if mins else f"{secs}s"
+
+        progress_str = f"{progress_percent:.0f}%" if progress_percent is not None else "(unknown)"
+
+        # Plan #157: Track starting balance for revenue calculation
+        if self._starting_balance is None:
+            self._starting_balance = float(balance)
+        revenue = float(balance) - self._starting_balance
+
+        # Plan #157: Format opportunity cost summary
+        success_rate = (
+            f"{self.successful_actions}/{self.actions_taken} ({self.successful_actions/self.actions_taken*100:.0f}%)"
+            if self.actions_taken > 0 else "0/0"
+        )
+
         return {
             "agent_id": self.agent_id,
             "tick": tick,
@@ -1225,4 +1274,15 @@ Your response should include:
             "system_prompt": self._system_prompt,
             "goal": self._system_prompt,  # Alias for convenience
             "self": self,  # Allow workflow steps to call agent methods
+            # Plan #157: Time and opportunity cost context
+            "time_remaining": time_remaining_str,
+            "time_remaining_seconds": time_remaining,
+            "progress_percent": progress_str,
+            "duration_seconds": duration,
+            "actions_taken": self.actions_taken,
+            "successful_actions": self.successful_actions,
+            "failed_actions": self.failed_actions,
+            "success_rate": success_rate,
+            "revenue_earned": revenue,
+            "artifacts_completed": self.artifacts_completed,
         }
