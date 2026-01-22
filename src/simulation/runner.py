@@ -1102,6 +1102,11 @@ class SimulationRunner:
         """
         try:
             while True:
+                # Skip mint updates if budget exhausted (prevents scorer LLM calls)
+                if self.engine.is_budget_exhausted():
+                    await asyncio.sleep(1.0)
+                    continue
+
                 # Check for auction state changes
                 result = self._handle_mint_update()
 
