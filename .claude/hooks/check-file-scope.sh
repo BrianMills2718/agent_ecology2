@@ -38,9 +38,11 @@ if [[ -z "$FILE_PATH" ]]; then
 fi
 
 # Allow writes to worktree-specific paths
-if [[ "$FILE_PATH" == *"/worktrees/"* ]]; then
+# Match both /worktrees/ and *_worktrees/ patterns (Plan #160 fix)
+if [[ "$FILE_PATH" == *"/worktrees/"* ]] || [[ "$FILE_PATH" == *"_worktrees/"* ]]; then
     # Extract the worktree-relative path
-    WORKTREE_PATH=$(echo "$FILE_PATH" | sed 's|.*/worktrees/[^/]*/||')
+    # Handle both /worktrees/branch/ and *_worktrees/branch/ patterns
+    WORKTREE_PATH=$(echo "$FILE_PATH" | sed 's|.*/[^/]*worktrees/[^/]*/||')
 else
     # Not in a worktree, use path relative to main
     WORKTREE_PATH=$(echo "$FILE_PATH" | sed "s|^$MAIN_DIR/||")

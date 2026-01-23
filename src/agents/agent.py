@@ -434,6 +434,55 @@ class Agent:
 
         return "\n".join(lines)
 
+    def _analyze_action_patterns(self) -> str:
+        """Analyze action history for repeated patterns (Plan #160).
+
+        Returns summary of action patterns to help agent self-evaluate.
+        Shows which actions are being repeated and their success rates.
+        No enforcement - just information for the agent to reason about.
+        """
+        if not self.action_history:
+            return ""
+
+        # Parse action history to count patterns
+        # Format: "action_type(target) → STATUS: message"
+        from collections import Counter
+        import re
+
+        pattern_counts: Counter[str] = Counter()
+        pattern_successes: dict[str, int] = {}
+        pattern_failures: dict[str, int] = {}
+
+        for entry in self.action_history:
+            # Extract action_type and target from entry
+            # e.g., "write_artifact(my_tool) → SUCCESS: Created"
+            match = re.match(r'^(\w+)(\([^)]*\))?\s*→\s*(SUCCESS|FAILED)', entry)
+            if match:
+                action_type = match.group(1)
+                target = match.group(2) or ""
+                status = match.group(3)
+                pattern = f"{action_type}{target}"
+
+                pattern_counts[pattern] += 1
+                if status == "SUCCESS":
+                    pattern_successes[pattern] = pattern_successes.get(pattern, 0) + 1
+                else:
+                    pattern_failures[pattern] = pattern_failures.get(pattern, 0) + 1
+
+        # Find repeated patterns (3+ times)
+        repeated = [(p, c) for p, c in pattern_counts.most_common() if c >= 3]
+
+        if not repeated:
+            return ""
+
+        lines: list[str] = []
+        for pattern, count in repeated:
+            successes = pattern_successes.get(pattern, 0)
+            failures = pattern_failures.get(pattern, 0)
+            lines.append(f"- {pattern}: {count}x ({successes} ok, {failures} fail)")
+
+        return "\n".join(lines)
+
     @classmethod
     def from_artifact(
         cls,
@@ -828,14 +877,32 @@ class Agent:
 {failure_lines}
 """
 
-        # Plan #156: Format action history for loop detection
+        # Plan #156: Format action history
+        # Plan #160: Add pattern analysis and metacognitive prompting (no enforcement)
         action_history_section: str = ""
         if self.action_history:
+            # Analyze patterns for repeated actions
+            pattern_analysis = self._analyze_action_patterns()
+            pattern_section = ""
+            if pattern_analysis:
+                pattern_section = f"""
+**Repeated patterns detected:**
+{pattern_analysis}
+"""
             action_history_section = f"""
-## Your Recent Actions (detect loops!)
+## Your Recent Actions
 {self._format_action_history()}
+{pattern_section}"""
 
-CRITICAL: If you see the same action repeated 3+ times above, STOP and try something different!
+        # Plan #160: Metacognitive prompting - encourage self-evaluation without enforcement
+        metacognitive_section: str = ""
+        if self.actions_taken >= 3:  # Only after a few actions
+            metacognitive_section = """
+## Self-Evaluation (think before acting)
+Before choosing your next action, briefly consider:
+1. Are my recent actions making progress toward maximizing scrip?
+2. If I've been repeating an approach without results, what else could I try?
+3. Should I record any lessons in my working memory for future reference?
 """
 
         # Format recent events (short-term history for situational awareness)
@@ -941,7 +1008,7 @@ You are {self.agent_id}. Time remaining: {time_remaining_str} ({progress_str} co
 - Artifacts created: {len(my_artifacts)}
 
 {self.system_prompt}
-{first_tick_section}{working_memory_section}{action_feedback}{recent_failures_section}{action_history_section}
+{first_tick_section}{working_memory_section}{action_feedback}{recent_failures_section}{action_history_section}{metacognitive_section}
 ## Your Memories
 {memories}
 
