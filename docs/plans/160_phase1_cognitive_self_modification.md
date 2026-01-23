@@ -106,6 +106,8 @@ Run simulation and check:
 - src/agents/alpha_3/agent.yaml (modify) - Add economic context to workflow prompts
 - src/world/world.py (modify) - Create config artifacts at init, self-invoke feedback
 - src/world/artifacts.py (modify) - Improve success feedback messages
+- src/world/genesis/escrow.py (modify) - Improve error messages with type diagnostics
+- src/world/genesis/ledger.py (modify) - Improve transfer method error clarity
 - src/agents/loader.py (modify) - Check for config override artifacts
 - .claude/hooks/check-file-scope.sh (modify) - Fix worktree path pattern
 - docs/architecture/current/agents.md (modify) - Update verification date

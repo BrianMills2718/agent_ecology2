@@ -122,9 +122,17 @@ class GenesisEscrow(GenesisArtifact):
         price: Any = args[1]
         buyer_id: str | None = args[2] if len(args) > 2 else None
 
-        # Validate price
-        if not isinstance(price, int) or price <= 0:
-            return {"success": False, "error": "Price must be a positive integer"}
+        # Validate price - Plan #160: Improved error message showing actual type
+        if not isinstance(price, int):
+            hint = ""
+            if isinstance(price, str) and price.isdigit():
+                hint = f" Use {price} (number) instead of \"{price}\" (string)."
+            return {
+                "success": False,
+                "error": f"Price must be an integer, got {type(price).__name__}: {repr(price)}.{hint}"
+            }
+        if price <= 0:
+            return {"success": False, "error": f"Price must be positive, got {price}"}
 
         # Check artifact exists
         artifact = self.artifact_store.get(artifact_id)

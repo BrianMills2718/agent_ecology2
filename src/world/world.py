@@ -1213,7 +1213,7 @@ class World:
                 self.ledger.deduct_scrip(intent.principal_id, price)
                 self.ledger.credit_scrip(created_by, price)
                 # Plan #160: Log revenue/cost events so agents can track money flow
-                self.event_logger.log("scrip_earned", {
+                self.logger.log("scrip_earned", {
                     "tick": self.tick,
                     "recipient": created_by,
                     "amount": price,
@@ -1221,7 +1221,7 @@ class World:
                     "artifact_id": artifact_id,
                     "method": method_name,
                 })
-                self.event_logger.log("scrip_spent", {
+                self.logger.log("scrip_spent", {
                     "tick": self.tick,
                     "spender": intent.principal_id,
                     "amount": price,
