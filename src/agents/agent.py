@@ -895,10 +895,17 @@ class Agent:
 {pattern_section}"""
 
         # Plan #160: Metacognitive prompting - encourage self-evaluation without enforcement
+        # Include economic context so agent understands how to generate revenue
         metacognitive_section: str = ""
         if self.actions_taken >= 3:  # Only after a few actions
-            metacognitive_section = """
+            # Economic context: help agent understand revenue sources
+            if other_agents:
+                economic_context = f"Trading partners available: {', '.join(other_agents)}. Revenue comes from: (1) others using your services, (2) winning mint auctions."
+            else:
+                economic_context = "You are SOLO (no other agents). Revenue ONLY comes from winning mint auctions. Self-invokes transfer nothing."
+            metacognitive_section = f"""
 ## Self-Evaluation (think before acting)
+**Economic reality:** {economic_context}
 Before choosing your next action, briefly consider:
 1. Are my recent actions making progress toward maximizing scrip?
 2. If I've been repeating an approach without results, what else could I try?
@@ -1355,6 +1362,17 @@ Your response should include:
             if self.actions_taken > 0 else "0/0"
         )
 
+        # Plan #160: Economic context for workflow prompts
+        # Help agent understand if they're solo or have trading partners
+        other_agents: list[str] = [
+            p for p in world_state.get("balances", {}).keys()
+            if p != self.agent_id and not p.startswith("genesis_")
+        ]
+        if other_agents:
+            economic_context = f"Trading partners: {', '.join(other_agents)}. Revenue from: others using your services OR mint wins."
+        else:
+            economic_context = "SOLO mode: no other agents. Revenue ONLY from mint auction wins. Self-invokes don't earn scrip."
+
         return {
             "agent_id": self.agent_id,
             "tick": tick,
@@ -1379,4 +1397,7 @@ Your response should include:
             "success_rate": success_rate,
             "revenue_earned": revenue,
             "artifacts_completed": self.artifacts_completed,
+            # Plan #160: Economic context
+            "other_agents": other_agents,
+            "economic_context": economic_context,
         }

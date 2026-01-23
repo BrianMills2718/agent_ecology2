@@ -101,10 +101,14 @@ Run simulation and check:
 
 ## Files Affected
 
-- src/agents/agent.py (modify) - Metacognitive prompt, action pattern analysis
-- src/world/world.py (modify) - Create config artifacts at init
+- src/agents/agent.py (modify) - Metacognitive prompt, action pattern analysis, economic context
+- src/agents/schema.py (modify) - Clarify interface requirements for executables
+- src/agents/alpha_3/agent.yaml (modify) - Add economic context to workflow prompts
+- src/world/world.py (modify) - Create config artifacts at init, self-invoke feedback
 - src/agents/loader.py (modify) - Check for config override artifacts
 - .claude/hooks/check-file-scope.sh (modify) - Fix worktree path pattern
+- docs/architecture/current/agents.md (modify) - Update verification date
+- docs/architecture/current/execution_model.md (modify) - Update verification date
 
 ---
 

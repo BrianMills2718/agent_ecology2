@@ -1209,9 +1209,16 @@ class World:
                 intent.principal_id, artifact_id, method_name,
                 duration_ms, type(exec_result.get("result")).__name__
             )
+            # Plan #160: Clarify self-invoke feedback - agent needs to understand it doesn't earn revenue
+            if price > 0 and created_by == intent.principal_id:
+                price_msg = f" (self-invoke: no scrip transferred, you paid yourself)"
+            elif price > 0:
+                price_msg = f" (paid {price} scrip to {created_by})"
+            else:
+                price_msg = ""
             return ActionResult(
                 success=True,
-                message=f"Invoked {artifact_id}" + (f" (paid {price} scrip to {created_by})" if price > 0 else ""),
+                message=f"Invoked {artifact_id}" + price_msg,
                 data={
                     "result": exec_result.get("result"),
                     "price_paid": price,
