@@ -1069,9 +1069,17 @@ class World:
                     intent.principal_id, artifact_id, method_name,
                     duration_ms, type(result_data.get("result")).__name__
                 )
+                # Plan #160: Show brief result preview for better feedback
+                result_value = result_data.get("result")
+                result_preview = ""
+                if result_value is not None:
+                    result_str = str(result_value)[:100]
+                    if len(str(result_value)) > 100:
+                        result_str += "..."
+                    result_preview = f". Result: {result_str}"
                 return ActionResult(
                     success=True,
-                    message=f"Invoked {artifact_id}.{method_name}",
+                    message=f"Invoked {artifact_id}.{method_name}{result_preview}",
                     data=result_data,
                     resources_consumed=resources_consumed if resources_consumed else None,
                     charged_to=intent.principal_id,
@@ -1204,6 +1212,23 @@ class World:
             if price > 0 and created_by != intent.principal_id:
                 self.ledger.deduct_scrip(intent.principal_id, price)
                 self.ledger.credit_scrip(created_by, price)
+                # Plan #160: Log revenue/cost events so agents can track money flow
+                self.event_logger.log("scrip_earned", {
+                    "tick": self.tick,
+                    "recipient": created_by,
+                    "amount": price,
+                    "from": intent.principal_id,
+                    "artifact_id": artifact_id,
+                    "method": method_name,
+                })
+                self.event_logger.log("scrip_spent", {
+                    "tick": self.tick,
+                    "spender": intent.principal_id,
+                    "amount": price,
+                    "to": created_by,
+                    "artifact_id": artifact_id,
+                    "method": method_name,
+                })
 
             self._log_invoke_success(
                 intent.principal_id, artifact_id, method_name,
@@ -1216,9 +1241,17 @@ class World:
                 price_msg = f" (paid {price} scrip to {created_by})"
             else:
                 price_msg = ""
+            # Plan #160: Show brief result preview for better feedback
+            result_value = exec_result.get("result")
+            result_preview = ""
+            if result_value is not None:
+                result_str = str(result_value)[:100]
+                if len(str(result_value)) > 100:
+                    result_str += "..."
+                result_preview = f". Result: {result_str}"
             return ActionResult(
                 success=True,
-                message=f"Invoked {artifact_id}" + price_msg,
+                message=f"Invoked {artifact_id}{price_msg}{result_preview}",
                 data={
                     "result": exec_result.get("result"),
                     "price_paid": price,

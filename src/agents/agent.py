@@ -946,6 +946,23 @@ Before choosing your next action, briefly consider:
                     agent = event.get('principal_id', '?')
                     reason = event.get('reason', 'unknown')
                     event_lines.append(f"[T{event_tick}] {agent}: OUT OF COMPUTE ({reason})")
+                # Plan #160: Show revenue/cost events so agents know money flow
+                elif event_type == 'scrip_earned':
+                    recipient = event.get('recipient', '?')
+                    amount = event.get('amount', 0)
+                    payer = event.get('from', '?')
+                    artifact = event.get('artifact_id', '?')
+                    # Only show if this agent earned the scrip
+                    if recipient == self.agent_id:
+                        event_lines.append(f"[T{event_tick}] REVENUE: +{amount} scrip from {payer} using your {artifact}")
+                elif event_type == 'scrip_spent':
+                    spender = event.get('spender', '?')
+                    amount = event.get('amount', 0)
+                    recipient = event.get('to', '?')
+                    artifact = event.get('artifact_id', '?')
+                    # Only show if this agent spent the scrip
+                    if spender == self.agent_id:
+                        event_lines.append(f"[T{event_tick}] COST: -{amount} scrip to {recipient} for using {artifact}")
             recent_activity = "\n## Recent Activity\n" + "\n".join(event_lines) if event_lines else ""
         else:
             recent_activity = ""

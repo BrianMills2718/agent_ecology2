@@ -754,17 +754,24 @@ class ArtifactStore:
                 "data": {"artifact_id": artifact_id, "error": str(e)},
             }
 
+        # Plan #160: Improved success feedback with economic context
+        content_size = len(content.encode('utf-8'))
         if executable:
+            # Count interface methods if available
+            method_count = 0
+            if interface and "tools" in interface:
+                method_count = len(interface.get("tools", []))
+            method_info = f", {method_count} method(s)" if method_count else ""
             return {
                 "success": True,
-                "message": f"Wrote executable artifact {artifact_id} (price: {price})",
-                "data": {"artifact_id": artifact_id, "executable": True, "price": price},
+                "message": f"Wrote executable artifact {artifact_id} (price: {price} scrip{method_info}). Others pay you {price} scrip each time they invoke it.",
+                "data": {"artifact_id": artifact_id, "executable": True, "price": price, "size": content_size},
             }
         else:
             return {
                 "success": True,
-                "message": f"Wrote artifact {artifact_id}",
-                "data": {"artifact_id": artifact_id},
+                "message": f"Wrote artifact {artifact_id} ({content_size} bytes, type: {artifact_type})",
+                "data": {"artifact_id": artifact_id, "size": content_size, "type": artifact_type},
             }
 
     def edit_artifact(
