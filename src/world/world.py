@@ -495,9 +495,13 @@ class World:
                     data={"artifact": genesis.to_dict()}
                 )
             else:
+                # Plan #160: Suggest discovery via genesis_store
                 result = ActionResult(
                     success=False,
-                    message=f"Artifact {intent.artifact_id} not found",
+                    message=(
+                        f"Artifact '{intent.artifact_id}' not found. "
+                        f"Use genesis_store.list_all([]) or genesis_store.search(['{intent.artifact_id[:10]}']) to find artifacts."
+                    ),
                     error_code=ErrorCode.NOT_FOUND.value,
                     error_category=ErrorCategory.RESOURCE.value,
                     retriable=False,
@@ -777,15 +781,19 @@ class World:
         artifact = self.artifacts.get(artifact_id)
         if artifact:
             if not artifact.executable:
+                # Plan #160: Suggest alternative - use read_artifact for data/config artifacts
                 duration_ms = (time.perf_counter() - start_time) * 1000
+                helpful_msg = (
+                    f"Artifact {artifact_id} is not executable (it's a data artifact). "
+                    f"Use read_artifact with artifact_id='{artifact_id}' to read its content."
+                )
                 self._log_invoke_failure(
                     intent.principal_id, artifact_id, method_name,
-                    duration_ms, "not_executable",
-                    f"Artifact {artifact_id} is not executable"
+                    duration_ms, "not_executable", helpful_msg
                 )
                 return ActionResult(
                     success=False,
-                    message=f"Artifact {artifact_id} is not executable",
+                    message=helpful_msg,
                     error_code=ErrorCode.INVALID_TYPE.value,
                     error_category=ErrorCategory.VALIDATION.value,
                     retriable=False,
@@ -983,16 +991,19 @@ class World:
             # Plan #125: Extracted to _invoke_user_artifact for clarity
             return self._invoke_user_artifact(intent, artifact, method_name, args, start_time)
 
-        # Artifact not found
+        # Artifact not found - Plan #160: Suggest discovery via genesis_store
         duration_ms = (time.perf_counter() - start_time) * 1000
+        helpful_msg = (
+            f"Artifact '{artifact_id}' not found. "
+            f"Use genesis_store.list_all([]) or genesis_store.search(['{artifact_id[:10]}']) to find artifacts."
+        )
         self._log_invoke_failure(
             intent.principal_id, artifact_id, method_name,
-            duration_ms, "not_found",
-            f"Artifact {artifact_id} not found"
+            duration_ms, "not_found", helpful_msg
         )
         return ActionResult(
             success=False,
-            message=f"Artifact {artifact_id} not found",
+            message=helpful_msg,
             error_code=ErrorCode.NOT_FOUND.value,
             error_category=ErrorCategory.RESOURCE.value,
             retriable=False,
