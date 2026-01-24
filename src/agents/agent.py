@@ -1208,7 +1208,9 @@ Your response should include:
             elif artifact_id:
                 target = f"({artifact_id})"
 
-        brief_msg = message[:60] if len(message) > 60 else message
+        # Plan #160: Increase truncation to 150 chars to preserve critical error details
+        # 60 chars was cutting off method names in "Method 'X' not found. Use 'Y' instead"
+        brief_msg = message[:150] if len(message) > 150 else message
         history_entry = f"{action_type}{target} → {status}: {brief_msg}"
         self.action_history.append(history_entry)
         # Keep only the most recent actions
