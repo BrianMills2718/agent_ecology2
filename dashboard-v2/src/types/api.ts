@@ -185,3 +185,66 @@ export interface ActivityResponse {
   items: ActivityItem[]
   total_count: number
 }
+
+// ============================================================================
+// CHARTS
+// ============================================================================
+
+export interface ChartDataPoint {
+  tick: number
+  value: number
+  label?: string
+}
+
+export interface AgentChartData {
+  agent_id: string
+  data: ChartDataPoint[]
+}
+
+export interface ResourceChartData {
+  resource_name: string
+  agents: AgentChartData[]
+  totals: ChartDataPoint[]
+}
+
+// ============================================================================
+// KPIs
+// ============================================================================
+
+export interface KPIsData {
+  total_scrip: number
+  scrip_velocity: number
+  gini_coefficient: number
+  median_scrip: number
+  active_agent_ratio: number
+  frozen_agent_count: number
+  actions_per_second: number
+  thinking_cost_rate: number
+  escrow_volume: number
+  escrow_active_listings: number
+  mint_scrip_rate: number
+  artifact_creation_rate: number
+  llm_budget_remaining: number
+  llm_budget_burn_rate: number
+  agent_spawn_rate: number
+  coordination_events: number
+  artifact_diversity: number
+  scrip_velocity_trend: 'up' | 'down' | 'stable'
+  activity_trend: 'up' | 'down' | 'stable'
+  gini_coefficient_trend: 'up' | 'down' | 'stable'
+  active_agent_ratio_trend: 'up' | 'down' | 'stable'
+  frozen_count_trend: 'up' | 'down' | 'stable'
+}
+
+// ============================================================================
+// EMERGENCE
+// ============================================================================
+
+export interface EmergenceMetrics {
+  coordination_density: number
+  specialization_index: number
+  reuse_ratio: number
+  genesis_independence: number
+  capital_depth: number
+  coalition_count: number
+}

@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { useWebSocketStore } from '../../stores/websocket'
-import { Panel } from '../shared/Panel'
 import { ProgressPanel } from '../panels/ProgressPanel'
 import { AgentsPanel } from '../panels/AgentsPanel'
 import { ArtifactsPanel } from '../panels/ArtifactsPanel'
@@ -8,6 +7,9 @@ import { ActivityPanel } from '../panels/ActivityPanel'
 import { EventsPanel } from '../panels/EventsPanel'
 import { GenesisPanel } from '../panels/GenesisPanel'
 import { ThinkingPanel } from '../panels/ThinkingPanel'
+import { NetworkPanel } from '../panels/NetworkPanel'
+import { ChartsPanel } from '../panels/ChartsPanel'
+import { EmergencePanel } from '../panels/EmergencePanel'
 
 export function MainGrid() {
   const connect = useWebSocketStore((state) => state.connect)
@@ -32,22 +34,15 @@ export function MainGrid() {
 
         {/* Center column - Visualizations */}
         <div className="space-y-4">
-          <Panel title="Agent Interactions" collapsible defaultCollapsed>
-            <div className="h-64 flex items-center justify-center text-[var(--text-secondary)]">
-              Network graph coming in Phase 4
-            </div>
-          </Panel>
+          <NetworkPanel />
+          <ChartsPanel />
           <ActivityPanel />
           <ThinkingPanel />
         </div>
 
         {/* Right column - Metrics & Events */}
         <div className="space-y-4">
-          <Panel title="Emergence Metrics" collapsible defaultCollapsed>
-            <p className="text-[var(--text-secondary)] text-sm">
-              Charts coming in Phase 4
-            </p>
-          </Panel>
+          <EmergencePanel />
           <GenesisPanel />
           <EventsPanel />
         </div>

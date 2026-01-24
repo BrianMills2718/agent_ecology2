@@ -196,3 +196,49 @@ export function useThinking(options?: {
     refetchInterval: 5000,
   })
 }
+
+// ============================================================================
+// CHARTS
+// ============================================================================
+
+import type { ResourceChartData, KPIsData, EmergenceMetrics } from '../types/api'
+
+export function useScripChart() {
+  return useQuery({
+    queryKey: ['charts', 'scrip'],
+    queryFn: () => apiFetch<ResourceChartData>('/charts/scrip'),
+    refetchInterval: 5000,
+  })
+}
+
+export function useLLMTokensChart() {
+  return useQuery({
+    queryKey: ['charts', 'llm_tokens'],
+    queryFn: () => apiFetch<ResourceChartData>('/charts/llm_tokens'),
+    refetchInterval: 5000,
+  })
+}
+
+// ============================================================================
+// KPIs
+// ============================================================================
+
+export function useKPIs() {
+  return useQuery({
+    queryKey: ['kpis'],
+    queryFn: () => apiFetch<KPIsData>('/kpis'),
+    refetchInterval: 5000,
+  })
+}
+
+// ============================================================================
+// EMERGENCE
+// ============================================================================
+
+export function useEmergence() {
+  return useQuery({
+    queryKey: ['emergence'],
+    queryFn: () => apiFetch<EmergenceMetrics>('/emergence'),
+    refetchInterval: 5000,
+  })
+}
