@@ -12,7 +12,7 @@ from pydantic.functional_validators import BeforeValidator
 ActionType = Literal["noop", "read_artifact", "write_artifact", "invoke_artifact"]
 
 # JSON-compatible argument type (Gemini structured output doesn't support Any)
-ArgValue = str | int | float | bool | list | dict | None
+ArgValue = str | int | float | bool | None
 
 
 class NoopAction(BaseModel):
