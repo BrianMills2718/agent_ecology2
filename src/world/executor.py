@@ -293,11 +293,11 @@ def validate_args_against_interface(
     if method_schema is None:
         # Plan #161: Improved error message - explain HOW to discover methods
         # Plan #160: Solution-first format so critical info survives truncation
+        # Note: Removed "Tip: Call describe()" - it sent agents chasing non-executable artifacts
         available_methods = [t.get("name") for t in tools if t.get("name")]
         error_msg = (
             f"Use one of {available_methods} instead. "
-            f"Method '{method_name}' does not exist on this artifact. "
-            f"Tip: Call artifact.describe() to see method details."
+            f"Method '{method_name}' does not exist on this artifact."
         )
         if validation_mode == "warn":
             _logger.warning("Interface validation: %s", error_msg)
