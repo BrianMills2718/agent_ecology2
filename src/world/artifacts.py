@@ -404,6 +404,105 @@ def create_memory_artifact(
     )
 
 
+def create_config_artifact(
+    config_id: str,
+    created_by: str,
+    config: dict[str, Any],
+) -> Artifact:
+    """Factory function to create a config artifact (Plan #160).
+
+    Creates an artifact for storing agent configuration with:
+    - artifact_type="config"
+    - Self-owned access (only the agent can read/modify)
+    - Callable interface for get/set operations
+
+    This enables cognitive self-modification: agents can inspect and
+    adjust their own configuration (temperature, max_tokens, etc.)
+    during runtime.
+
+    Args:
+        config_id: Unique ID for the config artifact (e.g., "agent_001_config")
+        created_by: Who owns this config (usually the agent)
+        config: Initial configuration dict
+
+    Returns:
+        Artifact configured as config storage
+
+    Example:
+        >>> config = create_config_artifact(
+        ...     config_id="agent_001_config",
+        ...     created_by="agent_001",
+        ...     config={"temperature": 0.7, "max_tokens": 1024}
+        ... )
+        >>> config.type
+        'config'
+    """
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Self-owned policy: only owner can access
+    artifact_policy = default_policy()
+    artifact_policy["allow_read"] = []
+    artifact_policy["allow_write"] = []
+    artifact_policy["allow_invoke"] = []
+
+    # Serialize content to string
+    content = json.dumps(config)
+
+    # Interface for invoking config operations
+    interface = {
+        "description": "Agent configuration. Invoke describe() first, then get/set values.",
+        "tools": [
+            {
+                "name": "get",
+                "description": "Get a configuration value by key",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "key": {"type": "string", "description": "Config key to retrieve"}
+                    },
+                    "required": ["key"]
+                }
+            },
+            {
+                "name": "set",
+                "description": "Set a configuration value",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "key": {"type": "string", "description": "Config key to set"},
+                        "value": {"description": "New value for the config key"}
+                    },
+                    "required": ["key", "value"]
+                }
+            },
+            {
+                "name": "list_keys",
+                "description": "List all available config keys",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {}
+                }
+            }
+        ]
+    }
+
+    return Artifact(
+        id=config_id,
+        type="config",
+        content=content,
+        created_by=created_by,
+        created_at=now,
+        updated_at=now,
+        executable=True,  # Invoke enabled for get/set
+        code="",  # Uses genesis method dispatch
+        policy=artifact_policy,
+        has_standing=False,
+        can_execute=False,
+        memory_artifact_id=None,
+        interface=interface,
+    )
+
+
 class ArtifactStore:
     """In-memory artifact storage
     

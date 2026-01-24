@@ -183,7 +183,7 @@ def create_agent_artifacts(
         >>> artifacts[0].is_agent
         True
     """
-    from ..world.artifacts import create_agent_artifact, create_memory_artifact
+    from ..world.artifacts import create_agent_artifact, create_config_artifact, create_memory_artifact
 
     # Load configs if not provided
     if agent_configs is None:
@@ -204,6 +204,22 @@ def create_agent_artifacts(
             )
             store.artifacts[memory_id] = memory_artifact
             memory_artifact_id = memory_id
+
+        # Plan #160: Create config artifact for cognitive self-modification
+        config_id = f"{agent_id}_config"
+        config_dict: dict[str, Any] = {
+            "temperature": config.get("temperature"),
+            "max_tokens": config.get("max_tokens"),
+            "llm_model": config.get("llm_model"),
+        }
+        if config.get("rag"):
+            config_dict["rag"] = config["rag"]
+        config_artifact = create_config_artifact(
+            config_id=config_id,
+            created_by=agent_id,  # Agent owns its config
+            config=config_dict,
+        )
+        store.artifacts[config_id] = config_artifact
 
         # Build agent config dict for artifact content
         agent_config_dict: dict[str, Any] = {

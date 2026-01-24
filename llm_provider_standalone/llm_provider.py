@@ -25,7 +25,7 @@ from typing import Optional, List, Dict, Any, Callable, Type, Union, AsyncIterat
 from dataclasses import dataclass, asdict
 
 import litellm
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from jinja2 import Environment, Template
 from dotenv import load_dotenv
 
@@ -729,10 +729,44 @@ class LLMProvider:
                           if (hasattr(response, 'choices') and response.choices)
                           else str(response))
 
-            # Parse structured output if requested
+            # Parse structured output if requested (with validation retry)
             parsed_result = None
             if response_model:
-                parsed_result = response_model.model_validate_json(content)
+                validation_retries = 2
+                current_content = content
+                last_validation_error: ValidationError | None = None
+
+                for val_attempt in range(validation_retries + 1):
+                    try:
+                        parsed_result = response_model.model_validate_json(current_content)
+                        break  # Success - exit retry loop
+                    except ValidationError as e:
+                        last_validation_error = e
+                        if val_attempt < validation_retries:
+                            # Build retry prompt with error context
+                            error_msg = str(e)
+                            retry_messages = messages.copy()
+                            retry_messages.append({"role": "assistant", "content": current_content})
+                            retry_messages.append({
+                                "role": "user",
+                                "content": f"Your JSON response had validation errors:\n{error_msg}\n\nPlease fix and return valid JSON."
+                            })
+                            # Re-call LLM with error context
+                            retry_response = await self._call_llm_with_retry(
+                                model=self.model,
+                                messages=retry_messages,
+                                **params
+                            )
+                            if self._is_responses_api_model(self.model):
+                                current_content = self._extract_responses_content(retry_response)
+                            else:
+                                current_content = (retry_response.choices[0].message.content
+                                                  if (hasattr(retry_response, 'choices') and retry_response.choices)
+                                                  else str(retry_response))
+                        else:
+                            # Out of validation retries - re-raise the original error
+                            raise last_validation_error
+
                 final_result = parsed_result
             else:
                 final_result = content

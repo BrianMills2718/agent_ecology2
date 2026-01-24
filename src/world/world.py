@@ -14,6 +14,7 @@ __all__ = [
     "KernelMintResult",
 ]
 
+import json
 import time
 import uuid
 from pathlib import Path
@@ -839,6 +840,95 @@ class World:
                         ],
                     },
                 )
+
+            # Plan #160: Config artifact methods (cognitive self-modification)
+            # Agents can read/modify their own configuration at runtime
+            if artifact.type == "config":
+                # Only the owner can access their config
+                if artifact.created_by != intent.principal_id:
+                    duration_ms = (time.perf_counter() - start_time) * 1000
+                    self._log_invoke_failure(
+                        intent.principal_id, artifact_id, method_name,
+                        duration_ms, "not_authorized",
+                        "Only the config owner can access it"
+                    )
+                    return ActionResult(
+                        success=False,
+                        message=f"Permission denied: only {artifact.created_by} can access this config",
+                        error_code=ErrorCode.NOT_AUTHORIZED.value,
+                        error_category=ErrorCategory.PERMISSION.value,
+                        retriable=False,
+                    )
+
+                config_data: dict[str, Any] = json.loads(artifact.content) if artifact.content else {}
+
+                if method_name == "get":
+                    key = args.get("key") if isinstance(args, dict) else (args[0] if args else None)
+                    if not key:
+                        return ActionResult(
+                            success=False,
+                            message="Missing required argument: key",
+                            error_code=ErrorCode.INVALID_ARGUMENT.value,
+                            error_category=ErrorCategory.VALIDATION.value,
+                            retriable=False,
+                        )
+                    value = config_data.get(key)
+                    duration_ms = (time.perf_counter() - start_time) * 1000
+                    self._log_invoke_success(
+                        intent.principal_id, artifact_id, method_name, duration_ms, type(value).__name__
+                    )
+                    return ActionResult(
+                        success=True,
+                        message=f"Config value for '{key}': {value}",
+                        data={"key": key, "value": value},
+                    )
+
+                elif method_name == "set":
+                    key = args.get("key") if isinstance(args, dict) else (args[0] if len(args) > 0 else None)
+                    value = args.get("value") if isinstance(args, dict) else (args[1] if len(args) > 1 else None)
+                    if not key:
+                        return ActionResult(
+                            success=False,
+                            message="Missing required argument: key",
+                            error_code=ErrorCode.INVALID_ARGUMENT.value,
+                            error_category=ErrorCategory.VALIDATION.value,
+                            retriable=False,
+                        )
+                    old_value = config_data.get(key)
+                    config_data[key] = value
+                    artifact.content = json.dumps(config_data)
+                    from datetime import datetime, timezone
+                    artifact.updated_at = datetime.now(timezone.utc).isoformat()
+                    duration_ms = (time.perf_counter() - start_time) * 1000
+                    self._log_invoke_success(
+                        intent.principal_id, artifact_id, method_name, duration_ms, "bool"
+                    )
+                    return ActionResult(
+                        success=True,
+                        message=f"Config '{key}' updated: {old_value} -> {value}",
+                        data={"key": key, "old_value": old_value, "new_value": value},
+                    )
+
+                elif method_name == "list_keys":
+                    keys = list(config_data.keys())
+                    duration_ms = (time.perf_counter() - start_time) * 1000
+                    self._log_invoke_success(
+                        intent.principal_id, artifact_id, method_name, duration_ms, "list"
+                    )
+                    return ActionResult(
+                        success=True,
+                        message=f"Config keys: {keys}",
+                        data={"keys": keys, "config": config_data},
+                    )
+
+                else:
+                    return ActionResult(
+                        success=False,
+                        message=f"Unknown config method: {method_name}. Available: get, set, list_keys, describe",
+                        error_code=ErrorCode.NOT_FOUND.value,
+                        error_category=ErrorCategory.RESOURCE.value,
+                        retriable=False,
+                    )
 
             # Plan #86: Interface validation
             # Validate args against artifact's declared interface schema if available
