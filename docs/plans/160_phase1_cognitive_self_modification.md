@@ -113,6 +113,11 @@ Run simulation and check:
 - docs/architecture/current/genesis_artifacts.md (modify) - Note that genesis contracts are separate category
 - docs/architecture/current/artifacts_executor.md (modify) - Update verification date
 - CLAUDE.md (modify) - Clarify genesis artifacts heuristic
+- src/agents/alpha_3/system_prompt.md (modify) - Add self-modification hints
+- src/agents/beta_3/system_prompt.md (modify) - Add self-modification hints
+- src/agents/gamma_3/system_prompt.md (modify) - Add self-modification hints
+- src/agents/delta_3/system_prompt.md (modify) - Add self-modification hints
+- src/agents/epsilon_3/system_prompt.md (modify) - Add self-modification hints
 
 ---
 

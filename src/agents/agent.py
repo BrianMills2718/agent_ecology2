@@ -253,6 +253,9 @@ class Agent:
         self.artifacts_completed: int = 0  # Artifacts that succeeded on first write
         self._starting_balance: float | None = None  # Set on first action to track revenue
 
+        # Plan #160: Track config reload errors for feedback
+        self._last_reload_error: str | None = None
+
         # RAG config: per-agent overrides merged with global defaults
         global_rag: dict[str, Any] = config_get("agent.rag") or {}
         self._rag_config: RAGConfigDict = {
@@ -288,12 +291,18 @@ class Agent:
         )
 
     def _load_from_artifact(self, artifact: Artifact) -> None:
-        """Load agent configuration from artifact content."""
+        """Load agent configuration from artifact content.
+
+        Plan #160: Track parse errors in _last_reload_error for feedback.
+        """
         # Parse config from artifact content (JSON)
         try:
             config: AgentConfigDict = json.loads(artifact.content)
-        except (json.JSONDecodeError, TypeError):
-            config = {}
+            self._last_reload_error = None  # Clear error on success
+        except (json.JSONDecodeError, TypeError) as e:
+            # Plan #160: Track error for agent feedback instead of silent failure
+            self._last_reload_error = f"Config parse error: {e}. Your self-modification may have invalid JSON."
+            config = {}  # Use empty config, keeping previous values
 
         # Override local values with artifact config
         self._agent_id = artifact.id
@@ -352,8 +361,9 @@ class Agent:
             self._load_from_artifact(artifact)
             return True
 
-        except Exception:
-            # On any error, keep current config
+        except Exception as e:
+            # Plan #160: Track error for agent feedback
+            self._last_reload_error = f"Config reload failed: {e}"
             return False
 
     def _extract_working_memory(
@@ -868,6 +878,15 @@ class Agent:
         else:
             action_feedback = ""
 
+        # Plan #160: Show config reload errors so agent knows self-modification failed
+        config_error_section: str = ""
+        if self._last_reload_error:
+            config_error_section = f"""
+## CONFIG ERROR (Your self-modification failed!)
+{self._last_reload_error}
+Your previous config is still active. Fix the JSON and try again.
+"""
+
         # Plan #88: Format recent failures for learning from mistakes
         recent_failures_section: str = ""
         if self.failure_history:
@@ -1032,7 +1051,7 @@ You are {self.agent_id}. Time remaining: {time_remaining_str} ({progress_str} co
 - Artifacts created: {len(my_artifacts)}
 
 {self.system_prompt}
-{first_tick_section}{working_memory_section}{action_feedback}{recent_failures_section}{action_history_section}{metacognitive_section}
+{first_tick_section}{working_memory_section}{action_feedback}{config_error_section}{recent_failures_section}{action_history_section}{metacognitive_section}
 ## Your Memories
 {memories}
 

@@ -601,6 +601,26 @@ class World:
                     error_details={"validation_error": error},
                 )
 
+        # Plan #160: Validate JSON for agent artifacts to prevent silent reload failures
+        # Check if this is an agent artifact (either by type or existing artifact)
+        is_agent_artifact = (
+            intent.artifact_type == "agent" or
+            (existing is not None and getattr(existing, 'is_agent', False))
+        )
+        if is_agent_artifact:
+            import json
+            try:
+                json.loads(intent.content)
+            except json.JSONDecodeError as e:
+                return ActionResult(
+                    success=False,
+                    message=f"Invalid JSON in agent config: {e}. Self-modification requires valid JSON.",
+                    error_code=ErrorCode.INVALID_ARGUMENT.value,
+                    error_category=ErrorCategory.VALIDATION.value,
+                    retriable=True,  # Agent can fix and retry
+                    error_details={"json_error": str(e), "position": e.pos},
+                )
+
         # Plan #114: Get interface requirement config
         require_interface = config_get("executor.require_interface_for_executables")
         if require_interface is None:
