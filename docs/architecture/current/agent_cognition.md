@@ -4,7 +4,7 @@ Detailed documentation of agent decision-making, memory, and learning systems.
 
 **Last verified:** 2026-01-24 (Plans #157, #160, #163 - LLM transitions, self-modification, checkpoint)
 
-**Related:** [agents.md](agents.md) for lifecycle, [genesis_artifacts.md](genesis_artifacts.md) for services
+**Related:** [agents.md](agents.md) for lifecycle, [genesis_agents.md](genesis_agents.md) for default agents, [genesis_artifacts.md](genesis_artifacts.md) for services
 
 ---
 
@@ -127,16 +127,6 @@ class WorkflowStateMachine:
 | Wildcard | `* -> observing` | From any state |
 | Conditional | `condition: "success_rate < 0.3"` | Safe expression eval |
 | LLM-informed | `transition_map: {pivot: observing}` | Plan #157 |
-
-### Agent State Configurations
-
-| Agent | States | Pattern |
-|-------|--------|---------|
-| alpha_3 | 8 | observing -> discovering -> ideating -> designing -> implementing -> testing -> reflecting -> shipping |
-| beta_3 | 4 | strategic -> tactical -> operational -> reviewing |
-| gamma_3 | 5 | solo -> discovering -> negotiating -> executing -> settling |
-| delta_3 | 5 | planning -> building -> deploying -> maintaining -> deprecating |
-| epsilon_3 | 4 | monitoring -> analyzing -> executing -> learning |
 
 ### Maturity: 85%
 
