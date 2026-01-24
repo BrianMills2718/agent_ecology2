@@ -344,7 +344,7 @@ const AgentsPanel = {
                                 <div class="thinking-meta">
                                     <span class="timeline-tick">T${thought.tick}</span>
                                     <span class="thinking-tokens-small">${thought.input_tokens}in/${thought.output_tokens}out</span>
-                                    <span class="thinking-cost-small">${thought.thinking_cost} tokens</span>
+                                    <span class="thinking-cost-small">$${thought.thinking_cost}</span>
                                 </div>
                                 <div class="thinking-preview-modal">${preview}</div>
                             </div>
@@ -420,7 +420,7 @@ const AgentsPanel = {
         html += '<div class="config-section">';
         html += '<h4>Model Settings</h4>';
         html += `<div class="config-item"><span class="config-label">LLM Model:</span> <span class="config-value">${this.escapeHtml(config.llm_model || 'default')}</span></div>`;
-        html += `<div class="config-item"><span class="config-label">Starting Credits:</span> <span class="config-value">${config.starting_credits}</span></div>`;
+        html += `<div class="config-item"><span class="config-label">Starting Scrip:</span> <span class="config-value">${config.starting_credits}</span></div>`;
         html += `<div class="config-item"><span class="config-label">Enabled:</span> <span class="config-value config-badge ${config.enabled ? 'enabled' : 'disabled'}">${config.enabled ? 'Yes' : 'No'}</span></div>`;
         if (config.temperature !== null && config.temperature !== undefined) {
             html += `<div class="config-item"><span class="config-label">Temperature:</span> <span class="config-value">${config.temperature}</span></div>`;

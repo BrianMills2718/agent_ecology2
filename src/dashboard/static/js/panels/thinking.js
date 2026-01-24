@@ -141,7 +141,7 @@ class ThinkingPanel {
                     <span class="thinking-agent">${this.escapeHtml(item.agent_id)}</span>
                     <span class="thinking-tick">Tick ${item.tick}</span>
                     <span class="thinking-tokens">${item.input_tokens} in / ${item.output_tokens} out</span>
-                    <span class="thinking-cost">${item.thinking_cost} tokens</span>
+                    <span class="thinking-cost">$${item.thinking_cost}</span>
                     ${hasContent ? '<span class="expand-icon">&#x25BC;</span>' : ''}
                 </div>
                 ${hasContent ? `
