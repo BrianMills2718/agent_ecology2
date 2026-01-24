@@ -89,9 +89,18 @@ export function Panel({
             </button>
           )}
           {collapsible && (
-            <span className="text-[var(--text-secondary)] text-sm">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setCollapsed(!collapsed)
+              }}
+              className="text-[var(--text-secondary)] text-sm hover:text-[var(--accent-primary)]"
+              aria-label={collapsed ? 'Expand panel' : 'Collapse panel'}
+              aria-expanded={!collapsed}
+            >
               {collapsed ? '+' : '−'}
-            </span>
+            </button>
           )}
         </div>
       </div>

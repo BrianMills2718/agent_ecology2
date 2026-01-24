@@ -2,13 +2,22 @@ import { create } from 'zustand'
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 
+export interface WSMessage {
+  type: string
+  data?: Record<string, unknown>
+}
+
+type MessageHandler = (message: WSMessage) => void
+
 interface WebSocketState {
   status: ConnectionStatus
   wsLatency: number | null
   ws: WebSocket | null
   reconnectAttempts: number
+  messageHandlers: Set<MessageHandler>
   connect: () => void
   disconnect: () => void
+  subscribe: (handler: MessageHandler) => () => void
 }
 
 const MAX_RECONNECT_ATTEMPTS = 10
@@ -19,6 +28,7 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
   wsLatency: null,
   ws: null,
   reconnectAttempts: 0,
+  messageHandlers: new Set(),
 
   connect: () => {
     const { ws, reconnectAttempts } = get()
@@ -64,9 +74,10 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
 
       // Handle JSON messages
       try {
-        const message = JSON.parse(data)
-        // TODO: Dispatch to appropriate handlers based on message.type
-        console.log('WS message:', message.type)
+        const message = JSON.parse(data) as WSMessage
+        // Dispatch to subscribers
+        const handlers = get().messageHandlers
+        handlers.forEach((handler) => handler(message))
       } catch {
         console.error('Failed to parse WebSocket message')
       }
@@ -99,6 +110,19 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
     if (ws) {
       ws.close()
       set({ ws: null, status: 'disconnected' })
+    }
+  },
+
+  subscribe: (handler: MessageHandler) => {
+    const handlers = get().messageHandlers
+    handlers.add(handler)
+    set({ messageHandlers: new Set(handlers) })
+
+    // Return unsubscribe function
+    return () => {
+      const current = get().messageHandlers
+      current.delete(handler)
+      set({ messageHandlers: new Set(current) })
     }
   },
 }))

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useWebSocketStore } from '../../stores/websocket'
+import { useQueryInvalidation } from '../../hooks/useQueryInvalidation'
 import { ProgressPanel } from '../panels/ProgressPanel'
 import { AgentsPanel } from '../panels/AgentsPanel'
 import { ArtifactsPanel } from '../panels/ArtifactsPanel'
@@ -18,6 +19,9 @@ export function MainGrid() {
   useEffect(() => {
     connect()
   }, [connect])
+
+  // Invalidate queries when WebSocket messages arrive
+  useQueryInvalidation()
 
   return (
     <main className="flex-1 p-4 overflow-auto">
