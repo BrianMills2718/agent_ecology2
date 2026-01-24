@@ -443,6 +443,9 @@ class KernelActions:
             {"success": True, "message": "..."} on success
             {"success": False, "error": "...", "error_code": "..."} on failure
         """
+        import re
+        import subprocess
+        import sys
         from src.config import get_validated_config
 
         config = get_validated_config()
@@ -450,6 +453,15 @@ class KernelActions:
         blocked_libs = [lib.lower() for lib in config.libraries.blocked]
 
         lib_lower = library_name.lower()
+
+        # Validate library name format (prevent command injection)
+        # Allow: letters, numbers, hyphens, underscores, dots, brackets for extras
+        if not re.match(r'^[a-zA-Z0-9_\-.\[\]]+$', library_name):
+            return {
+                "success": False,
+                "error": f"Invalid library name format: '{library_name}'",
+                "error_code": "INVALID_NAME",
+            }
 
         # Check blocklist
         if lib_lower in blocked_libs:
@@ -483,7 +495,53 @@ class KernelActions:
                 "available": available,
             }
 
-        # Consume quota
+        # Build package spec with optional version
+        package_spec = library_name
+        if version:
+            # Validate version format
+            if not re.match(r'^[<>=!~\d.,a-zA-Z*]+$', version):
+                return {
+                    "success": False,
+                    "error": f"Invalid version format: '{version}'",
+                    "error_code": "INVALID_VERSION",
+                }
+            package_spec = f"{library_name}{version}"
+
+        # Actually install the package using pip
+        # Use --break-system-packages for externally-managed environments (Debian/Ubuntu)
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "--break-system-packages", "-q", package_spec],
+                capture_output=True,
+                text=True,
+                timeout=120,  # 2 minute timeout for installation
+            )
+
+            if result.returncode != 0:
+                error_msg = result.stderr.strip() or result.stdout.strip() or "Unknown pip error"
+                # Truncate long error messages
+                if len(error_msg) > 200:
+                    error_msg = error_msg[:200] + "..."
+                return {
+                    "success": False,
+                    "error": f"pip install failed: {error_msg}",
+                    "error_code": "PIP_FAILED",
+                }
+
+        except subprocess.TimeoutExpired:
+            return {
+                "success": False,
+                "error": "Package installation timed out (>120s)",
+                "error_code": "TIMEOUT",
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Installation error: {str(e)}",
+                "error_code": "INSTALL_ERROR",
+            }
+
+        # Installation succeeded - consume quota and record
         if not self._world.consume_quota(caller_id, "disk", float(estimated_size)):
             return {
                 "success": False,
@@ -496,7 +554,7 @@ class KernelActions:
 
         return {
             "success": True,
-            "message": f"Installed '{library_name}' (quota cost: {estimated_size} bytes)",
+            "message": f"Installed '{package_spec}' (quota cost: {estimated_size} bytes)",
             "quota_cost": estimated_size,
         }
 
