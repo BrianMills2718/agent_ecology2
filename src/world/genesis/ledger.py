@@ -146,8 +146,16 @@ class GenesisLedger(GenesisArtifact):
     def _transfer(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Transfer SCRIP between agents (not flow - flow is non-transferable)"""
         if not args or len(args) < 3:
+            # Plan #160: If 2 args provided, they might be trying to transfer ownership
+            hint = ""
+            if args and len(args) == 2:
+                hint = (
+                    " NOTE: 'transfer' sends SCRIP (money). "
+                    "To transfer ARTIFACT OWNERSHIP, use 'transfer_ownership' method instead: "
+                    f"genesis_ledger.transfer_ownership(['{args[0]}', '{args[1]}'])"
+                )
             return validation_error(
-                "transfer requires [from_id, to_id, amount]",
+                f"transfer requires [from_id, to_id, amount] (3 args, got {len(args or [])}).{hint}",
                 code=ErrorCode.MISSING_ARGUMENT,
                 required=["from_id", "to_id", "amount"],
             )
@@ -165,9 +173,27 @@ class GenesisLedger(GenesisArtifact):
                 target=from_id,
             )
 
-        if not isinstance(amount, int) or amount <= 0:
+        # Plan #160: Improved error message showing actual type
+        if not isinstance(amount, int):
+            hint = ""
+            if isinstance(amount, str):
+                if amount.isdigit():
+                    hint = f" Use {amount} (number) instead of \"{amount}\" (string)."
+                else:
+                    # Looks like an artifact name - they probably want transfer_ownership
+                    hint = (
+                        f" NOTE: You seem to be trying to transfer an artifact '{amount}'. "
+                        f"'transfer' is for SCRIP (money), not artifacts. "
+                        f"To transfer ARTIFACT OWNERSHIP, use: genesis_ledger.transfer_ownership(['{amount}', '{to_id}'])"
+                    )
             return validation_error(
-                "Amount must be positive integer",
+                f"Amount must be an integer, got {type(amount).__name__}: {repr(amount)}.{hint}",
+                code=ErrorCode.INVALID_ARGUMENT,
+                provided=amount,
+            )
+        if amount <= 0:
+            return validation_error(
+                f"Amount must be positive, got {amount}",
                 code=ErrorCode.INVALID_ARGUMENT,
                 provided=amount,
             )

@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-21 (Plan #148 - ADR-0019 Audit, model field in ActionResult)
+**Last verified:** 2026-01-23 (Plan #160 - Cognitive self-modification: economic context, interface clarification)
 
 **See target:** [../target/agents.md](../target/agents.md)
 

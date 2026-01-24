@@ -601,6 +601,26 @@ class World:
                     error_details={"validation_error": error},
                 )
 
+        # Plan #160: Validate JSON for agent artifacts to prevent silent reload failures
+        # Check if this is an agent artifact (either by type or existing artifact)
+        is_agent_artifact = (
+            intent.artifact_type == "agent" or
+            (existing is not None and getattr(existing, 'is_agent', False))
+        )
+        if is_agent_artifact:
+            import json
+            try:
+                json.loads(intent.content)
+            except json.JSONDecodeError as e:
+                return ActionResult(
+                    success=False,
+                    message=f"Invalid JSON in agent config: {e}. Self-modification requires valid JSON.",
+                    error_code=ErrorCode.INVALID_ARGUMENT.value,
+                    error_category=ErrorCategory.VALIDATION.value,
+                    retriable=True,  # Agent can fix and retry
+                    error_details={"json_error": str(e), "position": e.pos},
+                )
+
         # Plan #114: Get interface requirement config
         require_interface = config_get("executor.require_interface_for_executables")
         if require_interface is None:
@@ -1069,9 +1089,17 @@ class World:
                     intent.principal_id, artifact_id, method_name,
                     duration_ms, type(result_data.get("result")).__name__
                 )
+                # Plan #160: Show brief result preview for better feedback
+                result_value = result_data.get("result")
+                result_preview = ""
+                if result_value is not None:
+                    result_str = str(result_value)[:100]
+                    if len(str(result_value)) > 100:
+                        result_str += "..."
+                    result_preview = f". Result: {result_str}"
                 return ActionResult(
                     success=True,
-                    message=f"Invoked {artifact_id}.{method_name}",
+                    message=f"Invoked {artifact_id}.{method_name}{result_preview}",
                     data=result_data,
                     resources_consumed=resources_consumed if resources_consumed else None,
                     charged_to=intent.principal_id,
@@ -1204,14 +1232,46 @@ class World:
             if price > 0 and created_by != intent.principal_id:
                 self.ledger.deduct_scrip(intent.principal_id, price)
                 self.ledger.credit_scrip(created_by, price)
+                # Plan #160: Log revenue/cost events so agents can track money flow
+                self.logger.log("scrip_earned", {
+                    "tick": self.tick,
+                    "recipient": created_by,
+                    "amount": price,
+                    "from": intent.principal_id,
+                    "artifact_id": artifact_id,
+                    "method": method_name,
+                })
+                self.logger.log("scrip_spent", {
+                    "tick": self.tick,
+                    "spender": intent.principal_id,
+                    "amount": price,
+                    "to": created_by,
+                    "artifact_id": artifact_id,
+                    "method": method_name,
+                })
 
             self._log_invoke_success(
                 intent.principal_id, artifact_id, method_name,
                 duration_ms, type(exec_result.get("result")).__name__
             )
+            # Plan #160: Clarify self-invoke feedback - agent needs to understand it doesn't earn revenue
+            if price > 0 and created_by == intent.principal_id:
+                price_msg = f" (self-invoke: no scrip transferred, you paid yourself)"
+            elif price > 0:
+                price_msg = f" (paid {price} scrip to {created_by})"
+            else:
+                price_msg = ""
+            # Plan #160: Show brief result preview for better feedback
+            result_value = exec_result.get("result")
+            result_preview = ""
+            if result_value is not None:
+                result_str = str(result_value)[:100]
+                if len(str(result_value)) > 100:
+                    result_str += "..."
+                result_preview = f". Result: {result_str}"
             return ActionResult(
                 success=True,
-                message=f"Invoked {artifact_id}" + (f" (paid {price} scrip to {created_by})" if price > 0 else ""),
+                message=f"Invoked {artifact_id}{price_msg}{result_preview}",
                 data={
                     "result": exec_result.get("result"),
                     "price_paid": price,

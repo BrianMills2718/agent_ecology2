@@ -191,7 +191,7 @@ make finish BRANCH=plan-98-robust-worktree PR=321
 3. **Align incentives** - Bad incentives = bad emergence
 4. **Pragmatism over purity** - Don't let elegance obstruct goals
 5. **Avoid defaults** - Prefer explicit choice; make defaults configurable
-6. **Genesis artifacts as middle ground** - Useful patterns without kernel opinions
+6. **Genesis as cold-start conveniences** - Genesis artifacts (ledger, escrow) and genesis contracts (freeware, private) are unprivileged conveniences that solve cold-start. They're NOT kernel features - agents could build equivalents. Kernel defaults (what happens when no contract exists) are separate from genesis.
 7. **Selection pressure over protection** - Let agents fail and learn
 8. **Observe, don't prevent** - Reputation emerges from observation
 9. **When in doubt, contract decides** - Contracts are flexible; kernel isn't

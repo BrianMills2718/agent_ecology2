@@ -2,7 +2,7 @@
 
 How access control works today.
 
-**Last verified:** 2026-01-21
+**Last verified:** 2026-01-23 (Plan #160 - Clarified kernel defaults vs cold-start conveniences)
 
 **See also:** ADR-0019 (Unified Permission Architecture)
 
@@ -70,23 +70,44 @@ class AccessContract(Protocol):
 
 ---
 
-## Genesis Contracts
+## Kernel Defaults vs Cold-Start Conveniences
 
-Four built-in contracts available at initialization:
+**Important distinction:** These are two separate concepts.
+
+### Kernel Defaults (Infrastructure)
+
+What the kernel does when an artifact has no contract or a null contract. This is kernel policy, configured in `config/config.yaml`:
+
+| Scenario | Config Key | Default Behavior |
+|----------|------------|------------------|
+| `access_contract_id` is null | `contracts.default_when_null` | `creator_only` - only creator has access |
+| Contract was deleted | `contracts.default_on_missing` | Falls back to freeware semantics |
+
+These defaults are kernel infrastructure, not artifacts.
+
+### Cold-Start Conveniences (Genesis Contracts)
+
+Pre-made permission presets available at initialization. Like genesis artifacts (ledger, escrow), these are **conveniences, not privileged**. Agents could build equivalent contracts themselves.
+
+**Important:** Genesis contracts are NOT artifacts. They're Python class instances stored in `GENESIS_CONTRACTS` dict, accessed by ID string (e.g., `"genesis_contract_freeware"`). Custom contracts created by agents ARE artifacts - see ExecutableContract below.
 
 | Contract | ID | Behavior |
 |----------|-----|----------|
-| **Freeware** | `genesis_contract_freeware` | Anyone reads/executes/invokes; only owner writes/deletes |
-| **SelfOwned** | `genesis_contract_self_owned` | Only artifact itself (or owner) can access |
-| **Private** | `genesis_contract_private` | Only owner can access |
+| **Freeware** | `genesis_contract_freeware` | Anyone reads/invokes; only creator writes/deletes |
+| **SelfOwned** | `genesis_contract_self_owned` | Only artifact itself (or creator) can access |
+| **Private** | `genesis_contract_private` | Only creator can access |
 | **Public** | `genesis_contract_public` | Anyone can do anything |
 
-### Default: Freeware
+**Note on `created_by`:** The genesis contracts reference `created_by` for access decisions. This is a contract policy choice, not kernel privilege. `created_by` is just metadata - contracts can use it however they want (or ignore it entirely for pure Ostrom-style rights). Custom contracts can implement any access pattern.
 
-Most artifacts use freeware pattern:
+### Common Pattern: Freeware
+
+Most artifacts use freeware-style access:
 - Open read access (anyone can see)
 - Open invoke access (anyone can use)
-- Owner-only writes (only creator can modify)
+- Creator-only writes (only creator can modify)
+
+This is a pragmatic default for cold-start, not a kernel requirement.
 
 ---
 

@@ -253,6 +253,9 @@ class Agent:
         self.artifacts_completed: int = 0  # Artifacts that succeeded on first write
         self._starting_balance: float | None = None  # Set on first action to track revenue
 
+        # Plan #160: Track config reload errors for feedback
+        self._last_reload_error: str | None = None
+
         # RAG config: per-agent overrides merged with global defaults
         global_rag: dict[str, Any] = config_get("agent.rag") or {}
         self._rag_config: RAGConfigDict = {
@@ -288,12 +291,18 @@ class Agent:
         )
 
     def _load_from_artifact(self, artifact: Artifact) -> None:
-        """Load agent configuration from artifact content."""
+        """Load agent configuration from artifact content.
+
+        Plan #160: Track parse errors in _last_reload_error for feedback.
+        """
         # Parse config from artifact content (JSON)
         try:
             config: AgentConfigDict = json.loads(artifact.content)
-        except (json.JSONDecodeError, TypeError):
-            config = {}
+            self._last_reload_error = None  # Clear error on success
+        except (json.JSONDecodeError, TypeError) as e:
+            # Plan #160: Track error for agent feedback instead of silent failure
+            self._last_reload_error = f"Config parse error: {e}. Your self-modification may have invalid JSON."
+            config = {}  # Use empty config, keeping previous values
 
         # Override local values with artifact config
         self._agent_id = artifact.id
@@ -352,8 +361,9 @@ class Agent:
             self._load_from_artifact(artifact)
             return True
 
-        except Exception:
-            # On any error, keep current config
+        except Exception as e:
+            # Plan #160: Track error for agent feedback
+            self._last_reload_error = f"Config reload failed: {e}"
             return False
 
     def _extract_working_memory(
@@ -431,6 +441,55 @@ class Agent:
         lines: list[str] = []
         for i, action in enumerate(self.action_history, 1):
             lines.append(f"{i}. {action}")
+
+        return "\n".join(lines)
+
+    def _analyze_action_patterns(self) -> str:
+        """Analyze action history for repeated patterns (Plan #160).
+
+        Returns summary of action patterns to help agent self-evaluate.
+        Shows which actions are being repeated and their success rates.
+        No enforcement - just information for the agent to reason about.
+        """
+        if not self.action_history:
+            return ""
+
+        # Parse action history to count patterns
+        # Format: "action_type(target) → STATUS: message"
+        from collections import Counter
+        import re
+
+        pattern_counts: Counter[str] = Counter()
+        pattern_successes: dict[str, int] = {}
+        pattern_failures: dict[str, int] = {}
+
+        for entry in self.action_history:
+            # Extract action_type and target from entry
+            # e.g., "write_artifact(my_tool) → SUCCESS: Created"
+            match = re.match(r'^(\w+)(\([^)]*\))?\s*→\s*(SUCCESS|FAILED)', entry)
+            if match:
+                action_type = match.group(1)
+                target = match.group(2) or ""
+                status = match.group(3)
+                pattern = f"{action_type}{target}"
+
+                pattern_counts[pattern] += 1
+                if status == "SUCCESS":
+                    pattern_successes[pattern] = pattern_successes.get(pattern, 0) + 1
+                else:
+                    pattern_failures[pattern] = pattern_failures.get(pattern, 0) + 1
+
+        # Find repeated patterns (3+ times)
+        repeated = [(p, c) for p, c in pattern_counts.most_common() if c >= 3]
+
+        if not repeated:
+            return ""
+
+        lines: list[str] = []
+        for pattern, count in repeated:
+            successes = pattern_successes.get(pattern, 0)
+            failures = pattern_failures.get(pattern, 0)
+            lines.append(f"- {pattern}: {count}x ({successes} ok, {failures} fail)")
 
         return "\n".join(lines)
 
@@ -819,6 +878,15 @@ class Agent:
         else:
             action_feedback = ""
 
+        # Plan #160: Show config reload errors so agent knows self-modification failed
+        config_error_section: str = ""
+        if self._last_reload_error:
+            config_error_section = f"""
+## CONFIG ERROR (Your self-modification failed!)
+{self._last_reload_error}
+Your previous config is still active. Fix the JSON and try again.
+"""
+
         # Plan #88: Format recent failures for learning from mistakes
         recent_failures_section: str = ""
         if self.failure_history:
@@ -828,14 +896,39 @@ class Agent:
 {failure_lines}
 """
 
-        # Plan #156: Format action history for loop detection
+        # Plan #156: Format action history
+        # Plan #160: Add pattern analysis and metacognitive prompting (no enforcement)
         action_history_section: str = ""
         if self.action_history:
+            # Analyze patterns for repeated actions
+            pattern_analysis = self._analyze_action_patterns()
+            pattern_section = ""
+            if pattern_analysis:
+                pattern_section = f"""
+**Repeated patterns detected:**
+{pattern_analysis}
+"""
             action_history_section = f"""
-## Your Recent Actions (detect loops!)
+## Your Recent Actions
 {self._format_action_history()}
+{pattern_section}"""
 
-CRITICAL: If you see the same action repeated 3+ times above, STOP and try something different!
+        # Plan #160: Metacognitive prompting - encourage self-evaluation without enforcement
+        # Include economic context so agent understands how to generate revenue
+        metacognitive_section: str = ""
+        if self.actions_taken >= 3:  # Only after a few actions
+            # Economic context: help agent understand revenue sources
+            if other_agents:
+                economic_context = f"Trading partners available: {', '.join(other_agents)}. Revenue comes from: (1) others using your services, (2) winning mint auctions."
+            else:
+                economic_context = "You are SOLO (no other agents). Revenue ONLY comes from winning mint auctions. Self-invokes transfer nothing."
+            metacognitive_section = f"""
+## Self-Evaluation (think before acting)
+**Economic reality:** {economic_context}
+Before choosing your next action, briefly consider:
+1. Are my recent actions making progress toward maximizing scrip?
+2. If I've been repeating an approach without results, what else could I try?
+3. Should I record any lessons in my working memory for future reference?
 """
 
         # Format recent events (short-term history for situational awareness)
@@ -872,6 +965,23 @@ CRITICAL: If you see the same action repeated 3+ times above, STOP and try somet
                     agent = event.get('principal_id', '?')
                     reason = event.get('reason', 'unknown')
                     event_lines.append(f"[T{event_tick}] {agent}: OUT OF COMPUTE ({reason})")
+                # Plan #160: Show revenue/cost events so agents know money flow
+                elif event_type == 'scrip_earned':
+                    recipient = event.get('recipient', '?')
+                    amount = event.get('amount', 0)
+                    payer = event.get('from', '?')
+                    artifact = event.get('artifact_id', '?')
+                    # Only show if this agent earned the scrip
+                    if recipient == self.agent_id:
+                        event_lines.append(f"[T{event_tick}] REVENUE: +{amount} scrip from {payer} using your {artifact}")
+                elif event_type == 'scrip_spent':
+                    spender = event.get('spender', '?')
+                    amount = event.get('amount', 0)
+                    recipient = event.get('to', '?')
+                    artifact = event.get('artifact_id', '?')
+                    # Only show if this agent spent the scrip
+                    if spender == self.agent_id:
+                        event_lines.append(f"[T{event_tick}] COST: -{amount} scrip to {recipient} for using {artifact}")
             recent_activity = "\n## Recent Activity\n" + "\n".join(event_lines) if event_lines else ""
         else:
             recent_activity = ""
@@ -941,7 +1051,7 @@ You are {self.agent_id}. Time remaining: {time_remaining_str} ({progress_str} co
 - Artifacts created: {len(my_artifacts)}
 
 {self.system_prompt}
-{first_tick_section}{working_memory_section}{action_feedback}{recent_failures_section}{action_history_section}
+{first_tick_section}{working_memory_section}{action_feedback}{config_error_section}{recent_failures_section}{action_history_section}{metacognitive_section}
 ## Your Memories
 {memories}
 
@@ -1288,6 +1398,17 @@ Your response should include:
             if self.actions_taken > 0 else "0/0"
         )
 
+        # Plan #160: Economic context for workflow prompts
+        # Help agent understand if they're solo or have trading partners
+        other_agents: list[str] = [
+            p for p in world_state.get("balances", {}).keys()
+            if p != self.agent_id and not p.startswith("genesis_")
+        ]
+        if other_agents:
+            economic_context = f"Trading partners: {', '.join(other_agents)}. Revenue from: others using your services OR mint wins."
+        else:
+            economic_context = "SOLO mode: no other agents. Revenue ONLY from mint auction wins. Self-invokes don't earn scrip."
+
         return {
             "agent_id": self.agent_id,
             "tick": tick,
@@ -1312,4 +1433,7 @@ Your response should include:
             "success_rate": success_rate,
             "revenue_earned": revenue,
             "artifacts_completed": self.artifacts_completed,
+            # Plan #160: Economic context
+            "other_agents": other_agents,
+            "economic_context": economic_context,
         }

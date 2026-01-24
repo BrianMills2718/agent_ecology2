@@ -85,6 +85,9 @@ workflow:
         === GOAL: Maximize scrip balance by simulation end ===
         You are {agent_id}. Time remaining: {time_remaining} ({progress_percent} complete)
 
+        ## ECONOMIC REALITY
+        {economic_context}
+
         ## YOUR PERFORMANCE
         - Balance: {balance} scrip (revenue: {revenue_earned:+.0f})
         - Actions: {success_rate} successful
@@ -149,6 +152,8 @@ workflow:
       prompt: |
         === STRATEGIC DECISION: Continue or Pivot? ===
         Time remaining: {time_remaining} | Success rate: {success_rate} | Revenue: {revenue_earned:+.0f}
+
+        **{economic_context}**
 
         ## YOUR RECENT ACTIONS
         {action_history}
