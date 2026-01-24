@@ -255,6 +255,32 @@ class FlatActionResponse(BaseModel):
         )
 
 
+# Plan #157 Phase 4: LLM-Informed State Transitions
+# Response models for transition evaluation
+
+TransitionDecision = Literal["continue", "pivot", "ship"]
+
+
+class TransitionEvaluationResponse(BaseModel):
+    """Response from LLM transition evaluation.
+
+    Used to determine whether an agent should continue, pivot (abandon), or ship.
+    Plan #157 Phase 4: Replace hardcoded state transitions with LLM judgment.
+    """
+
+    decision: TransitionDecision = Field(
+        description="The transition decision: 'continue' (keep working on current artifact), "
+        "'pivot' (abandon and try something different), or 'ship' (current work is good enough)"
+    )
+    reasoning: str = Field(
+        description="Brief explanation for the decision"
+    )
+    next_focus: str = Field(
+        default="",
+        description="If pivoting, what to focus on next. Empty if continuing or shipping."
+    )
+
+
 __all__ = [
     "ActionType",
     "ArgValue",
@@ -271,4 +297,6 @@ __all__ = [
     "FlatAction",
     "ActionResponse",
     "FlatActionResponse",
+    "TransitionDecision",
+    "TransitionEvaluationResponse",
 ]

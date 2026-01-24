@@ -37,12 +37,42 @@ from .state_machine import StateConfig, WorkflowStateMachine
 
 logger = logging.getLogger(__name__)
 
+# Plan #157 Phase 4: Default transition evaluation prompt template
+DEFAULT_TRANSITION_PROMPT = """=== TRANSITION EVALUATION ===
+Time remaining: {time_remaining} | Success rate: {success_rate} | Revenue: {revenue_earned:+.0f}
+
+## RECENT ACTIONS
+{action_history}
+
+## LAST RESULT
+{last_action_result}
+
+## DECISION REQUIRED
+Based on your performance and time remaining, choose ONE:
+
+A) CONTINUE - You're making progress, worth continuing
+   - Recent actions show improvement
+   - Close to completing something valuable
+
+B) PIVOT - You're stuck, try something different
+   - Same errors repeating (3+ times)
+   - No progress despite multiple attempts
+   - Time is running out, need a simpler approach
+
+C) SHIP - Current work is good enough, move on
+   - Artifact works (even if imperfect)
+   - Don't over-optimize, capture the value
+
+Respond with exactly one of: continue, pivot, or ship
+"""
+
 
 class StepType(str, Enum):
     """Type of workflow step."""
 
     CODE = "code"
     LLM = "llm"
+    TRANSITION = "transition"  # Plan #157: LLM-informed transition evaluation
 
 
 class ErrorPolicy(str, Enum):
@@ -59,14 +89,15 @@ class WorkflowStep:
 
     Attributes:
         name: Unique name for this step (used for context storage)
-        step_type: Type of step (code or llm)
+        step_type: Type of step (code, llm, or transition)
         code: Python code to execute (for code steps)
-        prompt: Prompt text or template (for llm steps)
+        prompt: Prompt text or template (for llm and transition steps)
         run_if: Optional condition - step only runs if this evaluates to True
         on_failure: Error handling policy for this step
         max_retries: Maximum retry attempts (for RETRY policy)
         in_state: Only run if state machine is in one of these states
         transition_to: Transition to this state after step completes
+        transition_map: For transition steps - maps decisions to target states
     """
 
     name: str
@@ -78,6 +109,8 @@ class WorkflowStep:
     max_retries: int = 3
     in_state: list[str] | None = None  # State condition
     transition_to: str | None = None  # State to transition to after step
+    # Plan #157: Transition step configuration
+    transition_map: dict[str, str] | None = None  # Maps decision -> target state
 
     def __post_init__(self) -> None:
         """Validate step configuration."""
@@ -85,6 +118,7 @@ class WorkflowStep:
             raise ValueError(f"Code step '{self.name}' requires 'code' field")
         if self.step_type == StepType.LLM and not self.prompt:
             raise ValueError(f"LLM step '{self.name}' requires 'prompt' field")
+        # Transition steps can use default prompt, so prompt is optional
 
 
 @dataclass
@@ -138,6 +172,11 @@ class WorkflowConfig:
             if isinstance(in_state, str):
                 in_state = [in_state]  # Single state -> list
 
+            # Plan #157: Parse transition_map for transition steps
+            transition_map = step_dict.get("transition_map")
+            if transition_map and not isinstance(transition_map, dict):
+                transition_map = None  # Ensure it's a dict
+
             step = WorkflowStep(
                 name=step_dict["name"],
                 step_type=step_type,
@@ -148,6 +187,7 @@ class WorkflowConfig:
                 max_retries=step_dict.get("max_retries", default_max_retries),
                 in_state=in_state,
                 transition_to=step_dict.get("transition_to"),
+                transition_map=transition_map,
             )
             steps.append(step)
 
@@ -279,6 +319,10 @@ class WorkflowRunner:
             result = self._execute_code_step(step, context)
         elif step.step_type == StepType.LLM:
             result = self._execute_llm_step(step, context)
+        elif step.step_type == StepType.TRANSITION:
+            result = self._execute_transition_step(step, context, state_machine)
+            # Transition step handles its own state transitions via transition_map
+            return result
         else:
             return {"success": False, "error": f"Unknown step type: {step.step_type}"}
 
@@ -404,6 +448,84 @@ class WorkflowRunner:
         logger.warning(f"LLM step '{step.name}' failed after {attempts} attempts: {last_error}")
         return self._handle_step_error(step, last_error or "Unknown error")
 
+    def _execute_transition_step(
+        self,
+        step: WorkflowStep,
+        context: dict[str, Any],
+        state_machine: WorkflowStateMachine | None = None,
+    ) -> dict[str, Any]:
+        """Execute a transition evaluation step.
+
+        Plan #157 Phase 4: Uses LLM to decide whether to continue, pivot, or ship.
+        Then maps the decision to a state transition via transition_map.
+
+        Args:
+            step: Transition step to execute
+            context: Shared context (modified in place)
+            state_machine: Optional state machine for state transitions
+
+        Returns:
+            Result dict with decision, reasoning, and state_transition info
+        """
+        # Evaluate transition using LLM
+        eval_result = self.evaluate_transition(context, step.prompt)
+
+        if not eval_result.get("success"):
+            return {
+                "success": False,
+                "error": eval_result.get("error", "Transition evaluation failed"),
+            }
+
+        decision = eval_result.get("decision", "continue")
+        reasoning = eval_result.get("reasoning", "")
+        next_focus = eval_result.get("next_focus", "")
+
+        # Store evaluation result in context
+        context[step.name] = {
+            "decision": decision,
+            "reasoning": reasoning,
+            "next_focus": next_focus,
+        }
+
+        # Determine target state from transition_map
+        target_state: str | None = None
+        if step.transition_map:
+            target_state = step.transition_map.get(decision)
+        elif step.transition_to:
+            # Fallback to static transition_to if no map
+            target_state = step.transition_to
+
+        # Perform state transition if applicable
+        result: dict[str, Any] = {
+            "success": True,
+            "decision": decision,
+            "reasoning": reasoning,
+            "next_focus": next_focus,
+        }
+
+        if target_state and state_machine:
+            if state_machine.transition_to(target_state, context):
+                context["_current_state"] = state_machine.current_state
+                result["state_transition"] = {
+                    "to": target_state,
+                    "success": True,
+                    "decision": decision,
+                }
+                logger.debug(
+                    f"Transition step '{step.name}': {decision} -> {target_state}"
+                )
+            else:
+                logger.warning(
+                    f"Transition step '{step.name}': {decision} -> {target_state} failed"
+                )
+                result["state_transition"] = {
+                    "to": target_state,
+                    "success": False,
+                    "decision": decision,
+                }
+
+        return result
+
     def _handle_step_error(
         self,
         step: WorkflowStep,
@@ -431,4 +553,120 @@ class WorkflowRunner:
                 "success": False,
                 "error": error,
                 "workflow_should_stop": True,
+            }
+
+    def evaluate_transition(
+        self,
+        context: dict[str, Any],
+        prompt_template: str | None = None,
+    ) -> dict[str, Any]:
+        """Evaluate whether to continue, pivot, or ship using LLM judgment.
+
+        Plan #157 Phase 4: Replace hardcoded state transitions with LLM reasoning.
+        Instead of `balance >= 20` deciding transitions, the LLM evaluates progress.
+
+        Args:
+            context: Workflow context with metrics (time_remaining, action_history, etc.)
+            prompt_template: Optional custom prompt template. Uses DEFAULT_TRANSITION_PROMPT if None.
+
+        Returns:
+            Dict with:
+                - success: Whether evaluation succeeded
+                - decision: "continue", "pivot", or "ship"
+                - reasoning: LLM's reasoning for the decision
+                - next_focus: If pivoting, what to focus on next
+                - error: Error message if evaluation failed
+        """
+        if not self.llm_provider:
+            # No LLM - fall back to hardcoded logic
+            return self._fallback_transition_evaluation(context)
+
+        # Build prompt from template
+        template = prompt_template or DEFAULT_TRANSITION_PROMPT
+        try:
+            prompt = template.format(**context)
+        except KeyError as e:
+            logger.debug(f"Transition prompt missing key {e}, using defaults")
+            # Fill in missing keys with defaults
+            safe_context = {
+                "time_remaining": context.get("time_remaining", "(unknown)"),
+                "success_rate": context.get("success_rate", "0/0"),
+                "revenue_earned": context.get("revenue_earned", 0.0),
+                "action_history": context.get("action_history", "(No actions yet)"),
+                "last_action_result": context.get("last_action_result", "(No previous action)"),
+            }
+            prompt = template.format(**safe_context)
+
+        try:
+            from .models import TransitionEvaluationResponse
+
+            response = self.llm_provider.generate(
+                prompt,
+                response_model=TransitionEvaluationResponse,
+            )
+
+            logger.debug(f"Transition evaluation: {response.decision} - {response.reasoning}")
+            return {
+                "success": True,
+                "decision": response.decision,
+                "reasoning": response.reasoning,
+                "next_focus": response.next_focus,
+            }
+
+        except Exception as e:
+            logger.warning(f"Transition evaluation failed: {e}, using fallback")
+            return self._fallback_transition_evaluation(context)
+
+    def _fallback_transition_evaluation(
+        self,
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Fallback transition evaluation when LLM is unavailable.
+
+        Uses simple heuristics based on context metrics.
+        """
+        # Analyze action history for repeated patterns
+        action_history = context.get("action_history", "")
+        failed_actions = context.get("failed_actions", 0)
+        successful_actions = context.get("successful_actions", 0)
+        actions_taken = context.get("actions_taken", 0)
+
+        # Count repeated patterns in action history
+        repeated_count = 0
+        if isinstance(action_history, str):
+            lines = action_history.strip().split("\n")
+            if len(lines) >= 3:
+                # Check last 3 actions for same artifact
+                recent = lines[-3:]
+                artifact_ids = []
+                for line in recent:
+                    # Extract artifact_id from patterns like "write_artifact(my_tool)"
+                    if "(" in line and ")" in line:
+                        start = line.find("(") + 1
+                        end = line.find(")")
+                        artifact_ids.append(line[start:end])
+                if len(set(artifact_ids)) == 1 and artifact_ids[0]:
+                    repeated_count = 3
+
+        # Decision logic
+        if repeated_count >= 3:
+            return {
+                "success": True,
+                "decision": "pivot",
+                "reasoning": "Repeated attempts on same artifact without progress",
+                "next_focus": "Try a different, simpler artifact",
+            }
+        elif successful_actions > 0 and failed_actions == 0:
+            return {
+                "success": True,
+                "decision": "ship",
+                "reasoning": "Recent actions successful, good time to ship",
+                "next_focus": "",
+            }
+        else:
+            return {
+                "success": True,
+                "decision": "continue",
+                "reasoning": "Continue current approach",
+                "next_focus": "",
             }
