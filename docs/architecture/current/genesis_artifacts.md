@@ -2,7 +2,7 @@
 
 System-provided artifacts that exist at world initialization.
 
-**Last verified:** 2026-01-23 (Plan #160 - Clarified genesis artifacts vs genesis contracts)
+**Last verified:** 2026-01-24 (Architecture review - privilege analysis, new artifacts)
 
 ---
 
@@ -16,6 +16,27 @@ All genesis artifacts:
 - Are configured in `config/config.yaml` under `genesis:`
 
 **Note:** Genesis contracts (freeware, private, etc.) are NOT artifacts at all - they're Python classes stored in a dict, not in the artifact store. See `contracts.md` for details. They are also cold-start conveniences, but they're permission presets, not invokable services.
+
+---
+
+## Privilege Status
+
+Genesis artifacts follow a deprivilege pattern (Plans #39, #44, #111). Most artifacts now delegate to kernel interfaces rather than accessing internal state directly.
+
+| Artifact | Status | Notes |
+|----------|--------|-------|
+| genesis_ledger | **Dual-path** | Uses `KernelActions` when `_world` set, direct access fallback |
+| genesis_mint | **Delegated** | Uses kernel primitives for bid storage, UBI |
+| genesis_escrow | **Dual-path** | Has `set_world()` support, implementation partially migrated |
+| genesis_rights_registry | **Dual-path** | Thin wrapper around kernel quotas, legacy fallback |
+| genesis_store | **Pure** | Read-only, no special privileges needed |
+| genesis_event_log | **Pure** | Read-only from EventLogger |
+| genesis_debt_contract | **Pure** | Truly unprivileged example contract |
+| genesis_model_registry | **Stub** | Not fully integrated with LLM calls yet |
+| genesis_embedder | **Pure** | Stateless computation, no kernel access |
+| genesis_memory | **Pure** | Operates only on artifacts owned by caller |
+
+**Pattern:** Artifacts have optional `set_world()` method. When world is set, they use `KernelState`/`KernelActions` interfaces. When world is None, they fall back to direct access (backward compatibility).
 
 ---
 
@@ -234,6 +255,60 @@ during a specific bidding window. Auctions still resolve on schedule.
 
 ---
 
+### genesis_embedder
+
+**Purpose:** Semantic embedding generation service (Plan #146)
+
+**File:** `src/world/genesis/embedder.py` (`GenesisEmbedder` class)
+
+| Method | Cost (scrip) | Description |
+|--------|--------------|-------------|
+| `embed(text)` | 1 | Generate embedding for text (768-dim vector) |
+| `embed_batch(texts_list)` | N | Generate embeddings for multiple texts (1 scrip per text) |
+| `get_config()` | 0 | Get embedder configuration (model, dimensions) |
+
+**Design:**
+- Makes embeddings scarce: costs scrip per embedding
+- Creates strategic choice: what to remember?
+- Uses configured embedding model (default: `text-embedding-004`)
+
+**Status:** Partially implemented (Plan #146 in progress)
+
+---
+
+### genesis_memory
+
+**Purpose:** Semantic memory operations on memory artifacts (Plan #146)
+
+**File:** `src/world/genesis/memory.py` (`GenesisMemory` class)
+
+| Method | Cost (scrip) | Description |
+|--------|--------------|-------------|
+| `add(artifact_id, text, metadata?)` | 1 | Add entry to memory artifact (generates embedding) |
+| `search(artifact_id, query)` | 0 | Semantic search within memory artifact |
+| `delete(artifact_id, entry_id)` | 0 | Remove entry from memory artifact |
+| `create(metadata?)` | 5 | Create new memory artifact |
+
+**Design:**
+- Memory artifacts store entries as JSON with embeddings
+- Enables tradeable memories: artifacts can be sold via escrow
+- Cosine similarity for search (implemented in-place)
+
+**Entry structure:**
+```json
+{
+  "id": "entry_uuid",
+  "text": "The original text",
+  "embedding": [0.1, 0.2, ...],
+  "metadata": {"key": "value"},
+  "created_at": "2024-01-21T00:00:00Z"
+}
+```
+
+**Status:** Partially implemented (Plan #146 in progress)
+
+---
+
 ## MCP Server Artifacts (Plan #28)
 
 Genesis artifacts that wrap MCP (Model Context Protocol) servers, providing external capabilities to agents.
@@ -365,10 +440,34 @@ genesis:
 
 ---
 
+## Known Limitations
+
+### In-Memory Storage
+
+Some genesis artifacts store state in-memory only (lost on restart):
+
+| Artifact | State Lost |
+|----------|------------|
+| genesis_escrow | Active listings |
+| genesis_debt_contract | Debt records |
+| genesis_model_registry | Quotas, usage tracking |
+
+**Impact:** Long-running simulations should checkpoint before shutdown. Resume may not restore all state.
+
+### Atomic Transactions
+
+Multi-step operations (e.g., escrow purchase) could fail mid-way. No rollback mechanism exists for partial failures.
+
+---
+
 ## Key Files
 
 | File | Key Functions | Description |
 |------|---------------|-------------|
-| `src/world/genesis.py` | `Genesis*` classes | Genesis artifact implementations |
+| `src/world/genesis/` | `Genesis*` classes | Genesis artifact implementations (split by artifact) |
+| `src/world/genesis/factory.py` | `create_genesis_artifacts()` | Factory function for all genesis artifacts |
+| `src/world/genesis/base.py` | `GenesisArtifact` | Base class, SYSTEM_OWNER constant |
+| `src/world/genesis/types.py` | TypedDict definitions | Result types for all genesis methods |
 | `src/world/world.py` | `World._create_genesis_artifacts()` | Genesis artifact initialization |
+| `src/world/mcp_bridge.py` | `create_mcp_artifacts()` | MCP-bridged artifact creation |
 | `config/config.yaml` | `genesis:` section | Configuration |
