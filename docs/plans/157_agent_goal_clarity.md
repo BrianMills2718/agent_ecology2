@@ -1,6 +1,6 @@
 # Plan #157: Agent Goal Clarity and Time Awareness
 
-**Status:** Planned
+**Status:** ✅ Complete
 **Priority:** High
 **Created:** 2026-01-22
 **Context:** Plan #156 showed that action history alone doesn't prevent loops. Agents recognize they're looping but continue anyway. Root cause: unclear goals and missing time/opportunity cost visibility.
@@ -101,26 +101,26 @@ This makes transitions a reasoning step, not a threshold check.
 
 ## Implementation Steps
 
-### Phase 1: Time Context
-- [ ] Add `tick`, `total_ticks`, `duration_seconds` to simulation runner
-- [ ] Pass time context to agents via `_build_workflow_context()`
-- [ ] Format as human-readable in prompts
+### Phase 1: Time Context ✅
+- [x] Add `tick`, `total_ticks`, `duration_seconds` to simulation runner
+- [x] Pass time context to agents via `_build_workflow_context()`
+- [x] Format as human-readable in prompts
 
-### Phase 2: Opportunity Cost Metrics
-- [ ] Add `revenue_earned`, `artifacts_completed` tracking to Agent
-- [ ] Add `actions_taken`, `successful_actions` counters
-- [ ] Include in prompt context
+### Phase 2: Opportunity Cost Metrics ✅
+- [x] Add `revenue_earned`, `artifacts_completed` tracking to Agent
+- [x] Add `actions_taken`, `successful_actions` counters
+- [x] Include in prompt context
 
-### Phase 3: Goal Reframing
-- [ ] Update agent prompts with clear time-bound goal
-- [ ] Remove vague "build valuable artifacts" language
-- [ ] Add performance summary to each prompt
+### Phase 3: Goal Reframing ✅
+- [x] Update agent prompts with clear time-bound goal
+- [x] Remove vague "build valuable artifacts" language
+- [x] Add performance summary to each prompt
 
-### Phase 4: LLM Transition Evaluation (larger change)
-- [ ] Design transition evaluation prompt
-- [ ] Add `evaluate_transition()` method to workflow engine
-- [ ] Replace hardcoded conditions with LLM judgments
-- [ ] Add "abandon" as explicit transition option
+### Phase 4: LLM Transition Evaluation ✅
+- [x] Design transition evaluation prompt
+- [x] Add `evaluate_transition()` method to workflow engine
+- [x] Replace hardcoded conditions with LLM judgments
+- [x] Add "abandon" as explicit transition option
 
 ---
 
