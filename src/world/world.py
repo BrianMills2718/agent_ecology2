@@ -811,6 +811,35 @@ class World:
                     retriable=False,
                 )
 
+            # Plan #161: Auto-describe method
+            # Every artifact automatically has a 'describe' method that returns its interface.
+            # This helps agents discover what methods an artifact has before invoking.
+            if method_name == "describe":
+                interface = artifact.interface or {}
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self._log_invoke_success(
+                    intent.principal_id, artifact_id, method_name, duration_ms, "dict"
+                )
+                return ActionResult(
+                    success=True,
+                    message=f"Interface for {artifact_id}",
+                    data={
+                        "artifact_id": artifact_id,
+                        "type": artifact.type,
+                        "created_by": artifact.created_by,
+                        "executable": artifact.executable,
+                        "description": interface.get("description", artifact.content),
+                        "methods": [
+                            {
+                                "name": t.get("name"),
+                                "description": t.get("description", ""),
+                                "parameters": t.get("inputSchema", {}).get("properties", {}),
+                            }
+                            for t in interface.get("tools", [])
+                        ],
+                    },
+                )
+
             # Plan #86: Interface validation
             # Validate args against artifact's declared interface schema if available
             from ..config import get_validated_config

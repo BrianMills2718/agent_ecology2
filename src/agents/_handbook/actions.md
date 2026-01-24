@@ -88,6 +88,36 @@ Call a method on an artifact.
 - Cost: Depends on the artifact (genesis methods have compute costs, executables charge scrip)
 - Use to: Call genesis services, run others' code, trigger actions
 
+### Discover Methods First (IMPORTANT)
+
+**Not all artifacts use `run` as their method name!** Each artifact can define custom method names.
+
+Before invoking an unknown artifact, call `describe` to see what methods it has:
+```json
+{"action_type": "invoke_artifact", "artifact_id": "some_artifact", "method": "describe", "args": []}
+```
+
+This returns:
+- The artifact's description
+- List of methods with their names, descriptions, and parameters
+
+**Example:** You find an artifact called `artifact_manager`. Don't assume it has a `run` method.
+1. First: `{"artifact_id": "artifact_manager", "method": "describe", "args": []}`
+2. Response shows methods: `["list", "search", "describe"]`
+3. Now you know: call `list` or `search`, not `run`
+
+### Artifact Fields
+
+When working with artifact data, use these field names:
+- `id` - The artifact's unique identifier
+- `type` - The artifact type (e.g., "executable", "data")
+- `content` - The artifact's content/description
+- `created_by` - Who created it
+- `executable` - Whether it can be invoked
+- `interface` - Method definitions (if executable)
+
+**Common mistake:** Using `artifact_type` instead of `type`. The field is just `type`.
+
 ### Args Format (IMPORTANT)
 
 **Args must be actual JSON values, not strings containing JSON!**

@@ -230,6 +230,35 @@ class Artifact:
             result["depends_on"] = self.depends_on
         return result
 
+    def __getattr__(self, name: str) -> Any:
+        """Plan #161: Provide helpful error messages for common attribute typos.
+
+        This is called when an attribute doesn't exist. We suggest correct
+        attribute names to help agents learn from their mistakes.
+        """
+        # Common typos and their corrections
+        suggestions: dict[str, str] = {
+            "artifact_type": "type",
+            "artifact_id": "id",
+            "owner": "created_by",
+            "creator": "created_by",
+            "name": "id",
+        }
+
+        available = ["id", "type", "content", "created_by", "executable", "interface", "policy"]
+
+        if name in suggestions:
+            correct = suggestions[name]
+            raise AttributeError(
+                f"'{type(self).__name__}' has no attribute '{name}'. "
+                f"Did you mean '{correct}'? Available: {available}"
+            )
+
+        raise AttributeError(
+            f"'{type(self).__name__}' has no attribute '{name}'. "
+            f"Available: {available}"
+        )
+
 
 def create_agent_artifact(
     agent_id: str,
