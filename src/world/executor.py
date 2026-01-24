@@ -282,9 +282,13 @@ def validate_args_against_interface(
             break
 
     if method_schema is None:
-        # Method not found in interface - include available methods in error
+        # Plan #161: Improved error message - explain HOW to discover methods
         available_methods = [t.get("name") for t in tools if t.get("name")]
-        error_msg = f"Method '{method_name}' not found in interface. Available methods: {available_methods}"
+        error_msg = (
+            f"Method '{method_name}' not found. "
+            f"This artifact has custom methods: {available_methods}. "
+            f"Tip: Call artifact.describe() to see method details before invoking."
+        )
         if validation_mode == "warn":
             _logger.warning("Interface validation: %s", error_msg)
             return ValidationResult(valid=False, proceed=True, skipped=False, error_message=error_msg)
