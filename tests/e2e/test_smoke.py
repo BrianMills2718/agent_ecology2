@@ -108,7 +108,7 @@ class TestAutonomousModeSmoke:
         world = await runner.run(duration=0.5)
 
         assert isinstance(world, World)
-        # In autonomous mode, tick may stay at 0 (ticks aren't used)
+        # In autonomous mode, event_number may stay at 0
         # Just verify no crash
 
 
@@ -126,7 +126,7 @@ class TestIntegrationSmoke:
 
         state = runner.world.get_state_summary()
 
-        assert "tick" in state  # Still present for backward compat
+        assert "event_number" in state
         assert "balances" in state
         assert "artifacts" in state
 

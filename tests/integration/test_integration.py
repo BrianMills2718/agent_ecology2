@@ -74,7 +74,7 @@ class TestWorldInitialization:
         world = world_with_temp_log
 
         # Basic initialization checks
-        assert world.tick == 0
+        assert world.event_number == 0
         assert world.ledger is not None
         assert world.artifacts is not None
         assert world.logger is not None
@@ -114,7 +114,7 @@ class TestGenesisArtifacts:
 
 
 class TestEventCounter:
-    """Tests for World event counter (tick) behavior.
+    """Tests for World event counter behavior.
 
     Note: Plan #102 changed advance_tick() to a simple event counter incrementer.
     It no longer has max_ticks limits or compute resets. Those are now handled
@@ -122,38 +122,38 @@ class TestEventCounter:
     """
 
     def test_increment_event_counter(self, world_with_temp_log):
-        """increment_event_counter() works and increments tick."""
+        """increment_event_counter() works and increments event_number."""
         world = world_with_temp_log
 
-        assert world.tick == 0
+        assert world.event_number == 0
 
         # Increment counter
         result = world.increment_event_counter()
         assert result == 1
-        assert world.tick == 1
+        assert world.event_number == 1
 
         # Increment again
         result = world.increment_event_counter()
         assert result == 2
-        assert world.tick == 2
+        assert world.event_number == 2
 
     def test_advance_tick_deprecated_compat(self, world_with_temp_log):
         """Deprecated advance_tick() still works for backward compatibility."""
         world = world_with_temp_log
 
-        assert world.tick == 0
+        assert world.event_number == 0
 
         # Advance tick (deprecated but should work)
         result = world.advance_tick()
         assert result is True  # Always returns True now (no max_ticks)
-        assert world.tick == 1
+        assert world.event_number == 1
 
         # Advance again - no limit
         for _ in range(10):
             result = world.advance_tick()
             assert result is True  # Always True
 
-        assert world.tick == 11  # No max_ticks limit
+        assert world.event_number == 11  # No max_ticks limit
 
 
 class TestExecuteNoop:
@@ -317,11 +317,11 @@ class TestFullTickCycle:
         world = world_with_temp_log
 
         # Initial state
-        assert world.tick == 0
+        assert world.event_number == 0
 
         # First tick
         world.advance_tick()
-        assert world.tick == 1
+        assert world.event_number == 1
 
         # Get initial compute
         initial_compute = world.ledger.get_llm_tokens("agent_1")
@@ -338,7 +338,7 @@ class TestFullTickCycle:
 
         # Advance to next tick
         world.advance_tick()
-        assert world.tick == 2
+        assert world.event_number == 2
 
         # Compute should still be the same after reset
         compute_after_reset = world.ledger.get_llm_tokens("agent_1")
@@ -364,7 +364,7 @@ class TestFullTickCycle:
         # Get state summary
         state = world.get_state_summary()
 
-        assert state["tick"] == 1
+        assert state["event_number"] == 1
         assert "agent_1" in state["balances"]
         assert "agent_2" in state["balances"]
 

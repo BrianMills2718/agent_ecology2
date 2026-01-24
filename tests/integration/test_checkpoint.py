@@ -34,7 +34,7 @@ class TestSaveCheckpoint:
 
             # Create mock world
             world = MagicMock()
-            world.tick = 5
+            world.event_number = 5
             world.ledger.get_all_balances.return_value = {"agent_a": {"llm_tokens": 100, "scrip": 50}}
             world.artifacts.artifacts = {}
 
@@ -57,7 +57,7 @@ class TestSaveCheckpoint:
             config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
 
             world = MagicMock()
-            world.tick = 10
+            world.event_number = 10
             world.ledger.get_all_balances.return_value = {
                 "alice": {"llm_tokens": 100, "scrip": 200},
                 "bob": {"llm_tokens": 50, "scrip": 75},
@@ -84,7 +84,7 @@ class TestSaveCheckpoint:
             with open(checkpoint_path) as f:
                 data = json.load(f)
 
-            assert data["tick"] == 10
+            assert data["event_number"] == 10
             assert data["cumulative_api_cost"] == 1.23
             assert data["reason"] == "budget_exhausted"
             assert "alice" in data["balances"]
@@ -100,7 +100,7 @@ class TestSaveCheckpoint:
             config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
 
             world = MagicMock()
-            world.tick = 1
+            world.event_number = 1
             world.ledger.get_all_balances.return_value = {}
             world.artifacts.artifacts = {}
 
@@ -123,7 +123,7 @@ class TestLoadCheckpoint:
             checkpoint_path = Path(tmpdir) / "checkpoint.json"
 
             data = {
-                "tick": 25,
+                "event_number": 25,
                 "balances": {
                     "alice": {"llm_tokens": 100, "scrip": 200},
                     "bob": {"llm_tokens": 50, "scrip": 75},
@@ -139,7 +139,7 @@ class TestLoadCheckpoint:
             result = load_checkpoint(str(checkpoint_path))
 
             assert result is not None
-            assert result["tick"] == 25
+            assert result["event_number"] == 25
             assert result["balances"]["alice"]["llm_tokens"] == 100
             assert result["balances"]["alice"]["scrip"] == 200
             assert result["balances"]["bob"]["llm_tokens"] == 50
@@ -154,7 +154,7 @@ class TestLoadCheckpoint:
 
             # Legacy format: balances are just integers (scrip only)
             data = {
-                "tick": 10,
+                "event_number": 10,
                 "balances": {
                     "alice": 200,
                     "bob": 75,
@@ -182,7 +182,7 @@ class TestLoadCheckpoint:
             checkpoint_path = Path(tmpdir) / "checkpoint.json"
 
             data = {
-                "tick": 5,
+                "event_number": 5,
                 "balances": {},
                 "cumulative_api_cost": 0.0,
                 "artifacts": [
@@ -207,13 +207,13 @@ class TestCheckpointRoundTrip:
     """Tests for save → load → verify cycle."""
 
     def test_basic_round_trip(self) -> None:
-        """Basic checkpoint round trip preserves tick, cost, and reason."""
+        """Basic checkpoint round trip preserves event_number, cost, and reason."""
         with tempfile.TemporaryDirectory() as tmpdir:
             checkpoint_path = Path(tmpdir) / "checkpoint.json"
             config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
 
             world = MagicMock()
-            world.tick = 42
+            world.event_number = 42
             world.ledger.get_all_balances.return_value = {}
             world.artifacts.artifacts = {}
 
@@ -221,7 +221,7 @@ class TestCheckpointRoundTrip:
             loaded = load_checkpoint(str(checkpoint_path))
 
             assert loaded is not None
-            assert loaded["tick"] == 42
+            assert loaded["event_number"] == 42
             assert loaded["cumulative_api_cost"] == 1.234
             assert loaded["reason"] == "budget_pause"
 
@@ -232,7 +232,7 @@ class TestCheckpointRoundTrip:
             config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
 
             world = MagicMock()
-            world.tick = 1
+            world.event_number = 1
             world.ledger.get_all_balances.return_value = {
                 "alice": {"llm_tokens": 100, "scrip": 500},
                 "bob": {"llm_tokens": 75, "scrip": 250},
@@ -266,7 +266,7 @@ class TestCheckpointRoundTrip:
             config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
 
             world = MagicMock()
-            world.tick = 1
+            world.event_number = 1
             world.ledger.get_all_balances.return_value = {}
 
             # Create mock artifacts
@@ -316,7 +316,7 @@ class TestCheckpointRoundTrip:
             config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
 
             world = MagicMock()
-            world.tick = 1
+            world.event_number = 1
             world.ledger.get_all_balances.return_value = {}
             world.artifacts.artifacts = {}
 
@@ -341,7 +341,7 @@ class TestCheckpointRoundTrip:
             config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
 
             world = MagicMock()
-            world.tick = 0
+            world.event_number = 0
             world.ledger.get_all_balances.return_value = {}
             world.artifacts.artifacts = {}
 
@@ -349,7 +349,7 @@ class TestCheckpointRoundTrip:
             loaded = load_checkpoint(str(checkpoint_path))
 
             assert loaded is not None
-            assert loaded["tick"] == 0
+            assert loaded["event_number"] == 0
             assert loaded["balances"] == {}
             assert loaded["artifacts"] == []
             assert loaded["agent_ids"] == []
@@ -369,7 +369,7 @@ class TestCheckpointEdgeCases:
                 config: dict = {}  # No budget.checkpoint_file
 
                 world = MagicMock()
-                world.tick = 1
+                world.event_number = 1
                 world.ledger.get_all_balances.return_value = {}
                 world.artifacts.artifacts = {}
 
@@ -391,7 +391,7 @@ class TestCheckpointEdgeCases:
                 json.dump({"old": "data"}, f)
 
             world = MagicMock()
-            world.tick = 99
+            world.event_number = 99
             world.ledger.get_all_balances.return_value = {}
             world.artifacts.artifacts = {}
 
@@ -399,7 +399,7 @@ class TestCheckpointEdgeCases:
             loaded = load_checkpoint(str(checkpoint_path))
 
             assert loaded is not None
-            assert loaded["tick"] == 99
+            assert loaded["event_number"] == 99
             assert loaded["reason"] == "new_reason"
             assert "old" not in loaded  # type: ignore[operator]
 
@@ -410,7 +410,7 @@ class TestCheckpointEdgeCases:
             config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
 
             world = MagicMock()
-            world.tick = 1
+            world.event_number = 1
             world.ledger.get_all_balances.return_value = {}
             world.artifacts.artifacts = {}
 
@@ -434,7 +434,7 @@ class TestCheckpointVersion:
             config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
 
             world = MagicMock()
-            world.tick = 1
+            world.event_number = 1
             world.ledger.get_all_balances.return_value = {}
             world.artifacts.artifacts = {}
 
@@ -453,7 +453,7 @@ class TestCheckpointVersion:
 
             # v1 format: no version, no agent_states
             data = {
-                "tick": 10,
+                "event_number": 10,
                 "balances": {"alice": {"llm_tokens": 100, "scrip": 200}},
                 "cumulative_api_cost": 0.5,
                 "artifacts": [],
@@ -466,7 +466,7 @@ class TestCheckpointVersion:
             loaded = load_checkpoint(str(checkpoint_path))
 
             assert loaded is not None
-            assert loaded["tick"] == 10
+            assert loaded["event_number"] == 10
             assert loaded["version"] == 2  # Migrated to v2
             assert "agent_states" in loaded
             # Empty state for alice (migrated)
@@ -478,7 +478,7 @@ class TestCheckpointVersion:
             checkpoint_path = Path(tmpdir) / "checkpoint.json"
 
             data = {
-                "tick": 5,
+                "event_number": 5,
                 "balances": {},
                 "cumulative_api_cost": 0.0,
                 "artifacts": [],
@@ -524,7 +524,7 @@ class TestCheckpointAgentState:
             config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
 
             world = MagicMock()
-            world.tick = 10
+            world.event_number = 10
             world.ledger.get_all_balances.return_value = {"alice": {"llm_tokens": 100, "scrip": 200}}
             world.artifacts.artifacts = {}
 
@@ -549,7 +549,7 @@ class TestCheckpointAgentState:
             config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
 
             world = MagicMock()
-            world.tick = 1
+            world.event_number = 1
             world.ledger.get_all_balances.return_value = {}
             world.artifacts.artifacts = {}
 
@@ -578,7 +578,7 @@ class TestCheckpointAgentState:
             config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
 
             world = MagicMock()
-            world.tick = 1
+            world.event_number = 1
             world.ledger.get_all_balances.return_value = {}
             world.artifacts.artifacts = {}
 
@@ -608,7 +608,7 @@ class TestCheckpointAtomicWrite:
             config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
 
             world = MagicMock()
-            world.tick = 1
+            world.event_number = 1
             world.ledger.get_all_balances.return_value = {}
             world.artifacts.artifacts = {}
 
@@ -626,7 +626,7 @@ class TestCheckpointAtomicWrite:
             config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
 
             world = MagicMock()
-            world.tick = 42
+            world.event_number = 42
             world.ledger.get_all_balances.return_value = {}
             world.artifacts.artifacts = {}
 
@@ -652,7 +652,7 @@ class TestRestoreAgentStates:
 
         checkpoint: CheckpointData = {
             "version": 2,
-            "tick": 10,
+            "event_number": 10,
             "balances": {},
             "cumulative_api_cost": 0.0,
             "artifacts": [],
@@ -676,7 +676,7 @@ class TestRestoreAgentStates:
 
         checkpoint: CheckpointData = {
             "version": 2,
-            "tick": 10,
+            "event_number": 10,
             "balances": {},
             "cumulative_api_cost": 0.0,
             "artifacts": [],
@@ -697,7 +697,7 @@ class TestRestoreAgentStates:
         # Simulate v1 checkpoint that was partially migrated
         checkpoint: CheckpointData = {
             "version": 2,
-            "tick": 10,
+            "event_number": 10,
             "balances": {},
             "cumulative_api_cost": 0.0,
             "artifacts": [],

@@ -33,7 +33,7 @@ class TestFixtures:
     def test_test_world_fixture(self, test_world):
         """Verify test_world fixture creates a valid World."""
         assert isinstance(test_world, World)
-        assert test_world.tick == 0  # Event counter starts at 0
+        assert test_world.event_number == 0  # Event counter starts at 0
         # Note: max_ticks removed in Plan #102 - execution limits now time-based
         assert len(test_world.principal_ids) == 2
         assert "agent_1" in test_world.principal_ids
@@ -59,9 +59,9 @@ class TestFixtures:
 
     def test_world_advance_tick(self, test_world):
         """Verify World can advance ticks."""
-        initial_tick = test_world.tick
+        initial_tick = test_world.event_number
         assert test_world.advance_tick() is True
-        assert test_world.tick == initial_tick + 1
+        assert test_world.event_number == initial_tick + 1
 
     def test_ledger_operations(self, test_ledger):
         """Verify basic Ledger operations work."""

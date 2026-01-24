@@ -37,7 +37,7 @@ class TestReasoningPropagation:
         }
 
         # Call propose_action_async directly
-        world_state: dict[str, Any] = {"tick": 1, "balances": {"test": 100}}
+        world_state: dict[str, Any] = {"event_number": 1, "balances": {"test": 100}}
         proposal = await agent.propose_action_async(world_state)
 
         # Verify structure matches what runner expects
@@ -70,7 +70,7 @@ class TestReasoningPropagation:
             "cost": 0.001,
         }
 
-        world_state: dict[str, Any] = {"tick": 1}
+        world_state: dict[str, Any] = {"event_number": 1}
         proposal = await agent.propose_action_async(world_state)
 
         # Simulate the structure created by _process_thinking_results
@@ -118,7 +118,7 @@ class TestReasoningPropagation:
             "cost": 0.001,
         }
 
-        world_state: dict[str, Any] = {"tick": 1}
+        world_state: dict[str, Any] = {"event_number": 1}
         proposal = await agent.propose_action_async(world_state)
 
         # Simulate _process_thinking_results storing in proposals list

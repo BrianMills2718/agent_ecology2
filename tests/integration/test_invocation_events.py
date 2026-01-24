@@ -183,7 +183,7 @@ class TestDashboardInvocationApi:
 
         registry = InvocationRegistry()
         registry.record_invocation(InvocationRecord(
-            tick=1, invoker_id="agent_a", artifact_id="artifact_x",
+            event_number=1, invoker_id="agent_a", artifact_id="artifact_x",
             method="run", success=True, duration_ms=10.0,
         ))
 
@@ -193,7 +193,7 @@ class TestDashboardInvocationApi:
         # Simulate API response format
         response = [
             {
-                "tick": r.tick,
+                "event_number": r.event_number,
                 "invoker_id": r.invoker_id,
                 "artifact_id": r.artifact_id,
                 "method": r.method,
@@ -216,11 +216,11 @@ class TestDashboardInvocationApi:
         # Add some invocations for artifact_x
         for _ in range(5):
             registry.record_invocation(InvocationRecord(
-                tick=1, invoker_id="agent_a", artifact_id="artifact_x",
+                event_number=1, invoker_id="agent_a", artifact_id="artifact_x",
                 method="run", success=True, duration_ms=10.0,
             ))
         registry.record_invocation(InvocationRecord(
-            tick=2, invoker_id="agent_b", artifact_id="artifact_x",
+            event_number=2, invoker_id="agent_b", artifact_id="artifact_x",
             method="run", success=False, duration_ms=100.0, error_type="timeout",
         ))
 

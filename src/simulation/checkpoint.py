@@ -1,7 +1,7 @@
 """Checkpoint save/load functionality for simulation state.
 
 Plan #163: Checkpoint Completeness
-- Version 1: Original format (tick, balances, artifacts, agent_ids, reason)
+- Version 1: Original format (event_number, balances, artifacts, agent_ids, reason)
 - Version 2: Added agent_states for behavioral continuity, atomic writes
 """
 
@@ -53,7 +53,8 @@ def save_checkpoint(
 
     checkpoint: CheckpointData = {
         "version": CHECKPOINT_VERSION,
-        "tick": world.tick,
+        "event_number": world.event_number,
+        "tick": world.event_number,  # Legacy alias for backward compat
         "balances": world.ledger.get_all_balances(),
         "cumulative_api_cost": cumulative_cost,
         "artifacts": [a.to_dict() for a in world.artifacts.artifacts.values()],
@@ -136,9 +137,12 @@ def load_checkpoint(checkpoint_file: str) -> CheckpointData | None:
         else:
             agent_states[agent_id] = {}  # type: ignore[assignment]
 
+    # Support both event_number and legacy tick field
+    event_num = int(data.get("event_number", data.get("tick", 0)))
     checkpoint: CheckpointData = {
         "version": int(data.get("version", 2)),
-        "tick": int(data["tick"]),
+        "event_number": event_num,
+        "tick": event_num,  # Legacy alias for backward compat
         "balances": balances,
         "cumulative_api_cost": float(data["cumulative_api_cost"]),
         "artifacts": list(data["artifacts"]),

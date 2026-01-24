@@ -397,7 +397,7 @@ def build_reflex_context(
 
     return ReflexContext(
         agent_id=agent_id,
-        tick=world.tick,
+        tick=world.event_number,
         balance=balance,
         llm_tokens_remaining=llm_tokens_remaining,
         disk_remaining=disk_remaining,

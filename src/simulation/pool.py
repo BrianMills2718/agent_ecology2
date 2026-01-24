@@ -16,9 +16,9 @@ Usage:
     )
 
     # Run turns for all agents
-    results = pool.run_tick(
+    results = pool.run_round(
         agent_ids=["alpha", "beta", "gamma"],
-        world_state={"tick": 1, ...},
+        world_state={"event_number": 1, ...},
     )
 
 Future extensions:
@@ -55,10 +55,10 @@ class PoolConfig:
 
 
 @dataclass
-class TickResults:
-    """Results from running a full tick across all agents."""
+class RoundResults:
+    """Results from running a full round across all agents."""
 
-    tick: int
+    event_number: int
     results: list[dict[str, Any]]
     total_memory_bytes: int = 0
     total_cpu_seconds: float = 0.0
@@ -116,12 +116,12 @@ class WorkerPool:
         self._executor = None
         logger.info("Worker pool stopped")
 
-    def run_tick(
+    def run_round(
         self,
         agent_ids: list[str],
         world_state: dict[str, Any],
-    ) -> TickResults:
-        """Run a single tick for all agents.
+    ) -> RoundResults:
+        """Run a single round for all agents.
 
         Distributes work across workers and collects results.
 
@@ -130,15 +130,15 @@ class WorkerPool:
             world_state: World state to pass to each agent
 
         Returns:
-            TickResults with all agent results and aggregate metrics
+            RoundResults with all agent results and aggregate metrics
         """
         if self._executor is None:
             self.start()
 
         assert self._executor is not None
 
-        tick = world_state.get("tick", 0)
-        logger.debug(f"Running tick {tick} for {len(agent_ids)} agents")
+        event_number = world_state.get("event_number", world_state.get("tick", 0))
+        logger.debug(f"Running round {event_number} for {len(agent_ids)} agents")
 
         # Submit all turns to the pool
         futures: dict[concurrent.futures.Future[dict[str, Any]], str] = {}
@@ -187,12 +187,12 @@ class WorkerPool:
                 })
 
         logger.debug(
-            f"Tick {tick} complete: {success_count} success, {error_count} errors, "
+            f"Round {event_number} complete: {success_count} success, {error_count} errors, "
             f"{total_memory / 1024 / 1024:.1f}MB memory, {total_cpu:.2f}s CPU"
         )
 
-        return TickResults(
-            tick=tick,
+        return RoundResults(
+            event_number=event_number,
             results=results,
             total_memory_bytes=total_memory,
             total_cpu_seconds=total_cpu,

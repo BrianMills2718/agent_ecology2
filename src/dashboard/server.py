@@ -228,17 +228,17 @@ def _register_simulation_routes(app: FastAPI, dashboard: DashboardApp) -> None:
             raise HTTPException(status_code=404, detail="No active simulation")
 
         if runner.is_paused:
-            return {"status": "already_paused", "tick": runner.world.tick}
+            return {"status": "already_paused", "tick": runner.world.event_number}
 
         runner.pause()
 
         # Broadcast pause to all clients
         await dashboard.connection_manager.broadcast({
             "type": "simulation_control",
-            "data": {"action": "paused", "tick": runner.world.tick}
+            "data": {"action": "paused", "tick": runner.world.event_number}
         })
 
-        return {"status": "paused", "tick": runner.world.tick}
+        return {"status": "paused", "tick": runner.world.event_number}
 
     @app.post("/api/simulation/resume")
     async def resume_simulation() -> dict[str, Any]:
@@ -251,17 +251,17 @@ def _register_simulation_routes(app: FastAPI, dashboard: DashboardApp) -> None:
             raise HTTPException(status_code=404, detail="No active simulation")
 
         if not runner.is_paused:
-            return {"status": "already_running", "tick": runner.world.tick}
+            return {"status": "already_running", "tick": runner.world.event_number}
 
         runner.resume()
 
         # Broadcast resume to all clients
         await dashboard.connection_manager.broadcast({
             "type": "simulation_control",
-            "data": {"action": "resumed", "tick": runner.world.tick}
+            "data": {"action": "resumed", "tick": runner.world.event_number}
         })
 
-        return {"status": "running", "tick": runner.world.tick}
+        return {"status": "running", "tick": runner.world.event_number}
 
 
 def _register_websocket_routes(app: FastAPI, dashboard: DashboardApp) -> None:

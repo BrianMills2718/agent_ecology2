@@ -2,7 +2,7 @@
 
 Two separate systems:
 1. Resources - Generic resource tracking (llm_tokens, disk, bandwidth, etc.)
-   - Flow resources: Reset each tick to quota (e.g., llm_tokens)
+   - Renewable resources: Rate-limited via RateTracker (e.g., llm_tokens)
    - Stock resources: Finite pool, never reset (e.g., disk)
 2. Scrip - Economic currency. Persistent. Earned/spent through trade.
 
@@ -98,11 +98,11 @@ class Ledger:
     - scrip: Economic currency (special - used for trading)
 
     Resources can be:
-    - Flow: Reset each tick (llm_tokens, bandwidth)
+    - Renewable: Rate-limited via RateTracker (llm_tokens, bandwidth)
     - Stock: Never reset (disk, api_budget)
 
-    Optionally integrates with RateTracker for rolling-window rate limiting
-    when rate_limiting.enabled is True in config.
+    Integrates with RateTracker for rolling-window rate limiting
+    when rate_limiting.enabled is True in config (default).
     
     Optionally integrates with IDRegistry for global ID collision prevention
     (Plan #7: Single ID Namespace).
@@ -225,7 +225,7 @@ class Ledger:
         self.resources[principal_id][resource] = _decimal_add(current, amount)
 
     def set_resource(self, principal_id: str, resource: str, amount: float) -> None:
-        """Set a resource to a specific value (used for tick reset)."""
+        """Set a resource to a specific value (legacy, prefer RateTracker)."""
         if principal_id not in self.resources:
             self.resources[principal_id] = {}
         self.resources[principal_id][resource] = amount
@@ -252,7 +252,7 @@ class Ledger:
         return dict(self.resources.get(principal_id, {}))
 
     def reset_flow_resources(self, principal_id: str, quotas: dict[str, float]) -> None:
-        """Reset flow resources to their quotas at tick start."""
+        """Reset flow resources to their quotas (legacy, prefer RateTracker)."""
         if principal_id not in self.resources:
             self.resources[principal_id] = {}
         for resource, quota in quotas.items():
@@ -452,13 +452,13 @@ class Ledger:
 
     # ===== LLM TOKENS (mode-aware convenience methods) =====
     # These methods are mode-aware: they use RateTracker when rate limiting
-    # is enabled, otherwise fall back to tick-based resource tracking.
+    # is enabled (default), otherwise fall back to simple resource tracking.
 
     def get_llm_tokens(self, principal_id: str) -> int:
         """Get available LLM tokens for a principal.
 
         Mode-aware: Uses RateTracker remaining capacity when rate limiting
-        is enabled, otherwise uses tick-based balance.
+        is enabled (default), otherwise uses simple balance.
 
         Returns:
             Available tokens (int). Returns 999999 if unlimited.
@@ -475,7 +475,7 @@ class Ledger:
         """Check if principal can afford to spend LLM tokens.
 
         Mode-aware: Uses RateTracker capacity check when rate limiting
-        is enabled, otherwise uses tick-based balance check.
+        is enabled (default), otherwise uses simple balance check.
         """
         if self.use_rate_tracker and self.rate_tracker:
             return self.check_resource_capacity(principal_id, "llm_tokens", float(amount))
@@ -485,7 +485,7 @@ class Ledger:
         """Spend LLM tokens for a principal.
 
         Mode-aware: Uses RateTracker consumption when rate limiting
-        is enabled, otherwise uses tick-based balance deduction.
+        is enabled (default), otherwise uses simple balance deduction.
 
         Returns:
             True if successful, False if insufficient tokens.
@@ -497,14 +497,14 @@ class Ledger:
     def reset_llm_tokens(self, principal_id: str, quota: int) -> None:
         """Reset LLM token balance for a principal.
 
-        Note: When rate limiting is enabled, tick-based resets should not
+        Note: When rate limiting is enabled (default), this method should not
         be used. Resources flow continuously via RateTracker instead.
         This method will emit a warning if called when rate tracking is enabled.
         """
         if self.use_rate_tracker:
             warnings.warn(
                 "reset_llm_tokens() called with rate limiting enabled. "
-                "Tick-based resource resets are deprecated when using RateTracker. "
+                "Legacy resource resets are deprecated when using RateTracker. "
                 "Resources should flow continuously via rolling windows instead.",
                 DeprecationWarning,
                 stacklevel=2,
@@ -606,7 +606,7 @@ class Ledger:
         """Check if agent has capacity for resource consumption.
 
         Uses RateTracker if enabled, otherwise always returns True
-        (legacy tick-based mode manages resources differently).
+        (legacy mode manages resources differently).
 
         Args:
             agent_id: ID of the agent
@@ -750,7 +750,7 @@ class Ledger:
         """Calculate and deduct thinking cost from principal's compute.
 
         Mode-aware: Uses RateTracker consumption when rate limiting is enabled,
-        otherwise uses tick-based balance deduction.
+        otherwise uses simple balance deduction.
 
         DEPRECATED: Use deduct_llm_cost() instead for dollar-based budgets (Plan #153).
 
@@ -760,7 +760,7 @@ class Ledger:
         cost = self.calculate_thinking_cost(
             input_tokens, output_tokens, rate_input, rate_output
         )
-        # Use mode-aware spend_llm_tokens (RateTracker or tick-based)
+        # Use mode-aware spend_llm_tokens
         success = self.spend_llm_tokens(principal_id, cost)
         return success, cost
 

@@ -57,12 +57,12 @@ class TestWorkerPool:
                     mock_llm.return_value = mock_instance
 
                     with WorkerPool(config) as pool:
-                        results = pool.run_tick(
+                        results = pool.run_round(
                             agent_ids=["agent_a", "agent_b", "agent_c"],
-                            world_state={"tick": 1, "balances": {}},
+                            world_state={"event_number": 1, "balances": {}},
                         )
 
-            assert results.tick == 1
+            assert results.event_number == 1
             assert len(results.results) == 3
             assert results.success_count == 3
             assert results.error_count == 0
@@ -85,9 +85,9 @@ class TestWorkerPool:
             )
 
             with WorkerPool(config) as pool:
-                results = pool.run_tick(
+                results = pool.run_round(
                     agent_ids=["nonexistent"],
-                    world_state={"tick": 1},
+                    world_state={"event_number": 1},
                 )
 
             assert results.error_count == 1
@@ -154,9 +154,9 @@ class TestWorkerPool:
                     mock_llm.return_value = mock_instance
 
                     with WorkerPool(config) as pool:
-                        results = pool.run_tick(
+                        results = pool.run_round(
                             agent_ids=["agent_1", "agent_2"],
-                            world_state={"tick": 1},
+                            world_state={"event_number": 1},
                         )
 
             # Should have aggregated CPU time (at least some)
@@ -213,9 +213,9 @@ class TestWorkerPoolScaling:
                     mock_llm.return_value = mock_instance
 
                     with WorkerPool(config) as pool:
-                        results = pool.run_tick(
+                        results = pool.run_round(
                             agent_ids=agent_ids,
-                            world_state={"tick": 1},
+                            world_state={"event_number": 1},
                         )
 
             assert results.success_count == 10

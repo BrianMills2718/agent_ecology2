@@ -55,7 +55,7 @@ class TestAgentRunsWorkflow:
         agent.llm.generate = MagicMock(return_value=mock_response)
 
         # Execute workflow
-        world_state = {"tick": 1, "balances": {"test_agent": 100}, "artifacts": []}
+        world_state = {"event_number": 1, "balances": {"test_agent": 100}, "artifacts": []}
         result = agent.run_workflow(world_state)
 
         # Verify workflow executed
@@ -97,7 +97,7 @@ class TestWorkflowProducesAction:
         )
         agent.llm.generate = MagicMock(return_value=mock_response)
 
-        world_state = {"tick": 1, "balances": {"test_agent": 100}, "artifacts": []}
+        world_state = {"event_number": 1, "balances": {"test_agent": 100}, "artifacts": []}
         result = agent.run_workflow(world_state)
 
         assert result["success"] is True
@@ -143,7 +143,7 @@ class TestWorkflowCodeStepSetsContext:
         )
         agent.llm.generate = MagicMock(return_value=mock_response)
 
-        world_state = {"tick": 1, "balances": {"test_agent": 100}, "artifacts": []}
+        world_state = {"event_number": 1, "balances": {"test_agent": 100}, "artifacts": []}
         result = agent.run_workflow(world_state)
 
         assert result["success"] is True
@@ -229,7 +229,7 @@ class TestAgentFallbackWithoutWorkflow:
         )
         agent.llm.generate = MagicMock(return_value=mock_response)
 
-        world_state = {"tick": 1, "balances": {"test_agent": 100}, "artifacts": []}
+        world_state = {"event_number": 1, "balances": {"test_agent": 100}, "artifacts": []}
         result = agent.run_workflow(world_state)
 
         # Should still succeed via fallback

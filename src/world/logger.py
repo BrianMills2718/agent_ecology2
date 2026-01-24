@@ -12,10 +12,10 @@ from ..config import get
 
 
 class SummaryLogger:
-    """Writes per-tick summary lines to summary.jsonl.
+    """Writes periodic summary lines to summary.jsonl.
 
     Creates a tractable overview of simulation activity alongside
-    the full event log. One line per tick with key metrics.
+    the full event log. One line per summary period with key metrics.
     """
 
     output_path: Path
@@ -30,9 +30,9 @@ class SummaryLogger:
         # Create parent directory if needed
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    def log_tick_summary(
+    def log_summary(
         self,
-        tick: int,
+        event_number: int,
         agents_active: int,
         actions_executed: int,
         actions_by_type: dict[str, int] | None = None,
@@ -42,21 +42,21 @@ class SummaryLogger:
         errors: int = 0,
         highlights: list[str] | None = None,
     ) -> None:
-        """Log a single tick summary.
+        """Log a summary.
 
         Args:
-            tick: The tick number
-            agents_active: Number of agents that acted this tick
+            event_number: The current event number
+            agents_active: Number of agents that acted in this period
             actions_executed: Total actions executed
             actions_by_type: Breakdown of actions by type (e.g., {"invoke": 3, "write": 2})
-            total_llm_tokens: Total LLM tokens consumed this tick
-            total_scrip_transferred: Total scrip transferred this tick
+            total_llm_tokens: Total LLM tokens consumed
+            total_scrip_transferred: Total scrip transferred
             artifacts_created: Number of artifacts created
             errors: Number of errors/failures
             highlights: List of notable events (e.g., "alpha created tool_x")
         """
         summary: dict[str, Any] = {
-            "tick": tick,
+            "event_number": event_number,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "agents_active": agents_active,
             "actions_executed": actions_executed,
@@ -71,11 +71,11 @@ class SummaryLogger:
             f.write(json.dumps(summary) + "\n")
 
 
-class TickSummaryCollector:
-    """Accumulates metrics within a tick for summary logging.
+class SummaryCollector:
+    """Accumulates metrics for summary logging.
 
     Use this to track actions, tokens, scrip, and highlights during
-    a tick, then call finalize() to get the summary dict.
+    a period, then call finalize() to get the summary dict.
     """
 
     def __init__(self) -> None:
@@ -157,20 +157,20 @@ class TickSummaryCollector:
         """
         self._highlights.append(text)
 
-    def finalize(self, tick: int, agents_active: int) -> dict[str, Any]:
-        """Finalize the tick and return summary dict.
+    def finalize(self, event_number: int, agents_active: int) -> dict[str, Any]:
+        """Finalize and return summary dict.
 
         Resets the collector state after returning.
 
         Args:
-            tick: The tick number
+            event_number: The current event number
             agents_active: Number of agents that were active
 
         Returns:
-            Summary dict suitable for SummaryLogger.log_tick_summary()
+            Summary dict suitable for SummaryLogger.log_summary()
         """
         summary: dict[str, Any] = {
-            "tick": tick,
+            "event_number": event_number,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "agents_active": agents_active,
             "actions_executed": self._actions_executed,
@@ -244,7 +244,7 @@ class EventLogger:
         self.output_path = run_dir / "events.jsonl"
         self.output_path.write_text("")  # Clear/create file
 
-        # Create companion SummaryLogger for tractable tick summaries
+        # Create companion SummaryLogger for tractable periodic summaries
         self.summary_logger = SummaryLogger(run_dir / "summary.jsonl")
 
         # Create/update 'latest' symlink
@@ -274,9 +274,8 @@ class EventLogger:
     def log(self, event_type: str, data: dict[str, Any]) -> None:
         """Log an event to the JSONL file.
 
-        Plan #151: All events now include a monotonic 'sequence' field
-        for ordering. The 'tick' field is retained for backwards compatibility
-        but should be considered deprecated per ADR-0020.
+        Plan #151: All events include a monotonic 'sequence' field for ordering.
+        Events also include 'event_number' from the caller for correlation.
         """
         self._sequence += 1
         event: dict[str, Any] = {

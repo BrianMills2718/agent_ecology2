@@ -28,7 +28,7 @@ from ..agents.loader import load_agents, create_agent_artifacts, load_agents_fro
 from ..agents.agent import ActionResult as AgentActionResult, TokenUsage
 from ..agents.schema import ActionType
 from ..world.artifacts import create_agent_artifact, create_memory_artifact
-from ..world.logger import TickSummaryCollector
+from ..world.logger import SummaryCollector
 from ..config import get_validated_config
 
 from .types import (
@@ -213,7 +213,7 @@ class SimulationRunner:
         self._running = False
 
         # Summary logging (Plan #60)
-        self._tick_collector: TickSummaryCollector | None = None
+        self._summary_collector: SummaryCollector | None = None
 
     def _wire_embedder_cost_callbacks(self) -> None:
         """Wire up cost tracking callbacks for genesis artifacts.
@@ -255,9 +255,9 @@ class SimulationRunner:
         Properly restores agent artifacts with their principal capabilities
         (has_standing, can_execute, memory_artifact_id) for unified ontology.
         """
-        # Restore event counter from checkpoint (legacy name: tick)
+        # Restore event counter from checkpoint
         # In autonomous mode this is used for event ordering in logs, not execution control
-        self.world.tick = checkpoint.get("tick", 0)
+        self.world.event_number = checkpoint.get("event_number", checkpoint.get("tick", 0))
 
         # Restore balances
         for agent_id, balance_info in checkpoint["balances"].items():
@@ -287,7 +287,7 @@ class SimulationRunner:
 
         if self.verbose:
             print("=== Resuming from checkpoint ===")
-            print(f"Event counter: {checkpoint.get('tick', 0)}")
+            print(f"Event counter: {checkpoint.get('event_number', checkpoint.get('tick', 0))}")
             print(f"Previous reason: {checkpoint['reason']}")
             print(f"Cumulative API cost: ${self.engine.cumulative_api_cost:.4f}")
             print(f"Restored artifacts: {len(checkpoint['artifacts'])}")
@@ -451,7 +451,7 @@ class SimulationRunner:
     async def _think_agent(
         self,
         agent: Agent,
-        tick_state: StateSummary,
+        current_state: StateSummary,
     ) -> ThinkingResult:
         """Have a single agent think (async).
 
@@ -478,7 +478,7 @@ class SimulationRunner:
             }
 
         try:
-            proposal: AgentActionResult = await agent.propose_action_async(cast(dict[str, Any], tick_state))
+            proposal: AgentActionResult = await agent.propose_action_async(cast(dict[str, Any], current_state))
         except Exception as e:
             return {
                 "agent": agent,
@@ -564,7 +564,7 @@ class SimulationRunner:
                     self.world.logger.log(
                         "thinking_failed",
                         {
-                            "tick": self.world.tick,
+                            "event_number": self.world.event_number,
                             "principal_id": agent.agent_id,
                             "reason": "insufficient_compute",
                             "thinking_cost": result.get("thinking_cost", 0),
@@ -581,7 +581,7 @@ class SimulationRunner:
                     self.world.logger.log(
                         "thinking_failed",
                         {
-                            "tick": self.world.tick,
+                            "event_number": self.world.event_number,
                             "principal_id": agent.agent_id,
                             "reason": "insufficient_llm_budget",
                             "llm_budget_remaining": self.world.ledger.get_resource(
@@ -595,7 +595,7 @@ class SimulationRunner:
                     self.world.logger.log(
                         "intent_rejected",
                         {
-                            "tick": self.world.tick,
+                            "event_number": self.world.event_number,
                             "principal_id": agent.agent_id,
                             "error": error,
                         },
@@ -613,8 +613,8 @@ class SimulationRunner:
             thinking_cost = result.get("thinking_cost", 0)
 
             # Track LLM tokens for summary (Plan #60)
-            if self._tick_collector:
-                self._tick_collector.record_llm_tokens(input_tokens + output_tokens)
+            if self._summary_collector:
+                self._summary_collector.record_llm_tokens(input_tokens + output_tokens)
 
             # Extract reasoning from proposal if available (Plan #132: standardized field)
             proposal_data = result.get("proposal", {})
@@ -625,7 +625,7 @@ class SimulationRunner:
             provider = _derive_provider(model)
 
             thinking_data: dict[str, Any] = {
-                "tick": self.world.tick,
+                "event_number": self.world.event_number,
                 "principal_id": agent.agent_id,
                 "model": model,
                 "provider": provider,
@@ -655,21 +655,21 @@ class SimulationRunner:
         return proposals
 
     def _process_pool_results(
-        self, tick_results: Any  # TickResults from pool
+        self, round_results: Any  # RoundResults from pool
     ) -> list[ActionProposal]:
         """Process pool results and return valid proposals (Plan #53).
 
-        Converts TickResults from WorkerPool.run_tick() to ActionProposal list
+        Converts RoundResults from WorkerPool.run_round() to ActionProposal list
         for Phase 2 execution.
         """
-        from .pool import TickResults
+        from .pool import RoundResults
 
         proposals: list[ActionProposal] = []
 
         # Build agent lookup by ID
         agents_by_id = {agent.agent_id: agent for agent in self.agents}
 
-        for result in tick_results.results:
+        for result in round_results.results:
             agent_id = result["agent_id"]
             agent = agents_by_id.get(agent_id)
 
@@ -686,7 +686,7 @@ class SimulationRunner:
                 self.world.logger.log(
                     "pool_turn_failed",
                     {
-                        "tick": self.world.tick,
+                        "event_number": self.world.event_number,
                         "principal_id": agent_id,
                         "error": error,
                         "cpu_seconds": result.get("cpu_seconds", 0),
@@ -711,7 +711,7 @@ class SimulationRunner:
                 self.world.logger.log(
                     "thinking_failed",
                     {
-                        "tick": self.world.tick,
+                        "event_number": self.world.event_number,
                         "principal_id": agent_id,
                         "reason": "propose_action_error",
                         "error": error_msg,
@@ -733,8 +733,8 @@ class SimulationRunner:
                 self.world.ledger.deduct_llm_cost(agent_id, api_cost)
 
             # Track LLM tokens for summary (Plan #60)
-            if self._tick_collector:
-                self._tick_collector.record_llm_tokens(input_tokens + output_tokens)
+            if self._summary_collector:
+                self._summary_collector.record_llm_tokens(input_tokens + output_tokens)
 
             # Log the thinking (Plan #132: standardized reasoning field)
             reasoning = action_result.get("reasoning", "")
@@ -742,7 +742,7 @@ class SimulationRunner:
             provider = _derive_provider(model)
 
             thinking_data: dict[str, Any] = {
-                "tick": self.world.tick,
+                "event_number": self.world.event_number,
                 "principal_id": agent_id,
                 "model": model,
                 "provider": provider,
@@ -800,7 +800,7 @@ class SimulationRunner:
                 self.world.logger.log(
                     "intent_rejected",
                     {
-                        "tick": self.world.tick,
+                        "event_number": self.world.event_number,
                         "principal_id": agent.agent_id,
                         "error": intent,
                         "action_dict": action_dict,
@@ -818,20 +818,20 @@ class SimulationRunner:
             raw_action_type = action_dict.get("action_type", "noop")
 
             # Track action for summary (Plan #60)
-            if self._tick_collector:
-                self._tick_collector.record_action(raw_action_type, success=result.success)
+            if self._summary_collector:
+                self._summary_collector.record_action(raw_action_type, success=result.success)
 
                 # Track artifact creation
                 if raw_action_type == "write_artifact" and result.success:
-                    self._tick_collector.record_artifact_created()
+                    self._summary_collector.record_artifact_created()
                     artifact_id = action_dict.get("artifact_id", "unknown")
-                    self._tick_collector.add_highlight(f"{agent.agent_id} created {artifact_id}")
+                    self._summary_collector.add_highlight(f"{agent.agent_id} created {artifact_id}")
 
                 # Track scrip transfers from invoke results
                 if raw_action_type == "invoke" and result.success and result.data:
                     transfer_amount = result.data.get("scrip_transferred", 0)
                     if transfer_amount > 0:
-                        self._tick_collector.record_scrip_transfer(transfer_amount)
+                        self._summary_collector.record_scrip_transfer(transfer_amount)
             valid_types = get_args(ActionType)
             action_type: ActionType = raw_action_type if raw_action_type in valid_types else "noop"
             agent.set_last_result(action_type, result.success, result.message, result.data)
@@ -960,7 +960,7 @@ class SimulationRunner:
         self._print_error_summary()
 
     def pause(self) -> None:
-        """Pause the simulation after the current tick completes."""
+        """Pause the simulation after the current action completes."""
         self._paused = True
         self._pause_event.clear()
         if self.verbose:
@@ -988,7 +988,7 @@ class SimulationRunner:
         return {
             "running": self._running,
             "paused": self._paused,
-            "event_count": self.world.tick,  # Monotonic event counter (legacy: tick)
+            "event_count": self.world.event_number,  # Monotonic event counter
             "agent_count": len(self.agents),
             "api_cost": self.engine.cumulative_api_cost,
             "max_api_cost": self.engine.max_api_cost,
@@ -1015,7 +1015,7 @@ class SimulationRunner:
         """Run the simulation asynchronously.
 
         Runs in autonomous mode where agents operate independently with
-        time-based rate limiting. Legacy tick-based mode was removed in Plan #102.
+        time-based rate limiting. Continuous execution is the only mode.
 
         Args:
             duration: Maximum seconds to run (optional, runs until stopped if not provided)
@@ -1217,7 +1217,7 @@ class SimulationRunner:
         agent.reload_from_artifact()
 
         # Get current world state
-        tick_state = self.world.get_state_summary()
+        current_state = self.world.get_state_summary()
 
         # Plan #143: Check reflex before LLM
         reflex_action = await self._try_reflex(agent)
@@ -1225,7 +1225,7 @@ class SimulationRunner:
             return reflex_action
 
         # Call the agent's propose method
-        result = await agent.propose_action_async(cast(dict[str, Any], tick_state))
+        result = await agent.propose_action_async(cast(dict[str, Any], current_state))
 
         # Check for error FIRST - don't log thinking events for failed LLM calls (Plan #121)
         if "error" in result:
@@ -1233,7 +1233,7 @@ class SimulationRunner:
             self.world.logger.log(
                 "thinking_failed",
                 {
-                    "tick": self.world.tick,
+                    "event_number": self.world.event_number,
                     "principal_id": agent.agent_id,
                     "reason": "llm_call_failed",
                     "error": result.get("error", ""),
@@ -1263,7 +1263,7 @@ class SimulationRunner:
         provider = _derive_provider(model)
 
         thinking_data: dict[str, Any] = {
-            "tick": self.world.tick,
+            "event_number": self.world.event_number,
             "principal_id": agent.agent_id,
             "model": model,
             "provider": provider,
@@ -1342,7 +1342,7 @@ class SimulationRunner:
             self.world.logger.log(
                 "reflex_error",
                 {
-                    "tick": self.world.tick,
+                    "event_number": self.world.event_number,
                     "principal_id": agent.agent_id,
                     "reflex_artifact_id": reflex_artifact_id,
                     "error": "reflex artifact not found",
@@ -1366,7 +1366,7 @@ class SimulationRunner:
         self.world.logger.log(
             "reflex_executed",
             {
-                "tick": self.world.tick,
+                "event_number": self.world.event_number,
                 "principal_id": agent.agent_id,
                 "reflex_artifact_id": reflex_artifact_id,
                 "fired": result.fired,

@@ -99,7 +99,7 @@ class CostsConfig(TypedDict, total=False):
 
 
 class WorldConfig(TypedDict, total=False):
-    """World configuration section (now minimal - tick-based limits removed)."""
+    """World configuration section (minimal - continuous execution mode only)."""
     pass
 
 
@@ -135,7 +135,7 @@ class MintSubmissionStatus(TypedDict, total=False):
 
 class StateSummary(TypedDict):
     """World state summary."""
-    tick: int
+    event_number: int
     balances: dict[str, BalanceInfo]
     artifacts: list[dict[str, Any]]
     quotas: dict[str, QuotaInfo]
@@ -148,7 +148,7 @@ class World:
     """The world kernel - manages state, executes actions, logs everything"""
 
     config: ConfigDict
-    tick: int  # Event counter for logging (not for execution limits)
+    event_number: int  # Monotonic counter for event ordering in logs
     costs: CostsConfig
     rights_config: RightsConfig
     ledger: Ledger
@@ -158,7 +158,6 @@ class World:
     rights_registry: GenesisRightsRegistry | None
     principal_ids: list[str]
     # Rate limiting mode: when True, resources use rolling windows (RateTracker)
-    # instead of tick-based reset
     use_rate_tracker: bool
     # Autonomous loop support
     use_autonomous_loops: bool
@@ -183,7 +182,7 @@ class World:
 
     def __init__(self, config: ConfigDict, run_id: str | None = None) -> None:
         self.config = config
-        self.tick = 0  # Event counter for logging (not for execution limits)
+        self.event_number = 0  # Monotonic counter for event ordering in logs
         self.costs = config["costs"]
 
         # Compute per-agent quotas from resource totals
@@ -202,7 +201,7 @@ class World:
         if "rights" in config and "default_quotas" in config["rights"]:
             self.rights_config = config["rights"]
         else:
-            # Build generic quotas from computed values (rate_limiting replaces per_tick)
+            # Build generic quotas from computed values (rolling window rate limiting)
             self.rights_config = {
                 "default_quotas": {
                     "llm_tokens": float(quotas.get("llm_tokens_quota", 50)),
@@ -211,7 +210,6 @@ class World:
             }
 
         # Check if rate limiting (rolling windows) is enabled
-        # When enabled, resources use RateTracker instead of tick-based reset
         rate_limiting_config = cast(dict[str, Any], config.get("rate_limiting", {}))
         self.use_rate_tracker = rate_limiting_config.get("enabled", False)
 
@@ -258,7 +256,7 @@ class World:
             ledger=self.ledger,
             artifacts=self.artifacts,
             logger=self.logger,
-            get_tick=lambda: self.tick,
+            get_event_number=lambda: self.event_number,
         )
 
         # Genesis artifacts (system-owned proxies)
@@ -314,7 +312,6 @@ class World:
 
         for p in config["principals"]:
             # Initialize with starting scrip (persistent currency)
-            # Flow will be set when first tick starts
             starting_scrip = p.get("starting_scrip", p.get("starting_credits", default_starting_scrip))
 
             # Per-agent LLM budget (stock resource, Plan #12)
@@ -533,7 +530,7 @@ class World:
         if not isinstance(max_data_size, int):
             max_data_size = 1000  # Default if not configured
         self.logger.log("action", {
-            "tick": self.tick,
+            "event_number": self.event_number,
             "intent": intent.to_dict(),
             "result": result.to_dict_truncated(max_data_size),
             "scrip_after": self.ledger.get_scrip(intent.principal_id)
@@ -1075,7 +1072,7 @@ class World:
 
         # Log the deletion
         self.logger.log("artifact_deleted", {
-            "tick": self.tick,
+            "event_number": self.event_number,
             "artifact_id": intent.artifact_id,
             "deleted_by": intent.principal_id,
             "deleted_at": artifact.deleted_at,
@@ -1097,7 +1094,7 @@ class World:
     ) -> None:
         """Log a successful invocation and record in registry."""
         self.logger.log("invoke_success", {
-            "tick": self.tick,
+            "event_number": self.event_number,
             "invoker_id": invoker_id,
             "artifact_id": artifact_id,
             "method": method,
@@ -1105,7 +1102,7 @@ class World:
             "result_type": result_type,
         })
         self.invocation_registry.record_invocation(InvocationRecord(
-            tick=self.tick,
+            event_number=self.event_number,
             invoker_id=invoker_id,
             artifact_id=artifact_id,
             method=method,
@@ -1124,7 +1121,7 @@ class World:
     ) -> None:
         """Log a failed invocation and record in registry."""
         self.logger.log("invoke_failure", {
-            "tick": self.tick,
+            "event_number": self.event_number,
             "invoker_id": invoker_id,
             "artifact_id": artifact_id,
             "method": method,
@@ -1133,7 +1130,7 @@ class World:
             "error_message": error_message,
         })
         self.invocation_registry.record_invocation(InvocationRecord(
-            tick=self.tick,
+            event_number=self.event_number,
             invoker_id=invoker_id,
             artifact_id=artifact_id,
             method=method,
@@ -1364,7 +1361,7 @@ class World:
                 self.ledger.credit_scrip(created_by, price)
                 # Plan #160: Log revenue/cost events so agents can track money flow
                 self.logger.log("scrip_earned", {
-                    "tick": self.tick,
+                    "event_number": self.event_number,
                     "recipient": created_by,
                     "amount": price,
                     "from": intent.principal_id,
@@ -1372,7 +1369,7 @@ class World:
                     "method": method_name,
                 })
                 self.logger.log("scrip_spent", {
-                    "tick": self.tick,
+                    "event_number": self.event_number,
                     "spender": intent.principal_id,
                     "amount": price,
                     "to": created_by,
@@ -1453,17 +1450,17 @@ class World:
     def increment_event_counter(self) -> int:
         """Increment the event counter and return the new value.
 
-        This replaces advance_tick() for logging purposes only.
-        Execution limits are now time-based (duration) or cost-based (budget).
+        Used for event ordering in logs. Not related to execution timing.
         """
-        self.tick += 1
+        self.event_number += 1
 
-        # Update tick in debt contract if present (for backward compat)
+        # Update event_number in debt contract if present (for backward compat)
+        # Note: Debt contract still uses tick internally - needs separate redesign
         debt_contract = self.genesis_artifacts.get("genesis_debt_contract")
         if isinstance(debt_contract, GenesisDebtContract):
-            debt_contract.set_tick(self.tick)
+            debt_contract.set_tick(self.event_number)
 
-        return self.tick
+        return self.event_number
 
     def advance_tick(self) -> bool:
         """Increment event counter. Deprecated - use increment_event_counter().
@@ -1471,7 +1468,7 @@ class World:
         .. deprecated:: Plan #102
             This method is retained for backward compatibility with tests.
             Execution limits are now time-based (duration) or cost-based (budget).
-            Always returns True (no max_ticks limit).
+            Always returns True.
         """
         self.increment_event_counter()
         return True
@@ -1544,7 +1541,7 @@ class World:
         }
 
         return {
-            "tick": self.tick,
+            "event_number": self.event_number,
             "balances": self.ledger.get_all_balances(),
             "artifacts": all_artifacts,
             "quotas": quotas,
@@ -1609,7 +1606,7 @@ class World:
 
         # Log the deletion
         self.logger.log("artifact_deleted", {
-            "tick": self.tick,
+            "event_number": self.event_number,
             "artifact_id": artifact_id,
             "deleted_by": requester_id,
             "deleted_at": artifact.deleted_at,
@@ -1783,23 +1780,23 @@ class World:
         self,
         agent_id: str,
         reason: str = "compute_exhausted",
-        last_action_tick: int | None = None,
+        last_action_at: int | None = None,
     ) -> None:
         """Emit an AGENT_FROZEN event for vulture observability.
 
         Args:
             agent_id: ID of agent that froze
             reason: Why agent froze (compute_exhausted, rate_limited, etc.)
-            last_action_tick: Tick of agent's last successful action
+            last_action_at: Event number of agent's last successful action
         """
         self.logger.log("agent_frozen", {
-            "tick": self.tick,
+            "event_number": self.event_number,
             "agent_id": agent_id,
             "reason": reason,
             "scrip_balance": self.ledger.get_scrip(agent_id),
             "compute_remaining": self.ledger.get_resource(agent_id, "llm_tokens"),
             "owned_artifacts": self.artifacts.get_artifacts_by_owner(agent_id),
-            "last_action_tick": last_action_tick or self.tick,
+            "last_action_at": last_action_at or self.event_number,
         })
 
         # Plan #151: Emit agent_state event per ADR-0020
@@ -1819,7 +1816,7 @@ class World:
             resources_transferred: Resources that were transferred to unfreeze
         """
         self.logger.log("agent_unfrozen", {
-            "tick": self.tick,
+            "event_number": self.event_number,
             "agent_id": agent_id,
             "unfrozen_by": unfrozen_by,
             "resources_transferred": resources_transferred or {},
@@ -1896,7 +1893,7 @@ class World:
         self.resource_manager.set_quota(principal_id, resource, amount)
 
         self.logger.log("quota_set", {
-            "tick": self.tick,
+            "event_number": self.event_number,
             "principal_id": principal_id,
             "resource": resource,
             "amount": amount,

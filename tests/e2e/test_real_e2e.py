@@ -95,7 +95,7 @@ class TestRealSimulationSmoke:
         runner = SimulationRunner(config, verbose=False)
         world = runner.run_sync()
 
-        assert world.tick >= 1
+        assert world.event_number >= 1
         assert isinstance(world, World)
 
     def test_agent_produces_valid_action(
@@ -111,7 +111,7 @@ class TestRealSimulationSmoke:
 
         # Check that something happened (action was executed)
         # The event log should have at least one action
-        assert world.tick == 1
+        assert world.event_number == 1
 
     def test_genesis_artifacts_accessible(
         self,
@@ -180,7 +180,7 @@ class TestRealAgentBehavior:
         runner = SimulationRunner(config, verbose=False)
         world = runner.run_sync()
 
-        assert world.tick == 3
+        assert world.event_number == 3
 
 
 class TestRealAutonomousMode:

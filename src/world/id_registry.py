@@ -57,7 +57,7 @@ class IDRegistry:
 
     Thread-safety: This class is NOT thread-safe. Concurrent access should
     be synchronized externally (which matches the current single-threaded
-    tick model).
+    event-based model).
     """
 
     _ids: dict[str, EntityType]

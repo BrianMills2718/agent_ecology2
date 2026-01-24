@@ -110,7 +110,7 @@ class TestV1MultiAgentExecution:
         world = runner.run_sync()
 
         # Both agents should exist and have been active
-        assert world.tick >= 1
+        assert world.event_number >= 1
 
         # Both agents' balances should be tracked
         balances = world.ledger.get_all_scrip()

@@ -16,7 +16,7 @@ class TestInvocationRecord:
     def test_create_success_record(self) -> None:
         """Test creating a successful invocation record."""
         record = InvocationRecord(
-            tick=42,
+            event_number=42,
             invoker_id="agent_alice",
             artifact_id="contract_foo",
             method="execute",
@@ -24,7 +24,7 @@ class TestInvocationRecord:
             duration_ms=15.5,
             timestamp="2026-01-13T10:30:00.015Z",
         )
-        assert record.tick == 42
+        assert record.event_number == 42
         assert record.invoker_id == "agent_alice"
         assert record.artifact_id == "contract_foo"
         assert record.method == "execute"
@@ -35,7 +35,7 @@ class TestInvocationRecord:
     def test_create_failure_record(self) -> None:
         """Test creating a failed invocation record."""
         record = InvocationRecord(
-            tick=42,
+            event_number=42,
             invoker_id="agent_alice",
             artifact_id="contract_foo",
             method="execute",
@@ -55,7 +55,7 @@ class TestInvocationRegistry:
         """Test that invocations are recorded correctly."""
         registry = InvocationRegistry()
         record = InvocationRecord(
-            tick=1,
+            event_number=1,
             invoker_id="agent_a",
             artifact_id="artifact_x",
             method="run",
@@ -76,7 +76,7 @@ class TestInvocationRegistry:
         # Add some invocations
         for i in range(8):
             registry.record_invocation(InvocationRecord(
-                tick=i,
+                event_number=i,
                 invoker_id="agent_a",
                 artifact_id="artifact_x",
                 method="run",
@@ -86,7 +86,7 @@ class TestInvocationRegistry:
 
         # Add 2 failures
         registry.record_invocation(InvocationRecord(
-            tick=8,
+            event_number=8,
             invoker_id="agent_a",
             artifact_id="artifact_x",
             method="run",
@@ -95,7 +95,7 @@ class TestInvocationRegistry:
             error_type="timeout",
         ))
         registry.record_invocation(InvocationRecord(
-            tick=9,
+            event_number=9,
             invoker_id="agent_b",
             artifact_id="artifact_x",
             method="run",
@@ -117,7 +117,7 @@ class TestInvocationRegistry:
         # 3 successes, 1 failure = 75% success rate
         for success in [True, True, True, False]:
             registry.record_invocation(InvocationRecord(
-                tick=0,
+                event_number=0,
                 invoker_id="agent_a",
                 artifact_id="artifact_x",
                 method="run",
@@ -142,15 +142,15 @@ class TestInvocationRegistry:
 
         # Add invocations from different invokers
         registry.record_invocation(InvocationRecord(
-            tick=1, invoker_id="agent_a", artifact_id="artifact_x",
+            event_number=1, invoker_id="agent_a", artifact_id="artifact_x",
             method="run", success=True, duration_ms=10.0,
         ))
         registry.record_invocation(InvocationRecord(
-            tick=2, invoker_id="agent_b", artifact_id="artifact_x",
+            event_number=2, invoker_id="agent_b", artifact_id="artifact_x",
             method="run", success=True, duration_ms=10.0,
         ))
         registry.record_invocation(InvocationRecord(
-            tick=3, invoker_id="agent_a", artifact_id="artifact_y",
+            event_number=3, invoker_id="agent_a", artifact_id="artifact_y",
             method="run", success=True, duration_ms=10.0,
         ))
 
@@ -169,22 +169,22 @@ class TestInvocationRegistry:
 
         # Add failures with different error types
         registry.record_invocation(InvocationRecord(
-            tick=1, invoker_id="agent_a", artifact_id="artifact_x",
+            event_number=1, invoker_id="agent_a", artifact_id="artifact_x",
             method="run", success=False, duration_ms=5000.0,
             error_type="timeout",
         ))
         registry.record_invocation(InvocationRecord(
-            tick=2, invoker_id="agent_a", artifact_id="artifact_x",
+            event_number=2, invoker_id="agent_a", artifact_id="artifact_x",
             method="run", success=False, duration_ms=5.0,
             error_type="validation",
         ))
         registry.record_invocation(InvocationRecord(
-            tick=3, invoker_id="agent_a", artifact_id="artifact_x",
+            event_number=3, invoker_id="agent_a", artifact_id="artifact_x",
             method="run", success=False, duration_ms=5000.0,
             error_type="timeout",
         ))
         registry.record_invocation(InvocationRecord(
-            tick=4, invoker_id="agent_a", artifact_id="artifact_x",
+            event_number=4, invoker_id="agent_a", artifact_id="artifact_x",
             method="run", success=True, duration_ms=10.0,
         ))
 
@@ -198,7 +198,7 @@ class TestInvocationRegistry:
         # Add invocations with known durations: 10, 20, 30 ms = avg 20ms
         for duration in [10.0, 20.0, 30.0]:
             registry.record_invocation(InvocationRecord(
-                tick=0, invoker_id="agent_a", artifact_id="artifact_x",
+                event_number=0, invoker_id="agent_a", artifact_id="artifact_x",
                 method="run", success=True, duration_ms=duration,
             ))
 
@@ -212,7 +212,7 @@ class TestInvocationRegistry:
         # Add 10 invocations
         for i in range(10):
             registry.record_invocation(InvocationRecord(
-                tick=i, invoker_id="agent_a", artifact_id="artifact_x",
+                event_number=i, invoker_id="agent_a", artifact_id="artifact_x",
                 method="run", success=True, duration_ms=10.0,
             ))
 
@@ -226,11 +226,11 @@ class TestInvocationRegistry:
 
         # Add various invocations
         registry.record_invocation(InvocationRecord(
-            tick=1, invoker_id="agent_a", artifact_id="artifact_x",
+            event_number=1, invoker_id="agent_a", artifact_id="artifact_x",
             method="run", success=True, duration_ms=10.0,
         ))
         registry.record_invocation(InvocationRecord(
-            tick=2, invoker_id="agent_b", artifact_id="artifact_y",
+            event_number=2, invoker_id="agent_b", artifact_id="artifact_y",
             method="run", success=False, duration_ms=100.0,
             error_type="execution",
         ))
@@ -255,7 +255,7 @@ class TestInvocationRegistry:
 
         # Add some invocations
         registry.record_invocation(InvocationRecord(
-            tick=1, invoker_id="agent_a", artifact_id="artifact_x",
+            event_number=1, invoker_id="agent_a", artifact_id="artifact_x",
             method="run", success=True, duration_ms=10.0,
         ))
 
