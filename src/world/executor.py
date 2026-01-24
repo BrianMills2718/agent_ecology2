@@ -213,10 +213,15 @@ def convert_positional_to_named_args(
     if not param_names:
         return {"args": args}
 
-    # Plan #160: Auto-parse JSON strings in args
+    # Plan #112: Schema-aware JSON parsing
     # LLMs often output "[1,2,3]" as a string instead of actual array [1,2,3]
-    def maybe_parse_json(value: Any) -> Any:
-        """Try to parse string as JSON if it looks like JSON."""
+    # BUT: Only parse if the schema expects object/array, not string
+    # This fixes agents passing valid JSON strings that get incorrectly parsed
+    def maybe_parse_json(value: Any, expected_type: str | None) -> Any:
+        """Try to parse string as JSON only if schema expects object/array."""
+        # Don't parse if schema expects a string - the JSON string IS the value
+        if expected_type == "string":
+            return value
         if isinstance(value, str) and len(value) >= 2:
             first_char = value[0]
             if first_char in '[{':
@@ -231,7 +236,11 @@ def convert_positional_to_named_args(
     result: dict[str, Any] = {}
     for i, arg in enumerate(args):
         if i < len(param_names):
-            result[param_names[i]] = maybe_parse_json(arg)
+            param_name = param_names[i]
+            # Get expected type from schema to avoid parsing strings that should stay strings
+            param_schema = properties.get(param_name, {})
+            expected_type = param_schema.get("type") if isinstance(param_schema, dict) else None
+            result[param_name] = maybe_parse_json(arg, expected_type)
         else:
             # More args than properties - can't map, fall back
             _logger.debug(
