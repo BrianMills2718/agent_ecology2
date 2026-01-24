@@ -432,6 +432,7 @@ dashboard:
   debounce_delay_ms: <number>   # File watcher debounce delay (default: 100)
   poll_interval: <number>       # Polling interval in seconds (default: 0.5)
   use_polling: <bool>           # Use polling instead of watchdog (WSL compat, default: false)
+  version: <string>             # Dashboard version: "v1" (vanilla JS) or "v2" (React), default: "v1"
 
 # -----------------------------------------------------------------------------
 # ID GENERATION

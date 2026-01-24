@@ -1339,6 +1339,10 @@ class DashboardConfig(StrictModel):
         default=False,
         description="Use polling instead of watchdog for file changes (WSL compatibility)"
     )
+    version: str = Field(
+        default="v1",
+        description="Dashboard version: 'v1' (vanilla JS) or 'v2' (React)"
+    )
 
 
 # =============================================================================

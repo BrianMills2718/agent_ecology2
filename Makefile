@@ -143,6 +143,23 @@ dash:  ## View existing run.jsonl in dashboard (no simulation)
 dash-run:  ## Run simulation with dashboard (usage: make dash-run DURATION=60)
 	python run.py --dashboard --duration $(or $(DURATION),60) --agents $(or $(AGENTS),1)
 
+# Dashboard v2 (React)
+dash-v2-install:  ## Install dashboard v2 dependencies
+	cd dashboard-v2 && npm install
+
+dash-v2-dev:  ## Run dashboard v2 in dev mode (hot reload, proxies to backend)
+	cd dashboard-v2 && npm run dev
+
+dash-v2-build:  ## Build dashboard v2 for production
+	cd dashboard-v2 && npm run build
+
+dash-v2-test:  ## Run dashboard v2 tests
+	cd dashboard-v2 && npm test
+
+dash-v2-types:  ## Generate TypeScript types from API (requires backend running)
+	@echo "Fetching OpenAPI spec from http://localhost:9000/openapi.json..."
+	cd dashboard-v2 && curl -s http://localhost:9000/openapi.json | npx openapi-typescript /dev/stdin -o src/types/api.ts
+
 analyze:  ## Analyze simulation run (usage: make analyze RUN=logs/latest)
 	python scripts/analyze_run.py $(or $(RUN),logs/latest)
 
