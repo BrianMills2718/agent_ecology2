@@ -182,7 +182,7 @@ const ArtifactsPanel = {
             }
 
             row.innerHTML = `
-                <td title="Artifact ID: ${this.escapeHtml(artifact.artifact_id)}\nCreated: ${artifact.created_at || 'Unknown'}">${this.truncate(artifact.artifact_id, 15)}</td>
+                <td title="Artifact ID: ${this.escapeHtml(artifact.artifact_id)}\nCreated: ${artifact.created_at || 'Unknown'}">${isGenesis ? '⚙️ ' : ''}${this.truncate(artifact.artifact_id, isGenesis ? 12 : 15)}</td>
                 <td title="Type: ${artifact.artifact_type}">${this.escapeHtml(artifact.artifact_type)}</td>
                 <td title="Owner: ${artifact.created_by}">${this.escapeHtml(artifact.created_by)}</td>
                 <td title="${priceTooltip}">${priceDisplay}</td>

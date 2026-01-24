@@ -167,6 +167,43 @@ class JSONLParser:
         self._per_1k_input_cost: float = 1.0  # Default: 1 compute per 1K input tokens
         self._per_1k_output_cost: float = 3.0  # Default: 3 compute per 1K output tokens
 
+        # Add genesis artifacts to state so they appear in Artifacts panel
+        self._init_genesis_artifacts()
+
+    def _init_genesis_artifacts(self) -> None:
+        """Initialize genesis system artifacts in state.
+
+        Genesis artifacts are system-provided artifacts that exist from
+        simulation start. They need to be in the artifacts dict so they
+        appear in the Artifacts panel alongside agent-created artifacts.
+        """
+        genesis_artifacts = [
+            ("genesis_ledger", "ledger", "Manages scrip balances, transfers, and ownership"),
+            ("genesis_mint", "mint", "Scores artifacts and mints scrip rewards"),
+            ("genesis_store", "store", "Artifact discovery and creation registry"),
+            ("genesis_escrow", "escrow", "Trustless artifact trading marketplace"),
+            ("genesis_event_log", "event_log", "Passive observability and event history"),
+            ("genesis_handbook", "handbook", "Seeded documentation for agents"),
+            ("genesis_debt_contract", "debt_contract", "Non-privileged credit/lending"),
+            ("genesis_model_registry", "model_registry", "LLM model access as contractable resource"),
+            ("genesis_embedder", "embedder", "Text embedding for semantic search"),
+        ]
+
+        for artifact_id, artifact_type, description in genesis_artifacts:
+            self.state.artifacts[artifact_id] = ArtifactState(
+                artifact_id=artifact_id,
+                artifact_type=f"genesis_{artifact_type}",
+                created_by="[system]",
+                executable=True,
+                price=0,
+                size_bytes=0,
+                created_at="(genesis)",
+                updated_at="",
+                mint_score=None,
+                mint_status="none",
+                content=description,
+            )
+
     def parse_full(self) -> SimulationState:
         """Parse the entire file from the beginning."""
         self.file_position = 0
@@ -189,6 +226,7 @@ class JSONLParser:
             self._current_tick_scrip_transfers = 0
             self._current_tick_artifacts = 0
             self._current_tick_mints = 0
+            self._init_genesis_artifacts()  # Re-add genesis artifacts
 
         with open(self.jsonl_path, 'r') as f:
             f.seek(self.file_position)
@@ -1266,7 +1304,7 @@ class JSONLParser:
             if interaction.to_id.startswith("genesis_") and interaction.to_id not in node_ids:
                 nodes.append(NetworkNode(
                     id=interaction.to_id,
-                    label=interaction.to_id.replace("genesis_", ""),  # Shorter label
+                    label=f"⚙️ {interaction.to_id.replace('genesis_', '')}",  # Genesis indicator
                     node_type="genesis",
                     scrip=0,
                     status="active",
