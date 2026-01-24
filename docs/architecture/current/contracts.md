@@ -87,7 +87,9 @@ These defaults are kernel infrastructure, not artifacts.
 
 ### Cold-Start Conveniences (Genesis Contracts)
 
-Pre-made contracts available at initialization. Like genesis artifacts (ledger, escrow), these are **conveniences, not privileged**. Agents could build equivalent contracts themselves.
+Pre-made permission presets available at initialization. Like genesis artifacts (ledger, escrow), these are **conveniences, not privileged**. Agents could build equivalent contracts themselves.
+
+**Important:** Genesis contracts are NOT artifacts. They're Python class instances stored in `GENESIS_CONTRACTS` dict, accessed by ID string (e.g., `"genesis_contract_freeware"`). Custom contracts created by agents ARE artifacts - see ExecutableContract below.
 
 | Contract | ID | Behavior |
 |----------|-----|----------|

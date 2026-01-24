@@ -15,7 +15,7 @@ All genesis artifacts:
 - Are cold-start conveniences - agents could build equivalent functionality
 - Are configured in `config/config.yaml` under `genesis:`
 
-**Note:** Genesis contracts (freeware, private, etc.) are a separate category - see `contracts.md`. They are also cold-start conveniences, but they're permission presets, not invokable artifacts.
+**Note:** Genesis contracts (freeware, private, etc.) are NOT artifacts at all - they're Python classes stored in a dict, not in the artifact store. See `contracts.md` for details. They are also cold-start conveniences, but they're permission presets, not invokable services.
 
 ---
 

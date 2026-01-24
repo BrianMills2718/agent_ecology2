@@ -111,6 +111,7 @@ Run simulation and check:
 - docs/architecture/current/execution_model.md (modify) - Update verification date
 - docs/architecture/current/contracts.md (modify) - Clarify kernel defaults vs cold-start conveniences
 - docs/architecture/current/genesis_artifacts.md (modify) - Note that genesis contracts are separate category
+- docs/architecture/current/artifacts_executor.md (modify) - Update verification date
 - CLAUDE.md (modify) - Clarify genesis artifacts heuristic
 
 ---
