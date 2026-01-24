@@ -32,16 +32,13 @@ This is Phase 1 of a phased approach to determine whether we need the full #155 
 
 **Change:** If agent writes to `{agent_id}_config`, those values override base config on next action cycle.
 
-**Modifiable parameters (safe to change):**
-- `working_memory` - lessons, heuristics, goals
-- `preferences` - strategies, priorities
-- `self_imposed_rules` - agent's own rules it creates
+**All config is modifiable** - including `llm_model`. Economic constraints (scrip, LLM budget) are enforced by the ledger/resource system, not by restricting config changes. If an agent changes to an expensive model, their budget limits still apply.
 
-**Not modifiable (safety):**
-- `llm_model` - resource implications
-- `starting_scrip` - economic integrity
+**Note on scrip:** `starting_scrip` in config is only the initial value credited at simulation start. Actual scrip balance lives in the ledger - agents cannot give themselves more scrip because the ledger doesn't expose `credit_scrip` to them.
 
-**Why:** Let agent experiment with its own cognition within bounds.
+**Frictionless loading:** Config/prompt artifacts are loaded automatically into agent context at cycle start. Agent doesn't need to call `read_artifact` - the loader handles this. Changes take effect on next action cycle.
+
+**Why:** Let agent experiment with its own cognition. Economic constraints enforced by resource system, not config restrictions.
 
 ### 3. Metacognitive Prompting
 
@@ -112,6 +109,9 @@ Run simulation and check:
 - .claude/hooks/check-file-scope.sh (modify) - Fix worktree path pattern
 - docs/architecture/current/agents.md (modify) - Update verification date
 - docs/architecture/current/execution_model.md (modify) - Update verification date
+- docs/architecture/current/contracts.md (modify) - Clarify kernel defaults vs cold-start conveniences
+- docs/architecture/current/genesis_artifacts.md (modify) - Note that genesis contracts are separate category
+- CLAUDE.md (modify) - Clarify genesis artifacts heuristic
 
 ---
 

@@ -2,7 +2,7 @@
 
 System-provided artifacts that exist at world initialization.
 
-**Last verified:** 2026-01-20 (Added genesis_model_registry - Plan #113)
+**Last verified:** 2026-01-23 (Plan #160 - Clarified genesis artifacts vs genesis contracts)
 
 ---
 
@@ -11,9 +11,11 @@ System-provided artifacts that exist at world initialization.
 Genesis artifacts are created during world initialization (`World._create_genesis_artifacts()`). They provide core system services that agents interact with via `invoke_artifact`.
 
 All genesis artifacts:
-- Are owned by `"system"`
-- Have hardcoded behavior (not user-modifiable)
+- Have `created_by: "system"` (metadata only, not privileged)
+- Are cold-start conveniences - agents could build equivalent functionality
 - Are configured in `config/config.yaml` under `genesis:`
+
+**Note:** Genesis contracts (freeware, private, etc.) are a separate category - see `contracts.md`. They are also cold-start conveniences, but they're permission presets, not invokable artifacts.
 
 ---
 
