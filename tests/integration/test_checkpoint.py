@@ -1,6 +1,8 @@
 """Tests for checkpoint save/load functionality.
 
 Tests the round-trip cycle: save → load → verify state consistency.
+
+Plan #163: Tests for checkpoint completeness including agent state persistence.
 """
 
 import json
@@ -11,8 +13,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.simulation.checkpoint import save_checkpoint, load_checkpoint
-from src.simulation.types import CheckpointData, BalanceInfo
+from src.simulation.checkpoint import (
+    save_checkpoint,
+    load_checkpoint,
+    restore_agent_states,
+    CHECKPOINT_VERSION,
+)
+from src.simulation.types import CheckpointData, BalanceInfo, AgentCheckpointState
+from src.agents import Agent
 
 
 class TestSaveCheckpoint:
@@ -30,8 +38,10 @@ class TestSaveCheckpoint:
             world.ledger.get_all_balances.return_value = {"agent_a": {"llm_tokens": 100, "scrip": 50}}
             world.artifacts.artifacts = {}
 
-            # Create mock agents
-            agents: Any = [MagicMock(agent_id="agent_a")]
+            # Create mock agents with export_state method
+            agent = MagicMock(agent_id="agent_a")
+            agent.export_state.return_value = {}
+            agents: Any = [agent]
 
             save_checkpoint(world, agents, 0.5, config, "test_reason")
 
@@ -63,10 +73,11 @@ class TestSaveCheckpoint:
             }
             world.artifacts.artifacts = {"test_artifact": artifact}
 
-            agents: Any = [
-                MagicMock(agent_id="alice"),
-                MagicMock(agent_id="bob"),
-            ]
+            alice = MagicMock(agent_id="alice")
+            alice.export_state.return_value = {}
+            bob = MagicMock(agent_id="bob")
+            bob.export_state.return_value = {}
+            agents: Any = [alice, bob]
 
             save_checkpoint(world, agents, 1.23, config, "budget_exhausted")
 
@@ -229,11 +240,13 @@ class TestCheckpointRoundTrip:
             }
             world.artifacts.artifacts = {}
 
-            agents: Any = [
-                MagicMock(agent_id="alice"),
-                MagicMock(agent_id="bob"),
-                MagicMock(agent_id="charlie"),
-            ]
+            alice = MagicMock(agent_id="alice")
+            alice.export_state.return_value = {}
+            bob = MagicMock(agent_id="bob")
+            bob.export_state.return_value = {}
+            charlie = MagicMock(agent_id="charlie")
+            charlie.export_state.return_value = {}
+            agents: Any = [alice, bob, charlie]
 
             save_checkpoint(world, agents, 0.0, config, "test")
             loaded = load_checkpoint(str(checkpoint_path))
@@ -307,11 +320,13 @@ class TestCheckpointRoundTrip:
             world.ledger.get_all_balances.return_value = {}
             world.artifacts.artifacts = {}
 
-            agents: Any = [
-                MagicMock(agent_id="first"),
-                MagicMock(agent_id="second"),
-                MagicMock(agent_id="third"),
-            ]
+            first = MagicMock(agent_id="first")
+            first.export_state.return_value = {}
+            second = MagicMock(agent_id="second")
+            second.export_state.return_value = {}
+            third = MagicMock(agent_id="third")
+            third.export_state.return_value = {}
+            agents: Any = [first, second, third]
 
             save_checkpoint(world, agents, 0.0, config, "test")
             loaded = load_checkpoint(str(checkpoint_path))
@@ -406,3 +421,441 @@ class TestCheckpointEdgeCases:
             assert loaded is not None
             # JSON preserves float precision reasonably well
             assert abs(loaded["cumulative_api_cost"] - precise_cost) < 1e-10
+
+
+@pytest.mark.plans([163])
+class TestCheckpointVersion:
+    """Tests for checkpoint versioning (Plan #163)."""
+
+    def test_saves_version_number(self) -> None:
+        """Checkpoint file includes version field."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint_path = Path(tmpdir) / "checkpoint.json"
+            config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
+
+            world = MagicMock()
+            world.tick = 1
+            world.ledger.get_all_balances.return_value = {}
+            world.artifacts.artifacts = {}
+
+            save_checkpoint(world, [], 0.0, config, "test")
+
+            with open(checkpoint_path) as f:
+                data = json.load(f)
+
+            assert "version" in data
+            assert data["version"] == CHECKPOINT_VERSION
+
+    def test_loads_v1_format(self) -> None:
+        """Can load v1 checkpoint without version field."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint_path = Path(tmpdir) / "checkpoint.json"
+
+            # v1 format: no version, no agent_states
+            data = {
+                "tick": 10,
+                "balances": {"alice": {"llm_tokens": 100, "scrip": 200}},
+                "cumulative_api_cost": 0.5,
+                "artifacts": [],
+                "agent_ids": ["alice"],
+                "reason": "v1_test",
+            }
+            with open(checkpoint_path, "w") as f:
+                json.dump(data, f)
+
+            loaded = load_checkpoint(str(checkpoint_path))
+
+            assert loaded is not None
+            assert loaded["tick"] == 10
+            assert loaded["version"] == 2  # Migrated to v2
+            assert "agent_states" in loaded
+            # Empty state for alice (migrated)
+            assert "alice" in loaded["agent_states"]
+
+    def test_v1_migration_creates_empty_agent_states(self) -> None:
+        """Migration from v1 creates empty agent_states dict."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint_path = Path(tmpdir) / "checkpoint.json"
+
+            data = {
+                "tick": 5,
+                "balances": {},
+                "cumulative_api_cost": 0.0,
+                "artifacts": [],
+                "agent_ids": ["agent_a", "agent_b"],
+                "reason": "migration_test",
+            }
+            with open(checkpoint_path, "w") as f:
+                json.dump(data, f)
+
+            loaded = load_checkpoint(str(checkpoint_path))
+
+            assert loaded is not None
+            assert loaded["agent_states"]["agent_a"] == {}
+            assert loaded["agent_states"]["agent_b"] == {}
+
+
+@pytest.mark.plans([163])
+class TestCheckpointAgentState:
+    """Tests for agent state persistence in checkpoints (Plan #163)."""
+
+    def _create_mock_agent(self, agent_id: str) -> MagicMock:
+        """Create a mock agent with export_state method."""
+        agent = MagicMock()
+        agent.agent_id = agent_id
+        agent.export_state.return_value = {
+            "working_memory": {"goal": "test goal"},
+            "action_history": ["action1", "action2"],
+            "failure_history": ["failure1"],
+            "actions_taken": 5,
+            "successful_actions": 3,
+            "failed_actions": 2,
+            "revenue_earned": 100.0,
+            "artifacts_completed": 2,
+            "starting_balance": 50.0,
+            "last_action_result": "SUCCESS: test",
+        }
+        return agent
+
+    def test_saves_agent_states(self) -> None:
+        """Checkpoint includes agent_states dict."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint_path = Path(tmpdir) / "checkpoint.json"
+            config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
+
+            world = MagicMock()
+            world.tick = 10
+            world.ledger.get_all_balances.return_value = {"alice": {"llm_tokens": 100, "scrip": 200}}
+            world.artifacts.artifacts = {}
+
+            agent = self._create_mock_agent("alice")
+
+            save_checkpoint(world, [agent], 0.5, config, "test")
+
+            with open(checkpoint_path) as f:
+                data = json.load(f)
+
+            assert "agent_states" in data
+            assert "alice" in data["agent_states"]
+            state = data["agent_states"]["alice"]
+            assert state["working_memory"] == {"goal": "test goal"}
+            assert state["action_history"] == ["action1", "action2"]
+            assert state["actions_taken"] == 5
+
+    def test_agent_state_roundtrip(self) -> None:
+        """Agent state survives save/load cycle."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint_path = Path(tmpdir) / "checkpoint.json"
+            config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
+
+            world = MagicMock()
+            world.tick = 1
+            world.ledger.get_all_balances.return_value = {}
+            world.artifacts.artifacts = {}
+
+            agent = self._create_mock_agent("test_agent")
+
+            save_checkpoint(world, [agent], 0.0, config, "test")
+            loaded = load_checkpoint(str(checkpoint_path))
+
+            assert loaded is not None
+            state = loaded["agent_states"]["test_agent"]
+            assert state["working_memory"] == {"goal": "test goal"}
+            assert state["action_history"] == ["action1", "action2"]
+            assert state["failure_history"] == ["failure1"]
+            assert state["actions_taken"] == 5
+            assert state["successful_actions"] == 3
+            assert state["failed_actions"] == 2
+            assert state["revenue_earned"] == 100.0
+            assert state["artifacts_completed"] == 2
+            assert state["starting_balance"] == 50.0
+            assert state["last_action_result"] == "SUCCESS: test"
+
+    def test_multiple_agents_state_roundtrip(self) -> None:
+        """Multiple agents' states survive round trip."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint_path = Path(tmpdir) / "checkpoint.json"
+            config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
+
+            world = MagicMock()
+            world.tick = 1
+            world.ledger.get_all_balances.return_value = {}
+            world.artifacts.artifacts = {}
+
+            agent1 = self._create_mock_agent("alice")
+            agent1.export_state.return_value = {"actions_taken": 10}
+
+            agent2 = self._create_mock_agent("bob")
+            agent2.export_state.return_value = {"actions_taken": 20}
+
+            save_checkpoint(world, [agent1, agent2], 0.0, config, "test")
+            loaded = load_checkpoint(str(checkpoint_path))
+
+            assert loaded is not None
+            assert loaded["agent_states"]["alice"]["actions_taken"] == 10
+            assert loaded["agent_states"]["bob"]["actions_taken"] == 20
+
+
+@pytest.mark.plans([163])
+class TestCheckpointAtomicWrite:
+    """Tests for atomic write functionality (Plan #163)."""
+
+    def test_creates_then_renames(self) -> None:
+        """Save creates temp file then renames to final path."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint_path = Path(tmpdir) / "checkpoint.json"
+            temp_path = Path(tmpdir) / "checkpoint.json.tmp"
+            config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
+
+            world = MagicMock()
+            world.tick = 1
+            world.ledger.get_all_balances.return_value = {}
+            world.artifacts.artifacts = {}
+
+            save_checkpoint(world, [], 0.0, config, "test")
+
+            # Final file should exist
+            assert checkpoint_path.exists()
+            # Temp file should NOT exist (was renamed)
+            assert not temp_path.exists()
+
+    def test_no_temp_file_remains_on_success(self) -> None:
+        """After successful save, no .tmp file remains."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            checkpoint_path = Path(tmpdir) / "test_checkpoint.json"
+            config = {"budget": {"checkpoint_file": str(checkpoint_path)}}
+
+            world = MagicMock()
+            world.tick = 42
+            world.ledger.get_all_balances.return_value = {}
+            world.artifacts.artifacts = {}
+
+            save_checkpoint(world, [], 0.0, config, "atomic_test")
+
+            # List all files in directory
+            files = list(Path(tmpdir).iterdir())
+            assert len(files) == 1
+            assert files[0].name == "test_checkpoint.json"
+
+
+@pytest.mark.plans([163])
+class TestRestoreAgentStates:
+    """Tests for restore_agent_states helper function (Plan #163)."""
+
+    def test_restores_state_to_matching_agents(self) -> None:
+        """restore_agent_states calls restore_state on matching agents."""
+        # Create mock agents
+        agent1 = MagicMock()
+        agent1.agent_id = "alice"
+        agent2 = MagicMock()
+        agent2.agent_id = "bob"
+
+        checkpoint: CheckpointData = {
+            "version": 2,
+            "tick": 10,
+            "balances": {},
+            "cumulative_api_cost": 0.0,
+            "artifacts": [],
+            "agent_ids": ["alice", "bob"],
+            "reason": "test",
+            "agent_states": {
+                "alice": {"actions_taken": 5},  # type: ignore[dict-item]
+                "bob": {"actions_taken": 10},  # type: ignore[dict-item]
+            },
+        }
+
+        restore_agent_states([agent1, agent2], checkpoint)
+
+        agent1.restore_state.assert_called_once_with({"actions_taken": 5})
+        agent2.restore_state.assert_called_once_with({"actions_taken": 10})
+
+    def test_skips_agents_without_state(self) -> None:
+        """Agents not in checkpoint don't get restore_state called."""
+        agent = MagicMock()
+        agent.agent_id = "new_agent"
+
+        checkpoint: CheckpointData = {
+            "version": 2,
+            "tick": 10,
+            "balances": {},
+            "cumulative_api_cost": 0.0,
+            "artifacts": [],
+            "agent_ids": [],
+            "reason": "test",
+            "agent_states": {},
+        }
+
+        restore_agent_states([agent], checkpoint)
+
+        agent.restore_state.assert_not_called()
+
+    def test_handles_missing_agent_states_key(self) -> None:
+        """Handles checkpoint without agent_states gracefully."""
+        agent = MagicMock()
+        agent.agent_id = "alice"
+
+        # Simulate v1 checkpoint that was partially migrated
+        checkpoint: CheckpointData = {
+            "version": 2,
+            "tick": 10,
+            "balances": {},
+            "cumulative_api_cost": 0.0,
+            "artifacts": [],
+            "agent_ids": ["alice"],
+            "reason": "test",
+        }  # type: ignore[typeddict-item]
+
+        # Should not raise
+        restore_agent_states([agent], checkpoint)
+
+
+@pytest.mark.plans([163])
+class TestAgentExportRestoreState:
+    """Tests for Agent.export_state() and restore_state() methods."""
+
+    @pytest.fixture
+    def agent(self) -> Agent:
+        """Create a real agent instance for testing."""
+        return Agent(
+            agent_id="test_agent",
+            llm_model="test-model",
+            system_prompt="Test prompt",
+        )
+
+    def test_export_state_returns_dict(self, agent: Agent) -> None:
+        """export_state returns a dictionary."""
+        state = agent.export_state()
+        assert isinstance(state, dict)
+
+    def test_export_state_includes_action_history(self, agent: Agent) -> None:
+        """export_state includes action_history."""
+        agent.action_history = ["action1", "action2"]
+        state = agent.export_state()
+        assert state["action_history"] == ["action1", "action2"]
+
+    def test_export_state_includes_failure_history(self, agent: Agent) -> None:
+        """export_state includes failure_history."""
+        agent.failure_history = ["fail1", "fail2"]
+        state = agent.export_state()
+        assert state["failure_history"] == ["fail1", "fail2"]
+
+    def test_export_state_includes_metrics(self, agent: Agent) -> None:
+        """export_state includes opportunity cost metrics."""
+        agent.actions_taken = 10
+        agent.successful_actions = 7
+        agent.failed_actions = 3
+        agent.revenue_earned = 150.5
+        agent.artifacts_completed = 4
+        agent._starting_balance = 100.0
+
+        state = agent.export_state()
+
+        assert state["actions_taken"] == 10
+        assert state["successful_actions"] == 7
+        assert state["failed_actions"] == 3
+        assert state["revenue_earned"] == 150.5
+        assert state["artifacts_completed"] == 4
+        assert state["starting_balance"] == 100.0
+
+    def test_export_state_includes_last_action_result(self, agent: Agent) -> None:
+        """export_state includes last_action_result."""
+        agent.last_action_result = "SUCCESS: Created artifact"
+        state = agent.export_state()
+        assert state["last_action_result"] == "SUCCESS: Created artifact"
+
+    def test_restore_state_sets_action_history(self, agent: Agent) -> None:
+        """restore_state sets action_history."""
+        state = {"action_history": ["a1", "a2", "a3"]}
+        agent.restore_state(state)
+        assert agent.action_history == ["a1", "a2", "a3"]
+
+    def test_restore_state_sets_failure_history(self, agent: Agent) -> None:
+        """restore_state sets failure_history."""
+        state = {"failure_history": ["f1", "f2"]}
+        agent.restore_state(state)
+        assert agent.failure_history == ["f1", "f2"]
+
+    def test_restore_state_sets_metrics(self, agent: Agent) -> None:
+        """restore_state sets opportunity cost metrics."""
+        state = {
+            "actions_taken": 20,
+            "successful_actions": 15,
+            "failed_actions": 5,
+            "revenue_earned": 200.0,
+            "artifacts_completed": 8,
+            "starting_balance": 75.0,
+        }
+        agent.restore_state(state)
+
+        assert agent.actions_taken == 20
+        assert agent.successful_actions == 15
+        assert agent.failed_actions == 5
+        assert agent.revenue_earned == 200.0
+        assert agent.artifacts_completed == 8
+        assert agent._starting_balance == 75.0
+
+    def test_restore_state_sets_last_action_result(self, agent: Agent) -> None:
+        """restore_state sets last_action_result."""
+        state = {"last_action_result": "FAILED: Insufficient funds"}
+        agent.restore_state(state)
+        assert agent.last_action_result == "FAILED: Insufficient funds"
+
+    def test_roundtrip_preserves_state(self, agent: Agent) -> None:
+        """export_state -> restore_state preserves all state."""
+        # Set up agent state
+        agent.action_history = ["hist1", "hist2"]
+        agent.failure_history = ["fail1"]
+        agent.actions_taken = 15
+        agent.successful_actions = 12
+        agent.failed_actions = 3
+        agent.revenue_earned = 500.0
+        agent.artifacts_completed = 5
+        agent._starting_balance = 200.0
+        agent.last_action_result = "SUCCESS: Test"
+        agent._working_memory = {"key": "value"}
+
+        # Export state
+        exported = agent.export_state()
+
+        # Create new agent and restore
+        new_agent = Agent(
+            agent_id="test_agent_2",
+            llm_model="test-model",
+        )
+        new_agent.restore_state(exported)
+
+        # Verify all state was preserved
+        assert new_agent.action_history == ["hist1", "hist2"]
+        assert new_agent.failure_history == ["fail1"]
+        assert new_agent.actions_taken == 15
+        assert new_agent.successful_actions == 12
+        assert new_agent.failed_actions == 3
+        assert new_agent.revenue_earned == 500.0
+        assert new_agent.artifacts_completed == 5
+        assert new_agent._starting_balance == 200.0
+        assert new_agent.last_action_result == "SUCCESS: Test"
+        assert new_agent._working_memory == {"key": "value"}
+
+    def test_restore_handles_empty_state(self, agent: Agent) -> None:
+        """restore_state handles empty state dict gracefully."""
+        # Set some state first
+        agent.actions_taken = 10
+
+        # Restore empty state - should set defaults
+        agent.restore_state({})
+
+        assert agent.actions_taken == 0
+        assert agent.action_history == []
+        assert agent.failure_history == []
+
+    def test_restore_handles_partial_state(self, agent: Agent) -> None:
+        """restore_state handles partial state dict."""
+        state = {
+            "actions_taken": 5,
+            # Missing other fields
+        }
+        agent.restore_state(state)
+
+        assert agent.actions_taken == 5
+        assert agent.successful_actions == 0  # Defaults
+        assert agent.action_history == []  # Defaults

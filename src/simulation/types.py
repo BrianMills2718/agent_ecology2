@@ -73,8 +73,47 @@ class BalanceInfo(TypedDict):
     scrip: int
 
 
-class CheckpointData(TypedDict):
-    """Structure for checkpoint file data."""
+class AgentCheckpointState(TypedDict, total=False):
+    """Serialized agent state for checkpoint persistence (Plan #163).
+
+    Contains runtime state that should survive checkpoint/restore cycles
+    so agents can resume with behavioral continuity.
+    """
+
+    # Current workflow/behavioral state
+    current_state: str | None
+
+    # Working memory contents
+    working_memory: dict[str, Any] | None
+
+    # Recent action history for loop detection
+    action_history: list[str]
+
+    # Failure history for learning from mistakes
+    failure_history: list[str]
+
+    # Opportunity cost metrics (Plan #157)
+    actions_taken: int
+    successful_actions: int
+    failed_actions: int
+    revenue_earned: float
+    artifacts_completed: int
+    starting_balance: float | None
+
+    # Last action result for feedback continuity
+    last_action_result: str | None
+
+
+class CheckpointData(TypedDict, total=False):
+    """Structure for checkpoint file data.
+
+    Version history:
+    - v1: Original format (tick, balances, artifacts, agent_ids, reason, cumulative_api_cost)
+    - v2: Added agent_states and version field (Plan #163)
+    """
+
+    # Version field for format migration
+    version: int
 
     tick: int
     balances: dict[str, BalanceInfo]
@@ -82,6 +121,12 @@ class CheckpointData(TypedDict):
     artifacts: list[dict[str, Any]]
     agent_ids: list[str]
     reason: str
+
+    # Plan #163: Agent runtime state for behavioral continuity
+    agent_states: dict[str, AgentCheckpointState]
+
+    # Optional timestamp
+    timestamp: str
 
 
 class ActionProposal(TypedDict):

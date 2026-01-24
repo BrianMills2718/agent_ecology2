@@ -1345,6 +1345,77 @@ Your response should include:
 
         return workflow_result
 
+    # --- Checkpoint persistence methods (Plan #163) ---
+
+    def export_state(self) -> dict[str, Any]:
+        """Export agent runtime state for checkpoint persistence.
+
+        Exports all state needed to restore behavioral continuity after
+        checkpoint/restore cycle. Does NOT include configuration (llm_model,
+        system_prompt, etc.) - that comes from artifacts.
+
+        Returns:
+            Dict with serializable runtime state.
+        """
+        return {
+            # Working memory
+            "working_memory": self._working_memory,
+
+            # Action history for loop detection (Plan #156)
+            "action_history": list(self.action_history),
+
+            # Failure history for learning from mistakes (Plan #88)
+            "failure_history": list(self.failure_history),
+
+            # Opportunity cost metrics (Plan #157)
+            "actions_taken": self.actions_taken,
+            "successful_actions": self.successful_actions,
+            "failed_actions": self.failed_actions,
+            "revenue_earned": self.revenue_earned,
+            "artifacts_completed": self.artifacts_completed,
+            "starting_balance": self._starting_balance,
+
+            # Last action result for feedback continuity
+            "last_action_result": self.last_action_result,
+        }
+
+    def restore_state(self, state: dict[str, Any]) -> None:
+        """Restore agent runtime state from checkpoint.
+
+        Restores all state exported by export_state() so agent can resume
+        with behavioral continuity (remembers recent actions, failures,
+        metrics, etc.).
+
+        Args:
+            state: Dict from export_state() or checkpoint file.
+        """
+        # Working memory
+        self._working_memory = state.get("working_memory")
+
+        # Action history (Plan #156)
+        action_history = state.get("action_history", [])
+        if isinstance(action_history, list):
+            self.action_history = list(action_history)
+
+        # Failure history (Plan #88)
+        failure_history = state.get("failure_history", [])
+        if isinstance(failure_history, list):
+            self.failure_history = list(failure_history)
+
+        # Opportunity cost metrics (Plan #157)
+        self.actions_taken = int(state.get("actions_taken", 0))
+        self.successful_actions = int(state.get("successful_actions", 0))
+        self.failed_actions = int(state.get("failed_actions", 0))
+        self.revenue_earned = float(state.get("revenue_earned", 0.0))
+        self.artifacts_completed = int(state.get("artifacts_completed", 0))
+
+        starting_balance = state.get("starting_balance")
+        self._starting_balance = float(starting_balance) if starting_balance is not None else None
+
+        # Last action result
+        last_result = state.get("last_action_result")
+        self.last_action_result = str(last_result) if last_result is not None else None
+
     def _build_workflow_context(self, world_state: dict[str, Any]) -> dict[str, Any]:
         """Build context dict for workflow execution.
 
