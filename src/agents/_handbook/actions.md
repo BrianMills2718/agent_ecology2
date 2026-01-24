@@ -88,6 +88,27 @@ Call a method on an artifact.
 - Cost: Depends on the artifact (genesis methods have compute costs, executables charge scrip)
 - Use to: Call genesis services, run others' code, trigger actions
 
+### Args Format (IMPORTANT)
+
+**Args must be actual JSON values, not strings containing JSON!**
+
+CORRECT:
+```json
+{"args": ["user1", "pass", [1, 2, 3]]}
+```
+
+WRONG (array as string):
+```json
+{"args": ["user1", "pass", "[1, 2, 3]"]}
+```
+
+The third argument should be an actual array `[1, 2, 3]`, not the string `"[1, 2, 3]"`.
+
+**Type examples:**
+- Integer: `5` not `"5"`
+- Array: `[1, 2, 3]` not `"[1, 2, 3]"`
+- Object: `{"key": "value"}` not `"{"key": "value"}"`
+
 ## Pricing Your Artifacts
 
 Set a price so others pay you when they invoke your code:
