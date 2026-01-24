@@ -318,11 +318,37 @@ def validate_args_against_interface(
         return ValidationResult(valid=True, proceed=True, skipped=False, error_message="")
     except jsonschema.ValidationError as e:
         # Validation failed - include schema info for debugging
+        # Plan #160: Show example of correct format so agents can fix their calls
         base_error = str(e.message)
-        # Extract required fields and properties for helpful error
         required = input_schema.get("required", [])
-        properties = list(input_schema.get("properties", {}).keys())
-        error_msg = f"{base_error}. Method '{method_name}' expects: required={required}, properties={properties}"
+        properties_schema = input_schema.get("properties", {})
+
+        # Build an example call showing correct format
+        example_args: dict[str, str] = {}
+        for prop_name, prop_schema in properties_schema.items():
+            prop_type = prop_schema.get("type", "any")
+            if prop_type == "string":
+                example_args[prop_name] = f"<{prop_name}>"
+            elif prop_type == "number":
+                example_args[prop_name] = "123"
+            elif prop_type == "integer":
+                example_args[prop_name] = "42"
+            elif prop_type == "boolean":
+                example_args[prop_name] = "true"
+            elif prop_type == "array":
+                example_args[prop_name] = "[]"
+            else:
+                example_args[prop_name] = f"<{prop_name}>"
+
+        # Format example as JSON-like dict
+        example_str = ", ".join(f'"{k}": {v}' for k, v in list(example_args.items())[:4])
+        if len(example_args) > 4:
+            example_str += ", ..."
+
+        error_msg = (
+            f"{base_error}. "
+            f"Pass args as a dict: invoke_artifact('{method_name}', [{{{example_str}}}])"
+        )
 
         if validation_mode == "warn":
             _logger.warning("Interface validation failed for '%s': %s", method_name, error_msg)
@@ -1360,10 +1386,14 @@ class SafeExecutor:
                     }
 
                 if not target.executable:
+                    # Plan #160: Suggest alternative - use read_artifact for data/config artifacts
                     return {
                         "success": False,
                         "result": None,
-                        "error": f"Artifact {target_artifact_id} is not executable",
+                        "error": (
+                            f"Artifact {target_artifact_id} is not executable (it's a data artifact). "
+                            f"Use kernel_actions.read_artifact('{target_artifact_id}') to read its content."
+                        ),
                         "price_paid": 0
                     }
 
