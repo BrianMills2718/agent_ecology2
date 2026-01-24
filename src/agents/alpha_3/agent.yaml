@@ -40,11 +40,12 @@ rag:
     What strategies worked for building artifacts?
     What mistakes should I avoid? What patterns led to success?
 
-# State Machine: IRR-Inspired Build Cycle (Plan #137)
+# State Machine: IRR-Inspired Build Cycle (Plan #137 + Plan #157)
 # Combines evidence-gathering (IRR) with creation phases
+# Plan #157 Phase 4: LLM-informed transitions replace hardcoded conditions
 workflow:
   state_machine:
-    states: ["observing", "discovering", "ideating", "designing", "implementing", "testing", "reflecting"]
+    states: ["observing", "discovering", "ideating", "designing", "implementing", "testing", "reflecting", "shipping"]
     initial_state: "observing"
     transitions:
       # IRR pattern: observe -> discover -> act
@@ -68,10 +69,20 @@ workflow:
         to: "testing"
       - from: "testing"
         to: "reflecting"
-      # Reflection and learning
+      # Plan #157: LLM-informed transitions from reflecting
+      # continue -> implementing (keep working)
+      # pivot -> observing (abandon and try something new)
+      # ship -> shipping (move on to next opportunity)
+      - from: "reflecting"
+        to: "implementing"
       - from: "reflecting"
         to: "observing"
-      # Allow pivots from any state
+      - from: "reflecting"
+        to: "shipping"
+      # Shipping state returns to observing for next opportunity
+      - from: "shipping"
+        to: "observing"
+      # Allow pivots from any state (fallback)
       - from: "*"
         to: "observing"
         condition: "should_pivot"
@@ -145,12 +156,13 @@ workflow:
         Once you have the interface info, proceed to ideating.
       transition_to: "ideating"
 
-    # Step 2: Strategic reflection - LLM-informed pivot decision (Plan #157)
+    # Step 2: Strategic reflection - LLM-informed transition decision (Plan #157 Phase 4)
+    # Uses transition step type for LLM-driven state transitions
     - name: strategic_reflect
-      type: llm
+      type: transition
       in_state: "reflecting"
       prompt: |
-        === STRATEGIC DECISION: Continue or Pivot? ===
+        === STRATEGIC DECISION: Continue, Pivot, or Ship? ===
         Time remaining: {time_remaining} | Success rate: {success_rate} | Revenue: {revenue_earned:+.0f}
 
         **{economic_context}**
@@ -164,26 +176,27 @@ workflow:
         ## DECISION REQUIRED
         Based on your performance and time remaining, choose ONE:
 
-        A) CONTINUE current approach
-           - You're making progress (recent successes, revenue increasing)
+        A) CONTINUE - You're making progress
+           - Recent actions show improvement
            - The current artifact is almost working
-           - Worth one more try
+           - Worth continuing this approach
 
-        B) PIVOT to something new
-           - You've been stuck (3+ attempts, same errors)
+        B) PIVOT - You're stuck, try something different
+           - Same errors repeating (3+ times)
            - No revenue earned from this approach
            - Time is running out - try something simpler
 
-        C) SHIP and move on
-           - Current artifact works (even if imperfect)
+        C) SHIP - Current work is good enough
+           - Artifact works (even if imperfect)
            - Move to a new opportunity
            - Don't over-optimize one thing
 
-        YOUR ACTION:
-        - If CONTINUE: invoke/write to improve current artifact
-        - If PIVOT: write a DIFFERENT artifact (new name, new function)
-        - If SHIP: use noop and let the mint auction evaluate your work
-      transition_to: "observing"
+        Respond with exactly one decision: continue, pivot, or ship
+      # Plan #157: Map LLM decisions to state transitions
+      transition_map:
+        continue: "implementing"  # Keep working on current artifact
+        pivot: "observing"        # Abandon and start fresh
+        ship: "shipping"          # Ship current work and move on
 
     # Step 3: Compute metrics (from alpha_2)
     - name: compute_metrics
@@ -298,6 +311,32 @@ workflow:
 
         After testing, you'll reflect on whether to continue, pivot, or ship.
       transition_to: "reflecting"
+
+    # Step 6: Shipping phase - move on to next opportunity (Plan #157 Phase 4)
+    - name: ship
+      type: llm
+      in_state: "shipping"
+      prompt: |
+        === SHIPPING: Move to Next Opportunity ===
+        Time remaining: {time_remaining} | Artifacts completed: {artifacts_completed}
+
+        You decided to ship your current work and move on. Good choice!
+
+        Your artifacts: {my_artifacts}
+        Last result: {last_action_result}
+
+        ## WHAT TO DO NOW
+        Your artifact is shipped. Now look for a NEW opportunity:
+        1. Check genesis_store for artifacts you could use or improve
+        2. Consider what OTHER agents might need
+        3. Build something DIFFERENT (don't revisit what you just shipped)
+
+        Revenue comes from:
+        - Others invoking your artifacts (charges them scrip, pays you)
+        - Winning mint auctions (highest-scored artifact wins)
+
+        Start fresh with an observation action.
+      transition_to: "observing"
 
 error_handling:
   default_on_failure: retry

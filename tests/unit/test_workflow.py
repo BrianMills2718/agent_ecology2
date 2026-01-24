@@ -410,3 +410,208 @@ class TestWorkflowConfig:
         assert step.step_type == StepType.CODE
         assert step.code == "memories = search_memory(goal)"
         assert step.run_if == "tick > 1"
+
+
+class TestTransitionEvaluation:
+    """Tests for Plan #157 Phase 4: LLM-Informed State Transitions."""
+
+    def test_evaluate_transition_with_llm(self) -> None:
+        """Transition evaluation calls LLM and returns decision."""
+        from src.agents.workflow import WorkflowRunner
+        from src.agents.models import TransitionEvaluationResponse
+
+        # mock-ok: LLM calls are expensive
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = TransitionEvaluationResponse(
+            decision="pivot",
+            reasoning="Stuck on same artifact for 5 attempts",
+            next_focus="Try building a simpler utility"
+        )
+
+        runner = WorkflowRunner(llm_provider=mock_llm)
+        context = {
+            "time_remaining": "1m 30s",
+            "success_rate": "2/10",
+            "revenue_earned": 0.0,
+            "action_history": "1. write_artifact(tool) -> FAILED\n2. write_artifact(tool) -> FAILED",
+            "last_action_result": "Error: Invalid syntax",
+        }
+
+        result = runner.evaluate_transition(context)
+
+        assert result["success"] is True
+        assert result["decision"] == "pivot"
+        assert "Stuck" in result["reasoning"]
+        assert result["next_focus"] == "Try building a simpler utility"
+        mock_llm.generate.assert_called_once()
+
+    def test_evaluate_transition_fallback_without_llm(self) -> None:
+        """Transition evaluation uses fallback heuristics when no LLM."""
+        from src.agents.workflow import WorkflowRunner
+
+        runner = WorkflowRunner()  # No LLM provider
+        context = {
+            "action_history": "1. write_artifact(tool)\n2. write_artifact(tool)\n3. write_artifact(tool)",
+            "failed_actions": 3,
+            "successful_actions": 0,
+            "actions_taken": 3,
+        }
+
+        result = runner.evaluate_transition(context)
+
+        assert result["success"] is True
+        assert result["decision"] == "pivot"
+        assert "Repeated" in result["reasoning"]
+
+    def test_evaluate_transition_continue_on_success(self) -> None:
+        """Fallback returns continue when recent actions successful."""
+        from src.agents.workflow import WorkflowRunner
+
+        runner = WorkflowRunner()  # No LLM provider
+        context = {
+            "action_history": "1. write_artifact(tool1)\n2. read_artifact(doc)\n3. invoke_artifact(helper)",
+            "failed_actions": 0,
+            "successful_actions": 3,
+            "actions_taken": 3,
+        }
+
+        result = runner.evaluate_transition(context)
+
+        assert result["success"] is True
+        # With all successes and no failures, we ship (good time to capture value)
+        assert result["decision"] == "ship"
+
+    def test_transition_step_executes_and_maps_state(self) -> None:
+        """Transition step evaluates and maps decision to state transition."""
+        from src.agents.workflow import WorkflowRunner, WorkflowStep, StepType
+        from src.agents.state_machine import WorkflowStateMachine, StateConfig
+        from src.agents.models import TransitionEvaluationResponse
+
+        # Create state machine with reflecting state
+        state_config = StateConfig(
+            states=["reflecting", "implementing", "observing", "shipping"],
+            initial_state="reflecting",
+            transitions=[],  # Allow any transition in permissive mode
+        )
+        state_machine = WorkflowStateMachine(state_config)
+
+        # Create transition step with map
+        step = WorkflowStep(
+            name="decide",
+            step_type=StepType.TRANSITION,
+            prompt="Should you continue, pivot, or ship?",
+            transition_map={
+                "continue": "implementing",
+                "pivot": "observing",
+                "ship": "shipping",
+            },
+        )
+
+        # mock-ok: LLM calls are expensive
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = TransitionEvaluationResponse(
+            decision="ship",
+            reasoning="Artifact works, move on",
+            next_focus=""
+        )
+
+        runner = WorkflowRunner(llm_provider=mock_llm)
+        context: dict[str, Any] = {
+            "time_remaining": "30s",
+            "success_rate": "5/5",
+            "revenue_earned": 10.0,
+            "action_history": "(none)",
+            "last_action_result": "Success",
+        }
+
+        result = runner.execute_step(step, context, state_machine)
+
+        assert result["success"] is True
+        assert result["decision"] == "ship"
+        assert state_machine.current_state == "shipping"
+        assert result["state_transition"]["to"] == "shipping"
+        assert result["state_transition"]["success"] is True
+
+    def test_transition_step_stores_result_in_context(self) -> None:
+        """Transition step stores decision in context for subsequent steps."""
+        from src.agents.workflow import WorkflowRunner, WorkflowStep, StepType
+        from src.agents.models import TransitionEvaluationResponse
+
+        step = WorkflowStep(
+            name="reflect_decision",
+            step_type=StepType.TRANSITION,
+        )
+
+        # mock-ok: LLM calls are expensive
+        mock_llm = MagicMock()
+        mock_llm.generate.return_value = TransitionEvaluationResponse(
+            decision="continue",
+            reasoning="Making good progress",
+            next_focus=""
+        )
+
+        runner = WorkflowRunner(llm_provider=mock_llm)
+        context: dict[str, Any] = {}
+
+        runner.execute_step(step, context)
+
+        assert "reflect_decision" in context
+        assert context["reflect_decision"]["decision"] == "continue"
+        assert context["reflect_decision"]["reasoning"] == "Making good progress"
+
+    def test_parse_transition_step_from_dict(self) -> None:
+        """Transition step parsed correctly from YAML-like dict."""
+        from src.agents.workflow import WorkflowConfig, StepType
+
+        config_dict = {
+            "steps": [
+                {
+                    "name": "strategic_reflect",
+                    "type": "transition",
+                    "in_state": "reflecting",
+                    "prompt": "Should you continue, pivot, or ship?",
+                    "transition_map": {
+                        "continue": "implementing",
+                        "pivot": "observing",
+                        "ship": "shipping",
+                    },
+                },
+            ],
+        }
+
+        config = WorkflowConfig.from_dict(config_dict)
+
+        step = config.steps[0]
+        assert step.step_type == StepType.TRANSITION
+        assert step.name == "strategic_reflect"
+        assert step.in_state == ["reflecting"]
+        assert step.transition_map == {
+            "continue": "implementing",
+            "pivot": "observing",
+            "ship": "shipping",
+        }
+
+
+class TestTransitionEvaluationResponse:
+    """Tests for TransitionEvaluationResponse model."""
+
+    def test_valid_decisions(self) -> None:
+        """Model accepts valid decision values."""
+        from src.agents.models import TransitionEvaluationResponse
+
+        for decision in ["continue", "pivot", "ship"]:
+            response = TransitionEvaluationResponse(
+                decision=decision,  # type: ignore
+                reasoning="Test reasoning"
+            )
+            assert response.decision == decision
+
+    def test_next_focus_optional(self) -> None:
+        """next_focus field is optional with empty default."""
+        from src.agents.models import TransitionEvaluationResponse
+
+        response = TransitionEvaluationResponse(
+            decision="continue",
+            reasoning="Keep going"
+        )
+        assert response.next_focus == ""
