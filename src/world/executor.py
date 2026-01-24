@@ -1532,7 +1532,7 @@ class SafeExecutor:
                     "success": True,
                     "artifact_id": artifact_id,
                     "content": target.content,
-                    "type": target.artifact_type,
+                    "type": target.type,
                     "created_by": target.created_by,
                     "executable": target.executable,
                 }
