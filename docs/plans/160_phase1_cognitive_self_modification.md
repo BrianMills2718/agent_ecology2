@@ -118,6 +118,8 @@ Run simulation and check:
 - src/agents/gamma_3/system_prompt.md (modify) - Add self-modification hints
 - src/agents/delta_3/system_prompt.md (modify) - Add self-modification hints
 - src/agents/epsilon_3/system_prompt.md (modify) - Add self-modification hints
+- src/world/executor.py (modify) - Auto-parse JSON strings in args
+- src/agents/_handbook/actions.md (modify) - Add JSON args guidance
 
 ---
 

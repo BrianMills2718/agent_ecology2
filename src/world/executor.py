@@ -213,11 +213,25 @@ def convert_positional_to_named_args(
     if not param_names:
         return {"args": args}
 
+    # Plan #160: Auto-parse JSON strings in args
+    # LLMs often output "[1,2,3]" as a string instead of actual array [1,2,3]
+    def maybe_parse_json(value: Any) -> Any:
+        """Try to parse string as JSON if it looks like JSON."""
+        if isinstance(value, str) and len(value) >= 2:
+            first_char = value[0]
+            if first_char in '[{':
+                try:
+                    import json
+                    return json.loads(value)
+                except json.JSONDecodeError:
+                    pass  # Not valid JSON, keep as string
+        return value
+
     # Map positional args to property names
     result: dict[str, Any] = {}
     for i, arg in enumerate(args):
         if i < len(param_names):
-            result[param_names[i]] = arg
+            result[param_names[i]] = maybe_parse_json(arg)
         else:
             # More args than properties - can't map, fall back
             _logger.debug(
