@@ -10,6 +10,7 @@ Outputs key metrics from a simulation run including:
 - LLM success rate and thought capture
 - Agent activity breakdown
 - Invoke success/failure analysis
+- Error learning (how well agents avoid repeating errors)
 - Artifact creation stats
 - Economic outcomes
 """
@@ -182,6 +183,54 @@ def compute_artifacts_created(events: list[dict]) -> dict:
     }
 
 
+def compute_error_learning(events: list[dict]) -> dict:
+    """Compute error learning metrics - how well agents avoid repeating errors.
+
+    Returns per-agent stats:
+    - total_errors: total number of errors
+    - unique_errors: number of unique error types
+    - max_consecutive: longest streak of the same error (lower = better learning)
+    """
+    # Group errors by agent
+    agent_errors: dict[str, list[str]] = defaultdict(list)
+
+    for e in events:
+        if e.get("event_type") in ("invoke_failure", "action_failed"):
+            agent = e.get("intent", {}).get("principal_id", "unknown")
+            # Use error message as the "error type"
+            error_msg = e.get("error_message") or e.get("result", {}).get("error", "unknown")
+            # Normalize long messages
+            if len(error_msg) > 100:
+                error_msg = error_msg[:100]
+            agent_errors[agent].append(error_msg)
+
+    # Compute metrics per agent
+    results: dict[str, dict] = {}
+    for agent, errors in agent_errors.items():
+        total = len(errors)
+        unique = len(set(errors))
+
+        # Compute max consecutive same error
+        max_consecutive = 0
+        if errors:
+            current_streak = 1
+            for i in range(1, len(errors)):
+                if errors[i] == errors[i - 1]:
+                    current_streak += 1
+                else:
+                    max_consecutive = max(max_consecutive, current_streak)
+                    current_streak = 1
+            max_consecutive = max(max_consecutive, current_streak)
+
+        results[agent] = {
+            "total_errors": total,
+            "unique_errors": unique,
+            "max_consecutive": max_consecutive,
+        }
+
+    return results
+
+
 def compute_economy(events: list[dict]) -> dict:
     """Compute final scrip balances and auction results."""
     # Track last known scrip for each agent
@@ -254,7 +303,7 @@ def compute_duration(events: list[dict]) -> str:
 def format_report(run_dir: Path, events: list[dict], llm_metrics: dict,
                   thought_metrics: dict, action_metrics: dict,
                   invoke_metrics: dict, artifact_metrics: dict,
-                  economy_metrics: dict) -> str:
+                  economy_metrics: dict, error_learning: dict) -> str:
     """Format metrics into a readable report."""
     lines = []
 
@@ -305,6 +354,22 @@ def format_report(run_dir: Path, events: list[dict], llm_metrics: dict,
         for reason, count in invoke_metrics["failure_reasons"].items():
             lines.append(f"    - {reason} ({count})")
     lines.append("")
+
+    # Error Learning
+    if error_learning:
+        lines.append("ERROR LEARNING:")
+        for agent in sorted(error_learning.keys()):
+            stats = error_learning[agent]
+            total = stats["total_errors"]
+            unique = stats["unique_errors"]
+            max_consec = stats["max_consecutive"]
+            # Good learning = low max_consecutive (not repeating same error)
+            status = "✓" if max_consec <= 2 else "!"
+            lines.append(
+                f"  {agent:12} {total:3} errors, {unique:3} unique, "
+                f"max repeat: {max_consec:2} {status}"
+            )
+        lines.append("")
 
     # Artifacts Created
     lines.append("ARTIFACTS CREATED:")
@@ -371,6 +436,7 @@ def main() -> None:
     invoke_metrics = compute_invoke_metrics(events)
     artifact_metrics = compute_artifacts_created(events)
     economy_metrics = compute_economy(events)
+    error_learning = compute_error_learning(events)
 
     if args.json:
         # JSON output
@@ -383,13 +449,15 @@ def main() -> None:
             "invokes": invoke_metrics,
             "artifacts": artifact_metrics,
             "economy": economy_metrics,
+            "error_learning": error_learning,
         }
         print(json.dumps(output, indent=2))
     else:
         # Formatted output
         report = format_report(
             run_dir, events, llm_metrics, thought_metrics,
-            action_metrics, invoke_metrics, artifact_metrics, economy_metrics
+            action_metrics, invoke_metrics, artifact_metrics, economy_metrics,
+            error_learning
         )
         print(report)
 
