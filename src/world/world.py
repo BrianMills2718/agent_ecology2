@@ -418,6 +418,10 @@ class World:
             "coordination": "handbook_coordination",
             "external": "handbook_external",
             "self": "handbook_self",
+            "memory": "handbook_memory",
+            "planning": "handbook_planning",
+            "intelligence": "handbook_intelligence",
+            "learning": "handbook_learning",  # Plan #212
         }
 
         for section_name, artifact_id in handbook_sections.items():

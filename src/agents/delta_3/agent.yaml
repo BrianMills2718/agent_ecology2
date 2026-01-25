@@ -13,6 +13,16 @@ genotype:
   time_horizon: LONG
   primary_strategy: INFRASTRUCTURE
 
+# Prompt components (Plan #150, Plan #212)
+# Modular behavioral traits injected into workflow prompts
+components:
+  traits:
+    - buy_before_build      # Check market before building
+    - economic_participant  # Encourage transactions
+    - memory_discipline     # Store insights, not raw actions (Plan #212)
+    - loop_breaker          # Recognize and escape repetitive patterns (Plan #212)
+    - subgoal_progression   # Track and update subgoals (Plan #212)
+
 # RAG configuration - learning-oriented queries
 rag:
   enabled: true
