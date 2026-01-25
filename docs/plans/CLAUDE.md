@@ -46,7 +46,7 @@ Master index of all gaps and their implementation plans.
 | 10 | [Gap 10: Memory Persistence](10_memory_persistence.md) | Low | ✅ Complete | - |
 | 11 | [Gap 11: Terminology Cleanup](11_terminology.md) | Medium | ✅ Complete | #12 Per-Agent LLM Budget |
 | 12 | [Per-Agent LLM Budget](12_per_agent_budget.md) | Medium | ✅ Complete | - |
-| 13 | [Gap 13: Doc Line Number References](13_doc_line_refs.md) | Low | 📋 Planned (Post-V1) | - |
+| 13 | [Gap 13: Doc Line Number References](13_doc_line_refs.md) | Low | ✅ Complete | - |
 | 14 | [Gap 14: MCP-Style Artifact Interface](14_mcp_interface.md) | Medium | ✅ Complete | - |
 | 15 | [Gap 15: invoke() Genesis Support](15_invoke_genesis.md) | Medium | ✅ Complete | - |
 | 16 | [Gap 16: Artifact Discovery (genesis_store)](16_artifact_discovery.md) | High | ✅ Complete | #17, #22 |
