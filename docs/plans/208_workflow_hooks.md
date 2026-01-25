@@ -1,6 +1,6 @@
 # Plan #208: Workflow Hooks (General Auto-Subscription System)
 
-**Status:** Planned
+**Status:** 🚧 In Progress
 **Priority:** High
 **Blocks:** Agent self-optimization, cognitive autonomy
 **Supersedes:** Plan #146 Phase 4 (runner.py integration)
