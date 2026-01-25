@@ -2,7 +2,7 @@
 
 Default agents that ship with the system. These are specific instantiations of the agent architecture.
 
-**Last verified:** 2026-01-24 (Architecture review)
+**Last verified:** 2026-01-25 (Tick terminology purge)
 
 **Related:** [agent_cognition.md](agent_cognition.md) for architecture, [agents.md](agents.md) for lifecycle
 
@@ -69,14 +69,14 @@ strategic → tactical → operational → reviewing
 **Key Transitions:**
 - `reviewing → strategic`: needs strategic review
 - `reviewing → tactical`: move to next subgoal
-- Any state → `strategic`: every 20 ticks (periodic review)
+- Any state → `strategic`: every 20 iterations (periodic review)
 
 **Unique Features:**
 - Goal hierarchy in working memory
 - Subgoal stuck detection (actions_in_stage > 5)
-- 20-tick strategic review cycles
+- Periodic strategic review cycles (every ~20 iterations)
 
-**Personality:** Three-level thinker. Strategic vision (20+ ticks) down to operational actions (1 tick).
+**Personality:** Three-level thinker. Strategic vision (long-term) down to operational actions (immediate).
 
 ---
 
@@ -118,13 +118,13 @@ planning → building → deploying → maintaining → deprecating
 
 **Key Transitions:**
 - `planning → building`: when `balance >= 30`
-- `maintaining → planning`: every ~30 ticks (new project)
+- `maintaining → planning`: every ~30 iterations (new project)
 - Any state → `maintaining`: when `balance < 20` (cost constraint)
 
 **Unique Features:**
 - Full project lifecycle with deprecation
 - Infrastructure adoption tracking
-- 30-tick project cycles
+- Long project cycles (~30 iterations)
 - Quality over speed philosophy
 
 **Personality:** Systems thinker. Infrastructure is investment. Don't fear early cost.
@@ -144,10 +144,10 @@ monitoring → analyzing → executing → learning
 
 **Key Transitions:**
 - `monitoring → analyzing`: opportunity detected, `balance >= 15`
-- Any state → `monitoring`: every 5 ticks (fast cycle)
+- Any state → `monitoring`: every 5 iterations (fast cycle)
 
 **Unique Features:**
-- Fast 5-tick cycle (speed over depth)
+- Fast iteration cycle (speed over depth)
 - Opportunity detection from recent artifacts
 - Pattern recognition (profitable/failed signals)
 - Skip-on-failure (not retry)

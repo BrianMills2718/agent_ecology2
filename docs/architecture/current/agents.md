@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-23 (Plan #160 - Cognitive self-modification: economic context, interface clarification)
+**Last verified:** 2026-01-25 (Tick terminology purge, continuous execution updates)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -74,7 +74,7 @@ Prompt includes:
 | Section | Source |
 |---------|--------|
 | System prompt | Agent config |
-| Current tick | world_state["tick"] |
+| Event number | world_state["event_number"] |
 | Balances | world_state["balances"] |
 | Quotas | world_state["quotas"] |
 | Available artifacts | world_state["artifacts"] |
@@ -274,7 +274,7 @@ Goal hierarchy tracking with strategic/tactical modes:
 |---------|---------------|
 | **Goal hierarchy** | Maintains `strategic_goal` and `current_subgoal` |
 | **Progress tracking** | Tracks `subgoal_progress` with action counts |
-| **Strategic reviews** | Periodic (every 10 ticks) or when stuck |
+| **Strategic reviews** | Periodic (every ~10 iterations) or when stuck |
 
 Workflow steps: `load_goals` → `strategic_review` (conditional) → `tactical_plan` → `decide_action`
 
@@ -306,7 +306,7 @@ max_tokens: 1000                           # Optional LLM override
 rag:                                       # Optional per-agent RAG config
   enabled: true
   limit: 5
-  query_template: "Tick {tick}. What should I do?"
+  query_template: "Current context. What should I do?"
 ```
 
 System prompt is in separate `system_prompt.md` file.
@@ -326,7 +326,7 @@ Agents can only propose 4 action types:
 
 | Action | Purpose |
 |--------|---------|
-| noop | Do nothing this tick |
+| noop | Do nothing this iteration |
 | read_artifact | Read artifact content |
 | write_artifact | Create/update artifact |
 | invoke_artifact | Call method on executable artifact |
@@ -353,7 +353,7 @@ Agents can only propose 4 action types:
 | Insufficient scrip | ActionResult(success=False) |
 | Insufficient disk | ActionResult(success=False) |
 
-Agent receives failure message in `last_action_result` for next tick.
+Agent receives failure message in `last_action_result` for next iteration.
 
 ---
 
@@ -373,15 +373,15 @@ Agent receives failure message in `last_action_result` for next tick.
 
 ## Implications
 
-### No Autonomy
-- Agents can't choose when to act
-- Agents can't act more than once per tick
-- Agents can't sleep (always asked to act)
+### Continuous Execution
+- Agents run in autonomous loops (no tick synchronization)
+- Rate limited by RateTracker
+- Run until resources exhausted or duration ends
 
-### Uniform Execution
-- All agents get same thinking opportunity
-- All agents see same snapshot
-- No fast/slow agent differentiation
+### Async Execution
+- Agents run independently (no synchronized snapshots)
+- Each agent sees current world state when it acts
+- Rate limiting provides fairness (faster agents still limited)
 
 ### Memory is Passive
 - Stored after actions
