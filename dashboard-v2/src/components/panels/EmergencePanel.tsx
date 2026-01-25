@@ -8,34 +8,30 @@ function MetricGauge({
   label,
   value,
   description,
-  format = 'percent',
+  formula,
 }: {
   label: string
   value: number | undefined | null
   description: string
-  format?: 'percent' | 'number' | 'decimal'
+  formula: string
 }) {
   const safeValue = value ?? 0
-  const displayValue =
-    format === 'percent'
-      ? safePercent(value, 1)
-      : format === 'decimal'
-      ? safeFixed(value, 3)
-      : safeFixed(value, 0)
-
-  const barWidth = format === 'percent' ? Math.min(safeValue * 100, 100) : Math.min(safeValue * 10, 100)
+  const displayValue = safePercent(value, 1)
+  const barWidth = Math.min(safeValue * 100, 100)
 
   const color =
-    safeValue >= 0.7
+    safeValue >= 0.5
       ? 'bg-[var(--accent-secondary)]'
-      : safeValue >= 0.3
+      : safeValue >= 0.2
       ? 'bg-[var(--accent-warning)]'
-      : 'bg-[var(--accent-danger)]'
+      : 'bg-gray-500'
 
   return (
-    <div className="p-3 bg-[var(--bg-primary)] rounded">
+    <div className="p-3 bg-[var(--bg-primary)] rounded group relative">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-sm font-medium">{label}</span>
+        <span className="text-sm font-medium cursor-help border-b border-dotted border-[var(--text-secondary)]">
+          {label}
+        </span>
         <span className="text-sm font-mono">{displayValue}</span>
       </div>
       <div className="h-2 bg-[var(--bg-tertiary)] rounded-full overflow-hidden mb-2">
@@ -45,6 +41,14 @@ function MetricGauge({
         />
       </div>
       <p className="text-xs text-[var(--text-secondary)]">{description}</p>
+      {/* Tooltip with formula */}
+      <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-10 w-72 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-color)] rounded shadow-lg text-xs">
+        <p className="text-[var(--text-primary)] mb-2">{description}</p>
+        <p className="text-[var(--text-secondary)]">
+          <span className="font-semibold">Formula:</span>{' '}
+          <code className="font-mono bg-[var(--bg-primary)] px-1 rounded">{formula}</code>
+        </p>
+      </div>
     </div>
   )
 }
@@ -161,38 +165,31 @@ export function EmergencePanel() {
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <MetricGauge
-                label="Coordination Density"
+                label="Coordination"
                 value={emergence.coordination_density}
-                description="How connected the agent network is"
+                description="% of agent pairs that have interacted"
+                formula="unique_pairs / (n × (n-1) / 2)"
               />
               <MetricGauge
-                label="Specialization Index"
-                value={emergence.specialization_index}
-                description="How differentiated agents are"
-              />
-              <MetricGauge
-                label="Reuse Ratio"
+                label="Reuse"
                 value={emergence.reuse_ratio}
-                description="How much agents use each other's artifacts"
+                description="% of artifacts used by non-creators"
+                formula="artifacts_used_by_others / total_artifacts"
               />
               <MetricGauge
-                label="Genesis Independence"
+                label="Independence"
                 value={emergence.genesis_independence}
-                description="Ecosystem maturity (non-genesis ops ratio)"
-              />
-              <MetricGauge
-                label="Capital Depth"
-                value={emergence.capital_depth / 10}
-                description={`Max dependency chain: ${emergence.capital_depth}`}
-                format="number"
-              />
-              <MetricGauge
-                label="Coalitions"
-                value={emergence.coalition_count / 10}
-                description={`Distinct agent clusters: ${emergence.coalition_count}`}
-                format="number"
+                description="% of invocations targeting non-genesis"
+                formula="non_genesis_invokes / total_invokes"
               />
             </div>
+            {/* Coalition count as simple stat */}
+            {emergence.coalition_count > 0 && (
+              <div className="mt-3 p-2 bg-[var(--bg-primary)] rounded flex justify-between items-center">
+                <span className="text-sm">Agent Clusters</span>
+                <span className="font-mono text-lg">{emergence.coalition_count}</span>
+              </div>
+            )}
           </div>
 
           {/* KPIs */}
