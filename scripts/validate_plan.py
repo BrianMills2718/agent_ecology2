@@ -24,7 +24,11 @@ import yaml
 
 
 def load_relationships() -> dict[str, Any]:
-    """Load the unified relationships config."""
+    """Load the unified relationships config.
+
+    Converts the new format (governance + couplings sections) to internal
+    edge-based format for compatibility with query functions.
+    """
     config_path = Path(__file__).parent / "relationships.yaml"
     if not config_path.exists():
         # Fall back to old configs if relationships.yaml doesn't exist yet
@@ -32,7 +36,40 @@ def load_relationships() -> dict[str, Any]:
         return load_legacy_configs()
 
     with open(config_path) as f:
-        return yaml.safe_load(f)
+        data = yaml.safe_load(f)
+
+    # If data already has 'edges', it's the old format - use as-is
+    if "edges" in data:
+        return data
+
+    # Convert new format (governance + couplings) to edges format
+    result: dict[str, Any] = {"edges": [], "adrs": data.get("adrs", {})}
+
+    # Convert governance section to governs edges
+    for entry in data.get("governance", []):
+        source = entry.get("source", "")
+        for adr_num in entry.get("adrs", []):
+            result["edges"].append({
+                "from": f"adr/{adr_num:04d}",
+                "to": source,
+                "type": "governs",
+                "context": entry.get("context", "")
+            })
+
+    # Convert couplings section to documented_by edges
+    for coupling in data.get("couplings", []):
+        coupling_type = "soft" if coupling.get("soft") else "strict"
+        for source in coupling.get("sources", []):
+            for doc in coupling.get("docs", []):
+                result["edges"].append({
+                    "from": source,
+                    "to": doc,
+                    "type": "documented_by",
+                    "coupling": coupling_type,
+                    "description": coupling.get("description", "")
+                })
+
+    return result
 
 
 def load_legacy_configs() -> dict[str, Any]:

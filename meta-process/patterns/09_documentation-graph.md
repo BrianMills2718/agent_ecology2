@@ -1,8 +1,8 @@
 # Pattern: Documentation Graph
 
-> **STATUS: PROPOSED** - This pattern describes a unified documentation graph via `relationships.yaml`.
-> Currently NOT IMPLEMENTED. ADR-0005 is proposed but not deployed.
-> Patterns 08 (ADR Governance) and 10 (Doc-Code Coupling) remain the deployed solutions.
+> **STATUS: IMPLEMENTED** - Plan #215 (2026-01-25)
+> `relationships.yaml` is now the unified source of truth.
+> Scripts read from relationships.yaml with fallback to legacy configs.
 
 ## Problem
 
@@ -16,7 +16,10 @@ This makes it impossible to trace: ADR → target architecture → current archi
 
 Unify all documentation relationships into a single `relationships.yaml` with a nodes/edges schema.
 
-**See:** [ADR-0005: Unified Documentation Graph](../../adr/0005-unified-documentation-graph.md)
+**Implementation:** `scripts/relationships.yaml` contains:
+- `adrs`: ADR metadata (number → title, file)
+- `governance`: ADR → source mappings (used by sync_governance.py)
+- `couplings`: source → doc mappings (used by check_doc_coupling.py)
 
 ## Files
 

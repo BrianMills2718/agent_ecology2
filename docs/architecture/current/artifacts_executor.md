@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-25 (Plan #210 - ADR-0016: created_by is immutable, contracts check creator)
+**Last verified:** 2026-01-25 (Plan #188 - Deliberative planning; action_executor unchanged for core artifact logic)
 
 ---
 

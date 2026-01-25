@@ -94,7 +94,25 @@ def get_staged_files() -> set[str]:
 
 
 def load_couplings(config_path: Path) -> list[dict]:
-    """Load coupling definitions from YAML."""
+    """Load coupling definitions from YAML.
+
+    Supports both formats:
+    - relationships.yaml (unified): has 'couplings' section with full paths
+    - doc_coupling.yaml (legacy): has 'couplings' section with full paths
+
+    If config_path is doc_coupling.yaml but relationships.yaml exists and has
+    couplings, prefer relationships.yaml (unified source of truth).
+    """
+    # Check if we should use relationships.yaml instead
+    relationships_path = config_path.parent / "relationships.yaml"
+    if config_path.name == "doc_coupling.yaml" and relationships_path.exists():
+        with open(relationships_path) as f:
+            unified_data = yaml.safe_load(f)
+        if unified_data and "couplings" in unified_data:
+            # Use unified relationships.yaml
+            return unified_data.get("couplings", [])
+
+    # Fall back to specified config file
     with open(config_path) as f:
         data = yaml.safe_load(f)
     return data.get("couplings", [])

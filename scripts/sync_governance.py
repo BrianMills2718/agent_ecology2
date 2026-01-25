@@ -55,7 +55,36 @@ class GovernanceConfig:
 
     @classmethod
     def load(cls, path: Path) -> "GovernanceConfig":
-        """Load governance config from YAML file."""
+        """Load governance config from YAML file.
+
+        Supports both formats:
+        - relationships.yaml (unified): has 'governance' list + 'adrs' dict
+        - governance.yaml (legacy): has 'files' dict + 'adrs' dict
+
+        If path is governance.yaml but relationships.yaml exists and has
+        governance section, prefer relationships.yaml (unified source of truth).
+        """
+        # Check if we should use relationships.yaml instead
+        relationships_path = path.parent / "relationships.yaml"
+        if path.name == "governance.yaml" and relationships_path.exists():
+            with open(relationships_path) as f:
+                unified_data = yaml.safe_load(f)
+            if unified_data and "governance" in unified_data:
+                # Convert relationships.yaml format to internal format
+                files = {}
+                for entry in unified_data.get("governance", []):
+                    source = entry.get("source", "")
+                    if source:
+                        files[source] = {
+                            "adrs": entry.get("adrs", []),
+                            "context": entry.get("context", ""),
+                        }
+                return cls(
+                    files=files,
+                    adrs=unified_data.get("adrs", {}),
+                )
+
+        # Fall back to legacy governance.yaml format
         with open(path) as f:
             data = yaml.safe_load(f)
 
