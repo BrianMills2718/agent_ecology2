@@ -22,7 +22,7 @@ import signal
 import sys
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass, replace as dataclass_replace
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from types import FrameType, ModuleType
 from typing import Any, Callable, Generator, TypedDict
@@ -47,7 +47,8 @@ from .contracts import (
     PermissionAction,
     PermissionResult,
 )
-from .genesis_contracts import get_contract_by_id, get_genesis_contract
+# Import from permission_checker module (Plan #181: Split Large Files)
+from . import permission_checker as _permission_checker
 
 
 class PaymentResult(TypedDict):
@@ -76,13 +77,15 @@ def get_max_contract_depth() -> int:
 
     This limits how deep permission check chains can go to prevent
     infinite recursion. Per Plan #100 and ADR-0018, default is 10.
+
+    Plan #181: Delegates to permission_checker module.
     """
-    return get_validated_config().executor.max_contract_depth
+    return _permission_checker.get_max_contract_depth()
 
 
 # Legacy constant for backward compatibility
 DEFAULT_MAX_INVOKE_DEPTH = 5
-DEFAULT_MAX_CONTRACT_DEPTH = 10
+DEFAULT_MAX_CONTRACT_DEPTH = _permission_checker.DEFAULT_MAX_CONTRACT_DEPTH
 
 
 def _format_runtime_error(e: Exception, prefix: str = "Runtime error") -> str:
@@ -775,6 +778,7 @@ class SafeExecutor:
         via register_executable_contract().
 
         Plan #100 Phase 2, ADR-0017: Dangling contracts fail open to default.
+        Plan #181: Delegates to permission_checker module.
 
         Args:
             contract_id: The contract ID to look up
@@ -785,34 +789,14 @@ class SafeExecutor:
             - is_fallback: True if this is a fallback due to missing contract
             - original_contract_id: The original ID if fallback occurred, else None
         """
-        if contract_id in self._contract_cache:
-            return self._contract_cache[contract_id], False, None
-
-        # Check genesis contracts
-        contract = get_contract_by_id(contract_id)
-        if contract:
-            self._contract_cache[contract_id] = contract
-            return contract, False, None
-
-        # Contract not found - use configurable default (ADR-0017)
-        self._dangling_contract_count += 1
-
-        # Log warning for observability
-        logger = logging.getLogger(__name__)
-        default_contract_id = get("contracts.default_on_missing") or "genesis_contract_freeware"
-        logger.warning(
-            f"Dangling contract: '{contract_id}' not found, "
-            f"falling back to '{default_contract_id}'"
+        # Use a mutable tracker so the module can increment the count
+        dangling_tracker = [self._dangling_contract_count]
+        result = _permission_checker.get_contract_with_fallback_info(
+            contract_id, self._contract_cache, dangling_tracker
         )
-
-        # Get the default contract
-        contract = get_contract_by_id(default_contract_id)
-        if not contract:
-            contract = get_genesis_contract("freeware")
-
-        # Cache the original ID pointing to fallback contract
-        self._contract_cache[contract_id] = contract
-        return contract, True, contract_id
+        # Update instance state from tracker
+        self._dangling_contract_count = dangling_tracker[0]
+        return result
 
     def _get_contract(
         self, contract_id: str
@@ -862,6 +846,7 @@ class SafeExecutor:
         Plan #100 Phase 2: Supports TTL-based caching for contracts with
         cache_policy. Caching is opt-in - contracts without cache_policy
         are never cached.
+        Plan #181: Delegates to permission_checker module.
 
         Args:
             caller: The principal requesting access
@@ -873,84 +858,23 @@ class SafeExecutor:
         Returns:
             PermissionResult with allowed, reason, and optional cost
         """
-        # Check depth limit (Plan #100: prevent infinite recursion)
-        if contract_depth >= self.max_contract_depth:
-            return PermissionResult(
-                allowed=False,
-                reason=f"Contract permission check depth exceeded (depth={contract_depth}, limit={self.max_contract_depth})"
-            )
-
-        # Get contract ID from artifact (default to freeware)
-        contract_id = getattr(artifact, "access_contract_id", "genesis_contract_freeware")
-        contract, is_fallback, original_contract_id = self._get_contract_with_fallback_info(
-            contract_id
+        # Use a mutable tracker so the module can increment the count
+        dangling_tracker = [self._dangling_contract_count]
+        result = _permission_checker.check_permission_via_contract(
+            caller=caller,
+            action=action,
+            artifact=artifact,
+            contract_cache=self._contract_cache,
+            permission_cache=self._permission_cache,
+            dangling_count_tracker=dangling_tracker,
+            ledger=self._ledger,
+            max_contract_depth=self.max_contract_depth,
+            contract_depth=contract_depth,
+            method=method,
+            args=args,
         )
-
-        # Convert action string to PermissionAction
-        try:
-            perm_action = PermissionAction(action)
-        except ValueError:
-            return PermissionResult(
-                allowed=False,
-                reason=f"Unknown action: {action}"
-            )
-
-        # Plan #100 Phase 2: Check permission cache for ExecutableContracts with cache_policy
-        cache_key = None
-        cache_policy = None
-        if isinstance(contract, ExecutableContract) and contract.cache_policy is not None:
-            cache_policy = contract.cache_policy
-            # Cache key: (artifact_id, action, requester_id, contract_version)
-            # Contract version is "v1" for now (versioning to be added later)
-            contract_version = getattr(contract, "version", "v1")
-            cache_key = (artifact.id, action, caller, contract_version)
-
-            # Check cache
-            cached_result = self._permission_cache.get(cache_key)
-            if cached_result is not None:
-                return cached_result
-
-        # Build context for contract (ADR-0019: minimal context)
-        context: dict[str, object] = {
-            "target_created_by": artifact.created_by,  # Pragmatic: commonly needed
-        }
-        # Add method and args for invoke actions (ADR-0019)
-        if action == "invoke":
-            context["method"] = method
-            context["args"] = args if args is not None else []
-
-        # ExecutableContracts need ledger access for balance checks
-        if isinstance(contract, ExecutableContract):
-            result = contract.check_permission(
-                caller=caller,
-                action=perm_action,
-                target=artifact.id,
-                context=context,
-                ledger=self._ledger,
-            )
-
-            # Store in cache if cache_policy is set
-            if cache_key is not None and cache_policy is not None:
-                ttl_seconds = cache_policy.get("ttl_seconds", 0)
-                if ttl_seconds > 0:
-                    self._permission_cache.put(cache_key, result, ttl_seconds)
-        else:
-            # Genesis/static contracts use standard interface
-            result = contract.check_permission(
-                caller=caller,
-                action=perm_action,
-                target=artifact.id,
-                context=context,
-            )
-
-        # Plan #100 ADR-0017: Add dangling contract info to conditions for observability
-        if is_fallback and original_contract_id is not None:
-            # Merge with existing conditions if any
-            new_conditions: dict[str, object] = dict(result.conditions or {})
-            new_conditions["dangling_contract"] = True
-            new_conditions["original_contract_id"] = original_contract_id
-            result = dataclass_replace(result, conditions=new_conditions)
-
+        # Update instance state from tracker
+        self._dangling_contract_count = dangling_tracker[0]
         return result
 
     def _check_permission_legacy(
@@ -967,6 +891,8 @@ class SafeExecutor:
         - READ, INVOKE: Anyone can access
         - WRITE, EDIT, DELETE: Only owner can access
 
+        Plan #181: Delegates to permission_checker module.
+
         Args:
             caller: The principal requesting access
             action: The action being attempted
@@ -975,36 +901,7 @@ class SafeExecutor:
         Returns:
             Tuple of (allowed, reason)
         """
-        import warnings
-        warnings.warn(
-            "Legacy permission checking is deprecated. Set access_contract_id "
-            "on artifacts to use contract-based permissions.",
-            DeprecationWarning,
-            stacklevel=3,
-        )
-
-        # CAP-003: No special owner bypass. Delegate to freeware contract
-        # which properly handles owner access for write/delete/transfer actions.
-        freeware = get_genesis_contract("freeware")
-
-        # Convert action string to PermissionAction
-        try:
-            perm_action = PermissionAction(action)
-        except ValueError:
-            return (False, f"legacy: unknown action {action}")
-
-        # ADR-0019: minimal context with target_created_by
-        context: dict[str, object] = {
-            "target_created_by": artifact.created_by,
-        }
-
-        result = freeware.check_permission(
-            caller=caller,
-            action=perm_action,
-            target=artifact.id,
-            context=context,
-        )
-        return (result.allowed, f"legacy (freeware): {result.reason}")
+        return _permission_checker.check_permission_legacy(caller, action, artifact)
 
     def _check_permission(
         self,
@@ -1021,6 +918,8 @@ class SafeExecutor:
         2. If access_contract_id is NULL: use configurable default (creator_only or freeware)
         3. If access_contract_id points to deleted contract: use default_on_missing
 
+        Plan #181: Delegates to permission_checker module.
+
         Args:
             caller: The principal requesting access
             action: The action being attempted
@@ -1031,32 +930,24 @@ class SafeExecutor:
         Returns:
             Tuple of (allowed, reason)
         """
-        # Check if artifact has an explicit access_contract_id
-        has_contract_attr = hasattr(artifact, "access_contract_id")
-        contract_id = getattr(artifact, "access_contract_id", None) if has_contract_attr else None
-
-        # Case 1: Artifact has a non-null contract - use contract-based checking
-        if self.use_contracts and contract_id is not None:
-            result = self._check_permission_via_contract(caller, action, artifact, method=method, args=args)
-            return (result.allowed, result.reason)
-
-        # Case 2: Artifact has NULL contract (ADR-0019)
-        # Use configurable default behavior
-        if has_contract_attr and contract_id is None:
-            default_behavior = config_get("contracts.default_when_null")
-            if default_behavior is None:
-                default_behavior = "creator_only"  # ADR-0019 default
-
-            if default_behavior == "creator_only":
-                # Only creator has full access, all others blocked
-                owner = getattr(artifact, "created_by", None)
-                if caller == owner:
-                    return (True, "null contract: creator access")
-                return (False, f"null contract: only creator '{owner}' can access (caller: {caller})")
-            # else: fall through to legacy/freeware behavior
-
-        # Legacy policy-based check (for backward compatibility or freeware default)
-        return self._check_permission_legacy(caller, action, artifact)
+        # Use a mutable tracker so the module can increment the count
+        dangling_tracker = [self._dangling_contract_count]
+        result = _permission_checker.check_permission(
+            caller=caller,
+            action=action,
+            artifact=artifact,
+            contract_cache=self._contract_cache,
+            permission_cache=self._permission_cache,
+            dangling_count_tracker=dangling_tracker,
+            ledger=self._ledger,
+            max_contract_depth=self.max_contract_depth,
+            use_contracts=self.use_contracts,
+            method=method,
+            args=args,
+        )
+        # Update instance state from tracker
+        self._dangling_contract_count = dangling_tracker[0]
+        return result
 
     def validate_code(self, code: str) -> tuple[bool, str]:
         """
