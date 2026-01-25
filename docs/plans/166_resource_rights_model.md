@@ -241,6 +241,7 @@ After implementation, comprehensive doc review:
 - config/config.yaml (modify) - Rights configuration
 - docs/GLOSSARY.md (modify) - Terminology update
 - docs/architecture/current/resources.md (modify) - Full rewrite
+- tests/unit/test_usage_tracker.py (create) - Tests for UsageTracker
 
 ## Dependencies
 
