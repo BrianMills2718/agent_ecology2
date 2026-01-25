@@ -47,14 +47,16 @@ function MetricGauge({
   )
 }
 
-function TrendIndicator({ trend }: { trend: 'up' | 'down' | 'stable' }) {
+function TrendIndicator({ trend }: { trend: 'up' | 'down' | 'stable' | undefined }) {
+  if (!trend) return null
   const config = {
     up: { symbol: '↑', color: 'text-[var(--accent-secondary)]' },
     down: { symbol: '↓', color: 'text-[var(--accent-danger)]' },
     stable: { symbol: '→', color: 'text-[var(--text-secondary)]' },
   }
-  const { symbol, color } = config[trend]
-  return <span className={`${color} font-bold`}>{symbol}</span>
+  const entry = config[trend]
+  if (!entry) return null
+  return <span className={`${entry.color} font-bold`}>{entry.symbol}</span>
 }
 
 function KPICard({
