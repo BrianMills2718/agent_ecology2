@@ -1,6 +1,6 @@
 # Agent Architecture Documentation Index
 
-**Last Updated:** 2026-01-24
+**Last Updated:** 2026-01-24 (friction analysis, Plans #182-183 added)
 
 This is the master index for all agent architecture documentation. Use this as your starting point for understanding:
 1. Our kernel/substrate architecture
@@ -58,13 +58,40 @@ Genesis agents are **one implementation** of agents on that substrate.
 | Workflows | Contract artifact + state | Low |
 | Consensus/voting | Contract with vote method | Low-Medium |
 
-### Known Gaps
+### Known Gaps and Friction Points
 
-| Gap | Plan | Status |
-|-----|------|--------|
-| Trigger integration not complete | #180 | Planned |
-| Query performance (O(n) scans) | None | Optimization concern |
-| No multi-container coordination | None | Future |
+| Gap | Plan | Priority | Status |
+|-----|------|----------|--------|
+| Trigger integration not complete | #180 | **High** | Planned |
+| Query performance (O(n) scans) | #182 | Medium | Planned |
+| Consensus/voting convenience | #183 | Low | Planned |
+| No multi-container coordination | None | Low | Future |
+
+### Capability Space: Complete
+
+No cognitive or coordination patterns are impossible. Everything maps to artifact + contract primitives:
+
+| Pattern | Possible? | Mechanism |
+|---------|-----------|-----------|
+| Planning | ✅ | Write plan artifact |
+| Reflection | ✅ | Read own outputs, write learnings |
+| Memory | ✅ | Artifacts + Qdrant |
+| Sub-agent spawn | ✅ | Create artifact + fund + grant standing |
+| Self-modification | ✅ | Write to own artifact |
+| Consensus | ✅ | Contract with voting logic |
+| Atomic operations | ✅ | Wrapper contract handles transaction |
+| Real-time resource awareness | ✅ | `kernel_state.get_balance()` |
+
+### Friction Analysis (2026-01-24)
+
+| Pattern | Current Friction | Cause | Fix |
+|---------|------------------|-------|-----|
+| Messaging/pub-sub | **HIGH** | Triggers not integrated | Plan #180 |
+| Discovery | Medium | O(n) artifact scans | Plan #182 |
+| Consensus | Medium | Must build contract | Plan #183 |
+| Cross-run learning | Medium | Not implemented | Genesis enhancement |
+| Task delegation | Low | Works via metadata | - |
+| Planning | Low (unused) | Architecture supports it | Genesis enhancement |
 
 ---
 
@@ -145,7 +172,9 @@ docs/archive/
 
 docs/plans/
 ├── 169_kernel_event_triggers.md     # Trigger design (incomplete)
-└── 180_trigger_integration.md       # Complete trigger integration
+├── 180_trigger_integration.md       # Complete trigger integration (HIGH)
+├── 182_metadata_indexing.md         # O(1) metadata queries (Medium)
+└── 183_genesis_voting.md            # Consensus convenience (Low)
 ```
 
 ---
@@ -162,4 +191,6 @@ docs/plans/
 → Read `DESIGN_CLARIFICATIONS.md`
 
 **If you want to contribute:**
-→ Check Plan #180 (trigger integration) - high priority gap
+→ Plan #180 (trigger integration) - **HIGH priority**, unblocks real-time coordination
+→ Plan #182 (metadata indexing) - Medium priority, performance optimization
+→ Plan #183 (genesis_voting) - Low priority, convenience feature
