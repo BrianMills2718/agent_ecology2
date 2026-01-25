@@ -2,7 +2,7 @@
 # Deleting worktree = releasing claim
 
 cc_id: main
-task: Implement self-modifying system prompt
-claimed_at: '2026-01-25T07:17:22Z'
-session_id: eec7eb3c-50da-471e-8b34-a5835181feb8
-plan: 194
+task: Implement configurable enforcement strictness
+claimed_at: '2026-01-25T11:19:00Z'
+session_id: c3a2713e-bc02-425a-baa8-39eb8be25215
+plan: 178
