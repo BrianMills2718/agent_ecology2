@@ -1,79 +1,61 @@
 import { useEffect, useRef, useState } from 'react'
 import { Network } from 'vis-network'
+import type { Options } from 'vis-network'
 import { DataSet } from 'vis-data'
-import { useNetwork } from '../../api/queries'
+import { useDependencyGraph } from '../../api/queries'
 import { Panel } from '../shared/Panel'
-import type { NetworkNode, NetworkEdge } from '../../types/api'
+import { safeFixed } from '../../utils/format'
+import type { DependencyNode, DependencyEdge } from '../../types/api'
 
 const NODE_COLORS = {
-  agent: {
-    active: { background: '#22c55e', border: '#16a34a' },
-    idle: { background: '#6b7280', border: '#4b5563' },
-    frozen: { background: '#3b82f6', border: '#2563eb' },
-    bankrupt: { background: '#ef4444', border: '#dc2626' },
-  },
-  artifact: {
-    default: { background: '#8b5cf6', border: '#7c3aed' },
-    genesis: { background: '#f59e0b', border: '#d97706' },
-  },
+  genesis: { background: '#f59e0b', border: '#d97706' },
+  agent: { background: '#22c55e', border: '#16a34a' },
+  contract: { background: '#3b82f6', border: '#2563eb' },
+  data: { background: '#8b5cf6', border: '#7c3aed' },
+  unknown: { background: '#6b7280', border: '#4b5563' },
 }
 
-const EDGE_COLORS: Record<string, string> = {
-  invoke: '#22c55e',
-  transfer: '#3b82f6',
-  trade: '#f59e0b',
-  create: '#8b5cf6',
-  default: '#6b7280',
-}
-
-function buildVisNodes(nodes: NetworkNode[]) {
+function buildVisNodes(nodes: DependencyNode[]) {
   return nodes.map((node) => {
-    const isGenesis = node.id.startsWith('genesis_')
-    const colors =
-      node.node_type === 'agent'
-        ? NODE_COLORS.agent[node.status as keyof typeof NODE_COLORS.agent] ||
-          NODE_COLORS.agent.idle
-        : isGenesis
-        ? NODE_COLORS.artifact.genesis
-        : NODE_COLORS.artifact.default
-
+    const colors = NODE_COLORS[node.artifact_type as keyof typeof NODE_COLORS] || NODE_COLORS.unknown
+    // Scale size by Lindy score (min 10, max 30)
+    const size = Math.min(30, Math.max(10, 10 + node.lindy_score * 2))
+    
     return {
-      id: node.id,
-      label: node.label,
+      id: node.artifact_id,
+      label: node.name,
       color: colors,
-      shape: node.node_type === 'agent' ? 'dot' : 'diamond',
-      size: node.node_type === 'agent' ? 15 : 10,
-      title: `${node.label}${node.scrip ? ` (${node.scrip.toFixed(1)} scrip)` : ''}`,
+      size,
+      shape: node.is_genesis ? 'diamond' : 'dot',
+      title: `${node.name}\nOwner: ${node.owner}\nLindy: ${safeFixed(node.lindy_score, 1)}\nUsage: ${node.usage_count}`,
     }
   })
 }
 
-function buildVisEdges(edges: NetworkEdge[]) {
+function buildVisEdges(edges: DependencyEdge[]) {
   return edges.map((edge, i) => ({
-    id: `${edge.from}-${edge.to}-${i}`,
-    from: edge.from,
-    to: edge.to,
-    color: EDGE_COLORS[edge.interaction_type] || EDGE_COLORS.default,
-    width: Math.min(edge.weight, 5),
+    id: `${edge.source}-${edge.target}-${i}`,
+    from: edge.source,
+    to: edge.target,
     arrows: 'to',
-    title: `${edge.interaction_type} (T${edge.tick})`,
+    color: '#6b7280',
   }))
 }
 
-export function NetworkPanel() {
+export function DependencyGraphPanel() {
   const containerRef = useRef<HTMLDivElement>(null)
   const networkRef = useRef<Network | null>(null)
   const nodesDataSet = useRef(new DataSet<ReturnType<typeof buildVisNodes>[0]>())
   const edgesDataSet = useRef(new DataSet<ReturnType<typeof buildVisEdges>[0]>())
 
   const [physics, setPhysics] = useState(true)
-  const { data, isLoading, error } = useNetwork()
+  const { data, isLoading, error } = useDependencyGraph()
 
   // Initialize network
   useEffect(() => {
     if (!containerRef.current) return
 
-    const options = {
+    const options: Options = {
       nodes: {
         font: { size: 12, color: '#e5e7eb' },
         borderWidth: 2,
@@ -85,9 +67,16 @@ export function NetworkPanel() {
       physics: {
         enabled: physics,
         stabilization: { iterations: 100 },
-        barnesHut: {
-          gravitationalConstant: -2000,
-          springLength: 150,
+        hierarchicalRepulsion: {
+          nodeDistance: 150,
+        },
+      },
+      layout: {
+        hierarchical: {
+          enabled: true,
+          direction: 'UD',
+          sortMethod: 'directed',
+          levelSeparation: 100,
         },
       },
       interaction: {
@@ -119,26 +108,16 @@ export function NetworkPanel() {
     const visNodes = buildVisNodes(data.nodes ?? [])
     const visEdges = buildVisEdges(data.edges ?? [])
 
-    // Update nodes
-    const existingNodeIds = nodesDataSet.current.getIds()
-    const newNodeIds = visNodes.map((n) => n.id)
-
-    // Remove deleted nodes
-    const toRemove = existingNodeIds.filter((id) => !newNodeIds.includes(id as string))
-    if (toRemove.length > 0) nodesDataSet.current.remove(toRemove)
-
-    // Update/add nodes
-    nodesDataSet.current.update(visNodes)
-
-    // Update edges (simpler: just replace all)
+    nodesDataSet.current.clear()
     edgesDataSet.current.clear()
+    nodesDataSet.current.add(visNodes)
     edgesDataSet.current.add(visEdges)
   }, [data])
 
   return (
     <Panel
-      title="Agent Interactions"
-      badge={data?.nodes?.length}
+      title="Dependency Graph"
+      badge={data?.metrics?.total_nodes}
       collapsible
     >
       {/* Controls */}
@@ -152,11 +131,6 @@ export function NetworkPanel() {
           />
           Physics
         </label>
-        {data?.tick_range && (
-          <span className="text-xs text-[var(--text-secondary)]">
-            Ticks {data.tick_range[0]}-{data.tick_range[1]}
-          </span>
-        )}
         <button
           onClick={() => networkRef.current?.fit()}
           className="ml-auto px-2 py-1 text-xs bg-[var(--bg-tertiary)] rounded hover:bg-[var(--accent-primary)]/20"
@@ -165,27 +139,41 @@ export function NetworkPanel() {
         </button>
       </div>
 
+      {/* Metrics */}
+      {data?.metrics && (
+        <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+          <div className="bg-[var(--bg-primary)] rounded p-2">
+            <p className="text-xs text-[var(--text-secondary)]">Max Depth</p>
+            <p className="font-semibold">{data.metrics.max_depth}</p>
+          </div>
+          <div className="bg-[var(--bg-primary)] rounded p-2">
+            <p className="text-xs text-[var(--text-secondary)]">Avg Fanout</p>
+            <p className="font-semibold">{safeFixed(data.metrics.avg_fanout, 1)}</p>
+          </div>
+          <div className="bg-[var(--bg-primary)] rounded p-2">
+            <p className="text-xs text-[var(--text-secondary)]">Genesis Deps</p>
+            <p className="font-semibold">{safeFixed(data.metrics.genesis_dependency_ratio * 100, 0)}%</p>
+          </div>
+        </div>
+      )}
+
       {/* Legend */}
       <div className="flex flex-wrap gap-3 mb-3 text-xs">
         <div className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-full bg-green-500" />
-          <span>Active</span>
+          <span className="w-3 h-3 bg-amber-500 rotate-45" />
+          <span>Genesis</span>
         </div>
         <div className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-full bg-gray-500" />
-          <span>Idle</span>
+          <span className="w-3 h-3 rounded-full bg-green-500" />
+          <span>Agent</span>
         </div>
         <div className="flex items-center gap-1">
           <span className="w-3 h-3 rounded-full bg-blue-500" />
-          <span>Frozen</span>
+          <span>Contract</span>
         </div>
         <div className="flex items-center gap-1">
-          <span className="w-3 h-3 bg-purple-500 rotate-45" />
-          <span>Artifact</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="w-3 h-3 bg-amber-500 rotate-45" />
-          <span>Genesis</span>
+          <span className="w-3 h-3 rounded-full bg-purple-500" />
+          <span>Data</span>
         </div>
       </div>
 
@@ -197,7 +185,7 @@ export function NetworkPanel() {
 
       {error && (
         <p className="text-[var(--accent-danger)] text-sm">
-          Failed to load network: {error.message}
+          Failed to load dependency graph: {error.message}
         </p>
       )}
 
@@ -209,7 +197,7 @@ export function NetworkPanel() {
 
       {data && (data.nodes?.length ?? 0) === 0 && (
         <p className="text-sm text-[var(--text-secondary)] text-center mt-2">
-          No interactions yet
+          No dependencies yet
         </p>
       )}
     </Panel>

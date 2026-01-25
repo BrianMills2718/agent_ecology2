@@ -11,6 +11,8 @@ import { ThinkingPanel } from '../panels/ThinkingPanel'
 import { NetworkPanel } from '../panels/NetworkPanel'
 import { ChartsPanel } from '../panels/ChartsPanel'
 import { EmergencePanel } from '../panels/EmergencePanel'
+import { CapitalFlowPanel } from '../panels/CapitalFlowPanel'
+import { DependencyGraphPanel } from '../panels/DependencyGraphPanel'
 
 export function MainGrid() {
   const connect = useWebSocketStore((state) => state.connect)
@@ -39,7 +41,9 @@ export function MainGrid() {
         {/* Center column - Visualizations */}
         <div className="space-y-4">
           <NetworkPanel />
+          <DependencyGraphPanel />
           <ChartsPanel />
+          <CapitalFlowPanel />
           <ActivityPanel />
           <ThinkingPanel />
         </div>
