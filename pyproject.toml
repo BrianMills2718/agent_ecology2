@@ -27,6 +27,8 @@ filterwarnings = [
 ]
 markers = [
     "external: marks tests as external (real API calls, slow) - skipped by default, run with --run-external",
+    "timeout: marks tests with timeout limits",
+    "slow: marks tests as slow running",
 ]
 
 [tool.coverage.run]
