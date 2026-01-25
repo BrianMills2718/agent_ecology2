@@ -1,4 +1,4 @@
-# Plan 140: Kernel Permission Fixes
+# Plan #201: Kernel Permission Fixes
 
 **Status:** ✅ Complete
 **Priority:** High

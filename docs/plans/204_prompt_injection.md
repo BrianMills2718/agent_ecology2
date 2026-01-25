@@ -1,4 +1,4 @@
-# Plan #180: Configurable Mandatory Prompt Injection
+# Plan #204: Configurable Mandatory Prompt Injection
 
 **Status:** ✅ Superseded
 **Priority:** Low

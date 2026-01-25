@@ -1,4 +1,4 @@
-# Plan 145: Supervisor Auto-Restart
+# Plan #203: Supervisor Auto-Restart
 
 **Status:** ✅ Complete
 
