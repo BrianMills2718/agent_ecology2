@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-25 (Plan #198 - Re-verified, no changes)
+**Last verified:** 2026-01-25 (Plan #213 - Re-verified, learning changes do not affect execution model)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
