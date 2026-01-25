@@ -76,7 +76,9 @@ Add section on discovering artifact interfaces before invoking.
 ## Files Affected
 
 - `src/world/executor.py` (modify) - Add auto-describe method, improve error messages
+- `src/world/world.py` (modify) - Improve method_not_found error message
 - `src/world/artifacts.py` (modify) - Add `__getattr__` for helpful attribute errors
 - `src/agents/_handbook/actions.md` (modify) - Add interface discovery guidance
+- `tests/unit/test_error_learning.py` (create) - Tests for improved error messages
 
 ---
