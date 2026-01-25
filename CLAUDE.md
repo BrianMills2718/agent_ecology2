@@ -3,6 +3,11 @@
 > **BEFORE DOING ANYTHING:** Run `pwd`. If you're in `agent_ecology/` (main) and plan to edit files, **STOP**.
 > Create a worktree first: `make worktree`. Multiple instances in main = corrupted work.
 
+> **CRITICAL - CWD AND WORKTREES:** Your Claude Code session has a persistent working directory (CWD).
+> If your CWD is inside a worktree and that worktree is deleted, YOUR SHELL BREAKS.
+> **Never run `make finish` from inside the worktree you're finishing** - it will delete your CWD.
+> Instead: create PR, then tell user to run `make finish` from main.
+
 ---
 
 ## Quick Reference - Make Commands
@@ -94,8 +99,6 @@ make clean-worktrees-auto  # Auto-cleanup orphaned worktrees
 
 ### The Complete Cycle (4 Steps)
 
-**CC does everything autonomously - no human intervention needed.**
-
 ```
 1. START            -->  make worktree (claim + create isolated workspace)
        |
@@ -104,12 +107,16 @@ make clean-worktrees-auto  # Auto-cleanup orphaned worktrees
 3. VERIFY           -->  make test && make lint (run checks locally)
        |
 4. SHIP             -->  make pr-ready && make pr
-                         cd /path/to/main  (SEPARATE command first!)
-                         make finish BRANCH=X PR=N
+                         STOP HERE if you're in the worktree!
+                         Tell user: "Please run from main: make finish BRANCH=X PR=N"
 ```
 
-**Step 4 detail:** Run `make finish` FROM MAIN (not from worktree).
-This command: merges PR + auto-completes plan + releases claim + deletes worktree.
+**Step 4 - WHO runs `make finish`:**
+- If you're a **CC in a worktree**: Create PR, then STOP. Tell user to run `make finish` from main.
+- If you're a **CC in main** or the **user**: Run `make finish BRANCH=X PR=N`.
+
+**WHY:** `make finish` deletes the worktree. If your CWD is inside that worktree, your shell breaks.
+The hooks will block you, but it's better to know the correct workflow upfront.
 
 **CRITICAL:** The `cd` must be a SEPARATE command, not `cd && make finish`.
 Why: `cd X && make Y` runs in a subshell - it doesn't change your shell's CWD.
