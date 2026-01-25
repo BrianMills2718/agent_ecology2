@@ -1,9 +1,9 @@
 # Plan #149: Dashboard Architecture Refactor
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** High
-**Blocked By:** ADR-0020 (Event Schema Contract)
-**Blocks:** #150 (Backend Event Emission)
+**Blocked By:** None (ADR-0020 accepted 2026-01-25)
+**Blocks:** None
 
 ---
 
@@ -42,18 +42,23 @@
 
 ## Files Affected
 
-**Create:**
-- `src/dashboard/models/events.py` - Event type models (Pydantic)
-- `src/dashboard/models/state.py` - State models (agent, artifact, world)
-- `src/dashboard/models/metrics.py` - Computed metrics models
-- `src/dashboard/core/event_parser.py` - Parse JSONL → events
-- `src/dashboard/core/state_tracker.py` - Events → current state
-- `src/dashboard/core/metrics_engine.py` - State → metrics
+**Create (Phase 1 - v2 modules alongside existing):**
+- `src/dashboard/models_v2/__init__.py` - Package init
+- `src/dashboard/models_v2/events.py` - Event type models (Pydantic)
+- `src/dashboard/models_v2/state.py` - State models (agent, artifact, world)
+- `src/dashboard/models_v2/metrics.py` - Computed metrics models
+- `src/dashboard/core_v2/__init__.py` - Package init
+- `src/dashboard/core_v2/event_parser.py` - Parse JSONL → events
+- `src/dashboard/core_v2/state_tracker.py` - Events → current state
+- `src/dashboard/core_v2/metrics_engine.py` - State → metrics
+- `src/dashboard/api/__init__.py` - Package init
+- `src/dashboard/api/routes/__init__.py` - Package init
 - `src/dashboard/api/routes/agents.py` - Agent endpoints
 - `src/dashboard/api/routes/artifacts.py` - Artifact endpoints
 - `src/dashboard/api/routes/metrics.py` - Metrics endpoints
 - `src/dashboard/api/routes/search.py` - Search endpoint
 - `src/dashboard/api/websocket.py` - WebSocket handling
+- `tests/unit/dashboard/__init__.py` - Package init
 - `tests/unit/dashboard/test_event_parser.py`
 - `tests/unit/dashboard/test_state_tracker.py`
 - `tests/unit/dashboard/test_metrics_engine.py`

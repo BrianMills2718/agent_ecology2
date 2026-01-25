@@ -174,7 +174,7 @@ Master index of all gaps and their implementation plans.
 | 146 | [Plan 146: Unified Artifact Intelligence](146_unified_artifact_intelligence.md) | High | 🚧 In Progress | Agent self-optimization, prompt marketplace, memory trading |
 | 147 | [Dashboard Features - Latency, Search, Comparison](147_dashboard_features.md) | Medium | ✅ Complete | - |
 | 148 | [Plan 148: ADR-0019 Implementation Audit](148_adr019_implementation_audit.md) | High | ✅ Complete | Full contract-based permission system |
-| 149 | [Dashboard Architecture Refactor](149_dashboard_architecture.md) | High | 📋 Planned | #150 (Backend Event Emission) |
+| 149 | [Dashboard Architecture Refactor](149_dashboard_architecture.md) | High | 🚧 In Progress | - |
 | 150 | [Plan 150: Prompt Component Library](150_prompt_component_library.md) | High | ✅ Complete | Agent behavior experiments |
 | 151 | [Backend Event Emission](151_backend_event_emission.md) | High | ✅ Complete | - |
 | 155 | [V4 Architecture - Deferred Considerations](155_v4_architecture_deferred.md) | low (until v3 fixes validated) | 📋 deferred | - |
