@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from ..config import get
 
-# Literal type for valid action types (narrow waist: only 5 verbs)
+# Literal type for valid action types (narrow waist: 6 verbs + query)
 ActionType = Literal[
     "noop",
     "read_artifact",
@@ -13,6 +13,7 @@ ActionType = Literal[
     "edit_artifact",  # Plan #131: Claude Code-style editing
     "delete_artifact",
     "invoke_artifact",
+    "query_kernel",  # Plan #184: Direct kernel state queries
 ]
 
 # Type alias for action validation result
@@ -22,7 +23,7 @@ ActionValidationResult = dict[str, Any] | str
 ACTION_SCHEMA: str = """
 You must respond with a single JSON object representing your action.
 
-## Available Actions (5 verbs)
+## Available Actions (6 types)
 
 1. read_artifact - Read artifact content
    {"action_type": "read_artifact", "artifact_id": "<id>"}
@@ -42,6 +43,24 @@ You must respond with a single JSON object representing your action.
 
 5. invoke_artifact - Call artifact method
    {"action_type": "invoke_artifact", "artifact_id": "<id>", "method": "<method>", "args": [...]}
+
+6. query_kernel - Query kernel state directly (read-only, no invocation cost)
+   {"action_type": "query_kernel", "query_type": "<type>", "params": {...}}
+
+   Query types:
+   - artifacts: Find artifacts (params: owner, type, executable, name_pattern, limit, offset)
+   - artifact: Get single artifact metadata (params: artifact_id)
+   - balances: Get scrip balances (params: principal_id optional, omit for all)
+   - resources: Get resources (params: principal_id required, resource optional)
+   - quotas: Get quota limits/usage (params: principal_id required)
+   - principals: List principals (params: limit)
+   - principal: Get principal info (params: principal_id)
+   - mint: Mint auction status (params: status=true for current)
+   - events: Recent events (params: limit)
+   - invocations: Invocation stats (params: artifact_id or invoker_id, limit)
+   - frozen: Frozen agents (params: agent_id optional)
+   - libraries: Installed libraries (params: principal_id)
+   - dependencies: Artifact dependencies (params: artifact_id)
 
 ## Genesis Artifacts (System)
 
@@ -115,10 +134,10 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
         return "Response must be a JSON object"
 
     action_type: ActionType | str = data.get("action_type", "").lower()
-    if action_type not in ["noop", "read_artifact", "write_artifact", "edit_artifact", "delete_artifact", "invoke_artifact"]:
+    if action_type not in ["noop", "read_artifact", "write_artifact", "edit_artifact", "delete_artifact", "invoke_artifact", "query_kernel"]:
         if action_type == "transfer":
             return "transfer is not a kernel action. Use: invoke_artifact('genesis_ledger', 'transfer', [from_id, to_id, amount])"
-        return f"Invalid action_type: {action_type}"
+        return f"Invalid action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel"
 
     # Get validation limits from config
     max_artifact_id_length: int = get("validation.max_artifact_id_length") or 128
@@ -178,5 +197,23 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
         args: Any = data.get("args", [])
         if not isinstance(args, list):
             return "invoke_artifact 'args' must be a list"
+
+    elif action_type == "query_kernel":
+        # Plan #184: Direct kernel state queries
+        query_type = data.get("query_type")
+        if not query_type:
+            return "query_kernel requires 'query_type'"
+        if not isinstance(query_type, str):
+            return "query_kernel 'query_type' must be a string"
+        valid_query_types = [
+            "artifacts", "artifact", "balances", "resources", "quotas",
+            "principals", "principal", "mint", "events", "invocations",
+            "frozen", "libraries", "dependencies"
+        ]
+        if query_type not in valid_query_types:
+            return f"Unknown query_type '{query_type}'. Valid types: {', '.join(valid_query_types)}"
+        params = data.get("params", {})
+        if not isinstance(params, dict):
+            return "query_kernel 'params' must be a dict"
 
     return data
