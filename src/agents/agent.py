@@ -174,6 +174,9 @@ class Agent:
     # Subscribed artifacts configuration (Plan #191)
     _subscribed_artifacts: list[str]
 
+    # Context section control (Plan #192)
+    _context_sections: dict[str, bool]
+
     def __init__(
         self,
         agent_id: str,
@@ -225,6 +228,19 @@ class Agent:
         self._reflex_artifact_id = None  # Plan #143: Reflex artifact reference
         self._longterm_memory_artifact_id = None  # Plan #146: Long-term memory artifact reference
         self._subscribed_artifacts = []  # Plan #191: Subscribed artifacts
+        # Plan #192: Context section control - defaults to all enabled
+        self._context_sections = {
+            "working_memory": True,
+            "rag_memories": True,
+            "action_history": True,
+            "failure_history": True,
+            "recent_events": True,
+            "resource_metrics": True,
+            "mint_submissions": True,
+            "quota_info": True,
+            "metacognitive": True,
+            "subscribed_artifacts": True,
+        }
 
         # If artifact-backed, load config from artifact content
         if artifact is not None:
@@ -344,6 +360,15 @@ class Agent:
                 self._subscribed_artifacts = [
                     aid for aid in subscribed if isinstance(aid, str)
                 ]
+
+        # Load context sections config if present (Plan #192)
+        if "context_sections" in config:
+            sections = config.get("context_sections", {})
+            if isinstance(sections, dict):
+                # Merge with defaults - only update known sections
+                for section, enabled in sections.items():
+                    if section in self._context_sections and isinstance(enabled, bool):
+                        self._context_sections[section] = enabled
 
         # Load working memory from artifact content if present (Plan #59)
         self._working_memory = self._extract_working_memory(config)
@@ -749,6 +774,15 @@ class Agent:
         self._alive = value
 
     @property
+    def context_sections(self) -> dict[str, bool]:
+        """Get context section configuration (Plan #192)."""
+        return self._context_sections.copy()
+
+    def is_section_enabled(self, section: str) -> bool:
+        """Check if a prompt section is enabled (Plan #192)."""
+        return self._context_sections.get(section, True)
+
+    @property
     def is_genesis(self) -> bool:
         """Whether this is a genesis agent (loaded at startup) vs spawned at runtime.
 
@@ -795,9 +829,9 @@ class Agent:
             # Truncate to avoid huge context
             last_action_info = f"Last action: {self.last_action_result[:150]}"
 
-        # Get memories using configurable RAG
+        # Get memories using configurable RAG (Plan #192: section control)
         memories: str = "(No relevant memories)"
-        if self.rag_config.get("enabled", True):
+        if self.is_section_enabled("rag_memories") and self.rag_config.get("enabled", True):
             rag_limit: int = self.rag_config.get("limit", 5)
             query_template: str = self.rag_config.get("query_template", "")
 
@@ -837,10 +871,10 @@ class Agent:
         else:
             artifact_list = "(No artifacts yet)"
 
-        # Get quota info if available
+        # Get quota info if available (Plan #192: section control)
         quotas: dict[str, Any] = world_state.get('quotas', {}).get(self.agent_id, {})
         quota_info: str = ""
-        if quotas:
+        if self.is_section_enabled("quota_info") and quotas:
             # Support both new and legacy field names
             tokens_quota = quotas.get('llm_tokens_quota', quotas.get('compute_quota', 50))
             quota_info = f"""
@@ -850,11 +884,11 @@ class Agent:
 - Disk used: {quotas.get('disk_used', 0)} bytes
 - Disk available: {quotas.get('disk_available', 10000)} bytes"""
 
-        # Plan #93: Resource visibility metrics
+        # Plan #93: Resource visibility metrics (Plan #192: section control)
         # Shows detailed resource consumption for agent self-regulation
         resource_metrics_section: str = ""
         resource_metrics_data: dict[str, Any] = world_state.get('resource_metrics', {}).get(self.agent_id, {})
-        if resource_metrics_data and resource_metrics_data.get('resources'):
+        if self.is_section_enabled("resource_metrics") and resource_metrics_data and resource_metrics_data.get('resources'):
             metrics_lines: list[str] = ["## Resource Consumption"]
             resources_data: dict[str, Any] = resource_metrics_data.get('resources', {})
             for resource_name, metrics in resources_data.items():
@@ -881,20 +915,21 @@ class Agent:
 
             resource_metrics_section = "\n".join(metrics_lines)
 
-        # Format mint submissions
+        # Format mint submissions (Plan #192: section control)
         mint_subs: dict[str, Any] = world_state.get('mint_submissions', {})
-        mint_info: str
-        if mint_subs:
-            mint_lines: list[str] = []
-            for art_id, sub in mint_subs.items():
-                status: str = sub.get('status', 'unknown')
-                if status == 'scored':
-                    mint_lines.append(f"- {art_id}: SCORED (score: {sub.get('score')}) by {sub.get('submitter')}")
-                else:
-                    mint_lines.append(f"- {art_id}: {status.upper()} by {sub.get('submitter')}")
-            mint_info = "\n## Mint Submissions\n" + "\n".join(mint_lines)
-        else:
-            mint_info = "\n## Mint Submissions\n(No submissions yet - submit code artifacts to mint scrip!)"
+        mint_info: str = ""
+        if self.is_section_enabled("mint_submissions"):
+            if mint_subs:
+                mint_lines: list[str] = []
+                for art_id, sub in mint_subs.items():
+                    status: str = sub.get('status', 'unknown')
+                    if status == 'scored':
+                        mint_lines.append(f"- {art_id}: SCORED (score: {sub.get('score')}) by {sub.get('submitter')}")
+                    else:
+                        mint_lines.append(f"- {art_id}: {status.upper()} by {sub.get('submitter')}")
+                mint_info = "\n## Mint Submissions\n" + "\n".join(mint_lines)
+            else:
+                mint_info = "\n## Mint Submissions\n(No submissions yet - submit code artifacts to mint scrip!)"
 
         # Format last action result feedback
         action_feedback: str
@@ -915,19 +950,19 @@ class Agent:
 Your previous config is still active. Fix the JSON and try again.
 """
 
-        # Plan #88: Format recent failures for learning from mistakes
+        # Plan #88: Format recent failures for learning from mistakes (Plan #192: section control)
         recent_failures_section: str = ""
-        if self.failure_history:
+        if self.is_section_enabled("failure_history") and self.failure_history:
             failure_lines = "\n".join(f"- {f}" for f in self.failure_history)
             recent_failures_section = f"""
 ## Recent Failures (Learn from these!)
 {failure_lines}
 """
 
-        # Plan #156: Format action history
+        # Plan #156: Format action history (Plan #192: section control)
         # Plan #160: Add pattern analysis and metacognitive prompting (no enforcement)
         action_history_section: str = ""
-        if self.action_history:
+        if self.is_section_enabled("action_history") and self.action_history:
             # Analyze patterns for repeated actions
             pattern_analysis = self._analyze_action_patterns()
             pattern_section = ""
@@ -941,10 +976,10 @@ Your previous config is still active. Fix the JSON and try again.
 {self._format_action_history()}
 {pattern_section}"""
 
-        # Plan #160: Metacognitive prompting - encourage self-evaluation without enforcement
+        # Plan #160: Metacognitive prompting (Plan #192: section control)
         # Include economic context so agent understands how to generate revenue
         metacognitive_section: str = ""
-        if self.actions_taken >= 3:  # Only after a few actions
+        if self.is_section_enabled("metacognitive") and self.actions_taken >= 3:  # Only after a few actions
             # Economic context: help agent understand revenue sources
             if other_agents:
                 economic_context = f"Trading partners available: {', '.join(other_agents)}. Revenue comes from: (1) others using your services, (2) winning mint auctions."
@@ -959,11 +994,11 @@ Before choosing your next action, briefly consider:
 3. Should I record any lessons in my working memory for future reference?
 """
 
-        # Format recent events (short-term history for situational awareness)
+        # Format recent events (Plan #192: section control)
         recent_events: list[dict[str, Any]] = world_state.get('recent_events', [])
         recent_events_count: int = config_get("agent.prompt.recent_events_count") or 5
-        recent_activity: str
-        if recent_events:
+        recent_activity: str = ""
+        if self.is_section_enabled("recent_events") and recent_events:
             event_lines: list[str] = []
             for event in recent_events[-recent_events_count:]:
                 event_type: str = event.get('type', 'unknown')
@@ -1027,11 +1062,11 @@ Before choosing your next action, briefly consider:
             if first_tick_hint:
                 first_tick_section = f"\n## Getting Started\n{first_tick_hint}\n"
 
-        # Working memory injection (Plan #59)
+        # Working memory injection (Plan #59, Plan #192: section control)
         # Also check for {agent_id}_working_memory artifact if no embedded working_memory
         working_memory_section: str = ""
         memory_artifact_id = f"{self.agent_id}_working_memory"
-        if self.inject_working_memory:
+        if self.is_section_enabled("working_memory") and self.inject_working_memory:
             working_memory_to_inject: dict[str, Any] | None = self._working_memory
 
             # If no embedded working_memory, try loading from {agent_id}_working_memory artifact
@@ -1090,9 +1125,9 @@ This will persist across your thinking cycles.
                 if prefix or suffix:
                     effective_system_prompt = f"{prefix}\n{self.system_prompt}\n{suffix}".strip()
 
-        # Plan #191: Subscribed artifacts injection
+        # Plan #191: Subscribed artifacts injection (Plan #192: section control)
         subscribed_section: str = ""
-        if self._subscribed_artifacts:
+        if self.is_section_enabled("subscribed_artifacts") and self._subscribed_artifacts:
             # Get config limits
             max_subscribed: int = config_get("agent.subscribed_artifacts.max_count") or 5
             max_size_per_artifact: int = config_get("agent.subscribed_artifacts.max_size_bytes") or 2000

@@ -11,7 +11,7 @@ from ..agents.schema import ActionType as ActionTypeLiteral
 
 
 class ActionType(str, Enum):
-    """The narrow waist - 6 physics verbs (plus noop, query, subscriptions)"""
+    """The narrow waist - 6 physics verbs (plus noop, query, subscriptions, context)"""
 
     NOOP = "noop"
     READ_ARTIFACT = "read_artifact"
@@ -22,6 +22,7 @@ class ActionType(str, Enum):
     QUERY_KERNEL = "query_kernel"  # Plan #184: Direct kernel state queries
     SUBSCRIBE_ARTIFACT = "subscribe_artifact"  # Plan #191: Subscribe to artifact
     UNSUBSCRIBE_ARTIFACT = "unsubscribe_artifact"  # Plan #191: Unsubscribe
+    CONFIGURE_CONTEXT = "configure_context"  # Plan #192: Context section control
     # NOTE: No TRANSFER - all transfers via genesis_ledger.transfer()
 
 
@@ -276,6 +277,26 @@ class UnsubscribeArtifactIntent(ActionIntent):
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
         d["artifact_id"] = self.artifact_id
+        return d
+
+
+@dataclass
+class ConfigureContextIntent(ActionIntent):
+    """Configure which prompt sections are enabled (Plan #192).
+
+    Updates the agent's context_sections configuration to enable/disable
+    specific prompt sections like working_memory, action_history, etc.
+    """
+
+    sections: dict[str, bool]
+
+    def __init__(self, principal_id: str, sections: dict[str, bool], reasoning: str = "") -> None:
+        super().__init__(ActionType.CONFIGURE_CONTEXT, principal_id, reasoning=reasoning)
+        self.sections = sections
+
+    def to_dict(self) -> dict[str, Any]:
+        d = super().to_dict()
+        d["sections"] = self.sections
         return d
 
 
