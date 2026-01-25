@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-21 (Plan #148 - ADR-0019 Audit, removed legacy transfer_fee)
+**Last verified:** 2026-01-25 (Plan #190 - Added prompt_injection config)
 
 ---
 
@@ -343,6 +343,25 @@ libraries:
 **Runtime installation:** Agents can install additional libraries via `kernel_actions.install_library()`. Each installation deducts ~5MB from disk quota.
 
 **Blocklist:** Packages that could escape Docker sandbox (e.g., `docker` for daemon access, `debugpy` for debugger attachment). Returns `BLOCKED_PACKAGE` error code.
+
+### Prompt Injection (Plan #190)
+
+```yaml
+prompt_injection:
+  enabled: false          # Master switch (off by default)
+  scope: "all"            # "none" | "genesis" | "all"
+  mandatory_prefix: ""    # Injected BEFORE system prompt
+  mandatory_suffix: ""    # Injected AFTER system prompt
+```
+
+**Scopes:**
+| Scope | Behavior |
+|-------|----------|
+| `none` | No injection (same as `enabled: false`) |
+| `genesis` | Only genesis agents (from `src/agents/`) receive injection |
+| `all` | All agents including spawned ones receive injection |
+
+**Use case:** Experimenting with different incentive framings without code changes. The injected content appears in every LLM call for affected agents.
 
 ---
 

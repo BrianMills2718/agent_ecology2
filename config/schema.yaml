@@ -478,3 +478,16 @@ dashboard:
 # -----------------------------------------------------------------------------
 id_generation:
   uuid_hex_length: <number>     # Characters from UUID hex for IDs (default: 8)
+
+# -----------------------------------------------------------------------------
+# PROMPT INJECTION (Plan #187)
+# Mandatory content injected into agent prompts for incentive experiments
+# -----------------------------------------------------------------------------
+prompt_injection:
+  enabled: <boolean>            # Enable prompt injection (default: false)
+  scope: <string>               # "none" | "genesis" | "all" (default: "all")
+                                # - "none": No injection (same as enabled: false)
+                                # - "genesis": Only initial agents from src/agents/
+                                # - "all": All agents including spawned ones
+  mandatory_prefix: <string>    # Content injected BEFORE agent's system prompt
+  mandatory_suffix: <string>    # Content injected AFTER agent's system prompt

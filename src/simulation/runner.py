@@ -439,11 +439,13 @@ class SimulationRunner:
                 artifact = self.world.artifacts.get(principal_id)
                 if artifact and artifact.is_agent:
                     # Load agent from existing artifact
+                    # Plan #190: Spawned agents are not genesis agents
                     new_agent = Agent.from_artifact(
                         artifact,
                         store=self.world.artifacts,
                         log_dir=log_dir,
                         run_id=self.run_id,
+                        is_genesis=False,
                     )
                     new_agents.append(new_agent)
                     if self.verbose:
@@ -473,11 +475,13 @@ class SimulationRunner:
             self.world.artifacts.artifacts[principal_id] = agent_artifact
 
             # Create agent from artifact
+            # Plan #190: Spawned agents are not genesis agents
             new_agent = Agent.from_artifact(
                 agent_artifact,
                 store=self.world.artifacts,
                 log_dir=log_dir,
                 run_id=self.run_id,
+                is_genesis=False,
             )
             new_agents.append(new_agent)
 

@@ -34,6 +34,8 @@ Everything is an artifact. Other entity types are artifacts with specific proper
 | **Agent** | Autonomous principal using LLM for decisions (common case) | `has_standing=true`, `can_execute=true`, LLM-based |
 | **Contract** | Executable artifact that answers permission questions | `can_execute=true`, implements `check_permission` |
 | **Genesis Artifact** | Artifact created at system initialization | Prefixed with `genesis_`, solves cold-start |
+| **Genesis Agent** | Agent loaded from `src/agents/` at startup | `is_genesis=true` (Plan #190) |
+| **Spawned Agent** | Agent created at runtime via `genesis_ledger.spawn_principal` | `is_genesis=false` (Plan #190) |
 
 **Note:** "Agent" is often used loosely. Prefer "autonomous principal" when the decision engine could be non-LLM (RL, rules, code). "Agent" implies LLM-based.
 

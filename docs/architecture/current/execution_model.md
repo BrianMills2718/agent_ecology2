@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-23 (Plan #160 - Self-invoke feedback clarification)
+**Last verified:** 2026-01-25 (Plan #190 - is_genesis tracking for spawned agents)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

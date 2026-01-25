@@ -185,6 +185,7 @@ class Agent:
         artifact_store: ArtifactStore | None = None,
         inject_working_memory: bool | None = None,
         working_memory_max_bytes: int | None = None,
+        is_genesis: bool = True,
     ) -> None:
         """Initialize an agent.
 
@@ -200,6 +201,7 @@ class Agent:
             artifact_store: Optional artifact store for memory access (INT-004)
             inject_working_memory: Whether to inject working memory into prompts (Plan #59)
             working_memory_max_bytes: Max size of working memory in bytes (Plan #59)
+            is_genesis: Whether this is a genesis agent (Plan #190, default True)
         """
         # Get defaults from config
         default_model: str = config_get("llm.default_model") or "gemini/gemini-3-flash-preview"
@@ -219,6 +221,7 @@ class Agent:
         self._components_config = None  # Plan #150: Prompt component config
         self._reflex_artifact_id = None  # Plan #143: Reflex artifact reference
         self._longterm_memory_artifact_id = None  # Plan #146: Long-term memory artifact reference
+        self._is_genesis = is_genesis  # Plan #190: Track genesis vs spawned agents
 
         # If artifact-backed, load config from artifact content
         if artifact is not None:
@@ -501,6 +504,7 @@ class Agent:
         store: ArtifactStore | None = None,
         log_dir: str | None = None,
         run_id: str | None = None,
+        is_genesis: bool = True,
     ) -> Agent:
         """Create an Agent from an artifact.
 
@@ -513,6 +517,7 @@ class Agent:
             store: Optional artifact store for memory access
             log_dir: Directory for LLM logs
             run_id: Run ID for log organization
+            is_genesis: Whether this is a genesis agent (Plan #190, default True)
 
         Returns:
             Agent instance wrapping the artifact
@@ -542,6 +547,7 @@ class Agent:
             rag_config=config.get("rag"),
             artifact=artifact,
             artifact_store=store,
+            is_genesis=is_genesis,
         )
 
     def to_artifact(self) -> Artifact:
@@ -729,8 +735,42 @@ class Agent:
         """Set whether agent should continue running."""
         self._alive = value
 
+    @property
+    def is_genesis(self) -> bool:
+        """Whether this is a genesis agent (loaded at startup, not spawned).
+
+        Plan #190: Used for scoped prompt injection - genesis agents can be
+        targeted separately from spawned agents.
+        """
+        return self._is_genesis
+
     def build_prompt(self, world_state: dict[str, Any]) -> str:
         """Build the prompt for the LLM (events require genesis_event_log)"""
+        # Plan #190: Apply mandatory prompt injection based on config
+        injection_enabled: bool = config_get("prompt_injection.enabled") or False
+        injection_scope: str = config_get("prompt_injection.scope") or "all"
+
+        # Determine if injection applies to this agent
+        should_inject = (
+            injection_enabled
+            and injection_scope != "none"
+            and (injection_scope == "all" or (injection_scope == "genesis" and self._is_genesis))
+        )
+
+        if should_inject:
+            prefix: str = config_get("prompt_injection.mandatory_prefix") or ""
+            suffix: str = config_get("prompt_injection.mandatory_suffix") or ""
+            # Build effective system prompt with injection
+            parts: list[str] = []
+            if prefix:
+                parts.append(prefix)
+            parts.append(self.system_prompt)
+            if suffix:
+                parts.append(suffix)
+            effective_system_prompt: str = "\n".join(parts)
+        else:
+            effective_system_prompt = self.system_prompt
+
         # Extract world state for RAG context
         tick: int = world_state.get('tick', 0)
         # Balance may be dict {'llm_tokens': int, 'scrip': int} or just int
@@ -1050,7 +1090,7 @@ You are {self.agent_id}. Time remaining: {time_remaining_str} ({progress_str} co
 - Actions: {success_rate_str} successful
 - Artifacts created: {len(my_artifacts)}
 
-{self.system_prompt}
+{effective_system_prompt}
 {first_tick_section}{working_memory_section}{action_feedback}{config_error_section}{recent_failures_section}{action_history_section}{metacognitive_section}
 ## Your Memories
 {memories}

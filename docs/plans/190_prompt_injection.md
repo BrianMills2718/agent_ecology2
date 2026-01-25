@@ -1,6 +1,6 @@
-# Plan #180: Configurable Mandatory Prompt Injection
+# Plan #190: Configurable Mandatory Prompt Injection
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** Low
 **Blocked By:** None
 **Blocks:** None
@@ -64,18 +64,26 @@ def build_prompt(self, world_state: dict[str, Any]) -> str:
 ## Files Affected
 
 - `config/schema.yaml` - Add prompt_injection config section
-- `src/agents/agent.py` - Modify `build_prompt()` method (~line 732)
+- `src/config_schema.py` - Add PromptInjectionConfig Pydantic model
+- `src/agents/agent.py` - Modify `build_prompt()` method, add `is_genesis` attribute
+- `src/simulation/runner.py` - Pass `is_genesis=False` when creating spawned agents
+- `tests/unit/test_prompt_injection.py` - Unit tests for prompt injection
+- `docs/GLOSSARY.md` - Add genesis agent definition
+- `docs/architecture/current/configuration.md` - Document prompt_injection section
+- `docs/architecture/current/execution_model.md` - Verify (no content change needed)
+- `docs/architecture/current/agents.md` - Update Last verified date
+- `docs/plans/CLAUDE.md` - Update plan index
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Config options exist and are documented in schema.yaml
-- [ ] `enabled: false` by default (no behavior change)
-- [ ] `scope: "all"` injects into all agents including spawned
-- [ ] `scope: "genesis"` injects only into genesis agents
-- [ ] `scope: "none"` disables injection
-- [ ] Injected content appears in actual LLM calls (verify via logs)
+- [x] Config options exist and are documented in schema.yaml
+- [x] `enabled: false` by default (no behavior change)
+- [x] `scope: "all"` injects into all agents including spawned
+- [x] `scope: "genesis"` injects only into genesis agents
+- [x] `scope: "none"` disables injection
+- [x] Injected content appears in actual LLM calls (verify via logs)
 
 ---
 

@@ -1688,6 +1688,36 @@ class LearningConfig(StrictModel):
 
 
 # =============================================================================
+# PROMPT INJECTION CONFIG (Plan #190)
+# =============================================================================
+
+class PromptInjectionConfig(StrictModel):
+    """Configuration for mandatory prompt injection into agent prompts.
+
+    This enables experimentation with different incentive framings by injecting
+    mandatory content that agents cannot override. The scope controls which
+    agents receive the injection.
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable prompt injection (default: disabled, no behavior change)"
+    )
+    scope: Literal["none", "genesis", "all"] = Field(
+        default="all",
+        description="Which agents receive injection: 'none', 'genesis' (initial agents only), or 'all' (including spawned)"
+    )
+    mandatory_prefix: str = Field(
+        default="",
+        description="Content injected BEFORE the agent's system prompt"
+    )
+    mandatory_suffix: str = Field(
+        default="",
+        description="Content injected AFTER the agent's system prompt"
+    )
+
+
+# =============================================================================
 # ROOT CONFIG MODEL
 # =============================================================================
 
@@ -1720,6 +1750,7 @@ class AppConfig(StrictModel):
     libraries: LibrariesConfig = Field(default_factory=LibrariesConfig)
     id_generation: IdGenerationConfig = Field(default_factory=IdGenerationConfig)
     learning: LearningConfig = Field(default_factory=LearningConfig)  # Plan #186
+    prompt_injection: PromptInjectionConfig = Field(default_factory=PromptInjectionConfig)  # Plan #190
 
     # Dynamic fields set at runtime
     principals: list[dict[str, int | str]] = Field(

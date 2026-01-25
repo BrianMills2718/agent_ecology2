@@ -203,7 +203,6 @@ Master index of all gaps and their implementation plans.
 | 177 | [Dashboard Bug Fixes](177_dashboard_bugfixes.md) | High | ✅ Complete | - |
 | 178 | [Plan 178: Configurable Enforcement Strictness](178_enforcement_strictness_config.md) | High | 🚧 In Progress | - |
 | 179 | [Dashboard Bugfixes - Coordination Density & Tick Language](179_dashboard_bugfixes.md) | High | 📋 Planned | - |
-| 180 | [Configurable Mandatory Prompt Injection](180_prompt_injection.md) | Low | 📋 Planned | - |
 | 180 | [Complete Trigger Integration](180_trigger_integration.md) | High | ✅ Complete | Real-time coordination patterns |
 | 181 | [Split Large Core Files](181_split_large_files.md) | Low | 📋 Planned | - |
 | 182 | [Metadata Indexing for Artifact Discovery](182_metadata_indexing.md) | Medium | ✅ Complete | Performance at scale |
@@ -215,6 +214,7 @@ Master index of all gaps and their implementation plans.
 | 187 | [Extended Thinking for Genesis Agents](187_extended_thinking.md) | Medium | ❓ | Improved agent reasoning quality |
 | 188 | [Plan Artifact Pattern for Genesis Agents](188_plan_artifact_pattern.md) | Medium | ❓ | Deliberative agent behavior, observability |
 | 189 | [Meta-Process Robustness Overhaul](189_meta_robustness.md) | **Critical** | 📋 Planned | All future meta-process reliability |
+| 190 | [Configurable Mandatory Prompt Injection](190_prompt_injection.md) | Low | 🚧 In Progress | - |
 ---
 
 ## TDD Workflow
