@@ -1,0 +1,54 @@
+# Scripts Directory
+
+Utility scripts for development and CI. All scripts support `--help` for options.
+
+## Script Summary
+
+### Core Workflow Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `meta_status.py` | Dashboard: claims, PRs, progress |
+| `check_claims.py` | Manage active work claims |
+| `finish_pr.py` | Complete PR lifecycle: merge + cleanup |
+| `merge_pr.py` | Merge PRs via GitHub CLI |
+| `safe_worktree_remove.py` | Safely remove worktrees |
+
+### Plan Management
+
+| Script | Purpose |
+|--------|---------|
+| `check_plan_tests.py` | Verify/run plan test requirements |
+| `complete_plan.py` | Mark plan complete |
+| `sync_plan_status.py` | Sync plan status |
+
+### Quality
+
+| Script | Purpose |
+|--------|---------|
+| `check_doc_coupling.py` | Verify docs updated when source changes |
+
+## Common Commands
+
+```bash
+# Claims
+python scripts/check_claims.py --list              # See active claims
+python scripts/check_claims.py --claim --plan N --task "X"  # Claim work
+python scripts/check_claims.py --release           # Release claim
+
+# Plan tests
+python scripts/check_plan_tests.py --plan N        # Run tests for plan
+python scripts/check_plan_tests.py --plan N --tdd  # See what tests to write
+
+# Plan completion
+python scripts/complete_plan.py --plan N           # Mark complete
+
+# Doc coupling
+python scripts/check_doc_coupling.py --suggest     # What docs to update
+```
+
+## Configuration
+
+Edit config files in repo root to customize behavior:
+- `meta-process.yaml` - Meta-process settings
+- `scripts/doc_coupling.yaml` - Doc-code mappings
