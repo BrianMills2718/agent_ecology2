@@ -1,6 +1,6 @@
 # Plan #181: Split Large Core Files
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** Low
 **Effort:** High
 **Risk:** High (core simulation code)
@@ -55,6 +55,15 @@ These files are hard to navigate, test in isolation, and modify safely.
 - Current structure works (tests pass)
 - Refactoring is risky without immediate benefit
 - Other plans have clearer value
+
+## Files Affected
+
+- src/world/world.py (modify) - reduce size by extracting action execution
+- src/world/action_executor.py (create) - action execution logic extracted from world.py
+- src/world/executor.py (modify) - may extract permission checking
+- src/world/CLAUDE.md (modify) - update module documentation
+- scripts/doc_coupling.yaml (modify) - add new file mappings
+- docs/architecture/current/artifacts_executor.md (modify) - update architecture docs
 
 ## Related
 

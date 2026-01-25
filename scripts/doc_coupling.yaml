@@ -64,6 +64,7 @@ couplings:
   - sources:
       - "src/world/artifacts.py"
       - "src/world/executor.py"
+      - "src/world/action_executor.py"
       - "src/world/actions.py"
     docs:
       - "docs/architecture/current/artifacts_executor.md"
