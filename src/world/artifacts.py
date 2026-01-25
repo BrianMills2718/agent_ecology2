@@ -155,6 +155,9 @@ class Artifact:
     # Access contract for permission checking (Plan #100: Contract System Overhaul)
     # All permissions are checked via contracts - no hardcoded owner bypass
     access_contract_id: str = "genesis_contract_freeware"
+    # User-defined metadata for addressing/categorization (Plan #168)
+    # Arbitrary key-value pairs for agent use (recipient, tags, priority, etc.)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def price(self) -> int:
@@ -228,6 +231,9 @@ class Artifact:
         # Include dependencies if any (Plan #63)
         if self.depends_on:
             result["depends_on"] = self.depends_on
+        # Include metadata if any (Plan #168)
+        if self.metadata:
+            result["metadata"] = self.metadata
         return result
 
     def __getattr__(self, name: str) -> Any:
@@ -245,7 +251,7 @@ class Artifact:
             "name": "id",
         }
 
-        available = ["id", "type", "content", "created_by", "executable", "interface", "policy"]
+        available = ["id", "type", "content", "created_by", "executable", "interface", "policy", "metadata"]
 
         if name in suggestions:
             correct = suggestions[name]
@@ -542,6 +548,7 @@ class ArtifactStore:
         interface: dict[str, Any] | None = None,
         require_interface: bool = False,
         access_contract_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> Artifact:
         """Create or update an artifact. Returns the artifact.
 
@@ -565,9 +572,13 @@ class ArtifactStore:
 
         Access contract (Plan #100):
         - access_contract_id: Contract ID for permission checking (default: genesis_contract_freeware)
+
+        Metadata (Plan #168):
+        - metadata: User-defined key-value pairs for addressing/categorization
         """
         now = datetime.now(timezone.utc).isoformat()
         depends_on = depends_on or []
+        metadata = metadata or {}
 
         # Plan #114: Validate interface requirement for executables
         if executable and require_interface and interface is None:
@@ -603,6 +614,8 @@ class ArtifactStore:
                 artifact.interface = interface
             if access_contract_id is not None:
                 artifact.access_contract_id = access_contract_id
+            # Plan #168: Update metadata (always replace, even with empty dict)
+            artifact.metadata = metadata
         else:
             # Create new - register with ID registry if available (Plan #7)
             if self.id_registry is not None:
@@ -626,6 +639,7 @@ class ArtifactStore:
                 depends_on=depends_on,
                 interface=interface,
                 access_contract_id=contract_id,
+                metadata=metadata,
             )
             self.artifacts[artifact_id] = artifact
 
@@ -837,6 +851,7 @@ class ArtifactStore:
         interface: dict[str, Any] | None = None,
         require_interface: bool = False,
         access_contract_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> WriteResult:
         """Write an artifact and return a standardized result.
 
@@ -856,6 +871,7 @@ class ArtifactStore:
             interface: (Plan #114) Interface schema for executables
             require_interface: (Plan #114) If True, require interface for executables
             access_contract_id: (Plan #100) Contract ID for permission checking
+            metadata: (Plan #168) User-defined key-value pairs
 
         Returns:
             WriteResult with success=True and artifact data, or success=False on error
@@ -873,6 +889,7 @@ class ArtifactStore:
                 interface=interface,
                 require_interface=require_interface,
                 access_contract_id=access_contract_id,
+                metadata=metadata,
             )
         except ValueError as e:
             # Plan #114: Handle interface requirement validation

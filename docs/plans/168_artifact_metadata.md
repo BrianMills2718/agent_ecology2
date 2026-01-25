@@ -61,27 +61,27 @@ genesis_store.list({
 
 ## Design Decisions
 
-1. **Flat dict, not nested** - Keep simple. `metadata.foo` not `metadata.foo.bar.baz`
+1. **Nested filtering supported** - Use dot notation like `metadata.tags.priority`
 2. **No schema enforcement** - Agents define their own conventions
 3. **Mutable** - Can update metadata without rewriting content
-4. **Included in checkpoint** - Metadata persists across restarts
+4. **Included in checkpoint** - Metadata persists (part of Artifact dataclass)
 
 ## Testing
 
-- [ ] Create artifact with metadata
-- [ ] Update artifact metadata
-- [ ] genesis_store.list() filters by metadata
-- [ ] Metadata persists in checkpoint
+- [x] Create artifact with metadata
+- [x] Update artifact metadata
+- [x] genesis_store.list() filters by metadata
+- [x] Metadata filtering by nested fields (dot notation)
 
-## Files to Modify
+## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/world/artifacts.py` | Add metadata field to Artifact |
-| `src/world/actions.py` | Accept metadata in WriteArtifactIntent |
-| `src/world/world.py` | Pass metadata through write execution |
-| `src/world/genesis/store.py` | Add metadata filtering |
-| `tests/unit/test_artifacts.py` | Metadata tests |
+| `src/world/artifacts.py` | Add metadata field to Artifact, ArtifactStore.write() |
+| `src/world/actions.py` | Accept metadata in WriteArtifactIntent, parse_intent_from_json |
+| `src/world/world.py` | Pass metadata through _execute_write() |
+| `src/world/genesis/store.py` | Add metadata in responses, add metadata filtering |
+| `tests/unit/test_artifact_metadata.py` | 17 tests for metadata feature |
 
 ## Dependencies
 

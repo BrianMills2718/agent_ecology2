@@ -132,6 +132,7 @@ class GenesisStore(GenesisArtifact):
             "can_execute": artifact.can_execute,
             "executable": artifact.executable,
             "interface": artifact.interface,  # Plan #114: Enable interface discovery
+            "metadata": artifact.metadata,  # Plan #168: User-defined metadata
         }
         # Optional fields
         if hasattr(artifact, "memory_artifact_id") and artifact.memory_artifact_id:
@@ -163,6 +164,13 @@ class GenesisStore(GenesisArtifact):
         if "can_execute" in filter_dict:
             filtered = [a for a in filtered if a.can_execute == filter_dict["can_execute"]]
 
+        # Plan #168: Filter by metadata fields (dot-notation)
+        # Supports filters like {"metadata.recipient": "bob", "metadata.tags.priority": "high"}
+        for key, expected_value in filter_dict.items():
+            if key.startswith("metadata."):
+                path = key[len("metadata."):]  # Remove "metadata." prefix
+                filtered = [a for a in filtered if self._get_nested_value(a.metadata, path) == expected_value]
+
         # Apply offset
         offset = filter_dict.get("offset", 0)
         if offset > 0:
@@ -174,6 +182,23 @@ class GenesisStore(GenesisArtifact):
             filtered = filtered[:limit]
 
         return filtered
+
+    def _get_nested_value(self, data: dict[str, Any], path: str) -> Any:
+        """Get a value from a nested dict using dot notation.
+
+        Plan #168: Supports paths like "recipient" or "tags.priority".
+        Returns None if path doesn't exist.
+        """
+        if not data:
+            return None
+        keys = path.split(".")
+        value: Any = data
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return None
+        return value
 
     def _get_all_artifacts(self) -> list[Any]:
         """Get all artifacts as Artifact objects (not dicts)."""
