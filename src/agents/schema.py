@@ -60,11 +60,13 @@ You must respond with a single JSON object representing your action.
    {"action_type": "unsubscribe_artifact", "artifact_id": "<id>"}
    Removes the artifact from your subscribed list.
 
-9. configure_context - Configure prompt context sections (Plan #192)
+9. configure_context - Configure prompt context sections (Plan #192, #193)
    {"action_type": "configure_context", "sections": {"<section>": true/false, ...}}
+   Optional: "priorities": {"<section>": <0-100>, ...}
    Enables/disables sections of your prompt context. Valid sections:
    working_memory, rag_memories, action_history, failure_history, recent_events,
    resource_metrics, mint_submissions, quota_info, metacognitive, subscribed_artifacts
+   Priorities control section ordering (higher = appears earlier in prompt, default 50)
 
    Query types:
    - artifacts: Find artifacts (params: owner, type, executable, name_pattern, limit, offset)
@@ -253,6 +255,7 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
 
     elif action_type == "configure_context":
         # Plan #192: Configure prompt context sections
+        # Plan #193: Also supports priorities for section ordering
         sections = data.get("sections")
         if sections is None:
             return "configure_context requires 'sections'"
@@ -268,5 +271,18 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
                 return f"Unknown section '{section}'. Valid sections: {', '.join(valid_sections)}"
             if not isinstance(enabled, bool):
                 return f"Section '{section}' value must be a boolean"
+
+        # Plan #193: Validate optional priorities dict
+        priorities = data.get("priorities")
+        if priorities is not None:
+            if not isinstance(priorities, dict):
+                return "configure_context 'priorities' must be a dict"
+            for section, priority in priorities.items():
+                if section not in valid_sections:
+                    return f"Unknown section '{section}' in priorities. Valid sections: {', '.join(valid_sections)}"
+                if not isinstance(priority, int):
+                    return f"Priority for '{section}' must be an integer"
+                if priority < 0 or priority > 100:
+                    return f"Priority for '{section}' must be between 0 and 100"
 
     return data

@@ -176,6 +176,8 @@ class Agent:
 
     # Context section control (Plan #192)
     _context_sections: dict[str, bool]
+    # Context section priorities (Plan #193) - higher = appears earlier in prompt
+    _context_section_priorities: dict[str, int]
 
     def __init__(
         self,
@@ -240,6 +242,23 @@ class Agent:
             "quota_info": True,
             "metacognitive": True,
             "subscribed_artifacts": True,
+        }
+        # Plan #193: Context section priorities - higher = appears earlier in prompt
+        # Default priorities reflect typical prompt order (0-100 scale)
+        # Sections without explicit priority get 50 (middle) by default
+        self._context_section_priorities = {
+            "working_memory": 90,
+            "subscribed_artifacts": 85,
+            "action_feedback": 80,
+            "config_errors": 78,
+            "failure_history": 75,
+            "action_history": 70,
+            "metacognitive": 65,
+            "rag_memories": 60,
+            "quota_info": 55,
+            "resource_metrics": 50,
+            "mint_submissions": 45,
+            "recent_events": 40,
         }
 
         # If artifact-backed, load config from artifact content
@@ -369,6 +388,16 @@ class Agent:
                 for section, enabled in sections.items():
                     if section in self._context_sections and isinstance(enabled, bool):
                         self._context_sections[section] = enabled
+
+        # Load context section priorities if present (Plan #193)
+        if "context_section_priorities" in config:
+            priorities = config.get("context_section_priorities", {})
+            if isinstance(priorities, dict):
+                # Merge with defaults - only update known sections with valid priorities
+                for section, priority in priorities.items():
+                    if section in self._context_section_priorities and isinstance(priority, int):
+                        # Clamp to 0-100 range
+                        self._context_section_priorities[section] = max(0, min(100, priority))
 
         # Load working memory from artifact content if present (Plan #59)
         self._working_memory = self._extract_working_memory(config)
@@ -783,6 +812,19 @@ class Agent:
         return self._context_sections.get(section, True)
 
     @property
+    def context_section_priorities(self) -> dict[str, int]:
+        """Get context section priorities (Plan #193)."""
+        return self._context_section_priorities.copy()
+
+    def get_section_priority(self, section: str) -> int:
+        """Get priority for a prompt section (Plan #193).
+
+        Higher values = section appears earlier in prompt.
+        Returns 50 (middle priority) for unknown sections.
+        """
+        return self._context_section_priorities.get(section, 50)
+
+    @property
     def is_genesis(self) -> bool:
         """Whether this is a genesis agent (loaded at startup) vs spawned at runtime.
 
@@ -1155,6 +1197,91 @@ This will persist across your thinking cycles.
             if subscribed_lines:
                 subscribed_section = "\n## Subscribed Artifacts\n" + "\n\n".join(subscribed_lines) + "\n"
 
+        # Plan #193: Collect variable sections for priority-based ordering
+        # Each tuple: (priority, section_name, content)
+        # Only include non-empty sections
+        variable_sections: list[tuple[int, str, str]] = []
+
+        if working_memory_section:
+            variable_sections.append((
+                self.get_section_priority("working_memory"),
+                "working_memory",
+                working_memory_section
+            ))
+        if subscribed_section:
+            variable_sections.append((
+                self.get_section_priority("subscribed_artifacts"),
+                "subscribed_artifacts",
+                subscribed_section
+            ))
+        if action_feedback:
+            variable_sections.append((
+                self.get_section_priority("action_feedback"),
+                "action_feedback",
+                action_feedback
+            ))
+        if config_error_section:
+            variable_sections.append((
+                self.get_section_priority("config_errors"),
+                "config_errors",
+                config_error_section
+            ))
+        if recent_failures_section:
+            variable_sections.append((
+                self.get_section_priority("failure_history"),
+                "failure_history",
+                recent_failures_section
+            ))
+        if action_history_section:
+            variable_sections.append((
+                self.get_section_priority("action_history"),
+                "action_history",
+                action_history_section
+            ))
+        if metacognitive_section:
+            variable_sections.append((
+                self.get_section_priority("metacognitive"),
+                "metacognitive",
+                metacognitive_section
+            ))
+        # RAG memories - always included if enabled (even if empty string)
+        if self.is_section_enabled("rag_memories"):
+            variable_sections.append((
+                self.get_section_priority("rag_memories"),
+                "rag_memories",
+                f"\n## Your Memories\n{memories}\n"
+            ))
+        if quota_info:
+            variable_sections.append((
+                self.get_section_priority("quota_info"),
+                "quota_info",
+                quota_info
+            ))
+        if resource_metrics_section:
+            variable_sections.append((
+                self.get_section_priority("resource_metrics"),
+                "resource_metrics",
+                resource_metrics_section
+            ))
+        if mint_info:
+            variable_sections.append((
+                self.get_section_priority("mint_submissions"),
+                "mint_submissions",
+                mint_info
+            ))
+        if recent_activity:
+            variable_sections.append((
+                self.get_section_priority("recent_events"),
+                "recent_events",
+                recent_activity
+            ))
+
+        # Sort by priority (higher = earlier in prompt)
+        variable_sections.sort(key=lambda x: x[0], reverse=True)
+
+        # Join sorted sections
+        sorted_sections_content = "".join(content for _, _, content in variable_sections)
+
         prompt: str = f"""=== GOAL: Maximize scrip balance by simulation end ===
 You are {self.agent_id}. Time remaining: {time_remaining_str} ({progress_str} complete)
 
@@ -1164,15 +1291,10 @@ You are {self.agent_id}. Time remaining: {time_remaining_str} ({progress_str} co
 - Artifacts created: {len(my_artifacts)}
 
 {effective_system_prompt}
-{first_tick_section}{working_memory_section}{subscribed_section}{action_feedback}{config_error_section}{recent_failures_section}{action_history_section}{metacognitive_section}
-## Your Memories
-{memories}
-
+{first_tick_section}{sorted_sections_content}
 ## Current State
 - Tick: {world_state.get('tick', 0)}
 - Your scrip: {world_state.get('balances', {}).get(self.agent_id, 0)}
-{quota_info}
-{resource_metrics_section}
 
 ## World Summary
 - Artifacts: {len(artifacts)} total ({genesis_count} genesis, {executable_count} executable, {data_count} data)
@@ -1180,8 +1302,6 @@ You are {self.agent_id}. Time remaining: {time_remaining_str} ({progress_str} co
 - Use `genesis_ledger.all_balances([])` to see all agent balances
 - Use `genesis_event_log.read([])` for world history
 - Read handbooks for help: handbook_genesis, handbook_trading, handbook_actions
-{mint_info}
-{recent_activity}
 
 ## Available Actions
 {self.action_schema}

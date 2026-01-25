@@ -282,21 +282,32 @@ class UnsubscribeArtifactIntent(ActionIntent):
 
 @dataclass
 class ConfigureContextIntent(ActionIntent):
-    """Configure which prompt sections are enabled (Plan #192).
+    """Configure which prompt sections are enabled and their priorities (Plan #192, #193).
 
     Updates the agent's context_sections configuration to enable/disable
     specific prompt sections like working_memory, action_history, etc.
+    Also allows setting section priorities for ordering (Plan #193).
     """
 
     sections: dict[str, bool]
+    priorities: dict[str, int] | None  # Plan #193: Optional priority overrides (0-100)
 
-    def __init__(self, principal_id: str, sections: dict[str, bool], reasoning: str = "") -> None:
+    def __init__(
+        self,
+        principal_id: str,
+        sections: dict[str, bool],
+        priorities: dict[str, int] | None = None,
+        reasoning: str = "",
+    ) -> None:
         super().__init__(ActionType.CONFIGURE_CONTEXT, principal_id, reasoning=reasoning)
         self.sections = sections
+        self.priorities = priorities
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
         d["sections"] = self.sections
+        if self.priorities is not None:
+            d["priorities"] = self.priorities
         return d
 
 

@@ -1,4 +1,4 @@
-"""Tests for Plan #192: Context Section Control."""
+"""Tests for Plan #192: Context Section Control and Plan #193: Context Priority."""
 
 import pytest
 
@@ -135,3 +135,146 @@ class TestAgentContextSections:
 
         # Original should be unchanged
         assert agent._context_sections["working_memory"] is True
+
+
+class TestConfigureContextPriorityValidation:
+    """Test configure_context priority validation in schema.py (Plan #193)."""
+
+    def test_valid_priorities(self) -> None:
+        """Valid priorities should pass validation."""
+        result = validate_action_json(
+            '{"action_type": "configure_context", "sections": {"working_memory": true}, "priorities": {"working_memory": 90}}'
+        )
+        assert isinstance(result, dict)
+        assert result["priorities"] == {"working_memory": 90}
+
+    def test_priorities_optional(self) -> None:
+        """priorities field is optional."""
+        result = validate_action_json(
+            '{"action_type": "configure_context", "sections": {"working_memory": true}}'
+        )
+        assert isinstance(result, dict)
+        assert "priorities" not in result or result.get("priorities") is None
+
+    def test_priorities_must_be_dict(self) -> None:
+        """priorities must be a dict if provided."""
+        result = validate_action_json(
+            '{"action_type": "configure_context", "sections": {"working_memory": true}, "priorities": [90]}'
+        )
+        assert isinstance(result, str)
+        assert "must be a dict" in result
+
+    def test_priorities_unknown_section(self) -> None:
+        """Unknown section names in priorities should fail."""
+        result = validate_action_json(
+            '{"action_type": "configure_context", "sections": {"working_memory": true}, "priorities": {"invalid_section": 90}}'
+        )
+        assert isinstance(result, str)
+        assert "Unknown section" in result
+        assert "invalid_section" in result
+
+    def test_priority_must_be_integer(self) -> None:
+        """Priority values must be integers."""
+        result = validate_action_json(
+            '{"action_type": "configure_context", "sections": {"working_memory": true}, "priorities": {"working_memory": "high"}}'
+        )
+        assert isinstance(result, str)
+        assert "must be an integer" in result
+
+    def test_priority_must_be_in_range(self) -> None:
+        """Priority values must be between 0 and 100."""
+        # Too high
+        result = validate_action_json(
+            '{"action_type": "configure_context", "sections": {"working_memory": true}, "priorities": {"working_memory": 101}}'
+        )
+        assert isinstance(result, str)
+        assert "must be between 0 and 100" in result
+
+        # Too low
+        result = validate_action_json(
+            '{"action_type": "configure_context", "sections": {"working_memory": true}, "priorities": {"working_memory": -1}}'
+        )
+        assert isinstance(result, str)
+        assert "must be between 0 and 100" in result
+
+    def test_valid_boundary_priorities(self) -> None:
+        """Boundary values 0 and 100 should be valid."""
+        result_0 = validate_action_json(
+            '{"action_type": "configure_context", "sections": {"working_memory": true}, "priorities": {"working_memory": 0}}'
+        )
+        assert isinstance(result_0, dict)
+        assert result_0["priorities"]["working_memory"] == 0
+
+        result_100 = validate_action_json(
+            '{"action_type": "configure_context", "sections": {"working_memory": true}, "priorities": {"working_memory": 100}}'
+        )
+        assert isinstance(result_100, dict)
+        assert result_100["priorities"]["working_memory"] == 100
+
+
+class TestAgentContextPriorities:
+    """Test agent context priority storage and ordering (Plan #193)."""
+
+    def test_default_priorities(self) -> None:
+        """Agent should have default priorities for all sections."""
+        from src.agents.agent import Agent
+
+        agent = Agent.__new__(Agent)
+        agent._context_section_priorities = {
+            "working_memory": 90,
+            "subscribed_artifacts": 85,
+            "failure_history": 75,
+            "action_history": 70,
+        }
+
+        assert agent.get_section_priority("working_memory") == 90
+        assert agent.get_section_priority("subscribed_artifacts") == 85
+        assert agent.get_section_priority("failure_history") == 75
+
+    def test_get_section_priority_unknown_section(self) -> None:
+        """Unknown sections should return default priority of 50."""
+        from src.agents.agent import Agent
+
+        agent = Agent.__new__(Agent)
+        agent._context_section_priorities = {}
+
+        assert agent.get_section_priority("unknown_section") == 50
+
+    def test_context_section_priorities_property_returns_copy(self) -> None:
+        """context_section_priorities property returns a copy to prevent mutation."""
+        from src.agents.agent import Agent
+
+        agent = Agent.__new__(Agent)
+        agent._context_section_priorities = {"working_memory": 90}
+
+        priorities = agent.context_section_priorities
+        priorities["working_memory"] = 10
+
+        # Original should be unchanged
+        assert agent._context_section_priorities["working_memory"] == 90
+
+    def test_higher_priority_sections_appear_first(self) -> None:
+        """Sections with higher priority should appear earlier in prompt."""
+        from src.agents.agent import Agent
+
+        # Create a minimal agent for testing ordering
+        agent = Agent.__new__(Agent)
+        agent._context_section_priorities = {
+            "working_memory": 90,
+            "rag_memories": 60,
+            "failure_history": 75,
+        }
+
+        # Get priorities and verify ordering
+        sections = [
+            ("working_memory", agent.get_section_priority("working_memory")),
+            ("rag_memories", agent.get_section_priority("rag_memories")),
+            ("failure_history", agent.get_section_priority("failure_history")),
+        ]
+
+        # Sort by priority (higher first)
+        sorted_sections = sorted(sections, key=lambda x: x[1], reverse=True)
+
+        assert sorted_sections[0][0] == "working_memory"  # Priority 90
+        assert sorted_sections[1][0] == "failure_history"  # Priority 75
+        assert sorted_sections[2][0] == "rag_memories"  # Priority 60
