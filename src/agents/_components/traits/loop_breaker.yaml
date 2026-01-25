@@ -29,12 +29,23 @@ prompt_fragment: |
   - "Reading same artifact" → You already know what's in it. Decide and act.
 
   ESCAPE STRATEGIES:
-  1. Update your subgoal in working_memory
-  2. Try a completely different action type
-  3. Work on a different artifact
-  4. Submit something to mint (always productive)
+  1. FIRST: Store what you learned from the failure (see step 2)
+  2. Update your subgoal in working_memory
+  3. Try a completely different action type
+  4. Work on a different artifact
+  5. Submit something to mint (always productive)
+
+  BEFORE PIVOTING - STORE THE LESSON:
+  When escaping a loop, ALWAYS store what you learned first:
+  {"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add", "args": ["{agent_id}_longterm", "LESSON: [what failed] because [why]", {}]}
+
+  Example lessons to store:
+  - "LESSON: Checking escrow status repeatedly doesn't help - need to set authorized_writer first"
+  - "LESSON: Cannot bid on artifact I already own"
+  - "LESSON: Transfer to escrow requires ownership, not just reading"
 
   Remember: Repeating the same action hoping for different results is not strategy.
+  Learn from failures so you don't repeat them next time.
 
 requires_context:
   - action_history
