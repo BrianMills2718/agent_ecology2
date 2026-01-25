@@ -85,6 +85,54 @@ DEFAULT_MAX_INVOKE_DEPTH = 5
 DEFAULT_MAX_CONTRACT_DEPTH = 10
 
 
+def _format_runtime_error(e: Exception, prefix: str = "Runtime error") -> str:
+    """Format a runtime error with helpful hints for common issues.
+
+    Plan #160: Help agents recover from common errors by suggesting fixes.
+
+    Args:
+        e: The exception that occurred
+        prefix: Error prefix like "Runtime error" or "Execution error"
+    """
+    error_type = type(e).__name__
+    error_msg = str(e)
+    base = f"{prefix}: {error_type}: {error_msg}"
+
+    # Add hints based on error type
+    if isinstance(e, ModuleNotFoundError):
+        # Extract module name from error message
+        module = error_msg.replace("No module named ", "").strip("'\"")
+        return (
+            f"{base}. "
+            f"Hint: Use kernel_actions.install_library('{module}') to install it, "
+            f"or use a simpler approach without this library."
+        )
+    elif isinstance(e, AttributeError) and "has no attribute" in error_msg:
+        return (
+            f"{base}. "
+            f"Hint: Check the object's available methods. "
+            f"Use dir(obj) or read the artifact's interface."
+        )
+    elif isinstance(e, KeyError):
+        return (
+            f"{base}. "
+            f"Hint: The key doesn't exist. Check dict.keys() or use dict.get(key, default)."
+        )
+    elif isinstance(e, TypeError) and "argument" in error_msg.lower():
+        return (
+            f"{base}. "
+            f"Hint: Check the function signature - you may have wrong number/type of arguments."
+        )
+    elif "connection" in error_msg.lower() or "adapter" in error_msg.lower():
+        return (
+            f"{base}. "
+            f"Hint: For HTTP requests, use requests.get(url) where url is a plain string, "
+            f"not url='...' keyword syntax."
+        )
+
+    return base
+
+
 def _parse_json_args(args: list[Any]) -> list[Any]:
     """Parse JSON strings in args to Python objects.
 
@@ -978,7 +1026,7 @@ class SafeExecutor:
         except Exception as e:  # exception-ok: user code can raise anything
             return {
                 "success": False,
-                "error": f"Execution error: {type(e).__name__}: {e}"
+                "error": _format_runtime_error(e, "Execution error")
             }
 
         # Check that run() was defined
@@ -1022,7 +1070,7 @@ class SafeExecutor:
                 execution_time_ms = (time.perf_counter() - start_time) * 1000
                 error_result = {
                     "success": False,
-                    "error": f"Runtime error: {type(e).__name__}: {e}",
+                    "error": _format_runtime_error(e),
                     "execution_time_ms": execution_time_ms,
                 }
 
@@ -1158,7 +1206,7 @@ class SafeExecutor:
         except Exception as e:  # exception-ok: user code can raise anything
             return {
                 "success": False,
-                "error": f"Execution error: {type(e).__name__}: {e}"
+                "error": _format_runtime_error(e, "Execution error")
             }
 
         # Check that run() was defined
@@ -1202,7 +1250,7 @@ class SafeExecutor:
                 execution_time_ms = (time.perf_counter() - start_time) * 1000
                 error_result = {
                     "success": False,
-                    "error": f"Runtime error: {type(e).__name__}: {e}",
+                    "error": _format_runtime_error(e),
                     "execution_time_ms": execution_time_ms,
                 }
 
@@ -1611,7 +1659,7 @@ class SafeExecutor:
         except Exception as e:  # exception-ok: user code can raise anything
             return {
                 "success": False,
-                "error": f"Execution error: {type(e).__name__}: {e}"
+                "error": _format_runtime_error(e, "Execution error")
             }
 
         # Check that run() was defined
@@ -1655,7 +1703,7 @@ class SafeExecutor:
                 execution_time_ms = (time.perf_counter() - start_time) * 1000
                 error_result = {
                     "success": False,
-                    "error": f"Runtime error: {type(e).__name__}: {e}",
+                    "error": _format_runtime_error(e),
                     "execution_time_ms": execution_time_ms,
                 }
 
