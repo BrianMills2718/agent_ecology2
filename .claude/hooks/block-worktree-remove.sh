@@ -5,8 +5,18 @@
 # Exit codes:
 #   0 - Allow the operation
 #   2 - Block the operation
+#
+# Configuration:
+#   Controlled by hooks.enforce_workflow in meta-process.yaml
 
 set -e
+
+# Check if hook is enabled via config
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/check-hook-enabled.sh"
+if ! is_hook_enabled "enforce_workflow"; then
+    exit 0  # Hook disabled in config
+fi
 
 # Read the tool input from stdin
 INPUT=$(cat)
