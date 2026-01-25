@@ -123,8 +123,8 @@ class TestEscrowPurchase:
         assert result["seller"] == "seller"
         assert result["buyer"] == "buyer"
 
-        # Verify transfers
-        assert store.get_owner("my_artifact") == "buyer"
+        # Verify transfers - per ADR-0016: get_controller() for current controller
+        assert store.get_controller("my_artifact") == "buyer"
         assert ledger.get_scrip("buyer") == 125  # 200 - 75
         assert ledger.get_scrip("seller") == 175  # 100 + 75
 
@@ -144,7 +144,8 @@ class TestEscrowPurchase:
 
         assert result["success"] is False
         assert "Insufficient scrip" in result["error"]
-        assert store.get_owner("expensive") == escrow.id  # Still in escrow
+        # Per ADR-0016: use get_controller() for current controller
+        assert store.get_controller("expensive") == escrow.id  # Still in escrow
 
     def test_purchase_no_listing(self) -> None:
         """Cannot purchase unlisted artifact."""
@@ -204,7 +205,8 @@ class TestEscrowCancel:
         result = escrow._cancel(["my_artifact"], "seller")
 
         assert result["success"] is True
-        assert store.get_owner("my_artifact") == "seller"
+        # Per ADR-0016: use get_controller() for current controller
+        assert store.get_controller("my_artifact") == "seller"
 
     def test_cancel_not_seller_fails(self) -> None:
         """Only seller can cancel."""
@@ -219,7 +221,8 @@ class TestEscrowCancel:
 
         assert result["success"] is False
         assert "Only the seller" in result["error"]
-        assert store.get_owner("my_artifact") == escrow.id  # Still in escrow
+        # Per ADR-0016: use get_controller() for current controller
+        assert store.get_controller("my_artifact") == escrow.id  # Still in escrow
 
     def test_cancel_after_purchase_fails(self) -> None:
         """Cannot cancel completed listing."""
@@ -410,8 +413,8 @@ class TestEscrowIntegration:
         result = world.execute_action(purchase)
         assert result.success, result.message
 
-        # Verify final state
-        assert world.artifacts.get_owner("tool_1") == "buyer"
+        # Verify final state - per ADR-0016: use get_controller() for current controller
+        assert world.artifacts.get_controller("tool_1") == "buyer"
         # Buyer: 200 - 100 (purchase) = 100
         assert world.ledger.get_scrip("buyer") == 100
         # Seller: 50 + 100 (sale) = 150

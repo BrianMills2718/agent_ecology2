@@ -199,10 +199,13 @@ def run(a, b):
         assert retrieved is not None
         artifact = retrieved
 
-        assert artifact.created_by == "bob"
-        # After transfer, bob is now creator and can write
+        # Per ADR-0016: created_by is immutable, stays alice
+        assert artifact.created_by == "alice"
+        # Controller is now bob (stored in metadata)
+        assert artifact.metadata.get("controller") == "bob"
+        # After transfer, bob is now controller and can write
         assert check_permission("bob", "write", artifact) is True
-        # Alice is no longer creator, so cannot write via freeware contract
+        # Alice is no longer controller, so cannot write via freeware contract
         assert check_permission("alice", "write", artifact) is False
         # Policy is preserved
         assert artifact.policy.get("allow_read") == ["charlie"]

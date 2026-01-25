@@ -148,8 +148,10 @@ class GenesisEscrow(GenesisArtifact):
                          f"Use query_kernel action to discover artifacts."
             }
 
-        # Verify escrow owns the artifact (seller must have transferred first)
-        if artifact.created_by != self.id:
+        # Verify escrow controls the artifact (seller must have transferred first)
+        # Per ADR-0016: Check metadata["controller"] (not created_by which is immutable)
+        current_controller = artifact.metadata.get("controller", artifact.created_by)
+        if current_controller != self.id:
             return {
                 "success": False,
                 "error": _get_error_message("escrow_not_owner", artifact_id=artifact_id, escrow_id=self.id)

@@ -21,14 +21,20 @@ class TestArtifactStoreOwnershipTransfer:
     """Test ArtifactStore.transfer_ownership method."""
 
     def test_transfer_ownership_success(self) -> None:
-        """Owner can transfer artifact to another principal."""
+        """Controller can transfer artifact to another principal.
+
+        Per ADR-0016: created_by is immutable, metadata["controller"] tracks current controller.
+        """
         store = ArtifactStore()
         store.write("artifact_1", "generic", "content", "alice")
 
         result = store.transfer_ownership("artifact_1", "alice", "bob")
 
         assert result is True
-        assert store.get_owner("artifact_1") == "bob"
+        # created_by stays the same (immutable historical fact)
+        assert store.get_creator("artifact_1") == "alice"
+        # controller is now bob
+        assert store.get_controller("artifact_1") == "bob"
 
     def test_transfer_ownership_nonexistent_artifact(self) -> None:
         """Cannot transfer non-existent artifact."""
@@ -39,7 +45,10 @@ class TestArtifactStoreOwnershipTransfer:
         assert result is False
 
     def test_transfer_ownership_wrong_owner(self) -> None:
-        """Cannot transfer artifact you don't own."""
+        """Cannot transfer artifact you don't control.
+
+        Per ADR-0016: Only the current controller can transfer.
+        """
         store = ArtifactStore()
         store.write("artifact_1", "generic", "content", "alice")
 
@@ -47,10 +56,13 @@ class TestArtifactStoreOwnershipTransfer:
         result = store.transfer_ownership("artifact_1", "bob", "charlie")
 
         assert result is False
-        assert store.get_owner("artifact_1") == "alice"
+        assert store.get_controller("artifact_1") == "alice"
 
     def test_transfer_ownership_preserves_content(self) -> None:
-        """Transfer preserves artifact content and properties."""
+        """Transfer preserves artifact content and properties.
+
+        Per ADR-0016: created_by is immutable, only metadata["controller"] changes.
+        """
         store = ArtifactStore()
         store.write(
             "artifact_1",
@@ -66,7 +78,11 @@ class TestArtifactStoreOwnershipTransfer:
 
         artifact = store.get("artifact_1")
         assert artifact is not None
-        assert artifact.created_by == "bob"
+        # created_by is immutable - stays alice (the original creator)
+        assert artifact.created_by == "alice"
+        # controller is now bob (stored in metadata)
+        assert artifact.metadata.get("controller") == "bob"
+        # All other properties preserved
         assert artifact.content == "content here"
         assert artifact.type == "code"
         assert artifact.executable is True
@@ -81,14 +97,18 @@ class TestArtifactStoreOwnershipTransfer:
         result = store.transfer_ownership("artifact_1", "alice", "alice")
 
         assert result is True
-        assert store.get_owner("artifact_1") == "alice"
+        assert store.get_controller("artifact_1") == "alice"
 
 
 class TestGenesisLedgerOwnershipTransfer:
-    """Test ownership transfer through genesis_ledger."""
+    """Test ownership transfer through genesis_ledger.
+
+    Per ADR-0016: Ownership transfers update metadata["controller"],
+    not created_by (which is immutable).
+    """
 
     def test_transfer_ownership_via_genesis(self) -> None:
-        """Can transfer ownership through genesis_ledger method."""
+        """Can transfer control through genesis_ledger method."""
         ledger = Ledger()
         store = ArtifactStore()
         store.write("my_artifact", "generic", "content", "alice")
@@ -103,10 +123,13 @@ class TestGenesisLedgerOwnershipTransfer:
         assert result["artifact_id"] == "my_artifact"
         assert result["from_owner"] == "alice"
         assert result["to_owner"] == "bob"
-        assert store.get_owner("my_artifact") == "bob"
+        # created_by stays alice (immutable)
+        assert store.get_creator("my_artifact") == "alice"
+        # controller is now bob
+        assert store.get_controller("my_artifact") == "bob"
 
     def test_transfer_ownership_not_owner(self) -> None:
-        """Cannot transfer artifact you don't own."""
+        """Cannot transfer artifact you don't control."""
         ledger = Ledger()
         store = ArtifactStore()
         store.write("my_artifact", "generic", "content", "alice")
@@ -114,12 +137,12 @@ class TestGenesisLedgerOwnershipTransfer:
         genesis = GenesisLedger(ledger, artifact_store=store)
         result = genesis._transfer_ownership(
             args=["my_artifact", "charlie"],
-            invoker_id="bob"  # Not the owner
+            invoker_id="bob"  # Not the controller
         )
 
         assert result["success"] is False
-        assert "not the owner" in result["error"]
-        assert store.get_owner("my_artifact") == "alice"
+        assert "not the controller" in result["error"]
+        assert store.get_controller("my_artifact") == "alice"
 
     def test_transfer_ownership_nonexistent(self) -> None:
         """Cannot transfer non-existent artifact."""
@@ -176,10 +199,14 @@ class TestGenesisLedgerOwnershipTransfer:
 
 
 class TestOwnershipTransferEdgeCases:
-    """Edge cases for ownership transfer."""
+    """Edge cases for ownership transfer.
+
+    Per ADR-0016: created_by is immutable, controller is tracked in metadata.
+    Permission checks use target_controller, not target_created_by.
+    """
 
     def test_transfer_then_original_owner_cannot_write(self) -> None:
-        """After transfer, original owner loses write access."""
+        """After transfer, original creator loses write access."""
         store = ArtifactStore()
         store.write("artifact_1", "generic", "content", "alice")
 
@@ -187,13 +214,13 @@ class TestOwnershipTransferEdgeCases:
 
         artifact = store.get("artifact_1")
         assert artifact is not None
-        # Alice should no longer have write access (via freeware contract, only creator can write)
+        # Alice should no longer have write access (via freeware contract, only controller can write)
         assert check_permission("alice", "write", artifact) is False
-        # Bob should have write access (now the creator)
+        # Bob should have write access (now the controller)
         assert check_permission("bob", "write", artifact) is True
 
     def test_new_owner_can_write(self) -> None:
-        """New owner can modify artifact after transfer."""
+        """New controller can modify artifact after transfer."""
         store = ArtifactStore()
         store.write("artifact_1", "generic", "original content", "alice")
 
@@ -202,11 +229,14 @@ class TestOwnershipTransferEdgeCases:
         # Bob updates the artifact
         artifact = store.get("artifact_1")
         assert artifact is not None
-        # Via freeware contract, creator can write
+        # Via freeware contract, controller can write
         assert check_permission("bob", "write", artifact) is True
 
     def test_transfer_executable_artifact(self) -> None:
-        """Can transfer executable artifacts."""
+        """Can transfer executable artifacts.
+
+        Per ADR-0016: created_by stays alice (immutable), controller becomes bob.
+        """
         store = ArtifactStore()
         store.write(
             "service_1",
@@ -223,27 +253,36 @@ class TestOwnershipTransferEdgeCases:
         assert result is True
         artifact = store.get("service_1")
         assert artifact is not None
-        assert artifact.created_by == "bob"
+        # created_by is immutable - stays alice
+        assert artifact.created_by == "alice"
+        # controller is now bob
+        assert artifact.metadata.get("controller") == "bob"
         assert artifact.executable is True
-        # Price payments should now go to bob
+        # Price payments should now go to controller (bob)
         assert artifact.price == 5
 
     def test_chain_of_transfers(self) -> None:
-        """Artifact can be transferred multiple times."""
+        """Artifact can be transferred multiple times.
+
+        Per ADR-0016: created_by stays the same, controller changes.
+        """
         store = ArtifactStore()
         store.write("artifact_1", "generic", "content", "alice")
 
         # Alice -> Bob
         store.transfer_ownership("artifact_1", "alice", "bob")
-        assert store.get_owner("artifact_1") == "bob"
+        assert store.get_controller("artifact_1") == "bob"
+        assert store.get_creator("artifact_1") == "alice"  # Never changes
 
         # Bob -> Charlie
         store.transfer_ownership("artifact_1", "bob", "charlie")
-        assert store.get_owner("artifact_1") == "charlie"
+        assert store.get_controller("artifact_1") == "charlie"
+        assert store.get_creator("artifact_1") == "alice"  # Never changes
 
         # Charlie -> Dave
         store.transfer_ownership("artifact_1", "charlie", "dave")
-        assert store.get_owner("artifact_1") == "dave"
+        assert store.get_controller("artifact_1") == "dave"
+        assert store.get_creator("artifact_1") == "alice"  # Never changes
 
         # Alice can no longer transfer
         result = store.transfer_ownership("artifact_1", "alice", "eve")

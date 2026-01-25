@@ -97,6 +97,8 @@ Recommendation: **Option A (contract-only)** with convention that contracts stor
 - src/world/kernel_interface.py (modify)
 - src/world/genesis/ledger.py (modify)
 - src/world/genesis/escrow.py (modify)
+- src/world/permission_checker.py (modify)
+- src/world/genesis_contracts.py (modify)
 - tests/ (modify)
 
 ## Testing

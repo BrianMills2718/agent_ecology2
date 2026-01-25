@@ -50,7 +50,7 @@ class TestEscrowFeature:
         result = escrow._purchase(["artifact_x"], "buyer")
 
         assert result["success"] is True
-        assert store.get_owner("artifact_x") == "buyer"
+        assert store.get_controller("artifact_x") == "buyer"
         assert ledger.get_scrip("buyer") == buyer_initial - 100
         assert ledger.get_scrip("seller") == seller_initial + 100
 
@@ -86,7 +86,7 @@ class TestEscrowFeature:
 
         assert result["success"] is False
         assert "Insufficient" in result["error"]
-        assert store.get_owner("artifact_x") == escrow.id
+        assert store.get_controller("artifact_x") == escrow.id
         assert ledger.get_scrip("poor_buyer") == 50  # Unchanged
         assert ledger.get_scrip("seller") == 100  # Unchanged
 
@@ -117,13 +117,13 @@ class TestEscrowFeature:
         escrow._deposit(["artifact_x", 50], "seller")
 
         # Verify in escrow
-        assert store.get_owner("artifact_x") == escrow.id
+        assert store.get_controller("artifact_x") == escrow.id
 
         # Cancel
         result = escrow._cancel(["artifact_x"], "seller")
 
         assert result["success"] is True
-        assert store.get_owner("artifact_x") == "seller"
+        assert store.get_controller("artifact_x") == "seller"
 
         # Can re-list (demonstrates artifact is usable)
         store.transfer_ownership("artifact_x", "seller", escrow.id)
@@ -156,7 +156,7 @@ class TestEscrowFeature:
 
         assert result["success"] is False
         assert "No listing" in result["error"] or "not found" in result["error"].lower()
-        assert store.get_owner("artifact_x") == "owner"  # Unchanged
+        assert store.get_controller("artifact_x") == "owner"  # Unchanged
         assert ledger.get_scrip("buyer") == buyer_initial  # Unchanged
 
     # AC-5: Restricted buyer listing only allows designated buyer (edge_case)
@@ -189,7 +189,7 @@ class TestEscrowFeature:
         # Agent B (restricted_buyer) can purchase
         result = escrow._purchase(["artifact_x"], "restricted_buyer")
         assert result["success"] is True
-        assert store.get_owner("artifact_x") == "restricted_buyer"
+        assert store.get_controller("artifact_x") == "restricted_buyer"
 
 
 @pytest.mark.feature("escrow")

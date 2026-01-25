@@ -29,7 +29,7 @@ class TestMetadataIndexing:
         assert "test_agent" in store._index_by_type["agent"]
         assert "test_data" not in store._index_by_type["agent"]
 
-    def test_index_by_owner_on_write(self) -> None:
+    def test_index_by_creator_on_write(self) -> None:
         """Artifacts are indexed by owner when written."""
         store = ArtifactStore()
         store.write(
@@ -46,9 +46,9 @@ class TestMetadataIndexing:
         )
 
         # Verify owner index
-        assert "art1" in store._index_by_owner["alice"]
-        assert "art2" in store._index_by_owner["bob"]
-        assert "art1" not in store._index_by_owner["bob"]
+        assert "art1" in store._index_by_creator["alice"]
+        assert "art2" in store._index_by_creator["bob"]
+        assert "art1" not in store._index_by_creator["bob"]
 
     def test_index_by_metadata_on_write(self) -> None:
         """Artifacts are indexed by configured metadata fields when written."""
@@ -124,8 +124,13 @@ class TestMetadataIndexing:
         assert "task1" not in store._index_by_metadata["status"]["pending"]
         assert "task1" in store._index_by_metadata["status"]["complete"]
 
-    def test_transfer_ownership_updates_index(self) -> None:
-        """Owner index is updated when ownership is transferred."""
+    def test_transfer_ownership_does_not_update_creator_index(self) -> None:
+        """Creator index is NOT updated when ownership is transferred (ADR-0016).
+
+        Per ADR-0016: created_by is immutable, so _index_by_creator should not
+        change. The controller changes (via metadata["controller"]), but the
+        original creator remains indexed.
+        """
         store = ArtifactStore()
         store.write(
             artifact_id="art1",
@@ -133,14 +138,17 @@ class TestMetadataIndexing:
             content="hello",
             created_by="alice",
         )
-        assert "art1" in store._index_by_owner["alice"]
+        assert "art1" in store._index_by_creator["alice"]
 
-        # Transfer ownership
+        # Transfer ownership (changes controller, not creator)
         store.transfer_ownership("art1", "alice", "bob")
 
-        # Old owner should not have it, new owner should
-        assert "art1" not in store._index_by_owner["alice"]
-        assert "art1" in store._index_by_owner["bob"]
+        # Creator index is unchanged (alice still created it)
+        assert "art1" in store._index_by_creator["alice"]
+        # Bob didn't create it, so he's not in the creator index
+        assert "art1" not in store._index_by_creator.get("bob", set())
+        # But bob is the controller now
+        assert store.get_controller("art1") == "bob"
 
     def test_query_by_type(self) -> None:
         """query_by_type returns correct results using index."""

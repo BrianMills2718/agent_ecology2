@@ -66,23 +66,26 @@ class FreewareContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'target_created_by' key for write/edit/delete checks
+            context: Must contain 'target_controller' key for write/edit/delete checks
+                     (per ADR-0016, uses controller not creator for modification rights)
 
         Returns:
             PermissionResult with decision
         """
-        owner = context.get("target_created_by") if context else None
+        # Per ADR-0016 (Plan #210): Use target_controller for modification rights
+        # This is the current controller (may differ from creator after ownership transfer)
+        controller = context.get("target_controller") if context else None
 
         # Open access actions - anyone can perform these
         if action in (PermissionAction.READ, PermissionAction.INVOKE):
             return PermissionResult(allowed=True, reason="freeware: open access")
 
-        # Owner-only actions
+        # Controller-only actions (the current controller, not necessarily the creator)
         if action in (PermissionAction.WRITE, PermissionAction.EDIT, PermissionAction.DELETE):
-            if caller == owner:
-                return PermissionResult(allowed=True, reason="freeware: owner access")
+            if caller == controller:
+                return PermissionResult(allowed=True, reason="freeware: controller access")
             return PermissionResult(
-                allowed=False, reason="freeware: only owner can modify"
+                allowed=False, reason="freeware: only controller can modify"
             )
 
         # Unknown action - fail closed
@@ -122,20 +125,21 @@ class SelfOwnedContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'target_created_by' key (ADR-0019)
+            context: Must contain 'target_controller' key (per ADR-0016)
 
         Returns:
             PermissionResult with decision
         """
-        owner = context.get("target_created_by") if context else None
+        # Per ADR-0016: Use controller (not creator) for access rights
+        controller = context.get("target_controller") if context else None
 
         # Self-access: artifact accessing itself
         if caller == target:
             return PermissionResult(allowed=True, reason="self_owned: self access")
 
-        # Owner access
-        if caller == owner:
-            return PermissionResult(allowed=True, reason="self_owned: owner access")
+        # Controller access
+        if caller == controller:
+            return PermissionResult(allowed=True, reason="self_owned: controller access")
 
         # All others denied
         return PermissionResult(allowed=False, reason="self_owned: access denied")
@@ -173,16 +177,17 @@ class PrivateContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'target_created_by' key (ADR-0019)
+            context: Must contain 'target_controller' key (per ADR-0016)
 
         Returns:
             PermissionResult with decision
         """
-        owner = context.get("target_created_by") if context else None
+        # Per ADR-0016: Use controller (not creator) for access rights
+        controller = context.get("target_controller") if context else None
 
-        # Only owner has access
-        if caller == owner:
-            return PermissionResult(allowed=True, reason="private: owner access")
+        # Only controller has access
+        if caller == controller:
+            return PermissionResult(allowed=True, reason="private: controller access")
 
         # All others denied (including the artifact itself)
         return PermissionResult(allowed=False, reason="private: access denied")

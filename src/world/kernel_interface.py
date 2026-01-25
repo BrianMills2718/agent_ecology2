@@ -661,22 +661,19 @@ class KernelActions:
         return True
 
     def transfer_ownership(
-        self, caller_id: str, artifact_id: str, new_owner: str
+        self, caller_id: str, artifact_id: str, new_controller: str
     ) -> bool:
-        """Transfer ownership of an artifact to a new owner.
+        """Transfer control of an artifact to a new principal.
 
-        This enables genesis artifacts (and agent-built artifacts) to transfer
-        ownership without privileged access to ArtifactStore.
-
-        NOTE: Per ADR-0016, created_by should be immutable and ownership
-        should be tracked in artifact metadata. This method is kept for
-        escrow compatibility but should be refactored to use a separate
-        controlled_by field in a future plan.
+        Per ADR-0016 (Plan #210):
+        - created_by is immutable (historical fact of who created the artifact)
+        - Control is tracked via metadata["controller"]
+        - This method sets metadata["controller"], NOT created_by
 
         Args:
-            caller_id: Current owner requesting the transfer
+            caller_id: Current controller requesting the transfer
             artifact_id: Artifact to transfer
-            new_owner: New owner principal ID
+            new_controller: New controller principal ID
 
         Returns:
             True if transfer succeeded, False otherwise
@@ -685,13 +682,14 @@ class KernelActions:
         if artifact is None:
             return False
 
-        # Verify caller is the current owner (kept for escrow - see docstring)
-        if artifact.created_by != caller_id:
+        # Verify caller is the current controller (not just creator)
+        current_controller = artifact.metadata.get("controller", artifact.created_by)
+        if current_controller != caller_id:
             return False
 
-        # Perform the transfer
+        # Perform the transfer (sets metadata["controller"], not created_by)
         return self._world.artifacts.transfer_ownership(
-            artifact_id, caller_id, new_owner
+            artifact_id, caller_id, new_controller
         )
 
     # -------------------------------------------------------------------------
