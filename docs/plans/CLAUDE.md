@@ -209,7 +209,7 @@ Master index of all gaps and their implementation plans.
 | 187 | [Extended Thinking for Genesis Agents](187_extended_thinking.md) | Medium | ✅ Complete | Improved agent reasoning quality |
 | 188 | [Plan Artifact Pattern for Genesis Agents](188_plan_artifact_pattern.md) | Medium | ✅ Complete | Deliberative agent behavior, observability |
 | 189 | [Meta-Process Robustness Overhaul](189_meta_robustness.md) | **Critical** | ✅ Complete | All future meta-process reliability |
-| 190 | [Global Search in Dashboard v2](190_global_search.md) | Medium | 📋 Planned | - |
+| 190 | [Global Search in Dashboard v2](190_global_search.md) | Medium | ✅ Complete | - |
 | 191 | [Subscribed Artifacts](191_subscribed_artifacts.md) | Medium | ✅ Complete | - |
 | 192 | [Context Section Control](192_context_section_control.md) | Medium | ✅ Complete | - |
 | 193 | [Context Priority and Ordering](193_context_priority.md) | Medium | ✅ Complete | - |
@@ -227,6 +227,9 @@ Master index of all gaps and their implementation plans.
 | 205 | [Git-Level Meta-Process Resilience](205_meta_resilience.md) | **Critical** | ✅ Complete | All meta-process reliability |
 | 206 | [Meta-Process Claim Lifecycle Fixes](206_claim_lifecycle.md) | Critical | 🚧 In Progress | - |
 | 207 | [Executor Method Refactoring](207_executor_refactor.md) | Low | 📋 Deferred | - |
+| 208 | [Workflow Hooks (General Auto-Subscription System)](208_workflow_hooks.md) | High | 📋 Planned | Agent self-optimization, cognitive autonomy |
+| 209 | [Trigger-Hook Integration](209_trigger_hook_integration.md) | Low | 📋 Deferred (until bridging pattern becomes common) | - |
+| 210 | [Fix ADR-0016 Violation (created_by Mutation)](210_fix_created_by_mutation.md) | High | 📋 Planned | Correct ownership semantics, historical audit trail |
 ---
 
 ## TDD Workflow
