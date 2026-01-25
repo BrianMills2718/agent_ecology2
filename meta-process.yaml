@@ -7,6 +7,24 @@
 # WARNING: Before downgrading any setting, understand what it enforces.
 # Downgrading strictness means problems can slip through CI silently.
 
+# =============================================================================
+# GitHub Actions CI
+# =============================================================================
+# CI is controlled via .github/workflows/ci.yml
+#
+# Current status: DISABLED (triggers commented out, manual-only)
+#
+# To enable CI:
+#   1. Edit .github/workflows/ci.yml
+#   2. Uncomment the pull_request and push trigger sections
+#
+# To disable CI:
+#   - Comment out triggers (current state), OR
+#   - Create .github/ci-disabled file (workflow checks for this)
+#
+# Note: CI costs money (GitHub Actions minutes). Keep disabled when not needed.
+# =============================================================================
+
 enforcement:
   # ---------------------------------------------------------------------------
   # Plan Index Auto-Add
