@@ -1,4 +1,4 @@
-# Plan 164: Artifact Dependency Tracking
+# Plan 170: Artifact Dependency Tracking
 
 **Status:** Planned
 **Priority:** Medium
