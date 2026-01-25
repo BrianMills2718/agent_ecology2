@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-25 (Plan #181 - Added permission_checker.py module)
+**Last verified:** 2026-01-25 (Plan #181 - Added invoke_handler.py module)
 
 ---
 
@@ -567,6 +567,7 @@ All intents include reasoning in their `to_dict()` output, so logged actions con
 | `src/world/executor.py` | `validate_args_against_interface()`, `ValidationResult` | Interface validation (Plan #86) |
 | `src/world/permission_checker.py` | `check_permission()`, `check_permission_via_contract()` | Permission checking logic (Plan #181) |
 | `src/world/interface_validation.py` | `validate_args_against_interface()`, `ValidationResult` | Interface validation (Plan #181) |
+| `src/world/invoke_handler.py` | `create_invoke_function()`, `execute_invoke()` | Invoke closure factory for artifact calls (Plan #181) |
 | `src/world/kernel_interface.py` | `KernelState`, `KernelActions` | Kernel interfaces for artifacts |
 | `src/world/actions.py` | `ActionResult`, `ActionIntent` | Action definitions and results |
 | `src/world/errors.py` | `ErrorCode`, `ErrorCategory` | Error response conventions |
