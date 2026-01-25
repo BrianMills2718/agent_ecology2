@@ -1,6 +1,23 @@
 # Plan #182: Metadata Indexing for Artifact Discovery
 
-**Status:** Planned
+**Status:** ✅ Complete
+
+**Verified:** 2026-01-25T05:10:00Z
+**Verification Evidence:**
+```yaml
+completed_by: Implementation
+timestamp: 2026-01-25T05:10:00Z
+notes: |
+  - Added O(1) indexes by type, owner, and configurable metadata fields
+  - ArtifactStore maintains indexes on write/update/transfer
+  - Genesis store uses indexes for filtered queries
+  - Configuration via genesis.store.indexed_metadata_fields
+  - 19 unit tests for indexing functionality
+tests:
+  unit: 19 tests in test_metadata_indexing.py
+  integration: 26 tests in test_genesis_store.py pass
+```
+
 **Priority:** Medium
 **Complexity:** Medium
 **Blocks:** Performance at scale

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, TypedDict, TYPE_CHECKING
@@ -540,20 +541,164 @@ def create_config_artifact(
 
 
 class ArtifactStore:
-    """In-memory artifact storage
-    
+    """In-memory artifact storage with O(1) index lookups (Plan #182)
+
     Args:
         id_registry: Optional IDRegistry for global ID collision prevention (Plan #7).
-                     When provided, new artifact IDs are registered and collisions 
+                     When provided, new artifact IDs are registered and collisions
                      raise IDCollisionError.
+        indexed_metadata_fields: List of metadata field names to index for O(1) lookups.
+                                 Supports dot notation for nested fields (e.g., "tags.priority").
     """
 
     artifacts: dict[str, Artifact]
     id_registry: "IDRegistry | None"
+    # Plan #182: Indexes for O(1) lookups
+    _index_by_type: dict[str, set[str]]  # type -> {artifact_ids}
+    _index_by_owner: dict[str, set[str]]  # owner -> {artifact_ids}
+    _index_by_metadata: dict[str, dict[Any, set[str]]]  # field -> {value -> {artifact_ids}}
+    _indexed_metadata_fields: set[str]  # Which metadata fields to index
 
-    def __init__(self, id_registry: "IDRegistry | None" = None) -> None:
+    def __init__(
+        self,
+        id_registry: "IDRegistry | None" = None,
+        indexed_metadata_fields: list[str] | None = None,
+    ) -> None:
         self.artifacts = {}
         self.id_registry = id_registry
+        # Plan #182: Initialize indexes
+        self._index_by_type = defaultdict(set)
+        self._index_by_owner = defaultdict(set)
+        self._index_by_metadata = {}
+        self._indexed_metadata_fields = set(indexed_metadata_fields or [])
+
+    # Plan #182: Index maintenance methods
+    def _get_nested_value(self, data: dict[str, Any] | None, path: str) -> Any:
+        """Get a value from a nested dict using dot notation.
+
+        Returns None if path doesn't exist or data is None.
+        """
+        if not data:
+            return None
+        keys = path.split(".")
+        value: Any = data
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return None
+        return value
+
+    def _add_to_index(self, artifact: Artifact) -> None:
+        """Add artifact to all indexes."""
+        artifact_id = artifact.id
+        # Index by type
+        self._index_by_type[artifact.type].add(artifact_id)
+        # Index by owner
+        self._index_by_owner[artifact.created_by].add(artifact_id)
+        # Index configured metadata fields
+        for field in self._indexed_metadata_fields:
+            value = self._get_nested_value(artifact.metadata, field)
+            if value is not None:
+                if field not in self._index_by_metadata:
+                    self._index_by_metadata[field] = defaultdict(set)
+                self._index_by_metadata[field][value].add(artifact_id)
+
+    def _remove_from_index(self, artifact: Artifact) -> None:
+        """Remove artifact from all indexes."""
+        artifact_id = artifact.id
+        # Remove from type index
+        self._index_by_type[artifact.type].discard(artifact_id)
+        # Remove from owner index
+        self._index_by_owner[artifact.created_by].discard(artifact_id)
+        # Remove from metadata indexes
+        for field in self._indexed_metadata_fields:
+            value = self._get_nested_value(artifact.metadata, field)
+            if value is not None and field in self._index_by_metadata:
+                self._index_by_metadata[field][value].discard(artifact_id)
+
+    def _update_index(self, old_artifact: Artifact, new_artifact: Artifact) -> None:
+        """Update indexes when artifact changes."""
+        artifact_id = old_artifact.id
+        # Update type index if changed
+        if old_artifact.type != new_artifact.type:
+            self._index_by_type[old_artifact.type].discard(artifact_id)
+            self._index_by_type[new_artifact.type].add(artifact_id)
+        # Update owner index if changed
+        if old_artifact.created_by != new_artifact.created_by:
+            self._index_by_owner[old_artifact.created_by].discard(artifact_id)
+            self._index_by_owner[new_artifact.created_by].add(artifact_id)
+        # Update metadata indexes
+        for field in self._indexed_metadata_fields:
+            old_value = self._get_nested_value(old_artifact.metadata, field)
+            new_value = self._get_nested_value(new_artifact.metadata, field)
+            if old_value != new_value:
+                # Remove old value
+                if old_value is not None and field in self._index_by_metadata:
+                    self._index_by_metadata[field][old_value].discard(artifact_id)
+                # Add new value
+                if new_value is not None:
+                    if field not in self._index_by_metadata:
+                        self._index_by_metadata[field] = defaultdict(set)
+                    self._index_by_metadata[field][new_value].add(artifact_id)
+
+    def query_by_type(self, artifact_type: str) -> list[Artifact]:
+        """Query artifacts by type using O(1) index lookup (Plan #182)."""
+        ids = self._index_by_type.get(artifact_type, set())
+        return [self.artifacts[id] for id in ids if id in self.artifacts]
+
+    def query_by_owner(self, owner: str) -> list[Artifact]:
+        """Query artifacts by owner using O(1) index lookup (Plan #182)."""
+        ids = self._index_by_owner.get(owner, set())
+        return [self.artifacts[id] for id in ids if id in self.artifacts]
+
+    def query_by_metadata(self, field: str, value: Any) -> list[Artifact]:
+        """Query artifacts by metadata field using O(1) index lookup (Plan #182).
+
+        Returns empty list if field is not indexed. Use add_indexed_field() first.
+        """
+        if field not in self._indexed_metadata_fields:
+            return []  # Field not indexed
+        ids = self._index_by_metadata.get(field, {}).get(value, set())
+        return [self.artifacts[id] for id in ids if id in self.artifacts]
+
+    def is_field_indexed(self, field: str) -> bool:
+        """Check if a metadata field is indexed (Plan #182)."""
+        return field in self._indexed_metadata_fields
+
+    def add_indexed_field(self, field: str) -> None:
+        """Add a metadata field to the index (Plan #182).
+
+        This will index all existing artifacts for this field.
+        """
+        if field in self._indexed_metadata_fields:
+            return  # Already indexed
+        self._indexed_metadata_fields.add(field)
+        self._index_by_metadata[field] = defaultdict(set)
+        # Index all existing artifacts
+        for artifact_id, artifact in self.artifacts.items():
+            value = self._get_nested_value(artifact.metadata, field)
+            if value is not None:
+                self._index_by_metadata[field][value].add(artifact_id)
+
+    def get_indexed_fields(self) -> set[str]:
+        """Get the set of indexed metadata fields (Plan #182)."""
+        return self._indexed_metadata_fields.copy()
+
+    def rebuild_indexes(self) -> None:
+        """Rebuild all indexes from existing artifacts (Plan #182).
+
+        Use this after bulk-loading artifacts directly into self.artifacts
+        without using write(). This ensures indexes are consistent.
+        """
+        # Clear existing indexes
+        self._index_by_type.clear()
+        self._index_by_owner.clear()
+        self._index_by_metadata.clear()
+
+        # Rebuild from all artifacts
+        for artifact in self.artifacts.values():
+            self._add_to_index(artifact)
 
     def exists(self, artifact_id: str) -> bool:
         """Check if artifact exists"""
@@ -639,6 +784,11 @@ class ArtifactStore:
         if artifact_id in self.artifacts:
             # Update existing
             artifact = self.artifacts[artifact_id]
+            # Plan #182: Capture old state for index update
+            old_type = artifact.type
+            old_owner = artifact.created_by
+            old_metadata = artifact.metadata.copy() if artifact.metadata else {}
+
             artifact.content = content
             artifact.type = type
             artifact.updated_at = now
@@ -652,6 +802,24 @@ class ArtifactStore:
                 artifact.access_contract_id = access_contract_id
             # Plan #168: Update metadata (always replace, even with empty dict)
             artifact.metadata = metadata
+
+            # Plan #182: Update indexes if relevant fields changed
+            if old_type != type:
+                self._index_by_type[old_type].discard(artifact_id)
+                self._index_by_type[type].add(artifact_id)
+            if old_owner != artifact.created_by:
+                self._index_by_owner[old_owner].discard(artifact_id)
+                self._index_by_owner[artifact.created_by].add(artifact_id)
+            for field in self._indexed_metadata_fields:
+                old_value = self._get_nested_value(old_metadata, field)
+                new_value = self._get_nested_value(metadata, field)
+                if old_value != new_value:
+                    if old_value is not None and field in self._index_by_metadata:
+                        self._index_by_metadata[field][old_value].discard(artifact_id)
+                    if new_value is not None:
+                        if field not in self._index_by_metadata:
+                            self._index_by_metadata[field] = defaultdict(set)
+                        self._index_by_metadata[field][new_value].add(artifact_id)
         else:
             # Create new - register with ID registry if available (Plan #7)
             if self.id_registry is not None:
@@ -678,6 +846,8 @@ class ArtifactStore:
                 metadata=metadata,
             )
             self.artifacts[artifact_id] = artifact
+            # Plan #182: Add new artifact to indexes
+            self._add_to_index(artifact)
 
         return artifact
 
@@ -815,25 +985,38 @@ class ArtifactStore:
 
     def get_owner_usage(self, created_by: str) -> int:
         """Get total disk usage for an owner in bytes.
-        
+
+        Plan #182: Uses O(1) index lookup instead of O(n) scan.
         Deleted artifacts do not count toward disk usage (Plan #57).
         """
         total = 0
-        for artifact in self.artifacts.values():
-            if artifact.created_by == created_by and not artifact.deleted:
+        artifact_ids = self._index_by_owner.get(created_by, set())
+        for artifact_id in artifact_ids:
+            artifact = self.artifacts.get(artifact_id)
+            if artifact and not artifact.deleted:
                 total += len(artifact.content.encode("utf-8")) + len(
                     artifact.code.encode("utf-8")
                 )
         return total
 
     def list_by_owner(self, created_by: str) -> list[dict[str, Any]]:
-        """List all artifacts owned by a principal"""
-        return [a.to_dict() for a in self.artifacts.values() if a.created_by == created_by]
+        """List all artifacts owned by a principal.
+
+        Plan #182: Uses O(1) index lookup instead of O(n) scan.
+        """
+        artifact_ids = self._index_by_owner.get(created_by, set())
+        return [
+            self.artifacts[id].to_dict()
+            for id in artifact_ids
+            if id in self.artifacts
+        ]
 
     def get_artifacts_by_owner(
         self, created_by: str, include_deleted: bool = False
     ) -> list[str]:
         """Get artifact IDs owned by a principal.
+
+        Plan #182: Uses O(1) index lookup instead of O(n) scan.
 
         Args:
             created_by: Principal ID to query
@@ -842,9 +1025,11 @@ class ArtifactStore:
         Returns:
             List of artifact IDs owned by the principal
         """
+        artifact_ids = self._index_by_owner.get(created_by, set())
         result = []
-        for artifact_id, artifact in self.artifacts.items():
-            if artifact.created_by == created_by:
+        for artifact_id in artifact_ids:
+            artifact = self.artifacts.get(artifact_id)
+            if artifact:
                 if include_deleted or not artifact.deleted:
                     result.append(artifact_id)
         return result
@@ -872,6 +1057,9 @@ class ArtifactStore:
 
         # Transfer ownership
         artifact.created_by = to_id
+        # Plan #182: Update owner index
+        self._index_by_owner[from_id].discard(artifact_id)
+        self._index_by_owner[to_id].add(artifact_id)
         return True
 
     def write_artifact(
