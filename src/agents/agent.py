@@ -1607,12 +1607,15 @@ Your response should include:
         )
 
         try:
-            # Use the LLM to generate plan JSON
-            response = self.llm.generate_text(prompt)
+            # Use the LLM to generate plan JSON (no response_model = raw text)
+            response = self.llm.generate(prompt)
+            # Ensure response is a string (might be wrong type if mocked incorrectly)
+            if not isinstance(response, str):
+                return None
             # Parse the JSON response
             plan_data = json.loads(response)
             return Plan.from_dict({"plan": plan_data, "execution": {}})
-        except (json.JSONDecodeError, KeyError, ValueError) as e:
+        except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
             # Plan generation failed - fall back to reactive behavior
             return None
 
