@@ -13,7 +13,20 @@ cd "$REPO_ROOT"
 # Get staged Python files
 STAGED_PY=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$' || true)
 
-# 1. Doc-coupling check (strict violations only)
+# 1. Auto-generate plan index FIRST (before doc-coupling check)
+# This ensures CLAUDE.md is staged if plan files changed, preventing false
+# coupling violations when architecture docs trigger the CLAUDE.md coupling.
+echo "Regenerating plan index..."
+python scripts/generate_plan_index.py --write 2>/dev/null || {
+    echo ""
+    echo "ERROR: Failed to generate plan index"
+    echo ""
+    exit 1
+}
+# Stage the regenerated index
+git add docs/plans/CLAUDE.md 2>/dev/null || true
+
+# 2. Doc-coupling check (strict violations only)
 echo "Checking doc-code coupling..."
 if ! python scripts/check_doc_coupling.py --strict 2>/dev/null; then
     echo ""
@@ -23,7 +36,7 @@ if ! python scripts/check_doc_coupling.py --strict 2>/dev/null; then
     exit 1
 fi
 
-# 2. Mypy on changed src/ files
+# 3. Mypy on changed src/ files
 STAGED_SRC=$(echo "$STAGED_PY" | grep '^src/' || true)
 if [ -n "$STAGED_SRC" ]; then
     echo "Running mypy on changed files..."
@@ -46,7 +59,7 @@ if [ -n "$STAGED_SRC" ]; then
     fi
 fi
 
-# 3. Validate coupling config
+# 4. Validate coupling config
 echo "Validating coupling config..."
 if ! python scripts/check_doc_coupling.py --validate-config 2>/dev/null; then
     echo ""
@@ -55,19 +68,7 @@ if ! python scripts/check_doc_coupling.py --validate-config 2>/dev/null; then
     exit 1
 fi
 
-# 4. Auto-generate plan index (eliminates sync issues)
-# Note: This replaces the old sync_plan_status.py --check since the index is now computed
-echo "Regenerating plan index..."
-python scripts/generate_plan_index.py --write 2>/dev/null || {
-    echo ""
-    echo "ERROR: Failed to generate plan index"
-    echo ""
-    exit 1
-}
-# Stage the regenerated index
-git add docs/plans/CLAUDE.md 2>/dev/null || true
-
-# 6. Plan content validation (status must match content)
+# 5. Plan content validation (status must match content)
 echo "Validating plan content..."
 VALIDATION_ERRORS=""
 for plan_file in docs/plans/[0-9]*_*.md; do
@@ -103,7 +104,7 @@ if [ -n "$VALIDATION_ERRORS" ]; then
     exit 1
 fi
 
-# 7. Branch divergence check (prevents merge conflicts)
+# 6. Branch divergence check (prevents merge conflicts)
 echo "Checking branch freshness..."
 git fetch origin 2>/dev/null || true  # Silent fetch, don't fail if offline
 
