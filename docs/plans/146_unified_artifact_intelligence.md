@@ -1,6 +1,6 @@
 # Plan 146: Unified Artifact Intelligence
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** High
 **Blocked By:** None (Plan #143 Reflex complete, builds on that pattern)
 **Blocks:** Agent self-optimization, prompt marketplace, memory trading
@@ -372,6 +372,7 @@ async def _llm_transition(self, agent, step):
 
 ## Files Affected
 
+- requirements.txt (modify) - Remove qdrant-client dependency
 - src/agents/agent.py (modify) - Add new artifact ID fields
 - src/agents/memory.py (modify) - Remove Qdrant, use artifacts
 - src/agents/workflow.py (modify) - Support artifact references

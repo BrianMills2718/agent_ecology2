@@ -4,17 +4,18 @@ Agent Memory - Dual Implementation
 Provides persistent memory for each agent across ticks.
 
 Two implementations available:
-1. AgentMemory - Uses Mem0 with Qdrant for semantic vector search
+1. AgentMemory - DEPRECATED: Uses Mem0 with Qdrant for semantic vector search
+   Plan #146: Use genesis_memory artifact instead for semantic search
 2. ArtifactMemory - Uses artifact store for observable, tradeable memory (CAP-004)
 
 Usage:
-    # Mem0-based (semantic search, requires external services)
-    memory = get_memory()
-    memory.add(agent_id, "learned something")
-
-    # Artifact-based (observable, no external deps)
+    # Artifact-based (recommended - observable, no external deps)
     memory = ArtifactMemory(store)
     memory.add(agent_id, "learned something")  # Stored in artifact content
+
+    # For semantic search, use genesis_memory artifact:
+    #   world.invoke("genesis_memory", caller_id, "search",
+    #                {"memory_artifact_id": "alice_longterm", "query": "trading"})
 """
 
 import logging
@@ -29,14 +30,25 @@ from typing import Any, TypedDict
 warnings.filterwarnings("ignore", message=".*Pydantic serializer warnings.*")
 warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
-# Reduce mem0 log level to WARNING to suppress JSON parse errors
-logging.getLogger("mem0").setLevel(logging.WARNING)
-logging.getLogger("mem0.memory.main").setLevel(logging.WARNING)
-
 logger = logging.getLogger(__name__)
 
+# Conditional import of mem0 - deprecated as of Plan #146
+# Use genesis_memory artifact for semantic search instead
+_MEM0_AVAILABLE = False
+Memory: Any = None  # type: ignore[no-redef]
+try:
+    from mem0 import Memory as _Memory  # type: ignore[import-untyped,unused-ignore]
+    Memory = _Memory
+    _MEM0_AVAILABLE = True
+    # Reduce mem0 log level to WARNING to suppress JSON parse errors
+    logging.getLogger("mem0").setLevel(logging.WARNING)
+    logging.getLogger("mem0.memory.main").setLevel(logging.WARNING)
+except ImportError:
+    # mem0 not installed - AgentMemory will not be available
+    # This is expected after Plan #146 deprecation
+    pass
+
 from dotenv import load_dotenv
-from mem0 import Memory  # type: ignore[import-untyped,unused-ignore]
 
 from ..config import get as config_get
 
@@ -125,14 +137,37 @@ atexit.register(_cleanup_memories)
 
 
 class AgentMemory:
-    """Shared memory manager for all agents using Mem0"""
+    """DEPRECATED: Shared memory manager for all agents using Mem0.
+
+    Plan #146 Deprecation Notice:
+    This class is deprecated. Use genesis_memory artifact for semantic search:
+
+        # Create a memory artifact
+        world.invoke("genesis_memory", caller_id, "create", {"memory_id": "alice_longterm"})
+
+        # Add memories with auto-generated embeddings
+        world.invoke("genesis_memory", caller_id, "add",
+                     {"memory_artifact_id": "alice_longterm", "text": "learned something"})
+
+        # Semantic search
+        world.invoke("genesis_memory", caller_id, "search",
+                     {"memory_artifact_id": "alice_longterm", "query": "trading"})
+
+    For non-semantic memory, use ArtifactMemory class directly.
+    """
 
     _instance: "AgentMemory | None" = None
     _lock: threading.Lock = threading.Lock()
     _initialized: bool
-    memory: Memory
+    memory: Any  # Memory type when available
 
     def __new__(cls) -> "AgentMemory":
+        if not _MEM0_AVAILABLE:
+            raise ImportError(
+                "mem0 is not installed. AgentMemory is deprecated - use genesis_memory "
+                "artifact for semantic search or ArtifactMemory for simple storage. "
+                "See Plan #146 for migration guide."
+            )
         # Double-checked locking pattern for thread-safe singleton
         if cls._instance is None:
             with cls._lock:
@@ -145,6 +180,14 @@ class AgentMemory:
     def __init__(self) -> None:
         if self._initialized:
             return
+
+        # Emit deprecation warning
+        warnings.warn(
+            "AgentMemory is deprecated as of Plan #146. "
+            "Use genesis_memory artifact for semantic search or ArtifactMemory for simple storage.",
+            DeprecationWarning,
+            stacklevel=2
+        )
 
         api_key: str | None = os.getenv('GEMINI_API_KEY')
 
@@ -268,7 +311,17 @@ _memory: AgentMemory | None = None
 
 
 def get_memory() -> AgentMemory:
-    """Get the global memory instance"""
+    """DEPRECATED: Get the global memory instance.
+
+    Plan #146 Deprecation Notice:
+    This function is deprecated. Use genesis_memory artifact instead:
+
+        # Semantic search via genesis_memory
+        world.invoke("genesis_memory", caller_id, "search",
+                     {"memory_artifact_id": "alice_longterm", "query": "trading"})
+
+    Or use ArtifactMemory for simple non-semantic memory storage.
+    """
     global _memory
     if _memory is None:
         _memory = AgentMemory()
