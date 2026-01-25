@@ -98,6 +98,59 @@ def get_main_repo_root() -> Path:
         return Path.cwd()
 
 
+def release_claim(cc_id: str, main_root: Path) -> None:
+    """Release a claim from active-work.yaml.
+
+    Plan #206: Auto-release stale claims when worktree cleanup is safe.
+    """
+    claims_file = main_root / ".claude" / "active-work.yaml"
+    if not claims_file.exists():
+        return
+
+    try:
+        data = yaml.safe_load(claims_file.read_text()) or {}
+    except yaml.YAMLError:
+        return
+
+    claims = data.get("claims", [])
+    new_claims = [c for c in claims if c.get("cc_id") != cc_id]
+
+    if len(new_claims) < len(claims):
+        # Found and removed the claim
+        data["claims"] = new_claims
+        # Add to completed list
+        completed = data.get("completed", [])
+        completed.append({
+            "cc_id": cc_id,
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "reason": "auto_released_merged_pr",
+        })
+        data["completed"] = completed
+        claims_file.write_text(yaml.dump(data, default_flow_style=False, sort_keys=False))
+
+
+def is_branch_merged(branch: str) -> bool:
+    """Check if a branch has been merged to main.
+
+    Plan #206: Smart ownership detection - allow cleanup when PR is merged.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "branch", "-r", "--merged", "origin/main"],
+            capture_output=True,
+            text=True,
+            check=True,
+            env={**os.environ, "GIT_CONFIG_NOSYSTEM": "1"},
+        )
+        for line in result.stdout.strip().split("\n"):
+            line = line.strip()
+            if line.endswith(f"/{branch}") or line == f"origin/{branch}":
+                return True
+        return False
+    except subprocess.CalledProcessError:
+        return False
+
+
 def get_current_cc_identity() -> dict[str, Any]:
     """Get the current CC instance's identity.
 
@@ -284,7 +337,17 @@ def should_block_removal(
         is_mine = claim_owner and (claim_owner == my_branch or claim_owner == my_cwd)
 
         if not is_mine:
-            # Different owner - block with ownership reason
+            # Different owner - check for smart ownership detection (Plan #206)
+            # If branch is merged and no uncommitted changes, allow cleanup
+            branch = get_worktree_branch(worktree_path)
+            if branch and is_branch_merged(branch):
+                has_changes, _ = has_uncommitted_changes(worktree_path)
+                if not has_changes:
+                    # PR merged, no uncommitted changes - safe to cleanup
+                    # Return not blocked but include claim info for release
+                    return False, "merged_safe", claim_info
+
+            # Different owner and not safe to cleanup - block with ownership reason
             return True, "ownership", claim_info
 
         # Same owner but still claimed - block with claim reason
@@ -335,7 +398,22 @@ def remove_worktree(worktree_path: str, force: bool = False) -> bool:
 
     # Check for active claims or recent session marker (Plan #52: Worktree Session Tracking)
     # Extended with ownership check (Plan #115: Worktree Ownership Enforcement)
+    # Extended with smart ownership detection (Plan #206: Claim Lifecycle Fixes)
     block, reason, info = should_block_removal(worktree_path, force)
+
+    # Plan #206: Smart ownership detection - auto-release claim when safe
+    if not block and reason == "merged_safe" and info:
+        cc_id = info.get("cc_id", "")
+        branch = get_worktree_branch(worktree_path) or "unknown"
+        print(f"ℹ️  Branch '{branch}' has been merged and has no uncommitted changes.")
+        print(f"   Auto-releasing stale claim: {cc_id}")
+        # Release the claim
+        try:
+            release_claim(cc_id, get_main_repo_root())
+            print(f"   ✅ Claim released")
+        except Exception as e:
+            print(f"   ⚠️  Could not release claim: {e}")
+            # Continue with removal anyway
 
     # Ownership block is the strongest - you should NEVER remove someone else's worktree
     if block and reason == "ownership" and info:
