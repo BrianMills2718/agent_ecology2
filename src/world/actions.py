@@ -84,6 +84,8 @@ class WriteArtifactIntent(ActionIntent):
     interface: dict[str, Any] | None = None
     # Access contract ID (Plan #100)
     access_contract_id: str | None = None
+    # User-defined metadata (Plan #168)
+    metadata: dict[str, Any] | None = None
 
     def __init__(
         self,
@@ -97,6 +99,7 @@ class WriteArtifactIntent(ActionIntent):
         policy: dict[str, Any] | None = None,
         interface: dict[str, Any] | None = None,
         access_contract_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
         reasoning: str = "",
     ) -> None:
         super().__init__(ActionType.WRITE_ARTIFACT, principal_id, reasoning=reasoning)
@@ -109,6 +112,7 @@ class WriteArtifactIntent(ActionIntent):
         self.policy = policy
         self.interface = interface
         self.access_contract_id = access_contract_id
+        self.metadata = metadata
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
@@ -125,6 +129,8 @@ class WriteArtifactIntent(ActionIntent):
             d["interface"] = self.interface
         if self.access_contract_id is not None:
             d["access_contract_id"] = self.access_contract_id
+        if self.metadata is not None:
+            d["metadata"] = self.metadata
         return d
 
 
@@ -319,6 +325,7 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
         code = data.get("code", "")
         policy: dict[str, Any] | None = data.get("policy")  # Can be None or a dict
         interface: dict[str, Any] | None = data.get("interface")  # Plan #114: Interface schema
+        metadata: dict[str, Any] | None = data.get("metadata")  # Plan #168: User metadata
 
         if not artifact_id:
             return "write_artifact requires 'artifact_id'"
@@ -338,6 +345,10 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
         # Validate interface if provided (Plan #114)
         if interface is not None and not isinstance(interface, dict):
             return "interface must be a dict or null"
+
+        # Validate metadata if provided (Plan #168)
+        if metadata is not None and not isinstance(metadata, dict):
+            return "metadata must be a dict or null"
 
         # Validate executable artifact fields
         if executable:
@@ -359,6 +370,7 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
             code=code,
             policy=policy,
             interface=interface,
+            metadata=metadata,
             reasoning=reasoning,
         )
 

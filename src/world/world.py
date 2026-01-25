@@ -641,6 +641,7 @@ class World:
             interface=intent.interface,
             require_interface=bool(require_interface),
             access_contract_id=intent.access_contract_id,
+            metadata=intent.metadata,  # Plan #168: User-defined metadata
         )
 
         # Track resource consumption (disk bytes written)
