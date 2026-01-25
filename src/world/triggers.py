@@ -12,7 +12,8 @@ Design:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections import defaultdict
+from dataclasses import dataclass, field
 from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -29,6 +30,9 @@ class TriggerSpec:
         filter: Event filter dictionary
         callback_artifact: Artifact to invoke when triggered
         callback_method: Method to call (default "run")
+        fire_at_event: Optional event number to fire at (Plan #185)
+        fire_after_events: Optional delay in events from registration (Plan #185)
+        registered_at_event: Event number when trigger was registered (Plan #185)
     """
 
     trigger_id: str
@@ -36,6 +40,27 @@ class TriggerSpec:
     filter: dict[str, Any]
     callback_artifact: str
     callback_method: str = "run"
+    # Plan #185: Time-based scheduling
+    fire_at_event: int | None = None
+    fire_after_events: int | None = None
+    registered_at_event: int | None = None
+
+    @property
+    def is_scheduled(self) -> bool:
+        """Check if this is a scheduled trigger (not event-based)."""
+        return self.fire_at_event is not None or self.fire_after_events is not None
+
+    def get_fire_event(self) -> int | None:
+        """Get the absolute event number this trigger should fire at.
+
+        Returns:
+            Event number to fire at, or None if not scheduled
+        """
+        if self.fire_at_event is not None:
+            return self.fire_at_event
+        if self.fire_after_events is not None and self.registered_at_event is not None:
+            return self.registered_at_event + self.fire_after_events
+        return None
 
 
 def _get_nested_value(data: dict[str, Any], path: str) -> Any:
@@ -135,8 +160,14 @@ class TriggerRegistry:
     Scans trigger artifacts and caches active ones. Provides methods
     to find matching triggers for events and queue invocations.
 
+    Plan #185 adds time-based scheduling:
+    - Triggers can specify fire_at_event or fire_after_events
+    - Scheduled triggers are tracked separately and fired at the right event
+    - Scheduled triggers don't use event filters - they fire at specific times
+
     Attributes:
-        active_triggers: List of currently active TriggerSpec objects
+        active_triggers: List of currently active TriggerSpec objects (event-based)
+        scheduled_triggers: Dict of event_number -> list of TriggerSpec (time-based)
     """
 
     def __init__(self, artifact_store: "ArtifactStore") -> None:
@@ -148,6 +179,17 @@ class TriggerRegistry:
         self._artifact_store = artifact_store
         self.active_triggers: list[TriggerSpec] = []
         self._pending_invocations: list[dict[str, Any]] = []
+        # Plan #185: Scheduled triggers indexed by fire event number
+        self._scheduled_triggers: dict[int, list[TriggerSpec]] = defaultdict(list)
+        self._current_event_number: int = 0
+
+    def set_current_event_number(self, event_number: int) -> None:
+        """Update the current event number for scheduling.
+
+        Args:
+            event_number: Current event number in simulation
+        """
+        self._current_event_number = event_number
 
     def refresh(self) -> None:
         """Scan trigger artifacts and update active trigger cache.
@@ -156,8 +198,11 @@ class TriggerRegistry:
         - Must be enabled
         - Must have valid filter and callback
         - Trigger owner must own the callback artifact (spam prevention)
+
+        Plan #185: Also rebuilds scheduled trigger index for time-based triggers.
         """
         self.active_triggers = []
+        self._scheduled_triggers.clear()
 
         # Scan all artifacts of type "trigger"
         for artifact in self._artifact_store.artifacts.values():
@@ -176,11 +221,10 @@ class TriggerRegistry:
                 continue
 
             # Get required fields
-            filter_spec = metadata.get("filter")
             callback_artifact = metadata.get("callback_artifact")
             callback_method = metadata.get("callback_method", "run")
 
-            if not filter_spec or not callback_artifact:
+            if not callback_artifact:
                 continue
 
             # Spam prevention: trigger owner must own callback artifact
@@ -191,16 +235,34 @@ class TriggerRegistry:
                 # Cannot trigger artifacts you don't own
                 continue
 
-            # Valid trigger - add to active list
-            self.active_triggers.append(
-                TriggerSpec(
-                    trigger_id=artifact.id,
-                    owner=artifact.created_by,
-                    filter=filter_spec,
-                    callback_artifact=callback_artifact,
-                    callback_method=callback_method,
-                )
+            # Plan #185: Check for scheduling fields
+            fire_at_event = metadata.get("fire_at_event")
+            fire_after_events = metadata.get("fire_after_events")
+            registered_at_event = metadata.get("registered_at_event")
+
+            # Build trigger spec
+            trigger_spec = TriggerSpec(
+                trigger_id=artifact.id,
+                owner=artifact.created_by,
+                filter=metadata.get("filter", {}),
+                callback_artifact=callback_artifact,
+                callback_method=callback_method,
+                fire_at_event=fire_at_event,
+                fire_after_events=fire_after_events,
+                registered_at_event=registered_at_event,
             )
+
+            # Plan #185: Separate scheduled vs event-based triggers
+            if trigger_spec.is_scheduled:
+                fire_event = trigger_spec.get_fire_event()
+                if fire_event is not None and fire_event >= self._current_event_number:
+                    # Only schedule if not already past
+                    self._scheduled_triggers[fire_event].append(trigger_spec)
+            else:
+                # Event-based trigger - requires filter
+                if not metadata.get("filter"):
+                    continue
+                self.active_triggers.append(trigger_spec)
 
     def get_matching_triggers(self, event: dict[str, Any]) -> list[TriggerSpec]:
         """Get all triggers that match an event.
@@ -249,3 +311,108 @@ class TriggerRegistry:
     def clear_pending_invocations(self) -> None:
         """Clear all pending invocations."""
         self._pending_invocations.clear()
+
+    # Plan #185: Scheduled trigger methods
+
+    def schedule_trigger(
+        self,
+        trigger_spec: TriggerSpec,
+        at_event: int | None = None,
+        after_events: int | None = None,
+    ) -> bool:
+        """Schedule a trigger to fire at a specific event number.
+
+        Args:
+            trigger_spec: The trigger specification
+            at_event: Absolute event number to fire at
+            after_events: Number of events from now to fire
+
+        Returns:
+            True if scheduled successfully
+        """
+        if at_event is not None:
+            fire_at = at_event
+        elif after_events is not None:
+            fire_at = self._current_event_number + after_events
+        else:
+            return False
+
+        if fire_at < self._current_event_number:
+            # Can't schedule in the past
+            return False
+
+        # Update trigger spec
+        trigger_spec.fire_at_event = fire_at
+        trigger_spec.registered_at_event = self._current_event_number
+
+        self._scheduled_triggers[fire_at].append(trigger_spec)
+        return True
+
+    def get_scheduled_triggers(self, event_number: int) -> list[TriggerSpec]:
+        """Get triggers scheduled to fire at a specific event number.
+
+        Args:
+            event_number: The event number to check
+
+        Returns:
+            List of TriggerSpec objects scheduled for that event
+        """
+        return list(self._scheduled_triggers.get(event_number, []))
+
+    def fire_scheduled_triggers(self, event_number: int) -> int:
+        """Fire all triggers scheduled for a specific event number.
+
+        Queues invocations for all triggers scheduled at this event.
+        Removes fired triggers from the schedule.
+
+        Args:
+            event_number: Current event number
+
+        Returns:
+            Number of triggers fired
+        """
+        scheduled = self._scheduled_triggers.pop(event_number, [])
+        for trigger in scheduled:
+            # Create a synthetic "scheduled" event for the trigger
+            event = {
+                "event_type": "scheduled",
+                "event_number": event_number,
+                "trigger_id": trigger.trigger_id,
+                "scheduled_at": trigger.registered_at_event,
+            }
+            self._pending_invocations.append(
+                {
+                    "trigger_id": trigger.trigger_id,
+                    "callback_artifact": trigger.callback_artifact,
+                    "callback_method": trigger.callback_method,
+                    "event": event,
+                    "owner": trigger.owner,
+                }
+            )
+        return len(scheduled)
+
+    def cancel_scheduled_trigger(self, trigger_id: str) -> bool:
+        """Cancel a scheduled trigger before it fires.
+
+        Args:
+            trigger_id: ID of the trigger to cancel
+
+        Returns:
+            True if found and cancelled
+        """
+        for event_num, triggers in list(self._scheduled_triggers.items()):
+            for i, trigger in enumerate(triggers):
+                if trigger.trigger_id == trigger_id:
+                    triggers.pop(i)
+                    if not triggers:
+                        del self._scheduled_triggers[event_num]
+                    return True
+        return False
+
+    def get_scheduled_count(self) -> int:
+        """Get total number of scheduled triggers.
+
+        Returns:
+            Number of triggers currently scheduled
+        """
+        return sum(len(triggers) for triggers in self._scheduled_triggers.values())

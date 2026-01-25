@@ -1540,6 +1540,7 @@ class World:
         """Increment the event counter and return the new value.
 
         Used for event ordering in logs. Not related to execution timing.
+        Plan #185: Also fires any triggers scheduled for this event.
         """
         self.event_number += 1
 
@@ -1548,6 +1549,9 @@ class World:
         debt_contract = self.genesis_artifacts.get("genesis_debt_contract")
         if isinstance(debt_contract, GenesisDebtContract):
             debt_contract.set_tick(self.event_number)
+
+        # Plan #185: Check for scheduled triggers at this event
+        self.check_scheduled_triggers()
 
         return self.event_number
 
@@ -2116,7 +2120,9 @@ class World:
         """Refresh the trigger registry from current artifacts.
 
         Should be called when trigger artifacts are created/updated/deleted.
+        Plan #185: Also updates current event number for scheduling.
         """
+        self.trigger_registry.set_current_event_number(self.event_number)
         self.trigger_registry.refresh()
 
     def process_pending_triggers(self) -> list[ActionResult]:
@@ -2156,3 +2162,36 @@ class World:
             Number of invocations waiting to be processed
         """
         return len(self.trigger_registry.get_pending_invocations())
+
+    # --- Scheduled Triggers (Plan #185) ---
+
+    def check_scheduled_triggers(self) -> int:
+        """Check and queue any triggers scheduled for the current event number.
+
+        This should be called after incrementing the event counter to fire
+        any triggers scheduled for this event.
+
+        Returns:
+            Number of scheduled triggers fired
+        """
+        self.trigger_registry.set_current_event_number(self.event_number)
+        return self.trigger_registry.fire_scheduled_triggers(self.event_number)
+
+    def get_scheduled_trigger_count(self) -> int:
+        """Get number of triggers currently scheduled for future events.
+
+        Returns:
+            Number of scheduled triggers waiting to fire
+        """
+        return self.trigger_registry.get_scheduled_count()
+
+    def cancel_scheduled_trigger(self, trigger_id: str) -> bool:
+        """Cancel a scheduled trigger before it fires.
+
+        Args:
+            trigger_id: ID of the trigger artifact to cancel
+
+        Returns:
+            True if the trigger was found and cancelled
+        """
+        return self.trigger_registry.cancel_scheduled_trigger(trigger_id)
