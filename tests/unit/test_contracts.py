@@ -1744,8 +1744,9 @@ class TestDanglingContractHandling:
         """Test that missing contract logs a warning."""
         import logging
 
-        # Capture warnings
-        with self.assertLogs('src.world.executor', level='WARNING') as cm:
+        # Plan #181: Warning now logged from permission_checker module
+        # Capture warnings from permission_checker module
+        with self.assertLogs('src.world.permission_checker', level='WARNING') as cm:
             self.executor._check_permission_via_contract(
                 "test_user", "read", self.artifact
             )

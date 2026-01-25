@@ -11,6 +11,8 @@ This is the heart of the simulation. All world state, resources, and execution l
 | `ledger.py` | Resource accounting (renewable/stock), scrip balances, transfers |
 | `artifacts.py` | Artifact storage, policies, ownership |
 | `executor.py` | Safe code execution, invoke() support, timeout protection |
+| `permission_checker.py` | Permission checking logic for artifact access (Plan #181) |
+| `interface_validation.py` | Argument validation against interface schemas (Plan #181) |
 | `actions.py` | Action definitions (noop, read, write, invoke) |
 | `genesis.py` | System artifacts (ledger, mint, escrow, event_log, store) |
 | `genesis_contracts.py` | Built-in access control contracts |
@@ -53,7 +55,7 @@ Changes here MUST update `docs/architecture/current/`:
 | `world.py` | `execution_model.md` |
 | `ledger.py`, `simulation_engine.py` | `resources.md` |
 | `genesis.py` | `genesis_artifacts.md` |
-| `artifacts.py`, `executor.py`, `kernel_interface.py` | `artifacts_executor.md` |
+| `artifacts.py`, `executor.py`, `permission_checker.py`, `kernel_interface.py` | `artifacts_executor.md` |
 
 ## Testing
 

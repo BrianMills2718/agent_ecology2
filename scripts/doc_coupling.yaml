@@ -65,10 +65,12 @@ couplings:
       - "src/world/artifacts.py"
       - "src/world/executor.py"
       - "src/world/action_executor.py"
+      - "src/world/permission_checker.py"
+      - "src/world/interface_validation.py"
       - "src/world/actions.py"
     docs:
       - "docs/architecture/current/artifacts_executor.md"
-    description: "Artifact storage, policies, code execution"
+    description: "Artifact storage, policies, code execution, permission checking, interface validation"
 
   # Configuration
   - sources:

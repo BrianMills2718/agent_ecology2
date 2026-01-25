@@ -24,7 +24,7 @@ These files are hard to navigate, test in isolation, and modify safely.
 |----------|---------------|-------------------|
 | `world.py` | World class, state coordination | ~600 |
 | `event_lifecycle.py` | Event creation, lifecycle management | ~400 |
-| `artifact_store.py` | Artifact storage, queries, ownership | ~500 |
+| `artifact_store.py` | Artifact storage, queries, ownership |~500 |
 | `action_dispatch.py` | Action routing, intent processing | ~500 |
 
 ### executor.py (1765 lines → ~3 files)
@@ -58,12 +58,42 @@ These files are hard to navigate, test in isolation, and modify safely.
 
 ## Files Affected
 
-- src/world/world.py (modify) - reduce size by extracting action execution
-- src/world/action_executor.py (create) - action execution logic extracted from world.py
-- src/world/executor.py (modify) - may extract permission checking
-- src/world/CLAUDE.md (modify) - update module documentation
-- scripts/doc_coupling.yaml (modify) - add new file mappings
-- docs/architecture/current/artifacts_executor.md (modify) - update architecture docs
+- src/world/permission_checker.py (create)
+- src/world/interface_validation.py (create)
+- src/world/invoke_handler.py (create)
+- src/world/event_lifecycle.py (create)
+- src/world/action_dispatch.py (create)
+- src/world/executor.py (modify)
+- src/world/world.py (modify)
+- src/world/CLAUDE.md (modify)
+- docs/architecture/current/artifacts_executor.md (modify)
+- scripts/doc_coupling.yaml (modify)
+- tests/unit/test_contracts.py (modify)
+
+## Progress
+
+### Part 1: permission_checker.py (Complete)
+- ✅ Created `permission_checker.py` (348 lines) with permission checking functions
+- ✅ Updated `executor.py` to delegate to permission_checker module
+- ✅ All 2458 tests pass
+- ✅ Documentation updated
+
+### Part 2: interface_validation.py (Complete)
+- ✅ Created `interface_validation.py` (375 lines) with argument validation functions
+- ✅ Updated `executor.py` to import from interface_validation module
+- ✅ All 2458 tests pass
+- ✅ Documentation updated
+
+**Current state:**
+- `executor.py`: 1436 lines (down from 1890)
+- `permission_checker.py`: 348 lines (new)
+- `interface_validation.py`: 375 lines (new)
+
+### Part 3: invoke_handler.py (Not started)
+- [ ] Extract invoke handling logic from executor.py (complex - closures)
+
+### Part 4: world.py split (Not started)
+- [ ] Split world.py into event_lifecycle.py, action_dispatch.py
 
 ## Related
 
