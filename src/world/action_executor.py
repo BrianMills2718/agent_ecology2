@@ -178,7 +178,8 @@ class ActionExecutor:
                 success=False,
                 message=(
                     f"Artifact '{intent.artifact_id}' not found. "
-                    f"To discover artifacts, use the query_kernel ACTION: "
+                    f"NOTE: query_kernel is NOT an artifact - do NOT invoke it. "
+                    f"It is an action TYPE. Use: "
                     f'{{\"action_type\": \"query_kernel\", \"query_type\": \"artifacts\"}}'
                 ),
                 error_code=ErrorCode.NOT_FOUND.value,
@@ -518,6 +519,27 @@ class ActionExecutor:
         args = intent.args
         start_time = time.perf_counter()
 
+        # Plan #211: Special case for query_kernel - common agent confusion
+        if artifact_id == "query_kernel":
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            error_msg = (
+                "STOP: query_kernel is NOT an artifact you can invoke. "
+                "It is an ACTION TYPE. Instead of invoke_artifact, use: "
+                '{"action_type": "query_kernel", "query_type": "artifacts"}'
+            )
+            self._log_invoke_failure(
+                intent.principal_id, artifact_id, method_name or "unknown",
+                duration_ms, "not_found", error_msg
+            )
+            return ActionResult(
+                success=False,
+                message=error_msg,
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.VALIDATION.value,
+                retriable=False,
+                error_details={"artifact_id": artifact_id, "hint": "use action_type query_kernel"},
+            )
+
         # Plan #15: Unified invoke path - all artifacts via artifact store
         artifact = w.artifacts.get(artifact_id)
         if artifact:
@@ -660,7 +682,8 @@ class ActionExecutor:
         duration_ms = (time.perf_counter() - start_time) * 1000
         helpful_msg = (
             f"Artifact '{artifact_id}' not found. "
-            f"To discover artifacts, use the query_kernel ACTION: "
+            f"NOTE: query_kernel is NOT an artifact - do NOT invoke it. "
+            f"It is an action TYPE. Use: "
             f'{{\"action_type\": \"query_kernel\", \"query_type\": \"artifacts\"}}'
         )
         self._log_invoke_failure(
