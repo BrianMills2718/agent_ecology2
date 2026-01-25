@@ -185,6 +185,7 @@ class Agent:
         artifact_store: ArtifactStore | None = None,
         inject_working_memory: bool | None = None,
         working_memory_max_bytes: int | None = None,
+        is_genesis: bool = True,
     ) -> None:
         """Initialize an agent.
 
@@ -200,6 +201,7 @@ class Agent:
             artifact_store: Optional artifact store for memory access (INT-004)
             inject_working_memory: Whether to inject working memory into prompts (Plan #59)
             working_memory_max_bytes: Max size of working memory in bytes (Plan #59)
+            is_genesis: Whether this is a genesis agent (Plan #197, default True)
         """
         # Get defaults from config
         default_model: str = config_get("llm.default_model") or "gemini/gemini-3-flash-preview"
@@ -234,6 +236,7 @@ class Agent:
             self.memory = get_memory()
         self.last_action_result = None  # Track result of last action for feedback
         self._alive = True  # Agent starts alive (for autonomous loops)
+        self._is_genesis = is_genesis  # Plan #197: Track genesis vs spawned agents
 
         # Plan #88: Track recent failures for learning from mistakes
         self.failure_history: list[str] = []
@@ -501,6 +504,7 @@ class Agent:
         store: ArtifactStore | None = None,
         log_dir: str | None = None,
         run_id: str | None = None,
+        is_genesis: bool = True,
     ) -> Agent:
         """Create an Agent from an artifact.
 
@@ -513,6 +517,7 @@ class Agent:
             store: Optional artifact store for memory access
             log_dir: Directory for LLM logs
             run_id: Run ID for log organization
+            is_genesis: Whether this is a genesis agent (Plan #197)
 
         Returns:
             Agent instance wrapping the artifact
@@ -542,6 +547,7 @@ class Agent:
             rag_config=config.get("rag"),
             artifact=artifact,
             artifact_store=store,
+            is_genesis=is_genesis,
         )
 
     def to_artifact(self) -> Artifact:
@@ -728,6 +734,15 @@ class Agent:
     def alive(self, value: bool) -> None:
         """Set whether agent should continue running."""
         self._alive = value
+
+    @property
+    def is_genesis(self) -> bool:
+        """Whether this is a genesis agent (loaded at startup) vs spawned at runtime.
+
+        Plan #197: Used for scoped prompt injection - genesis agents can be
+        treated differently from agents spawned during the simulation.
+        """
+        return self._is_genesis
 
     def build_prompt(self, world_state: dict[str, Any]) -> str:
         """Build the prompt for the LLM (events require genesis_event_log)"""
@@ -1042,6 +1057,26 @@ To start recording lessons, write to artifact `{memory_artifact_id}` with your l
 This will persist across your thinking cycles.
 """
 
+        # Plan #197: Configurable prompt injection
+        # Inject mandatory prefix/suffix around system prompt based on config
+        effective_system_prompt: str = self.system_prompt
+        prompt_injection_enabled: bool = config_get("prompt_injection.enabled") or False
+        if prompt_injection_enabled:
+            scope: str = config_get("prompt_injection.scope") or "all"
+            # Determine if this agent should receive injection
+            should_inject: bool = False
+            if scope == "all":
+                should_inject = True
+            elif scope == "genesis" and self._is_genesis:
+                should_inject = True
+            # scope == "none" means no injection
+
+            if should_inject:
+                prefix: str = config_get("prompt_injection.mandatory_prefix") or ""
+                suffix: str = config_get("prompt_injection.mandatory_suffix") or ""
+                if prefix or suffix:
+                    effective_system_prompt = f"{prefix}\n{self.system_prompt}\n{suffix}".strip()
+
         prompt: str = f"""=== GOAL: Maximize scrip balance by simulation end ===
 You are {self.agent_id}. Time remaining: {time_remaining_str} ({progress_str} complete)
 
@@ -1050,7 +1085,7 @@ You are {self.agent_id}. Time remaining: {time_remaining_str} ({progress_str} co
 - Actions: {success_rate_str} successful
 - Artifacts created: {len(my_artifacts)}
 
-{self.system_prompt}
+{effective_system_prompt}
 {first_tick_section}{working_memory_section}{action_feedback}{config_error_section}{recent_failures_section}{action_history_section}{metacognitive_section}
 ## Your Memories
 {memories}
