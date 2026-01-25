@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useArtifacts } from '../../api/queries'
 import { Panel } from '../shared/Panel'
 import { Pagination } from '../shared/Pagination'
 import { ArtifactDetailModal } from './ArtifactDetailModal'
 import { safeFixed } from '../../utils/format'
+import { useSelectionStore } from '../../stores/selection'
 
 function TypeBadge({ type }: { type: string }) {
   const isGenesis = type.startsWith('genesis_')
@@ -47,6 +48,17 @@ export function ArtifactsPanel() {
   const [search, setSearch] = useState('')
   const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null)
   const limit = 25
+
+  // Listen for selections from global search
+  const globalSelectedArtifact = useSelectionStore((s) => s.selectedArtifactId)
+  const clearSelection = useSelectionStore((s) => s.clearSelection)
+
+  useEffect(() => {
+    if (globalSelectedArtifact) {
+      setSelectedArtifact(globalSelectedArtifact)
+      clearSelection()
+    }
+  }, [globalSelectedArtifact, clearSelection])
 
   const { data, isLoading, error } = useArtifacts(page, limit, search || undefined)
 

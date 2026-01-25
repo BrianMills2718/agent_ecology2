@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAgents } from '../../api/queries'
 import { Panel } from '../shared/Panel'
 import { Pagination } from '../shared/Pagination'
 import { AgentDetailModal } from './AgentDetailModal'
 import { safeFixed } from '../../utils/format'
+import { useSelectionStore } from '../../stores/selection'
 import type { AgentSummary } from '../../types/api'
 
 function StatusBadge({ status }: { status: AgentSummary['status'] }) {
@@ -44,6 +45,17 @@ export function AgentsPanel() {
   const [page, setPage] = useState(0)
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
   const limit = 25
+
+  // Listen for selections from global search
+  const globalSelectedAgent = useSelectionStore((s) => s.selectedAgentId)
+  const clearSelection = useSelectionStore((s) => s.clearSelection)
+
+  useEffect(() => {
+    if (globalSelectedAgent) {
+      setSelectedAgent(globalSelectedAgent)
+      clearSelection()
+    }
+  }, [globalSelectedAgent, clearSelection])
 
   const { data, isLoading, error } = useAgents(page, limit)
 
