@@ -1,4 +1,4 @@
-# Plan #121: Unclosed File Handle Fix
+# Plan #200: Unclosed File Handle Fix
 
 **Status:** ✅ Complete
 

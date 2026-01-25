@@ -148,7 +148,6 @@ Master index of all gaps and their implementation plans.
 | 119 | [Plan 119: Documentation Consistency Fixes](119_doc_consistency.md) | Medium | ✅ Complete | - |
 | 120 | [Document Executable Interface Requirement](120_executable_interface_docs.md) | High | ✅ Complete | Agent ability to create executables, mint submissions |
 | 121 | [Thought Capture Consistency](121_thought_capture_consistency.md) | High | ✅ Complete | Agent observability, debugging, emergence detection |
-| 121 | [Unclosed File Handle Fix](121_unclosed_file_handle.md) | **Critical** | ✅ Complete | - |
 | 122 | [Model Registry Config Fix](122_model_registry_config.md) | **Critical** | ✅ Complete | - |
 | 123 | [Safe Expression Evaluator](123_safe_expression_evaluator.md) | **Critical** | ✅ Complete | - |
 | 124 | [Config Documentation Sync](124_config_doc_sync.md) | **High** | ✅ Complete | - |
@@ -167,14 +166,11 @@ Master index of all gaps and their implementation plans.
 | 138 | [Provider-Level Union Schema Transformation](138_provider_union_schema_transform.md) | Low | 📋 Deferred (until problems arise with Plan #137) | - |
 | 139 | [Dashboard Bug Fixes and Improvements](139_dashboard_phase2_phase3.md) | High | ✅ Complete | Dashboard usability |
 | 140 | [Plan 140: Actions Module for Agent-Expected API](140_actions_module.md) | High | ❓ | - |
-| 140 | [Plan 140: Kernel Permission Fixes](140_kernel_permission_fixes.md) | High | ✅ Complete | Custom contracts, proper access control |
 | 141 | [Fix merge hook gap for `make -C` pattern](141_merge_hook_gap.md) | high | ❓ | - |
 | 142 | [Dashboard Improvements - KPI Trends, Pagination, WebSocket](142_dashboard_improvements.md) | Medium | ✅ Complete | Dashboard scalability |
 | 143 | [Plan 143: Reflex System (System 1 Fast Path)](143_reflex_system.md) | High | ✅ Complete | Agent self-optimization, high-frequency trading |
 | 144 | [Per-Entity Activity Timelines](144_entity_activity_timelines.md) | Medium | ✅ Complete | - |
-| 144 | [Plan 144: Workflows as Tradeable Artifacts](144_workflows_as_artifacts.md) | High | ❓ | Agent self-modification, workflow marketplace |
 | 145 | [Dashboard Quick Wins](145_dashboard_quickwins.md) | Medium | ✅ Complete | - |
-| 145 | [Plan 145: Supervisor Auto-Restart](145_supervisor_auto_restart.md) | Medium | ✅ Complete | Robust long-running simulations |
 | 146 | [Plan 146: Unified Artifact Intelligence](146_unified_artifact_intelligence.md) | High | 🚧 In Progress | Agent self-optimization, prompt marketplace, memory trading |
 | 147 | [Dashboard Features - Latency, Search, Comparison](147_dashboard_features.md) | Medium | ✅ Complete | - |
 | 148 | [Plan 148: ADR-0019 Implementation Audit](148_adr019_implementation_audit.md) | High | ✅ Complete | Full contract-based permission system |
@@ -203,7 +199,6 @@ Master index of all gaps and their implementation plans.
 | 177 | [Dashboard Bug Fixes](177_dashboard_bugfixes.md) | High | ✅ Complete | - |
 | 178 | [Plan 178: Configurable Enforcement Strictness](178_enforcement_strictness_config.md) | High | ✅ Complete | - |
 | 179 | [Dashboard Bugfixes - Coordination Density & Tick Language](179_dashboard_bugfixes.md) | High | ✅ Complete | - |
-| 180 | [Configurable Mandatory Prompt Injection](180_prompt_injection.md) | Low | ✅ Superseded | - |
 | 180 | [Complete Trigger Integration](180_trigger_integration.md) | High | ✅ Complete | Real-time coordination patterns |
 | 181 | [Split Large Core Files](181_split_large_files.md) | Low | 📋 Planned | - |
 | 182 | [Metadata Indexing for Artifact Discovery](182_metadata_indexing.md) | Medium | ✅ Complete | Performance at scale |
@@ -211,12 +206,10 @@ Master index of all gaps and their implementation plans.
 | 184 | [Query Kernel Action](184_query_kernel_action.md) | High | ✅ Complete | - |
 | 185 | [Time-Based Scheduling](185_time_based_scheduling.md) | Medium | ✅ Complete | Time-based contracts, scheduled tasks |
 | 186 | [Cross-Run Learning for Genesis Agents](186_cross_run_learning.md) | Medium | ❓ | Cumulative agent improvement |
-| 186 | [Git-Level Meta-Process Resilience](186_meta_resilience.md) | **Critical** | ✅ Complete | All meta-process reliability |
 | 187 | [Extended Thinking for Genesis Agents](187_extended_thinking.md) | Medium | ✅ Complete | Improved agent reasoning quality |
 | 188 | [Plan Artifact Pattern for Genesis Agents](188_plan_artifact_pattern.md) | Medium | ❓ | Deliberative agent behavior, observability |
 | 189 | [Meta-Process Robustness Overhaul](189_meta_robustness.md) | **Critical** | ✅ Complete | All future meta-process reliability |
 | 190 | [Global Search in Dashboard v2](190_global_search.md) | Medium | 📋 Planned | - |
-| 190 | [Remove genesis_store (Redundant with query_kernel)](190_remove_genesis_store.md) | High | ❓ | Cleaner agent discovery, reduced agent confusion |
 | 191 | [Subscribed Artifacts](191_subscribed_artifacts.md) | Medium | ❓ | - |
 | 192 | [Context Section Control](192_context_section_control.md) | Medium | ❓ | - |
 | 193 | [Context Priority and Ordering](193_context_priority.md) | Medium | ✅ Complete | - |
@@ -225,6 +218,13 @@ Master index of all gaps and their implementation plans.
 | 196 | [Memory Tiering](196_memory_tiering.md) | Medium | ✅ Complete | - |
 | 197 | [Configurable Mandatory Prompt Injection](197_prompt_injection.md) | Low | ✅ Complete | - |
 | 198 | [Shareable Hook Enhancements](198_shareable_hooks.md) | Medium | ✅ Complete | - |
+| 199 | [Remove genesis_store (Redundant with query_kernel)](199_remove_genesis_store.md) | High | ❓ | Cleaner agent discovery, reduced agent confusion |
+| 200 | [Unclosed File Handle Fix](200_unclosed_file_handle.md) | **Critical** | ✅ Complete | - |
+| 201 | [Kernel Permission Fixes](201_kernel_permission_fixes.md) | High | ✅ Complete | Custom contracts, proper access control |
+| 202 | [Workflows as Tradeable Artifacts](202_workflows_as_artifacts.md) | High | ❓ | Agent self-modification, workflow marketplace |
+| 203 | [Supervisor Auto-Restart](203_supervisor_auto_restart.md) | Medium | ✅ Complete | Robust long-running simulations |
+| 204 | [Configurable Mandatory Prompt Injection](204_prompt_injection.md) | Low | ✅ Superseded | - |
+| 205 | [Git-Level Meta-Process Resilience](205_meta_resilience.md) | **Critical** | ✅ Complete | All meta-process reliability |
 ---
 
 ## TDD Workflow
@@ -264,4 +264,3 @@ make worktree BRANCH=plan-NN-description
 | `docs/architecture/target/` | What we WANT |
 | `docs/architecture/gaps/` | 142-gap detailed analysis |
 | `TEMPLATE.md` | New plan file template |
-
