@@ -210,4 +210,6 @@ make mypy
 
 ## Follow-up Plans Needed
 
-- **Plan #165: Debt Contract Time-Based Redesign** - Replace `due_tick` with timestamps, `interest_rate` with per-hour/per-day rate
+- **Plan #167: Debt Contract Time-Based Redesign** - Replace `due_tick` with timestamps, `interest_rate` with per-hour/per-day rate
+
+(Note: Originally referenced as #165 but that number was taken by Genesis Contracts as Artifacts)
