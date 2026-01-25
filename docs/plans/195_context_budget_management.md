@@ -1,6 +1,6 @@
 # Plan #195: Context Budget Management
 
-**Status:** Planned
+**Status:** Done
 **Created:** 2025-01-25
 **Scope:** Agent Cognitive Autonomy
 
