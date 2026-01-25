@@ -1,6 +1,6 @@
 # Plan #213: Escrow Contract-Based Redesign
 
-**Status:** Complete
+**Status:** ✅ Complete
 **Priority:** Medium
 **Depends on:** Plan #210 (merged)
 **Blocks:** Correct artifact trading semantics

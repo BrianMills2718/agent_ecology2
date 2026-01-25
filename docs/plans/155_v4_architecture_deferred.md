@@ -1,6 +1,6 @@
 # Plan #155: V4 Architecture - Deferred Considerations
 
-**Status:** deferred
+**Status:** 📋 Deferred
 **Priority:** low (until v3 fixes validated)
 **Created:** 2026-01-22
 **Context:** Extended discussion about fundamental architecture changes. Deferred to focus on immediate v3 fixes first.

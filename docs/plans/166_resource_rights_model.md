@@ -1,6 +1,6 @@
 # Plan 166: Resource Rights Model
 
-**Status:** Complete
+**Status:** ✅ Complete
 **Priority:** High
 **Complexity:** High
 

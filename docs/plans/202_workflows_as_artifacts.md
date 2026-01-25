@@ -1,6 +1,6 @@
 # Plan #202: Workflows as Tradeable Artifacts
 
-**Status:** ⏩ Superseded by Plan #146
+**Status:** ✅ Superseded by Plan #146
 **Priority:** High
 **Blocked By:** None
 **Blocks:** Agent self-modification, workflow marketplace

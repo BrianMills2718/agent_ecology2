@@ -1,6 +1,6 @@
 # Plan #199: Remove genesis_store (Redundant with query_kernel)
 
-**Status:** Done
+**Status:** ✅ Complete
 **Priority:** High
 **Complexity:** Medium-High
 **Blocks:** Cleaner agent discovery, reduced agent confusion

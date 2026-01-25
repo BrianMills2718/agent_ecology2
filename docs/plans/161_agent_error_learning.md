@@ -1,6 +1,6 @@
 # Plan #161: Agent Error Learning
 
-**Status:** Complete
+**Status:** ✅ Complete
 **Priority:** High
 **Goal:** Help agents learn from errors by improving discoverability and error messages
 
