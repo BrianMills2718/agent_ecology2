@@ -108,18 +108,22 @@ const AgentsPanel = {
             const row = document.createElement('tr');
             row.dataset.agentId = agent.agent_id;
 
-            // Plan #153: Budget-based display
+            // Plan #153: Budget-based display, Plan #149: N/A for missing data
             const budgetRemaining = agent.llm_budget_remaining || 0;
             const budgetInitial = agent.llm_budget_initial || 0;
-            const budgetDisplay = budgetInitial > 0
-                ? `$${budgetRemaining.toFixed(2)}/$${budgetInitial.toFixed(2)}`
-                : (agent.llm_tokens_quota > 0
-                    ? `${((agent.llm_tokens_used / agent.llm_tokens_quota) * 100).toFixed(0)}%`
-                    : '0%');
+            let budgetDisplay;
+            if (budgetInitial > 0) {
+                budgetDisplay = `$${budgetRemaining.toFixed(2)}/$${budgetInitial.toFixed(2)}`;
+            } else if (agent.llm_tokens_quota > 0) {
+                budgetDisplay = `${((agent.llm_tokens_used / agent.llm_tokens_quota) * 100).toFixed(0)}%`;
+            } else {
+                budgetDisplay = 'N/A';  // No budget or token quota configured
+            }
 
-            const diskPercent = agent.disk_quota > 0
-                ? (agent.disk_used / agent.disk_quota * 100).toFixed(0)
-                : 0;
+            // Plan #149: Show N/A for missing disk quota
+            const diskDisplay = agent.disk_quota > 0
+                ? `${(agent.disk_used / agent.disk_quota * 100).toFixed(0)}%`
+                : 'N/A';
 
             const statusClass = agent.status === 'active' ? 'status-active'
                 : agent.status === 'low_resources' ? 'status-low-resources'
@@ -134,7 +138,7 @@ const AgentsPanel = {
                     frozenReason = 'LLM tokens exhausted';
                 } else if (agent.scrip <= 0) {
                     frozenReason = 'Out of scrip';
-                } else if (diskPercent >= 100) {
+                } else if (agent.disk_quota > 0 && agent.disk_used >= agent.disk_quota) {
                     frozenReason = 'Disk quota exceeded';
                 } else {
                     frozenReason = 'Resources depleted';
@@ -152,7 +156,7 @@ const AgentsPanel = {
                 <td>${this.escapeHtml(agent.agent_id)}</td>
                 <td>${agent.scrip}</td>
                 <td>${budgetDisplay}</td>
-                <td>${diskPercent}%</td>
+                <td>${diskDisplay}</td>
                 <td class="${statusClass}"${statusAttr}>${agent.status}</td>
                 <td>${agent.action_count}</td>
             `;
@@ -272,19 +276,32 @@ const AgentsPanel = {
             // Update modal title
             document.getElementById('modal-agent-id').textContent = agentId;
 
-            // Update balances (Plan #153: show budget prominently)
+            // Update balances (Plan #153: show budget prominently, Plan #149: N/A for missing)
             const balancesEl = document.getElementById('modal-balances');
             if (balancesEl) {
-                // Plan #153: Show budget if available, fallback to tokens
-                const budgetHtml = agent.llm_budget && agent.llm_budget.initial > 0
-                    ? `<div class="modal-stat">
+                // Plan #153: Show budget if available, fallback to tokens, N/A if neither
+                let budgetHtml;
+                if (agent.llm_budget && agent.llm_budget.initial > 0) {
+                    budgetHtml = `<div class="modal-stat">
                         <div class="modal-stat-label">LLM Budget</div>
                         <div class="modal-stat-value">$${agent.llm_budget.remaining.toFixed(4)} / $${agent.llm_budget.initial.toFixed(2)}</div>
-                       </div>`
-                    : `<div class="modal-stat">
+                       </div>`;
+                } else if (agent.llm_tokens && agent.llm_tokens.quota > 0) {
+                    budgetHtml = `<div class="modal-stat">
                         <div class="modal-stat-label">LLM Tokens</div>
                         <div class="modal-stat-value">${agent.llm_tokens.current.toFixed(0)}/${agent.llm_tokens.quota}</div>
                        </div>`;
+                } else {
+                    budgetHtml = `<div class="modal-stat">
+                        <div class="modal-stat-label">LLM Resources</div>
+                        <div class="modal-stat-value na-value">N/A</div>
+                       </div>`;
+                }
+
+                // Plan #149: Show N/A for missing disk quota
+                const diskHtml = (agent.disk && agent.disk.quota > 0)
+                    ? `${agent.disk.used.toFixed(0)}/${agent.disk.quota}`
+                    : '<span class="na-value">N/A</span>';
 
                 balancesEl.innerHTML = `
                     <div class="modal-stat">
@@ -294,7 +311,7 @@ const AgentsPanel = {
                     ${budgetHtml}
                     <div class="modal-stat">
                         <div class="modal-stat-label">Disk</div>
-                        <div class="modal-stat-value">${agent.disk.used.toFixed(0)}/${agent.disk.quota}</div>
+                        <div class="modal-stat-value">${diskHtml}</div>
                     </div>
                 `;
             }
