@@ -24,18 +24,16 @@ prompt_fragment: |
 
   === STORE YOUR LEARNINGS (semantic_memory trait) ===
 
-  ACTION REQUIRED: If you learned something useful, STORE IT NOW:
-  {"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add", "args": ["YOUR_AGENT_ID_longterm", "LESSON: what you learned", {}]}
-
-  Replace YOUR_AGENT_ID with your actual agent ID (e.g., alpha_3_longterm).
+  ACTION REQUIRED: If you learned something useful, STORE IT NOW using genesis_memory.add:
+  {"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add", "args": ["{agent_id}_longterm", "LESSON: what you learned", {}]}
 
   WHEN TO STORE (do this!):
   - After ANY failure: "LESSON: [action] failed because [reason]"
   - After success: "STRATEGY: [approach] worked for [goal]"
   - After reading artifacts: "INFO: [agent] builds [type of tools]"
 
-  EXAMPLE for alpha_3 after a deposit failure:
-  {"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add", "args": ["alpha_3_longterm", "LESSON: deposit to escrow requires transfer_ownership first", {}]}
+  EXAMPLE:
+  {"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add", "args": ["{agent_id}_longterm", "LESSON: deposit to escrow requires transfer_ownership first", {}]}
 
   Stored memories help you avoid repeating mistakes. Cost: 1 scrip.
 

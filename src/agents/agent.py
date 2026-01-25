@@ -1509,6 +1509,24 @@ This will persist across your thinking cycles.
                 recent_activity
             ))
 
+        # Plan #213: Inject trait/goal prompt fragments as variable section
+        if self._components_config:
+            from .component_loader import load_agent_components
+            traits, goals = load_agent_components(self._components_config)
+            fragments: list[str] = []
+            for trait in traits:
+                if trait.prompt_fragment:
+                    fragment = trait.prompt_fragment.replace("{agent_id}", self.agent_id)
+                    fragments.append(fragment)
+            for goal in goals:
+                if goal.prompt_fragment:
+                    fragment = goal.prompt_fragment.replace("{agent_id}", self.agent_id)
+                    fragments.append(fragment)
+            if fragments:
+                traits_section = "\n" + "\n".join(fragments) + "\n"
+                # Priority 72 - after action_feedback (80), before action_history (70)
+                variable_sections.append((72, "traits", traits_section))
+
         # Sort by priority (higher = earlier in prompt)
         variable_sections.sort(key=lambda x: x[0], reverse=True)
 
