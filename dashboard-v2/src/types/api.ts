@@ -352,3 +352,38 @@ export interface SearchResponse {
   agents: AgentSummary[]
   artifacts: ArtifactInfo[]
 }
+
+// ============================================================================
+// TEMPORAL NETWORK (Plan #107)
+// ============================================================================
+
+export interface TemporalArtifactNode {
+  id: string
+  label: string
+  artifact_type: 'agent' | 'genesis' | 'contract' | 'data' | 'unknown'
+  created_by: string | null
+  executable: boolean
+  invocation_count: number
+  created_at: string | null
+  scrip: number
+  status: 'active' | 'low_resources' | 'frozen'
+}
+
+export interface TemporalArtifactEdge {
+  from_id: string
+  to_id: string
+  edge_type: 'invocation' | 'ownership' | 'dependency' | 'creation' | 'transfer'
+  timestamp: string
+  weight: number
+  details: string | null
+}
+
+export interface TemporalNetworkData {
+  nodes: TemporalArtifactNode[]
+  edges: TemporalArtifactEdge[]
+  time_range: [string, string]
+  activity_by_time: Record<string, Record<string, number>>
+  total_artifacts: number
+  total_interactions: number
+  time_bucket_seconds: number
+}

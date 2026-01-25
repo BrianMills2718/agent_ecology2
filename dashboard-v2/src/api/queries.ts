@@ -115,6 +115,26 @@ export function useNetwork(tickMax?: number) {
 }
 
 // ============================================================================
+// TEMPORAL NETWORK (Plan #107)
+// ============================================================================
+
+import type { TemporalNetworkData } from '../types/api'
+
+export function useTemporalNetwork(timeMin?: string, timeMax?: string) {
+  const params = {
+    time_min: timeMin,
+    time_max: timeMax,
+  }
+
+  return useQuery({
+    queryKey: ['temporalNetwork', params],
+    queryFn: () =>
+      apiFetch<TemporalNetworkData>(`/temporal-network${buildQueryString(params)}`),
+    refetchInterval: 10000,
+  })
+}
+
+// ============================================================================
 // EVENTS
 // ============================================================================
 
