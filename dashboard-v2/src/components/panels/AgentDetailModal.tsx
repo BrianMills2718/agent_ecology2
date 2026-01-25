@@ -1,5 +1,6 @@
 import { useAgent, useAgentConfig } from '../../api/queries'
 import { Modal } from '../shared/Modal'
+import { EntityLink } from '../shared/EntityLink'
 import { safeFixed } from '../../utils/format'
 
 interface AgentDetailModalProps {
@@ -86,9 +87,9 @@ export function AgentDetailModal({ agentId, onClose }: AgentDetailModalProps) {
                 {agent.artifacts_owned!.map((id) => (
                   <span
                     key={id}
-                    className="px-2 py-1 bg-[var(--bg-tertiary)] rounded text-xs font-mono"
+                    className="px-2 py-1 bg-[var(--bg-tertiary)] rounded text-xs"
                   >
-                    {id}
+                    <EntityLink id={id} type="artifact" />
                   </span>
                 ))}
               </div>
@@ -111,8 +112,8 @@ export function AgentDetailModal({ agentId, onClose }: AgentDetailModalProps) {
                         {action.action_type}
                       </span>
                       {action.target_id && (
-                        <span className="text-xs text-[var(--text-secondary)]">
-                          → {action.target_id}
+                        <span className="text-xs">
+                          → <EntityLink id={action.target_id} className="text-xs" />
                         </span>
                       )}
                     </div>

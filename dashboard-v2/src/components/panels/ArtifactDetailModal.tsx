@@ -1,5 +1,6 @@
 import { useArtifactDetail } from '../../api/queries'
 import { Modal } from '../shared/Modal'
+import { EntityLink } from '../shared/EntityLink'
 import { safeFixed, formatBytes, formatTime } from '../../utils/format'
 
 interface ArtifactDetailModalProps {
@@ -24,7 +25,10 @@ export function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModal
           {/* Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard label="Type" value={artifact.artifact_type} />
-            <StatCard label="Creator" value={artifact.created_by} mono />
+            <div className="bg-[var(--bg-primary)] rounded p-3">
+              <p className="text-xs text-[var(--text-secondary)] mb-1">Creator</p>
+              <EntityLink id={artifact.created_by} className="text-sm font-semibold" />
+            </div>
             <StatCard
               label="Price"
               value={`${safeFixed(artifact.price, 2)} scrip`}
@@ -59,11 +63,10 @@ export function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModal
                 value={artifact.invocation_count.toString()}
               />
               {artifact.access_contract_id && (
-                <PropertyItem
-                  label="Access Contract"
-                  value={artifact.access_contract_id}
-                  mono
-                />
+                <div className="flex justify-between py-1">
+                  <span className="text-[var(--text-secondary)]">Access Contract</span>
+                  <EntityLink id={artifact.access_contract_id} type="artifact" className="text-xs" />
+                </div>
               )}
             </div>
           </Section>
@@ -105,8 +108,14 @@ export function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModal
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-[var(--text-secondary)]">{formatTime(transfer.timestamp)}</span>
-                      <span className="text-xs text-[var(--text-secondary)]">
-                        {transfer.from_id || '(created)'} → {transfer.to_id}
+                      <span className="text-xs">
+                        {transfer.from_id ? (
+                          <EntityLink id={transfer.from_id} className="text-xs" />
+                        ) : (
+                          <span className="text-[var(--text-secondary)]">(created)</span>
+                        )}
+                        {' → '}
+                        <EntityLink id={transfer.to_id} className="text-xs" />
                       </span>
                     </div>
                   </div>
@@ -127,9 +136,9 @@ export function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModal
                     className="flex items-center justify-between text-sm py-1 border-b border-[var(--border-color)]"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs">{inv.invoker_id}</span>
+                      <EntityLink id={inv.invoker_id} className="text-xs" />
                       {inv.method && (
-                        <span className="text-xs text-[var(--accent-primary)]">
+                        <span className="text-xs text-[var(--text-secondary)]">
                           .{inv.method}()
                         </span>
                       )}

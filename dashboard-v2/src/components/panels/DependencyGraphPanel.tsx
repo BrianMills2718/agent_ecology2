@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Network } from 'vis-network'
 import type { Options } from 'vis-network'
 import { DataSet } from 'vis-data'
 import { useDependencyGraph } from '../../api/queries'
+import { useSelectionStore } from '../../stores/selection'
 import { Panel } from '../shared/Panel'
 import { safeFixed } from '../../utils/format'
 import type { DependencyNode, DependencyEdge } from '../../types/api'
@@ -50,6 +51,15 @@ export function DependencyGraphPanel() {
 
   const [physics, setPhysics] = useState(true)
   const { data, isLoading, error } = useDependencyGraph()
+  const setSelectedArtifact = useSelectionStore((s) => s.setSelectedArtifact)
+
+  // Handle node click - all nodes in dependency graph are artifacts
+  const handleNodeClick = useCallback(
+    (nodeId: string) => {
+      setSelectedArtifact(nodeId)
+    },
+    [setSelectedArtifact]
+  )
 
   // Initialize network
   useEffect(() => {
@@ -91,10 +101,17 @@ export function DependencyGraphPanel() {
       options
     )
 
+    // Add click handler for nodes
+    networkRef.current.on('click', (params) => {
+      if (params.nodes.length > 0) {
+        handleNodeClick(params.nodes[0] as string)
+      }
+    })
+
     return () => {
       networkRef.current?.destroy()
     }
-  }, [])
+  }, [handleNodeClick])
 
   // Update physics setting
   useEffect(() => {

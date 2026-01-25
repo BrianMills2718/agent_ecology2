@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useActivity } from '../../api/queries'
 import { Panel } from '../shared/Panel'
+import { EntityLink } from '../shared/EntityLink'
 import { safeFixed, formatTime } from '../../utils/format'
 import type { ActivityItem } from '../../types/api'
 
@@ -38,9 +39,7 @@ function ActivityCard({ item }: { item: ActivityItem }) {
             {item.activity_type}
           </span>
           {item.agent_id && (
-            <span className="text-xs font-mono text-[var(--accent-primary)] truncate">
-              {item.agent_id}
-            </span>
+            <EntityLink id={item.agent_id} type="agent" className="text-xs truncate" />
           )}
         </div>
         <p className="text-sm truncate">{item.description}</p>
