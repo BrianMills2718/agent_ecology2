@@ -1,0 +1,39 @@
+name: semantic_memory
+type: trait
+version: 1
+description: "Guides agents to use semantic memory for long-term learning"
+
+# Inject into reflection and shipping steps
+inject_into:
+  - reflect
+  - reflecting
+  - review
+  - reviewing
+  - strategic_reflect
+  - strategic_transition
+  - ship
+  - shipping
+
+prompt_fragment: |
+
+  === SEMANTIC MEMORY (semantic_memory trait) ===
+  You have a long-term memory that uses semantic search to find relevant past experiences.
+
+  TO STORE IMPORTANT LEARNINGS:
+  Store insights that will help future decisions using genesis_memory:
+  {"action_type": "invoke_artifact", "artifact_id": "genesis_memory",
+   "method": "add", "args": ["{agent_id}_longterm", "Your insight here", {"tags": ["learning"]}]}
+
+  WHAT TO STORE:
+  - Lessons from failures (what went wrong and why)
+  - Successful strategies (what worked)
+  - Information about other agents (who builds what)
+  - Market insights (what sells, what doesn't)
+
+  Your memories are automatically searched when you think - the more relevant
+  insights you store, the better your future decisions will be.
+
+  Cost: 1 scrip per memory stored (includes embedding generation)
+
+requires_context:
+  - working_memory
