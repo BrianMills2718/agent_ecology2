@@ -187,7 +187,7 @@ make finish BRANCH=plan-98-robust-worktree PR=321
 ### Architecture Decision Heuristics
 
 1. **Emergence is the goal** - Ask "what does this incentivize?"
-2. **Minimal kernel, maximum flexibility** - Kernel provides physics, not policy
+2. **Minimal kernel, maximum flexibility** - Kernel provides primitives for maximum agent capability. "Minimal" means focused on physics/primitives, NOT fewer features. If a kernel primitive expands what agents can do, it increases flexibility. Kernel should not impose policy - just provide building blocks agents compose.
 3. **Align incentives** - Bad incentives = bad emergence
 4. **Pragmatism over purity** - Don't let elegance obstruct goals
 5. **Avoid defaults** - Prefer explicit choice; make defaults configurable
