@@ -79,7 +79,7 @@ export function GenesisPanel() {
                 value={`${safeFixed(data.mint?.total_scrip_minted, 1)} scrip`}
               />
             </div>
-            {data.mint.recent_scores.length > 0 && (
+            {(data.mint?.recent_scores?.length ?? 0) > 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-[var(--text-secondary)]">Recent Scores</p>
                 {data.mint.recent_scores.slice(-5).map((score, i) => (

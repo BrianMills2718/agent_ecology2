@@ -129,10 +129,10 @@ export function EventsPanel() {
       {data && (
         <>
           <div className="max-h-96 overflow-y-auto">
-            {data.events.map((event, i) => (
+            {(data.events ?? []).map((event, i) => (
               <EventRow key={`${event.timestamp}-${i}`} event={event} />
             ))}
-            {data.events.length === 0 && (
+            {(data.events?.length ?? 0) === 0 && (
               <p className="text-sm text-[var(--text-secondary)] text-center py-4">
                 No events yet
               </p>

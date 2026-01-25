@@ -69,10 +69,10 @@ export function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModal
           </Section>
 
           {/* Methods */}
-          {artifact.methods.length > 0 && (
-            <Section title="Methods" badge={artifact.methods.length}>
+          {(artifact.methods?.length ?? 0) > 0 && (
+            <Section title="Methods" badge={artifact.methods!.length}>
               <div className="flex flex-wrap gap-2">
-                {artifact.methods.map((method) => (
+                {artifact.methods!.map((method) => (
                   <span
                     key={method}
                     className="px-2 py-1 bg-[var(--bg-tertiary)] rounded text-xs font-mono"
@@ -95,10 +95,10 @@ export function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModal
           )}
 
           {/* Ownership History */}
-          <Section title="Ownership History" badge={artifact.ownership_history.length}>
-            {artifact.ownership_history.length > 0 ? (
+          <Section title="Ownership History" badge={artifact.ownership_history?.length ?? 0}>
+            {(artifact.ownership_history?.length ?? 0) > 0 ? (
               <div className="space-y-2 max-h-32 overflow-y-auto">
-                {artifact.ownership_history.map((transfer, i) => (
+                {artifact.ownership_history!.map((transfer, i) => (
                   <div
                     key={i}
                     className="flex items-center justify-between text-sm py-1 border-b border-[var(--border-color)]"
@@ -121,10 +121,10 @@ export function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModal
           </Section>
 
           {/* Recent Invocations */}
-          <Section title="Recent Invocations" badge={artifact.invocation_history.length}>
-            {artifact.invocation_history.length > 0 ? (
+          <Section title="Recent Invocations" badge={artifact.invocation_history?.length ?? 0}>
+            {(artifact.invocation_history?.length ?? 0) > 0 ? (
               <div className="space-y-2 max-h-48 overflow-y-auto">
-                {artifact.invocation_history.slice(-10).reverse().map((inv, i) => (
+                {artifact.invocation_history!.slice(-10).reverse().map((inv, i) => (
                   <div
                     key={i}
                     className="flex items-center justify-between text-sm py-1 border-b border-[var(--border-color)]"
