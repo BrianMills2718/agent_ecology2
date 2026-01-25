@@ -16,3 +16,4 @@ Capture research and design thinking that informs architecture decisions. Unlike
 - `agent_architecture_research_notes.md` - Notes from researching agent patterns
 - `agent_architecture_synthesis.md` - Synthesis of research into actionable design
 - `emergence_research_questions.md` - Open questions requiring experimentation
+- `Central_Governance_Planning.md` - Future conceptual thinking on governance
