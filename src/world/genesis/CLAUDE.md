@@ -10,13 +10,14 @@ Cold-start conveniences that wrap kernel primitives. These are NOT privileged - 
 |----------|---------|------------------------|
 | `genesis_ledger` | Balances, transfers | `kernel_actions.transfer_scrip()`, `create_principal()` |
 | `genesis_mint` | Auction-based scoring | `kernel_actions.credit_resource()` |
-| `genesis_store` | Artifact discovery | `kernel_state.get_artifact_metadata()` |
 | `genesis_escrow` | Trustless trading | `kernel_actions.transfer_ownership()` |
 | `genesis_debt_contract` | Credit/lending | `kernel_actions.transfer_scrip()` |
 | `genesis_event_log` | Passive observability | Read-only log access |
 | `genesis_rights_registry` | Quota management | `kernel_actions.transfer_quota()` |
 | `genesis_model_registry` | LLM model access | Quota-based model access |
 | `genesis_memory` | Agent memory storage | Artifact read/write |
+
+**Note:** Artifact discovery uses `query_kernel` action (Plan #184), not a genesis artifact. The `query_kernel` action provides direct, cost-free access to kernel state for discovery.
 
 ## Implementation Pattern
 

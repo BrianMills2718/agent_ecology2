@@ -218,9 +218,9 @@ class TestWorldIntegration:
         world = World(config)
 
         # Genesis artifacts should be registered
+        # Note: genesis_store removed in Plan #190 - use query_kernel action
         assert world.id_registry.exists("genesis_ledger")
         assert world.id_registry.exists("genesis_mint")
-        assert world.id_registry.exists("genesis_store")
         assert world.id_registry.exists("genesis_escrow")
         assert world.id_registry.lookup("genesis_ledger") == "genesis"
 

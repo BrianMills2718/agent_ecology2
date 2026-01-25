@@ -512,12 +512,12 @@ class World:
                     data={"artifact": genesis.to_dict()}
                 )
             else:
-                # Plan #160: Suggest discovery via genesis_store
+                # Plan #190: Suggest discovery via query_kernel
                 result = ActionResult(
                     success=False,
                     message=(
                         f"Artifact '{intent.artifact_id}' not found. "
-                        f"Use genesis_store.list([]) or genesis_store.search(['{intent.artifact_id[:10]}']) to find artifacts."
+                        f"Use query_kernel with query_type='artifacts' to discover available artifacts."
                     ),
                     error_code=ErrorCode.NOT_FOUND.value,
                     error_category=ErrorCategory.RESOURCE.value,
@@ -1057,11 +1057,11 @@ class World:
             # Plan #125: Extracted to _invoke_user_artifact for clarity
             return self._invoke_user_artifact(intent, artifact, method_name, effective_args, start_time)
 
-        # Artifact not found - Plan #160: Suggest discovery via genesis_store
+        # Artifact not found - Plan #190: Suggest discovery via query_kernel
         duration_ms = (time.perf_counter() - start_time) * 1000
         helpful_msg = (
             f"Artifact '{artifact_id}' not found. "
-            f"Use genesis_store.list([]) or genesis_store.search(['{artifact_id[:10]}']) to find artifacts."
+            f"Use query_kernel with query_type='artifacts' to discover available artifacts."
         )
         self._log_invoke_failure(
             intent.principal_id, artifact_id, method_name,

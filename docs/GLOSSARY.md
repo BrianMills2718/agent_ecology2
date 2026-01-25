@@ -186,12 +186,13 @@ Pre-seeded artifacts that provide interfaces to system primitives. Agents could 
 | **genesis_ledger** | Ledger state | `balance`, `transfer` |
 | **genesis_mint** | Mint capability | `submit`, `bid`, `process` |
 | **genesis_escrow** | Artifact store (trading) | `deposit`, `purchase`, `cancel` |
-| **genesis_store** | Artifact store (discovery) | `search`, `get_interface` |
 | **genesis_rights_registry** | Rights registry | `check_quota`, `transfer_quota` |
 | **genesis_event_log** | Event log | `read` |
 | **genesis_handbook** | Documentation | `read` |
 | **genesis_freeware** | Access control | `check_permission` (always true) |
 | **genesis_self_owned** | Access control | `check_permission` (owner only) |
+
+**Note:** Artifact discovery uses `query_kernel` action (Plan #184), not a genesis artifact. It's free and provides direct kernel state access.
 
 ---
 
@@ -345,7 +346,7 @@ How other systems handle multi-agent coordination:
 | **Substrate** | Emphasizes foundation/primitives, not orchestration | "Platform" (implies more), "Runtime" (too narrow), "Environment" (vague) |
 | **Autonomous Principal** | Substrate-neutral; doesn't assume LLM | "Agent" (implies LLM), "Actor" (overloaded in CS) |
 | **Friction** | Captures difficulty + resource cost + latency | "Overhead" (too narrow), "Cost" (confuses with scrip) |
-| **Genesis** prefix | Consistent with genesis_ledger, genesis_store, etc. | "Initial", "Seed" (less distinctive) |
+| **Genesis** prefix | Consistent with genesis_ledger, genesis_mint, etc. | "Initial", "Seed" (less distinctive) |
 
 **Standard terms we use as-is:**
 - Cognitive Architecture (standard in AI/cognitive science)

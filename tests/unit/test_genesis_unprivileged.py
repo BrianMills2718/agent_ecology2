@@ -90,11 +90,11 @@ def analyze_file_for_privileged_access(file_path: Path) -> list[dict[str, Any]]:
 def get_genesis_files() -> list[Path]:
     """Get all genesis artifact source files."""
     genesis_dir = Path("src/world/genesis")
+    # Note: store.py removed in Plan #190 - use query_kernel action
     files = [
         genesis_dir / "ledger.py",
         genesis_dir / "mint.py",
         genesis_dir / "escrow.py",
-        genesis_dir / "store.py",
         genesis_dir / "rights_registry.py",
     ]
     return [f for f in files if f.exists()]
@@ -165,28 +165,8 @@ class TestGenesisUnprivileged:
             "genesis_escrow should use KernelActions.transfer_scrip()"
         )
 
-    def test_store_uses_kernel_interface(self) -> None:
-        """genesis_store should use kernel interface for artifact discovery.
-
-        Store provides artifact discovery which should go through KernelState
-        methods rather than direct artifact_store access.
-
-        Note: Read-only access may be acceptable if KernelState provides
-        equivalent functionality.
-        """
-        store_file = Path("src/world/genesis/store.py")
-        privileged = analyze_file_for_privileged_access(store_file)
-
-        # Store mainly does reads, which may be acceptable
-        # Focus on any write operations
-        write_calls = [
-            p for p in privileged
-            if "transfer" in p["path"] or "create" in p["path"]
-        ]
-
-        assert len(write_calls) == 0, (
-            f"genesis_store has privileged write calls: {write_calls}"
-        )
+    # Note: test_store_uses_kernel_interface removed in Plan #190
+    # genesis_store was removed - use query_kernel action instead
 
     def test_mint_delegates_to_kernel(self) -> None:
         """genesis_mint should delegate to kernel primitives when world is set.

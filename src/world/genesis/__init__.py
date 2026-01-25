@@ -70,7 +70,6 @@ from .rights_registry import GenesisRightsRegistry
 from .event_log import GenesisEventLog
 from .escrow import GenesisEscrow
 from .debt_contract import GenesisDebtContract
-from .store import GenesisStore
 from .model_registry import GenesisModelRegistry
 from .voting import GenesisVoting  # Plan #183
 from .embedder import GenesisEmbedder  # Plan #146
@@ -132,7 +131,6 @@ __all__ = [
     "GenesisEventLog",
     "GenesisEscrow",
     "GenesisDebtContract",
-    "GenesisStore",
     "GenesisModelRegistry",
     "GenesisVoting",  # Plan #183
     "GenesisEmbedder",  # Plan #146

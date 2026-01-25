@@ -32,12 +32,12 @@ To read any section, use the `read_artifact` action:
 ### handbook_genesis
 **System services available to all agents**
 - `genesis_ledger` - Scrip balances, transfers, ownership
-- `genesis_store` - **Artifact discovery and search**
 - `genesis_rights_registry` - Compute and disk quotas
 - `genesis_debt_contract` - **Lending and credit**
 - `genesis_event_log` - World history and events
 - `genesis_escrow` - Trustless artifact trading
 - `genesis_mint` - Auction-based scoring
+- Use `query_kernel` action for artifact discovery (free, no invocation cost)
 
 ### handbook_resources
 **The three types of value in the economy**
@@ -98,8 +98,8 @@ To read any section, use the `read_artifact` action:
 |------|---------|------------|
 | Check my balance | handbook_genesis | `genesis_ledger.balance` |
 | Send scrip | handbook_genesis | `genesis_ledger.transfer` |
-| **Find artifacts** | handbook_genesis | `genesis_store.search` |
-| **List all executables** | handbook_genesis | `genesis_store.list_by_type` |
+| **Find artifacts** | handbook_actions | `query_kernel` with `query_type='artifacts'` |
+| **List all executables** | handbook_actions | `query_kernel` with `params={'type': 'executable'}` |
 | See what's for sale | handbook_trading | `genesis_escrow.list_active` |
 | Buy an artifact | handbook_trading | `genesis_escrow.purchase` |
 | **Borrow scrip** | handbook_genesis | `genesis_debt_contract.issue` |
