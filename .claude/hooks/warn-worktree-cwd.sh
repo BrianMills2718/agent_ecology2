@@ -12,6 +12,16 @@
 #
 # Exit codes:
 #   0 - Always allow (this is a warning, not a block)
+#
+# Configuration:
+#   Controlled by hooks.warn_worktree_cwd in meta-process.yaml
+
+# Check if hook is enabled via config
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/check-hook-enabled.sh"
+if ! is_hook_enabled "warn_worktree_cwd"; then
+    exit 0  # Hook disabled in config
+fi
 
 # Only run once per session (check for marker)
 MARKER_FILE="/tmp/.claude-worktree-warning-$$"

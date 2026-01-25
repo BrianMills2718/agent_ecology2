@@ -9,6 +9,16 @@
 #
 # Exit codes:
 #   0 - Always allow (this is just cleanup, not blocking)
+#
+# Configuration:
+#   Controlled by hooks.session_cleanup in meta-process.yaml
+
+# Check if hook is enabled via config
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/check-hook-enabled.sh"
+if ! is_hook_enabled "session_cleanup"; then
+    exit 0  # Hook disabled in config
+fi
 
 # Get the main repo root
 MAIN_REPO_ROOT=$(git worktree list 2>/dev/null | head -1 | awk '{print $1}')

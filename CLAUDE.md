@@ -303,8 +303,11 @@ agent_ecology/
     adr/                    # Architecture Decision Records
     architecture/           # current/ and target/ state
   meta/
-    patterns/               # Reusable meta-process patterns
-    acceptance_gates/       # Feature specifications (YAML)
+    acceptance_gates/       # This project's feature specifications (YAML)
+  meta-process/             # Portable framework (copy to other projects)
+    patterns/               # Pattern documentation (26 patterns)
+    scripts/                # Portable scripts
+    hooks/                  # Hook templates
 ```
 
 ---
@@ -380,8 +383,8 @@ When enabled, unread messages block Edit/Write until acknowledged.
 | Doc | Purpose |
 |-----|---------|
 | `docs/plans/` | Implementation plans (gap tracking) |
-| `meta/patterns/` | Reusable meta-process patterns |
-| `meta/acceptance_gates/` | Feature specifications (YAML) |
+| `meta-process/patterns/` | Reusable meta-process patterns (26 patterns) |
+| `meta/acceptance_gates/` | This project's feature specifications (YAML) |
 | `docs/adr/` | Architecture Decision Records |
 | `docs/architecture/current/` | What IS implemented |
 | `docs/architecture/target/` | What we WANT |
@@ -444,7 +447,7 @@ Use the Read tool on that file if you need prior context.
 |-----|---------|
 | `README.md` | Full philosophy, theoretical grounding |
 | `docs/plans/CLAUDE.md` | Plan index and template |
-| `meta/patterns/01_README.md` | Meta-pattern index |
+| `meta-process/patterns/01_README.md` | Meta-pattern index |
 | `docs/GLOSSARY.md` | Canonical terminology |
 | `scripts/CLAUDE.md` | Script usage reference |
 | `config/schema.yaml` | All config options |

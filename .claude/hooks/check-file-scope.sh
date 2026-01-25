@@ -6,8 +6,19 @@
 #   0 - Allow the operation
 #   2 - Block the operation
 #
+# Configuration:
+#   Controlled by hooks.enforce_file_scope in meta-process.yaml
+#   Default: false (disabled - too strict for exploratory work)
+#
 # This hook enforces planning discipline by requiring CC to declare
 # which files it will touch before editing them.
+
+# Check if hook is enabled via config
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/check-hook-enabled.sh"
+if ! is_hook_enabled "enforce_file_scope"; then
+    exit 0  # Hook disabled in config (default)
+fi
 
 # set -e  # Disabled: causes silent exits on non-zero returns
 

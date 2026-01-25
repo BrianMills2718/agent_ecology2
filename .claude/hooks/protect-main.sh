@@ -13,8 +13,19 @@
 # Exit codes:
 #   0 - Allow the operation
 #   2 - Block the operation
+#
+# Configuration:
+#   Controlled by hooks.protect_main in meta-process.yaml
+#   Set to false to disable this hook.
 
 set -e
+
+# Check if hook is enabled via config
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/check-hook-enabled.sh"
+if ! is_hook_enabled "protect_main"; then
+    exit 0  # Hook disabled in config
+fi
 
 # Detect main directory dynamically (works on any machine)
 MAIN_DIR=$(git rev-parse --show-toplevel 2>/dev/null)

@@ -8,13 +8,24 @@
 # Exit codes:
 #   0 - Allow the operation (no unread messages)
 #   2 - Block the operation (unread messages exist)
+#
+# Configuration:
+#   Controlled by hooks.block_on_unread_messages in meta-process.yaml
+#   Default: false (disabled)
 
 set -e
+
+# Check if hook is enabled via config
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/check-hook-enabled.sh"
+if ! is_hook_enabled "block_on_unread_messages"; then
+    exit 0  # Hook disabled in config (default)
+fi
 
 # Get the main repo root
 MAIN_REPO_ROOT=$(git worktree list | head -1 | awk '{print $1}')
 
-# Check if inter-CC messaging is enabled (default: disabled)
+# Legacy: Check old config file for inter-CC messaging (kept for backwards compat)
 CONFIG_FILE="$MAIN_REPO_ROOT/.claude/meta-config.yaml"
 if [[ -f "$CONFIG_FILE" ]]; then
     MESSAGING_ENABLED=$(grep "^inter_cc_messaging:" "$CONFIG_FILE" 2>/dev/null | awk '{print $2}')
