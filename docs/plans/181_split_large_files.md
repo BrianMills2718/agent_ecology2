@@ -1,4 +1,4 @@
-# Plan #168: Split Large Core Files
+# Plan #181: Split Large Core Files
 
 **Status:** 📋 Planned
 **Priority:** Low
