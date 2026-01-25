@@ -365,7 +365,7 @@ inject_into:
 
 prompt_fragment: |
   BEFORE BUILDING, CHECK THE MARKET:
-  1. Search genesis_store for existing solutions
+  1. Use query_kernel to find existing solutions
   2. If a service exists: INVOKE it and PAY (don't reinvent)
   3. Only build if nothing suitable exists
 
