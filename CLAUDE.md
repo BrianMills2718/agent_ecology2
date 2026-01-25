@@ -121,28 +121,24 @@ python scripts/cleanup_claims_mess.py --apply      # Apply full cleanup
 3. VERIFY           -->  make test && make lint (run checks locally)
        |
 4. SHIP             -->  make pr-ready && make pr
-                         STOP HERE if you're in the worktree!
-                         Tell user: "Please run from main: make finish BRANCH=X PR=N"
+                         Then finish with TWO SEPARATE Bash tool calls:
+                           First:  cd /home/brian/brian_projects/agent_ecology2
+                           Second: make finish BRANCH=X PR=N
 ```
 
-**Step 4 - WHO runs `make finish`:**
-- If you're a **CC in a worktree**: Create PR, then STOP. Tell user to run `make finish` from main.
-- If you're a **CC in main** or the **user**: Run `make finish BRANCH=X PR=N`.
-
-**WHY:** `make finish` deletes the worktree. If your CWD is inside that worktree, your shell breaks.
-The hooks will block you, but it's better to know the correct workflow upfront.
-
-**CRITICAL:** The `cd` must be a SEPARATE command, not `cd && make finish`.
-Why: `cd X && make Y` runs in a subshell - it doesn't change your shell's CWD.
-If you run `cd && make finish` from a worktree, your shell CWD stays in the
-(now deleted) worktree, breaking all subsequent bash commands.
+**Step 4 - Finishing from a worktree:**
+You CAN run `make finish` yourself - just `cd` to main first in a SEPARATE Bash call.
+Why separate: `cd X && make Y` runs cd in a subshell, so your actual CWD stays in the worktree.
+When `make finish` deletes the worktree, your shell breaks because its CWD no longer exists.
 
 **If you forget:** The hook will block you and save the command to `.claude/pending-finish.sh`.
-After `cd` to main, just run: `bash .claude/pending-finish.sh`
+After running `cd` to main, just run: `bash .claude/pending-finish.sh`
 
-Example (TWO commands):
+Example (TWO separate Bash tool calls):
 ```bash
 cd /home/brian/brian_projects/agent_ecology2
+```
+```bash
 make finish BRANCH=plan-98-robust-worktree PR=321
 # Or after cd: bash .claude/pending-finish.sh
 ```
