@@ -2,7 +2,7 @@
 
 System-provided artifacts that exist at world initialization.
 
-**Last verified:** 2026-01-24 (Architecture review - privilege analysis, new artifacts)
+**Last verified:** 2026-01-24 (Plan #167 debt contract time-based, Plan #170 get_invokers)
 
 ---
 
@@ -115,11 +115,12 @@ during a specific bidding window. Auctions still resolve on schedule.
 
 **Purpose:** Passive observability, world history
 
-**File:** `src/world/genesis.py` (`GenesisEventLog` class)
+**File:** `src/world/genesis/event_log.py` (`GenesisEventLog` class)
 
 | Method | Cost (compute) | Description |
 |--------|----------------|-------------|
 | `read(limit, offset, filters)` | 0 | Read event history |
+| `get_invokers(artifact_id)` | 0 | Get list of principals that have invoked an artifact (Plan #170) |
 
 **Event Types:**
 - `tick` - Tick started
@@ -130,6 +131,13 @@ during a specific bidding window. Auctions still resolve on schedule.
 - `mint_auction` - Auction resolved
 - `mint` - Scrip minted
 - `world_init` - World initialized
+- `invoke` - Artifact invocation (used by get_invokers)
+
+**Runtime Dependency Tracking (Plan #170):**
+The `get_invokers(artifact_id)` method queries the event log to find all principals that have invoked a specific artifact. Returns a deduplicated, sorted list of invoker IDs. Useful for:
+- Finding usage examples of artifacts
+- Assessing adoption/trust of artifacts
+- Understanding artifact relationships
 
 **Config:** `max_per_read` limits returned events (default: 100)
 
@@ -162,14 +170,14 @@ during a specific bidding window. Auctions still resolve on schedule.
 
 **Purpose:** Non-privileged credit/lending example (Plan #9)
 
-**File:** `src/world/genesis.py` (`GenesisDebtContract` class)
+**File:** `src/world/genesis/debt_contract.py` (`GenesisDebtContract` class)
 
 | Method | Cost (compute) | Description |
 |--------|----------------|-------------|
-| `issue(creditor, principal, rate, due_tick)` | 1 | Create debt request (debtor initiates) |
+| `issue(creditor, principal, rate_per_day, due_in_seconds)` | 1 | Create debt request (debtor initiates) |
 | `accept(debt_id)` | 0 | Creditor accepts debt |
 | `repay(debt_id, amount)` | 0 | Debtor pays back (partial or full) |
-| `collect(debt_id)` | 0 | Creditor collects after due_tick |
+| `collect(debt_id)` | 0 | Creditor collects after due_at time |
 | `transfer_creditor(debt_id, new_creditor)` | 1 | Sell debt rights to another |
 | `check(debt_id)` | 0 | Get debt status with current_owed |
 | `list_debts(principal_id)` | 0 | List debts for a principal |
@@ -179,10 +187,16 @@ during a specific bidding window. Auctions still resolve on schedule.
 1. Debtor issues debt request → status="pending"
 2. Creditor accepts → status="active", interest starts accruing
 3. Debtor repays (partial or full) → transfers scrip to creditor
-4. After due_tick: creditor can collect remaining (forced transfer)
+4. After due_at: creditor can collect remaining (forced transfer)
 5. If debtor broke: status="defaulted" (no magic enforcement)
 
-**Interest:** Simple interest: `current_owed = principal + (principal * rate * ticks_elapsed) - amount_paid`
+**Time-based scheduling (Plan #167):**
+- `due_in_seconds`: How long until debt is due (from issue time)
+- `rate_per_day`: Daily interest rate (e.g., 0.01 = 1% per day)
+- `due_at`: ISO8601 timestamp when debt is due
+- `created_at`: ISO8601 timestamp when debt was created
+
+**Interest:** Simple interest: `current_owed = principal + (principal * rate_per_day * days_elapsed) - amount_paid`
 
 **Tradeable debt:** Creditor can sell debt rights via `transfer_creditor()`. Payment goes to whoever currently holds the debt.
 
