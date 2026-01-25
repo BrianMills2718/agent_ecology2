@@ -1,6 +1,6 @@
 # Plan #192: Context Section Control
 
-**Status:** Planned
+**Status:** Complete
 **Created:** 2025-01-25
 **Scope:** Agent Cognitive Autonomy
 
@@ -126,9 +126,9 @@ pytest tests/unit/test_context_sections.py -v
 
 ## Acceptance Criteria
 
-- [ ] Agent can configure which sections are enabled
-- [ ] Disabled sections don't appear in prompt
-- [ ] Required sections cannot be disabled
-- [ ] Default configuration when not specified
-- [ ] Persistence via agent artifact state
-- [ ] Action to update configuration
+- [x] Agent can configure which sections are enabled
+- [x] Disabled sections don't appear in prompt
+- [x] Required sections cannot be disabled (validated in schema)
+- [x] Default configuration when not specified
+- [x] Persistence via agent artifact state
+- [x] Action to update configuration (configure_context)
