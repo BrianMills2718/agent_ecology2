@@ -1,8 +1,27 @@
 # Plan #210: Fix ADR-0016 Violation (created_by Mutation)
 
-**Status:** Planned
+**Status:** In Progress (PR #719)
 **Priority:** High
 **Blocks:** Correct ownership semantics, historical audit trail
+
+## Implementation Progress
+
+### Completed
+- [x] Phase 1: `created_by` is now immutable (never mutated after creation)
+- [x] Phase 2: Renamed `get_owner()` to `get_creator()` (with backwards compat alias)
+- [x] Phase 3: Renamed `_index_by_owner` to `_index_by_creator`
+- [x] Updated genesis contracts to check `target_created_by` (not controller)
+- [x] Removed `target_controller` from permission checking context
+- [x] Added docstrings documenting `transfer_ownership()` as tech debt
+
+### Remaining Tech Debt (Future Plan)
+- `transfer_ownership()` sets `metadata["controller"]` but contracts ignore it
+- Escrow is subtly broken: buyers get controller set but can't write under freeware
+- Need replacement pattern: store "authorized_writer" in metadata, have contracts check it
+
+### Key Architectural Insight
+Per user feedback: **"Ownership" is not a kernel concept**. Contracts decide access.
+The "controller" concept was rejected as "just owner by another name."
 
 ## Problem
 
@@ -81,15 +100,21 @@ Methods like `list_by_owner()`, `get_artifacts_by_owner()` need review:
 
 ## Design Decision: How to Track "Current Controller"
 
-Three options:
+**Decision: Option A (contract-only)** - Per user feedback, "ownership" is not a kernel concept.
 
-| Option | Mechanism | Pros | Cons |
-|--------|-----------|------|------|
-| A | Contract-only | Pure, no kernel state | Can't easily query "who controls X" |
-| B | `metadata["controller"]` | Explicit, queryable | Another field to maintain |
-| C | `controlled_by` field | First-class support | Kernel complexity |
+| Option | Mechanism | Status |
+|--------|-----------|--------|
+| A | Contract-only | **CHOSEN** - Contracts decide access, not kernel |
+| B | `metadata["controller"]` | Rejected - "just owner by another name" |
+| C | `controlled_by` field | Rejected - adds kernel complexity for no benefit |
 
-Recommendation: **Option A (contract-only)** with convention that contracts store controller in metadata if needed. Keeps kernel simple.
+The "controller" concept was explicitly rejected as architecturally meaningless.
+Contracts already define who can write to what. For "selling" artifacts:
+1. Store `metadata["authorized_writer"]` on the artifact
+2. Contract reads this metadata to decide permissions
+3. "Selling" = updating the `authorized_writer` metadata field
+
+This requires a custom contract (not freeware) that checks metadata.
 
 ## Files Affected
 
