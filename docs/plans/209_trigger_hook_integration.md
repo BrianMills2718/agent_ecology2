@@ -1,6 +1,6 @@
 # Plan #209: Trigger-Hook Integration
 
-**Status:** Deferred (until bridging pattern becomes common)
+**Status:** 📋 Deferred
 **Priority:** Low
 **Depends On:** Plan #208 (Workflow Hooks), Plan #169/180 (Triggers)
 

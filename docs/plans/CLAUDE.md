@@ -166,7 +166,7 @@ Master index of all gaps and their implementation plans.
 | 138 | [Provider-Level Union Schema Transformation](138_provider_union_schema_transform.md) | Low | 📋 Deferred (until problems arise with Plan #137) | - |
 | 139 | [Dashboard Bug Fixes and Improvements](139_dashboard_phase2_phase3.md) | High | ✅ Complete | Dashboard usability |
 | 140 | [Plan 140: Actions Module for Agent-Expected API](140_actions_module.md) | High | ✅ Complete | - |
-| 141 | [Fix merge hook gap for `make -C` pattern](141_merge_hook_gap.md) | high | ✅ complete | - |
+| 141 | [Fix merge hook gap for `make -C` pattern](141_merge_hook_gap.md) | high | ✅ Complete | - |
 | 142 | [Dashboard Improvements - KPI Trends, Pagination, WebSocket](142_dashboard_improvements.md) | Medium | ✅ Complete | Dashboard scalability |
 | 143 | [Plan 143: Reflex System (System 1 Fast Path)](143_reflex_system.md) | High | ✅ Complete | Agent self-optimization, high-frequency trading |
 | 144 | [Per-Entity Activity Timelines](144_entity_activity_timelines.md) | Medium | ✅ Complete | - |
@@ -177,7 +177,7 @@ Master index of all gaps and their implementation plans.
 | 149 | [Dashboard Architecture Refactor](149_dashboard_architecture.md) | High | ✅ Complete | - |
 | 150 | [Plan 150: Prompt Component Library](150_prompt_component_library.md) | High | ✅ Complete | Agent behavior experiments |
 | 151 | [Backend Event Emission](151_backend_event_emission.md) | High | ✅ Complete | - |
-| 155 | [V4 Architecture - Deferred Considerations](155_v4_architecture_deferred.md) | low (until v3 fixes validated) | 📋 deferred | - |
+| 155 | [V4 Architecture - Deferred Considerations](155_v4_architecture_deferred.md) | low (until v3 fixes validated) | 📋 Deferred | - |
 | 156 | [V4 Agent Immediate Fixes](156_v4_agent_immediate_fixes.md) | High | ✅ Complete | - |
 | 157 | [Agent Goal Clarity and Time Awareness](157_agent_goal_clarity.md) | High | ✅ Complete | - |
 | 160 | [Phase 1 - Cognitive Self-Modification](160_phase1_cognitive_self_modification.md) | High | ✅ Complete | - |
@@ -218,17 +218,17 @@ Master index of all gaps and their implementation plans.
 | 196 | [Memory Tiering](196_memory_tiering.md) | Medium | ✅ Complete | - |
 | 197 | [Configurable Mandatory Prompt Injection](197_prompt_injection.md) | Low | ✅ Complete | - |
 | 198 | [Shareable Hook Enhancements](198_shareable_hooks.md) | Medium | ✅ Complete | - |
-| 199 | [Remove genesis_store (Redundant with query_kernel)](199_remove_genesis_store.md) | High | ✅ Done | Cleaner agent discovery, reduced agent confusion |
+| 199 | [Remove genesis_store (Redundant with query_kernel)](199_remove_genesis_store.md) | High | ✅ Complete | Cleaner agent discovery, reduced agent confusion |
 | 200 | [Unclosed File Handle Fix](200_unclosed_file_handle.md) | **Critical** | ✅ Complete | - |
 | 201 | [Kernel Permission Fixes](201_kernel_permission_fixes.md) | High | ✅ Complete | Custom contracts, proper access control |
-| 202 | [Workflows as Tradeable Artifacts](202_workflows_as_artifacts.md) | High | ✅ ⏩ Superseded by Plan #146 | Agent self-modification, workflow marketplace |
+| 202 | [Workflows as Tradeable Artifacts](202_workflows_as_artifacts.md) | High | ✅ Superseded by Plan #146 | Agent self-modification, workflow marketplace |
 | 203 | [Supervisor Auto-Restart](203_supervisor_auto_restart.md) | Medium | ✅ Complete | Robust long-running simulations |
 | 204 | [Configurable Mandatory Prompt Injection](204_prompt_injection.md) | Low | ✅ Superseded | - |
 | 205 | [Git-Level Meta-Process Resilience](205_meta_resilience.md) | **Critical** | ✅ Complete | All meta-process reliability |
 | 206 | [Meta-Process Claim Lifecycle Fixes](206_claim_lifecycle.md) | Critical | ✅ Complete | - |
 | 207 | [Executor Method Refactoring](207_executor_refactor.md) | Low | 📋 Deferred | - |
 | 208 | [Workflow Hooks (General Auto-Subscription System)](208_workflow_hooks.md) | High | ✅ Complete | Agent self-optimization, cognitive autonomy |
-| 209 | [Trigger-Hook Integration](209_trigger_hook_integration.md) | Low | 📋 Deferred (until bridging pattern becomes common) | - |
+| 209 | [Trigger-Hook Integration](209_trigger_hook_integration.md) | Low | 📋 Deferred | - |
 | 210 | [Fix ADR-0016 Violation (created_by Mutation)](210_fix_created_by_mutation.md) | High | ✅ Complete | Correct ownership semantics, historical audit trail |
 | 211 | [Agent Simulation Fixes](211_agent_simulation_fixes.md) | High | ✅ Complete | Agent effectiveness in simulations |
 | 212 | [Memory and Context Quality for Agent Learning](212_memory_and_context_quality.md) | High | ✅ Complete | Effective agent learning and strategic behavior |

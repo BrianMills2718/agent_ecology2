@@ -1,6 +1,6 @@
 # Plan #141: Fix merge hook gap for `make -C` pattern
 
-**Status:** complete
+**Status:** ✅ Complete
 **Priority:** high
 **Complexity:** trivial
 

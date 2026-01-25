@@ -1,6 +1,6 @@
 # Plan 165: Genesis Contracts as Artifacts
 
-**Status:** Complete
+**Status:** ✅ Complete
 **Priority:** Medium
 **Complexity:** Medium
 

@@ -1,6 +1,6 @@
 # Plan #167: Debt Contract Time-Based Redesign
 
-**Status:** Complete
+**Status:** ✅ Complete
 **Priority:** Low
 **Complexity:** Medium
 
