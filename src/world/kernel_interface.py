@@ -660,41 +660,47 @@ class KernelActions:
         )
         return True
 
-    def transfer_ownership(
-        self, caller_id: str, artifact_id: str, new_controller: str
+    def update_artifact_metadata(
+        self, caller_id: str, artifact_id: str, key: str, value: object
     ) -> bool:
-        """Set metadata["controller"] on an artifact.
+        """Update a single metadata key on an artifact (Plan #213).
 
-        NOTE: This is likely tech debt. It sets metadata but does NOT affect
-        access control under standard genesis contracts (freeware, self_owned,
-        private), which check created_by not controller.
+        This is the canonical way to update artifact metadata, including
+        "authorized_writer" for transferable_freeware contracts.
 
-        Per ADR-0016:
-        - created_by is immutable (historical fact)
-        - "Ownership" is not a kernel concept - contracts decide access
-        - This method sets metadata["controller"] which custom contracts could use
+        Permission checking:
+        - Caller must have WRITE permission on the artifact via its contract
+        - This enables escrow to update authorized_writer after purchase
 
         Args:
-            caller_id: Current controller (must match metadata["controller"] or created_by)
+            caller_id: Principal requesting the update
             artifact_id: Artifact to update
-            new_controller: New controller value to set in metadata
+            key: Metadata key to set
+            value: Value to set (use None to delete the key)
 
         Returns:
             True if metadata was updated, False otherwise
         """
+        from src.world.executor import get_executor
+
         artifact = self._world.artifacts.get(artifact_id)
         if artifact is None:
             return False
 
-        # Verify caller is the current controller (not just creator)
-        current_controller = artifact.metadata.get("controller", artifact.created_by)
-        if current_controller != caller_id:
+        # Check write permission via contract
+        executor = get_executor()
+        allowed, _reason = executor._check_permission(caller_id, "write", artifact)
+        if not allowed:
             return False
 
-        # Perform the transfer (sets metadata["controller"], not created_by)
-        return self._world.artifacts.transfer_ownership(
-            artifact_id, caller_id, new_controller
-        )
+        # Update the metadata
+        if value is None:
+            # Delete key if value is None
+            artifact.metadata.pop(key, None)
+        else:
+            artifact.metadata[key] = value
+
+        return True
 
     # -------------------------------------------------------------------------
     # Rights-Based Resource Consumption (Plan #166 Phase 4)

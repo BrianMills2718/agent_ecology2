@@ -181,6 +181,10 @@ def check_permission_via_contract(
     context: dict[str, object] = {
         "target_created_by": artifact.created_by,  # Immutable: who created it
     }
+    # Plan #213: Include artifact metadata for transferable_freeware contract
+    # This enables contracts to check metadata["authorized_writer"] for tradeable artifacts
+    if hasattr(artifact, "metadata") and artifact.metadata:
+        context["target_metadata"] = artifact.metadata
     # Add method and args for invoke actions (ADR-0019)
     if action == "invoke":
         context["method"] = method

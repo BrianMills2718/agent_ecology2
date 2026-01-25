@@ -1,4 +1,9 @@
-"""Tests for genesis_escrow - trustless artifact trading."""
+"""Tests for genesis_escrow - trustless artifact trading (Plan #213 redesign).
+
+Plan #213: Escrow now uses metadata["authorized_writer"] instead of
+transfer_ownership() for artifact trading. This enables trading while
+keeping created_by immutable (per ADR-0016).
+"""
 
 import pytest
 import tempfile
@@ -10,11 +15,22 @@ from src.world.ledger import Ledger
 from src.world.genesis import GenesisEscrow
 
 
+def grant_escrow_access(store: ArtifactStore, artifact_id: str, escrow: GenesisEscrow) -> None:
+    """Helper to grant escrow write access to an artifact (Plan #213).
+
+    This simulates the seller setting metadata["authorized_writer"] = escrow.id
+    which grants escrow permission to update the authorized_writer on purchase.
+    """
+    artifact = store.get(artifact_id)
+    if artifact:
+        artifact.metadata["authorized_writer"] = escrow.id
+
+
 class TestEscrowDeposit:
-    """Test escrow deposit functionality."""
+    """Test escrow deposit functionality (Plan #213 redesign)."""
 
     def test_deposit_success(self) -> None:
-        """Seller can deposit artifact after transferring ownership."""
+        """Seller can deposit artifact after granting escrow write access."""
         ledger = Ledger()
         store = ArtifactStore()
         ledger.create_principal("seller", starting_scrip=100, starting_compute=50)
@@ -25,8 +41,8 @@ class TestEscrowDeposit:
         # Create escrow
         escrow = GenesisEscrow(ledger, store)
 
-        # Seller transfers ownership to escrow
-        store.transfer_ownership("my_artifact", "seller", escrow.id)
+        # Plan #213: Grant escrow write access via authorized_writer
+        grant_escrow_access(store, "my_artifact", escrow)
 
         # Seller deposits with price
         result = escrow._deposit(["my_artifact", 50], "seller")
@@ -36,8 +52,8 @@ class TestEscrowDeposit:
         assert result["price"] == 50
         assert result["seller"] == "seller"
 
-    def test_deposit_without_ownership_fails(self) -> None:
-        """Cannot deposit artifact still owned by seller."""
+    def test_deposit_without_access_fails(self) -> None:
+        """Cannot deposit artifact without granting escrow write access."""
         ledger = Ledger()
         store = ArtifactStore()
         ledger.create_principal("seller", starting_scrip=100, starting_compute=50)
@@ -45,12 +61,12 @@ class TestEscrowDeposit:
         store.write("my_artifact", "generic", "content", "seller")
         escrow = GenesisEscrow(ledger, store)
 
-        # Try to deposit without transferring ownership first
+        # Try to deposit without granting escrow access first
         result = escrow._deposit(["my_artifact", 50], "seller")
 
         assert result["success"] is False
-        assert "does not own" in result["error"]
-        assert "transfer_ownership" in result["error"]
+        assert "does not have write access" in result["error"]
+        assert "authorized_writer" in result["error"]
 
     def test_deposit_nonexistent_artifact(self) -> None:
         """Cannot deposit non-existent artifact."""
@@ -69,7 +85,7 @@ class TestEscrowDeposit:
         store = ArtifactStore()
         escrow = GenesisEscrow(ledger, store)
         store.write("my_artifact", "generic", "content", "seller")
-        store.transfer_ownership("my_artifact", "seller", escrow.id)
+        grant_escrow_access(store, "my_artifact", escrow)
 
         # Zero price
         result = escrow._deposit(["my_artifact", 0], "seller")
@@ -86,7 +102,7 @@ class TestEscrowDeposit:
         store = ArtifactStore()
         escrow = GenesisEscrow(ledger, store)
         store.write("my_artifact", "generic", "content", "seller")
-        store.transfer_ownership("my_artifact", "seller", escrow.id)
+        grant_escrow_access(store, "my_artifact", escrow)
 
         result = escrow._deposit(["my_artifact", 50, "specific_buyer"], "seller")
 
@@ -95,7 +111,7 @@ class TestEscrowDeposit:
 
 
 class TestEscrowPurchase:
-    """Test escrow purchase functionality."""
+    """Test escrow purchase functionality (Plan #213 redesign)."""
 
     def setup_listing(self) -> tuple[Ledger, ArtifactStore, GenesisEscrow]:
         """Helper to set up a listed artifact."""
@@ -106,7 +122,8 @@ class TestEscrowPurchase:
 
         store.write("my_artifact", "generic", "valuable content", "seller")
         escrow = GenesisEscrow(ledger, store)
-        store.transfer_ownership("my_artifact", "seller", escrow.id)
+        # Plan #213: Grant escrow write access instead of transfer_ownership
+        grant_escrow_access(store, "my_artifact", escrow)
         escrow._deposit(["my_artifact", 75], "seller")
 
         return ledger, store, escrow
@@ -123,8 +140,8 @@ class TestEscrowPurchase:
         assert result["seller"] == "seller"
         assert result["buyer"] == "buyer"
 
-        # Verify transfers - metadata["controller"] tracks current controller
-        assert store.get("my_artifact").metadata.get("controller", store.get("my_artifact").created_by) == "buyer"
+        # Plan #213: Verify authorized_writer is now buyer
+        assert store.get("my_artifact").metadata.get("authorized_writer") == "buyer"
         assert ledger.get_scrip("buyer") == 125  # 200 - 75
         assert ledger.get_scrip("seller") == 175  # 100 + 75
 
@@ -137,15 +154,15 @@ class TestEscrowPurchase:
 
         store.write("expensive", "generic", "content", "seller")
         escrow = GenesisEscrow(ledger, store)
-        store.transfer_ownership("expensive", "seller", escrow.id)
+        grant_escrow_access(store, "expensive", escrow)
         escrow._deposit(["expensive", 100], "seller")
 
         result = escrow._purchase(["expensive"], "poor_buyer")
 
         assert result["success"] is False
         assert "Insufficient scrip" in result["error"]
-        # Per ADR-0016: check metadata["controller"] for current controller
-        assert store.get("expensive").metadata.get("controller", store.get("expensive").created_by) == escrow.id  # Still in escrow
+        # Plan #213: authorized_writer is still escrow
+        assert store.get("expensive").metadata.get("authorized_writer") == escrow.id
 
     def test_purchase_no_listing(self) -> None:
         """Cannot purchase unlisted artifact."""
@@ -177,7 +194,7 @@ class TestEscrowPurchase:
 
         store.write("restricted", "generic", "content", "seller")
         escrow = GenesisEscrow(ledger, store)
-        store.transfer_ownership("restricted", "seller", escrow.id)
+        grant_escrow_access(store, "restricted", escrow)
         escrow._deposit(["restricted", 50, "allowed"], "seller")
 
         # Wrong buyer fails
@@ -191,22 +208,22 @@ class TestEscrowPurchase:
 
 
 class TestEscrowCancel:
-    """Test escrow cancel functionality."""
+    """Test escrow cancel functionality (Plan #213 redesign)."""
 
     def test_cancel_success(self) -> None:
-        """Seller can cancel listing and get artifact back."""
+        """Seller can cancel listing and get write access back."""
         ledger = Ledger()
         store = ArtifactStore()
         store.write("my_artifact", "generic", "content", "seller")
         escrow = GenesisEscrow(ledger, store)
-        store.transfer_ownership("my_artifact", "seller", escrow.id)
+        grant_escrow_access(store, "my_artifact", escrow)
         escrow._deposit(["my_artifact", 50], "seller")
 
         result = escrow._cancel(["my_artifact"], "seller")
 
         assert result["success"] is True
-        # Per ADR-0016: check metadata["controller"] for current controller
-        assert store.get("my_artifact").metadata.get("controller", store.get("my_artifact").created_by) == "seller"
+        # Plan #213: authorized_writer is returned to seller
+        assert store.get("my_artifact").metadata.get("authorized_writer") == "seller"
 
     def test_cancel_not_seller_fails(self) -> None:
         """Only seller can cancel."""
@@ -214,15 +231,15 @@ class TestEscrowCancel:
         store = ArtifactStore()
         store.write("my_artifact", "generic", "content", "seller")
         escrow = GenesisEscrow(ledger, store)
-        store.transfer_ownership("my_artifact", "seller", escrow.id)
+        grant_escrow_access(store, "my_artifact", escrow)
         escrow._deposit(["my_artifact", 50], "seller")
 
         result = escrow._cancel(["my_artifact"], "not_seller")
 
         assert result["success"] is False
         assert "Only the seller" in result["error"]
-        # Per ADR-0016: check metadata["controller"] for current controller
-        assert store.get("my_artifact").metadata.get("controller", store.get("my_artifact").created_by) == escrow.id  # Still in escrow
+        # Plan #213: authorized_writer is still escrow
+        assert store.get("my_artifact").metadata.get("authorized_writer") == escrow.id
 
     def test_cancel_after_purchase_fails(self) -> None:
         """Cannot cancel completed listing."""
@@ -233,7 +250,7 @@ class TestEscrowCancel:
 
         store.write("my_artifact", "generic", "content", "seller")
         escrow = GenesisEscrow(ledger, store)
-        store.transfer_ownership("my_artifact", "seller", escrow.id)
+        grant_escrow_access(store, "my_artifact", escrow)
         escrow._deposit(["my_artifact", 50], "seller")
         escrow._purchase(["my_artifact"], "buyer")
 
@@ -252,7 +269,7 @@ class TestEscrowCheck:
         store = ArtifactStore()
         store.write("my_artifact", "generic", "content", "seller")
         escrow = GenesisEscrow(ledger, store)
-        store.transfer_ownership("my_artifact", "seller", escrow.id)
+        grant_escrow_access(store, "my_artifact", escrow)
         escrow._deposit(["my_artifact", 50], "seller")
 
         result = escrow._check(["my_artifact"], "anyone")
@@ -299,7 +316,8 @@ class TestEscrowListActive:
         for i in range(3):
             artifact_id = f"artifact_{i}"
             store.write(artifact_id, "generic", f"content {i}", "seller")
-            store.transfer_ownership(artifact_id, "seller", escrow.id)
+            # Plan #213: Grant escrow write access via authorized_writer
+            grant_escrow_access(store, artifact_id, escrow)
             escrow._deposit([artifact_id, 10 + i], "seller")
 
         result = escrow._list_active([], "anyone")
@@ -317,18 +335,19 @@ class TestEscrowListActive:
 
         # Active listing
         store.write("active", "generic", "content", "seller")
-        store.transfer_ownership("active", "seller", escrow.id)
+        # Plan #213: Grant escrow write access via authorized_writer
+        grant_escrow_access(store, "active", escrow)
         escrow._deposit(["active", 10], "seller")
 
         # Completed listing
         store.write("completed", "generic", "content", "seller")
-        store.transfer_ownership("completed", "seller", escrow.id)
+        grant_escrow_access(store, "completed", escrow)
         escrow._deposit(["completed", 20], "seller")
         escrow._purchase(["completed"], "buyer")
 
         # Cancelled listing
         store.write("cancelled", "generic", "content", "seller")
-        store.transfer_ownership("cancelled", "seller", escrow.id)
+        grant_escrow_access(store, "cancelled", escrow)
         escrow._deposit(["cancelled", 30], "seller")
         escrow._cancel(["cancelled"], "seller")
 
@@ -363,7 +382,12 @@ class TestEscrowIntegration:
         assert isinstance(escrow, GenesisEscrow)
 
     def test_full_trade_flow_via_world(self) -> None:
-        """Complete trade flow through World actions."""
+        """Complete trade flow through World actions (Plan #213 redesign).
+
+        Plan #213: Escrow now uses metadata["authorized_writer"] instead of
+        transfer_ownership(). This test verifies the escrow flow works correctly
+        when artifacts are traded via the authorized_writer pattern.
+        """
         from src.world.world import World
         from src.world.actions import WriteArtifactIntent, InvokeArtifactIntent
 
@@ -389,13 +413,12 @@ class TestEscrowIntegration:
         result = world.execute_action(write)
         assert result.success, result.message
 
-        # 2. Seller transfers ownership to escrow
-        transfer = InvokeArtifactIntent(
-            "seller", "genesis_ledger", "transfer_ownership",
-            ["tool_1", "genesis_escrow"]
-        )
-        result = world.execute_action(transfer)
-        assert result.success, result.message
+        # 2. Plan #213: Seller grants escrow write access via authorized_writer
+        # (In a full implementation, this would be via a SetMetadataIntent action.
+        # For now, we set it directly to test the escrow flow.)
+        escrow = world.genesis_artifacts["genesis_escrow"]
+        artifact = world.artifacts.get("tool_1")
+        artifact.metadata["authorized_writer"] = escrow.id
 
         # 3. Seller deposits with price
         deposit = InvokeArtifactIntent(
@@ -413,9 +436,11 @@ class TestEscrowIntegration:
         result = world.execute_action(purchase)
         assert result.success, result.message
 
-        # Verify final state - metadata["controller"] is set by escrow flow
+        # Verify final state - Plan #213: authorized_writer is now buyer
         artifact = world.artifacts.get("tool_1")
-        assert artifact.metadata.get("controller", artifact.created_by) == "buyer"
+        assert artifact.metadata.get("authorized_writer") == "buyer"
+        # created_by is immutable per ADR-0016
+        assert artifact.created_by == "seller"
         # Buyer: 200 - 100 (purchase) = 100
         assert world.ledger.get_scrip("buyer") == 100
         # Seller: 50 + 100 (sale) = 150

@@ -1,11 +1,13 @@
 """Genesis contracts - built-in access control contracts.
 
-This module provides the four genesis contracts that are available at world
+This module provides the five genesis contracts that are available at world
 initialization. These contracts cover the most common access patterns:
 
-- FreewareContract: Anyone can read/execute/invoke, only owner can modify
-- SelfOwnedContract: Only the artifact itself (or owner) can access
-- PrivateContract: Only owner can access
+- FreewareContract: Anyone can read/execute/invoke, only creator can modify
+- TransferableFreewareContract: Like freeware, but write permission is based on
+  metadata["authorized_writer"] (for tradeable artifacts via escrow)
+- SelfOwnedContract: Only the artifact itself (or creator) can access
+- PrivateContract: Only creator can access
 - PublicContract: Anyone can do anything (true commons)
 
 Genesis contracts are immutable and cannot be modified. They are referenced
@@ -89,6 +91,79 @@ class FreewareContract:
 
         # Unknown action - fail closed
         return PermissionResult(allowed=False, reason="freeware: unknown action")
+
+
+@dataclass
+class TransferableFreewareContract:
+    """Transferable freeware access contract (Plan #213).
+
+    Like freeware, but write permission is based on metadata["authorized_writer"]
+    instead of created_by. This enables artifact trading via escrow:
+
+    1. Creator sets metadata["authorized_writer"] = self initially
+    2. When sold, escrow updates metadata["authorized_writer"] = buyer
+    3. Buyer can now write (this contract checks authorized_writer)
+
+    Access rules:
+    - READ, INVOKE: Anyone can access (same as freeware)
+    - WRITE, EDIT, DELETE: Only authorized_writer can modify
+      (falls back to created_by if no authorized_writer set)
+
+    Use this contract for artifacts you intend to sell. Regular freeware
+    artifacts cannot be effectively transferred because write permission
+    is tied to the immutable created_by field.
+    """
+
+    contract_id: str = "genesis_contract_transferable_freeware"
+    contract_type: str = "transferable_freeware"
+
+    def check_permission(
+        self,
+        caller: str,
+        action: PermissionAction,
+        target: str,
+        context: Optional[dict[str, object]] = None,
+    ) -> PermissionResult:
+        """Check permission for transferable freeware access pattern.
+
+        Args:
+            caller: Principal requesting access
+            action: Action being attempted
+            target: Artifact being accessed
+            context: Must contain 'target_created_by' and optionally
+                    'target_metadata' with 'authorized_writer' key
+
+        Returns:
+            PermissionResult with decision
+        """
+        # Open access actions - anyone can perform these
+        if action in (PermissionAction.READ, PermissionAction.INVOKE):
+            return PermissionResult(allowed=True, reason="transferable_freeware: open access")
+
+        # For write actions, check authorized_writer (or fall back to created_by)
+        if action in (PermissionAction.WRITE, PermissionAction.EDIT, PermissionAction.DELETE):
+            # Try to get authorized_writer from metadata
+            authorized_writer = None
+            if context:
+                target_metadata = context.get("target_metadata")
+                if isinstance(target_metadata, dict):
+                    authorized_writer = target_metadata.get("authorized_writer")
+
+            # Fall back to created_by if no authorized_writer set
+            if authorized_writer is None:
+                authorized_writer = context.get("target_created_by") if context else None
+
+            if caller == authorized_writer:
+                return PermissionResult(
+                    allowed=True, reason="transferable_freeware: authorized writer"
+                )
+            return PermissionResult(
+                allowed=False,
+                reason="transferable_freeware: only authorized_writer can modify"
+            )
+
+        # Unknown action - fail closed
+        return PermissionResult(allowed=False, reason="transferable_freeware: unknown action")
 
 
 @dataclass
@@ -240,6 +315,7 @@ class PublicContract:
 # Registry of genesis contracts - singleton instances
 GENESIS_CONTRACTS: dict[str, AccessContract] = {
     "freeware": FreewareContract(),
+    "transferable_freeware": TransferableFreewareContract(),
     "self_owned": SelfOwnedContract(),
     "private": PrivateContract(),
     "public": PublicContract(),

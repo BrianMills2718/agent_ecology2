@@ -59,7 +59,8 @@ class TestGetWorktreeLastModified:
         new_file.write_text("new content")
 
         result = get_worktree_last_modified(str(tmp_path))
-        new_mtime = datetime.fromtimestamp(new_file.stat().st_mtime)
+        # Use timezone-aware datetime to match get_worktree_last_modified
+        new_mtime = datetime.fromtimestamp(new_file.stat().st_mtime, tz=timezone.utc)
 
         # Should be close to the newest file's mtime
         assert result is not None

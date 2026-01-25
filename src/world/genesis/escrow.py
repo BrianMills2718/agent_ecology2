@@ -1,6 +1,21 @@
-"""Genesis Escrow - Trustless artifact trading
+"""Genesis Escrow - Trustless artifact trading (Plan #213 redesign)
 
 Implements the Gatekeeper pattern for safe trading without trusting counterparties.
+
+**Trading Flow (Plan #213):**
+1. Seller creates artifact with:
+   - access_contract_id = "genesis_contract_transferable_freeware"
+   - metadata["authorized_writer"] = seller_id
+2. Seller grants escrow write access: set authorized_writer = "genesis_escrow"
+3. Seller deposits artifact on escrow (escrow verifies it has write access)
+4. Buyer purchases:
+   - Escrow transfers scrip from buyer to seller
+   - Escrow sets authorized_writer = buyer_id
+   - Buyer can now write to artifact
+
+This uses the transferable_freeware contract which checks metadata["authorized_writer"]
+for write permissions, not created_by. This allows artifact trading while keeping
+created_by immutable (per ADR-0016).
 """
 
 from __future__ import annotations
@@ -17,14 +32,18 @@ from .types import EscrowListing
 
 class GenesisEscrow(GenesisArtifact):
     """
-    Genesis artifact for trustless artifact trading.
+    Genesis artifact for trustless artifact trading (Plan #213 redesign).
 
-    Implements the Gatekeeper pattern:
-    1. Seller transfers artifact ownership to escrow
-    2. Seller registers listing with price
-    3. Buyer pays price -> escrow transfers ownership to buyer, scrip to seller
+    Implements the Gatekeeper pattern using authorized_writer metadata:
+    1. Seller creates artifact with transferable_freeware contract
+    2. Seller grants escrow write access (sets authorized_writer = escrow)
+    3. Seller registers listing with price
+    4. Buyer pays price -> escrow sets authorized_writer to buyer, scrip to seller
 
-    This enables safe trading without trusting counterparties.
+    This enables safe trading without trusting counterparties while keeping
+    created_by immutable (per ADR-0016). The transferable_freeware contract
+    checks metadata["authorized_writer"] for write permissions.
+
     All method costs and descriptions are configurable via config.yaml.
     """
 
@@ -105,13 +124,17 @@ class GenesisEscrow(GenesisArtifact):
         self._world = world
 
     def _deposit(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
-        """Deposit an artifact into escrow for sale.
+        """Deposit an artifact into escrow for sale (Plan #213 redesign).
 
-        IMPORTANT: You must first transfer ownership to escrow:
-        invoke_artifact("genesis_ledger", "transfer_ownership", [artifact_id, "genesis_escrow"])
+        IMPORTANT: Before depositing, you must:
+        1. Use transferable_freeware contract on your artifact
+        2. Set metadata["authorized_writer"] = "genesis_escrow"
+
+        This grants escrow write access so it can transfer the authorized_writer
+        to the buyer on purchase.
 
         Args: [artifact_id, price] or [artifact_id, price, buyer_id]
-        - artifact_id: The artifact to sell (must already be owned by escrow)
+        - artifact_id: The artifact to sell (escrow must be authorized_writer)
         - price: Sale price in scrip
         - buyer_id: Optional - restrict purchase to specific buyer
         """
@@ -148,13 +171,15 @@ class GenesisEscrow(GenesisArtifact):
                          f"Use query_kernel action to discover artifacts."
             }
 
-        # Verify escrow controls the artifact (seller must have transferred first)
-        # Per ADR-0016: Check metadata["controller"] (not created_by which is immutable)
-        current_controller = artifact.metadata.get("controller", artifact.created_by)
-        if current_controller != self.id:
+        # Plan #213: Verify escrow has write access via authorized_writer
+        # Seller must have set metadata["authorized_writer"] = "genesis_escrow"
+        authorized_writer = artifact.metadata.get("authorized_writer")
+        if authorized_writer != self.id:
             return {
                 "success": False,
-                "error": _get_error_message("escrow_not_owner", artifact_id=artifact_id, escrow_id=self.id)
+                "error": f"Escrow does not have write access to '{artifact_id}'. "
+                         f"Before depositing, set metadata['authorized_writer'] = '{self.id}' on your artifact. "
+                         f"Current authorized_writer: {authorized_writer or 'not set'}"
             }
 
         # Check not already listed
@@ -184,9 +209,9 @@ class GenesisEscrow(GenesisArtifact):
         }
 
     def _purchase(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
-        """Purchase an artifact from escrow.
+        """Purchase an artifact from escrow (Plan #213 redesign).
 
-        Transfers price from buyer to seller, ownership from escrow to buyer.
+        Transfers price from buyer to seller, sets authorized_writer to buyer.
 
         Args: [artifact_id]
         """
@@ -225,7 +250,7 @@ class GenesisEscrow(GenesisArtifact):
         price = listing["price"]
         seller_id = listing["seller_id"]
 
-        # Plan #111: Use kernel interface when world is set
+        # Plan #213: Use kernel interface for atomic trade
         if self._world is not None:
             from ..kernel_interface import KernelActions, KernelState
             kernel_state = KernelState(self._world)
@@ -244,11 +269,13 @@ class GenesisEscrow(GenesisArtifact):
             if not kernel_actions.transfer_scrip(invoker_id, seller_id, price):
                 return {"success": False, "error": "Scrip transfer failed"}
 
-            # 2. Transfer ownership from escrow to buyer
-            if not kernel_actions.transfer_ownership(self.id, artifact_id, invoker_id):
+            # 2. Plan #213: Set authorized_writer to buyer (not transfer_ownership)
+            if not kernel_actions.update_artifact_metadata(
+                self.id, artifact_id, "authorized_writer", invoker_id
+            ):
                 # Rollback scrip transfer
                 kernel_actions.transfer_scrip(seller_id, invoker_id, price)
-                return {"success": False, "error": "Ownership transfer failed (scrip refunded)"}
+                return {"success": False, "error": "Failed to transfer write access (scrip refunded)"}
         else:
             # Legacy path: direct ledger/artifact_store access
             # Check buyer can afford
@@ -263,11 +290,14 @@ class GenesisEscrow(GenesisArtifact):
             if not self.ledger.transfer_scrip(invoker_id, seller_id, price):
                 return {"success": False, "error": "Scrip transfer failed"}
 
-            # 2. Transfer ownership from escrow to buyer
-            if not self.artifact_store.transfer_ownership(artifact_id, self.id, invoker_id):
+            # 2. Plan #213: Set authorized_writer to buyer directly
+            artifact = self.artifact_store.get(artifact_id)
+            if artifact:
+                artifact.metadata["authorized_writer"] = invoker_id
+            else:
                 # Rollback scrip transfer
                 self.ledger.transfer_scrip(seller_id, invoker_id, price)
-                return {"success": False, "error": "Ownership transfer failed (scrip refunded)"}
+                return {"success": False, "error": "Artifact not found (scrip refunded)"}
 
         # Mark listing as completed
         listing["status"] = "completed"
@@ -282,7 +312,7 @@ class GenesisEscrow(GenesisArtifact):
         }
 
     def _cancel(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
-        """Cancel an escrow listing and return artifact to seller.
+        """Cancel an escrow listing and return write access to seller (Plan #213).
 
         Only the seller can cancel. Only active listings can be cancelled.
 
@@ -314,17 +344,21 @@ class GenesisEscrow(GenesisArtifact):
         if listing["status"] != "active":
             return {"success": False, "error": f"Listing is not active (status: {listing['status']})"}
 
-        # Return ownership to seller
-        # Plan #111: Use kernel interface when world is set
+        # Plan #213: Return write access to seller by setting authorized_writer
         if self._world is not None:
             from ..kernel_interface import KernelActions
             kernel_actions = KernelActions(self._world)
-            success = kernel_actions.transfer_ownership(self.id, artifact_id, invoker_id)
+            success = kernel_actions.update_artifact_metadata(
+                self.id, artifact_id, "authorized_writer", invoker_id
+            )
         else:
-            success = self.artifact_store.transfer_ownership(artifact_id, self.id, invoker_id)
+            artifact = self.artifact_store.get(artifact_id)
+            success = artifact is not None
+            if success:
+                artifact.metadata["authorized_writer"] = invoker_id
 
         if not success:
-            return {"success": False, "error": "Failed to return ownership to seller"}
+            return {"success": False, "error": "Failed to return write access to seller"}
 
         # Mark as cancelled
         listing["status"] = "cancelled"
@@ -333,7 +367,7 @@ class GenesisEscrow(GenesisArtifact):
             "success": True,
             "artifact_id": artifact_id,
             "seller": invoker_id,
-            "message": f"Cancelled listing for {artifact_id}, ownership returned to {invoker_id}"
+            "message": f"Cancelled listing for {artifact_id}, write access returned to {invoker_id}"
         }
 
     def _check(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
@@ -378,21 +412,21 @@ class GenesisEscrow(GenesisArtifact):
         }
 
     def get_interface(self) -> dict[str, Any]:
-        """Get detailed interface schema for the escrow (Plan #114)."""
+        """Get detailed interface schema for the escrow (Plan #114, #213)."""
         return {
             "description": self.description,
             "dataType": "service",
             "tools": [
                 {
                     "name": "deposit",
-                    "description": "Deposit an artifact into escrow for sale. IMPORTANT: First transfer ownership to escrow via genesis_ledger.transfer_ownership(artifact_id, 'genesis_escrow')",
+                    "description": "Deposit an artifact into escrow for sale. IMPORTANT: First set metadata['authorized_writer'] = 'genesis_escrow' on your artifact (requires transferable_freeware contract)",
                     "cost": self.methods["deposit"].cost,
                     "inputSchema": {
                         "type": "object",
                         "properties": {
                             "artifact_id": {
                                 "type": "string",
-                                "description": "ID of artifact to sell (must already be owned by escrow)"
+                                "description": "ID of artifact to sell (escrow must be authorized_writer)"
                             },
                             "price": {
                                 "type": "integer",
@@ -409,7 +443,7 @@ class GenesisEscrow(GenesisArtifact):
                 },
                 {
                     "name": "purchase",
-                    "description": "Purchase an artifact from escrow. Transfers scrip to seller, ownership to buyer.",
+                    "description": "Purchase an artifact from escrow. Transfers scrip to seller, sets authorized_writer to buyer.",
                     "cost": self.methods["purchase"].cost,
                     "inputSchema": {
                         "type": "object",

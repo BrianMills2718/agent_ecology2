@@ -387,8 +387,8 @@ class TestGenesisContractsRegistry:
     """Tests for the GENESIS_CONTRACTS registry."""
 
     def test_registry_contains_all_contracts(self) -> None:
-        """Verify registry contains all four genesis contracts."""
-        expected_types = {"freeware", "self_owned", "private", "public"}
+        """Verify registry contains all five genesis contracts (Plan #213)."""
+        expected_types = {"freeware", "transferable_freeware", "self_owned", "private", "public"}
         assert set(GENESIS_CONTRACTS.keys()) == expected_types
 
     def test_registry_values_are_contracts(self) -> None:
@@ -492,9 +492,9 @@ class TestListGenesisContracts:
     """Tests for list_genesis_contracts() helper."""
 
     def test_returns_all_types(self) -> None:
-        """Verify returns all four types."""
+        """Verify returns all five types (Plan #213)."""
         types = list_genesis_contracts()
-        assert set(types) == {"freeware", "self_owned", "private", "public"}
+        assert set(types) == {"freeware", "transferable_freeware", "self_owned", "private", "public"}
 
     def test_returns_list(self) -> None:
         """Verify returns a list."""
@@ -545,6 +545,7 @@ class TestContractComparison:
         """Compare stranger read access across contracts."""
         expected = {
             "freeware": True,  # Open read
+            "transferable_freeware": True,  # Open read (Plan #213)
             "self_owned": False,  # Only self/owner
             "private": False,  # Only owner
             "public": True,  # Open everything
@@ -566,7 +567,8 @@ class TestContractComparison:
     ) -> None:
         """Compare stranger write access across contracts."""
         expected = {
-            "freeware": False,  # Owner only
+            "freeware": False,  # Creator only
+            "transferable_freeware": False,  # Authorized_writer only (Plan #213)
             "self_owned": False,  # Self/owner only
             "private": False,  # Owner only
             "public": True,  # Open everything
@@ -589,6 +591,7 @@ class TestContractComparison:
         """Compare self-access (artifact accessing itself) across contracts."""
         expected = {
             "freeware": True,  # Open read (but not write)
+            "transferable_freeware": True,  # Open read (Plan #213)
             "self_owned": True,  # Self has full access
             "private": False,  # Only owner, not self
             "public": True,  # Open everything
