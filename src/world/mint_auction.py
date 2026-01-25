@@ -25,7 +25,7 @@ class KernelMintSubmission(TypedDict):
     principal_id: str
     artifact_id: str
     bid: int
-    tick_submitted: int
+    submitted_at: int  # Event number when submitted
 
 
 class KernelMintResult(TypedDict, total=False):
@@ -39,7 +39,7 @@ class KernelMintResult(TypedDict, total=False):
     scrip_minted: int
     ubi_distributed: dict[str, int]
     error: str | None
-    tick_resolved: int
+    resolved_at: int  # Event number when resolved
 
 
 class MintAuction:
@@ -51,7 +51,7 @@ class MintAuction:
         ledger: For scrip operations (credit, deduct, distribute_ubi)
         artifacts: For artifact validation
         logger: For event logging
-        get_tick: Callback to get current simulation tick
+        get_event_number: Callback to get current event number
     """
 
     def __init__(
@@ -59,7 +59,7 @@ class MintAuction:
         ledger: Ledger,
         artifacts: ArtifactStore,
         logger: EventLogger,
-        get_tick: Callable[[], int],
+        get_event_number: Callable[[], int],
     ) -> None:
         """Initialize MintAuction.
 
@@ -67,12 +67,12 @@ class MintAuction:
             ledger: Ledger for scrip operations
             artifacts: ArtifactStore for artifact validation
             logger: EventLogger for logging events
-            get_tick: Callable that returns current tick
+            get_event_number: Callable that returns current event number
         """
         self._ledger = ledger
         self._artifacts = artifacts
         self._logger = logger
-        self._get_tick = get_tick
+        self._get_event_number = get_event_number
 
         # Internal state
         self._submissions: dict[str, KernelMintSubmission] = {}
@@ -98,9 +98,9 @@ class MintAuction:
         self._track_api_cost = track_api_cost
 
     @property
-    def tick(self) -> int:
-        """Current simulation tick."""
-        return self._get_tick()
+    def event_number(self) -> int:
+        """Current event number for logging."""
+        return self._get_event_number()
 
     def mint_scrip(self, principal_id: str, amount: int) -> None:
         """Mint new scrip for a principal.
@@ -113,7 +113,7 @@ class MintAuction:
         """
         self._ledger.credit_scrip(principal_id, amount)
         self._logger.log("mint", {
-            "tick": self.tick,
+            "event_number": self.event_number,
             "principal_id": principal_id,
             "amount": amount,
             "scrip_after": self._ledger.get_scrip(principal_id)
@@ -166,11 +166,11 @@ class MintAuction:
             "principal_id": principal_id,
             "artifact_id": artifact_id,
             "bid": bid,
-            "tick_submitted": self.tick,
+            "submitted_at": self.event_number,
         }
 
         self._logger.log("mint_submission", {
-            "tick": self.tick,
+            "event_number": self.event_number,
             "submission_id": submission_id,
             "principal_id": principal_id,
             "artifact_id": artifact_id,
@@ -229,7 +229,7 @@ class MintAuction:
         del self._submissions[submission_id]
 
         self._logger.log("mint_cancellation", {
-            "tick": self.tick,
+            "event_number": self.event_number,
             "submission_id": submission_id,
             "principal_id": principal_id,
             "refunded": bid_amount,
@@ -240,7 +240,7 @@ class MintAuction:
     def resolve(self, _mock_score: int | None = None) -> KernelMintResult:
         """Resolve the current mint auction.
 
-        Called by tick advancement or manually for testing.
+        Called periodically or manually for testing.
         Picks winner (highest bid), runs second-price auction,
         scores artifact, mints scrip, distributes UBI.
 
@@ -260,7 +260,7 @@ class MintAuction:
                 "scrip_minted": 0,
                 "ubi_distributed": {},
                 "error": "No submissions",
-                "tick_resolved": self.tick,
+                "resolved_at": self.event_number,
             }
             self._history.append(result)
             return result
@@ -354,7 +354,7 @@ class MintAuction:
             scrip_minted=scrip_minted,
             ubi_distributed=ubi_distribution,
             error=error,
-            tick_resolved=self.tick,
+            resolved_at=self.event_number,
         )
         self._history.append(result)
 
@@ -362,7 +362,7 @@ class MintAuction:
         self._submissions.clear()
 
         self._logger.log("mint_auction_resolved", {
-            "tick": self.tick,
+            "event_number": self.event_number,
             "winner_id": winner_id,
             "artifact_id": artifact_id,
             "winning_bid": winning_bid,

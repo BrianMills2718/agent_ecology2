@@ -123,12 +123,12 @@ class TestCheckpointRestore:
     """Tests for checkpoint restoration."""
 
     @patch("src.simulation.runner.load_agents")
-    def test_restores_tick_from_checkpoint(self, mock_load: MagicMock) -> None:
-        """SimulationRunner restores tick from checkpoint."""
+    def test_restores_event_number_from_checkpoint(self, mock_load: MagicMock) -> None:
+        """SimulationRunner restores event_number from checkpoint."""
         mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
 
         checkpoint: CheckpointData = {
-            "tick": 25,
+            "event_number": 25,
             "balances": {"agent": {"compute": 50, "scrip": 150}},
             "cumulative_api_cost": 0.5,
             "artifacts": [],
@@ -140,8 +140,8 @@ class TestCheckpointRestore:
             config = make_minimal_config(tmpdir)
             runner = SimulationRunner(config, checkpoint=checkpoint, verbose=False)
 
-            # Event counter (tick) is restored directly from checkpoint (Plan #102)
-            assert runner.world.tick == 25
+            # Event counter is restored directly from checkpoint (Plan #102)
+            assert runner.world.event_number == 25
 
     @patch("src.simulation.runner.load_agents")
     def test_restores_api_cost_from_checkpoint(self, mock_load: MagicMock) -> None:
@@ -149,7 +149,7 @@ class TestCheckpointRestore:
         mock_load.return_value = []
 
         checkpoint: CheckpointData = {
-            "tick": 10,
+            "event_number": 10,
             "balances": {},
             "cumulative_api_cost": 0.75,
             "artifacts": [],
@@ -169,7 +169,7 @@ class TestCheckpointRestore:
         mock_load.return_value = []
 
         checkpoint: CheckpointData = {
-            "tick": 5,
+            "event_number": 5,
             "balances": {},
             "cumulative_api_cost": 0.0,
             "artifacts": [

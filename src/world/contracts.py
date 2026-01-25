@@ -374,7 +374,7 @@ class ExecutableContract:
         - caller: str - Principal requesting access
         - action: str - The action being attempted (read, write, invoke, etc.)
         - target: str - Artifact ID being accessed
-        - context: dict - Additional context (created_by, artifact_type, tick, etc.)
+        - context: dict - Additional context (created_by, artifact_type, event_number, etc.)
         - ledger: ReadOnlyLedger - Read-only ledger for balance checks
 
     Return dict fields:

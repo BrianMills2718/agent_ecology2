@@ -22,7 +22,7 @@ class GenesisRightsRegistry(GenesisArtifact):
     Quotas are kernel state, not genesis artifact state.
 
     Supports generic resources defined in config. Common resources:
-    - llm_tokens: LLM tokens per tick (renews each tick)
+    - llm_tokens: LLM tokens (rate-limited via rolling window)
     - disk: Bytes of storage (fixed pool)
 
     See docs/RESOURCE_MODEL.md for full design rationale.
@@ -187,7 +187,7 @@ class GenesisRightsRegistry(GenesisArtifact):
         return dict(self._legacy_quotas[agent_id])
 
     def get_llm_tokens_quota(self, agent_id: str) -> int:
-        """Get LLM tokens quota (tokens/tick) for an agent."""
+        """Get LLM tokens quota for an agent."""
         return int(self.get_quota(agent_id, "llm_tokens"))
 
     # Backward compat: disk = "disk" resource

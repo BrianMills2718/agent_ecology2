@@ -6,8 +6,8 @@ This is the heart of the simulation. All world state, resources, and execution l
 
 | File | Responsibility |
 |------|----------------|
-| `world.py` | Central state manager, tick lifecycle, artifact store |
-| `ledger.py` | Resource accounting (flow/stock), scrip balances, transfers |
+| `world.py` | Central state manager, event lifecycle, artifact store |
+| `ledger.py` | Resource accounting (renewable/stock), scrip balances, transfers |
 | `artifacts.py` | Artifact storage, policies, ownership |
 | `executor.py` | Safe code execution, invoke() support, timeout protection |
 | `actions.py` | Action definitions (noop, read, write, invoke) |

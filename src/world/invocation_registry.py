@@ -27,7 +27,7 @@ class InvocationRecord:
     """Record of a single artifact invocation.
 
     Attributes:
-        tick: Simulation tick when invocation occurred
+        event_number: Event number when invocation occurred
         invoker_id: Principal ID of the caller
         artifact_id: ID of the artifact being invoked
         method: Method name being called (for genesis artifacts)
@@ -36,7 +36,7 @@ class InvocationRecord:
         error_type: Type of error if failed (timeout, validation, execution, etc.)
         timestamp: ISO timestamp of invocation
     """
-    tick: int
+    event_number: int
     invoker_id: str
     artifact_id: str
     method: str
@@ -53,7 +53,7 @@ class InvocationRecord:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API responses."""
         return {
-            "tick": self.tick,
+            "event_number": self.event_number,
             "invoker_id": self.invoker_id,
             "artifact_id": self.artifact_id,
             "method": self.method,

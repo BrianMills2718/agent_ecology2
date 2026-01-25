@@ -9,7 +9,7 @@ Usage (in-process):
     result = run_agent_turn(
         agent_id="alpha",
         state_db_path=Path("state.db"),
-        world_state={"tick": 1, ...},
+        world_state={"event_number": 1, ...},
     )
 
 Usage (subprocess):
@@ -110,12 +110,12 @@ def run_agent_turn(
             # Not serializable, convert to string representation
             state.last_action_result = repr(action_result)
 
-        state.last_tick = world_state.get("tick", 0)
+        state.last_tick = world_state.get("event_number", world_state.get("tick", 0))
         action_type = None
         if isinstance(action_result, dict):
             action_type = action_result.get("action")
         state.turn_history.append({
-            "tick": world_state.get("tick", 0),
+            "event_number": world_state.get("event_number", world_state.get("tick", 0)),
             "action": action_type,
         })
 

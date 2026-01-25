@@ -1,6 +1,6 @@
 """Tests for SummaryLogger (Plan #60).
 
-Tests the summary logging system that creates tractable per-tick summaries
+Tests the summary logging system that creates tractable periodic summaries
 alongside the full event log.
 """
 
@@ -23,8 +23,8 @@ class TestSummaryLogger:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             logger = SummaryLogger(Path(tmpdir) / "summary.jsonl")
-            logger.log_tick_summary(
-                tick=1,
+            logger.log_summary(
+                event_number=1,
                 agents_active=3,
                 actions_executed=5,
             )
@@ -32,19 +32,19 @@ class TestSummaryLogger:
             assert (Path(tmpdir) / "summary.jsonl").exists()
 
     @pytest.mark.plans([60])
-    def test_writes_one_line_per_tick(self) -> None:
-        """SummaryLogger writes exactly one line per tick."""
+    def test_writes_one_line_per_summary(self) -> None:
+        """SummaryLogger writes exactly one line per summary."""
         from src.world.logger import SummaryLogger
 
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "summary.jsonl"
             logger = SummaryLogger(path)
 
-            for tick in range(5):
-                logger.log_tick_summary(
-                    tick=tick,
+            for event_num in range(5):
+                logger.log_summary(
+                    event_number=event_num,
                     agents_active=3,
-                    actions_executed=tick + 1,
+                    actions_executed=event_num + 1,
                 )
 
             lines = path.read_text().strip().split("\n")
@@ -59,8 +59,8 @@ class TestSummaryLogger:
             path = Path(tmpdir) / "summary.jsonl"
             logger = SummaryLogger(path)
 
-            logger.log_tick_summary(
-                tick=1,
+            logger.log_summary(
+                event_number=1,
                 agents_active=3,
                 actions_executed=5,
                 actions_by_type={"invoke": 3, "write": 2},
@@ -75,7 +75,7 @@ class TestSummaryLogger:
             data = json.loads(line)
 
             # Required fields
-            assert "tick" in data
+            assert "event_number" in data
             assert "timestamp" in data
             assert "agents_active" in data
             assert "actions_executed" in data
@@ -87,7 +87,7 @@ class TestSummaryLogger:
             assert "highlights" in data
 
             # Check values
-            assert data["tick"] == 1
+            assert data["event_number"] == 1
             assert data["agents_active"] == 3
             assert data["actions_executed"] == 5
             assert data["actions_by_type"] == {"invoke": 3, "write": 2}
@@ -103,8 +103,8 @@ class TestSummaryLogger:
             logger = SummaryLogger(path)
 
             # Minimal call - only required fields
-            logger.log_tick_summary(
-                tick=0,
+            logger.log_summary(
+                event_number=0,
                 agents_active=2,
                 actions_executed=0,
             )
@@ -150,79 +150,79 @@ class TestSummaryLoggerIntegration:
             assert logger.summary_logger is None
 
 
-class TestTickSummaryCollection:
-    """Tests for collecting tick summary data."""
+class TestSummaryCollection:
+    """Tests for collecting summary data."""
 
     @pytest.mark.plans([60])
-    def test_tick_summary_collector_tracks_actions(self) -> None:
-        """TickSummaryCollector accumulates action counts."""
-        from src.world.logger import TickSummaryCollector
+    def test_summary_collector_tracks_actions(self) -> None:
+        """SummaryCollector accumulates action counts."""
+        from src.world.logger import SummaryCollector
 
-        collector = TickSummaryCollector()
+        collector = SummaryCollector()
 
         collector.record_action("invoke", success=True)
         collector.record_action("write", success=True)
         collector.record_action("invoke", success=False)
 
-        summary = collector.finalize(tick=1, agents_active=2)
+        summary = collector.finalize(event_number=1, agents_active=2)
 
         assert summary["actions_executed"] == 3
         assert summary["actions_by_type"] == {"invoke": 2, "write": 1}
         assert summary["errors"] == 1
 
     @pytest.mark.plans([60])
-    def test_tick_summary_collector_tracks_llm_tokens(self) -> None:
-        """TickSummaryCollector accumulates LLM token usage."""
-        from src.world.logger import TickSummaryCollector
+    def test_summary_collector_tracks_llm_tokens(self) -> None:
+        """SummaryCollector accumulates LLM token usage."""
+        from src.world.logger import SummaryCollector
 
-        collector = TickSummaryCollector()
+        collector = SummaryCollector()
 
         collector.record_llm_tokens(100)
         collector.record_llm_tokens(50)
 
-        summary = collector.finalize(tick=1, agents_active=2)
+        summary = collector.finalize(event_number=1, agents_active=2)
 
         assert summary["total_llm_tokens"] == 150
 
     @pytest.mark.plans([60])
-    def test_tick_summary_collector_tracks_scrip(self) -> None:
-        """TickSummaryCollector accumulates scrip transfers."""
-        from src.world.logger import TickSummaryCollector
+    def test_summary_collector_tracks_scrip(self) -> None:
+        """SummaryCollector accumulates scrip transfers."""
+        from src.world.logger import SummaryCollector
 
-        collector = TickSummaryCollector()
+        collector = SummaryCollector()
 
         collector.record_scrip_transfer(25)
         collector.record_scrip_transfer(10)
 
-        summary = collector.finalize(tick=1, agents_active=2)
+        summary = collector.finalize(event_number=1, agents_active=2)
 
         assert summary["total_scrip_transferred"] == 35
 
     @pytest.mark.plans([60])
-    def test_tick_summary_collector_captures_highlights(self) -> None:
-        """TickSummaryCollector captures significant events as highlights."""
-        from src.world.logger import TickSummaryCollector
+    def test_summary_collector_captures_highlights(self) -> None:
+        """SummaryCollector captures significant events as highlights."""
+        from src.world.logger import SummaryCollector
 
-        collector = TickSummaryCollector()
+        collector = SummaryCollector()
 
         collector.add_highlight("alpha created tool_x")
         collector.add_highlight("beta transferred 50 scrip to gamma")
 
-        summary = collector.finalize(tick=1, agents_active=2)
+        summary = collector.finalize(event_number=1, agents_active=2)
 
         assert len(summary["highlights"]) == 2
         assert "alpha created tool_x" in summary["highlights"]
 
     @pytest.mark.plans([60])
-    def test_tick_summary_collector_reset(self) -> None:
-        """TickSummaryCollector resets state after finalize."""
-        from src.world.logger import TickSummaryCollector
+    def test_summary_collector_reset(self) -> None:
+        """SummaryCollector resets state after finalize."""
+        from src.world.logger import SummaryCollector
 
-        collector = TickSummaryCollector()
+        collector = SummaryCollector()
 
         collector.record_action("invoke", success=True)
-        collector.finalize(tick=1, agents_active=2)
+        collector.finalize(event_number=1, agents_active=2)
 
         # After finalize, collector should be reset
-        summary = collector.finalize(tick=2, agents_active=2)
+        summary = collector.finalize(event_number=2, agents_active=2)
         assert summary["actions_executed"] == 0

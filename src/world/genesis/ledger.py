@@ -26,7 +26,7 @@ class GenesisLedger(GenesisArtifact):
     Genesis artifact that proxies to the world ledger.
 
     Two types of balances:
-    - flow: Action budget (resets each tick) - real resource constraint
+    - resources: Action budget (rate-limited via RateTracker) - real resource constraint
     - scrip: Economic currency (persistent) - medium of exchange
 
     All method costs and descriptions are configurable via config.yaml.

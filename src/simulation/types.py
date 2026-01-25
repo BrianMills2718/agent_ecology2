@@ -108,14 +108,15 @@ class CheckpointData(TypedDict, total=False):
     """Structure for checkpoint file data.
 
     Version history:
-    - v1: Original format (tick, balances, artifacts, agent_ids, reason, cumulative_api_cost)
+    - v1: Original format (event_number/tick, balances, artifacts, agent_ids, reason, cumulative_api_cost)
     - v2: Added agent_states and version field (Plan #163)
     """
 
     # Version field for format migration
     version: int
 
-    tick: int
+    event_number: int
+    tick: int  # Legacy alias for backward compat when loading old checkpoints
     balances: dict[str, BalanceInfo]
     cumulative_api_cost: float
     artifacts: list[dict[str, Any]]

@@ -100,7 +100,7 @@ def create_genesis_artifacts(
             default_quotas = rights_config["default_quotas"]
         else:
             # Build from legacy keys with config fallback
-            # Note: compute uses rate_limiting now, not per_tick
+            # Note: compute uses rate_limiting now (rolling window)
             compute_fallback: int = 50
             disk_fallback: int = get("resources.stock.disk.total") or 10000
             default_llm_tokens = rights_config.get("default_llm_tokens_quota",
