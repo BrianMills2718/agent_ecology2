@@ -79,6 +79,13 @@ function MilestonesList() {
   )
 }
 
+interface MetricInfo {
+  label: string
+  value: number
+  tooltip: string
+  formula: string
+}
+
 function EmergenceGauges() {
   const { data: emergence } = useEmergence()
 
@@ -87,37 +94,71 @@ function EmergenceGauges() {
 
   if (!emergence) return null
 
-  const gauges = [
-    { label: 'Coordination', value: emergence.coordination_density },
-    { label: 'Specialization', value: emergence.specialization_index },
-    { label: 'Reuse Ratio', value: emergence.reuse_ratio },
-    { label: 'Independence', value: emergence.genesis_independence },
+  const metrics: MetricInfo[] = [
+    {
+      label: 'Coordination',
+      value: emergence.coordination_density,
+      tooltip: '% of agent pairs that have interacted at least once',
+      formula: 'unique_pairs / max_possible_pairs',
+    },
+    {
+      label: 'Reuse',
+      value: emergence.reuse_ratio,
+      tooltip: '% of artifacts used by agents other than their creator',
+      formula: 'artifacts_used_by_others / total_artifacts',
+    },
+    {
+      label: 'Independence',
+      value: emergence.genesis_independence,
+      tooltip: '% of invocations that target non-genesis artifacts',
+      formula: 'non_genesis_invokes / total_invokes',
+    },
   ]
 
   return (
     <div className="bg-[var(--bg-secondary)] rounded-lg p-4">
       <h3 className="text-sm font-semibold mb-3">Emergence Indicators</h3>
       <div className="space-y-3">
-        {gauges.map((g) => (
-          <div key={g.label}>
+        {metrics.map((m) => (
+          <div key={m.label} className="group relative">
             <div className="flex justify-between text-xs mb-1">
-              <span>{g.label}</span>
-              <span className="font-mono">{safePercent(g.value, 0)}</span>
+              <span className="cursor-help border-b border-dotted border-[var(--text-secondary)]">
+                {m.label}
+              </span>
+              <span className="font-mono">{safePercent(m.value, 0)}</span>
             </div>
             <div className="h-2 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
               <div
                 className={`h-full transition-all duration-300 ${
-                  g.value >= 0.7
+                  m.value >= 0.5
                     ? 'bg-green-500'
-                    : g.value >= 0.3
+                    : m.value >= 0.2
                     ? 'bg-yellow-500'
-                    : 'bg-red-500'
+                    : 'bg-gray-500'
                 }`}
-                style={{ width: `${Math.min(g.value * 100, 100)}%` }}
+                style={{ width: `${Math.min(m.value * 100, 100)}%` }}
               />
+            </div>
+            {/* Tooltip */}
+            <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-10 w-64 p-2 bg-[var(--bg-primary)] border border-[var(--border-color)] rounded shadow-lg text-xs">
+              <p className="text-[var(--text-primary)] mb-1">{m.tooltip}</p>
+              <p className="text-[var(--text-secondary)] font-mono">{m.formula}</p>
             </div>
           </div>
         ))}
+        {emergence.coalition_count > 0 && (
+          <div className="pt-2 border-t border-[var(--border-color)]">
+            <div className="flex justify-between text-xs">
+              <span
+                className="cursor-help border-b border-dotted border-[var(--text-secondary)]"
+                title="Number of disconnected agent clusters"
+              >
+                Coalitions
+              </span>
+              <span className="font-mono">{emergence.coalition_count}</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

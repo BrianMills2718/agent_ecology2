@@ -11,56 +11,41 @@ interface ThresholdConfig {
   getMessage: (value: number, threshold: number, label: string) => string
 }
 
+// Only track metrics that have clear, defensible definitions
 const THRESHOLD_CONFIGS: ThresholdConfig[] = [
   {
     metric: 'coordination_density',
-    thresholds: [0.1, 0.3, 0.5, 0.7],
-    labels: ['initial', 'emerging', 'growing', 'strong'],
-    getMessage: (value, threshold, label) =>
+    thresholds: [0.1, 0.3, 0.5],
+    labels: ['initial', 'emerging', 'strong'],
+    getMessage: (value, threshold, _label) =>
       threshold === 0.1
-        ? `First coordination detected! Agents beginning to interact (${(value * 100).toFixed(0)}%)`
-        : `Coordination density reached ${(threshold * 100).toFixed(0)}% - ${label} collaboration`,
-  },
-  {
-    metric: 'specialization_index',
-    thresholds: [0.2, 0.4, 0.6],
-    labels: ['beginning', 'developing', 'advanced'],
-    getMessage: (_value, threshold, label) =>
-      `Specialization at ${(threshold * 100).toFixed(0)}% - agents ${label} differentiated roles`,
+        ? `First coordination! Agents beginning to interact (${(value * 100).toFixed(0)}%)`
+        : `${(threshold * 100).toFixed(0)}% of agent pairs have interacted`,
   },
   {
     metric: 'reuse_ratio',
     thresholds: [0.1, 0.3, 0.5],
     labels: ['starting', 'growing', 'mature'],
-    getMessage: (_value, threshold, label) =>
+    getMessage: (_value, threshold, _label) =>
       threshold === 0.1
-        ? `First artifact reuse! Ecosystem beginning to share code`
-        : `Reuse ratio at ${(threshold * 100).toFixed(0)}% - ${label} shared artifact ecosystem`,
+        ? `First artifact reuse! Someone used another agent's artifact`
+        : `${(threshold * 100).toFixed(0)}% of artifacts used by non-creators`,
   },
   {
     metric: 'genesis_independence',
-    thresholds: [0.2, 0.4, 0.6, 0.8],
-    labels: ['early', 'growing', 'mature', 'self-sustaining'],
-    getMessage: (_value, threshold, label) =>
-      `Genesis independence at ${(threshold * 100).toFixed(0)}% - ${label} ecosystem`,
+    thresholds: [0.2, 0.4, 0.6],
+    labels: ['early', 'growing', 'mature'],
+    getMessage: (_value, threshold, _label) =>
+      `${(threshold * 100).toFixed(0)}% of invocations target non-genesis artifacts`,
   },
   {
     metric: 'coalition_count',
-    thresholds: [2, 3, 5, 7],
-    labels: ['pair', 'trio', 'multiple', 'complex'],
-    getMessage: (_value, threshold, label) =>
+    thresholds: [2, 3, 5],
+    labels: ['pair', 'trio', 'multiple'],
+    getMessage: (_value, threshold, _label) =>
       threshold === 2
-        ? `First coalition detected! Two agents forming a group`
-        : `${threshold} coalitions formed - ${label} agent groupings`,
-  },
-  {
-    metric: 'capital_depth',
-    thresholds: [2, 4, 6],
-    labels: ['shallow', 'medium', 'deep'],
-    getMessage: (_value, threshold, label) =>
-      threshold === 2
-        ? `First dependency chain detected! Agents building on each other's work`
-        : `Capital depth at ${threshold} - ${label} dependency chains`,
+        ? `First coalition! Two agents have started working together`
+        : `${threshold} distinct agent clusters detected`,
   },
 ]
 
