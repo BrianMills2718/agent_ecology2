@@ -122,6 +122,22 @@ python scripts/cleanup_claims_mess.py --apply      # Apply full cleanup
 - Commit: `git -C worktrees/plan-123-foo commit -m "..."`
 - When you run `make finish`, the worktree is deleted but your CWD (main) stays valid.
 
+### Per-Worktree Context File
+
+Each worktree has a `.claude/CONTEXT.md` file for tracking progress:
+
+```
+worktrees/plan-123-foo/.claude/CONTEXT.md
+```
+
+**Update this file as you work.** It helps:
+- Resume after context compaction
+- Document decisions made
+- Track which files were changed
+- Hand off to another session if needed
+
+The file is ephemeral - deleted when the worktree is removed after merge.
+
 Example workflow:
 ```bash
 make worktree PLAN=123                    # Creates worktrees/plan-123-foo/

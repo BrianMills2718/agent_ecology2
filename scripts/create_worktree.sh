@@ -161,6 +161,45 @@ eval python scripts/check_claims.py $CLAIM_ARGS
 echo "$(date -Iseconds)" > "worktrees/$BRANCH/.claude_session"
 echo -e "${GREEN}Created session marker${NC}"
 
+# Create per-worktree context file for CC to track progress
+# This helps CC resume after context compaction and documents decisions
+mkdir -p "worktrees/$BRANCH/.claude"
+PLAN_REF=""
+if [ -n "$PLAN" ]; then
+    PLAN_FILE=$(ls docs/plans/${PLAN}_*.md 2>/dev/null | head -1)
+    if [ -n "$PLAN_FILE" ]; then
+        PLAN_REF="docs/plans/$(basename "$PLAN_FILE")"
+    fi
+fi
+
+cat > "worktrees/$BRANCH/.claude/CONTEXT.md" << CONTEXT_EOF
+# Worktree Context: $BRANCH
+
+## Task
+$TASK
+
+## Plan Reference
+${PLAN_REF:-None (trivial change)}
+
+## Status
+- [ ] Implementation started
+- [ ] Tests passing
+- [ ] Ready for PR
+
+## Progress Notes
+<!-- CC: Update this as you work. Helps resume after context compaction. -->
+
+
+## Decisions Made
+<!-- CC: Document key decisions and why. -->
+
+
+## Files Changed
+<!-- CC: List files you've modified. -->
+
+CONTEXT_EOF
+echo -e "${GREEN}Created .claude/CONTEXT.md for tracking progress${NC}"
+
 # Set up shared references symlink (docs/references -> shared folder)
 SHARED_REF="/home/brian/projects/shared_references"
 WT_REF="worktrees/$BRANCH/docs/references"
@@ -175,12 +214,17 @@ echo -e "${GREEN}=== Success ===${NC}"
 echo ""
 echo "Worktree created at: worktrees/$BRANCH"
 echo "Based on: latest origin/main"
+echo "Context file: worktrees/$BRANCH/.claude/CONTEXT.md"
 echo ""
-echo "Next steps:"
-echo "  cd worktrees/$BRANCH && claude"
+echo "Workflow (run from main, use worktree as path):"
+echo "  # Edit files:"
+echo "  worktrees/$BRANCH/src/...          # Use paths from main"
 echo ""
-echo "When done:"
-echo "  make release                    # Release claim (validates tests)"
-echo "  make pr-ready                   # Rebase and push"
-echo "  make pr                         # Create PR"
-echo "  git worktree remove worktrees/$BRANCH"
+echo "  # Commit:"
+echo "  git -C worktrees/$BRANCH add -A"
+echo "  git -C worktrees/$BRANCH commit -m '[Plan #N] ...'"
+echo ""
+echo "  # Ship:"
+echo "  git -C worktrees/$BRANCH push -u origin $BRANCH"
+echo "  gh pr create --head $BRANCH --title '...' --body '...'"
+echo "  make finish BRANCH=$BRANCH PR=<number>"
