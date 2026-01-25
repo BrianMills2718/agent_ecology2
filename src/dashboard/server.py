@@ -8,7 +8,10 @@ from dataclasses import asdict
 
 import asyncio
 import json
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 from typing import Any, TYPE_CHECKING
 
 from contextlib import asynccontextmanager
@@ -187,7 +190,8 @@ class DashboardApp:
             import yaml
             with open(self.config_path) as f:
                 return yaml.safe_load(f) or {}
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to load config from %s: %s", self.config_path, e)
             return {}
 
 

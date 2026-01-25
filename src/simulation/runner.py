@@ -57,7 +57,7 @@ def _derive_provider(model: str) -> str:
         info = litellm.get_model_info(model)
         if info and "litellm_provider" in info:
             return str(info["litellm_provider"])
-    except Exception:
+    except Exception:  # exception-ok: litellm may not have model info
         pass  # Fall through to heuristic
 
     # Fallback: string matching for models not in LiteLLM registry
