@@ -99,10 +99,37 @@ export interface ProgressData {
 }
 
 export interface SimulationStatus {
+  available: boolean
   running: boolean
   paused: boolean
-  tick: number
+  tick?: number
   has_runner: boolean
+  has_subprocess: boolean
+  subprocess_pid?: number
+  subprocess_elapsed_seconds?: number
+  reason?: string
+}
+
+export interface SimulationStartRequest {
+  duration?: number
+  agents?: number
+  budget?: number
+  model?: string
+  rate_limit_delay?: number
+}
+
+export interface SimulationStartResponse {
+  success: boolean
+  pid?: number
+  jsonl_path?: string
+  error?: string
+}
+
+export interface SimulationStopResponse {
+  success: boolean
+  pid?: number
+  message?: string
+  error?: string
 }
 
 export interface RawEvent {

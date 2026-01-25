@@ -38,6 +38,8 @@ try:
 except ImportError:
     HAS_SIMULATION = False
     SimulationRunner = None
+
+from .process_manager import SimulationProcessManager
 from .watcher import PollingWatcher
 from .models import (
     SimulationState as SimulationStateModel,
@@ -202,23 +204,112 @@ def _register_simulation_routes(app: FastAPI, dashboard: DashboardApp) -> None:
     """Register simulation control routes.
 
     Plan #125: Extracted from create_app() for clarity.
-    Handles /api/simulation/* endpoints for pause/resume control.
+    Handles /api/simulation/* endpoints for pause/resume/start/stop control.
     """
+
+    process_manager = SimulationProcessManager.get_instance()
 
     @app.get("/api/simulation/status")
     async def get_simulation_status() -> dict[str, Any]:
-        """Get simulation runner status."""
+        """Get simulation runner status (in-process or subprocess)."""
+        # Check for subprocess first
+        subprocess_status = process_manager.get_status()
+        if subprocess_status.get("subprocess_running"):
+            return {
+                "available": True,
+                "running": True,
+                "paused": False,
+                "has_runner": False,
+                **subprocess_status,
+            }
+
+        # Check for in-process runner
         if not HAS_SIMULATION or SimulationRunner is None:
-            return {"available": False, "reason": "Simulation module not loaded"}
+            return {
+                "available": False,
+                "running": False,
+                "has_runner": False,
+                "has_subprocess": False,
+                "reason": "Simulation module not loaded",
+            }
 
         runner = SimulationRunner.get_active()
         if runner is None:
-            return {"available": True, "running": False, "reason": "No active simulation"}
+            return {
+                "available": True,
+                "running": False,
+                "has_runner": False,
+                "has_subprocess": False,
+                "reason": "No active simulation",
+            }
 
         return {
             "available": True,
-            **runner.get_status()
+            "has_runner": True,
+            "has_subprocess": False,
+            **runner.get_status(),
         }
+
+    @app.post("/api/simulation/start")
+    async def start_simulation(
+        duration: int = Query(60, ge=10, le=3600, description="Duration in seconds"),
+        agents: int | None = Query(None, ge=1, le=20, description="Number of agents"),
+        budget: float = Query(0.50, ge=0.01, le=10.0, description="Max API cost in USD"),
+        model: str = Query("gemini/gemini-2.0-flash", description="LLM model"),
+        rate_limit_delay: float = Query(5.0, ge=0.5, le=60.0, description="Rate limit delay"),
+    ) -> dict[str, Any]:
+        """Start a new simulation subprocess."""
+        # Check if something is already running
+        if process_manager.is_running:
+            raise HTTPException(
+                status_code=409,
+                detail="Simulation subprocess already running",
+            )
+
+        if HAS_SIMULATION and SimulationRunner is not None:
+            runner = SimulationRunner.get_active()
+            if runner is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail="In-process simulation already running",
+                )
+
+        result = process_manager.start(
+            duration=duration,
+            agents=agents,
+            budget=budget,
+            model=model,
+            rate_limit_delay=rate_limit_delay,
+        )
+
+        if result.get("success"):
+            # Broadcast to clients
+            await dashboard.connection_manager.broadcast({
+                "type": "simulation_control",
+                "data": {"action": "started", "pid": result.get("pid")},
+            })
+
+        return result
+
+    @app.post("/api/simulation/stop")
+    async def stop_simulation() -> dict[str, Any]:
+        """Stop the running simulation subprocess gracefully."""
+        if not process_manager.is_running:
+            raise HTTPException(
+                status_code=404,
+                detail="No simulation subprocess running",
+            )
+
+        result = process_manager.stop()
+
+        if result.get("success"):
+            # Broadcast to clients
+            await dashboard.connection_manager.broadcast({
+                "type": "simulation_control",
+                "data": {"action": "stopped"},
+            })
+
+        return result
 
 
     @app.post("/api/simulation/pause")
