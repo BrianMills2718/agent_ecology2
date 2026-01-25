@@ -352,11 +352,11 @@ async def _llm_transition(self, agent, step):
 - [ ] Update prompt loading in agent.py (optional - agents can use prompt artifacts directly)
 
 ### Phase 3: Workflow Artifacts
-- [ ] Add `workflow` artifact type
-- [ ] Add `workflow_artifact_id` to Agent
-- [ ] Update step schema with `prompt_artifact_id`
-- [ ] Add `transition_mode` and `transition_prompt_artifact_id`
-- [ ] Implement LLM transition logic
+- [x] Add `workflow` artifact type (artifact types are strings, no enum needed)
+- [x] Add `workflow_artifact_id` to Agent
+- [x] Update step schema with `prompt_artifact_id`
+- [x] Add `transition_mode` and `transition_prompt_artifact_id`
+- [ ] Implement LLM transition logic (deferred to Phase 4 Integration)
 
 ### Phase 4: Integration
 - [ ] Update runner.py execution flow

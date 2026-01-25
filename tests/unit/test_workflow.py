@@ -615,3 +615,204 @@ class TestTransitionEvaluationResponse:
             reasoning="Keep going"
         )
         assert response.next_focus == ""
+
+
+class TestWorkflowArtifacts:
+    """Tests for Plan #146 Phase 3: Workflow Artifact Support."""
+
+    def test_workflow_step_with_prompt_artifact_id(self) -> None:
+        """WorkflowStep can reference a prompt artifact instead of inline prompt."""
+        from src.agents.workflow import WorkflowStep, StepType
+
+        step = WorkflowStep(
+            name="decide",
+            step_type=StepType.LLM,
+            prompt_artifact_id="alice_observe_prompt",
+        )
+
+        assert step.prompt_artifact_id == "alice_observe_prompt"
+        assert step.prompt is None
+
+    def test_workflow_step_allows_either_prompt_or_artifact(self) -> None:
+        """WorkflowStep accepts either inline prompt or prompt_artifact_id."""
+        from src.agents.workflow import WorkflowStep, StepType
+
+        # Inline prompt
+        step1 = WorkflowStep(
+            name="inline",
+            step_type=StepType.LLM,
+            prompt="What should I do?",
+        )
+        assert step1.prompt == "What should I do?"
+        assert step1.prompt_artifact_id is None
+
+        # Artifact reference
+        step2 = WorkflowStep(
+            name="artifact",
+            step_type=StepType.LLM,
+            prompt_artifact_id="genesis_prompt_library#observe_base",
+        )
+        assert step2.prompt is None
+        assert step2.prompt_artifact_id == "genesis_prompt_library#observe_base"
+
+    def test_workflow_step_requires_prompt_or_artifact_for_llm(self) -> None:
+        """LLM step requires either prompt or prompt_artifact_id."""
+        from src.agents.workflow import WorkflowStep, StepType
+
+        with pytest.raises(ValueError, match="requires 'prompt' or 'prompt_artifact_id'"):
+            WorkflowStep(
+                name="invalid",
+                step_type=StepType.LLM,
+                # Neither prompt nor prompt_artifact_id specified
+            )
+
+    def test_workflow_step_transition_mode(self) -> None:
+        """WorkflowStep supports transition_mode field."""
+        from src.agents.workflow import WorkflowStep, StepType
+
+        step = WorkflowStep(
+            name="observe",
+            step_type=StepType.LLM,
+            prompt="Observe the environment",
+            transition_mode="llm",
+            transition_prompt_artifact_id="alice_transition_prompt",
+        )
+
+        assert step.transition_mode == "llm"
+        assert step.transition_prompt_artifact_id == "alice_transition_prompt"
+
+    def test_parse_prompt_artifact_id_from_dict(self) -> None:
+        """prompt_artifact_id parsed correctly from YAML-like dict."""
+        from src.agents.workflow import WorkflowConfig, StepType
+
+        config_dict = {
+            "steps": [
+                {
+                    "name": "observe",
+                    "type": "llm",
+                    "prompt_artifact_id": "alice_observe_prompt",
+                },
+            ],
+        }
+
+        config = WorkflowConfig.from_dict(config_dict)
+
+        step = config.steps[0]
+        assert step.step_type == StepType.LLM
+        assert step.prompt_artifact_id == "alice_observe_prompt"
+        assert step.prompt is None
+
+    def test_parse_transition_mode_from_dict(self) -> None:
+        """transition_mode and transition_prompt_artifact_id parsed from dict."""
+        from src.agents.workflow import WorkflowConfig
+
+        config_dict = {
+            "steps": [
+                {
+                    "name": "decide_state",
+                    "type": "llm",
+                    "prompt": "What next?",
+                    "transition_mode": "llm",
+                    "transition_prompt_artifact_id": "alice_transition_prompt",
+                },
+            ],
+        }
+
+        config = WorkflowConfig.from_dict(config_dict)
+
+        step = config.steps[0]
+        assert step.transition_mode == "llm"
+        assert step.transition_prompt_artifact_id == "alice_transition_prompt"
+
+    def test_parse_invalid_transition_mode_ignored(self) -> None:
+        """Invalid transition_mode values are ignored (set to None)."""
+        from src.agents.workflow import WorkflowConfig
+
+        config_dict = {
+            "steps": [
+                {
+                    "name": "decide",
+                    "type": "llm",
+                    "prompt": "What?",
+                    "transition_mode": "invalid_mode",  # Not llm, condition, or auto
+                },
+            ],
+        }
+
+        config = WorkflowConfig.from_dict(config_dict)
+
+        step = config.steps[0]
+        assert step.transition_mode is None
+
+    def test_parse_valid_transition_modes(self) -> None:
+        """All valid transition modes are parsed correctly."""
+        from src.agents.workflow import WorkflowConfig
+
+        for mode in ["llm", "condition", "auto"]:
+            config_dict = {
+                "steps": [
+                    {
+                        "name": f"step_{mode}",
+                        "type": "llm",
+                        "prompt": "Test",
+                        "transition_mode": mode,
+                    },
+                ],
+            }
+
+            config = WorkflowConfig.from_dict(config_dict)
+            assert config.steps[0].transition_mode == mode
+
+
+class TestAgentWorkflowArtifactField:
+    """Tests for Plan #146 Phase 3: Agent workflow_artifact_id field."""
+
+    def test_agent_workflow_artifact_id_default_none(self) -> None:
+        """Agent workflow_artifact_id defaults to None."""
+        from src.agents.agent import Agent
+
+        agent = Agent(agent_id="test_agent")
+
+        assert agent.workflow_artifact_id is None
+        assert agent.has_workflow_artifact is False
+
+    def test_agent_workflow_artifact_id_setter(self) -> None:
+        """Agent workflow_artifact_id can be set."""
+        from src.agents.agent import Agent
+
+        agent = Agent(agent_id="test_agent")
+
+        agent.workflow_artifact_id = "alice_workflow"
+
+        assert agent.workflow_artifact_id == "alice_workflow"
+        assert agent.has_workflow_artifact is True
+
+    def test_agent_workflow_artifact_id_from_config(self) -> None:
+        """Agent loads workflow_artifact_id from artifact config."""
+        import json
+        from datetime import datetime, timezone
+        from src.agents.agent import Agent
+        from src.world.artifacts import Artifact
+
+        now = datetime.now(timezone.utc).isoformat()
+        # Create an artifact with workflow_artifact_id in config
+        # Agent artifacts need has_standing=True and can_execute=True
+        artifact = Artifact(
+            id="test_artifact",
+            type="agent",
+            content=json.dumps({
+                "agent_id": "alice",
+                "workflow_artifact_id": "alice_workflow",
+                "llm_model": "gpt-4",
+            }),
+            created_by="genesis",
+            created_at=now,
+            updated_at=now,
+            has_standing=True,
+            can_execute=True,
+        )
+
+        agent = Agent.from_artifact(artifact)
+
+        assert agent.workflow_artifact_id == "alice_workflow"
+        assert agent.has_workflow_artifact is True
