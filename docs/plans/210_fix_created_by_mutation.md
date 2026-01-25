@@ -1,6 +1,6 @@
 # Plan #210: Fix ADR-0016 Violation (created_by Mutation)
 
-**Status:** In Progress (PR #719)
+**Status:** Complete
 **Priority:** High
 **Blocks:** Correct ownership semantics, historical audit trail
 
