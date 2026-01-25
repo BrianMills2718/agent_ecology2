@@ -2102,3 +2102,10 @@ body {
     font-style: italic;
     font-size: 0.8rem;
 }
+
+/* Plan #149: N/A value styling for missing data */
+.na-value {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
