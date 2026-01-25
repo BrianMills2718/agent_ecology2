@@ -18,7 +18,7 @@ From `config.yaml` under `genesis.mint.auction`:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `period` | 10 | Ticks between auction resolutions |
+| `period_seconds` | 60.0 | Seconds between auction resolutions |
 | `slots_per_auction` | 1 | Winners per auction |
 | `minimum_bid` | 1 | Lowest accepted bid |
 | `mint_ratio` | 10 | Score / ratio = scrip minted |
@@ -32,8 +32,8 @@ Returns auction state:
 ```json
 {
   "success": true,
-  "current_tick": 7,
-  "next_auction_tick": 10,
+  "time_remaining_seconds": 23.5,
+  "next_auction_in_seconds": 23.5,
   "minimum_bid": 1,
   "slots_per_auction": 1,
   "pending_bids": 2
@@ -86,7 +86,7 @@ LLM evaluates submitted artifacts on:
 
 ## Auction Resolution
 
-When auction period elapses (every `period` ticks):
+When auction period elapses (every `period_seconds` seconds):
 
 1. **Select winner(s)** - Top N bids (N = `slots_per_auction`)
 2. **Score artifact** - LLM evaluates winner's submitted artifact

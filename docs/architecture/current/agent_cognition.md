@@ -215,7 +215,7 @@ Detects repeated patterns and shows success/failure rates:
 ```
 Repeated patterns detected:
 - write_artifact(tool_x): 5x (3 ok, 2 fail)
-- invoke_artifact(genesis_store.list): 3x (3 ok, 0 fail)
+- query_kernel(list_artifacts): 3x (3 ok, 0 fail)
 ```
 
 ### Failure History (Plan #88)

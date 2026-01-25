@@ -58,8 +58,8 @@ Artifacts have a `metadata` field for user-defined key-value pairs. This enables
 
 **Querying metadata:**
 ```python
-# Via genesis_store filter
-result = invoke("genesis_store", "list", [{"metadata.tags": "trading"}])
+# Via query_kernel action (Plan #199 - replaces genesis_store)
+result = query_kernel("list_artifacts", {"metadata.tags": "trading"})
 # Supports dot notation for nested fields: metadata.tags.priority
 ```
 
