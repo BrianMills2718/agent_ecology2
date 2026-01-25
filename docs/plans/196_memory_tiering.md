@@ -1,7 +1,8 @@
 # Plan #196: Memory Tiering
 
-**Status:** Planned
+**Status:** ✅ Complete
 **Created:** 2025-01-25
+**Completed:** 2026-01-25
 **Scope:** Agent Cognitive Autonomy
 
 ## Problem
