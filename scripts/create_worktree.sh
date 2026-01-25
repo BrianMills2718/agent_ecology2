@@ -201,12 +201,23 @@ CONTEXT_EOF
 echo -e "${GREEN}Created .claude/CONTEXT.md for tracking progress${NC}"
 
 # Set up shared references symlink (docs/references -> shared folder)
-SHARED_REF="/home/brian/projects/shared_references"
+# Check environment variable, then common locations
+SHARED_REF="${SHARED_REFERENCES_DIR:-}"
+if [ -z "$SHARED_REF" ]; then
+    # Try common locations
+    for candidate in "$HOME/projects/shared_references" "$HOME/shared_references" "../shared_references"; do
+        if [ -d "$candidate" ]; then
+            SHARED_REF="$candidate"
+            break
+        fi
+    done
+fi
+
 WT_REF="worktrees/$BRANCH/docs/references"
-if [ -d "$SHARED_REF" ]; then
+if [ -n "$SHARED_REF" ] && [ -d "$SHARED_REF" ]; then
     rm -rf "$WT_REF" 2>/dev/null || true
     ln -sf "$SHARED_REF" "$WT_REF"
-    echo -e "${GREEN}Linked docs/references -> shared folder${NC}"
+    echo -e "${GREEN}Linked docs/references -> $SHARED_REF${NC}"
 fi
 
 echo ""
