@@ -212,7 +212,7 @@ Master index of all gaps and their implementation plans.
 | 185 | [Time-Based Scheduling](185_time_based_scheduling.md) | Medium | ✅ Complete | Time-based contracts, scheduled tasks |
 | 186 | [Cross-Run Learning for Genesis Agents](186_cross_run_learning.md) | Medium | ❓ | Cumulative agent improvement |
 | 186 | [Git-Level Meta-Process Resilience](186_meta_resilience.md) | **Critical** | ✅ Complete | All meta-process reliability |
-| 187 | [Extended Thinking for Genesis Agents](187_extended_thinking.md) | Medium | 🚧 In Progress | Improved agent reasoning quality |
+| 187 | [Extended Thinking for Genesis Agents](187_extended_thinking.md) | Medium | ✅ Complete | Improved agent reasoning quality |
 | 188 | [Plan Artifact Pattern for Genesis Agents](188_plan_artifact_pattern.md) | Medium | ❓ | Deliberative agent behavior, observability |
 | 189 | [Meta-Process Robustness Overhaul](189_meta_robustness.md) | **Critical** | ✅ Complete | All future meta-process reliability |
 | 190 | [Global Search in Dashboard v2](190_global_search.md) | Medium | 📋 Planned | - |
