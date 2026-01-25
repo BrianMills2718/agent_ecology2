@@ -43,6 +43,7 @@ from .agent_loop import AgentLoopManager, AgentLoopConfig
 from .pool import WorkerPool, PoolConfig
 from ..agents.state_store import AgentStateStore
 from ..agents.reflex import ReflexExecutor, build_reflex_context
+from ..agents.hooks import HooksConfig, HookExecutor, HookTiming, expand_subscribed_artifacts
 
 
 def _derive_provider(model: str) -> str:
@@ -214,6 +215,9 @@ class SimulationRunner:
 
         # Summary logging (Plan #60)
         self._summary_collector: SummaryCollector | None = None
+
+        # Hook executor (Plan #208) - initialized lazily
+        self._hook_executor: HookExecutor | None = None
 
     def _wire_embedder_cost_callbacks(self) -> None:
         """Wire up cost tracking callbacks for genesis artifacts.
@@ -1308,6 +1312,23 @@ class SimulationRunner:
         if reflex_action is not None:
             return reflex_action
 
+        # Plan #208: Execute pre_decision hooks
+        hook_context = self._build_hook_context(agent, cast(dict[str, Any], current_state))
+        hook_context, should_continue = await self._execute_hooks(
+            agent, HookTiming.PRE_DECISION, hook_context
+        )
+        if not should_continue:
+            # Hook with on_error=fail failed, abort decision
+            self.world.logger.log(
+                "thinking_failed",
+                {
+                    "event_number": self.world.event_number,
+                    "principal_id": agent.agent_id,
+                    "reason": "pre_decision_hook_failed",
+                },
+            )
+            return None
+
         # Call the agent's propose method
         result = await agent.propose_action_async(cast(dict[str, Any], current_state))
 
@@ -1360,8 +1381,27 @@ class SimulationRunner:
 
         self.world.logger.log("thinking", thinking_data)
 
+        # Plan #208: Execute post_decision hooks
+        action = result.get("action")
+        if action:
+            hook_context["proposed_action"] = action
+            hook_context, should_continue = await self._execute_hooks(
+                agent, HookTiming.POST_DECISION, hook_context
+            )
+            if not should_continue:
+                # Hook with on_error=fail failed, abort action
+                self.world.logger.log(
+                    "action_aborted",
+                    {
+                        "event_number": self.world.event_number,
+                        "principal_id": agent.agent_id,
+                        "reason": "post_decision_hook_failed",
+                    },
+                )
+                return None
+
         # Return the action dict
-        return result.get("action")
+        return action
 
     async def _agent_execute_action(
         self, agent: Agent, action: dict[str, Any]
@@ -1391,6 +1431,25 @@ class SimulationRunner:
         action_type = action.get("action_type", "noop")
         agent.set_last_result(action_type, result.success, result.message, result.data)
         agent.record_action(action_type, json.dumps(action), result.success)
+
+        # Plan #208: Execute post_action or on_error hooks
+        current_state = self.world.get_state_summary()
+        hook_context = self._build_hook_context(
+            agent,
+            cast(dict[str, Any], current_state),
+            last_action=action,
+            last_result=result.message,
+            action_success=result.success,
+        )
+
+        if result.success:
+            # Run post_action hooks
+            await self._execute_hooks(agent, HookTiming.POST_ACTION, hook_context)
+        else:
+            # Run on_error hooks
+            hook_context["error_message"] = result.message
+            hook_context["failed_action"] = action
+            await self._execute_hooks(agent, HookTiming.ON_ERROR, hook_context)
 
         return {
             "success": result.success,
@@ -1476,6 +1535,121 @@ class SimulationRunner:
                 )
 
         return None
+
+    # --- Hook methods (Plan #208) ---
+
+    def _get_hook_executor(self) -> HookExecutor:
+        """Get or create the hook executor (lazy initialization).
+
+        Returns:
+            HookExecutor instance.
+        """
+        if self._hook_executor is None:
+            max_depth = self.config.get("hooks", {}).get("max_depth", 5)
+            self._hook_executor = HookExecutor(
+                artifact_store=self.world.artifacts,
+                invoker=self.world,
+                max_depth=max_depth,
+            )
+        return self._hook_executor
+
+    def _get_agent_hooks(self, agent: Agent) -> HooksConfig:
+        """Get merged hooks config for an agent.
+
+        Includes agent-level hooks and expanded subscribed_artifacts.
+
+        Args:
+            agent: The agent to get hooks for.
+
+        Returns:
+            Merged HooksConfig.
+        """
+        # Start with agent's explicit hooks
+        hooks = HooksConfig.from_dict(agent.hooks_config)
+
+        # Expand subscribed_artifacts to pre_decision hooks (Plan #191 unification)
+        if agent._subscribed_artifacts:
+            subscribed_hooks = expand_subscribed_artifacts(agent._subscribed_artifacts)
+            hooks = subscribed_hooks.merge(hooks)
+
+        return hooks
+
+    def _build_hook_context(
+        self,
+        agent: Agent,
+        world_state: dict[str, Any],
+        **extra: Any,
+    ) -> dict[str, Any]:
+        """Build context dict for hook argument interpolation.
+
+        Args:
+            agent: The agent running hooks.
+            world_state: Current world state.
+            **extra: Additional context entries.
+
+        Returns:
+            Context dict for interpolation.
+        """
+        # Get agent's working memory for current_goal
+        working_memory = agent._working_memory or {}
+        current_goal = working_memory.get("current_goal", "")
+
+        # Get balance from world state
+        balance = world_state.get("balances", {}).get(agent.agent_id, 0)
+
+        return {
+            "agent_id": agent.agent_id,
+            "current_goal": current_goal,
+            "balance": balance,
+            "last_action": agent.last_action_result or "",
+            "last_result": agent.last_action_result or "",
+            **extra,
+        }
+
+    async def _execute_hooks(
+        self,
+        agent: Agent,
+        timing: HookTiming,
+        context: dict[str, Any],
+    ) -> tuple[dict[str, Any], bool]:
+        """Execute hooks at a timing point.
+
+        Args:
+            agent: The agent whose hooks to execute.
+            timing: When in the workflow (pre_decision, etc.).
+            context: Current context for interpolation.
+
+        Returns:
+            Tuple of (updated_context, should_continue).
+            should_continue is False if a hook with on_error=fail failed.
+        """
+        hooks_config = self._get_agent_hooks(agent)
+        hooks = hooks_config.get_hooks(timing)
+
+        if not hooks:
+            return context, True
+
+        executor = self._get_hook_executor()
+
+        # Log hook execution start
+        self.world.logger.log(
+            "hooks_executing",
+            {
+                "event_number": self.world.event_number,
+                "principal_id": agent.agent_id,
+                "timing": timing.value,
+                "hook_count": len(hooks),
+            },
+        )
+
+        updated_context, should_continue = await executor.execute_hooks(
+            hooks=hooks,
+            timing=timing,
+            caller_id=agent.agent_id,
+            context=context,
+        )
+
+        return updated_context, should_continue
 
     async def shutdown(self, timeout: float | None = None) -> None:
         """Gracefully stop the simulation.

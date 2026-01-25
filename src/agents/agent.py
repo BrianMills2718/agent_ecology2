@@ -115,17 +115,28 @@ class WorkflowConfigDict(TypedDict, total=False):
     error_handling: dict[str, Any]
 
 
+class HooksConfigDict(TypedDict, total=False):
+    """Hook configuration dictionary (Plan #208)."""
+    pre_decision: list[dict[str, Any]]
+    post_decision: list[dict[str, Any]]
+    post_action: list[dict[str, Any]]
+    on_error: list[dict[str, Any]]
+
+
 class AgentConfigDict(TypedDict, total=False):
     """Agent configuration stored in artifact content."""
     llm_model: str
     system_prompt: str
+    original_system_prompt: str  # Plan #194: Track baseline for reset
     action_schema: str
     rag: RAGConfigDict
     workflow: WorkflowConfigDict
+    components: dict[str, list[str]]  # Plan #150: Prompt component config
     reflex_artifact_id: str | None  # Plan #143: Reference to reflex artifact
     longterm_memory_artifact_id: str | None  # Plan #146: Reference to longterm memory artifact
     personality_prompt_artifact_id: str | None  # Plan #146: Reference to personality prompt artifact
     workflow_artifact_id: str | None  # Plan #146 Phase 3: Reference to workflow artifact
+    hooks: HooksConfigDict | None  # Plan #208: Workflow hooks configuration
 
 
 class Agent:
@@ -183,6 +194,9 @@ class Agent:
 
     # Subscribed artifacts configuration (Plan #191)
     _subscribed_artifacts: list[str]
+
+    # Workflow hooks configuration (Plan #208)
+    _hooks_config: HooksConfigDict | None
 
     # Context section control (Plan #192)
     _context_sections: dict[str, bool]
@@ -243,6 +257,7 @@ class Agent:
         self._personality_prompt_artifact_id = None  # Plan #146: Personality prompt artifact reference
         self._workflow_artifact_id = None  # Plan #146 Phase 3: Workflow artifact reference
         self._subscribed_artifacts = []  # Plan #191: Subscribed artifacts
+        self._hooks_config = None  # Plan #208: Workflow hooks configuration
         # Plan #192: Context section control - defaults to all enabled
         self._context_sections = {
             "working_memory": True,
@@ -407,6 +422,12 @@ class Agent:
                 self._subscribed_artifacts = [
                     aid for aid in subscribed if isinstance(aid, str)
                 ]
+
+        # Load hooks config if present (Plan #208)
+        if "hooks" in config:
+            hooks = config.get("hooks")
+            if isinstance(hooks, dict):
+                self._hooks_config = hooks
 
         # Load context sections config if present (Plan #192)
         if "context_sections" in config:
@@ -1982,6 +2003,30 @@ Your response should include:
     def has_workflow_artifact(self) -> bool:
         """Whether this agent has a configured workflow artifact."""
         return self._workflow_artifact_id is not None
+
+    # --- Hooks methods (Plan #208) ---
+
+    @property
+    def hooks_config(self) -> HooksConfigDict | None:
+        """Hook configuration dict, or None if no hooks configured."""
+        return self._hooks_config
+
+    @hooks_config.setter
+    def hooks_config(self, value: HooksConfigDict | None) -> None:
+        """Set hooks configuration."""
+        self._hooks_config = value
+
+    @property
+    def has_hooks(self) -> bool:
+        """Whether this agent has any hooks configured."""
+        if self._hooks_config is None:
+            return False
+        return bool(
+            self._hooks_config.get("pre_decision") or
+            self._hooks_config.get("post_decision") or
+            self._hooks_config.get("post_action") or
+            self._hooks_config.get("on_error")
+        )
 
     # --- Workflow methods (Plan #69 - ADR-0013) ---
 
