@@ -1,6 +1,6 @@
 # Plan #160: Phase 1 - Cognitive Self-Modification
 
-**Status:** In Progress
+**Status:** ✅ Complete
 **Priority:** High
 **Goal:** Test whether limited self-modification ability improves agent intelligence
 
@@ -121,6 +121,39 @@ Run simulation and check:
 - src/world/executor.py (modify) - Auto-parse JSON strings in args
 - src/agents/_handbook/actions.md (modify) - Add JSON args guidance
 - src/world/genesis/store.py (modify) - Add methods shortcut to artifact listings
+- tests/unit/test_cognitive_self_modification.py (create) - Unit tests for Plan #160
+
+---
+
+## Required Tests
+
+```python
+# tests/unit/test_cognitive_self_modification.py
+
+def test_analyze_action_patterns_empty_history():
+    """Pattern analysis returns empty string for no history."""
+
+def test_analyze_action_patterns_no_repeats():
+    """Pattern analysis returns empty for < 3 repetitions."""
+
+def test_analyze_action_patterns_detects_repeats():
+    """Pattern analysis shows actions repeated 3+ times with success/fail counts."""
+
+def test_metacognitive_section_appears_after_3_actions():
+    """Metacognitive prompting section appears when actions_taken >= 3."""
+
+def test_metacognitive_section_disabled_before_3_actions():
+    """Metacognitive section not shown before 3 actions taken."""
+
+def test_config_reload_error_tracked():
+    """Config parse errors stored in _last_reload_error."""
+
+def test_config_reload_clears_error_on_success():
+    """Successful config reload clears previous error."""
+
+def test_config_error_shown_in_prompt():
+    """Config errors appear in prompt feedback section."""
+```
 
 ---
 
