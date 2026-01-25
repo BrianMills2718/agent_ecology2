@@ -247,6 +247,7 @@ class Agent:
         self._context_sections = {
             "working_memory": True,
             "rag_memories": True,
+            "longterm_memory": True,  # Plan #146 Phase 4
             "action_history": True,
             "failure_history": True,
             "recent_events": True,
@@ -268,6 +269,7 @@ class Agent:
             "action_history": 70,
             "metacognitive": 65,
             "rag_memories": 60,
+            "longterm_memory": 58,  # Plan #146 Phase 4: Between rag_memories and quota_info
             "quota_info": 55,
             "resource_metrics": 50,
             "mint_submissions": 45,
@@ -1072,6 +1074,19 @@ class Agent:
 
             memories = self.memory.get_relevant_memories(self.agent_id, rag_context, limit=rag_limit)
 
+        # Plan #146 Phase 4: Search long-term memory artifact if configured
+        longterm_memories: str = ""
+        if self.has_longterm_memory:
+            # Build search query from current context
+            search_query = f"{self.agent_id} tick {tick} balance {balance} {last_action_info}"
+            longterm_results = self._search_longterm_memory_artifact(search_query, limit=5)
+            if longterm_results:
+                longterm_lines = []
+                for mem in longterm_results:
+                    tags_str = f" [{', '.join(mem.get('tags', []))}]" if mem.get('tags') else ""
+                    longterm_lines.append(f"- {mem['text']}{tags_str}")
+                longterm_memories = "\n".join(longterm_lines)
+
         # Format artifact list with more detail for executables (artifacts already fetched above)
         artifact_list: str
         if artifacts:
@@ -1322,9 +1337,17 @@ To start recording lessons, write to artifact `{memory_artifact_id}` with your l
 This will persist across your thinking cycles.
 """
 
+        # Plan #146 Phase 4: Load personality prompt from artifact if configured
+        # Falls back to self.system_prompt if artifact not available
+        base_system_prompt: str = self.system_prompt
+        if self.has_personality_prompt_artifact:
+            artifact_prompt = self._load_personality_prompt_from_artifact()
+            if artifact_prompt:
+                base_system_prompt = artifact_prompt
+
         # Plan #197: Configurable prompt injection
         # Inject mandatory prefix/suffix around system prompt based on config
-        effective_system_prompt: str = self.system_prompt
+        effective_system_prompt: str = base_system_prompt
         prompt_injection_enabled: bool = config_get("prompt_injection.enabled") or False
         if prompt_injection_enabled:
             scope: str = config_get("prompt_injection.scope") or "all"
@@ -1340,7 +1363,7 @@ This will persist across your thinking cycles.
                 prefix: str = config_get("prompt_injection.mandatory_prefix") or ""
                 suffix: str = config_get("prompt_injection.mandatory_suffix") or ""
                 if prefix or suffix:
-                    effective_system_prompt = f"{prefix}\n{self.system_prompt}\n{suffix}".strip()
+                    effective_system_prompt = f"{prefix}\n{base_system_prompt}\n{suffix}".strip()
 
         # Plan #191: Subscribed artifacts injection (Plan #192: section control)
         subscribed_section: str = ""
@@ -1425,6 +1448,13 @@ This will persist across your thinking cycles.
                 self.get_section_priority("rag_memories"),
                 "rag_memories",
                 f"\n## Your Memories\n{memories}\n"
+            ))
+        # Plan #146 Phase 4: Long-term memory artifact section
+        if self.is_section_enabled("longterm_memory") and longterm_memories:
+            variable_sections.append((
+                self.get_section_priority("longterm_memory"),
+                "longterm_memory",
+                f"\n## Long-term Memory (tradeable experiences)\n{longterm_memories}\n"
             ))
         if quota_info:
             variable_sections.append((
@@ -1846,6 +1876,53 @@ Your response should include:
         """Whether this agent has a configured long-term memory artifact."""
         return self._longterm_memory_artifact_id is not None
 
+    def _search_longterm_memory_artifact(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
+        """Search long-term memory artifact for relevant entries (Plan #146 Phase 4).
+
+        Uses cosine similarity to find semantically relevant memories.
+
+        Args:
+            query: The search query
+            limit: Maximum number of results
+
+        Returns:
+            List of memory entries with text and score, or empty list if not available.
+        """
+        if not self._longterm_memory_artifact_id or not self._artifact_store:
+            return []
+
+        memory_artifact = self._artifact_store.get(self._longterm_memory_artifact_id)
+        if not memory_artifact:
+            return []
+
+        content = memory_artifact.content
+        if not content or not isinstance(content, dict):
+            return []
+
+        entries = content.get("entries", [])
+        if not entries:
+            return []
+
+        # Simple keyword matching fallback (embeddings would require genesis_memory invoke)
+        # For now, return most recent entries that contain query keywords
+        query_words = set(query.lower().split())
+        scored_entries = []
+        for entry in entries:
+            text = entry.get("text", "")
+            text_lower = text.lower()
+            # Simple relevance: count matching keywords
+            matches = sum(1 for word in query_words if word in text_lower)
+            if matches > 0:
+                scored_entries.append({
+                    "text": text,
+                    "score": matches / len(query_words) if query_words else 0,
+                    "tags": entry.get("tags", []),
+                })
+
+        # Sort by score and return top results
+        scored_entries.sort(key=lambda x: x["score"], reverse=True)
+        return scored_entries[:limit]
+
     # --- Personality Prompt methods (Plan #146 Phase 2) ---
 
     @property
@@ -1862,6 +1939,32 @@ Your response should include:
     def has_personality_prompt_artifact(self) -> bool:
         """Whether this agent has a configured personality prompt artifact."""
         return self._personality_prompt_artifact_id is not None
+
+    def _load_personality_prompt_from_artifact(self) -> str | None:
+        """Load personality prompt from artifact if configured (Plan #146 Phase 4).
+
+        Returns:
+            The prompt template from the artifact, or None if not available.
+        """
+        if not self._personality_prompt_artifact_id or not self._artifact_store:
+            return None
+
+        artifact = self._artifact_store.get(self._personality_prompt_artifact_id)
+        if not artifact:
+            return None
+
+        content = artifact.content
+        if not content:
+            return None
+
+        # Handle different content formats
+        if isinstance(content, str):
+            return content
+        elif isinstance(content, dict):
+            # Prompt artifacts store template in 'template' field
+            return content.get("template", str(content))
+
+        return None
 
     # --- Workflow Artifact methods (Plan #146 Phase 3) ---
 

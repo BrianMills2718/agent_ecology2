@@ -359,10 +359,10 @@ async def _llm_transition(self, agent, step):
 - [ ] Implement LLM transition logic (deferred to Phase 4 Integration)
 
 ### Phase 4: Integration
-- [ ] Update runner.py execution flow
-- [ ] Create migration for existing agents
-- [ ] Update agent loader to create default artifacts
-- [ ] Add backwards compatibility for inline prompts/workflows
+- [x] Update runner.py execution flow (personality prompts and memory in build_prompt)
+- [x] Create migration for existing agents (not needed - backwards compatible by design)
+- [x] Update agent loader to create default artifacts (not needed - opt-in via artifact IDs)
+- [x] Add backwards compatibility for inline prompts/workflows (default when no artifact ID)
 
 ### Phase 5: Genesis Seeding
 - [ ] Create comprehensive genesis_prompt_library
@@ -386,6 +386,7 @@ async def _llm_transition(self, agent, step):
 - tests/unit/test_genesis_memory.py (create) - Memory artifact tests
 - tests/test_prompt_artifacts.py (create)
 - tests/test_llm_transitions.py (create)
+- tests/unit/test_artifact_intelligence_integration.py (create) - Phase 4 integration tests
 
 ## Required Tests
 
