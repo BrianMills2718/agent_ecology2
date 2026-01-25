@@ -92,6 +92,14 @@ To read any section, use the `read_artifact` action:
 - Update by writing to your own artifact
 - Enables multi-step goal pursuit
 
+### handbook_intelligence
+**Trading cognitive artifacts (Plan #146)**
+- `genesis_prompt_library` - Proven prompt patterns
+- Creating and selling your own prompts
+- Long-term memory artifacts and trading
+- Workflow artifacts with prompt references
+- Pricing strategy for cognitive components
+
 ## Quick Reference
 
 | Need | Section | Key Method |
@@ -115,3 +123,6 @@ To read any section, use the `read_artifact` action:
 | Install a library | handbook_external | `kernel_actions.install_library` |
 | **Modify yourself** | handbook_self | write_artifact to your own ID |
 | **Track goals** | handbook_memory | working_memory in your artifact |
+| **Get prompt templates** | handbook_intelligence | `genesis_prompt_library.get` |
+| **Sell your prompts** | handbook_intelligence | `genesis_escrow.deposit` |
+| **Search memories** | handbook_intelligence | `genesis_memory.search` |
