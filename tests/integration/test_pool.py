@@ -38,9 +38,8 @@ class TestWorkerPool:
                 state_db_path=db_path,
             )
 
-            # mock-ok: LLM and memory require external APIs
             with patch("src.agents.agent.get_memory") as mock_memory:
-                mock_memory.return_value = MagicMock()
+                mock_memory.return_value = MagicMock()  # mock-ok: memory requires external API
 
                 with patch("src.agents.agent.LLMProvider") as mock_llm:
                     mock_instance = MagicMock()
@@ -135,9 +134,8 @@ class TestWorkerPool:
                 state_db_path=db_path,
             )
 
-            # mock-ok: LLM and memory require external APIs
             with patch("src.agents.agent.get_memory") as mock_memory:
-                mock_memory.return_value = MagicMock()
+                mock_memory.return_value = MagicMock()  # mock-ok: memory requires external API
 
                 with patch("src.agents.agent.LLMProvider") as mock_llm:
                     mock_instance = MagicMock()
@@ -194,9 +192,8 @@ class TestWorkerPoolScaling:
                 state_db_path=db_path,
             )
 
-            # mock-ok: LLM and memory require external APIs
             with patch("src.agents.agent.get_memory") as mock_memory:
-                mock_memory.return_value = MagicMock()
+                mock_memory.return_value = MagicMock()  # mock-ok: memory requires external API
 
                 with patch("src.agents.agent.LLMProvider") as mock_llm:
                     mock_instance = MagicMock()

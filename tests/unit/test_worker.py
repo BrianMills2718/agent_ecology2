@@ -40,9 +40,8 @@ class TestWorkerExecution:
             # Import here to avoid circular imports during collection
             from src.simulation.worker import run_agent_turn
 
-            # mock-ok: LLM calls are expensive and tested in E2E
             with patch("src.agents.agent.get_memory") as mock_memory:
-                mock_memory.return_value = MagicMock()
+                mock_memory.return_value = MagicMock()  # mock-ok: memory requires external API
 
                 # mock-ok: LLM provider needs API keys
                 with patch("src.agents.agent.LLMProvider") as mock_llm:
@@ -85,11 +84,10 @@ class TestWorkerExecution:
 
             from src.simulation.worker import run_agent_turn
 
-            # mock-ok: Memory and LLM initialization
             with patch("src.agents.agent.get_memory") as mock_memory:
-                mock_memory.return_value = MagicMock()
+                mock_memory.return_value = MagicMock()  # mock-ok: memory requires external API
 
-                with patch("src.agents.agent.LLMProvider") as mock_llm:
+                with patch("src.agents.agent.LLMProvider") as mock_llm:  # mock-ok: LLM needs API keys
                     mock_instance = MagicMock()
                     mock_instance.complete.return_value = (
                         '{"action": "noop"}',

@@ -178,8 +178,8 @@ def test_placeholder():
     pass
 """)
 
-        # mock-ok: Testing subprocess behavior without running actual tests
         with patch("subprocess.run") as mock_run:
+            # mock-ok: subprocess - testing without running actual tests
             mock_run.return_value = MagicMock(
                 returncode=0,
                 stdout="tests/e2e/test_real_e2e.py::test_placeholder PASSED\n"
