@@ -1,12 +1,8 @@
 # Agent Ecology - Claude Code Context
 
-> **BEFORE DOING ANYTHING:** Run `pwd`. If you're in `agent_ecology/` (main) and plan to edit files, **STOP**.
-> Create a worktree first: `make worktree`. Multiple instances in main = corrupted work.
-
-> **CRITICAL - CWD AND WORKTREES:** Your Claude Code session has a persistent working directory (CWD).
-> If your CWD is inside a worktree and that worktree is deleted, YOUR SHELL BREAKS.
-> **Never run `make finish` from inside the worktree you're finishing** - it will delete your CWD.
-> Instead: create PR, then tell user to run `make finish` from main.
+> **ALWAYS RUN FROM MAIN.** Your CWD should be `/home/brian/brian_projects/agent_ecology2/` (main).
+> Use worktrees as **paths** for file isolation, not as working directories.
+> This lets you handle the full lifecycle: create worktree → edit → commit → merge → cleanup.
 
 ---
 
@@ -48,9 +44,7 @@ make kill                # Stop running simulation
 ```bash
 make pr-ready            # Rebase + push (run before PR)
 make pr                  # Create PR (opens browser)
-# Complete from main - cd MUST be separate (not cd && make):
-cd /path/to/main         # Step 1: Change shell CWD
-make finish BRANCH=plan-XX PR=N  # Step 2: Merge + cleanup + auto-complete
+make finish BRANCH=plan-XX PR=N  # Merge + cleanup + auto-complete (run from main)
 ```
 
 ### PR Management
@@ -114,33 +108,28 @@ python scripts/cleanup_claims_mess.py --apply      # Apply full cleanup
 ### The Complete Cycle (4 Steps)
 
 ```
-1. START            -->  make worktree (claim + create isolated workspace)
+1. START            -->  make worktree PLAN=N (claim + create isolated workspace)
        |
-2. IMPLEMENT        -->  Edit files, write tests first (TDD)
+2. IMPLEMENT        -->  Edit files in worktrees/plan-N-xxx/src/... (paths from main)
        |
-3. VERIFY           -->  make test && make lint (run checks locally)
+3. VERIFY           -->  make test && make lint (run from main)
        |
-4. SHIP             -->  make pr-ready && make pr
-                         Then finish with TWO SEPARATE Bash tool calls:
-                           First:  cd /home/brian/brian_projects/agent_ecology2
-                           Second: make finish BRANCH=X PR=N
+4. SHIP             -->  make pr-ready && make pr && make finish BRANCH=X PR=N
 ```
 
-**Step 4 - Finishing from a worktree:**
-You CAN run `make finish` yourself - just `cd` to main first in a SEPARATE Bash call.
-Why separate: `cd X && make Y` runs cd in a subshell, so your actual CWD stays in the worktree.
-When `make finish` deletes the worktree, your shell breaks because its CWD no longer exists.
+**Key insight:** You stay in main the whole time. Worktrees are paths for file isolation:
+- Edit: `worktrees/plan-123-foo/src/world/ledger.py`
+- Commit: `git -C worktrees/plan-123-foo commit -m "..."`
+- When you run `make finish`, the worktree is deleted but your CWD (main) stays valid.
 
-**If you forget:** The hook will block you and save the command to `.claude/pending-finish.sh`.
-After running `cd` to main, just run: `bash .claude/pending-finish.sh`
-
-Example (TWO separate Bash tool calls):
+Example workflow:
 ```bash
-cd /home/brian/brian_projects/agent_ecology2
-```
-```bash
-make finish BRANCH=plan-98-robust-worktree PR=321
-# Or after cd: bash .claude/pending-finish.sh
+make worktree PLAN=123                    # Creates worktrees/plan-123-foo/
+# Edit files using paths: worktrees/plan-123-foo/src/...
+git -C worktrees/plan-123-foo add -A && git -C worktrees/plan-123-foo commit -m "[Plan #123] ..."
+make pr-ready BRANCH=plan-123-foo         # Rebase and push
+make pr BRANCH=plan-123-foo               # Create PR
+make finish BRANCH=plan-123-foo PR=456    # Merge, cleanup, done!
 ```
 
 ### Work Priorities (in order)
@@ -167,15 +156,14 @@ make finish BRANCH=plan-98-robust-worktree PR=321
 
 ## Key Rules
 
-### One Instance Per Directory
-- **Main (`agent_ecology/`)**: Coordination only - NO implementation
-- **Worktree (`worktrees/plan-NN-xxx/`)**: Implementation, commits, PRs
+### Always Run From Main
+- **Your CWD:** Always `/home/brian/brian_projects/agent_ecology2/` (main)
+- **Worktrees:** Paths for file isolation, NOT working directories
+- **Why:** You can handle full lifecycle (create → edit → merge → cleanup) without CWD issues
 
 ### Ownership
 - Check claims before acting on any PR/worktree
-- If owned by another instance: **read only**, move on to other work
-- **Don't offer to help or message other CCs about their active work** - just work on something else
-- **NEVER clean up worktrees you don't own** - breaks their shell (CWD becomes invalid)
+- If work is claimed by another session: **read only**, move on to other work
 - Self-merge your own PRs when ready (no review required)
 - Only the owner should run `make finish` to merge + cleanup their worktree
 
@@ -196,52 +184,38 @@ make finish BRANCH=plan-98-robust-worktree PR=321
 
 ### Why Worktrees Exist
 
-Worktrees provide **isolation** that prevents corruption, not just organization:
+Worktrees provide **file isolation** for parallel work:
 
-- Each CC instance has its own directory with independent working state
+- Each plan gets its own directory with independent working state
 - Changes in one worktree never affect another (no merge conflicts during work)
-- If a worktree is deleted, no other work is affected
-- Main stays clean as a coordination point (never implement there)
+- Multiple plans can be in progress simultaneously
+- Main stays clean (no uncommitted changes)
 
-**Without worktrees:** Multiple CCs editing the same directory create race conditions, overwrite each other's changes, and cause corruption that's hard to debug.
+**Key:** Worktrees are paths (`worktrees/plan-X/src/file.py`), not CWDs. You always run from main.
 
 ### Why Claims Exist
 
-Claims provide **coordination** so instances don't collide:
+Claims provide **coordination** so work doesn't collide:
 
 - Branch-based: if a `plan-N-*` branch exists, work is claimed
 - Stale detection: branches merged or inactive >48h with no worktree = stale
 - Auto-release: when branches merge, claims automatically release
-- Visible: all CCs can see what others are working on
+- Visible: check with `make claims` or `python scripts/check_claims.py --list`
 
-**Without claims:** Two CCs might start the same plan simultaneously, wasting effort and creating conflicting PRs that must be manually reconciled.
+**Without claims:** Two sessions might start the same plan simultaneously, creating conflicting PRs.
 
 ### What Happens If You Bypass
 
 | Bypass | Consequence |
 |--------|-------------|
-| Edit in main | Other CCs may overwrite your work, or you theirs |
+| Edit in main directly | No isolation, changes can conflict with other work |
 | Skip `make worktree` | No claim = others can't see your work |
 | Use `git worktree add` directly | Bypasses claim system, causes coordination failures |
-| Use `git worktree remove` directly | May delete worktree another CC is using (breaks their shell) |
+| Use `git worktree remove` directly | Bypasses safety checks |
 | Use `gh pr merge` directly | Bypasses validation, may break checks |
-| Run `make finish` from worktree | Shell CWD becomes invalid after worktree deleted |
-| Run `cd /main && make finish` | Same issue - cd runs in subshell, CWD stays in worktree |
-
-**IMPORTANT:** Using `cd /main && command` does NOT work because `cd` runs in a subshell
-when used with `&&`. Your actual shell CWD stays in the worktree. Use TWO SEPARATE commands:
-```bash
-cd /home/brian/brian_projects/agent_ecology2  # First command - changes shell CWD
-make finish BRANCH=X PR=N                      # Second command - runs from new CWD
-```
+| Run from inside worktree | If worktree is deleted, your shell breaks |
 
 ### How to Recover
-
-**Your shell is broken (CWD invalid after worktree deleted):**
-```bash
-cd /home/brian/brian_projects/agent_ecology2  # Go to main
-# Now all commands work again
-```
 
 **Stale claim blocking your work:**
 ```bash
@@ -254,11 +228,6 @@ make clean-claims          # Remove old completed claims
 make clean-worktrees       # Find orphaned worktrees
 make clean-worktrees-auto  # Auto-cleanup (safe only)
 ```
-
-**Another CC seems stuck:**
-- Don't clean up their worktree - breaks their shell
-- Don't message them about it - they may be in a different context
-- Just work on something else - claims prevent collision
 
 ---
 
