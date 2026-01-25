@@ -478,6 +478,55 @@ def cleanup_old_completed(data: dict[str, Any], hours: int = 24) -> int:
     return removed
 
 
+def cleanup_merged_claims(data: dict[str, Any]) -> tuple[int, list[str]]:
+    """Auto-cleanup claims for branches that have been merged to main.
+
+    This is Phase 3 of Plan #189 - branch-based claims.
+    When a branch is merged to main, its claim should be automatically released.
+
+    Returns (count_cleaned, list_of_worktrees_to_remove).
+    """
+    merged_branches = get_merged_branches()
+    if not merged_branches:
+        return 0, []
+
+    claims = data.get("claims", [])
+    worktrees_to_remove: list[str] = []
+    cleaned_count = 0
+
+    claims_to_keep: list[dict[str, Any]] = []
+
+    for claim in claims:
+        cc_id = claim.get("cc_id", "")
+        if cc_id in merged_branches:
+            # Branch is merged - move claim to completed
+            completion = {
+                "cc_id": cc_id,
+                "plan": claim.get("plan"),
+                "task": claim.get("task"),
+                "completed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "auto_completed": True,
+                "reason": "branch_merged",
+            }
+            data["completed"].append(completion)
+            cleaned_count += 1
+
+            # Track worktree for removal suggestion
+            wt_path = claim.get("worktree_path")
+            if wt_path:
+                worktrees_to_remove.append(wt_path)
+        else:
+            claims_to_keep.append(claim)
+
+    if cleaned_count > 0:
+        data["claims"] = claims_to_keep
+        # Keep only last 50 completions
+        data["completed"] = data["completed"][-50:]
+        save_yaml(data)
+
+    return cleaned_count, worktrees_to_remove
+
+
 def get_current_branch() -> str:
     """Get current git branch name."""
     try:
@@ -491,6 +540,51 @@ def get_current_branch() -> str:
     except (subprocess.CalledProcessError, FileNotFoundError):
         return "unknown"
 
+
+
+def branch_exists_on_remote(branch: str) -> bool:
+    """Check if a branch exists on the remote origin.
+
+    Returns True if branch exists, False if deleted/merged.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "ls-remote", "--heads", "origin", branch],
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=_MAIN_ROOT,
+        )
+        # If output is non-empty, branch exists
+        return bool(result.stdout.strip())
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        # Can't check remote, assume branch exists
+        return True
+
+
+def get_merged_branches() -> set[str]:
+    """Get set of branches that have been merged to main.
+
+    Returns branch names (without refs/heads/ prefix).
+    """
+    merged: set[str] = set()
+    try:
+        # Get branches merged to main
+        result = subprocess.run(
+            ["git", "branch", "-r", "--merged", "origin/main"],
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=_MAIN_ROOT,
+        )
+        for line in result.stdout.strip().split("\n"):
+            line = line.strip()
+            if line.startswith("origin/") and line != "origin/main":
+                branch = line.replace("origin/", "")
+                merged.add(branch)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+    return merged
 
 
 def get_worktrees() -> list[dict[str, Any]]:
@@ -647,6 +741,9 @@ def get_worktree_claim_status(
         cc_id = claim.get("cc_id", "")
         branch_to_claim[cc_id] = claim
 
+    # Get merged branches for status display
+    merged_branches = get_merged_branches()
+
     results: list[dict[str, Any]] = []
 
     for wt in worktrees:
@@ -657,8 +754,11 @@ def get_worktree_claim_status(
             continue
 
         wt_claim = branch_to_claim.get(branch)
+        is_merged = branch in merged_branches
 
-        if wt_claim:
+        if is_merged:
+            status = "MERGED"
+        elif wt_claim:
             status = "claimed"
         else:
             last_commit = wt.get("last_commit_time")
@@ -675,6 +775,7 @@ def get_worktree_claim_status(
             **wt,
             "claim": wt_claim,
             "status": status,
+            "is_merged": is_merged,
         })
 
     return results
@@ -797,12 +898,15 @@ def check_stale_claims(claims: list[dict], hours: int) -> list[dict]:
 
 def list_claims(claims: list[dict], show_worktrees: bool = True) -> None:
     """Print claims AND worktrees with cross-referencing.
-    
+
     Shows both to prevent confusion about active work.
     """
     worktrees = get_worktrees() if show_worktrees else []
     wt_status = get_worktree_claim_status(worktrees, claims) if worktrees else []
     wt_branches = {wt.get("branch", "") for wt in wt_status}
+
+    # Check for merged branches (Phase 3: branch-based claims)
+    merged_branches = get_merged_branches()
     
     if not claims:
         print("No active claims.")
@@ -827,9 +931,16 @@ def list_claims(claims: list[dict], show_worktrees: bool = True) -> None:
             scope_str = " + ".join(scope_parts) if scope_parts else "unscoped"
             
             has_wt = cc_id in wt_branches
-            wt_indicator = "" if has_wt else " [NO WORKTREE]"
+            is_merged = cc_id in merged_branches
 
-            print(f"  {cc_id:15} | {scope_str:20} | {task:30} | {age}{wt_indicator}")
+            indicators = []
+            if not has_wt:
+                indicators.append("NO WORKTREE")
+            if is_merged:
+                indicators.append("MERGED")
+            indicator_str = f" [{', '.join(indicators)}]" if indicators else ""
+
+            print(f"  {cc_id:15} | {scope_str:20} | {task:30} | {age}{indicator_str}")
             if claim.get("files"):
                 print(f"                   Files: {', '.join(claim['files'][:3])}")
     
@@ -840,14 +951,18 @@ def list_claims(claims: list[dict], show_worktrees: bool = True) -> None:
         
         active_no_claim = []
         
+        merged_worktrees = []
         for wt in wt_status:
             branch = wt.get("branch", "?")
             status = wt.get("status", "?")
             last_commit = wt.get("last_commit_time")
-            
+
             age = get_age_string(last_commit) if last_commit else "unknown"
-            
-            if status == "ACTIVE_NO_CLAIM":
+
+            if status == "MERGED":
+                status_str = "!! MERGED (cleanup needed)"
+                merged_worktrees.append(wt)
+            elif status == "ACTIVE_NO_CLAIM":
                 status_str = "!! ACTIVE (no claim)"
                 active_no_claim.append(wt)
             elif status == "claimed":
@@ -856,7 +971,7 @@ def list_claims(claims: list[dict], show_worktrees: bool = True) -> None:
                 status_str = f"Claimed (Plan #{plan})" if plan else "Claimed"
             else:
                 status_str = "orphaned"
-            
+
             print(f"  {branch:30} | {status_str:25} | last: {age}")
         
         if active_no_claim:
@@ -867,6 +982,21 @@ def list_claims(claims: list[dict], show_worktrees: bool = True) -> None:
             print("Another CC instance may be working in these worktrees!")
             for wt in active_no_claim:
                 print(f"  - {wt.get('branch', '?')}: {wt.get('path', '?')}")
+            print("=" * 70)
+
+        if merged_worktrees:
+            print()
+            print("=" * 70)
+            print("!! MERGED BRANCHES - CLEANUP AVAILABLE")
+            print("=" * 70)
+            print("These branches have been merged to main. Clean up with:")
+            print()
+            print("  python scripts/check_claims.py --cleanup-merged")
+            print()
+            print("Or remove worktrees manually:")
+            for wt in merged_worktrees:
+                branch = wt.get("branch", "?")
+                print(f"  make worktree-remove BRANCH={branch}")
             print("=" * 70)
 
 
@@ -1263,6 +1393,11 @@ def main() -> int:
         metavar="WORKTREE_PATH",
         help="Write .claim.yaml to specified worktree path (used by create_worktree.sh)"
     )
+    parser.add_argument(
+        "--cleanup-merged",
+        action="store_true",
+        help="Auto-cleanup claims for branches that have been merged to main"
+    )
 
     args = parser.parse_args()
 
@@ -1460,6 +1595,19 @@ def main() -> int:
             print(f"Cleaned up {removed} completed entries older than 24h")
         else:
             print("No old completed entries to clean up")
+        return 0
+
+    # Handle cleanup-merged (Phase 3: branch-based claims)
+    if args.cleanup_merged:
+        cleaned, worktrees = cleanup_merged_claims(data)
+        if cleaned > 0:
+            print(f"Auto-completed {cleaned} claim(s) for merged branches")
+            if worktrees:
+                print("\nWorktrees that can be removed:")
+                for wt in worktrees:
+                    print(f"  make worktree-remove BRANCH={Path(wt).name}")
+        else:
+            print("No claims found for merged branches")
         return 0
 
     # Handle claim

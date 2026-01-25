@@ -40,6 +40,7 @@ fi
 # Allow writes to worktree-specific paths
 # Match both /worktrees/ and *_worktrees/ patterns (Plan #160 fix)
 WORKTREE_BRANCH=""
+WORKTREE_ROOT=""
 if [[ "$FILE_PATH" == *"/worktrees/"* ]] || [[ "$FILE_PATH" == *"_worktrees/"* ]]; then
     # Extract the worktree-relative path
     # Handle both /worktrees/branch/ and *_worktrees/branch/ patterns
@@ -47,7 +48,11 @@ if [[ "$FILE_PATH" == *"/worktrees/"* ]] || [[ "$FILE_PATH" == *"_worktrees/"* ]
     # Plan #160: Extract branch name from worktree path for plan detection
     # Path format: .../worktrees/branch-name/... or ..._worktrees/branch-name/...
     WORKTREE_BRANCH=$(echo "$FILE_PATH" | sed 's|.*/[^/]*worktrees/\([^/]*\)/.*|\1|')
+    # Plan #189 Phase 3: Extract worktree root to run parse_plan.py from correct context
+    # This ensures we read the plan file from the worktree, not from main
+    WORKTREE_ROOT=$(echo "$FILE_PATH" | sed 's|\(.*/[^/]*worktrees/[^/]*\)/.*|\1|')
     debug "WORKTREE_BRANCH=$WORKTREE_BRANCH"
+    debug "WORKTREE_ROOT=$WORKTREE_ROOT"
 else
     # Not in a worktree, use path relative to main
     WORKTREE_PATH=$(echo "$FILE_PATH" | sed "s|^$MAIN_DIR/||")
@@ -95,13 +100,14 @@ if [[ -z "$PLAN_NUM" ]]; then
 fi
 
 # Check if file is in plan's scope using parse_plan.py
-# Try worktree first, then main repo
+# Plan #189 Phase 3: Run from worktree directory to read correct plan file
 SCRIPT_PATH=""
+RUN_DIR="${WORKTREE_ROOT:-$MAIN_DIR}"
 debug "Looking for parse_plan.py..."
-debug "Checking: scripts/parse_plan.py (exists: $(test -f scripts/parse_plan.py && echo yes || echo no))"
-debug "Checking: $MAIN_DIR/scripts/parse_plan.py (exists: $(test -f "$MAIN_DIR/scripts/parse_plan.py" && echo yes || echo no))"
-if [[ -f "scripts/parse_plan.py" ]]; then
-    SCRIPT_PATH="scripts/parse_plan.py"
+debug "RUN_DIR=$RUN_DIR"
+debug "Checking: $RUN_DIR/scripts/parse_plan.py (exists: $(test -f "$RUN_DIR/scripts/parse_plan.py" && echo yes || echo no))"
+if [[ -f "$RUN_DIR/scripts/parse_plan.py" ]]; then
+    SCRIPT_PATH="$RUN_DIR/scripts/parse_plan.py"
 elif [[ -f "$MAIN_DIR/scripts/parse_plan.py" ]]; then
     SCRIPT_PATH="$MAIN_DIR/scripts/parse_plan.py"
 else
@@ -111,11 +117,11 @@ else
 fi
 debug "SCRIPT_PATH=$SCRIPT_PATH"
 
-# Run the check
+# Run the check from the worktree directory (to read correct plan file)
 # Note: parse_plan.py returns exit 0 if in scope, exit 2 if not in scope, exit 1 on error
 # We capture stdout regardless of exit code, then check for JSON validity
-debug "Running: python $SCRIPT_PATH --plan $PLAN_NUM --check-file $WORKTREE_PATH --json"
-RESULT=$(python "$SCRIPT_PATH" --plan "$PLAN_NUM" --check-file "$WORKTREE_PATH" --json 2>/dev/null)
+debug "Running: cd $RUN_DIR && python $SCRIPT_PATH --plan $PLAN_NUM --check-file $WORKTREE_PATH --json"
+RESULT=$(cd "$RUN_DIR" && python "$SCRIPT_PATH" --plan "$PLAN_NUM" --check-file "$WORKTREE_PATH" --json 2>/dev/null)
 EXIT_CODE=$?
 debug "Parse script exit code: $EXIT_CODE"
 

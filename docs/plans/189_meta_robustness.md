@@ -44,6 +44,7 @@
 - `scripts/check_claims.py` (modify) - Switch to branch-based claims
 - `scripts/finish_pr.py` (modify) - Make atomic with validation
 - `scripts/safe_worktree_remove.py` (modify) - Add process locking
+- `Makefile` (modify) - Add clean-merged target
 - `CLAUDE.md` (modify) - Document new workflow
 - `docs/plans/CLAUDE.md` (modify) - Will be auto-generated
 - `.claude/active-work.yaml` (delete) - No longer needed

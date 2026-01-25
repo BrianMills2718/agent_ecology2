@@ -221,8 +221,7 @@ Master index of all gaps and their implementation plans.
 | 194 | [Self-Modifying System Prompt](194_self_modifying_system_prompt.md) | Medium | ❓ | - |
 | 195 | [Context Budget Management](195_context_budget_management.md) | Medium | ❓ | - |
 | 196 | [Memory Tiering](196_memory_tiering.md) | Medium | ❓ | - |
-| 197 | [Configurable Mandatory Prompt Injection](197_prompt_injection.md) | Low | 🚧 In Progress | Alignment research |
-
+| 197 | [Configurable Mandatory Prompt Injection](197_prompt_injection.md) | Low | 🚧 In Progress | - |
 ---
 
 ## TDD Workflow
