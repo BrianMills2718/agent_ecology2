@@ -7,12 +7,14 @@
 
 ## Problem
 
-Two core files exceed maintainability thresholds identified in CODE_REVIEW_2026_01_16:
+Two core files exceeded maintainability thresholds identified in CODE_REVIEW_2026_01_16:
 
-| File | Lines | Issue |
-|------|-------|-------|
-| `src/world/world.py` | 2008 | Central state manager, too many responsibilities |
-| `src/world/executor.py` | 1765 | Code execution + invoke handling mixed |
+| File | Original | Current | Target | Issue |
+|------|----------|---------|--------|-------|
+| `src/world/executor.py` | 1890 | 1331 | ~800 | Code execution + invoke handling mixed |
+| `src/world/world.py` | ~2008* | 1127 | ~800 | Central state manager, too many responsibilities |
+
+*Note: world.py was significantly reduced by other plans before this work started.
 
 These files are hard to navigate, test in isolation, and modify safely.
 
@@ -96,11 +98,36 @@ These files are hard to navigate, test in isolation, and modify safely.
 - ✅ All 2531 tests pass
 - ✅ Documentation updated
 
-### Part 4: world.py split (Not started)
-- [ ] Split world.py into event_lifecycle.py, action_dispatch.py
+### Part 4: world.py split (Deferred)
+- world.py is now 1127 lines (significantly smaller than the 2008 originally cited)
+- The remaining methods in World class are tightly coupled to its state
+- Further extraction would require refactoring, not just extraction
+- Defer to a future plan if needed
 
-**Summary:** executor.py reduced from 1890 to 1331 lines (30% reduction) via 3 module extractions.
-Total extracted: 990 lines across 3 new modules.
+## Summary
+
+**Executor extraction complete:**
+- executor.py: 1890 → 1331 lines (30% reduction)
+- 990 lines extracted across 3 new modules:
+  - `permission_checker.py` (348 lines) - permission checking logic
+  - `interface_validation.py` (375 lines) - argument validation
+  - `invoke_handler.py` (267 lines) - invoke closure factory
+
+**Current file sizes:**
+- executor.py: 1331 lines (target was 800)
+- world.py: 1127 lines (target was 800)
+
+**Acceptance criteria status:**
+- ✅ All tests pass (2531)
+- ⚠️ Files still exceed 800 lines (but significantly reduced)
+- ✅ Each new file has single responsibility
+- ✅ Import cycles avoided
+- ✅ Documentation updated
+
+**Why not complete to 800 lines:**
+The "Extract, don't rewrite" principle limits what can be moved. The remaining
+code in both files consists of methods that depend on class state and share
+common patterns. Getting to 800 lines would require refactoring, not extraction.
 
 ## Related
 
