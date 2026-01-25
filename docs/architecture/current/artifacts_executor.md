@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-23 (Plan #160 - Improved success feedback messages)
+**Last verified:** 2026-01-24 (Plan #168 metadata, Plan #170 invokes tracking)
 
 ---
 
@@ -42,7 +42,49 @@ class Artifact:
     genesis_methods: dict | None = None  # Method dispatch for genesis artifacts
     # Artifact dependencies (Plan #63)
     depends_on: list[str] = []  # List of artifact IDs this depends on
+    # User-defined metadata (Plan #168)
+    metadata: dict[str, Any] = {}  # Arbitrary key-value pairs for categorization
 ```
+
+### Artifact Metadata (Plan #168)
+
+Artifacts have a `metadata` field for user-defined key-value pairs. This enables filtering and categorization without changing the core schema.
+
+**Common uses:**
+- `recipient`: Address artifacts to specific agents
+- `tags`: Categorize artifacts (e.g., `["trading", "experimental"]`)
+- `priority`: Ordering hints for processing
+- `invokes`: Auto-populated list of invoke() targets (Plan #170)
+
+**Querying metadata:**
+```python
+# Via genesis_store filter
+result = invoke("genesis_store", "list", [{"metadata.tags": "trading"}])
+# Supports dot notation for nested fields: metadata.tags.priority
+```
+
+### Static Outbound Dependencies (Plan #170)
+
+When an executable artifact is written, the system automatically extracts `invoke()` targets from its code and stores them in `metadata["invokes"]`.
+
+**Auto-population:**
+```python
+# When you write executable code like:
+code = '''
+def run(ctx):
+    invoke("genesis_ledger", "transfer", [10])
+    invoke("genesis_escrow", "deposit", [100])
+    return True
+'''
+# The artifact's metadata is auto-populated:
+# metadata["invokes"] = ["genesis_escrow", "genesis_ledger"]
+```
+
+**Key properties:**
+- Deduplicated and sorted alphabetically
+- Updated on every artifact write (code changes)
+- Known limitation: regex extraction may have false positives from comments/strings
+- Useful for: understanding artifact behavior without reading code
 
 ### Artifact Dependencies (Plan #63)
 
