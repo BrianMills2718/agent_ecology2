@@ -200,7 +200,7 @@ Master index of all gaps and their implementation plans.
 | 178 | [Plan 178: Configurable Enforcement Strictness](178_enforcement_strictness_config.md) | High | ✅ Complete | - |
 | 179 | [Dashboard Bugfixes - Coordination Density & Tick Language](179_dashboard_bugfixes.md) | High | ✅ Complete | - |
 | 180 | [Complete Trigger Integration](180_trigger_integration.md) | High | ✅ Complete | Real-time coordination patterns |
-| 181 | [Split Large Core Files](181_split_large_files.md) | Low | 🚧 In Progress | - |
+| 181 | [Split Large Core Files](181_split_large_files.md) | Low | ✅ Complete | - |
 | 182 | [Metadata Indexing for Artifact Discovery](182_metadata_indexing.md) | Medium | ✅ Complete | Performance at scale |
 | 183 | [Genesis Voting Artifact](183_genesis_voting.md) | Low | ✅ Complete | None (convenience feature) |
 | 184 | [Query Kernel Action](184_query_kernel_action.md) | High | ✅ Complete | - |
@@ -226,6 +226,10 @@ Master index of all gaps and their implementation plans.
 | 204 | [Configurable Mandatory Prompt Injection](204_prompt_injection.md) | Low | ✅ Superseded | - |
 | 205 | [Git-Level Meta-Process Resilience](205_meta_resilience.md) | **Critical** | ✅ Complete | All meta-process reliability |
 | 206 | [Meta-Process Claim Lifecycle Fixes](206_claim_lifecycle.md) | Critical | 🚧 In Progress | - |
+| 207 | [Executor Method Refactoring](207_executor_refactor.md) | Low | 📋 Deferred | - |
+| 208 | [Workflow Hooks (General Auto-Subscription System)](208_workflow_hooks.md) | High | 📋 Planned | Agent self-optimization, cognitive autonomy |
+| 209 | [Trigger-Hook Integration](209_trigger_hook_integration.md) | Low | 📋 Deferred (until bridging pattern becomes common) | - |
+| 210 | [Fix ADR-0016 Violation (created_by Mutation)](210_fix_created_by_mutation.md) | High | 📋 Planned | Correct ownership semantics, historical audit trail |
 ---
 
 ## TDD Workflow
