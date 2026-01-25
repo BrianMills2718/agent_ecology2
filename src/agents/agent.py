@@ -27,7 +27,10 @@ from __future__ import annotations
 
 import sys
 import json
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 from typing import Any, TypedDict, TYPE_CHECKING
 
 if TYPE_CHECKING:
