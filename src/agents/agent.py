@@ -198,6 +198,9 @@ class Agent:
     # Workflow hooks configuration (Plan #208)
     _hooks_config: HooksConfigDict | None
 
+    # World reference for semantic memory (Plan #213)
+    _world: "World | None"
+
     # Context section control (Plan #192)
     _context_sections: dict[str, bool]
     # Context section priorities (Plan #193) - higher = appears earlier in prompt
@@ -258,6 +261,7 @@ class Agent:
         self._workflow_artifact_id = None  # Plan #146 Phase 3: Workflow artifact reference
         self._subscribed_artifacts = []  # Plan #191: Subscribed artifacts
         self._hooks_config = None  # Plan #208: Workflow hooks configuration
+        self._world = None  # Plan #213: World reference for semantic memory
         # Plan #192: Context section control - defaults to all enabled
         self._context_sections = {
             "working_memory": True,
@@ -1880,6 +1884,24 @@ Your response should include:
         """Whether this agent has a configured reflex."""
         return self._reflex_artifact_id is not None
 
+    # --- World reference for semantic memory (Plan #213) ---
+
+    def set_world(self, world: "World") -> None:
+        """Set world reference for semantic memory access (Plan #213).
+
+        This enables agents to use genesis_memory for semantic search
+        instead of keyword matching fallback.
+
+        Args:
+            world: The World instance for artifact invocation
+        """
+        self._world = world
+
+    @property
+    def world(self) -> "World | None":
+        """Get world reference, or None if not set."""
+        return self._world
+
     # --- Long-term Memory methods (Plan #146) ---
 
     @property
@@ -1898,9 +1920,10 @@ Your response should include:
         return self._longterm_memory_artifact_id is not None
 
     def _search_longterm_memory_artifact(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
-        """Search long-term memory artifact for relevant entries (Plan #146 Phase 4).
+        """Search long-term memory artifact for relevant entries (Plan #146 Phase 4, Plan #213).
 
-        Uses cosine similarity to find semantically relevant memories.
+        Uses semantic search via genesis_memory when world reference is available,
+        falls back to keyword matching otherwise.
 
         Args:
             query: The search query
@@ -1912,6 +1935,30 @@ Your response should include:
         if not self._longterm_memory_artifact_id or not self._artifact_store:
             return []
 
+        # Plan #213: Use semantic search via genesis_memory when world available
+        if self._world is not None:
+            try:
+                result = self._world.invoke_artifact(
+                    invoker_id=self._agent_id,
+                    artifact_id="genesis_memory",
+                    method="search",
+                    args=[self._longterm_memory_artifact_id, query, limit],
+                )
+                if result.success and result.data:
+                    # Transform genesis_memory results to expected format
+                    results = result.data.get("results", [])
+                    return [
+                        {
+                            "text": r.get("text", ""),
+                            "score": r.get("score", 0.0),
+                            "tags": r.get("metadata", {}).get("tags", []),
+                        }
+                        for r in results
+                    ]
+            except Exception as e:
+                logger.warning("Semantic search failed for %s, using keyword fallback: %s", self._agent_id, e)
+
+        # Fallback: keyword matching (no world reference or semantic search failed)
         memory_artifact = self._artifact_store.get(self._longterm_memory_artifact_id)
         if not memory_artifact:
             return []
@@ -1924,8 +1971,7 @@ Your response should include:
         if not entries:
             return []
 
-        # Simple keyword matching fallback (embeddings would require genesis_memory invoke)
-        # For now, return most recent entries that contain query keywords
+        # Simple keyword matching fallback
         query_words = set(query.lower().split())
         scored_entries = []
         for entry in entries:

@@ -348,6 +348,27 @@ class SimulationRunner:
                             agent._working_memory = wm
                             print(f"  Restored working_memory for {agent.agent_id}")
 
+        # Plan #213: Set world reference and create longterm memory for genesis agents
+        genesis_memory = self.world.genesis_artifacts.get("genesis_memory")
+        genesis_agent_ids = {"alpha_3", "beta_3", "delta_3"}  # Genesis agent IDs
+        for agent in agents:
+            # Set world reference for semantic memory access
+            agent.set_world(self.world)
+
+            # Create longterm memory artifact for genesis agents
+            if genesis_memory and agent.agent_id in genesis_agent_ids:
+                longterm_id = f"{agent.agent_id}_longterm"
+                # Check if already exists
+                if not self.world.artifacts.get(longterm_id):
+                    result = genesis_memory._create_memory([longterm_id], agent.agent_id)
+                    if result.get("success"):
+                        agent.longterm_memory_artifact_id = longterm_id
+                        if self.verbose:
+                            print(f"  Created longterm memory: {longterm_id}")
+                else:
+                    # Already exists, just link it
+                    agent.longterm_memory_artifact_id = longterm_id
+
         return agents
 
 

@@ -22,6 +22,7 @@ components:
     - memory_discipline     # Store insights, not raw actions (Plan #212)
     - loop_breaker          # Recognize and escape repetitive patterns (Plan #212)
     - subgoal_progression   # Track and update subgoals (Plan #212)
+    - semantic_memory       # Use semantic memory for long-term learning (Plan #213)
 
 # RAG configuration - learning-oriented queries
 rag:

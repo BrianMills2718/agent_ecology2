@@ -24,7 +24,7 @@ interface_discovery:
   mode: try_and_learn  # try_and_learn | check_first | hybrid
   cache_in_memory: true  # remember interfaces in working memory
 
-# Prompt components (Plan #150, Plan #212)
+# Prompt components (Plan #150, Plan #212, Plan #213)
 # Modular behavioral traits injected into workflow prompts
 components:
   traits:
@@ -33,6 +33,7 @@ components:
     - memory_discipline     # Store insights, not raw actions (Plan #212)
     - loop_breaker          # Recognize and escape repetitive patterns (Plan #212)
     - subgoal_progression   # Track and update subgoals (Plan #212)
+    - semantic_memory       # Use semantic memory for long-term learning (Plan #213)
 
 # RAG configuration - learning-oriented queries
 rag:
