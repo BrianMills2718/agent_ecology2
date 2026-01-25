@@ -41,6 +41,7 @@ from .id_registry import IDRegistry
 from .resource_manager import ResourceManager, ResourceType
 from .resource_metrics import ResourceMetricsProvider
 from .mint_auction import MintAuction, KernelMintSubmission, KernelMintResult
+from .triggers import TriggerRegistry
 
 from ..config import get as config_get, compute_per_agent_quota, PerAgentQuota
 
@@ -219,6 +220,11 @@ class World:
         # Core state - create ledger with rate_limiting config and ID registry
         self.ledger = Ledger.from_config(cast(dict[str, Any], config), [], self.id_registry)
         self.artifacts = ArtifactStore(id_registry=self.id_registry)
+
+        # Event trigger system (Plan #180)
+        # TriggerRegistry watches for trigger artifacts and queues invocations on matching events
+        self.trigger_registry = TriggerRegistry(self.artifacts)
+
         # Per-run logging if logs_dir and run_id provided, else legacy mode
         logs_dir = config.get("logging", {}).get("logs_dir")
         if logs_dir and run_id:
@@ -524,7 +530,7 @@ class World:
         return result
 
     def _log_action(self, intent: ActionIntent, result: ActionResult) -> None:
-        """Log an action execution"""
+        """Log an action execution and emit event for trigger matching."""
         # Plan #80: Use truncated result to prevent log file bloat
         max_data_size = config_get("logging.truncation.result_data")
         if not isinstance(max_data_size, int):
@@ -535,6 +541,24 @@ class World:
             "result": result.to_dict_truncated(max_data_size),
             "scrip_after": self.ledger.get_scrip(intent.principal_id)
         })
+
+        # Plan #180: Emit event for trigger matching
+        if result.success:
+            event_type = f"{intent.action_type.value}_success"
+            event = {
+                "event_type": event_type,
+                "event_number": self.event_number,
+                "principal_id": intent.principal_id,
+                "intent": intent.to_dict(),
+                "data": result.data or {},
+            }
+            self._emit_event(event)
+
+            # Refresh triggers if a trigger artifact was modified
+            if isinstance(intent, (WriteArtifactIntent, EditArtifactIntent)):
+                artifact = self.artifacts.get(intent.artifact_id)
+                if artifact and artifact.type == "trigger":
+                    self.refresh_triggers()
 
     def _execute_write(self, intent: WriteArtifactIntent) -> ActionResult:
         """Execute a write_artifact action.
@@ -2028,3 +2052,64 @@ class World:
             List of (library_name, version) tuples
         """
         return self._installed_libraries.get(principal_id, [])
+
+    # --- Trigger System (Plan #180) ---
+
+    def _emit_event(self, event: dict[str, Any]) -> int:
+        """Emit an event and queue any matching trigger invocations.
+
+        This is called after state-changing operations to enable pub-sub patterns.
+        Triggers are processed asynchronously (queued, not synchronous).
+
+        Args:
+            event: Event dictionary with type and data
+
+        Returns:
+            Number of trigger invocations queued
+        """
+        return self.trigger_registry.queue_matching_invocations(event)
+
+    def refresh_triggers(self) -> None:
+        """Refresh the trigger registry from current artifacts.
+
+        Should be called when trigger artifacts are created/updated/deleted.
+        """
+        self.trigger_registry.refresh()
+
+    def process_pending_triggers(self) -> list[ActionResult]:
+        """Process all pending trigger invocations.
+
+        Executes each pending trigger callback by invoking the callback artifact.
+        Returns results of all invocations.
+
+        Returns:
+            List of ActionResult from trigger callbacks
+        """
+        results: list[ActionResult] = []
+        pending = self.trigger_registry.get_pending_invocations()
+
+        for invocation in pending:
+            # Build invoke intent for the callback
+            intent = InvokeArtifactIntent(
+                principal_id=invocation["owner"],  # Trigger owner calls their callback
+                artifact_id=invocation["callback_artifact"],
+                method=invocation["callback_method"],
+                args={"event": invocation["event"]},  # Pass event as arg
+            )
+
+            # Execute the invoke
+            result = self._execute_invoke(intent)
+            self._log_action(intent, result)
+            results.append(result)
+
+        # Clear processed invocations
+        self.trigger_registry.clear_pending_invocations()
+        return results
+
+    def get_pending_trigger_count(self) -> int:
+        """Get number of pending trigger invocations.
+
+        Returns:
+            Number of invocations waiting to be processed
+        """
+        return len(self.trigger_registry.get_pending_invocations())
