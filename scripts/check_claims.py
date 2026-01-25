@@ -848,7 +848,10 @@ def save_yaml(data: dict[str, Any]) -> None:
 
 
 def parse_timestamp(ts: str) -> datetime | None:
-    """Parse various timestamp formats."""
+    """Parse various timestamp formats.
+
+    All timestamps are assumed to be UTC. Returns timezone-aware datetime.
+    """
     if not ts:
         return None
 
@@ -862,7 +865,9 @@ def parse_timestamp(ts: str) -> datetime | None:
 
     for fmt in formats:
         try:
-            return datetime.strptime(ts.strip(), fmt)
+            # Parse and attach UTC timezone (timestamps in YAML are UTC)
+            dt = datetime.strptime(ts.strip(), fmt)
+            return dt.replace(tzinfo=timezone.utc)
         except ValueError:
             continue
     return None
@@ -870,7 +875,7 @@ def parse_timestamp(ts: str) -> datetime | None:
 
 def get_age_string(ts: datetime) -> str:
     """Get human-readable age string."""
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     hours = (now - ts).total_seconds() / 3600
 
     if hours < 1:
@@ -883,7 +888,7 @@ def get_age_string(ts: datetime) -> str:
 
 def check_stale_claims(claims: list[dict], hours: int) -> list[dict]:
     """Return claims older than the threshold."""
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     threshold = timedelta(hours=hours)
     stale = []
 
