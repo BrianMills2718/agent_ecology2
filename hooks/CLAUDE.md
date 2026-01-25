@@ -17,16 +17,19 @@ Catch issues before they reach CI. These hooks run locally on every commit.
 
 ## Installation
 
+**Automatic (recommended):** Hooks auto-install when you run common make targets:
 ```bash
-# Symlink hooks to .git/hooks
-ln -sf ../../hooks/pre-commit .git/hooks/pre-commit
-ln -sf ../../hooks/commit-msg .git/hooks/commit-msg
-ln -sf ../../hooks/post-commit .git/hooks/post-commit
-ln -sf ../../hooks/pre-push .git/hooks/pre-push
+make test    # Auto-installs hooks before running tests
+make check   # Auto-installs hooks before running checks
+```
 
-# Or use the Makefile
+**Manual:** If needed, install explicitly:
+```bash
 make install-hooks
 ```
+
+The Makefile creates symlinks from `.git/hooks/` to this directory.
+Worktrees share hooks with the main repo automatically.
 
 ## Bypass
 
