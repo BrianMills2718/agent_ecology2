@@ -116,8 +116,8 @@ export function NetworkPanel() {
   useEffect(() => {
     if (!data) return
 
-    const visNodes = buildVisNodes(data.nodes)
-    const visEdges = buildVisEdges(data.edges)
+    const visNodes = buildVisNodes(data.nodes ?? [])
+    const visEdges = buildVisEdges(data.edges ?? [])
 
     // Update nodes
     const existingNodeIds = nodesDataSet.current.getIds()
@@ -138,7 +138,7 @@ export function NetworkPanel() {
   return (
     <Panel
       title="Agent Interactions"
-      badge={data?.nodes.length}
+      badge={data?.nodes?.length}
       collapsible
     >
       {/* Controls */}
@@ -207,7 +207,7 @@ export function NetworkPanel() {
         style={{ minHeight: '256px' }}
       />
 
-      {data && data.nodes.length === 0 && (
+      {data && (data.nodes?.length ?? 0) === 0 && (
         <p className="text-sm text-[var(--text-secondary)] text-center mt-2">
           No interactions yet
         </p>

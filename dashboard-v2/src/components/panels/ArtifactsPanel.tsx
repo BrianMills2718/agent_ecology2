@@ -122,7 +122,7 @@ export function ArtifactsPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.artifacts.map((artifact) => (
+                  {(data.artifacts ?? []).map((artifact) => (
                     <tr
                       key={artifact.artifact_id}
                       className="border-b border-[var(--border-color)] hover:bg-[var(--bg-tertiary)] cursor-pointer"
@@ -146,7 +146,7 @@ export function ArtifactsPanel() {
                       <td className="py-2">{artifact.invocation_count}</td>
                     </tr>
                   ))}
-                  {data.artifacts.length === 0 && (
+                  {(data.artifacts?.length ?? 0) === 0 && (
                     <tr>
                       <td
                         colSpan={5}

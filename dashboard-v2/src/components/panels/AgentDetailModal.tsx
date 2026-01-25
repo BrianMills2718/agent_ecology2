@@ -80,10 +80,10 @@ export function AgentDetailModal({ agentId, onClose }: AgentDetailModalProps) {
           )}
 
           {/* Owned Artifacts */}
-          <Section title="Artifacts Owned" badge={agent.artifacts_owned.length}>
-            {agent.artifacts_owned.length > 0 ? (
+          <Section title="Artifacts Owned" badge={agent.artifacts_owned?.length ?? 0}>
+            {(agent.artifacts_owned?.length ?? 0) > 0 ? (
               <div className="flex flex-wrap gap-2">
-                {agent.artifacts_owned.map((id) => (
+                {agent.artifacts_owned!.map((id) => (
                   <span
                     key={id}
                     className="px-2 py-1 bg-[var(--bg-tertiary)] rounded text-xs font-mono"
@@ -98,10 +98,10 @@ export function AgentDetailModal({ agentId, onClose }: AgentDetailModalProps) {
           </Section>
 
           {/* Recent Actions */}
-          <Section title="Recent Actions" badge={agent.actions.length}>
-            {agent.actions.length > 0 ? (
+          <Section title="Recent Actions" badge={agent.actions?.length ?? 0}>
+            {(agent.actions?.length ?? 0) > 0 ? (
               <div className="space-y-2 max-h-48 overflow-y-auto">
-                {agent.actions.slice(-10).reverse().map((action, i) => (
+                {agent.actions!.slice(-10).reverse().map((action, i) => (
                   <div
                     key={i}
                     className="flex items-center justify-between text-sm py-1 border-b border-[var(--border-color)]"
@@ -131,10 +131,10 @@ export function AgentDetailModal({ agentId, onClose }: AgentDetailModalProps) {
           </Section>
 
           {/* Recent Thinking */}
-          <Section title="Recent Thinking" badge={agent.thinking_history.length}>
-            {agent.thinking_history.length > 0 ? (
+          <Section title="Recent Thinking" badge={agent.thinking_history?.length ?? 0}>
+            {(agent.thinking_history?.length ?? 0) > 0 ? (
               <div className="space-y-3 max-h-64 overflow-y-auto">
-                {agent.thinking_history.slice(-5).reverse().map((thought, i) => (
+                {agent.thinking_history!.slice(-5).reverse().map((thought, i) => (
                   <div
                     key={i}
                     className="p-3 bg-[var(--bg-primary)] rounded text-sm"

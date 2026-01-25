@@ -33,13 +33,13 @@ function formatChartData(data: ResourceChartData | undefined) {
   const tickMap: Record<number, Record<string, number>> = {}
 
   // Add totals
-  for (const point of data.totals) {
+  for (const point of data.totals ?? []) {
     if (!tickMap[point.tick]) tickMap[point.tick] = { tick: point.tick }
     tickMap[point.tick].total = point.value
   }
 
   // Add per-agent data
-  for (const agent of data.agents) {
+  for (const agent of data.agents ?? []) {
     for (const point of agent.data) {
       if (!tickMap[point.tick]) tickMap[point.tick] = { tick: point.tick }
       tickMap[point.tick][agent.agent_id] = point.value
@@ -85,7 +85,7 @@ function ChartView({
   }
 
   const chartData = formatChartData(data)
-  const agentIds = data.agents.map((a) => a.agent_id)
+  const agentIds = (data.agents ?? []).map((a) => a.agent_id)
 
   return (
     <ResponsiveContainer width="100%" height={200}>

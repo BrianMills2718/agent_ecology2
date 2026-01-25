@@ -102,7 +102,7 @@ export function AgentsPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.agents.map((agent) => (
+                  {(data.agents ?? []).map((agent) => (
                     <tr
                       key={agent.agent_id}
                       className="border-b border-[var(--border-color)] hover:bg-[var(--bg-tertiary)] cursor-pointer"
@@ -129,7 +129,7 @@ export function AgentsPanel() {
                       <td className="py-2">{agent.action_count}</td>
                     </tr>
                   ))}
-                  {data.agents.length === 0 && (
+                  {(data.agents?.length ?? 0) === 0 && (
                     <tr>
                       <td
                         colSpan={5}

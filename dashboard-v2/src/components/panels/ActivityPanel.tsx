@@ -99,10 +99,10 @@ export function ActivityPanel() {
       {data && (
         <>
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {data.items.map((item, i) => (
+            {(data.items ?? []).map((item, i) => (
               <ActivityCard key={`${item.tick}-${i}`} item={item} />
             ))}
-            {data.items.length === 0 && (
+            {(data.items?.length ?? 0) === 0 && (
               <p className="text-sm text-[var(--text-secondary)] text-center py-4">
                 No activity yet
               </p>
