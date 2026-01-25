@@ -162,6 +162,9 @@ clean:  ## Remove generated files
 clean-claims:  ## Remove old completed claims
 	python scripts/check_claims.py --cleanup
 
+clean-merged:  ## Cleanup claims for merged branches (Plan #189 Phase 3)
+	python scripts/check_claims.py --cleanup-merged
+
 # Install git hooks (symlinks to hooks/ directory)
 install-hooks:  ## Install git hooks (run once, auto-called by common commands)
 	@mkdir -p .git/hooks
