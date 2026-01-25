@@ -43,7 +43,14 @@ from .agent_loop import AgentLoopManager, AgentLoopConfig
 from .pool import WorkerPool, PoolConfig
 from ..agents.state_store import AgentStateStore
 from ..agents.reflex import ReflexExecutor, build_reflex_context
-from ..agents.hooks import HooksConfig, HookExecutor, HookTiming, expand_subscribed_artifacts
+from ..agents.hooks import (
+    HooksConfig,
+    HookExecutor,
+    HookTiming,
+    HookDefinition,
+    HookResult,
+    expand_subscribed_artifacts,
+)
 
 
 def _derive_provider(model: str) -> str:
@@ -1550,8 +1557,43 @@ class SimulationRunner:
                 artifact_store=self.world.artifacts,
                 invoker=self.world,
                 max_depth=max_depth,
+                on_hook_complete=self._on_hook_complete,
             )
         return self._hook_executor
+
+    def _on_hook_complete(
+        self,
+        agent_id: str,
+        timing: HookTiming,
+        hook: HookDefinition,
+        result: HookResult,
+        duration_ms: float,
+    ) -> None:
+        """Callback for hook completion observability (Plan #208 Phase 4).
+
+        Logs the hook execution result for dashboard visibility.
+
+        Args:
+            agent_id: The agent that ran the hook.
+            timing: When the hook ran (pre_decision, etc.).
+            hook: The hook definition that was executed.
+            result: The result of the hook execution.
+            duration_ms: Execution time in milliseconds.
+        """
+        self.world.logger.log(
+            "hook_executed",
+            {
+                "event_number": self.world.event_number,
+                "principal_id": agent_id,
+                "timing": timing.value,
+                "artifact_id": hook.artifact_id,
+                "method": hook.method,
+                "success": result.success,
+                "error": result.error,
+                "inject_as": result.inject_as,
+                "duration_ms": round(duration_ms, 2),
+            },
+        )
 
     def _get_agent_hooks(self, agent: Agent) -> HooksConfig:
         """Get merged hooks config for an agent.

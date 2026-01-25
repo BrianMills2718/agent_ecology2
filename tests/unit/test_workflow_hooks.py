@@ -373,7 +373,8 @@ class TestExpandSubscribedArtifacts:
 
     def test_expand_single(self):
         """Test expanding single subscription."""
-        config = expand_subscribed_artifacts(["my_handbook"])
+        # Suppress deprecation warning for this test
+        config = expand_subscribed_artifacts(["my_handbook"], warn_deprecated=False)
 
         assert len(config.pre_decision) == 1
         hook = config.pre_decision[0]
@@ -384,9 +385,141 @@ class TestExpandSubscribedArtifacts:
 
     def test_expand_multiple(self):
         """Test expanding multiple subscriptions."""
-        config = expand_subscribed_artifacts(["handbook", "sop", "guide"])
+        # Suppress deprecation warning for this test
+        config = expand_subscribed_artifacts(
+            ["handbook", "sop", "guide"], warn_deprecated=False
+        )
 
         assert len(config.pre_decision) == 3
         assert config.pre_decision[0].artifact_id == "handbook"
         assert config.pre_decision[1].artifact_id == "sop"
         assert config.pre_decision[2].artifact_id == "guide"
+
+    def test_expand_deprecation_warning(self):
+        """Test that deprecation warning is emitted (Plan #208 Phase 3)."""
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            expand_subscribed_artifacts(["my_artifact"], warn_deprecated=True)
+
+            # Should have emitted one deprecation warning
+            assert len(w) == 1
+            assert issubclass(w[0].category, DeprecationWarning)
+            assert "deprecated" in str(w[0].message).lower()
+
+    def test_expand_no_warning_when_disabled(self):
+        """Test that no warning when warn_deprecated=False."""
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            expand_subscribed_artifacts(["my_artifact"], warn_deprecated=False)
+
+            # Should not have emitted any deprecation warnings
+            deprecation_warnings = [
+                warning for warning in w
+                if issubclass(warning.category, DeprecationWarning)
+            ]
+            assert len(deprecation_warnings) == 0
+
+
+class TestHookExecutorObservability:
+    """Tests for hook executor observability features (Plan #208 Phase 4)."""
+
+    @pytest.mark.asyncio
+    async def test_completion_callback_called(self):
+        """Test that completion callback is called after hook execution."""
+        artifact = Mock()
+        store = Mock()
+        store.get.return_value = artifact
+
+        mock_invoker = Mock()
+        mock_invoker.invoke_artifact.return_value = {
+            "success": True,
+            "data": "result",
+            "message": "OK",
+        }
+
+        callback_calls: list[tuple] = []
+
+        def on_complete(agent_id, timing, hook, result, duration_ms):
+            callback_calls.append((agent_id, timing, hook, result, duration_ms))
+
+        executor = HookExecutor(
+            artifact_store=store,
+            invoker=mock_invoker,
+            on_hook_complete=on_complete,
+        )
+        hooks = [HookDefinition("artifact", "run")]
+
+        await executor.execute_hooks(
+            hooks, HookTiming.PRE_DECISION, "agent1", {}
+        )
+
+        assert len(callback_calls) == 1
+        agent_id, timing, hook, result, duration = callback_calls[0]
+        assert agent_id == "agent1"
+        assert timing == HookTiming.PRE_DECISION
+        assert hook.artifact_id == "artifact"
+        assert result.success is True
+        assert duration >= 0  # Duration should be non-negative
+
+    @pytest.mark.asyncio
+    async def test_completion_callback_on_failure(self):
+        """Test that completion callback is called even on hook failure."""
+        store = Mock()
+        store.get.return_value = None  # Artifact not found
+
+        callback_calls: list[tuple] = []
+
+        def on_complete(agent_id, timing, hook, result, duration_ms):
+            callback_calls.append((agent_id, timing, hook, result, duration_ms))
+
+        executor = HookExecutor(
+            artifact_store=store,
+            invoker=Mock(),
+            on_hook_complete=on_complete,
+        )
+        hooks = [HookDefinition("missing", "run", on_error=HookErrorPolicy.SKIP)]
+
+        await executor.execute_hooks(
+            hooks, HookTiming.POST_ACTION, "agent1", {}
+        )
+
+        assert len(callback_calls) == 1
+        _, _, _, result, _ = callback_calls[0]
+        assert result.success is False
+        assert "not found" in result.error
+
+    @pytest.mark.asyncio
+    async def test_callback_exception_does_not_break_execution(self):
+        """Test that callback exceptions don't break hook execution."""
+        artifact = Mock()
+        store = Mock()
+        store.get.return_value = artifact
+
+        mock_invoker = Mock()
+        mock_invoker.invoke_artifact.return_value = {
+            "success": True,
+            "data": "result",
+            "message": "OK",
+        }
+
+        def bad_callback(*args):
+            raise RuntimeError("Callback error")
+
+        executor = HookExecutor(
+            artifact_store=store,
+            invoker=mock_invoker,
+            on_hook_complete=bad_callback,
+        )
+        hooks = [HookDefinition("artifact", "run", inject_as="out")]
+
+        # Should not raise, should complete successfully
+        context, should_continue = await executor.execute_hooks(
+            hooks, HookTiming.PRE_DECISION, "agent1", {}
+        )
+
+        assert should_continue is True
+        assert context.get("out") == "result"

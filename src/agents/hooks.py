@@ -14,10 +14,11 @@ Agent is the caller - agent identity, agent pays.
 from __future__ import annotations
 
 import re
+import time
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Mapping, Protocol, TYPE_CHECKING
+from typing import Any, Callable, Mapping, Protocol, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..world.artifacts import ArtifactStore
@@ -196,6 +197,11 @@ class HookResult:
         )
 
 
+# Type alias for hook completion callback
+# Signature: (agent_id, timing, hook, result, duration_ms) -> None
+HookCompletionCallback = "Callable[[str, HookTiming, HookDefinition, HookResult, float], None]"
+
+
 class HookExecutor:
     """Executes hooks at workflow timing points.
 
@@ -205,6 +211,7 @@ class HookExecutor:
     - Result injection into context
     - Error handling per hook policy
     - Depth limit to prevent infinite loops
+    - Observability via optional completion callback (Plan #208 Phase 4)
     """
 
     # Pattern for {variable} interpolation
@@ -215,6 +222,9 @@ class HookExecutor:
         artifact_store: ArtifactStore,
         invoker: ArtifactInvoker,
         max_depth: int = 5,
+        on_hook_complete: Callable[
+            [str, HookTiming, HookDefinition, HookResult, float], None
+        ] | None = None,
     ):
         """Initialize hook executor.
 
@@ -222,11 +232,15 @@ class HookExecutor:
             artifact_store: Store for artifact lookup
             invoker: Object that can invoke artifacts (e.g., World)
             max_depth: Maximum hook recursion depth
+            on_hook_complete: Optional callback called after each hook executes.
+                Signature: (agent_id, timing, hook, result, duration_ms) -> None
+                Used for observability (Plan #208 Phase 4).
         """
         self.artifact_store = artifact_store
         self.invoker = invoker
         self.max_depth = max_depth
         self._current_depth = 0
+        self._on_hook_complete = on_hook_complete
 
     def interpolate_args(
         self,
@@ -354,7 +368,19 @@ class HookExecutor:
         for hook in hooks:
             retries = 0
             while True:
+                # Track execution time for observability
+                start_time = time.perf_counter()
                 result = await self.execute_hook(hook, caller_id, updated_context)
+                duration_ms = (time.perf_counter() - start_time) * 1000
+
+                # Call completion callback if registered (Plan #208 Phase 4)
+                if self._on_hook_complete:
+                    try:
+                        self._on_hook_complete(
+                            caller_id, timing, hook, result, duration_ms
+                        )
+                    except Exception as e:
+                        logger.warning(f"Hook completion callback failed: {e}")
 
                 if result.success:
                     # Inject result into context if configured
@@ -369,8 +395,10 @@ class HookExecutor:
                         else:
                             updated_context[result.inject_as] = result.result
 
-                    logger.debug(
-                        f"Hook {hook.artifact_id}.{hook.method} succeeded at {timing.value}"
+                    # INFO-level logging for successful hooks (Plan #208 Phase 4)
+                    logger.info(
+                        f"Hook {hook.artifact_id}.{hook.method} succeeded at {timing.value} "
+                        f"({duration_ms:.1f}ms)"
                     )
                     break  # Success, move to next hook
 
@@ -378,7 +406,7 @@ class HookExecutor:
                     # Hook failed
                     logger.warning(
                         f"Hook {hook.artifact_id}.{hook.method} failed at {timing.value}: "
-                        f"{result.error}"
+                        f"{result.error} ({duration_ms:.1f}ms)"
                     )
 
                     if hook.on_error == HookErrorPolicy.FAIL:
@@ -392,6 +420,10 @@ class HookExecutor:
                                 f"Hook {hook.artifact_id}.{hook.method} exceeded max retries"
                             )
                             break  # Give up, move to next hook
+                        logger.info(
+                            f"Hook {hook.artifact_id}.{hook.method} retrying "
+                            f"({retries}/{hook.max_retries})"
+                        )
                         # Loop continues for retry
 
                     else:  # SKIP
@@ -400,17 +432,35 @@ class HookExecutor:
         return updated_context, True
 
 
-def expand_subscribed_artifacts(subscribed: list[str]) -> HooksConfig:
+def expand_subscribed_artifacts(
+    subscribed: list[str],
+    warn_deprecated: bool = True,
+) -> HooksConfig:
     """Convert subscribed_artifacts to equivalent pre_decision hooks.
 
     Plan #191 unification: subscribed_artifacts is sugar for hooks.
+    Plan #208 Phase 3: This function implements the unification.
+
+    Note: subscribed_artifacts is now deprecated in favor of explicit hooks.
+    Use hooks.pre_decision with method="read_content" instead.
 
     Args:
         subscribed: List of artifact IDs to subscribe to
+        warn_deprecated: If True, emit deprecation warning (default True)
 
     Returns:
         HooksConfig with pre_decision hooks for each subscription
     """
+    if subscribed and warn_deprecated:
+        import warnings
+        warnings.warn(
+            "subscribed_artifacts is deprecated. Use hooks.pre_decision with "
+            "artifact_id and method='read_content' instead. "
+            "See Plan #208 for the new hooks system.",
+            DeprecationWarning,
+            stacklevel=3,  # Point to the caller's caller
+        )
+
     pre_decision_hooks = []
     for artifact_id in subscribed:
         pre_decision_hooks.append(HookDefinition(
