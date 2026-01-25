@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from ..config import get
 
-# Literal type for valid action types (narrow waist: 6 verbs + query + subscriptions)
+# Literal type for valid action types (narrow waist: 6 verbs + query + subscriptions + config)
 ActionType = Literal[
     "noop",
     "read_artifact",
@@ -16,6 +16,7 @@ ActionType = Literal[
     "query_kernel",  # Plan #184: Direct kernel state queries
     "subscribe_artifact",  # Plan #191: Subscribe to artifact for auto-injection
     "unsubscribe_artifact",  # Plan #191: Unsubscribe from artifact
+    "configure_context",  # Plan #192: Configure prompt context sections
 ]
 
 # Type alias for action validation result
@@ -25,7 +26,7 @@ ActionValidationResult = dict[str, Any] | str
 ACTION_SCHEMA: str = """
 You must respond with a single JSON object representing your action.
 
-## Available Actions (8 types)
+## Available Actions (9 types)
 
 1. read_artifact - Read artifact content
    {"action_type": "read_artifact", "artifact_id": "<id>"}
@@ -58,6 +59,12 @@ You must respond with a single JSON object representing your action.
 8. unsubscribe_artifact - Unsubscribe from artifact (Plan #191)
    {"action_type": "unsubscribe_artifact", "artifact_id": "<id>"}
    Removes the artifact from your subscribed list.
+
+9. configure_context - Configure prompt context sections (Plan #192)
+   {"action_type": "configure_context", "sections": {"<section>": true/false, ...}}
+   Enables/disables sections of your prompt context. Valid sections:
+   working_memory, rag_memories, action_history, failure_history, recent_events,
+   resource_metrics, mint_submissions, quota_info, metacognitive, subscribed_artifacts
 
    Query types:
    - artifacts: Find artifacts (params: owner, type, executable, name_pattern, limit, offset)
@@ -146,10 +153,10 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
         return "Response must be a JSON object"
 
     action_type: ActionType | str = data.get("action_type", "").lower()
-    if action_type not in ["noop", "read_artifact", "write_artifact", "edit_artifact", "delete_artifact", "invoke_artifact", "query_kernel", "subscribe_artifact", "unsubscribe_artifact"]:
+    if action_type not in ["noop", "read_artifact", "write_artifact", "edit_artifact", "delete_artifact", "invoke_artifact", "query_kernel", "subscribe_artifact", "unsubscribe_artifact", "configure_context"]:
         if action_type == "transfer":
             return "transfer is not a kernel action. Use: invoke_artifact('genesis_ledger', 'transfer', [from_id, to_id, amount])"
-        return f"Invalid action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel"
+        return f"Invalid action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel, configure_context"
 
     # Get validation limits from config
     max_artifact_id_length: int = get("validation.max_artifact_id_length") or 128
@@ -243,5 +250,23 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
         artifact_id = str(data.get("artifact_id", ""))
         if len(artifact_id) > max_artifact_id_length:
             return f"artifact_id exceeds max length ({max_artifact_id_length} chars)"
+
+    elif action_type == "configure_context":
+        # Plan #192: Configure prompt context sections
+        sections = data.get("sections")
+        if sections is None:
+            return "configure_context requires 'sections'"
+        if not isinstance(sections, dict):
+            return "configure_context 'sections' must be a dict"
+        valid_sections = [
+            "working_memory", "rag_memories", "action_history", "failure_history",
+            "recent_events", "resource_metrics", "mint_submissions", "quota_info",
+            "metacognitive", "subscribed_artifacts"
+        ]
+        for section, enabled in sections.items():
+            if section not in valid_sections:
+                return f"Unknown section '{section}'. Valid sections: {', '.join(valid_sections)}"
+            if not isinstance(enabled, bool):
+                return f"Section '{section}' value must be a boolean"
 
     return data

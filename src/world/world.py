@@ -28,6 +28,7 @@ from .actions import (
     NoopIntent, ReadArtifactIntent, WriteArtifactIntent,
     EditArtifactIntent, InvokeArtifactIntent, DeleteArtifactIntent,
     QueryKernelIntent, SubscribeArtifactIntent, UnsubscribeArtifactIntent,
+    ConfigureContextIntent,
 )
 from .kernel_queries import KernelQueryHandler
 # NOTE: TransferIntent removed - all transfers via genesis_ledger.transfer()
@@ -545,6 +546,9 @@ class World:
 
         elif isinstance(intent, UnsubscribeArtifactIntent):
             result = self._execute_unsubscribe(intent)
+
+        elif isinstance(intent, ConfigureContextIntent):
+            result = self._execute_configure_context(intent)
 
         else:
             result = ActionResult(success=False, message="Unknown action type")
@@ -1327,6 +1331,82 @@ class World:
             success=True,
             message=f"Unsubscribed from '{artifact_id}'. It will no longer be auto-injected.",
             data={"subscribed_artifacts": subscribed},
+        )
+
+    def _execute_configure_context(self, intent: ConfigureContextIntent) -> ActionResult:
+        """Execute a configure_context action (Plan #192).
+
+        Updates the agent's context_sections configuration to enable/disable
+        specific prompt sections.
+        """
+        agent_id = intent.principal_id
+        sections = intent.sections
+
+        # Validate sections - only known section names allowed
+        valid_sections = {
+            "working_memory", "rag_memories", "action_history",
+            "failure_history", "recent_events", "resource_metrics",
+            "mint_submissions", "quota_info", "metacognitive",
+            "subscribed_artifacts",
+        }
+        invalid_sections = set(sections.keys()) - valid_sections
+        if invalid_sections:
+            return ActionResult(
+                success=False,
+                message=f"Unknown sections: {', '.join(invalid_sections)}. Valid sections: {', '.join(sorted(valid_sections))}",
+                error_code=ErrorCode.INVALID_ARGS.value,
+                error_category=ErrorCategory.VALIDATION.value,
+                retriable=True,
+            )
+
+        # Check if agent artifact exists
+        agent_artifact = self.artifacts.get(agent_id)
+        if agent_artifact is None:
+            return ActionResult(
+                success=False,
+                message=f"Agent artifact '{agent_id}' not found",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
+
+        # Parse current agent config
+        try:
+            config = json.loads(agent_artifact.content) if agent_artifact.content else {}
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+
+        # Get or initialize context_sections
+        current_sections: dict[str, bool] = config.get("context_sections", {})
+        if not isinstance(current_sections, dict):
+            current_sections = {}
+
+        # Merge new settings
+        for section, enabled in sections.items():
+            if isinstance(enabled, bool):
+                current_sections[section] = enabled
+
+        config["context_sections"] = current_sections
+
+        # Update agent artifact content by rewriting with same metadata
+        new_content = json.dumps(config, indent=2)
+        self.artifacts.write(
+            artifact_id=agent_id,
+            type=agent_artifact.artifact_type,
+            content=new_content,
+            created_by=agent_artifact.created_by,
+            executable=agent_artifact.executable,
+            price=agent_artifact.price,
+            code=agent_artifact.code,
+            interface=agent_artifact.interface,
+            access_contract_id=agent_artifact.access_contract_id,
+            metadata=agent_artifact.metadata,
+        )
+
+        return ActionResult(
+            success=True,
+            message=f"Updated context sections configuration",
+            data={"context_sections": current_sections},
         )
 
     def _log_invoke_success(
