@@ -1,6 +1,6 @@
 # Plan #161: Agent Error Learning
 
-**Status:** In Progress
+**Status:** Complete
 **Priority:** High
 **Goal:** Help agents learn from errors by improving discoverability and error messages
 
@@ -66,10 +66,10 @@ Add section on discovering artifact interfaces before invoking.
 
 ## Success Criteria
 
-- [ ] Agents can call `any_artifact.describe()` to get interface
-- [ ] Wrong attribute access shows suggestion with correct name
-- [ ] Method-not-found error explains how to discover methods
-- [ ] Handbook explains interface discovery pattern
+- [x] Agents can call `any_artifact.describe()` to get interface
+- [x] Wrong attribute access shows suggestion with correct name
+- [x] Method-not-found error explains how to discover methods
+- [x] Handbook explains interface discovery pattern
 
 ---
 
@@ -82,3 +82,13 @@ Add section on discovering artifact interfaces before invoking.
 - `tests/unit/test_error_learning.py` (create) - Tests for improved error messages
 
 ---
+
+## Verification Evidence
+
+- PR #641 merged: https://github.com/BrianMills2718/agent_ecology2/pull/641
+- Tests: `tests/unit/test_error_learning.py` (6 tests pass)
+- Implementation locations:
+  - `describe()` method in `src/world/world.py:868-895`
+  - `__getattr__` in `src/world/artifacts.py:270-297`
+  - Handbook section in `src/agents/_handbook/actions.md:91-107`
+  - Error message in `src/world/world.py:70`
