@@ -10,8 +10,10 @@ litellm>=1.0.0
 google-genai>=1.0.0
 
 # Memory
-mem0ai>=0.1.0
-qdrant-client>=1.7.0
+# NOTE: mem0ai and qdrant-client removed in Plan #146
+# Use genesis_memory artifact for semantic search instead
+# mem0ai>=0.1.0  # DEPRECATED: Use genesis_memory
+# qdrant-client>=1.7.0  # DEPRECATED: Use genesis_memory
 
 # Templates
 jinja2>=3.0.0
