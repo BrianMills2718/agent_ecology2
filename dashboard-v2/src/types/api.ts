@@ -141,8 +141,8 @@ export interface NetworkNode {
 }
 
 export interface NetworkEdge {
-  from: string
-  to: string
+  from_id: string
+  to_id: string
   interaction_type: string
   tick: number
   weight: number
