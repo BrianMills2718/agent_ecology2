@@ -458,7 +458,7 @@ def cleanup_old_completed(data: dict[str, Any], hours: int = 24) -> int:
 
     Returns number of entries removed.
     """
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     threshold = timedelta(hours=hours)
 
     completed = data.get("completed", [])
@@ -1012,7 +1012,7 @@ def is_claim_stale(
     if last_modified is None:
         return True, "Could not determine worktree activity"
 
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     hours_since = (now - last_modified).total_seconds() / 3600
 
     if hours_since > max_hours:

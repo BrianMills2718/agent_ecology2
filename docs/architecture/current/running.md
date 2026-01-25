@@ -2,7 +2,7 @@
 
 Practical guide to running and observing agent ecology simulations.
 
-**Last verified:** 2026-01-12
+**Last verified:** 2026-01-25
 
 ---
 
@@ -16,8 +16,8 @@ pip install -e .
 cp .env.example .env
 # Edit .env with your GEMINI_API_KEY
 
-# Run simulation
-python run.py --ticks 10 --agents 1
+# Run simulation (60 seconds)
+python run.py --duration 60 --agents 2
 ```
 
 ---
@@ -27,47 +27,20 @@ python run.py --ticks 10 --agents 1
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--config PATH` | Config file path | `config/config.yaml` |
-| `--ticks N` | Override max ticks | From config (`world.max_ticks`) |
 | `--agents N` | Limit to first N agents | All agents in `agents/` |
-| `--delay SECONDS` | Delay between ticks | From config (`llm.rate_limit_delay`) |
 | `--quiet` | Suppress progress output | Off |
 | `--dashboard` | Run with HTML dashboard | Off |
 | `--dashboard-only` | View existing logs (no simulation) | Off |
 | `--no-browser` | Don't auto-open browser | Off |
 | `--resume [FILE]` | Resume from checkpoint | `checkpoint.json` |
-| `--duration SECONDS` | Autonomous mode for N seconds | Off |
-| `--autonomous` | Enable autonomous mode | Off |
+| `--duration SECONDS` | Run for N seconds | Required (or use --autonomous) |
+| `--autonomous` | Run until manually stopped | Off |
+
+> **Note:** Legacy tick-based mode (`--ticks N`) was removed in Plan #102. Use `--duration` or `--autonomous` instead.
 
 ---
 
-## Execution Modes
-
-### Tick-Based Mode (Default)
-
-All agents think in parallel, then execute sequentially in randomized order.
-
-```bash
-python run.py --ticks 20
-```
-
-Output:
-```
-=== Agent Ecology Simulation ===
-Max ticks: 20
-Agents: ['agent_1', 'agent_2']
-...
-
---- Tick 1 ---
-  [PHASE 1] 2 agents thinking in parallel...
-    agent_1: 150 in, 80 out -> 4 compute ($0.0003, total: $0.0003)
-    agent_2: 145 in, 75 out -> 4 compute ($0.0003, total: $0.0006)
-  [PHASE 2] Executing 2 proposals in randomized order...
-    agent_2: SUCCESS: Read artifact handbook_genesis
-    agent_1: SUCCESS: Wrote artifact my_first_tool
-  End of tick. Scrip: {'agent_1': 100, 'agent_2': 100}
-```
-
-### Autonomous Mode
+## Execution Model
 
 Agents run continuously in independent loops, resource-gated by RateTracker.
 
@@ -79,7 +52,7 @@ python run.py --duration 60
 python run.py --autonomous
 ```
 
-Autonomous mode enables:
+This model enables:
 - Independent agent loops (agents don't wait for each other)
 - Rolling window rate limiting instead of per-tick reset
 - Resource exhaustion pauses agent, doesn't crash
@@ -99,7 +72,7 @@ python run.py --dashboard-only
 ```
 
 Dashboard shows:
-- Current tick and agent states
+- Current simulation state and agent activity
 - Scrip balances
 - Recent events
 - Artifact list
@@ -133,7 +106,6 @@ python scripts/view_log.py run.jsonl --artifacts
 
 | Event Type | Description |
 |------------|-------------|
-| `tick` | Tick started |
 | `thinking` | Agent completed thinking phase |
 | `thinking_failed` | Agent ran out of compute |
 | `action_result` | Action executed |
@@ -147,12 +119,12 @@ python scripts/view_log.py run.jsonl --artifacts
 
 ### Automatic Checkpoints
 
-Checkpoints save every N ticks (configurable via `budget.checkpoint_interval`).
+Checkpoints save at regular intervals (configurable via `budget.checkpoint_interval`).
 
 ```yaml
 # config/config.yaml
 budget:
-  checkpoint_interval: 10  # Every 10 ticks (0 = disable)
+  checkpoint_interval: 60  # Every 60 seconds (0 = disable)
   checkpoint_on_end: true  # Save on normal completion
 ```
 
@@ -160,14 +132,14 @@ budget:
 
 ```bash
 # Resume from default checkpoint
-python run.py --resume
+python run.py --resume --duration 60
 
 # Resume from specific file
-python run.py --resume my_checkpoint.json
+python run.py --resume my_checkpoint.json --duration 60
 ```
 
 Checkpoint contains:
-- Current tick
+- Current event number (sequence)
 - All agent balances (scrip and compute)
 - All artifacts
 - Cumulative API cost
@@ -197,12 +169,12 @@ python run.py --resume
 
 ### Estimating Costs
 
-Rough estimates per tick with 2 agents:
+Rough estimates per agent decision:
 - Input: ~300 tokens ($0.0001)
 - Output: ~150 tokens ($0.0002)
-- **Total: ~$0.0003/tick**
+- **Total: ~$0.0003/decision**
 
-With default 100 ticks and 2 agents: ~$0.03
+A typical 60-second run with 2 agents makes ~20-40 decisions: ~$0.01-0.02
 
 ---
 
@@ -211,11 +183,7 @@ With default 100 ticks and 2 agents: ~$0.03
 Key settings in `config/config.yaml`:
 
 ```yaml
-world:
-  max_ticks: 100          # Max simulation length
-
 llm:
-  rate_limit_delay: 5     # Seconds between ticks
   default_model: "gemini/gemini-3-flash-preview"
 
 budget:
@@ -233,10 +201,9 @@ See `config/schema.yaml` for full documentation.
 
 ### "Rate limit exceeded"
 
-LLM API rate limiting. Increase delay:
-```bash
-python run.py --delay 15
-```
+LLM API rate limiting. The RateTracker automatically handles backoff. If persistent:
+- Reduce number of agents with `--agents N`
+- Wait a few minutes for rate limit window to reset
 
 ### "BUDGET EXHAUSTED"
 
