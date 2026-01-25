@@ -133,8 +133,18 @@ def is_branch_merged(branch: str) -> bool:
     """Check if a branch has been merged to main.
 
     Plan #206: Smart ownership detection - allow cleanup when PR is merged.
+
+    Uses two checks:
+    1. If remote branch exists and is in merged list (git branch -r --merged)
+    2. If a PR for this branch was merged (gh pr list --state merged)
+
+    Note: We don't use git merge-base --is-ancestor because it causes false
+    positives for new branches created from main (they're technically ancestors).
     """
+    import json
+
     try:
+        # Check 1: Remote branch exists and is in merged list
         result = subprocess.run(
             ["git", "branch", "-r", "--merged", "origin/main"],
             capture_output=True,
@@ -146,6 +156,25 @@ def is_branch_merged(branch: str) -> bool:
             line = line.strip()
             if line.endswith(f"/{branch}") or line == f"origin/{branch}":
                 return True
+
+        # Check 2: PR for this branch was merged (handles squash-merged PRs)
+        # This is the most reliable check for our workflow
+        result = subprocess.run(
+            ["gh", "pr", "list", "--state", "merged", "--limit", "100",
+             "--json", "headRefName"],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "GIT_CONFIG_NOSYSTEM": "1"},
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            try:
+                prs = json.loads(result.stdout)
+                for pr in prs:
+                    if pr.get("headRefName") == branch:
+                        return True
+            except json.JSONDecodeError:
+                pass
+
         return False
     except subprocess.CalledProcessError:
         return False
