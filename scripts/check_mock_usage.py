@@ -44,10 +44,15 @@ def find_mock_usage(test_dir: Path) -> dict[str, list[tuple[int, str]]]:
     """Find all mock usage in test files.
 
     Returns dict mapping file path to list of (line_number, line_content).
+    Searches recursively in all subdirectories (unit/, integration/, e2e/).
     """
     results: dict[str, list[tuple[int, str]]] = {}
 
-    for test_file in test_dir.glob("test_*.py"):
+    # Search recursively for test files and conftest.py
+    test_files = list(test_dir.glob("**/test_*.py"))
+    test_files.extend(test_dir.glob("**/conftest.py"))
+
+    for test_file in test_files:
         content = test_file.read_text()
         lines = content.split("\n")
 

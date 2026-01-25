@@ -67,11 +67,10 @@ class TestExtractPlanNumbers:
 class TestGetOpenPRs:
     """Tests for querying GitHub for open PRs with same plan number."""
 
-    # mock-ok: GitHub API calls must be mocked in unit tests
     @patch("scripts.check_plan_exclusivity.subprocess.run")
     def test_finds_prs_with_matching_plan(self, mock_run):
         """Finds other open PRs using the same plan number."""
-        mock_run.return_value = MagicMock(
+        mock_run.return_value = MagicMock(  # mock-ok: subprocess - gh CLI calls
             returncode=0,
             stdout=json.dumps([
                 {"number": 255, "title": "[Plan #70] Some feature", "headRefName": "plan-70-feature"},
@@ -83,11 +82,10 @@ class TestGetOpenPRs:
         assert len(result) == 1
         assert result[0]["number"] == 255
 
-    # mock-ok: GitHub API calls must be mocked in unit tests
     @patch("scripts.check_plan_exclusivity.subprocess.run")
     def test_excludes_current_pr(self, mock_run):
         """Doesn't count the current PR as a conflict."""
-        mock_run.return_value = MagicMock(
+        mock_run.return_value = MagicMock(  # mock-ok: subprocess - gh CLI calls
             returncode=0,
             stdout=json.dumps([
                 {"number": 260, "title": "[Plan #72] Current PR", "headRefName": "plan-72-current"},
@@ -97,12 +95,11 @@ class TestGetOpenPRs:
         result = get_open_prs_with_plan_number(72, exclude_pr=260)
         assert len(result) == 0
 
-    # mock-ok: GitHub API calls must be mocked in unit tests  
     @patch("scripts.check_plan_exclusivity.subprocess.run")
     def test_ignores_closed_prs(self, mock_run):
         """Only open PRs are considered - gh pr list already filters."""
         # gh pr list only returns open PRs by default
-        mock_run.return_value = MagicMock(
+        mock_run.return_value = MagicMock(  # mock-ok: subprocess - gh CLI calls
             returncode=0,
             stdout=json.dumps([])  # No open PRs
         )
