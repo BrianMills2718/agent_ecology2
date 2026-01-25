@@ -32,8 +32,18 @@ if echo "$COMMAND" | grep -qE 'git\s+worktree\s+add'; then
     fi
 
     # Check if this branch has an existing claim
-    # Always check main repo's claims file (not worktree's stale copy)
+    # Plan #176: With atomic claims, claims live in worktree/.claim.yaml
+    # This legacy check is for migration period only
     MAIN_DIR=$(git worktree list | head -1 | awk '{print $1}')
+
+    # Check if worktree path already exists with atomic claim
+    WORKTREE_PATH=$(echo "$COMMAND" | grep -oE 'worktrees/[^ ]+' | head -1)
+    if [[ -n "$WORKTREE_PATH" && -f "$MAIN_DIR/$WORKTREE_PATH/.claim.yaml" ]]; then
+        # Atomic claim exists in target worktree, allow recreation
+        exit 0
+    fi
+
+    # Backwards compat: check central YAML for legacy claims
     CLAIMS_FILE="$MAIN_DIR/.claude/active-work.yaml"
     HAS_CLAIM=false
     if [[ -n "$BRANCH" && -f "$CLAIMS_FILE" ]]; then
@@ -43,7 +53,7 @@ if echo "$COMMAND" | grep -qE 'git\s+worktree\s+add'; then
     fi
 
     if [[ "$HAS_CLAIM" == "true" ]]; then
-        # Claim exists, allow the worktree creation
+        # Legacy claim exists, allow the worktree creation
         exit 0
     else
         echo "BLOCKED: Direct 'git worktree add' is not allowed" >&2

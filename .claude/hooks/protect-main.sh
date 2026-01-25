@@ -48,12 +48,21 @@ MAIN_REPO_ROOT=$(git worktree list | head -1 | awk '{print $1}')
 # Pattern: */worktrees/<worktree-name>/*
 if [[ "$FILE_PATH" =~ /worktrees/([^/]+)/ ]]; then
     WORKTREE_NAME="${BASH_REMATCH[1]}"
-    CLAIMS_FILE="$MAIN_REPO_ROOT/.claude/active-work.yaml"
 
+    # Plan #176: Check atomic claim file first (worktree/.claim.yaml)
+    # This is the new primary source of truth for claims
+    WORKTREE_DIR=$(echo "$FILE_PATH" | sed "s|/worktrees/$WORKTREE_NAME/.*|/worktrees/$WORKTREE_NAME|")
+    ATOMIC_CLAIM="$WORKTREE_DIR/.claim.yaml"
+    if [[ -f "$ATOMIC_CLAIM" ]]; then
+        exit 0  # Atomic claim exists, allow write
+    fi
+
+    # Backwards compat: also check central YAML (for migration period)
+    CLAIMS_FILE="$MAIN_REPO_ROOT/.claude/active-work.yaml"
     if [[ -f "$CLAIMS_FILE" ]]; then
         # Look for cc_id matching the worktree name
         if grep -q "cc_id: $WORKTREE_NAME" "$CLAIMS_FILE" 2>/dev/null; then
-            exit 0  # Worktree has a claim, allow write
+            exit 0  # Legacy claim exists, allow write
         fi
     fi
 
@@ -76,7 +85,13 @@ if [[ -f "$MAIN_DIR/.git" ]]; then
         exit 0  # Detached HEAD, allow (edge case)
     fi
 
-    # Check if this branch has a claim
+    # Plan #176: Check atomic claim file first (worktree/.claim.yaml)
+    ATOMIC_CLAIM="$MAIN_DIR/.claim.yaml"
+    if [[ -f "$ATOMIC_CLAIM" ]]; then
+        exit 0  # Atomic claim exists, allow edit
+    fi
+
+    # Backwards compat: also check central YAML (for migration period)
     CLAIMS_FILE="$MAIN_REPO_ROOT/.claude/active-work.yaml"
     HAS_CLAIM=false
 
@@ -88,14 +103,14 @@ if [[ -f "$MAIN_DIR/.git" ]]; then
     fi
 
     if [[ "$HAS_CLAIM" == "true" ]]; then
-        exit 0  # Has claim, allow edit
+        exit 0  # Legacy claim exists, allow edit
     else
         echo "BLOCKED: Worktree has no active claim" >&2
         echo "" >&2
-        echo "Branch '$BRANCH' has no claim in .claude/active-work.yaml" >&2
+        echo "Branch '$BRANCH' has no claim file (.claim.yaml)" >&2
         echo "" >&2
         echo "Create a claim first:" >&2
-        echo "  python scripts/check_claims.py --claim --task 'description' --id $BRANCH" >&2
+        echo "  python scripts/check_claims.py --write-claim-file . --task 'description' --id $BRANCH" >&2
         echo "" >&2
         echo "Or if this is abandoned work, remove the worktree:" >&2
         echo "  make worktree-remove BRANCH=$BRANCH" >&2

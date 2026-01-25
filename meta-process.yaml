@@ -1,0 +1,45 @@
+# Meta-Process Configuration
+# ==========================
+#
+# Controls enforcement strictness for meta-process checks.
+# Edit with care - reducing strictness allows drift to accumulate.
+#
+# WARNING: Before downgrading any setting, understand what it enforces.
+# Downgrading strictness means problems can slip through CI silently.
+
+enforcement:
+  # ---------------------------------------------------------------------------
+  # Plan Index Auto-Add
+  # ---------------------------------------------------------------------------
+  # When enabled, `sync_plan_status.py --sync` will automatically add new
+  # plan files to docs/plans/CLAUDE.md index table.
+  #
+  # Default: true
+  # Risk of disabling: New plans become invisible in the index, causing
+  #                    coordination failures when multiple CCs work on plans.
+  plan_index_auto_add: true
+
+  # ---------------------------------------------------------------------------
+  # Strict Doc-Code Coupling
+  # ---------------------------------------------------------------------------
+  # When enabled, ALL doc-code couplings fail CI on violation (including those
+  # marked `soft: true` in doc_coupling.yaml).
+  #
+  # When disabled, couplings with `soft: true` produce warnings instead of
+  # failures. A warning is shown on every CI run reminding that strictness
+  # is reduced.
+  #
+  # Default: true
+  # Risk of disabling: Doc drift accumulates silently. Over time, docs and
+  #                    code diverge, making the codebase harder to understand.
+  strict_doc_coupling: true
+
+  # ---------------------------------------------------------------------------
+  # Strictness Warning
+  # ---------------------------------------------------------------------------
+  # When strict_doc_coupling is false, this controls whether a prominent
+  # warning is shown on every doc-coupling check.
+  #
+  # Default: true (always show warning when running in non-strict mode)
+  # Risk of disabling: You forget strictness is reduced; drift goes unnoticed.
+  show_strictness_warning: true
