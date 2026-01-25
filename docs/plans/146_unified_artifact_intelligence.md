@@ -4,6 +4,7 @@
 **Priority:** High
 **Blocked By:** None (Plan #143 Reflex complete, builds on that pattern)
 **Blocks:** Agent self-optimization, prompt marketplace, memory trading
+**Extended By:** Plan #208 (Workflow Hooks) - general auto-invocation system with timing hooks
 
 ## Problem Statement
 
