@@ -568,7 +568,7 @@ dashboard:
   debounce_delay_ms: 100        # File watcher debounce delay
   poll_interval: 0.5            # Polling interval seconds
   use_polling: false            # Use polling instead of watchdog (enable for WSL compatibility)
-  version: "v1"                 # "v1" = vanilla JS, "v2" = React
+  version: "v2"                 # "v1" = vanilla JS, "v2" = React
 
 # -----------------------------------------------------------------------------
 # ID GENERATION
