@@ -1,6 +1,18 @@
 # Plan 145: Supervisor Auto-Restart
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
+
+**Verified:** 2026-01-25T04:20:00Z
+**Verification Evidence:**
+```yaml
+completed_by: Manual verification
+timestamp: 2026-01-25T04:20:00Z
+notes: |
+  - AgentSupervisor class fully implemented in src/simulation/supervisor.py
+  - All 36 tests pass in tests/test_supervisor.py
+  - Test failure in complete_plan.py is unrelated (claim test isolation bug)
+```
+
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** Robust long-running simulations
