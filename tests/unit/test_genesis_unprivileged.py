@@ -149,6 +149,10 @@ class TestGenesisUnprivileged:
 
         Plan #111: When _world is set, purchase and cancel should use
         KernelActions instead of direct ledger/artifact_store access.
+
+        Plan #213: Escrow now uses update_artifact_metadata() instead of
+        transfer_ownership() to set authorized_writer, keeping created_by
+        immutable per ADR-0016.
         """
         source_file = Path("src/world/genesis/escrow.py")
         with open(source_file) as f:
@@ -158,8 +162,9 @@ class TestGenesisUnprivileged:
         assert "if self._world is not None:" in source, (
             "genesis_escrow should check _world before privileged operations"
         )
-        assert "kernel_actions.transfer_ownership" in source, (
-            "genesis_escrow should use KernelActions.transfer_ownership()"
+        # Plan #213: Changed from transfer_ownership to update_artifact_metadata
+        assert "kernel_actions.update_artifact_metadata" in source, (
+            "genesis_escrow should use KernelActions.update_artifact_metadata()"
         )
         assert "kernel_actions.transfer_scrip" in source, (
             "genesis_escrow should use KernelActions.transfer_scrip()"
