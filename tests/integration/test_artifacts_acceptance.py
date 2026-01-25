@@ -176,9 +176,16 @@ def run(a, b):
         assert check_permission("charlie", "write", artifact) is False
         assert check_permission("alice", "write", artifact) is True
 
-    # AC-7: Ownership transfer updates all permissions (edge_case)
+    # AC-7: Ownership transfer and ADR-0016 (edge_case)
     def test_ac_7_ownership_transfer(self) -> None:
-        """AC-7: Ownership transfer updates created_by."""
+        """AC-7: Test transfer_ownership behavior under ADR-0016.
+
+        Per ADR-0016:
+        - created_by is immutable (historical fact of who created it)
+        - "Ownership" is not a kernel concept - contracts decide access
+        - transfer_ownership() sets metadata["controller"] but this does NOT
+          affect access under freeware, which checks created_by
+        """
         store = ArtifactStore()
         artifact = store.write(
             artifact_id="transferable",
@@ -201,12 +208,13 @@ def run(a, b):
 
         # Per ADR-0016: created_by is immutable, stays alice
         assert artifact.created_by == "alice"
-        # Controller is now bob (stored in metadata)
+        # transfer_ownership sets metadata["controller"]
         assert artifact.metadata.get("controller") == "bob"
-        # After transfer, bob is now controller and can write
-        assert check_permission("bob", "write", artifact) is True
-        # Alice is no longer controller, so cannot write via freeware contract
-        assert check_permission("alice", "write", artifact) is False
+        # BUT freeware checks created_by, NOT controller
+        # So alice (the creator) can still write
+        assert check_permission("alice", "write", artifact) is True
+        # And bob cannot write under freeware (he's not the creator)
+        assert check_permission("bob", "write", artifact) is False
         # Policy is preserved
         assert artifact.policy.get("allow_read") == ["charlie"]
 

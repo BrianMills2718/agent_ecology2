@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-25 (Plan #181 - Added invoke_handler.py module)
+**Last verified:** 2026-01-25 (Plan #210 - ADR-0016: created_by is immutable, contracts check creator)
 
 ---
 
@@ -26,7 +26,7 @@ class Artifact:
     id: str              # Unique identifier
     type: str            # Artifact type (e.g., "generic", "code")
     content: str         # Main content
-    owner_id: str        # Principal who owns this
+    created_by: str      # Principal who created this (immutable per ADR-0016)
     created_at: str      # ISO timestamp
     updated_at: str      # ISO timestamp
     executable: bool     # Can be invoked?
@@ -290,14 +290,27 @@ Contract references will enable DAOs, conditional access, and contracts governin
 
 ## Access Checks
 
+Per ADR-0016 and Plan #210: "Ownership" is not a kernel concept. Contracts decide access.
+Standard genesis contracts (freeware, self_owned, private) check `target_created_by`.
+
+**Contract-Based Permission Checks (default)**
+
+Permission checks go through the artifact's `access_contract_id` contract:
+- Freeware (default): Creator can write, anyone can read/invoke
+- Self-owned: Creator or self can access
+- Private: Only creator can access
+- Public: Anyone can do anything
+
+**Legacy Static Policy Checks (deprecated)**
+
 **`Artifact.can_read(agent_id)`** method in `src/world/artifacts.py`
-- Owner always has access
+- Creator always has access
 - `"*"` grants everyone access
 - Specific agent_id must be in list
 - `@contract` raises NotImplementedError
 
 **`Artifact.can_write(agent_id)`** method in `src/world/artifacts.py`
-- Owner ALWAYS has write access (bypasses policy)
+- Creator ALWAYS has write access (bypasses policy)
 - Others need explicit listing
 - `@contract` raises NotImplementedError
 
@@ -319,12 +332,12 @@ In-memory storage for all artifacts.
 | `exists(artifact_id)` | Check if artifact exists |
 | `get(artifact_id)` | Get artifact or None |
 | `write(...)` | Create or update artifact |
-| `get_owner(artifact_id)` | Get owner ID |
+| `get_creator(artifact_id)` | Get creator ID (immutable, per ADR-0016) |
 | `list_all(include_deleted=False)` | List artifacts (excludes deleted by default) |
 | `list_by_owner(owner_id)` | List artifacts by owner |
 | `get_artifact_size(artifact_id)` | Size in bytes (content + code) |
 | `get_owner_usage(owner_id)` | Total disk usage for owner |
-| `transfer_ownership(artifact_id, from_id, to_id)` | Transfer ownership |
+| `transfer_ownership(artifact_id, from_id, to_id)` | Set metadata["controller"] (doesn't affect access under freeware) |
 
 ---
 

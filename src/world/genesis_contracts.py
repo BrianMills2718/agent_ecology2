@@ -66,26 +66,25 @@ class FreewareContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'target_controller' key for write/edit/delete checks
-                     (per ADR-0016, uses controller not creator for modification rights)
+            context: Must contain 'target_created_by' key for write/edit/delete checks
 
         Returns:
             PermissionResult with decision
         """
-        # Per ADR-0016 (Plan #210): Use target_controller for modification rights
-        # This is the current controller (may differ from creator after ownership transfer)
-        controller = context.get("target_controller") if context else None
+        # Per ADR-0016: created_by is immutable and represents the original creator
+        # Freeware allows the creator to modify their artifacts
+        created_by = context.get("target_created_by") if context else None
 
         # Open access actions - anyone can perform these
         if action in (PermissionAction.READ, PermissionAction.INVOKE):
             return PermissionResult(allowed=True, reason="freeware: open access")
 
-        # Controller-only actions (the current controller, not necessarily the creator)
+        # Creator-only actions
         if action in (PermissionAction.WRITE, PermissionAction.EDIT, PermissionAction.DELETE):
-            if caller == controller:
-                return PermissionResult(allowed=True, reason="freeware: controller access")
+            if caller == created_by:
+                return PermissionResult(allowed=True, reason="freeware: creator access")
             return PermissionResult(
-                allowed=False, reason="freeware: only controller can modify"
+                allowed=False, reason="freeware: only creator can modify"
             )
 
         # Unknown action - fail closed
@@ -125,21 +124,21 @@ class SelfOwnedContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'target_controller' key (per ADR-0016)
+            context: Must contain 'target_created_by' key
 
         Returns:
             PermissionResult with decision
         """
-        # Per ADR-0016: Use controller (not creator) for access rights
-        controller = context.get("target_controller") if context else None
+        # Per ADR-0016: created_by is immutable and represents the original creator
+        created_by = context.get("target_created_by") if context else None
 
         # Self-access: artifact accessing itself
         if caller == target:
             return PermissionResult(allowed=True, reason="self_owned: self access")
 
-        # Controller access
-        if caller == controller:
-            return PermissionResult(allowed=True, reason="self_owned: controller access")
+        # Creator access
+        if caller == created_by:
+            return PermissionResult(allowed=True, reason="self_owned: creator access")
 
         # All others denied
         return PermissionResult(allowed=False, reason="self_owned: access denied")
@@ -177,17 +176,17 @@ class PrivateContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'target_controller' key (per ADR-0016)
+            context: Must contain 'target_created_by' key
 
         Returns:
             PermissionResult with decision
         """
-        # Per ADR-0016: Use controller (not creator) for access rights
-        controller = context.get("target_controller") if context else None
+        # Per ADR-0016: created_by is immutable and represents the original creator
+        created_by = context.get("target_created_by") if context else None
 
-        # Only controller has access
-        if caller == controller:
-            return PermissionResult(allowed=True, reason="private: controller access")
+        # Only creator has access
+        if caller == created_by:
+            return PermissionResult(allowed=True, reason="private: creator access")
 
         # All others denied (including the artifact itself)
         return PermissionResult(allowed=False, reason="private: access denied")

@@ -34,7 +34,7 @@ class TestArtifactStoreOwnershipTransfer:
         # created_by stays the same (immutable historical fact)
         assert store.get_creator("artifact_1") == "alice"
         # controller is now bob
-        assert store.get_controller("artifact_1") == "bob"
+        assert store.get("artifact_1").metadata.get("controller", store.get("artifact_1").created_by) == "bob"
 
     def test_transfer_ownership_nonexistent_artifact(self) -> None:
         """Cannot transfer non-existent artifact."""
@@ -56,7 +56,7 @@ class TestArtifactStoreOwnershipTransfer:
         result = store.transfer_ownership("artifact_1", "bob", "charlie")
 
         assert result is False
-        assert store.get_controller("artifact_1") == "alice"
+        assert store.get("artifact_1").metadata.get("controller", store.get("artifact_1").created_by) == "alice"
 
     def test_transfer_ownership_preserves_content(self) -> None:
         """Transfer preserves artifact content and properties.
@@ -97,7 +97,7 @@ class TestArtifactStoreOwnershipTransfer:
         result = store.transfer_ownership("artifact_1", "alice", "alice")
 
         assert result is True
-        assert store.get_controller("artifact_1") == "alice"
+        assert store.get("artifact_1").metadata.get("controller", store.get("artifact_1").created_by) == "alice"
 
 
 class TestGenesisLedgerOwnershipTransfer:
@@ -126,7 +126,7 @@ class TestGenesisLedgerOwnershipTransfer:
         # created_by stays alice (immutable)
         assert store.get_creator("my_artifact") == "alice"
         # controller is now bob
-        assert store.get_controller("my_artifact") == "bob"
+        assert store.get("my_artifact").metadata.get("controller", store.get("my_artifact").created_by) == "bob"
 
     def test_transfer_ownership_not_owner(self) -> None:
         """Cannot transfer artifact you don't control."""
@@ -142,7 +142,7 @@ class TestGenesisLedgerOwnershipTransfer:
 
         assert result["success"] is False
         assert "not the controller" in result["error"]
-        assert store.get_controller("my_artifact") == "alice"
+        assert store.get("my_artifact").metadata.get("controller", store.get("my_artifact").created_by) == "alice"
 
     def test_transfer_ownership_nonexistent(self) -> None:
         """Cannot transfer non-existent artifact."""
@@ -201,12 +201,20 @@ class TestGenesisLedgerOwnershipTransfer:
 class TestOwnershipTransferEdgeCases:
     """Edge cases for ownership transfer.
 
-    Per ADR-0016: created_by is immutable, controller is tracked in metadata.
-    Permission checks use target_controller, not target_created_by.
+    Per ADR-0016:
+    - created_by is immutable (historical fact)
+    - transfer_ownership() sets metadata["controller"]
+    - BUT freeware contract checks created_by, not controller
+    - So transfer doesn't change access under freeware
     """
 
-    def test_transfer_then_original_owner_cannot_write(self) -> None:
-        """After transfer, original creator loses write access."""
+    def test_transfer_does_not_affect_freeware_access(self) -> None:
+        """Under freeware, transfer doesn't change write access (ADR-0016).
+
+        Freeware checks created_by, not metadata["controller"]. So the
+        original creator can still write, and the "transferred to" principal
+        cannot write (unless a different contract is used).
+        """
         store = ArtifactStore()
         store.write("artifact_1", "generic", "content", "alice")
 
@@ -214,23 +222,24 @@ class TestOwnershipTransferEdgeCases:
 
         artifact = store.get("artifact_1")
         assert artifact is not None
-        # Alice should no longer have write access (via freeware contract, only controller can write)
-        assert check_permission("alice", "write", artifact) is False
-        # Bob should have write access (now the controller)
-        assert check_permission("bob", "write", artifact) is True
+        # Freeware checks created_by - alice is the creator, so she CAN write
+        assert check_permission("alice", "write", artifact) is True
+        # Bob is NOT the creator, so he CANNOT write under freeware
+        assert check_permission("bob", "write", artifact) is False
 
-    def test_new_owner_can_write(self) -> None:
-        """New controller can modify artifact after transfer."""
+    def test_transfer_sets_metadata_controller(self) -> None:
+        """transfer_ownership() sets metadata["controller"] (for custom contracts)."""
         store = ArtifactStore()
         store.write("artifact_1", "generic", "original content", "alice")
 
         store.transfer_ownership("artifact_1", "alice", "bob")
 
-        # Bob updates the artifact
         artifact = store.get("artifact_1")
         assert artifact is not None
-        # Via freeware contract, controller can write
-        assert check_permission("bob", "write", artifact) is True
+        # metadata["controller"] is set
+        assert artifact.metadata.get("controller") == "bob"
+        # created_by is unchanged
+        assert artifact.created_by == "alice"
 
     def test_transfer_executable_artifact(self) -> None:
         """Can transfer executable artifacts.
@@ -271,17 +280,17 @@ class TestOwnershipTransferEdgeCases:
 
         # Alice -> Bob
         store.transfer_ownership("artifact_1", "alice", "bob")
-        assert store.get_controller("artifact_1") == "bob"
+        assert store.get("artifact_1").metadata.get("controller", store.get("artifact_1").created_by) == "bob"
         assert store.get_creator("artifact_1") == "alice"  # Never changes
 
         # Bob -> Charlie
         store.transfer_ownership("artifact_1", "bob", "charlie")
-        assert store.get_controller("artifact_1") == "charlie"
+        assert store.get("artifact_1").metadata.get("controller", store.get("artifact_1").created_by) == "charlie"
         assert store.get_creator("artifact_1") == "alice"  # Never changes
 
         # Charlie -> Dave
         store.transfer_ownership("artifact_1", "charlie", "dave")
-        assert store.get_controller("artifact_1") == "dave"
+        assert store.get("artifact_1").metadata.get("controller", store.get("artifact_1").created_by) == "dave"
         assert store.get_creator("artifact_1") == "alice"  # Never changes
 
         # Alice can no longer transfer

@@ -125,10 +125,10 @@ class TestMetadataIndexing:
         assert "task1" in store._index_by_metadata["status"]["complete"]
 
     def test_transfer_ownership_does_not_update_creator_index(self) -> None:
-        """Creator index is NOT updated when ownership is transferred (ADR-0016).
+        """Creator index is NOT updated when transfer_ownership is called (ADR-0016).
 
         Per ADR-0016: created_by is immutable, so _index_by_creator should not
-        change. The controller changes (via metadata["controller"]), but the
+        change. transfer_ownership() sets metadata["controller"] but the
         original creator remains indexed.
         """
         store = ArtifactStore()
@@ -140,15 +140,17 @@ class TestMetadataIndexing:
         )
         assert "art1" in store._index_by_creator["alice"]
 
-        # Transfer ownership (changes controller, not creator)
+        # transfer_ownership sets metadata["controller"], not created_by
         store.transfer_ownership("art1", "alice", "bob")
 
         # Creator index is unchanged (alice still created it)
         assert "art1" in store._index_by_creator["alice"]
         # Bob didn't create it, so he's not in the creator index
         assert "art1" not in store._index_by_creator.get("bob", set())
-        # But bob is the controller now
-        assert store.get_controller("art1") == "bob"
+        # metadata["controller"] is set (but doesn't affect freeware access)
+        artifact = store.get("art1")
+        assert artifact is not None
+        assert artifact.metadata.get("controller") == "bob"
 
     def test_query_by_type(self) -> None:
         """query_by_type returns correct results using index."""

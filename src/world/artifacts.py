@@ -968,15 +968,16 @@ class ArtifactStore:
         """Get creator of an artifact (immutable historical fact).
 
         Per ADR-0016, created_by is immutable and records who originally
-        created the artifact. To get the current controller (which may
-        differ after ownership transfers), use get_controller().
+        created the artifact. Note that "ownership" is not a kernel concept -
+        contracts decide access. Some genesis artifacts (like escrow) may use
+        metadata["controller"] as their own convention.
         """
         artifact = self.get(artifact_id)
         return artifact.created_by if artifact else None
 
     # Backwards compatibility alias (deprecated)
     def get_owner(self, artifact_id: str) -> str | None:
-        """Deprecated: Use get_creator() for creator, get_controller() for current controller."""
+        """Deprecated: Use get_creator() instead."""
         return self.get_creator(artifact_id)
 
     def list_all(self, include_deleted: bool = False) -> list[dict[str, Any]]:
@@ -1079,53 +1080,38 @@ class ArtifactStore:
         """Deprecated: Use get_artifacts_by_creator() instead."""
         return self.get_artifacts_by_creator(created_by, include_deleted)
 
-    def get_controller(self, artifact_id: str) -> str | None:
-        """Get current controller of an artifact (Plan #210).
-
-        The controller is the principal that currently has control rights
-        over the artifact. This may differ from created_by after ownership
-        transfers.
-
-        Per ADR-0016:
-        - created_by = immutable historical fact (who created the artifact)
-        - controller = current control rights holder (from metadata)
-
-        Returns:
-            Controller ID, or None if artifact doesn't exist
-        """
-        artifact = self.get(artifact_id)
-        if not artifact:
-            return None
-        # Default to creator if no explicit controller set
-        return artifact.metadata.get("controller", artifact.created_by)
-
     def transfer_ownership(
         self, artifact_id: str, from_id: str, to_id: str
     ) -> bool:
-        """Transfer control of an artifact to a new principal.
+        """Set metadata["controller"] on an artifact.
 
-        Per ADR-0016, this does NOT mutate created_by (which is immutable).
-        Instead, it sets metadata["controller"] to track the current
-        controller of the artifact.
+        NOTE: This is likely tech debt from before ADR-0016. It sets metadata
+        but does NOT affect access control under standard genesis contracts
+        (freeware, self_owned, private), which check created_by not controller.
+
+        Per ADR-0016:
+        - created_by is immutable (historical fact)
+        - "Ownership" is not a kernel concept - contracts decide access
+        - This method sets metadata["controller"] which custom contracts could use
 
         Args:
-            artifact_id: The artifact to transfer
-            from_id: Current controller (must match current controller)
-            to_id: New controller
+            artifact_id: The artifact to update
+            from_id: Current controller (must match metadata["controller"] or created_by)
+            to_id: New controller value to set in metadata
 
         Returns:
-            True if transfer succeeded, False otherwise
+            True if metadata was updated, False otherwise
         """
         artifact = self.get(artifact_id)
         if not artifact:
             return False
 
-        # Verify from_id is the current controller
+        # Verify from_id matches current controller (or creator if no controller set)
         current_controller = artifact.metadata.get("controller", artifact.created_by)
         if current_controller != from_id:
             return False
 
-        # Transfer control via metadata (created_by remains immutable per ADR-0016)
+        # Set metadata (note: doesn't affect access under freeware/self_owned/private)
         artifact.metadata["controller"] = to_id
         return True
 

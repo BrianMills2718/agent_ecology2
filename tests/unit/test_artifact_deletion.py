@@ -130,8 +130,8 @@ class TestDeleteArtifactOwnerOnly:
         # Alice cannot delete bob's artifact
         result = world.delete_artifact("bob_artifact", "alice")
         assert result["success"] is False
-        # Per ADR-0016: error says "controller" not "owner"
-        assert "controller" in result.get("error", "").lower()
+        # Per ADR-0016: error says "creator" (freeware checks created_by)
+        assert "creator" in result.get("error", "").lower()
 
         # Verify artifact is not deleted
         artifact = world.artifacts.get("bob_artifact")

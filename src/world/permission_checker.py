@@ -177,10 +177,9 @@ def check_permission_via_contract(
             return cached_result
 
     # Build context for contract (ADR-0019: minimal context)
-    # Per ADR-0016 (Plan #210): Include both creator (immutable) and controller (current)
+    # Per ADR-0016: created_by is immutable and represents the original creator
     context: dict[str, object] = {
         "target_created_by": artifact.created_by,  # Immutable: who created it
-        "target_controller": artifact.metadata.get("controller", artifact.created_by),  # Current controller
     }
     # Add method and args for invoke actions (ADR-0019)
     if action == "invoke":
@@ -262,10 +261,9 @@ def check_permission_legacy(
         return (False, f"legacy: unknown action {action}")
 
     # ADR-0019: minimal context with target_created_by
-    # Per ADR-0016 (Plan #210): Include both creator (immutable) and controller (current)
+    # Per ADR-0016: created_by is immutable and represents the original creator
     context: dict[str, object] = {
         "target_created_by": artifact.created_by,  # Immutable
-        "target_controller": artifact.metadata.get("controller", artifact.created_by),  # Current
     }
 
     result = freeware.check_permission(

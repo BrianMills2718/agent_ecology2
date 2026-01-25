@@ -663,20 +663,24 @@ class KernelActions:
     def transfer_ownership(
         self, caller_id: str, artifact_id: str, new_controller: str
     ) -> bool:
-        """Transfer control of an artifact to a new principal.
+        """Set metadata["controller"] on an artifact.
 
-        Per ADR-0016 (Plan #210):
-        - created_by is immutable (historical fact of who created the artifact)
-        - Control is tracked via metadata["controller"]
-        - This method sets metadata["controller"], NOT created_by
+        NOTE: This is likely tech debt. It sets metadata but does NOT affect
+        access control under standard genesis contracts (freeware, self_owned,
+        private), which check created_by not controller.
+
+        Per ADR-0016:
+        - created_by is immutable (historical fact)
+        - "Ownership" is not a kernel concept - contracts decide access
+        - This method sets metadata["controller"] which custom contracts could use
 
         Args:
-            caller_id: Current controller requesting the transfer
-            artifact_id: Artifact to transfer
-            new_controller: New controller principal ID
+            caller_id: Current controller (must match metadata["controller"] or created_by)
+            artifact_id: Artifact to update
+            new_controller: New controller value to set in metadata
 
         Returns:
-            True if transfer succeeded, False otherwise
+            True if metadata was updated, False otherwise
         """
         artifact = self._world.artifacts.get(artifact_id)
         if artifact is None:
