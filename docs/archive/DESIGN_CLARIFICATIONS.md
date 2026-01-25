@@ -2,7 +2,7 @@
 
 **Decision rationale archive.** This file records WHY decisions were made, not WHAT the current design is.
 
-**Last updated:** 2026-01-19 (Contract system ADRs added)
+**Last updated:** 2026-01-24 (Approved architectural directions: principal loops, resource registry, container resources)
 
 ---
 
@@ -35,6 +35,8 @@
 14. [Deferred Concerns](#deferred-concerns-v-n)
 15. [Approved Architecture Decisions](#approved-architecture-decisions-2026-01-13)
 16. [Contract System Design Decisions](#contract-system-design-decisions-2026-01-19)
+17. [Autonomous Principals vs Agents](#autonomous-principals-vs-agents-2026-01-24)
+18. [Approved Architectural Directions](#approved-architectural-directions-2026-01-24)
 
 ---
 
@@ -697,5 +699,105 @@ The **decision engine** is an implementation detail, not an architectural catego
 - Support for non-LLM decision engines when needed
 
 **Source:** Agent architecture review session (2026-01-24)
+
+---
+
+## Approved Architectural Directions (2026-01-24)
+
+Following the autonomous principals clarification, three architectural directions were approved:
+
+### 1. Generalized Loop Infrastructure
+
+**Decision:** Keep loops in orchestration layer (`src/simulation/`), but make `AgentLoop` more generic by renaming to `PrincipalLoop` and parameterizing the decision engine.
+
+**Confidence:** 85%
+
+**Rationale:**
+- The kernel should provide primitives (execution, resources, events)
+- *How* loops are scheduled is orchestration policy
+- Current `AgentLoop` name implies agents are special, which they aren't
+- A `PrincipalLoop` that takes a `decision_engine` parameter keeps separation clean
+
+**Tradeoffs:**
+
+| Approach | Pro | Con |
+|----------|-----|-----|
+| Move loops to kernel | Pure architecture, kernel provides all primitives | Over-engineers kernel; loops are orchestration policy |
+| Keep in simulation, generalize | Clean separation, kernel stays minimal | "Agent" terminology persists in file locations |
+| Keep as-is | No work needed | Conflates agents with autonomous principals |
+
+**Chosen:** Keep in simulation, generalize
+
+---
+
+### 2. Extensible Resource Registry
+
+**Decision:** Create a `ResourceType` registry in kernel that allows runtime registration of new resource types with their tracking semantics (depletable/renewable/allocatable).
+
+**Confidence:** 75%
+
+**Rationale:**
+- Adding internet search MCP, external APIs, etc. should not require kernel code changes
+- A registry pattern allows dynamic extension
+- Aligns with "minimal kernel, maximum flexibility" heuristic
+
+**Example API:**
+```python
+kernel.register_resource_type(
+    name="web_search",
+    category="depletable",  # or renewable/allocatable
+    unit="requests",
+    cost_model=lambda usage: usage * 0.001  # $0.001 per request
+)
+```
+
+**Tradeoffs:**
+
+| Approach | Pro | Con |
+|----------|-----|-----|
+| Static enum of types | Simple, type-safe | Every new API requires code change |
+| Runtime registry | Extensible, MCP-ready | More complex, needs validation |
+| Config-driven | No code changes for new types | Less type safety, harder to test |
+
+**Chosen:** Runtime registry
+
+---
+
+### 3. Machine/Container Resources
+
+**Decision:** Defer implementation, but design a clear path. Use a `ContainerResourceMonitor` that samples system metrics and exposes them through the resource registry.
+
+**Confidence:** 65%
+
+**Rationale:**
+- Container resources (I/O, CPU, memory) are fundamentally different from API resources
+- They're shared across all principals (not per-principal)
+- They need sampling, not per-action tracking
+- They're OS-dependent
+- A separate monitor that publishes to the event log keeps the kernel clean
+- Principals can subscribe to these events if they care
+- Aligns with "observe, don't prevent" philosophy
+
+**Tradeoffs:**
+
+| Approach | Pro | Con |
+|----------|-----|-----|
+| Kernel tracks directly | Full observability | Kernel bloat, OS-specific code |
+| External monitor + events | Clean separation, kernel stays pure | Adds component, async complexity |
+| Ignore for now | No work | Can't enforce physical limits |
+
+**Chosen:** External monitor + events (deferred)
+
+---
+
+### Implementation Priority
+
+| Topic | Effort | Priority | When |
+|-------|--------|----------|------|
+| Resource registry | Medium | High | Unblocks MCP integration |
+| Loop generalization | Low-Medium | Medium | Terminology cleanup |
+| Container resources | High | Low | When hitting actual limits |
+
+**Source:** Architecture discussion (2026-01-24)
 
 ---
