@@ -234,18 +234,28 @@ agent_ecology/
 
 ---
 
-## Genesis Artifacts
+## Kernel Primitives
 
-| Artifact | Purpose |
-|----------|---------|
-| `genesis_ledger` | Balances, transfers, ownership |
-| `genesis_mint` | Auction-based scoring, minting |
-| `genesis_store` | Artifact discovery and creation |
-| `genesis_escrow` | Trustless artifact trading |
-| `genesis_debt_contract` | Non-privileged credit/lending |
-| `genesis_event_log` | Passive observability |
-| `genesis_handbook` | Seeded documentation for agents |
-| `genesis_model_registry` | LLM model access as contractable resource |
+The kernel (`src/world/kernel_interface.py`) provides these primitives that ALL artifacts use:
+
+**KernelState (read-only):**
+| Method | Purpose |
+|--------|---------|
+| `get_balance(principal_id)` | Get scrip balance |
+| `get_resource(principal_id, resource)` | Get resource amount |
+| `get_artifact_metadata(artifact_id)` | Get artifact info |
+| `read_artifact(artifact_id, caller_id)` | Read artifact content |
+
+**KernelActions (write operations):**
+| Method | Purpose |
+|--------|---------|
+| `transfer_scrip(from_id, to_id, amount)` | Move scrip |
+| `spend_resource(principal_id, resource, amount)` | Consume resource |
+| `create_principal(principal_id, starting_scrip)` | Spawn new principal |
+| `transfer_ownership(caller_id, artifact_id, new_owner)` | Change ownership |
+| `transfer_quota(from_id, to_id, resource, amount)` | Move quota |
+
+**Genesis artifacts are just conveniences that wrap these primitives.** See `src/world/genesis/CLAUDE.md` for details.
 
 ---
 
@@ -255,7 +265,7 @@ agent_ecology/
 |-----|-----|-----|
 | `scrip` | `credits` | Consistency |
 | `principal` | `account` | Principals include artifacts/contracts |
-| `tick` | `turn` | Consistency |
+| `event_number` | `tick` | No tick-synchronized execution |
 | `artifact` | `object/entity` | Everything is an artifact |
 
 **Resource types:**
