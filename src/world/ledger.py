@@ -85,8 +85,12 @@ class BalanceInfo(TypedDict):
 
 
 class SimpleBalanceInfo(TypedDict):
-    """Simple balance format with llm_tokens and scrip."""
-    llm_tokens: int
+    """DEPRECATED (Plan #166): Simple balance format with llm_tokens and scrip.
+
+    The llm_tokens field is deprecated. Use BalanceInfo with resources dict
+    and check for 'llm_budget' instead of 'llm_tokens'.
+    """
+    llm_tokens: int  # DEPRECATED: use llm_budget from resources
     scrip: int
 
 
@@ -450,12 +454,17 @@ class Ledger:
             self.scrip[to_id] += amount
             return True
 
-    # ===== LLM TOKENS (mode-aware convenience methods) =====
-    # These methods are mode-aware: they use RateTracker when rate limiting
-    # is enabled (default), otherwise fall back to simple resource tracking.
+    # ===== LLM TOKENS (DEPRECATED - Plan #166) =====
+    # These methods are DEPRECATED. Use dollar-based budget methods instead:
+    # - get_llm_budget() / can_afford_llm_call() / deduct_llm_cost()
+    # Token-based tracking conflated usage, rate limits, and budget.
+    # Dollar budget is THE constraint; these remain for backward compatibility.
 
     def get_llm_tokens(self, principal_id: str) -> int:
-        """Get available LLM tokens for a principal.
+        """DEPRECATED (Plan #166): Get available LLM tokens for a principal.
+
+        Use get_llm_budget() for dollar-based budget instead.
+        Token-based tracking will be removed in a future version.
 
         Mode-aware: Uses RateTracker remaining capacity when rate limiting
         is enabled (default), otherwise uses simple balance.
@@ -463,6 +472,12 @@ class Ledger:
         Returns:
             Available tokens (int). Returns 999999 if unlimited.
         """
+        warnings.warn(
+            "get_llm_tokens() is deprecated (Plan #166). "
+            "Use get_llm_budget() for dollar-based budget constraint.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if self.use_rate_tracker and self.rate_tracker:
             remaining = self.get_resource_remaining(principal_id, "llm_tokens")
             # Handle infinity (unconfigured resource = unlimited)
@@ -472,17 +487,27 @@ class Ledger:
         return int(self.get_resource(principal_id, "llm_tokens"))
 
     def can_spend_llm_tokens(self, principal_id: str, amount: int) -> bool:
-        """Check if principal can afford to spend LLM tokens.
+        """DEPRECATED (Plan #166): Check if principal can afford to spend LLM tokens.
+
+        Use can_afford_llm_call() for dollar-based budget check instead.
 
         Mode-aware: Uses RateTracker capacity check when rate limiting
         is enabled (default), otherwise uses simple balance check.
         """
+        warnings.warn(
+            "can_spend_llm_tokens() is deprecated (Plan #166). "
+            "Use can_afford_llm_call() for dollar-based budget check.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if self.use_rate_tracker and self.rate_tracker:
             return self.check_resource_capacity(principal_id, "llm_tokens", float(amount))
         return self.can_spend_resource(principal_id, "llm_tokens", float(amount))
 
     def spend_llm_tokens(self, principal_id: str, amount: int) -> bool:
-        """Spend LLM tokens for a principal.
+        """DEPRECATED (Plan #166): Spend LLM tokens for a principal.
+
+        Use deduct_llm_cost() for dollar-based budget deduction instead.
 
         Mode-aware: Uses RateTracker consumption when rate limiting
         is enabled (default), otherwise uses simple balance deduction.
@@ -490,6 +515,12 @@ class Ledger:
         Returns:
             True if successful, False if insufficient tokens.
         """
+        warnings.warn(
+            "spend_llm_tokens() is deprecated (Plan #166). "
+            "Use deduct_llm_cost() for dollar-based budget deduction.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if self.use_rate_tracker and self.rate_tracker:
             return self.consume_resource(principal_id, "llm_tokens", float(amount))
         return self.spend_resource(principal_id, "llm_tokens", float(amount))
@@ -512,7 +543,16 @@ class Ledger:
         self.set_resource(principal_id, "llm_tokens", float(quota))
 
     def get_all_llm_tokens(self) -> dict[str, int]:
-        """Get snapshot of all LLM token balances."""
+        """DEPRECATED (Plan #166): Get snapshot of all LLM token balances.
+
+        Token-based tracking is being replaced with dollar-based budget.
+        """
+        warnings.warn(
+            "get_all_llm_tokens() is deprecated (Plan #166). "
+            "Use get_all_balances_full() for comprehensive resource view.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         result: dict[str, int] = {}
         for pid, resources in self.resources.items():
             result[pid] = int(resources.get("llm_tokens", 0))
@@ -747,21 +787,31 @@ class Ledger:
         rate_input: float,
         rate_output: float,
     ) -> tuple[bool, int]:
-        """Calculate and deduct thinking cost from principal's compute.
+        """DEPRECATED (Plan #153, #166): Calculate and deduct thinking cost.
+
+        Use deduct_llm_cost() for dollar-based budgets instead.
+        Token-based cost tracking is being phased out.
 
         Mode-aware: Uses RateTracker consumption when rate limiting is enabled,
         otherwise uses simple balance deduction.
 
-        DEPRECATED: Use deduct_llm_cost() instead for dollar-based budgets (Plan #153).
-
         Returns:
             (success, cost): Whether deduction succeeded and the cost amount
         """
+        warnings.warn(
+            "deduct_thinking_cost() is deprecated (Plan #153, #166). "
+            "Use deduct_llm_cost() for dollar-based budget.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         cost = self.calculate_thinking_cost(
             input_tokens, output_tokens, rate_input, rate_output
         )
-        # Use mode-aware spend_llm_tokens
-        success = self.spend_llm_tokens(principal_id, cost)
+        # Use mode-aware spend_llm_tokens (also deprecated, but called internally)
+        # Suppress the nested warning to avoid double-warning
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            success = self.spend_llm_tokens(principal_id, cost)
         return success, cost
 
     # ===== LLM BUDGET (Plan #153) =====
