@@ -102,6 +102,15 @@ hooks:
   # Default: false
   block_on_unread_messages: false
 
+  # ---------------------------------------------------------------------------
+  # Context Injection (Plan #217)
+  # ---------------------------------------------------------------------------
+
+  # Inject governance context after Read tool completes
+  # Shows which ADRs govern the file and any context notes
+  # Default: true
+  inject_governance_context: true
+
 # =============================================================================
 # Workflow Configuration
 # =============================================================================
