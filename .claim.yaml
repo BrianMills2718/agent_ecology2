@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: main
-task: Implement configurable enforcement strictness
-claimed_at: '2026-01-25T11:19:00Z'
-session_id: c3a2713e-bc02-425a-baa8-39eb8be25215
-plan: 178
+cc_id: plan-216-bidirectional-coupling
+task: Implement bidirectional coupling checks
+claimed_at: '2026-01-25T22:57:10Z'
+session_id: 03f1fd1a-f3fc-42e9-a2af-fda4748905c7
+plan: 216

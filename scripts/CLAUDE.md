@@ -87,6 +87,8 @@ git commit --no-verify        # Bypass (not recommended)
 # Doc coupling
 python scripts/check_doc_coupling.py --suggest     # What docs to update
 python scripts/check_doc_coupling.py --strict      # CI mode
+python scripts/check_doc_coupling.py --bidirectional  # Check both directions (Plan #216)
+python scripts/check_doc_coupling.py --suggest-all FILE  # Show all relationships for FILE
 
 # Plan status sync (index ↔ file ↔ content)
 python scripts/sync_plan_status.py --check         # CI mode (validates all)
