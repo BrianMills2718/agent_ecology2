@@ -144,7 +144,7 @@ Master index of all gaps and their implementation plans.
 | 116 | [Enforce Finish From Main](116_enforce_finish_from_main.md) | Medium | ✅ Complete | Meta-process integrity |
 | 123 | [Safe Expression Evaluator](123_safe_expression_evaluator.md) | **Critical** | ✅ Complete | Replace eval() with safe evaluator |
 | 124 | [Config Documentation Sync](124_config_doc_sync.md) | **High** | ✅ Complete | Sync config files with docs |
-| 176 | [Atomic Worktree-Claim Enforcement](176_atomic_worktree_claims.md) | **High** | 📋 Planned | Meta-process enforcement |
+| 176 | [Atomic Worktree-Claim Enforcement](176_atomic_worktree_claims.md) | **High** | ✅ Complete | Meta-process enforcement |
 
 ---
 
