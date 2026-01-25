@@ -1,44 +1,24 @@
 # Unified Documentation Graph
-#
+# ============================
 # Single source of truth for all documentation relationships.
 # Replaces: governance.yaml, doc_coupling.yaml
-# See: ADR-0005 (docs/adr/0005-unified-documentation-graph.md)
+#
+# Usage:
+#   python scripts/sync_governance.py --check    # Check ADR headers
+#   python scripts/check_doc_coupling.py --check # Check doc-code coupling
+#   python scripts/validate_plan.py --plan N     # Query graph before implementing
+#
+# Edge types:
+#   governs:       ADR governs code (embeds headers in source)
+#   documented_by: Source documented by architecture doc (CI enforcement)
+#   affects:       Source changes may affect this doc (warnings)
 
 version: 1
 
 # =============================================================================
-# NODE NAMESPACES
-# =============================================================================
-
-nodes:
-  adr: docs/adr/*.md
-  target: docs/architecture/target/*.md
-  current: docs/architecture/current/*.md
-  plans: docs/plans/*.md
-  gaps: docs/architecture/gaps/*.yaml
-  source: src/**/*.py
-
-# =============================================================================
-# EDGE TYPES
-# =============================================================================
-
-edge_types:
-  governs:
-    description: "ADR that governs implementation"
-    actions: [embed_header]
-  documented_by:
-    description: "Code documented by architecture doc"
-    actions: [ci_enforce]
-  implements:
-    description: "Plan that implements functionality"
-    actions: [validate_links]
-  affects:
-    description: "Source changes may affect this doc"
-    actions: [ci_warn]
-
-# =============================================================================
 # ADR DEFINITIONS
 # =============================================================================
+# Referenced by governance edges. Maps ADR number to file info.
 
 adrs:
   1:
@@ -52,77 +32,179 @@ adrs:
     file: "0003-contracts-can-do-anything.md"
 
 # =============================================================================
-# EDGES
+# GOVERNANCE: ADR -> Source
 # =============================================================================
+# These define which ADRs govern which source files.
+# sync_governance.py uses these to embed headers in source files.
 
-edges:
-  # GOVERNANCE: ADR -> Code
-  - from: adr/0001
-    to: source/src/world/artifacts.py
-    type: governs
-    context: "Everything is an artifact - agents, contracts, data."
+governance:
+  - source: src/world/contracts.py
+    adrs: [1, 3]
+    context: |
+      Permission checks are the hot path - keep them fast.
+      Contracts return decisions; kernel applies state changes.
 
-  - from: adr/0001
-    to: [source/src/world/contracts.py, source/src/world/genesis.py]
-    type: governs
+  - source: src/world/genesis_contracts.py
+    adrs: [1, 3]
+    context: |
+      Four built-in contracts: freeware, self_owned, private, public.
+      These are Python classes, not artifacts (current implementation).
 
-  - from: adr/0002
-    to: source/src/world/ledger.py
-    type: governs
-    context: "Never allow negative balances - fail loud."
+  - source: src/world/ledger.py
+    adrs: [1, 2]
+    context: |
+      All balance mutations go through here.
+      Never allow negative balances - fail loud.
 
-  - from: adr/0003
-    to: source/src/world/contracts.py
-    type: governs
-    context: "Permission checks are the hot path."
+  - source: src/world/artifacts.py
+    adrs: [1]
+    context: |
+      Core artifact storage and management.
+      Everything is an artifact - agents, contracts, data.
 
-  - from: adr/0003
-    to: [source/src/world/genesis_contracts.py, source/src/world/genesis.py]
-    type: governs
+  - source: src/world/genesis/factory.py
+    adrs: [1, 3]
+    context: |
+      Genesis artifacts: ledger, mint, escrow, event_log, rights_registry, store.
+      System-provided, solve cold-start problem. Split into package (Plan #66).
 
-  # STRICT COUPLINGS: Code -> Docs
-  - from: [source/src/simulation/runner.py, source/src/world/world.py]
-    to: current/execution_model
-    type: documented_by
-    coupling: strict
+# =============================================================================
+# DOC-CODE COUPLINGS: Source -> Doc
+# =============================================================================
+# These define which docs must be updated when source files change.
+# check_doc_coupling.py uses these for CI enforcement.
+#
+# soft: true means warning-only (unless strict_doc_coupling: true in meta-process.yaml)
 
-  - from: [source/src/world/ledger.py, source/src/world/simulation_engine.py]
-    to: current/resources
-    type: documented_by
-    coupling: strict
+couplings:
+  # ---------------------------------------------------------------------------
+  # STRICT COUPLINGS (CI fails if violated)
+  # ---------------------------------------------------------------------------
 
-  - from: source/src/world/genesis.py
-    to: current/genesis_artifacts
-    type: documented_by
-    coupling: strict
+  # Core execution model
+  - sources:
+      - src/simulation/runner.py
+      - src/world/world.py
+    docs:
+      - docs/architecture/current/execution_model.md
+    description: "Tick loop and two-phase execution"
 
-  - from: [source/src/agents/agent.py, source/src/agents/memory.py, source/src/agents/loader.py]
-    to: current/agents
-    type: documented_by
-    coupling: strict
+  # Resource accounting
+  - sources:
+      - src/world/ledger.py
+      - src/world/simulation_engine.py
+    docs:
+      - docs/architecture/current/resources.md
+    description: "Flow/stock resources, scrip, budget tracking"
 
-  - from: [source/src/world/artifacts.py, source/src/world/executor.py, source/src/world/actions.py]
-    to: current/artifacts_executor
-    type: documented_by
-    coupling: strict
+  # Genesis artifacts
+  - sources:
+      - src/world/genesis.py
+      - src/world/mcp_bridge.py
+    docs:
+      - docs/architecture/current/genesis_artifacts.md
+    description: "System services (ledger, oracle, escrow, MCP bridges)"
 
-  - from: [source/src/config.py, source/src/config_schema.py]
-    to: current/configuration
-    type: documented_by
-    coupling: strict
+  # Agent system
+  - sources:
+      - src/agents/agent.py
+      - src/agents/memory.py
+      - src/agents/loader.py
+    docs:
+      - docs/architecture/current/agents.md
+    description: "Agent lifecycle, thinking, memory"
 
-  - from: plans/*
-    to: plans/CLAUDE
-    type: documented_by
-    coupling: strict
+  # Artifacts and execution
+  - sources:
+      - src/world/artifacts.py
+      - src/world/executor.py
+      - src/world/action_executor.py
+      - src/world/permission_checker.py
+      - src/world/interface_validation.py
+      - src/world/invoke_handler.py
+      - src/world/actions.py
+    docs:
+      - docs/architecture/current/artifacts_executor.md
+    description: "Artifact storage, policies, code execution, permission checking"
 
-  # SOFT COUPLINGS
-  - from: current/*
-    to: plans/CLAUDE
-    type: affects
-    coupling: soft
+  # Configuration
+  - sources:
+      - src/config.py
+      - src/config_schema.py
+    docs:
+      - docs/architecture/current/configuration.md
+    description: "Config loading and validation"
 
-  - from: source/src/world/rate_tracker.py
-    to: plans/01_rate_allocation
-    type: affects
-    coupling: soft
+  # Supporting systems
+  - sources:
+      - src/simulation/checkpoint.py
+      - src/world/logger.py
+      - src/dashboard/*.py
+    docs:
+      - docs/architecture/current/supporting_systems.md
+    description: "Checkpoint, logging, dashboard"
+
+  # CI itself
+  - sources:
+      - .github/workflows/ci.yml
+      - scripts/check_doc_coupling.py
+      - scripts/doc_coupling.yaml
+      - scripts/relationships.yaml
+    docs:
+      - docs/architecture/current/ci.md
+    description: "CI pipeline"
+
+  # ---------------------------------------------------------------------------
+  # SOFT COUPLINGS (warning-only unless strict_doc_coupling: true)
+  # ---------------------------------------------------------------------------
+
+  # Gap closure tracking
+  - sources:
+      - docs/architecture/current/*.md
+    docs:
+      - docs/plans/CLAUDE.md
+    description: "Gap closure tracking - update plan status if gap closed"
+    soft: true
+
+  # Token bucket implementation
+  - sources:
+      - src/world/rate_tracker.py
+    docs:
+      - docs/plans/01_rate_allocation.md
+    description: "Token bucket implementation - update plan status"
+    soft: true
+
+  # Continuous execution
+  - sources:
+      - src/simulation/continuous_runner.py
+    docs:
+      - docs/plans/02_continuous_execution.md
+    description: "Continuous execution - update plan status"
+    soft: true
+
+  # Terminology changes
+  - sources:
+      - src/world/ledger.py
+      - src/config_schema.py
+    docs:
+      - docs/GLOSSARY.md
+    description: "Terminology - new terms or renamed concepts?"
+    soft: true
+
+  # Dashboard UI
+  - sources:
+      - src/dashboard/static/js/**/*.js
+      - src/dashboard/static/css/**/*.css
+    docs:
+      - docs/architecture/current/supporting_systems.md
+    description: "Dashboard UI changes - document new panels/features"
+    soft: true
+
+  # Agent models
+  - sources:
+      - src/agents/models.py
+      - src/agents/schema.py
+    docs:
+      - docs/architecture/current/agents.md
+    description: "Agent response models - update if new fields added"
+    soft: true
