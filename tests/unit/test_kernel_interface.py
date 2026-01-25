@@ -259,3 +259,144 @@ def run(*args):
 
         assert result["success"]
         assert result["result"].get("balance") == 100
+
+
+class TestKernelStateRights:
+    """Test rights-based resource checking (Plan #166 Phase 4)."""
+
+    def test_get_dollar_budget_right_amount_none(self, world: World) -> None:
+        """Returns 0 when agent has no dollar_budget rights."""
+        state = KernelState(world)
+        assert state.get_dollar_budget_right_amount("alice") == 0.0
+
+    def test_get_dollar_budget_right_amount_with_rights(self, world: World) -> None:
+        """Returns sum of dollar_budget rights owned by agent."""
+        from src.world.rights import create_dollar_budget_right
+
+        state = KernelState(world)
+
+        # Create some dollar_budget rights for alice
+        create_dollar_budget_right(world.artifacts, "alice", 0.50)
+        create_dollar_budget_right(
+            world.artifacts, "alice", 0.25, artifact_id="extra_budget"
+        )
+
+        assert state.get_dollar_budget_right_amount("alice") == 0.75
+
+    def test_get_rate_capacity_right_amount(self, world: World) -> None:
+        """Returns rate capacity from owned rights."""
+        from src.world.rights import create_rate_capacity_right
+
+        state = KernelState(world)
+
+        create_rate_capacity_right(world.artifacts, "alice", "gemini", 100)
+        create_rate_capacity_right(world.artifacts, "alice", "claude", 50)
+
+        # Total across all models
+        assert state.get_rate_capacity_right_amount("alice") == 150.0
+        # Filter by model
+        assert state.get_rate_capacity_right_amount("alice", model="gemini") == 100.0
+        assert state.get_rate_capacity_right_amount("alice", model="claude") == 50.0
+
+    def test_get_disk_quota_right_amount(self, world: World) -> None:
+        """Returns disk quota from owned rights."""
+        from src.world.rights import create_disk_quota_right
+
+        state = KernelState(world)
+
+        create_disk_quota_right(world.artifacts, "alice", 10000)
+
+        assert state.get_disk_quota_right_amount("alice") == 10000.0
+
+    def test_can_afford_llm_call_rights_sufficient(self, world: World) -> None:
+        """Returns True when agent has sufficient dollar_budget rights."""
+        from src.world.rights import create_dollar_budget_right
+
+        state = KernelState(world)
+
+        create_dollar_budget_right(world.artifacts, "alice", 0.50)
+
+        assert state.can_afford_llm_call_rights("alice", 0.25) is True
+        assert state.can_afford_llm_call_rights("alice", 0.50) is True
+
+    def test_can_afford_llm_call_rights_insufficient(self, world: World) -> None:
+        """Returns False when agent lacks sufficient dollar_budget rights."""
+        from src.world.rights import create_dollar_budget_right
+
+        state = KernelState(world)
+
+        create_dollar_budget_right(world.artifacts, "alice", 0.10)
+
+        assert state.can_afford_llm_call_rights("alice", 0.50) is False
+
+    def test_can_afford_llm_call_rights_no_rights(self, world: World) -> None:
+        """Returns False when agent has no dollar_budget rights."""
+        state = KernelState(world)
+        assert state.can_afford_llm_call_rights("alice", 0.01) is False
+
+
+class TestKernelActionsRights:
+    """Test rights-based resource consumption (Plan #166 Phase 4)."""
+
+    def test_consume_from_dollar_budget_right(self, world: World) -> None:
+        """Consumes from dollar_budget right, reducing amount."""
+        from src.world.rights import create_dollar_budget_right, get_right_data
+
+        actions = KernelActions(world)
+
+        right_id = create_dollar_budget_right(world.artifacts, "alice", 0.50)
+
+        result = actions.consume_from_dollar_budget_right("alice", 0.20)
+        assert result is True
+
+        # Verify amount reduced
+        right_data = get_right_data(world.artifacts, right_id)
+        assert right_data is not None
+        assert right_data.amount == 0.30
+
+    def test_consume_from_dollar_budget_right_insufficient(self, world: World) -> None:
+        """Returns False when insufficient budget."""
+        from src.world.rights import create_dollar_budget_right, get_right_data
+
+        actions = KernelActions(world)
+
+        right_id = create_dollar_budget_right(world.artifacts, "alice", 0.10)
+
+        result = actions.consume_from_dollar_budget_right("alice", 0.50)
+        assert result is False
+
+        # Verify amount unchanged
+        right_data = get_right_data(world.artifacts, right_id)
+        assert right_data is not None
+        assert right_data.amount == 0.10
+
+    def test_consume_from_dollar_budget_right_no_rights(self, world: World) -> None:
+        """Returns False when agent has no rights."""
+        actions = KernelActions(world)
+        result = actions.consume_from_dollar_budget_right("alice", 0.10)
+        assert result is False
+
+    def test_consume_from_disk_quota_right(self, world: World) -> None:
+        """Consumes from disk_quota right."""
+        from src.world.rights import create_disk_quota_right, get_right_data
+
+        actions = KernelActions(world)
+
+        right_id = create_disk_quota_right(world.artifacts, "alice", 10000)
+
+        result = actions.consume_from_disk_quota_right("alice", 3000)
+        assert result is True
+
+        right_data = get_right_data(world.artifacts, right_id)
+        assert right_data is not None
+        assert right_data.amount == 7000.0
+
+    def test_consume_zero_or_negative(self, world: World) -> None:
+        """Returns False for zero or negative amounts."""
+        from src.world.rights import create_dollar_budget_right
+
+        actions = KernelActions(world)
+        create_dollar_budget_right(world.artifacts, "alice", 0.50)
+
+        assert actions.consume_from_dollar_budget_right("alice", 0) is False
+        assert actions.consume_from_dollar_budget_right("alice", -0.10) is False

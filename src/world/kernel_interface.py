@@ -205,6 +205,76 @@ class KernelState:
         available = self.get_available_capacity(principal_id, resource)
         return amount > available
 
+    # -------------------------------------------------------------------------
+    # Rights-Based Resource Checking (Plan #166 Phase 4)
+    # -------------------------------------------------------------------------
+
+    def get_dollar_budget_right_amount(self, principal_id: str) -> float:
+        """Get total dollar budget from owned right artifacts.
+
+        This is the rights-as-artifacts version of get_llm_budget().
+        Sums across all dollar_budget rights owned by the principal.
+
+        Args:
+            principal_id: The principal to query
+
+        Returns:
+            Total dollar budget from owned rights (0.0 if none)
+        """
+        from src.world.rights import RightType, get_total_right_amount
+        return get_total_right_amount(
+            self._world.artifacts, principal_id, RightType.DOLLAR_BUDGET
+        )
+
+    def get_rate_capacity_right_amount(
+        self, principal_id: str, model: str | None = None
+    ) -> float:
+        """Get total rate capacity from owned right artifacts.
+
+        Args:
+            principal_id: The principal to query
+            model: Optional model filter (e.g., "gemini", "claude")
+
+        Returns:
+            Total rate capacity from owned rights (0.0 if none)
+        """
+        from src.world.rights import RightType, get_total_right_amount
+        return get_total_right_amount(
+            self._world.artifacts, principal_id, RightType.RATE_CAPACITY, model=model
+        )
+
+    def get_disk_quota_right_amount(self, principal_id: str) -> float:
+        """Get total disk quota from owned right artifacts.
+
+        Args:
+            principal_id: The principal to query
+
+        Returns:
+            Total disk quota from owned rights (0.0 if none)
+        """
+        from src.world.rights import RightType, get_total_right_amount
+        return get_total_right_amount(
+            self._world.artifacts, principal_id, RightType.DISK_QUOTA
+        )
+
+    def can_afford_llm_call_rights(
+        self, principal_id: str, estimated_cost: float, model: str | None = None
+    ) -> bool:
+        """Check if principal can afford an LLM call using rights artifacts.
+
+        This is the rights-based pre-flight check for LLM calls.
+
+        Args:
+            principal_id: The principal making the call
+            estimated_cost: Estimated dollar cost of the call
+            model: Optional model for rate checking
+
+        Returns:
+            True if principal has sufficient dollar_budget rights
+        """
+        available = self.get_dollar_budget_right_amount(principal_id)
+        return available >= estimated_cost
+
 class KernelActions:
     """Action interface for artifacts - caller is verified.
 
@@ -623,3 +693,85 @@ class KernelActions:
         return self._world.artifacts.transfer_ownership(
             artifact_id, caller_id, new_owner
         )
+
+    # -------------------------------------------------------------------------
+    # Rights-Based Resource Consumption (Plan #166 Phase 4)
+    # -------------------------------------------------------------------------
+
+    def consume_from_dollar_budget_right(
+        self, principal_id: str, amount: float
+    ) -> bool:
+        """Consume from owned dollar_budget right artifacts.
+
+        Finds the first dollar_budget right owned by the principal with
+        sufficient amount and reduces it. This is the rights-based version
+        of deducting from llm_budget ledger resource.
+
+        Args:
+            principal_id: The principal consuming budget
+            amount: Amount to consume (dollars)
+
+        Returns:
+            True if consumption succeeded, False if insufficient rights
+        """
+        from src.world.rights import (
+            RightType,
+            find_rights_by_type,
+            get_right_data,
+            update_right_amount,
+        )
+
+        if amount <= 0:
+            return False
+
+        # Find owned dollar_budget rights
+        right_ids = find_rights_by_type(
+            self._world.artifacts, principal_id, RightType.DOLLAR_BUDGET
+        )
+
+        # Try to consume from the first right with sufficient amount
+        for right_id in right_ids:
+            right_data = get_right_data(self._world.artifacts, right_id)
+            if right_data is not None and right_data.amount >= amount:
+                new_amount = right_data.amount - amount
+                if update_right_amount(self._world.artifacts, right_id, new_amount):
+                    return True
+
+        return False
+
+    def consume_from_disk_quota_right(
+        self, principal_id: str, amount: float
+    ) -> bool:
+        """Consume from owned disk_quota right artifacts.
+
+        Args:
+            principal_id: The principal consuming quota
+            amount: Bytes to consume
+
+        Returns:
+            True if consumption succeeded, False if insufficient rights
+        """
+        from src.world.rights import (
+            RightType,
+            find_rights_by_type,
+            get_right_data,
+            update_right_amount,
+        )
+
+        if amount <= 0:
+            return False
+
+        # Find owned disk_quota rights
+        right_ids = find_rights_by_type(
+            self._world.artifacts, principal_id, RightType.DISK_QUOTA
+        )
+
+        # Try to consume from the first right with sufficient amount
+        for right_id in right_ids:
+            right_data = get_right_data(self._world.artifacts, right_id)
+            if right_data is not None and right_data.amount >= amount:
+                new_amount = right_data.amount - amount
+                if update_right_amount(self._world.artifacts, right_id, new_amount):
+                    return True
+
+        return False

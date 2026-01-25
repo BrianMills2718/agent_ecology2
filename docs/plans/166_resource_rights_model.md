@@ -243,6 +243,7 @@ After implementation, comprehensive doc review:
 - docs/architecture/current/resources.md (modify) - Full rewrite
 - tests/unit/test_usage_tracker.py (create) - Tests for UsageTracker
 - tests/unit/test_rights.py (create) - Tests for rights module
+- tests/unit/test_kernel_interface.py (modify) - Tests for rights kernel integration
 
 ## Dependencies
 
