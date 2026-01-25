@@ -1,6 +1,6 @@
 # Plan #194: Self-Modifying System Prompt
 
-**Status:** Planned
+**Status:** Complete
 **Created:** 2025-01-25
 **Scope:** Agent Cognitive Autonomy
 
@@ -140,11 +140,11 @@ pytest tests/unit/test_system_prompt_modification.py -v
 
 ## Acceptance Criteria
 
-- [ ] Agent can append to system prompt
-- [ ] Agent can prepend to system prompt
-- [ ] Agent can replace sections by marker
-- [ ] Agent can reset to original prompt
-- [ ] Size limits enforced
-- [ ] Protected prefix preserved
-- [ ] Modifications persist via artifact state
-- [ ] History of modifications tracked (optional)
+- [x] Agent can append to system prompt
+- [x] Agent can prepend to system prompt
+- [x] Agent can replace sections by marker
+- [x] Agent can reset to original prompt
+- [x] Size limits enforced
+- [x] Protected prefix preserved
+- [x] Modifications persist via artifact state
+- [x] History of modifications tracked (optional)
