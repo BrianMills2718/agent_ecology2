@@ -11,216 +11,281 @@ Analysis of a simulation run revealed that agents have all the infrastructure fo
 
 ### Evidence from Simulation
 
-1. **Mem0 stores garbage** - "Your Memories" section shows 7 identical action echoes:
-   ```
-   - I performed invoke_artifact: genesis_escrow.list_active
-   - I performed invoke_artifact: genesis_escrow.list_active
-   (repeated 7 times)
-   ```
-   This is not useful memory - it's just echoing recent actions.
-
-2. **Agent ignores loop warnings** - Pattern detection shows "15x same action" but agent continues anyway.
-
-3. **Stuck on completed subgoal** - Agent achieved "List for sale" but keeps checking escrow 15 times instead of moving on.
-
-4. **No strategic replanning** - Agent has no idea what to do after achieving a subgoal.
+1. **Mem0 stores garbage** - "Your Memories" section shows 7 identical action echoes
+2. **Agent ignores loop warnings** - Pattern detection shows "15x same action" but agent continues
+3. **Stuck on completed subgoal** - Agent keeps checking escrow after listing succeeded
+4. **No strategic replanning** - Agent doesn't know what to do after achieving subgoal
 
 ### Root Cause
 
-**Memory stores WHAT happened, not WHAT IT MEANS.**
+The cognitive architecture is flexible and capable. The problem is **genesis agent instantiation** - prompts and workflows don't effectively guide agents to USE the capabilities.
 
-The research patterns (ExpeL, Reflexion, VOYAGER) emphasize storing **synthesized insights**, not raw action logs.
+## Philosophy
+
+**DO NOT change the architecture.** The architecture should remain infinitely flexible.
+
+Instead, improve **genesis agent instantiation**:
+- Add trait components that guide behavior
+- Improve workflow prompts
+- Update agent system prompts
+- Add guidance to handbooks
+
+This follows the project philosophy:
+> "Emergence over prescription - No predefined roles; agents build what they need"
+> "Genesis as cold-start conveniences - unprivileged, agents could build equivalents"
 
 ## Solution
 
-### Phase 1: Memory Content Quality
+### Phase 1: Memory Discipline Trait
 
-**Problem:** Mem0 stores raw actions like "I performed invoke_artifact..."
+**File:** `src/agents/_components/traits/memory_discipline.yaml`
 
-**Fix:** Store synthesized insights instead.
+Create a new trait that teaches agents HOW to use memory effectively:
 
-**File:** `src/agents/memory.py`
+```yaml
+name: memory_discipline
+type: trait
+version: 1
+description: "Guides agents to store insights, not raw actions"
 
-Change what gets stored after actions:
+inject_into:
+  - reflect
+  - reflecting
+  - review
+  - reviewing
+  - strategic_reflect
 
-```python
-# Current (bad):
-memory_content = f"I performed {action_type}: {json.dumps(intent)}"
+prompt_fragment: |
 
-# New (good):
-def synthesize_memory(action_type: str, intent: dict, result: dict) -> str | None:
-    """Synthesize meaningful memory from action outcome."""
+  === MEMORY DISCIPLINE (memory_discipline trait) ===
+  Your working memory is your long-term learning system. Use it WISELY.
 
-    # Don't store routine checks
-    if action_type == "invoke_artifact" and intent.get("method") == "list_active":
-        return None  # Skip - this is routine, not memorable
+  WHAT TO STORE (insights):
+  - LESSONS from failures: "deposit requires transfer_ownership first"
+  - PATTERNS that work: "artifacts with clear interfaces sell better"
+  - STRATEGIC INSIGHTS: "alpha_3 builds note tools - I should build something different"
 
-    # Store failures with lessons
-    if not result.get("success"):
-        error = result.get("error", "unknown")
-        return f"LESSON: {action_type} on {intent.get('artifact_id')} failed: {error}"
+  WHAT NOT TO STORE (noise):
+  - Raw action logs: "I performed invoke_artifact..."
+  - Routine checks: "I checked escrow listings"
+  - Obvious facts: "I have 95 scrip"
 
-    # Store significant successes
-    if action_type == "write_artifact":
-        return f"CREATED: {intent.get('artifact_id')} - {intent.get('content', '')[:100]}"
+  MEMORY UPDATE TRIGGERS:
+  - After a FAILURE: Record the lesson learned
+  - After a SUCCESS: Record what made it work
+  - After 5+ actions: Synthesize what you've learned
 
-    if action_type == "invoke_artifact" and intent.get("method") == "purchase":
-        return f"PURCHASED: {intent.get('artifact_id')}"
+  When updating working_memory, ask: "Will future-me find this useful?"
 
-    # Skip routine successes
-    return None
+requires_context:
+  - working_memory
+  - failure_history
 ```
 
-### Phase 2: Stronger Loop Breaking
+### Phase 2: Loop Breaker Trait
 
-**Problem:** Agent sees "15x same action" warning but ignores it.
+**File:** `src/agents/_components/traits/loop_breaker.yaml`
 
-**Fix:** After N identical actions, inject STRONGER intervention into prompt.
+Create a trait that helps agents recognize and escape loops:
 
-**File:** `src/agents/agent.py` (in `build_prompt` or workflow step)
+```yaml
+name: loop_breaker
+type: trait
+version: 1
+description: "Helps agents recognize and escape repetitive patterns"
 
-```python
-def _get_loop_intervention(self, action_history: list[str]) -> str | None:
-    """Detect loops and return intervention text."""
-    if len(action_history) < 5:
-        return None
+inject_into:
+  - observe
+  - observing
+  - reflect
+  - reflecting
+  - operational_execution
 
-    # Check last 5 actions
-    last_5 = action_history[-5:]
-    if len(set(last_5)) == 1:  # All identical
-        return """
-## STUCK IN LOOP - MANDATORY CHANGE
+prompt_fragment: |
 
-You have performed the SAME ACTION 5+ times in a row.
-This is NOT productive. You MUST do something DIFFERENT.
+  === LOOP DETECTION (loop_breaker trait) ===
+  Check your "Recent Actions" section above. If you see the SAME action repeated:
 
-Options:
-1. If waiting for something - do something else while waiting
-2. If checking status - stop checking and take action
-3. If stuck - update your subgoal in working_memory
+  3x SAME ACTION = Yellow flag. Ask: "Am I making progress?"
+  5x SAME ACTION = Red flag. You MUST try something DIFFERENT.
 
-Your next action MUST be different from your last 5 actions.
-"""
-    return None
+  COMMON LOOPS AND ESCAPES:
+  - "Checking status repeatedly" → STOP checking. Take action or move on.
+  - "Waiting for buyer" → Don't wait passively. Build something else.
+  - "Retrying failed action" → Read the error. Change your approach.
+  - "Reading same artifact" → You already know what's in it. Decide and act.
+
+  ESCAPE STRATEGIES:
+  1. Update your subgoal in working_memory
+  2. Try a completely different action type
+  3. Work on a different artifact
+  4. Submit something to mint (always productive)
+
+  Remember: Repeating the same action hoping for different results is not strategy.
+
+requires_context:
+  - action_history
 ```
 
-### Phase 3: Subgoal Completion Detection
+### Phase 3: Subgoal Progression Trait
 
-**Problem:** Agent achieved subgoal but doesn't recognize it.
+**File:** `src/agents/_components/traits/subgoal_progression.yaml`
 
-**Fix:** Add subgoal completion check to prompt construction.
+Create a trait that encourages subgoal management:
 
-**File:** `src/agents/agent.py`
+```yaml
+name: subgoal_progression
+type: trait
+version: 1
+description: "Guides agents to track and update subgoals"
 
-```python
-def _check_subgoal_completion(self, working_memory: dict, last_result: dict) -> str | None:
-    """Check if current subgoal appears completed."""
-    subgoal = working_memory.get("current_subgoal", "")
+inject_into:
+  - reflect
+  - reflecting
+  - review
+  - reviewing
+  - strategic
+  - tactical
 
-    # Heuristics for completion
-    if "list" in subgoal.lower() and "for sale" in subgoal.lower():
-        # Check if listing succeeded
-        if last_result.get("success") and "listed" in str(last_result).lower():
-            return """
-## SUBGOAL COMPLETED
+prompt_fragment: |
 
-Your subgoal "{subgoal}" appears to be DONE.
+  === SUBGOAL MANAGEMENT (subgoal_progression trait) ===
+  Check your working_memory for `current_subgoal`. Ask yourself:
 
-You should:
-1. Update working_memory with a NEW subgoal
-2. Move on to something productive
-3. Don't wait passively - build something else or submit to mint
-"""
-    return None
+  IS MY SUBGOAL COMPLETE?
+  - "List artifact for sale" + listing exists = DONE → set new subgoal
+  - "Build X" + X exists and works = DONE → set new subgoal
+  - "Wait for Y" is NOT a good subgoal. Waiting is passive. What can you DO?
+
+  GOOD SUBGOALS (actionable, measurable):
+  - "Create an artifact that fetches weather data"
+  - "Submit my_tool to mint auction"
+  - "Purchase alpha_3's note_search to learn from it"
+
+  BAD SUBGOALS (vague, passive):
+  - "Wait for someone to buy my artifact"
+  - "Make money"
+  - "Build something useful"
+
+  SUBGOAL LIFECYCLE:
+  1. Set specific, actionable subgoal
+  2. Take actions toward it
+  3. Recognize when DONE
+  4. Record lessons learned
+  5. Set NEXT subgoal
+
+  If stuck on a subgoal for 10+ actions, it's time to PIVOT.
+
+requires_context:
+  - working_memory
+  - action_history
 ```
 
-### Phase 4: Strategic Fallback Suggestions
+### Phase 4: Update Genesis Agent Configs
 
-**Problem:** Agent doesn't know what to do when "waiting".
+**Files:** `src/agents/alpha_3/agent.yaml`, `src/agents/beta_3/agent.yaml`, `src/agents/delta_3/agent.yaml`
 
-**Fix:** Add strategic suggestions when agent appears idle.
+Add the new traits to each genesis agent:
 
-**File:** `src/agents/agent.py` (add to prompt)
+```yaml
+components:
+  traits:
+    - buy_before_build
+    - economic_participant
+    - memory_discipline      # NEW
+    - loop_breaker           # NEW
+    - subgoal_progression    # NEW
+```
 
-```python
-def _get_strategic_suggestions(self, context: dict) -> str:
-    """Suggest productive actions when agent seems stuck."""
-    suggestions = []
+### Phase 5: Update Handbook
 
-    # Check if agent has artifacts not submitted to mint
-    my_artifacts = context.get("my_artifacts", [])
-    mint_submissions = context.get("mint_submissions", [])
-    submitted_ids = {s["artifact_id"] for s in mint_submissions}
-    unsubmitted = [a for a in my_artifacts if a not in submitted_ids]
+**File:** `src/world/genesis/handbook/handbook_learning.md` (new)
 
-    if unsubmitted:
-        suggestions.append(f"Submit to mint: You have {len(unsubmitted)} artifacts not yet submitted: {unsubmitted[:3]}")
+Create a handbook artifact that agents can read for learning guidance:
 
-    # Check if agent has low revenue
-    revenue = context.get("revenue_earned", 0)
-    if revenue <= 0:
-        suggestions.append("Revenue is negative - focus on creating value others will pay for")
+```markdown
+# Learning Handbook
 
-    # Check if agent hasn't built anything recently
-    artifacts_completed = context.get("artifacts_completed", 0)
-    if artifacts_completed < 3:
-        suggestions.append("Build more artifacts - you've only created {artifacts_completed}")
+## How to Use Your Memory
 
-    if suggestions:
-        return "## Strategic Suggestions\n" + "\n".join(f"- {s}" for s in suggestions)
-    return ""
+Your working memory (`{agent_id}_working_memory`) is your long-term brain.
+
+### Writing Good Memories
+```yaml
+working_memory:
+  current_goal: "Specific, measurable goal"
+  current_subgoal: "Immediate actionable step"
+  lessons:
+    - "Insight that will help future decisions"
+    - "Pattern I noticed that works/doesn't work"
+  completed_subgoals:
+    - "What I've achieved so far"
+```
+
+### Common Mistakes
+- Storing "I did X" instead of "I learned Y"
+- Never updating subgoal after completing it
+- Setting vague goals like "make money"
+
+## How to Escape Loops
+
+If your recent actions are all the same:
+1. STOP and reflect
+2. Update your working_memory with what you learned
+3. Set a NEW subgoal
+4. Try a DIFFERENT action type
 ```
 
 ## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/agents/memory.py` | Add `synthesize_memory()`, filter what gets stored |
-| `src/agents/agent.py` | Add loop intervention, subgoal completion, strategic suggestions |
-| `config/schema.yaml` | Add config for loop_threshold, memory_synthesis |
+| `src/agents/_components/traits/memory_discipline.yaml` | NEW - memory guidance trait |
+| `src/agents/_components/traits/loop_breaker.yaml` | NEW - loop detection trait |
+| `src/agents/_components/traits/subgoal_progression.yaml` | NEW - subgoal management trait |
+| `src/agents/alpha_3/agent.yaml` | Add new traits to components |
+| `src/agents/beta_3/agent.yaml` | Add new traits to components |
+| `src/agents/delta_3/agent.yaml` | Add new traits to components |
+| `src/world/genesis/handbook/handbook_learning.md` | NEW - learning guidance handbook |
+
+## What This Does NOT Change
+
+- `src/agents/memory.py` - Architecture stays flexible
+- `src/agents/agent.py` - No hardcoded behaviors
+- `src/agents/workflow.py` - No forced interventions
+- `config/schema.yaml` - No new system-level configs
 
 ## Testing
 
-1. Run simulation, verify Mem0 stores insights not raw actions
-2. Verify loop intervention triggers after 5 identical actions
-3. Verify agent moves on after completing subgoal
-4. Verify strategic suggestions appear when agent is stuck
+1. Run simulation with updated genesis agents
+2. Verify trait prompts appear in LLM logs
+3. Check that agents update working_memory more frequently
+4. Verify agents break out of loops (max consecutive same action ≤5)
+5. Verify agents set new subgoals after completing old ones
 
 ## Acceptance Criteria
 
-- [ ] "Your Memories" section shows lessons/insights, not action echoes
-- [ ] Agent breaks out of loops after 5 identical actions
-- [ ] Agent recognizes subgoal completion and sets new subgoal
-- [ ] Strategic suggestions help stuck agents find productive actions
-- [ ] Simulation shows improved behavior (agents don't repeat same action 15x)
+- [ ] Three new trait files created and valid YAML
+- [ ] Genesis agents include new traits in config
+- [ ] Handbook artifact created
+- [ ] Simulation shows improved behavior:
+  - [ ] Working memory contains insights, not action echoes
+  - [ ] Agents break loops within 5 repetitions
+  - [ ] Agents update subgoals multiple times per run
 
 ## Success Metrics
 
 | Metric | Before | Target |
 |--------|--------|--------|
 | Max consecutive identical actions | 15+ | ≤5 |
-| Memory entries that are insights | ~0% | >80% |
-| Subgoal updates per agent | ~1 | 3+ |
-| Revenue per agent | -5 | >0 |
+| Working memory updates per agent | ~2 | 5+ |
+| Subgoal changes per agent | ~1 | 3+ |
 
-## Related Research
+## Why This Approach
 
-From `docs/research/agent_architecture_research_notes.md`:
+From project philosophy:
+- **Emergence over prescription**: Traits GUIDE, they don't FORCE
+- **Minimal kernel, max flexibility**: Architecture unchanged
+- **Genesis as conveniences**: Other agents could ignore these traits or build better ones
 
-- **ExpeL**: "Learning from experience WITHOUT parameter updates... extracts knowledge using natural language"
-- **Reflexion**: "Self-improvement through linguistic feedback... stores self-critiques in episodic memory"
-- **Memory Synthesis**: "Task diaries → periodic synthesis → prompt improvements"
-
-These patterns all emphasize **storing insights, not raw data**.
-
-## Risk
-
-- Memory filtering might accidentally skip important events
-- Loop intervention might be too aggressive
-- Subgoal detection heuristics might misfire
-
-## Mitigation
-
-- Start with conservative filtering (only skip obvious noise)
-- Make loop threshold configurable (default 5)
-- Log when interventions trigger for debugging
+The architecture remains infinitely flexible. We're just making the default genesis agents smarter about using it.
