@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { safeFixed } from '../../utils/format'
 
 interface ProgressData {
   current_tick: number
@@ -76,7 +77,7 @@ export function ProgressPanel() {
           <div>
             <span className="text-[var(--text-secondary)] text-xs">Events/sec</span>
             <p className="text-lg font-medium">
-              {data.events_per_second.toFixed(1)}
+              {safeFixed(data.events_per_second, 1)}
             </p>
           </div>
         </div>
@@ -97,8 +98,8 @@ export function ProgressPanel() {
         <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-1">
           <span>API Budget</span>
           <span>
-            ${data.api_budget_spent.toFixed(2)} / ${data.api_budget_limit.toFixed(2)}
-            {' '}({budgetPercent.toFixed(1)}%)
+            ${safeFixed(data.api_budget_spent, 2)} / ${safeFixed(data.api_budget_limit, 2)}
+            {' '}({safeFixed(budgetPercent, 1)}%)
           </span>
         </div>
         <div className="h-2 bg-[var(--bg-primary)] rounded-full overflow-hidden">

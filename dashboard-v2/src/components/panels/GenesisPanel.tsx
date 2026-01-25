@@ -1,5 +1,6 @@
 import { useGenesis } from '../../api/queries'
 import { Panel } from '../shared/Panel'
+import { safeFixed } from '../../utils/format'
 
 function StatBox({
   label,
@@ -38,7 +39,7 @@ function ScoreBar({ score }: { score: number }) {
           style={{ width: `${percent}%` }}
         />
       </div>
-      <span className="text-xs font-mono w-12 text-right">{score.toFixed(2)}</span>
+      <span className="text-xs font-mono w-12 text-right">{safeFixed(score, 2)}</span>
     </div>
   )
 }
@@ -75,7 +76,7 @@ export function GenesisPanel() {
               <StatBox label="Pending" value={data.mint.pending_count} />
               <StatBox
                 label="Total Minted"
-                value={`${data.mint.total_scrip_minted.toFixed(1)} scrip`}
+                value={`${safeFixed(data.mint?.total_scrip_minted, 1)} scrip`}
               />
             </div>
             {data.mint.recent_scores.length > 0 && (
