@@ -516,3 +516,6 @@ agent:
   subscribed_artifacts:
     max_count: <number>         # Max artifacts per agent (default: 5, Plan #191)
     max_size_bytes: <number>    # Max content size per artifact (default: 2000, Plan #191)
+  system_prompt:
+    max_size_bytes: <number>    # Max system prompt size (default: 8000, Plan #194)
+    protected_prefix_chars: <number>  # Protected chars at start (default: 200, Plan #194)

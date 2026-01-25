@@ -28,7 +28,7 @@ from .actions import (
     NoopIntent, ReadArtifactIntent, WriteArtifactIntent,
     EditArtifactIntent, InvokeArtifactIntent, DeleteArtifactIntent,
     QueryKernelIntent, SubscribeArtifactIntent, UnsubscribeArtifactIntent,
-    ConfigureContextIntent,
+    ConfigureContextIntent, ModifySystemPromptIntent,
 )
 from .kernel_queries import KernelQueryHandler
 # NOTE: TransferIntent removed - all transfers via genesis_ledger.transfer()
@@ -549,6 +549,9 @@ class World:
 
         elif isinstance(intent, ConfigureContextIntent):
             result = self._execute_configure_context(intent)
+
+        elif isinstance(intent, ModifySystemPromptIntent):
+            result = self._execute_modify_system_prompt(intent)
 
         else:
             result = ActionResult(success=False, message="Unknown action type")
@@ -1438,6 +1441,148 @@ class World:
             success=True,
             message=f"Updated context configuration",
             data=result_data,
+        )
+
+    def _execute_modify_system_prompt(self, intent: ModifySystemPromptIntent) -> ActionResult:
+        """Execute a modify_system_prompt action (Plan #194).
+
+        Modifies the agent's system prompt with support for:
+        - append: Add content to end of system prompt
+        - prepend: Add content to beginning of system prompt
+        - replace_section: Replace a markdown section by its header
+        - reset: Reset to original system prompt
+        """
+        agent_id = intent.principal_id
+        operation = intent.operation
+        content = intent.content
+        section_marker = intent.section_marker
+
+        # Get config limits
+        max_size_bytes: int = self.config.get("agent.system_prompt.max_size_bytes", 8000)
+        protected_prefix_chars: int = self.config.get("agent.system_prompt.protected_prefix_chars", 200)
+
+        # Check if agent artifact exists
+        agent_artifact = self.artifacts.get(agent_id)
+        if agent_artifact is None:
+            return ActionResult(
+                success=False,
+                message=f"Agent artifact '{agent_id}' not found",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
+
+        # Parse current agent config
+        try:
+            config = json.loads(agent_artifact.content) if agent_artifact.content else {}
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+
+        current_prompt: str = config.get("system_prompt", "")
+        original_prompt: str = config.get("original_system_prompt", current_prompt)
+
+        # If this is the first modification, store the original
+        if "original_system_prompt" not in config:
+            config["original_system_prompt"] = current_prompt
+
+        # Apply the operation
+        new_prompt = current_prompt
+
+        if operation == "append":
+            new_prompt = current_prompt + "\n" + content
+
+        elif operation == "prepend":
+            # Must preserve protected prefix
+            if protected_prefix_chars > 0:
+                protected_part = current_prompt[:protected_prefix_chars]
+                rest = current_prompt[protected_prefix_chars:]
+                new_prompt = protected_part + content + "\n" + rest
+            else:
+                new_prompt = content + "\n" + current_prompt
+
+        elif operation == "replace_section":
+            # Find section start
+            section_start = current_prompt.find(section_marker)
+            if section_start == -1:
+                return ActionResult(
+                    success=False,
+                    message=f"Section marker '{section_marker}' not found in system prompt",
+                    error_code=ErrorCode.INVALID_ARGS.value,
+                    error_category=ErrorCategory.VALIDATION.value,
+                    retriable=True,
+                )
+
+            # Check if section_start is within protected prefix
+            if section_start < protected_prefix_chars:
+                return ActionResult(
+                    success=False,
+                    message=f"Cannot modify section in protected prefix (first {protected_prefix_chars} chars)",
+                    error_code=ErrorCode.PERMISSION_DENIED.value,
+                    error_category=ErrorCategory.PERMISSION.value,
+                    retriable=False,
+                )
+
+            # Find section end (next markdown header or end of string)
+            section_end = current_prompt.find("\n##", section_start + len(section_marker))
+            if section_end == -1:
+                section_end = len(current_prompt)
+
+            # Replace section
+            new_prompt = current_prompt[:section_start] + content + current_prompt[section_end:]
+
+        elif operation == "reset":
+            new_prompt = original_prompt
+
+        else:
+            return ActionResult(
+                success=False,
+                message=f"Unknown operation '{operation}'",
+                error_code=ErrorCode.INVALID_ARGS.value,
+                error_category=ErrorCategory.VALIDATION.value,
+                retriable=True,
+            )
+
+        # Check size limit
+        if len(new_prompt.encode('utf-8')) > max_size_bytes:
+            return ActionResult(
+                success=False,
+                message=f"System prompt would exceed size limit ({max_size_bytes} bytes)",
+                error_code=ErrorCode.QUOTA_EXCEEDED.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
+
+        # Update config
+        config["system_prompt"] = new_prompt
+
+        # Track modification history (optional, for observability)
+        modifications = config.get("system_prompt_modifications", [])
+        modifications.append({
+            "operation": operation,
+            "content_preview": content[:50] if content else None,
+            "section_marker": section_marker if operation == "replace_section" else None,
+        })
+        config["system_prompt_modifications"] = modifications[-10:]  # Keep last 10
+
+        # Update agent artifact content
+        new_content = json.dumps(config, indent=2)
+        self.artifacts.write(
+            artifact_id=agent_id,
+            type=agent_artifact.artifact_type,
+            content=new_content,
+            created_by=agent_artifact.created_by,
+            executable=agent_artifact.executable,
+            price=agent_artifact.price,
+            code=agent_artifact.code,
+            interface=agent_artifact.interface,
+            access_contract_id=agent_artifact.access_contract_id,
+            metadata=agent_artifact.metadata,
+        )
+
+        return ActionResult(
+            success=True,
+            message=f"System prompt modified ({operation})",
+            data={"new_prompt_length": len(new_prompt)},
         )
 
     def _log_invoke_success(

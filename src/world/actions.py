@@ -23,6 +23,7 @@ class ActionType(str, Enum):
     SUBSCRIBE_ARTIFACT = "subscribe_artifact"  # Plan #191: Subscribe to artifact
     UNSUBSCRIBE_ARTIFACT = "unsubscribe_artifact"  # Plan #191: Unsubscribe
     CONFIGURE_CONTEXT = "configure_context"  # Plan #192: Context section control
+    MODIFY_SYSTEM_PROMPT = "modify_system_prompt"  # Plan #194: Self-modifying system prompt
     # NOTE: No TRANSFER - all transfers via genesis_ledger.transfer()
 
 
@@ -308,6 +309,42 @@ class ConfigureContextIntent(ActionIntent):
         d["sections"] = self.sections
         if self.priorities is not None:
             d["priorities"] = self.priorities
+        return d
+
+
+@dataclass
+class ModifySystemPromptIntent(ActionIntent):
+    """Modify the agent's system prompt (Plan #194).
+
+    Supports operations:
+    - append: Add content to end of system prompt
+    - prepend: Add content to beginning of system prompt
+    - replace_section: Replace a markdown section by its header
+    - reset: Reset to original system prompt
+    """
+
+    operation: str  # "append" | "prepend" | "replace_section" | "reset"
+    content: str  # For append/prepend, or new section content for replace_section
+    section_marker: str  # For replace_section (e.g., "## Goals")
+
+    def __init__(
+        self,
+        principal_id: str,
+        operation: str,
+        content: str = "",
+        section_marker: str = "",
+        reasoning: str = "",
+    ) -> None:
+        super().__init__(ActionType.MODIFY_SYSTEM_PROMPT, principal_id, reasoning=reasoning)
+        self.operation = operation
+        self.content = content
+        self.section_marker = section_marker
+
+    def to_dict(self) -> dict[str, Any]:
+        d = super().to_dict()
+        d["operation"] = self.operation
+        d["content"] = self.content
+        d["section_marker"] = self.section_marker
         return d
 
 
