@@ -99,7 +99,7 @@ def get_plan_progress() -> dict:
         
         stats["total"] += 1
         
-        if "✅ Complete" in content:
+        if "✅ Complete" in content or "✅ Superseded" in content or "✅ IMPLEMENTED" in content:
             stats["complete"] += 1
             status = "complete"
         elif "🚧 In Progress" in content:
