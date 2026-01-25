@@ -152,12 +152,19 @@ class GenesisEscrow(GenesisArtifact):
         # Plan #160: Type coercion now happens centrally in world.py
         # Validate price - Plan #160: Improved error message showing actual type
         if not isinstance(price, int):
-            hint = ""
             if isinstance(price, str) and price.isdigit():
-                hint = f" Use {price} (number) instead of \"{price}\" (string)."
+                correct_price = int(price)
+                return {
+                    "success": False,
+                    "error": f"Price must be an integer, got str: '{price}'. "
+                             f"Fix: {{\"action_type\": \"invoke_artifact\", \"artifact_id\": \"genesis_escrow\", "
+                             f"\"method\": \"deposit\", \"args\": [\"{artifact_id}\", {correct_price}]}}"
+                }
             return {
                 "success": False,
-                "error": f"Price must be an integer, got {type(price).__name__}: {repr(price)}.{hint}"
+                "error": f"Price must be an integer, got {type(price).__name__}: {repr(price)}. "
+                         f"Example: {{\"action_type\": \"invoke_artifact\", \"artifact_id\": \"genesis_escrow\", "
+                         f"\"method\": \"deposit\", \"args\": [\"{artifact_id}\", 10]}}"
             }
         if price <= 0:
             return {"success": False, "error": f"Price must be positive (at least 1), got {price}."}
@@ -178,8 +185,10 @@ class GenesisEscrow(GenesisArtifact):
             return {
                 "success": False,
                 "error": f"Escrow does not have write access to '{artifact_id}'. "
-                         f"Before depositing, set metadata['authorized_writer'] = '{self.id}' on your artifact. "
-                         f"Current authorized_writer: {authorized_writer or 'not set'}"
+                         f"Fix with this action: "
+                         f'{{\"action_type\": \"write_artifact\", \"artifact_id\": \"{artifact_id}\", '
+                         f'\"metadata\": {{\"authorized_writer\": \"{self.id}\"}}}}'
+                         f" (current authorized_writer: {authorized_writer or 'not set'})"
             }
 
         # Check not already listed

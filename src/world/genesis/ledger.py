@@ -180,13 +180,18 @@ class GenesisLedger(GenesisArtifact):
             hint = ""
             if isinstance(amount, str):
                 if amount.isdigit():
-                    hint = f" Use {amount} (number) instead of \"{amount}\" (string)."
+                    hint = (
+                        f" Fix: {{\"action_type\": \"invoke_artifact\", \"artifact_id\": \"genesis_ledger\", "
+                        f"\"method\": \"transfer\", \"args\": [\"{from_id}\", \"{to_id}\", {int(amount)}]}}"
+                    )
                 else:
                     # Looks like an artifact name - they probably want transfer_ownership
                     hint = (
                         f" NOTE: You seem to be trying to transfer an artifact '{amount}'. "
                         f"'transfer' is for SCRIP (money), not artifacts. "
-                        f"To transfer ARTIFACT OWNERSHIP, use: genesis_ledger.transfer_ownership(['{amount}', '{to_id}'])"
+                        f"To transfer ARTIFACT OWNERSHIP, use: {{\"action_type\": \"invoke_artifact\", "
+                        f"\"artifact_id\": \"genesis_ledger\", \"method\": \"transfer_ownership\", "
+                        f"\"args\": [\"{amount}\", \"{to_id}\"]}}"
                     )
             return validation_error(
                 f"Amount must be an integer, got {type(amount).__name__}: {repr(amount)}.{hint}",
