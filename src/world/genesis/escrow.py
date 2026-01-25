@@ -126,6 +126,10 @@ class GenesisEscrow(GenesisArtifact):
         price: Any = args[1]
         buyer_id: str | None = args[2] if len(args) > 2 else None
 
+        # Plan #160: Auto-coerce string numbers to int (LLMs often send "5" instead of 5)
+        if isinstance(price, str) and price.isdigit():
+            price = int(price)
+
         # Validate price - Plan #160: Improved error message showing actual type
         if not isinstance(price, int):
             hint = ""
