@@ -41,11 +41,6 @@ class TestTemporalNetworkEndpoint:
                                 "owner": "_kernel",
                                 "methods": ["get_balance", "transfer"],
                             },
-                            {
-                                "artifact_id": "genesis_store",
-                                "owner": "_kernel",
-                                "methods": ["create", "read"],
-                            },
                         ],
                     }
                 )
