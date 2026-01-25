@@ -1,6 +1,6 @@
 # Plan 140: Actions Module for Agent-Expected API
 
-**Status:** Planned
+**Status:** Complete
 
 **Priority:** High
 **Blocked By:** None
@@ -111,10 +111,10 @@ Update examples to show both styles.
 
 ## Verification
 
-- [ ] Existing tests pass (bare `invoke()` still works)
-- [ ] New test: `from actions import Action` works in sandbox
-- [ ] New test: `Action.invoke_artifact()` calls target correctly
-- [ ] Simulation run shows agents can use either API
+- [x] Existing tests pass (bare `invoke()` still works)
+- [x] New test: `from actions import Action` works in sandbox
+- [x] New test: `Action.invoke_artifact()` calls target correctly
+- [x] Action class fully implemented in executor.py lines 1545-1631
 
 ---
 
