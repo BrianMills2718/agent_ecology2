@@ -285,25 +285,25 @@ Terms for discussing agent design at different levels of abstraction.
 - **Framework** = Tools to build agents
 - **Orchestration** = Prescribed multi-agent patterns
 
-We provide a **substrate**. Genesis agents are one **cognitive architecture** on that substrate. Unlike AutoGen/CrewAI, we don't prescribe **orchestration**—agents discover coordination patterns through economic incentives.
+We provide a **substrate**. Genesis agents are the **prescribed initial cognitive architecture** we seed the system with. The substrate allows other architectures to emerge or be built, but genesis agents are what we start with. Unlike AutoGen/CrewAI, we don't prescribe **orchestration**—agents discover coordination patterns through economic incentives.
 
 ### Our Specific Terms
 
 | Term | Definition | Notes |
 |------|------------|-------|
 | **Autonomous Principal** | Any artifact with standing and an execution loop | The architectural unit; decision engine (LLM, RL, code) is implementation detail |
-| **Genesis Agents** | Current agent implementations (alpha, beta, _3, v4, etc.) | One cognitive architecture; could be replaced |
+| **Genesis Agents** | Prescribed initial agent implementations (alpha, beta, _3, v4, etc.) | The cognitive architecture we seed; substrate allows others |
 | **Capability Space** | What patterns are possible given substrate primitives | Complete—no patterns are impossible |
-| **Friction** | How difficult a possible pattern is to implement | High friction ≠ impossible, just inconvenient |
+| **Friction** | Cost of implementing a possible pattern: difficulty, resource usage, latency | High friction ≠ impossible; may involve extra steps, polling, or waste |
 
 **Autonomous Principal vs Agent:**
 - "Agent" implies LLM-based, anthropomorphic
 - "Autonomous principal" is substrate-neutral: any artifact that can hold resources and execute
 - An RL policy, a cron job, or an LLM could all be autonomous principals
 
-### SOTA Cognitive Architectures (Reference)
+### State-of-the-Art (SOTA) Cognitive Architectures (Reference)
 
-Single-agent patterns from the literature:
+Single-agent patterns from the literature (for context when comparing our approach):
 
 | Architecture | Core Pattern | Key Feature |
 |--------------|--------------|-------------|
@@ -333,6 +333,22 @@ How other systems handle multi-agent coordination:
 - No prescribed orchestration
 - Economic pressure drives coordination
 - Agents discover patterns through emergence
+
+### Terminology Notes
+
+**Non-standard or project-specific terms:**
+
+| Term | Why We Use It | Alternatives Considered |
+|------|---------------|------------------------|
+| **Substrate** | Emphasizes foundation/primitives, not orchestration | "Platform" (implies more), "Runtime" (too narrow), "Environment" (vague) |
+| **Autonomous Principal** | Substrate-neutral; doesn't assume LLM | "Agent" (implies LLM), "Actor" (overloaded in CS) |
+| **Friction** | Captures difficulty + resource cost + latency | "Overhead" (too narrow), "Cost" (confuses with scrip) |
+| **Genesis** prefix | Consistent with genesis_ledger, genesis_store, etc. | "Initial", "Seed" (less distinctive) |
+
+**Standard terms we use as-is:**
+- Cognitive Architecture (standard in AI/cognitive science)
+- Framework (standard in software)
+- Capability Space (standard in design)
 
 ---
 
