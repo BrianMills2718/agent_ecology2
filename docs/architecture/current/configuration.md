@@ -220,6 +220,10 @@ llm:
   rate_limit_delay: 15.0    # Seconds between ticks
   allowed_models:           # For future self-modification
     - "gemini/gemini-3-flash-preview"
+  reasoning_effort: null    # Claude extended thinking (Plan #187)
+                            # Values: null (disabled), "none", "low", "medium", "high"
+                            # Only works with Anthropic Claude models
+                            # WARNING: Higher values cost 5-10x more
 ```
 
 ### World

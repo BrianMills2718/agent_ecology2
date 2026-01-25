@@ -301,6 +301,11 @@ class LLMProvider:
         """Check if model needs responses() API instead of completion()"""
         return 'gpt-5' in model.lower()
 
+    def _is_claude_model(self, model: str) -> bool:
+        """Check if model is an Anthropic Claude model that supports reasoning_effort"""
+        model_lower = model.lower()
+        return 'anthropic' in model_lower or 'claude' in model_lower
+
     def _generate_request_id(self) -> str:
         """Generate unique request ID (12 chars, collision-resistant)"""
         import uuid
@@ -638,6 +643,7 @@ class LLMProvider:
         system_prompt: Optional[str] = None,
         temperature: Optional[float] = None,
         use_cache: bool = True,
+        reasoning_effort: Optional[str] = None,
         **context
     ) -> Union[str, BaseModel]:
         """
@@ -649,6 +655,8 @@ class LLMProvider:
             system_prompt: Optional system prompt
             temperature: Temperature (ignored for gpt-5-mini with warning)
             use_cache: Whether to use cache (default: True, only if cache_dir set)
+            reasoning_effort: Thinking time for Claude models ("none"|"low"|"medium"|"high")
+                             Only works with Anthropic Claude models. Other models ignore this.
             **context: Context variables for Jinja2 template rendering
 
         Returns:
@@ -707,6 +715,19 @@ class LLMProvider:
             warnings_list.append("temperature ignored for gpt-5-mini")
         elif temperature is not None:
             params['temperature'] = temperature
+
+        # Handle reasoning_effort (Claude extended thinking)
+        if reasoning_effort and reasoning_effort != "none":
+            if self._is_claude_model(self.model):
+                # Pass reasoning_effort to Anthropic Claude models via LiteLLM
+                # Valid values: "low", "medium", "high"
+                params['reasoning_effort'] = reasoning_effort
+            else:
+                import logging
+                logging.warning(
+                    f"reasoning_effort='{reasoning_effort}' ignored for non-Claude model '{self.model}'"
+                )
+                warnings_list.append(f"reasoning_effort ignored for {self.model}")
 
         # Handle structured output
         if response_model:
@@ -822,6 +843,7 @@ class LLMProvider:
                     "max_tokens": None,
                     "warnings": warnings_list,
                     "response_model": response_model.__name__ if response_model else None,
+                    "reasoning_effort": reasoning_effort,
                 },
                 prompt={
                     "raw": raw_prompt,
@@ -871,6 +893,7 @@ class LLMProvider:
                     "max_tokens": None,
                     "warnings": warnings_list,
                     "response_model": response_model.__name__ if response_model else None,
+                    "reasoning_effort": reasoning_effort,
                 },
                 prompt={
                     "raw": raw_prompt,
@@ -910,6 +933,7 @@ class LLMProvider:
         response_model: Optional[Type[BaseModel]] = None,
         system_prompt: Optional[str] = None,
         temperature: Optional[float] = None,
+        reasoning_effort: Optional[str] = None,
         **context
     ) -> Union[str, BaseModel]:
         """
@@ -933,6 +957,7 @@ class LLMProvider:
                     response_model=response_model,
                     system_prompt=system_prompt,
                     temperature=temperature,
+                    reasoning_effort=reasoning_effort,
                     **context
                 ))
             else:
