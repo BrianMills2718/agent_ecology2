@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Header } from './components/layout/Header'
 import { MainGrid } from './components/layout/MainGrid'
+import { AlertToastContainer } from './components/shared/AlertToast'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,6 +18,7 @@ function App() {
       <div className="min-h-screen flex flex-col">
         <Header />
         <MainGrid />
+        <AlertToastContainer />
       </div>
     </QueryClientProvider>
   )
