@@ -901,6 +901,218 @@ def check_stale_claims(claims: list[dict], hours: int) -> list[dict]:
     return stale
 
 
+# =============================================================================
+# Plan #206: Enhanced Stale Claim Detection and Cleanup
+# =============================================================================
+
+
+def get_worktree_last_modified(worktree_path: str) -> datetime | None:
+    """Get the most recent modification time of any file in the worktree.
+
+    This is used to determine if a claim is stale based on actual activity,
+    not just when the claim was created.
+
+    Args:
+        worktree_path: Path to the worktree directory
+
+    Returns:
+        datetime of most recent modification, or None if path doesn't exist
+    """
+    path = Path(worktree_path)
+    if not path.exists() or not path.is_dir():
+        return None
+
+    most_recent: datetime | None = None
+
+    # Check common activity indicators
+    # 1. Git index (changes when staging/committing)
+    git_index = path / ".git" / "index"
+    if not git_index.exists():
+        # For worktrees, .git is a file pointing to the actual git dir
+        git_file = path / ".git"
+        if git_file.is_file():
+            # Try to get the actual git dir
+            try:
+                content = git_file.read_text().strip()
+                if content.startswith("gitdir:"):
+                    actual_git = Path(content[7:].strip())
+                    git_index = actual_git / "index"
+            except (OSError, ValueError):
+                pass
+
+    if git_index.exists():
+        try:
+            mtime = datetime.fromtimestamp(git_index.stat().st_mtime)
+            if most_recent is None or mtime > most_recent:
+                most_recent = mtime
+        except OSError:
+            pass
+
+    # 2. Check recently modified source files (but not too deep to avoid slowness)
+    source_dirs = ["src", "scripts", "tests", "docs"]
+    checked_files = 0
+    max_files = 100  # Limit to avoid slowness on large repos
+
+    for src_dir in source_dirs:
+        src_path = path / src_dir
+        if not src_path.exists():
+            continue
+
+        for file_path in src_path.rglob("*"):
+            if checked_files >= max_files:
+                break
+            if file_path.is_file() and not file_path.name.startswith("."):
+                try:
+                    mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
+                    if most_recent is None or mtime > most_recent:
+                        most_recent = mtime
+                    checked_files += 1
+                except OSError:
+                    pass
+
+    # 3. Fallback: check the worktree root itself
+    if most_recent is None:
+        try:
+            most_recent = datetime.fromtimestamp(path.stat().st_mtime)
+        except OSError:
+            pass
+
+    return most_recent
+
+
+def is_claim_stale(
+    claim: dict[str, Any],
+    max_hours: int = 8,
+) -> tuple[bool, str]:
+    """Check if a claim is stale based on worktree activity.
+
+    A claim is stale if:
+    - The worktree path doesn't exist
+    - The worktree has no activity for max_hours
+
+    Args:
+        claim: Claim dict with at least 'cc_id' and optionally 'worktree_path'
+        max_hours: Hours of inactivity before claim is considered stale
+
+    Returns:
+        (is_stale, reason) tuple
+    """
+    worktree_path = claim.get("worktree_path")
+
+    # No worktree path = definitely stale
+    if not worktree_path:
+        return True, "No worktree path in claim"
+
+    # Worktree doesn't exist = stale
+    if not Path(worktree_path).exists():
+        return True, f"Worktree does not exist: {worktree_path}"
+
+    # Check last modification time
+    last_modified = get_worktree_last_modified(worktree_path)
+    if last_modified is None:
+        return True, "Could not determine worktree activity"
+
+    now = datetime.now()
+    hours_since = (now - last_modified).total_seconds() / 3600
+
+    if hours_since > max_hours:
+        return True, f"Worktree inactive for {hours_since:.1f}h (threshold: {max_hours}h)"
+
+    return False, f"Active {hours_since:.1f}h ago"
+
+
+def cleanup_stale_claims(
+    claims: list[dict[str, Any]],
+    max_hours: int = 8,
+    dry_run: bool = False,
+) -> list[str]:
+    """Find and optionally release stale claims.
+
+    A claim is stale if:
+    - Its worktree doesn't exist
+    - Its worktree has no activity for max_hours
+
+    Args:
+        claims: List of claim dicts
+        max_hours: Hours of inactivity before claim is considered stale
+        dry_run: If True, just report what would be cleaned up
+
+    Returns:
+        List of cc_ids that were (or would be) released
+    """
+    released: list[str] = []
+
+    for claim in claims:
+        cc_id = claim.get("cc_id", "unknown")
+        is_stale, reason = is_claim_stale(claim, max_hours)
+
+        if is_stale:
+            released.append(cc_id)
+            if not dry_run:
+                # The actual release would happen here, but for now
+                # we just report - the caller handles the release
+                pass
+
+    return released
+
+
+def is_valid_worktree_location(
+    worktree_path: str,
+    repo_root: str,
+) -> tuple[bool, str]:
+    """Check if a worktree is in the standard location.
+
+    Worktrees should be in {repo_root}/worktrees/ to ensure proper tracking.
+
+    Args:
+        worktree_path: Path to the worktree
+        repo_root: Path to the main repository root
+
+    Returns:
+        (is_valid, reason) tuple
+    """
+    expected_prefix = str(Path(repo_root) / "worktrees") + "/"
+    worktree_str = str(Path(worktree_path))
+
+    if worktree_str.startswith(expected_prefix):
+        return True, "Standard location"
+
+    return False, f"Expected worktree in {expected_prefix}, got: {worktree_str}"
+
+
+def cleanup_orphaned_claims(
+    claims: list[dict[str, Any]],
+    dry_run: bool = False,
+) -> tuple[list[str], list[dict[str, Any]]]:
+    """Remove claims where the worktree no longer exists.
+
+    This is a more aggressive cleanup than cleanup_stale_claims -
+    it removes claims immediately if the worktree is gone, regardless
+    of how old the claim is.
+
+    Args:
+        claims: List of claim dicts
+        dry_run: If True, just report what would be cleaned up
+
+    Returns:
+        (cleaned_cc_ids, remaining_claims) tuple
+    """
+    cleaned: list[str] = []
+    remaining: list[dict[str, Any]] = []
+
+    for claim in claims:
+        cc_id = claim.get("cc_id", "unknown")
+        worktree_path = claim.get("worktree_path")
+
+        # No worktree path or worktree doesn't exist = orphaned
+        if not worktree_path or not Path(worktree_path).exists():
+            cleaned.append(cc_id)
+        else:
+            remaining.append(claim)
+
+    return cleaned, remaining
+
+
 def list_claims(claims: list[dict], show_worktrees: bool = True) -> None:
     """Print claims AND worktrees with cross-referencing.
 
@@ -1403,6 +1615,27 @@ def main() -> int:
         action="store_true",
         help="Auto-cleanup claims for branches that have been merged to main"
     )
+    parser.add_argument(
+        "--cleanup-orphaned",
+        action="store_true",
+        help="Remove claims where worktree no longer exists (Plan #206)"
+    )
+    parser.add_argument(
+        "--cleanup-stale",
+        action="store_true",
+        help="Release claims with no worktree activity for --stale-hours (Plan #206)"
+    )
+    parser.add_argument(
+        "--stale-hours",
+        type=int,
+        default=8,
+        help="Hours of inactivity before a claim is considered stale (default: 8)"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be cleaned up without making changes"
+    )
 
     args = parser.parse_args()
 
@@ -1613,6 +1846,69 @@ def main() -> int:
                     print(f"  make worktree-remove BRANCH={Path(wt).name}")
         else:
             print("No claims found for merged branches")
+        return 0
+
+    # Handle cleanup-orphaned (Plan #206)
+    if args.cleanup_orphaned:
+        cleaned_ids, remaining = cleanup_orphaned_claims(claims, dry_run=args.dry_run)
+        if cleaned_ids:
+            action = "Would remove" if args.dry_run else "Removed"
+            print(f"{action} {len(cleaned_ids)} orphaned claim(s):")
+            for cc_id in cleaned_ids:
+                print(f"  - {cc_id}")
+
+            if not args.dry_run:
+                # Update the data structure
+                data["claims"] = remaining
+                # Move cleaned to completed
+                for cc_id in cleaned_ids:
+                    completion = {
+                        "cc_id": cc_id,
+                        "completed_at": datetime.now(timezone.utc).isoformat(),
+                        "reason": "auto_released_orphaned",
+                    }
+                    data["completed"].append(completion)
+                # Keep only last 50 completions
+                data["completed"] = data["completed"][-50:]
+                save_yaml(data)
+        else:
+            print("No orphaned claims found")
+        return 0
+
+    # Handle cleanup-stale (Plan #206)
+    if args.cleanup_stale:
+        stale_ids = cleanup_stale_claims(claims, max_hours=args.stale_hours, dry_run=True)
+        if stale_ids:
+            action = "Would release" if args.dry_run else "Released"
+            print(f"{action} {len(stale_ids)} stale claim(s) (>{args.stale_hours}h inactive):")
+            for cc_id in stale_ids:
+                # Find the claim to show more info
+                claim = next((c for c in claims if c.get("cc_id") == cc_id), None)
+                if claim:
+                    _, reason = is_claim_stale(claim, args.stale_hours)
+                    print(f"  - {cc_id}: {reason}")
+                else:
+                    print(f"  - {cc_id}")
+
+            if not args.dry_run:
+                # Remove stale claims from data
+                remaining = [c for c in claims if c.get("cc_id") not in stale_ids]
+                data["claims"] = remaining
+                # Move to completed
+                for cc_id in stale_ids:
+                    claim = next((c for c in claims if c.get("cc_id") == cc_id), {})
+                    completion = {
+                        "cc_id": cc_id,
+                        "plan": claim.get("plan"),
+                        "task": claim.get("task"),
+                        "completed_at": datetime.now(timezone.utc).isoformat(),
+                        "reason": "auto_released_stale",
+                    }
+                    data["completed"].append(completion)
+                data["completed"] = data["completed"][-50:]
+                save_yaml(data)
+        else:
+            print(f"No stale claims found (threshold: {args.stale_hours}h)")
         return 0
 
     # Handle claim
