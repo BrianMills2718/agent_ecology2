@@ -5,8 +5,8 @@ import { NetworkPanel } from '../panels/NetworkPanel'
 export function NetworkTab() {
   return (
     <div className="p-4">
-      {/* Network panel gets full width in this tab */}
-      <NetworkPanel />
+      {/* Network panel gets full width and height in this tab */}
+      <NetworkPanel fullHeight />
     </div>
   )
 }
