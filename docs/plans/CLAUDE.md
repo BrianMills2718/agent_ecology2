@@ -232,6 +232,7 @@ Master index of all gaps and their implementation plans.
 | 210 | [Fix ADR-0016 Violation (created_by Mutation)](210_fix_created_by_mutation.md) | High | 🚧 In Progress (PR #719) | Correct ownership semantics, historical audit trail |
 | 211 | [Agent Simulation Fixes](211_agent_simulation_fixes.md) | High | ✅ Complete | Agent effectiveness in simulations |
 | 212 | [Memory and Context Quality for Agent Learning](212_memory_and_context_quality.md) | High | ✅ Complete | Effective agent learning and strategic behavior |
+| 213 | [Escrow Contract-Based Redesign](213_escrow_contract_redesign.md) | Medium | 📋 Planned | Correct artifact trading semantics |
 ---
 
 ## TDD Workflow
