@@ -1,6 +1,6 @@
 # Agent Architecture Documentation Index
 
-**Last Updated:** 2026-01-24 (friction analysis, Plans #182-183 added)
+**Last Updated:** 2026-01-24 (kernel gap analysis, Plan #185 added)
 
 This is the master index for all agent architecture documentation. Use this as your starting point for understanding:
 1. Our kernel/substrate architecture
@@ -62,10 +62,38 @@ Genesis agents are **one implementation** of agents on that substrate.
 
 | Gap | Plan | Priority | Status |
 |-----|------|----------|--------|
-| Trigger integration not complete | #180 | **High** | Planned |
+| Trigger integration not complete | #180 | **High** | In Progress |
 | Query performance (O(n) scans) | #182 | Medium | Planned |
-| Consensus/voting convenience | #183 | Low | Planned |
+| Time-based scheduling | #185 | Medium | Planned |
 | No multi-container coordination | None | Low | Future |
+
+**Note:** Plan #183 (genesis_voting) removed - agents should build consensus mechanisms themselves per emergence philosophy.
+
+### Kernel Gap Analysis (2026-01-24)
+
+Investigation of three potential kernel capabilities:
+
+| Capability | Status | Details |
+|------------|--------|---------|
+| **Time-based scheduling** | ❌ GAP | No scheduler. Triggers are event-driven only, fire immediately. Plan #185 |
+| **Contract introspection** | ✅ DONE | Plan #114 implemented `genesis_store.get_interface()`. Agents can discover artifact methods. |
+| **Atomic multi-artifact ops** | ⚠️ WORKAROUND | No kernel transactions. Genesis escrow provides two-phase commit pattern. |
+
+**Time-based scheduling** would enable:
+- Delayed execution ("invoke in 100 ticks")
+- Time-based contracts (payment plans, vesting)
+- Scheduled maintenance tasks
+
+**Contract introspection** already works:
+```python
+artifact = genesis_store.get(artifact_id)
+methods = artifact.interface.get("methods", {})  # Discover available methods
+```
+
+**Atomic operations** workaround:
+- Genesis escrow implements manual two-phase commit
+- Agent 1 transfers to escrow, escrow verifies both sides, executes atomically
+- Sufficient for trading; kernel transactions deferred to post-V1
 
 ### Capability Space: Complete
 
@@ -174,7 +202,7 @@ docs/plans/
 ├── 169_kernel_event_triggers.md     # Trigger design (incomplete)
 ├── 180_trigger_integration.md       # Complete trigger integration (HIGH)
 ├── 182_metadata_indexing.md         # O(1) metadata queries (Medium)
-└── 183_genesis_voting.md            # Consensus convenience (Low)
+└── 185_time_based_scheduling.md     # Delayed execution (Medium)
 ```
 
 ---
@@ -193,4 +221,4 @@ docs/plans/
 **If you want to contribute:**
 → Plan #180 (trigger integration) - **HIGH priority**, unblocks real-time coordination
 → Plan #182 (metadata indexing) - Medium priority, performance optimization
-→ Plan #183 (genesis_voting) - Low priority, convenience feature
+→ Plan #185 (time scheduling) - Medium priority, enables delayed execution
