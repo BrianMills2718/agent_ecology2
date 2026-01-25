@@ -22,6 +22,13 @@ from typing import Any
 
 import yaml
 
+# psutil for process checking (Plan #189 Phase 4: Worktree Locking)
+try:
+    import psutil
+    HAS_PSUTIL = True
+except ImportError:
+    HAS_PSUTIL = False
+
 
 # Session marker settings
 SESSION_MARKER_FILE = ".claude_session"
@@ -150,6 +157,49 @@ def check_worktree_claimed(
     return False, None
 
 
+def check_processes_using_worktree(worktree_path: str) -> list[dict[str, Any]]:
+    """Check for any processes that have CWD inside the worktree.
+
+    Plan #189 Phase 4: Worktree Locking
+    This prevents deleting a worktree while another process is using it,
+    which would break their shell (CWD becomes invalid).
+
+    Args:
+        worktree_path: Path to the worktree to check
+
+    Returns:
+        List of dicts with pid, name, cwd for each process using the worktree.
+        Empty list if no processes found or psutil not available.
+    """
+    if not HAS_PSUTIL:
+        return []  # Graceful degradation if psutil not installed
+
+    worktree_abs = os.path.abspath(worktree_path)
+    processes_using: list[dict[str, Any]] = []
+
+    # Iterate over all processes
+    for proc in psutil.process_iter(['pid', 'name', 'cwd']):
+        try:
+            info = proc.info
+            proc_cwd = info.get('cwd')
+
+            if proc_cwd and proc_cwd.startswith(worktree_abs):
+                # Skip the current process (we already check that separately)
+                if info['pid'] == os.getpid():
+                    continue
+
+                processes_using.append({
+                    'pid': info['pid'],
+                    'name': info['name'],
+                    'cwd': proc_cwd,
+                })
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            # Process disappeared or we can't access it - skip
+            continue
+
+    return processes_using
+
+
 def check_session_marker_recent(worktree_path: str) -> tuple[bool, datetime | None]:
     """Check if session marker exists and is recent (< 24h old).
 
@@ -197,10 +247,11 @@ def should_block_removal(
 ) -> tuple[bool, str, dict[str, Any] | None]:
     """Determine if worktree removal should be blocked.
 
-    Checks three conditions (Plan #115: Worktree Ownership Enforcement):
-    1. Ownership mismatch - claim exists but belongs to different CC instance
-    2. Active claim in .claude/active-work.yaml (same owner)
-    3. Recent session marker (< 24h old) - indicates active Claude session
+    Checks four conditions:
+    1. Ownership mismatch - claim exists but belongs to different CC instance (Plan #115)
+    2. Active claim in .claude/active-work.yaml (same owner) (Plan #115)
+    3. Recent session marker (< 24h old) - indicates active Claude session (Plan #52)
+    4. Processes using worktree - any process with CWD in worktree (Plan #189 Phase 4)
 
     Args:
         worktree_path: Path to the worktree
@@ -211,8 +262,8 @@ def should_block_removal(
     Returns:
         (should_block, reason, info) where:
         - should_block: True if removal should be blocked (and force=False)
-        - reason: "ownership", "claim", "session_marker", or "" if not blocked
-        - info: claim dict or session marker info
+        - reason: "ownership", "claim", "session_marker", "process", or "" if not blocked
+        - info: claim dict, session marker info, or process list
     """
     # Get current CC identity for ownership comparison
     if my_identity is None:
@@ -243,6 +294,11 @@ def should_block_removal(
     is_recent, marker_time = check_session_marker_recent(worktree_path)
     if is_recent and not force:
         return True, "session_marker", {"marker_time": marker_time}
+
+    # Plan #189 Phase 4: Check for processes using the worktree
+    processes_using = check_processes_using_worktree(worktree_path)
+    if processes_using and not force:
+        return True, "process", {"processes": processes_using}
 
     # Return claim info if available for informational purposes
     return False, "", claim_info
@@ -339,6 +395,24 @@ def remove_worktree(worktree_path: str, force: bool = False) -> bool:
         print(f"   1. Wait until marker is > {SESSION_STALENESS_HOURS}h old")
         print(f"   2. Delete the marker: rm {worktree_path}/{SESSION_MARKER_FILE}")
         print(f"   3. Force remove (BREAKS SESSION): python scripts/safe_worktree_remove.py --force {worktree_path}")
+        return False
+
+    # Plan #189 Phase 4: Process locking
+    if block and reason == "process" and info:
+        processes = info.get("processes", [])
+        print(f"❌ BLOCKED: Process(es) are using this worktree!")
+        print(f"   Found {len(processes)} process(es) with CWD in worktree:")
+        for proc in processes[:5]:  # Show first 5
+            print(f"      PID {proc['pid']}: {proc['name']} ({proc['cwd']})")
+        if len(processes) > 5:
+            print(f"      ... and {len(processes) - 5} more")
+        print()
+        print("   Deleting this worktree will break these processes' shells.")
+        print("   Wait for them to exit or change directory first.")
+        print()
+        print("   Options:")
+        print("   1. Wait for processes to finish or change directory")
+        print(f"   2. Force remove (BREAKS SESSIONS): python scripts/safe_worktree_remove.py --force {worktree_path}")
         return False
 
     # Check for uncommitted changes
