@@ -1,16 +1,43 @@
 import { useWebSocketStore } from '../../stores/websocket'
 import { useSearchStore } from '../../stores/search'
+import { useProgress } from '../../api/queries'
+
+function formatDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = Math.floor(seconds % 60)
+  if (h > 0) return `${h}h ${m}m ${s}s`
+  if (m > 0) return `${m}m ${s}s`
+  return `${s}s`
+}
 
 export function Header() {
   const { status, wsLatency } = useWebSocketStore()
   const openSearch = useSearchStore((state) => state.open)
+  const { data: progress } = useProgress()
 
   return (
     <header className="bg-[var(--bg-secondary)] border-b border-[var(--border-color)] px-4 py-3 flex items-center justify-between">
-      <h1 className="text-xl font-semibold text-[var(--accent-primary)]">
-        Agent Ecology Dashboard
-        <span className="ml-2 text-xs text-[var(--text-secondary)] font-normal">v2</span>
-      </h1>
+      <div className="flex items-center gap-6">
+        <h1 className="text-xl font-semibold text-[var(--accent-primary)]">
+          Agent Ecology Dashboard
+          <span className="ml-2 text-xs text-[var(--text-secondary)] font-normal">v2</span>
+        </h1>
+
+        {/* Runtime info - always visible */}
+        {progress && (
+          <div className="flex items-center gap-4 text-sm text-[var(--text-secondary)]">
+            <span>
+              <span className="text-[var(--text-tertiary)]">Event:</span>{' '}
+              <span className="font-mono">{progress.current_tick}</span>
+            </span>
+            <span>
+              <span className="text-[var(--text-tertiary)]">Runtime:</span>{' '}
+              <span className="font-mono">{formatDuration(progress.elapsed_seconds)}</span>
+            </span>
+          </div>
+        )}
+      </div>
 
       <div className="flex items-center gap-6">
         {/* Search trigger */}

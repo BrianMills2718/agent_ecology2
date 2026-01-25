@@ -50,9 +50,9 @@ function buildVisNodes(nodes: NetworkNode[]) {
 
 function buildVisEdges(edges: NetworkEdge[]) {
   return edges.map((edge, i) => ({
-    id: `${edge.from}-${edge.to}-${i}`,
-    from: edge.from,
-    to: edge.to,
+    id: `${edge.from_id}-${edge.to_id}-${i}`,
+    from: edge.from_id,
+    to: edge.to_id,
     color: EDGE_COLORS[edge.interaction_type] || EDGE_COLORS.default,
     width: Math.min(edge.weight, 5),
     arrows: 'to',
