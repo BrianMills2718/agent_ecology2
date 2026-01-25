@@ -1,9 +1,19 @@
 # Gap 13: Doc Line Number References
 
-**Status:** 📋 Planned (Post-V1)
+**Status:** ✅ Complete
 **Priority:** Low
 **Blocked By:** None
 **Blocks:** None
+
+---
+
+## Files Affected
+
+- `docs/architecture/current/supporting_systems.md` (modify) - Remove line numbers from function refs
+- `docs/architecture/current/artifacts_executor.md` (modify) - Remove line numbers from function refs
+
+Note: Line refs in completed plan files (like #88, #117, etc.) are historical context describing
+bugs that were fixed. These don't need updating since they describe what WAS the problem.
 
 ---
 
@@ -61,6 +71,6 @@ None - documentation only.
 
 ## Verification
 
-- [ ] Major docs updated to use function/class names
-- [ ] No critical line number references remain
-- [ ] Optional: CI warns on new line refs
+- [x] Major docs updated to use function/class names
+- [x] No critical line number references remain in architecture docs
+- [ ] Optional: CI warns on new line refs (deferred)

@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-25 (Plan #198 - Re-verified, no changes)
+**Last verified:** 2026-01-25 (Plan #13 - Removed line number refs, use method names)
 
 ---
 
@@ -290,18 +290,18 @@ Contract references will enable DAOs, conditional access, and contracts governin
 
 ## Access Checks
 
-**`Artifact.can_read(agent_id)`** - `artifacts.py:118-136`
+**`Artifact.can_read(agent_id)`** method in `src/world/artifacts.py`
 - Owner always has access
 - `"*"` grants everyone access
 - Specific agent_id must be in list
 - `@contract` raises NotImplementedError
 
-**`Artifact.can_write(agent_id)`** - `artifacts.py:138-160`
+**`Artifact.can_write(agent_id)`** method in `src/world/artifacts.py`
 - Owner ALWAYS has write access (bypasses policy)
 - Others need explicit listing
 - `@contract` raises NotImplementedError
 
-**`Artifact.can_invoke(agent_id)`** - `artifacts.py:162-183`
+**`Artifact.can_invoke(agent_id)`** method in `src/world/artifacts.py`
 - Must be executable
 - Same logic as can_read
 - `@contract` raises NotImplementedError

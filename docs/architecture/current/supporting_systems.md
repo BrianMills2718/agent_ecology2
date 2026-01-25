@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-25 (Plan #190 - genesis_store removed, no dashboard changes)
+**Last verified:** 2026-01-25 (Plan #13 - Removed line number refs, use function names)
 
 ---
 
@@ -22,7 +22,7 @@ Enables simulation pause/resume across runs.
 
 ### Save Checkpoint
 
-**`save_checkpoint()`** - `checkpoint.py:13-45`
+**`save_checkpoint()`** in `src/simulation/checkpoint.py`
 
 ```python
 from simulation.checkpoint import save_checkpoint
@@ -51,7 +51,7 @@ CheckpointData = {
 
 ### Load Checkpoint
 
-**`load_checkpoint()`** - `checkpoint.py:48-85`
+**`load_checkpoint()`** in `src/simulation/checkpoint.py`
 
 ```python
 from simulation.checkpoint import load_checkpoint
@@ -78,7 +78,7 @@ Append-only JSONL file for all simulation events.
 
 ### EventLogger Class
 
-**`EventLogger`** - `logger.py:13-52`
+**`EventLogger`** class in `src/simulation/logger.py`
 
 ```python
 class EventLogger:
@@ -89,7 +89,7 @@ class EventLogger:
 
 ### SummaryLogger Class (Plan #60)
 
-**`SummaryLogger`** - `logger.py:14-71` - Tractable per-tick summaries
+**`SummaryLogger`** class in `src/simulation/logger.py` - Tractable per-event summaries
 
 ```python
 class SummaryLogger:
@@ -102,7 +102,7 @@ class SummaryLogger:
     ) -> None
 ```
 
-**`TickSummaryCollector`** - `logger.py:74-187` - Accumulates metrics within a tick
+**`TickSummaryCollector`** class in `src/simulation/logger.py` - Accumulates metrics per event cycle
 
 ```python
 class TickSummaryCollector:
