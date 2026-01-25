@@ -179,7 +179,7 @@ Master index of all gaps and their implementation plans.
 | 147 | [Dashboard Features - Latency, Search, Comparison](147_dashboard_features.md) | Medium | ✅ Complete | - |
 | 148 | [Plan 148: ADR-0019 Implementation Audit](148_adr019_implementation_audit.md) | High | ✅ Complete | Full contract-based permission system |
 | 149 | [Dashboard Architecture Refactor](149_dashboard_architecture.md) | High | 📋 Planned | #150 (Backend Event Emission) |
-| 150 | [Plan 150: Prompt Component Library](150_prompt_component_library.md) | High | 🚧 In Progress | Agent behavior experiments |
+| 150 | [Plan 150: Prompt Component Library](150_prompt_component_library.md) | High | ✅ Complete | Agent behavior experiments |
 | 151 | [Backend Event Emission](151_backend_event_emission.md) | High | ✅ Complete | - |
 | 155 | [V4 Architecture - Deferred Considerations](155_v4_architecture_deferred.md) | low (until v3 fixes validated) | ❓ | - |
 | 156 | [V4 Agent Immediate Fixes](156_v4_agent_immediate_fixes.md) | High | ✅ Complete | - |
