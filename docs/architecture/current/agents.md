@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-25 (Plan #198 - Re-verified, no changes)
+**Last verified:** 2026-01-25 (Plan #195: Added context budget management)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -165,6 +165,43 @@ memory:
     normal: 0.0
     low: -0.1
 ```
+
+### Context Budget Management (Plan #195)
+
+Context window is treated as a budgeted resource. Each prompt section has a token budget.
+
+**Token Counting**: Uses `litellm.token_counter` for model-specific accuracy.
+
+**Budget Configuration** (`config.yaml` under `context_budget`):
+```yaml
+context_budget:
+  enabled: false              # Enable budget enforcement
+  total_tokens: 4000          # Total prompt budget
+  output_reserve: 1000        # Reserved for model output
+  show_budget_usage: false    # Show usage in prompt
+  overflow_policy: "truncate" # or "drop"
+  sections:
+    system_prompt:
+      max_tokens: 800
+      priority: "required"
+      truncation_strategy: "end"
+    working_memory:
+      max_tokens: 600
+      priority: "high"
+      truncation_strategy: "end"
+    # ... etc
+```
+
+**Truncation Strategies**:
+- `end`: Keep start, remove end (default)
+- `start`: Keep end, remove start (good for history - keeps recent)
+- `middle`: Keep both ends, remove middle
+
+**Priority Levels**:
+- `required`: Never truncated
+- `high`: Truncated only when severely over budget
+- `medium`: Standard truncation applies
+- `low`: First to be truncated/dropped
 
 ---
 

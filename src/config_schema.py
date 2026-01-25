@@ -1511,6 +1511,7 @@ class AgentConfig(StrictModel):
         description="Max recent actions to track per agent for loop detection (Plan #156)"
     )
     # Plan #132: Removed cognitive_schema - single standardized response format with 'reasoning' field
+    # Plan #195: Context budget is defined separately in ContextBudgetModel
 
 
 # =============================================================================
@@ -1577,6 +1578,116 @@ class MemoryConfigModel(StrictModel):
     tier_boosts: TierBoostsModel = Field(
         default_factory=TierBoostsModel,
         description="Score boosts for each memory tier"
+    )
+
+
+# =============================================================================
+# CONTEXT BUDGET MODEL (Plan #195)
+# =============================================================================
+
+
+class ContextBudgetSectionModel(StrictModel):
+    """Budget allocation for a single prompt section."""
+
+    max_tokens: int = Field(
+        default=500,
+        gt=0,
+        description="Maximum tokens for this section"
+    )
+    priority: str = Field(
+        default="medium",
+        pattern="^(required|high|medium|low)$",
+        description="Section priority: required, high, medium, low"
+    )
+    truncation_strategy: str = Field(
+        default="end",
+        pattern="^(end|start|middle)$",
+        description="Where to truncate: end (newest), start (oldest), middle"
+    )
+
+
+class ContextBudgetSectionsModel(StrictModel):
+    """Budget allocations per prompt section."""
+
+    system_prompt: ContextBudgetSectionModel = Field(
+        default_factory=lambda: ContextBudgetSectionModel(
+            max_tokens=800, priority="required", truncation_strategy="end"
+        ),
+        description="System prompt budget"
+    )
+    working_memory: ContextBudgetSectionModel = Field(
+        default_factory=lambda: ContextBudgetSectionModel(
+            max_tokens=600, priority="high", truncation_strategy="end"
+        ),
+        description="Working memory budget"
+    )
+    rag_memories: ContextBudgetSectionModel = Field(
+        default_factory=lambda: ContextBudgetSectionModel(
+            max_tokens=400, priority="medium", truncation_strategy="end"
+        ),
+        description="RAG memories budget"
+    )
+    action_history: ContextBudgetSectionModel = Field(
+        default_factory=lambda: ContextBudgetSectionModel(
+            max_tokens=300, priority="medium", truncation_strategy="start"
+        ),
+        description="Action history budget (truncate oldest)"
+    )
+    failure_history: ContextBudgetSectionModel = Field(
+        default_factory=lambda: ContextBudgetSectionModel(
+            max_tokens=200, priority="medium", truncation_strategy="start"
+        ),
+        description="Failure history budget (truncate oldest)"
+    )
+    recent_events: ContextBudgetSectionModel = Field(
+        default_factory=lambda: ContextBudgetSectionModel(
+            max_tokens=300, priority="low", truncation_strategy="start"
+        ),
+        description="Recent events budget"
+    )
+    subscribed_artifacts: ContextBudgetSectionModel = Field(
+        default_factory=lambda: ContextBudgetSectionModel(
+            max_tokens=400, priority="medium", truncation_strategy="end"
+        ),
+        description="Subscribed artifacts budget"
+    )
+    world_state: ContextBudgetSectionModel = Field(
+        default_factory=lambda: ContextBudgetSectionModel(
+            max_tokens=500, priority="required", truncation_strategy="end"
+        ),
+        description="World state section budget"
+    )
+
+
+class ContextBudgetModel(StrictModel):
+    """Configuration for agent context budget management (Plan #195)."""
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable context budget management"
+    )
+    total_tokens: int = Field(
+        default=4000,
+        gt=0,
+        description="Total tokens available for prompt"
+    )
+    output_reserve: int = Field(
+        default=1000,
+        ge=0,
+        description="Tokens reserved for model output"
+    )
+    show_budget_usage: bool = Field(
+        default=False,
+        description="Show budget usage section in prompt"
+    )
+    overflow_policy: str = Field(
+        default="truncate",
+        pattern="^(truncate|drop)$",
+        description="Policy when over budget: truncate or drop low priority"
+    )
+    sections: ContextBudgetSectionsModel = Field(
+        default_factory=ContextBudgetSectionsModel,
+        description="Per-section budget allocations"
     )
 
 
@@ -1734,6 +1845,7 @@ class AppConfig(StrictModel):
     budget: BudgetConfig = Field(default_factory=BudgetConfig)
     dashboard: DashboardConfig = Field(default_factory=DashboardConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
+    context_budget: ContextBudgetModel = Field(default_factory=ContextBudgetModel)  # Plan #195
     memory: MemoryConfigModel = Field(default_factory=MemoryConfigModel)
     libraries: LibrariesConfig = Field(default_factory=LibrariesConfig)
     id_generation: IdGenerationConfig = Field(default_factory=IdGenerationConfig)

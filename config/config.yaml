@@ -522,6 +522,51 @@ prompt_injection:
   mandatory_suffix: ""            # Content injected AFTER system prompt
 
 # -----------------------------------------------------------------------------
+# CONTEXT BUDGET (Plan #195)
+# Token budget management for agent prompts
+# -----------------------------------------------------------------------------
+context_budget:
+  enabled: false                  # Disabled by default (no truncation without opt-in)
+  total_tokens: 4000              # Total tokens available for prompt
+  output_reserve: 1000            # Tokens reserved for model output
+  show_budget_usage: false        # Show budget usage section in prompt
+  overflow_policy: "truncate"     # Policy: "truncate" or "drop" low priority
+  # Per-section budgets with defaults
+  sections:
+    system_prompt:
+      max_tokens: 800
+      priority: "required"
+      truncation_strategy: "end"
+    working_memory:
+      max_tokens: 600
+      priority: "high"
+      truncation_strategy: "end"
+    rag_memories:
+      max_tokens: 400
+      priority: "medium"
+      truncation_strategy: "end"
+    action_history:
+      max_tokens: 300
+      priority: "medium"
+      truncation_strategy: "start"   # Truncate oldest (start of list)
+    failure_history:
+      max_tokens: 200
+      priority: "medium"
+      truncation_strategy: "start"
+    recent_events:
+      max_tokens: 300
+      priority: "low"
+      truncation_strategy: "start"
+    subscribed_artifacts:
+      max_tokens: 400
+      priority: "medium"
+      truncation_strategy: "end"
+    world_state:
+      max_tokens: 500
+      priority: "required"
+      truncation_strategy: "end"
+
+# -----------------------------------------------------------------------------
 # BUDGET - Global API limit and runtime backstops
 # -----------------------------------------------------------------------------
 budget:

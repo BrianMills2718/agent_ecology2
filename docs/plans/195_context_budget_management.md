@@ -50,43 +50,44 @@ During `build_prompt()`:
 4. Fill remaining budget with medium/low priority
 5. Truncate or drop sections that exceed allocation
 
-### New Actions
+## Files Affected
 
-```yaml
-set_context_budget:
-  section: string
-  max_tokens: integer
-  priority: "required" | "high" | "medium" | "low"
-
-# Or bulk update
-configure_context_budget:
-  total_tokens: integer
-  allocations:
-    section_name:
-      max_tokens: integer
-      priority: string
-```
+- src/agents/agent.py (modify)
+- src/config_schema.py (modify)
+- config/schema.yaml (modify)
+- config/config.yaml (modify)
+- tests/unit/test_context_budget.py (create)
+- docs/architecture/current/agents.md (modify)
 
 ## Implementation
+
+### Design Decision: No New Action Types
+
+To preserve the narrow waist (6 verbs + query), context budget management is implemented
+internally via configuration. Agents can customize budgets by:
+1. System defaults from config.yaml
+2. Writing custom budget config to their working_memory artifact
 
 ### Files to Modify
 
 1. **src/agents/agent.py**
-   - Add `_context_budget: dict` field
-   - Add `_count_tokens(text: str) -> int` helper using litellm
-   - Modify `build_prompt()` to respect budgets
-   - Add truncation logic per section
+   - Add `_count_tokens(text: str) -> int` using litellm.token_counter
+   - Add `_truncate_to_budget(section: str, content: str, max_tokens: int) -> str`
+   - Add `_get_section_budget(section: str) -> int`
+   - Modify `build_prompt()` to apply budgets
+   - Add optional budget visibility section
 
-2. **src/agents/schema.py**
-   - Add `set_context_budget` / `configure_context_budget` actions
+2. **src/config_schema.py**
+   - Add `ContextBudgetSectionModel` and `ContextBudgetModel`
 
-3. **src/world/executor.py**
-   - Handle budget actions
+3. **config/schema.yaml**
+   - `agent.context_budget.enabled`: bool
+   - `agent.context_budget.total_tokens`: int
+   - `agent.context_budget.output_reserve`: int
+   - `agent.context_budget.sections`: {...}
 
-4. **config/schema.yaml**
-   - `agent.context_budget.default_total`: 4000
-   - `agent.context_budget.output_reserve`: 1000
-   - `agent.context_budget.default_allocations`: {...}
+4. **config/config.yaml**
+   - Add default context budget values
 
 ### Token Counting
 
