@@ -18,6 +18,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash .claude/hooks/warn-worktree-cwd.sh",
+            "timeout": 3000
+          },
+          {
+            "type": "command",
             "command": "bash .claude/hooks/notify-inbox-startup.sh",
             "timeout": 3000
           },
