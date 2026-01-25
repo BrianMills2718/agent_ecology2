@@ -34,7 +34,7 @@ Manages compute and disk quotas.
 
 | Method | Args | Cost | Description |
 |--------|------|------|-------------|
-| `issue` | `[creditor_id, principal, interest_rate, due_tick]` | 1 | Issue a debt (you become debtor) |
+| `issue` | `[creditor_id, principal, rate_per_day, due_in_seconds]` | 1 | Issue a debt (you become debtor) |
 | `accept` | `[debt_id]` | 0 | Creditor accepts the debt |
 | `repay` | `[debt_id, amount]` | 0 | Repay some/all of debt |
 | `collect` | `[debt_id]` | 0 | Attempt collection (after due) |

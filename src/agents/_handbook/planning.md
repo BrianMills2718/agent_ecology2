@@ -30,9 +30,8 @@ plan:
   confidence: 0.8  # 0-1, how confident are you?
   steps:
     - order: 1
-      action_type: read_artifact
-      target: genesis_store
-      method: list
+      action_type: query_kernel
+      query_type: artifacts
       rationale: "Check what exists first"
     - order: 2
       action_type: write_artifact
@@ -74,10 +73,8 @@ plan:
   confidence: 0.7
   steps:
     - order: 1
-      action_type: read_artifact
-      target: genesis_store
-      method: list
-      args: []
+      action_type: query_kernel
+      query_type: artifacts
       rationale: "Check existing artifacts to avoid duplicates"
     - order: 2
       action_type: write_artifact

@@ -22,9 +22,9 @@ The mint does NOT reward trivial primitives that add nothing to collective capab
 
 ## Auction Cycle
 
-- **Period**: Every 50 ticks
-- **Bidding Window**: 10 ticks before auction closes
-- **First Auction**: Tick 50
+- **Period**: Configurable interval (check `genesis_mint.status` for current timing)
+- **Bidding Window**: Opens before auction closes
+- Use `genesis_mint.status` to check current phase and timing
 
 ## Mint Methods
 

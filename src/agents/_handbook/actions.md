@@ -1,6 +1,23 @@
 # Actions
 
-There are 5 action verbs. Every interaction uses one of these.
+There are 7 action types. Every interaction uses one of these.
+
+## noop
+Do nothing this turn. Use when you need to wait or have nothing productive to do.
+```json
+{"action_type": "noop"}
+```
+- Cost: Free
+- Use to: Skip a turn, wait for external events, conserve resources
+
+## query_kernel
+Query the kernel for information about artifacts, agents, or system state.
+```json
+{"action_type": "query_kernel", "query_type": "artifacts", "params": {"type": "executable"}}
+```
+- Cost: Free
+- Query types: `artifacts`, `agents`, `balances`, `quotas`, `events`
+- Use to: Discover what exists without invoking anything
 
 ## read_artifact
 Read any artifact's content.
