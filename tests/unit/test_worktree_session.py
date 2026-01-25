@@ -130,27 +130,29 @@ class TestClaimCreationWithWorktreePath:
 
         with patch("scripts.check_claims.YAML_PATH", temp_claims_file):
             with patch("scripts.check_claims.CLAUDE_MD_PATH", temp_claims_file.parent / "CLAUDE.md"):
-                claude_md = temp_claims_file.parent / "CLAUDE.md"
-                claude_md.write_text("""
+                # Isolate from real worktrees - load_yaml reads from worktrees AND yaml file
+                with patch("scripts.check_claims.load_claims_from_worktrees", return_value=[]):
+                    claude_md = temp_claims_file.parent / "CLAUDE.md"
+                    claude_md.write_text("""
 **Active Work:**
 <!-- Auto-synced from .claude/active-work.yaml -->
 | CC-ID | Plan | Task | Claimed | Status |
 |-------|------|------|---------|--------|
 """)
 
-                data = load_yaml()
-                success = add_claim(
-                    data,
-                    cc_id="test-branch",
-                    plan=52,
-                    feature=None,
-                    task="Test task",
-                    worktree_path="/tmp/worktrees/test-branch",
-                )
+                    data = load_yaml()
+                    success = add_claim(
+                        data,
+                        cc_id="test-branch",
+                        plan=52,
+                        feature=None,
+                        task="Test task",
+                        worktree_path="/tmp/worktrees/test-branch",
+                    )
 
-                assert success is True
+                    assert success is True
 
-                data = load_yaml()
-                assert len(data["claims"]) == 1
-                claim = data["claims"][0]
-                assert claim["worktree_path"] == "/tmp/worktrees/test-branch"
+                    data = load_yaml()
+                    assert len(data["claims"]) == 1
+                    claim = data["claims"][0]
+                    assert claim["worktree_path"] == "/tmp/worktrees/test-branch"
