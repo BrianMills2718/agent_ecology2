@@ -186,7 +186,7 @@ Master index of all gaps and their implementation plans.
 | 163 | [Plan 163: Checkpoint Completeness](163_checkpoint_completeness.md) | High | ✅ Complete | Long-running simulations, reliable resume |
 | 164 | [Tick Terminology Purge](164_tick_terminology_purge.md) | High | ✅ Complete | Documentation clarity, reduced confusion |
 | 165 | [Plan 165: Genesis Contracts as Artifacts](165_genesis_contracts_as_artifacts.md) | Medium | ✅ Complete | - |
-| 166 | [Plan 166: Resource Rights Model](166_resource_rights_model.md) | High | 📋 Planned | - |
+| 166 | [Plan 166: Resource Rights Model](166_resource_rights_model.md) | High | ✅ Complete | - |
 | 167 | [Debt Contract Time-Based Redesign](167_debt_contract_time_based.md) | Low | ✅ Complete | - |
 | 168 | [Artifact Metadata Field](168_artifact_metadata.md) | Medium | ✅ Complete | - |
 | 169 | [Kernel Event Triggers](169_kernel_event_triggers.md) | Medium | ✅ Complete | - |
@@ -225,7 +225,7 @@ Master index of all gaps and their implementation plans.
 | 203 | [Supervisor Auto-Restart](203_supervisor_auto_restart.md) | Medium | ✅ Complete | Robust long-running simulations |
 | 204 | [Configurable Mandatory Prompt Injection](204_prompt_injection.md) | Low | ✅ Superseded | - |
 | 205 | [Git-Level Meta-Process Resilience](205_meta_resilience.md) | **Critical** | ✅ Complete | All meta-process reliability |
-| 206 | [Meta-Process Claim Lifecycle Fixes](206_claim_lifecycle.md) | Critical | ✅ In Progress (Phase 1 Complete) | - |
+| 206 | [Meta-Process Claim Lifecycle Fixes](206_claim_lifecycle.md) | Critical | 🚧 In Progress | - |
 ---
 
 ## TDD Workflow
