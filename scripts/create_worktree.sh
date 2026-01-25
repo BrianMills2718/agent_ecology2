@@ -124,21 +124,36 @@ if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
-# Claim the work first (before creating worktree)
+# Plan #176: Check for conflicts BEFORE creating worktree
+# This prevents partial state (worktree without claim or claim without worktree)
 echo ""
-echo -e "${GREEN}Claiming work...${NC}"
+echo -e "${GREEN}Checking for conflicts...${NC}"
+CONFLICT_ARGS=""
 if [ -n "$PLAN" ]; then
-    python scripts/check_claims.py --claim --task "$TASK" --plan "$PLAN"
-else
-    python scripts/check_claims.py --claim --task "$TASK"
+    CONFLICT_ARGS="--plan $PLAN"
+fi
+if ! python scripts/check_claims.py --check-conflict $CONFLICT_ARGS 2>/dev/null; then
+    echo -e "${RED}Conflict detected. Another instance is working on this plan/feature.${NC}"
+    exit 1
 fi
 
-# Create the worktree
+# Create the worktree FIRST
 echo ""
 echo -e "${GREEN}Creating worktree...${NC}"
 mkdir -p worktrees
 git fetch origin
 git worktree add "worktrees/$BRANCH" -b "$BRANCH" origin/main
+
+# Plan #176: Write atomic claim file to worktree
+# Claim is stored IN the worktree, not in central YAML
+# Deleting worktree = releasing claim (no orphan possible)
+echo ""
+echo -e "${GREEN}Creating claim...${NC}"
+CLAIM_ARGS="--write-claim-file worktrees/$BRANCH --task \"$TASK\" --id $BRANCH"
+if [ -n "$PLAN" ]; then
+    CLAIM_ARGS="$CLAIM_ARGS --plan $PLAN"
+fi
+eval python scripts/check_claims.py $CLAIM_ARGS
 
 # Create session marker (Plan #52: prevents premature worktree removal)
 # The marker contains the creation timestamp - safe_worktree_remove.py checks

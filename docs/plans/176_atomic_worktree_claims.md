@@ -49,6 +49,7 @@
 - `scripts/create_worktree.sh` (modify) - Store claim in worktree, not YAML
 - `scripts/finish_pr.py` (modify) - Remove worktree = release claim (already true)
 - `scripts/safe_worktree_remove.py` (modify) - Removing worktree releases claim
+- `scripts/parse_plan.py` (modify) - Fix backtick handling in Files Affected parsing
 - `Makefile` (modify) - Remove `worktree-quick`, block `claim` on main
 - `hooks/pre-commit` (modify) - Add worktree creation enforcement
 - `.claude/active-work.yaml` (modify) - Becomes derived view or removed
