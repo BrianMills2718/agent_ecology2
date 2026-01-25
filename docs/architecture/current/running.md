@@ -119,7 +119,7 @@ python scripts/view_log.py run.jsonl --artifacts
 
 ### Automatic Checkpoints
 
-Checkpoints save every N ticks (configurable via `budget.checkpoint_interval`).
+Checkpoints save at regular intervals (configurable via `budget.checkpoint_interval`).
 
 ```yaml
 # config/config.yaml
@@ -169,12 +169,12 @@ python run.py --resume
 
 ### Estimating Costs
 
-Rough estimates per tick with 2 agents:
+Rough estimates per agent decision:
 - Input: ~300 tokens ($0.0001)
 - Output: ~150 tokens ($0.0002)
-- **Total: ~$0.0003/tick**
+- **Total: ~$0.0003/decision**
 
-With default 100 ticks and 2 agents: ~$0.03
+A typical 60-second run with 2 agents makes ~20-40 decisions: ~$0.01-0.02
 
 ---
 
@@ -183,11 +183,7 @@ With default 100 ticks and 2 agents: ~$0.03
 Key settings in `config/config.yaml`:
 
 ```yaml
-world:
-  max_ticks: 100          # Max simulation length
-
 llm:
-  rate_limit_delay: 5     # Seconds between ticks
   default_model: "gemini/gemini-3-flash-preview"
 
 budget:
@@ -205,10 +201,9 @@ See `config/schema.yaml` for full documentation.
 
 ### "Rate limit exceeded"
 
-LLM API rate limiting. Increase delay:
-```bash
-python run.py --delay 15
-```
+LLM API rate limiting. The RateTracker automatically handles backoff. If persistent:
+- Reduce number of agents with `--agents N`
+- Wait a few minutes for rate limit window to reset
 
 ### "BUDGET EXHAUSTED"
 
