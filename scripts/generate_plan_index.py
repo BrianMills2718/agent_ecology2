@@ -29,6 +29,18 @@ STATUS_PATTERNS = {
     "❓": "Unknown",
 }
 
+# Text-based status patterns (fallback when no emoji)
+TEXT_STATUS_PATTERNS = {
+    "complete": "✅",
+    "done": "✅",
+    "superseded": "✅",
+    "planned": "📋",
+    "deferred": "📋",
+    "in progress": "🚧",
+    "needs plan": "❌",
+    "won't do": "❌",
+}
+
 
 def parse_plan_file(path: Path) -> Optional[dict]:
     """Parse a plan file and extract metadata."""
@@ -52,6 +64,8 @@ def parse_plan_file(path: Path) -> Optional[dict]:
     # Determine status emoji
     status_emoji = "❓"
     status_text = ""
+
+    # First try to find emoji in status line
     for emoji, name in STATUS_PATTERNS.items():
         if emoji in status_line:
             status_emoji = emoji
@@ -60,6 +74,15 @@ def parse_plan_file(path: Path) -> Optional[dict]:
             if len(parts) > 1:
                 status_text = parts[1].strip()
             break
+
+    # Fallback: check for text-based status (no emoji)
+    if status_emoji == "❓" and status_line:
+        status_lower = status_line.lower()
+        for text_pattern, emoji in TEXT_STATUS_PATTERNS.items():
+            if text_pattern in status_lower:
+                status_emoji = emoji
+                status_text = status_line  # Keep the original text
+                break
 
     # Extract priority
     priority_match = re.search(r"\*\*Priority:\*\*\s*(.+)$", content, re.MULTILINE)
