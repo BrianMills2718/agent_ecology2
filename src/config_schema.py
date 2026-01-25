@@ -264,6 +264,7 @@ class GenesisArtifactsEnabled(StrictModel):
     escrow: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
     store: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
     debt_contract: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
+    voting: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)  # Plan #183
     model_registry: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
 
 
@@ -604,6 +605,46 @@ class DebtContractConfig(StrictModel):
     methods: DebtContractMethodsConfig = Field(default_factory=DebtContractMethodsConfig)
 
 
+class VotingMethodsConfig(StrictModel):
+    """Genesis voting method configurations (Plan #183)."""
+
+    create_proposal: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=1,
+            description="Create a proposal. Args: [{title, description?, options?, quorum?, threshold?, deadline_seconds?}]"
+        )
+    )
+    vote: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Vote on a proposal. Args: [{proposal_id, choice}]"
+        )
+    )
+    get_result: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="Get proposal results. Args: [proposal_id]"
+        )
+    )
+    list_proposals: MethodConfig = Field(
+        default_factory=lambda: MethodConfig(
+            cost=0,
+            description="List proposals with optional filter. Args: [{status?, creator?, limit?}]"
+        )
+    )
+
+
+class VotingConfig(StrictModel):
+    """Genesis voting configuration (Plan #183)."""
+
+    id: str = Field(default="genesis_voting", description="Artifact ID")
+    description: str = Field(
+        default="Multi-party voting for consensus. Create proposals, vote, track results.",
+        description="Artifact description"
+    )
+    methods: VotingMethodsConfig = Field(default_factory=VotingMethodsConfig)
+
+
 class StoreMethodsConfig(StrictModel):
     """Genesis store method configurations."""
 
@@ -815,6 +856,7 @@ class GenesisConfig(StrictModel):
     escrow: EscrowConfig = Field(default_factory=EscrowConfig)
     store: StoreConfig = Field(default_factory=StoreConfig)
     debt_contract: DebtContractConfig = Field(default_factory=DebtContractConfig)
+    voting: VotingConfig = Field(default_factory=VotingConfig)  # Plan #183
     model_registry: ModelRegistryConfig = Field(default_factory=ModelRegistryConfig)
     mcp: McpConfig = Field(default_factory=McpConfig)
 

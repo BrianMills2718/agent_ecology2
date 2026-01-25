@@ -28,6 +28,7 @@ from .event_log import GenesisEventLog
 from .escrow import GenesisEscrow
 from .debt_contract import GenesisDebtContract
 from .store import GenesisStore
+from .voting import GenesisVoting
 from .model_registry import GenesisModelRegistry
 from .embedder import GenesisEmbedder
 from .memory import GenesisMemory
@@ -245,6 +246,11 @@ def create_genesis_artifacts(
     if cfg.artifacts.model_registry.enabled:
         genesis_model_registry = GenesisModelRegistry(genesis_config=cfg)
         artifacts[genesis_model_registry.id] = genesis_model_registry
+
+    # Add voting if enabled (Plan #183)
+    if cfg.artifacts.voting.enabled:
+        genesis_voting = GenesisVoting(genesis_config=cfg)
+        artifacts[genesis_voting.id] = genesis_voting
 
     # Add embedder (Plan #146: Unified Artifact Intelligence)
     # Always enabled for now - provides embedding generation for semantic memory
