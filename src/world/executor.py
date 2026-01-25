@@ -388,14 +388,34 @@ def validate_args_against_interface(
             else:
                 example_args[prop_name] = f"<{prop_name}>"
 
-        # Format example as JSON-like dict
-        example_str = ", ".join(f'"{k}": {v}' for k, v in list(example_args.items())[:4])
-        if len(example_args) > 4:
+        # Format example as JSON-like dict with concrete values for clarity
+        # Use actual example values to make the format unambiguous
+        concrete_examples: dict[str, str] = {}
+        for prop_name, prop_schema in list(properties_schema.items())[:4]:
+            prop_type = prop_schema.get("type", "any")
+            if prop_type == "string":
+                concrete_examples[prop_name] = f'"{prop_name}_value"'
+            elif prop_type == "number":
+                concrete_examples[prop_name] = "123"
+            elif prop_type == "integer":
+                concrete_examples[prop_name] = "42"
+            elif prop_type == "boolean":
+                concrete_examples[prop_name] = "true"
+            elif prop_type == "array":
+                concrete_examples[prop_name] = "[]"
+            else:
+                concrete_examples[prop_name] = f'"{prop_name}_value"'
+
+        example_str = ", ".join(f'"{k}": {v}' for k, v in concrete_examples.items())
+        if len(properties_schema) > 4:
             example_str += ", ..."
 
+        # Be very explicit that this is a Python dict, not a JSON string
         error_msg = (
             f"{base_error}. "
-            f"Pass args as a dict: invoke_artifact('{method_name}', [{{{example_str}}}])"
+            f"Pass a dict (NOT a string): invoke_artifact('{method_name}', [{{{example_str}}}]). "
+            f"WRONG: ['{{\"{list(properties_schema.keys())[0] if properties_schema else 'key'}\": ...}}'] (string). "
+            f"RIGHT: [{{{example_str}}}] (dict)."
         )
 
         if validation_mode == "warn":
