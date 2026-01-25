@@ -1,9 +1,11 @@
 # Plan #180: Configurable Mandatory Prompt Injection
 
-**Status:** 📋 Planned
+**Status:** ✅ Superseded
 **Priority:** Low
 **Blocked By:** None
 **Blocks:** None
+
+**Note:** This plan is superseded by Plan #197 which provides more detailed specification and is now complete.
 
 ---
 
