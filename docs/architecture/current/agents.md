@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-25 (Plan #197: Added is_genesis property for genesis/spawned agent distinction)
+**Last verified:** 2026-01-25 (Plan #196: Added memory tiering for agent RAG)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -129,6 +129,42 @@ memory.get_relevant_memories(agent_id, context, limit=5)
 | Actions taken | "Agent {id} performed {action}: {details}" |
 | Observations | Free-form text |
 | Search is semantic | Vector similarity via Qdrant |
+
+### Memory Tiering (Plan #196)
+
+Memories can be assigned tiers that affect retrieval priority:
+
+| Tier | Name | Behavior |
+|------|------|----------|
+| 0 | **Pinned** | Always included, regardless of query relevance |
+| 1 | **Critical** | Strong boost (+1.0) in retrieval |
+| 2 | **Important** | Moderate boost (+0.3) |
+| 3 | **Normal** | Standard RAG behavior (default) |
+| 4 | **Low** | Only included if space permits (-0.1) |
+
+**API:**
+```python
+# Add memory with tier
+memory.add(agent_id, "NEVER trade with scammer_agent", tier=0)  # Pinned
+
+# Get pinned memories
+pinned = memory.get_pinned_memories(agent_id)
+
+# Change existing memory tier
+memory.set_memory_tier(agent_id, memory_index, tier=1)  # Promote to critical
+```
+
+**Configuration** (`config.yaml` under `memory`):
+```yaml
+memory:
+  max_pinned: 5  # Maximum pinned memories per agent
+  tier_boosts:
+    pinned: 1.0
+    critical: 0.3
+    important: 0.15
+    normal: 0.0
+    low: -0.1
+```
 
 ---
 

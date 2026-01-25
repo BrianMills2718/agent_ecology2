@@ -538,6 +538,18 @@ learning:
     load_working_memory: true       # Load working_memory from prior run
 
 # -----------------------------------------------------------------------------
+# MEMORY - Memory tiering for RAG (Plan #196)
+# -----------------------------------------------------------------------------
+memory:
+  max_pinned: 5                     # Max pinned (tier 0) memories per agent
+  tier_boosts:
+    pinned: 1.0                     # Tier 0: Always included
+    critical: 0.3                   # Tier 1: Strong boost
+    important: 0.15                 # Tier 2: Moderate boost
+    normal: 0.0                     # Tier 3: No boost (default)
+    low: -0.1                       # Tier 4: Slight penalty
+
+# -----------------------------------------------------------------------------
 # LIBRARIES - Package installation for agents
 # -----------------------------------------------------------------------------
 libraries:

@@ -1511,6 +1511,32 @@ class AgentConfig(StrictModel):
 # MEMORY CONFIG
 # =============================================================================
 
+
+class TierBoostsModel(StrictModel):
+    """Configuration for memory tier boost values."""
+
+    pinned: float = Field(
+        default=1.0,
+        description="Score boost for pinned (tier 0) memories"
+    )
+    critical: float = Field(
+        default=0.3,
+        description="Score boost for critical (tier 1) memories"
+    )
+    important: float = Field(
+        default=0.15,
+        description="Score boost for important (tier 2) memories"
+    )
+    normal: float = Field(
+        default=0.0,
+        description="Score boost for normal (tier 3) memories"
+    )
+    low: float = Field(
+        default=-0.1,
+        description="Score boost for low (tier 4) memories"
+    )
+
+
 class MemoryConfigModel(StrictModel):
     """Configuration for Mem0/Qdrant memory system."""
 
@@ -1536,6 +1562,15 @@ class MemoryConfigModel(StrictModel):
     collection_name: str = Field(
         default="agent_memories",
         description="Qdrant collection name"
+    )
+    max_pinned: int = Field(
+        default=5,
+        gt=0,
+        description="Maximum number of pinned memories per agent"
+    )
+    tier_boosts: TierBoostsModel = Field(
+        default_factory=TierBoostsModel,
+        description="Score boosts for each memory tier"
     )
 
 

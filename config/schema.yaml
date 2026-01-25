@@ -453,6 +453,19 @@ learning:
     load_working_memory: <boolean>  # Load working_memory from prior run
 
 # -----------------------------------------------------------------------------
+# MEMORY (Plan #196)
+# Memory tiering configuration for RAG memories
+# -----------------------------------------------------------------------------
+memory:
+  max_pinned: <number>            # Max pinned (tier 0) memories per agent (default: 5)
+  tier_boosts:                    # Score boosts by tier for retrieval ranking
+    pinned: <number>              # Tier 0 boost (default: 1.0)
+    critical: <number>            # Tier 1 boost (default: 0.3)
+    important: <number>           # Tier 2 boost (default: 0.15)
+    normal: <number>              # Tier 3 boost (default: 0.0)
+    low: <number>                 # Tier 4 boost (default: -0.1)
+
+# -----------------------------------------------------------------------------
 # LIBRARIES
 # Package installation configuration for agents
 # -----------------------------------------------------------------------------

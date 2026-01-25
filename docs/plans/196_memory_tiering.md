@@ -103,26 +103,41 @@ pinned = memory.search(
 )
 ```
 
+## Files Affected
+
+- src/agents/memory.py (modify)
+- src/config_schema.py (modify)
+- config/schema.yaml (modify)
+- config/config.yaml (modify)
+- tests/unit/test_memory_tiering.py (create)
+- tests/unit/test_memory.py (modify)
+- docs/architecture/current/agents.md (modify)
+
 ## Implementation
+
+### Design Decision: No New Action Types
+
+To preserve the narrow waist (6 verbs + query), memory tiering is implemented
+internally in the memory module. Agents don't need new action types - they can:
+1. Use auto-recorded memories (actions/observations) at default tier
+2. Write tier info to their working_memory artifact
+3. Use invoke_artifact on memory artifacts if direct control needed
 
 ### Files to Modify
 
 1. **src/agents/memory.py**
-   - Add tier support to `add()` method
+   - Add tier support to `add()` method (optional tier parameter with metadata)
+   - Add `get_pinned_memories()` method
    - Modify `get_relevant_memories()` for tier-aware retrieval
-   - Add `set_tier()` method
-   - Add `get_pinned()` method
+   - Modify `search()` to support tier boosting
 
-2. **src/agents/schema.py**
-   - Update `store_memory` action with tier field
-   - Add `set_memory_tier`, `pin_memory`, `unpin_memory` actions
-
-3. **src/world/executor.py**
-   - Handle new memory actions
-
-4. **config/schema.yaml**
-   - `agent.memory.max_pinned`: 5 (limit pinned memories)
-   - `agent.memory.tier_boosts`: {0: 1.0, 1: 0.3, ...}
+2. **config/schema.yaml** & **config/config.yaml**
+   - `memory.max_pinned`: 5 (limit pinned memories)
+   - `memory.tier_boosts.pinned`: 1.0
+   - `memory.tier_boosts.critical`: 0.3
+   - `memory.tier_boosts.important`: 0.15
+   - `memory.tier_boosts.normal`: 0.0
+   - `memory.tier_boosts.low`: -0.1
 
 ### Tier Limits
 
