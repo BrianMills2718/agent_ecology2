@@ -227,9 +227,6 @@ Master index of all gaps and their implementation plans.
 | 205 | [Git-Level Meta-Process Resilience](205_meta_resilience.md) | **Critical** | ✅ Complete | All meta-process reliability |
 | 206 | [Meta-Process Claim Lifecycle Fixes](206_claim_lifecycle.md) | Critical | 🚧 In Progress | - |
 | 207 | [Executor Method Refactoring](207_executor_refactor.md) | Low | 📋 Deferred | - |
-| 208 | [Workflow Hooks (General Auto-Subscription System)](208_workflow_hooks.md) | High | 📋 Planned | Agent self-optimization, cognitive autonomy |
-| 209 | [Trigger-Hook Integration](209_trigger_hook_integration.md) | Low | 📋 Deferred (until bridging pattern becomes common) | - |
-| 210 | [Fix ADR-0016 Violation (created_by Mutation)](210_fix_created_by_mutation.md) | High | 📋 Planned | Correct ownership semantics, historical audit trail |
 ---
 
 ## TDD Workflow

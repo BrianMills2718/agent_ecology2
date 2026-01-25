@@ -230,6 +230,7 @@ def cleanup():
 - scripts/cleanup_claims_mess.py (create)
 - .claude/hooks/block-worktree-remove.sh (modify)
 - CLAUDE.md (modify)
+- tests/scripts/test_claim_lifecycle.py (create)
 
 ---
 
