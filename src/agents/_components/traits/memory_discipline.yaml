@@ -1,0 +1,39 @@
+name: memory_discipline
+type: trait
+version: 1
+description: "Guides agents to store insights, not raw actions"
+
+# Inject into reflection and review steps
+inject_into:
+  - reflect
+  - reflecting
+  - review
+  - reviewing
+  - strategic_reflect
+  - strategic_transition
+
+prompt_fragment: |
+
+  === MEMORY DISCIPLINE (memory_discipline trait) ===
+  Your working memory is your long-term learning system. Use it WISELY.
+
+  WHAT TO STORE (insights):
+  - LESSONS from failures: "deposit requires transfer_ownership first"
+  - PATTERNS that work: "artifacts with clear interfaces sell better"
+  - STRATEGIC INSIGHTS: "alpha_3 builds note tools - I should build something different"
+
+  WHAT NOT TO STORE (noise):
+  - Raw action logs: "I performed invoke_artifact..."
+  - Routine checks: "I checked escrow listings"
+  - Obvious facts: "I have 95 scrip"
+
+  MEMORY UPDATE TRIGGERS:
+  - After a FAILURE: Record the lesson learned
+  - After a SUCCESS: Record what made it work
+  - After 5+ actions: Synthesize what you've learned
+
+  When updating working_memory, ask: "Will future-me find this useful?"
+
+requires_context:
+  - working_memory
+  - failure_history

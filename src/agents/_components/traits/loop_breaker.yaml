@@ -1,0 +1,40 @@
+name: loop_breaker
+type: trait
+version: 1
+description: "Helps agents recognize and escape repetitive patterns"
+
+# Inject into observation and reflection steps
+inject_into:
+  - observe
+  - observing
+  - reflect
+  - reflecting
+  - operational
+  - operational_execution
+  - implement
+  - implementing
+
+prompt_fragment: |
+
+  === LOOP DETECTION (loop_breaker trait) ===
+  Check your "Recent Actions" section above. If you see the SAME action repeated:
+
+  3x SAME ACTION = Yellow flag. Ask: "Am I making progress?"
+  5x SAME ACTION = Red flag. You MUST try something DIFFERENT.
+
+  COMMON LOOPS AND ESCAPES:
+  - "Checking status repeatedly" → STOP checking. Take action or move on.
+  - "Waiting for buyer" → Don't wait passively. Build something else.
+  - "Retrying failed action" → Read the error. Change your approach.
+  - "Reading same artifact" → You already know what's in it. Decide and act.
+
+  ESCAPE STRATEGIES:
+  1. Update your subgoal in working_memory
+  2. Try a completely different action type
+  3. Work on a different artifact
+  4. Submit something to mint (always productive)
+
+  Remember: Repeating the same action hoping for different results is not strategy.
+
+requires_context:
+  - action_history
