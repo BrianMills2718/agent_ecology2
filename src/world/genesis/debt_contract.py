@@ -5,11 +5,14 @@ Agents can build their own competing debt contracts.
 
 Key insight: No magic enforcement. Bad debtors get bad reputation
 via the event log, not kernel-level punishment.
+
+Plan #167: Updated to use time-based scheduling instead of ticks.
 """
 
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone, timedelta
 from typing import Any
 
 from ...config import get_validated_config
@@ -29,17 +32,16 @@ class GenesisDebtContract(GenesisArtifact):
     Key insight: No magic enforcement. Bad debtors get bad reputation
     via the event log, not kernel-level punishment.
 
-    Flow:
-    1. Debtor calls issue(creditor, principal, interest_rate, due_tick)
+    Flow (Plan #167: time-based):
+    1. Debtor calls issue(creditor, principal, rate_per_day, due_in_seconds)
     2. Creditor calls accept(debt_id) - debt becomes active
     3. Debtor calls repay(debt_id, amount) to pay back
-    4. After due_tick, creditor can call collect(debt_id) to attempt collection
+    4. After due_at, creditor can call collect(debt_id) to attempt collection
     5. Creditor can call transfer_creditor(debt_id, new_creditor) to sell debt
     """
 
     ledger: Ledger
     debts: dict[str, DebtRecord]
-    current_tick: int
 
     def __init__(
         self,
@@ -60,7 +62,6 @@ class GenesisDebtContract(GenesisArtifact):
         )
         self.ledger = ledger
         self.debts = {}
-        self.current_tick = 0
 
         # Register methods with costs/descriptions from config
         self.register_method(
@@ -112,38 +113,50 @@ class GenesisDebtContract(GenesisArtifact):
             description=debt_cfg.methods.list_all.description
         )
 
+    def _now(self) -> datetime:
+        """Get current time (allows mocking in tests)."""
+        return datetime.now(timezone.utc)
+
     def set_tick(self, tick: int) -> None:
-        """Update the current tick (called by World)."""
-        self.current_tick = tick
+        """No-op for backward compatibility.
+
+        Plan #167: The debt contract now uses real time instead of ticks.
+        This method exists only for compatibility with World.advance_tick().
+        """
+        pass
 
     def _issue(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Issue a debt. Invoker becomes debtor.
 
-        Args: [creditor_id, principal, interest_rate, due_tick]
+        Args: [creditor_id, principal, rate_per_day, due_in_seconds]
         - creditor_id: Who will be owed the money
         - principal: Amount borrowed
-        - interest_rate: Per-tick interest (e.g., 0.01 = 1% per tick)
-        - due_tick: When the debt is due
+        - rate_per_day: Daily interest rate (e.g., 0.01 = 1% per day)
+        - due_in_seconds: Seconds from now when debt is due
         """
         if len(args) < 4:
-            return {"success": False, "error": "issue requires [creditor_id, principal, interest_rate, due_tick]"}
+            return {"success": False, "error": "issue requires [creditor_id, principal, rate_per_day, due_in_seconds]"}
 
         creditor_id: str = args[0]
         principal: Any = args[1]
-        interest_rate: Any = args[2]
-        due_tick: Any = args[3]
+        rate_per_day: Any = args[2]
+        due_in_seconds: Any = args[3]
 
         # Validate inputs
         if not isinstance(principal, int) or principal <= 0:
             return {"success": False, "error": "Principal must be a positive integer"}
-        if not isinstance(interest_rate, (int, float)) or interest_rate < 0:
+        if not isinstance(rate_per_day, (int, float)) or rate_per_day < 0:
             return {"success": False, "error": "Interest rate must be non-negative"}
-        if not isinstance(due_tick, int) or due_tick <= self.current_tick:
-            return {"success": False, "error": f"Due tick must be greater than current tick ({self.current_tick})"}
+        if not isinstance(due_in_seconds, (int, float)) or due_in_seconds <= 0:
+            return {"success": False, "error": "due_in_seconds must be a positive number"}
 
         # Cannot issue debt to yourself
         if creditor_id == invoker_id:
             return {"success": False, "error": "Cannot issue debt to yourself"}
+
+        # Calculate timestamps
+        now = self._now()
+        due_at = now + timedelta(seconds=float(due_in_seconds))
 
         # Create debt record (pending until creditor accepts)
         debt_id = f"debt_{uuid.uuid4().hex[:8]}"
@@ -152,12 +165,12 @@ class GenesisDebtContract(GenesisArtifact):
             "debtor_id": invoker_id,
             "creditor_id": creditor_id,
             "principal": principal,
-            "interest_rate": float(interest_rate),
-            "due_tick": due_tick,
+            "rate_per_day": float(rate_per_day),
+            "created_at": now.isoformat(),
+            "due_at": due_at.isoformat(),
             "amount_owed": principal,  # Will accrue interest when active
             "amount_paid": 0,
             "status": "pending",
-            "created_tick": self.current_tick
         }
 
         return {
@@ -166,8 +179,8 @@ class GenesisDebtContract(GenesisArtifact):
             "debtor": invoker_id,
             "creditor": creditor_id,
             "principal": principal,
-            "interest_rate": interest_rate,
-            "due_tick": due_tick,
+            "rate_per_day": rate_per_day,
+            "due_at": due_at.isoformat(),
             "message": f"Debt {debt_id} issued. Creditor {creditor_id} must call accept to activate."
         }
 
@@ -206,6 +219,18 @@ class GenesisDebtContract(GenesisArtifact):
             "message": f"Debt {debt_id} is now active. Debtor owes {debt['principal']} scrip."
         }
 
+    def _calculate_current_owed(self, debt: DebtRecord) -> int:
+        """Calculate current amount owed with interest.
+
+        Plan #167: Uses time-based interest calculation.
+        Interest = principal * rate_per_day * days_elapsed
+        """
+        now = self._now()
+        created_at = datetime.fromisoformat(debt["created_at"])
+        days_elapsed = (now - created_at).total_seconds() / 86400
+        interest = int(debt["principal"] * debt["rate_per_day"] * days_elapsed)
+        return debt["principal"] + interest - debt["amount_paid"]
+
     def _repay(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Repay debt (debtor pays creditor).
 
@@ -234,9 +259,7 @@ class GenesisDebtContract(GenesisArtifact):
             return {"success": False, "error": f"Debt is not active (status: {debt['status']})"}
 
         # Calculate current amount owed with interest
-        ticks_elapsed = max(0, self.current_tick - debt["created_tick"])
-        interest = int(debt["principal"] * debt["interest_rate"] * ticks_elapsed)
-        current_owed = debt["principal"] + interest - debt["amount_paid"]
+        current_owed = self._calculate_current_owed(debt)
 
         # Cap payment at amount owed
         actual_payment = min(amount, current_owed)
@@ -277,7 +300,7 @@ class GenesisDebtContract(GenesisArtifact):
         }
 
     def _collect(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
-        """Collect overdue debt (creditor only, after due_tick).
+        """Collect overdue debt (creditor only, after due_at).
 
         This attempts to collect. No magic enforcement - if debtor has no
         scrip, collection fails but debt is marked defaulted for reputation.
@@ -302,17 +325,17 @@ class GenesisDebtContract(GenesisArtifact):
         if debt["status"] != "active":
             return {"success": False, "error": f"Debt is not active (status: {debt['status']})"}
 
-        # Must be past due
-        if self.current_tick < debt["due_tick"]:
+        # Must be past due (Plan #167: time-based)
+        now = self._now()
+        due_at = datetime.fromisoformat(debt["due_at"])
+        if now < due_at:
             return {
                 "success": False,
-                "error": f"Debt not yet due (due at tick {debt['due_tick']}, current tick {self.current_tick})"
+                "error": f"Debt not yet due (due at {debt['due_at']}, current time {now.isoformat()})"
             }
 
         # Calculate amount owed
-        ticks_elapsed = max(0, self.current_tick - debt["created_tick"])
-        interest = int(debt["principal"] * debt["interest_rate"] * ticks_elapsed)
-        amount_owed = debt["principal"] + interest - debt["amount_paid"]
+        amount_owed = self._calculate_current_owed(debt)
 
         # Try to collect
         debtor_balance = self.ledger.get_scrip(debt["debtor_id"])
@@ -418,9 +441,7 @@ class GenesisDebtContract(GenesisArtifact):
 
         # Calculate current amount owed
         if debt["status"] == "active":
-            ticks_elapsed = max(0, self.current_tick - debt["created_tick"])
-            interest = int(debt["principal"] * debt["interest_rate"] * ticks_elapsed)
-            current_owed = debt["principal"] + interest - debt["amount_paid"]
+            current_owed = self._calculate_current_owed(debt)
         else:
             current_owed = debt["amount_owed"]
 
@@ -429,7 +450,6 @@ class GenesisDebtContract(GenesisArtifact):
             "debt": {
                 **debt,
                 "current_owed": current_owed,
-                "current_tick": self.current_tick
             }
         }
 
@@ -489,17 +509,18 @@ class GenesisDebtContract(GenesisArtifact):
                                 "description": "Amount to borrow",
                                 "minimum": 1
                             },
-                            "interest_rate": {
+                            "rate_per_day": {
                                 "type": "number",
-                                "description": "Per-tick interest rate (e.g., 0.01 = 1% per tick)",
+                                "description": "Daily interest rate (e.g., 0.01 = 1% per day)",
                                 "minimum": 0
                             },
-                            "due_tick": {
-                                "type": "integer",
-                                "description": "Tick when debt is due"
+                            "due_in_seconds": {
+                                "type": "number",
+                                "description": "Seconds from now when debt is due",
+                                "minimum": 1
                             }
                         },
-                        "required": ["creditor_id", "principal", "interest_rate", "due_tick"]
+                        "required": ["creditor_id", "principal", "rate_per_day", "due_in_seconds"]
                     }
                 },
                 {

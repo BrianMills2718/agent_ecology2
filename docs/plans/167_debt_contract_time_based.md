@@ -1,6 +1,6 @@
 # Plan #167: Debt Contract Time-Based Redesign
 
-**Status:** Planned
+**Status:** Complete
 **Priority:** Low
 **Complexity:** Medium
 
@@ -63,17 +63,18 @@ def can_collect(self, now: datetime) -> bool:
 
 ## Testing
 
-- [ ] Create debt with due_in_seconds
-- [ ] Interest accrues correctly over time
-- [ ] Collection works after due_at
-- [ ] Backward compat migration for existing debts
+- [x] Create debt with due_in_seconds
+- [x] Interest accrues correctly over time
+- [x] Collection works after due_at
+- [x] Backward compat: set_tick() is no-op for World.advance_tick() compatibility
 
-## Files to Modify
+## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/world/genesis/debt_contract.py` | Time-based scheduling |
-| `tests/unit/test_debt_contract.py` | Update tests |
+| `src/world/genesis/debt_contract.py` | Time-based scheduling: `_now()` method, `due_at`, `created_at`, `rate_per_day` |
+| `tests/unit/test_debt_contract.py` | Updated tests to use time-based mocking |
+| `tests/integration/test_debt_contract.py` | Updated tests to use time-based approach |
 
 ## Dependencies
 
