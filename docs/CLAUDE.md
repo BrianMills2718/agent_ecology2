@@ -46,6 +46,23 @@ meta/
 | Implementation | `plans/` | Gap identified/closed |
 | Decisions | `DESIGN_CLARIFICATIONS.md` | When debating approaches |
 
+## Simulation Learnings
+
+Document observations from running simulations in `SIMULATION_LEARNINGS.md`.
+
+**Principles:**
+- Use weak models (gemini-2.0-flash) to stress-test architecture
+- If weak models can't bootstrap, we're relying on model intelligence to paper over weaknesses
+- Avoid prescriptive fixes that don't scale (hard-coding every failure case)
+- Focus on conditions for emergence: metacognition, self-modification, evolutionary pressure
+
+**After running simulations, record:**
+- Model comparison results (quantitative)
+- Behavioral observations (qualitative)
+- Wrong lessons avoided (prescriptive traps)
+- Right lessons learned (architectural insights)
+- Future experiment ideas
+
 ## CI Enforcement
 
 **Unified documentation graph:** `scripts/relationships.yaml`
