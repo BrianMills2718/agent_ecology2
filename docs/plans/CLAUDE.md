@@ -203,7 +203,7 @@ Master index of all gaps and their implementation plans.
 | 177 | [Dashboard Bug Fixes](177_dashboard_bugfixes.md) | High | ✅ Complete | - |
 | 178 | [Plan 178: Configurable Enforcement Strictness](178_enforcement_strictness_config.md) | High | 🚧 In Progress | - |
 | 179 | [Dashboard Bugfixes - Coordination Density & Tick Language](179_dashboard_bugfixes.md) | High | ✅ Complete | - |
-| 180 | [Configurable Mandatory Prompt Injection](180_prompt_injection.md) | Low | 📋 Planned | - |
+| 180 | [Configurable Mandatory Prompt Injection](180_prompt_injection.md) | Low | ✅ Superseded | - |
 | 180 | [Complete Trigger Integration](180_trigger_integration.md) | High | ✅ Complete | Real-time coordination patterns |
 | 181 | [Split Large Core Files](181_split_large_files.md) | Low | 📋 Planned | - |
 | 182 | [Metadata Indexing for Artifact Discovery](182_metadata_indexing.md) | Medium | ✅ Complete | Performance at scale |
@@ -223,7 +223,7 @@ Master index of all gaps and their implementation plans.
 | 194 | [Self-Modifying System Prompt](194_self_modifying_system_prompt.md) | Medium | ❓ | - |
 | 195 | [Context Budget Management](195_context_budget_management.md) | Medium | ❓ | - |
 | 196 | [Memory Tiering](196_memory_tiering.md) | Medium | ✅ Complete | - |
-| 197 | [Configurable Mandatory Prompt Injection](197_prompt_injection.md) | Low | 🚧 In Progress | - |
+| 197 | [Configurable Mandatory Prompt Injection](197_prompt_injection.md) | Low | ✅ Complete | - |
 ---
 
 ## TDD Workflow

@@ -1,9 +1,40 @@
 # Plan #197: Configurable Mandatory Prompt Injection
 
-**Status:** 🚧 In Progress
+**Status:** ✅ Complete
 **Priority:** Low
 **Blocked By:** None
 **Blocks:** None
+
+**Note:** This plan supersedes Plan #180 (same feature, more detailed).
+
+**Verified:** 2026-01-25
+**Verification Evidence:**
+```yaml
+completed_by: Previous implementation (code already present)
+timestamp: 2026-01-25
+tests_passed:
+  - tests/unit/test_prompt_injection.py::TestIsGenesisProperty::test_is_genesis_default_true
+  - tests/unit/test_prompt_injection.py::TestIsGenesisProperty::test_is_genesis_explicit_false
+  - tests/unit/test_prompt_injection.py::TestIsGenesisProperty::test_is_genesis_explicit_true
+  - tests/unit/test_prompt_injection.py::TestFromArtifactIsGenesis::test_from_artifact_default_is_genesis_true
+  - tests/unit/test_prompt_injection.py::TestFromArtifactIsGenesis::test_from_artifact_explicit_is_genesis_false
+  - tests/unit/test_prompt_injection.py::TestPromptInjection::test_injection_disabled_by_default
+  - tests/unit/test_prompt_injection.py::TestPromptInjection::test_injection_all_scope
+  - tests/unit/test_prompt_injection.py::TestPromptInjection::test_injection_genesis_scope_for_genesis_agent
+  - tests/unit/test_prompt_injection.py::TestPromptInjection::test_injection_genesis_scope_skips_spawned_agent
+  - tests/unit/test_prompt_injection.py::TestPromptInjection::test_injection_none_scope
+  - tests/unit/test_prompt_injection.py::TestPromptInjection::test_prefix_before_prompt
+  - tests/unit/test_prompt_injection.py::TestPromptInjection::test_suffix_after_prompt
+  - tests/unit/test_prompt_injection.py::TestPromptInjection::test_prefix_and_suffix_together
+  - tests/unit/test_prompt_injection.py::TestPromptInjection::test_empty_prefix_suffix_no_effect
+notes: |
+  Implementation was already present in codebase:
+  - config/config.yaml lines 515-522: prompt_injection config section
+  - config/schema.yaml line 419: prompt_injection schema
+  - src/config_schema.py line 1683: PromptInjectionConfig class
+  - src/agents/agent.py lines 1108-1126: injection logic in build_prompt()
+  - tests/unit/test_prompt_injection.py: 14 tests, all passing
+```
 
 ---
 
@@ -92,8 +123,8 @@ prompt_injection:
 
 ## Acceptance Criteria
 
-- [ ] `prompt_injection.enabled = false` by default (no behavior change)
-- [ ] `scope = "genesis"` only affects agents loaded at startup
-- [ ] `scope = "all"` affects both genesis and spawned agents
-- [ ] Prefix/suffix correctly positioned around system prompt
-- [ ] All tests pass
+- [x] `prompt_injection.enabled = false` by default (no behavior change)
+- [x] `scope = "genesis"` only affects agents loaded at startup
+- [x] `scope = "all"` affects both genesis and spawned agents
+- [x] Prefix/suffix correctly positioned around system prompt
+- [x] All tests pass
