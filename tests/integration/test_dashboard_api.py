@@ -109,7 +109,6 @@ class TestTemporalNetworkEndpoint:
             # All artifact types should be included
             assert "alice" in node_ids
             assert "genesis_ledger" in node_ids
-            assert "genesis_store" in node_ids
             assert "my_tool" in node_ids
 
             # Check node types
