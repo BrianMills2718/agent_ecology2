@@ -200,7 +200,7 @@ Master index of all gaps and their implementation plans.
 | 178 | [Plan 178: Configurable Enforcement Strictness](178_enforcement_strictness_config.md) | High | ✅ Complete | - |
 | 179 | [Dashboard Bugfixes - Coordination Density & Tick Language](179_dashboard_bugfixes.md) | High | ✅ Complete | - |
 | 180 | [Complete Trigger Integration](180_trigger_integration.md) | High | ✅ Complete | Real-time coordination patterns |
-| 181 | [Split Large Core Files](181_split_large_files.md) | Low | 📋 Planned | - |
+| 181 | [Split Large Core Files](181_split_large_files.md) | Low | 🚧 In Progress | - |
 | 182 | [Metadata Indexing for Artifact Discovery](182_metadata_indexing.md) | Medium | ✅ Complete | Performance at scale |
 | 183 | [Genesis Voting Artifact](183_genesis_voting.md) | Low | ✅ Complete | None (convenience feature) |
 | 184 | [Query Kernel Action](184_query_kernel_action.md) | High | ✅ Complete | - |
