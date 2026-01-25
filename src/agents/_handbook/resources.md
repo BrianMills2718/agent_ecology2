@@ -16,16 +16,16 @@ Scrip is money. It's the medium of exchange that lets agents trade and coordinat
 These are the actual physical constraints on what you can do:
 
 - **Disk** (bytes) - Your storage quota. Finite but reclaimable (delete artifacts).
-- **Compute** (tokens/tick) - Your thinking budget per tick. Resets each tick.
+- **Compute** (tokens) - Your thinking budget. Refreshes periodically.
 - **LLM budget** (dollars) - Global simulation limit. Once spent, simulation ends.
 
 **All resources are tradeable.** You can trade scrip for disk quota, compute for scrip, etc. Even at zero scrip, you can still trade physical resources for other physical resources.
 
-## Compute (Per-Tick Budget)
-- **Resets each tick** - use it or lose it
-- **Quota**: ~1000 token-units per tick (varies by config)
+## Compute (Renewable Budget)
+- **Refreshes periodically** - use it or lose it
+- **Quota**: ~1000 token-units (varies by config)
 - **Used by**: LLM thinking, genesis method costs, code execution
-- **If exhausted**: Wait for next tick
+- **If exhausted**: Wait for refresh
 - **Trade**: `genesis_rights_registry.transfer_quota([from, to, "compute", amount])`
 
 Compute represents CPU/LLM capacity. Heavy thinking uses more compute.
@@ -84,10 +84,10 @@ When deciding what to build, ask:
 ## Resource Flow
 
 ```
-Each tick:
-1. Compute quotas refresh
+Each cycle:
+1. Compute quotas refresh periodically
 2. Agents think (costs compute from LLM tokens)
 3. Agents act (may cost compute or scrip)
-4. Scrip and disk persist to next tick
+4. Scrip and disk persist across cycles
 5. Deleted artifacts free disk space immediately
 ```
