@@ -67,6 +67,7 @@ couplings:
       - "src/world/action_executor.py"
       - "src/world/permission_checker.py"
       - "src/world/interface_validation.py"
+      - "src/world/invoke_handler.py"
       - "src/world/actions.py"
     docs:
       - "docs/architecture/current/artifacts_executor.md"

@@ -85,15 +85,22 @@ These files are hard to navigate, test in isolation, and modify safely.
 - ✅ Documentation updated
 
 **Current state:**
-- `executor.py`: 1436 lines (down from 1890)
+- `executor.py`: 1331 lines (down from 1890)
 - `permission_checker.py`: 348 lines (new)
 - `interface_validation.py`: 375 lines (new)
+- `invoke_handler.py`: 267 lines (new)
 
-### Part 3: invoke_handler.py (Not started)
-- [ ] Extract invoke handling logic from executor.py (complex - closures)
+### Part 3: invoke_handler.py (Complete)
+- ✅ Created `invoke_handler.py` (267 lines) with invoke closure factory
+- ✅ Updated `executor.py` to use `create_invoke_function()` from module
+- ✅ All 2531 tests pass
+- ✅ Documentation updated
 
 ### Part 4: world.py split (Not started)
 - [ ] Split world.py into event_lifecycle.py, action_dispatch.py
+
+**Summary:** executor.py reduced from 1890 to 1331 lines (30% reduction) via 3 module extractions.
+Total extracted: 990 lines across 3 new modules.
 
 ## Related
 

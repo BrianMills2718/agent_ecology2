@@ -56,6 +56,9 @@ from .interface_validation import (
     validate_args_against_interface,
 )
 
+# Import from invoke_handler module (Plan #181: Split Large Files)
+from .invoke_handler import create_invoke_function
+
 
 class PaymentResult(TypedDict):
     """Result from a pay() call within artifact execution."""
@@ -1091,129 +1094,21 @@ class SafeExecutor:
             controlled_globals["get_balance"] = get_balance
 
         # Create invoke() function if full context provided
+        # Plan #181: Use factory from invoke_handler module
         if caller_id and ledger and artifact_store:
-            def invoke(target_artifact_id: str, *invoke_args: Any) -> InvokeResult:
-                """Invoke another artifact from within this artifact's code.
-
-                The caller (original agent) pays for the invocation.
-                Recursion is limited to prevent infinite loops.
-
-                Args:
-                    target_artifact_id: ID of artifact to invoke
-                    *invoke_args: Arguments to pass to the artifact's run()
-
-                Returns:
-                    InvokeResult with success, result, error, and price_paid
-                """
-                # Check recursion depth
-                if current_depth >= max_depth:
-                    return {
-                        "success": False,
-                        "result": None,
-                        "error": f"Max invoke depth ({max_depth}) exceeded",
-                        "price_paid": 0
-                    }
-
-                # Look up the target artifact
-                target = artifact_store.get(target_artifact_id)
-                if not target:
-                    return {
-                        "success": False,
-                        "result": None,
-                        "error": f"Artifact {target_artifact_id} not found",
-                        "price_paid": 0
-                    }
-
-                if not target.executable:
-                    # Plan #160: Suggest alternative - use read_artifact for data/config artifacts
-                    return {
-                        "success": False,
-                        "result": None,
-                        "error": (
-                            f"Artifact {target_artifact_id} is not executable (it's a data artifact). "
-                            f"Use kernel_actions.read_artifact('{target_artifact_id}') to read its content."
-                        ),
-                        "price_paid": 0
-                    }
-
-                # Check invoke permission using IMMEDIATE caller (this artifact)
-                # ADR-0019: When A→B→C, C's contract sees B as caller, not A
-                # artifact_id is the current artifact (immediate caller)
-                # caller_id is the original agent (used for billing, not permission)
-                immediate_caller = artifact_id if artifact_id else caller_id
-                # ADR-0019: pass method ("run") and args in context
-                allowed, reason = self._check_permission(
-                    immediate_caller, "invoke", target, method="run", args=list(invoke_args)
-                )
-                if not allowed:
-                    return {
-                        "success": False,
-                        "result": None,
-                        "error": f"Caller {immediate_caller} not allowed to invoke {target_artifact_id}: {reason}",
-                        "price_paid": 0
-                    }
-
-                # Determine price: contract cost (if any) + artifact price
-                price = target.price
-                created_by = target.created_by
-
-                # If using contracts and target has a contract, check for additional cost
-                contract_cost = 0
-                cost_payer = caller_id  # Default: original caller pays (billing uses original)
-                has_contract = hasattr(target, "access_contract_id") and target.access_contract_id is not None
-                if self.use_contracts and has_contract:
-                    # Use immediate caller for permission/cost check per ADR-0019
-                    perm_result = self._check_permission_via_contract(
-                        immediate_caller, "invoke", target, method="run", args=list(invoke_args)
-                    )
-                    contract_cost = perm_result.cost
-                    # Contract can specify alternate payer (Plan #140)
-                    if perm_result.payer is not None:
-                        cost_payer = perm_result.payer
-
-                total_cost = price + contract_cost
-                if total_cost > 0 and not ledger.can_afford_scrip(cost_payer, total_cost):
-                    return {
-                        "success": False,
-                        "result": None,
-                        "error": f"Payer {cost_payer} has insufficient scrip for total cost {total_cost}",
-                        "price_paid": 0
-                    }
-
-                # Recursively execute the target artifact
-                nested_result = self.execute_with_invoke(
-                    code=target.code,
-                    args=list(invoke_args),
-                    caller_id=caller_id,
-                    artifact_id=target_artifact_id,
-                    ledger=ledger,
-                    artifact_store=artifact_store,
-                    current_depth=current_depth + 1,
-                    max_depth=max_depth,
-                    world=world,
-                )
-
-                if nested_result.get("success"):
-                    # Pay total cost to artifact creator (only on success)
-                    # Plan #140: Use contract-specified payer instead of hardcoded caller
-                    if total_cost > 0 and created_by != cost_payer:
-                        ledger.deduct_scrip(cost_payer, total_cost)
-                        ledger.credit_scrip(created_by, total_cost)
-
-                    return {
-                        "success": True,
-                        "result": nested_result.get("result"),
-                        "error": "",
-                        "price_paid": total_cost
-                    }
-                else:
-                    return {
-                        "success": False,
-                        "result": None,
-                        "error": nested_result.get("error", "Unknown error"),
-                        "price_paid": 0
-                    }
-
+            invoke = create_invoke_function(
+                caller_id=caller_id,
+                artifact_id=artifact_id,
+                ledger=ledger,
+                artifact_store=artifact_store,
+                current_depth=current_depth,
+                max_depth=max_depth,
+                world=world,
+                check_permission_func=self._check_permission,
+                check_permission_via_contract_func=self._check_permission_via_contract,
+                execute_with_invoke_func=self.execute_with_invoke,
+                use_contracts=self.use_contracts,
+            )
             controlled_globals["invoke"] = invoke
 
         # Plan #140: Create Action class that wraps injected functions
