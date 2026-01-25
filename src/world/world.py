@@ -27,7 +27,7 @@ from .actions import (
     ActionIntent, ActionResult, ActionType,
     NoopIntent, ReadArtifactIntent, WriteArtifactIntent,
     EditArtifactIntent, InvokeArtifactIntent, DeleteArtifactIntent,
-    QueryKernelIntent,
+    QueryKernelIntent, SubscribeArtifactIntent, UnsubscribeArtifactIntent,
 )
 from .kernel_queries import KernelQueryHandler
 # NOTE: TransferIntent removed - all transfers via genesis_ledger.transfer()
@@ -539,6 +539,12 @@ class World:
 
         elif isinstance(intent, QueryKernelIntent):
             result = self._execute_query_kernel(intent)
+
+        elif isinstance(intent, SubscribeArtifactIntent):
+            result = self._execute_subscribe(intent)
+
+        elif isinstance(intent, UnsubscribeArtifactIntent):
+            result = self._execute_unsubscribe(intent)
 
         else:
             result = ActionResult(success=False, message="Unknown action type")
@@ -1172,6 +1178,156 @@ class World:
                 error_category=ErrorCategory.RESOURCE.value,
                 retriable=False,
             )
+
+    def _execute_subscribe(self, intent: SubscribeArtifactIntent) -> ActionResult:
+        """Execute a subscribe_artifact action (Plan #191).
+
+        Adds the artifact to the agent's subscribed_artifacts list.
+        The artifact content will be auto-injected into the agent's prompt.
+        """
+        agent_id = intent.principal_id
+        artifact_id = intent.artifact_id
+
+        # Check if agent artifact exists
+        agent_artifact = self.artifacts.get(agent_id)
+        if agent_artifact is None:
+            return ActionResult(
+                success=False,
+                message=f"Agent artifact '{agent_id}' not found",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
+
+        # Check if target artifact exists (can be any artifact the agent can read)
+        target_artifact = self.artifacts.get(artifact_id)
+        target_is_genesis = artifact_id in self.genesis_artifacts
+        if target_artifact is None and not target_is_genesis:
+            return ActionResult(
+                success=False,
+                message=f"Artifact '{artifact_id}' not found. Cannot subscribe to non-existent artifact.",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
+
+        # Parse current agent config
+        try:
+            config = json.loads(agent_artifact.content) if agent_artifact.content else {}
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+
+        # Get or initialize subscribed_artifacts list
+        subscribed: list[str] = config.get("subscribed_artifacts", [])
+        if not isinstance(subscribed, list):
+            subscribed = []
+
+        # Check if already subscribed
+        if artifact_id in subscribed:
+            return ActionResult(
+                success=True,
+                message=f"Already subscribed to '{artifact_id}'",
+                data={"subscribed_artifacts": subscribed},
+            )
+
+        # Check max subscriptions limit
+        max_count: int = config_get("agent.subscribed_artifacts.max_count") or 5
+        if len(subscribed) >= max_count:
+            return ActionResult(
+                success=False,
+                message=f"Maximum subscriptions ({max_count}) reached. Unsubscribe from another artifact first.",
+                error_code="subscription_limit_reached",
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
+
+        # Add subscription
+        subscribed.append(artifact_id)
+        config["subscribed_artifacts"] = subscribed
+
+        # Update agent artifact content by rewriting with same metadata
+        new_content = json.dumps(config, indent=2)
+        self.artifacts.write(
+            artifact_id=agent_id,
+            type=agent_artifact.artifact_type,
+            content=new_content,
+            created_by=agent_artifact.created_by,
+            executable=agent_artifact.executable,
+            price=agent_artifact.price,
+            code=agent_artifact.code,
+            interface=agent_artifact.interface,
+            access_contract_id=agent_artifact.access_contract_id,
+            metadata=agent_artifact.metadata,
+        )
+
+        return ActionResult(
+            success=True,
+            message=f"Subscribed to '{artifact_id}'. It will be auto-injected into your prompt.",
+            data={"subscribed_artifacts": subscribed},
+        )
+
+    def _execute_unsubscribe(self, intent: UnsubscribeArtifactIntent) -> ActionResult:
+        """Execute an unsubscribe_artifact action (Plan #191).
+
+        Removes the artifact from the agent's subscribed_artifacts list.
+        """
+        agent_id = intent.principal_id
+        artifact_id = intent.artifact_id
+
+        # Check if agent artifact exists
+        agent_artifact = self.artifacts.get(agent_id)
+        if agent_artifact is None:
+            return ActionResult(
+                success=False,
+                message=f"Agent artifact '{agent_id}' not found",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
+
+        # Parse current agent config
+        try:
+            config = json.loads(agent_artifact.content) if agent_artifact.content else {}
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+
+        # Get subscribed_artifacts list
+        subscribed: list[str] = config.get("subscribed_artifacts", [])
+        if not isinstance(subscribed, list):
+            subscribed = []
+
+        # Check if subscribed
+        if artifact_id not in subscribed:
+            return ActionResult(
+                success=True,
+                message=f"Not subscribed to '{artifact_id}'",
+                data={"subscribed_artifacts": subscribed},
+            )
+
+        # Remove subscription
+        subscribed.remove(artifact_id)
+        config["subscribed_artifacts"] = subscribed
+
+        # Update agent artifact content by rewriting with same metadata
+        new_content = json.dumps(config, indent=2)
+        self.artifacts.write(
+            artifact_id=agent_id,
+            type=agent_artifact.artifact_type,
+            content=new_content,
+            created_by=agent_artifact.created_by,
+            executable=agent_artifact.executable,
+            price=agent_artifact.price,
+            code=agent_artifact.code,
+            interface=agent_artifact.interface,
+            access_contract_id=agent_artifact.access_contract_id,
+            metadata=agent_artifact.metadata,
+        )
+
+        return ActionResult(
+            success=True,
+            message=f"Unsubscribed from '{artifact_id}'. It will no longer be auto-injected.",
+            data={"subscribed_artifacts": subscribed},
+        )
 
     def _log_invoke_success(
         self,

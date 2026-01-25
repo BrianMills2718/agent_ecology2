@@ -171,6 +171,9 @@ class Agent:
     # Long-term memory configuration (Plan #146)
     _longterm_memory_artifact_id: str | None
 
+    # Subscribed artifacts configuration (Plan #191)
+    _subscribed_artifacts: list[str]
+
     def __init__(
         self,
         agent_id: str,
@@ -221,6 +224,7 @@ class Agent:
         self._components_config = None  # Plan #150: Prompt component config
         self._reflex_artifact_id = None  # Plan #143: Reflex artifact reference
         self._longterm_memory_artifact_id = None  # Plan #146: Long-term memory artifact reference
+        self._subscribed_artifacts = []  # Plan #191: Subscribed artifacts
 
         # If artifact-backed, load config from artifact content
         if artifact is not None:
@@ -331,6 +335,15 @@ class Agent:
         # Load long-term memory artifact ID if present (Plan #146)
         if "longterm_memory_artifact_id" in config:
             self._longterm_memory_artifact_id = config["longterm_memory_artifact_id"]
+
+        # Load subscribed artifacts if present (Plan #191)
+        if "subscribed_artifacts" in config:
+            subscribed = config.get("subscribed_artifacts", [])
+            if isinstance(subscribed, list):
+                # Filter to only valid string artifact IDs
+                self._subscribed_artifacts = [
+                    aid for aid in subscribed if isinstance(aid, str)
+                ]
 
         # Load working memory from artifact content if present (Plan #59)
         self._working_memory = self._extract_working_memory(config)
@@ -1077,6 +1090,36 @@ This will persist across your thinking cycles.
                 if prefix or suffix:
                     effective_system_prompt = f"{prefix}\n{self.system_prompt}\n{suffix}".strip()
 
+        # Plan #191: Subscribed artifacts injection
+        subscribed_section: str = ""
+        if self._subscribed_artifacts:
+            # Get config limits
+            max_subscribed: int = config_get("agent.subscribed_artifacts.max_count") or 5
+            max_size_per_artifact: int = config_get("agent.subscribed_artifacts.max_size_bytes") or 2000
+
+            subscribed_lines: list[str] = []
+            for artifact_id in self._subscribed_artifacts[:max_subscribed]:
+                # Find artifact in world state artifacts list
+                artifact_content: str | None = None
+                for artifact in artifacts:
+                    if artifact.get('id') == artifact_id:
+                        content = artifact.get('content', '')
+                        if isinstance(content, str):
+                            artifact_content = content
+                        elif isinstance(content, dict):
+                            # JSON content - serialize it
+                            artifact_content = json.dumps(content, indent=2)
+                        break
+
+                if artifact_content:
+                    # Truncate if too large
+                    if len(artifact_content.encode('utf-8')) > max_size_per_artifact:
+                        artifact_content = artifact_content[:max_size_per_artifact - 20] + "\n[...truncated]"
+                    subscribed_lines.append(f"### Subscribed: {artifact_id}\n{artifact_content}")
+
+            if subscribed_lines:
+                subscribed_section = "\n## Subscribed Artifacts\n" + "\n\n".join(subscribed_lines) + "\n"
+
         prompt: str = f"""=== GOAL: Maximize scrip balance by simulation end ===
 You are {self.agent_id}. Time remaining: {time_remaining_str} ({progress_str} complete)
 
@@ -1086,7 +1129,7 @@ You are {self.agent_id}. Time remaining: {time_remaining_str} ({progress_str} co
 - Artifacts created: {len(my_artifacts)}
 
 {effective_system_prompt}
-{first_tick_section}{working_memory_section}{action_feedback}{config_error_section}{recent_failures_section}{action_history_section}{metacognitive_section}
+{first_tick_section}{working_memory_section}{subscribed_section}{action_feedback}{config_error_section}{recent_failures_section}{action_history_section}{metacognitive_section}
 ## Your Memories
 {memories}
 

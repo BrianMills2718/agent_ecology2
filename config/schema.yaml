@@ -492,3 +492,12 @@ dashboard:
 # -----------------------------------------------------------------------------
 id_generation:
   uuid_hex_length: <number>     # Characters from UUID hex for IDs (default: 8)
+
+# -----------------------------------------------------------------------------
+# AGENT
+# Agent behavior and prompt configuration
+# -----------------------------------------------------------------------------
+agent:
+  subscribed_artifacts:
+    max_count: <number>         # Max artifacts per agent (default: 5, Plan #191)
+    max_size_bytes: <number>    # Max content size per artifact (default: 2000, Plan #191)

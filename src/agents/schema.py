@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from ..config import get
 
-# Literal type for valid action types (narrow waist: 6 verbs + query)
+# Literal type for valid action types (narrow waist: 6 verbs + query + subscriptions)
 ActionType = Literal[
     "noop",
     "read_artifact",
@@ -14,6 +14,8 @@ ActionType = Literal[
     "delete_artifact",
     "invoke_artifact",
     "query_kernel",  # Plan #184: Direct kernel state queries
+    "subscribe_artifact",  # Plan #191: Subscribe to artifact for auto-injection
+    "unsubscribe_artifact",  # Plan #191: Unsubscribe from artifact
 ]
 
 # Type alias for action validation result
@@ -23,7 +25,7 @@ ActionValidationResult = dict[str, Any] | str
 ACTION_SCHEMA: str = """
 You must respond with a single JSON object representing your action.
 
-## Available Actions (6 types)
+## Available Actions (8 types)
 
 1. read_artifact - Read artifact content
    {"action_type": "read_artifact", "artifact_id": "<id>"}
@@ -46,6 +48,16 @@ You must respond with a single JSON object representing your action.
 
 6. query_kernel - Query kernel state directly (read-only, no invocation cost)
    {"action_type": "query_kernel", "query_type": "<type>", "params": {...}}
+
+7. subscribe_artifact - Subscribe to artifact for auto-injection into prompts (Plan #191)
+   {"action_type": "subscribe_artifact", "artifact_id": "<id>"}
+   Subscribes to an artifact so its content is automatically injected into your prompt.
+   Useful for handbooks, SOPs, or other reference materials you want persistent access to.
+   Max 5 subscriptions.
+
+8. unsubscribe_artifact - Unsubscribe from artifact (Plan #191)
+   {"action_type": "unsubscribe_artifact", "artifact_id": "<id>"}
+   Removes the artifact from your subscribed list.
 
    Query types:
    - artifacts: Find artifacts (params: owner, type, executable, name_pattern, limit, offset)
@@ -134,7 +146,7 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
         return "Response must be a JSON object"
 
     action_type: ActionType | str = data.get("action_type", "").lower()
-    if action_type not in ["noop", "read_artifact", "write_artifact", "edit_artifact", "delete_artifact", "invoke_artifact", "query_kernel"]:
+    if action_type not in ["noop", "read_artifact", "write_artifact", "edit_artifact", "delete_artifact", "invoke_artifact", "query_kernel", "subscribe_artifact", "unsubscribe_artifact"]:
         if action_type == "transfer":
             return "transfer is not a kernel action. Use: invoke_artifact('genesis_ledger', 'transfer', [from_id, to_id, amount])"
         return f"Invalid action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel"
@@ -215,5 +227,21 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
         params = data.get("params", {})
         if not isinstance(params, dict):
             return "query_kernel 'params' must be a dict"
+
+    elif action_type == "subscribe_artifact":
+        # Plan #191: Subscribe to artifact for auto-injection
+        if not data.get("artifact_id"):
+            return "subscribe_artifact requires 'artifact_id'"
+        artifact_id = str(data.get("artifact_id", ""))
+        if len(artifact_id) > max_artifact_id_length:
+            return f"artifact_id exceeds max length ({max_artifact_id_length} chars)"
+
+    elif action_type == "unsubscribe_artifact":
+        # Plan #191: Unsubscribe from artifact
+        if not data.get("artifact_id"):
+            return "unsubscribe_artifact requires 'artifact_id'"
+        artifact_id = str(data.get("artifact_id", ""))
+        if len(artifact_id) > max_artifact_id_length:
+            return f"artifact_id exceeds max length ({max_artifact_id_length} chars)"
 
     return data

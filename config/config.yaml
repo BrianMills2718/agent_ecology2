@@ -517,6 +517,11 @@ agent:
   # Action history (Plan #156) - Recent actions shown in prompt for loop detection
   action_history_max: 15          # Max recent actions to track per agent
 
+  # Subscribed artifacts (Plan #191) - Auto-injected into agent prompts
+  subscribed_artifacts:
+    max_count: 5                  # Max artifacts an agent can subscribe to
+    max_size_bytes: 2000          # Max content size per subscribed artifact (truncated)
+
   # Plan #132: Removed cognitive_schema - single standardized response format with 'reasoning' field
 
 # -----------------------------------------------------------------------------

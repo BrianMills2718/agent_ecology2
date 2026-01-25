@@ -1,0 +1,8 @@
+# Atomic claim file - this worktree is claimed
+# Deleting worktree = releasing claim
+
+cc_id: plan-191-subscribed-artifacts
+task: Implement subscribed artifacts for agents
+claimed_at: '2026-01-25T06:30:00Z'
+session_id: 12c67bbd-3c8b-4419-ab38-65167be808ed
+plan: 191
