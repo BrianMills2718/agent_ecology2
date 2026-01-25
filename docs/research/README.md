@@ -2,6 +2,10 @@
 
 Design explorations, literature reviews, and architectural research.
 
+## Start Here
+
+**[AGENT_ARCHITECTURE_INDEX.md](AGENT_ARCHITECTURE_INDEX.md)** - Master index for all agent architecture documentation. Start here for a comprehensive overview.
+
 ## Purpose
 
 Capture research and design thinking that informs architecture decisions. Unlike `simulation_learnings/` (which captures observations from runs), this contains:
