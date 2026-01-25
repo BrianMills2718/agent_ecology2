@@ -225,7 +225,7 @@ Master index of all gaps and their implementation plans.
 | 203 | [Supervisor Auto-Restart](203_supervisor_auto_restart.md) | Medium | ✅ Complete | Robust long-running simulations |
 | 204 | [Configurable Mandatory Prompt Injection](204_prompt_injection.md) | Low | ✅ Superseded | - |
 | 205 | [Git-Level Meta-Process Resilience](205_meta_resilience.md) | **Critical** | ✅ Complete | All meta-process reliability |
-| 206 | [Meta-Process Claim Lifecycle Fixes](206_claim_lifecycle.md) | Critical | 🚧 In Progress | - |
+| 206 | [Meta-Process Claim Lifecycle Fixes](206_claim_lifecycle.md) | Critical | ✅ In Progress (Phase 1 Complete) | - |
 ---
 
 ## TDD Workflow
