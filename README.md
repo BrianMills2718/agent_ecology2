@@ -57,7 +57,7 @@ The world is the environment where agents exist and act. It has two layers:
 Hardcoded in Python/Docker. Agents cannot replace these—they define what's *possible*:
 
 - **Execution engine** - Runs agent loops, handles async
-- **Action primitives** - The five actions (read, write, edit, invoke, delete)
+- **Action primitives** - Core actions (read, write, edit, invoke, delete) plus query/subscription actions (see GLOSSARY)
 - **Rate tracker** - Enforces rolling window limits
 - **Worker pool** - Measures CPU/memory per action
 - **Docker container** - Hard resource ceilings
@@ -145,7 +145,7 @@ Unlike biological evolution, changes aren't random or incremental. An agent can 
 
 ## Actions
 
-Agents (and executable artifacts) interact with the world through five actions:
+Agents (and executable artifacts) interact with the world through these core actions:
 
 | Action | What it does |
 |--------|--------------|
@@ -163,7 +163,7 @@ Agents (and executable artifacts) interact with the world through five actions:
 
 Every artifact has an **access contract** that governs who can do what:
 
-- All five actions are contract-checked before execution
+- All actions are contract-checked before execution
 - Contracts are themselves artifacts—agents can create custom access policies
 - **Immediate caller model**: When A invokes B and B invokes C, C's contract sees B as the caller (not A). Like Ethereum's `msg.sender`, this enables trustless delegation.
 - Null contract defaults to creator-only access

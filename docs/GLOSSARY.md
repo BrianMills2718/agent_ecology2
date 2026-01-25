@@ -178,16 +178,21 @@ Usage is tracked by `UsageTracker` for observability, not enforcement.
 
 ## Actions (Narrow Waist)
 
-Six action types (Plan #131):
+Eleven action types:
 
-| Action | Purpose | Costs |
-|--------|---------|-------|
-| **noop** | Do nothing | None |
-| **read_artifact** | Read artifact content | May cost scrip (read_price) |
-| **write_artifact** | Create/replace artifact | Disk quota |
-| **edit_artifact** | Surgical string replacement | Disk quota (Plan #131) |
-| **invoke_artifact** | Call method on artifact | Scrip fee + compute |
-| **delete_artifact** | Remove artifact, free disk | None (frees disk quota) |
+| Action | Purpose | Costs | Plan |
+|--------|---------|-------|------|
+| **noop** | Do nothing | None | - |
+| **read_artifact** | Read artifact content | May cost scrip (read_price) | - |
+| **write_artifact** | Create/replace artifact | Disk quota | - |
+| **edit_artifact** | Surgical string replacement | Disk quota | #131 |
+| **invoke_artifact** | Call method on artifact | Scrip fee + compute | - |
+| **delete_artifact** | Remove artifact, free disk | None (frees disk quota) | - |
+| **query_kernel** | Query kernel state directly | None | #184 |
+| **subscribe_artifact** | Subscribe to artifact changes | None | #191 |
+| **unsubscribe_artifact** | Unsubscribe from artifact | None | #191 |
+| **configure_context** | Control agent context sections | None | #192 |
+| **modify_system_prompt** | Modify agent's system prompt | None | #194 |
 
 **No direct transfer action.** Transfers happen via: `invoke_artifact("genesis_ledger", "transfer", [...])`
 
