@@ -167,7 +167,7 @@ Master index of all gaps and their implementation plans.
 | 138 | [Provider-Level Union Schema Transformation](138_provider_union_schema_transform.md) | Low | 📋 Deferred (until problems arise with Plan #137) | - |
 | 139 | [Dashboard Bug Fixes and Improvements](139_dashboard_phase2_phase3.md) | High | ✅ Complete | Dashboard usability |
 | 140 | [Plan 140: Actions Module for Agent-Expected API](140_actions_module.md) | High | ❓ | - |
-| 140 | [Plan 140: Kernel Permission Fixes](140_kernel_permission_fixes.md) | High | 📋 In Progress | Custom contracts, proper access control |
+| 140 | [Plan 140: Kernel Permission Fixes](140_kernel_permission_fixes.md) | High | ✅ Complete | Custom contracts, proper access control |
 | 141 | [Fix merge hook gap for `make -C` pattern](141_merge_hook_gap.md) | high | ❓ | - |
 | 142 | [Dashboard Improvements - KPI Trends, Pagination, WebSocket](142_dashboard_improvements.md) | Medium | ✅ Complete | Dashboard scalability |
 | 143 | [Plan 143: Reflex System (System 1 Fast Path)](143_reflex_system.md) | High | ✅ Complete | Agent self-optimization, high-frequency trading |
@@ -216,13 +216,11 @@ Master index of all gaps and their implementation plans.
 | 188 | [Plan Artifact Pattern for Genesis Agents](188_plan_artifact_pattern.md) | Medium | ❓ | Deliberative agent behavior, observability |
 | 189 | [Meta-Process Robustness Overhaul](189_meta_robustness.md) | **Critical** | 📋 Planned | All future meta-process reliability |
 | 190 | [Global Search in Dashboard v2](190_global_search.md) | Medium | 📋 Planned | - |
-| 191 | [Subscribed Artifacts](191_subscribed_artifacts.md) | Medium | ❓ | - |
 | 192 | [Context Section Control](192_context_section_control.md) | Medium | ❓ | - |
 | 193 | [Context Priority and Ordering](193_context_priority.md) | Medium | ❓ | - |
 | 194 | [Self-Modifying System Prompt](194_self_modifying_system_prompt.md) | Medium | ❓ | - |
 | 195 | [Context Budget Management](195_context_budget_management.md) | Medium | ❓ | - |
 | 196 | [Memory Tiering](196_memory_tiering.md) | Medium | ❓ | - |
-| 197 | [Configurable Mandatory Prompt Injection](197_prompt_injection.md) | Low | 🚧 In Progress | - |
 ---
 
 ## TDD Workflow
