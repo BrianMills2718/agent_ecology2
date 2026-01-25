@@ -1,6 +1,6 @@
 # Plan #188: Plan Artifact Pattern for Genesis Agents
 
-**Status:** Planned
+**Status:** In Progress
 **Priority:** Medium
 **Complexity:** High
 **Blocks:** Deliberative agent behavior, observability
@@ -108,11 +108,13 @@ else:
 ## Files Affected
 
 - src/agents/agent.py (modify) - Add planning methods
-- src/agents/schema.py (modify) - Add plan-related types
+- src/agents/planning.py (create) - Plan types and planning logic
+- src/agents/schema.py (modify) - Add plan action type
 - src/config_schema.py (modify) - Add planning config
 - config/schema.yaml (modify) - Document planning options
 - config/config.yaml (modify) - Add default values
-- docs/handbook_planning.md (create) - Agent handbook for planning
+- src/agents/_handbook/planning.md (create) - Agent handbook for planning
+- tests/unit/test_agent_planning.py (create) - Unit tests for planning
 
 ## Testing
 

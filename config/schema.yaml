@@ -563,3 +563,8 @@ agent:
   system_prompt:
     max_size_bytes: <number>    # Max system prompt size (default: 8000, Plan #194)
     protected_prefix_chars: <number>  # Protected chars at start (default: 200, Plan #194)
+
+  planning:                     # Plan #188: Deliberative planning pattern
+    enabled: <boolean>          # Enable plan artifact pattern (default: false)
+    max_steps: <number>         # Max steps in a plan (default: 5, range: 1-20)
+    replan_on_failure: <boolean>  # Generate new plan if step fails (default: true)

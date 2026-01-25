@@ -1485,6 +1485,25 @@ class SubscribedArtifactsConfig(StrictModel):
     )
 
 
+class PlanningConfig(StrictModel):
+    """Configuration for agent deliberative planning (Plan #188)."""
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable plan artifact pattern for deliberative agent behavior"
+    )
+    max_steps: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Maximum number of steps in a plan"
+    )
+    replan_on_failure: bool = Field(
+        default=True,
+        description="Generate new plan if a step fails"
+    )
+
+
 class AgentConfig(StrictModel):
     """Configuration for agent behavior."""
 
@@ -1499,6 +1518,10 @@ class AgentConfig(StrictModel):
     subscribed_artifacts: SubscribedArtifactsConfig = Field(
         default_factory=SubscribedArtifactsConfig,
         description="Subscribed artifacts auto-injection (Plan #191)"
+    )
+    planning: PlanningConfig = Field(
+        default_factory=PlanningConfig,
+        description="Deliberative planning behavior (Plan #188)"
     )
     failure_history_max: int = Field(
         default=5,
