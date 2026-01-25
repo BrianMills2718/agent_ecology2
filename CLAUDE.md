@@ -66,8 +66,11 @@ make release             # Release claim
 ```bash
 make clean               # Remove __pycache__, .pytest_cache
 make clean-claims        # Remove old completed claims
+make clean-merged        # Cleanup claims for merged branches (Plan #189)
 make clean-branches      # List stale remote branches
 make clean-branches-delete  # Delete stale remote branches
+make clean-worktrees     # Find orphaned worktrees
+make clean-worktrees-auto  # Auto-cleanup orphaned worktrees
 ```
 ---
 
@@ -169,6 +172,68 @@ make finish BRANCH=plan-98-robust-worktree PR=321
 - Use `git worktree rmv` directly (use `make worktree-remove`)
 - Use `gh pr merge` directly (use `make merge PR=N` or `make finish`)
 - Skip the claim when creating worktrees (use `make worktree`)
+
+---
+
+## Meta-Process Guarantees
+
+### Why Worktrees Exist
+
+Worktrees provide **isolation** that prevents corruption, not just organization:
+
+- Each CC instance has its own directory with independent working state
+- Changes in one worktree never affect another (no merge conflicts during work)
+- If a worktree is deleted, no other work is affected
+- Main stays clean as a coordination point (never implement there)
+
+**Without worktrees:** Multiple CCs editing the same directory create race conditions, overwrite each other's changes, and cause corruption that's hard to debug.
+
+### Why Claims Exist
+
+Claims provide **coordination** so instances don't collide:
+
+- Branch-based: if a `plan-N-*` branch exists, work is claimed
+- Stale detection: branches merged or inactive >48h with no worktree = stale
+- Auto-release: when branches merge, claims automatically release
+- Visible: all CCs can see what others are working on
+
+**Without claims:** Two CCs might start the same plan simultaneously, wasting effort and creating conflicting PRs that must be manually reconciled.
+
+### What Happens If You Bypass
+
+| Bypass | Consequence |
+|--------|-------------|
+| Edit in main | Other CCs may overwrite your work, or you theirs |
+| Skip `make worktree` | No claim = others can't see your work |
+| Use `git worktree add` directly | Bypasses claim system, causes coordination failures |
+| Use `git worktree remove` directly | May delete worktree another CC is using (breaks their shell) |
+| Use `gh pr merge` directly | Bypasses validation, may break checks |
+| Run `make finish` from worktree | Shell CWD becomes invalid after worktree deleted |
+
+### How to Recover
+
+**Your shell is broken (CWD invalid after worktree deleted):**
+```bash
+cd /home/brian/brian_projects/agent_ecology2  # Go to main
+# Now all commands work again
+```
+
+**Stale claim blocking your work:**
+```bash
+make clean-merged          # Auto-cleanup claims for merged branches
+make clean-claims          # Remove old completed claims
+```
+
+**Orphaned worktree (branch merged but worktree remains):**
+```bash
+make clean-worktrees       # Find orphaned worktrees
+make clean-worktrees-auto  # Auto-cleanup (safe only)
+```
+
+**Another CC seems stuck:**
+- Don't clean up their worktree - breaks their shell
+- Don't message them about it - they may be in a different context
+- Just work on something else - claims prevent collision
 
 ---
 
