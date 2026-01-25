@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-25 (Plan #13 - Removed line number refs, use function names)
+**Last verified:** 2026-01-25 (Plan #149 - Dashboard Architecture Refactor Phase 2)
 
 ---
 
@@ -234,9 +234,12 @@ The `live_mode` parameter controls this:
 | File | Purpose |
 |------|---------|
 | `server.py` | FastAPI server with WebSocket |
-| `parser.py` | JSONL parsing and state extraction |
+| `parser.py` | JSONL parsing and state extraction (legacy) |
 | `watcher.py` | File change detection (watchdog + polling fallback) |
-| `models.py` | Pydantic models for API responses (normalizes mixed timestamp formats) |
+| `models.py` | Pydantic models for API responses (legacy) |
+| `models_v2/` | Typed event/state/metrics models per ADR-0020 (Plan #149) |
+| `core_v2/` | Event parsing, state tracking, metrics computation (Plan #149) |
+| `api/` | RESTful routes and WebSocket handling (Plan #149) |
 | `static/` | HTML/CSS/JS frontend |
 
 ### Architecture
@@ -325,6 +328,95 @@ dashboard:
 
 ---
 
+## Dashboard v2 Architecture (Plan #149)
+
+New modular architecture built alongside legacy code. Uses ADR-0020 event schema.
+
+### Models Layer (`models_v2/`)
+
+Typed Pydantic models for events, state, and metrics.
+
+| Module | Key Classes | Purpose |
+|--------|-------------|---------|
+| `events.py` | `EventEnvelope`, `ActionEvent`, `ResourceConsumedEvent` | ADR-0020 event types |
+| `state.py` | `AgentState`, `ArtifactState`, `WorldState` | Current simulation state |
+| `metrics.py` | `AgentMetrics`, `GlobalMetrics`, `ResourceMetrics` | Computed metrics |
+
+**Event Parsing:**
+```python
+from dashboard.models_v2.events import parse_event
+
+event = parse_event({"event_type": "action", "agent_id": "alice", ...})
+# Returns typed ActionEvent, ResourceConsumedEvent, etc.
+```
+
+### Core Layer (`core_v2/`)
+
+Business logic for parsing, state tracking, and metrics computation.
+
+| Module | Key Classes | Purpose |
+|--------|-------------|---------|
+| `event_parser.py` | `EventParser` | Parse JSONL files into typed events |
+| `state_tracker.py` | `StateTracker` | Build `WorldState` from event stream |
+| `metrics_engine.py` | `MetricsEngine` | Compute metrics from world state |
+
+**State Tracking:**
+```python
+from dashboard.core_v2.state_tracker import StateTracker
+from dashboard.core_v2.event_parser import EventParser
+
+parser = EventParser()
+tracker = StateTracker()
+
+for event in parser.parse_file("run.jsonl"):
+    tracker.process_event(event)
+
+world_state = tracker.get_state()
+```
+
+**Metrics Computation:**
+```python
+from dashboard.core_v2.metrics_engine import MetricsEngine
+
+engine = MetricsEngine()
+global_metrics = engine.compute_global_metrics(world_state)
+agent_metrics = engine.compute_agent_metrics(world_state, "alice")
+```
+
+### API Layer (`api/`)
+
+RESTful routes and WebSocket handling, separate from server.py.
+
+| Module | Key Classes/Functions | Purpose |
+|--------|----------------------|---------|
+| `routes/agents.py` | `list_agents()`, `get_agent()` | Agent endpoints |
+| `routes/artifacts.py` | `list_artifacts()`, `get_artifact()` | Artifact endpoints |
+| `routes/metrics.py` | `get_global_metrics()`, `get_kpis()` | Metrics endpoints |
+| `routes/search.py` | `search()` | Entity search |
+| `websocket.py` | `ConnectionManager`, `broadcast_event()` | Real-time updates |
+
+**Route Structure:**
+```
+/api/v2/agents          - List all agents
+/api/v2/agents/{id}     - Agent details with metrics
+/api/v2/agents/{id}/actions - Agent action history
+/api/v2/artifacts       - List artifacts (filterable)
+/api/v2/artifacts/{id}  - Artifact details
+/api/v2/metrics/global  - Simulation-wide metrics
+/api/v2/metrics/kpis    - Key performance indicators
+/api/v2/search          - Search agents/artifacts
+```
+
+**Dependency Injection:**
+```python
+from dashboard.api.routes import agents
+
+# Server injects dependencies at startup
+agents.set_dependencies(world_state, metrics_engine)
+```
+
+---
+
 ## Key Files
 
 | File | Key Classes | Description |
@@ -333,9 +425,19 @@ dashboard:
 | `src/simulation/types.py` | `CheckpointData`, `BalanceInfo` | TypedDicts |
 | `src/world/logger.py` | `EventLogger` | JSONL event logging |
 | `src/dashboard/server.py` | `DashboardApp`, `ConnectionManager` | FastAPI server |
-| `src/dashboard/parser.py` | `JSONLParser` | Event parsing |
+| `src/dashboard/parser.py` | `JSONLParser` | Event parsing (legacy) |
 | `src/dashboard/watcher.py` | `PollingWatcher` | File change detection |
-| `src/dashboard/models.py` | Pydantic models | API response types |
+| `src/dashboard/models.py` | Pydantic models | API response types (legacy) |
+| `src/dashboard/models_v2/events.py` | `EventEnvelope`, `ActionEvent`, etc. | ADR-0020 event types |
+| `src/dashboard/models_v2/state.py` | `AgentState`, `ArtifactState`, `WorldState` | Simulation state |
+| `src/dashboard/models_v2/metrics.py` | `AgentMetrics`, `GlobalMetrics` | Computed metrics |
+| `src/dashboard/core_v2/event_parser.py` | `EventParser` | JSONL → typed events |
+| `src/dashboard/core_v2/state_tracker.py` | `StateTracker` | Events → world state |
+| `src/dashboard/core_v2/metrics_engine.py` | `MetricsEngine` | State → metrics |
+| `src/dashboard/api/routes/agents.py` | `list_agents()`, `get_agent()` | Agent API endpoints |
+| `src/dashboard/api/routes/artifacts.py` | `list_artifacts()`, `get_artifact()` | Artifact API endpoints |
+| `src/dashboard/api/routes/metrics.py` | `get_global_metrics()`, `get_kpis()` | Metrics API endpoints |
+| `src/dashboard/api/websocket.py` | `ConnectionManager`, `broadcast_event()` | WebSocket handling |
 | `src/dashboard/auditor.py` | `HealthReport`, `assess_health()` | Health assessment |
 | `src/dashboard/kpis.py` | `EcosystemKPIs`, `calculate_kpis()`, `AgentMetrics`, `compute_agent_metrics()` | KPI calculations |
 | `src/world/invocation_registry.py` | `InvocationRegistry`, `InvocationRecord` | Invocation tracking |

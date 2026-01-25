@@ -68,6 +68,7 @@
 - `src/dashboard/static/index.html` - Update terminology
 - `src/dashboard/static/js/panels/agents.js` - Update column names
 - `src/dashboard/static/css/dashboard.css` - Minor updates
+- `docs/architecture/current/supporting_systems.md` - Document new architecture
 
 **Delete (after migration):**
 - `src/dashboard/parser.py` - Replaced by core/ modules
