@@ -290,3 +290,25 @@ export function useSearch(query: string, limit: number = 10) {
     staleTime: 30000, // Cache for 30 seconds
   })
 }
+
+// ============================================================================
+// SIMULATION CONTROL
+// ============================================================================
+
+import type { SimulationStatus } from '../types/api'
+
+export function useSimulationStatus() {
+  return useQuery({
+    queryKey: ['simulationStatus'],
+    queryFn: () => apiFetch<SimulationStatus>('/simulation/status'),
+    refetchInterval: 2000,
+  })
+}
+
+export async function pauseSimulation(): Promise<{ status: string; tick: number }> {
+  return apiFetch('/simulation/pause', { method: 'POST' })
+}
+
+export async function resumeSimulation(): Promise<{ status: string; tick: number }> {
+  return apiFetch('/simulation/resume', { method: 'POST' })
+}

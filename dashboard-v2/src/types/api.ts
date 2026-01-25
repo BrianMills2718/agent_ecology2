@@ -98,6 +98,13 @@ export interface ProgressData {
   events_per_second: number
 }
 
+export interface SimulationStatus {
+  running: boolean
+  paused: boolean
+  tick: number
+  has_runner: boolean
+}
+
 export interface RawEvent {
   timestamp: string
   event_type: string

@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { useWebSocketStore } from '../../stores/websocket'
 import { useSearchStore } from '../../stores/search'
-import { useProgress } from '../../api/queries'
+import { useProgress, useSimulationStatus, pauseSimulation, resumeSimulation } from '../../api/queries'
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600)
@@ -15,6 +16,24 @@ export function Header() {
   const { status, wsLatency } = useWebSocketStore()
   const openSearch = useSearchStore((state) => state.open)
   const { data: progress } = useProgress()
+  const { data: simStatus } = useSimulationStatus()
+  const [isToggling, setIsToggling] = useState(false)
+
+  const handleTogglePause = async () => {
+    if (!simStatus?.has_runner || isToggling) return
+    setIsToggling(true)
+    try {
+      if (simStatus.paused) {
+        await resumeSimulation()
+      } else {
+        await pauseSimulation()
+      }
+    } catch (e) {
+      console.error('Failed to toggle pause:', e)
+    } finally {
+      setIsToggling(false)
+    }
+  }
 
   return (
     <header className="bg-[var(--bg-secondary)] border-b border-[var(--border-color)] px-4 py-3 flex items-center justify-between">
@@ -36,6 +55,35 @@ export function Header() {
               <span className="font-mono">{formatDuration(progress.elapsed_seconds)}</span>
             </span>
           </div>
+        )}
+
+        {/* Simulation controls */}
+        {simStatus?.has_runner && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleTogglePause}
+              disabled={isToggling}
+              className={`px-3 py-1 text-sm rounded transition-colors ${
+                simStatus.paused
+                  ? 'bg-[var(--accent-secondary)] text-white hover:bg-[var(--accent-secondary)]/80'
+                  : 'bg-[var(--accent-warning)] text-black hover:bg-[var(--accent-warning)]/80'
+              } disabled:opacity-50`}
+            >
+              {isToggling ? '...' : simStatus.paused ? '▶ Resume' : '⏸ Pause'}
+            </button>
+            <span className={`text-xs px-2 py-0.5 rounded ${
+              simStatus.paused
+                ? 'bg-[var(--accent-warning)]/20 text-[var(--accent-warning)]'
+                : 'bg-[var(--accent-secondary)]/20 text-[var(--accent-secondary)]'
+            }`}>
+              {simStatus.paused ? 'Paused' : 'Running'}
+            </span>
+          </div>
+        )}
+        {simStatus && !simStatus.has_runner && (
+          <span className="text-xs px-2 py-0.5 rounded bg-[var(--text-tertiary)]/20 text-[var(--text-tertiary)]">
+            View Only
+          </span>
         )}
       </div>
 

@@ -60,7 +60,11 @@ function buildVisEdges(edges: NetworkEdge[]) {
   }))
 }
 
-export function NetworkPanel() {
+interface NetworkPanelProps {
+  fullHeight?: boolean
+}
+
+export function NetworkPanel({ fullHeight = false }: NetworkPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const networkRef = useRef<Network | null>(null)
   const nodesDataSet = useRef(new DataSet<ReturnType<typeof buildVisNodes>[0]>())
@@ -185,7 +189,7 @@ export function NetworkPanel() {
       </div>
 
       {isLoading && (
-        <div className="h-64 flex items-center justify-center">
+        <div className={`${fullHeight ? 'h-[calc(100vh-220px)]' : 'h-64'} flex items-center justify-center`}>
           <div className="animate-spin w-8 h-8 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full" />
         </div>
       )}
@@ -198,8 +202,8 @@ export function NetworkPanel() {
 
       <div
         ref={containerRef}
-        className="h-64 bg-[var(--bg-primary)] rounded"
-        style={{ minHeight: '256px' }}
+        className={`${fullHeight ? 'h-[calc(100vh-220px)]' : 'h-64'} bg-[var(--bg-primary)] rounded`}
+        style={{ minHeight: fullHeight ? '400px' : '256px' }}
       />
 
       {data && (data.nodes?.length ?? 0) === 0 && (
