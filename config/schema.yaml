@@ -428,6 +428,24 @@ budget:
 libraries:
   # Genesis libraries: Pre-installed, don't count against disk quota
   # These are baked into the Docker image as cold-start conveniences
+# -----------------------------------------------------------------------------
+# LEARNING (Plan #186)
+# Cross-run learning configuration
+# -----------------------------------------------------------------------------
+learning:
+  cross_run:
+    enabled: <boolean>              # Enable loading learnings from prior runs
+    prior_checkpoint: <string>      # Path to checkpoint file (null = auto-discover)
+    auto_discover: <boolean>        # Auto-find latest checkpoint in logs/
+    load_working_memory: <boolean>  # Load working_memory from prior run
+
+# -----------------------------------------------------------------------------
+# LIBRARIES
+# Package installation configuration for agents
+# -----------------------------------------------------------------------------
+libraries:
+  # Genesis libraries: Pre-installed, don't count against disk quota
+  # These are baked into the Docker image as cold-start conveniences
   genesis:
     - <string>                  # e.g., "numpy", "pandas", "requests"
 

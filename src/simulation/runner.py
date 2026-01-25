@@ -38,7 +38,7 @@ from .types import (
     ThinkingResult,
     ErrorStats,
 )
-from .checkpoint import save_checkpoint
+from .checkpoint import save_checkpoint, load_checkpoint
 from .agent_loop import AgentLoopManager, AgentLoopConfig
 from .pool import WorkerPool, PoolConfig
 from ..agents.state_store import AgentStateStore
@@ -323,7 +323,87 @@ class SimulationRunner:
             run_id=self.run_id,
         )
 
+        # Load prior learnings if cross-run learning enabled (Plan #186)
+        prior_states = self._load_prior_learnings()
+        if prior_states:
+            learning_config = self.config.get("learning", {}).get("cross_run", {})
+            for agent in agents:
+                if agent.agent_id in prior_states:
+                    prior_state = prior_states[agent.agent_id]
+                    # Only restore working_memory by default
+                    if learning_config.get("load_working_memory", True):
+                        wm = prior_state.get("working_memory")
+                        if wm:
+                            agent._working_memory = wm
+                            print(f"  Restored working_memory for {agent.agent_id}")
+
         return agents
+
+
+    def _load_prior_learnings(self) -> dict[str, dict[str, Any]]:
+        """Load agent states from previous run checkpoint (Plan #186).
+
+        Enables cross-run learning by restoring working_memory from
+        a prior simulation. Only loads working_memory by default,
+        not per-run state like action_history.
+
+        Returns:
+            Dict mapping agent_id -> agent_state from prior checkpoint.
+        """
+        learning_config = self.config.get("learning", {}).get("cross_run", {})
+
+        if not learning_config.get("enabled", False):
+            return {}
+
+        checkpoint_path = learning_config.get("prior_checkpoint")
+        if not checkpoint_path and learning_config.get("auto_discover", True):
+            checkpoint_path = self._find_latest_checkpoint()
+
+        if not checkpoint_path:
+            return {}
+
+        import os
+        if not os.path.exists(checkpoint_path):
+            print(f"Cross-run learning: checkpoint not found at {checkpoint_path}")
+            return {}
+
+        checkpoint = load_checkpoint(checkpoint_path)
+        if not checkpoint:
+            return {}
+
+        agent_states = checkpoint.get("agent_states", {})
+        print(f"Cross-run learning: loaded states for {len(agent_states)} agents from {checkpoint_path}")
+        return agent_states
+
+    def _find_latest_checkpoint(self) -> str | None:
+        """Find the most recent checkpoint file in logs directory.
+
+        Auto-discovers checkpoints for cross-run learning when
+        prior_checkpoint is not explicitly specified.
+
+        Returns:
+            Path to latest checkpoint, or None if not found.
+        """
+        import os
+        import glob
+
+        # Look for checkpoint.json in common locations
+        search_paths = [
+            "checkpoint.json",  # Default location
+            "logs/checkpoint.json",
+            "*.checkpoint.json",
+        ]
+
+        candidates = []
+        for pattern in search_paths:
+            candidates.extend(glob.glob(pattern))
+
+        if not candidates:
+            return None
+
+        # Return most recently modified
+        candidates.sort(key=lambda f: os.path.getmtime(f), reverse=True)
+        return candidates[0]
 
     def _check_for_new_principals(self) -> list[Agent]:
         """Check ledger for principals without Agent instances.

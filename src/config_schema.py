@@ -1652,6 +1652,41 @@ class ContractsConfig(StrictModel):
     )
 
 
+
+# =============================================================================
+# LEARNING CONFIG (Plan #186)
+# =============================================================================
+
+class CrossRunLearningConfig(StrictModel):
+    """Cross-run learning configuration for agents."""
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable loading learnings from prior runs"
+    )
+    prior_checkpoint: str | None = Field(
+        default=None,
+        description="Path to checkpoint file (null = auto-discover)"
+    )
+    auto_discover: bool = Field(
+        default=True,
+        description="Auto-find latest checkpoint in logs/"
+    )
+    load_working_memory: bool = Field(
+        default=True,
+        description="Load working_memory from prior run"
+    )
+
+
+class LearningConfig(StrictModel):
+    """Learning configuration for agents."""
+
+    cross_run: CrossRunLearningConfig = Field(
+        default_factory=CrossRunLearningConfig,
+        description="Cross-run learning settings"
+    )
+
+
 # =============================================================================
 # ROOT CONFIG MODEL
 # =============================================================================
@@ -1684,6 +1719,7 @@ class AppConfig(StrictModel):
     memory: MemoryConfigModel = Field(default_factory=MemoryConfigModel)
     libraries: LibrariesConfig = Field(default_factory=LibrariesConfig)
     id_generation: IdGenerationConfig = Field(default_factory=IdGenerationConfig)
+    learning: LearningConfig = Field(default_factory=LearningConfig)  # Plan #186
 
     # Dynamic fields set at runtime
     principals: list[dict[str, int | str]] = Field(
