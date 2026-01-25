@@ -119,9 +119,21 @@ def _format_runtime_error(e: Exception, prefix: str = "Runtime error") -> str:
             f"Hint: The key doesn't exist. Check dict.keys() or use dict.get(key, default)."
         )
     elif isinstance(e, TypeError) and "argument" in error_msg.lower():
+        if "missing" in error_msg.lower() and "required" in error_msg.lower():
+            return (
+                f"{base}. "
+                f"Hint: Your run() function expects more arguments than were passed. "
+                f"Check your code's function signature matches the interface schema."
+            )
         return (
             f"{base}. "
             f"Hint: Check the function signature - you may have wrong number/type of arguments."
+        )
+    elif isinstance(e, IndexError):
+        return (
+            f"{base}. "
+            f"Hint: Your code tried to access an index that doesn't exist. "
+            f"Check array/tuple lengths before accessing elements, or use try/except."
         )
     elif "connection" in error_msg.lower() or "adapter" in error_msg.lower():
         return (
@@ -165,6 +177,56 @@ def parse_json_args(args: list[Any]) -> list[Any]:
         else:
             parsed.append(arg)
     return parsed
+
+
+def _coerce_types_from_schema(args: dict[str, Any], schema: dict[str, Any]) -> dict[str, Any]:
+    """Coerce argument types based on schema expectations.
+
+    Plan #160: LLMs often send "5" instead of 5 when schema expects integer.
+    This auto-converts string representations to proper types.
+
+    Args:
+        args: Dict of argument name -> value
+        schema: JSON schema with properties defining expected types
+
+    Returns:
+        Dict with types coerced where safe to do so.
+    """
+    if not isinstance(args, dict):
+        return args
+
+    properties = schema.get("properties", {})
+    coerced = dict(args)  # Copy to avoid mutating original
+
+    for prop_name, prop_schema in properties.items():
+        if prop_name not in coerced:
+            continue
+
+        value = coerced[prop_name]
+        expected_type = prop_schema.get("type")
+
+        # Coerce string to integer
+        if expected_type == "integer" and isinstance(value, str):
+            try:
+                coerced[prop_name] = int(value)
+            except ValueError:
+                pass  # Keep original if not a valid integer
+
+        # Coerce string to number (float)
+        elif expected_type == "number" and isinstance(value, str):
+            try:
+                coerced[prop_name] = float(value)
+            except ValueError:
+                pass  # Keep original if not a valid number
+
+        # Coerce string to boolean
+        elif expected_type == "boolean" and isinstance(value, str):
+            if value.lower() in ("true", "1", "yes"):
+                coerced[prop_name] = True
+            elif value.lower() in ("false", "0", "no"):
+                coerced[prop_name] = False
+
+    return coerced
 
 
 class ExecutionResult(TypedDict, total=False):
@@ -359,6 +421,10 @@ def validate_args_against_interface(
     if input_schema is None:
         # No inputSchema - skip validation (method accepts anything)
         return ValidationResult(valid=True, proceed=True, skipped=True, error_message="")
+
+    # Plan #160: Auto-coerce types before validation
+    # LLMs often send "5" instead of 5 - coerce based on schema
+    args = _coerce_types_from_schema(args, input_schema)
 
     # Validate args against inputSchema using jsonschema
     try:
