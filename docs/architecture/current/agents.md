@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-25 (Plan #196: Added memory tiering for agent RAG)
+**Last verified:** 2026-01-25 (Plan #198 - Re-verified, no changes)
 
 **See target:** [../target/agents.md](../target/agents.md)
 

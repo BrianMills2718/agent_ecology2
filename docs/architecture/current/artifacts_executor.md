@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-24 (Plan #168 metadata, Plan #170 invokes tracking)
+**Last verified:** 2026-01-25 (Plan #198 - Re-verified, no changes)
 
 ---
 
