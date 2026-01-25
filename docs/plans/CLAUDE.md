@@ -235,7 +235,7 @@ Master index of all gaps and their implementation plans.
 | 213 | [Escrow Contract-Based Redesign](213_escrow_contract_redesign.md) | Medium | ✅ Complete | Correct artifact trading semantics |
 | 214 | [SOTA Memory Integration](214_sota_memory_integration.md) | High | ✅ Complete | Effective agent learning and strategic behavior |
 | 215 | [Unified Documentation Graph](215_unified_documentation_graph.md) | Medium | 📋 Planned | - |
-| 216 | [Plan 216: Bidirectional Coupling Checks](216_bidirectional_coupling.md) | Medium | 📋 Planned | - |
+| 216 | [Plan 216: Bidirectional Coupling Checks](216_bidirectional_coupling.md) | Medium | ✅ Complete | - |
 | 217 | [Plan 217: Context Injection for Claude Code](217_context_injection.md) | Medium | 📋 Planned | - |
 | 218 | [Plan 218: Configurable Meta-Process Weight](218_configurable_meta_process_weight.md) | Medium | 📋 Planned | - |
 | 219 | [Plan 219: Symbol-Level Granularity](219_symbol_level_granularity.md) | Medium | 📋 Planned | - |

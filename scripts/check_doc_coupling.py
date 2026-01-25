@@ -4,12 +4,19 @@
 Usage:
     python scripts/check_doc_coupling.py [--base BASE_REF] [--suggest]
     python scripts/check_doc_coupling.py --staged  # For pre-commit hook
+    python scripts/check_doc_coupling.py --bidirectional  # Check both directions
+    python scripts/check_doc_coupling.py --suggest-all FILE  # Show all relationships
 
 Compares current branch against BASE_REF (default: origin/main) to find
 changed files, then checks if coupled docs were also updated.
 
 The --staged option checks only staged files, suitable for pre-commit hooks.
 If source files are staged AND their coupled docs are also staged, it passes.
+
+Bidirectional mode (Plan #216):
+- Code changes → surface related docs + ADRs
+- Doc changes → surface related code + ADRs
+- ADR changes → surface governed code + related docs
 
 Exit codes:
     0 - All couplings satisfied (or no coupled changes)
@@ -18,14 +25,17 @@ Exit codes:
 
 import argparse
 import fnmatch
+import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import yaml
 
 
 META_CONFIG_FILE = Path("meta-process.yaml")
+RELATIONSHIPS_FILE = Path("scripts/relationships.yaml")
 
 
 def load_meta_config() -> dict:
@@ -116,6 +126,236 @@ def load_couplings(config_path: Path) -> list[dict]:
     with open(config_path) as f:
         data = yaml.safe_load(f)
     return data.get("couplings", [])
+
+
+def load_relationships(config_path: Path | None = None) -> dict[str, Any]:
+    """Load full relationships from YAML.
+
+    Args:
+        config_path: Path to relationships.yaml, or None to use default.
+
+    Returns:
+        Dict with 'adrs', 'governance', and 'couplings' sections.
+    """
+    path = config_path or RELATIONSHIPS_FILE
+    if not path.exists():
+        return {"adrs": {}, "governance": [], "couplings": []}
+
+    with open(path) as f:
+        data = yaml.safe_load(f) or {}
+
+    return {
+        "adrs": data.get("adrs", {}),
+        "governance": data.get("governance", []),
+        "couplings": data.get("couplings", []),
+    }
+
+
+def extract_adr_number(filepath: Path) -> int | None:
+    """Extract ADR number from an ADR file path.
+
+    Args:
+        filepath: Path like 'docs/adr/0003-contracts-can-do-anything.md'
+
+    Returns:
+        ADR number (e.g., 3) or None if not an ADR path.
+    """
+    if "docs/adr/" not in str(filepath):
+        return None
+
+    # Match pattern like 0001-xxx.md or 0003-xxx.md
+    match = re.search(r"(\d{4})-[^/]+\.md$", str(filepath))
+    if match:
+        return int(match.group(1))
+    return None
+
+
+def get_related_nodes(
+    changed_file: Path,
+    relationships: dict[str, Any],
+) -> list[str]:
+    """Find all nodes related to changed_file in any direction.
+
+    This implements bidirectional coupling: given any file, find all
+    related files whether the relationship is source→doc, doc→source,
+    source→ADR, or ADR→source.
+
+    Args:
+        changed_file: Path to the changed file.
+        relationships: Dict from load_relationships().
+
+    Returns:
+        List of related file paths.
+    """
+    related: list[str] = []
+    filepath = str(changed_file)
+
+    # Check couplings (source ↔ doc, bidirectional)
+    for coupling in relationships.get("couplings", []):
+        sources = coupling.get("sources", [])
+        docs = coupling.get("docs", [])
+
+        # If changed file matches a source pattern, add related docs
+        if matches_any_pattern(filepath, sources):
+            related.extend(docs)
+
+        # If changed file is a doc, add related sources
+        if filepath in docs:
+            related.extend(sources)
+
+    # Check governance (source ↔ ADR, bidirectional)
+    for entry in relationships.get("governance", []):
+        source = entry.get("source", "")
+        adrs = entry.get("adrs", [])
+
+        # If changed file is a governed source, add related ADRs
+        if filepath == source:
+            adr_defs = relationships.get("adrs", {})
+            for adr_num in adrs:
+                adr_info = adr_defs.get(adr_num, {})
+                adr_file = adr_info.get("file", f"{adr_num:04d}-unknown.md")
+                related.append(f"docs/adr/{adr_file}")
+
+        # If changed file is an ADR, add governed sources
+        adr_num = extract_adr_number(changed_file)
+        if adr_num is not None and adr_num in adrs:
+            related.append(source)
+
+    # Remove duplicates while preserving order
+    seen: set[str] = set()
+    unique_related: list[str] = []
+    for item in related:
+        if item not in seen:
+            seen.add(item)
+            unique_related.append(item)
+
+    return unique_related
+
+
+def get_related_nodes_with_context(
+    changed_file: Path,
+    relationships: dict[str, Any],
+) -> dict[str, Any]:
+    """Find all related nodes with governance context.
+
+    Like get_related_nodes() but also returns governance context if available.
+
+    Args:
+        changed_file: Path to the changed file.
+        relationships: Dict from load_relationships().
+
+    Returns:
+        Dict with 'related' (list of paths) and 'context' (string or None).
+    """
+    related = get_related_nodes(changed_file, relationships)
+    context = None
+
+    # Find governance context for this file
+    filepath = str(changed_file)
+    for entry in relationships.get("governance", []):
+        if entry.get("source") == filepath:
+            context = entry.get("context", "")
+            break
+
+    return {"related": related, "context": context}
+
+
+def check_bidirectional(
+    changed_files: set[str],
+    relationships: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Check couplings bidirectionally.
+
+    For each changed file, check if its related files were also changed.
+    Returns warnings for files that might need attention.
+
+    Args:
+        changed_files: Set of changed file paths.
+        relationships: Dict from load_relationships().
+
+    Returns:
+        List of warning dicts with 'changed', 'related', 'description'.
+    """
+    warnings: list[dict[str, Any]] = []
+
+    for changed in changed_files:
+        related = get_related_nodes(Path(changed), relationships)
+
+        # Find which related files were NOT changed
+        missing = [r for r in related if r not in changed_files]
+
+        if missing:
+            warnings.append({
+                "changed": changed,
+                "related": missing,
+                "description": f"Consider checking: {', '.join(missing[:3])}",
+            })
+
+    return warnings
+
+
+def get_suggest_all_output(
+    filepath: Path,
+    relationships: dict[str, Any],
+) -> str:
+    """Generate --suggest-all output for a file.
+
+    Shows all relationships for the given file: ADRs, docs, and context.
+
+    Args:
+        filepath: Path to query.
+        relationships: Dict from load_relationships().
+
+    Returns:
+        Formatted string for display.
+    """
+    lines = [f"Related to {filepath}:"]
+
+    filepath_str = str(filepath)
+
+    # Find ADRs that govern this file
+    adrs_found: list[str] = []
+    context = None
+    for entry in relationships.get("governance", []):
+        if entry.get("source") == filepath_str:
+            adr_defs = relationships.get("adrs", {})
+            for adr_num in entry.get("adrs", []):
+                adr_info = adr_defs.get(adr_num, {})
+                adr_file = adr_info.get("file", f"{adr_num:04d}-unknown.md")
+                adr_title = adr_info.get("title", "Unknown")
+                adrs_found.append(f"docs/adr/{adr_file} ({adr_title})")
+            context = entry.get("context")
+
+    # Find coupled docs
+    docs_found: list[str] = []
+    for coupling in relationships.get("couplings", []):
+        sources = coupling.get("sources", [])
+        docs = coupling.get("docs", [])
+        if matches_any_pattern(filepath_str, sources):
+            for doc in docs:
+                desc = coupling.get("description", "")
+                docs_found.append(f"{doc} ({desc})")
+
+    # Format output
+    if adrs_found:
+        lines.append("  ADRs:")
+        for adr in adrs_found:
+            lines.append(f"    - {adr}")
+
+    if docs_found:
+        lines.append("  Docs:")
+        for doc in docs_found:
+            lines.append(f"    - {doc}")
+
+    if context:
+        lines.append("  Context:")
+        for line in context.strip().split("\n"):
+            lines.append(f"    {line}")
+
+    if not adrs_found and not docs_found:
+        lines.append("  (No relationships found)")
+
+    return "\n".join(lines)
 
 
 def validate_config(couplings: list[dict]) -> list[str]:
@@ -258,6 +498,16 @@ def main() -> int:
         action="store_true",
         help="Check staged files only (for pre-commit hook)",
     )
+    parser.add_argument(
+        "--bidirectional",
+        action="store_true",
+        help="Check couplings in both directions (Plan #216)",
+    )
+    parser.add_argument(
+        "--suggest-all",
+        metavar="FILE",
+        help="Show all relationships for a specific file",
+    )
     args = parser.parse_args()
 
     config_path = Path(args.config)
@@ -278,6 +528,13 @@ def main() -> int:
         print("Config validation passed.")
         return 0
 
+    # --suggest-all mode: show all relationships for a file
+    if args.suggest_all:
+        relationships = load_relationships()
+        output = get_suggest_all_output(Path(args.suggest_all), relationships)
+        print(output)
+        return 0
+
     # Get changed files based on mode
     if args.staged:
         changed_files = get_staged_files()
@@ -293,6 +550,37 @@ def main() -> int:
     # Suggest mode
     if args.suggest:
         print_suggestions(changed_files, couplings)
+        return 0
+
+    # Bidirectional mode (Plan #216)
+    if args.bidirectional:
+        relationships = load_relationships()
+        warnings = check_bidirectional(changed_files, relationships)
+
+        if not warnings:
+            print("Bidirectional coupling check passed.")
+            return 0
+
+        print("=" * 60)
+        print("BIDIRECTIONAL COUPLING WARNINGS")
+        print("=" * 60)
+        print()
+        print("The following files changed. Related files may need review:")
+        print()
+
+        for w in warnings:
+            print(f"  {w['changed']}")
+            for related in w["related"][:5]:
+                print(f"    -> {related}")
+            if len(w["related"]) > 5:
+                print(f"    ... and {len(w['related']) - 5} more")
+            print()
+
+        print("=" * 60)
+        print("Use --suggest-all <file> to see full relationship graph.")
+        print("=" * 60)
+
+        # Bidirectional mode is informational, don't fail
         return 0
 
     # Load meta-process config for strictness setting
