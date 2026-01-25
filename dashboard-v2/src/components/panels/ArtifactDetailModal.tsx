@@ -1,5 +1,6 @@
 import { useArtifactDetail } from '../../api/queries'
 import { Modal } from '../shared/Modal'
+import { safeFixed, formatBytes } from '../../utils/format'
 
 interface ArtifactDetailModalProps {
   artifactId: string
@@ -26,7 +27,7 @@ export function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModal
             <StatCard label="Creator" value={artifact.created_by} mono />
             <StatCard
               label="Price"
-              value={`${artifact.price.toFixed(2)} scrip`}
+              value={`${safeFixed(artifact.price, 2)} scrip`}
             />
             <StatCard
               label="Size"
@@ -40,7 +41,7 @@ export function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModal
               <StatusBadge status={artifact.mint_status} />
               {artifact.mint_score != null && (
                 <span className="text-sm">
-                  Score: <span className="font-mono">{artifact.mint_score.toFixed(3)}</span>
+                  Score: <span className="font-mono">{safeFixed(artifact.mint_score, 3)}</span>
                 </span>
               )}
             </div>
@@ -237,10 +238,3 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
-}

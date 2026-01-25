@@ -1,5 +1,6 @@
 import { useEmergence, useKPIs } from '../../api/queries'
 import { Panel } from '../shared/Panel'
+import { safeFixed, safePercent, safeCurrency } from '../../utils/format'
 
 function MetricGauge({
   label,
@@ -8,23 +9,24 @@ function MetricGauge({
   format = 'percent',
 }: {
   label: string
-  value: number
+  value: number | undefined | null
   description: string
   format?: 'percent' | 'number' | 'decimal'
 }) {
+  const safeValue = value ?? 0
   const displayValue =
     format === 'percent'
-      ? `${(value * 100).toFixed(1)}%`
+      ? safePercent(value, 1)
       : format === 'decimal'
-      ? value.toFixed(3)
-      : value.toFixed(0)
+      ? safeFixed(value, 3)
+      : safeFixed(value, 0)
 
-  const barWidth = format === 'percent' ? Math.min(value * 100, 100) : Math.min(value * 10, 100)
+  const barWidth = format === 'percent' ? Math.min(safeValue * 100, 100) : Math.min(safeValue * 10, 100)
 
   const color =
-    value >= 0.7
+    safeValue >= 0.7
       ? 'bg-[var(--accent-secondary)]'
-      : value >= 0.3
+      : safeValue >= 0.3
       ? 'bg-[var(--accent-warning)]'
       : 'bg-[var(--accent-danger)]'
 
@@ -62,16 +64,16 @@ function KPICard({
   format = 'number',
 }: {
   label: string
-  value: number
+  value: number | undefined | null
   trend?: 'up' | 'down' | 'stable'
   format?: 'number' | 'percent' | 'currency'
 }) {
   const displayValue =
     format === 'percent'
-      ? `${(value * 100).toFixed(1)}%`
+      ? safePercent(value, 1)
       : format === 'currency'
-      ? `$${value.toFixed(4)}`
-      : value.toFixed(2)
+      ? safeCurrency(value, 4)
+      : safeFixed(value, 2)
 
   return (
     <div className="p-2 bg-[var(--bg-primary)] rounded">
@@ -197,15 +199,15 @@ export function EmergencePanel() {
               <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                 <div className="text-center p-2 bg-[var(--bg-primary)] rounded">
                   <p className="text-[var(--text-secondary)]">Total Scrip</p>
-                  <p className="font-mono">{kpis.total_scrip.toFixed(1)}</p>
+                  <p className="font-mono">{safeFixed(kpis.total_scrip, 1)}</p>
                 </div>
                 <div className="text-center p-2 bg-[var(--bg-primary)] rounded">
                   <p className="text-[var(--text-secondary)]">Frozen</p>
-                  <p className="font-mono">{kpis.frozen_agent_count}</p>
+                  <p className="font-mono">{kpis.frozen_agent_count ?? 0}</p>
                 </div>
                 <div className="text-center p-2 bg-[var(--bg-primary)] rounded">
                   <p className="text-[var(--text-secondary)]">Escrow Vol</p>
-                  <p className="font-mono">{kpis.escrow_volume.toFixed(1)}</p>
+                  <p className="font-mono">{safeFixed(kpis.escrow_volume, 1)}</p>
                 </div>
               </div>
             </div>

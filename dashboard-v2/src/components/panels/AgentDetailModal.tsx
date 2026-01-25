@@ -1,5 +1,6 @@
 import { useAgent, useAgentConfig } from '../../api/queries'
 import { Modal } from '../shared/Modal'
+import { safeFixed } from '../../utils/format'
 
 interface AgentDetailModalProps {
   agentId: string
@@ -25,11 +26,11 @@ export function AgentDetailModal({ agentId, onClose }: AgentDetailModalProps) {
         <div className="space-y-6">
           {/* Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="Scrip" value={agent.scrip.toFixed(2)} />
+            <StatCard label="Scrip" value={safeFixed(agent.scrip, 2)} />
             <StatCard
               label="Budget"
-              value={`$${agent.llm_budget_remaining.toFixed(3)}`}
-              subtext={`of $${agent.llm_budget_initial.toFixed(2)}`}
+              value={`$${safeFixed(agent.llm_budget_remaining, 3)}`}
+              subtext={`of $${safeFixed(agent.llm_budget_initial, 2)}`}
             />
             <StatCard label="Actions" value={agent.action_count.toString()} />
             <StatCard
@@ -141,7 +142,7 @@ export function AgentDetailModal({ agentId, onClose }: AgentDetailModalProps) {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[var(--text-secondary)]">Tick {thought.tick}</span>
                       <span className="text-xs text-[var(--text-secondary)]">
-                        {thought.input_tokens}in/{thought.output_tokens}out • ${thought.thinking_cost.toFixed(4)}
+                        {thought.input_tokens ?? 0}in/{thought.output_tokens ?? 0}out • ${safeFixed(thought.thinking_cost, 4)}
                       </span>
                     </div>
                     {thought.reasoning && (

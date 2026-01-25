@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useThinking } from '../../api/queries'
 import { Panel } from '../shared/Panel'
+import { safeFixed } from '../../utils/format'
 
 interface ThinkingEntry {
   tick: number
@@ -92,7 +93,7 @@ function ThinkingCard({ entry }: { entry: ThinkingEntry }) {
           </span>
         </div>
         <span className="text-xs text-[var(--text-secondary)]">
-          {entry.input_tokens}in/{entry.output_tokens}out • ${entry.thinking_cost.toFixed(4)}
+          {entry.input_tokens ?? 0}in/{entry.output_tokens ?? 0}out • ${safeFixed(entry.thinking_cost, 4)}
         </span>
       </div>
 

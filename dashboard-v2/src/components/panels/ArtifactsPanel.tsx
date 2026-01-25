@@ -3,6 +3,7 @@ import { useArtifacts } from '../../api/queries'
 import { Panel } from '../shared/Panel'
 import { Pagination } from '../shared/Pagination'
 import { ArtifactDetailModal } from './ArtifactDetailModal'
+import { safeFixed } from '../../utils/format'
 import type { ArtifactInfo } from '../../types/api'
 
 function TypeBadge({ type }: { type: string }) {
@@ -35,7 +36,7 @@ function MintStatus({ status, score }: { status: string; score: number | null })
       <span className={`text-xs ${colors[status] || ''}`}>{status}</span>
       {score != null && (
         <span className="text-xs text-[var(--text-secondary)]">
-          ({score.toFixed(2)})
+          ({safeFixed(score, 2)})
         </span>
       )}
     </div>

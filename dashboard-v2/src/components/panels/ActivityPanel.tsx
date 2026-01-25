@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useActivity } from '../../api/queries'
 import { Panel } from '../shared/Panel'
+import { safeFixed } from '../../utils/format'
 import type { ActivityItem } from '../../types/api'
 
 const ACTIVITY_TYPES = [
@@ -45,7 +46,7 @@ function ActivityCard({ item }: { item: ActivityItem }) {
         <p className="text-sm truncate">{item.description}</p>
         {item.amount != null && (
           <p className="text-xs text-[var(--text-secondary)] mt-1">
-            Amount: {item.amount.toFixed(2)} scrip
+            Amount: {safeFixed(item.amount, 2)} scrip
           </p>
         )}
       </div>

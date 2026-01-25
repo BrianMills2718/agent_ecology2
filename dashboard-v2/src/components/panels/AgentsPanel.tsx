@@ -3,6 +3,7 @@ import { useAgents } from '../../api/queries'
 import { Panel } from '../shared/Panel'
 import { Pagination } from '../shared/Pagination'
 import { AgentDetailModal } from './AgentDetailModal'
+import { safeFixed } from '../../utils/format'
 import type { AgentSummary } from '../../types/api'
 
 function StatusBadge({ status }: { status: AgentSummary['status'] }) {
@@ -53,8 +54,8 @@ export function AgentsPanel() {
       ...data.agents.map((a) =>
         [
           a.agent_id,
-          a.scrip.toFixed(2),
-          a.llm_budget_remaining.toFixed(4),
+          safeFixed(a.scrip, 2),
+          safeFixed(a.llm_budget_remaining, 4),
           a.status,
           a.action_count,
         ].join(',')
@@ -110,7 +111,7 @@ export function AgentsPanel() {
                       <td className="py-2 font-mono text-[var(--accent-primary)]">
                         {agent.agent_id}
                       </td>
-                      <td className="py-2">{agent.scrip.toFixed(1)}</td>
+                      <td className="py-2">{safeFixed(agent.scrip, 1)}</td>
                       <td className="py-2">
                         <div className="flex items-center gap-2">
                           <BudgetBar
@@ -118,7 +119,7 @@ export function AgentsPanel() {
                             initial={agent.llm_budget_initial}
                           />
                           <span className="text-xs text-[var(--text-secondary)]">
-                            ${agent.llm_budget_remaining.toFixed(2)}
+                            ${safeFixed(agent.llm_budget_remaining, 2)}
                           </span>
                         </div>
                       </td>
