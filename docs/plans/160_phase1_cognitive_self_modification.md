@@ -120,6 +120,7 @@ Run simulation and check:
 - src/agents/epsilon_3/system_prompt.md (modify) - Add self-modification hints
 - src/world/executor.py (modify) - Auto-parse JSON strings in args
 - src/agents/_handbook/actions.md (modify) - Add JSON args guidance
+- src/world/genesis/store.py (modify) - Add methods shortcut to artifact listings
 
 ---
 

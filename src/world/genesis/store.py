@@ -134,6 +134,12 @@ class GenesisStore(GenesisArtifact):
             "interface": artifact.interface,  # Plan #114: Enable interface discovery
             "metadata": artifact.metadata,  # Plan #168: User-defined metadata
         }
+        # Plan #160: Add methods shortcut for easy discovery
+        # Extract method names from interface.tools so agents don't need to parse nested structure
+        if artifact.interface and isinstance(artifact.interface, dict):
+            tools = artifact.interface.get("tools", [])
+            if tools and isinstance(tools, list):
+                result["methods"] = [t.get("name") for t in tools if isinstance(t, dict) and t.get("name")]
         # Optional fields
         if hasattr(artifact, "memory_artifact_id") and artifact.memory_artifact_id:
             result["memory_artifact_id"] = artifact.memory_artifact_id
