@@ -1,8 +1,11 @@
 # Agent Architecture Documentation Index
 
-**Last Updated:** 2026-01-25 (Plan #180 complete - triggers now work!)
+**Last Updated:** 2026-01-25
 
-This is the master index for all agent architecture documentation. Use this as your starting point for understanding:
+> **Note:** This is **background research**, not the source of truth.
+> For current implementation: see `docs/architecture/current/agents.md` and `agent_cognition.md`
+
+This index covers research and design decisions that informed the architecture. Use this for understanding:
 1. Our kernel/substrate architecture
 2. Current genesis agent implementation
 3. Known gaps and planned improvements

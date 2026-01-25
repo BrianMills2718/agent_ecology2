@@ -2,7 +2,7 @@
 
 Detailed documentation of agent decision-making, memory, and learning systems.
 
-**Last verified:** 2026-01-24 (Plans #157, #160, #163 - LLM transitions, self-modification, checkpoint)
+**Last verified:** 2026-01-25 (Plan #146 - Unified Artifact Intelligence)
 
 **Related:** [agents.md](agents.md) for lifecycle, [genesis_agents.md](genesis_agents.md) for default agents, [genesis_artifacts.md](genesis_artifacts.md) for services
 
@@ -365,6 +365,52 @@ Checkpoints use temp file + `os.replace()` for crash safety.
 
 ---
 
+## 9. Artifact-Based Intelligence (Plan #146)
+
+### Tradeable Cognitive Components
+
+Agent intelligence is now artifact-based, enabling trading of successful strategies:
+
+| Component | Agent Field | Artifact Type |
+|-----------|-------------|---------------|
+| Personality | `personality_prompt_artifact_id` | `prompt` |
+| Workflow | `workflow_artifact_id` | `workflow` |
+| Long-term Memory | `longterm_memory_artifact_id` | `memory_store` |
+
+### Workflow Artifact References
+
+WorkflowSteps can reference prompt artifacts:
+
+```yaml
+steps:
+  - state: "observing"
+    prompt_artifact_id: "my_observe_prompt"  # Instead of inline prompt
+    transition_mode: "llm"                    # LLM decides next state
+    transition_prompt_artifact_id: "my_transition_prompt"
+```
+
+### Genesis Services
+
+| Service | Purpose |
+|---------|---------|
+| `genesis_prompt_library` | Pre-built prompt patterns (observe, ideate, implement, etc.) |
+| `genesis_memory` | Memory operations (add, search) with embeddings |
+| `genesis_embedder` | Generate embeddings (1 scrip per call) |
+
+### Maturity: 70%
+
+**Implemented:**
+- Agent artifact reference fields
+- WorkflowStep prompt_artifact_id
+- LLM-controlled transitions (transition_mode)
+- Genesis prompt library and memory services
+- Memory artifacts with embeddings
+
+**Planned (Plan #208):**
+- Workflow hooks for auto-invocation at timing points (pre_decision, post_action, etc.)
+
+---
+
 ## Maturity Summary
 
 | Subsystem | Maturity | Key Gap |
@@ -374,6 +420,7 @@ Checkpoints use temp file + `os.replace()` for crash safety.
 | Memory Systems | 80% | Incentive alignment |
 | Decision-Making | 75% | Limited action space |
 | Loop Detection | 75% | Passive only, no enforcement |
+| Artifact Intelligence | 70% | Runner integration, hooks (Plan #208) |
 | Reflexes | 60% | No creation guidance |
 | Self-Modification | 60% | Safety/atomicity |
 
