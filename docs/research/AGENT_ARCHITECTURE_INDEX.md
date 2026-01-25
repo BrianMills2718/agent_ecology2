@@ -1,6 +1,6 @@
 # Agent Architecture Documentation Index
 
-**Last Updated:** 2026-01-24 (kernel gap analysis, Plan #185 added)
+**Last Updated:** 2026-01-25 (Plan #180 complete - triggers now work!)
 
 This is the master index for all agent architecture documentation. Use this as your starting point for understanding:
 1. Our kernel/substrate architecture
@@ -44,7 +44,7 @@ Genesis agents are **one implementation** of agents on that substrate.
 | Principal model | Economic actors with standing | Beyond SOTA |
 | Contracts as artifacts | Programmable access control | Beyond SOTA |
 | Resource scarcity | Depletable/renewable/allocatable | Beyond SOTA |
-| Triggers (Plan #169) | Reactive event subscriptions | **Incomplete** (Plan #180) |
+| Triggers (Plan #169) | Reactive event subscriptions | ✅ Complete (Plan #180) |
 | Metadata queries | Flexible discovery | Comparable |
 | Continuous execution | Autonomous loops | Comparable |
 
@@ -52,8 +52,8 @@ Genesis agents are **one implementation** of agents on that substrate.
 
 | Pattern | Implementation | Friction |
 |---------|----------------|----------|
-| Messaging | Artifact + metadata.to_agent + trigger | Low (when #180 done) |
-| Pub-sub | Trigger on event type + filter | Low (when #180 done) |
+| Messaging | Artifact + metadata.to_agent + trigger | ✅ Low |
+| Pub-sub | Trigger on event type + filter | ✅ Low |
 | Task delegation | Task artifact + metadata | Low |
 | Workflows | Contract artifact + state | Low |
 | Consensus/voting | Contract with vote method | Low-Medium |
@@ -62,7 +62,7 @@ Genesis agents are **one implementation** of agents on that substrate.
 
 | Gap | Plan | Priority | Status |
 |-----|------|----------|--------|
-| Trigger integration not complete | #180 | **High** | In Progress |
+| ~~Trigger integration~~ | #180 | ~~High~~ | ✅ Complete |
 | Query performance (O(n) scans) | #182 | Medium | Planned |
 | Time-based scheduling | #185 | Medium | Planned |
 | No multi-container coordination | None | Low | Future |
@@ -110,13 +110,13 @@ No cognitive or coordination patterns are impossible. Everything maps to artifac
 | Atomic operations | ✅ | Wrapper contract handles transaction |
 | Real-time resource awareness | ✅ | `kernel_state.get_balance()` |
 
-### Friction Analysis (2026-01-24)
+### Friction Analysis (2026-01-25)
 
 | Pattern | Current Friction | Cause | Fix |
 |---------|------------------|-------|-----|
-| Messaging/pub-sub | **HIGH** | Triggers not integrated | Plan #180 |
+| Messaging/pub-sub | ✅ **LOW** | Triggers integrated | Plan #180 ✅ |
 | Discovery | Medium | O(n) artifact scans | Plan #182 |
-| Consensus | Medium | Must build contract | Plan #183 |
+| Consensus | Low | Agents build contracts | (emergence) |
 | Cross-run learning | Medium | Not implemented | Genesis enhancement |
 | Task delegation | Low | Works via metadata | - |
 | Planning | Low (unused) | Architecture supports it | Genesis enhancement |
@@ -146,7 +146,7 @@ No cognitive or coordination patterns are impossible. Everything maps to artifac
 
 ### Priority Improvements
 
-1. Complete trigger integration (Plan #180)
+1. ~~Complete trigger integration (Plan #180)~~ ✅ Done
 2. Add plan artifact pattern
 3. Enable reasoning_effort: high
 4. Cross-run learning
@@ -200,7 +200,7 @@ docs/archive/
 
 docs/plans/
 ├── 169_kernel_event_triggers.md     # Trigger design (incomplete)
-├── 180_trigger_integration.md       # Complete trigger integration (HIGH)
+├── 180_trigger_integration.md       # Trigger integration ✅ Complete
 ├── 182_metadata_indexing.md         # O(1) metadata queries (Medium)
 └── 185_time_based_scheduling.md     # Delayed execution (Medium)
 ```
@@ -219,6 +219,5 @@ docs/plans/
 → Read `DESIGN_CLARIFICATIONS.md`
 
 **If you want to contribute:**
-→ Plan #180 (trigger integration) - **HIGH priority**, unblocks real-time coordination
 → Plan #182 (metadata indexing) - Medium priority, performance optimization
 → Plan #185 (time scheduling) - Medium priority, enables delayed execution
