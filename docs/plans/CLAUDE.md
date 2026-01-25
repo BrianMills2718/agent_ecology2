@@ -225,15 +225,15 @@ Master index of all gaps and their implementation plans.
 | 203 | [Supervisor Auto-Restart](203_supervisor_auto_restart.md) | Medium | ✅ Complete | Robust long-running simulations |
 | 204 | [Configurable Mandatory Prompt Injection](204_prompt_injection.md) | Low | ✅ Superseded | - |
 | 205 | [Git-Level Meta-Process Resilience](205_meta_resilience.md) | **Critical** | ✅ Complete | All meta-process reliability |
-| 206 | [Meta-Process Claim Lifecycle Fixes](206_claim_lifecycle.md) | Critical | 🚧 In Progress | - |
+| 206 | [Meta-Process Claim Lifecycle Fixes](206_claim_lifecycle.md) | Critical | ✅ Complete | - |
 | 207 | [Executor Method Refactoring](207_executor_refactor.md) | Low | 📋 Deferred | - |
 | 208 | [Workflow Hooks (General Auto-Subscription System)](208_workflow_hooks.md) | High | ✅ Complete | Agent self-optimization, cognitive autonomy |
 | 209 | [Trigger-Hook Integration](209_trigger_hook_integration.md) | Low | 📋 Deferred (until bridging pattern becomes common) | - |
-| 210 | [Fix ADR-0016 Violation (created_by Mutation)](210_fix_created_by_mutation.md) | High | 🚧 In Progress (PR #719) | Correct ownership semantics, historical audit trail |
+| 210 | [Fix ADR-0016 Violation (created_by Mutation)](210_fix_created_by_mutation.md) | High | ✅ Complete | Correct ownership semantics, historical audit trail |
 | 211 | [Agent Simulation Fixes](211_agent_simulation_fixes.md) | High | ✅ Complete | Agent effectiveness in simulations |
 | 212 | [Memory and Context Quality for Agent Learning](212_memory_and_context_quality.md) | High | ✅ Complete | Effective agent learning and strategic behavior |
 | 213 | [Escrow Contract-Based Redesign](213_escrow_contract_redesign.md) | Medium | ✅ Complete | Correct artifact trading semantics |
-| 213 | [SOTA Memory Integration](213_sota_memory_integration.md) | High | 🚧 In Progress | Effective agent learning and strategic behavior |
+| 214 | [SOTA Memory Integration](214_sota_memory_integration.md) | High | 🚧 In Progress | Effective agent learning and strategic behavior |
 ---
 
 ## TDD Workflow

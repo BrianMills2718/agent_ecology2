@@ -1,4 +1,4 @@
-# Plan #213: SOTA Memory Integration
+# Plan #214: SOTA Memory Integration
 
 **Status:** 🚧 In Progress
 **Priority:** High
