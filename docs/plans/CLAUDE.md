@@ -219,11 +219,12 @@ Master index of all gaps and their implementation plans.
 | 190 | [Remove genesis_store (Redundant with query_kernel)](190_remove_genesis_store.md) | High | ❓ | Cleaner agent discovery, reduced agent confusion |
 | 191 | [Subscribed Artifacts](191_subscribed_artifacts.md) | Medium | ❓ | - |
 | 192 | [Context Section Control](192_context_section_control.md) | Medium | ❓ | - |
-| 193 | [Context Priority and Ordering](193_context_priority.md) | Medium | ❓ | - |
+| 193 | [Context Priority and Ordering](193_context_priority.md) | Medium | 🚧 In Progress | - |
 | 194 | [Self-Modifying System Prompt](194_self_modifying_system_prompt.md) | Medium | ❓ | - |
 | 195 | [Context Budget Management](195_context_budget_management.md) | Medium | ❓ | - |
 | 196 | [Memory Tiering](196_memory_tiering.md) | Medium | ✅ Complete | - |
 | 197 | [Configurable Mandatory Prompt Injection](197_prompt_injection.md) | Low | ✅ Complete | - |
+| 198 | [Shareable Hook Enhancements](198_shareable_hooks.md) | Medium | 🚧 In Progress | - |
 ---
 
 ## TDD Workflow
