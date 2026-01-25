@@ -370,7 +370,7 @@ class GenesisMint(GenesisArtifact):
                 return {
                     "success": False,
                     "error": f"Artifact '{artifact_id}' not found. "
-                             f"Use genesis_store.list([]) to see available artifacts."
+                             f"Use query_kernel action to discover artifacts."
                 }
             if not artifact.executable:
                 return {

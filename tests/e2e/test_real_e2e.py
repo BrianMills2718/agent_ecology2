@@ -126,7 +126,7 @@ class TestRealSimulationSmoke:
 
         # Genesis artifacts should exist
         assert "genesis_ledger" in world.genesis_artifacts
-        assert "genesis_store" in world.genesis_artifacts
+        # genesis_store removed - use query_kernel action
 
     def test_ledger_has_balances(
         self,

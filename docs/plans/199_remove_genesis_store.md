@@ -1,4 +1,4 @@
-# Plan #190: Remove genesis_store (Redundant with query_kernel)
+# Plan #199: Remove genesis_store (Redundant with query_kernel)
 
 **Status:** Planned
 **Priority:** High
@@ -53,6 +53,9 @@ Remove genesis_store entirely and update all references to use query_kernel.
 - src/world/genesis/factory.py (modify)
 - src/world/genesis/__init__.py (modify)
 - src/world/genesis/CLAUDE.md (modify)
+- src/world/genesis/escrow.py (modify)
+- src/world/genesis/ledger.py (modify)
+- src/world/genesis/mint.py (modify)
 - src/world/world.py (modify)
 - src/config_schema.py (modify)
 - src/agents/schema.py (modify)

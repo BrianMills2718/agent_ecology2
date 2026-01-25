@@ -25,7 +25,7 @@ This document defines what "V1" means for the Agent Ecology project.
 **Requirement:** Agents can discover, create, read, and invoke artifacts.
 
 **Acceptance Criteria:**
-- [x] genesis_store lists discoverable artifacts
+- [x] query_kernel action provides artifact discovery
 - [x] Agents can create new artifacts via store.write
 - [x] Created artifacts are retrievable
 - [x] Artifact ownership is tracked correctly
