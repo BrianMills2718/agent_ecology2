@@ -221,7 +221,7 @@ Master index of all gaps and their implementation plans.
 | 192 | [Context Section Control](192_context_section_control.md) | Medium | ✅ Complete | - |
 | 193 | [Context Priority and Ordering](193_context_priority.md) | Medium | ✅ Complete | - |
 | 194 | [Self-Modifying System Prompt](194_self_modifying_system_prompt.md) | Medium | ✅ Complete | - |
-| 195 | [Context Budget Management](195_context_budget_management.md) | Medium | ❓  | - |
+| 195 | [Context Budget Management](195_context_budget_management.md) | Medium | ✅ Complete | - |
 | 196 | [Memory Tiering](196_memory_tiering.md) | Medium | ✅ Complete | - |
 | 197 | [Configurable Mandatory Prompt Injection](197_prompt_injection.md) | Low | ✅ Complete | - |
 | 198 | [Shareable Hook Enhancements](198_shareable_hooks.md) | Medium | ✅ Complete | - |
