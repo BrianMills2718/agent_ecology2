@@ -176,7 +176,7 @@ Master index of all gaps and their implementation plans.
 | 145 | [Dashboard Quick Wins](145_dashboard_quickwins.md) | Medium | ✅ Complete | - |
 | 145 | [Plan 145: Supervisor Auto-Restart](145_supervisor_auto_restart.md) | Medium | ✅ Complete | Robust long-running simulations |
 | 146 | [Plan 146: Unified Artifact Intelligence](146_unified_artifact_intelligence.md) | High | 📋 Planned | Agent self-optimization, prompt marketplace, memory trading |
-| 147 | [Dashboard Features - Latency, Search, Comparison](147_dashboard_features.md) | Medium | 📋 Planned | - |
+| 147 | [Dashboard Features - Latency, Search, Comparison](147_dashboard_features.md) | Medium | ✅ Complete | - |
 | 148 | [Plan 148: ADR-0019 Implementation Audit](148_adr019_implementation_audit.md) | High | ✅ Complete | Full contract-based permission system |
 | 149 | [Dashboard Architecture Refactor](149_dashboard_architecture.md) | High | 📋 Planned | #150 (Backend Event Emission) |
 | 150 | [Plan 150: Prompt Component Library](150_prompt_component_library.md) | High | 🚧 In Progress | Agent behavior experiments |
@@ -215,6 +215,7 @@ Master index of all gaps and their implementation plans.
 | 187 | [Extended Thinking for Genesis Agents](187_extended_thinking.md) | Medium | ❓ | Improved agent reasoning quality |
 | 188 | [Plan Artifact Pattern for Genesis Agents](188_plan_artifact_pattern.md) | Medium | ❓ | Deliberative agent behavior, observability |
 | 189 | [Meta-Process Robustness Overhaul](189_meta_robustness.md) | **Critical** | 📋 Planned | All future meta-process reliability |
+| 190 | [Global Search in Dashboard v2](190_global_search.md) | Medium | 📋 Planned | - |
 ---
 
 ## TDD Workflow
