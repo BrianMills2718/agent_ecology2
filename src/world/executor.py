@@ -258,11 +258,13 @@ class ValidationResult:
         proceed: Whether to proceed with the invocation
         skipped: Whether validation was skipped entirely
         error_message: Description of validation failure (if any)
+        coerced_args: Plan #160 - Args with types coerced (e.g., "5" -> 5)
     """
     valid: bool
     proceed: bool
     skipped: bool
     error_message: str
+    coerced_args: dict[str, Any] | None = None
 
 
 # Logger for interface validation
@@ -363,6 +365,66 @@ def convert_positional_to_named_args(
     return result
 
 
+def convert_named_to_positional_args(
+    interface: dict[str, Any] | None,
+    method_name: str,
+    args_dict: dict[str, Any],
+) -> list[Any]:
+    """Convert named args dict back to positional args list based on interface schema.
+
+    Plan #160: After type coercion (which works on dicts), convert back to a list
+    for genesis methods that expect positional arguments.
+
+    Args:
+        interface: The artifact's interface definition (MCP-compatible format)
+        method_name: The method being invoked
+        args_dict: Named arguments as a dict
+
+    Returns:
+        List of values in schema order (required fields first, then others)
+    """
+    if not interface or not args_dict:
+        return list(args_dict.values()) if args_dict else []
+
+    # Get tools array from interface
+    tools = interface.get("tools", [])
+    if not tools:
+        return list(args_dict.values())
+
+    # Find the method schema
+    method_schema = None
+    for tool in tools:
+        if tool.get("name") == method_name:
+            method_schema = tool
+            break
+
+    if method_schema is None:
+        return list(args_dict.values())
+
+    # Get inputSchema
+    input_schema = method_schema.get("inputSchema")
+    if not input_schema or input_schema.get("type") != "object":
+        return list(args_dict.values())
+
+    # Get property names in order - prefer 'required' order, then 'properties' keys
+    properties = input_schema.get("properties", {})
+    required = input_schema.get("required", [])
+
+    # Use required fields first (in order), then add any non-required properties
+    param_names: list[str] = list(required)
+    for prop_name in properties.keys():
+        if prop_name not in param_names:
+            param_names.append(prop_name)
+
+    # Build positional args list in schema order
+    result: list[Any] = []
+    for param_name in param_names:
+        if param_name in args_dict:
+            result.append(args_dict[param_name])
+
+    return result
+
+
 def validate_args_against_interface(
     interface: dict[str, Any] | None,
     method_name: str,
@@ -429,8 +491,8 @@ def validate_args_against_interface(
     # Validate args against inputSchema using jsonschema
     try:
         jsonschema.validate(instance=args, schema=input_schema)
-        # Validation passed
-        return ValidationResult(valid=True, proceed=True, skipped=False, error_message="")
+        # Validation passed - return coerced args so caller can use them
+        return ValidationResult(valid=True, proceed=True, skipped=False, error_message="", coerced_args=args)
     except jsonschema.ValidationError as e:
         # Validation failed - include full schema info so agents can fix their calls
         # Plan #160: Show complete method schema for self-correction
