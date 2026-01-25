@@ -555,7 +555,7 @@ class ArtifactStore:
     id_registry: "IDRegistry | None"
     # Plan #182: Indexes for O(1) lookups
     _index_by_type: dict[str, set[str]]  # type -> {artifact_ids}
-    _index_by_owner: dict[str, set[str]]  # owner -> {artifact_ids}
+    _index_by_creator: dict[str, set[str]]  # creator -> {artifact_ids}
     _index_by_metadata: dict[str, dict[Any, set[str]]]  # field -> {value -> {artifact_ids}}
     _indexed_metadata_fields: set[str]  # Which metadata fields to index
 
@@ -568,7 +568,7 @@ class ArtifactStore:
         self.id_registry = id_registry
         # Plan #182: Initialize indexes
         self._index_by_type = defaultdict(set)
-        self._index_by_owner = defaultdict(set)
+        self._index_by_creator = defaultdict(set)
         self._index_by_metadata = {}
         self._indexed_metadata_fields = set(indexed_metadata_fields or [])
 
@@ -595,7 +595,7 @@ class ArtifactStore:
         # Index by type
         self._index_by_type[artifact.type].add(artifact_id)
         # Index by owner
-        self._index_by_owner[artifact.created_by].add(artifact_id)
+        self._index_by_creator[artifact.created_by].add(artifact_id)
         # Index configured metadata fields
         for field in self._indexed_metadata_fields:
             value = self._get_nested_value(artifact.metadata, field)
@@ -610,7 +610,7 @@ class ArtifactStore:
         # Remove from type index
         self._index_by_type[artifact.type].discard(artifact_id)
         # Remove from owner index
-        self._index_by_owner[artifact.created_by].discard(artifact_id)
+        self._index_by_creator[artifact.created_by].discard(artifact_id)
         # Remove from metadata indexes
         for field in self._indexed_metadata_fields:
             value = self._get_nested_value(artifact.metadata, field)
@@ -626,8 +626,8 @@ class ArtifactStore:
             self._index_by_type[new_artifact.type].add(artifact_id)
         # Update owner index if changed
         if old_artifact.created_by != new_artifact.created_by:
-            self._index_by_owner[old_artifact.created_by].discard(artifact_id)
-            self._index_by_owner[new_artifact.created_by].add(artifact_id)
+            self._index_by_creator[old_artifact.created_by].discard(artifact_id)
+            self._index_by_creator[new_artifact.created_by].add(artifact_id)
         # Update metadata indexes
         for field in self._indexed_metadata_fields:
             old_value = self._get_nested_value(old_artifact.metadata, field)
@@ -647,10 +647,19 @@ class ArtifactStore:
         ids = self._index_by_type.get(artifact_type, set())
         return [self.artifacts[id] for id in ids if id in self.artifacts]
 
-    def query_by_owner(self, owner: str) -> list[Artifact]:
-        """Query artifacts by owner using O(1) index lookup (Plan #182)."""
-        ids = self._index_by_owner.get(owner, set())
+    def query_by_creator(self, creator: str) -> list[Artifact]:
+        """Query artifacts by creator using O(1) index lookup (Plan #182).
+
+        This queries by created_by (immutable). To query by current
+        controller, use query_by_metadata("controller", controller_id).
+        """
+        ids = self._index_by_creator.get(creator, set())
         return [self.artifacts[id] for id in ids if id in self.artifacts]
+
+    # Backwards compatibility alias (deprecated)
+    def query_by_owner(self, owner: str) -> list[Artifact]:
+        """Deprecated: Use query_by_creator() instead."""
+        return self.query_by_creator(owner)
 
     def query_by_metadata(self, field: str, value: Any) -> list[Artifact]:
         """Query artifacts by metadata field using O(1) index lookup (Plan #182).
@@ -693,7 +702,7 @@ class ArtifactStore:
         """
         # Clear existing indexes
         self._index_by_type.clear()
-        self._index_by_owner.clear()
+        self._index_by_creator.clear()
         self._index_by_metadata.clear()
 
         # Rebuild from all artifacts
@@ -808,8 +817,8 @@ class ArtifactStore:
                 self._index_by_type[old_type].discard(artifact_id)
                 self._index_by_type[type].add(artifact_id)
             if old_owner != artifact.created_by:
-                self._index_by_owner[old_owner].discard(artifact_id)
-                self._index_by_owner[artifact.created_by].add(artifact_id)
+                self._index_by_creator[old_owner].discard(artifact_id)
+                self._index_by_creator[artifact.created_by].add(artifact_id)
             for field in self._indexed_metadata_fields:
                 old_value = self._get_nested_value(old_metadata, field)
                 new_value = self._get_nested_value(metadata, field)
@@ -955,10 +964,21 @@ class ArtifactStore:
 
         return max(depth(dep_id) for dep_id in depends_on)
 
-    def get_owner(self, artifact_id: str) -> str | None:
-        """Get owner of an artifact"""
+    def get_creator(self, artifact_id: str) -> str | None:
+        """Get creator of an artifact (immutable historical fact).
+
+        Per ADR-0016, created_by is immutable and records who originally
+        created the artifact. Note that "ownership" is not a kernel concept -
+        contracts decide access. Some genesis artifacts (like escrow) may use
+        metadata["controller"] as their own convention.
+        """
         artifact = self.get(artifact_id)
         return artifact.created_by if artifact else None
+
+    # Backwards compatibility alias (deprecated)
+    def get_owner(self, artifact_id: str) -> str | None:
+        """Deprecated: Use get_creator() instead."""
+        return self.get_creator(artifact_id)
 
     def list_all(self, include_deleted: bool = False) -> list[dict[str, Any]]:
         """List all artifacts.
@@ -983,14 +1003,17 @@ class ArtifactStore:
             artifact.code.encode("utf-8")
         )
 
-    def get_owner_usage(self, created_by: str) -> int:
-        """Get total disk usage for an owner in bytes.
+    def get_creator_usage(self, creator: str) -> int:
+        """Get total disk usage for artifacts created by a principal.
 
         Plan #182: Uses O(1) index lookup instead of O(n) scan.
         Deleted artifacts do not count toward disk usage (Plan #57).
+
+        Note: This queries by created_by (immutable creator), not
+        current controller.
         """
         total = 0
-        artifact_ids = self._index_by_owner.get(created_by, set())
+        artifact_ids = self._index_by_creator.get(creator, set())
         for artifact_id in artifact_ids:
             artifact = self.artifacts.get(artifact_id)
             if artifact and not artifact.deleted:
@@ -999,33 +1022,49 @@ class ArtifactStore:
                 )
         return total
 
-    def list_by_owner(self, created_by: str) -> list[dict[str, Any]]:
-        """List all artifacts owned by a principal.
+    # Backwards compatibility alias (deprecated)
+    def get_owner_usage(self, created_by: str) -> int:
+        """Deprecated: Use get_creator_usage() instead."""
+        return self.get_creator_usage(created_by)
+
+    def list_by_creator(self, creator: str) -> list[dict[str, Any]]:
+        """List all artifacts created by a principal.
 
         Plan #182: Uses O(1) index lookup instead of O(n) scan.
+
+        Note: This queries by created_by (immutable creator), not
+        current controller.
         """
-        artifact_ids = self._index_by_owner.get(created_by, set())
+        artifact_ids = self._index_by_creator.get(creator, set())
         return [
             self.artifacts[id].to_dict()
             for id in artifact_ids
             if id in self.artifacts
         ]
 
-    def get_artifacts_by_owner(
-        self, created_by: str, include_deleted: bool = False
+    # Backwards compatibility alias (deprecated)
+    def list_by_owner(self, created_by: str) -> list[dict[str, Any]]:
+        """Deprecated: Use list_by_creator() instead."""
+        return self.list_by_creator(created_by)
+
+    def get_artifacts_by_creator(
+        self, creator: str, include_deleted: bool = False
     ) -> list[str]:
-        """Get artifact IDs owned by a principal.
+        """Get artifact IDs created by a principal.
 
         Plan #182: Uses O(1) index lookup instead of O(n) scan.
 
+        Note: This queries by created_by (immutable creator), not
+        current controller.
+
         Args:
-            created_by: Principal ID to query
+            creator: Principal ID to query
             include_deleted: If True, include deleted artifacts (Plan #18)
 
         Returns:
-            List of artifact IDs owned by the principal
+            List of artifact IDs created by the principal
         """
-        artifact_ids = self._index_by_owner.get(created_by, set())
+        artifact_ids = self._index_by_creator.get(creator, set())
         result = []
         for artifact_id in artifact_ids:
             artifact = self.artifacts.get(artifact_id)
@@ -1034,32 +1073,46 @@ class ArtifactStore:
                     result.append(artifact_id)
         return result
 
+    # Backwards compatibility alias (deprecated)
+    def get_artifacts_by_owner(
+        self, created_by: str, include_deleted: bool = False
+    ) -> list[str]:
+        """Deprecated: Use get_artifacts_by_creator() instead."""
+        return self.get_artifacts_by_creator(created_by, include_deleted)
+
     def transfer_ownership(
         self, artifact_id: str, from_id: str, to_id: str
     ) -> bool:
-        """Transfer ownership of an artifact.
+        """Set metadata["controller"] on an artifact.
+
+        NOTE: This is likely tech debt from before ADR-0016. It sets metadata
+        but does NOT affect access control under standard genesis contracts
+        (freeware, self_owned, private), which check created_by not controller.
+
+        Per ADR-0016:
+        - created_by is immutable (historical fact)
+        - "Ownership" is not a kernel concept - contracts decide access
+        - This method sets metadata["controller"] which custom contracts could use
 
         Args:
-            artifact_id: The artifact to transfer
-            from_id: Current owner (must match artifact.created_by)
-            to_id: New owner
+            artifact_id: The artifact to update
+            from_id: Current controller (must match metadata["controller"] or created_by)
+            to_id: New controller value to set in metadata
 
         Returns:
-            True if transfer succeeded, False otherwise
+            True if metadata was updated, False otherwise
         """
         artifact = self.get(artifact_id)
         if not artifact:
             return False
 
-        # Verify from_id is the current owner
-        if artifact.created_by != from_id:
+        # Verify from_id matches current controller (or creator if no controller set)
+        current_controller = artifact.metadata.get("controller", artifact.created_by)
+        if current_controller != from_id:
             return False
 
-        # Transfer ownership
-        artifact.created_by = to_id
-        # Plan #182: Update owner index
-        self._index_by_owner[from_id].discard(artifact_id)
-        self._index_by_owner[to_id].add(artifact_id)
+        # Set metadata (note: doesn't affect access under freeware/self_owned/private)
+        artifact.metadata["controller"] = to_id
         return True
 
     def write_artifact(

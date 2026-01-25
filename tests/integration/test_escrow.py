@@ -123,8 +123,8 @@ class TestEscrowPurchase:
         assert result["seller"] == "seller"
         assert result["buyer"] == "buyer"
 
-        # Verify transfers
-        assert store.get_owner("my_artifact") == "buyer"
+        # Verify transfers - metadata["controller"] tracks current controller
+        assert store.get("my_artifact").metadata.get("controller", store.get("my_artifact").created_by) == "buyer"
         assert ledger.get_scrip("buyer") == 125  # 200 - 75
         assert ledger.get_scrip("seller") == 175  # 100 + 75
 
@@ -144,7 +144,8 @@ class TestEscrowPurchase:
 
         assert result["success"] is False
         assert "Insufficient scrip" in result["error"]
-        assert store.get_owner("expensive") == escrow.id  # Still in escrow
+        # Per ADR-0016: check metadata["controller"] for current controller
+        assert store.get("expensive").metadata.get("controller", store.get("expensive").created_by) == escrow.id  # Still in escrow
 
     def test_purchase_no_listing(self) -> None:
         """Cannot purchase unlisted artifact."""
@@ -204,7 +205,8 @@ class TestEscrowCancel:
         result = escrow._cancel(["my_artifact"], "seller")
 
         assert result["success"] is True
-        assert store.get_owner("my_artifact") == "seller"
+        # Per ADR-0016: check metadata["controller"] for current controller
+        assert store.get("my_artifact").metadata.get("controller", store.get("my_artifact").created_by) == "seller"
 
     def test_cancel_not_seller_fails(self) -> None:
         """Only seller can cancel."""
@@ -219,7 +221,8 @@ class TestEscrowCancel:
 
         assert result["success"] is False
         assert "Only the seller" in result["error"]
-        assert store.get_owner("my_artifact") == escrow.id  # Still in escrow
+        # Per ADR-0016: check metadata["controller"] for current controller
+        assert store.get("my_artifact").metadata.get("controller", store.get("my_artifact").created_by) == escrow.id  # Still in escrow
 
     def test_cancel_after_purchase_fails(self) -> None:
         """Cannot cancel completed listing."""
@@ -410,8 +413,9 @@ class TestEscrowIntegration:
         result = world.execute_action(purchase)
         assert result.success, result.message
 
-        # Verify final state
-        assert world.artifacts.get_owner("tool_1") == "buyer"
+        # Verify final state - metadata["controller"] is set by escrow flow
+        artifact = world.artifacts.get("tool_1")
+        assert artifact.metadata.get("controller", artifact.created_by) == "buyer"
         # Buyer: 200 - 100 (purchase) = 100
         assert world.ledger.get_scrip("buyer") == 100
         # Seller: 50 + 100 (sale) = 150

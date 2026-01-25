@@ -287,27 +287,28 @@ class GenesisLedger(GenesisArtifact):
                     artifact_id=artifact_id,
                 )
 
-            # Security check: can only transfer artifacts you own
-            if metadata["created_by"] != invoker_id:
-                current_owner = metadata["created_by"]
+            # Security check: can only transfer artifacts you control
+            # Per ADR-0016: Check metadata["controller"] (not created_by which is immutable)
+            current_controller = metadata.get("controller", metadata["created_by"])
+            if current_controller != invoker_id:
                 # Prescriptive error: if in escrow, tell them what to do next
-                if current_owner == "genesis_escrow":
+                if current_controller == "genesis_escrow":
                     return permission_error(
                         f"{artifact_id} is in escrow (you already transferred it). "
                         f"NEXT STEPS: Use genesis_escrow.check(['{artifact_id}']) to see listing status, "
                         f"or genesis_escrow.cancel(['{artifact_id}']) to reclaim it.",
                         code=ErrorCode.NOT_OWNER,
                         artifact_id=artifact_id,
-                        owner=current_owner,
+                        owner=current_controller,
                         invoker=invoker_id,
                     )
                 else:
                     return permission_error(
-                        f"Cannot transfer {artifact_id} - you are not the owner (owner is {current_owner}). "
+                        f"Cannot transfer {artifact_id} - you are not the controller (controller is {current_controller}). "
                         f"You may need to purchase it first via genesis_escrow.purchase(['{artifact_id}']).",
                         code=ErrorCode.NOT_OWNER,
                         artifact_id=artifact_id,
-                        owner=current_owner,
+                        owner=current_controller,
                         invoker=invoker_id,
                     )
 
@@ -344,27 +345,28 @@ class GenesisLedger(GenesisArtifact):
                 artifact_id=artifact_id,
             )
 
-        # Security check: can only transfer artifacts you own
-        if artifact.created_by != invoker_id:
-            current_owner = artifact.created_by
+        # Security check: can only transfer artifacts you control
+        # Per ADR-0016: Check metadata["controller"] (not created_by which is immutable)
+        current_controller = artifact.metadata.get("controller", artifact.created_by)
+        if current_controller != invoker_id:
             # Prescriptive error: if in escrow, tell them what to do next
-            if current_owner == "genesis_escrow":
+            if current_controller == "genesis_escrow":
                 return permission_error(
                     f"{artifact_id} is in escrow (you already transferred it). "
                     f"NEXT STEPS: Use genesis_escrow.check(['{artifact_id}']) to see listing status, "
                     f"or genesis_escrow.cancel(['{artifact_id}']) to reclaim it.",
                     code=ErrorCode.NOT_OWNER,
                     artifact_id=artifact_id,
-                    owner=current_owner,
+                    owner=current_controller,
                     invoker=invoker_id,
                 )
             else:
                 return permission_error(
-                    f"Cannot transfer {artifact_id} - you are not the owner (owner is {current_owner}). "
+                    f"Cannot transfer {artifact_id} - you are not the controller (controller is {current_controller}). "
                     f"You may need to purchase it first via genesis_escrow.purchase(['{artifact_id}']).",
                     code=ErrorCode.NOT_OWNER,
                     artifact_id=artifact_id,
-                    owner=current_owner,
+                    owner=current_controller,
                     invoker=invoker_id,
                 )
 

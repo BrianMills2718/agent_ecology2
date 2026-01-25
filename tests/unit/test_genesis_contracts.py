@@ -40,8 +40,14 @@ class TestFreewareContract:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Create standard context with target_created_by."""
-        return {"target_created_by": "owner_agent"}
+        """Create standard context with target_created_by (per ADR-0016).
+
+        Per ADR-0016: created_by is immutable. Contracts check target_created_by
+        to determine who the original creator is.
+        """
+        return {
+            "target_created_by": "owner_agent",  # Immutable: who created it
+        }
 
     def test_contract_id(self, contract: FreewareContract) -> None:
         """Verify contract has correct ID."""
@@ -91,7 +97,7 @@ class TestFreewareContract:
             context=context,
         )
         assert result.allowed is True
-        assert "owner access" in result.reason
+        assert "creator access" in result.reason
 
     def test_write_other_denied(
         self, contract: FreewareContract, context: dict[str, object]
@@ -104,7 +110,7 @@ class TestFreewareContract:
             context=context,
         )
         assert result.allowed is False
-        assert "only owner" in result.reason
+        assert "only creator" in result.reason
 
     def test_delete_owner(
         self, contract: FreewareContract, context: dict[str, object]
@@ -152,8 +158,14 @@ class TestSelfOwnedContract:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Create standard context with target_created_by."""
-        return {"target_created_by": "owner_agent"}
+        """Create standard context with target_created_by (per ADR-0016).
+
+        Per ADR-0016: created_by is immutable. Contracts check target_created_by
+        to determine who the original creator is.
+        """
+        return {
+            "target_created_by": "owner_agent",  # Immutable: who created it
+        }
 
     def test_contract_id(self, contract: SelfOwnedContract) -> None:
         """Verify contract has correct ID."""
@@ -203,7 +215,7 @@ class TestSelfOwnedContract:
             context=context,
         )
         assert result.allowed is True
-        assert "owner access" in result.reason
+        assert "creator access" in result.reason
 
     def test_owner_access_all_actions(
         self, contract: SelfOwnedContract, context: dict[str, object]
@@ -255,8 +267,14 @@ class TestPrivateContract:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Create standard context with target_created_by."""
-        return {"target_created_by": "owner_agent"}
+        """Create standard context with target_created_by (per ADR-0016).
+
+        Per ADR-0016: created_by is immutable. Contracts check target_created_by
+        to determine who the original creator is.
+        """
+        return {
+            "target_created_by": "owner_agent",  # Immutable: who created it
+        }
 
     def test_contract_id(self, contract: PrivateContract) -> None:
         """Verify contract has correct ID."""
@@ -282,7 +300,7 @@ class TestPrivateContract:
                 context=context,
             )
             assert result.allowed is True, f"Owner should have {action} access"
-            assert "owner access" in result.reason
+            assert "creator access" in result.reason
 
     def test_other_denied_all_actions(
         self, contract: PrivateContract, context: dict[str, object]
@@ -499,8 +517,14 @@ class TestContractComparison:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Standard context with target_created_by."""
-        return {"target_created_by": "owner_agent"}
+        """Standard context with target_created_by (per ADR-0016).
+
+        Per ADR-0016: created_by is immutable. Contracts check target_created_by
+        to determine who the original creator is.
+        """
+        return {
+            "target_created_by": "owner_agent",  # Immutable: who created it
+        }
 
     def test_owner_always_allowed_except_public(
         self, all_contracts: dict[str, AccessContract], context: dict[str, object]

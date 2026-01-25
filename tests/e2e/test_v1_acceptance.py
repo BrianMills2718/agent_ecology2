@@ -284,7 +284,9 @@ class TestV1Coordination:
         purchase_result = escrow._purchase(["test_artifact"], "buyer")
 
         assert purchase_result["success"] is True
-        assert store.get_owner("test_artifact") == "buyer"
+        # Per ADR-0016: metadata["controller"] tracks current controller
+        artifact = store.get("test_artifact")
+        assert artifact.metadata.get("controller", artifact.created_by) == "buyer"
         assert ledger.get_scrip("seller") == seller_initial + 75
         assert ledger.get_scrip("buyer") == buyer_initial - 75
 

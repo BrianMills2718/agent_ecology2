@@ -804,7 +804,9 @@ class TestAgentTransfer:
         assert success is True
         transferred = store.get("agent_001")
         assert transferred is not None
-        assert transferred.created_by == "new_owner"
+        # Per ADR-0016: created_by is immutable, controller stored in metadata
+        assert transferred.created_by == "agent_001"  # Original creator unchanged
+        assert transferred.metadata.get("controller") == "new_owner"  # New controller
         # Still an agent after transfer
         assert transferred.is_agent is True
 
@@ -1221,4 +1223,6 @@ class TestAgentArtifactIntegration:
 
         # Agent ID should be artifact ID, not owner
         assert agent.agent_id == "transfer_agent"
-        assert agent.artifact.created_by == "new_owner"  # type: ignore[union-attr]
+        # Per ADR-0016: created_by is immutable, controller in metadata
+        assert agent.artifact.created_by == "original_owner"  # type: ignore[union-attr]
+        assert agent.artifact.metadata.get("controller") == "new_owner"  # type: ignore[union-attr]

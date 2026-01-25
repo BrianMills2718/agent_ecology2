@@ -71,18 +71,20 @@ class FreewareContract:
         Returns:
             PermissionResult with decision
         """
-        owner = context.get("target_created_by") if context else None
+        # Per ADR-0016: created_by is immutable and represents the original creator
+        # Freeware allows the creator to modify their artifacts
+        created_by = context.get("target_created_by") if context else None
 
         # Open access actions - anyone can perform these
         if action in (PermissionAction.READ, PermissionAction.INVOKE):
             return PermissionResult(allowed=True, reason="freeware: open access")
 
-        # Owner-only actions
+        # Creator-only actions
         if action in (PermissionAction.WRITE, PermissionAction.EDIT, PermissionAction.DELETE):
-            if caller == owner:
-                return PermissionResult(allowed=True, reason="freeware: owner access")
+            if caller == created_by:
+                return PermissionResult(allowed=True, reason="freeware: creator access")
             return PermissionResult(
-                allowed=False, reason="freeware: only owner can modify"
+                allowed=False, reason="freeware: only creator can modify"
             )
 
         # Unknown action - fail closed
@@ -122,20 +124,21 @@ class SelfOwnedContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'target_created_by' key (ADR-0019)
+            context: Must contain 'target_created_by' key
 
         Returns:
             PermissionResult with decision
         """
-        owner = context.get("target_created_by") if context else None
+        # Per ADR-0016: created_by is immutable and represents the original creator
+        created_by = context.get("target_created_by") if context else None
 
         # Self-access: artifact accessing itself
         if caller == target:
             return PermissionResult(allowed=True, reason="self_owned: self access")
 
-        # Owner access
-        if caller == owner:
-            return PermissionResult(allowed=True, reason="self_owned: owner access")
+        # Creator access
+        if caller == created_by:
+            return PermissionResult(allowed=True, reason="self_owned: creator access")
 
         # All others denied
         return PermissionResult(allowed=False, reason="self_owned: access denied")
@@ -173,16 +176,17 @@ class PrivateContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Must contain 'target_created_by' key (ADR-0019)
+            context: Must contain 'target_created_by' key
 
         Returns:
             PermissionResult with decision
         """
-        owner = context.get("target_created_by") if context else None
+        # Per ADR-0016: created_by is immutable and represents the original creator
+        created_by = context.get("target_created_by") if context else None
 
-        # Only owner has access
-        if caller == owner:
-            return PermissionResult(allowed=True, reason="private: owner access")
+        # Only creator has access
+        if caller == created_by:
+            return PermissionResult(allowed=True, reason="private: creator access")
 
         # All others denied (including the artifact itself)
         return PermissionResult(allowed=False, reason="private: access denied")
