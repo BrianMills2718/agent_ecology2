@@ -48,12 +48,9 @@ meta/
 
 ## CI Enforcement
 
-**Doc-code coupling:** `scripts/doc_coupling.yaml`
+**Unified documentation graph:** `scripts/relationships.yaml`
 ```bash
-python scripts/check_doc_coupling.py --suggest
-```
-
-**ADR governance:** `scripts/governance.yaml`
-```bash
-python scripts/sync_governance.py --check
+python scripts/check_doc_coupling.py --suggest  # Doc-code coupling
+python scripts/sync_governance.py --check       # ADR governance
+python scripts/validate_plan.py --plan N        # Pre-implementation validation
 ```

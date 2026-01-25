@@ -396,7 +396,7 @@ When enabled, unread messages block Edit/Write until acknowledged.
 python scripts/check_doc_coupling.py --suggest  # Show which docs to update
 ```
 
-Source-to-doc mappings in `scripts/doc_coupling.yaml`. Run `make lint` to check.
+Source-to-doc mappings in `scripts/relationships.yaml`. Run `make lint` to check.
 
 ### Meta-Process Configuration
 
