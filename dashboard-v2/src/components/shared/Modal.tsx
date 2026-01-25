@@ -5,9 +5,12 @@ interface ModalProps {
   onClose: () => void
   children: ReactNode
   wide?: boolean
+  isOpen?: boolean
 }
 
-export function Modal({ title, onClose, children, wide = true }: ModalProps) {
+export function Modal({ title, onClose, children, wide = true, isOpen = true }: ModalProps) {
+  // Don't render if not open
+  if (!isOpen) return null
   // Close on escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

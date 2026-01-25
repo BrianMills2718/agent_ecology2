@@ -240,6 +240,7 @@ Master index of all gaps and their implementation plans.
 | 218 | [Plan 218: Configurable Meta-Process Weight](218_configurable_meta_process_weight.md) | Medium | 📋 Planned | - |
 | 219 | [Plan 219: Symbol-Level Granularity](219_symbol_level_granularity.md) | Medium | 📋 Planned | - |
 | 220 | [Plan 220: Bootstrap for Existing Repos](220_bootstrap_existing_repos.md) | Medium | 📋 Planned | - |
+| 221 | [Dashboard Simulation Control](221_dashboard_simulation_control.md) | Medium | ✅ complete | - |
 ---
 
 ## TDD Workflow

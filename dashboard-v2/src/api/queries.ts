@@ -312,3 +312,20 @@ export async function pauseSimulation(): Promise<{ status: string; tick: number 
 export async function resumeSimulation(): Promise<{ status: string; tick: number }> {
   return apiFetch('/simulation/resume', { method: 'POST' })
 }
+
+import type { SimulationStartRequest, SimulationStartResponse, SimulationStopResponse } from '../types/api'
+
+export async function startSimulation(config: SimulationStartRequest): Promise<SimulationStartResponse> {
+  const params = new URLSearchParams()
+  if (config.duration !== undefined) params.set('duration', String(config.duration))
+  if (config.agents !== undefined) params.set('agents', String(config.agents))
+  if (config.budget !== undefined) params.set('budget', String(config.budget))
+  if (config.model !== undefined) params.set('model', config.model)
+  if (config.rate_limit_delay !== undefined) params.set('rate_limit_delay', String(config.rate_limit_delay))
+
+  return apiFetch(`/simulation/start?${params.toString()}`, { method: 'POST' })
+}
+
+export async function stopSimulation(): Promise<SimulationStopResponse> {
+  return apiFetch('/simulation/stop', { method: 'POST' })
+}
