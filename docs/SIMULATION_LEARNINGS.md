@@ -104,11 +104,72 @@ This aligns with the goal of **creating conditions for emergence** rather than p
 
 ---
 
+## 2026-01-25: Metacognitive Prompt with Weak Model (gemini-2.0-flash)
+
+### Experiment
+Applied the simplified metacognitive prompt (from previous experiment) to gemini-2.0-flash to see if the approach helps weak models learn.
+
+### Results
+
+| Metric | 2.0-flash (verbose) | 2.0-flash (metacognitive) |
+|--------|---------------------|---------------------------|
+| alpha_3 lessons | 0 | 0 |
+| beta_3 lessons | 13 | 0 |
+| delta_3 lessons | 15 | **4** |
+| Hit error limit | Yes (7x consecutive) | **No** |
+| Lesson quality | N/A | High (all specific) |
+
+### Sample Lessons (delta_3)
+- "LESSON: escrow deposit requires setting authorized_writer first"
+- "LESSON: Repeatedly writing and bidding on simple_fetch leads to MCP server errors"
+- "LESSON: Failed to use query_kernel because I tried to invoke it directly"
+- "LESSON: Check existing artifacts before building to avoid duplication"
+
+### Key Findings
+
+1. **Error loops reduced**: No agent hit the 7-consecutive-error limit. The metacognitive framing seems to encourage more varied behavior even when agents don't explicitly store lessons.
+
+2. **Mixed learning outcomes**: delta_3 stored high-quality lessons while alpha_3 and beta_3 stored none. This suggests agent-specific factors (workflow, goals, or just randomness) affect learning behavior.
+
+3. **Quality over quantity**: beta_3 went from 13 lessons (verbose) to 0 (metacognitive), but this may be correct - the verbose prompt was producing low-quality spam.
+
+### Full Model Comparison (Metacognitive Prompt)
+
+| Metric | 2.0-flash | 2.5-flash | 3-flash-preview (verbose*) |
+|--------|-----------|-----------|---------------------------|
+| Total lessons | 4 | 7 | 50 |
+| alpha_3 | 0 | 2 | 35 |
+| beta_3 | 0 | 1 | 6 |
+| delta_3 | 4 | 4 | 9 |
+| Error limit hits | 0 | 0 | 0 |
+| Quality | High | High | Mixed |
+
+*gemini-3-flash-preview was tested with verbose prompt only
+
+### Insight
+
+The metacognitive prompt provides two separate benefits:
+1. **Reduces error loops** - Works across all model strengths
+2. **Improves lesson quality** - Works when models do store lessons
+
+However, **lesson quantity** still correlates with model capability. Weak models (2.0-flash) may understand the metacognitive question but lack the capability to consistently act on it.
+
+### Architectural Implication
+
+The metacognitive approach is a step toward "conditions for emergence" but doesn't fully solve weak model bootstrapping. Next directions:
+
+- **Structural forcing** - Can we design workflows where learning is more naturally embedded (not just prompted)?
+- **Peer observation** - Can agents learn from watching others succeed/fail?
+- **Accumulated pressure** - Does performance improve over longer simulations as lessons compound?
+
+---
+
 ## Future Experiments
 
 - [x] ~~Evaluate metacognitive prompt strategies~~ (done: simplified prompt improves quality)
+- [x] ~~Test metacognitive prompt with weak model (gemini-2.0-flash)~~ (done: reduces error loops, mixed learning)
 - [ ] Test cognitive architecture variations (different workflow structures)
 - [ ] Measure cross-session learning persistence
 - [ ] Compare prescriptive vs emergent learning approaches
-- [ ] Test metacognitive prompt with weak model (gemini-2.0-flash)
 - [ ] Longer simulations to observe learning accumulation
+- [ ] Peer observation mechanisms (agents learning from each other)
