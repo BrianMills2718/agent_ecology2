@@ -291,25 +291,41 @@ class GenesisMint(GenesisArtifact):
         Plan #83: Timing is now time-based, not tick-based.
         """
         if len(args) < 2:
-            return {"success": False, "error": "bid requires [artifact_id, amount]"}
+            return {
+                "success": False,
+                "error": "bid requires [artifact_id, amount]. "
+                         "Example: genesis_mint.bid(['my_artifact', 100])"
+            }
 
         artifact_id: str = str(args[0])
         try:
             amount: int = int(args[1])
         except (TypeError, ValueError):
-            return {"success": False, "error": "bid amount must be an integer"}
+            return {
+                "success": False,
+                "error": f"bid amount must be an integer, got {type(args[1]).__name__}: {repr(args[1])}. "
+                         f"Use a number like 100, not a string like \"100\"."
+            }
 
         # Plan #5: Accept bids anytime (no phase check)
         # Bids apply to the next auction resolution
 
         # Validate amount (policy)
         if amount < self._minimum_bid:
-            return {"success": False, "error": f"Bid must be at least {self._minimum_bid} scrip"}
+            return {
+                "success": False,
+                "error": f"Bid must be at least {self._minimum_bid} scrip (you bid {amount}). "
+                         f"Example: genesis_mint.bid(['{artifact_id}', {self._minimum_bid}])"
+            }
 
         # Check if bid update is allowed (policy)
         has_existing_bid = invoker_id in self._submission_ids
         if has_existing_bid and not self._allow_bid_updates:
-            return {"success": False, "error": "Bid updates not allowed. You already have a bid."}
+            return {
+                "success": False,
+                "error": "Bid updates not allowed. You already have a bid. "
+                         "Wait for the current auction to resolve."
+            }
 
         # Use kernel primitives if world is set (Plan #44)
         if self._world is not None:
@@ -351,7 +367,11 @@ class GenesisMint(GenesisArtifact):
         if self.artifact_store:
             artifact = self.artifact_store.get(artifact_id)
             if not artifact:
-                return {"success": False, "error": f"Artifact {artifact_id} not found"}
+                return {
+                    "success": False,
+                    "error": f"Artifact '{artifact_id}' not found. "
+                             f"Use genesis_store.list([]) to see available artifacts."
+                }
             if not artifact.executable:
                 return {
                     "success": False,

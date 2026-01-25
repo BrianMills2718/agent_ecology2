@@ -118,7 +118,7 @@ class GenesisLedger(GenesisArtifact):
         """Get balance for an agent (resources and scrip)."""
         if not args or len(args) < 1:
             return validation_error(
-                "balance requires [agent_id]",
+                f"balance requires [agent_id]. Example: genesis_ledger.balance(['{invoker_id}'])",
                 code=ErrorCode.MISSING_ARGUMENT,
                 required=["agent_id"],
             )
@@ -260,7 +260,8 @@ class GenesisLedger(GenesisArtifact):
         """
         if not args or len(args) < 2:
             return validation_error(
-                "transfer_ownership requires [artifact_id, to_id]",
+                "transfer_ownership requires [artifact_id, to_id]. "
+                "Example: genesis_ledger.transfer_ownership(['my_artifact', 'buyer_agent'])",
                 code=ErrorCode.MISSING_ARGUMENT,
                 required=["artifact_id", "to_id"],
             )
@@ -278,7 +279,8 @@ class GenesisLedger(GenesisArtifact):
             metadata = kernel_state.get_artifact_metadata(artifact_id)
             if metadata is None:
                 return resource_error(
-                    f"Artifact {artifact_id} not found",
+                    f"Artifact '{artifact_id}' not found. "
+                    f"Use genesis_store.list([]) to see available artifacts.",
                     code=ErrorCode.NOT_FOUND,
                     artifact_id=artifact_id,
                 )
@@ -334,7 +336,8 @@ class GenesisLedger(GenesisArtifact):
         artifact = self.artifact_store.get(artifact_id)
         if not artifact:
             return resource_error(
-                f"Artifact {artifact_id} not found",
+                f"Artifact '{artifact_id}' not found. "
+                f"Use genesis_store.list([]) to see available artifacts.",
                 code=ErrorCode.NOT_FOUND,
                 artifact_id=artifact_id,
             )
@@ -394,7 +397,8 @@ class GenesisLedger(GenesisArtifact):
         """
         if not args or len(args) < 2:
             return validation_error(
-                "transfer_budget requires [to_id, amount]",
+                "transfer_budget requires [to_id, amount]. "
+                "Example: genesis_ledger.transfer_budget(['other_agent', 100])",
                 code=ErrorCode.MISSING_ARGUMENT,
                 required=["to_id", "amount"],
             )
@@ -405,7 +409,8 @@ class GenesisLedger(GenesisArtifact):
         # Validate amount
         if not isinstance(amount, (int, float)) or amount <= 0:
             return validation_error(
-                "Amount must be positive number",
+                f"Amount must be a positive number, got {type(amount).__name__}: {repr(amount)}. "
+                f"Use a number like 100, not a string like \"100\".",
                 code=ErrorCode.INVALID_ARGUMENT,
                 provided=amount,
             )
@@ -448,7 +453,7 @@ class GenesisLedger(GenesisArtifact):
         """
         if not args or len(args) < 1:
             return validation_error(
-                "get_budget requires [agent_id]",
+                f"get_budget requires [agent_id]. Example: genesis_ledger.get_budget(['{invoker_id}'])",
                 code=ErrorCode.MISSING_ARGUMENT,
                 required=["agent_id"],
             )

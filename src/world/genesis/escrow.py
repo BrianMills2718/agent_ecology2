@@ -116,7 +116,11 @@ class GenesisEscrow(GenesisArtifact):
         - buyer_id: Optional - restrict purchase to specific buyer
         """
         if not args or len(args) < 2:
-            return {"success": False, "error": "deposit requires [artifact_id, price] or [artifact_id, price, buyer_id]"}
+            return {
+                "success": False,
+                "error": "deposit requires [artifact_id, price] or [artifact_id, price, buyer_id]. "
+                         "Example: genesis_escrow.deposit(['my_artifact', 50])"
+            }
 
         artifact_id: str = args[0]
         price: Any = args[1]
@@ -132,12 +136,16 @@ class GenesisEscrow(GenesisArtifact):
                 "error": f"Price must be an integer, got {type(price).__name__}: {repr(price)}.{hint}"
             }
         if price <= 0:
-            return {"success": False, "error": f"Price must be positive, got {price}"}
+            return {"success": False, "error": f"Price must be positive (at least 1), got {price}."}
 
         # Check artifact exists
         artifact = self.artifact_store.get(artifact_id)
         if not artifact:
-            return {"success": False, "error": f"Artifact {artifact_id} not found"}
+            return {
+                "success": False,
+                "error": f"Artifact '{artifact_id}' not found. "
+                         f"Use genesis_store.list([]) to see available artifacts."
+            }
 
         # Verify escrow owns the artifact (seller must have transferred first)
         if artifact.created_by != self.id:
@@ -180,17 +188,28 @@ class GenesisEscrow(GenesisArtifact):
         Args: [artifact_id]
         """
         if not args or len(args) < 1:
-            return {"success": False, "error": "purchase requires [artifact_id]"}
+            return {
+                "success": False,
+                "error": "purchase requires [artifact_id]. Example: genesis_escrow.purchase(['item_for_sale'])"
+            }
 
         artifact_id: str = args[0]
 
         # Check listing exists and is active
         if artifact_id not in self.listings:
-            return {"success": False, "error": f"No listing found for {artifact_id}"}
+            return {
+                "success": False,
+                "error": f"No listing found for '{artifact_id}'. "
+                         f"Use genesis_escrow.list_all([]) to see active listings."
+            }
 
         listing = self.listings[artifact_id]
         if listing["status"] != "active":
-            return {"success": False, "error": f"Listing for {artifact_id} is not active (status: {listing['status']})"}
+            return {
+                "success": False,
+                "error": f"Listing for '{artifact_id}' is not active (status: {listing['status']}). "
+                         f"It may have been purchased or cancelled."
+            }
 
         # Check buyer restriction
         if listing["buyer_id"] and listing["buyer_id"] != invoker_id:
@@ -267,13 +286,20 @@ class GenesisEscrow(GenesisArtifact):
         Args: [artifact_id]
         """
         if not args or len(args) < 1:
-            return {"success": False, "error": "cancel requires [artifact_id]"}
+            return {
+                "success": False,
+                "error": "cancel requires [artifact_id]. Example: genesis_escrow.cancel(['my_listed_item'])"
+            }
 
         artifact_id: str = args[0]
 
         # Check listing exists
         if artifact_id not in self.listings:
-            return {"success": False, "error": f"No listing found for {artifact_id}"}
+            return {
+                "success": False,
+                "error": f"No listing found for '{artifact_id}'. "
+                         f"Use genesis_escrow.list_all([]) to see your active listings."
+            }
 
         listing = self.listings[artifact_id]
 
@@ -313,12 +339,19 @@ class GenesisEscrow(GenesisArtifact):
         Args: [artifact_id]
         """
         if not args or len(args) < 1:
-            return {"success": False, "error": "check requires [artifact_id]"}
+            return {
+                "success": False,
+                "error": "check requires [artifact_id]. Example: genesis_escrow.check(['item_id'])"
+            }
 
         artifact_id: str = args[0]
 
         if artifact_id not in self.listings:
-            return {"success": False, "error": f"No listing found for {artifact_id}"}
+            return {
+                "success": False,
+                "error": f"No listing found for '{artifact_id}'. "
+                         f"Use genesis_escrow.list_all([]) to see all listings."
+            }
 
         listing = self.listings[artifact_id]
         return {

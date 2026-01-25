@@ -207,13 +207,20 @@ class GenesisStore(GenesisArtifact):
         Args: [artifact_id]
         """
         if not args or len(args) < 1:
-            return {"success": False, "error": "get requires [artifact_id]"}
+            return {
+                "success": False,
+                "error": "get requires [artifact_id]. Example: genesis_store.get(['artifact_name'])"
+            }
 
         artifact_id: str = str(args[0])
         artifact = self.artifact_store.get(artifact_id)
 
         if not artifact:
-            return {"success": False, "error": f"Artifact '{artifact_id}' not found"}
+            return {
+                "success": False,
+                "error": f"Artifact '{artifact_id}' not found. "
+                         f"Use genesis_store.list([]) to see available artifacts."
+            }
 
         return {
             "success": True,
@@ -229,7 +236,10 @@ class GenesisStore(GenesisArtifact):
         - limit: optional max results
         """
         if not args or len(args) < 1:
-            return {"success": False, "error": "search requires [query]"}
+            return {
+                "success": False,
+                "error": "search requires [query]. Example: genesis_store.search(['calculator'])"
+            }
 
         query: str = str(args[0]).lower()
         field: str | None = str(args[1]) if len(args) > 1 and args[1] else None
@@ -275,7 +285,10 @@ class GenesisStore(GenesisArtifact):
         Args: [type]
         """
         if not args or len(args) < 1:
-            return {"success": False, "error": "list_by_type requires [type]"}
+            return {
+                "success": False,
+                "error": "list_by_type requires [type]. Example: genesis_store.list_by_type(['executable'])"
+            }
 
         artifact_type: str = str(args[0])
         return self._list([{"type": artifact_type}], invoker_id)
@@ -286,7 +299,10 @@ class GenesisStore(GenesisArtifact):
         Args: [created_by]
         """
         if not args or len(args) < 1:
-            return {"success": False, "error": "list_by_owner requires [created_by]"}
+            return {
+                "success": False,
+                "error": f"list_by_owner requires [created_by]. Example: genesis_store.list_by_owner(['{invoker_id}'])"
+            }
 
         created_by: str = str(args[0])
         return self._list([{"owner": created_by}], invoker_id)
@@ -340,13 +356,21 @@ class GenesisStore(GenesisArtifact):
         Returns: {"success": True, "interface": {...}} or {"success": False, "error": "..."}
         """
         if not args or len(args) < 1:
-            return {"success": False, "error": "get_interface requires [artifact_id]"}
+            return {
+                "success": False,
+                "error": "get_interface requires [artifact_id]. "
+                         "Example: genesis_store.get_interface(['genesis_ledger'])"
+            }
 
         artifact_id: str = str(args[0])
         artifact = self.artifact_store.get(artifact_id)
 
         if not artifact:
-            return {"success": False, "error": f"Artifact '{artifact_id}' not found"}
+            return {
+                "success": False,
+                "error": f"Artifact '{artifact_id}' not found. "
+                         f"Use genesis_store.list([]) to see available artifacts."
+            }
 
         return {
             "success": True,
