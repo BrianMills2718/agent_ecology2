@@ -69,7 +69,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 |--------|---------|
 | `setup_hooks.sh` | Install git hooks |
 
-Config files: `doc_coupling.yaml`, `governance.yaml`
+Config: `relationships.yaml` (unified doc graph; legacy: `doc_coupling.yaml`, `governance.yaml`)
 
 ## Git Hooks
 
@@ -152,4 +152,6 @@ make clean-worktrees-auto                    # Auto-cleanup
 
 ## Configuration
 
-Edit `doc_coupling.yaml` to add source→doc mappings. Edit `governance.yaml` to add file→ADR mappings.
+Edit `relationships.yaml` to add doc relationships:
+- `governance`: ADR → source file mappings
+- `couplings`: source → doc mappings (for CI enforcement)
