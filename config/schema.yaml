@@ -156,6 +156,24 @@ genesis:
         cost: <number>
         description: <string>
 
+  # Genesis Voting - multi-party consensus (Plan #183)
+  voting:
+    id: <string>
+    description: <string>
+    methods:
+      create_proposal:
+        cost: <number>          # Create a proposal (costs compute)
+        description: <string>
+      vote:
+        cost: <number>          # Cast a vote (free)
+        description: <string>
+      get_result:
+        cost: <number>          # Get proposal results (free)
+        description: <string>
+      list_proposals:
+        cost: <number>          # List proposals (free)
+        description: <string>
+
   # Genesis Store - artifact discovery and registry
   store:
     id: <string>
