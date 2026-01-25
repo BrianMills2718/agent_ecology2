@@ -26,8 +26,10 @@ from .logger import EventLogger
 from .actions import (
     ActionIntent, ActionResult, ActionType,
     NoopIntent, ReadArtifactIntent, WriteArtifactIntent,
-    EditArtifactIntent, InvokeArtifactIntent, DeleteArtifactIntent
+    EditArtifactIntent, InvokeArtifactIntent, DeleteArtifactIntent,
+    QueryKernelIntent,
 )
+from .kernel_queries import KernelQueryHandler
 # NOTE: TransferIntent removed - all transfers via genesis_ledger.transfer()
 from .genesis import (
     create_genesis_artifacts, GenesisArtifact, GenesisRightsRegistry,
@@ -370,6 +372,10 @@ class World:
 
         # Log world init
         default_quotas = self.rights_config.get("default_quotas", {})
+        # Kernel query handler (Plan #184)
+        # Provides read-only access to kernel state via query_kernel action
+        self.kernel_query_handler = KernelQueryHandler(self)
+
         self.logger.log("world_init", {
             "rights": self.rights_config,
             "costs": self.costs,
@@ -522,6 +528,9 @@ class World:
 
         elif isinstance(intent, DeleteArtifactIntent):
             result = self._execute_delete(intent)
+
+        elif isinstance(intent, QueryKernelIntent):
+            result = self._execute_query_kernel(intent)
 
         else:
             result = ActionResult(success=False, message="Unknown action type")
@@ -1129,6 +1138,32 @@ class World:
             message=f"Deleted artifact {intent.artifact_id}",
             data={"artifact_id": intent.artifact_id, "freed_bytes": freed_bytes},
         )
+
+    def _execute_query_kernel(self, intent: QueryKernelIntent) -> ActionResult:
+        """Execute a query_kernel action (Plan #184).
+
+        Provides read-only access to kernel state including artifacts,
+        principals, balances, resources, and more.
+        """
+        query_result = self.kernel_query_handler.execute(
+            intent.query_type,
+            intent.params,
+        )
+
+        if query_result.get("success"):
+            return ActionResult(
+                success=True,
+                message=f"Query '{intent.query_type}' succeeded",
+                data=query_result,
+            )
+        else:
+            return ActionResult(
+                success=False,
+                message=query_result.get("error", "Query failed"),
+                error_code=query_result.get("error_code", "query_error"),
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
 
     def _log_invoke_success(
         self,
