@@ -33,7 +33,7 @@ from .genesis import (
     create_genesis_artifacts, GenesisArtifact, GenesisRightsRegistry,
     GenesisMint, GenesisDebtContract, RightsConfig, SubmissionInfo
 )
-from .executor import get_executor, validate_args_against_interface, convert_positional_to_named_args
+from .executor import get_executor, validate_args_against_interface, convert_positional_to_named_args, parse_json_args
 from .errors import ErrorCode, ErrorCategory
 from .rate_tracker import RateTracker
 from .invocation_registry import InvocationRegistry, InvocationRecord
@@ -940,20 +940,31 @@ class World:
             from ..config import get_validated_config
             validation_mode = get_validated_config().executor.interface_validation
 
+            # Plan #160: Parse JSON strings in args BEFORE validation
+            # LLMs often generate ['{"key": "value"}'] instead of [{"key": "value"}]
+            # This converts stringified JSON to actual Python objects
+            parsed_args: list[Any] | dict[str, Any] = intent.args or []
+            if isinstance(parsed_args, list):
+                parsed_args = parse_json_args(parsed_args)
+
             # Convert args list to named dict for validation
             # Maps positional args like ["genesis_ledger"] to {"artifact_id": "genesis_ledger"}
             # based on the interface schema's property names
             args_dict: dict[str, Any] = {}
-            if intent.args:
-                if isinstance(intent.args, dict):
-                    args_dict = intent.args
-                elif isinstance(intent.args, list) and len(intent.args) > 0:
-                    # Use interface schema to map positional args to named properties
-                    args_dict = convert_positional_to_named_args(
-                        interface=artifact.interface,
-                        method_name=method_name,
-                        args=intent.args,
-                    )
+            if parsed_args:
+                if isinstance(parsed_args, dict):
+                    args_dict = parsed_args
+                elif isinstance(parsed_args, list) and len(parsed_args) > 0:
+                    # If first arg is already a dict (after JSON parsing), use it directly
+                    if len(parsed_args) == 1 and isinstance(parsed_args[0], dict):
+                        args_dict = parsed_args[0]
+                    else:
+                        # Use interface schema to map positional args to named properties
+                        args_dict = convert_positional_to_named_args(
+                            interface=artifact.interface,
+                            method_name=method_name,
+                            args=parsed_args,
+                        )
 
             validation_result = validate_args_against_interface(
                 interface=artifact.interface,

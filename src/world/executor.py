@@ -133,13 +133,14 @@ def _format_runtime_error(e: Exception, prefix: str = "Runtime error") -> str:
     return base
 
 
-def _parse_json_args(args: list[Any]) -> list[Any]:
+def parse_json_args(args: list[Any]) -> list[Any]:
     """Parse JSON strings in args to Python objects.
 
     LLMs often generate JSON strings for dict arguments (e.g., '{"id": "foo"}').
     This auto-converts them to proper Python types before passing to artifacts.
 
     Plan #112: Fixes repeated 'str' object has no attribute 'get' errors.
+    Plan #160: Now exported for use before interface validation.
 
     Args:
         args: List of arguments, some may be JSON strings
@@ -1058,7 +1059,7 @@ class SafeExecutor:
             return {"success": False, "error": "run is not callable"}
 
         # Plan #112: Parse JSON strings in args to Python objects
-        args = _parse_json_args(args)
+        args = parse_json_args(args)
 
         # Call run() with args, measuring resource usage via ResourceMeasurer
         start_time = time.perf_counter()
@@ -1238,7 +1239,7 @@ class SafeExecutor:
             return {"success": False, "error": "run is not callable"}
 
         # Plan #112: Parse JSON strings in args to Python objects
-        args = _parse_json_args(args)
+        args = parse_json_args(args)
 
         # Call run() with args, measuring resource usage via ResourceMeasurer
         start_time = time.perf_counter()
@@ -1691,7 +1692,7 @@ class SafeExecutor:
             return {"success": False, "error": "run is not callable"}
 
         # Plan #112: Parse JSON strings in args to Python objects
-        args = _parse_json_args(args)
+        args = parse_json_args(args)
 
         # Call run() with args, measuring resource usage via ResourceMeasurer
         start_time = time.perf_counter()
