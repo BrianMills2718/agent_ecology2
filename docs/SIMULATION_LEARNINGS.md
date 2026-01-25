@@ -51,9 +51,64 @@ The goal is an architecture robust enough that even weak models can bootstrap, b
 
 ---
 
+## 2026-01-25: Simplified Metacognitive Prompt (gemini-2.5-flash)
+
+### Experiment
+Simplified the `semantic_memory` trait from verbose instructions to a metacognitive question:
+
+**Before (verbose):**
+```
+ACTION REQUIRED: If you learned something useful, STORE IT NOW...
+WHEN TO STORE (do this!):
+- After ANY failure: "LESSON: [action] failed because [reason]"
+- After success: "STRATEGY: [approach] worked for [goal]"
+...
+```
+
+**After (metacognitive):**
+```
+ASK YOURSELF: What did I just learn that my future self should know?
+
+If the answer is something specific (not generic), store it...
+Good: "LESSON: escrow deposit requires setting authorized_writer first"
+Bad: "ACTION: I queried the kernel" (too generic, don't store)
+```
+
+### Results
+
+| Metric | 2.0-flash (verbose) | 3-flash-preview (verbose) | 2.5-flash (metacognitive) |
+|--------|---------------------|---------------------------|---------------------------|
+| alpha_3 lessons | 0 | 35 | 2 |
+| beta_3 lessons | 13 | 6 | 1 |
+| delta_3 lessons | 15 | 9 | 4 |
+| Lesson quality | N/A | Mixed (some generic spam) | **High (all specific)** |
+| Hit error limit | Yes | No | No |
+| Errors (recovered) | 7+ consecutive | 11 | 66/33/41 |
+
+### Sample Lessons (2.5-flash with metacognitive prompt)
+- "LESSON: escrow deposit requires setting authorized_writer first"
+- "LESSON: Repeatedly writing and bidding on simple_fetch leads to MCP server errors"
+- "LESSON: Failed to use query_kernel because I tried to invoke it directly"
+- "LESSON: Check existing artifacts before building to avoid duplication"
+
+### Key Finding
+**Fewer but higher-quality lessons.** The metacognitive framing ("What did I learn that my future self should know?") filters out generic action logging. Quality over quantity.
+
+### Insight
+The metacognitive prompt works because it:
+1. Shifts from "follow these instructions" to "reflect on your experience"
+2. Provides a quality filter (specific vs generic)
+3. Frames learning as self-beneficial ("your future self")
+
+This aligns with the goal of **creating conditions for emergence** rather than prescribing behaviors.
+
+---
+
 ## Future Experiments
 
+- [x] ~~Evaluate metacognitive prompt strategies~~ (done: simplified prompt improves quality)
 - [ ] Test cognitive architecture variations (different workflow structures)
 - [ ] Measure cross-session learning persistence
 - [ ] Compare prescriptive vs emergent learning approaches
-- [ ] Evaluate metacognitive prompt strategies
+- [ ] Test metacognitive prompt with weak model (gemini-2.0-flash)
+- [ ] Longer simulations to observe learning accumulation

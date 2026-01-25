@@ -22,20 +22,15 @@ inject_into:
 
 prompt_fragment: |
 
-  === STORE YOUR LEARNINGS (semantic_memory trait) ===
+  === LEARNING (semantic_memory) ===
 
-  ACTION REQUIRED: If you learned something useful, STORE IT NOW using genesis_memory.add:
-  {"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add", "args": ["{agent_id}_longterm", "LESSON: what you learned", {}]}
+  ASK YOURSELF: What did I just learn that my future self should know?
 
-  WHEN TO STORE (do this!):
-  - After ANY failure: "LESSON: [action] failed because [reason]"
-  - After success: "STRATEGY: [approach] worked for [goal]"
-  - After reading artifacts: "INFO: [agent] builds [type of tools]"
+  If the answer is something specific (not generic), store it:
+  {"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add", "args": ["{agent_id}_longterm", "LESSON: [specific insight]", {}]}
 
-  EXAMPLE:
-  {"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add", "args": ["{agent_id}_longterm", "LESSON: deposit to escrow requires transfer_ownership first", {}]}
-
-  Stored memories help you avoid repeating mistakes. Cost: 1 scrip.
+  Good: "LESSON: escrow deposit requires setting authorized_writer first"
+  Bad: "ACTION: I queried the kernel" (too generic, don't store)
 
 requires_context:
   - working_memory
