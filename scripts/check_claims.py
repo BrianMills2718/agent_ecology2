@@ -629,7 +629,7 @@ def get_worktrees() -> list[dict[str, Any]]:
                     cwd=_MAIN_ROOT,
                 )
                 timestamp = int(result.stdout.strip())
-                wt["last_commit_time"] = datetime.fromtimestamp(timestamp)
+                wt["last_commit_time"] = datetime.fromtimestamp(timestamp, tz=timezone.utc) 
             except (subprocess.CalledProcessError, ValueError):
                 wt["last_commit_time"] = None
 
@@ -763,7 +763,7 @@ def get_worktree_claim_status(
         else:
             last_commit = wt.get("last_commit_time")
             if last_commit:
-                hours_ago = (datetime.now() - last_commit).total_seconds() / 3600
+                hours_ago = (datetime.now(timezone.utc) - last_commit).total_seconds() / 3600
                 if hours_ago < 4:
                     status = "ACTIVE_NO_CLAIM"
                 else:
