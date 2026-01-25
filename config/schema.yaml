@@ -188,6 +188,8 @@ genesis:
       get_interface:             # Plan #114: Interface discovery
         cost: <number>          # Get interface schema for an artifact
         description: <string>
+    # Plan #182: Indexed metadata fields for O(1) lookups
+    indexed_metadata_fields: <list>  # List of metadata field names to index (e.g., ["recipient", "channel"])
 
   # MCP servers for external tool access
   mcp:

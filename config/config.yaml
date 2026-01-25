@@ -263,6 +263,14 @@ genesis:
       count:
         cost: 0                 # 0 compute
         description: "Count artifacts matching filter. Args: [filter?]"
+      get_interface:
+        cost: 0                 # 0 compute - interface discovery is free
+        description: "Get interface schema for an artifact. Args: [artifact_id]"
+    # Plan #182: Metadata fields to index for O(1) lookups
+    indexed_metadata_fields:
+      - recipient           # For messaging patterns
+      - channel             # For pub-sub simulation
+      - status              # For workflow queries
 
   # MCP servers for external tool access
   mcp:

@@ -735,6 +735,8 @@ class TestArtifactStoreWithAgents:
 
         store.artifacts[memory.id] = memory
         store.artifacts[agent.id] = agent
+        # Plan #182: Rebuild indexes after directly assigning to artifacts dict
+        store.rebuild_indexes()
 
         owned = store.list_by_owner("agent_001")
         assert len(owned) == 2

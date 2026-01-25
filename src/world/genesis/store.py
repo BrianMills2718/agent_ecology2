@@ -148,34 +148,86 @@ class GenesisStore(GenesisArtifact):
     def _apply_filter(
         self, artifacts: list[Any], filter_dict: dict[str, Any] | None
     ) -> list[Any]:
-        """Apply filter criteria to artifact list."""
+        """Apply filter criteria to artifact list.
+
+        Plan #182: Uses O(1) indexes when available for type, owner, and
+        indexed metadata fields. Falls back to O(n) scan for non-indexed fields.
+        """
         if not filter_dict:
             return artifacts
 
-        filtered = artifacts
+        # Plan #182: Try to use indexes for initial filtering
+        # This reduces the working set before applying non-indexed filters
+        candidate_ids: set[str] | None = None
 
-        # Filter by type
+        # Check if we can use type index
         if "type" in filter_dict:
-            filtered = [a for a in filtered if a.type == filter_dict["type"]]
+            type_ids = self.artifact_store._index_by_type.get(filter_dict["type"], set())
+            if candidate_ids is None:
+                candidate_ids = type_ids.copy()
+            else:
+                candidate_ids &= type_ids
 
-        # Filter by owner
+        # Check if we can use owner index
         if "owner" in filter_dict:
-            filtered = [a for a in filtered if a.created_by == filter_dict["owner"]]
+            owner_ids = self.artifact_store._index_by_owner.get(filter_dict["owner"], set())
+            if candidate_ids is None:
+                candidate_ids = owner_ids.copy()
+            else:
+                candidate_ids &= owner_ids
 
-        # Filter by has_standing
-        if "has_standing" in filter_dict:
-            filtered = [a for a in filtered if a.has_standing == filter_dict["has_standing"]]
-
-        # Filter by can_execute
-        if "can_execute" in filter_dict:
-            filtered = [a for a in filtered if a.can_execute == filter_dict["can_execute"]]
-
-        # Plan #168: Filter by metadata fields (dot-notation)
-        # Supports filters like {"metadata.recipient": "bob", "metadata.tags.priority": "high"}
+        # Plan #182: Check indexed metadata fields
         for key, expected_value in filter_dict.items():
             if key.startswith("metadata."):
                 path = key[len("metadata."):]  # Remove "metadata." prefix
-                filtered = [a for a in filtered if self._get_nested_value(a.metadata, path) == expected_value]
+                if self.artifact_store.is_field_indexed(path):
+                    # O(1) index lookup
+                    meta_ids = self.artifact_store._index_by_metadata.get(path, {}).get(
+                        expected_value, set()
+                    )
+                    if candidate_ids is None:
+                        candidate_ids = meta_ids.copy()
+                    else:
+                        candidate_ids &= meta_ids
+
+        # Start with indexed results or all artifacts
+        if candidate_ids is not None:
+            filtered = [
+                self.artifact_store.artifacts[id]
+                for id in candidate_ids
+                if id in self.artifact_store.artifacts
+            ]
+        else:
+            filtered = artifacts
+
+        # Apply remaining non-indexed filters
+
+        # Filter by type (if not already handled by index)
+        if "type" in filter_dict and candidate_ids is None:
+            filtered = [a for a in filtered if a.type == filter_dict["type"]]
+
+        # Filter by owner (if not already handled by index)
+        if "owner" in filter_dict and candidate_ids is None:
+            filtered = [a for a in filtered if a.created_by == filter_dict["owner"]]
+
+        # Filter by has_standing (no index for this)
+        if "has_standing" in filter_dict:
+            filtered = [a for a in filtered if a.has_standing == filter_dict["has_standing"]]
+
+        # Filter by can_execute (no index for this)
+        if "can_execute" in filter_dict:
+            filtered = [a for a in filtered if a.can_execute == filter_dict["can_execute"]]
+
+        # Plan #168: Filter by non-indexed metadata fields (dot-notation)
+        for key, expected_value in filter_dict.items():
+            if key.startswith("metadata."):
+                path = key[len("metadata."):]  # Remove "metadata." prefix
+                # Only do O(n) scan if field is NOT indexed
+                if not self.artifact_store.is_field_indexed(path):
+                    filtered = [
+                        a for a in filtered
+                        if self._get_nested_value(a.metadata, path) == expected_value
+                    ]
 
         # Apply offset
         offset = filter_dict.get("offset", 0)

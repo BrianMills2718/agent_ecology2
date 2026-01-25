@@ -673,6 +673,11 @@ class StoreConfig(StrictModel):
         description="Artifact description"
     )
     methods: StoreMethodsConfig = Field(default_factory=StoreMethodsConfig)
+    # Plan #182: Metadata fields to index for O(1) lookups
+    indexed_metadata_fields: list[str] = Field(
+        default_factory=list,
+        description="List of metadata field names to index for O(1) lookups (e.g., recipient, channel)"
+    )
 
 
 # =============================================================================

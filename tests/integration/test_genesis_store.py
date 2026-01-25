@@ -104,6 +104,8 @@ class TestGenesisStoreBasics:
             has_standing=True,  # Contract with standing (a principal)
             can_execute=False,
         )
+        # Plan #182: Rebuild indexes after bulk loading artifacts
+        store.rebuild_indexes()
         return store
 
     @pytest.fixture

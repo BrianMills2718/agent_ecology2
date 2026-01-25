@@ -218,10 +218,18 @@ class World:
 
         # Global ID registry for collision prevention (Plan #7)
         self.id_registry = IDRegistry()
-        
+
         # Core state - create ledger with rate_limiting config and ID registry
         self.ledger = Ledger.from_config(cast(dict[str, Any], config), [], self.id_registry)
-        self.artifacts = ArtifactStore(id_registry=self.id_registry)
+
+        # Plan #182: Get indexed metadata fields from genesis.store config
+        genesis_config = config.get("genesis", {})
+        store_config = genesis_config.get("store", {})
+        indexed_metadata_fields = store_config.get("indexed_metadata_fields", [])
+        self.artifacts = ArtifactStore(
+            id_registry=self.id_registry,
+            indexed_metadata_fields=indexed_metadata_fields,
+        )
 
         # Event trigger system (Plan #180)
         # TriggerRegistry watches for trigger artifacts and queues invocations on matching events
