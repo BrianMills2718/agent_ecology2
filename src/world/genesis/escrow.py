@@ -145,7 +145,7 @@ class GenesisEscrow(GenesisArtifact):
             return {
                 "success": False,
                 "error": f"Artifact '{artifact_id}' not found. "
-                         f"Use genesis_store.list([]) to see available artifacts."
+                         f"Use query_kernel action to discover artifacts."
             }
 
         # Verify escrow owns the artifact (seller must have transferred first)

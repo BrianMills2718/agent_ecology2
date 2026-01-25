@@ -119,34 +119,29 @@ class TestV1MultiAgentExecution:
 
         # Genesis artifacts accessible by both
         assert "genesis_ledger" in world.genesis_artifacts
-        assert "genesis_store" in world.genesis_artifacts
 
 
 class TestV1ArtifactSystem:
     """V1 Capability 2: Artifact discovery, creation, and invocation."""
 
     def test_artifact_discovery(self, v1_config: dict[str, Any]) -> None:
-        """Agents can discover artifacts via genesis_store.
+        """Agents can discover artifacts via query_kernel action.
 
         Verifies:
-        - genesis_store exists and is functional
-        - Agent can query the store's list method
+        - Genesis artifacts exist
+        - query_kernel provides discovery capability
         - Genesis artifacts are discoverable
         """
         runner = SimulationRunner(v1_config, max_agents=1, verbose=False)
         world = runner.run_sync()
 
-        # genesis_store should be accessible
-        store = world.genesis_artifacts.get("genesis_store")
-        assert store is not None
-
         # Genesis artifacts are stored separately from regular artifacts
         genesis_ids = list(world.genesis_artifacts.keys())
-        assert len(genesis_ids) >= 5  # At least: ledger, store, escrow, event_log, handbook
+        assert len(genesis_ids) >= 4  # At least: ledger, escrow, event_log, handbook
 
         # Verify specific genesis artifacts exist
         assert "genesis_ledger" in genesis_ids
-        assert "genesis_store" in genesis_ids
+        # genesis_store removed - use query_kernel action for discovery
         assert "genesis_escrow" in genesis_ids
 
     def test_artifact_creation(self, v1_config: dict[str, Any]) -> None:
