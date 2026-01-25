@@ -11,7 +11,7 @@ from ..agents.schema import ActionType as ActionTypeLiteral
 
 
 class ActionType(str, Enum):
-    """The narrow waist - only 4 physics verbs (plus noop)"""
+    """The narrow waist - 6 physics verbs (plus noop)"""
 
     NOOP = "noop"
     READ_ARTIFACT = "read_artifact"
@@ -19,6 +19,7 @@ class ActionType(str, Enum):
     EDIT_ARTIFACT = "edit_artifact"  # Plan #131: Claude Code-style editing
     INVOKE_ARTIFACT = "invoke_artifact"
     DELETE_ARTIFACT = "delete_artifact"
+    QUERY_KERNEL = "query_kernel"  # Plan #184: Direct kernel state queries
     # NOTE: No TRANSFER - all transfers via genesis_ledger.transfer()
 
 
@@ -206,6 +207,35 @@ class DeleteArtifactIntent(ActionIntent):
         d["artifact_id"] = self.artifact_id
         return d
 
+
+@dataclass
+class QueryKernelIntent(ActionIntent):
+    """Query kernel state directly (Plan #184).
+
+    Provides read-only access to kernel state without going through
+    genesis artifacts. Enables agents to discover artifacts, check
+    balances, resources, etc.
+    """
+
+    query_type: str
+    params: dict[str, Any] = field(default_factory=dict)
+
+    def __init__(
+        self,
+        principal_id: str,
+        query_type: str,
+        params: dict[str, Any] | None = None,
+        reasoning: str = "",
+    ) -> None:
+        super().__init__(ActionType.QUERY_KERNEL, principal_id, reasoning=reasoning)
+        self.query_type = query_type
+        self.params = params or {}
+
+    def to_dict(self) -> dict[str, Any]:
+        d = super().to_dict()
+        d["query_type"] = self.query_type
+        d["params"] = self.params
+        return d
 
 
 @dataclass
@@ -424,5 +454,16 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
             return "artifact_id must be a string"
         return DeleteArtifactIntent(principal_id, artifact_id, reasoning=reasoning)
 
+    elif action_type == "query_kernel":
+        query_type = data.get("query_type")
+        if not query_type:
+            return "query_kernel requires 'query_type'"
+        if not isinstance(query_type, str):
+            return "query_type must be a string"
+        params = data.get("params", {})
+        if not isinstance(params, dict):
+            return "query_kernel 'params' must be a dict"
+        return QueryKernelIntent(principal_id, query_type, params, reasoning=reasoning)
+
     else:
-        return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact"
+        return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel"
