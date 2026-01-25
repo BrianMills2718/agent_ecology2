@@ -1,6 +1,6 @@
 import { useArtifactDetail } from '../../api/queries'
 import { Modal } from '../shared/Modal'
-import { safeFixed, formatBytes } from '../../utils/format'
+import { safeFixed, formatBytes, formatTime } from '../../utils/format'
 
 interface ArtifactDetailModalProps {
   artifactId: string
@@ -104,14 +104,11 @@ export function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModal
                     className="flex items-center justify-between text-sm py-1 border-b border-[var(--border-color)]"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-[var(--text-secondary)]">T{transfer.tick}</span>
+                      <span className="text-[var(--text-secondary)]">{formatTime(transfer.timestamp)}</span>
                       <span className="text-xs text-[var(--text-secondary)]">
                         {transfer.from_id || '(created)'} → {transfer.to_id}
                       </span>
                     </div>
-                    <span className="text-xs text-[var(--text-secondary)]">
-                      {new Date(transfer.timestamp).toLocaleTimeString()}
-                    </span>
                   </div>
                 ))}
               </div>
@@ -130,7 +127,6 @@ export function ArtifactDetailModal({ artifactId, onClose }: ArtifactDetailModal
                     className="flex items-center justify-between text-sm py-1 border-b border-[var(--border-color)]"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-[var(--text-secondary)]">T{inv.tick}</span>
                       <span className="font-mono text-xs">{inv.invoker_id}</span>
                       {inv.method && (
                         <span className="text-xs text-[var(--accent-primary)]">

@@ -328,30 +328,37 @@ def compute_agent_metrics(state: SimulationState, agent_id: str) -> AgentMetrics
 
 
 def calculate_coordination_density(
-    interactions: Sequence[object], agent_count: int
+    interactions: Sequence[object], agent_ids: list[str]
 ) -> float:
-    """Calculate coordination density: interactions / (n × (n-1)).
+    """Calculate coordination density: unique agent pairs / max possible pairs.
 
     Measures how connected the agent network is. A value of 1.0 means
     every agent has interacted with every other agent at least once.
 
+    Only counts agent-to-agent interactions (not agent-to-genesis).
+
     Args:
         interactions: List of Interaction objects
-        agent_count: Number of agents
+        agent_ids: List of agent IDs (used to filter out genesis artifacts)
 
     Returns:
-        Coordination density between 0.0 and 1.0+
-        (can exceed 1.0 if there are many interactions per pair)
+        Coordination density between 0.0 and 1.0
     """
+    agent_count = len(agent_ids)
     if agent_count < 2:
         return 0.0
 
-    # Count unique agent pairs that have interacted
+    # Create set for O(1) lookup
+    agent_id_set = set(agent_ids)
+
+    # Count unique agent pairs that have interacted (agent-to-agent only)
     interacted_pairs: set[tuple[str, str]] = set()
     for interaction in interactions:
         from_id = getattr(interaction, "from_id", "")
         to_id = getattr(interaction, "to_id", "")
-        if from_id and to_id and from_id != to_id:
+        # Only count if BOTH are agents (not genesis artifacts)
+        if (from_id in agent_id_set and to_id in agent_id_set
+                and from_id != to_id):
             # Normalize pair order for bidirectional counting
             pair = tuple(sorted([from_id, to_id]))
             interacted_pairs.add(pair)  # type: ignore[arg-type]
@@ -625,7 +632,7 @@ def calculate_emergence_metrics(state: SimulationState) -> EmergenceMetrics:
     return EmergenceMetrics(
         # Network metrics
         coordination_density=calculate_coordination_density(
-            state.interactions, agent_count
+            state.interactions, agent_ids
         ),
         coalition_count=calculate_coalition_count(state.interactions, agent_ids),
         # Specialization metrics

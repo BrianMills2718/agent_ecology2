@@ -41,3 +41,41 @@ export function formatBytes(bytes: number | undefined | null): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
 }
+
+/**
+ * Format an ISO timestamp as a short time string (e.g., "12:34:56")
+ */
+export function formatTime(timestamp: string | undefined | null): string {
+  if (!timestamp) return '—'
+  try {
+    const date = new Date(timestamp)
+    return date.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+  } catch {
+    return '—'
+  }
+}
+
+/**
+ * Format an ISO timestamp as relative time (e.g., "2s ago", "5m ago")
+ */
+export function formatRelativeTime(timestamp: string | undefined | null): string {
+  if (!timestamp) return '—'
+  try {
+    const date = new Date(timestamp)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffSec = Math.floor(diffMs / 1000)
+
+    if (diffSec < 60) return `${diffSec}s ago`
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`
+    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`
+    return `${Math.floor(diffSec / 86400)}d ago`
+  } catch {
+    return '—'
+  }
+}

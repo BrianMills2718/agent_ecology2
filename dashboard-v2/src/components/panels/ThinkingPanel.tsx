@@ -87,7 +87,6 @@ function ThinkingCard({ entry }: { entry: ThinkingEntry }) {
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[var(--text-secondary)]">T{entry.tick}</span>
           <span className="font-mono text-xs text-[var(--accent-primary)]">
             {entry.agent_id}
           </span>

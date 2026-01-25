@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useActivity } from '../../api/queries'
 import { Panel } from '../shared/Panel'
-import { safeFixed } from '../../utils/format'
+import { safeFixed, formatTime } from '../../utils/format'
 import type { ActivityItem } from '../../types/api'
 
 const ACTIVITY_TYPES = [
@@ -33,7 +33,7 @@ function ActivityCard({ item }: { item: ActivityItem }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs text-[var(--text-secondary)]">T{item.tick}</span>
+          <span className="text-xs text-[var(--text-secondary)]">{formatTime(item.timestamp)}</span>
           <span className="text-xs px-1.5 py-0.5 bg-[var(--bg-tertiary)] rounded">
             {item.activity_type}
           </span>
