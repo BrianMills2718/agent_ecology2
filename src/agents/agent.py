@@ -144,6 +144,7 @@ class Agent:
     # Core attributes (may delegate to artifact when backed)
     _agent_id: str
     _system_prompt: str
+    _original_system_prompt: str  # Plan #194: Track baseline for reset
     _action_schema: str
     _llm_model: str
     _rag_config: RAGConfigDict
@@ -224,6 +225,7 @@ class Agent:
         self._agent_id = agent_id
         self._llm_model = llm_model or default_model
         self._system_prompt = system_prompt
+        self._original_system_prompt = system_prompt  # Plan #194: Track baseline for reset
         self._action_schema = action_schema or ACTION_SCHEMA  # Fall back to default
         self._workflow_config = None  # Plan #69: Workflow config
         self._components_config = None  # Plan #150: Prompt component config
@@ -352,6 +354,11 @@ class Agent:
             self._llm_model = config["llm_model"]
         if "system_prompt" in config:
             self._system_prompt = config["system_prompt"]
+        # Plan #194: Load original system prompt for reset capability
+        if "original_system_prompt" in config:
+            self._original_system_prompt = config["original_system_prompt"]
+        elif self._original_system_prompt == "":  # Not set yet, use current
+            self._original_system_prompt = self._system_prompt
         if "action_schema" in config:
             self._action_schema = config["action_schema"]
 
@@ -633,6 +640,7 @@ class Agent:
         config: dict[str, Any] = {
             "llm_model": self._llm_model,
             "system_prompt": self._system_prompt,
+            "original_system_prompt": self._original_system_prompt,  # Plan #194
             "action_schema": self._action_schema,
             "rag": self._rag_config,
         }
@@ -739,6 +747,11 @@ class Agent:
     def system_prompt(self, value: str) -> None:
         """Set system prompt (updates local copy, not artifact)."""
         self._system_prompt = value
+
+    @property
+    def original_system_prompt(self) -> str:
+        """Agent's original system prompt (Plan #194)."""
+        return self._original_system_prompt
 
     @property
     def action_schema(self) -> str:

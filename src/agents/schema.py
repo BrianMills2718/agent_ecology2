@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from ..config import get
 
-# Literal type for valid action types (narrow waist: 6 verbs + query + subscriptions + config)
+# Literal type for valid action types (narrow waist: 6 verbs + query + subscriptions + config + prompt)
 ActionType = Literal[
     "noop",
     "read_artifact",
@@ -17,6 +17,7 @@ ActionType = Literal[
     "subscribe_artifact",  # Plan #191: Subscribe to artifact for auto-injection
     "unsubscribe_artifact",  # Plan #191: Unsubscribe from artifact
     "configure_context",  # Plan #192: Configure prompt context sections
+    "modify_system_prompt",  # Plan #194: Self-modifying system prompt
 ]
 
 # Type alias for action validation result
@@ -26,7 +27,7 @@ ActionValidationResult = dict[str, Any] | str
 ACTION_SCHEMA: str = """
 You must respond with a single JSON object representing your action.
 
-## Available Actions (9 types)
+## Available Actions (10 types)
 
 1. read_artifact - Read artifact content
    {"action_type": "read_artifact", "artifact_id": "<id>"}
@@ -67,6 +68,15 @@ You must respond with a single JSON object representing your action.
    working_memory, rag_memories, action_history, failure_history, recent_events,
    resource_metrics, mint_submissions, quota_info, metacognitive, subscribed_artifacts
    Priorities control section ordering (higher = appears earlier in prompt, default 50)
+
+10. modify_system_prompt - Modify your system prompt (Plan #194)
+   {"action_type": "modify_system_prompt", "operation": "<op>", ...}
+   Operations:
+   - append: {"operation": "append", "content": "<text to add>"}
+   - prepend: {"operation": "prepend", "content": "<text to add>"}
+   - replace_section: {"operation": "replace_section", "section_marker": "## Goals", "content": "## Goals\n..."}
+   - reset: {"operation": "reset"} - Reset to original prompt
+   Size limits enforced. Protected prefix (first 200 chars) cannot be modified.
 
    Query types:
    - artifacts: Find artifacts (params: owner, type, executable, name_pattern, limit, offset)
@@ -155,10 +165,10 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
         return "Response must be a JSON object"
 
     action_type: ActionType | str = data.get("action_type", "").lower()
-    if action_type not in ["noop", "read_artifact", "write_artifact", "edit_artifact", "delete_artifact", "invoke_artifact", "query_kernel", "subscribe_artifact", "unsubscribe_artifact", "configure_context"]:
+    if action_type not in ["noop", "read_artifact", "write_artifact", "edit_artifact", "delete_artifact", "invoke_artifact", "query_kernel", "subscribe_artifact", "unsubscribe_artifact", "configure_context", "modify_system_prompt"]:
         if action_type == "transfer":
             return "transfer is not a kernel action. Use: invoke_artifact('genesis_ledger', 'transfer', [from_id, to_id, amount])"
-        return f"Invalid action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel, configure_context"
+        return f"Invalid action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel, configure_context, modify_system_prompt"
 
     # Get validation limits from config
     max_artifact_id_length: int = get("validation.max_artifact_id_length") or 128
@@ -284,5 +294,35 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
                     return f"Priority for '{section}' must be an integer"
                 if priority < 0 or priority > 100:
                     return f"Priority for '{section}' must be between 0 and 100"
+
+    elif action_type == "modify_system_prompt":
+        # Plan #194: Self-modifying system prompt
+        operation = data.get("operation")
+        if not operation:
+            return "modify_system_prompt requires 'operation'"
+        if not isinstance(operation, str):
+            return "modify_system_prompt 'operation' must be a string"
+        valid_operations = ["append", "prepend", "replace_section", "reset"]
+        if operation not in valid_operations:
+            return f"Unknown operation '{operation}'. Valid operations: {', '.join(valid_operations)}"
+
+        if operation in ["append", "prepend"]:
+            content = data.get("content")
+            if content is None:
+                return f"modify_system_prompt '{operation}' requires 'content'"
+            if not isinstance(content, str):
+                return f"modify_system_prompt 'content' must be a string"
+
+        if operation == "replace_section":
+            section_marker = data.get("section_marker")
+            if not section_marker:
+                return "modify_system_prompt 'replace_section' requires 'section_marker'"
+            if not isinstance(section_marker, str):
+                return "modify_system_prompt 'section_marker' must be a string"
+            content = data.get("content")
+            if content is None:
+                return "modify_system_prompt 'replace_section' requires 'content'"
+            if not isinstance(content, str):
+                return "modify_system_prompt 'content' must be a string"
 
     return data
