@@ -497,7 +497,7 @@ class World:
                     success=False,
                     message=(
                         f"Artifact '{intent.artifact_id}' not found. "
-                        f"Use genesis_store.list_all([]) or genesis_store.search(['{intent.artifact_id[:10]}']) to find artifacts."
+                        f"Use genesis_store.list([]) or genesis_store.search(['{intent.artifact_id[:10]}']) to find artifacts."
                     ),
                     error_code=ErrorCode.NOT_FOUND.value,
                     error_category=ErrorCategory.RESOURCE.value,
@@ -992,7 +992,7 @@ class World:
         duration_ms = (time.perf_counter() - start_time) * 1000
         helpful_msg = (
             f"Artifact '{artifact_id}' not found. "
-            f"Use genesis_store.list_all([]) or genesis_store.search(['{artifact_id[:10]}']) to find artifacts."
+            f"Use genesis_store.list([]) or genesis_store.search(['{artifact_id[:10]}']) to find artifacts."
         )
         self._log_invoke_failure(
             intent.principal_id, artifact_id, method_name,
