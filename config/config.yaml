@@ -483,10 +483,8 @@ agent:
   failure_history_max: 5          # Max recent failures to track per agent
 
   # Plan #188/#213: Deliberative planning pattern
-  # NOTE: Disabled because Plan #188 implementation is incomplete (_generate_plan uses
-  # non-existent generate_text method). Enable once Plan #188 is finished.
   planning:
-    enabled: false                # Enable plan artifact pattern (genesis agents benefit from planning)
+    enabled: true                 # Enable plan-before-act for better reasoning
     max_steps: 5                  # Max steps in a plan
     replan_on_failure: true       # Generate new plan if step fails
 
