@@ -242,6 +242,7 @@ After implementation, comprehensive doc review:
 - docs/GLOSSARY.md (modify) - Terminology update
 - docs/architecture/current/resources.md (modify) - Full rewrite
 - tests/unit/test_usage_tracker.py (create) - Tests for UsageTracker
+- tests/unit/test_rights.py (create) - Tests for rights module
 
 ## Dependencies
 
