@@ -69,33 +69,54 @@ if [ -n "$STAGED_PLANS" ]; then
     fi
 fi
 
-# 5. Plan index completeness (ALL plan files must be in index)
-echo "Checking plan index completeness..."
-PLAN_FILES=$(ls docs/plans/[0-9]*_*.md 2>/dev/null | xargs -I{} basename {} .md | grep -oE '^[0-9]+' | sort -n || true)
-INDEX_FILE="docs/plans/CLAUDE.md"
-MISSING=""
-for plan_num in $PLAN_FILES; do
-    # Check if plan number appears in index as a link like [text](NN_name.md)
-    if ! grep -qE "\[.*\]\(${plan_num}_[^)]+\.md\)" "$INDEX_FILE"; then
-        MISSING="$MISSING $plan_num"
+# 5. Auto-generate plan index (eliminates sync issues)
+echo "Regenerating plan index..."
+python scripts/generate_plan_index.py --write 2>/dev/null || {
+    echo ""
+    echo "ERROR: Failed to generate plan index"
+    echo ""
+    exit 1
+}
+# Stage the regenerated index
+git add docs/plans/CLAUDE.md 2>/dev/null || true
+
+# 6. Plan content validation (status must match content)
+echo "Validating plan content..."
+VALIDATION_ERRORS=""
+for plan_file in docs/plans/[0-9]*_*.md; do
+    [ -f "$plan_file" ] || continue
+
+    # Get status
+    STATUS=$(grep -m1 '^\*\*Status:\*\*' "$plan_file" 2>/dev/null | head -1 || true)
+
+    # Check: Planned status requires ## Plan section
+    if echo "$STATUS" | grep -q '📋'; then
+        if ! grep -q '^## Plan' "$plan_file" 2>/dev/null; then
+            VALIDATION_ERRORS="$VALIDATION_ERRORS\n  - $plan_file: Status is 'Planned' but missing '## Plan' section"
+        fi
+    fi
+
+    # Check: Complete status requires verification evidence
+    if echo "$STATUS" | grep -q '✅'; then
+        if ! grep -q 'Verification Evidence\|Verified:' "$plan_file" 2>/dev/null; then
+            # Allow if it's deferred or post-v1
+            if ! echo "$STATUS" | grep -qi 'deferred\|post-v1'; then
+                VALIDATION_ERRORS="$VALIDATION_ERRORS\n  - $plan_file: Status is 'Complete' but missing verification evidence"
+            fi
+        fi
     fi
 done
 
-if [ -n "$MISSING" ]; then
+if [ -n "$VALIDATION_ERRORS" ]; then
     echo ""
-    echo "ERROR: Plan files not in index (docs/plans/CLAUDE.md):"
-    for num in $MISSING; do
-        file=$(ls docs/plans/${num}_*.md 2>/dev/null | head -1)
-        echo "  - $file"
-    done
+    echo "ERROR: Plan content validation failed:"
+    echo -e "$VALIDATION_ERRORS"
     echo ""
-    echo "Add these to the index table, or run:"
-    echo "  python scripts/sync_plan_status.py --sync"
-    echo ""
+    echo "Fix the plan files or update their status."
     exit 1
 fi
 
-# 6. Branch divergence check (prevents merge conflicts)
+# 7. Branch divergence check (prevents merge conflicts)
 echo "Checking branch freshness..."
 git fetch origin 2>/dev/null || true  # Silent fetch, don't fail if offline
 
