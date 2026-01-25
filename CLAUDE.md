@@ -209,6 +209,14 @@ Claims provide **coordination** so instances don't collide:
 | Use `git worktree remove` directly | May delete worktree another CC is using (breaks their shell) |
 | Use `gh pr merge` directly | Bypasses validation, may break checks |
 | Run `make finish` from worktree | Shell CWD becomes invalid after worktree deleted |
+| Run `cd /main && make finish` | Same issue - cd runs in subshell, CWD stays in worktree |
+
+**IMPORTANT:** Using `cd /main && command` does NOT work because `cd` runs in a subshell
+when used with `&&`. Your actual shell CWD stays in the worktree. Use TWO SEPARATE commands:
+```bash
+cd /home/brian/brian_projects/agent_ecology2  # First command - changes shell CWD
+make finish BRANCH=X PR=N                      # Second command - runs from new CWD
+```
 
 ### How to Recover
 
