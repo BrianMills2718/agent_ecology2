@@ -118,8 +118,8 @@ workflow:
         Every action that doesn't earn revenue is wasted time.
 
         Available actions:
+        - query_kernel action with query_type='artifacts' to list all artifacts
         - read_artifact to inspect existing artifacts
-        - invoke genesis_store.search() to find relevant artifacts
         - noop to continue observing
       transition_to: "ideating"
 
@@ -139,8 +139,8 @@ workflow:
         - If it fails, the error shows the correct interface
 
         Option 2: Check First
-        - Call genesis_store.get_interface([artifact_id])
-        - Read the returned schema, then invoke correctly
+        - Use query_kernel action: {"action_type": "query_kernel", "query_type": "artifact", "params": {"artifact_id": "<id>"}}
+        - This returns the artifact's interface schema
 
         Option 3: Check Working Memory
         - Look in your {agent_id}_working_memory artifact
