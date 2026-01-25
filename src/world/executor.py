@@ -543,7 +543,9 @@ def validate_args_against_interface(
 
         if validation_mode == "warn":
             _logger.warning("Interface validation failed for '%s': %s", method_name, error_msg)
-            return ValidationResult(valid=False, proceed=True, skipped=False, error_message=error_msg)
+            # Plan #160: Still return coerced args even on validation failure
+            # So type coercion is applied even if other validation errors exist
+            return ValidationResult(valid=False, proceed=True, skipped=False, error_message=error_msg, coerced_args=args)
         else:  # strict
             return ValidationResult(valid=False, proceed=False, skipped=False, error_message=error_msg)
     except jsonschema.SchemaError as e:
