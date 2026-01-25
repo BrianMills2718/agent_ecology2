@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-21 (Plan #148 - ADR-0019 Audit, compute->llm_tokens terminology)
+**Last verified:** 2026-01-25 (Plan #190 - genesis_store removed, no dashboard changes)
 
 ---
 

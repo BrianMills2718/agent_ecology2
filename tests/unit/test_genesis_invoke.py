@@ -45,11 +45,11 @@ class TestGenesisInArtifactStore:
     def test_genesis_in_artifact_store(self, world: World) -> None:
         """Genesis artifacts should be in the artifact store."""
         # All genesis artifacts should be findable via artifact store
+        # Note: genesis_store removed in Plan #190 - use query_kernel action
         genesis_ids = [
             "genesis_ledger",
             "genesis_mint",
             "genesis_escrow",
-            "genesis_store",
             "genesis_event_log",
             "genesis_rights_registry",
         ]

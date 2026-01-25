@@ -11,7 +11,6 @@ from src.world.genesis import (
     GenesisLedger,
     GenesisMint,
     GenesisEscrow,
-    GenesisStore,
     GenesisEventLog,
 )
 from src.world.artifacts import ArtifactStore
@@ -109,21 +108,6 @@ class TestGenesisEscrowInterface:
         
         # Should have methods
         assert "tools" in interface or "methods" in interface
-
-
-class TestGenesisStoreInterface:
-    """Test GenesisStore has proper interface."""
-    
-    def test_genesis_store_interface(self) -> None:
-        """GenesisStore has interface with reserved terms."""
-        config = get_validated_config()
-        store = GenesisStore(config.genesis.store)
-        
-        interface = store.get_interface()
-        
-        # Must have description
-        assert "description" in interface
-        assert isinstance(interface["description"], str)
 
 
 class TestGenesisEventLogInterface:

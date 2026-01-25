@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-25 (Plan #197: Spawned agents now tracked with is_genesis=False)
+**Last verified:** 2026-01-25 (Plan #190 - Error messages updated to suggest query_kernel)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

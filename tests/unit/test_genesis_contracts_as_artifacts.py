@@ -1,7 +1,9 @@
 """Tests for Plan #165: Genesis Contracts as Artifacts.
 
 Tests that genesis contracts are discoverable as artifacts, so agents can
-read them via genesis_store to understand permission rules.
+read them via query_kernel to understand permission rules.
+
+Note: genesis_store was removed in Plan #190. Discovery now uses query_kernel action.
 """
 
 import pytest
@@ -90,46 +92,8 @@ class TestContractArtifactDiscovery:
         assert freeware is not None
         assert freeware.executable is False
 
-    def test_genesis_store_lists_contracts(
-        self,
-        artifact_store: ArtifactStore,
-        genesis_artifacts: dict,
-    ) -> None:
-        """genesis_store.list() can filter by type='contract'."""
-        # Get genesis_store from artifacts
-        genesis_store = genesis_artifacts.get("genesis_store")
-        assert genesis_store is not None
-
-        # List contracts
-        method = genesis_store.get_method("list")
-        assert method is not None
-        result = method.handler([{"type": "contract"}], "test_agent")
-
-        assert result["success"] is True
-        assert result["count"] >= 4  # freeware, private, self_owned, public
-
-        # Check that contract IDs are in the list
-        artifact_ids = [a["id"] for a in result["artifacts"]]
-        assert "genesis_contract_freeware" in artifact_ids
-        assert "genesis_contract_private" in artifact_ids
-
-    def test_read_contract_via_genesis_store(
-        self,
-        artifact_store: ArtifactStore,
-        genesis_artifacts: dict,
-    ) -> None:
-        """genesis_store.get() returns contract info."""
-        genesis_store = genesis_artifacts.get("genesis_store")
-        assert genesis_store is not None
-
-        method = genesis_store.get_method("get")
-        assert method is not None
-        result = method.handler(["genesis_contract_freeware"], "test_agent")
-
-        assert result["success"] is True
-        assert "artifact" in result
-        assert result["artifact"]["type"] == "contract"
-        assert "freeware" in result["artifact"]["content"].lower()
+    # Note: genesis_store tests removed in Plan #190
+    # Contract discovery now uses query_kernel action
 
 
 class TestContractPermissionCheckingUnchanged:
@@ -191,23 +155,5 @@ class TestContractArtifactMetadata:
         assert rules["invoke"] == "anyone"
         assert rules["write"] == "owner_only"
 
-    def test_filter_contracts_by_metadata(
-        self,
-        artifact_store: ArtifactStore,
-        genesis_artifacts: dict,
-    ) -> None:
-        """Can filter contracts by metadata.rules.read value."""
-        genesis_store = genesis_artifacts.get("genesis_store")
-        assert genesis_store is not None
-
-        method = genesis_store.get_method("list")
-        result = method.handler(
-            [{"type": "contract", "metadata.rules.read": "anyone"}],
-            "test_agent",
-        )
-
-        assert result["success"] is True
-        # Should include freeware and public (both allow anyone to read)
-        ids = [a["id"] for a in result["artifacts"]]
-        assert "genesis_contract_freeware" in ids
-        assert "genesis_contract_public" in ids
+    # Note: test_filter_contracts_by_metadata removed in Plan #190
+    # Contract filtering now uses query_kernel action with params

@@ -20,25 +20,6 @@ Example:
 {"action_type": "invoke_artifact", "artifact_id": "genesis_ledger", "method": "transfer", "args": ["alpha", "beta", 10]}
 ```
 
-## genesis_store
-**Artifact discovery and search.** Use this to find what exists.
-
-| Method | Args | Cost | Description |
-|--------|------|------|-------------|
-| `list` | `[filter?]` | 0 | List artifacts (filter: type/owner/limit/offset) |
-| `get` | `[artifact_id]` | 0 | Get artifact details |
-| `search` | `[query, field?, limit?]` | 0 | Search artifacts by content |
-| `list_by_type` | `[type]` | 0 | List by type (agent/executable/data) |
-| `list_by_owner` | `[created_by]` | 0 | List artifacts owned by someone |
-| `list_agents` | `[]` | 0 | List all agents |
-| `list_principals` | `[]` | 0 | List all principals (has_standing=True) |
-| `count` | `[filter?]` | 0 | Count artifacts matching filter |
-
-Example - find all executables:
-```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_store", "method": "list_by_type", "args": ["executable"]}
-```
-
 ## genesis_rights_registry
 Manages compute and disk quotas.
 

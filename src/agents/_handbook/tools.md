@@ -74,7 +74,7 @@ Every executable MUST include an `interface` field describing how to call it. **
 
 ### Why Interface is Required
 
-1. **Discovery** - Other agents use `genesis_store.get_interface()` to learn how to call your service
+1. **Discovery** - Other agents use `query_kernel` action to discover artifacts and learn how to call your service
 2. **Validation** - System validates inputs match your schema
 3. **Documentation** - Your interface IS your API documentation
 
@@ -247,9 +247,9 @@ def run(requester_id, resource_id):
 
 ## Discovery
 
-Other agents find your tools via `genesis_store`:
+Other agents find your tools via `query_kernel`:
 ```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_store", "method": "search", "args": ["price"]}
+{"action_type": "query_kernel", "query_type": "artifacts", "params": {"name_pattern": "price"}}
 ```
 
 Make your `content` description clear and searchable.
@@ -258,10 +258,10 @@ Make your `content` description clear and searchable.
 
 Before invoking an artifact, learn how to call it properly:
 
-### Quick Check via get()
-The `genesis_store.get()` method returns the artifact's `interface` field:
+### Query Artifact Details
+Use `query_kernel` with `query_type: artifact` to get full artifact details including interface:
 ```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_store", "method": "get", "args": ["target_artifact"]}
+{"action_type": "query_kernel", "query_type": "artifact", "params": {"artifact_id": "target_artifact"}}
 ```
 
 Response includes:
@@ -279,10 +279,10 @@ Response includes:
 }
 ```
 
-### Dedicated get_interface() Method
-For just the interface, use the dedicated method:
+### List All Artifacts
+To discover all available artifacts:
 ```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_store", "method": "get_interface", "args": ["target_artifact"]}
+{"action_type": "query_kernel", "query_type": "artifacts", "params": {}}
 ```
 
 Response:
@@ -331,13 +331,13 @@ Just try invoking with your best guess at arguments. If it fails, the error mess
 
 If you want to be sure before invoking:
 
-1. Call `genesis_store.get_interface(artifact_id)`
+1. Use `query_kernel` with `query_type: artifact` to get the artifact's interface
 2. Review the returned schema for method names and argument types
 3. Then invoke with correct arguments
 
 ```json
-// Step 1: Get interface
-{"action_type": "invoke_artifact", "artifact_id": "genesis_store", "method": "get_interface", "args": ["target_service"]}
+// Step 1: Get artifact with interface
+{"action_type": "query_kernel", "query_type": "artifact", "params": {"artifact_id": "target_service"}}
 
 // Step 2: Read response, then invoke correctly
 {"action_type": "invoke_artifact", "artifact_id": "target_service", "method": "run", "args": ["correct", "args"]}

@@ -61,9 +61,12 @@ Call a method on an artifact.
 - `balance([agent_id])` - Check balance
 - `transfer([from_id, to_id, amount])` - Send scrip
 
-**genesis_store** - Find artifacts:
-- `search([query])` - Search by content
-- `list_by_type(["executable"])` - List all executables
+**query_kernel** - Discover artifacts and kernel state (free, no invoke cost):
+```json
+{"action_type": "query_kernel", "query_type": "artifacts", "params": {}}
+{"action_type": "query_kernel", "query_type": "artifact", "params": {"artifact_id": "..."}}
+{"action_type": "query_kernel", "query_type": "principals", "params": {}}
+```
 
 **genesis_escrow** - Trustless trading:
 - `list_active([])` - See what's for sale

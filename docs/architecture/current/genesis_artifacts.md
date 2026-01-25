@@ -29,12 +29,13 @@ Genesis artifacts follow a deprivilege pattern (Plans #39, #44, #111). Most arti
 | genesis_mint | **Delegated** | Uses kernel primitives for bid storage, UBI |
 | genesis_escrow | **Dual-path** | Has `set_world()` support, implementation partially migrated |
 | genesis_rights_registry | **Dual-path** | Thin wrapper around kernel quotas, legacy fallback |
-| genesis_store | **Pure** | Read-only, no special privileges needed |
 | genesis_event_log | **Pure** | Read-only from EventLogger |
 | genesis_debt_contract | **Pure** | Truly unprivileged example contract |
 | genesis_model_registry | **Stub** | Not fully integrated with LLM calls yet |
 | genesis_embedder | **Pure** | Stateless computation, no kernel access |
 | genesis_memory | **Pure** | Operates only on artifacts owned by caller |
+
+**Note:** `genesis_store` was removed in Plan #190. Use `query_kernel` action instead for artifact discovery - it's free and provides direct kernel state access.
 
 **Pattern:** Artifacts have optional `set_world()` method. When world is set, they use `KernelState`/`KernelActions` interfaces. When world is None, they fall back to direct access (backward compatibility).
 
@@ -206,43 +207,22 @@ The `get_invokers(artifact_id)` method queries the event log to find all princip
 
 ---
 
-### genesis_store
+### Artifact Discovery (query_kernel)
 
-**Purpose:** Artifact discovery and registry (Gap #16)
+**Note:** `genesis_store` was removed in Plan #190. Artifact discovery is now provided by the `query_kernel` action, which offers:
 
-**File:** `src/world/genesis.py` (`GenesisStore` class)
+- **Free access** - No invocation cost (unlike genesis artifact invocations)
+- **Direct kernel state** - Read-only access to kernel state without intermediary
+- **Comprehensive queries** - artifacts, principals, balances, resources, quotas, etc.
 
-| Method | Cost (compute) | Description |
-|--------|----------------|-------------|
-| `list(filter?)` | 0 | List artifacts with optional filter (includes `interface` field) |
-| `get(artifact_id)` | 0 | Get single artifact details (includes `interface` field) |
-| `get_interface(artifact_id)` | 0 | Get interface schema for an artifact (Plan #114) |
-| `search(query, field?, limit?)` | 0 | Search artifacts by content match (includes `interface` field) |
-| `list_by_type(type)` | 0 | List artifacts of specific type |
-| `list_by_owner(owner_id)` | 0 | List artifacts by owner |
-| `list_agents()` | 0 | List all agent artifacts |
-| `list_principals()` | 0 | List all principals (has_standing=True) |
-| `count(filter?)` | 0 | Count artifacts matching filter |
-
-**Filter object (for `list` and `count`):**
-```python
-{
-    "type": "agent" | "memory" | "data" | "executable" | "genesis",
-    "owner": "owner_id",
-    "has_standing": True | False,
-    "can_execute": True | False,
-    "limit": 100,
-    "offset": 0
-}
+**Example usage:**
+```json
+{"action_type": "query_kernel", "query_type": "artifacts", "params": {}}
+{"action_type": "query_kernel", "query_type": "artifact", "params": {"artifact_id": "..."}}
+{"action_type": "query_kernel", "query_type": "principals", "params": {}}
 ```
 
-**Design decisions:**
-- All methods cost 0 (system-subsidized) to encourage market formation and discovery
-- Simple string search (no vector/semantic search - agents can build that capability)
-- Returns dicts, not Artifact objects (consistent with other genesis methods)
-- Pagination via limit/offset for large artifact counts
-- Interface discovery enabled (Plan #114): `get()`, `list()`, `search()` all return `interface` field
-- Dedicated `get_interface()` method for quick schema lookup before invocation
+See Plan #184 for full query_kernel documentation.
 
 ---
 

@@ -259,7 +259,7 @@ def single_agent_world(single_agent_config: ConfigDict, tmp_path: Path) -> World
 
 
 from src.world.artifacts import ArtifactStore
-from src.world.genesis import GenesisEscrow, GenesisMint, GenesisStore
+from src.world.genesis import GenesisEscrow, GenesisMint
 
 
 @pytest.fixture
@@ -317,14 +317,3 @@ def escrow_with_store() -> tuple[GenesisEscrow, ArtifactStore, Ledger]:
 
     escrow = GenesisEscrow(ledger, store)
     return escrow, store, ledger
-
-
-@pytest.fixture
-def store_with_ledger() -> tuple[GenesisStore, ArtifactStore, Ledger]:
-    """Set up genesis_store with artifacts and ledger."""
-    ledger = Ledger()
-    artifacts = ArtifactStore()
-    ledger.create_principal("creator", starting_scrip=100, starting_compute=50)
-
-    store = GenesisStore(artifacts)
-    return store, artifacts, ledger

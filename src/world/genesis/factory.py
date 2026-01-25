@@ -7,8 +7,9 @@ Creates all genesis artifacts based on configuration.
 # ADR-0001: Everything is an artifact
 # ADR-0003: Contracts can do anything
 #
-# Genesis artifacts: ledger, mint, escrow, event_log, rights_registry, store.
+# Genesis artifacts: ledger, mint, escrow, event_log, rights_registry.
 # System-provided, solve cold-start problem. Split into package (Plan #66).
+# Note: genesis_store removed in Plan #190 - use query_kernel action instead.
 # --- GOVERNANCE END ---
 from __future__ import annotations
 
@@ -27,7 +28,6 @@ from .rights_registry import GenesisRightsRegistry
 from .event_log import GenesisEventLog
 from .escrow import GenesisEscrow
 from .debt_contract import GenesisDebtContract
-from .store import GenesisStore
 from .voting import GenesisVoting
 from .model_registry import GenesisModelRegistry
 from .embedder import GenesisEmbedder
@@ -41,8 +41,8 @@ def _create_contract_artifacts(artifact_store: ArtifactStore) -> None:
     These artifacts describe the contract rules in a human-readable format.
     They are not executable - the actual permission checking still uses
     the Python contract classes. This enables:
-    - Discovery via genesis_store.list(type="contract")
-    - Reading rules via genesis_store.get("genesis_contract_freeware")
+    - Discovery via query_kernel artifacts {type: "contract"}
+    - Reading rules via read_artifact genesis_contract_freeware
     - Filtering by metadata.rules using Plan #168 metadata feature
 
     Args:
@@ -226,13 +226,7 @@ def create_genesis_artifacts(
         )
         artifacts[genesis_escrow.id] = genesis_escrow
 
-    # Add store if enabled and artifact_store provided
-    if cfg.artifacts.store.enabled and artifact_store:
-        genesis_store = GenesisStore(
-            artifact_store=artifact_store,
-            genesis_config=cfg
-        )
-        artifacts[genesis_store.id] = genesis_store
+    # genesis_store removed - use query_kernel action instead (Plan #190)
 
     # Add debt contract if enabled
     if cfg.artifacts.debt_contract.enabled:
@@ -285,7 +279,6 @@ def create_genesis_artifacts(
         "genesis_ledger": "genesis_ledger_api",
         "genesis_mint": "genesis_mint_api",
         "genesis_rights_registry": "genesis_rights_api",
-        "genesis_store": "genesis_store_api",
         "genesis_event_log": "genesis_event_log_api",
         "genesis_escrow": "genesis_escrow_contract",
         "genesis_model_registry": "genesis_model_registry_api",

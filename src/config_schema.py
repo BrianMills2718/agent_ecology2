@@ -262,7 +262,7 @@ class GenesisArtifactsEnabled(StrictModel):
     rights_registry: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
     event_log: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
     escrow: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
-    store: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
+    # genesis_store removed - use query_kernel action instead (Plan #190)
     debt_contract: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
     voting: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)  # Plan #183
     model_registry: ArtifactEnabledConfig = Field(default_factory=ArtifactEnabledConfig)
@@ -645,80 +645,8 @@ class VotingConfig(StrictModel):
     methods: VotingMethodsConfig = Field(default_factory=VotingMethodsConfig)
 
 
-class StoreMethodsConfig(StrictModel):
-    """Genesis store method configurations."""
-
-    list: MethodConfig = Field(
-        default_factory=lambda: MethodConfig(
-            cost=0,
-            description="List artifacts with optional filter. Args: [filter?] - filter is dict with type/owner/has_standing/can_execute/limit/offset"
-        )
-    )
-    get: MethodConfig = Field(
-        default_factory=lambda: MethodConfig(
-            cost=0,
-            description="Get single artifact details. Args: [artifact_id]"
-        )
-    )
-    search: MethodConfig = Field(
-        default_factory=lambda: MethodConfig(
-            cost=0,
-            description="Search artifacts by content match. Args: [query, field?, limit?]"
-        )
-    )
-    list_by_type: MethodConfig = Field(
-        default_factory=lambda: MethodConfig(
-            cost=0,
-            description="List artifacts of specific type. Args: [type] - type is 'agent'|'memory'|'data'|'executable'|'genesis'"
-        )
-    )
-    list_by_owner: MethodConfig = Field(
-        default_factory=lambda: MethodConfig(
-            cost=0,
-            description="List artifacts by owner. Args: [created_by]"
-        )
-    )
-    list_agents: MethodConfig = Field(
-        default_factory=lambda: MethodConfig(
-            cost=0,
-            description="List all agent artifacts (has_standing=True AND can_execute=True). Args: []"
-        )
-    )
-    list_principals: MethodConfig = Field(
-        default_factory=lambda: MethodConfig(
-            cost=0,
-            description="List all principals (artifacts with has_standing=True). Args: []"
-        )
-    )
-    count: MethodConfig = Field(
-        default_factory=lambda: MethodConfig(
-            cost=0,
-            description="Count artifacts matching filter. Args: [filter?]"
-        )
-    )
-    # Plan #114: Interface discovery
-    get_interface: MethodConfig = Field(
-        default_factory=lambda: MethodConfig(
-            cost=0,
-            description="Get interface schema for an artifact. Args: [artifact_id]"
-        )
-    )
-
-
-class StoreConfig(StrictModel):
-    """Genesis store configuration for artifact discovery."""
-
-    id: str = Field(default="genesis_store", description="Artifact ID")
-    description: str = Field(
-        default="Artifact registry and discovery. Search, list, and browse artifacts.",
-        description="Artifact description"
-    )
-    methods: StoreMethodsConfig = Field(default_factory=StoreMethodsConfig)
-    # Plan #182: Metadata fields to index for O(1) lookups
-    indexed_metadata_fields: list[str] = Field(
-        default_factory=list,
-        description="List of metadata field names to index for O(1) lookups (e.g., recipient, channel)"
-    )
+# genesis_store removed - use query_kernel action instead (Plan #190)
+# StoreMethodsConfig and StoreConfig classes removed
 
 
 # =============================================================================
@@ -854,7 +782,6 @@ class GenesisConfig(StrictModel):
     rights_registry: RightsRegistryConfig = Field(default_factory=RightsRegistryConfig)
     event_log: EventLogConfig = Field(default_factory=EventLogConfig)
     escrow: EscrowConfig = Field(default_factory=EscrowConfig)
-    store: StoreConfig = Field(default_factory=StoreConfig)
     debt_contract: DebtContractConfig = Field(default_factory=DebtContractConfig)
     voting: VotingConfig = Field(default_factory=VotingConfig)  # Plan #183
     model_registry: ModelRegistryConfig = Field(default_factory=ModelRegistryConfig)
@@ -1856,8 +1783,6 @@ __all__ = [
     "EscrowMethodsConfig",
     "DebtContractConfig",
     "DebtContractMethodsConfig",
-    "StoreConfig",
-    "StoreMethodsConfig",
     # MCP configs
     "McpConfig",
     "McpServerConfig",

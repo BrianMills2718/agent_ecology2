@@ -100,8 +100,7 @@ genesis:
       enabled: true
     escrow:
       enabled: true
-    store:
-      enabled: true
+    # store removed - use query_kernel action instead (Plan #190)
     debt_contract:
       enabled: true
     voting:
@@ -254,43 +253,8 @@ genesis:
         cost: 0                 # 0 compute - listing is free
         description: "List proposals with optional filter. Args: [{status?, creator?, limit?}]"
 
-  # Genesis Store - artifact discovery and registry
-  store:
-    id: "genesis_store"
-    description: "Artifact registry and discovery. Search, list, and browse artifacts."
-    methods:
-      list:
-        cost: 0                 # 0 compute - discovery is free to encourage market formation
-        description: "List artifacts with optional filter. Args: [filter?] - filter is dict with type/owner/has_standing/can_execute/limit/offset"
-      get:
-        cost: 0                 # 0 compute
-        description: "Get single artifact details. Args: [artifact_id]"
-      search:
-        cost: 0                 # 0 compute
-        description: "Search artifacts by content match. Args: [query, field?, limit?]"
-      list_by_type:
-        cost: 0                 # 0 compute
-        description: "List artifacts of specific type. Args: [type] - type is 'agent'|'memory'|'data'|'executable'|'genesis'"
-      list_by_owner:
-        cost: 0                 # 0 compute
-        description: "List artifacts by owner. Args: [owner_id]"
-      list_agents:
-        cost: 0                 # 0 compute
-        description: "List all agent artifacts (has_standing=True AND can_execute=True). Args: []"
-      list_principals:
-        cost: 0                 # 0 compute
-        description: "List all principals (artifacts with has_standing=True). Args: []"
-      count:
-        cost: 0                 # 0 compute
-        description: "Count artifacts matching filter. Args: [filter?]"
-      get_interface:
-        cost: 0                 # 0 compute - interface discovery is free
-        description: "Get interface schema for an artifact. Args: [artifact_id]"
-    # Plan #182: Metadata fields to index for O(1) lookups
-    indexed_metadata_fields:
-      - recipient           # For messaging patterns
-      - channel             # For pub-sub simulation
-      - status              # For workflow queries
+  # Note: genesis_store removed in Plan #190. Use query_kernel action instead.
+  # query_kernel is free and provides direct kernel state access for discovery.
 
   # MCP servers for external tool access
   mcp:

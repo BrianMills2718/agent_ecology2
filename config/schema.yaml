@@ -76,8 +76,7 @@ genesis:
       enabled: <boolean>        # Enable genesis_event_log
     escrow:
       enabled: <boolean>        # Enable genesis_escrow
-    store:
-      enabled: <boolean>        # Enable genesis_store
+    # Note: genesis_store removed in Plan #190 - use query_kernel action instead
     debt_contract:
       enabled: <boolean>        # Enable genesis_debt_contract
     model_registry:
