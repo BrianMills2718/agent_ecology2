@@ -1,6 +1,6 @@
 # Plan #169: Kernel Event Triggers
 
-**Status:** Planned
+**Status:** Complete
 **Priority:** Medium
 **Complexity:** Medium
 
@@ -128,12 +128,13 @@ def _validate_trigger(self, trigger_artifact: Artifact) -> bool:
 
 ## Testing
 
-- [ ] Create trigger artifact
-- [ ] Event matching works
-- [ ] Callback invoked after matching event
-- [ ] Spam prevention (can't trigger others' artifacts)
-- [ ] Disabled triggers don't fire
-- [ ] Trigger loops don't crash (queued invocation)
+- [x] Create trigger artifact
+- [x] Event matching works (13 filter tests)
+- [x] Trigger registration and caching
+- [x] Spam prevention (can't trigger others' artifacts)
+- [x] Disabled triggers don't fire
+- [x] Queued invocations (loop prevention)
+- [x] 19 new tests, all passing
 
 ## Files to Modify
 
