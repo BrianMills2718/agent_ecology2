@@ -123,11 +123,11 @@ class GenesisLedger(GenesisArtifact):
                 required=["agent_id"],
             )
         agent_id: str = args[0]
-        llm_tokens = self.ledger.get_llm_tokens(agent_id)
+        llm_budget = self.ledger.get_llm_budget(agent_id)
         return {
             "success": True,
             "agent_id": agent_id,
-            "llm_tokens": llm_tokens,
+            "llm_budget": llm_budget,
             "scrip": self.ledger.get_scrip(agent_id),
             "resources": self.ledger.get_all_resources(agent_id)
         }
