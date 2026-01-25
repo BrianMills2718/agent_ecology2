@@ -824,6 +824,149 @@ class Agent:
         """Check if a prompt section is enabled (Plan #192)."""
         return self._context_sections.get(section, True)
 
+    # =========================================================================
+    # CONTEXT BUDGET MANAGEMENT (Plan #195)
+    # =========================================================================
+
+    def _count_tokens(self, text: str) -> int:
+        """Count tokens using model-specific tokenizer via litellm.
+
+        Plan #195: Uses litellm.token_counter for accurate model-specific counting.
+        Falls back to rough estimation if litellm fails.
+        """
+        if not text:
+            return 0
+
+        try:
+            from litellm import token_counter
+            messages = [{"role": "user", "content": text}]
+            return int(token_counter(model=self._llm_model, messages=messages))
+        except Exception:
+            # Fallback: rough estimation (4 chars per token)
+            return len(text) // 4
+
+    def _get_section_budget(self, section: str) -> tuple[int, str, str]:
+        """Get budget config for a section.
+
+        Returns:
+            Tuple of (max_tokens, priority, truncation_strategy)
+        """
+        sections_config = config_get("context_budget.sections") or {}
+        section_config = sections_config.get(section, {})
+
+        return (
+            section_config.get("max_tokens", 500),
+            section_config.get("priority", "medium"),
+            section_config.get("truncation_strategy", "end"),
+        )
+
+    def _truncate_to_budget(
+        self, section: str, content: str, max_tokens: int, strategy: str = "end"
+    ) -> tuple[str, int]:
+        """Truncate content to fit within token budget.
+
+        Args:
+            section: Section name (for logging)
+            content: Content to truncate
+            max_tokens: Maximum tokens allowed
+            strategy: Truncation strategy - "end" (keep start), "start" (keep end), "middle"
+
+        Returns:
+            Tuple of (truncated_content, actual_tokens)
+        """
+        if not content:
+            return "", 0
+
+        actual_tokens = self._count_tokens(content)
+        if actual_tokens <= max_tokens:
+            return content, actual_tokens
+
+        # Need to truncate
+        lines = content.split("\n")
+
+        if strategy == "start":
+            # Keep end (recent), remove start (old) - good for history
+            while len(lines) > 1 and self._count_tokens("\n".join(lines)) > max_tokens:
+                lines.pop(0)
+            truncated = "\n".join(lines)
+            if actual_tokens > max_tokens:
+                truncated = "[...older entries truncated]\n" + truncated
+        elif strategy == "middle":
+            # Keep both ends, remove middle
+            target_lines = len(lines)
+            while target_lines > 2 and self._count_tokens("\n".join(lines[:target_lines//2] + lines[-target_lines//2:])) > max_tokens:
+                target_lines -= 2
+            if target_lines < len(lines):
+                half = target_lines // 2
+                truncated = "\n".join(lines[:half]) + "\n[...truncated...]\n" + "\n".join(lines[-half:])
+            else:
+                truncated = content
+        else:
+            # Default: keep start (beginning), remove end - good for prompts
+            while len(lines) > 1 and self._count_tokens("\n".join(lines)) > max_tokens:
+                lines.pop()
+            truncated = "\n".join(lines)
+            if actual_tokens > max_tokens:
+                truncated = truncated + "\n[...truncated]"
+
+        return truncated, self._count_tokens(truncated)
+
+    def _apply_context_budget(
+        self, sections: dict[str, str]
+    ) -> tuple[dict[str, str], dict[str, tuple[int, int]]]:
+        """Apply context budget to all sections.
+
+        Args:
+            sections: Dict of section_name -> content
+
+        Returns:
+            Tuple of (truncated_sections, usage_stats)
+            where usage_stats is section_name -> (used_tokens, max_tokens)
+        """
+        budget_enabled = config_get("context_budget.enabled") or False
+        if not budget_enabled:
+            # Return original sections with basic stats
+            stats = {name: (self._count_tokens(content), 0) for name, content in sections.items()}
+            return sections, stats
+
+        truncated = {}
+        stats = {}
+
+        for section_name, content in sections.items():
+            max_tokens, priority, strategy = self._get_section_budget(section_name)
+            truncated_content, used_tokens = self._truncate_to_budget(
+                section_name, content, max_tokens, strategy
+            )
+            truncated[section_name] = truncated_content
+            stats[section_name] = (used_tokens, max_tokens)
+
+        return truncated, stats
+
+    def _format_budget_usage(self, stats: dict[str, tuple[int, int]]) -> str:
+        """Format budget usage for prompt injection.
+
+        Args:
+            stats: Dict of section_name -> (used_tokens, max_tokens)
+
+        Returns:
+            Formatted budget usage string
+        """
+        show_usage = config_get("context_budget.show_budget_usage") or False
+        if not show_usage:
+            return ""
+
+        total_used = sum(used for used, _ in stats.values())
+        total_budget = config_get("context_budget.total_tokens") or 4000
+
+        lines = [f"## Context Budget ({total_used}/{total_budget} tokens)"]
+        for section_name, (used, max_tokens) in sorted(stats.items()):
+            if max_tokens > 0:
+                pct = (used / max_tokens * 100) if max_tokens > 0 else 0
+                warning = " ⚠️" if pct > 90 else ""
+                lines.append(f"- {section_name}: {used}/{max_tokens}{warning}")
+
+        return "\n".join(lines) + "\n"
+
     @property
     def context_section_priorities(self) -> dict[str, int]:
         """Get context section priorities (Plan #193)."""

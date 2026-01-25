@@ -456,6 +456,50 @@ learning:
     load_working_memory: <boolean>  # Load working_memory from prior run
 
 # -----------------------------------------------------------------------------
+# CONTEXT BUDGET (Plan #195)
+# Token budget management for agent prompts
+# -----------------------------------------------------------------------------
+context_budget:
+  enabled: <boolean>                # Enable context budget management (default: false)
+  total_tokens: <number>            # Total tokens available for prompt (default: 4000)
+  output_reserve: <number>          # Tokens reserved for output (default: 1000)
+  show_budget_usage: <boolean>      # Show budget usage in prompt (default: false)
+  overflow_policy: <string>         # Policy: "truncate" or "drop" (default: truncate)
+  sections:                         # Per-section budget allocations
+    system_prompt:
+      max_tokens: <number>          # Max tokens for system prompt (default: 800)
+      priority: <string>            # Priority: required|high|medium|low
+      truncation_strategy: <string> # Where to truncate: end|start|middle
+    working_memory:
+      max_tokens: <number>          # Max tokens (default: 600)
+      priority: <string>
+      truncation_strategy: <string>
+    rag_memories:
+      max_tokens: <number>          # Max tokens (default: 400)
+      priority: <string>
+      truncation_strategy: <string>
+    action_history:
+      max_tokens: <number>          # Max tokens (default: 300)
+      priority: <string>
+      truncation_strategy: <string>
+    failure_history:
+      max_tokens: <number>          # Max tokens (default: 200)
+      priority: <string>
+      truncation_strategy: <string>
+    recent_events:
+      max_tokens: <number>          # Max tokens (default: 300)
+      priority: <string>
+      truncation_strategy: <string>
+    subscribed_artifacts:
+      max_tokens: <number>          # Max tokens (default: 400)
+      priority: <string>
+      truncation_strategy: <string>
+    world_state:
+      max_tokens: <number>          # Max tokens (default: 500)
+      priority: <string>
+      truncation_strategy: <string>
+
+# -----------------------------------------------------------------------------
 # MEMORY (Plan #196)
 # Memory tiering configuration for RAG memories
 # -----------------------------------------------------------------------------
