@@ -228,21 +228,19 @@ After implementation, comprehensive doc review:
 2. Checkpoint format: include right artifacts
 3. Backward compat: grace period with warnings
 
-## Files to Modify
+## Files Affected
 
-| File | Change |
-|------|--------|
-| `src/world/resources.py` | Remove LLM_TOKENS, add right types |
-| `src/world/ledger.py` | Remove llm_tokens tracking |
-| `src/world/rate_tracker.py` | Per-model tracking |
-| `src/world/usage_tracker.py` | NEW: usage metrics |
-| `src/world/rights.py` | NEW: rights management |
-| `src/world/genesis/rights_registry.py` | Update for artifact-based rights |
-| `src/world/kernel_interface.py` | Rights checking |
-| `src/world/world.py` | Create genesis rights |
-| `config/config.yaml` | Rights configuration |
-| `docs/GLOSSARY.md` | Terminology update |
-| `docs/architecture/current/resources.md` | Full rewrite |
+- src/world/resources.py (modify) - Remove LLM_TOKENS, add right types
+- src/world/ledger.py (modify) - Remove llm_tokens tracking
+- src/world/rate_tracker.py (modify) - Per-model tracking
+- src/world/usage_tracker.py (create) - NEW: usage metrics
+- src/world/rights.py (create) - NEW: rights management
+- src/world/genesis/rights_registry.py (modify) - Update for artifact-based rights
+- src/world/kernel_interface.py (modify) - Rights checking
+- src/world/world.py (modify) - Create genesis rights
+- config/config.yaml (modify) - Rights configuration
+- docs/GLOSSARY.md (modify) - Terminology update
+- docs/architecture/current/resources.md (modify) - Full rewrite
 
 ## Dependencies
 

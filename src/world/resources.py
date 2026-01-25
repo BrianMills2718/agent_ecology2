@@ -7,14 +7,34 @@ and enable IDE navigation.
 Resource Categories:
 - DEPLETABLE: Once spent, gone forever (e.g., llm_budget in dollars)
 - ALLOCATABLE: Quota that can be used and reclaimed (e.g., disk bytes)
-- RENEWABLE: Rate-limited, replenishes over time (e.g., llm_tokens per minute)
+- RENEWABLE: Rate-limited, replenishes over time (e.g., cpu_seconds per minute)
+
+Terminology (Plan #166 - Resource Rights Model):
+- RESOURCE_LLM_BUDGET (a.k.a. dollar_budget): Primary LLM constraint in dollars
+- RESOURCE_LLM_TOKENS: DEPRECATED - use RESOURCE_LLM_BUDGET instead
+  The token-based model conflated usage tracking with rights/quotas.
+  Dollar budget is the single constraint; per-model tracking is handled separately.
+
+Future (Plan #166 Phase 3+): Resources will become tradeable artifacts.
 """
+
+import warnings
 
 # === Depletable Resources (stock, finite) ===
 # Once spent, these are gone - scarcity drives behavior
 
 RESOURCE_LLM_BUDGET = "llm_budget"
-"""LLM budget in dollars. Primary constraint for LLM usage (Plan #153)."""
+"""LLM budget in dollars. Primary constraint for LLM usage (Plan #153).
+
+This is THE constraint on LLM usage. Agents spend their dollar budget on LLM
+calls. When budget is exhausted, no more LLM calls are allowed.
+
+Alias: RESOURCE_DOLLAR_BUDGET (Plan #166 terminology)
+"""
+
+# Plan #166: New canonical name for dollar-based budget
+RESOURCE_DOLLAR_BUDGET = RESOURCE_LLM_BUDGET
+"""Alias for RESOURCE_LLM_BUDGET. Preferred name per Plan #166."""
 
 # === Allocatable Resources (quota, reclaimable) ===
 # Agents have a quota; usage can be reclaimed (e.g., deleting artifacts)
@@ -26,7 +46,21 @@ RESOURCE_DISK = "disk"
 # Replenishes over time via token bucket / rolling windows
 
 RESOURCE_LLM_TOKENS = "llm_tokens"
-"""LLM tokens (rate-limited). DEPRECATED: Use llm_budget for cost constraint."""
+"""DEPRECATED (Plan #166): LLM tokens as a resource concept.
+
+This conflated multiple concerns:
+- Usage tracking (how many tokens were consumed)
+- Rate limiting (tokens per window)
+- Budget constraint (total tokens allowed)
+
+Migration path:
+- For cost constraint: Use RESOURCE_LLM_BUDGET (dollar-based)
+- For rate limiting: Use per-model rate limits in config
+- For usage tracking: Use UsageTracker (Plan #166 Phase 2)
+
+Will be removed in a future version. Code using this should migrate
+to dollar-based budget constraint (RESOURCE_LLM_BUDGET).
+"""
 
 RESOURCE_CPU = "cpu_seconds"
 """CPU time in seconds per period."""
@@ -67,6 +101,7 @@ RENEWABLE_RESOURCES = frozenset({
 __all__ = [
     # Primary resources
     "RESOURCE_LLM_BUDGET",
+    "RESOURCE_DOLLAR_BUDGET",  # Plan #166 alias
     "RESOURCE_DISK",
     "RESOURCE_LLM_TOKENS",
     "RESOURCE_CPU",
