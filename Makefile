@@ -21,7 +21,7 @@ kill:  ## Kill all running simulations
 	@pkill -f "python run.py" 2>/dev/null && echo "Killed simulation processes" || echo "No simulations running"
 
 # Testing
-test:  ## Run pytest
+test: ensure-hooks  ## Run pytest
 	pytest tests/ -v --tb=short
 
 test-quick:  ## Run pytest (quiet, no traceback)
@@ -32,7 +32,7 @@ mypy:  ## Run mypy type check
 	python -m mypy --strict --ignore-missing-imports --exclude '__pycache__' --no-namespace-packages src/config.py src/world/*.py src/agents/*.py run.py
 
 # Validation
-check:  ## Run all CI checks locally
+check: ensure-hooks  ## Run all CI checks locally
 	./check
 
 check-quick:  ## Run all CI checks (quick mode)
@@ -162,11 +162,22 @@ clean:  ## Remove generated files
 clean-claims:  ## Remove old completed claims
 	python scripts/check_claims.py --cleanup
 
-# Install git hooks for worktree enforcement
-install-hooks:
-	@cp scripts/git-hooks/pre-commit .git/hooks/pre-commit
-	@chmod +x .git/hooks/pre-commit
-	@echo "Git hooks installed"
+# Install git hooks (symlinks to hooks/ directory)
+install-hooks:  ## Install git hooks (run once, auto-called by common commands)
+	@mkdir -p .git/hooks
+	@for hook in pre-commit commit-msg pre-push post-commit; do \
+		if [ -f hooks/$$hook ]; then \
+			ln -sf ../../hooks/$$hook .git/hooks/$$hook 2>/dev/null || true; \
+		fi; \
+	done
+	@echo "Git hooks installed (symlinks to hooks/)"
+
+# Auto-ensure hooks are installed
+.PHONY: ensure-hooks
+ensure-hooks:
+	@if [ ! -L .git/hooks/pre-commit ]; then \
+		$(MAKE) install-hooks --no-print-directory; \
+	fi
 
 clean-branches:  ## List stale remote branches (PRs already merged)
 	python scripts/cleanup_branches.py

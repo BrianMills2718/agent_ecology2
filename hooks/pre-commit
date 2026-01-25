@@ -69,7 +69,33 @@ if [ -n "$STAGED_PLANS" ]; then
     fi
 fi
 
-# 5. Branch divergence check (prevents merge conflicts)
+# 5. Plan index completeness (ALL plan files must be in index)
+echo "Checking plan index completeness..."
+PLAN_FILES=$(ls docs/plans/[0-9]*_*.md 2>/dev/null | xargs -I{} basename {} .md | grep -oE '^[0-9]+' | sort -n || true)
+INDEX_FILE="docs/plans/CLAUDE.md"
+MISSING=""
+for plan_num in $PLAN_FILES; do
+    # Check if plan number appears in index as a link like [text](NN_name.md)
+    if ! grep -qE "\[.*\]\(${plan_num}_[^)]+\.md\)" "$INDEX_FILE"; then
+        MISSING="$MISSING $plan_num"
+    fi
+done
+
+if [ -n "$MISSING" ]; then
+    echo ""
+    echo "ERROR: Plan files not in index (docs/plans/CLAUDE.md):"
+    for num in $MISSING; do
+        file=$(ls docs/plans/${num}_*.md 2>/dev/null | head -1)
+        echo "  - $file"
+    done
+    echo ""
+    echo "Add these to the index table, or run:"
+    echo "  python scripts/sync_plan_status.py --sync"
+    echo ""
+    exit 1
+fi
+
+# 6. Branch divergence check (prevents merge conflicts)
 echo "Checking branch freshness..."
 git fetch origin 2>/dev/null || true  # Silent fetch, don't fail if offline
 

@@ -53,7 +53,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/check-cwd-valid.sh",
+            "command": "bash -c 'if ! pwd >/dev/null 2>&1; then echo \"BLOCKED: Shell CWD is invalid (worktree deleted?). Start a new CC session or run: cd /home/brian/brian_projects/agent_ecology2\" >&2; exit 2; fi'",
             "timeout": 3000
           },
           {
