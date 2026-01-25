@@ -19,6 +19,7 @@ Canonical terminology for Agent Ecology.
 | `cognitive architecture` | `agent framework` | Internal structure, not library |
 | `autonomous principal` | `agent` | Architectural unit; LLM is implementation detail |
 | `genesis agents` | `the agents` | Specific implementation, not the only possible one |
+| `created_by` | `owner` | Creator is immutable fact; "owner" is informal (see ADR-0016) |
 
 ---
 
@@ -64,6 +65,35 @@ All artifacts have these metadata fields (see `src/world/artifacts.py`):
 - Agent ⊂ Principal ⊂ Artifact
 - Contract ⊂ Artifact (contracts don't need standing)
 - All artifacts have an `access_contract_id` pointing to their governing contract
+
+### Creator vs Owner (ADR-0016)
+
+A common source of confusion. These are distinct concepts:
+
+| Term | Type | Mutable? | Definition |
+|------|------|----------|------------|
+| `created_by` | Kernel field | **No** | Immutable historical fact: which principal created this artifact |
+| "Owner" | Informal convention | N/A | Shorthand for "has complete rights bundle" - **not a kernel concept** |
+
+**Why "owner" is ill-defined:**
+
+1. **Rights come from contracts** - The kernel doesn't grant rights based on ownership; contracts decide all permissions
+2. **Contracts can be nested** - A contract governing an artifact may itself be governed by another contract that restricts what rights can be granted
+3. **Arbitrary executable code** - Contracts contain arbitrary logic, so determining "complete rights" requires tracing the entire contract chain
+4. **Undecidable in general** - For contracts with complex logic, "does entity X have full rights?" may not be answerable algorithmically
+
+**Correct mental model:**
+
+- `created_by` = Ask the kernel (immutable fact)
+- "Who has rights?" = Ask the contract (context-dependent, potentially undecidable)
+- "Who is the owner?" = Informal shorthand; useful for simple cases but not formally computable
+
+**Do NOT:**
+- Treat `created_by` as mutable (violates ADR-0016)
+- Assume creator has special kernel-level privileges (contracts decide)
+- Expect a single "owner" field to exist (rights are granular, per Ostrom model)
+
+See ADR-0016 for the architectural decision.
 
 ---
 
@@ -438,3 +468,4 @@ See [docs/meta/adr/](meta/adr/) for meta-process ADRs.
 | agent framework | cognitive architecture | Framework = library; architecture = internal structure |
 | agent (when non-LLM) | autonomous principal | "Agent" implies LLM; principal is substrate-neutral |
 | the agents | genesis agents | Clarifies these are one implementation, not the only one |
+| owner (as kernel field) | `created_by` + contract rights | "Owner" is informal; `created_by` is immutable fact, rights determined by contracts (ADR-0016) |
