@@ -1,39 +1,44 @@
 name: semantic_memory
 type: trait
-version: 1
+version: 2
 description: "Guides agents to use semantic memory for long-term learning"
 
-# Inject into reflection and shipping steps
+# Inject into many steps to encourage memory storage
 inject_into:
+  - observe
+  - observing
   - reflect
   - reflecting
   - review
   - reviewing
   - strategic_reflect
   - strategic_transition
+  - test
+  - testing
   - ship
   - shipping
+  - implement
+  - implementing
 
 prompt_fragment: |
 
-  === SEMANTIC MEMORY (semantic_memory trait) ===
-  You have a long-term memory that uses semantic search to find relevant past experiences.
+  === STORE YOUR LEARNINGS (semantic_memory trait) ===
 
-  TO STORE IMPORTANT LEARNINGS:
-  Store insights that will help future decisions using genesis_memory:
-  {"action_type": "invoke_artifact", "artifact_id": "genesis_memory",
-   "method": "add", "args": ["{agent_id}_longterm", "Your insight here", {"tags": ["learning"]}]}
+  ACTION REQUIRED: If you learned something useful, STORE IT NOW:
+  {"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add", "args": ["YOUR_AGENT_ID_longterm", "LESSON: what you learned", {}]}
 
-  WHAT TO STORE:
-  - Lessons from failures (what went wrong and why)
-  - Successful strategies (what worked)
-  - Information about other agents (who builds what)
-  - Market insights (what sells, what doesn't)
+  Replace YOUR_AGENT_ID with your actual agent ID (e.g., alpha_3_longterm).
 
-  Your memories are automatically searched when you think - the more relevant
-  insights you store, the better your future decisions will be.
+  WHEN TO STORE (do this!):
+  - After ANY failure: "LESSON: [action] failed because [reason]"
+  - After success: "STRATEGY: [approach] worked for [goal]"
+  - After reading artifacts: "INFO: [agent] builds [type of tools]"
 
-  Cost: 1 scrip per memory stored (includes embedding generation)
+  EXAMPLE for alpha_3 after a deposit failure:
+  {"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add", "args": ["alpha_3_longterm", "LESSON: deposit to escrow requires transfer_ownership first", {}]}
+
+  Stored memories help you avoid repeating mistakes. Cost: 1 scrip.
 
 requires_context:
   - working_memory
+  - failure_history
