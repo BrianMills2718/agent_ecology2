@@ -385,6 +385,10 @@ llm:
   # Models that agents are allowed to use (for future self-modification)
   allowed_models:
     - "gemini/gemini-2.0-flash"
+  # Extended thinking for Claude models (Plan #187)
+  # Values: "none" (disabled), "low", "medium", "high"
+  # WARNING: Higher values cost 5-10x more
+  reasoning_effort: null  # Disabled by default
 
 # -----------------------------------------------------------------------------
 # LOGGING

@@ -262,6 +262,7 @@ How agents structure their thinking and responses to the LLM.
 | **situation_assessment** | Analysis of current state (OODA mode) | Can be verbose |
 | **action_rationale** | Concise explanation for chosen action (OODA mode) | 1-2 sentences |
 | **failure_history** | Recent failed actions shown to agent | Enables learning from mistakes |
+| **reasoning_effort** | Claude extended thinking level (Plan #187) | `"none"`, `"low"`, `"medium"`, `"high"`. Only works with Anthropic Claude models. Higher values improve reasoning but cost 5-10x more. |
 
 **Simple mode (default):** `thought_process` + `action`
 **OODA mode:** `situation_assessment` + `action_rationale` + `action`

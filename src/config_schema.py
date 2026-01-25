@@ -1068,6 +1068,12 @@ class LLMConfig(StrictModel):
         default_factory=lambda: ["gemini/gemini-3-flash-preview"],
         description="Models agents are permitted to use (for future self-modification)"
     )
+    reasoning_effort: Literal["none", "low", "medium", "high"] | None = Field(
+        default=None,
+        description="Claude extended thinking level. Only works with Anthropic Claude models. "
+                    "Values: 'none' (disabled), 'low', 'medium', 'high'. "
+                    "Higher values improve reasoning but increase cost significantly (5-10x)."
+    )
 
 
 # =============================================================================

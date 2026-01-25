@@ -1,6 +1,6 @@
 # Plan #187: Extended Thinking for Genesis Agents
 
-**Status:** Planned
+**Status:** 🚧 In Progress
 **Priority:** Medium
 **Complexity:** Medium
 **Blocks:** Improved agent reasoning quality
@@ -67,6 +67,9 @@ response = await self.llm.generate_async(
 - src/config_schema.py (modify) - Add reasoning_effort to LLMConfig
 - config/schema.yaml (modify) - Document reasoning_effort option
 - config/config.yaml (modify) - Add default value
+- tests/unit/test_reasoning_effort.py (create) - Unit tests for reasoning_effort
+- docs/GLOSSARY.md (modify) - Add reasoning_effort term
+- docs/architecture/current/configuration.md (modify) - Document LLM config option
 
 ## Testing
 

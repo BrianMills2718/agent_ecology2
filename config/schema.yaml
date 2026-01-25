@@ -358,6 +358,9 @@ llm:
   rate_limit_delay: <number>    # Seconds between calls
   allowed_models:               # Models agents are permitted to use
     - <string>                  # Future: agents can switch within this list
+  reasoning_effort: <string>    # Claude extended thinking: "none"|"low"|"medium"|"high"
+                                # Only works with Anthropic Claude models.
+                                # Higher values improve reasoning but cost 5-10x more.
 
 # -----------------------------------------------------------------------------
 # LOGGING

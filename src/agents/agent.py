@@ -1213,9 +1213,12 @@ Your response should include:
             # Plan #137: Always use FlatActionResponse for all providers
             # This avoids Gemini's anyOf/oneOf schema limitations while working
             # with all providers (OpenAI, Anthropic, Gemini, etc.)
+            # Plan #187: Pass reasoning_effort for Claude extended thinking
+            reasoning_effort: str | None = config_get("llm.reasoning_effort")
             flat_response: FlatActionResponse = self.llm.generate(
                 prompt,
-                response_model=FlatActionResponse
+                response_model=FlatActionResponse,
+                reasoning_effort=reasoning_effort,
             )
             response: ActionResponse = flat_response.to_action_response()
             usage: TokenUsage = self.llm.last_usage.copy()
@@ -1261,9 +1264,12 @@ Your response should include:
             # Plan #137: Always use FlatActionResponse for all providers
             # This avoids Gemini's anyOf/oneOf schema limitations while working
             # with all providers (OpenAI, Anthropic, Gemini, etc.)
+            # Plan #187: Pass reasoning_effort for Claude extended thinking
+            reasoning_effort: str | None = config_get("llm.reasoning_effort")
             flat_response: FlatActionResponse = await self.llm.generate_async(
                 prompt,
-                response_model=FlatActionResponse
+                response_model=FlatActionResponse,
+                reasoning_effort=reasoning_effort,
             )
             response: ActionResponse = flat_response.to_action_response()
             usage: TokenUsage = self.llm.last_usage.copy()
