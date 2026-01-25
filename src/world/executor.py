@@ -366,57 +366,51 @@ def validate_args_against_interface(
         # Validation passed
         return ValidationResult(valid=True, proceed=True, skipped=False, error_message="")
     except jsonschema.ValidationError as e:
-        # Validation failed - include schema info for debugging
-        # Plan #160: Show example of correct format so agents can fix their calls
+        # Validation failed - include full schema info so agents can fix their calls
+        # Plan #160: Show complete method schema for self-correction
         base_error = str(e.message)
-        required = input_schema.get("required", [])
+        required = set(input_schema.get("required", []))
         properties_schema = input_schema.get("properties", {})
 
-        # Build an example call showing correct format
-        example_args: dict[str, str] = {}
-        for prop_name, prop_schema in properties_schema.items():
+        # Build concise schema summary: {prop: type*, prop2: type}
+        # Required fields marked with *
+        schema_parts: list[str] = []
+        example_parts: list[str] = []
+        for prop_name, prop_schema in list(properties_schema.items())[:6]:
             prop_type = prop_schema.get("type", "any")
-            if prop_type == "string":
-                example_args[prop_name] = f"<{prop_name}>"
-            elif prop_type == "number":
-                example_args[prop_name] = "123"
-            elif prop_type == "integer":
-                example_args[prop_name] = "42"
-            elif prop_type == "boolean":
-                example_args[prop_name] = "true"
-            elif prop_type == "array":
-                example_args[prop_name] = "[]"
-            else:
-                example_args[prop_name] = f"<{prop_name}>"
+            # Short type names
+            type_abbrev = {"string": "str", "integer": "int", "number": "num",
+                          "boolean": "bool", "array": "list", "object": "dict"}.get(prop_type, prop_type)
+            req_marker = "*" if prop_name in required else ""
+            schema_parts.append(f"{prop_name}: {type_abbrev}{req_marker}")
 
-        # Format example as JSON-like dict with concrete values for clarity
-        # Use actual example values to make the format unambiguous
-        concrete_examples: dict[str, str] = {}
-        for prop_name, prop_schema in list(properties_schema.items())[:4]:
-            prop_type = prop_schema.get("type", "any")
+            # Build example value
             if prop_type == "string":
-                concrete_examples[prop_name] = f'"{prop_name}_value"'
-            elif prop_type == "number":
-                concrete_examples[prop_name] = "123"
+                example_parts.append(f'"{prop_name}": "value"')
             elif prop_type == "integer":
-                concrete_examples[prop_name] = "42"
+                example_parts.append(f'"{prop_name}": 1')
+            elif prop_type == "number":
+                example_parts.append(f'"{prop_name}": 1.0')
             elif prop_type == "boolean":
-                concrete_examples[prop_name] = "true"
+                example_parts.append(f'"{prop_name}": true')
             elif prop_type == "array":
-                concrete_examples[prop_name] = "[]"
+                example_parts.append(f'"{prop_name}": []')
             else:
-                concrete_examples[prop_name] = f'"{prop_name}_value"'
+                example_parts.append(f'"{prop_name}": {{}}')
 
-        example_str = ", ".join(f'"{k}": {v}' for k, v in concrete_examples.items())
-        if len(properties_schema) > 4:
+        schema_str = ", ".join(schema_parts)
+        if len(properties_schema) > 6:
+            schema_str += ", ..."
+
+        example_str = ", ".join(example_parts[:4])
+        if len(example_parts) > 4:
             example_str += ", ..."
 
-        # Be very explicit that this is a Python dict, not a JSON string
+        # Concise but complete error message
         error_msg = (
             f"{base_error}. "
-            f"Pass a dict (NOT a string): invoke_artifact('{method_name}', [{{{example_str}}}]). "
-            f"WRONG: ['{{\"{list(properties_schema.keys())[0] if properties_schema else 'key'}\": ...}}'] (string). "
-            f"RIGHT: [{{{example_str}}}] (dict)."
+            f"SCHEMA: {{{schema_str}}} (* = required). "
+            f"EXAMPLE: invoke_artifact('{method_name}', [{{{example_str}}}])"
         )
 
         if validation_mode == "warn":
