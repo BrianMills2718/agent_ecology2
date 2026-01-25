@@ -301,10 +301,17 @@ class GenesisMint(GenesisArtifact):
         try:
             amount: int = int(args[1])
         except (TypeError, ValueError):
+            # Try to suggest the correct integer value if it's a digit string
+            suggested = ""
+            if isinstance(args[1], str) and args[1].isdigit():
+                suggested = f"Fix: {{\"action_type\": \"invoke_artifact\", \"artifact_id\": \"genesis_mint\", " \
+                           f"\"method\": \"bid\", \"args\": [\"{artifact_id}\", {int(args[1])}]}}"
+            else:
+                suggested = f"Example: {{\"action_type\": \"invoke_artifact\", \"artifact_id\": \"genesis_mint\", " \
+                           f"\"method\": \"bid\", \"args\": [\"{artifact_id}\", 10]}}"
             return {
                 "success": False,
-                "error": f"bid amount must be an integer, got {type(args[1]).__name__}: {repr(args[1])}. "
-                         f"Use a number like 100, not a string like \"100\"."
+                "error": f"bid amount must be an integer, got {type(args[1]).__name__}: {repr(args[1])}. {suggested}"
             }
 
         # Plan #5: Accept bids anytime (no phase check)
@@ -315,7 +322,8 @@ class GenesisMint(GenesisArtifact):
             return {
                 "success": False,
                 "error": f"Bid must be at least {self._minimum_bid} scrip (you bid {amount}). "
-                         f"Example: genesis_mint.bid(['{artifact_id}', {self._minimum_bid}])"
+                         f"Fix: {{\"action_type\": \"invoke_artifact\", \"artifact_id\": \"genesis_mint\", "
+                         f"\"method\": \"bid\", \"args\": [\"{artifact_id}\", {self._minimum_bid}]}}"
             }
 
         # Check if bid update is allowed (policy)
