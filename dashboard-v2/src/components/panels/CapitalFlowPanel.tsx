@@ -1,5 +1,6 @@
 import { useCapitalFlow } from '../../api/queries'
 import { Panel } from '../shared/Panel'
+import { EntityLink } from '../shared/EntityLink'
 import { safeFixed } from '../../utils/format'
 
 const NODE_COLORS: Record<string, string> = {
@@ -59,20 +60,24 @@ export function CapitalFlowPanel() {
                       className="flex items-center gap-2 p-2 bg-[var(--bg-primary)] rounded text-sm"
                     >
                       <span
-                        className="w-2 h-2 rounded-full"
+                        className="w-2 h-2 rounded-full flex-shrink-0"
                         style={{ backgroundColor: NODE_COLORS[sourceNode?.node_type ?? 'agent'] }}
                       />
-                      <span className="font-mono text-xs truncate max-w-20">
-                        {sourceNode?.name ?? link.source}
-                      </span>
+                      <EntityLink
+                        id={link.source}
+                        type={sourceNode?.node_type === 'agent' ? 'agent' : 'artifact'}
+                        className="text-xs truncate max-w-20"
+                      />
                       <span className="text-[var(--text-secondary)]">→</span>
                       <span
-                        className="w-2 h-2 rounded-full"
+                        className="w-2 h-2 rounded-full flex-shrink-0"
                         style={{ backgroundColor: NODE_COLORS[targetNode?.node_type ?? 'agent'] }}
                       />
-                      <span className="font-mono text-xs truncate max-w-20">
-                        {targetNode?.name ?? link.target}
-                      </span>
+                      <EntityLink
+                        id={link.target}
+                        type={targetNode?.node_type === 'agent' ? 'agent' : 'artifact'}
+                        className="text-xs truncate max-w-20"
+                      />
                       <span className="ml-auto font-semibold">
                         {safeFixed(link.value, 0)}
                       </span>

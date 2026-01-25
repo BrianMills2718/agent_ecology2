@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { Network } from 'vis-network'
 import { DataSet } from 'vis-data'
 import { useTemporalNetwork } from '../../api/queries'
+import { useSelectionStore } from '../../stores/selection'
 import { Panel } from '../shared/Panel'
 import type { TemporalArtifactNode, TemporalArtifactEdge } from '../../types/api'
 
@@ -76,6 +77,22 @@ export function TemporalNetworkPanel({ fullHeight = false }: TemporalNetworkPane
   const playIntervalRef = useRef<number | null>(null)
 
   const { data, isLoading, error } = useTemporalNetwork()
+  const setSelectedAgent = useSelectionStore((s) => s.setSelectedAgent)
+  const setSelectedArtifact = useSelectionStore((s) => s.setSelectedArtifact)
+
+  // Handle node click - open entity details
+  const handleNodeClick = useCallback(
+    (nodeId: string) => {
+      const node = data?.nodes?.find((n) => n.id === nodeId)
+      if (!node) return
+      if (node.artifact_type === 'agent') {
+        setSelectedAgent(nodeId)
+      } else {
+        setSelectedArtifact(nodeId)
+      }
+    },
+    [data?.nodes, setSelectedAgent, setSelectedArtifact]
+  )
 
   // Parse time range from data
   const timeRange = useMemo(() => {
@@ -152,10 +169,17 @@ export function TemporalNetworkPanel({ fullHeight = false }: TemporalNetworkPane
       options
     )
 
+    // Add click handler for nodes
+    networkRef.current.on('click', (params) => {
+      if (params.nodes.length > 0) {
+        handleNodeClick(params.nodes[0] as string)
+      }
+    })
+
     return () => {
       networkRef.current?.destroy()
     }
-  }, [])
+  }, [handleNodeClick])
 
   // Update physics setting
   useEffect(() => {

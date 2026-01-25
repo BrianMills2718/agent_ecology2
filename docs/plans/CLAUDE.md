@@ -241,6 +241,8 @@ Master index of all gaps and their implementation plans.
 | 219 | [Plan 219: Symbol-Level Granularity](219_symbol_level_granularity.md) | Medium | 📋 Planned | - |
 | 220 | [Plan 220: Bootstrap for Existing Repos](220_bootstrap_existing_repos.md) | Medium | 📋 Planned | - |
 | 221 | [Dashboard Simulation Control](221_dashboard_simulation_control.md) | Medium | ✅ complete | - |
+| 222 | [Artifact-Aware Workflow Engine](222_artifact_aware_workflow.md) | High | 📋 Planned | Evolutionary cognitive architectures, agent self-modification |
+| 223 | [Plan 223: Dashboard Entity Cross-Linking](223_dashboard_entity_crosslinks.md) | Medium | ✅ Complete | Dashboard usability |
 ---
 
 ## TDD Workflow

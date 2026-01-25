@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Network } from 'vis-network'
 import { DataSet } from 'vis-data'
 import { useNetwork } from '../../api/queries'
+import { useSelectionStore } from '../../stores/selection'
 import { Panel } from '../shared/Panel'
 import type { NetworkNode, NetworkEdge } from '../../types/api'
 
@@ -72,6 +73,22 @@ export function NetworkPanel({ fullHeight = false }: NetworkPanelProps) {
 
   const [physics, setPhysics] = useState(true)
   const { data, isLoading, error } = useNetwork()
+  const setSelectedAgent = useSelectionStore((s) => s.setSelectedAgent)
+  const setSelectedArtifact = useSelectionStore((s) => s.setSelectedArtifact)
+
+  // Handle node click - open entity details
+  const handleNodeClick = useCallback(
+    (nodeId: string) => {
+      const node = data?.nodes?.find((n) => n.id === nodeId)
+      if (!node) return
+      if (node.node_type === 'agent') {
+        setSelectedAgent(nodeId)
+      } else {
+        setSelectedArtifact(nodeId)
+      }
+    },
+    [data?.nodes, setSelectedAgent, setSelectedArtifact]
+  )
 
   // Initialize network
   useEffect(() => {
@@ -106,10 +123,17 @@ export function NetworkPanel({ fullHeight = false }: NetworkPanelProps) {
       options
     )
 
+    // Add click handler for nodes
+    networkRef.current.on('click', (params) => {
+      if (params.nodes.length > 0) {
+        handleNodeClick(params.nodes[0] as string)
+      }
+    })
+
     return () => {
       networkRef.current?.destroy()
     }
-  }, [])
+  }, [handleNodeClick])
 
   // Update physics setting
   useEffect(() => {
