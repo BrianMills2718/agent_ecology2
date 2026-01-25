@@ -74,6 +74,7 @@ from .model_registry import GenesisModelRegistry
 from .voting import GenesisVoting  # Plan #183
 from .embedder import GenesisEmbedder  # Plan #146
 from .memory import GenesisMemory  # Plan #146
+from .prompt_library import GenesisPromptLibrary  # Plan #146 Phase 2
 
 # Factory function
 from .factory import create_genesis_artifacts
@@ -135,6 +136,7 @@ __all__ = [
     "GenesisVoting",  # Plan #183
     "GenesisEmbedder",  # Plan #146
     "GenesisMemory",  # Plan #146
+    "GenesisPromptLibrary",  # Plan #146 Phase 2
     # Factory
     "create_genesis_artifacts",
 ]

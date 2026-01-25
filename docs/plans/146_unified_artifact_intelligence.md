@@ -337,19 +337,19 @@ async def _llm_transition(self, agent, step):
 ## Implementation Phases
 
 ### Phase 1: Memory Artifacts (Foundation)
-- [ ] Add `memory_store` artifact type
-- [ ] Create `genesis_embedder` artifact
-- [ ] Create `genesis_memory_search` artifact
-- [ ] Create `genesis_memory_add` artifact
-- [ ] Add `longterm_memory_artifact_id` to Agent
-- [ ] Migrate existing memory.py to use artifacts
-- [ ] Remove Qdrant dependency
+- [x] Add `memory_store` artifact type
+- [x] Create `genesis_embedder` artifact
+- [x] Create `genesis_memory_search` artifact (via genesis_memory)
+- [x] Create `genesis_memory_add` artifact (via genesis_memory)
+- [x] Add `longterm_memory_artifact_id` to Agent
+- [x] Migrate existing memory.py to use artifacts (ArtifactMemory class)
+- [x] Remove Qdrant dependency (commented out in requirements.txt)
 
 ### Phase 2: Prompt Artifacts
-- [ ] Add `prompt` artifact type
-- [ ] Create `genesis_prompt_library` artifact
-- [ ] Add `personality_prompt_artifact_id` to Agent
-- [ ] Update prompt loading in agent.py
+- [x] Add `prompt` artifact type (agents can create type="prompt" artifacts)
+- [x] Create `genesis_prompt_library` artifact
+- [x] Add `personality_prompt_artifact_id` to Agent
+- [ ] Update prompt loading in agent.py (optional - agents can use prompt artifacts directly)
 
 ### Phase 3: Workflow Artifacts
 - [ ] Add `workflow` artifact type

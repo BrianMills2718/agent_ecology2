@@ -30,6 +30,7 @@ from .escrow import GenesisEscrow
 from .debt_contract import GenesisDebtContract
 from .voting import GenesisVoting
 from .model_registry import GenesisModelRegistry
+from .prompt_library import GenesisPromptLibrary
 from .embedder import GenesisEmbedder
 from .memory import GenesisMemory
 from ..genesis_contracts import GENESIS_CONTRACTS
@@ -259,6 +260,11 @@ def create_genesis_artifacts(
             genesis_config=cfg
         )
         artifacts[genesis_memory.id] = genesis_memory
+
+    # Add prompt library (Plan #146 Phase 2: Prompt Artifacts)
+    # Provides reusable prompt templates for agent behavior patterns
+    genesis_prompt_library = GenesisPromptLibrary(genesis_config=cfg)
+    artifacts[genesis_prompt_library.id] = genesis_prompt_library
 
     # Add MCP artifacts if any are enabled
     from ..mcp_bridge import create_mcp_artifacts
