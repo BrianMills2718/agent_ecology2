@@ -89,6 +89,9 @@ async def websocket_endpoint(
                 await websocket.send_json(initial_state)
 
         # Keep connection alive and handle incoming messages
+        # Note: This is NOT a busy loop. The await asyncio.wait_for() below
+        # suspends this coroutine until data arrives or timeout, yielding
+        # control to the event loop. This is standard async WebSocket pattern.
         while True:
             try:
                 # Receive with timeout to allow periodic checks

@@ -294,6 +294,9 @@ def _register_websocket_routes(app: FastAPI, dashboard: DashboardApp) -> None:
 
 
             # Keep connection alive and wait for messages
+            # Note: This is NOT a busy loop. The await asyncio.wait_for() below
+            # suspends this coroutine until data arrives or timeout, yielding
+            # control to the event loop. This is standard async WebSocket pattern.
             dashboard_timeout = get_validated_config().timeouts.dashboard_server
             while True:
                 try:
