@@ -186,6 +186,24 @@ Checking issues identified in DOCUMENTATION_ASSESSMENT_2026_01_16.md:
 
 ---
 
+## CODE_REVIEW_2026_01_16.md Issues Status
+
+Cross-referencing issues from the code review document:
+
+| Issue | Original Status | Current Status | Resolution |
+|-------|-----------------|----------------|------------|
+| genesis.py 2961 lines | Critical complexity | ✅ Resolved | Split into modular files (ledger.py, artifacts.py, contracts.py, etc.) |
+| Escrow invisible in prompts | Critical - agents can't monetize | ✅ Resolved | Now in handbook_genesis, visible in system prompts |
+| Contract assassination | Security vulnerability | ✅ Resolved | ADR-0017 defines fail-open behavior |
+| cryptography 41.0.7 | Security CVEs | ✅ Resolved | Updated to >=42.0.0 in requirements.txt |
+| urllib3 2.0.7 | Security patches | ✅ Resolved | Updated to >=2.2.0 in requirements.txt |
+| 68 generic exception catches | Violates "Fail Loud" | ✅ Resolved | Fixed silent failures, added logging |
+| world.py/executor.py size | 2008/1765 lines | 📋 Plan #168 | Too risky for trivial change, tracked as future work |
+
+**Summary:** 6 of 7 issues resolved. File splitting tracked as Plan #168 (low priority).
+
+---
+
 ## Conclusion
 
 ARCHITECTURE_DECISIONS_2026_01.md can be archived after:
