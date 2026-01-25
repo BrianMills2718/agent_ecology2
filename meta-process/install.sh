@@ -204,6 +204,58 @@ mkdir -p "$TARGET_DIR/docs/meta-patterns"
 cp -r "$SCRIPT_DIR/patterns/"*.md "$TARGET_DIR/docs/meta-patterns/" 2>/dev/null || true
 echo -e "  ${GREEN}Copied pattern documentation to docs/meta-patterns/${NC}"
 
+# Copy CLAUDE.md templates
+echo "Copying CLAUDE.md templates..."
+
+# Root CLAUDE.md (only if doesn't exist - don't overwrite custom configs)
+if [[ ! -f "$TARGET_DIR/CLAUDE.md" ]]; then
+    # Get project name from directory
+    PROJECT_NAME=$(basename "$TARGET_DIR")
+    REPO_PATH="$TARGET_DIR"
+
+    # Create from template with substitutions
+    sed -e "s|{{PROJECT_NAME}}|$PROJECT_NAME|g" \
+        -e "s|{{REPO_PATH}}|$REPO_PATH|g" \
+        -e "s|{{PRINCIPLE_1_NAME}}|Fail Loud|g" \
+        -e "s|{{PRINCIPLE_1_DESC}}|No silent fallbacks|g" \
+        -e "s|{{PRINCIPLE_2_NAME}}|Test First|g" \
+        -e "s|{{PRINCIPLE_2_DESC}}|Write tests before implementation|g" \
+        -e "s|{{PRINCIPLE_3_NAME}}|Explicit Over Implicit|g" \
+        -e "s|{{PRINCIPLE_3_DESC}}|Clear configuration, no magic|g" \
+        -e "s|{{TERM_1}}|term|g" \
+        -e "s|{{TERM_1_ALT}}|alternate_term|g" \
+        "$SCRIPT_DIR/templates/CLAUDE.md.root" > "$TARGET_DIR/CLAUDE.md"
+    echo -e "  ${GREEN}Created: CLAUDE.md (customize for your project!)${NC}"
+else
+    echo -e "  ${YELLOW}Skipped: CLAUDE.md (already exists)${NC}"
+fi
+
+# Scripts CLAUDE.md
+if [[ ! -f "$TARGET_DIR/scripts/CLAUDE.md" ]] && [[ -d "$TARGET_DIR/scripts" ]]; then
+    cp "$SCRIPT_DIR/templates/CLAUDE.md.scripts" "$TARGET_DIR/scripts/CLAUDE.md"
+    echo -e "  ${GREEN}Created: scripts/CLAUDE.md${NC}"
+fi
+
+# Tests CLAUDE.md
+if [[ ! -f "$TARGET_DIR/tests/CLAUDE.md" ]] && [[ -d "$TARGET_DIR/tests" ]]; then
+    cp "$SCRIPT_DIR/templates/CLAUDE.md.tests" "$TARGET_DIR/tests/CLAUDE.md"
+    echo -e "  ${GREEN}Created: tests/CLAUDE.md${NC}"
+fi
+
+# docs/plans/CLAUDE.md (use the plans-index template if exists)
+if [[ ! -f "$TARGET_DIR/docs/plans/CLAUDE.md" ]]; then
+    if [[ -f "$SCRIPT_DIR/templates/CLAUDE.md.docs-plans" ]]; then
+        cp "$SCRIPT_DIR/templates/CLAUDE.md.docs-plans" "$TARGET_DIR/docs/plans/CLAUDE.md"
+        echo -e "  ${GREEN}Created: docs/plans/CLAUDE.md${NC}"
+    fi
+fi
+
+# docs/adr/CLAUDE.md (only in full mode)
+if [[ "$MODE" == "--full" ]] && [[ ! -f "$TARGET_DIR/docs/adr/CLAUDE.md" ]]; then
+    cp "$SCRIPT_DIR/templates/CLAUDE.md.docs-adr" "$TARGET_DIR/docs/adr/CLAUDE.md"
+    echo -e "  ${GREEN}Created: docs/adr/CLAUDE.md${NC}"
+fi
+
 echo ""
 echo -e "${GREEN}Installation complete!${NC}"
 echo ""

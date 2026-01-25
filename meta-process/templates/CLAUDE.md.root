@@ -1,0 +1,136 @@
+# {{PROJECT_NAME}} - Claude Code Context
+
+> **ALWAYS RUN FROM MAIN.** Your CWD should be `{{REPO_PATH}}` (main).
+> Use worktrees as **paths** for file isolation, not as working directories.
+
+---
+
+## Quick Reference - Commands
+
+### Session Start
+```bash
+make status              # Git status + active claims
+python scripts/meta_status.py  # Full dashboard
+```
+
+### Worktree Lifecycle
+```bash
+make worktree            # Create worktree with claim
+make worktree-list       # List all worktrees
+make worktree-remove BRANCH=name  # Safe removal
+```
+
+### During Work
+```bash
+make test                # Run tests
+make check               # All checks
+make lint                # Doc-code coupling
+```
+
+### Finishing Work
+```bash
+make pr-ready            # Rebase + push
+make pr                  # Create PR
+make finish BRANCH=X PR=N  # Merge + cleanup
+```
+
+---
+
+## Project Structure
+
+```
+{{PROJECT_NAME}}/
+  src/                    # Source code
+  tests/                  # Test suite
+  docs/
+    plans/                # Implementation plans
+    adr/                  # Architecture Decision Records
+  config/                 # Configuration files
+  scripts/                # Utility scripts
+```
+
+---
+
+## Workflow
+
+### The Complete Cycle
+
+```
+1. START     -->  make worktree (claim + create workspace)
+       |
+2. IMPLEMENT -->  Edit files in worktrees/X/src/...
+       |
+3. VERIFY    -->  make test && make lint
+       |
+4. SHIP      -->  make pr-ready && make pr && make finish BRANCH=X PR=N
+```
+
+### Work Priorities
+
+| Priority | Action |
+|----------|--------|
+| 0 | Check ownership (never touch others' work) |
+| 1 | Surface uncertainties early |
+| 2 | Merge your ready PRs |
+| 3 | Resolve PR conflicts |
+| 4 | New implementation |
+
+### Commit Messages
+
+```bash
+[Plan #N] Description       # Links to plan
+[Trivial] Fix typo          # For tiny changes (<20 lines)
+```
+
+---
+
+## Key Rules
+
+### Always Run From Main
+- Your CWD should always be the main repo
+- Worktrees are paths for file isolation, not working directories
+- This lets you handle full lifecycle without CWD issues
+
+### Ownership
+- Check claims before acting on any PR/worktree
+- If claimed by another session: read only, move on
+- Self-merge your own PRs when ready
+
+### Plans
+- All significant work requires a plan in `docs/plans/NN_name.md`
+- Use `[Trivial]` only for <20 lines, no src/ changes
+
+---
+
+## Design Principles
+
+1. **{{PRINCIPLE_1_NAME}}** - {{PRINCIPLE_1_DESC}}
+2. **{{PRINCIPLE_2_NAME}}** - {{PRINCIPLE_2_DESC}}
+3. **{{PRINCIPLE_3_NAME}}** - {{PRINCIPLE_3_DESC}}
+
+---
+
+## Terminology
+
+| Use | Not | Why |
+|-----|-----|-----|
+| `{{TERM_1}}` | `{{TERM_1_ALT}}` | Consistency |
+
+---
+
+## References
+
+| Doc | Purpose |
+|-----|---------|
+| `README.md` | Full documentation |
+| `docs/plans/CLAUDE.md` | Plan index |
+| `scripts/CLAUDE.md` | Script reference |
+
+---
+
+## Active Work
+
+Check current claims:
+```bash
+python scripts/check_claims.py --list
+```
