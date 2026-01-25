@@ -125,6 +125,7 @@ class AgentConfigDict(TypedDict, total=False):
     reflex_artifact_id: str | None  # Plan #143: Reference to reflex artifact
     longterm_memory_artifact_id: str | None  # Plan #146: Reference to longterm memory artifact
     personality_prompt_artifact_id: str | None  # Plan #146: Reference to personality prompt artifact
+    workflow_artifact_id: str | None  # Plan #146 Phase 3: Reference to workflow artifact
 
 
 class Agent:
@@ -176,6 +177,9 @@ class Agent:
 
     # Personality prompt artifact (Plan #146 Phase 2)
     _personality_prompt_artifact_id: str | None
+
+    # Workflow artifact (Plan #146 Phase 3)
+    _workflow_artifact_id: str | None
 
     # Subscribed artifacts configuration (Plan #191)
     _subscribed_artifacts: list[str]
@@ -237,6 +241,7 @@ class Agent:
         self._reflex_artifact_id = None  # Plan #143: Reflex artifact reference
         self._longterm_memory_artifact_id = None  # Plan #146: Long-term memory artifact reference
         self._personality_prompt_artifact_id = None  # Plan #146: Personality prompt artifact reference
+        self._workflow_artifact_id = None  # Plan #146 Phase 3: Workflow artifact reference
         self._subscribed_artifacts = []  # Plan #191: Subscribed artifacts
         # Plan #192: Context section control - defaults to all enabled
         self._context_sections = {
@@ -387,6 +392,10 @@ class Agent:
         # Load personality prompt artifact ID if present (Plan #146 Phase 2)
         if "personality_prompt_artifact_id" in config:
             self._personality_prompt_artifact_id = config["personality_prompt_artifact_id"]
+
+        # Load workflow artifact ID if present (Plan #146 Phase 3)
+        if "workflow_artifact_id" in config:
+            self._workflow_artifact_id = config["workflow_artifact_id"]
 
         # Load subscribed artifacts if present (Plan #191)
         if "subscribed_artifacts" in config:
@@ -1853,6 +1862,23 @@ Your response should include:
     def has_personality_prompt_artifact(self) -> bool:
         """Whether this agent has a configured personality prompt artifact."""
         return self._personality_prompt_artifact_id is not None
+
+    # --- Workflow Artifact methods (Plan #146 Phase 3) ---
+
+    @property
+    def workflow_artifact_id(self) -> str | None:
+        """ID of the agent's workflow artifact, or None."""
+        return self._workflow_artifact_id
+
+    @workflow_artifact_id.setter
+    def workflow_artifact_id(self, value: str | None) -> None:
+        """Set workflow artifact ID."""
+        self._workflow_artifact_id = value
+
+    @property
+    def has_workflow_artifact(self) -> bool:
+        """Whether this agent has a configured workflow artifact."""
+        return self._workflow_artifact_id is not None
 
     # --- Workflow methods (Plan #69 - ADR-0013) ---
 

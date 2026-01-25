@@ -92,18 +92,23 @@ class WorkflowStep:
         step_type: Type of step (code, llm, or transition)
         code: Python code to execute (for code steps)
         prompt: Prompt text or template (for llm and transition steps)
+        prompt_artifact_id: Reference to prompt artifact (Plan #146 Phase 3)
         run_if: Optional condition - step only runs if this evaluates to True
         on_failure: Error handling policy for this step
         max_retries: Maximum retry attempts (for RETRY policy)
         in_state: Only run if state machine is in one of these states
         transition_to: Transition to this state after step completes
         transition_map: For transition steps - maps decisions to target states
+        transition_mode: How to determine next state - "llm", "condition", or "auto" (Plan #146)
+        transition_prompt_artifact_id: Prompt artifact for LLM transitions (Plan #146)
     """
 
     name: str
     step_type: StepType
     code: str | None = None
     prompt: str | None = None
+    # Plan #146 Phase 3: Reference to prompt artifact instead of inline prompt
+    prompt_artifact_id: str | None = None
     run_if: str | None = None
     on_failure: ErrorPolicy = ErrorPolicy.FAIL
     max_retries: int = 3
@@ -111,13 +116,17 @@ class WorkflowStep:
     transition_to: str | None = None  # State to transition to after step
     # Plan #157: Transition step configuration
     transition_map: dict[str, str] | None = None  # Maps decision -> target state
+    # Plan #146 Phase 3: LLM-controlled transitions
+    transition_mode: str | None = None  # "llm" | "condition" | "auto"
+    transition_prompt_artifact_id: str | None = None  # Prompt artifact for LLM transitions
 
     def __post_init__(self) -> None:
         """Validate step configuration."""
         if self.step_type == StepType.CODE and not self.code:
             raise ValueError(f"Code step '{self.name}' requires 'code' field")
-        if self.step_type == StepType.LLM and not self.prompt:
-            raise ValueError(f"LLM step '{self.name}' requires 'prompt' field")
+        # LLM steps need either inline prompt or prompt_artifact_id (Plan #146)
+        if self.step_type == StepType.LLM and not self.prompt and not self.prompt_artifact_id:
+            raise ValueError(f"LLM step '{self.name}' requires 'prompt' or 'prompt_artifact_id'")
         # Transition steps can use default prompt, so prompt is optional
 
 
@@ -177,17 +186,25 @@ class WorkflowConfig:
             if transition_map and not isinstance(transition_map, dict):
                 transition_map = None  # Ensure it's a dict
 
+            # Plan #146 Phase 3: Parse transition mode
+            transition_mode = step_dict.get("transition_mode")
+            if transition_mode and transition_mode not in ("llm", "condition", "auto"):
+                transition_mode = None  # Invalid value, ignore
+
             step = WorkflowStep(
                 name=step_dict["name"],
                 step_type=step_type,
                 code=step_dict.get("code"),
                 prompt=step_dict.get("prompt"),
+                prompt_artifact_id=step_dict.get("prompt_artifact_id"),  # Plan #146
                 run_if=step_dict.get("run_if"),
                 on_failure=on_failure,
                 max_retries=step_dict.get("max_retries", default_max_retries),
                 in_state=in_state,
                 transition_to=step_dict.get("transition_to"),
                 transition_map=transition_map,
+                transition_mode=transition_mode,  # Plan #146
+                transition_prompt_artifact_id=step_dict.get("transition_prompt_artifact_id"),  # Plan #146
             )
             steps.append(step)
 
