@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-25 (Tick terminology purge, continuous execution updates)
+**Last verified:** 2026-01-25 (Plan #197: Added is_genesis property for genesis/spawned agent distinction)
 
 **See target:** [../target/agents.md](../target/agents.md)
 

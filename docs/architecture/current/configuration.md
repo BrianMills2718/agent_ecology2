@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-21 (Plan #148 - ADR-0019 Audit, removed legacy transfer_fee)
+**Last verified:** 2026-01-25 (Plan #197: Added prompt_injection config section)
 
 ---
 
@@ -312,6 +312,26 @@ memory:
   temperature: 0.1
   collection_name: "agent_memories"
 ```
+
+### Prompt Injection (Plan #197)
+
+```yaml
+prompt_injection:
+  enabled: false                  # Disabled by default
+  scope: "all"                    # "none" | "genesis" | "all"
+  mandatory_prefix: ""            # Injected BEFORE system prompt
+  mandatory_suffix: ""            # Injected AFTER system prompt
+```
+
+**Scope options:**
+
+| Scope | Behavior |
+|-------|----------|
+| `none` | No injection for any agents |
+| `genesis` | Only genesis agents (loaded at startup) receive injection |
+| `all` | All agents (genesis and spawned) receive injection |
+
+**Use case:** Alignment research - inject constraints, behavioral guidelines, or experimental framings that agents cannot override.
 
 ### Libraries (Plan #29)
 

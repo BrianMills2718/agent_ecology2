@@ -410,6 +410,20 @@ world:
   max_ticks: <number>
 
 # -----------------------------------------------------------------------------
+# PROMPT INJECTION (Plan #197)
+# Mandatory content injection into agent prompts
+# Use for alignment research: inject constraints, reminders, or behavioral guides
+# -----------------------------------------------------------------------------
+prompt_injection:
+  enabled: <boolean>              # Enable prompt injection (default: false)
+  scope: <string>                 # Which agents receive injection:
+                                  # - "none": No agents (disabled)
+                                  # - "genesis": Only genesis agents (loaded at startup)
+                                  # - "all": All agents including spawned (default)
+  mandatory_prefix: <string>      # Content injected BEFORE system prompt (default: "")
+  mandatory_suffix: <string>      # Content injected AFTER system prompt (default: "")
+
+# -----------------------------------------------------------------------------
 # BUDGET
 # API spending limits (global and per-agent)
 # -----------------------------------------------------------------------------

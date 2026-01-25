@@ -539,6 +539,16 @@ memory:
 world: {}
 
 # -----------------------------------------------------------------------------
+# PROMPT INJECTION (Plan #197)
+# Mandatory content injection into agent prompts for alignment research
+# -----------------------------------------------------------------------------
+prompt_injection:
+  enabled: false                  # Disabled by default
+  scope: "all"                    # "none" | "genesis" | "all"
+  mandatory_prefix: ""            # Content injected BEFORE system prompt
+  mandatory_suffix: ""            # Content injected AFTER system prompt
+
+# -----------------------------------------------------------------------------
 # BUDGET - Global API limit and runtime backstops
 # -----------------------------------------------------------------------------
 budget:
