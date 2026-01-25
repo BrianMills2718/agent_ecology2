@@ -95,15 +95,54 @@ Renewable resources use a **rolling window rate tracker**: usage tracked over ti
 
 ---
 
-## Currency
+## Currency and Rights (Plan #166)
+
+**Three distinct concepts:**
+
+| Concept | What It Is | Tradeable? | Stored As |
+|---------|------------|------------|-----------|
+| **Scrip** | Money, medium of exchange | Yes (ledger) | Ledger balance |
+| **Rights** | Claims on physical capacity | Yes (artifacts) | Artifact with `type="right"` |
+| **Usage** | What was actually consumed | No | Metrics (UsageTracker) |
+
+### Scrip
 
 | Term | Definition | Notes |
 |------|------------|-------|
-| **Scrip** | Internal economic currency | NOT a physical resource. Coordination signal. |
+| **Scrip** | Internal economic currency | NOT a physical resource. Used for prices, payments, coordination. |
 
-**Key distinction:**
-- **Resources** = Physical constraints (compute, disk, memory, bandwidth, llm_budget)
-- **Scrip** = Economic signal (prices, payments, coordination)
+### Rights (Plan #166)
+
+Rights are artifacts that grant permission to use physical capacity:
+
+| Right Type | Resource | Consumable? | Example |
+|------------|----------|-------------|---------|
+| `dollar_budget` | LLM API cost | Yes (shrinks on use) | "Can spend $0.50" |
+| `rate_capacity` | API calls/window | Renewable | "100 calls/min to gemini" |
+| `disk_quota` | Storage bytes | Allocatable | "Can use 100KB" |
+
+**Key properties:**
+- Rights are artifacts with `type="right"` and `right_type` in metadata
+- Rights can be traded via escrow or direct transfer (they're artifacts)
+- Rights can be split/merged using `split_right()` / `merge_rights()`
+- Genesis rights created at world init: `genesis_right_{type}_{agent}`
+
+**Scrip vs Rights:**
+- **Scrip** = Money agents use to BUY things from each other
+- **Rights** = What agents need to DO things (make LLM calls, store data)
+- Agents use scrip to purchase rights from others
+
+### Usage (Plan #166)
+
+Separate from rights, usage tracks what was actually consumed:
+
+| Metric | Meaning |
+|--------|---------|
+| `tokens_by_model` | Tokens used per LLM model |
+| `calls_by_model` | API calls per model |
+| `dollars_spent` | Total $ spent on LLM APIs |
+
+Usage is tracked by `UsageTracker` for observability, not enforcement.
 
 ---
 
@@ -386,6 +425,7 @@ See [docs/meta/adr/](meta/adr/) for meta-process ADRs.
 
 | Don't Use | Use Instead | Reason |
 |-----------|-------------|--------|
+| **llm_tokens** (as resource) | `dollar_budget` (right) or `UsageTracker` (metrics) | Plan #166: llm_tokens conflated quotas with usage. Use dollar_budget rights for enforcement, UsageTracker for metrics. |
 | **oracle** | **mint** | "Mint" describes function (creating scrip) |
 | **genesis_oracle** | **genesis_mint** | Terminology migration per ADR-0004 |
 | **OracleScorer** | **MintScorer** | Class rename per ADR-0004 |
