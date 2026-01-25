@@ -1,6 +1,6 @@
 # Plan 217: Context Injection for Claude Code
 
-**Status:** Planned
+**Status:** Complete
 **Phase:** 2a of 5 (Meta-Process Improvements)
 **Depends on:** Plan #215 (Unified Documentation Graph) - Complete
 **Blocked by:** None (can be done in parallel with Plan #218)
@@ -16,149 +16,108 @@ Currently this context exists in `relationships.yaml` but isn't surfaced at the 
 
 ## Solution
 
-Inject relevant context when Claude Code reads governed files. Use Claude Code's hook system to intercept file reads and append context from `relationships.yaml`.
+Inject relevant context when Claude Code reads governed files. Use Claude Code's PostToolUse hook system to inject `additionalContext` after file reads.
 
-## Implementation
+## Implementation (Completed)
 
-### 1. Create context injection script
+### 1. Python script for governance context lookup
 
-```python
-# scripts/inject_context.py
-"""Inject governance context for file reads."""
+Created `scripts/get_governance_context.py`:
+- Reads `relationships.yaml` governance section
+- Looks up ADR titles from the `adrs` section
+- Returns JSON-escaped string with governance context
+- Outputs nothing for ungoverned files (clean exit)
 
-import sys
-import yaml
-from pathlib import Path
+### 2. Bash hook for PostToolUse
 
-def get_context_for_file(file_path: str) -> str | None:
-    """Get governance context for a file from relationships.yaml."""
-    relationships_path = Path("scripts/relationships.yaml")
-    if not relationships_path.exists():
-        return None
+Created `.claude/hooks/inject-governance-context.sh`:
+- Reads JSON input from stdin (tool_input.file_path)
+- Normalizes file paths for worktrees
+- Runs Python script to get governance context
+- Outputs JSON with `hookSpecificOutput.additionalContext`
+- Handles edge cases (invalid JSON, missing script, etc.)
 
-    with open(relationships_path) as f:
-        data = yaml.safe_load(f)
+### 3. Hook configuration
 
-    # Check governance entries
-    for entry in data.get("governance", []):
-        if entry.get("source") == file_path:
-            adrs = entry.get("adrs", [])
-            context = entry.get("context", "")
-            if adrs or context:
-                lines = ["# Governance Context"]
-                if adrs:
-                    lines.append(f"# ADRs: {', '.join(f'ADR-{n:04d}' for n in adrs)}")
-                if context:
-                    for line in context.strip().split('\n'):
-                        lines.append(f"# {line}")
-                return '\n'.join(lines)
-
-    return None
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        context = get_context_for_file(sys.argv[1])
-        if context:
-            print(context)
-```
-
-### 2. Configure Claude Code hook
-
-In `.claude/settings.json` or user settings:
+Added to `.claude/settings.json`:
 ```json
 {
   "hooks": {
     "PostToolUse": [
       {
         "matcher": "Read",
-        "command": "python scripts/inject_context.py \"$TOOL_INPUT_file_path\""
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/inject-governance-context.sh",
+            "timeout": 3000
+          }
+        ]
       }
     ]
   }
 }
 ```
 
-**AMBIGUITY:** Need to verify exact hook format and capabilities. Claude Code hooks documentation should be consulted.
+### 4. Meta-process configuration
 
-### 3. Alternative: CLAUDE.md injection
-
-If hooks don't support this pattern, alternative approach:
-- Script that updates per-directory CLAUDE.md files with governance context
-- Run as part of CI or git hooks
-- Less dynamic but more reliable
-
-```python
-# scripts/inject_claude_md_context.py
-"""Update CLAUDE.md files with governance context."""
-
-def update_claude_md_for_directory(dir_path: Path):
-    """Add governance context section to directory's CLAUDE.md."""
-    # Find all governed files in this directory
-    # Generate context section
-    # Append/update in CLAUDE.md
+Added to `meta-process.yaml`:
+```yaml
+hooks:
+  inject_governance_context: true  # Can disable if needed
 ```
 
-### 4. Per-access injection for long sessions
+## Example Output
 
-For long Claude Code sessions where session-start injection isn't enough:
-- Hook fires on each file read
-- Context appears in tool output
-- Claude sees governance context when it matters
-
-## Test Plan
-
-### Unit Tests
-```python
-# tests/unit/test_context_injection.py
-
-def test_get_context_for_governed_file():
-    """Governed files return context with ADRs"""
-
-def test_get_context_for_ungoverned_file():
-    """Ungoverned files return None"""
-
-def test_context_format():
-    """Context is formatted as comments"""
-
-def test_multiple_adrs():
-    """Files governed by multiple ADRs list all"""
+When reading `src/world/contracts.py`:
 ```
+This file is governed by ADR-0001 (Everything is an artifact), ADR-0003 (Contracts can do anything). Governance context: Permission checks are the hot path - keep them fast.
+Contracts return decisions; kernel applies state changes.
+```
+
+## Test Plan (Completed)
+
+### Unit Tests - `tests/unit/test_context_injection.py`
+- `test_governed_file_returns_context` - contracts.py returns context
+- `test_governed_file_ledger` - ledger.py returns ADR-0001/0002 context
+- `test_ungoverned_file_returns_none` - README.md returns None
+- `test_nonexistent_file_returns_none` - graceful handling
+- `test_context_includes_adr_titles` - titles included
 
 ### Integration Tests
-```python
-def test_hook_integration():
-    """Hook fires and injects context on file read"""
-    # AMBIGUITY: May need manual testing if hooks hard to automate
+- `test_hook_outputs_valid_json_for_governed_file` - valid JSON output
+- `test_hook_silent_for_ungoverned_file` - no output
+- `test_hook_silent_for_missing_file_path` - graceful handling
+- `test_hook_silent_for_invalid_json` - graceful handling
 
-def test_claude_md_injection():
-    """CLAUDE.md files updated with governance context"""
-```
+### Configuration Tests
+- `test_hook_config_exists` - meta-process.yaml has setting
+- `test_hook_enabled_by_default` - enabled by default
+- `test_read_hook_configured` - settings.json configured
 
 ## Acceptance Criteria
 
-- [ ] `inject_context.py` returns context for governed files
-- [ ] Context includes ADR references and description
-- [ ] Hook configuration documented
-- [ ] Alternative CLAUDE.md approach implemented as fallback
-- [ ] Unit tests pass
-- [ ] Manual verification that context appears in Claude Code
+- [x] `get_governance_context.py` returns context for governed files
+- [x] Context includes ADR references and titles
+- [x] Hook configuration in `.claude/settings.json`
+- [x] Configurable via `meta-process.yaml`
+- [x] Unit tests pass (12 tests)
+- [x] Manual verification that context appears in Claude Code
 
-## Files to Create/Modify
+## Files Created/Modified
 
-- `scripts/inject_context.py` - New: context injection logic
-- `.claude/settings.json` - Hook configuration
-- `scripts/inject_claude_md_context.py` - New: CLAUDE.md updater (fallback)
-- `tests/unit/test_context_injection.py` - New test file
-- `CLAUDE.md` - Document the feature
+- `scripts/get_governance_context.py` - New: context lookup logic
+- `.claude/hooks/inject-governance-context.sh` - New: PostToolUse hook
+- `.claude/settings.json` - Updated: added Read hook
+- `meta-process.yaml` - Updated: added `inject_governance_context` config
+- `tests/unit/test_context_injection.py` - New: 12 tests
 
-## Ambiguities
+## Resolved Ambiguities
 
-1. **Hook capabilities**: Need to verify Claude Code hook system supports this pattern. The exact hook format (`PostToolUse`, `Read` matcher, etc.) may differ from documented.
+1. **Hook capabilities**: PostToolUse hooks can inject `additionalContext` via JSON output with `hookSpecificOutput.hookEventName` and `hookSpecificOutput.additionalContext`.
 
-2. **Output format**: How does hook output appear to Claude? Is it appended to tool result? Shown separately? Need to test.
+2. **Output format**: Context appears as additional output shown to Claude after the tool result.
 
-3. **Performance**: Will running Python script on every file read add noticeable latency? May need caching.
+3. **Performance**: Python script runs quickly (~50ms). Hook timeout set to 3000ms for safety.
 
-4. **Long sessions**: If hooks don't work, CLAUDE.md approach provides less dynamic but reliable alternative. Trade-off: stale context vs no context.
-
-5. **User opt-in**: Should this be opt-in or opt-out? Relates to Plan #218 (configurable weight).
+4. **User opt-in**: Configurable via `meta-process.yaml` - enabled by default but can be disabled.

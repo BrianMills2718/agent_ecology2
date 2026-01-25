@@ -10,6 +10,16 @@
             "timeout": 3000
           }
         ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/inject-governance-context.sh",
+            "timeout": 3000
+          }
+        ]
       }
     ],
     "PreToolUse": [
