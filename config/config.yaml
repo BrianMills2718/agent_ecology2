@@ -549,6 +549,16 @@ budget:
   checkpoint_on_end: true       # Save checkpoint when simulation ends normally
 
 # -----------------------------------------------------------------------------
+# LEARNING - Cross-run learning configuration (Plan #186)
+# -----------------------------------------------------------------------------
+learning:
+  cross_run:
+    enabled: false                  # Disabled by default
+    prior_checkpoint: null          # Path to checkpoint file (null = auto-discover)
+    auto_discover: true             # Auto-find latest checkpoint in logs/
+    load_working_memory: true       # Load working_memory from prior run
+
+# -----------------------------------------------------------------------------
 # LIBRARIES - Package installation for agents
 # -----------------------------------------------------------------------------
 libraries:

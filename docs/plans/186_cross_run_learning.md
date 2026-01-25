@@ -1,6 +1,6 @@
 # Plan #186: Cross-Run Learning for Genesis Agents
 
-**Status:** In Progress
+**Status:** Complete
 **Priority:** Medium
 **Complexity:** Low
 **Blocks:** Cumulative agent improvement
@@ -76,6 +76,7 @@ def _load_prior_learnings(self) -> dict[str, dict]:
 - config/schema.yaml (modify) - Add learning.cross_run config options
 - config/config.yaml (modify) - Add default values
 - src/simulation/runner.py (modify) - Add _load_prior_learnings() method
+- src/config_schema.py (modify) - Add LearningConfig model
 
 ## Testing
 
