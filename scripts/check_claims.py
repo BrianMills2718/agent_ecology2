@@ -942,7 +942,7 @@ def get_worktree_last_modified(worktree_path: str) -> datetime | None:
 
     if git_index.exists():
         try:
-            mtime = datetime.fromtimestamp(git_index.stat().st_mtime)
+            mtime = datetime.fromtimestamp(git_index.stat().st_mtime, tz=timezone.utc)
             if most_recent is None or mtime > most_recent:
                 most_recent = mtime
         except OSError:
@@ -963,7 +963,7 @@ def get_worktree_last_modified(worktree_path: str) -> datetime | None:
                 break
             if file_path.is_file() and not file_path.name.startswith("."):
                 try:
-                    mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
+                    mtime = datetime.fromtimestamp(file_path.stat().st_mtime, tz=timezone.utc)
                     if most_recent is None or mtime > most_recent:
                         most_recent = mtime
                     checked_files += 1
@@ -973,7 +973,7 @@ def get_worktree_last_modified(worktree_path: str) -> datetime | None:
     # 3. Fallback: check the worktree root itself
     if most_recent is None:
         try:
-            most_recent = datetime.fromtimestamp(path.stat().st_mtime)
+            most_recent = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
         except OSError:
             pass
 
