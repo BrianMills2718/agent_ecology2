@@ -1,6 +1,19 @@
 # Plan #168: Artifact Metadata Field
 
-**Status:** Planned
+**Status:** ✅ Complete
+
+**Verified:** 2026-01-25T04:25:00Z
+**Verification Evidence:**
+```yaml
+completed_by: Manual verification
+timestamp: 2026-01-25T04:25:00Z
+notes: |
+  - Artifact.metadata field implemented in src/world/artifacts.py:190
+  - WriteArtifactIntent supports metadata in src/world/actions.py
+  - genesis_store supports metadata filtering
+  - 17 tests pass in tests/unit/test_artifact_metadata.py
+```
+
 **Priority:** Medium
 **Complexity:** Low
 
