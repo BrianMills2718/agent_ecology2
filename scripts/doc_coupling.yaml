@@ -70,7 +70,7 @@ couplings:
       - "src/world/actions.py"
     docs:
       - "docs/architecture/current/artifacts_executor.md"
-    description: "Artifact storage, policies, code execution, permission checking"
+    description: "Artifact storage, policies, code execution, permission checking, interface validation"
 
   # Configuration
   - sources:

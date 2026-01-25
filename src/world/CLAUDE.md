@@ -12,6 +12,7 @@ This is the heart of the simulation. All world state, resources, and execution l
 | `artifacts.py` | Artifact storage, policies, ownership |
 | `executor.py` | Safe code execution, invoke() support, timeout protection |
 | `permission_checker.py` | Permission checking logic for artifact access (Plan #181) |
+| `interface_validation.py` | Argument validation against interface schemas (Plan #181) |
 | `actions.py` | Action definitions (noop, read, write, invoke) |
 | `genesis.py` | System artifacts (ledger, mint, escrow, event_log, store) |
 | `genesis_contracts.py` | Built-in access control contracts |

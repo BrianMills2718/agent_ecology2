@@ -566,6 +566,7 @@ All intents include reasoning in their `to_dict()` output, so logged actions con
 | `src/world/executor.py` | `DependencyWrapper`, `ExecutionContext` | Dependency injection (Plan #63) |
 | `src/world/executor.py` | `validate_args_against_interface()`, `ValidationResult` | Interface validation (Plan #86) |
 | `src/world/permission_checker.py` | `check_permission()`, `check_permission_via_contract()` | Permission checking logic (Plan #181) |
+| `src/world/interface_validation.py` | `validate_args_against_interface()`, `ValidationResult` | Interface validation (Plan #181) |
 | `src/world/kernel_interface.py` | `KernelState`, `KernelActions` | Kernel interfaces for artifacts |
 | `src/world/actions.py` | `ActionResult`, `ActionIntent` | Action definitions and results |
 | `src/world/errors.py` | `ErrorCode`, `ErrorCategory` | Error response conventions |
