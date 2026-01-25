@@ -250,6 +250,90 @@ See `src/agents/workflow.py` for WorkflowRunner implementation.
 
 ---
 
+## Prompt Components (Plan #150)
+
+Modular, reusable prompt fragments that can be mixed and matched to create different agent behaviors for experimentation.
+
+### Component Types
+
+| Type | Purpose | Location |
+|------|---------|----------|
+| **Traits** | Behavioral modifiers injected into prompts | `src/agents/_components/traits/` |
+| **Goals** | High-level directives that shape behavior | `src/agents/_components/goals/` |
+| **Phases** | Reusable workflow step definitions | `src/agents/_components/phases/` |
+
+### How It Works
+
+1. **Agent config references components** in `agent.yaml`:
+   ```yaml
+   components:
+     traits:
+       - buy_before_build
+       - economic_participant
+     goals:
+       - facilitate_transactions
+   ```
+
+2. **ComponentRegistry loads YAML files** from `_components/` directory
+3. **Fragments injected into matching workflow steps** based on `inject_into` field
+4. **Agent prompt includes all injected fragments** for that step
+
+### Component Format
+
+```yaml
+name: buy_before_build
+type: trait
+version: 1
+description: "Encourages checking for existing services before building"
+
+inject_into:
+  - ideate
+  - observe
+
+prompt_fragment: |
+  BEFORE BUILDING, CHECK THE MARKET:
+  1. Search genesis_store for existing solutions
+  2. If a service exists: INVOKE it and PAY (don't reinvent)
+  3. Only build if nothing suitable exists
+
+requires_context:
+  - artifacts
+  - balance
+```
+
+### Available Components
+
+| Component | Type | Purpose |
+|-----------|------|---------|
+| `buy_before_build` | trait | Check market before building new artifacts |
+| `economic_participant` | trait | Encourage transactions and economic activity |
+| `facilitate_transactions` | goal | Focus on enabling trades between agents |
+
+### Key Methods
+
+| Method | Purpose |
+|--------|---------|
+| `ComponentRegistry.load_all()` | Load all components from `_components/` |
+| `ComponentRegistry.get_traits(names)` | Get list of trait components by name |
+| `inject_components_into_workflow(workflow, traits, goals)` | Inject fragments into workflow steps |
+| `load_agent_components(config)` | Load components from agent's config |
+
+### Experiment Tracking
+
+Components enable controlled experiments:
+```markdown
+## Setup
+- alpha_3: traits=[buy_before_build, economic_participant]
+- beta_3: traits=[economic_participant] (control - no buy_before_build)
+
+## Hypothesis
+Agents with buy_before_build will read more artifacts before building.
+```
+
+See `src/agents/_components/CLAUDE.md` for component authoring details.
+
+---
+
 ## VSM-Aligned Agents (Plan #82)
 
 Enhanced agent variants implementing Viable Systems Model patterns.

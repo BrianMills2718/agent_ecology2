@@ -1,6 +1,6 @@
 # Plan 150: Prompt Component Library
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** High
 **Blocked By:** None
 **Blocks:** Agent behavior experiments
