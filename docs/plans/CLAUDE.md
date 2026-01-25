@@ -230,6 +230,7 @@ Master index of all gaps and their implementation plans.
 | 208 | [Workflow Hooks (General Auto-Subscription System)](208_workflow_hooks.md) | High | ✅ Complete | Agent self-optimization, cognitive autonomy |
 | 209 | [Trigger-Hook Integration](209_trigger_hook_integration.md) | Low | 📋 Deferred (until bridging pattern becomes common) | - |
 | 210 | [Fix ADR-0016 Violation (created_by Mutation)](210_fix_created_by_mutation.md) | High | 📋 Planned | Correct ownership semantics, historical audit trail |
+| 211 | [Agent Simulation Fixes](211_agent_simulation_fixes.md) | High | ✅ Complete | Agent effectiveness in simulations |
 ---
 
 ## TDD Workflow
