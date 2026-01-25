@@ -56,7 +56,13 @@ class RestartPolicy:
 
     @classmethod
     def from_config(cls) -> RestartPolicy:
-        """Load policy from config file."""
+        """Load policy from config file.
+
+        Note: Uses get() with dict fallback instead of get_validated_config() intentionally.
+        The supervisor is an optional feature - configs without a supervisor section should
+        work with sensible defaults. Adding supervisor to Pydantic's AppConfig would make
+        it mandatory for all configs, breaking the opt-in design.
+        """
         supervisor_config = get("supervisor", {})
         policy_config = supervisor_config.get("restart_policy", {})
 

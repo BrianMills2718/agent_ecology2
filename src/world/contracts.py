@@ -230,6 +230,12 @@ class PermissionCache:
     - No caching by default
     - Cache key: (artifact_id, action, requester_id, contract_version)
 
+    Threading note: This cache assumes single-threaded async operation (the default).
+    The system uses asyncio with agents running as coroutines in one event loop thread.
+    Dictionary operations between await points are atomic in this model. If the optional
+    worker pool (use_worker_pool=true) is enabled, this cache would need thread locks.
+    Since worker pool is experimental and disabled by default, no locks are added here.
+
     Attributes:
         _cache: Dict mapping cache keys to (result, expiry_time) tuples
     """
