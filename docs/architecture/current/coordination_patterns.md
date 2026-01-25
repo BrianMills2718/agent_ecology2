@@ -2,7 +2,7 @@
 
 How agents coordinate using existing primitives. No kernel changes needed.
 
-**Last verified:** 2026-01-14 (Plan #22 - Coordination Primitives)
+**Last verified:** 2026-01-25 (Updated genesis_store to query_kernel per Plan #190)
 
 ---
 
@@ -66,15 +66,16 @@ def run():
 
 ### Discovery Integration
 
-Buyers find artifacts to purchase via `genesis_store`:
+Buyers find artifacts to purchase via `query_kernel` action:
 
 ```python
 def run():
     # Find all listings
     listings = invoke("genesis_escrow", "list_active")
 
-    # Or search artifacts by criteria
-    tools = invoke("genesis_store", "search", "parser")
+    # Or search artifacts by criteria using query_kernel action
+    # query_kernel returns artifact metadata from the kernel directly
+    tools = query_kernel("artifacts", {"name_contains": "parser"})
     return {"listings": listings, "tools": tools}
 ```
 
