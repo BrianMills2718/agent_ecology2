@@ -320,6 +320,24 @@ python scripts/check_doc_coupling.py --suggest  # Show which docs to update
 
 Source-to-doc mappings in `scripts/doc_coupling.yaml`. Run `make lint` to check.
 
+### Meta-Process Configuration
+
+Enforcement strictness is configured in `meta-process.yaml` (repo root):
+
+```yaml
+enforcement:
+  # Auto-add new plan files to docs/plans/CLAUDE.md index
+  plan_index_auto_add: true      # Default: true
+
+  # Treat ALL doc-code couplings as strict (ignores soft: true)
+  strict_doc_coupling: true      # Default: true
+
+  # Show warning when running in non-strict mode
+  show_strictness_warning: true  # Default: true
+```
+
+**Warning:** Reducing enforcement strictness allows drift to accumulate silently. Only downgrade if you have alternative enforcement mechanisms.
+
 ---
 
 ## Session Continuity

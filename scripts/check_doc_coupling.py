@@ -25,6 +25,36 @@ from pathlib import Path
 import yaml
 
 
+META_CONFIG_FILE = Path("meta-process.yaml")
+
+
+def load_meta_config() -> dict:
+    """Load meta-process configuration.
+
+    Returns default values if config file doesn't exist.
+    """
+    defaults = {
+        "enforcement": {
+            "plan_index_auto_add": True,
+            "strict_doc_coupling": True,
+            "show_strictness_warning": True,
+        }
+    }
+
+    if not META_CONFIG_FILE.exists():
+        return defaults
+
+    try:
+        with open(META_CONFIG_FILE) as f:
+            config = yaml.safe_load(f) or {}
+        # Merge with defaults
+        enforcement = defaults["enforcement"].copy()
+        enforcement.update(config.get("enforcement", {}))
+        return {"enforcement": enforcement}
+    except Exception:
+        return defaults
+
+
 def get_changed_files(base_ref: str) -> set[str]:
     """Get files changed between base_ref and HEAD."""
     try:
@@ -96,9 +126,16 @@ def matches_any_pattern(filepath: str, patterns: list[str]) -> bool:
 
 
 def check_couplings(
-    changed_files: set[str], couplings: list[dict]
+    changed_files: set[str],
+    couplings: list[dict],
+    force_strict: bool = False,
 ) -> tuple[list[dict], list[dict]]:
     """Check which couplings have source changes without doc changes.
+
+    Args:
+        changed_files: Set of changed file paths
+        couplings: List of coupling definitions
+        force_strict: If True, treat ALL couplings as strict (ignores soft: true)
 
     Returns tuple of (strict_violations, soft_warnings).
     """
@@ -109,7 +146,8 @@ def check_couplings(
         sources = coupling.get("sources", [])
         docs = coupling.get("docs", [])
         description = coupling.get("description", "")
-        is_soft = coupling.get("soft", False)
+        # When force_strict is True, ignore soft flag
+        is_soft = coupling.get("soft", False) and not force_strict
 
         # Find which source patterns matched
         matched_sources = []
@@ -239,7 +277,30 @@ def main() -> int:
         print_suggestions(changed_files, couplings)
         return 0
 
-    strict_violations, soft_warnings = check_couplings(changed_files, couplings)
+    # Load meta-process config for strictness setting
+    meta_config = load_meta_config()
+    strict_doc_coupling = meta_config["enforcement"].get("strict_doc_coupling", True)
+    show_warning = meta_config["enforcement"].get("show_strictness_warning", True)
+
+    # Show warning if running in non-strict mode
+    if not strict_doc_coupling and show_warning:
+        print("=" * 60)
+        print("WARNING: Doc-code coupling is running in NON-STRICT mode")
+        print("=" * 60)
+        print()
+        print("Soft couplings will produce warnings instead of failures.")
+        print("This allows documentation drift to accumulate silently.")
+        print()
+        print("To enable strict mode, set in meta-process.yaml:")
+        print("  enforcement:")
+        print("    strict_doc_coupling: true")
+        print()
+        print("=" * 60)
+        print()
+
+    strict_violations, soft_warnings = check_couplings(
+        changed_files, couplings, force_strict=strict_doc_coupling
+    )
 
     if not strict_violations and not soft_warnings:
         print("Doc-code coupling check passed.")

@@ -26,8 +26,11 @@ import re
 import sys
 from pathlib import Path
 
+import yaml
+
 
 PLANS_DIR = Path("docs/plans")
+META_CONFIG_FILE = Path("meta-process.yaml")
 INDEX_FILE = PLANS_DIR / "CLAUDE.md"
 
 # Status emoji mapping
@@ -40,6 +43,33 @@ STATUS_MAP = {
 }
 
 REVERSE_STATUS_MAP = {v: k for k, v in STATUS_MAP.items()}
+
+
+def load_meta_config() -> dict:
+    """Load meta-process configuration.
+
+    Returns default values if config file doesn't exist.
+    """
+    defaults = {
+        "enforcement": {
+            "plan_index_auto_add": True,
+            "strict_doc_coupling": True,
+            "show_strictness_warning": True,
+        }
+    }
+
+    if not META_CONFIG_FILE.exists():
+        return defaults
+
+    try:
+        with open(META_CONFIG_FILE) as f:
+            config = yaml.safe_load(f) or {}
+        # Merge with defaults
+        enforcement = defaults["enforcement"].copy()
+        enforcement.update(config.get("enforcement", {}))
+        return {"enforcement": enforcement}
+    except Exception:
+        return defaults
 
 
 def parse_plan_status(plan_path: Path) -> dict | None:
@@ -266,8 +296,88 @@ def check_consistency() -> list[dict]:
     return issues
 
 
+def add_missing_plans_to_index(content: str, plan_statuses: dict[int, dict]) -> tuple[str, int]:
+    """Add plans that exist as files but are missing from index.
+
+    Returns tuple of (new_content, count_added).
+    """
+    # Parse existing index to find what's already there
+    index_statuses = parse_index_table(INDEX_FILE)
+    existing_nums = set(index_statuses.keys())
+
+    # Find missing plans
+    missing_nums = set(plan_statuses.keys()) - existing_nums
+    if not missing_nums:
+        return content, 0
+
+    # Find the table in the content
+    table_match = re.search(
+        r"(## Gap Summary\s+\|[^\n]+\n\|[-\s|]+\n)((?:\|[^\n]+\n)*)",
+        content
+    )
+
+    if not table_match:
+        print("Warning: Could not find Gap Summary table in index")
+        return content, 0
+
+    table_header = table_match.group(1)
+    table_rows = table_match.group(2)
+
+    # Parse existing rows to maintain order
+    rows_by_num: dict[int, str] = {}
+    for line in table_rows.strip().split("\n"):
+        if not line.strip():
+            continue
+        cells = [c.strip() for c in line.split("|")[1:-1]]
+        if len(cells) >= 1:
+            try:
+                num = int(cells[0])
+                rows_by_num[num] = line
+            except ValueError:
+                pass
+
+    # Generate rows for missing plans
+    added = 0
+    for num in missing_nums:
+        plan = plan_statuses[num]
+
+        # Extract title for link - clean up "Plan N:" prefix if present
+        title = plan["title"]
+        title = re.sub(r"^Plan\s*#?\d+[:\s]*", "", title).strip()
+
+        # Build the row
+        # Format: | # | [Title](file.md) | Priority | Status | Blocks |
+        link = f"[{title}]({plan['file']})"
+        status_emoji = plan["status_emoji"]
+        status_text = STATUS_MAP.get(status_emoji, "")
+
+        # Default priority based on status
+        if status_emoji == "✅":
+            priority = "**High**"  # Complete plans were likely high priority
+        else:
+            priority = "Medium"  # Default for new plans
+
+        row = f"| {num} | {link} | {priority} | {status_emoji} {status_text} | - |"
+        rows_by_num[num] = row
+        added += 1
+        print(f"  Added Plan #{num}: {title}")
+
+    # Rebuild table with all rows in sorted order
+    sorted_rows = [rows_by_num[n] for n in sorted(rows_by_num.keys())]
+    new_table_body = "\n".join(sorted_rows) + "\n"
+
+    # Replace in content
+    new_content = content[:table_match.start()] + table_header + new_table_body + content[table_match.end():]
+
+    return new_content, added
+
+
 def sync_index_to_plans() -> int:
-    """Update index table to match plan file statuses."""
+    """Update index table to match plan file statuses.
+
+    If plan_index_auto_add is enabled in meta-process.yaml, also adds
+    plans that exist as files but are missing from the index.
+    """
     if not INDEX_FILE.exists():
         print(f"Error: {INDEX_FILE} not found")
         return 1
@@ -281,6 +391,13 @@ def sync_index_to_plans() -> int:
         status = parse_plan_status(pf)
         if status:
             plan_statuses[status["number"]] = status
+
+    # Check if we should auto-add missing plans
+    config = load_meta_config()
+    if config["enforcement"].get("plan_index_auto_add", True):
+        content, added = add_missing_plans_to_index(content, plan_statuses)
+        if added:
+            print(f"Added {added} missing plan(s) to index.\n")
 
     # Find and update each row in the table
     def replace_status(match: re.Match) -> str:
