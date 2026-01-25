@@ -365,10 +365,10 @@ async def _llm_transition(self, agent, step):
 - [x] Add backwards compatibility for inline prompts/workflows (default when no artifact ID)
 
 ### Phase 5: Genesis Seeding
-- [ ] Create comprehensive genesis_prompt_library
-- [ ] Create genesis_workflow_templates
-- [ ] Update handbook with new patterns
-- [ ] Add examples for trading intelligence artifacts
+- [x] Create comprehensive genesis_prompt_library (added 6 new prompts: error_recovery, coordination_request, resource_optimization, artifact_design, market_analysis, intelligence_trading)
+- [x] Create genesis_workflow_templates (not needed - workflows can reference genesis_prompt_library directly via prompt_artifact_id)
+- [x] Update handbook with new patterns (created intelligence.md)
+- [x] Add examples for trading intelligence artifacts (intelligence.md has comprehensive examples)
 
 ## Files Affected
 
@@ -383,6 +383,9 @@ async def _llm_transition(self, agent, step):
 - src/world/genesis/embedder.py (create) - Embedding generation service
 - src/world/genesis/memory.py (create) - Memory operations service
 - src/world/genesis/genesis_prompt_library.py (create)
+- src/world/genesis/prompt_library.py (modify) - Phase 5: Additional prompts
+- src/agents/_handbook/intelligence.md (create) - Phase 5: Intelligence trading handbook
+- src/agents/_handbook/_index.md (modify) - Phase 5: Add intelligence section to index
 - tests/unit/test_genesis_memory.py (create) - Memory artifact tests
 - tests/test_prompt_artifacts.py (create)
 - tests/test_llm_transitions.py (create)

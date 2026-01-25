@@ -104,6 +104,170 @@ Key questions:
         "variables": [],
         "tags": ["meta-learning", "self-improvement"],
     },
+    # Plan #146 Phase 5: Additional comprehensive prompts
+    "error_recovery": {
+        "description": "Prompt for handling and recovering from errors",
+        "template": """=== ERROR RECOVERY ===
+An error occurred. Analyze and recover:
+
+1. DIAGNOSE: What went wrong?
+   - Parse the error message carefully
+   - Check if it's a permission, resource, or logic error
+   - Identify the root cause
+
+2. DECIDE: What's the best recovery strategy?
+   - Retry with different parameters?
+   - Fall back to a simpler approach?
+   - Abandon and try something else?
+
+3. LEARN: Record this for future reference
+   - Add to working memory: what caused it, how you fixed it
+   - Avoid repeating the same mistake
+
+Error recovery is progress - you learned something!
+""",
+        "variables": [],
+        "tags": ["error-handling", "recovery", "resilience"],
+    },
+    "coordination_request": {
+        "description": "Prompt for initiating coordination with other agents",
+        "template": """=== COORDINATION REQUEST ===
+You want to coordinate with another agent. Consider:
+
+1. VALUE PROPOSITION: What do you offer?
+   - What artifact or service can you provide?
+   - What unique capability do you have?
+
+2. REQUIREMENTS: What do you need?
+   - Be specific about what you're requesting
+   - What's the expected exchange rate?
+
+3. MECHANISM: How will you coordinate?
+   - Use genesis_escrow for trustless trades
+   - Consider creating a simple contract artifact
+   - Specify clear success criteria
+
+Remember: Other agents are also trying to maximize scrip.
+Make your offer attractive enough to compete.
+""",
+        "variables": [],
+        "tags": ["coordination", "multi-agent", "trading"],
+    },
+    "resource_optimization": {
+        "description": "Prompt for optimizing resource usage",
+        "template": """=== RESOURCE OPTIMIZATION ===
+Resources are scarce. Optimize your usage:
+
+COMPUTE (per-tick):
+- Minimize unnecessary LLM calls
+- Use reflexes for routine decisions
+- Batch operations when possible
+
+DISK (persistent):
+- Delete artifacts you don't need
+- Overwrite rather than create new
+- Keep content concise
+
+SCRIP (economic):
+- Track your burn rate
+- Generate revenue before spending
+- Save for valuable opportunities
+
+Ask: Is this action worth its resource cost?
+""",
+        "variables": [],
+        "tags": ["resources", "optimization", "efficiency"],
+    },
+    "artifact_design": {
+        "description": "Prompt for designing high-quality artifacts",
+        "template": """=== ARTIFACT DESIGN ===
+Design artifacts that others will pay to use:
+
+1. INTERFACE: Make it obvious
+   - Clear description of what it does
+   - Document input/output formats
+   - Include example usage
+
+2. RELIABILITY: Make it robust
+   - Handle edge cases gracefully
+   - Return meaningful error messages
+   - Don't crash on bad input
+
+3. VALUE: Make it useful
+   - Solve a real problem
+   - Be better than alternatives
+   - Price it to encourage adoption
+
+4. DISCOVERABILITY: Make it findable
+   - Use descriptive artifact_id
+   - Set appropriate type
+   - Consider read_price vs invoke_price
+
+Great artifacts generate passive income.
+""",
+        "variables": [],
+        "tags": ["building", "design", "monetization"],
+    },
+    "market_analysis": {
+        "description": "Prompt for analyzing market opportunities",
+        "template": """=== MARKET ANALYSIS ===
+Analyze the current market to find opportunities:
+
+1. SUPPLY: What artifacts exist?
+   - Use query_kernel to list artifacts
+   - Check what types are common/rare
+   - Note who owns what
+
+2. DEMAND: What do agents need?
+   - What services are expensive?
+   - What problems have no solutions?
+   - What would you pay for?
+
+3. GAPS: Where are the opportunities?
+   - Underserved niches
+   - Overpriced services you could undercut
+   - Complementary services to bundle
+
+4. COMPETITION: Who else is building?
+   - Watch for new artifacts
+   - Track mint auction results
+   - Learn from successful agents
+
+First mover advantage matters. Act on insights quickly.
+""",
+        "variables": [],
+        "tags": ["market", "analysis", "strategy"],
+    },
+    "intelligence_trading": {
+        "description": "Prompt for trading cognitive artifacts (prompts, memories, workflows)",
+        "template": """=== INTELLIGENCE TRADING ===
+Your prompts, memories, and workflows are tradeable assets.
+
+WHAT YOU CAN TRADE:
+- Personality prompts: Your decision-making style
+- Long-term memories: Your learned experiences
+- Workflows: Your behavioral patterns
+
+HOW TO TRADE:
+1. Create artifact with your prompt/memory content
+2. Set invoke_price or read_price
+3. Use genesis_escrow for one-time sales
+
+PRICING STRATEGY:
+- Prompts that increase success rate: HIGH value
+- Memories of profitable strategies: MEDIUM value
+- General knowledge: LOW value (others can learn)
+
+BUYING INTELLIGENCE:
+- Look for agents with high success rates
+- Check their prompt/memory artifacts
+- Test before paying full price
+
+Your experiences have value. Monetize them!
+""",
+        "variables": [],
+        "tags": ["intelligence", "trading", "memory", "prompts"],
+    },
 }
 
 
