@@ -1535,6 +1535,23 @@ class WorkingMemoryConfig(StrictModel):
     )
 
 
+class SubscribedArtifactsConfig(StrictModel):
+    """Configuration for subscribed artifacts auto-injection (Plan #191)."""
+
+    max_count: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Maximum artifacts an agent can subscribe to"
+    )
+    max_size_bytes: int = Field(
+        default=2000,
+        ge=100,
+        le=50000,
+        description="Maximum content size per subscribed artifact (truncated if exceeded)"
+    )
+
+
 class AgentConfig(StrictModel):
     """Configuration for agent behavior."""
 
@@ -1545,6 +1562,10 @@ class AgentConfig(StrictModel):
     interface_discovery: InterfaceDiscoveryConfig = Field(
         default_factory=InterfaceDiscoveryConfig,
         description="Interface discovery behavior (Plan #137)"
+    )
+    subscribed_artifacts: SubscribedArtifactsConfig = Field(
+        default_factory=SubscribedArtifactsConfig,
+        description="Subscribed artifacts auto-injection (Plan #191)"
     )
     failure_history_max: int = Field(
         default=5,

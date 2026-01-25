@@ -11,7 +11,7 @@ from ..agents.schema import ActionType as ActionTypeLiteral
 
 
 class ActionType(str, Enum):
-    """The narrow waist - 6 physics verbs (plus noop)"""
+    """The narrow waist - 6 physics verbs (plus noop, query, subscriptions)"""
 
     NOOP = "noop"
     READ_ARTIFACT = "read_artifact"
@@ -20,6 +20,8 @@ class ActionType(str, Enum):
     INVOKE_ARTIFACT = "invoke_artifact"
     DELETE_ARTIFACT = "delete_artifact"
     QUERY_KERNEL = "query_kernel"  # Plan #184: Direct kernel state queries
+    SUBSCRIBE_ARTIFACT = "subscribe_artifact"  # Plan #191: Subscribe to artifact
+    UNSUBSCRIBE_ARTIFACT = "unsubscribe_artifact"  # Plan #191: Unsubscribe
     # NOTE: No TRANSFER - all transfers via genesis_ledger.transfer()
 
 
@@ -235,6 +237,45 @@ class QueryKernelIntent(ActionIntent):
         d = super().to_dict()
         d["query_type"] = self.query_type
         d["params"] = self.params
+        return d
+
+
+@dataclass
+class SubscribeArtifactIntent(ActionIntent):
+    """Subscribe to an artifact for auto-injection into prompts (Plan #191).
+
+    Adds the artifact_id to the agent's subscribed_artifacts list.
+    Subscribed artifacts are automatically injected into the agent's prompt.
+    """
+
+    artifact_id: str
+
+    def __init__(self, principal_id: str, artifact_id: str, reasoning: str = "") -> None:
+        super().__init__(ActionType.SUBSCRIBE_ARTIFACT, principal_id, reasoning=reasoning)
+        self.artifact_id = artifact_id
+
+    def to_dict(self) -> dict[str, Any]:
+        d = super().to_dict()
+        d["artifact_id"] = self.artifact_id
+        return d
+
+
+@dataclass
+class UnsubscribeArtifactIntent(ActionIntent):
+    """Unsubscribe from an artifact (Plan #191).
+
+    Removes the artifact_id from the agent's subscribed_artifacts list.
+    """
+
+    artifact_id: str
+
+    def __init__(self, principal_id: str, artifact_id: str, reasoning: str = "") -> None:
+        super().__init__(ActionType.UNSUBSCRIBE_ARTIFACT, principal_id, reasoning=reasoning)
+        self.artifact_id = artifact_id
+
+    def to_dict(self) -> dict[str, Any]:
+        d = super().to_dict()
+        d["artifact_id"] = self.artifact_id
         return d
 
 
@@ -465,5 +506,23 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
             return "query_kernel 'params' must be a dict"
         return QueryKernelIntent(principal_id, query_type, params, reasoning=reasoning)
 
+    elif action_type == "subscribe_artifact":
+        # Plan #191: Subscribe to artifact for auto-injection
+        artifact_id = data.get("artifact_id")
+        if not artifact_id:
+            return "subscribe_artifact requires 'artifact_id'"
+        if not isinstance(artifact_id, str):
+            return "artifact_id must be a string"
+        return SubscribeArtifactIntent(principal_id, artifact_id, reasoning=reasoning)
+
+    elif action_type == "unsubscribe_artifact":
+        # Plan #191: Unsubscribe from artifact
+        artifact_id = data.get("artifact_id")
+        if not artifact_id:
+            return "unsubscribe_artifact requires 'artifact_id'"
+        if not isinstance(artifact_id, str):
+            return "artifact_id must be a string"
+        return UnsubscribeArtifactIntent(principal_id, artifact_id, reasoning=reasoning)
+
     else:
-        return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel"
+        return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel, subscribe_artifact, unsubscribe_artifact"
