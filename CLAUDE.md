@@ -77,6 +77,17 @@ make clean-branches-delete  # Delete stale remote branches
 make clean-worktrees     # Find orphaned worktrees
 make clean-worktrees-auto  # Auto-cleanup orphaned worktrees
 ```
+
+### Claim Cleanup (Plan #206)
+```bash
+# Cleanup commands for claim lifecycle management
+python scripts/check_claims.py --cleanup-orphaned  # Remove claims with missing worktrees
+python scripts/check_claims.py --cleanup-stale     # Remove claims inactive >8h
+python scripts/check_claims.py --cleanup-stale --stale-hours 4  # Custom threshold
+python scripts/check_claims.py --cleanup-orphaned --dry-run  # Preview changes
+python scripts/cleanup_claims_mess.py --dry-run    # One-time full cleanup preview
+python scripts/cleanup_claims_mess.py --apply      # Apply full cleanup
+```
 ---
 
 ## Quick Reference - Scripts
@@ -86,12 +97,15 @@ make clean-worktrees-auto  # Auto-cleanup orphaned worktrees
 | `meta_status.py` | Dashboard: `python scripts/meta_status.py` |
 | `check_claims.py --list` | See active claims |
 | `check_claims.py --list-features` | Available feature scopes |
+| `check_claims.py --cleanup-orphaned` | Remove claims with missing worktrees |
+| `check_claims.py --cleanup-stale` | Remove inactive claims (>8h default) |
 | `check_plan_tests.py --plan N` | Run plan's required tests |
 | `check_plan_tests.py --plan N --tdd` | See what tests to write |
 | `complete_plan.py --plan N` | Mark plan complete (runs tests, records evidence) |
 | `validate_plan.py --plan N` | Pre-implementation validation |
 | `check_doc_coupling.py --suggest` | Which docs to update |
 | `sync_plan_status.py --check` | Validate plan statuses |
+| `cleanup_claims_mess.py --dry-run` | Preview full claim cleanup |
 
 ---
 
