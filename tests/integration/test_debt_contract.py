@@ -1,28 +1,37 @@
-"""Integration tests for genesis_debt_contract - non-privileged debt/credit patterns."""
+"""Integration tests for genesis_debt_contract - non-privileged debt/credit patterns.
+
+Plan #167: Updated to use time-based scheduling instead of ticks.
+"""
 
 import pytest
 import tempfile
+from datetime import datetime, timezone, timedelta
+from unittest.mock import patch
 
 from src.world.artifacts import ArtifactStore
 from src.world.ledger import Ledger
 from src.world.genesis import GenesisDebtContract
 
 
+def make_now() -> datetime:
+    """Create a consistent 'now' for testing."""
+    return datetime(2026, 1, 24, 12, 0, 0, tzinfo=timezone.utc)
+
+
 class TestDebtContractLifecycle:
     """Test complete debt contract lifecycle."""
 
     def test_full_loan_cycle(self) -> None:
-        """Complete loan cycle: issue → accept → repay → paid."""
+        """Complete loan cycle: issue -> accept -> repay -> paid."""
         ledger = Ledger()
         ledger.create_principal("alice", starting_scrip=100)
         ledger.create_principal("bob", starting_scrip=200)
 
         contract = GenesisDebtContract(ledger=ledger)
-        contract.set_tick(0)
 
-        # Alice requests loan from Bob
+        # Alice requests loan from Bob (due in 1 hour)
         issue_result = contract._issue(
-            args=["bob", 50, 0.0, 100],  # creditor, principal, rate, due_tick
+            args=["bob", 50, 0.0, 3600],  # creditor, principal, rate_per_day, due_in_seconds
             invoker_id="alice"
         )
         assert issue_result["success"] is True
@@ -48,25 +57,26 @@ class TestDebtContractLifecycle:
         ledger.create_principal("lender", starting_scrip=100)
 
         contract = GenesisDebtContract(ledger=ledger)
-        contract.set_tick(0)
+        now = make_now()
 
-        # Borrower takes 100 scrip loan at 10% per tick
-        issue = contract._issue(
-            args=["lender", 100, 0.1, 50],
-            invoker_id="borrower"
-        )
-        debt_id = issue["debt_id"]
-        contract._accept(args=[debt_id], invoker_id="lender")
+        with patch.object(contract, "_now", return_value=now):
+            # Borrower takes 100 scrip loan at 10% per day
+            issue = contract._issue(
+                args=["lender", 100, 0.1, 86400 * 10],  # 10% per day, due in 10 days
+                invoker_id="borrower"
+            )
+            debt_id = issue["debt_id"]
+            contract._accept(args=[debt_id], invoker_id="lender")
 
-        # After 5 ticks, interest accrued: 100 + (100 * 0.1 * 5) = 150
-        contract.set_tick(5)
-        check = contract._check(args=[debt_id], invoker_id="borrower")
-        assert check["debt"]["current_owed"] == 150
+        # After 5 days, interest accrued: 100 + (100 * 0.1 * 5) = 150
+        with patch.object(contract, "_now", return_value=now + timedelta(days=5)):
+            check = contract._check(args=[debt_id], invoker_id="borrower")
+            assert check["debt"]["current_owed"] == 150
 
-        # Repay full amount with interest
-        repay = contract._repay(args=[debt_id, 150], invoker_id="borrower")
-        assert repay["success"] is True
-        assert repay["status"] == "paid"
+            # Repay full amount with interest
+            repay = contract._repay(args=[debt_id, 150], invoker_id="borrower")
+            assert repay["success"] is True
+            assert repay["status"] == "paid"
 
         # Final balances: borrower paid 150, lender received 150
         assert ledger.get_scrip("borrower") == 0
@@ -79,11 +89,10 @@ class TestDebtContractLifecycle:
         ledger.create_principal("creditor", starting_scrip=50)
 
         contract = GenesisDebtContract(ledger=ledger)
-        contract.set_tick(0)
 
-        # Issue 60 scrip debt
+        # Issue 60 scrip debt (due in 1 day, no interest)
         issue = contract._issue(
-            args=["creditor", 60, 0.0, 100],
+            args=["creditor", 60, 0.0, 86400],
             invoker_id="debtor"
         )
         debt_id = issue["debt_id"]
@@ -106,38 +115,38 @@ class TestDebtContractLifecycle:
 
 
 class TestDebtCollection:
-    """Test creditor collection after due tick."""
+    """Test creditor collection after due time."""
 
     def test_forced_collection_after_due(self) -> None:
-        """Creditor can collect after due tick."""
+        """Creditor can collect after due time."""
         ledger = Ledger()
         ledger.create_principal("debtor", starting_scrip=100)
         ledger.create_principal("creditor", starting_scrip=50)
 
         contract = GenesisDebtContract(ledger=ledger)
-        contract.set_tick(0)
+        now = make_now()
 
-        # Issue debt due at tick 10
-        issue = contract._issue(
-            args=["creditor", 40, 0.0, 10],
-            invoker_id="debtor"
-        )
-        debt_id = issue["debt_id"]
-        contract._accept(args=[debt_id], invoker_id="creditor")
+        with patch.object(contract, "_now", return_value=now):
+            # Issue debt due in 1 hour
+            issue = contract._issue(
+                args=["creditor", 40, 0.0, 3600],  # due in 1 hour
+                invoker_id="debtor"
+            )
+            debt_id = issue["debt_id"]
+            contract._accept(args=[debt_id], invoker_id="creditor")
 
-        # Cannot collect before due
-        collect = contract._collect(args=[debt_id], invoker_id="creditor")
-        assert collect["success"] is False
+            # Cannot collect before due
+            collect = contract._collect(args=[debt_id], invoker_id="creditor")
+            assert collect["success"] is False
 
-        # Advance past due tick
-        contract.set_tick(15)
-
-        # Now collection works
-        collect = contract._collect(args=[debt_id], invoker_id="creditor")
-        assert collect["success"] is True
-        assert collect["collected"] == 40
-        assert ledger.get_scrip("debtor") == 60
-        assert ledger.get_scrip("creditor") == 90
+        # Advance past due time
+        with patch.object(contract, "_now", return_value=now + timedelta(hours=2)):
+            # Now collection works
+            collect = contract._collect(args=[debt_id], invoker_id="creditor")
+            assert collect["success"] is True
+            assert collect["collected"] == 40
+            assert ledger.get_scrip("debtor") == 60
+            assert ledger.get_scrip("creditor") == 90
 
     def test_default_on_zero_balance(self) -> None:
         """Default when debtor has no scrip."""
@@ -146,23 +155,23 @@ class TestDebtCollection:
         ledger.create_principal("creditor", starting_scrip=100)
 
         contract = GenesisDebtContract(ledger=ledger)
-        contract.set_tick(0)
+        now = make_now()
 
-        # Issue debt (broke somehow got credit without scrip - risky lending!)
-        issue = contract._issue(
-            args=["creditor", 50, 0.0, 5],
-            invoker_id="broke"
-        )
-        debt_id = issue["debt_id"]
-        contract._accept(args=[debt_id], invoker_id="creditor")
+        with patch.object(contract, "_now", return_value=now):
+            # Issue debt (broke somehow got credit without scrip - risky lending!)
+            issue = contract._issue(
+                args=["creditor", 50, 0.0, 3600],
+                invoker_id="broke"
+            )
+            debt_id = issue["debt_id"]
+            contract._accept(args=[debt_id], invoker_id="creditor")
 
         # Advance past due
-        contract.set_tick(10)
-
-        # Collection fails - debtor is broke
-        collect = contract._collect(args=[debt_id], invoker_id="creditor")
-        assert collect["success"] is False
-        assert collect["status"] == "defaulted"
+        with patch.object(contract, "_now", return_value=now + timedelta(hours=2)):
+            # Collection fails - debtor is broke
+            collect = contract._collect(args=[debt_id], invoker_id="creditor")
+            assert collect["success"] is False
+            assert collect["status"] == "defaulted"
 
 
 class TestDebtTrading:
@@ -176,11 +185,10 @@ class TestDebtTrading:
         ledger.create_principal("debt_buyer", starting_scrip=50)
 
         contract = GenesisDebtContract(ledger=ledger)
-        contract.set_tick(0)
 
         # Issue and accept debt
         issue = contract._issue(
-            args=["original_creditor", 30, 0.0, 100],
+            args=["original_creditor", 30, 0.0, 86400],
             invoker_id="debtor"
         )
         debt_id = issue["debt_id"]
@@ -210,10 +218,9 @@ class TestDebtTrading:
         ledger.create_principal("attacker", starting_scrip=50)
 
         contract = GenesisDebtContract(ledger=ledger)
-        contract.set_tick(0)
 
         issue = contract._issue(
-            args=["creditor", 30, 0.0, 100],
+            args=["creditor", 30, 0.0, 86400],
             invoker_id="debtor"
         )
         debt_id = issue["debt_id"]
@@ -274,10 +281,10 @@ class TestDebtContractWorldIntegration:
         world = World(config)
         world.advance_tick()
 
-        # 1. Borrower issues debt request to lender
+        # 1. Borrower issues debt request to lender (due in 1 hour)
         issue = InvokeArtifactIntent(
             "borrower", "genesis_debt_contract", "issue",
-            ["lender", 50, 0.0, 50]  # creditor, principal, rate, due_tick
+            ["lender", 50, 0.0, 3600]  # creditor, principal, rate_per_day, due_in_seconds
         )
         result = world.execute_action(issue)
         assert result.success, result.message
@@ -314,8 +321,8 @@ class TestDebtContractWorldIntegration:
         assert world.ledger.get_scrip("borrower") == 50  # 100 - 50
         assert world.ledger.get_scrip("lender") == 250  # 200 + 50
 
-    def test_debt_tick_advances_with_world(self) -> None:
-        """Debt contract tick updates when world advances."""
+    def test_debt_contract_uses_real_time(self) -> None:
+        """Plan #167: Debt contract uses real time, not ticks."""
         from src.world.world import World
 
         with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
@@ -338,16 +345,15 @@ class TestDebtContractWorldIntegration:
         debt_contract = world.genesis_artifacts["genesis_debt_contract"]
         assert isinstance(debt_contract, GenesisDebtContract)
 
-        # Initial tick is 0
-        assert debt_contract.current_tick == 0
+        # Verify it has time-based method
+        assert hasattr(debt_contract, "_now")
+        now = debt_contract._now()
+        assert isinstance(now, datetime)
+        assert now.tzinfo == timezone.utc
 
-        # Advance world tick
-        world.advance_tick()
-        world.advance_tick()
-        world.advance_tick()
-
-        # Debt contract tick should have advanced too
-        assert debt_contract.current_tick == 3
+        # Verify set_tick is a no-op (for backwards compatibility)
+        # This should not raise, just do nothing
+        debt_contract.set_tick(100)
 
 
 class TestMultipleDebts:
@@ -361,11 +367,10 @@ class TestMultipleDebts:
         ledger.create_principal("creditor_b", starting_scrip=100)
 
         contract = GenesisDebtContract(ledger=ledger)
-        contract.set_tick(0)
 
         # Debt to creditor A
         issue_a = contract._issue(
-            args=["creditor_a", 30, 0.0, 100],
+            args=["creditor_a", 30, 0.0, 86400],
             invoker_id="debtor"
         )
         debt_a = issue_a["debt_id"]
@@ -373,7 +378,7 @@ class TestMultipleDebts:
 
         # Debt to creditor B
         issue_b = contract._issue(
-            args=["creditor_b", 50, 0.0, 100],
+            args=["creditor_b", 50, 0.0, 86400],
             invoker_id="debtor"
         )
         debt_b = issue_b["debt_id"]
@@ -400,11 +405,10 @@ class TestMultipleDebts:
         ledger.create_principal("bank", starting_scrip=500)
 
         contract = GenesisDebtContract(ledger=ledger)
-        contract.set_tick(0)
 
         # Debtor A borrows from bank
         issue_a = contract._issue(
-            args=["bank", 40, 0.0, 100],
+            args=["bank", 40, 0.0, 86400],
             invoker_id="debtor_a"
         )
         debt_a = issue_a["debt_id"]
@@ -412,7 +416,7 @@ class TestMultipleDebts:
 
         # Debtor B borrows from bank
         issue_b = contract._issue(
-            args=["bank", 60, 0.0, 100],
+            args=["bank", 60, 0.0, 86400],
             invoker_id="debtor_b"
         )
         debt_b = issue_b["debt_id"]

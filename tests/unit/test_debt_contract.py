@@ -2,11 +2,21 @@
 
 Tests the non-privileged debt contract example that demonstrates
 credit/lending patterns without kernel-level enforcement.
+
+Plan #167: Updated to use time-based scheduling instead of ticks.
 """
 
 import pytest
+from datetime import datetime, timezone, timedelta
+from unittest.mock import patch
+
 from src.world.genesis import GenesisDebtContract
 from src.world.ledger import Ledger
+
+
+def make_now() -> datetime:
+    """Create a consistent 'now' for testing."""
+    return datetime(2026, 1, 24, 12, 0, 0, tzinfo=timezone.utc)
 
 
 class TestGenesisDebtContract:
@@ -24,16 +34,14 @@ class TestGenesisDebtContract:
     @pytest.fixture
     def debt_contract(self, ledger: Ledger) -> GenesisDebtContract:
         """Create a debt contract instance."""
-        contract = GenesisDebtContract(ledger=ledger)
-        contract.set_tick(0)
-        return contract
+        return GenesisDebtContract(ledger=ledger)
 
     def test_issue_debt_creates_pending_debt(
         self, debt_contract: GenesisDebtContract
     ) -> None:
         """Issuing debt creates a pending record."""
         result = debt_contract._issue(
-            args=["bob", 50, 0.01, 100],  # creditor, principal, rate, due_tick
+            args=["bob", 50, 0.01, 86400],  # creditor, principal, rate_per_day, due_in_seconds
             invoker_id="alice"  # alice becomes debtor
         )
 
@@ -42,6 +50,7 @@ class TestGenesisDebtContract:
         assert result["debtor"] == "alice"
         assert result["creditor"] == "bob"
         assert result["principal"] == 50
+        assert "due_at" in result  # Time-based (Plan #167)
 
     def test_issue_validates_inputs(
         self, debt_contract: GenesisDebtContract
@@ -54,7 +63,7 @@ class TestGenesisDebtContract:
 
         # Invalid principal
         result = debt_contract._issue(
-            args=["bob", -10, 0.01, 100],
+            args=["bob", -10, 0.01, 86400],
             invoker_id="alice"
         )
         assert result["success"] is False
@@ -62,23 +71,23 @@ class TestGenesisDebtContract:
 
         # Invalid interest rate
         result = debt_contract._issue(
-            args=["bob", 50, -0.1, 100],
+            args=["bob", 50, -0.1, 86400],
             invoker_id="alice"
         )
         assert result["success"] is False
         assert "non-negative" in result["error"]
 
-        # Due tick in past
+        # Due in past (negative seconds)
         result = debt_contract._issue(
-            args=["bob", 50, 0.01, 0],  # due_tick = 0, current = 0
+            args=["bob", 50, 0.01, -100],
             invoker_id="alice"
         )
         assert result["success"] is False
-        assert "greater than current tick" in result["error"]
+        assert "positive" in result["error"].lower()
 
         # Cannot issue to self
         result = debt_contract._issue(
-            args=["alice", 50, 0.01, 100],
+            args=["alice", 50, 0.01, 86400],
             invoker_id="alice"
         )
         assert result["success"] is False
@@ -90,7 +99,7 @@ class TestGenesisDebtContract:
         """Creditor accepting debt activates it."""
         # Issue debt
         issue_result = debt_contract._issue(
-            args=["bob", 50, 0.01, 100],
+            args=["bob", 50, 0.01, 86400],
             invoker_id="alice"
         )
         debt_id = issue_result["debt_id"]
@@ -113,7 +122,7 @@ class TestGenesisDebtContract:
     ) -> None:
         """Only the designated creditor can accept."""
         issue_result = debt_contract._issue(
-            args=["bob", 50, 0.01, 100],
+            args=["bob", 50, 0.01, 86400],
             invoker_id="alice"
         )
         debt_id = issue_result["debt_id"]
@@ -130,9 +139,9 @@ class TestGenesisDebtContract:
         self, debt_contract: GenesisDebtContract, ledger: Ledger
     ) -> None:
         """Repaying debt transfers scrip to creditor."""
-        # Issue and accept debt
+        # Issue and accept debt (no interest for simplicity)
         issue_result = debt_contract._issue(
-            args=["bob", 50, 0.0, 100],  # No interest for simplicity
+            args=["bob", 50, 0.0, 86400],
             invoker_id="alice"
         )
         debt_id = issue_result["debt_id"]
@@ -159,7 +168,7 @@ class TestGenesisDebtContract:
     ) -> None:
         """Full repayment marks debt as paid."""
         issue_result = debt_contract._issue(
-            args=["bob", 50, 0.0, 100],
+            args=["bob", 50, 0.0, 86400],
             invoker_id="alice"
         )
         debt_id = issue_result["debt_id"]
@@ -175,82 +184,89 @@ class TestGenesisDebtContract:
         assert result["status"] == "paid"
         assert result["remaining"] == 0
 
-    def test_collect_after_due_tick(
+    def test_collect_after_due_time(
         self, debt_contract: GenesisDebtContract, ledger: Ledger
     ) -> None:
-        """Creditor can collect after due tick."""
-        # Issue and accept debt
-        issue_result = debt_contract._issue(
-            args=["bob", 30, 0.0, 5],  # Due at tick 5
-            invoker_id="alice"
-        )
-        debt_id = issue_result["debt_id"]
-        debt_contract._accept(args=[debt_id], invoker_id="bob")
+        """Creditor can collect after due time (Plan #167: time-based)."""
+        now = make_now()
 
-        # Cannot collect before due
-        result = debt_contract._collect(args=[debt_id], invoker_id="bob")
-        assert result["success"] is False
-        assert "not yet due" in result["error"]
+        # Mock _now() method
+        with patch.object(debt_contract, "_now", return_value=now):
+            # Issue debt due in 1 hour (3600 seconds)
+            issue_result = debt_contract._issue(
+                args=["bob", 30, 0.0, 3600],
+                invoker_id="alice"
+            )
+            debt_id = issue_result["debt_id"]
+            debt_contract._accept(args=[debt_id], invoker_id="bob")
 
-        # Advance to after due tick
-        debt_contract.set_tick(10)
+            # Cannot collect before due
+            result = debt_contract._collect(args=[debt_id], invoker_id="bob")
+            assert result["success"] is False
+            assert "not yet due" in result["error"]
 
-        # Now collection works
-        result = debt_contract._collect(args=[debt_id], invoker_id="bob")
-        assert result["success"] is True
-        assert result["collected"] == 30
-        assert result["status"] == "paid"
+        # Advance time past due
+        with patch.object(debt_contract, "_now", return_value=now + timedelta(hours=2)):
+            # Now collection works
+            result = debt_contract._collect(args=[debt_id], invoker_id="bob")
+            assert result["success"] is True
+            assert result["collected"] == 30
+            assert result["status"] == "paid"
 
     def test_collect_partial_when_insufficient(
         self, debt_contract: GenesisDebtContract, ledger: Ledger
     ) -> None:
         """Partial collection when debtor has some but not all scrip."""
+        now = make_now()
+
         # Reduce alice's balance
         ledger.transfer_scrip("alice", "charlie", 80)  # Alice has 20
         assert ledger.get_scrip("alice") == 20
 
-        # Issue and accept debt
-        issue_result = debt_contract._issue(
-            args=["bob", 50, 0.0, 5],
-            invoker_id="alice"
-        )
-        debt_id = issue_result["debt_id"]
-        debt_contract._accept(args=[debt_id], invoker_id="bob")
+        with patch.object(debt_contract, "_now", return_value=now):
+            # Issue and accept debt
+            issue_result = debt_contract._issue(
+                args=["bob", 50, 0.0, 3600],
+                invoker_id="alice"
+            )
+            debt_id = issue_result["debt_id"]
+            debt_contract._accept(args=[debt_id], invoker_id="bob")
 
         # Advance past due
-        debt_contract.set_tick(10)
-
-        # Partial collection
-        result = debt_contract._collect(args=[debt_id], invoker_id="bob")
-        assert result["success"] is True
-        assert result["collected"] == 20
-        assert result["remaining"] == 30
-        assert result["status"] == "active"
+        with patch.object(debt_contract, "_now", return_value=now + timedelta(hours=2)):
+            # Partial collection
+            result = debt_contract._collect(args=[debt_id], invoker_id="bob")
+            assert result["success"] is True
+            assert result["collected"] == 20
+            assert result["remaining"] == 30
+            assert result["status"] == "active"
 
     def test_collect_fails_when_broke(
         self, debt_contract: GenesisDebtContract, ledger: Ledger
     ) -> None:
         """Collection fails and marks default when debtor is broke."""
+        now = make_now()
+
         # Empty alice's balance
         ledger.transfer_scrip("alice", "charlie", 100)
         assert ledger.get_scrip("alice") == 0
 
-        # Issue and accept
-        issue_result = debt_contract._issue(
-            args=["bob", 50, 0.0, 5],
-            invoker_id="alice"
-        )
-        debt_id = issue_result["debt_id"]
-        debt_contract._accept(args=[debt_id], invoker_id="bob")
+        with patch.object(debt_contract, "_now", return_value=now):
+            # Issue and accept
+            issue_result = debt_contract._issue(
+                args=["bob", 50, 0.0, 3600],
+                invoker_id="alice"
+            )
+            debt_id = issue_result["debt_id"]
+            debt_contract._accept(args=[debt_id], invoker_id="bob")
 
         # Advance past due
-        debt_contract.set_tick(10)
-
-        # Collection fails, marks as defaulted
-        result = debt_contract._collect(args=[debt_id], invoker_id="bob")
-        assert result["success"] is False
-        assert result["status"] == "defaulted"
-        assert "no scrip" in result["error"].lower()
+        with patch.object(debt_contract, "_now", return_value=now + timedelta(hours=2)):
+            # Collection fails, marks as defaulted
+            result = debt_contract._collect(args=[debt_id], invoker_id="bob")
+            assert result["success"] is False
+            assert result["status"] == "defaulted"
+            assert "no scrip" in result["error"].lower()
 
     def test_transfer_creditor_sells_debt(
         self, debt_contract: GenesisDebtContract
@@ -258,7 +274,7 @@ class TestGenesisDebtContract:
         """Creditor can transfer rights to another principal."""
         # Issue and accept
         issue_result = debt_contract._issue(
-            args=["bob", 50, 0.0, 100],
+            args=["bob", 50, 0.0, 86400],
             invoker_id="alice"
         )
         debt_id = issue_result["debt_id"]
@@ -283,9 +299,9 @@ class TestGenesisDebtContract:
     ) -> None:
         """List debts filters by principal."""
         # Create multiple debts
-        debt_contract._issue(args=["bob", 10, 0.0, 100], invoker_id="alice")
-        debt_contract._issue(args=["charlie", 20, 0.0, 100], invoker_id="alice")
-        debt_contract._issue(args=["alice", 30, 0.0, 100], invoker_id="bob")
+        debt_contract._issue(args=["bob", 10, 0.0, 86400], invoker_id="alice")
+        debt_contract._issue(args=["charlie", 20, 0.0, 86400], invoker_id="alice")
+        debt_contract._issue(args=["alice", 30, 0.0, 86400], invoker_id="bob")
 
         # Alice should see 3 debts (2 as debtor, 1 as creditor)
         result = debt_contract._list_debts(args=["alice"], invoker_id="anyone")
@@ -299,25 +315,56 @@ class TestGenesisDebtContract:
     def test_interest_accrues_over_time(
         self, debt_contract: GenesisDebtContract, ledger: Ledger
     ) -> None:
-        """Interest accrues based on ticks elapsed."""
-        # Issue debt with 10% per tick interest
+        """Interest accrues based on time elapsed (Plan #167)."""
+        now = make_now()
+
+        with patch.object(debt_contract, "_now", return_value=now):
+            # Issue debt with 10% per day interest rate
+            issue_result = debt_contract._issue(
+                args=["bob", 100, 0.1, 86400 * 10],  # 10% per day, due in 10 days
+                invoker_id="alice"
+            )
+            debt_id = issue_result["debt_id"]
+            debt_contract._accept(args=[debt_id], invoker_id="bob")
+
+            # Initially owes 100 (no time elapsed)
+            check = debt_contract._check(args=[debt_id], invoker_id="alice")
+            assert check["debt"]["current_owed"] == 100
+
+        # After 1 day: 100 + (100 * 0.1 * 1) = 110
+        with patch.object(debt_contract, "_now", return_value=now + timedelta(days=1)):
+            check = debt_contract._check(args=[debt_id], invoker_id="alice")
+            assert check["debt"]["current_owed"] == 110
+
+        # After 5 days: 100 + (100 * 0.1 * 5) = 150
+        with patch.object(debt_contract, "_now", return_value=now + timedelta(days=5)):
+            check = debt_contract._check(args=[debt_id], invoker_id="alice")
+            assert check["debt"]["current_owed"] == 150
+
+        # After 10 days: 100 + (100 * 0.1 * 10) = 200
+        with patch.object(debt_contract, "_now", return_value=now + timedelta(days=10)):
+            check = debt_contract._check(args=[debt_id], invoker_id="alice")
+            assert check["debt"]["current_owed"] == 200
+
+    def test_check_returns_time_fields(
+        self, debt_contract: GenesisDebtContract
+    ) -> None:
+        """Check returns time-based fields (Plan #167)."""
         issue_result = debt_contract._issue(
-            args=["bob", 100, 0.1, 50],  # 10% per tick
+            args=["bob", 50, 0.01, 86400],
             invoker_id="alice"
         )
         debt_id = issue_result["debt_id"]
         debt_contract._accept(args=[debt_id], invoker_id="bob")
 
-        # Initially owes 100
         check = debt_contract._check(args=[debt_id], invoker_id="alice")
-        assert check["debt"]["current_owed"] == 100
+        debt = check["debt"]
 
-        # After 5 ticks: 100 + (100 * 0.1 * 5) = 150
-        debt_contract.set_tick(5)
-        check = debt_contract._check(args=[debt_id], invoker_id="alice")
-        assert check["debt"]["current_owed"] == 150
+        # Should have time-based fields
+        assert "created_at" in debt
+        assert "due_at" in debt
+        assert "rate_per_day" in debt
 
-        # After 10 ticks: 100 + (100 * 0.1 * 10) = 200
-        debt_contract.set_tick(10)
-        check = debt_contract._check(args=[debt_id], invoker_id="alice")
-        assert check["debt"]["current_owed"] == 200
+        # Should NOT have tick-based fields
+        assert "due_tick" not in debt
+        assert "created_tick" not in debt
