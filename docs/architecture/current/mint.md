@@ -2,7 +2,7 @@
 
 How artifact scoring and scrip minting works today.
 
-**Last verified:** 2026-01-17 (Plan #5 - Anytime bidding)
+**Last verified:** 2026-01-24 (Plan #5 - Anytime bidding)
 
 **Source:** `src/world/genesis.py` (GenesisMint), `src/world/mint_scorer.py`
 
@@ -86,7 +86,7 @@ LLM evaluates submitted artifacts on:
 
 ## Auction Resolution
 
-When bidding window closes:
+When auction period elapses (every `period` ticks):
 
 1. **Select winner(s)** - Top N bids (N = `slots_per_auction`)
 2. **Score artifact** - LLM evaluates winner's submitted artifact

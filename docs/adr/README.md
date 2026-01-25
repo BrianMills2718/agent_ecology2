@@ -77,6 +77,8 @@ To update governance:
 | [0017](0017-dangling-contracts-fail-open.md) | Dangling Contracts Fail Open | Accepted |
 | [0018](0018-bootstrap-and-eris.md) | Bootstrap Phase and Eris | Accepted |
 | [0019](0019-unified-permission-architecture.md) | Unified Permission Architecture | Accepted |
+| [0020](0020-event-schema-contract.md) | Event Schema Contract | Proposed |
+| [0021](0021-resource-attribution.md) | Resource Attribution Model | Accepted |
 
 ---
 
