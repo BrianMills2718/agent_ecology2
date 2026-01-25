@@ -14,11 +14,14 @@ class MockWebSocket {
   onmessage: ((event: { data: string }) => void) | null = null
   onerror: ((error: unknown) => void) | null = null
 
-  constructor(_url: string) {
+  constructor(url: string) {
+    void url  // Mock doesn't use URL
     setTimeout(() => this.onopen?.(), 0)
   }
 
-  send(_data: string) {}
+  send(data: string) {
+    void data  // Mock doesn't send data
+  }
   close() {
     this.readyState = MockWebSocket.CLOSED
     this.onclose?.()
