@@ -14,10 +14,13 @@ MCP servers run as subprocesses, communicating via JSON-RPC over stdio.
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 import threading
 from dataclasses import dataclass
 from typing import Any, cast
+
+logger = logging.getLogger(__name__)
 
 from .genesis import GenesisArtifact
 from ..config_schema import McpConfig
@@ -208,7 +211,8 @@ class GenesisMcpBridge(GenesisArtifact):
         if self._process is None:
             try:
                 self.start_server()
-            except Exception:
+            except Exception as e:
+                logger.warning("Failed to start MCP server: %s", e)
                 return []
 
         try:
@@ -222,7 +226,8 @@ class GenesisMcpBridge(GenesisArtifact):
                 )
                 for t in tools
             ]
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to list MCP tools: %s", e)
             return []
 
     def __del__(self) -> None:

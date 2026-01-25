@@ -35,7 +35,7 @@ pytest-rerunfailures>=16.0  # For @pytest.mark.flaky on SQLite tests
 # HTTP
 requests>=2.31.0
 aiohttp>=3.9.0
-urllib3>=2.0.0
+urllib3>=2.2.0  # Security: CVE fixes in 2.2+
 
 # Data
 numpy>=1.24.0
@@ -50,4 +50,4 @@ matplotlib>=3.7.0
 psutil>=5.9.0
 
 # Crypto
-cryptography>=41.0.0
+cryptography>=42.0.0  # Security: Multiple CVE fixes in 42+
