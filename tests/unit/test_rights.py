@@ -17,6 +17,8 @@ from src.world.rights import (
     update_right_amount,
     find_rights_by_type,
     get_total_right_amount,
+    split_right,
+    merge_rights,
     DOLLAR_BUDGET_PREFIX,
     RATE_CAPACITY_PREFIX,
     DISK_QUOTA_PREFIX,
@@ -449,3 +451,177 @@ class TestGetTotalRightAmount:
 
         assert gemini_total == 100.0
         assert all_total == 150.0
+
+
+class TestSplitRight:
+    """Tests for split_right function (Plan #166 Phase 5)."""
+
+    def test_splits_right_into_multiple(self) -> None:
+        """Splits a right into multiple smaller rights."""
+        store = ArtifactStore()
+        right_id = create_dollar_budget_right(store, "agent_1", 0.50)
+
+        new_ids = split_right(store, right_id, [0.25, 0.25], "agent_1")
+
+        assert new_ids is not None
+        assert len(new_ids) == 2
+
+        # Original should be deleted
+        original = store.get(right_id)
+        assert original is not None
+        assert original.deleted is True
+
+        # New rights should have correct amounts
+        total = 0.0
+        for new_id in new_ids:
+            right_data = get_right_data(store, new_id)
+            assert right_data is not None
+            assert right_data.amount == 0.25
+            total += right_data.amount
+        assert total == 0.50
+
+    def test_split_preserves_right_type(self) -> None:
+        """Split rights preserve the original right type."""
+        store = ArtifactStore()
+        right_id = create_rate_capacity_right(store, "agent_1", "gemini", 100)
+
+        new_ids = split_right(store, right_id, [60, 40], "agent_1")
+
+        assert new_ids is not None
+        for new_id in new_ids:
+            right_data = get_right_data(store, new_id)
+            assert right_data is not None
+            assert right_data.right_type == RightType.RATE_CAPACITY
+            assert right_data.model == "gemini"
+
+    def test_split_fails_if_not_owner(self) -> None:
+        """Cannot split a right you don't own."""
+        store = ArtifactStore()
+        right_id = create_dollar_budget_right(store, "agent_1", 0.50)
+
+        result = split_right(store, right_id, [0.25, 0.25], "agent_2")
+
+        assert result is None
+
+    def test_split_fails_if_amounts_dont_match(self) -> None:
+        """Cannot split if amounts don't sum to original."""
+        store = ArtifactStore()
+        right_id = create_dollar_budget_right(store, "agent_1", 0.50)
+
+        result = split_right(store, right_id, [0.30, 0.30], "agent_1")
+
+        assert result is None
+
+    def test_split_fails_if_nonexistent(self) -> None:
+        """Cannot split a nonexistent right."""
+        store = ArtifactStore()
+
+        result = split_right(store, "nonexistent", [0.25, 0.25], "agent_1")
+
+        assert result is None
+
+    def test_split_fails_with_zero_amount(self) -> None:
+        """Cannot split with zero or negative amounts."""
+        store = ArtifactStore()
+        right_id = create_dollar_budget_right(store, "agent_1", 0.50)
+
+        result = split_right(store, right_id, [0.50, 0], "agent_1")
+
+        assert result is None
+
+
+class TestMergeRights:
+    """Tests for merge_rights function (Plan #166 Phase 5)."""
+
+    def test_merges_multiple_rights(self) -> None:
+        """Merges multiple rights into one."""
+        store = ArtifactStore()
+        id1 = create_dollar_budget_right(store, "agent_1", 0.25)
+        id2 = create_dollar_budget_right(store, "agent_1", 0.25, artifact_id="extra")
+
+        merged_id = merge_rights(store, [id1, id2], "agent_1")
+
+        assert merged_id is not None
+
+        # Original rights should be deleted
+        assert store.get(id1).deleted is True
+        assert store.get(id2).deleted is True
+
+        # Merged right should have combined amount
+        merged_data = get_right_data(store, merged_id)
+        assert merged_data is not None
+        assert merged_data.amount == 0.50
+
+    def test_merge_preserves_right_type(self) -> None:
+        """Merged right preserves the original type."""
+        store = ArtifactStore()
+        id1 = create_rate_capacity_right(store, "agent_1", "gemini", 60)
+        id2 = create_rate_capacity_right(store, "agent_1", "gemini", 40, artifact_id="extra")
+
+        merged_id = merge_rights(store, [id1, id2], "agent_1")
+
+        assert merged_id is not None
+        merged_data = get_right_data(store, merged_id)
+        assert merged_data.right_type == RightType.RATE_CAPACITY
+        assert merged_data.model == "gemini"
+        assert merged_data.amount == 100.0
+
+    def test_merge_fails_if_not_owner(self) -> None:
+        """Cannot merge rights you don't own."""
+        store = ArtifactStore()
+        id1 = create_dollar_budget_right(store, "agent_1", 0.25)
+        id2 = create_dollar_budget_right(store, "agent_1", 0.25, artifact_id="extra")
+
+        result = merge_rights(store, [id1, id2], "agent_2")
+
+        assert result is None
+
+    def test_merge_fails_if_different_types(self) -> None:
+        """Cannot merge rights of different types."""
+        store = ArtifactStore()
+        id1 = create_dollar_budget_right(store, "agent_1", 0.25)
+        id2 = create_disk_quota_right(store, "agent_1", 1000)
+
+        result = merge_rights(store, [id1, id2], "agent_1")
+
+        assert result is None
+
+    def test_merge_fails_if_different_models(self) -> None:
+        """Cannot merge rate_capacity rights for different models."""
+        store = ArtifactStore()
+        id1 = create_rate_capacity_right(store, "agent_1", "gemini", 50)
+        id2 = create_rate_capacity_right(store, "agent_1", "claude", 50, artifact_id="extra")
+
+        result = merge_rights(store, [id1, id2], "agent_1")
+
+        assert result is None
+
+    def test_merge_fails_with_single_right(self) -> None:
+        """Cannot merge less than 2 rights."""
+        store = ArtifactStore()
+        id1 = create_dollar_budget_right(store, "agent_1", 0.50)
+
+        result = merge_rights(store, [id1], "agent_1")
+
+        assert result is None
+
+    def test_merge_fails_with_nonexistent(self) -> None:
+        """Cannot merge nonexistent rights."""
+        store = ArtifactStore()
+        id1 = create_dollar_budget_right(store, "agent_1", 0.25)
+
+        result = merge_rights(store, [id1, "nonexistent"], "agent_1")
+
+        assert result is None
+
+    def test_merge_with_custom_id(self) -> None:
+        """Can specify custom ID for merged right."""
+        store = ArtifactStore()
+        id1 = create_dollar_budget_right(store, "agent_1", 0.25)
+        id2 = create_dollar_budget_right(store, "agent_1", 0.25, artifact_id="extra")
+
+        merged_id = merge_rights(
+            store, [id1, id2], "agent_1", new_right_id="my_merged_budget"
+        )
+
+        assert merged_id == "my_merged_budget"
