@@ -31,6 +31,102 @@ from .store import GenesisStore
 from .model_registry import GenesisModelRegistry
 from .embedder import GenesisEmbedder
 from .memory import GenesisMemory
+from ..genesis_contracts import GENESIS_CONTRACTS
+
+
+def _create_contract_artifacts(artifact_store: ArtifactStore) -> None:
+    """Create readable artifacts for genesis contracts (Plan #165).
+
+    These artifacts describe the contract rules in a human-readable format.
+    They are not executable - the actual permission checking still uses
+    the Python contract classes. This enables:
+    - Discovery via genesis_store.list(type="contract")
+    - Reading rules via genesis_store.get("genesis_contract_freeware")
+    - Filtering by metadata.rules using Plan #168 metadata feature
+
+    Args:
+        artifact_store: Store to write contract artifacts to
+    """
+    # Contract descriptions and rule summaries
+    contract_info = {
+        "freeware": {
+            "description": (
+                "Freeware access contract - shared artifact pattern.\n\n"
+                "Rules:\n"
+                "- READ: Anyone can read\n"
+                "- INVOKE: Anyone can invoke\n"
+                "- WRITE: Only owner can modify\n"
+                "- DELETE: Only owner can delete\n\n"
+                "Use for: Shared services, public data, libraries."
+            ),
+            "rules": {
+                "read": "anyone",
+                "invoke": "anyone",
+                "write": "owner_only",
+                "edit": "owner_only",
+                "delete": "owner_only",
+            },
+        },
+        "private": {
+            "description": (
+                "Private access contract - owner-only pattern.\n\n"
+                "Rules:\n"
+                "- All actions: Only owner allowed\n\n"
+                "Use for: Sensitive data, private configurations."
+            ),
+            "rules": {
+                "read": "owner_only",
+                "invoke": "owner_only",
+                "write": "owner_only",
+                "edit": "owner_only",
+                "delete": "owner_only",
+            },
+        },
+        "self_owned": {
+            "description": (
+                "Self-owned access contract - artifact self-access pattern.\n\n"
+                "Rules:\n"
+                "- Owner: Full access\n"
+                "- Artifact itself: Can access itself (caller == target)\n"
+                "- Others: Denied\n\n"
+                "Use for: Agent memory, private state, self-modifying artifacts."
+            ),
+            "rules": {
+                "read": "owner_or_self",
+                "invoke": "owner_or_self",
+                "write": "owner_or_self",
+                "edit": "owner_or_self",
+                "delete": "owner_or_self",
+            },
+        },
+        "public": {
+            "description": (
+                "Public access contract - true commons pattern.\n\n"
+                "Rules:\n"
+                "- All actions: Anyone can do anything\n\n"
+                "WARNING: Anyone can modify or delete!\n"
+                "Use for: Collaborative workspaces, shared resources."
+            ),
+            "rules": {
+                "read": "anyone",
+                "invoke": "anyone",
+                "write": "anyone",
+                "edit": "anyone",
+                "delete": "anyone",
+            },
+        },
+    }
+
+    for contract_type, info in contract_info.items():
+        contract_id = f"genesis_contract_{contract_type}"
+        artifact_store.write(
+            artifact_id=contract_id,
+            type="contract",
+            content=info["description"],
+            created_by="system",
+            executable=False,
+            metadata={"rules": info["rules"], "contract_type": contract_type},
+        )
 
 
 def create_genesis_artifacts(
@@ -169,6 +265,11 @@ def create_genesis_artifacts(
     mcp_artifacts = create_mcp_artifacts(cfg.mcp)
     for artifact_id, mcp_artifact in mcp_artifacts.items():
         artifacts[artifact_id] = mcp_artifact
+
+    # Plan #165: Create contract artifacts for discoverability
+    # These are readable artifacts that describe the genesis contract rules
+    if artifact_store:
+        _create_contract_artifacts(artifact_store)
 
     # Add aliases for new naming convention (Plan #44)
     # Maps old names -> new names (both can be used to access same artifact)
