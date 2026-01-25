@@ -234,6 +234,7 @@ Master index of all gaps and their implementation plans.
 | 212 | [Memory and Context Quality for Agent Learning](212_memory_and_context_quality.md) | High | ✅ Complete | Effective agent learning and strategic behavior |
 | 213 | [Escrow Contract-Based Redesign](213_escrow_contract_redesign.md) | Medium | ✅ Complete | Correct artifact trading semantics |
 | 214 | [SOTA Memory Integration](214_sota_memory_integration.md) | High | ✅ Complete | Effective agent learning and strategic behavior |
+| 215 | [Unified Documentation Graph](215_unified_documentation_graph.md) | Medium | 📋 Planned | - |
 ---
 
 ## TDD Workflow
