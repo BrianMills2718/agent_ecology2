@@ -43,6 +43,7 @@ from llm_provider import LLMProvider
 from .schema import ACTION_SCHEMA, ActionType
 from .memory import AgentMemory, ArtifactMemory, get_memory
 from .models import ActionResponse, FlatActionResponse
+from .planning import Plan, PlanStatus, get_plan_artifact_id, create_plan_generation_prompt, step_to_action
 from ..config import get as config_get
 
 if TYPE_CHECKING:
@@ -1469,9 +1470,144 @@ Your response should include:
 """
         return prompt
 
+    # =========================================================================
+    # Plan #188: Planning Methods
+    # =========================================================================
+
+    def _get_current_plan(self, world_state: dict[str, Any]) -> Plan | None:
+        """Get the agent's current active plan, if any.
+
+        Plans are stored as artifacts with ID '{agent_id}_plan'.
+        Returns None if no plan exists or plan is not in_progress.
+        """
+        if not self._artifact_store:
+            return None
+
+        plan_id = get_plan_artifact_id(self._agent_id)
+        plan_artifact = self._artifact_store.get(plan_id)
+
+        if not plan_artifact:
+            return None
+
+        try:
+            content = plan_artifact.content
+            if isinstance(content, str):
+                content = json.loads(content)
+            plan = Plan.from_dict(content)
+            if plan.status == PlanStatus.IN_PROGRESS:
+                return plan
+            return None
+        except (json.JSONDecodeError, KeyError, ValueError):
+            return None
+
+    def _generate_plan(self, world_state: dict[str, Any]) -> Plan | None:
+        """Generate a new plan using LLM.
+
+        Returns a Plan object or None if generation fails.
+        """
+        max_steps = config_get("agent.planning.max_steps", 5)
+        prompt = create_plan_generation_prompt(
+            self._agent_id,
+            world_state,
+            max_steps,
+        )
+
+        try:
+            # Use the LLM to generate plan JSON
+            response = self.llm.generate_text(prompt)
+            # Parse the JSON response
+            plan_data = json.loads(response)
+            return Plan.from_dict({"plan": plan_data, "execution": {}})
+        except (json.JSONDecodeError, KeyError, ValueError) as e:
+            # Plan generation failed - fall back to reactive behavior
+            return None
+
+    def _write_plan_artifact(self, plan: Plan) -> bool:
+        """Write plan to artifact store.
+
+        Returns True if successful, False otherwise.
+        """
+        if not self._artifact_store:
+            return False
+
+        plan_id = get_plan_artifact_id(self._agent_id)
+        try:
+            self._artifact_store.write(
+                artifact_id=plan_id,
+                type="plan",
+                content=json.dumps(plan.to_dict()),
+                created_by=self._agent_id,
+            )
+            return True
+        except Exception:
+            return False
+
+    def _execute_plan_step(self, plan: Plan, world_state: dict[str, Any]) -> ActionResult:
+        """Execute the current step of the plan.
+
+        Returns an ActionResult with the action for the current step.
+        """
+        step = plan.get_current_step()
+        if not step:
+            # No more steps - plan is complete
+            return {
+                "action": {"action_type": "noop"},
+                "reasoning": f"Plan completed: {plan.goal}",
+                "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "cost": 0.0},
+                "model": self.llm_model,
+            }
+
+        action = step_to_action(step)
+        return {
+            "action": action,
+            "reasoning": f"Plan step {step.order}/{len(plan.steps)}: {step.rationale}",
+            "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "cost": 0.0},
+            "model": self.llm_model,
+        }
+
+    def update_plan_after_action(self, success: bool) -> None:
+        """Update plan state after action execution.
+
+        Called by the simulation loop after executing an action.
+        """
+        planning_enabled = config_get("agent.planning.enabled", False)
+        if not planning_enabled or not self._artifact_store:
+            return
+
+        plan_id = get_plan_artifact_id(self._agent_id)
+        plan_artifact = self._artifact_store.get(plan_id)
+        if not plan_artifact:
+            return
+
+        try:
+            content = plan_artifact.content
+            if isinstance(content, str):
+                content = json.loads(content)
+            plan = Plan.from_dict(content)
+
+            if success:
+                plan.mark_step_completed(plan.current_step)
+            else:
+                replan = config_get("agent.planning.replan_on_failure", True)
+                if replan:
+                    plan.status = PlanStatus.ABANDONED  # Will trigger new plan
+                else:
+                    plan.mark_step_failed(plan.current_step)
+
+            # Write updated plan back
+            self._write_plan_artifact(plan)
+        except (json.JSONDecodeError, KeyError, ValueError):
+            pass
+
     def propose_action(self, world_state: dict[str, Any]) -> ActionResult:
         """
         Have the LLM propose an action based on world state.
+
+        Plan #188: If planning is enabled, uses deliberative planning pattern:
+        1. Check for active plan artifact
+        2. If exists and in_progress, execute next step
+        3. If not, generate new plan and execute first step
+        4. If planning disabled, fall back to reactive behavior
 
         Uses Pydantic structured outputs for reliable parsing.
         For Gemini models, uses FlatActionResponse to avoid discriminated union issues.
@@ -1480,6 +1616,24 @@ Your response should include:
           - 'action' (valid action dict) and 'reasoning' (str), or 'error' (string)
           - 'usage' (token usage: input_tokens, output_tokens, total_tokens, cost)
         """
+        # Plan #188: Deliberative planning mode
+        planning_enabled = config_get("agent.planning.enabled", False)
+        if planning_enabled:
+            # Check for active plan
+            plan = self._get_current_plan(world_state)
+
+            if plan and plan.status == PlanStatus.IN_PROGRESS:
+                # Execute next step from existing plan
+                return self._execute_plan_step(plan, world_state)
+            else:
+                # Generate new plan
+                new_plan = self._generate_plan(world_state)
+                if new_plan:
+                    self._write_plan_artifact(new_plan)
+                    return self._execute_plan_step(new_plan, world_state)
+                # Fall through to reactive behavior if plan generation fails
+
+        # Reactive behavior (original)
         prompt: str = self.build_prompt(world_state)
 
         # Update tick in log metadata
