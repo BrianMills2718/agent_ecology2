@@ -308,3 +308,13 @@ export interface DependencyGraphData {
   edges: DependencyEdge[]
   metrics: DependencyGraphMetrics
 }
+
+// ============================================================================
+// SEARCH
+// ============================================================================
+
+export interface SearchResponse {
+  query: string
+  agents: AgentSummary[]
+  artifacts: ArtifactInfo[]
+}

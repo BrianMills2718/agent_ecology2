@@ -274,3 +274,19 @@ export function useDependencyGraph() {
     refetchInterval: 10000,
   })
 }
+
+// ============================================================================
+// SEARCH
+// ============================================================================
+
+import type { SearchResponse } from '../types/api'
+
+export function useSearch(query: string, limit: number = 10) {
+  return useQuery({
+    queryKey: ['search', query, limit],
+    queryFn: () =>
+      apiFetch<SearchResponse>(`/search${buildQueryString({ q: query, limit })}`),
+    enabled: query.length >= 1,
+    staleTime: 30000, // Cache for 30 seconds
+  })
+}
