@@ -67,7 +67,7 @@ def get_error_message(error_type: str, **kwargs: Any) -> str:
         "access_denied_read": "Access denied: you are not allowed to read {artifact_id}. See handbook_actions for permissions.",
         "access_denied_write": "Access denied: you are not allowed to write to {artifact_id}. See handbook_actions for permissions.",
         "access_denied_invoke": "Access denied: you are not allowed to invoke {artifact_id}. See handbook_actions for permissions.",
-        "method_not_found": "Use one of {methods} instead. Method '{method}' does not exist on {artifact_id}. See handbook_genesis for details.",
+        "method_not_found": "Method '{method}' not found on {artifact_id}. Available: {methods}. TIP: Call invoke_artifact('{artifact_id}', 'describe', []) to see method details before invoking.",
         "escrow_not_owner": "Escrow does not own {artifact_id}. See handbook_trading for the 2-step process: 1) genesis_ledger.transfer_ownership([artifact_id, '{escrow_id}']), 2) deposit.",
     }
 
