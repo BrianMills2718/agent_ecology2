@@ -166,13 +166,13 @@ Master index of all gaps and their implementation plans.
 | 137 | [Agent IRR Improvements](137_agent_irr_improvements.md) | High | ✅ Complete | Agent capability improvements |
 | 138 | [Provider-Level Union Schema Transformation](138_provider_union_schema_transform.md) | Low | 📋 Deferred (until problems arise with Plan #137) | - |
 | 139 | [Dashboard Bug Fixes and Improvements](139_dashboard_phase2_phase3.md) | High | ✅ Complete | Dashboard usability |
-| 140 | [Plan 140: Actions Module for Agent-Expected API](140_actions_module.md) | High | ❓ | - |
+| 140 | [Plan 140: Actions Module for Agent-Expected API](140_actions_module.md) | High | ✅ Complete | - |
 | 140 | [Plan 140: Kernel Permission Fixes](140_kernel_permission_fixes.md) | High | ✅ Complete | Custom contracts, proper access control |
-| 141 | [Fix merge hook gap for `make -C` pattern](141_merge_hook_gap.md) | high | ❓ | - |
+| 141 | [Fix merge hook gap for `make -C` pattern](141_merge_hook_gap.md) | high | ✅ Complete | - |
 | 142 | [Dashboard Improvements - KPI Trends, Pagination, WebSocket](142_dashboard_improvements.md) | Medium | ✅ Complete | Dashboard scalability |
 | 143 | [Plan 143: Reflex System (System 1 Fast Path)](143_reflex_system.md) | High | ✅ Complete | Agent self-optimization, high-frequency trading |
-| 144 | [Per-Entity Activity Timelines](144_entity_activity_timelines.md) | Medium | ✅ Complete | - |
-| 144 | [Plan 144: Workflows as Tradeable Artifacts](144_workflows_as_artifacts.md) | High | ❓ | Agent self-modification, workflow marketplace |
+| 144 | [Per-Entity Activity Timelines](144_entity_activity_timelines.md) | Medium | ❓  | - |
+| 144 | [Plan 144: Workflows as Tradeable Artifacts](144_workflows_as_artifacts.md) | High | ❓  | Agent self-modification, workflow marketplace |
 | 145 | [Dashboard Quick Wins](145_dashboard_quickwins.md) | Medium | ✅ Complete | - |
 | 145 | [Plan 145: Supervisor Auto-Restart](145_supervisor_auto_restart.md) | Medium | ✅ Complete | Robust long-running simulations |
 | 146 | [Plan 146: Unified Artifact Intelligence](146_unified_artifact_intelligence.md) | High | 🚧 In Progress | Agent self-optimization, prompt marketplace, memory trading |
@@ -181,27 +181,27 @@ Master index of all gaps and their implementation plans.
 | 149 | [Dashboard Architecture Refactor](149_dashboard_architecture.md) | High | 📋 Planned | #150 (Backend Event Emission) |
 | 150 | [Plan 150: Prompt Component Library](150_prompt_component_library.md) | High | ✅ Complete | Agent behavior experiments |
 | 151 | [Backend Event Emission](151_backend_event_emission.md) | High | ✅ Complete | - |
-| 155 | [V4 Architecture - Deferred Considerations](155_v4_architecture_deferred.md) | low (until v3 fixes validated) | ❓ | - |
+| 155 | [V4 Architecture - Deferred Considerations](155_v4_architecture_deferred.md) | low (until v3 fixes validated) | ❓  | - |
 | 156 | [V4 Agent Immediate Fixes](156_v4_agent_immediate_fixes.md) | High | ✅ Complete | - |
 | 157 | [Agent Goal Clarity and Time Awareness](157_agent_goal_clarity.md) | High | ✅ Complete | - |
-| 160 | [Phase 1 - Cognitive Self-Modification](160_phase1_cognitive_self_modification.md) | High | ❓ | - |
-| 161 | [Agent Error Learning](161_agent_error_learning.md) | High | ❓ | - |
+| 160 | [Phase 1 - Cognitive Self-Modification](160_phase1_cognitive_self_modification.md) | High | 🚧 In Progress | - |
+| 161 | [Agent Error Learning](161_agent_error_learning.md) | High | ✅ Complete | - |
 | 162 | [Gap 162: Contract Artifact Lookup](162_contract_artifact_lookup.md) | Low | 📋 Deferred | - |
 | 163 | [Plan 163: Checkpoint Completeness](163_checkpoint_completeness.md) | High | ✅ Complete | Long-running simulations, reliable resume |
 | 164 | [Tick Terminology Purge](164_tick_terminology_purge.md) | High | ✅ Complete | Documentation clarity, reduced confusion |
-| 165 | [Plan 165: Genesis Contracts as Artifacts](165_genesis_contracts_as_artifacts.md) | Medium | ❓ | - |
-| 166 | [Plan 166: Resource Rights Model](166_resource_rights_model.md) | High | ❓ | - |
-| 167 | [Debt Contract Time-Based Redesign](167_debt_contract_time_based.md) | Low | ❓ | - |
+| 165 | [Plan 165: Genesis Contracts as Artifacts](165_genesis_contracts_as_artifacts.md) | Medium | ✅ Complete | - |
+| 166 | [Plan 166: Resource Rights Model](166_resource_rights_model.md) | High | 📋 Planned | - |
+| 167 | [Debt Contract Time-Based Redesign](167_debt_contract_time_based.md) | Low | ✅ Complete | - |
 | 168 | [Artifact Metadata Field](168_artifact_metadata.md) | Medium | ✅ Complete | - |
-| 169 | [Kernel Event Triggers](169_kernel_event_triggers.md) | Medium | ❓ | - |
-| 170 | [Plan 170: Artifact Dependency Tracking](170_artifact_dependency_tracking.md) | Medium | ❓ | - |
+| 169 | [Kernel Event Triggers](169_kernel_event_triggers.md) | Medium | ✅ Complete | - |
+| 170 | [Plan 170: Artifact Dependency Tracking](170_artifact_dependency_tracking.md) | Medium | ✅ Complete | - |
 | 172 | [Dashboard v2 Visualization Panels](172_dashboard_v2_visualization_panels.md) | High | ✅ Complete | Emergence observability |
 | 173 | [Dashboard Emergence Alerts](173_dashboard_emergence_alerts.md) | High | ✅ Complete | - |
 | 174 | [Dashboard Tab-Based Layout Refactor](174_dashboard_tab_refactor.md) | High | ✅ Complete | Future dashboard features |
 | 175 | [Emergence Metrics Cleanup](175_emergence_metrics_cleanup.md) | High | ✅ Complete | - |
 | 176 | [Plan 176: Atomic Worktree-Claim Enforcement](176_atomic_worktree_claims.md) | High | ✅ Complete | - |
 | 177 | [Dashboard Bug Fixes](177_dashboard_bugfixes.md) | High | ✅ Complete | - |
-| 178 | [Plan 178: Configurable Enforcement Strictness](178_enforcement_strictness_config.md) | High | 🚧 In Progress | - |
+| 178 | [Plan 178: Configurable Enforcement Strictness](178_enforcement_strictness_config.md) | High | ✅ Complete | - |
 | 179 | [Dashboard Bugfixes - Coordination Density & Tick Language](179_dashboard_bugfixes.md) | High | ✅ Complete | - |
 | 180 | [Configurable Mandatory Prompt Injection](180_prompt_injection.md) | Low | ✅ Superseded | - |
 | 180 | [Complete Trigger Integration](180_trigger_integration.md) | High | ✅ Complete | Real-time coordination patterns |
@@ -210,18 +210,18 @@ Master index of all gaps and their implementation plans.
 | 183 | [Genesis Voting Artifact](183_genesis_voting.md) | Low | ✅ Complete | None (convenience feature) |
 | 184 | [Query Kernel Action](184_query_kernel_action.md) | High | ✅ Complete | - |
 | 185 | [Time-Based Scheduling](185_time_based_scheduling.md) | Medium | ✅ Complete | Time-based contracts, scheduled tasks |
-| 186 | [Cross-Run Learning for Genesis Agents](186_cross_run_learning.md) | Medium | ❓ | Cumulative agent improvement |
+| 186 | [Cross-Run Learning for Genesis Agents](186_cross_run_learning.md) | Medium | ✅ Complete | Cumulative agent improvement |
 | 186 | [Git-Level Meta-Process Resilience](186_meta_resilience.md) | **Critical** | ✅ Complete | All meta-process reliability |
 | 187 | [Extended Thinking for Genesis Agents](187_extended_thinking.md) | Medium | ✅ Complete | Improved agent reasoning quality |
-| 188 | [Plan Artifact Pattern for Genesis Agents](188_plan_artifact_pattern.md) | Medium | ❓ | Deliberative agent behavior, observability |
+| 188 | [Plan Artifact Pattern for Genesis Agents](188_plan_artifact_pattern.md) | Medium | ✅ Complete | Deliberative agent behavior, observability |
 | 189 | [Meta-Process Robustness Overhaul](189_meta_robustness.md) | **Critical** | ✅ Complete | All future meta-process reliability |
 | 190 | [Global Search in Dashboard v2](190_global_search.md) | Medium | 📋 Planned | - |
-| 190 | [Remove genesis_store (Redundant with query_kernel)](190_remove_genesis_store.md) | High | ❓ | Cleaner agent discovery, reduced agent confusion |
-| 191 | [Subscribed Artifacts](191_subscribed_artifacts.md) | Medium | ❓ | - |
-| 192 | [Context Section Control](192_context_section_control.md) | Medium | ❓ | - |
-| 193 | [Context Priority and Ordering](193_context_priority.md) | Medium | 🚧 In Progress | - |
-| 194 | [Self-Modifying System Prompt](194_self_modifying_system_prompt.md) | Medium | ❓ | - |
-| 195 | [Context Budget Management](195_context_budget_management.md) | Medium | ❓ | - |
+| 190 | [Remove genesis_store (Redundant with query_kernel)](190_remove_genesis_store.md) | High | 📋 Planned | Cleaner agent discovery, reduced agent confusion |
+| 191 | [Subscribed Artifacts](191_subscribed_artifacts.md) | Medium | ✅ Complete | - |
+| 192 | [Context Section Control](192_context_section_control.md) | Medium | ✅ Complete | - |
+| 193 | [Context Priority and Ordering](193_context_priority.md) | Medium | ✅ Complete | - |
+| 194 | [Self-Modifying System Prompt](194_self_modifying_system_prompt.md) | Medium | ✅ Complete | - |
+| 195 | [Context Budget Management](195_context_budget_management.md) | Medium | ❓  | - |
 | 196 | [Memory Tiering](196_memory_tiering.md) | Medium | ✅ Complete | - |
 | 197 | [Configurable Mandatory Prompt Injection](197_prompt_injection.md) | Low | ✅ Complete | - |
 | 198 | [Shareable Hook Enhancements](198_shareable_hooks.md) | Medium | ✅ Complete | - |
