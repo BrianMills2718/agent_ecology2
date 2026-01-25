@@ -216,6 +216,13 @@ Master index of all gaps and their implementation plans.
 | 188 | [Plan Artifact Pattern for Genesis Agents](188_plan_artifact_pattern.md) | Medium | ❓ | Deliberative agent behavior, observability |
 | 189 | [Meta-Process Robustness Overhaul](189_meta_robustness.md) | **Critical** | 📋 Planned | All future meta-process reliability |
 | 190 | [Global Search in Dashboard v2](190_global_search.md) | Medium | 📋 Planned | - |
+| 191 | [Subscribed Artifacts](191_subscribed_artifacts.md) | Medium | ❓ | - |
+| 192 | [Context Section Control](192_context_section_control.md) | Medium | ❓ | - |
+| 193 | [Context Priority and Ordering](193_context_priority.md) | Medium | ❓ | - |
+| 194 | [Self-Modifying System Prompt](194_self_modifying_system_prompt.md) | Medium | ❓ | - |
+| 195 | [Context Budget Management](195_context_budget_management.md) | Medium | ❓ | - |
+| 196 | [Memory Tiering](196_memory_tiering.md) | Medium | ❓ | - |
+| 197 | [Configurable Mandatory Prompt Injection](197_prompt_injection.md) | Low | 🚧 In Progress | - |
 ---
 
 ## TDD Workflow
