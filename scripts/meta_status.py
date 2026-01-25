@@ -85,6 +85,70 @@ def get_open_prs() -> list[dict]:
         return []
 
 
+def get_concerns() -> dict:
+    """Get design concerns from CONCERNS.md.
+
+    Returns:
+        dict with:
+            - active: list of active concerns with their category
+            - resolved: count of resolved concerns
+            - total_active: count of active concerns
+    """
+    concerns_file = Path("docs/CONCERNS.md")
+    if not concerns_file.exists():
+        return {"active": [], "resolved": 0, "total_active": 0}
+
+    try:
+        content = concerns_file.read_text()
+        active = []
+        resolved_count = 0
+
+        # Track parsing state
+        current_category = None
+        in_active_section = False
+        in_resolved_section = False
+
+        for line in content.split("\n"):
+            if "## Active Concerns" in line:
+                in_active_section = True
+                in_resolved_section = False
+                continue
+            elif "## Resolved Concerns" in line:
+                in_active_section = False
+                in_resolved_section = True
+                continue
+            elif line.startswith("## "):
+                in_active_section = False
+                in_resolved_section = False
+                continue
+
+            # Track category headers
+            if line.startswith("### "):
+                current_category = line[4:].strip()
+                continue
+
+            # Parse table rows (| Concern | Risk | Watch For |)
+            if line.startswith("|") and "---" not in line and "Concern" not in line:
+                cells = [c.strip() for c in line.split("|")[1:-1]]
+                if len(cells) >= 1 and cells[0] and cells[0] != "*None yet*":
+                    concern_name = cells[0].replace("**", "")
+                    if in_active_section:
+                        active.append({
+                            "name": concern_name,
+                            "category": current_category or "General",
+                        })
+                    elif in_resolved_section:
+                        resolved_count += 1
+
+        return {
+            "active": active,
+            "resolved": resolved_count,
+            "total_active": len(active),
+        }
+    except Exception:
+        return {"active": [], "resolved": 0, "total_active": 0}
+
+
 def get_plan_progress() -> dict:
     """Get plan completion statistics."""
     plans_dir = Path("docs/plans")
@@ -487,13 +551,15 @@ def print_status(brief: bool = False) -> None:
     plans = get_plan_progress()
     worktrees = get_worktrees()
     commits = get_recent_commits()
+    concerns = get_concerns()
     my_identity = get_my_identity()
     issues = identify_issues(claims, prs, plans, worktrees, my_identity)
 
     if brief:
         # One-line summary
         in_review = len([r for r in reviews if r.get("status") == "In Review"])
-        print(f"Claims: {len(claims)} | PRs: {len(prs)} | Reviews: {in_review} active | Plans: {plans['complete']}/{plans['total']} | Issues: {len(issues)}")
+        concerns_str = f" | Concerns: {concerns['total_active']}" if concerns['total_active'] > 0 else ""
+        print(f"Claims: {len(claims)} | PRs: {len(prs)} | Reviews: {in_review} active | Plans: {plans['complete']}/{plans['total']}{concerns_str} | Issues: {len(issues)}")
         return
 
     print("=" * 60)
@@ -589,7 +655,30 @@ def print_status(brief: bool = False) -> None:
         for p in in_progress:
             print(f"  - Plan #{p['number']}: {p['title']}")
         print()
-    
+
+    # Design Concerns
+    if concerns["total_active"] > 0:
+        print("## Design Concerns")
+        print()
+        print(f"Active: {concerns['total_active']} | Resolved: {concerns['resolved']}")
+        print()
+        # Group by category
+        by_category: dict[str, list[str]] = {}
+        for c in concerns["active"]:
+            cat = c["category"]
+            if cat not in by_category:
+                by_category[cat] = []
+            by_category[cat].append(c["name"])
+        for cat, names in by_category.items():
+            print(f"**{cat}:** {len(names)} concern(s)")
+            for name in names[:3]:  # Show first 3
+                print(f"  - {name}")
+            if len(names) > 3:
+                print(f"  - ...and {len(names) - 3} more")
+        print()
+        print("See `docs/CONCERNS.md` for details and watch-for signals.")
+        print()
+
     # Worktrees
     print("## Worktrees")
     if worktrees:
