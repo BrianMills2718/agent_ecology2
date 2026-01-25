@@ -93,13 +93,11 @@ Recommendation: **Option A (contract-only)** with convention that contracts stor
 
 ## Files Affected
 
-| File | Change |
-|------|--------|
-| `src/world/artifacts.py` | Fix transfer_ownership, rename methods/indexes |
-| `src/world/kernel_interface.py` | Update transfer_ownership wrapper |
-| `src/world/genesis/ledger.py` | Update transfer_ownership method |
-| `src/world/genesis/escrow.py` | Update to use contract-based transfer |
-| `tests/` | Update tests for new semantics |
+- src/world/artifacts.py (modify)
+- src/world/kernel_interface.py (modify)
+- src/world/genesis/ledger.py (modify)
+- src/world/genesis/escrow.py (modify)
+- tests/ (modify)
 
 ## Testing
 
