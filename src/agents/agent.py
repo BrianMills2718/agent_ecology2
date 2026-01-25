@@ -1947,16 +1947,16 @@ Your response should include:
                     method="search",
                     args=[self._longterm_memory_artifact_id, query, limit],
                 )
-                if result.success and result.data:
+                # invoke_artifact returns dict with "success" key
+                if result.get("success") and result.get("results"):
                     # Transform genesis_memory results to expected format
-                    results = result.data.get("results", [])
                     return [
                         {
                             "text": r.get("text", ""),
                             "score": r.get("score", 0.0),
                             "tags": r.get("metadata", {}).get("tags", []),
                         }
-                        for r in results
+                        for r in result.get("results", [])
                     ]
             except Exception as e:
                 logger.warning("Semantic search failed for %s, using keyword fallback: %s", self._agent_id, e)
