@@ -444,5 +444,5 @@ class TestEscrowIntegration:
         # Buyer: 200 - 100 (purchase) = 100
         assert world.ledger.get_scrip("buyer") == 100
         # Seller: 50 + 100 (sale) = 150
-        # Note: Genesis method fees are compute (resources), not scrip
-        assert world.ledger.get_scrip("seller") == 150
+        # Note: Genesis method fees are in scrip (1 per invoke)
+        assert world.ledger.get_scrip("seller") == 149  # 50 + 100 - 1 method fee

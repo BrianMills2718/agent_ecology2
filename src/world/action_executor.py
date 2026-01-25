@@ -1398,28 +1398,28 @@ class ActionExecutor:
                 error_details={"method": method_name, "artifact_id": artifact_id},
             )
 
-        # Genesis method costs are LLM tokens
-        if method.cost > 0 and not w.ledger.can_spend_llm_tokens(intent.principal_id, method.cost):
+        # Genesis method costs are in scrip (not LLM tokens)
+        if method.cost > 0 and not w.ledger.can_afford_scrip(intent.principal_id, method.cost):
             duration_ms = (time.perf_counter() - start_time) * 1000
             self._log_invoke_failure(
                 intent.principal_id, artifact_id, method_name,
-                duration_ms, "insufficient_llm_tokens",
+                duration_ms, "insufficient_scrip",
                 f"Cannot afford method cost: {method.cost}"
             )
             return ActionResult(
                 success=False,
-                message=f"Cannot afford method cost: {method.cost} llm_tokens (have {w.ledger.get_llm_tokens(intent.principal_id)})",
+                message=f"Cannot afford method cost: {method.cost} scrip (have {w.ledger.get_scrip(intent.principal_id)})",
                 error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
                 error_category=ErrorCategory.RESOURCE.value,
                 retriable=True,
-                error_details={"required": method.cost, "available": w.ledger.get_llm_tokens(intent.principal_id)},
+                error_details={"required": method.cost, "available": w.ledger.get_scrip(intent.principal_id)},
             )
 
-        # Deduct LLM token cost FIRST
+        # Deduct scrip cost FIRST
         resources_consumed: dict[str, float] = {}
         if method.cost > 0:
-            w.ledger.spend_llm_tokens(intent.principal_id, method.cost)
-            resources_consumed["llm_tokens"] = float(method.cost)
+            w.ledger.deduct_scrip(intent.principal_id, method.cost)
+            resources_consumed["scrip"] = float(method.cost)
 
         # Execute the genesis method
         try:

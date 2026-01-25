@@ -318,7 +318,7 @@ class TestDebtContractWorldIntegration:
         assert result.data["status"] == "paid"
 
         # Verify final balances
-        assert world.ledger.get_scrip("borrower") == 50  # 100 - 50
+        assert world.ledger.get_scrip("borrower") == 49  # 100 - 50 - 1 method fee
         assert world.ledger.get_scrip("lender") == 250  # 200 + 50
 
     def test_debt_contract_uses_real_time(self) -> None:
