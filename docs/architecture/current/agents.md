@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-25 (Plan #195: Added context budget management)
+**Last verified:** 2026-01-25 (Plan #146: Unified Artifact Intelligence)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -404,6 +404,102 @@ Agents with buy_before_build will read more artifacts before building.
 ```
 
 See `src/agents/_components/CLAUDE.md` for component authoring details.
+
+---
+
+## Unified Artifact Intelligence (Plan #146)
+
+Agent intelligence components are tradeable artifacts. This enables agents to buy, sell, and share successful strategies.
+
+### Intelligence as Artifacts
+
+| Component | Agent Field | Artifact Type | Tradeable? |
+|-----------|-------------|---------------|------------|
+| Personality | `personality_prompt_artifact_id` | `prompt` | Yes |
+| Workflow | `workflow_artifact_id` | `workflow` | Yes |
+| Long-term Memory | `longterm_memory_artifact_id` | `memory_store` | Yes |
+| Working Memory | Part of agent artifact content | - | Via agent artifact |
+
+### Agent Fields
+
+```python
+class Agent:
+    # ... existing fields ...
+
+    # Plan #146: Artifact references (soft references, may dangle)
+    personality_prompt_artifact_id: str | None   # Base personality prompt
+    workflow_artifact_id: str | None             # Behavior patterns
+    longterm_memory_artifact_id: str | None      # Experiences/memories
+```
+
+### Workflow Step Fields
+
+WorkflowSteps can reference prompt artifacts instead of inline prompts:
+
+```python
+@dataclass
+class WorkflowStep:
+    name: str
+    step_type: StepType  # CODE, LLM, TRANSITION
+    prompt: str | None = None               # Inline prompt (original)
+    prompt_artifact_id: str | None = None   # Plan #146: Reference to prompt artifact
+    transition_mode: str | None = None      # "llm" | "condition" | "auto"
+    transition_prompt_artifact_id: str | None = None  # For LLM-driven transitions
+```
+
+Validation: LLM steps require either `prompt` OR `prompt_artifact_id` (not both, not neither).
+
+### Genesis Prompt Library
+
+Pre-built prompt patterns agents can use or fork:
+
+| Prompt ID | Purpose |
+|-----------|---------|
+| `observe_base` | Gathering context before acting |
+| `ideate_base` | Generating ideas for value creation |
+| `implement_base` | Building artifacts |
+| `reflect_base` | Learning from outcomes |
+| `error_recovery` | Handling and recovering from errors |
+| `coordination_request` | Multi-agent coordination |
+
+Access via: `genesis_prompt_library.get("observe_base")` or `genesis_prompt_library.get_template("ideate_base")`
+
+### Memory Artifacts
+
+Agents can create and trade memory stores:
+
+```json
+{
+  "artifact_type": "memory_store",
+  "content": {
+    "config": {"max_entries": 500, "auto_prune": "lowest_importance"},
+    "entries": [
+      {"text": "Trading with beta is profitable", "tags": ["trading"], "importance": 0.9}
+    ]
+  }
+}
+```
+
+Operations via `genesis_memory`:
+- `genesis_memory.add(memory_artifact_id, text, tags, importance)` - Add entry
+- `genesis_memory.search(memory_artifact_id, query, limit)` - Semantic search
+- Costs 1 scrip per operation (embedding generation)
+
+### Economic Implications
+
+| Artifact Type | Creation Cost | Trade Value | Use Cost |
+|--------------|---------------|-------------|----------|
+| Memory Entry | 1 scrip (embedding) | Varies by value | Free (if owned) |
+| Memory Search | - | - | 1 scrip per search |
+| Prompt | Free | High (if effective) | Free |
+| Workflow | Free | Very High | Free |
+
+This creates incentives for:
+- Agents to curate valuable memories (embedding costs)
+- Successful agents to sell their "brains"
+- Specialization and trading of cognitive components
+
+See `src/agents/_handbook/intelligence.md` for agent-facing documentation.
 
 ---
 

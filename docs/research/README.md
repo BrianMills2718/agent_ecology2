@@ -2,13 +2,21 @@
 
 Design explorations, literature reviews, and architectural research.
 
+> **Note:** This is **background context**, not the source of truth.
+> For current implementation details, see `docs/architecture/current/`.
+
 ## Start Here
 
-**[AGENT_ARCHITECTURE_INDEX.md](AGENT_ARCHITECTURE_INDEX.md)** - Master index for all agent architecture documentation. Start here for a comprehensive overview.
+**[AGENT_ARCHITECTURE_INDEX.md](AGENT_ARCHITECTURE_INDEX.md)** - Background research and design decisions that informed the architecture.
 
 ## Purpose
 
-Capture research and design thinking that informs architecture decisions. Unlike `simulation_learnings/` (which captures observations from runs), this contains:
+Capture research and design thinking that **informed** architecture decisions. This is historical/reference material, not authoritative documentation of current implementation.
+
+**Source of truth:** `docs/architecture/current/` (agents.md, agent_cognition.md)
+**This directory:** Background research, design explorations, rationale
+
+Contents:
 - Design space explorations
 - Literature reviews and external references
 - Architectural pattern research
