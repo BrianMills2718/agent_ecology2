@@ -1,9 +1,21 @@
 # Plan #213: Escrow Contract-Based Redesign
 
-**Status:** Planned
+**Status:** Complete
 **Priority:** Medium
 **Depends on:** Plan #210 (merged)
 **Blocks:** Correct artifact trading semantics
+
+## Implementation Summary (PR #736)
+
+Implemented `transferable_freeware` contract and redesigned escrow to use `metadata["authorized_writer"]`:
+- Added `TransferableFreewareContract` to genesis_contracts.py
+- Updated `permission_checker.py` to pass `target_metadata` in context
+- Added `KernelActions.update_artifact_metadata()` (kept transfer_ownership for now as it's used elsewhere)
+- Rewrote `escrow.py` to use authorized_writer pattern:
+  - `_deposit()` checks for `authorized_writer = escrow.id`
+  - `_purchase()` sets `authorized_writer` to buyer
+  - `_cancel()` returns `authorized_writer` to seller
+- Updated all escrow tests (27 tests total) to use new pattern
 
 ## Problem
 
