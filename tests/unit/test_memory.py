@@ -34,7 +34,7 @@ class TestAgentMemoryAdd:
         result = mem.add("agent_1", "I learned something new")
 
         mock_memory.add.assert_called_once_with(
-            "I learned something new", user_id="agent_1"
+            "I learned something new", user_id="agent_1", metadata={"tier": 3}
         )
         assert result == {"results": [{"id": "123"}]}
 
@@ -78,8 +78,9 @@ class TestAgentMemorySearch:
         mem = memory_module.AgentMemory()
         results = mem.search("agent_1", "query text", limit=5)
 
+        # Note: search now fetches limit * 3 candidates for tier boosting
         mock_memory.search.assert_called_once_with(
-            "query text", user_id="agent_1", limit=5
+            "query text", user_id="agent_1", limit=15
         )
         assert len(results) == 2
         assert results[0]["memory"] == "First memory"
@@ -98,8 +99,9 @@ class TestAgentMemorySearch:
         mem = memory_module.AgentMemory()
         mem.search("agent_1", "query")
 
+        # Note: search now fetches limit * 3 candidates for tier boosting
         mock_memory.search.assert_called_once_with(
-            "query", user_id="agent_1", limit=5
+            "query", user_id="agent_1", limit=15
         )
 
     @patch("src.agents.memory.Memory")
@@ -178,7 +180,7 @@ class TestGetRelevantMemories:
 
     @patch("src.agents.memory.Memory")
     def test_passes_limit_to_search(self, mock_memory_class: MagicMock) -> None:
-        """get_relevant_memories() passes limit parameter."""
+        """get_relevant_memories() fetches pinned first then remaining."""
         from src.agents import memory as memory_module
         memory_module.AgentMemory._instance = None
         memory_module._memory = None
@@ -190,9 +192,17 @@ class TestGetRelevantMemories:
         mem = memory_module.AgentMemory()
         mem.get_relevant_memories("agent_1", "context", limit=10)
 
-        mock_memory.search.assert_called_once_with(
-            "context", user_id="agent_1", limit=10
-        )
+        # get_relevant_memories now:
+        # 1. Fetches pinned memories first (with tier=0 filter)
+        # 2. Then fetches remaining with tier boosting (limit * 3)
+        assert mock_memory.search.call_count == 2
+        # First call: get pinned memories
+        first_call = mock_memory.search.call_args_list[0]
+        assert first_call[1]["filters"] == {"tier": 0}
+        # Second call: tier-boosted search (limit * 3 for boosting)
+        second_call = mock_memory.search.call_args_list[1]
+        assert second_call[0][0] == "context"
+        assert second_call[1]["limit"] == 30  # 10 * 3
 
 
 class TestRecordAction:
