@@ -1,9 +1,32 @@
 # Agent Architecture Synthesis: What We Should Actually Do
 
-**Status:** recommendation
+**Status:** recommendation (partially implemented)
 **Date:** 2026-01-16
+**Updated:** 2026-01-24 (implementation status added)
 **Based on:** 37 research sources reviewed
 **Related:** agent_architecture_research_notes.md, agent_architecture_design_space.md
+
+---
+
+## Implementation Status (2026-01-24)
+
+| # | Recommendation | Status | Notes |
+|---|----------------|--------|-------|
+| **Tier 1** | | | |
+| 1.1 | Enable extended thinking | ❌ Not done | No global `reasoning_effort` setting |
+| 1.2 | Fix duplicate artifact bug | ❓ Unclear | Code changed; needs verification |
+| 1.3 | Restructure prompts (goal+context) | ✅ Partial | _3 agents have structured workflows |
+| 1.4 | Add metacognition rules | ✅ Partial | v4 has framing; _3 has state machines |
+| **Tier 2** | | | |
+| 2.1 | Add plan artifact | ❌ Not done | Agents don't create explicit plans |
+| 2.2 | Post-action reflection | ✅ Done | _3 agents: `learn_from_outcome` step |
+
+**Related completed plans:**
+- Plan #88: OODA Cognitive Logging (standardized 'reasoning' field)
+- Plan #156: V4 Agent Fixes (loop detection, action history)
+- Plan #157: Goal Clarity (LLM-informed state transitions)
+
+**Terminology note:** This doc uses "tick" terminology from pre-Plan #102. Current system uses continuous execution loops, not ticks. Concepts still apply.
 
 ---
 
@@ -278,3 +301,40 @@ Fix the cold-start deadlock first. Then add planning. Then reflection. Test at e
 | 35 | Progressive Complexity | Cold-start: Tier 1 (info gather) → Tier 2 (human gates) → Tier 3 (autonomous) |
 | 36 | Plan-Then-Execute | Separate planning from execution. 2-3x success rate improvement |
 | 37 | Context-Minimization | Security: purge untrusted input after transformation |
+
+---
+
+## Current Genesis Agent Issues (2026-01-24)
+
+Based on the above research and current implementation status:
+
+### Remaining Gaps
+
+| Issue | Research Recommendation | Current Status |
+|-------|------------------------|----------------|
+| **No explicit planning** | Plan-then-execute pattern (2-3x success) | Agents don't create plan artifacts |
+| **No extended thinking** | Use high reasoning_effort | Default/low reasoning |
+| **Inconsistent prompt structure** | Goal + context + personality | Varies by agent generation |
+| **Limited learning** | ExpeL/Reflexion patterns | _3 agents have reflection; not applied to future runs |
+
+### What Works
+
+| Feature | Implementation |
+|---------|----------------|
+| **Reflection steps** | _3 agents have `learn_from_outcome` and `reflecting` state |
+| **State machines** | _3 agents have explicit state machines with transitions |
+| **Loop detection** | v4 agents show action history to prevent repetition |
+| **Cognitive logging** | Standardized 'reasoning' field in responses |
+
+### Priority Next Steps
+
+1. **Verify/fix duplicate artifact bug** - May still cause confusion
+2. **Add plan artifact pattern** - Agents create/update `{agent}_plan` artifact
+3. **Enable reasoning_effort: high** - Config change, test impact
+4. **Cross-run learning** - Working memory persists but lessons aren't applied
+
+### Note: Architecture vs Genesis
+
+These are **genesis agent implementation issues**, not kernel architecture issues. The architecture (artifacts, triggers, metadata) provides the capability space. Genesis agents don't fully utilize it.
+
+See `architecture_sota_comparison.md` for the architecture assessment.
