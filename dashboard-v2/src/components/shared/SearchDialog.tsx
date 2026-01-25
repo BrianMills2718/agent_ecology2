@@ -1,6 +1,6 @@
 // Global search dialog (Cmd/Ctrl+K)
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearch } from '../../api/queries'
 import { useSearchStore } from '../../stores/search'
 import { useTabNavigation } from '../../hooks/useTabNavigation'
@@ -34,6 +34,22 @@ export function SearchDialog({ onSelectAgent, onSelectArtifact }: SearchDialogPr
     setSelectedIndex(0)
   }, [data])
 
+  const handleSelect = useCallback(() => {
+    if (!data) return
+
+    const agentCount = data.agents.length
+    if (selectedIndex < agentCount) {
+      const agent = data.agents[selectedIndex]
+      onSelectAgent(agent.agent_id)
+      setActiveTab('agents')
+    } else {
+      const artifact = data.artifacts[selectedIndex - agentCount]
+      onSelectArtifact(artifact.artifact_id)
+      setActiveTab('artifacts')
+    }
+    close()
+  }, [data, selectedIndex, onSelectAgent, onSelectArtifact, setActiveTab, close])
+
   // Handle escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -55,23 +71,7 @@ export function SearchDialog({ onSelectAgent, onSelectArtifact }: SearchDialogPr
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, data, selectedIndex, close])
-
-  const handleSelect = () => {
-    if (!data) return
-
-    const agentCount = data.agents.length
-    if (selectedIndex < agentCount) {
-      const agent = data.agents[selectedIndex]
-      onSelectAgent(agent.agent_id)
-      setActiveTab('agents')
-    } else {
-      const artifact = data.artifacts[selectedIndex - agentCount]
-      onSelectArtifact(artifact.artifact_id)
-      setActiveTab('artifacts')
-    }
-    close()
-  }
+  }, [isOpen, data, selectedIndex, close, handleSelect])
 
   const handleClickAgent = (agent: AgentSummary) => {
     onSelectAgent(agent.agent_id)

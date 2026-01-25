@@ -8,7 +8,7 @@ interface ThresholdConfig {
   metric: keyof EmergenceMetrics
   thresholds: number[]
   labels: string[]
-  getMessage: (value: number, threshold: number, label: string) => string
+  getMessage: (value: number, threshold: number) => string
 }
 
 // Only track metrics that have clear, defensible definitions
@@ -17,7 +17,7 @@ const THRESHOLD_CONFIGS: ThresholdConfig[] = [
     metric: 'coordination_density',
     thresholds: [0.1, 0.3, 0.5],
     labels: ['initial', 'emerging', 'strong'],
-    getMessage: (value, threshold, _label) =>
+    getMessage: (value, threshold) =>
       threshold === 0.1
         ? `First coordination! Agents beginning to interact (${(value * 100).toFixed(0)}%)`
         : `${(threshold * 100).toFixed(0)}% of agent pairs have interacted`,
@@ -26,7 +26,7 @@ const THRESHOLD_CONFIGS: ThresholdConfig[] = [
     metric: 'reuse_ratio',
     thresholds: [0.1, 0.3, 0.5],
     labels: ['starting', 'growing', 'mature'],
-    getMessage: (_value, threshold, _label) =>
+    getMessage: (_value, threshold) =>
       threshold === 0.1
         ? `First artifact reuse! Someone used another agent's artifact`
         : `${(threshold * 100).toFixed(0)}% of artifacts used by non-creators`,
@@ -35,14 +35,14 @@ const THRESHOLD_CONFIGS: ThresholdConfig[] = [
     metric: 'genesis_independence',
     thresholds: [0.2, 0.4, 0.6],
     labels: ['early', 'growing', 'mature'],
-    getMessage: (_value, threshold, _label) =>
+    getMessage: (_value, threshold) =>
       `${(threshold * 100).toFixed(0)}% of invocations target non-genesis artifacts`,
   },
   {
     metric: 'coalition_count',
     thresholds: [2, 3, 5],
     labels: ['pair', 'trio', 'multiple'],
-    getMessage: (_value, threshold, _label) =>
+    getMessage: (_value, threshold) =>
       threshold === 2
         ? `First coalition! Two agents have started working together`
         : `${threshold} distinct agent clusters detected`,
@@ -92,14 +92,13 @@ export function useEmergenceAlerts(metrics: EmergenceMetrics | undefined) {
       // Check each threshold
       for (let i = 0; i < config.thresholds.length; i++) {
         const threshold = config.thresholds[i]
-        const label = config.labels[i]
 
         // Skip if we've already recorded this milestone
         if (hasMilestone(config.metric, threshold)) continue
 
         // Check if we just crossed this threshold
         if (currentValue >= threshold && prevValue < threshold) {
-          const message = config.getMessage(currentValue, threshold, label)
+          const message = config.getMessage(currentValue, threshold)
 
           // Determine alert type
           const type =
