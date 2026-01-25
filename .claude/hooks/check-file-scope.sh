@@ -39,10 +39,15 @@ fi
 
 # Allow writes to worktree-specific paths
 # Match both /worktrees/ and *_worktrees/ patterns (Plan #160 fix)
+WORKTREE_BRANCH=""
 if [[ "$FILE_PATH" == *"/worktrees/"* ]] || [[ "$FILE_PATH" == *"_worktrees/"* ]]; then
     # Extract the worktree-relative path
     # Handle both /worktrees/branch/ and *_worktrees/branch/ patterns
     WORKTREE_PATH=$(echo "$FILE_PATH" | sed 's|.*/[^/]*worktrees/[^/]*/||')
+    # Plan #160: Extract branch name from worktree path for plan detection
+    # Path format: .../worktrees/branch-name/... or ..._worktrees/branch-name/...
+    WORKTREE_BRANCH=$(echo "$FILE_PATH" | sed 's|.*/[^/]*worktrees/\([^/]*\)/.*|\1|')
+    debug "WORKTREE_BRANCH=$WORKTREE_BRANCH"
 else
     # Not in a worktree, use path relative to main
     WORKTREE_PATH=$(echo "$FILE_PATH" | sed "s|^$MAIN_DIR/||")
@@ -60,8 +65,14 @@ fi
 
 # Check if this is a trivial commit context
 # (We can't know for sure, but we allow if no plan is active)
-BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
-debug "BRANCH=$BRANCH"
+# Plan #160: Use worktree branch if available (fixes cross-worktree edits)
+if [[ -n "$WORKTREE_BRANCH" ]]; then
+    BRANCH="$WORKTREE_BRANCH"
+    debug "Using worktree branch: $BRANCH"
+else
+    BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+    debug "Using git HEAD branch: $BRANCH"
+fi
 
 # Skip check for main branch (reviews only, not implementation)
 if [[ "$BRANCH" == "main" ]]; then

@@ -11,7 +11,7 @@ import {
 } from 'recharts'
 import { useScripChart, useLLMTokensChart } from '../../api/queries'
 import { Panel } from '../shared/Panel'
-import type { ResourceChartData, ChartDataPoint } from '../../types/api'
+import type { ResourceChartData } from '../../types/api'
 
 type ChartType = 'scrip' | 'llm_tokens'
 

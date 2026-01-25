@@ -4,7 +4,6 @@ import { Panel } from '../shared/Panel'
 import { Pagination } from '../shared/Pagination'
 import { ArtifactDetailModal } from './ArtifactDetailModal'
 import { safeFixed } from '../../utils/format'
-import type { ArtifactInfo } from '../../types/api'
 
 function TypeBadge({ type }: { type: string }) {
   const isGenesis = type.startsWith('genesis_')

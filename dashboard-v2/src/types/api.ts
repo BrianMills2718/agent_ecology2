@@ -248,3 +248,63 @@ export interface EmergenceMetrics {
   capital_depth: number
   coalition_count: number
 }
+
+// ============================================================================
+// CAPITAL FLOW
+// ============================================================================
+
+export interface CapitalFlowNode {
+  id: string
+  name: string
+  node_type: 'agent' | 'genesis' | 'artifact'
+}
+
+export interface CapitalFlowLink {
+  source: string
+  target: string
+  value: number
+  count: number
+}
+
+export interface CapitalFlowData {
+  nodes: CapitalFlowNode[]
+  links: CapitalFlowLink[]
+  time_range: [string, string]
+  total_flow: number
+}
+
+// ============================================================================
+// DEPENDENCY GRAPH
+// ============================================================================
+
+export interface DependencyNode {
+  artifact_id: string
+  name: string
+  owner: string
+  artifact_type: string
+  is_genesis: boolean
+  usage_count: number
+  created_at: string
+  depth: number
+  lindy_score: number
+}
+
+export interface DependencyEdge {
+  source: string
+  target: string
+}
+
+export interface DependencyGraphMetrics {
+  max_depth: number
+  avg_fanout: number
+  genesis_dependency_ratio: number
+  orphan_count: number
+  total_nodes: number
+  total_edges: number
+}
+
+export interface DependencyGraphData {
+  nodes: DependencyNode[]
+  edges: DependencyEdge[]
+  metrics: DependencyGraphMetrics
+}
