@@ -356,6 +356,183 @@ def get_total_right_amount(
     return total
 
 
+def split_right(
+    artifact_store: "ArtifactStore",
+    right_id: str,
+    amounts: list[float],
+    caller_id: str,
+) -> list[str] | None:
+    """Split a right artifact into multiple smaller rights.
+
+    The original right is deleted and new rights are created with the
+    specified amounts. The sum of amounts must equal the original amount.
+
+    Args:
+        artifact_store: The artifact store
+        right_id: The right artifact to split
+        amounts: List of amounts for the new rights (must sum to original)
+        caller_id: Who is performing the split (must be owner)
+
+    Returns:
+        List of new right artifact IDs if successful, None if failed
+    """
+    import uuid
+
+    # Get the original right
+    artifact = artifact_store.get(right_id)
+    if artifact is None or artifact.type != "right":
+        return None
+
+    # Verify caller is owner
+    if artifact.created_by != caller_id:
+        return None
+
+    try:
+        right_data = RightData.from_json(artifact.content)
+    except (json.JSONDecodeError, KeyError, ValueError):
+        return None
+
+    # Validate amounts sum to original (with small tolerance for float errors)
+    if abs(sum(amounts) - right_data.amount) > 0.0001:
+        return None
+
+    # Validate all amounts are positive
+    if any(a <= 0 for a in amounts):
+        return None
+
+    # Create new rights
+    new_right_ids: list[str] = []
+    for i, amount in enumerate(amounts):
+        new_id = f"{right_id}_split_{uuid.uuid4().hex[:8]}"
+
+        # Copy right data with new amount
+        new_right_data = RightData(
+            right_type=right_data.right_type,
+            resource=right_data.resource,
+            amount=amount,
+            model=right_data.model,
+            window=right_data.window,
+        )
+
+        # Build metadata
+        metadata: dict[str, Any] = {
+            "right_type": right_data.right_type.value,
+            "resource": right_data.resource,
+            "split_from": right_id,
+        }
+        if right_data.model is not None:
+            metadata["model"] = right_data.model
+
+        artifact_store.write(
+            artifact_id=new_id,
+            type="right",
+            content=new_right_data.to_json(),
+            created_by=caller_id,
+            executable=False,
+            metadata=metadata,
+        )
+        new_right_ids.append(new_id)
+
+    # Mark original as deleted
+    artifact.deleted = True
+
+    return new_right_ids
+
+
+def merge_rights(
+    artifact_store: "ArtifactStore",
+    right_ids: list[str],
+    caller_id: str,
+    new_right_id: str | None = None,
+) -> str | None:
+    """Merge multiple rights of the same type into one.
+
+    All rights must be owned by the caller and be of the same type.
+    Original rights are deleted and a new combined right is created.
+
+    Args:
+        artifact_store: The artifact store
+        right_ids: List of right artifact IDs to merge
+        caller_id: Who is performing the merge (must own all rights)
+        new_right_id: Optional ID for the merged right
+
+    Returns:
+        New right artifact ID if successful, None if failed
+    """
+    import uuid
+
+    if len(right_ids) < 2:
+        return None
+
+    # Collect and validate all rights
+    rights_data: list[RightData] = []
+    for rid in right_ids:
+        artifact = artifact_store.get(rid)
+        if artifact is None or artifact.type != "right" or artifact.deleted:
+            return None
+        if artifact.created_by != caller_id:
+            return None
+
+        try:
+            rdata = RightData.from_json(artifact.content)
+            rights_data.append(rdata)
+        except (json.JSONDecodeError, KeyError, ValueError):
+            return None
+
+    # Verify all same type
+    first = rights_data[0]
+    for rdata in rights_data[1:]:
+        if rdata.right_type != first.right_type:
+            return None
+        if rdata.resource != first.resource:
+            return None
+        # For rate_capacity, must be same model
+        if first.right_type == RightType.RATE_CAPACITY:
+            if rdata.model != first.model:
+                return None
+
+    # Calculate total amount
+    total_amount = sum(r.amount for r in rights_data)
+
+    # Create merged right
+    if new_right_id is None:
+        new_right_id = f"merged_right_{uuid.uuid4().hex[:8]}"
+
+    merged_data = RightData(
+        right_type=first.right_type,
+        resource=first.resource,
+        amount=total_amount,
+        model=first.model,
+        window=first.window,
+    )
+
+    # Build metadata
+    metadata: dict[str, Any] = {
+        "right_type": first.right_type.value,
+        "resource": first.resource,
+        "merged_from": right_ids,
+    }
+    if first.model is not None:
+        metadata["model"] = first.model
+
+    artifact_store.write(
+        artifact_id=new_right_id,
+        type="right",
+        content=merged_data.to_json(),
+        created_by=caller_id,
+        executable=False,
+        metadata=metadata,
+    )
+
+    # Delete original rights
+    for rid in right_ids:
+        artifact = artifact_store.get(rid)
+        if artifact is not None:
+            artifact.deleted = True
+
+    return new_right_id
+
+
 # Constants for standard genesis right naming
 GENESIS_RIGHT_PREFIX = "genesis_right_"
 DOLLAR_BUDGET_PREFIX = f"{GENESIS_RIGHT_PREFIX}dollar_budget_"
@@ -377,6 +554,9 @@ __all__ = [
     "update_right_amount",
     "find_rights_by_type",
     "get_total_right_amount",
+    # Trading functions (Phase 5)
+    "split_right",
+    "merge_rights",
     # Constants
     "GENESIS_RIGHT_PREFIX",
     "DOLLAR_BUDGET_PREFIX",
