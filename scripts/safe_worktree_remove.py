@@ -413,12 +413,14 @@ def remove_worktree(worktree_path: str, force: bool = False) -> bool:
         current_dir = os.getcwd()
         worktree_abs = os.path.abspath(worktree_path)
         if current_dir.startswith(worktree_abs):
+            # Get repo root for recovery instructions
+            repo_root = Path(__file__).parent.parent.resolve()
             print("❌ BLOCKED: Cannot delete worktree you're currently in!")
             print(f"   Your shell CWD: {current_dir}")
             print(f"   Worktree path:  {worktree_abs}")
             print()
             print("   This would break your shell. First run:")
-            print("   cd /home/brian/brian_projects/agent_ecology2")
+            print(f"   cd {repo_root}")
             print("   Then retry the removal.")
             return False
     except OSError:
