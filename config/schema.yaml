@@ -156,6 +156,24 @@ genesis:
         cost: <number>
         description: <string>
 
+  # Genesis Voting - multi-party consensus (Plan #183)
+  voting:
+    id: <string>
+    description: <string>
+    methods:
+      create_proposal:
+        cost: <number>          # Create a proposal (costs compute)
+        description: <string>
+      vote:
+        cost: <number>          # Cast a vote (free)
+        description: <string>
+      get_result:
+        cost: <number>          # Get proposal results (free)
+        description: <string>
+      list_proposals:
+        cost: <number>          # List proposals (free)
+        description: <string>
+
   # Genesis Store - artifact discovery and registry
   store:
     id: <string>
@@ -402,6 +420,24 @@ budget:
   checkpoint_file: <string>     # Where to save state on pause
   checkpoint_interval: <number> # Save checkpoint every N ticks (0 = disable)
   checkpoint_on_end: <boolean>  # Save checkpoint when simulation ends normally (default: true)
+
+# -----------------------------------------------------------------------------
+# LIBRARIES
+# Package installation configuration for agents
+# -----------------------------------------------------------------------------
+libraries:
+  # Genesis libraries: Pre-installed, don't count against disk quota
+  # These are baked into the Docker image as cold-start conveniences
+# -----------------------------------------------------------------------------
+# LEARNING (Plan #186)
+# Cross-run learning configuration
+# -----------------------------------------------------------------------------
+learning:
+  cross_run:
+    enabled: <boolean>              # Enable loading learnings from prior runs
+    prior_checkpoint: <string>      # Path to checkpoint file (null = auto-discover)
+    auto_discover: <boolean>        # Auto-find latest checkpoint in logs/
+    load_working_memory: <boolean>  # Load working_memory from prior run
 
 # -----------------------------------------------------------------------------
 # LIBRARIES

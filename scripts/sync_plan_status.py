@@ -382,7 +382,8 @@ def sync_index_to_plans() -> int:
         print(f"Error: {INDEX_FILE} not found")
         return 1
 
-    content = INDEX_FILE.read_text()
+    original_content = INDEX_FILE.read_text()
+    content = original_content
 
     # Get plan file statuses
     plan_files = sorted(PLANS_DIR.glob("[0-9]*_*.md"))
@@ -447,7 +448,7 @@ def sync_index_to_plans() -> int:
         flags=re.MULTILINE
     )
 
-    if new_content != content:
+    if new_content != original_content:
         INDEX_FILE.write_text(new_content)
         print("Updated index table to match plan files.")
         return 0
