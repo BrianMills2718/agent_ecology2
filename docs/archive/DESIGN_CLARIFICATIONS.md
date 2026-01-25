@@ -652,3 +652,50 @@ def check_permission(artifact_id, action, requester_id, context):
 **Source:** Contract architecture review session (2026-01-19)
 
 ---
+
+## Autonomous Principals vs Agents (2026-01-24)
+
+**Context:** Discussion about what makes "agents" special architecturally, and whether loop infrastructure should be agent-specific.
+
+**Clarification:**
+
+The architectural unit is the **autonomous principal**, not the "agent". An autonomous principal is:
+- A principal (`has_standing=true`) that can hold resources and bear costs
+- Has autonomous execution capability (`can_execute=true`, has a loop)
+- Consumes resources (tracked generically)
+
+The **decision engine** is an implementation detail, not an architectural category:
+
+| Decision Engine | Description |
+|-----------------|-------------|
+| LLM | Current "agents" - uses language model to decide actions |
+| RL model | Reinforcement learning - learns from rewards |
+| Rule-based | Expert systems, simple conditionals |
+| Code/daemon | Procedural logic, no AI |
+| Hybrid | Combinations of the above |
+
+**Implications:**
+
+1. **"Agent" in current codebase** = "LLM agent". This is fine - no rename needed.
+
+2. **Loop infrastructure** should conceptually be for any autonomous principal, not LLM-specific. Current implementation is LLM-focused, which is acceptable.
+
+3. **Resource tracking** should be generic. Adding new resource types (internet search API, MCP tools) shouldn't require architectural changes.
+
+4. **Memory is optional**. An autonomous principal might have no memory (simple daemon), minimal memory (short-lived task agent), or rich memory (long-running LLM agent).
+
+5. **Agents can create agents**. Since agents are artifacts, agent A can create agent B for a simple task. Agent B might be minimal - just a prompt, no memory, short-lived.
+
+**What this does NOT require:**
+- Immediate refactoring of agent code
+- Renaming "agent" to "autonomous principal" everywhere
+- Building RL/daemon infrastructure now
+
+**Future work follows this model:**
+- Generalized loop infrastructure (kernel level, not simulation/)
+- Extensible resource registry (add new resource types without refactor)
+- Support for non-LLM decision engines when needed
+
+**Source:** Agent architecture review session (2026-01-24)
+
+---
