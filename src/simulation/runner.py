@@ -365,6 +365,19 @@ class SimulationRunner:
                         agent.longterm_memory_artifact_id = longterm_id
                         if self.verbose:
                             print(f"  Created longterm memory: {longterm_id}")
+                        # Plan #213: Pre-seed common lessons to bootstrap agent learning
+                        preseeded_lessons = [
+                            "LESSON: To deposit an artifact to escrow, first set its metadata.authorized_writer to 'genesis_escrow' using write_artifact action",
+                            "LESSON: Use integers for prices and amounts, not strings (10 not '10')",
+                            "LESSON: Check artifact ownership before trying to transfer or deposit it",
+                            "LESSON: Use genesis_store.list to discover what artifacts exist before trying to buy or interact with them",
+                            "LESSON: Always check your scrip balance with genesis_ledger.balance before making purchases",
+                        ]
+                        for lesson in preseeded_lessons:
+                            genesis_memory._add_entry(
+                                [longterm_id, lesson, {"preseeded": True}],
+                                agent.agent_id
+                            )
                 else:
                     # Already exists, just link it
                     agent.longterm_memory_artifact_id = longterm_id
@@ -1111,6 +1124,47 @@ class SimulationRunner:
             "max_runtime_seconds": self.max_runtime_seconds,
         }
 
+    def _migrate_working_memory_to_longterm(self) -> None:
+        """Migrate important working_memory entries to longterm at session end (Plan #213).
+
+        Looks for entries that look like lessons/strategies and saves them
+        to the agent's longterm memory for future sessions.
+        """
+        genesis_memory = self.world.genesis_artifacts.get("genesis_memory")
+        if not genesis_memory:
+            return
+
+        # Keywords that indicate valuable entries worth preserving
+        valuable_prefixes = ("LESSON:", "STRATEGY:", "INFO:", "INSIGHT:", "NOTE:")
+
+        for agent in self.agents:
+            if not agent.longterm_memory_artifact_id:
+                continue
+
+            # Get working memory entries
+            working_mem = getattr(agent, "working_memory", {})
+            migrated = 0
+
+            for key, value in working_mem.items():
+                # Skip non-string values and internal keys
+                if not isinstance(value, str):
+                    continue
+                if key.startswith("_"):
+                    continue
+
+                # Check if the value looks like a lesson worth preserving
+                value_upper = value.upper()
+                if any(value_upper.startswith(prefix) for prefix in valuable_prefixes):
+                    # Migrate to longterm memory
+                    genesis_memory._add_entry(
+                        [agent.longterm_memory_artifact_id, value, {"migrated_from": "working_memory", "key": key}],
+                        agent.agent_id
+                    )
+                    migrated += 1
+
+            if migrated > 0 and self.verbose:
+                print(f"  [LEARNING] Migrated {migrated} entries from {agent.agent_id} working_memory to longterm")
+
     def is_runtime_exceeded(self) -> bool:
         """Check if maximum runtime has been exceeded.
 
@@ -1149,6 +1203,8 @@ class SimulationRunner:
         finally:
             self._running = False
             SimulationRunner._active_runner = None
+            # Plan #213: Auto-migrate important working_memory entries to longterm
+            self._migrate_working_memory_to_longterm()
 
         self._print_final_summary()
         return self.world
