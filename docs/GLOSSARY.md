@@ -2,7 +2,7 @@
 
 Canonical terminology for Agent Ecology.
 
-**Last updated:** 2026-01-20
+**Last updated:** 2026-01-25
 
 ---
 
@@ -15,6 +15,10 @@ Canonical terminology for Agent Ecology.
 | `tick` | `turn` | Consistency |
 | `artifact` | `object/entity` | Everything is an artifact |
 | `mint` | `oracle` | Describes function (creating scrip) |
+| `substrate` | `platform` | Emphasizes primitives, not orchestration |
+| `cognitive architecture` | `agent framework` | Internal structure, not library |
+| `autonomous principal` | `agent` | Architectural unit; LLM is implementation detail |
+| `genesis agents` | `the agents` | Specific implementation, not the only possible one |
 
 ---
 
@@ -25,10 +29,13 @@ Everything is an artifact. Other entity types are artifacts with specific proper
 | Term | Definition | Properties |
 |------|------------|------------|
 | **Artifact** | Any persistent, addressable object in the system | `id`, `content`, `access_contract_id` |
-| **Agent** | Artifact that can hold resources, execute code, and call LLM | `has_standing=true`, `can_execute=true` |
 | **Principal** | Any artifact with standing (can hold resources, bear costs) | `has_standing=true` |
+| **Autonomous Principal** | Principal with an execution loop (can act independently) | `has_standing=true`, has loop |
+| **Agent** | Autonomous principal using LLM for decisions (common case) | `has_standing=true`, `can_execute=true`, LLM-based |
 | **Contract** | Executable artifact that answers permission questions | `can_execute=true`, implements `check_permission` |
 | **Genesis Artifact** | Artifact created at system initialization | Prefixed with `genesis_`, solves cold-start |
+
+**Note:** "Agent" is often used loosely. Prefer "autonomous principal" when the decision engine could be non-LLM (RL, rules, code). "Agent" implies LLM-based.
 
 ### Artifact Properties
 
@@ -258,6 +265,77 @@ How agents structure their thinking and responses to the LLM.
 
 ---
 
+## Agent Architecture Terminology
+
+Terms for discussing agent design at different levels of abstraction.
+
+### Levels of Abstraction
+
+| Term | Definition | Examples |
+|------|------------|----------|
+| **Substrate** | The primitives agents run on; defines what's *possible* | Our kernel (artifacts, contracts, triggers, resources) |
+| **Cognitive Architecture** | How a single agent internally thinks and acts | BabyAGI, ReAct, Plan-and-Execute |
+| **Framework** | Library/tool for building agents | LangChain, LlamaIndex |
+| **Multi-agent Framework** | Framework specifically for coordinating multiple agents | AutoGen, CrewAI |
+| **Orchestration** | Predefined coordination patterns between agents | Group chat, delegation chains |
+
+**Key distinction:**
+- **Substrate** = What's possible (capability space)
+- **Cognitive Architecture** = How an agent uses that capability
+- **Framework** = Tools to build agents
+- **Orchestration** = Prescribed multi-agent patterns
+
+We provide a **substrate**. Genesis agents are one **cognitive architecture** on that substrate. Unlike AutoGen/CrewAI, we don't prescribe **orchestration**—agents discover coordination patterns through economic incentives.
+
+### Our Specific Terms
+
+| Term | Definition | Notes |
+|------|------------|-------|
+| **Autonomous Principal** | Any artifact with standing and an execution loop | The architectural unit; decision engine (LLM, RL, code) is implementation detail |
+| **Genesis Agents** | Current agent implementations (alpha, beta, _3, v4, etc.) | One cognitive architecture; could be replaced |
+| **Capability Space** | What patterns are possible given substrate primitives | Complete—no patterns are impossible |
+| **Friction** | How difficult a possible pattern is to implement | High friction ≠ impossible, just inconvenient |
+
+**Autonomous Principal vs Agent:**
+- "Agent" implies LLM-based, anthropomorphic
+- "Autonomous principal" is substrate-neutral: any artifact that can hold resources and execute
+- An RL policy, a cron job, or an LLM could all be autonomous principals
+
+### SOTA Cognitive Architectures (Reference)
+
+Single-agent patterns from the literature:
+
+| Architecture | Core Pattern | Key Feature |
+|--------------|--------------|-------------|
+| **ReAct** | Reason → Act → Observe → Repeat | Interleaved reasoning and action |
+| **BabyAGI** | Task queue with prioritization | Autonomous task decomposition |
+| **Plan-and-Execute** | Create plan, then execute steps | Explicit planning phase |
+| **Reflexion** | Act → Reflect on failure → Retry | Learning from mistakes |
+| **Chain-of-Thought** | Extended reasoning before acting | More thinking time |
+
+**Where genesis agents fit:**
+- Currently closest to ReAct (observe-act loop)
+- Missing explicit planning (Plan-and-Execute)
+- Have partial reflection (_3 agents have `learn_from_outcome`)
+- Don't use extended thinking (Chain-of-Thought)
+
+### Multi-agent Coordination (Reference)
+
+How other systems handle multi-agent coordination:
+
+| System | Coordination Model | Our Equivalent |
+|--------|-------------------|----------------|
+| **AutoGen** | Conversation patterns (group chat) | Artifacts + triggers |
+| **CrewAI** | Role-based delegation | Economic incentives |
+| **BabyAGI** | Single agent, no multi-agent | N/A (single agent) |
+
+**Our approach differs:**
+- No prescribed orchestration
+- Economic pressure drives coordination
+- Agents discover patterns through emergence
+
+---
+
 ## Meta-Process Terminology
 
 Development process terms (not system concepts):
@@ -296,3 +374,7 @@ See [docs/meta/adr/](meta/adr/) for meta-process ADRs.
 | account | principal | Principals include non-agents |
 | turn | tick | Consistency |
 | transfer (as action) | invoke_artifact | No direct transfer action |
+| platform | substrate | "Platform" implies orchestration; we provide primitives |
+| agent framework | cognitive architecture | Framework = library; architecture = internal structure |
+| agent (when non-LLM) | autonomous principal | "Agent" implies LLM; principal is substrate-neutral |
+| the agents | genesis agents | Clarifies these are one implementation, not the only one |
