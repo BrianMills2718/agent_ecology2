@@ -313,29 +313,37 @@ workflow:
       transition_to: "reflecting"
 
     # Step 6: Shipping phase - move on to next opportunity (Plan #157 Phase 4)
+    # Plan #211: Added explicit mint bidding instructions
     - name: ship
       type: llm
       in_state: "shipping"
       prompt: |
-        === SHIPPING: Move to Next Opportunity ===
+        === SHIPPING: Monetize and Move On ===
         Time remaining: {time_remaining} | Artifacts completed: {artifacts_completed}
 
-        You decided to ship your current work and move on. Good choice!
+        You decided to ship your current work. Good choice!
 
         Your artifacts: {my_artifacts}
         Last result: {last_action_result}
 
-        ## WHAT TO DO NOW
-        Your artifact is shipped. Now look for a NEW opportunity:
-        1. Check genesis_store for artifacts you could use or improve
-        2. Consider what OTHER agents might need
-        3. Build something DIFFERENT (don't revisit what you just shipped)
+        ## SUBMIT TO MINT AUCTION (IMPORTANT!)
+        To earn scrip from your artifact:
+        1. Submit a bid: invoke_artifact genesis_mint.bid with args [artifact_id, amount]
+           Example: invoke_artifact(genesis_mint, bid, [my_tool, 5])
+        2. Auctions run every 60 seconds - highest-scored artifact wins
+        3. Winner earns scrip based on artifact quality score
 
-        Revenue comes from:
-        - Others invoking your artifacts (charges them scrip, pays you)
-        - Winning mint auctions (highest-scored artifact wins)
+        ## THEN MOVE ON
+        After bidding, look for a NEW opportunity:
+        1. Check what other agents built (query_kernel action)
+        2. Consider what gaps exist in the ecosystem
+        3. Build something DIFFERENT
 
-        Start fresh with an observation action.
+        Revenue sources:
+        - Mint auctions (submit bids on your artifacts!)
+        - Others invoking your artifacts (passive income)
+
+        NEXT: Either bid on your artifact OR start observing for new opportunities.
       transition_to: "observing"
 
 error_handling:

@@ -143,6 +143,7 @@ workflow:
       transition_to: "deploying"
 
     # Step 4: Deployment phase - verify and announce
+    # Plan #211: Added mint bidding instructions
     - name: deploy_infrastructure
       type: llm
       in_state: "deploying"
@@ -160,10 +161,12 @@ workflow:
         DEPLOYMENT TASK:
         1. Test your infrastructure (invoke it)
         2. Verify it works correctly
-        3. Set appropriate pricing
-        4. Make it discoverable
+        3. **SUBMIT TO MINT** to earn scrip:
+           invoke_artifact genesis_mint.bid with args [artifact_id, bid_amount]
+           Example: invoke_artifact(genesis_mint, bid, [my_service, 5])
+        4. Auctions run every 60s - higher quality = more scrip
 
-        Infrastructure only provides value when others use it.
+        Infrastructure only provides value when monetized and used!
       transition_to: "maintaining"
 
     # Step 5: Maintenance phase - monitor and improve
@@ -188,8 +191,44 @@ workflow:
         3. Consider improvements
 
         Good infrastructure needs ongoing attention.
-        When balance allows, consider new projects.
-      transition_to: "planning"
+
+    # Step 5b: Maintenance transition - decide next phase (Plan #211)
+    - name: maintenance_transition
+      type: transition
+      in_state: "maintaining"
+      prompt: |
+        === DECISION: Continue, Expand, or Deprecate? ===
+        Time remaining: {time_remaining} | Balance: {balance} | Success rate: {success_rate}
+
+        ## YOUR INFRASTRUCTURE
+        {my_artifacts}
+
+        ## RECENT ACTIONS
+        {action_history}
+
+        ## LAST RESULT
+        {last_action_result}
+
+        ## DECISION REQUIRED
+        Based on your infrastructure status, choose ONE:
+
+        A) CONTINUE - Keep maintaining current infrastructure
+           - Infrastructure is working well
+           - Worth continuing to monitor and improve
+
+        B) EXPAND - Start planning new infrastructure
+           - Current infrastructure is stable
+           - Have resources for new project
+
+        C) DEPRECATE - Retire underperforming infrastructure
+           - Infrastructure not being used
+           - Time to clean up and reclaim resources
+
+        Respond with exactly one: continue, expand, or deprecate
+      transition_map:
+        continue: "maintaining"
+        expand: "planning"
+        deprecate: "deprecating"
 
     # Step 6: Deprecation phase - retire old infrastructure
     - name: deprecate_infrastructure

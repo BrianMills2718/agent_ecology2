@@ -170,7 +170,7 @@ workflow:
         - Create orchestration workflows
       transition_to: "reviewing"
 
-    # Step 5: Review - assess progress
+    # Step 5: Review - assess progress (non-binding reflection)
     - name: review
       type: llm
       in_state: "reviewing"
@@ -192,7 +192,47 @@ workflow:
         2. Is the subgoal complete? Should we move to next?
         3. Does strategic goal need revision?
 
-        Decide: continue operational, pick new subgoal (tactical), or revise strategy (strategic)?
+        If you learned something, update your working_memory artifact.
+
+    # Step 6: Strategic transition - LLM-informed state change (Plan #211)
+    - name: strategic_transition
+      type: transition
+      in_state: "reviewing"
+      prompt: |
+        === DECISION: Continue, Pivot, or Rethink? ===
+        Time remaining: {time_remaining} | Balance: {balance} | Success rate: {success_rate}
+
+        ## YOUR RECENT ACTIONS
+        {action_history}
+
+        ## LAST RESULT
+        {last_action_result}
+
+        ## YOUR GOALS
+        - Strategic goal: {strategic_goal}
+        - Current subgoal: {current_subgoal}
+        - Stuck on subgoal: {subgoal_stuck}
+
+        ## DECISION REQUIRED
+        Based on your progress and last result, choose ONE:
+
+        A) CONTINUE - Making progress on current subgoal
+           - Last action moved you closer
+           - Worth continuing execution
+
+        B) PIVOT - Subgoal done or stuck, need new tactical focus
+           - Current subgoal achieved OR repeatedly failing
+           - Time to pick a new subgoal
+
+        C) RETHINK - Strategy itself needs revision
+           - Strategic goal may be wrong
+           - Time to reassess at highest level
+
+        Respond with exactly one: continue, pivot, or rethink
+      transition_map:
+        continue: "operational"
+        pivot: "tactical"
+        rethink: "strategic"
 
 error_handling:
   default_on_failure: retry

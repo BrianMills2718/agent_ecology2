@@ -173,11 +173,13 @@ class ActionExecutor:
             )
         else:
             # Plan #190: Suggest discovery via query_kernel
+            # Plan #211: Clarify query_kernel is an ACTION type, not an artifact
             return ActionResult(
                 success=False,
                 message=(
                     f"Artifact '{intent.artifact_id}' not found. "
-                    f"Use query_kernel with query_type='artifacts' to discover available artifacts."
+                    f"To discover artifacts, use the query_kernel ACTION: "
+                    f'{{\"action_type\": \"query_kernel\", \"query_type\": \"artifacts\"}}'
                 ),
                 error_code=ErrorCode.NOT_FOUND.value,
                 error_category=ErrorCategory.RESOURCE.value,
@@ -654,10 +656,12 @@ class ActionExecutor:
             return self._invoke_user_artifact(intent, artifact, method_name, effective_args, start_time)
 
         # Artifact not found
+        # Plan #211: Clarify query_kernel is an ACTION type, not an artifact
         duration_ms = (time.perf_counter() - start_time) * 1000
         helpful_msg = (
             f"Artifact '{artifact_id}' not found. "
-            f"Use query_kernel with query_type='artifacts' to discover available artifacts."
+            f"To discover artifacts, use the query_kernel ACTION: "
+            f'{{\"action_type\": \"query_kernel\", \"query_type\": \"artifacts\"}}'
         )
         self._log_invoke_failure(
             intent.principal_id, artifact_id, method_name,
