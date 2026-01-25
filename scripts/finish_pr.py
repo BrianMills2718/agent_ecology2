@@ -108,9 +108,14 @@ def merge_pr(pr_number: int) -> tuple[bool, str]:
 
 
 def release_claim(branch: str) -> bool:
-    """Release any claim for this branch."""
+    """Release any claim for this branch.
+
+    Plan #176: With atomic claims (claim stored in worktree), the claim file
+    is deleted when the worktree is removed. This just adds to completed history.
+    We don't use --force since ownership should be verified.
+    """
     result = run_cmd(
-        ["python", "scripts/check_claims.py", "--release", "--id", branch, "--force"],
+        ["python", "scripts/check_claims.py", "--release", "--id", branch],
         check=False,
     )
     return result.returncode == 0

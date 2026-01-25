@@ -170,7 +170,7 @@ def parse_files_affected(content: str) -> list[dict[str, Any]]:
 
         # Extract path and action
         # Format: path (action) or just path
-        path_match = re.match(r"([^\s(]+)\s*(?:\((\w+)\))?", line)
+        path_match = re.match(r"`?([^`\s(]+)`?\s*(?:\((\w+)\))?", line)
         if path_match:
             path = path_match.group(1).strip()
             action = path_match.group(2) or "modify"

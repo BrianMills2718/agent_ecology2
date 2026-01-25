@@ -5,7 +5,8 @@
 # This ensures we always use main's scripts, not potentially stale worktree copies
 MAIN_DIR := $(shell git worktree list | head -1 | awk '{print $$1}')
 
-.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge finish pr-merge-admin pr-list pr-view worktree worktree-quick worktree-remove worktree-remove-force clean-branches clean-branches-delete clean-worktrees clean-worktrees-auto kill ci-status ci-require ci-optional run dash dash-run analyze
+# Plan #176: Removed worktree-quick (no bypass path for claiming)
+.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge finish pr-merge-admin pr-list pr-view worktree worktree-remove worktree-remove-force clean-branches clean-branches-delete clean-worktrees clean-worktrees-auto kill ci-status ci-require ci-optional run dash dash-run analyze
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -76,18 +77,6 @@ branch:  ## Create plan branch (usage: make branch PLAN=3 NAME=docker)
 
 worktree:  ## Create worktree with mandatory claim (interactive)
 	@./scripts/create_worktree.sh
-
-worktree-quick:  ## Create worktree without claim (usage: make worktree-quick BRANCH=name) - use only if already claimed
-	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree-quick BRANCH=feature-name"; exit 1; fi
-	@echo "WARNING: Ensure you have already claimed this work!"
-	@python scripts/check_claims.py --list
-	@echo ""
-	@mkdir -p worktrees
-	git fetch origin
-	git worktree add worktrees/$(BRANCH) -b $(BRANCH) origin/main
-	@echo ""
-	@echo "Worktree created at worktrees/$(BRANCH) (based on latest origin/main)"
-	@echo "To use: cd worktrees/$(BRANCH) && claude"
 
 worktree-list:  ## List active worktrees
 	git worktree list

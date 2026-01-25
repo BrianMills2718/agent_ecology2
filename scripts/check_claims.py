@@ -69,6 +69,9 @@ import yaml
 STALENESS_MINUTES = 30  # Sessions with no activity for this long are considered stale
 SESSION_DIR_NAME = "sessions"
 
+# Atomic claim file - stored in each worktree
+CLAIM_FILE_NAME = ".claim.yaml"
+
 
 def get_main_repo_root() -> Path:
     """Get the main repo root (not worktree).
@@ -539,6 +542,101 @@ def get_worktrees() -> list[dict[str, Any]]:
     return worktrees
 
 
+def load_claim_from_worktree(worktree_path: str) -> dict[str, Any] | None:
+    """Load claim from a worktree's .claim.yaml file.
+
+    Returns the claim dict or None if no claim file exists.
+    """
+    claim_file = Path(worktree_path) / CLAIM_FILE_NAME
+    if not claim_file.exists():
+        return None
+
+    try:
+        with open(claim_file) as f:
+            claim = yaml.safe_load(f)
+            if claim:
+                # Add worktree_path for reference
+                claim["worktree_path"] = worktree_path
+                return claim
+    except (yaml.YAMLError, OSError):
+        pass
+    return None
+
+
+def save_claim_to_worktree(
+    worktree_path: str,
+    cc_id: str,
+    task: str,
+    plan: int | None = None,
+    feature: str | None = None,
+    session_id: str | None = None,
+) -> bool:
+    """Save claim to a worktree's .claim.yaml file.
+
+    This is the atomic claim - worktree exists = claim exists.
+    """
+    if session_id is None:
+        session_id = get_session_id()
+
+    claim_data: dict[str, Any] = {
+        "cc_id": cc_id,
+        "task": task,
+        "claimed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "session_id": session_id,
+    }
+
+    if plan:
+        claim_data["plan"] = plan
+    if feature:
+        claim_data["feature"] = feature
+
+    claim_file = Path(worktree_path) / CLAIM_FILE_NAME
+    try:
+        with open(claim_file, "w") as f:
+            f.write("# Atomic claim file - this worktree is claimed\n")
+            f.write("# Deleting worktree = releasing claim\n\n")
+            yaml.dump(claim_data, f, default_flow_style=False, sort_keys=False)
+        return True
+    except OSError as e:
+        print(f"Error writing claim file: {e}")
+        return False
+
+
+def load_claims_from_worktrees() -> list[dict[str, Any]]:
+    """Load all claims from worktree .claim.yaml files.
+
+    This is the primary source of truth for active claims.
+    Scans all worktrees and reads their claim files.
+    """
+    claims: list[dict[str, Any]] = []
+    worktrees = get_worktrees()
+
+    for wt in worktrees:
+        path = wt.get("path", "")
+        branch = wt.get("branch", "")
+
+        # Skip main repo (not a worktree for work)
+        if branch == "main":
+            continue
+
+        claim = load_claim_from_worktree(path)
+        if claim:
+            # Ensure cc_id matches branch
+            claim["cc_id"] = branch
+            claims.append(claim)
+
+    return claims
+
+
+def find_worktree_for_branch(branch: str) -> str | None:
+    """Find the worktree path for a given branch."""
+    worktrees = get_worktrees()
+    for wt in worktrees:
+        if wt.get("branch") == branch:
+            return wt.get("path")
+    return None
+
+
 def get_worktree_claim_status(
     worktrees: list[dict[str, Any]],
     claims: list[dict[str, Any]]
@@ -603,16 +701,37 @@ def verify_has_claim(data: dict[str, Any], branch: str) -> tuple[bool, str]:
 
 
 def load_yaml() -> dict[str, Any]:
-    """Load claims from YAML file."""
-    if not YAML_PATH.exists():
-        return {"claims": [], "completed": []}
+    """Load claims from worktrees (primary) and YAML file (fallback/completed).
 
-    with open(YAML_PATH) as f:
-        data = yaml.safe_load(f) or {}
+    Active claims are read from worktree .claim.yaml files.
+    The YAML file is used for:
+    - completed history
+    - backwards compatibility during migration (claims without worktrees)
+    """
+    # Load completed history from YAML
+    completed: list[dict[str, Any]] = []
+    legacy_claims: list[dict[str, Any]] = []
+
+    if YAML_PATH.exists():
+        with open(YAML_PATH) as f:
+            data = yaml.safe_load(f) or {}
+        completed = data.get("completed") or []
+        legacy_claims = data.get("claims") or []
+
+    # Load active claims from worktrees (primary source of truth)
+    worktree_claims = load_claims_from_worktrees()
+
+    # Merge: worktree claims take precedence, add legacy claims that don't have worktrees
+    worktree_branches = {c.get("cc_id") for c in worktree_claims}
+    for legacy in legacy_claims:
+        if legacy.get("cc_id") not in worktree_branches:
+            # Legacy claim without worktree - keep for backwards compat
+            legacy["_legacy"] = True
+            worktree_claims.append(legacy)
 
     return {
-        "claims": data.get("claims") or [],
-        "completed": data.get("completed") or [],
+        "claims": worktree_claims,
+        "completed": completed,
     }
 
 
@@ -774,7 +893,22 @@ def add_claim(
         worktree_path: Path to worktree (for session tracking, Plan #52)
         force: Force claim despite conflicts
         session_id: Session ID for ownership verification (Plan #134)
+
+    Plan #176: Claims are now stored in worktree .claim.yaml files.
+    The worktree IS the claim - no orphaned claims possible.
     """
+    # Plan #176: Block claiming on main branch - must use worktree
+    if cc_id == "main":
+        print("=" * 60)
+        print("ERROR: Cannot claim on main branch")
+        print("=" * 60)
+        print()
+        print("Implementation work must happen in a worktree.")
+        print("Use: make worktree")
+        print()
+        print("This creates a worktree AND claims the work atomically.")
+        return False
+
     # Check for existing claim by this instance
     for claim in data["claims"]:
         if claim.get("cc_id") == cc_id:
@@ -850,6 +984,16 @@ def add_claim(
     if worktree_path:
         new_claim["worktree_path"] = worktree_path
 
+    # Plan #176: Write claim to worktree if it exists
+    wt_path = worktree_path or find_worktree_for_branch(cc_id)
+    if wt_path:
+        # Atomic claim: write to worktree
+        if save_claim_to_worktree(wt_path, cc_id, task, plan, feature, session_id):
+            new_claim["worktree_path"] = wt_path
+        else:
+            print(f"Warning: Could not write claim to worktree at {wt_path}")
+
+    # Also save to YAML for backwards compatibility during migration
     data["claims"].append(new_claim)
     save_yaml(data)
 
@@ -1108,6 +1252,17 @@ def main() -> int:
         type=str,
         help="Description of current work (used with --heartbeat)"
     )
+    parser.add_argument(
+        "--check-conflict",
+        action="store_true",
+        help="Check if plan/feature would conflict (exit 0=ok, 1=conflict). Does NOT create claim."
+    )
+    parser.add_argument(
+        "--write-claim-file",
+        type=str,
+        metavar="WORKTREE_PATH",
+        help="Write .claim.yaml to specified worktree path (used by create_worktree.sh)"
+    )
 
     args = parser.parse_args()
 
@@ -1128,6 +1283,56 @@ def main() -> int:
         session = update_session_heartbeat(args.working_on)
         print(f"Heartbeat updated for session {session['session_id'][:8]}...")
         return 0
+
+    # Handle check-conflict (Plan #176: Check without creating claim)
+    if args.check_conflict:
+        plan = args.plan
+        feature = args.feature
+
+        if not plan and not feature:
+            print("Error: --check-conflict requires --plan or --feature")
+            return 1
+
+        conflicts = check_scope_conflict(plan, feature, claims)
+        if conflicts:
+            print("CONFLICT: Scope already claimed")
+            for conflict in conflicts:
+                cc_id = conflict.get("cc_id", "?")
+                task = conflict.get("task", "")[:50]
+                print(f"  {cc_id}: {task}")
+            return 1
+        else:
+            print("OK: No conflicts")
+            return 0
+
+    # Handle write-claim-file (Plan #176: Write claim to worktree)
+    if args.write_claim_file:
+        worktree_path = args.write_claim_file
+        task = args.task
+        plan = args.plan
+        feature = args.feature
+
+        if not task:
+            print("Error: --write-claim-file requires --task")
+            return 1
+
+        # Check for conflicts first
+        conflicts = check_scope_conflict(plan, feature, claims)
+        if conflicts and not args.force:
+            print("CONFLICT: Cannot write claim, scope already claimed")
+            for conflict in conflicts:
+                cc_id = conflict.get("cc_id", "?")
+                print(f"  {cc_id}")
+            return 1
+
+        # Write the claim file
+        cc_id = instance_id
+        if save_claim_to_worktree(worktree_path, cc_id, task, plan, feature):
+            print(f"Claim file written to {worktree_path}/{CLAIM_FILE_NAME}")
+            return 0
+        else:
+            print(f"Error: Failed to write claim file")
+            return 1
 
     # Handle check-plan-session (Plan #134)
     # Used by protect-main.sh to check if a plan can be edited by this session
