@@ -1,6 +1,6 @@
 # Plan #206: Meta-Process Claim Lifecycle Fixes
 
-**Status:** In Progress
+**Status:** Complete
 **Priority:** Critical
 **Complexity:** Medium
 
@@ -238,12 +238,12 @@ def cleanup():
 
 ## Acceptance Criteria
 
-- [ ] Stale claims (>8h no activity) are automatically released
-- [ ] Session startup cleans orphaned claims
-- [ ] Worktrees outside `/worktrees/` are blocked
-- [ ] Plan index correctly shows all statuses (no false `❓`)
-- [ ] Existing mess in `active-work.yaml` is cleaned up
-- [ ] Documentation updated with new cleanup commands
+- [x] Stale claims (>8h no activity) are automatically released (PR #705)
+- [x] Session startup cleans orphaned claims (PR #705)
+- [x] Worktrees outside `/worktrees/` are blocked (PR #713)
+- [x] Plan index correctly shows all statuses (no false `❓`) (PR #703)
+- [x] Existing mess in `active-work.yaml` is cleaned up (PR #679)
+- [x] Documentation updated with new cleanup commands (PR #705)
 
 ---
 
