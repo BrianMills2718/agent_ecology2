@@ -1,6 +1,22 @@
 # Plan #185: Time-Based Scheduling
 
-**Status:** Planned
+**Status:** ✅ Complete
+
+**Verified:** 2026-01-25T06:00:00Z
+**Verification Evidence:**
+```yaml
+completed_by: Implementation
+timestamp: 2026-01-25T06:00:00Z
+notes: |
+  - Extended TriggerSpec with fire_at_event, fire_after_events, registered_at_event
+  - TriggerRegistry tracks scheduled triggers indexed by event number
+  - World.increment_event_counter() fires scheduled triggers
+  - Scheduled triggers use "event" terminology (not "tick") per codebase standards
+tests:
+  unit: 19 tests in test_scheduled_triggers.py
+  regression: 2311 tests pass (1 pre-existing isolation failure unrelated)
+```
+
 **Priority:** Medium
 **Complexity:** Medium-High
 **Blocks:** Time-based contracts, scheduled tasks

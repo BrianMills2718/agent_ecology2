@@ -207,7 +207,7 @@ Master index of all gaps and their implementation plans.
 | 182 | [Metadata Indexing for Artifact Discovery](182_metadata_indexing.md) | **High** | ✅ Complete | - |
 | 183 | [Genesis Voting Artifact](183_genesis_voting.md) | **High** | ✅ Complete | - |
 | 184 | [Query Kernel Action](184_query_kernel_action.md) | **High** | ✅ Complete | - |
-| 185 | [Time-Based Scheduling](185_time_based_scheduling.md) | Medium | 📋 Planned | - |
+| 185 | [Time-Based Scheduling](185_time_based_scheduling.md) | Medium | ✅ Complete | - |
 | 186 | [Git-Level Meta-Process Resilience](186_meta_resilience.md) | **Critical** | ✅ Complete | Meta-process reliability |
 
 ---
