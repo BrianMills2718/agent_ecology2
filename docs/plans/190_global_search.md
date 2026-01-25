@@ -1,6 +1,6 @@
 # Plan #190: Global Search in Dashboard v2
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** None
@@ -56,7 +56,7 @@ Returns: `{agents: [...], artifacts: [...]}`
 
 ## Acceptance Criteria
 
-- [ ] Search endpoint returns matching agents and artifacts
-- [ ] Cmd/Ctrl+K opens search dialog
-- [ ] Clicking result opens detail modal
-- [ ] `npm run build` passes
+- [x] Search endpoint returns matching agents and artifacts
+- [x] Cmd/Ctrl+K opens search dialog
+- [x] Clicking result opens detail modal
+- [x] `npm run build` passes
