@@ -63,7 +63,7 @@ export function ProgressPanel() {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-4">
           <div>
-            <span className="text-[var(--text-secondary)] text-xs">Tick</span>
+            <span className="text-[var(--text-secondary)] text-xs">Events</span>
             <p className="text-2xl font-bold text-[var(--accent-primary)]">
               {data.current_tick}
             </p>

@@ -107,7 +107,6 @@ export function AgentDetailModal({ agentId, onClose }: AgentDetailModalProps) {
                     className="flex items-center justify-between text-sm py-1 border-b border-[var(--border-color)]"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="text-[var(--text-secondary)]">T{action.tick}</span>
                       <span className={action.success ? '' : 'text-[var(--accent-danger)]'}>
                         {action.action_type}
                       </span>
@@ -140,7 +139,6 @@ export function AgentDetailModal({ agentId, onClose }: AgentDetailModalProps) {
                     className="p-3 bg-[var(--bg-primary)] rounded text-sm"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[var(--text-secondary)]">Tick {thought.tick}</span>
                       <span className="text-xs text-[var(--text-secondary)]">
                         {thought.input_tokens ?? 0}in/{thought.output_tokens ?? 0}out • ${safeFixed(thought.thinking_cost, 4)}
                       </span>

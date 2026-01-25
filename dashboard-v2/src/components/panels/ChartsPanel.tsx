@@ -95,7 +95,7 @@ function ChartView({
           dataKey="tick"
           stroke="var(--text-secondary)"
           fontSize={12}
-          tickFormatter={(v) => `T${v}`}
+          tickFormatter={(v) => `${v}`}
         />
         <YAxis
           stroke="var(--text-secondary)"

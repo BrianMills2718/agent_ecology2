@@ -56,7 +56,7 @@ function buildVisEdges(edges: NetworkEdge[]) {
     color: EDGE_COLORS[edge.interaction_type] || EDGE_COLORS.default,
     width: Math.min(edge.weight, 5),
     arrows: 'to',
-    title: `${edge.interaction_type} (T${edge.tick})`,
+    title: edge.interaction_type,
   }))
 }
 
@@ -152,11 +152,6 @@ export function NetworkPanel() {
           />
           Physics
         </label>
-        {data?.tick_range && (
-          <span className="text-xs text-[var(--text-secondary)]">
-            Ticks {data.tick_range[0]}-{data.tick_range[1]}
-          </span>
-        )}
         <button
           onClick={() => networkRef.current?.fit()}
           className="ml-auto px-2 py-1 text-xs bg-[var(--bg-tertiary)] rounded hover:bg-[var(--accent-primary)]/20"
