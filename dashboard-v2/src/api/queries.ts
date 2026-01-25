@@ -242,3 +242,35 @@ export function useEmergence() {
     refetchInterval: 5000,
   })
 }
+
+
+// ============================================================================
+// CAPITAL FLOW
+// ============================================================================
+
+import type { CapitalFlowData, DependencyGraphData } from '../types/api'
+
+export function useCapitalFlow(timeMin?: string, timeMax?: string) {
+  const params = {
+    time_min: timeMin,
+    time_max: timeMax,
+  }
+
+  return useQuery({
+    queryKey: ['capitalFlow', params],
+    queryFn: () => apiFetch<CapitalFlowData>(`/capital-flow${buildQueryString(params)}`),
+    refetchInterval: 10000,
+  })
+}
+
+// ============================================================================
+// DEPENDENCY GRAPH
+// ============================================================================
+
+export function useDependencyGraph() {
+  return useQuery({
+    queryKey: ['dependencyGraph'],
+    queryFn: () => apiFetch<DependencyGraphData>('/artifacts/dependency-graph'),
+    refetchInterval: 10000,
+  })
+}

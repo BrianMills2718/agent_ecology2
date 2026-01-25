@@ -1,6 +1,8 @@
 import { useEmergence, useKPIs } from '../../api/queries'
 import { Panel } from '../shared/Panel'
 import { safeFixed, safePercent, safeCurrency } from '../../utils/format'
+import { useEmergenceAlerts } from '../../hooks/useEmergenceAlerts'
+import { useAlertStore } from '../../stores/alerts'
 
 function MetricGauge({
   label,
@@ -88,9 +90,43 @@ function KPICard({
   )
 }
 
+function MilestonesBadge() {
+  const milestones = useAlertStore((s) => s.milestones)
+
+  if (milestones.length === 0) return null
+
+  return (
+    <div className="mb-4 p-3 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-lg">
+      <h4 className="text-xs font-semibold text-green-400 uppercase tracking-wide mb-2">
+        Milestones Achieved ({milestones.length})
+      </h4>
+      <div className="flex flex-wrap gap-2">
+        {milestones.slice(0, 8).map((m, i) => (
+          <span
+            key={i}
+            className="px-2 py-1 text-xs bg-green-500/20 text-green-300 rounded"
+            title={`Achieved at ${new Date(m.achievedAt).toLocaleString()}`}
+          >
+            {m.metric.replace(/_/g, ' ')} ≥{' '}
+            {m.threshold < 1 ? `${(m.threshold * 100).toFixed(0)}%` : m.threshold}
+          </span>
+        ))}
+        {milestones.length > 8 && (
+          <span className="px-2 py-1 text-xs text-[var(--text-secondary)]">
+            +{milestones.length - 8} more
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function EmergencePanel() {
   const { data: emergence, isLoading: emergenceLoading, error: emergenceError } = useEmergence()
   const { data: kpis, isLoading: kpisLoading, error: kpisError } = useKPIs()
+
+  // Enable emergence alerts
+  useEmergenceAlerts(emergence)
 
   const isLoading = emergenceLoading || kpisLoading
   const error = emergenceError || kpisError
@@ -115,6 +151,9 @@ export function EmergencePanel() {
 
       {emergence && (
         <div className="space-y-6">
+          {/* Milestones */}
+          <MilestonesBadge />
+
           {/* Emergence Metrics */}
           <div>
             <h4 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-3">

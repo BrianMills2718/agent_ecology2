@@ -3,13 +3,14 @@
 const API_BASE = '/api'
 
 export class ApiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-    public data?: unknown
-  ) {
+  status: number
+  data?: unknown
+
+  constructor(message: string, status: number, data?: unknown) {
     super(message)
     this.name = 'ApiError'
+    this.status = status
+    this.data = data
   }
 }
 

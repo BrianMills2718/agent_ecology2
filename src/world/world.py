@@ -33,7 +33,7 @@ from .genesis import (
     create_genesis_artifacts, GenesisArtifact, GenesisRightsRegistry,
     GenesisMint, GenesisDebtContract, RightsConfig, SubmissionInfo
 )
-from .executor import get_executor, validate_args_against_interface, convert_positional_to_named_args, parse_json_args
+from .executor import get_executor, validate_args_against_interface, convert_positional_to_named_args, convert_named_to_positional_args, parse_json_args
 from .errors import ErrorCode, ErrorCategory
 from .rate_tracker import RateTracker
 from .invocation_registry import InvocationRegistry, InvocationRecord
@@ -641,6 +641,7 @@ class World:
             interface=intent.interface,
             require_interface=bool(require_interface),
             access_contract_id=intent.access_contract_id,
+            metadata=intent.metadata,  # Plan #168: User-defined metadata
         )
 
         # Track resource consumption (disk bytes written)
@@ -990,14 +991,24 @@ class World:
                     error_details={"validation_error": validation_result.error_message},
                 )
 
+            # Plan #160: Use coerced args if available (e.g., "5" -> 5)
+            # Convert coerced dict back to positional list for genesis methods
+            effective_args = args
+            if validation_result.coerced_args is not None:
+                effective_args = convert_named_to_positional_args(
+                    interface=artifact.interface,
+                    method_name=method_name,
+                    args_dict=validation_result.coerced_args,
+                )
+
             # Plan #15: Genesis method dispatch (if genesis_methods is set)
             # Plan #125: Extracted to _invoke_genesis_method for clarity
             if artifact.genesis_methods is not None:
-                return self._invoke_genesis_method(intent, artifact, method_name, args, start_time)
+                return self._invoke_genesis_method(intent, artifact, method_name, effective_args, start_time)
 
             # Regular artifact code execution path
             # Plan #125: Extracted to _invoke_user_artifact for clarity
-            return self._invoke_user_artifact(intent, artifact, method_name, args, start_time)
+            return self._invoke_user_artifact(intent, artifact, method_name, effective_args, start_time)
 
         # Artifact not found - Plan #160: Suggest discovery via genesis_store
         duration_ms = (time.perf_counter() - start_time) * 1000

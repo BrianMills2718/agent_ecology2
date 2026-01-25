@@ -79,7 +79,7 @@ export function NetworkPanel() {
         borderWidth: 2,
       },
       edges: {
-        smooth: { type: 'continuous' },
+        smooth: false,
         font: { size: 10, color: '#9ca3af' },
       },
       physics: {

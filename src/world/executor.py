@@ -119,9 +119,21 @@ def _format_runtime_error(e: Exception, prefix: str = "Runtime error") -> str:
             f"Hint: The key doesn't exist. Check dict.keys() or use dict.get(key, default)."
         )
     elif isinstance(e, TypeError) and "argument" in error_msg.lower():
+        if "missing" in error_msg.lower() and "required" in error_msg.lower():
+            return (
+                f"{base}. "
+                f"Hint: Your run() function expects more arguments than were passed. "
+                f"Check your code's function signature matches the interface schema."
+            )
         return (
             f"{base}. "
             f"Hint: Check the function signature - you may have wrong number/type of arguments."
+        )
+    elif isinstance(e, IndexError):
+        return (
+            f"{base}. "
+            f"Hint: Your code tried to access an index that doesn't exist. "
+            f"Check array/tuple lengths before accessing elements, or use try/except."
         )
     elif "connection" in error_msg.lower() or "adapter" in error_msg.lower():
         return (
@@ -167,6 +179,56 @@ def parse_json_args(args: list[Any]) -> list[Any]:
     return parsed
 
 
+def _coerce_types_from_schema(args: dict[str, Any], schema: dict[str, Any]) -> dict[str, Any]:
+    """Coerce argument types based on schema expectations.
+
+    Plan #160: LLMs often send "5" instead of 5 when schema expects integer.
+    This auto-converts string representations to proper types.
+
+    Args:
+        args: Dict of argument name -> value
+        schema: JSON schema with properties defining expected types
+
+    Returns:
+        Dict with types coerced where safe to do so.
+    """
+    if not isinstance(args, dict):
+        return args
+
+    properties = schema.get("properties", {})
+    coerced = dict(args)  # Copy to avoid mutating original
+
+    for prop_name, prop_schema in properties.items():
+        if prop_name not in coerced:
+            continue
+
+        value = coerced[prop_name]
+        expected_type = prop_schema.get("type")
+
+        # Coerce string to integer
+        if expected_type == "integer" and isinstance(value, str):
+            try:
+                coerced[prop_name] = int(value)
+            except ValueError:
+                pass  # Keep original if not a valid integer
+
+        # Coerce string to number (float)
+        elif expected_type == "number" and isinstance(value, str):
+            try:
+                coerced[prop_name] = float(value)
+            except ValueError:
+                pass  # Keep original if not a valid number
+
+        # Coerce string to boolean
+        elif expected_type == "boolean" and isinstance(value, str):
+            if value.lower() in ("true", "1", "yes"):
+                coerced[prop_name] = True
+            elif value.lower() in ("false", "0", "no"):
+                coerced[prop_name] = False
+
+    return coerced
+
+
 class ExecutionResult(TypedDict, total=False):
     """Result from code execution.
 
@@ -196,11 +258,13 @@ class ValidationResult:
         proceed: Whether to proceed with the invocation
         skipped: Whether validation was skipped entirely
         error_message: Description of validation failure (if any)
+        coerced_args: Plan #160 - Args with types coerced (e.g., "5" -> 5)
     """
     valid: bool
     proceed: bool
     skipped: bool
     error_message: str
+    coerced_args: dict[str, Any] | None = None
 
 
 # Logger for interface validation
@@ -301,6 +365,66 @@ def convert_positional_to_named_args(
     return result
 
 
+def convert_named_to_positional_args(
+    interface: dict[str, Any] | None,
+    method_name: str,
+    args_dict: dict[str, Any],
+) -> list[Any]:
+    """Convert named args dict back to positional args list based on interface schema.
+
+    Plan #160: After type coercion (which works on dicts), convert back to a list
+    for genesis methods that expect positional arguments.
+
+    Args:
+        interface: The artifact's interface definition (MCP-compatible format)
+        method_name: The method being invoked
+        args_dict: Named arguments as a dict
+
+    Returns:
+        List of values in schema order (required fields first, then others)
+    """
+    if not interface or not args_dict:
+        return list(args_dict.values()) if args_dict else []
+
+    # Get tools array from interface
+    tools = interface.get("tools", [])
+    if not tools:
+        return list(args_dict.values())
+
+    # Find the method schema
+    method_schema = None
+    for tool in tools:
+        if tool.get("name") == method_name:
+            method_schema = tool
+            break
+
+    if method_schema is None:
+        return list(args_dict.values())
+
+    # Get inputSchema
+    input_schema = method_schema.get("inputSchema")
+    if not input_schema or input_schema.get("type") != "object":
+        return list(args_dict.values())
+
+    # Get property names in order - prefer 'required' order, then 'properties' keys
+    properties = input_schema.get("properties", {})
+    required = input_schema.get("required", [])
+
+    # Use required fields first (in order), then add any non-required properties
+    param_names: list[str] = list(required)
+    for prop_name in properties.keys():
+        if prop_name not in param_names:
+            param_names.append(prop_name)
+
+    # Build positional args list in schema order
+    result: list[Any] = []
+    for param_name in param_names:
+        if param_name in args_dict:
+            result.append(args_dict[param_name])
+
+    return result
+
+
 def validate_args_against_interface(
     interface: dict[str, Any] | None,
     method_name: str,
@@ -360,11 +484,15 @@ def validate_args_against_interface(
         # No inputSchema - skip validation (method accepts anything)
         return ValidationResult(valid=True, proceed=True, skipped=True, error_message="")
 
+    # Plan #160: Auto-coerce types before validation
+    # LLMs often send "5" instead of 5 - coerce based on schema
+    args = _coerce_types_from_schema(args, input_schema)
+
     # Validate args against inputSchema using jsonschema
     try:
         jsonschema.validate(instance=args, schema=input_schema)
-        # Validation passed
-        return ValidationResult(valid=True, proceed=True, skipped=False, error_message="")
+        # Validation passed - return coerced args so caller can use them
+        return ValidationResult(valid=True, proceed=True, skipped=False, error_message="", coerced_args=args)
     except jsonschema.ValidationError as e:
         # Validation failed - include full schema info so agents can fix their calls
         # Plan #160: Show complete method schema for self-correction

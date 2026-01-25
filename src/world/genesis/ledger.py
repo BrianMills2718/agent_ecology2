@@ -167,7 +167,9 @@ class GenesisLedger(GenesisArtifact):
         # Security check: invoker can only transfer FROM themselves
         if from_id != invoker_id:
             return permission_error(
-                f"Cannot transfer from {from_id} - you are {invoker_id}",
+                f"Cannot transfer from {from_id} - you are {invoker_id}. "
+                f"You can only transfer YOUR OWN scrip. "
+                f"To send your scrip: genesis_ledger.transfer(['{invoker_id}', '{to_id}', {amount}])",
                 code=ErrorCode.NOT_AUTHORIZED,
                 invoker=invoker_id,
                 target=from_id,

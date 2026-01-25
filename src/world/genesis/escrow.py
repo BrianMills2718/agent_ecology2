@@ -126,6 +126,7 @@ class GenesisEscrow(GenesisArtifact):
         price: Any = args[1]
         buyer_id: str | None = args[2] if len(args) > 2 else None
 
+        # Plan #160: Type coercion now happens centrally in world.py
         # Validate price - Plan #160: Improved error message showing actual type
         if not isinstance(price, int):
             hint = ""

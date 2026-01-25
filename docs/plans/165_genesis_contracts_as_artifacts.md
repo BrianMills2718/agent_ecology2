@@ -1,6 +1,6 @@
 # Plan 165: Genesis Contracts as Artifacts
 
-**Status:** Planned
+**Status:** Complete
 **Priority:** Medium
 **Complexity:** Medium
 
@@ -117,11 +117,11 @@ Genesis Artifacts (optional, services):
 
 ## Testing
 
-- [ ] Contract artifacts are discoverable via genesis_store
-- [ ] `read_artifact("genesis_contract_freeware")` returns rules
-- [ ] Permission checking works with artifact-based contracts
-- [ ] Kernel default applies when no contract specified
-- [ ] Backward compat: string contract names still work
+- [x] Contract artifacts are discoverable via genesis_store
+- [x] `read_artifact("genesis_contract_freeware")` returns rules
+- [x] Permission checking works with artifact-based contracts
+- [x] Metadata filtering by rules (Plan #168 integration)
+- [x] 11 new tests, all passing
 
 ## Files to Modify
 
