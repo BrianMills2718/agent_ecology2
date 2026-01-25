@@ -1,7 +1,8 @@
 # ADR-0020: Event Schema Contract
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-01-21
+**Accepted:** 2026-01-25
 
 ## Context
 
