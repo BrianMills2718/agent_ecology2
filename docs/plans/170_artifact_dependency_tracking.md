@@ -1,6 +1,6 @@
 # Plan 170: Artifact Dependency Tracking
 
-**Status:** Planned
+**Status:** Complete
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** None
@@ -121,11 +121,20 @@ def extract_invoke_targets(code: str) -> list[str]:
 
 ---
 
-## Open Questions
+## Open Questions (Resolved)
 
-1. Should we track invocation frequency? (X called Y 47 times)
-2. Should we distinguish successful vs failed invocations?
-3. Should `invokes` be updated if artifact code is edited?
+1. Should we track invocation frequency? **No** - keep it simple. Agents can count from event log if needed.
+2. Should we distinguish successful vs failed invocations? **No** - all invocations are tracked. Agents can filter by event_type if needed.
+3. Should `invokes` be updated if artifact code is edited? **Yes** - extract_invoke_targets runs on every write.
+
+---
+
+## Implementation Notes
+
+- Phase 1 (Static Outbound) and Phase 2 (Runtime Inbound) implemented
+- Phase 3 (Permission Chain Query) deferred - not needed for MVP
+- Known limitation: regex extraction has false positives from comments/strings
+- 21 unit tests covering extraction and get_invokers functionality
 
 ---
 
