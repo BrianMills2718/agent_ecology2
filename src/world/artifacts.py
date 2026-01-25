@@ -9,9 +9,39 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, TypedDict, TYPE_CHECKING
+
+
+def extract_invoke_targets(code: str) -> list[str]:
+    """Extract artifact IDs from invoke() calls in code (Plan #170).
+
+    Args:
+        code: Python source code to analyze
+
+    Returns:
+        List of unique artifact IDs found as first arguments to invoke() calls.
+        Sorted alphabetically for deterministic output.
+
+    Note:
+        This uses regex pattern matching which has limitations:
+        - May miss dynamic targets like invoke(variable, ...)
+        - May have false positives from string literals containing invoke()
+        These limitations are acceptable - we capture the common case.
+    """
+    if not code:
+        return []
+
+    # Match: invoke("artifact_id", ...) or invoke('artifact_id', ...)
+    # Allows whitespace between invoke and opening paren
+    pattern = r'invoke\s*\(\s*["\']([^"\']+)["\']'
+    matches = re.findall(pattern, code)
+
+    # Deduplicate and sort for deterministic output
+    unique_targets = sorted(set(matches))
+    return unique_targets
 
 if TYPE_CHECKING:
     from .genesis import GenesisMethod
@@ -579,6 +609,12 @@ class ArtifactStore:
         now = datetime.now(timezone.utc).isoformat()
         depends_on = depends_on or []
         metadata = metadata or {}
+
+        # Plan #170: Auto-extract invoke targets for executable artifacts
+        if executable and code:
+            invokes = extract_invoke_targets(code)
+            if invokes:
+                metadata["invokes"] = invokes
 
         # Plan #114: Validate interface requirement for executables
         if executable and require_interface and interface is None:

@@ -54,6 +54,12 @@ class GenesisEventLog(GenesisArtifact):
             cost=event_log_cfg.methods.read.cost,
             description=event_log_cfg.methods.read.description
         )
+        self.register_method(
+            name="get_invokers",
+            handler=self._get_invokers,
+            cost=event_log_cfg.methods.read.cost,  # Same cost as read
+            description="Get list of principals that have invoked a specific artifact"
+        )
 
     def _read(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
         """Read events from the log.
@@ -91,6 +97,47 @@ class GenesisEventLog(GenesisArtifact):
             "warning": "Reading events costs input tokens when you next think. Be strategic about what you read."
         }
 
+    def _get_invokers(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
+        """Get list of principals that have invoked a specific artifact (Plan #170).
+
+        Args format: [artifact_id]
+        - artifact_id: The artifact to query invokers for
+
+        Returns:
+            dict with success, invokers list, and count
+        """
+        if not args or len(args) < 1:
+            return {
+                "success": False,
+                "error": "get_invokers requires [artifact_id]"
+            }
+
+        target_artifact_id = str(args[0])
+
+        # Read all events from the buffer
+        all_events = self.logger.read_recent(self._buffer_size)
+
+        # Find unique invokers for this artifact
+        invokers: set[str] = set()
+        for event in all_events:
+            if not isinstance(event, dict):
+                continue
+            # Check if this is an invocation event for the target artifact
+            if (event.get("event_type") == "invoke" and
+                    event.get("artifact_id") == target_artifact_id):
+                invoker = event.get("invoker")
+                if invoker:
+                    invokers.add(str(invoker))
+
+        invokers_list = sorted(invokers)  # Sort for deterministic output
+
+        return {
+            "success": True,
+            "artifact_id": target_artifact_id,
+            "invokers": invokers_list,
+            "count": len(invokers_list),
+        }
+
     def get_interface(self) -> dict[str, Any]:
         """Get detailed interface schema for the event log (Plan #114)."""
         return {
@@ -116,6 +163,21 @@ class GenesisEventLog(GenesisArtifact):
                                 "maximum": self._max_per_read
                             }
                         }
+                    }
+                },
+                {
+                    "name": "get_invokers",
+                    "description": "Get list of principals that have invoked a specific artifact (Plan #170)",
+                    "cost": self.methods["get_invokers"].cost,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "artifact_id": {
+                                "type": "string",
+                                "description": "ID of the artifact to query invokers for"
+                            }
+                        },
+                        "required": ["artifact_id"]
                     }
                 }
             ]
