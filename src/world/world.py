@@ -1334,13 +1334,14 @@ class World:
         )
 
     def _execute_configure_context(self, intent: ConfigureContextIntent) -> ActionResult:
-        """Execute a configure_context action (Plan #192).
+        """Execute a configure_context action (Plan #192, #193).
 
         Updates the agent's context_sections configuration to enable/disable
-        specific prompt sections.
+        specific prompt sections, and optionally sets section priorities.
         """
         agent_id = intent.principal_id
         sections = intent.sections
+        priorities = intent.priorities  # Plan #193: Optional priorities
 
         # Validate sections - only known section names allowed
         valid_sections = {
@@ -1354,10 +1355,22 @@ class World:
             return ActionResult(
                 success=False,
                 message=f"Unknown sections: {', '.join(invalid_sections)}. Valid sections: {', '.join(sorted(valid_sections))}",
-                error_code=ErrorCode.INVALID_ARGS.value,
+                error_code=ErrorCode.INVALID_ARGUMENT.value,
                 error_category=ErrorCategory.VALIDATION.value,
                 retriable=True,
             )
+
+        # Plan #193: Validate priorities if provided
+        if priorities is not None:
+            invalid_priority_sections = set(priorities.keys()) - valid_sections
+            if invalid_priority_sections:
+                return ActionResult(
+                    success=False,
+                    message=f"Unknown sections in priorities: {', '.join(invalid_priority_sections)}. Valid sections: {', '.join(sorted(valid_sections))}",
+                    error_code=ErrorCode.INVALID_ARGUMENT.value,
+                    error_category=ErrorCategory.VALIDATION.value,
+                    retriable=True,
+                )
 
         # Check if agent artifact exists
         agent_artifact = self.artifacts.get(agent_id)
@@ -1381,12 +1394,26 @@ class World:
         if not isinstance(current_sections, dict):
             current_sections = {}
 
-        # Merge new settings
+        # Merge new section settings
         for section, enabled in sections.items():
             if isinstance(enabled, bool):
                 current_sections[section] = enabled
 
         config["context_sections"] = current_sections
+
+        # Plan #193: Get or initialize context_section_priorities
+        current_priorities: dict[str, int] = config.get("context_section_priorities", {})
+        if not isinstance(current_priorities, dict):
+            current_priorities = {}
+
+        # Plan #193: Merge new priority settings
+        if priorities is not None:
+            for section, priority in priorities.items():
+                if isinstance(priority, int):
+                    # Clamp to 0-100 range
+                    current_priorities[section] = max(0, min(100, priority))
+
+            config["context_section_priorities"] = current_priorities
 
         # Update agent artifact content by rewriting with same metadata
         new_content = json.dumps(config, indent=2)
@@ -1403,10 +1430,14 @@ class World:
             metadata=agent_artifact.metadata,
         )
 
+        result_data: dict[str, Any] = {"context_sections": current_sections}
+        if priorities is not None:
+            result_data["context_section_priorities"] = current_priorities
+
         return ActionResult(
             success=True,
-            message=f"Updated context sections configuration",
-            data={"context_sections": current_sections},
+            message=f"Updated context configuration",
+            data=result_data,
         )
 
     def _log_invoke_success(

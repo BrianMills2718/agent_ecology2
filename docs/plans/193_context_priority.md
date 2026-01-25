@@ -1,6 +1,6 @@
 # Plan #193: Context Priority and Ordering
 
-**Status:** Planned
+**Status:** 🚧 In Progress
 **Created:** 2025-01-25
 **Scope:** Agent Cognitive Autonomy
 
@@ -57,20 +57,29 @@ set_context_priority:
   priority: integer    # 0-100, higher = earlier in prompt
 ```
 
+## Files Affected
+
+- src/agents/agent.py (modify) - Add priority tracking and prompt ordering
+- src/agents/schema.py (modify) - Extend configure_context validation for priorities
+- src/world/world.py (modify) - Handle priorities in _execute_configure_context
+- src/world/actions.py (modify) - Update ConfigureContextIntent for priorities
+- tests/unit/test_context_priority.py (create) - Priority tests
+- tests/unit/test_context_sections.py (modify) - Add priority tests
+
 ## Implementation
 
 ### Files to Modify
 
 1. **src/agents/agent.py**
-   - Add `_context_priority: dict[str, int]` field
+   - Add `_context_section_priorities: dict[str, int]` field
    - Load from artifact content
    - Sort sections by priority in `build_prompt()`
 
 2. **src/agents/schema.py**
-   - Add `set_context_priority` action
+   - Extend `configure_context` action to accept `priorities` dict
 
-3. **src/world/executor.py**
-   - Handle priority actions
+3. **src/world/world.py**
+   - Handle priorities in `_execute_configure_context`
 
 ### Default Priorities
 
@@ -115,8 +124,8 @@ pytest tests/unit/test_context_priority.py -v
 
 ## Acceptance Criteria
 
-- [ ] Agent can set priority for individual sections
-- [ ] Higher priority sections appear earlier in prompt
-- [ ] Default priorities for unspecified sections
-- [ ] Interaction with section enable/disable (Plan #192)
-- [ ] Persistence via agent artifact state
+- [x] Agent can set priority for individual sections
+- [x] Higher priority sections appear earlier in prompt
+- [x] Default priorities for unspecified sections
+- [x] Interaction with section enable/disable (Plan #192)
+- [x] Persistence via agent artifact state
