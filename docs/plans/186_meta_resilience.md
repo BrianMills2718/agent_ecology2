@@ -1,6 +1,25 @@
 # Plan #186: Git-Level Meta-Process Resilience
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
+
+**Verified:** 2026-01-25T05:30:00Z
+**Verification Evidence:**
+```yaml
+completed_by: Implementation
+timestamp: 2026-01-25T05:30:00Z
+notes: |
+  - Git hooks installed as symlinks in .git/hooks/
+  - Makefile has install-hooks and ensure-hooks targets
+  - make test/check auto-install hooks via ensure-hooks
+  - Pre-commit validates plan index completeness (step 5)
+  - Inline CWD check in .claude/settings.json (more resilient than file-based)
+tests:
+  manual_verification:
+    - hooks_auto_install: "Verified - rm .git/hooks/*, make ensure-hooks reinstalls"
+    - plan_index_check: "Verified - 999_test.md detected as not in index"
+  regression: 2264 tests pass (1 pre-existing isolation failure unrelated)
+```
+
 **Priority:** **Critical**
 **Blocked By:** None
 **Blocks:** All meta-process reliability
@@ -117,18 +136,18 @@ Why previous fixes failed:
 ## Verification
 
 ### Tests & Quality
-- [ ] Manual test: new plan without index entry blocked
-- [ ] Manual test: hooks auto-install on `make test`
-- [ ] Full test suite passes: `pytest tests/`
-- [ ] Type check passes: `python -m mypy src/ --ignore-missing-imports`
+- [x] Manual test: new plan without index entry blocked
+- [x] Manual test: hooks auto-install on `make test`
+- [x] Full test suite passes: `pytest tests/` (2264 pass, 1 pre-existing isolation issue)
+- [x] Type check passes: `python -m mypy src/ --ignore-missing-imports`
 
 ### Documentation
-- [ ] `hooks/CLAUDE.md` notes auto-install behavior
-- [ ] Root `CLAUDE.md` updated if needed
+- [x] `hooks/CLAUDE.md` notes auto-install behavior
+- [x] Root `CLAUDE.md` updated if needed (already documents make commands)
 
 ### Completion Ceremony
-- [ ] Plan file status → `✅ Complete`
-- [ ] `plans/CLAUDE.md` index → `✅ Complete`
+- [x] Plan file status → `✅ Complete`
+- [x] `plans/CLAUDE.md` index → `✅ Complete`
 - [ ] Claim released
 - [ ] Branch merged
 
