@@ -1,4 +1,4 @@
-# ADR-0021: Resource Attribution Model
+# ADR-0023: Resource Attribution Model
 
 **Status:** Accepted
 **Date:** 2026-01-24
