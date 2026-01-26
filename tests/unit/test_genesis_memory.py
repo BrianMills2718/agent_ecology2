@@ -234,6 +234,84 @@ class TestGenesisMemory:
         assert content["entries"][0]["text"] == "This is a test entry"
         assert content["entries"][0]["metadata"] == {"key": "value"}
 
+    def test_add_entry_deduplication(
+        self,
+        genesis_memory: GenesisMemory,
+        artifact_store: ArtifactStore,
+    ) -> None:
+        """add() deduplicates identical entries (Plan #226)."""
+        genesis_memory._create_memory(["memory_001"], "agent_001")
+
+        # Mock embedding generation to return consistent embeddings based on text hash
+        # Without this, the default zero vector fallback gives 0.0 similarity
+        def mock_embedding(text: str, invoker_id: str) -> list[float]:
+            import hashlib
+            h = hashlib.md5(text.encode()).hexdigest()
+            # Generate consistent 768-dim embedding from hash
+            return [int(h[i % 32], 16) / 15.0 for i in range(768)]
+
+        genesis_memory._generate_embedding = mock_embedding  # type: ignore[method-assign]
+
+        # Add first entry
+        result1 = genesis_memory._add_entry(
+            ["memory_001", "LESSON: Trading with beta_3 is profitable", {}],
+            "agent_001"
+        )
+        assert result1["success"] is True
+        assert "deduplicated" not in result1
+
+        # Add identical entry - should be deduplicated (similarity = 1.0)
+        result2 = genesis_memory._add_entry(
+            ["memory_001", "LESSON: Trading with beta_3 is profitable", {}],
+            "agent_001"
+        )
+        assert result2["success"] is True
+        assert result2.get("deduplicated") is True
+        assert result2.get("similarity", 0) > 0.85
+
+        # Verify only one entry exists
+        artifact = artifact_store.get("memory_001")
+        assert artifact is not None
+        content = json.loads(artifact.content)
+        assert len(content["entries"]) == 1
+
+    def test_add_entry_different_not_deduplicated(
+        self,
+        genesis_memory: GenesisMemory,
+        artifact_store: ArtifactStore,
+    ) -> None:
+        """add() does not deduplicate sufficiently different entries (Plan #226)."""
+        genesis_memory._create_memory(["memory_001"], "agent_001")
+
+        # Mock embedding generation
+        def mock_embedding(text: str, invoker_id: str) -> list[float]:
+            import hashlib
+            h = hashlib.md5(text.encode()).hexdigest()
+            return [int(h[i % 32], 16) / 15.0 for i in range(768)]
+
+        genesis_memory._generate_embedding = mock_embedding  # type: ignore[method-assign]
+
+        # Add first entry
+        result1 = genesis_memory._add_entry(
+            ["memory_001", "LESSON: Trading with beta_3 is profitable", {}],
+            "agent_001"
+        )
+        assert result1["success"] is True
+
+        # Add completely different entry - should NOT be deduplicated
+        result2 = genesis_memory._add_entry(
+            ["memory_001", "ERROR: Failed to invoke genesis_escrow", {}],
+            "agent_001"
+        )
+        assert result2["success"] is True
+        assert result2.get("deduplicated") is not True
+
+        # Verify both entries exist
+        artifact = artifact_store.get("memory_001")
+        assert artifact is not None
+        content = json.loads(artifact.content)
+        assert len(content["entries"]) == 2
+
     def test_add_entry_unauthorized(
         self,
         genesis_memory: GenesisMemory,

@@ -288,6 +288,27 @@ class GenesisMemory(GenesisArtifact):
         # Generate embedding
         embedding = self._generate_embedding(text, invoker_id)
 
+        # Plan #226: Deduplicate similar entries to save scrip and reduce noise
+        SIMILARITY_THRESHOLD = 0.85
+        if embedding and content and content.get("entries"):
+            for existing in content["entries"]:
+                existing_emb = existing.get("embedding", [])
+                if existing_emb and len(existing_emb) == len(embedding):
+                    similarity = cosine_similarity(embedding, existing_emb)
+                    if similarity > SIMILARITY_THRESHOLD:
+                        logger.debug(
+                            "Skipping duplicate memory entry (similarity=%.2f): %s",
+                            similarity,
+                            text[:50],
+                        )
+                        return {
+                            "success": True,
+                            "entry_id": existing["id"],
+                            "memory_artifact_id": memory_id,
+                            "deduplicated": True,
+                            "similarity": round(similarity, 3),
+                        }
+
         # Create entry
         entry_id = str(uuid.uuid4())
         entry = {
