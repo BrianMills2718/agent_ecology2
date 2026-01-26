@@ -1,6 +1,6 @@
 # Plan #221: Dashboard Simulation Control
 
-**Status:** complete
+**Status:** ✅ Complete
 **Created:** 2025-01-25
 **Feature:** dashboard
 
