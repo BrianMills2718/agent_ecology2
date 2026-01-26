@@ -38,6 +38,7 @@ from .decision_artifacts import (
     GenesisBalanceChecker,
     GenesisErrorDetector,
 )
+from .event_bus import GenesisEventBus
 from ..genesis_contracts import GENESIS_CONTRACTS
 
 
@@ -284,6 +285,15 @@ def create_genesis_artifacts(
 
     genesis_error_detector = GenesisErrorDetector(genesis_config=cfg)
     artifacts[genesis_error_detector.id] = genesis_error_detector
+
+    # Add event bus (GAP-AGENT-009: Event subscription service)
+    # Provides convenient subscribe/unsubscribe API wrapping trigger artifacts
+    if artifact_store:
+        genesis_event_bus = GenesisEventBus(
+            artifact_store=artifact_store,
+            genesis_config=cfg
+        )
+        artifacts[genesis_event_bus.id] = genesis_event_bus
 
     # Add MCP artifacts if any are enabled
     from ..mcp_bridge import create_mcp_artifacts

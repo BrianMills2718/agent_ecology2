@@ -37,7 +37,7 @@ rag:
 # Long-term infrastructure projects move through distinct phases
 workflow:
   state_machine:
-    states: ["planning", "building", "deploying", "maintaining", "deprecating"]
+    states: ["planning", "building", "deploying", "maintaining", "maintaining_llm", "deprecating"]
     initial_state: "planning"
     transitions:
       - from: "planning"
@@ -49,12 +49,18 @@ workflow:
       - from: "deploying"
         to: "maintaining"
         condition: "deployment_verified"
+      # Plan #222: Artifact-aware random exploration
       - from: "maintaining"
-        to: "deprecating"
-        condition: "should_deprecate"
+        to: "planning"      # Random chance to explore new projects
       - from: "maintaining"
-        to: "planning"
-        condition: "new_project_needed"
+        to: "maintaining_llm"  # Usually let LLM decide
+      # LLM-informed transitions from maintaining_llm
+      - from: "maintaining_llm"
+        to: "maintaining"   # continue
+      - from: "maintaining_llm"
+        to: "planning"      # expand
+      - from: "maintaining_llm"
+        to: "deprecating"   # deprecate
       - from: "deprecating"
         to: "planning"
       # Investment check
@@ -203,10 +209,24 @@ workflow:
 
         Good infrastructure needs ongoing attention.
 
-    # Step 5b: Maintenance transition - decide next phase (Plan #211)
-    - name: maintenance_transition
+    # Step 5b: Random exploration check (Plan #222 - Artifact-Aware Workflow)
+    # 20% chance to start exploring new projects (innovation pressure)
+    - name: exploration_check
       type: transition
       in_state: "maintaining"
+      transition_source:
+        invoke: "genesis_random_decider"
+        method: "decide"
+        args: [{probability: 0.2}]  # 20% chance to explore
+        fallback: "continue"  # If check fails, proceed to LLM
+      transition_map:
+        true: "planning"         # Random exploration triggered
+        false: "maintaining_llm"  # Proceed to LLM decision
+
+    # Step 5c: Maintenance transition - decide next phase (Plan #211)
+    - name: maintenance_transition
+      type: transition
+      in_state: "maintaining_llm"
       prompt: |
         === DECISION: Continue, Expand, or Deprecate? ===
         Time remaining: {time_remaining} | Balance: {balance} | Success rate: {success_rate}
