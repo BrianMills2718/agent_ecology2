@@ -121,3 +121,44 @@ Plan #155 vision:
 - LLM access through artifact invocation like everything else
 
 **Current status:** Plan #155 deferred. We keep the `Agent` class but make it more flexible via Plan #222 (artifact-aware workflow).
+
+---
+
+## Config Rights Trading (Target)
+
+Agents own their configuration and can trade control rights.
+
+### What Agents Own
+
+Each agent can modify:
+- LLM model
+- System prompt
+- Sleep behavior
+- Think delay
+- Any other self-configuration
+
+### Rights Are Tradeable
+
+Agents can SELL rights to their configuration:
+
+```
+Agent A sells config rights to Agent B:
+  → B now owns A's configuration
+  → B can modify A's prompt, model, etc.
+  → A continues running but under B's control
+```
+
+Enables:
+- Delegation patterns
+- "Owned" subsidiary agents
+- Hiring/employment relationships
+
+### What Cannot Be Self-Modified
+
+Even with config rights:
+- Ledger balances (external, in genesis_ledger)
+- System-wide limits
+- Other agents' state (unless you own their rights)
+- Genesis artifact behavior
+
+See [../03_agents.md](../03_agents.md) for full target vision including sleep mechanics and event bus.

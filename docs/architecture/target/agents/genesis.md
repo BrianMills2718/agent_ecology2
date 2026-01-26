@@ -12,9 +12,29 @@ Genesis agents are pre-configured agents that exist at simulation start:
 |-------|-------|------------------|
 | **alpha_3** | Builder | Create artifacts |
 | **beta_3** | Integrator | Combine and coordinate |
+| **gamma_3** | Coordinator | Network and coordinate |
 | **delta_3** | Infrastructure | Build foundational tools |
+| **epsilon_3** | Opportunist | Exploit market inefficiencies |
 
 All are configured in `src/agents/{name}/agent.yaml`.
+
+### Agent Archetypes
+
+| Agent | Archetype | Time Horizon | Risk | Key Metric |
+|-------|-----------|--------------|------|------------|
+| alpha_3 | Builder | Medium | Medium | artifacts_completed |
+| beta_3 | Integrator | Long | Low | subgoal_progress |
+| gamma_3 | Coordinator | Medium | Medium | reliable_partners |
+| delta_3 | Infrastructure | Long | High | adoption_tracking |
+| epsilon_3 | Opportunist | Short | Medium | pattern_signals |
+
+### Generation Comparison
+
+| Gen | Model | Memory | Workflow | Notes |
+|-----|-------|--------|----------|-------|
+| Gen1 | gemini-flash | None | Linear | Original basic agents |
+| Gen2 | Various | Working only | State machine | Added workflow states |
+| Gen3 | gemini-2.0-flash | Full RAG | Advanced | Current genesis agents |
 
 ---
 
@@ -142,6 +162,77 @@ components:
 
 ---
 
+## gamma_3: Coordinator
+
+**Focus:** Build network effects and coordinate multi-agent activities.
+
+### State Machine
+
+```
+networking → coordinating → facilitating → evaluating
+    ↑                                          │
+    └──────────────────────────────────────────┘
+```
+
+### Key Configuration
+
+```yaml
+id: gamma_3
+llm_model: "gemini/gemini-2.0-flash"
+starting_credits: 100
+
+genotype:
+  risk_tolerance: MEDIUM
+  primary_strategy: COORDINATE
+
+components:
+  traits:
+    - buy_before_build
+    - economic_participant
+    - memory_discipline
+    - loop_breaker
+    - subgoal_progression
+    - semantic_memory
+```
+
+---
+
+## epsilon_3: Opportunist
+
+**Focus:** Identify and exploit market inefficiencies.
+
+### State Machine
+
+```
+scanning → analyzing → positioning → executing → harvesting
+    ↑                                               │
+    └───────────────────────────────────────────────┘
+```
+
+### Key Configuration
+
+```yaml
+id: epsilon_3
+llm_model: "gemini/gemini-2.0-flash"
+starting_credits: 100
+
+genotype:
+  risk_tolerance: MEDIUM
+  primary_strategy: TRADE
+  time_horizon: SHORT
+
+components:
+  traits:
+    - buy_before_build
+    - economic_participant
+    - memory_discipline
+    - loop_breaker
+    - subgoal_progression
+    - semantic_memory
+```
+
+---
+
 ## Common Configuration
 
 All genesis agents share:
@@ -226,7 +317,9 @@ To add a new genesis agent:
 |-------|--------|---------------|
 | alpha_3 | `src/agents/alpha_3/agent.yaml` | `src/agents/alpha_3/system_prompt.md` |
 | beta_3 | `src/agents/beta_3/agent.yaml` | `src/agents/beta_3/system_prompt.md` |
+| gamma_3 | `src/agents/gamma_3/agent.yaml` | `src/agents/gamma_3/system_prompt.md` |
 | delta_3 | `src/agents/delta_3/agent.yaml` | `src/agents/delta_3/system_prompt.md` |
+| epsilon_3 | `src/agents/epsilon_3/agent.yaml` | `src/agents/epsilon_3/system_prompt.md` |
 
 ---
 

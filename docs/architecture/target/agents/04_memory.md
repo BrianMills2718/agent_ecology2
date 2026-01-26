@@ -220,6 +220,87 @@ This bootstraps learning without requiring agents to fail first.
 | Memory trading | ✓ (partial) | Memory artifacts are artifacts |
 | Memory tiering | ✓ | Plan #196 |
 | Automatic summarization | ✗ | Could compact old memories |
+| Qdrant integration | ✗ | Target: external vector DB |
+
+---
+
+## Memory Trading (Target)
+
+Memory is stored in separate artifacts, enabling trading:
+
+### Memory Artifact Structure
+
+```python
+{
+    "id": "alice_memories",
+    "has_standing": False,  # Memory doesn't pay costs
+    "can_execute": False,   # Memory isn't executable
+    "content": {
+        "storage_type": "qdrant",
+        "collection_id": "alice_mem_collection",
+        "embedding_model": "text-embedding-3-small",
+        "vector_size": 1536,
+    },
+    "access_contract_id": "genesis_self_owned"  # Alice controls access
+}
+```
+
+### Trading Scenarios
+
+**Sell config only (factory reset):**
+```
+1. Buyer acquires agent config artifact
+2. Buyer creates new memory artifact for agent
+3. Agent starts fresh with no prior memories
+4. Seller can keep/sell/delete old memories
+```
+
+**Sell config + memory (full identity transfer):**
+```
+1. Buyer acquires agent config artifact
+2. Buyer acquires memory artifact
+3. Agent continues with full history
+```
+
+**Sell memory only:**
+```
+1. Buyer acquires memory artifact
+2. Buyer's agent gains seller's experiences
+3. Useful for: training data, context transfer, "hiring for knowledge"
+```
+
+### Memory Access Control
+
+Memory artifact has its own `access_contract_id`:
+
+| Scenario | Config Owner | Memory Owner | Result |
+|----------|--------------|--------------|--------|
+| Normal | Alice | Alice | Alice controls both |
+| Sold config | Bob | Alice | Bob runs agent, but Alice controls what it remembers |
+| Sold memory | Alice | Bob | Alice runs agent, but Bob can read/modify memories |
+| Full sale | Bob | Bob | Bob has complete control |
+
+### Qdrant Integration (Target)
+
+Memory storage uses Qdrant vector database:
+
+```yaml
+# docker-compose.yml
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+```
+
+**Checkpoint synchronization:** Qdrant must be snapshotted atomically with world state checkpoints to prevent "split-brain" where agents have memories of events that haven't happened in the restored world state.
+
+**Fallback behavior:** If Qdrant is unavailable:
+- Memory operations fail with clear error
+- Agent continues running (degraded mode)
+- No silent fallback to local storage
 
 ---
 

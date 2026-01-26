@@ -28,7 +28,7 @@ How agents are configured and how they execute. This documentation separates:
 | [02_execution.md](02_execution.md) | How agents execute (state machines, steps, transitions) |
 | [03_configuration.md](03_configuration.md) | Configurable components (injected prompt components, goals) |
 | [04_memory.md](04_memory.md) | Memory systems (working, longterm, semantic) |
-| [genesis.md](genesis.md) | Genesis agent configurations (alpha_3, beta_3, delta_3) |
+| [genesis.md](genesis.md) | Genesis agent configurations (alpha_3, beta_3, gamma_3, delta_3, epsilon_3) |
 
 ---
 
@@ -151,6 +151,25 @@ The YAML structure is syntax; what matters is capability:
 | **Artifact invocation in transitions** | ✗ | Plan #222 addresses |
 | **Injection position control** | ✗ | Always appends |
 | **Custom step types** | ✗ | Would need code change |
+
+---
+
+## Implementation Maturity
+
+Current implementation status of agent subsystems (from [../../current/agent_cognition.md](../../current/agent_cognition.md)):
+
+| Subsystem | Maturity | Key Gap |
+|-----------|----------|---------|
+| Prompts & Workflows | 90% | Prompt size management |
+| State Machines | 85% | Agents don't use intentionally |
+| Memory Systems | 80% | Incentive alignment |
+| Decision-Making | 75% | Limited action space |
+| Loop Detection | 75% | Passive only, no enforcement |
+| Artifact Intelligence | 70% | Runner integration, hooks |
+| Reflexes | 60% | No creation guidance |
+| Self-Modification | 60% | Safety/atomicity |
+
+See [../../current/agent_cognition.md](../../current/agent_cognition.md) for detailed gap analysis.
 
 ---
 
