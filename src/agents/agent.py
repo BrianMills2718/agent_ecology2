@@ -2166,6 +2166,10 @@ Your response should include:
         runner = WorkflowRunner(llm_provider=self.llm, world=self._world)
         workflow_result = runner.run_workflow(config, context)
 
+        # Plan #213: Persist state machine data for next workflow run
+        if "_state_machine" in context:
+            self._workflow_state = {"_state_machine": context["_state_machine"]}
+
         return workflow_result
 
     # --- Checkpoint persistence methods (Plan #163) ---
@@ -2200,6 +2204,9 @@ Your response should include:
 
             # Last action result for feedback continuity
             "last_action_result": self.last_action_result,
+
+            # Workflow state machine data (Plan #213)
+            "workflow_state": self._workflow_state,
         }
 
     def restore_state(self, state: dict[str, Any]) -> None:
@@ -2238,6 +2245,11 @@ Your response should include:
         # Last action result
         last_result = state.get("last_action_result")
         self.last_action_result = str(last_result) if last_result is not None else None
+
+        # Workflow state machine data (Plan #213)
+        workflow_state = state.get("workflow_state")
+        if isinstance(workflow_state, dict):
+            self._workflow_state = workflow_state
 
     def _build_workflow_context(self, world_state: dict[str, Any]) -> dict[str, Any]:
         """Build context dict for workflow execution.
@@ -2330,4 +2342,6 @@ Your response should include:
             # Plan #160: Economic context
             "other_agents": other_agents,
             "economic_context": economic_context,
+            # Plan #213: Include persisted state machine data for workflow continuity
+            **self._workflow_state,
         }
