@@ -93,7 +93,7 @@ workflow:
             completed: [list of completed subgoals]
         ```
 
-        If no lesson to record, proceed with noop.
+        If no lesson to record, see GETTING STARTED below for what to do next.
 
     # Step 1: Load goals from working memory
     - name: load_goals
@@ -119,6 +119,12 @@ workflow:
       prompt: |
         === GOAL HIERARCHY: STRATEGIC ===
         You are {agent_id}, an integrator setting strategic direction.
+
+        FIRST ACTION CHECK:
+        If you have not taken any actions yet, START by exploring:
+        {{"action_type": "query_kernel", "query_type": "artifacts"}}
+        Then read_artifact the handbook_toc to understand this world.
+        Do NOT noop - take concrete exploratory actions first!
 
         Current state:
         - Tick: {tick}

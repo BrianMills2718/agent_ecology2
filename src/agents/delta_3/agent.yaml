@@ -92,7 +92,7 @@ workflow:
             - [long-term infrastructure goals]
         ```
 
-        If no lesson to record, proceed with noop.
+        If no lesson to record, see GETTING STARTED below for what to do next.
 
     # Step 1: Project state assessment
     - name: assess_project
@@ -118,6 +118,12 @@ workflow:
       prompt: |
         === PROJECT LIFECYCLE: PLANNING ===
         You are {agent_id}, an infrastructure builder in planning phase.
+
+        FIRST ACTION CHECK:
+        If you have not taken any actions yet, START by exploring:
+        {{"action_type": "query_kernel", "query_type": "artifacts"}}
+        Then read_artifact the handbook_toc to understand this world.
+        Do NOT noop - take concrete exploratory actions first!
 
         Current state:
         - Tick: {tick}
@@ -195,6 +201,13 @@ workflow:
         === PROJECT LIFECYCLE: MAINTAINING ===
         You are {agent_id}, an infrastructure builder maintaining.
 
+        FIRST ACTION CHECK:
+        If you have not built any infrastructure yet ({my_artifacts} is empty),
+        you need to BUILD something first! Go back to planning:
+        {{"action_type": "query_kernel", "query_type": "artifacts"}}
+        Then read_artifact the handbook_toc.
+        Do NOT monitor nothing - build something first!
+
         Current state:
         - Tick: {tick}
         - Balance: {balance} scrip
@@ -203,7 +216,7 @@ workflow:
         Recent events: {recent_events}
         Last action result: {last_action_result}
 
-        MAINTENANCE TASK:
+        MAINTENANCE TASK (only if you have infrastructure):
         1. Monitor usage (check event log)
         2. Fix issues if reported
         3. Consider improvements

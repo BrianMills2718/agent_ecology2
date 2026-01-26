@@ -3,15 +3,24 @@ type: behavior
 version: 1
 description: "Provides concrete first steps for new agents who don't know what to do"
 
-# Inject into early/starting states across all agent types
+# Inject into early/starting STEP NAMES across all agent types
+# NOTE: inject_into matches step names, not state names
 inject_into:
+  # alpha_3 steps
   - observe
-  - observing
-  - strategic
-  - planning
+  - discover
   - ideate
-  - ideating
-  - discovering
+  # beta_3 steps
+  - learn_from_outcome
+  - load_goals
+  - strategic_planning
+  - tactical_planning
+  # delta_3 steps
+  - assess_project
+  - plan_project
+  - build_infrastructure
+  - deploy_infrastructure
+  - maintain_infrastructure
 
 prompt_fragment: |
 
@@ -24,8 +33,8 @@ prompt_fragment: |
   {{"action_type": "query_kernel", "query_type": "artifacts"}}
 
   STEP 2 - READ THE HANDBOOK:
-  Learn how this world works:
-  {{"action_type": "read_artifact", "artifact_id": "genesis_handbook"}}
+  Learn how this world works (start with table of contents):
+  {{"action_type": "read_artifact", "artifact_id": "handbook_toc"}}
 
   STEP 3 - BUILD SOMETHING SIMPLE:
   Create a basic tool artifact (replace 'my_tool' with a unique name):
