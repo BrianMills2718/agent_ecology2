@@ -1,0 +1,194 @@
+# Agent Catalog - tracks lineage and characteristics
+# This file documents agent evolution, NOT runtime config
+# Updated: 2026-01-26
+
+lineages:
+  alpha:
+    description: "Builder/Creator archetype - creates artifacts and tools"
+    genotype:
+      risk_tolerance: MEDIUM
+      communication_style: BALANCED
+      collaboration_preference: MEDIUM
+      time_horizon: MEDIUM
+      primary_strategy: BUILD
+    versions:
+      - id: alpha
+        status: baseline
+        notes: "Original simple agent with basic build prompts"
+
+      - id: alpha_2
+        status: superseded
+        parent: alpha
+        plan: "#82"
+        notes: "Added self-audit (VSM S3*) - compute_metrics, self_audit, review_strategy steps"
+
+      - id: alpha_3
+        status: active
+        parent: alpha_2
+        plans: ["#137", "#157", "#226"]
+        notes: |
+          IRR-inspired build cycle with 9 states:
+          observing → discovering → ideating → designing → implementing → testing → reflecting → reflecting_llm → shipping
+          Features: LLM-informed transitions, error rate gating, working memory persistence
+        metrics:
+          noop_rate: "~4%"
+          measured: "2026-01-26"
+
+  beta:
+    description: "Integrator/Coordinator archetype - connects and orchestrates"
+    genotype:
+      risk_tolerance: LOW
+      communication_style: BALANCED
+      collaboration_preference: HIGH
+      time_horizon: LONG
+      primary_strategy: INTEGRATE
+    versions:
+      - id: beta
+        status: baseline
+        notes: "Original simple agent with integration focus"
+
+      - id: beta_2
+        status: superseded
+        parent: beta
+        plan: "#82"
+        notes: "Added goal hierarchy (strategic_goal, current_subgoal, subgoal_progress)"
+
+      - id: beta_3
+        status: active
+        parent: beta_2
+        plans: ["#211", "#222", "#226"]
+        notes: |
+          Goal hierarchy with 6 states:
+          strategic → tactical → operational → reviewing → reviewing_balance → reviewing_llm
+          Features: Loop detection (genesis_loop_detector), balance gate, working memory persistence
+          BEST PERFORMER - 0% noop rate after Plan #226 fixes
+        metrics:
+          noop_rate: "0%"
+          measured: "2026-01-26"
+
+  gamma:
+    description: "Coordination Specialist - facilitates multi-agent collaboration"
+    genotype:
+      risk_tolerance: MEDIUM
+      communication_style: BALANCED
+      collaboration_preference: HIGH
+      time_horizon: MEDIUM
+      primary_strategy: COORDINATE
+    versions:
+      - id: gamma
+        status: baseline
+        notes: "Original simple agent with coordination focus"
+
+      - id: gamma_3
+        status: active
+        parent: gamma
+        plans: ["#226"]
+        notes: |
+          Collaboration lifecycle with 5 states:
+          solo → discovering → negotiating → executing → settling
+          Features: Partnership tracking, escrow-based agreements
+        metrics:
+          noop_rate: "~15%"
+          measured: "2026-01-26"
+
+  delta:
+    description: "Infrastructure Builder - creates shared services and utilities"
+    genotype:
+      risk_tolerance: HIGH
+      communication_style: WRITE_HEAVY
+      collaboration_preference: LOW
+      time_horizon: LONG
+      primary_strategy: INFRASTRUCTURE
+    versions:
+      - id: delta
+        status: baseline
+        notes: "Original simple agent with infrastructure focus"
+
+      - id: delta_3
+        status: active
+        parent: delta
+        plans: ["#226"]
+        notes: |
+          Infrastructure lifecycle with 4 states:
+          planning → building → maintaining → expanding
+          Features: Usage monitoring, maintenance cycles
+        metrics:
+          noop_rate: "~18%"
+          measured: "2026-01-26"
+
+  epsilon:
+    description: "Information Broker - exploits information asymmetry"
+    genotype:
+      risk_tolerance: MEDIUM
+      communication_style: READ_HEAVY
+      collaboration_preference: MEDIUM
+      time_horizon: SHORT
+      primary_strategy: OPPORTUNISTIC
+    versions:
+      - id: epsilon
+        status: baseline
+        notes: "Original simple agent with opportunistic focus"
+
+      - id: epsilon_3
+        status: active
+        parent: epsilon
+        plans: ["#226"]
+        notes: |
+          Fast opportunity cycle with 4 states:
+          monitoring → analyzing → executing → learning
+          Features: Quick cycles, pattern recognition
+        metrics:
+          noop_rate: "~20%"
+          measured: "2026-01-26"
+
+# Experiment presets - common agent combinations for testing
+presets:
+  default:
+    description: "Current best performers (all _3 variants)"
+    agents: [alpha_3, beta_3, gamma_3, delta_3, epsilon_3]
+
+  minimal:
+    description: "Two-agent test for quick iteration"
+    agents: [alpha_3, beta_3]
+
+  builders:
+    description: "Builder-focused (alpha + delta)"
+    agents: [alpha_3, delta_3]
+
+  coordinators:
+    description: "Coordination-focused (beta + gamma)"
+    agents: [beta_3, gamma_3]
+
+  baseline:
+    description: "Original designs for comparison"
+    agents: [alpha, beta, gamma, delta, epsilon]
+
+# Architecture notes
+architecture_notes: |
+  ## State Machine Patterns
+
+  All _3 agents use state machines with:
+  - `type: llm` steps - Make LLM calls, can return actions
+  - `type: code` steps - Programmatic Python logic
+  - `type: transition` steps - Either artifact invocation or LLM-driven state change
+
+  ## Key Artifacts Used
+
+  - genesis_loop_detector: Detects repeated action patterns (Plan #226)
+  - genesis_balance_checker: Gates transitions on balance thresholds (Plan #222)
+  - genesis_error_detector: Gates transitions on error rates (Plan #222)
+  - genesis_memory: Semantic memory storage with deduplication (Plan #213, #226)
+
+  ## Working Memory Pattern
+
+  Agents persist goals via `{agent_id}_working_memory` artifact:
+  ```json
+  {
+    "strategic_goal": "...",
+    "current_subgoal": "...",
+    "subgoal_progress": {},
+    "lessons": []
+  }
+  ```
+
+  WorkflowRunner auto-refreshes this after each LLM step (Plan #226).

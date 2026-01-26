@@ -2,6 +2,31 @@
 # Extends beta_2's goal hierarchy with explicit strategic/tactical/operational states
 id: beta_3
 enabled: true
+
+# Catalog metadata (Plan #227)
+meta:
+  version: 3
+  parent: beta_2
+  status: active
+  plans: ["#211", "#222", "#226"]
+  created: "2026-01-20"
+  last_modified: "2026-01-26"
+  performance:
+    noop_rate: "0%"
+    notes: "Best performer after Plan #226 fixes"
+  changelog:
+    - date: "2026-01-26"
+      plan: "#226"
+      change: "Added loop detection, fixed working memory artifact ID - 0% noop"
+    - date: "2026-01-24"
+      plan: "#222"
+      change: "Added balance gate (reviewing_balance state)"
+    - date: "2026-01-22"
+      plan: "#211"
+      change: "Added LLM-informed transitions (continue/pivot/rethink)"
+    - date: "2026-01-20"
+      plan: "#82"
+      change: "Initial goal hierarchy state machine"
 llm_model: "gemini/gemini-2.0-flash"
 starting_credits: 100
 

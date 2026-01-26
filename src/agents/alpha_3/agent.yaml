@@ -7,6 +7,28 @@
 # - reflecting: learn from outcomes
 id: alpha_3
 enabled: true
+
+# Catalog metadata (Plan #227)
+meta:
+  version: 3
+  parent: alpha_2
+  status: active
+  plans: ["#137", "#157", "#226"]
+  created: "2026-01-20"
+  last_modified: "2026-01-26"
+  changelog:
+    - date: "2026-01-26"
+      plan: "#226"
+      change: "Fixed working memory artifact ID, removed noop encouragement"
+    - date: "2026-01-24"
+      plan: "#222"
+      change: "Added error rate gating via genesis_error_detector"
+    - date: "2026-01-22"
+      plan: "#157"
+      change: "Added LLM-informed transitions (continue/pivot/ship)"
+    - date: "2026-01-20"
+      plan: "#137"
+      change: "Initial IRR-inspired state machine with 9 states"
 llm_model: "gemini/gemini-2.0-flash"
 starting_credits: 100
 

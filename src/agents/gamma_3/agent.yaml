@@ -2,6 +2,21 @@
 # Explicit collaboration lifecycle states
 id: gamma_3
 enabled: true
+
+# Catalog metadata (Plan #227)
+meta:
+  version: 3
+  parent: gamma
+  status: active
+  plans: ["#226"]
+  created: "2026-01-20"
+  last_modified: "2026-01-26"
+  changelog:
+    - date: "2026-01-26"
+      plan: "#226"
+      change: "Fixed working memory artifact ID"
+    - date: "2026-01-20"
+      change: "Initial collaboration lifecycle state machine"
 llm_model: "gemini/gemini-2.0-flash"
 starting_credits: 100
 
