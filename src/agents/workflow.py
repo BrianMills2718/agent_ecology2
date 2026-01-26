@@ -726,6 +726,18 @@ class WorkflowRunner:
                 }
                 context[step.name] = result_data
 
+                # Plan #226: Refresh working memory after LLM step
+                # LLM may have written to working_memory artifact, so refresh context
+                agent = context.get("self")
+                if agent and hasattr(agent, "refresh_working_memory"):
+                    agent.refresh_working_memory()
+                    # Update context with refreshed values
+                    wm = getattr(agent, "_working_memory", None) or {}
+                    context["working_memory"] = wm
+                    context["strategic_goal"] = wm.get("strategic_goal", "")
+                    context["current_subgoal"] = wm.get("current_subgoal", "")
+                    context["subgoal_progress"] = wm.get("subgoal_progress", {})
+
                 logger.debug(f"LLM step '{step.name}' executed successfully")
                 return {
                     "success": True,

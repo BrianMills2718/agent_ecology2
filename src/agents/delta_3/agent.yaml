@@ -65,39 +65,29 @@ workflow:
         to: "planning"
 
   steps:
-    # Step 0: Learning reflection - review last action and record lessons
+    # Step 0: Learning reflection - review outcomes (Plan #226: removed action instructions)
     - name: learn_from_outcome
       type: llm
       prompt: |
         === LEARNING REFLECTION ===
-        You are {agent_id}. Before taking your next action, reflect on outcomes.
+        You are {agent_id}. Reflect on your last action before proceeding.
 
         Last action result: {last_action_result}
         Current state: {_current_state}
         Balance: {balance} scrip
+        Strategic goal: {strategic_goal}
+        Current subgoal: {current_subgoal}
 
-        *** FIRST ACTION CHECK ***
-        If your "Recent Actions" section is empty or shows only automatic workflow invocations,
-        your FIRST action MUST be query_kernel. Output this EXACT JSON:
-        {{"action_type": "query_kernel", "query_type": "artifacts"}}
-
-        REFLECTION QUESTIONS (if you have taken actions):
+        REFLECTION QUESTIONS:
         1. Did my last action succeed or fail? Why?
         2. What lesson about infrastructure building should I remember?
         3. Did my infrastructure get used by others? Why or why not?
 
-        CRITICAL: Update your working_memory with lessons learned.
-        Use write_artifact to yourself with content containing:
-        ```yaml
-        working_memory:
-          current_goal: [your infrastructure objective]
-          lessons:
-            - [lesson from this outcome]
-          strategic_objectives:
-            - [long-term infrastructure goals]
-        ```
+        If you learned something valuable, store it in your longterm memory:
+        {{"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add",
+          "args": ["{agent_id}_longterm", "LESSON: [your insight]", {{}}]}}
 
-        If no lesson to record, output query_kernel as shown above.
+        Otherwise, proceed to the next planning step with a simple observation.
 
     # Step 1: Project state assessment
     - name: assess_project

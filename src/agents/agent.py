@@ -558,6 +558,32 @@ class Agent:
 
         return result
 
+    def refresh_working_memory(self) -> None:
+        """Refresh working memory from artifact store after LLM writes (Plan #226).
+
+        Called after LLM workflow steps to pick up any updates the agent made
+        to its working_memory artifact. This ensures subsequent steps see
+        the updated goals/subgoals.
+        """
+        if self._artifact_store is None:
+            return
+
+        memory_artifact_id = f"{self.agent_id}_working_memory"
+        artifact = self._artifact_store.get(memory_artifact_id)
+        if artifact:
+            try:
+                content = artifact.content
+                if isinstance(content, str):
+                    import json
+                    content = json.loads(content)
+                if isinstance(content, dict):
+                    new_wm = self._extract_working_memory(content)
+                    if new_wm:
+                        self._working_memory = new_wm
+                        logger.debug("Refreshed working memory for %s", self.agent_id)
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.debug("Could not refresh working memory for %s: %s", self.agent_id, e)
+
     def _format_action_history(self) -> str:
         """Format action history for injection into prompt (Plan #156).
 
@@ -1989,7 +2015,7 @@ Your response should include:
         return self._longterm_memory_artifact_id is not None
 
     def _search_longterm_memory_artifact(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
-        """Search long-term memory artifact for relevant entries (Plan #146 Phase 4, Plan #213).
+        """Search long-term memory artifact for relevant entries (Plan #146 Phase 4, Plan #213, Plan #226).
 
         Uses semantic search via genesis_memory when world reference is available,
         falls back to keyword matching otherwise.
@@ -2001,7 +2027,14 @@ Your response should include:
         Returns:
             List of memory entries with text and score, or empty list if not available.
         """
+        # Plan #226: Add logging to verify semantic search is invoked
+        logger.debug(
+            "Semantic search for %s: query='%s...', limit=%d",
+            self._agent_id, query[:50] if query else "", limit
+        )
+
         if not self._longterm_memory_artifact_id or not self._artifact_store:
+            logger.debug("Semantic search skipped for %s: no longterm_memory_artifact_id", self._agent_id)
             return []
 
         # Plan #213: Use semantic search via genesis_memory when world available
@@ -2397,6 +2430,11 @@ Your response should include:
             # Plan #160: Economic context
             "other_agents": other_agents,
             "economic_context": economic_context,
+            # Plan #226: Working memory context for goal persistence across steps
+            "working_memory": self._working_memory or {},
+            "strategic_goal": (self._working_memory or {}).get("strategic_goal", ""),
+            "current_subgoal": (self._working_memory or {}).get("current_subgoal", ""),
+            "subgoal_progress": (self._working_memory or {}).get("subgoal_progress", {}),
             # Plan #213: Include persisted state machine data for workflow continuity
             **self._workflow_state,
         }
