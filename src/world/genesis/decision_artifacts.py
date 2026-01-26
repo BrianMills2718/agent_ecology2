@@ -246,8 +246,8 @@ class GenesisBalanceChecker(GenesisArtifact):
                 threshold = int(args[0].get("threshold", 0))
                 principal = args[0].get("principal", invoker_id)
 
-        # Get balance
-        balance = self._ledger.balance(principal)
+        # Get balance (scrip)
+        balance = self._ledger.scrip.get(principal, 0)
 
         return {
             "success": True,
@@ -287,8 +287,8 @@ class GenesisBalanceChecker(GenesisArtifact):
                 "error": "principal_b is required"
             }
 
-        balance_a = self._ledger.balance(principal_a)
-        balance_b = self._ledger.balance(principal_b)
+        balance_a = self._ledger.scrip.get(principal_a, 0)
+        balance_b = self._ledger.scrip.get(principal_b, 0)
 
         return {
             "success": True,

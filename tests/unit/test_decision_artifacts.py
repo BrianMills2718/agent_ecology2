@@ -129,7 +129,7 @@ class TestGenesisBalanceChecker:
 
         # mock-ok: Testing decision logic without real ledger
         mock_ledger = MagicMock()
-        mock_ledger.balance.return_value = 100
+        mock_ledger.scrip = {"test_agent": 100}
 
         checker = GenesisBalanceChecker(ledger=mock_ledger)
         result = checker._check([50], "test_agent")
@@ -145,7 +145,7 @@ class TestGenesisBalanceChecker:
 
         # mock-ok: Testing decision logic without real ledger
         mock_ledger = MagicMock()
-        mock_ledger.balance.return_value = 30
+        mock_ledger.scrip = {"test_agent": 30}
 
         checker = GenesisBalanceChecker(ledger=mock_ledger)
         result = checker._check([50], "test_agent")
@@ -160,7 +160,7 @@ class TestGenesisBalanceChecker:
 
         # mock-ok: Testing decision logic without real ledger
         mock_ledger = MagicMock()
-        mock_ledger.balance.return_value = 75
+        mock_ledger.scrip = {"other_agent": 75}
 
         checker = GenesisBalanceChecker(ledger=mock_ledger)
         result = checker._check(
@@ -170,7 +170,7 @@ class TestGenesisBalanceChecker:
 
         assert result["success"] is True
         assert result["principal"] == "other_agent"
-        mock_ledger.balance.assert_called_once_with("other_agent")
+        assert result["balance"] == 75
 
     def test_check_no_ledger_fails(self) -> None:
         """Check fails without ledger connection."""
@@ -188,7 +188,7 @@ class TestGenesisBalanceChecker:
 
         # mock-ok: Testing decision logic without real ledger
         mock_ledger = MagicMock()
-        mock_ledger.balance.side_effect = lambda x: {"alpha": 100, "beta": 60}[x]
+        mock_ledger.scrip = {"alpha": 100, "beta": 60}
 
         checker = GenesisBalanceChecker(ledger=mock_ledger)
         result = checker._compare(
