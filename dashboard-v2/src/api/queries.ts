@@ -349,3 +349,23 @@ export async function startSimulation(config: SimulationStartRequest): Promise<S
 export async function stopSimulation(): Promise<SimulationStopResponse> {
   return apiFetch('/simulation/stop', { method: 'POST' })
 }
+
+// ============================================================================
+// LEADERBOARD (Plan #224)
+// ============================================================================
+
+import type { LeaderboardResponse } from '../types/api'
+
+export function useLeaderboard(
+  category: 'scrip' | 'activity' | 'efficiency',
+  limit: number = 10
+) {
+  return useQuery({
+    queryKey: ['leaderboard', category, limit],
+    queryFn: () =>
+      apiFetch<LeaderboardResponse>(
+        `/metrics/leaderboard/${category}${buildQueryString({ limit })}`
+      ),
+    refetchInterval: 5000,
+  })
+}
