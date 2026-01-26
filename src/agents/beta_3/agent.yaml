@@ -40,12 +40,11 @@ workflow:
     states: ["strategic", "tactical", "operational", "reviewing", "reviewing_llm"]
     initial_state: "strategic"
     transitions:
+      # Unconditional transitions driven by workflow step transition_to fields
       - from: "strategic"
         to: "tactical"
-        condition: "has_strategic_goal"
       - from: "tactical"
         to: "operational"
-        condition: "has_subgoal"
       - from: "operational"
         to: "reviewing"
       # Plan #222: Artifact-aware balance check before LLM decision
@@ -60,10 +59,9 @@ workflow:
         to: "tactical"     # pivot
       - from: "reviewing_llm"
         to: "strategic"    # rethink
-      # Periodic strategic reviews
+      # Allow unconditional fallback to strategic from any state
       - from: "*"
         to: "strategic"
-        condition: "tick % 20 == 0"
 
   steps:
     # Step 0: Learning reflection - review outcomes and record lessons
@@ -100,11 +98,14 @@ workflow:
     - name: load_goals
       type: code
       code: |
-        wm = working_memory or {}
-        strategic_goal = wm.get('strategic_goal', '')
-        current_subgoal = wm.get('current_subgoal', '')
-        subgoal_progress = wm.get('subgoal_progress', {})
-        actions_on_subgoal = subgoal_progress.get('actions_in_stage', 0)
+        # Access context variables safely using locals()
+        _locals = locals()
+        wm = _locals.get('working_memory') or {}
+        tick = _locals.get('tick', 0)
+        strategic_goal = wm.get('strategic_goal', '') if isinstance(wm, dict) else ''
+        current_subgoal = wm.get('current_subgoal', '') if isinstance(wm, dict) else ''
+        subgoal_progress = wm.get('subgoal_progress', {}) if isinstance(wm, dict) else {}
+        actions_on_subgoal = subgoal_progress.get('actions_in_stage', 0) if isinstance(subgoal_progress, dict) else 0
         has_strategic_goal = bool(strategic_goal)
         has_subgoal = bool(current_subgoal)
         subgoal_stuck = actions_on_subgoal > 5 and not subgoal_progress.get('completed', [])
