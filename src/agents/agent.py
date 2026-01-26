@@ -35,6 +35,7 @@ from typing import Any, TypedDict, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .state_store import AgentState
+    from src.world.world import World
 
 # Add llm_provider_standalone to path
 PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
@@ -2160,8 +2161,9 @@ Your response should include:
             )
 
         # Parse and run workflow
+        # Plan #222: Pass world reference for artifact invocation in workflows
         config = WorkflowConfig.from_dict(workflow_dict)
-        runner = WorkflowRunner(llm_provider=self.llm)
+        runner = WorkflowRunner(llm_provider=self.llm, world=self._world)
         workflow_result = runner.run_workflow(config, context)
 
         return workflow_result

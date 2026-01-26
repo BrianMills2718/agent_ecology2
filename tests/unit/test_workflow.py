@@ -816,3 +816,275 @@ class TestAgentWorkflowArtifactField:
 
         assert agent.workflow_artifact_id == "alice_workflow"
         assert agent.has_workflow_artifact is True
+
+
+@pytest.mark.plans([222])
+class TestInvokeSpec:
+    """Tests for Plan #222: Artifact-Invoked Workflow Conditions."""
+
+    def test_invoke_spec_parsing(self) -> None:
+        """InvokeSpec parses from dict with all required fields."""
+        from src.agents.workflow import InvokeSpec
+
+        data = {
+            "invoke": "my_decider",
+            "method": "should_continue",
+            "args": ["arg1"],
+            "fallback": False,
+        }
+
+        spec = InvokeSpec.from_dict(data)
+
+        assert spec.artifact_id == "my_decider"
+        assert spec.method == "should_continue"
+        assert spec.args == ["arg1"]
+        assert spec.fallback is False
+
+    def test_invoke_spec_parsing_minimal(self) -> None:
+        """InvokeSpec parses with just invoke and method."""
+        from src.agents.workflow import InvokeSpec
+
+        data = {
+            "invoke": "helper",
+            "method": "check",
+        }
+
+        spec = InvokeSpec.from_dict(data)
+
+        assert spec.artifact_id == "helper"
+        assert spec.method == "check"
+        assert spec.args == []  # Default empty
+        assert spec.fallback is None  # Default None
+
+    def test_invoke_spec_is_invoke_spec(self) -> None:
+        """is_invoke_spec correctly identifies InvokeSpec dicts."""
+        from src.agents.workflow import InvokeSpec
+
+        assert InvokeSpec.is_invoke_spec({"invoke": "foo", "method": "bar"}) is True
+        assert InvokeSpec.is_invoke_spec({"invoke": "foo"}) is True  # method optional for check
+        assert InvokeSpec.is_invoke_spec({"method": "bar"}) is False  # No invoke key
+        assert InvokeSpec.is_invoke_spec("balance > 50") is False  # String condition
+        assert InvokeSpec.is_invoke_spec(None) is False
+
+    def test_transition_with_artifact(self) -> None:
+        """State machine transition can use artifact-invoked condition."""
+        from src.agents.state_machine import StateConfig, WorkflowStateMachine
+
+        config = StateConfig(
+            states=["idle", "working"],
+            initial_state="idle",
+            transitions=[
+                {  # type: ignore
+                    "from": "idle",
+                    "to": "working",
+                    "condition": {
+                        "invoke": "strategy_artifact",
+                        "method": "should_work",
+                        "fallback": False,
+                    },
+                },
+            ],
+        )
+
+        # Parse transitions from dict format
+        from src.agents.state_machine import StateTransition
+
+        parsed_config = StateConfig.from_dict({
+            "states": ["idle", "working"],
+            "initial_state": "idle",
+            "transitions": [
+                {
+                    "from": "idle",
+                    "to": "working",
+                    "condition": {
+                        "invoke": "strategy_artifact",
+                        "method": "should_work",
+                        "fallback": False,
+                    },
+                },
+            ],
+        })
+
+        # Resolver that returns True (artifact says "yes, work")
+        def invoke_resolver(
+            artifact_id: str,
+            method: str,
+            args: list,
+            context: dict,
+            fallback: Any,
+        ) -> Any:
+            if artifact_id == "strategy_artifact" and method == "should_work":
+                return True
+            return fallback
+
+        machine = WorkflowStateMachine(
+            parsed_config,
+            invoke_resolver=invoke_resolver,
+        )
+
+        # Transition should work (artifact returned True)
+        assert machine.can_transition_to("working", {"balance": 100})
+        assert machine.transition_to("working", {"balance": 100})
+        assert machine.current_state == "working"
+
+    def test_transition_fallback_on_error(self) -> None:
+        """Transition uses fallback when artifact invocation fails."""
+        from src.agents.state_machine import StateConfig, WorkflowStateMachine
+
+        parsed_config = StateConfig.from_dict({
+            "states": ["idle", "working"],
+            "initial_state": "idle",
+            "transitions": [
+                {
+                    "from": "idle",
+                    "to": "working",
+                    "condition": {
+                        "invoke": "broken_artifact",
+                        "method": "should_work",
+                        "fallback": True,  # Fallback to True
+                    },
+                },
+            ],
+        })
+
+        # Resolver that raises exception (simulates artifact failure)
+        def failing_resolver(
+            artifact_id: str,
+            method: str,
+            args: list,
+            context: dict,
+            fallback: Any,
+        ) -> Any:
+            raise RuntimeError("Artifact not available")
+
+        machine = WorkflowStateMachine(
+            parsed_config,
+            invoke_resolver=failing_resolver,
+        )
+
+        # Should use fallback (True), so transition allowed
+        # Note: context must be non-empty for conditions to be evaluated
+        context = {"agent_id": "test"}
+        assert machine.can_transition_to("working", context)
+        assert machine.transition_to("working", context)
+        assert machine.current_state == "working"
+
+    def test_transition_fallback_prevents_transition(self) -> None:
+        """Fallback of False prevents transition when artifact fails."""
+        from src.agents.state_machine import StateConfig, WorkflowStateMachine
+
+        parsed_config = StateConfig.from_dict({
+            "states": ["idle", "working"],
+            "initial_state": "idle",
+            "transitions": [
+                {
+                    "from": "idle",
+                    "to": "working",
+                    "condition": {
+                        "invoke": "broken_artifact",
+                        "method": "should_work",
+                        "fallback": False,  # Fallback to False
+                    },
+                },
+            ],
+        })
+
+        # Resolver that raises exception
+        def failing_resolver(
+            artifact_id: str,
+            method: str,
+            args: list,
+            context: dict,
+            fallback: Any,
+        ) -> Any:
+            raise RuntimeError("Artifact not available")
+
+        machine = WorkflowStateMachine(
+            parsed_config,
+            invoke_resolver=failing_resolver,
+        )
+
+        # Should use fallback (False), so transition blocked
+        # Note: context must be non-empty for conditions to be evaluated
+        context = {"agent_id": "test"}
+        assert not machine.can_transition_to("working", context)
+        assert not machine.transition_to("working", context)
+        assert machine.current_state == "idle"
+
+    def test_workflow_runner_invoke_cache(self) -> None:
+        """WorkflowRunner caches invoke results per-run."""
+        from src.agents.workflow import WorkflowRunner
+        from unittest.mock import MagicMock
+
+        # mock-ok: Testing caching behavior, not real artifact invocation
+        mock_world = MagicMock()
+        mock_world.invoke_artifact.return_value = MagicMock(
+            success=True,
+            data={"result": 42}
+        )
+
+        runner = WorkflowRunner(world=mock_world)
+
+        # First call
+        result1 = runner._resolve_invoke(
+            artifact_id="test",
+            method="compute",
+            args=[],
+            context={"agent_id": "alpha"},
+            fallback=0,
+        )
+
+        # Second call with same args (should hit cache)
+        result2 = runner._resolve_invoke(
+            artifact_id="test",
+            method="compute",
+            args=[],
+            context={"agent_id": "alpha"},
+            fallback=0,
+        )
+
+        # Only one actual invocation
+        assert mock_world.invoke_artifact.call_count == 1
+        assert result1 == result2
+
+    def test_workflow_runner_no_world_uses_fallback(self) -> None:
+        """WorkflowRunner uses fallback when no world reference."""
+        from src.agents.workflow import WorkflowRunner
+
+        runner = WorkflowRunner()  # No world
+
+        result = runner._resolve_invoke(
+            artifact_id="test",
+            method="compute",
+            args=[],
+            context={"agent_id": "alpha"},
+            fallback="fallback_value",
+        )
+
+        assert result == "fallback_value"
+
+    def test_invoke_spec_resolve_wrapper(self) -> None:
+        """InvokeSpec convenience wrapper resolves correctly."""
+        from src.agents.workflow import WorkflowRunner, InvokeSpec
+        from unittest.mock import MagicMock
+
+        # mock-ok: Testing wrapper method, not real invocation
+        mock_world = MagicMock()
+        mock_world.invoke_artifact.return_value = MagicMock(
+            success=True,
+            data="computed"
+        )
+
+        runner = WorkflowRunner(world=mock_world)
+
+        spec = InvokeSpec(
+            artifact_id="helper",
+            method="assist",
+            args=["extra"],
+            fallback="default",
+        )
+
+        result = runner._resolve_invoke_spec(spec, {"agent_id": "beta"})
+
+        assert result == "computed"
+        mock_world.invoke_artifact.assert_called_once()
