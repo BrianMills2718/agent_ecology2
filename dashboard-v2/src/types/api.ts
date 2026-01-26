@@ -387,3 +387,18 @@ export interface TemporalNetworkData {
   total_interactions: number
   time_bucket_seconds: number
 }
+
+// ============================================================================
+// LEADERBOARD (Plan #224)
+// ============================================================================
+
+export interface LeaderboardEntry {
+  agent_id: string
+  value: number
+  rank: number
+}
+
+export interface LeaderboardResponse {
+  category: 'scrip' | 'activity' | 'efficiency'
+  entries: LeaderboardEntry[]
+}
