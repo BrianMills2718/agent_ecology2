@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useWebSocketStore } from '../../stores/websocket'
 import { useSearchStore } from '../../stores/search'
+import { useRunsStore } from '../../stores/runs'
 import { useProgress, useSimulationStatus, pauseSimulation, resumeSimulation, stopSimulation } from '../../api/queries'
 import { SimulationConfigForm } from '../panels/SimulationConfigForm'
 
@@ -16,6 +17,7 @@ function formatDuration(seconds: number): string {
 export function Header() {
   const { status, wsLatency } = useWebSocketStore()
   const openSearch = useSearchStore((state) => state.open)
+  const { currentRunId, isLive } = useRunsStore()
   const { data: progress, refetch: refetchProgress } = useProgress()
   const { data: simStatus, refetch: refetchStatus } = useSimulationStatus()
   const [isToggling, setIsToggling] = useState(false)
@@ -80,6 +82,23 @@ export function Header() {
             <span>
               <span className="text-[var(--text-tertiary)]">Runtime:</span>{' '}
               <span className="font-mono">{formatDuration(progress.elapsed_seconds)}</span>
+            </span>
+          </div>
+        )}
+
+        {/* Run indicator (Plan #224) */}
+        {currentRunId && (
+          <div className="flex items-center gap-2 text-sm">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isLive ? 'bg-green-500 animate-pulse' : 'bg-gray-500'
+              }`}
+            />
+            <span className="text-[var(--text-secondary)]">
+              {isLive ? 'Live' : 'Historical'}
+            </span>
+            <span className="font-mono text-xs text-[var(--text-tertiary)]">
+              {currentRunId}
             </span>
           </div>
         )}

@@ -1,6 +1,7 @@
 // Overview tab - Quick health check with progress and key metrics
 
 import { ProgressPanel } from '../panels/ProgressPanel'
+import { RunSelectorPanel } from '../panels/RunSelectorPanel'
 import { useEmergence, useKPIs } from '../../api/queries'
 import { useAlertStore } from '../../stores/alerts'
 import { safeFixed, safePercent, safeCurrency } from '../../utils/format'
@@ -171,6 +172,9 @@ export function OverviewTab() {
     <div className="p-4 space-y-4">
       {/* Progress at top */}
       <ProgressPanel />
+
+      {/* Run selector (Plan #224) */}
+      <RunSelectorPanel />
 
       {/* Quick stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

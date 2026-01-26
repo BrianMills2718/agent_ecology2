@@ -204,6 +204,84 @@ class SimulationProcessManager:
             "subprocess_elapsed_seconds": elapsed,
         }
 
+    def resume_from_checkpoint(
+        self,
+        checkpoint_path: str,
+        duration: int = 60,
+    ) -> dict[str, Any]:
+        """Start a simulation resuming from a checkpoint.
+
+        Plan #224: Loads checkpoint state and continues from where it left off.
+
+        Args:
+            checkpoint_path: Path to the checkpoint.json file
+            duration: Additional duration in seconds to run
+
+        Returns:
+            Status dict with success, pid, or error
+        """
+        if self.is_running:
+            return {
+                "success": False,
+                "error": "Simulation already running",
+                "pid": self._process.pid if self._process else None,
+            }
+
+        checkpoint_file = Path(checkpoint_path)
+        if not checkpoint_file.exists():
+            return {
+                "success": False,
+                "error": f"Checkpoint not found: {checkpoint_path}",
+            }
+
+        # Build command with --resume flag
+        cmd = [
+            "python", "run.py",
+            "--dashboard",
+            "--no-browser",
+            "--resume", str(checkpoint_file),
+            "--duration", str(duration),
+        ]
+
+        try:
+            self._process = subprocess.Popen(
+                cmd,
+                cwd=self._project_root,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            self._start_time = time.time()
+
+            # Give it a moment to start
+            time.sleep(0.5)
+
+            # Check if it crashed immediately
+            if self._process.poll() is not None:
+                stderr = self._process.stderr.read().decode() if self._process.stderr else ""
+                self._cleanup()
+                return {
+                    "success": False,
+                    "error": f"Process exited immediately: {stderr[:500]}",
+                }
+
+            # Derive the jsonl path from checkpoint location
+            checkpoint_dir = checkpoint_file.parent
+            jsonl_path = checkpoint_dir / "events.jsonl"
+
+            return {
+                "success": True,
+                "pid": self._process.pid,
+                "jsonl_path": str(jsonl_path),
+                "checkpoint_path": checkpoint_path,
+            }
+
+        except Exception as e:
+            self._cleanup()
+            return {
+                "success": False,
+                "error": str(e),
+            }
+
     def _cleanup(self) -> None:
         """Clean up process references and temp files."""
         self._process = None

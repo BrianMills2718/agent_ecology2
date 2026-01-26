@@ -402,3 +402,47 @@ export interface LeaderboardResponse {
   category: 'scrip' | 'activity' | 'efficiency'
   entries: LeaderboardEntry[]
 }
+
+// ============================================================================
+// RUN MANAGEMENT (Plan #224)
+// ============================================================================
+
+export interface RunInfo {
+  run_id: string
+  run_dir: string
+  start_time: string | null
+  end_time: string | null
+  duration_seconds: number
+  event_count: number
+  agent_ids: string[]
+  has_checkpoint: boolean
+  status: 'running' | 'completed' | 'stopped'
+  jsonl_path: string
+}
+
+export interface RunListResponse {
+  runs: RunInfo[]
+  current_run_id: string | null
+  total: number
+}
+
+export interface CurrentRunResponse {
+  run: RunInfo | null
+  is_live: boolean
+  message?: string
+}
+
+export interface SelectRunResponse {
+  success: boolean
+  run_id: string
+  run: RunInfo | null
+  message: string
+}
+
+export interface ResumeRunResponse {
+  success: boolean
+  pid?: number
+  jsonl_path?: string
+  checkpoint_path?: string
+  error?: string
+}
