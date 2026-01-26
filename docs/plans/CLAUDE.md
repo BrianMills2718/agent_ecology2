@@ -246,6 +246,7 @@ Master index of all gaps and their implementation plans.
 | 224 | [Dashboard Run Management](224_dashboard_run_management.md) | High | 📋 Planned | Dashboard usability for historical analysis |
 | 225 | [Agent Bootstrapping Guidance](225_agent_bootstrapping.md) | High | ✅ Complete | Agent learning, productive simulations |
 | 226 | [Agent Learning & Strategic Behavior Fixes](226_agent_learning_fixes.md) | Critical | ✅ Complete | Effective agent learning, strategic planning, reduced noop rates |
+| 227 | [Agent Catalog & Experiment Tracking](227_agent_catalog_experiment_tracking.md) | High | 🚧 In Progress | - |
 ---
 
 ## TDD Workflow
