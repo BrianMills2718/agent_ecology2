@@ -41,6 +41,7 @@ except ImportError:
 
 from .process_manager import SimulationProcessManager
 from .watcher import PollingWatcher
+from .run_manager import RunManager
 from .models import (
     SimulationState as SimulationStateModel,
     AgentSummary,
@@ -134,6 +135,21 @@ class DashboardApp:
         # Plan #125: Moved from create_app() nonlocal for cleaner state management
         self.prev_kpis: EcosystemKPIs | None = None
 
+        # Plan #224: Run manager for listing and switching runs
+        logs_dir = self.jsonl_path.parent
+        if logs_dir.name == "logs" or self.jsonl_path.name == "events.jsonl":
+            # Already in logs dir or per-run structure
+            if self.jsonl_path.name == "events.jsonl":
+                logs_dir = self.jsonl_path.parent.parent
+        else:
+            # Legacy run.jsonl at root, logs dir is ./logs
+            logs_dir = Path("logs")
+        self.run_manager = RunManager(logs_dir=logs_dir, current_jsonl=self.jsonl_path)
+        self.run_manager.detect_current_run()
+
+        # Health thresholds for KPI calculations
+        self.thresholds = AuditorThresholds()
+
         # Only parse existing logs if not in live mode (viewing old runs)
         if not live_mode and self.jsonl_path.exists():
             self.parser.parse_full()
@@ -195,6 +211,33 @@ class DashboardApp:
         except Exception as e:
             logger.warning("Failed to load config from %s: %s", self.config_path, e)
             return {}
+
+    def switch_run(self, run_id: str) -> bool:
+        """Switch to viewing a different run.
+
+        Plan #224: Updates parser source and resets state.
+
+        Args:
+            run_id: The run ID to switch to
+
+        Returns:
+            True if switch was successful, False otherwise
+        """
+        run = self.run_manager.set_current_run(run_id)
+        if not run:
+            return False
+
+        # Update jsonl path and reset parser
+        self.jsonl_path = run.jsonl_path
+        self.parser = JSONLParser(self.jsonl_path)
+        self.parser.parse_full()
+
+        # Update watcher to new file
+        self.watcher.stop()
+        self.watcher = PollingWatcher(self.jsonl_path)
+        self.watcher.add_callback(self.on_file_change)
+
+        return True
 
 
 # Plan #125: Helper functions to organize route registration
@@ -406,6 +449,119 @@ def _register_websocket_routes(app: FastAPI, dashboard: DashboardApp) -> None:
             pass
         finally:
             dashboard.connection_manager.disconnect(websocket)
+
+
+def _register_run_management_routes(app: FastAPI, dashboard: DashboardApp) -> None:
+    """Register run management routes.
+
+    Plan #224: Handles /api/runs/* endpoints for listing, selecting, and resuming runs.
+    """
+
+    @app.get("/api/runs")
+    async def list_runs() -> dict[str, Any]:
+        """List all available simulation runs with metadata."""
+        runs = dashboard.run_manager.list_runs()
+        current_run_id = dashboard.run_manager.current_run_id
+        return {
+            "runs": [r.to_dict() for r in runs],
+            "current_run_id": current_run_id,
+            "total": len(runs),
+        }
+
+    @app.get("/api/runs/current")
+    async def get_current_run() -> dict[str, Any]:
+        """Get metadata for the currently selected run."""
+        run = dashboard.run_manager.get_current_run()
+        if run:
+            return {
+                "run": run.to_dict(),
+                "is_live": dashboard.live_mode,
+            }
+        return {
+            "run": None,
+            "is_live": dashboard.live_mode,
+            "message": "No run currently selected",
+        }
+
+    @app.get("/api/runs/{run_id}")
+    async def get_run_detail(run_id: str) -> dict[str, Any]:
+        """Get detailed metadata for a specific run."""
+        run = dashboard.run_manager.get_run(run_id)
+        if run:
+            return run.to_dict()
+        raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+
+    @app.post("/api/runs/select")
+    async def select_run(run_id: str) -> dict[str, Any]:
+        """Switch dashboard to view a different run.
+
+        This changes the data source for all dashboard endpoints.
+        WebSocket clients will be notified of the change.
+        """
+        success = dashboard.switch_run(run_id)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+
+        run = dashboard.run_manager.get_run(run_id)
+
+        # Broadcast run change to all clients
+        await dashboard.connection_manager.broadcast({
+            "type": "run_changed",
+            "data": {
+                "run_id": run_id,
+                "run": run.to_dict() if run else None,
+            },
+        })
+
+        return {
+            "success": True,
+            "run_id": run_id,
+            "run": run.to_dict() if run else None,
+            "message": "Switched to viewing run",
+        }
+
+    @app.post("/api/runs/{run_id}/resume")
+    async def resume_run(run_id: str) -> dict[str, Any]:
+        """Resume a simulation from its checkpoint.
+
+        The run must have a checkpoint.json file to be resumable.
+        """
+        from .process_manager import SimulationProcessManager
+
+        run = dashboard.run_manager.get_run(run_id)
+        if not run:
+            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+
+        if not run.has_checkpoint:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Run {run_id} has no checkpoint to resume from",
+            )
+
+        process_manager = SimulationProcessManager.get_instance()
+        if process_manager.is_running:
+            raise HTTPException(
+                status_code=409,
+                detail="A simulation is already running",
+            )
+
+        checkpoint_path = run.run_dir / "checkpoint.json"
+        result = process_manager.resume_from_checkpoint(str(checkpoint_path))
+
+        if result.get("success"):
+            # Switch to viewing the resumed run
+            dashboard.switch_run(run_id)
+
+            await dashboard.connection_manager.broadcast({
+                "type": "simulation_control",
+                "data": {
+                    "action": "resumed_from_checkpoint",
+                    "run_id": run_id,
+                    "pid": result.get("pid"),
+                },
+            })
+
+        return result
 
 
 def create_app(
@@ -1111,6 +1267,7 @@ def create_app(
     # Plan #125: Extracted route groups for maintainability
     _register_simulation_routes(app, dashboard)
     _register_websocket_routes(app, dashboard)
+    _register_run_management_routes(app, dashboard)  # Plan #224
 
     return app
 

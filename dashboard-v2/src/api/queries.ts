@@ -13,6 +13,9 @@ import type {
   NetworkGraphData,
   ActivityResponse,
   EventsResponse,
+  RunListResponse,
+  CurrentRunResponse,
+  RunInfo,
 } from '../types/api'
 
 // ============================================================================
@@ -367,5 +370,33 @@ export function useLeaderboard(
         `/metrics/leaderboard/${category}${buildQueryString({ limit })}`
       ),
     refetchInterval: 5000,
+  })
+}
+
+// ============================================================================
+// RUN MANAGEMENT (Plan #224)
+// ============================================================================
+
+export function useRuns() {
+  return useQuery({
+    queryKey: ['runs'],
+    queryFn: () => apiFetch<RunListResponse>('/runs'),
+    refetchInterval: 10000, // Refresh every 10s
+  })
+}
+
+export function useCurrentRun() {
+  return useQuery({
+    queryKey: ['runs', 'current'],
+    queryFn: () => apiFetch<CurrentRunResponse>('/runs/current'),
+    refetchInterval: 5000,
+  })
+}
+
+export function useRunDetail(runId: string | null) {
+  return useQuery({
+    queryKey: ['runs', runId],
+    queryFn: () => apiFetch<RunInfo>(`/runs/${encodeURIComponent(runId!)}`),
+    enabled: !!runId,
   })
 }

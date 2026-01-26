@@ -243,6 +243,7 @@ Master index of all gaps and their implementation plans.
 | 221 | [Dashboard Simulation Control](221_dashboard_simulation_control.md) | Medium | ✅ Complete | - |
 | 222 | [Artifact-Aware Workflow Engine](222_artifact_aware_workflow.md) | High | ✅ Complete | Evolutionary cognitive architectures, agent self-modification |
 | 223 | [Plan 223: Dashboard Entity Cross-Linking](223_dashboard_entity_crosslinks.md) | Medium | ✅ Complete | Dashboard usability |
+| 224 | [Dashboard Run Management](224_dashboard_run_management.md) | High | 📋 Planned | Dashboard usability for historical analysis |
 ---
 
 ## TDD Workflow
