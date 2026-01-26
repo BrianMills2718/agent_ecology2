@@ -8,6 +8,30 @@
 # Downgrading strictness means problems can slip through CI silently.
 
 # =============================================================================
+# Weight Level (Plan #218)
+# =============================================================================
+# Controls which checks run. Higher weight = more enforcement.
+#
+# Levels:
+#   heavy   - Full enforcement. For mature/regulated projects.
+#   medium  - Balanced. Most checks, less blocking. Default.
+#   light   - Low friction. Warnings instead of blocks. For prototypes.
+#   minimal - Almost nothing. Just plan validation. For quick experiments.
+#
+# See docs/plans/218_configurable_meta_process_weight.md for check matrix.
+weight: medium
+
+# Per-check overrides (optional)
+# Can force-enable or force-disable specific checks regardless of weight.
+# Values: "strict" (force on), "disabled" (force off), or omit for weight default.
+#
+# Example:
+#   overrides:
+#     doc_coupling_strict: strict    # Force strict even at light weight
+#     bidirectional: disabled        # Disable even at heavy weight
+overrides: {}
+
+# =============================================================================
 # GitHub Actions CI
 # =============================================================================
 # CI is controlled via .github/workflows/ci.yml
