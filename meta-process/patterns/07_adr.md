@@ -23,7 +23,7 @@ Architectural decisions get lost. Months later:
 | `docs/adr/NNNN-title.md` | Individual decision records |
 | `docs/adr/README.md` | Index of all ADRs |
 | `docs/adr/TEMPLATE.md` | Template for new ADRs |
-| `scripts/governance.yaml` | File-to-ADR mappings |
+| `scripts/governance.yaml` | File-to-ADR mappings (can be unified into `relationships.yaml`) |
 | `scripts/sync_governance.py` | Sync governance headers to source |
 
 ## Setup

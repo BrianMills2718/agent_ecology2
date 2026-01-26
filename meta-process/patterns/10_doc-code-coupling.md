@@ -16,7 +16,7 @@ Documentation drifts from code. AI assistants change code but forget to update d
 | File | Purpose |
 |------|---------|
 | `scripts/check_doc_coupling.py` | Enforcement logic |
-| `scripts/doc_coupling.yaml` | Source-to-doc mappings |
+| `scripts/doc_coupling.yaml` | Source-to-doc mappings (can be unified into `relationships.yaml`) |
 | `.github/workflows/ci.yml` | CI job |
 
 ## Setup

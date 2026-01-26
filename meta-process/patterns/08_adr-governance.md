@@ -34,7 +34,7 @@ When Claude reads a governed file, it immediately sees which ADRs apply and any 
 |------|---------|
 | `docs/adr/` | Architecture Decision Records |
 | `docs/adr/TEMPLATE.md` | Template for new ADRs |
-| `scripts/governance.yaml` | File → ADR mappings (single source of truth) |
+| `scripts/governance.yaml` | File → ADR mappings (can be unified into `relationships.yaml`) |
 | `scripts/sync_governance.py` | Generates headers from config |
 | `tests/test_sync_governance.py` | Tests for sync script |
 
