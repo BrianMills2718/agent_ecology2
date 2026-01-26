@@ -1,11 +1,36 @@
 # Plan 220: Bootstrap for Existing Repos
 
-**Status:** Planned
+**Status:** Complete
 **Phase:** 4 of 5 (Meta-Process Improvements)
 **Depends on:**
 - Plan #215 (Unified Documentation Graph) - Complete
-- Plan #218 (Configurable Weight) - Planned
-**Blocked by:** Plan #218 (weight system needed for gradual adoption)
+- Plan #218 (Configurable Weight) - Complete
+**Blocked by:** None
+**Completed:** 2026-01-26
+
+## Implementation Evidence
+
+- `scripts/bootstrap_meta_process.py` - Bootstrap script (400+ lines)
+- `tests/unit/test_bootstrap.py` - 16 unit tests (all pass)
+
+### Core Features
+
+The bootstrap script provides:
+- **Repo analysis** (`--analyze`): Detect structure, suggest couplings/ADRs
+- **Initialization** (`--init`): Create starter meta-process files at any weight
+- **Progress tracking** (`--progress`): Show compliance score and recommendations
+
+### Usage
+```bash
+# Analyze repo structure
+python scripts/bootstrap_meta_process.py --analyze
+
+# Initialize at light weight
+python scripts/bootstrap_meta_process.py --init --weight light
+
+# Check progress toward full adoption
+python scripts/bootstrap_meta_process.py --progress
+```
 
 ## Problem
 
