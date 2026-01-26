@@ -2305,7 +2305,12 @@ Your response should include:
         - self reference for methods
         """
         tick: int = world_state.get("tick", 0)
-        balance: int = world_state.get("balances", {}).get(self.agent_id, 0)
+        # Plan #222: Balance may be BalanceInfo dict or int depending on context
+        balance_info = world_state.get("balances", {}).get(self.agent_id, 0)
+        if isinstance(balance_info, dict):
+            balance: int = balance_info.get("scrip", 0)
+        else:
+            balance = int(balance_info) if balance_info else 0
         artifacts: list[dict[str, Any]] = world_state.get("artifacts", [])
 
         # Get memories using RAG
