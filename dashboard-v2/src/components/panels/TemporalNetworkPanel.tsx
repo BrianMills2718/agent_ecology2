@@ -146,7 +146,7 @@ export function TemporalNetworkPanel({ fullHeight = false }: TemporalNetworkPane
         borderWidth: 2,
       },
       edges: {
-        smooth: { type: 'continuous' },
+        smooth: { enabled: true, type: 'continuous', roundness: 0.5 },
         font: { size: 10, color: '#9ca3af' },
       },
       physics: {
