@@ -166,66 +166,7 @@ workflow:
         Once you have the interface info, proceed to ideating.
       transition_to: "ideating"
 
-    # Step 2a: Artifact-aware error check (Plan #222 - Artifact-Aware Workflow)
-    # Automatically pivots if error rate is too high, skipping LLM call
-    - name: error_check
-      type: transition
-      in_state: "reflecting"
-      # Plan #222: Use genesis_error_detector for automatic pivot decision
-      transition_source:
-        invoke: "genesis_error_detector"
-        method: "get_error_rate"
-        args: [{recent_actions: "{recent_actions}", threshold: 0.6}]
-        fallback: "continue"  # If artifact call fails, proceed to LLM decision
-      # Map artifact result.above_threshold to transition
-      transition_map:
-        true: "observing"      # High error rate -> auto-pivot
-        false: "reflecting_llm"  # Low error rate -> let LLM decide
-
-    # Step 2b: Strategic reflection - LLM-informed transition decision (Plan #157 Phase 4)
-    # Uses transition step type for LLM-driven state transitions
-    # Only runs if error_check determined error rate is acceptable
-    - name: strategic_reflect
-      type: transition
-      in_state: "reflecting_llm"
-      prompt: |
-        === STRATEGIC DECISION: Continue, Pivot, or Ship? ===
-        Time remaining: {time_remaining} | Success rate: {success_rate} | Revenue: {revenue_earned:+.0f}
-
-        **{economic_context}**
-
-        ## YOUR RECENT ACTIONS
-        {action_history}
-
-        ## LAST RESULT
-        {last_action_result}
-
-        ## DECISION REQUIRED
-        Based on your performance and time remaining, choose ONE:
-
-        A) CONTINUE - You're making progress
-           - Recent actions show improvement
-           - The current artifact is almost working
-           - Worth continuing this approach
-
-        B) PIVOT - You're stuck, try something different
-           - Same errors repeating (3+ times)
-           - No revenue earned from this approach
-           - Time is running out - try something simpler
-
-        C) SHIP - Current work is good enough
-           - Artifact works (even if imperfect)
-           - Move to a new opportunity
-           - Don't over-optimize one thing
-
-        Respond with exactly one decision: continue, pivot, or ship
-      # Plan #157: Map LLM decisions to state transitions
-      transition_map:
-        continue: "implementing"  # Keep working on current artifact
-        pivot: "observing"        # Abandon and start fresh
-        ship: "shipping"          # Ship current work and move on
-
-    # Step 3: Compute metrics (from alpha_2)
+    # Step 2: Compute metrics (runs in all states to set context variables)
     - name: compute_metrics
       type: code
       code: |
@@ -339,7 +280,67 @@ workflow:
         After testing, you'll reflect on whether to continue, pivot, or ship.
       transition_to: "reflecting"
 
-    # Step 6: Shipping phase - move on to next opportunity (Plan #157 Phase 4)
+    # Step 6a: Artifact-aware error check (Plan #222 - Artifact-Aware Workflow)
+    # IMPORTANT: Must come AFTER test step (which transitions to "reflecting")
+    # Automatically pivots if error rate is too high, skipping LLM call
+    - name: error_check
+      type: transition
+      in_state: "reflecting"
+      # Plan #222: Use genesis_error_detector for automatic pivot decision
+      transition_source:
+        invoke: "genesis_error_detector"
+        method: "get_error_rate"
+        args: [{recent_actions: "{recent_actions}", threshold: 0.6}]
+        fallback: "continue"  # If artifact call fails, proceed to LLM decision
+      # Map artifact result.above_threshold to transition
+      transition_map:
+        true: "observing"      # High error rate -> auto-pivot
+        false: "reflecting_llm"  # Low error rate -> let LLM decide
+
+    # Step 6b: Strategic reflection - LLM-informed transition decision (Plan #157 Phase 4)
+    # Uses transition step type for LLM-driven state transitions
+    # Only runs if error_check determined error rate is acceptable
+    - name: strategic_reflect
+      type: transition
+      in_state: "reflecting_llm"
+      prompt: |
+        === STRATEGIC DECISION: Continue, Pivot, or Ship? ===
+        Time remaining: {time_remaining} | Success rate: {success_rate} | Revenue: {revenue_earned:+.0f}
+
+        **{economic_context}**
+
+        ## YOUR RECENT ACTIONS
+        {action_history}
+
+        ## LAST RESULT
+        {last_action_result}
+
+        ## DECISION REQUIRED
+        Based on your performance and time remaining, choose ONE:
+
+        A) CONTINUE - You're making progress
+           - Recent actions show improvement
+           - The current artifact is almost working
+           - Worth continuing this approach
+
+        B) PIVOT - You're stuck, try something different
+           - Same errors repeating (3+ times)
+           - No revenue earned from this approach
+           - Time is running out - try something simpler
+
+        C) SHIP - Current work is good enough
+           - Artifact works (even if imperfect)
+           - Move to a new opportunity
+           - Don't over-optimize one thing
+
+        Respond with exactly one decision: continue, pivot, or ship
+      # Plan #157: Map LLM decisions to state transitions
+      transition_map:
+        continue: "implementing"  # Keep working on current artifact
+        pivot: "observing"        # Abandon and start fresh
+        ship: "shipping"          # Ship current work and move on
+
+    # Step 7: Shipping phase - move on to next opportunity (Plan #157 Phase 4)
     # Plan #211: Added explicit mint bidding instructions
     - name: ship
       type: llm
