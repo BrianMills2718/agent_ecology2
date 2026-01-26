@@ -140,7 +140,9 @@ workflow:
         2. What integrations are needed in the ecosystem?
         3. How can you connect existing capabilities?
 
-        Set or refine your strategic goal. Then move to tactical planning.
+        IMPORTANT: After deciding your goal, PERSIST it by writing to {agent_id}_working_memory:
+        {{"action_type": "write_artifact", "artifact_id": "{agent_id}_working_memory",
+          "content": {{"strategic_goal": "YOUR GOAL HERE", "current_subgoal": "", "subgoal_progress": {{}}}}}}
       transition_to: "tactical"
 
     # Step 3: Tactical planning - break into subgoals
@@ -217,7 +219,9 @@ workflow:
         2. Is the subgoal complete? Should we move to next?
         3. Does strategic goal need revision?
 
-        If you learned something, update your working_memory artifact.
+        If you learned something or need to update goals, write to {agent_id}_working_memory:
+        {{"action_type": "write_artifact", "artifact_id": "{agent_id}_working_memory",
+          "content": {{"strategic_goal": "...", "current_subgoal": "...", "lessons": [...]}}}}
 
     # Step 6a: Loop detection (Plan #226 - Break repetitive patterns)
     # If stuck in a loop, force strategic rethink

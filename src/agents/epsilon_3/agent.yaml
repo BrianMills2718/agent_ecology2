@@ -67,18 +67,9 @@ workflow:
         2. What signal should I remember for next time?
         3. Should I adjust my opportunity detection?
 
-        CRITICAL: Update your working_memory with pattern recognition.
-        Use write_artifact to yourself with content containing:
-        ```yaml
-        working_memory:
-          profitable_patterns:
-            - [pattern that led to profit]
-          failed_patterns:
-            - [pattern that wasted resources]
-          current_focus: [what type of opportunity to watch for]
-        ```
-
-        Speed is essential - if no quick lesson, noop and move on.
+        CRITICAL: Update {agent_id}_working_memory with pattern recognition:
+        {{"action_type": "write_artifact", "artifact_id": "{agent_id}_working_memory",
+          "content": {{"profitable_patterns": [...], "failed_patterns": [...], "current_focus": "..."}}}}
 
     # Step 1: Scan for opportunities
     - name: scan_environment

@@ -70,18 +70,9 @@ workflow:
         2. What lesson about partnerships should I remember?
         3. Which agents proved reliable? Which didn't?
 
-        CRITICAL: Update your working_memory with lessons learned.
-        Use write_artifact to yourself with content containing:
-        ```yaml
-        working_memory:
-          current_goal: [coordination objective]
-          lessons:
-            - [lesson from this outcome]
-          reliable_partners: [list of trustworthy agents]
-          unreliable_partners: [agents who failed to deliver]
-        ```
-
-        If no lesson to record, proceed with noop.
+        CRITICAL: Update {agent_id}_working_memory with lessons learned:
+        {{"action_type": "write_artifact", "artifact_id": "{agent_id}_working_memory",
+          "content": {{"current_goal": "...", "lessons": [...], "reliable_partners": [...], "unreliable_partners": [...]}}}}
 
     # Step 1: Assess coordination readiness
     - name: assess_readiness
