@@ -49,7 +49,7 @@ rag:
 # Plan #157 Phase 4: LLM-informed transitions replace hardcoded conditions
 workflow:
   state_machine:
-    states: ["observing", "discovering", "ideating", "designing", "implementing", "testing", "reflecting", "shipping"]
+    states: ["observing", "discovering", "ideating", "designing", "implementing", "testing", "reflecting", "reflecting_llm", "shipping"]
     initial_state: "observing"
     transitions:
       # IRR pattern: observe -> discover -> act
@@ -73,15 +73,21 @@ workflow:
         to: "testing"
       - from: "testing"
         to: "reflecting"
-      # Plan #157: LLM-informed transitions from reflecting
+      # Plan #222: Artifact-aware transitions from reflecting
+      # First check error rate with genesis_error_detector
+      - from: "reflecting"
+        to: "reflecting_llm"  # If error rate OK, proceed to LLM decision
+      - from: "reflecting"
+        to: "observing"       # If error rate high, auto-pivot
+      # Plan #157: LLM-informed transitions from reflecting_llm
       # continue -> implementing (keep working)
       # pivot -> observing (abandon and try something new)
       # ship -> shipping (move on to next opportunity)
-      - from: "reflecting"
+      - from: "reflecting_llm"
         to: "implementing"
-      - from: "reflecting"
+      - from: "reflecting_llm"
         to: "observing"
-      - from: "reflecting"
+      - from: "reflecting_llm"
         to: "shipping"
       # Shipping state returns to observing for next opportunity
       - from: "shipping"
@@ -160,11 +166,28 @@ workflow:
         Once you have the interface info, proceed to ideating.
       transition_to: "ideating"
 
-    # Step 2: Strategic reflection - LLM-informed transition decision (Plan #157 Phase 4)
-    # Uses transition step type for LLM-driven state transitions
-    - name: strategic_reflect
+    # Step 2a: Artifact-aware error check (Plan #222 - Artifact-Aware Workflow)
+    # Automatically pivots if error rate is too high, skipping LLM call
+    - name: error_check
       type: transition
       in_state: "reflecting"
+      # Plan #222: Use genesis_error_detector for automatic pivot decision
+      transition_source:
+        invoke: "genesis_error_detector"
+        method: "get_error_rate"
+        args: [{recent_actions: "{recent_actions}", threshold: 0.6}]
+        fallback: "continue"  # If artifact call fails, proceed to LLM decision
+      # Map artifact result.above_threshold to transition
+      transition_map:
+        true: "observing"      # High error rate -> auto-pivot
+        false: "reflecting_llm"  # Low error rate -> let LLM decide
+
+    # Step 2b: Strategic reflection - LLM-informed transition decision (Plan #157 Phase 4)
+    # Uses transition step type for LLM-driven state transitions
+    # Only runs if error_check determined error rate is acceptable
+    - name: strategic_reflect
+      type: transition
+      in_state: "reflecting_llm"
       prompt: |
         === STRATEGIC DECISION: Continue, Pivot, or Ship? ===
         Time remaining: {time_remaining} | Success rate: {success_rate} | Revenue: {revenue_earned:+.0f}
