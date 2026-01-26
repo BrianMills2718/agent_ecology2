@@ -1786,10 +1786,47 @@ Your response should include:
         Uses LLMProvider.generate_async() for non-blocking LLM calls,
         enabling multiple agents to think concurrently with asyncio.gather().
 
+        Plan #222: If agent has workflow configured, uses workflow engine for
+        state-machine-based decision making with artifact-informed transitions.
+
         Returns same structure as propose_action():
           - 'action' (valid action dict) and 'reasoning' (str), or 'error' (string)
           - 'usage' (token usage: input_tokens, output_tokens, total_tokens, cost)
         """
+        # Plan #222: Use workflow engine if configured
+        if self.has_workflow:
+            import asyncio
+            # Run synchronous workflow in thread pool to avoid blocking
+            workflow_result = await asyncio.to_thread(self.run_workflow, world_state)
+            if workflow_result.get("success") and workflow_result.get("action"):
+                return {
+                    "action": workflow_result["action"],
+                    "reasoning": workflow_result.get("reasoning", ""),
+                    "usage": workflow_result.get("usage", {
+                        "input_tokens": 0, "output_tokens": 0,
+                        "total_tokens": 0, "cost": 0.0
+                    }),
+                    "model": self.llm_model,
+                    "state": workflow_result.get("state"),
+                }
+            elif workflow_result.get("error"):
+                return {
+                    "error": workflow_result["error"],
+                    "raw_response": None,
+                    "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "cost": 0.0}
+                }
+            # Workflow returned no action (e.g., noop) - continue with result
+            return {
+                "action": {"action_type": "noop"},
+                "reasoning": workflow_result.get("reasoning", "Workflow completed without action"),
+                "usage": workflow_result.get("usage", {
+                    "input_tokens": 0, "output_tokens": 0,
+                    "total_tokens": 0, "cost": 0.0
+                }),
+                "model": self.llm_model,
+            }
+
+        # Legacy path: direct LLM call (no workflow)
         prompt: str = self.build_prompt(world_state)
 
         # Update tick in log metadata
