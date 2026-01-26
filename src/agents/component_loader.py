@@ -5,7 +5,7 @@ Components are reusable prompt fragments that can be mixed and matched
 to create different agent "genotypes" for experimentation.
 
 Component Types:
-- Traits: Behavioral modifiers injected into prompts
+- Behaviors: Behavioral modifiers injected into prompts
 - Phases: Reusable workflow step definitions
 - Goals: High-level directives that shape behavior
 
@@ -16,10 +16,10 @@ Usage:
     registry.load_all()  # Load from default location
 
     # Get components for an agent
-    traits = registry.get_traits(["buy_before_build", "economic_participant"])
+    behaviors = registry.get_behaviors(["buy_before_build", "economic_participant"])
 
     # Inject into workflow config
-    workflow_dict = inject_components(workflow_dict, traits=traits)
+    workflow_dict = inject_components(workflow_dict, behaviors=behaviors)
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ class Component:
 
     Attributes:
         name: Unique identifier for the component
-        component_type: Type of component (trait, phase, goal)
+        component_type: Type of component (behavior, phase, goal)
         version: Component version for compatibility
         description: Human-readable description
         inject_into: List of step names where this should be injected
@@ -52,7 +52,7 @@ class Component:
     """
 
     name: str
-    component_type: str  # "trait", "phase", or "goal"
+    component_type: str  # "behavior", "phase", or "goal"
     version: int = 1
     description: str = ""
     inject_into: list[str] = field(default_factory=list)
@@ -88,7 +88,7 @@ class ComponentRegistry:
                            Defaults to src/agents/_components/
         """
         self.components_dir = components_dir or COMPONENTS_DIR
-        self.traits: dict[str, Component] = {}
+        self.behaviors: dict[str, Component] = {}
         self.phases: dict[str, Component] = {}
         self.goals: dict[str, Component] = {}
 
@@ -98,11 +98,11 @@ class ComponentRegistry:
             logger.warning(f"Components directory not found: {self.components_dir}")
             return
 
-        # Load traits
-        traits_dir = self.components_dir / "traits"
-        if traits_dir.exists():
-            for path in traits_dir.glob("*.yaml"):
-                self._load_component(path, "trait")
+        # Load behaviors
+        behaviors_dir = self.components_dir / "behaviors"
+        if behaviors_dir.exists():
+            for path in behaviors_dir.glob("*.yaml"):
+                self._load_component(path, "behavior")
 
         # Load phases
         phases_dir = self.components_dir / "phases"
@@ -117,7 +117,7 @@ class ComponentRegistry:
                 self._load_component(path, "goal")
 
         logger.info(
-            f"Loaded components: {len(self.traits)} traits, "
+            f"Loaded components: {len(self.behaviors)} behaviors, "
             f"{len(self.phases)} phases, {len(self.goals)} goals"
         )
 
@@ -141,8 +141,8 @@ class ComponentRegistry:
                 )
 
             # Store in appropriate registry
-            if component.component_type == "trait":
-                self.traits[component.name] = component
+            if component.component_type == "behavior":
+                self.behaviors[component.name] = component
             elif component.component_type == "phase":
                 self.phases[component.name] = component
             elif component.component_type == "goal":
@@ -155,9 +155,9 @@ class ComponentRegistry:
         except Exception as e:
             logger.error(f"Failed to load component {path}: {e}")
 
-    def get_trait(self, name: str) -> Component | None:
-        """Get a trait component by name."""
-        return self.traits.get(name)
+    def get_behavior(self, name: str) -> Component | None:
+        """Get a behavior component by name."""
+        return self.behaviors.get(name)
 
     def get_phase(self, name: str) -> Component | None:
         """Get a phase component by name."""
@@ -167,22 +167,22 @@ class ComponentRegistry:
         """Get a goal component by name."""
         return self.goals.get(name)
 
-    def get_traits(self, names: list[str]) -> list[Component]:
-        """Get multiple trait components by name.
+    def get_behaviors(self, names: list[str]) -> list[Component]:
+        """Get multiple behavior components by name.
 
         Args:
-            names: List of trait names to retrieve
+            names: List of behavior names to retrieve
 
         Returns:
             List of Component objects (missing ones are logged and skipped)
         """
         components = []
         for name in names:
-            component = self.traits.get(name)
+            component = self.behaviors.get(name)
             if component:
                 components.append(component)
             else:
-                logger.warning(f"Trait not found: {name}")
+                logger.warning(f"Behavior not found: {name}")
         return components
 
     def get_goals(self, names: list[str]) -> list[Component]:
@@ -199,7 +199,7 @@ class ComponentRegistry:
 
 def inject_components_into_workflow(
     workflow_dict: dict[str, Any],
-    traits: list[Component] | None = None,
+    behaviors: list[Component] | None = None,
     goals: list[Component] | None = None,
 ) -> dict[str, Any]:
     """Inject component prompt fragments into a workflow configuration.
@@ -209,16 +209,16 @@ def inject_components_into_workflow(
 
     Args:
         workflow_dict: Workflow configuration dictionary (from agent.yaml)
-        traits: List of trait components to inject
+        behaviors: List of behavior components to inject
         goals: List of goal components to inject
 
     Returns:
         Modified workflow dictionary
     """
-    if not traits and not goals:
+    if not behaviors and not goals:
         return workflow_dict
 
-    all_components = (traits or []) + (goals or [])
+    all_components = (behaviors or []) + (goals or [])
 
     # Build a map of step_name -> fragments to inject
     injections: dict[str, list[str]] = {}
@@ -263,17 +263,17 @@ def load_agent_components(
 
     Args:
         component_config: The 'components' section from agent.yaml, e.g.:
-            {"traits": ["buy_before_build"], "goals": ["facilitate_transactions"]}
+            {"behaviors": ["buy_before_build"], "goals": ["facilitate_transactions"]}
 
     Returns:
-        Tuple of (traits, goals) component lists
+        Tuple of (behaviors, goals) component lists
     """
     if not component_config:
         return [], []
 
     registry = get_registry()
 
-    traits = registry.get_traits(component_config.get("traits", []))
+    behaviors = registry.get_behaviors(component_config.get("behaviors", []))
     goals = registry.get_goals(component_config.get("goals", []))
 
-    return traits, goals
+    return behaviors, goals

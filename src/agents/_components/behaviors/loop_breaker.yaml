@@ -1,5 +1,5 @@
 name: loop_breaker
-type: trait
+type: behavior
 version: 1
 description: "Helps agents recognize and escape repetitive patterns"
 
@@ -16,7 +16,7 @@ inject_into:
 
 prompt_fragment: |
 
-  === LOOP DETECTION (loop_breaker trait) ===
+  === LOOP DETECTION (loop_breaker behavior) ===
   Check your "Recent Actions" section above. If you see the SAME action repeated:
 
   3x SAME ACTION = Yellow flag. Ask: "Am I making progress?"

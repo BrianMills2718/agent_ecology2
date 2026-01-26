@@ -1,5 +1,5 @@
 name: buy_before_build
-type: trait
+type: behavior
 version: 1
 description: "Encourages checking for existing services before building new ones"
 
@@ -13,7 +13,7 @@ inject_into:
 
 prompt_fragment: |
 
-  === MARKET CHECK (buy_before_build trait) ===
+  === MARKET CHECK (buy_before_build behavior) ===
   BEFORE BUILDING, CHECK THE MARKET:
   1. Use query_kernel action to list existing artifacts:
      {"action_type": "query_kernel", "query_type": "artifacts"}

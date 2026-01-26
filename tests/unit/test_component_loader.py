@@ -19,20 +19,20 @@ class TestComponent:
     def test_from_dict_basic(self) -> None:
         """Component parses from dict correctly."""
         data = {
-            "name": "test_trait",
-            "type": "trait",
+            "name": "test_behavior",
+            "type": "behavior",
             "version": 1,
-            "description": "A test trait",
+            "description": "A test behavior",
             "inject_into": ["ideate", "observe"],
             "prompt_fragment": "Test prompt fragment",
             "requires_context": ["balance"],
         }
         component = Component.from_dict(data)
 
-        assert component.name == "test_trait"
-        assert component.component_type == "trait"
+        assert component.name == "test_behavior"
+        assert component.component_type == "behavior"
         assert component.version == 1
-        assert component.description == "A test trait"
+        assert component.description == "A test behavior"
         assert component.inject_into == ["ideate", "observe"]
         assert component.prompt_fragment == "Test prompt fragment"
         assert component.requires_context == ["balance"]
@@ -52,17 +52,17 @@ class TestComponent:
 class TestComponentRegistry:
     """Tests for the ComponentRegistry."""
 
-    def test_load_trait_component(self, tmp_path: Path) -> None:
-        """Registry loads trait components from traits/ directory."""
-        # Create a test trait
-        traits_dir = tmp_path / "traits"
-        traits_dir.mkdir()
-        trait_file = traits_dir / "test_trait.yaml"
-        trait_file.write_text(
+    def test_load_behavior_component(self, tmp_path: Path) -> None:
+        """Registry loads behavior components from behaviors/ directory."""
+        # Create a test behavior
+        behaviors_dir = tmp_path / "behaviors"
+        behaviors_dir.mkdir()
+        behavior_file = behaviors_dir / "test_behavior.yaml"
+        behavior_file.write_text(
             yaml.dump(
                 {
-                    "name": "test_trait",
-                    "type": "trait",
+                    "name": "test_behavior",
+                    "type": "behavior",
                     "inject_into": ["ideate"],
                     "prompt_fragment": "Be smart!",
                 }
@@ -72,8 +72,8 @@ class TestComponentRegistry:
         registry = ComponentRegistry(components_dir=tmp_path)
         registry.load_all()
 
-        assert "test_trait" in registry.traits
-        assert registry.traits["test_trait"].prompt_fragment == "Be smart!"
+        assert "test_behavior" in registry.behaviors
+        assert registry.behaviors["test_behavior"].prompt_fragment == "Be smart!"
 
     def test_load_goal_component(self, tmp_path: Path) -> None:
         """Registry loads goal components from goals/ directory."""
@@ -97,52 +97,52 @@ class TestComponentRegistry:
         assert "test_goal" in registry.goals
         assert registry.goals["test_goal"].prompt_fragment == "Focus on X!"
 
-    def test_get_traits_returns_list(self, tmp_path: Path) -> None:
-        """get_traits returns list of components."""
-        traits_dir = tmp_path / "traits"
-        traits_dir.mkdir()
+    def test_get_behaviors_returns_list(self, tmp_path: Path) -> None:
+        """get_behaviors returns list of components."""
+        behaviors_dir = tmp_path / "behaviors"
+        behaviors_dir.mkdir()
 
-        for name in ["trait_a", "trait_b"]:
-            (traits_dir / f"{name}.yaml").write_text(
-                yaml.dump({"name": name, "type": "trait", "prompt_fragment": f"{name} content"})
+        for name in ["behavior_a", "behavior_b"]:
+            (behaviors_dir / f"{name}.yaml").write_text(
+                yaml.dump({"name": name, "type": "behavior", "prompt_fragment": f"{name} content"})
             )
 
         registry = ComponentRegistry(components_dir=tmp_path)
         registry.load_all()
 
-        traits = registry.get_traits(["trait_a", "trait_b"])
-        assert len(traits) == 2
-        assert traits[0].name == "trait_a"
-        assert traits[1].name == "trait_b"
+        behaviors = registry.get_behaviors(["behavior_a", "behavior_b"])
+        assert len(behaviors) == 2
+        assert behaviors[0].name == "behavior_a"
+        assert behaviors[1].name == "behavior_b"
 
-    def test_get_traits_skips_missing(self, tmp_path: Path) -> None:
-        """get_traits logs warning and skips missing components."""
-        traits_dir = tmp_path / "traits"
-        traits_dir.mkdir()
-        (traits_dir / "exists.yaml").write_text(
-            yaml.dump({"name": "exists", "type": "trait"})
+    def test_get_behaviors_skips_missing(self, tmp_path: Path) -> None:
+        """get_behaviors logs warning and skips missing components."""
+        behaviors_dir = tmp_path / "behaviors"
+        behaviors_dir.mkdir()
+        (behaviors_dir / "exists.yaml").write_text(
+            yaml.dump({"name": "exists", "type": "behavior"})
         )
 
         registry = ComponentRegistry(components_dir=tmp_path)
         registry.load_all()
 
-        traits = registry.get_traits(["exists", "does_not_exist"])
-        assert len(traits) == 1
-        assert traits[0].name == "exists"
+        behaviors = registry.get_behaviors(["exists", "does_not_exist"])
+        assert len(behaviors) == 1
+        assert behaviors[0].name == "exists"
 
     def test_empty_directory_no_error(self, tmp_path: Path) -> None:
         """Registry handles empty/missing directories gracefully."""
         registry = ComponentRegistry(components_dir=tmp_path)
         registry.load_all()  # Should not raise
 
-        assert registry.traits == {}
+        assert registry.behaviors == {}
         assert registry.goals == {}
 
 
 class TestInjectComponents:
     """Tests for inject_components_into_workflow."""
 
-    def test_inject_trait_into_matching_step(self) -> None:
+    def test_inject_behavior_into_matching_step(self) -> None:
         """Trait prompt fragment is injected into matching step."""
         workflow = {
             "steps": [
@@ -151,40 +151,40 @@ class TestInjectComponents:
             ]
         }
 
-        trait = Component(
+        behavior = Component(
             name="test",
-            component_type="trait",
+            component_type="behavior",
             inject_into=["ideate"],
             prompt_fragment="\nInjected content!",
         )
 
-        result = inject_components_into_workflow(workflow, traits=[trait])
+        result = inject_components_into_workflow(workflow, behaviors=[behavior])
 
         assert "Injected content!" in result["steps"][0]["prompt"]
         assert "Injected content!" not in result["steps"][1]["prompt"]
 
-    def test_inject_multiple_traits(self) -> None:
-        """Multiple traits are all injected into matching step."""
+    def test_inject_multiple_behaviors(self) -> None:
+        """Multiple behaviors are all injected into matching step."""
         workflow = {
             "steps": [{"name": "observe", "type": "llm", "prompt": "Base prompt"}]
         }
 
-        traits = [
+        behaviors = [
             Component(
-                name="trait1",
-                component_type="trait",
+                name="behavior1",
+                component_type="behavior",
                 inject_into=["observe"],
                 prompt_fragment="\nTrait 1 content",
             ),
             Component(
-                name="trait2",
-                component_type="trait",
+                name="behavior2",
+                component_type="behavior",
                 inject_into=["observe"],
                 prompt_fragment="\nTrait 2 content",
             ),
         ]
 
-        result = inject_components_into_workflow(workflow, traits=traits)
+        result = inject_components_into_workflow(workflow, behaviors=behaviors)
 
         assert "Trait 1 content" in result["steps"][0]["prompt"]
         assert "Trait 2 content" in result["steps"][0]["prompt"]
@@ -212,14 +212,14 @@ class TestInjectComponents:
             "steps": [{"name": "unrelated", "type": "llm", "prompt": "Original"}]
         }
 
-        trait = Component(
+        behavior = Component(
             name="test",
-            component_type="trait",
+            component_type="behavior",
             inject_into=["ideate"],  # Different from "unrelated"
             prompt_fragment="\nShould not appear",
         )
 
-        result = inject_components_into_workflow(workflow, traits=[trait])
+        result = inject_components_into_workflow(workflow, behaviors=[behavior])
 
         assert result["steps"][0]["prompt"] == "Original"
 
@@ -227,7 +227,7 @@ class TestInjectComponents:
         """Empty components list returns workflow unchanged."""
         workflow = {"steps": [{"name": "test", "prompt": "Original"}]}
 
-        result = inject_components_into_workflow(workflow, traits=[], goals=[])
+        result = inject_components_into_workflow(workflow, behaviors=[], goals=[])
 
         assert result == workflow
 
@@ -238,10 +238,10 @@ class TestLoadAgentComponents:
     def test_load_from_config(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """load_agent_components loads specified components."""
         # Create test components
-        traits_dir = tmp_path / "traits"
-        traits_dir.mkdir()
-        (traits_dir / "my_trait.yaml").write_text(
-            yaml.dump({"name": "my_trait", "type": "trait", "prompt_fragment": "Trait!"})
+        behaviors_dir = tmp_path / "behaviors"
+        behaviors_dir.mkdir()
+        (behaviors_dir / "my_behavior.yaml").write_text(
+            yaml.dump({"name": "my_behavior", "type": "behavior", "prompt_fragment": "Trait!"})
         )
 
         goals_dir = tmp_path / "goals"
@@ -255,20 +255,20 @@ class TestLoadAgentComponents:
         monkeypatch.setattr(cl, "_registry", None)
         monkeypatch.setattr(cl, "COMPONENTS_DIR", tmp_path)
 
-        config = {"traits": ["my_trait"], "goals": ["my_goal"]}
-        traits, goals = load_agent_components(config)
+        config = {"behaviors": ["my_behavior"], "goals": ["my_goal"]}
+        behaviors, goals = load_agent_components(config)
 
-        assert len(traits) == 1
-        assert traits[0].name == "my_trait"
+        assert len(behaviors) == 1
+        assert behaviors[0].name == "my_behavior"
         assert len(goals) == 1
         assert goals[0].name == "my_goal"
 
     def test_empty_config_returns_empty(self) -> None:
         """Empty config returns empty lists."""
-        traits, goals = load_agent_components(None)
-        assert traits == []
+        behaviors, goals = load_agent_components(None)
+        assert behaviors == []
         assert goals == []
 
-        traits, goals = load_agent_components({})
-        assert traits == []
+        behaviors, goals = load_agent_components({})
+        assert behaviors == []
         assert goals == []

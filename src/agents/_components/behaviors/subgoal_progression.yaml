@@ -1,5 +1,5 @@
 name: subgoal_progression
-type: trait
+type: behavior
 version: 1
 description: "Guides agents to track and update subgoals"
 
@@ -18,7 +18,7 @@ inject_into:
 
 prompt_fragment: |
 
-  === SUBGOAL MANAGEMENT (subgoal_progression trait) ===
+  === SUBGOAL MANAGEMENT (subgoal_progression behavior) ===
   Check your working_memory for `current_subgoal`. Ask yourself:
 
   IS MY SUBGOAL COMPLETE?

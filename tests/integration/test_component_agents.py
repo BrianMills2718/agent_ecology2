@@ -44,8 +44,8 @@ class TestAgentWithComponentsLoads:
         # alpha_3 should have components
         assert alpha_3_config is not None, "alpha_3 agent not found"
         assert "components" in alpha_3_config
-        assert "traits" in alpha_3_config["components"]
-        assert "buy_before_build" in alpha_3_config["components"]["traits"]
+        assert "behaviors" in alpha_3_config["components"]
+        assert "buy_before_build" in alpha_3_config["components"]["behaviors"]
 
     def test_agent_without_components_loads(self) -> None:
         """Agent without components loads without error."""
@@ -61,18 +61,18 @@ class TestAgentWithComponentsLoads:
 
 
 @pytest.mark.plans([150])
-class TestTraitChangesPrompt:
-    """Test that trait components actually modify prompt text."""
+class TestBehaviorChangesPrompt:
+    """Test that behavior components actually modify prompt text."""
 
-    def test_trait_changes_prompt(self, tmp_path: Path) -> None:
-        """Trait actually modifies prompt text."""
+    def test_behavior_changes_prompt(self, tmp_path: Path) -> None:
+        """Behavior actually modifies prompt text."""
         # Create a test component
-        traits_dir = tmp_path / "traits"
-        traits_dir.mkdir()
-        (traits_dir / "test_trait.yaml").write_text(
+        behaviors_dir = tmp_path / "behaviors"
+        behaviors_dir.mkdir()
+        (behaviors_dir / "test_behavior.yaml").write_text(
             yaml.dump({
-                "name": "test_trait",
-                "type": "trait",
+                "name": "test_behavior",
+                "type": "behavior",
                 "inject_into": ["observe"],
                 "prompt_fragment": "\nTEST_MARKER: Check the store first!",
             })
@@ -93,9 +93,9 @@ class TestTraitChangesPrompt:
             ]
         }
 
-        # Inject the trait
-        traits = registry.get_traits(["test_trait"])
-        result = inject_components_into_workflow(workflow, traits=traits)
+        # Inject the behavior
+        behaviors = registry.get_behaviors(["test_behavior"])
+        result = inject_components_into_workflow(workflow, behaviors=behaviors)
 
         # Verify the prompt was modified
         assert "TEST_MARKER" in result["steps"][0]["prompt"]
@@ -103,26 +103,26 @@ class TestTraitChangesPrompt:
         # Original content still present
         assert "Look around." in result["steps"][0]["prompt"]
 
-    def test_multiple_traits_all_inject(self, tmp_path: Path) -> None:
-        """Multiple traits all inject into matching steps."""
-        traits_dir = tmp_path / "traits"
-        traits_dir.mkdir()
+    def test_multiple_behaviors_all_inject(self, tmp_path: Path) -> None:
+        """Multiple behaviors all inject into matching steps."""
+        behaviors_dir = tmp_path / "behaviors"
+        behaviors_dir.mkdir()
 
-        (traits_dir / "trait_a.yaml").write_text(
+        (behaviors_dir / "behavior_a.yaml").write_text(
             yaml.dump({
-                "name": "trait_a",
-                "type": "trait",
+                "name": "behavior_a",
+                "type": "behavior",
                 "inject_into": ["ideate"],
-                "prompt_fragment": "\nTRAIT_A_CONTENT",
+                "prompt_fragment": "\nBEHAVIOR_A_CONTENT",
             })
         )
 
-        (traits_dir / "trait_b.yaml").write_text(
+        (behaviors_dir / "behavior_b.yaml").write_text(
             yaml.dump({
-                "name": "trait_b",
-                "type": "trait",
+                "name": "behavior_b",
+                "type": "behavior",
                 "inject_into": ["ideate"],
-                "prompt_fragment": "\nTRAIT_B_CONTENT",
+                "prompt_fragment": "\nBEHAVIOR_B_CONTENT",
             })
         )
 
@@ -139,37 +139,37 @@ class TestTraitChangesPrompt:
             ]
         }
 
-        traits = registry.get_traits(["trait_a", "trait_b"])
-        result = inject_components_into_workflow(workflow, traits=traits)
+        behaviors = registry.get_behaviors(["behavior_a", "behavior_b"])
+        result = inject_components_into_workflow(workflow, behaviors=behaviors)
 
-        # Both traits should be present
+        # Both behaviors should be present
         prompt = result["steps"][0]["prompt"]
-        assert "TRAIT_A_CONTENT" in prompt
-        assert "TRAIT_B_CONTENT" in prompt
+        assert "BEHAVIOR_A_CONTENT" in prompt
+        assert "BEHAVIOR_B_CONTENT" in prompt
 
 
 @pytest.mark.plans([150])
 class TestRealComponentFiles:
     """Test the actual component files in _components directory."""
 
-    def test_buy_before_build_trait_exists(self) -> None:
-        """buy_before_build trait exists and has correct structure."""
+    def test_buy_before_build_behavior_exists(self) -> None:
+        """buy_before_build behavior exists and has correct structure."""
         registry = ComponentRegistry()
         registry.load_all()
 
-        trait = registry.get_trait("buy_before_build")
-        assert trait is not None
-        assert "ideate" in trait.inject_into or "observe" in trait.inject_into
-        assert len(trait.prompt_fragment) > 0
+        behavior = registry.get_behavior("buy_before_build")
+        assert behavior is not None
+        assert "ideate" in behavior.inject_into or "observe" in behavior.inject_into
+        assert len(behavior.prompt_fragment) > 0
 
-    def test_economic_participant_trait_exists(self) -> None:
-        """economic_participant trait exists and has correct structure."""
+    def test_economic_participant_behavior_exists(self) -> None:
+        """economic_participant behavior exists and has correct structure."""
         registry = ComponentRegistry()
         registry.load_all()
 
-        trait = registry.get_trait("economic_participant")
-        assert trait is not None
-        assert len(trait.prompt_fragment) > 0
+        behavior = registry.get_behavior("economic_participant")
+        assert behavior is not None
+        assert len(behavior.prompt_fragment) > 0
 
     def test_facilitate_transactions_goal_exists(self) -> None:
         """facilitate_transactions goal exists and has correct structure."""
@@ -188,12 +188,12 @@ class TestComponentWorkflowIntegration:
     def test_agent_workflow_with_injected_components(self, tmp_path: Path) -> None:
         """Agent workflow uses components when configured."""
         # Create test component
-        traits_dir = tmp_path / "traits"
-        traits_dir.mkdir()
-        (traits_dir / "injected.yaml").write_text(
+        behaviors_dir = tmp_path / "behaviors"
+        behaviors_dir.mkdir()
+        (behaviors_dir / "injected.yaml").write_text(
             yaml.dump({
                 "name": "injected",
-                "type": "trait",
+                "type": "behavior",
                 "inject_into": ["decide"],
                 "prompt_fragment": "\nINJECTED_COMPONENT_TEXT",
             })
@@ -213,8 +213,8 @@ class TestComponentWorkflowIntegration:
             ]
         }
 
-        traits = registry.get_traits(["injected"])
-        modified_workflow = inject_components_into_workflow(workflow_config, traits=traits)
+        behaviors = registry.get_behaviors(["injected"])
+        modified_workflow = inject_components_into_workflow(workflow_config, behaviors=behaviors)
 
         # Create agent with modified workflow
         agent = Agent(

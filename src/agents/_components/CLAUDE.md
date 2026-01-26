@@ -7,7 +7,7 @@ Modular, reusable prompt fragments for composing agent behaviors.
 ```yaml
 # In agent.yaml
 components:
-  traits:
+  behaviors:
     - buy_before_build    # Check market before building
     - economic_participant # Encourage transactions
   goals:
@@ -18,7 +18,7 @@ components:
 
 | Type | Purpose | Location |
 |------|---------|----------|
-| **Traits** | Behavioral modifiers injected into prompts | `traits/` |
+| **Behaviors** | Behavioral modifiers injected into prompts | `behaviors/` |
 | **Phases** | Reusable workflow step definitions | `phases/` |
 | **Goals** | High-level directives that shape behavior | `goals/` |
 
@@ -26,11 +26,11 @@ components:
 
 ```yaml
 name: component_name
-type: trait | phase | goal
+type: behavior | phase | goal
 version: 1
 description: "What this component does"
 
-# Where to inject (for traits)
+# Where to inject (for behaviors)
 inject_into:
   - ideate
   - observe
@@ -64,6 +64,6 @@ requires_context:
 Document experiments with component configurations:
 ```markdown
 ## Setup
-- alpha_3: traits=[buy_before_build, economic_participant]
-- beta_3: traits=[economic_participant] (control)
+- alpha_3: behaviors=[buy_before_build, economic_participant]
+- beta_3: behaviors=[economic_participant] (control)
 ```
