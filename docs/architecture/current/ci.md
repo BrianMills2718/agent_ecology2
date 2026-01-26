@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-19 (Plan #106 - removed duplicate pytest from plans job)
+Last verified: 2026-01-26 (Updated doc_coupling.yaml → relationships.yaml reference)
 
 ---
 
@@ -241,7 +241,7 @@ Jobs that need heavy dependencies use pip caching:
 
 ## Doc-Code Coupling
 
-**Configuration:** `scripts/doc_coupling.yaml` defines source-to-doc mappings:
+**Configuration:** `scripts/relationships.yaml` (unified doc graph) defines source-to-doc mappings:
 ```yaml
 couplings:
   # Strict: CI fails if violated
@@ -259,6 +259,9 @@ couplings:
 **Coupling types:**
 - **Strict** (default): CI fails if source changes without doc update
 - **Soft** (`soft: true`): CI warns but doesn't fail - for reminder couplings
+
+**Weight-aware checks (Plan #218):**
+Use `--weight-aware` flag to respect meta-process weight settings from `meta-process.yaml`.
 
 ---
 

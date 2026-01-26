@@ -45,6 +45,14 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `validate_spec.py` | Validate feature spec YAML format |
 | `validate_code_map.py` | Validate code mapping files |
 
+### Meta-Process Configuration (Plan #218-220)
+
+| Script | Purpose |
+|--------|---------|
+| `meta_process_config.py` | Check/configure meta-process weight level |
+| `symbol_extractor.py` | Extract symbols from Python files (AST-based) |
+| `bootstrap_meta_process.py` | Bootstrap meta-process for existing repos |
+
 ### Inter-CC Messaging
 
 | Script | Purpose |
@@ -150,6 +158,45 @@ python scripts/cleanup_orphaned_worktrees.py --force # Force cleanup (loses unco
 # Or via make:
 make clean-worktrees                         # Report orphans
 make clean-worktrees-auto                    # Auto-cleanup
+```
+
+## Meta-Process Weight (Plan #218)
+
+```bash
+# Check current weight and enabled checks
+python scripts/meta_process_config.py
+
+# Check if a specific check is enabled
+python scripts/meta_process_config.py --check doc_coupling_strict
+
+# List all checks and their minimum weights
+python scripts/meta_process_config.py --list-checks
+```
+
+## Symbol Extraction (Plan #219)
+
+```bash
+# Extract symbols from a file
+python scripts/symbol_extractor.py src/world/world.py
+
+# Validate a specific symbol exists
+python scripts/symbol_extractor.py src/world/world.py --validate World
+
+# Find symbol at a line number
+python scripts/symbol_extractor.py src/world/world.py --line 50
+```
+
+## Bootstrap Meta-Process (Plan #220)
+
+```bash
+# Analyze repo structure
+python scripts/bootstrap_meta_process.py --analyze
+
+# Initialize meta-process files at light weight
+python scripts/bootstrap_meta_process.py --init --weight light
+
+# Check progress toward full adoption
+python scripts/bootstrap_meta_process.py --progress
 ```
 
 ## Configuration
