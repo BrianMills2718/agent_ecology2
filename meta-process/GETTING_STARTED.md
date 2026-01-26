@@ -210,6 +210,8 @@ git commit
 
 **Why?** If you're inside a worktree and it gets deleted (after merge), your shell's working directory becomes invalid.
 
+> For detailed explanation with examples, see [Understanding CWD and Paths](UNDERSTANDING_CWD.md).
+
 ### Claims Prevent Conflicts
 
 Before starting work, you claim it:
