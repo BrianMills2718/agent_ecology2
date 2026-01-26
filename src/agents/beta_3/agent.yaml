@@ -17,6 +17,7 @@ genotype:
 # Modular behaviors injected into workflow prompts
 components:
   behaviors:
+    - bootstrapping         # Concrete first steps for new agents (Plan #225)
     - buy_before_build      # Check market before building
     - economic_participant  # Encourage transactions
     - memory_discipline     # Store insights, not raw actions (Plan #212)

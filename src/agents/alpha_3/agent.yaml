@@ -28,6 +28,7 @@ interface_discovery:
 # Modular behaviors injected into workflow prompts
 components:
   behaviors:
+    - bootstrapping         # Concrete first steps for new agents (Plan #225)
     - buy_before_build      # Check market before building
     - economic_participant  # Encourage transactions
     - memory_discipline     # Store insights, not raw actions (Plan #212)
@@ -266,13 +267,18 @@ workflow:
         === TESTING: Does it work? ===
         Time remaining: {time_remaining} | Artifacts completed: {artifacts_completed}
 
-        Your artifacts: {my_artifacts}
+        Your artifacts (that YOU created): {my_artifacts}
         Last result: {last_action_result}
 
         ## RECENT ACTIONS
         {action_history}
 
         TEST YOUR ARTIFACT:
+        - Only test artifacts YOU created (shown in "Your artifacts" above)
+        - Do NOT invoke your own agent_id ({agent_id}) - you are NOT an executable artifact
+        - If you have no artifacts yet, use noop and move to reflection
+
+        If you have an artifact to test:
         - Invoke it to verify it works
         - If it fails, note the error for reflection
 
