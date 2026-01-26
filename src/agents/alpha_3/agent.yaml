@@ -153,12 +153,9 @@ workflow:
         - Look in your {agent_id}_working_memory artifact
         - You may have cached the interface previously
 
-        After discovering interfaces, cache them to working memory:
-        ```yaml
-        known_interfaces:
-          artifact_name:
-            methods: ["method(arg: type) -> return"]
-        ```
+        After discovering interfaces, cache them to {agent_id}_working_memory:
+        {{"action_type": "write_artifact", "artifact_id": "{agent_id}_working_memory",
+          "content": {{"known_interfaces": {{"artifact_name": {{"methods": ["method(arg) -> result"]}}}}}}}}
 
         Once you have the interface info, proceed to ideating.
       transition_to: "ideating"
@@ -206,7 +203,7 @@ workflow:
         3. Is there a gap in the ecosystem?
 
         If you have an idea worth pursuing, choose an action to research it.
-        If not ready, noop to continue observing.
+        If not ready, read more artifacts or query_kernel to gather information.
       transition_to: "designing"
 
     # Step 3: Design phase - plan the build
@@ -276,7 +273,7 @@ workflow:
         TEST YOUR ARTIFACT:
         - Only test artifacts YOU created (shown in "Your artifacts" above)
         - Do NOT invoke your own agent_id ({agent_id}) - you are NOT an executable artifact
-        - If you have no artifacts yet, use noop and move to reflection
+        - If you have no artifacts yet, go back to implementing to create one
 
         If you have an artifact to test:
         - Invoke it to verify it works
