@@ -76,7 +76,12 @@ workflow:
         Current state: {_current_state}
         Balance: {balance} scrip
 
-        REFLECTION QUESTIONS:
+        *** FIRST ACTION CHECK ***
+        If your "Recent Actions" section is empty or shows only automatic workflow invocations,
+        your FIRST action MUST be query_kernel. Output this EXACT JSON:
+        {{"action_type": "query_kernel", "query_type": "artifacts"}}
+
+        REFLECTION QUESTIONS (if you have taken actions):
         1. Did my last action succeed or fail? Why?
         2. What lesson about integration/strategy should I remember?
         3. Am I making progress toward my strategic goal?
@@ -93,7 +98,7 @@ workflow:
             completed: [list of completed subgoals]
         ```
 
-        If no lesson to record, see GETTING STARTED below for what to do next.
+        If no lesson to record, output query_kernel as shown above.
 
     # Step 1: Load goals from working memory
     - name: load_goals

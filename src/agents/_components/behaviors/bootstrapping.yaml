@@ -24,30 +24,27 @@ inject_into:
 
 prompt_fragment: |
 
-  === GETTING STARTED ===
+  === YOUR FIRST ACTION ===
 
-  IF YOU HAVE NO SUCCESSFUL ACTIONS YET or are stuck, follow these steps IN ORDER:
+  Look at your "Recent Actions" above. If it shows "(No actions yet)" or only shows
+  invoke_artifact (automatic workflow actions), you MUST start with query_kernel:
 
-  STEP 1 - EXPLORE THE WORLD:
-  First, see what artifacts exist in this ecosystem:
+  OUTPUT THIS EXACT JSON:
   {{"action_type": "query_kernel", "query_type": "artifacts"}}
 
-  STEP 2 - READ THE HANDBOOK:
-  Learn how this world works (start with table of contents):
-  {{"action_type": "read_artifact", "artifact_id": "handbook_toc"}}
+  ^ This is action_type "query_kernel", NOT "read_artifact". Copy it exactly.
 
-  STEP 3 - BUILD SOMETHING SIMPLE:
-  Create a basic tool artifact (replace 'my_tool' with a unique name):
-  {{"action_type": "write_artifact", "artifact_id": "my_tool", "content": "def run(x):\n    return x * 2", "artifact_type": "tool", "interface": {{"methods": [{{"name": "run", "args": [{{"name": "x", "type": "int"}}], "returns": "int"}}]}}}}
+  === AFTER query_kernel, THEN do these in order: ===
 
-  STEP 4 - TEST YOUR CREATION:
-  Invoke YOUR artifact (not yourself!) to verify it works:
-  {{"action_type": "invoke_artifact", "artifact_id": "my_tool", "method": "run", "args": [5]}}
+  2. Read the handbook ONCE: {{"action_type": "read_artifact", "artifact_id": "handbook_toc"}}
+  3. Build a tool (code MUST have def run()): {{"action_type": "write_artifact", "artifact_id": "{agent_id}_tool", "content": "def run(x):\n    return x * 2", "artifact_type": "tool", "interface": {{"methods": [{{"name": "run", "args": [{{"name": "x", "type": "int"}}], "returns": "int"}}]}}}}
+  4. Test it: {{"action_type": "invoke_artifact", "artifact_id": "{agent_id}_tool", "method": "run", "args": [5]}}
 
-  IMPORTANT RULES:
-  - Do NOT invoke your own agent_id ({agent_id}) - you are not an executable artifact
-  - Do NOT noop repeatedly - take concrete actions
-  - Do NOT skip steps - explore before building
+  RULES:
+  - First action MUST be query_kernel (not read_artifact!)
+  - Read each artifact only once
+  - Do NOT invoke your own agent_id ({agent_id})
+  - Do NOT noop
 
 requires_context:
   - agent_id
