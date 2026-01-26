@@ -358,6 +358,8 @@ class Agent:
             else wm_config.get("max_size_bytes", 2000)
         )
         self._working_memory: dict[str, Any] | None = None
+        # Plan #222: Persisted workflow state machine data
+        self._workflow_state: dict[str, Any] = {}
 
         # Initialize LLM provider with agent metadata for logging
         extra_metadata: dict[str, Any] = {"agent_id": self.agent_id}
@@ -1070,6 +1072,11 @@ class Agent:
             self._starting_balance = float(balance)
         revenue = float(balance) - self._starting_balance
         success_rate_str = f"{self.successful_actions}/{self.actions_taken}" if self.actions_taken > 0 else "0/0"
+        # Plan #222: Numeric success rate for format strings like {success_rate_numeric:.0%}
+        success_rate_numeric = (
+            self.successful_actions / self.actions_taken
+            if self.actions_taken > 0 else 0.0
+        )
 
         # Include last action context if available
         last_action_info: str = ""
@@ -2303,6 +2310,11 @@ Your response should include:
             f"{self.successful_actions}/{self.actions_taken} ({self.successful_actions/self.actions_taken*100:.0f}%)"
             if self.actions_taken > 0 else "0/0"
         )
+        # Plan #222: Numeric success rate for format strings like {success_rate_numeric:.0%}
+        success_rate_numeric = (
+            self.successful_actions / self.actions_taken
+            if self.actions_taken > 0 else 0.0
+        )
 
         # Plan #160: Economic context for workflow prompts
         # Help agent understand if they're solo or have trading partners
@@ -2337,6 +2349,7 @@ Your response should include:
             "successful_actions": self.successful_actions,
             "failed_actions": self.failed_actions,
             "success_rate": success_rate,
+            "success_rate_numeric": success_rate_numeric,  # Plan #222: For {:.0%} format strings
             "revenue_earned": revenue,
             "artifacts_completed": self.artifacts_completed,
             # Plan #160: Economic context

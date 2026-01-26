@@ -58,7 +58,7 @@ workflow:
         You are {agent_id}. Pause and honestly evaluate your performance.
 
         Metrics:
-        - Success rate: {success_rate:.0%}
+        - Success rate: {success_rate_numeric:.0%}
         - Recent failures: {failure_count}
         - Stuck in loop: {stuck_in_loop}
         - Should pivot: {should_pivot}
@@ -104,7 +104,7 @@ workflow:
         - Tick: {tick}
         - Balance: {balance} scrip
         - My artifacts: {my_artifacts}
-        - Success rate: {success_rate:.0%}
+        - Success rate: {success_rate_numeric:.0%}
         - Can afford to create: {can_create}
 
         Your strategy:
