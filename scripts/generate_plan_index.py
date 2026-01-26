@@ -81,7 +81,8 @@ def parse_plan_file(path: Path) -> Optional[dict]:
         for text_pattern, emoji in TEXT_STATUS_PATTERNS.items():
             if text_pattern in status_lower:
                 status_emoji = emoji
-                status_text = status_line  # Keep the original text
+                # Normalize to canonical form (e.g., "complete" -> "Complete")
+                status_text = STATUS_PATTERNS.get(emoji, status_line)
                 break
 
     # Extract priority
