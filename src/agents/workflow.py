@@ -140,7 +140,8 @@ class WorkflowStep:
         name: Unique name for this step (used for context storage)
         step_type: Type of step (code, llm, or transition)
         code: Python code to execute (for code steps)
-        prompt: Prompt text or template (for llm and transition steps)
+        prompt: Prompt text, template, or InvokeSpec dict (for llm and transition steps)
+                Plan #222 Phase 3: Can be an InvokeSpec dict to generate prompts dynamically
         prompt_artifact_id: Reference to prompt artifact (Plan #146 Phase 3)
         run_if: Optional condition - step only runs if this evaluates to True
         on_failure: Error handling policy for this step
@@ -155,7 +156,7 @@ class WorkflowStep:
     name: str
     step_type: StepType
     code: str | None = None
-    prompt: str | None = None
+    prompt: str | dict[str, Any] | None = None  # Plan #222: Can be InvokeSpec dict
     # Plan #146 Phase 3: Reference to prompt artifact instead of inline prompt
     prompt_artifact_id: str | None = None
     run_if: str | None = None
@@ -173,7 +174,7 @@ class WorkflowStep:
         """Validate step configuration."""
         if self.step_type == StepType.CODE and not self.code:
             raise ValueError(f"Code step '{self.name}' requires 'code' field")
-        # LLM steps need either inline prompt or prompt_artifact_id (Plan #146)
+        # LLM steps need either inline prompt, prompt_artifact_id, or InvokeSpec (Plan #222)
         if self.step_type == StepType.LLM and not self.prompt and not self.prompt_artifact_id:
             raise ValueError(f"LLM step '{self.name}' requires 'prompt' or 'prompt_artifact_id'")
         # Transition steps can use default prompt, so prompt is optional
@@ -490,6 +491,81 @@ class WorkflowRunner:
             fallback=spec.fallback,
         )
 
+    def _resolve_prompt(
+        self,
+        step: WorkflowStep,
+        context: dict[str, Any],
+    ) -> str | None:
+        """Resolve the prompt for an LLM step from various sources.
+
+        Plan #222 Phase 3: Supports dynamic prompt generation via artifact invocation.
+
+        Prompt resolution order:
+        1. If step.prompt is an InvokeSpec dict, invoke artifact to get prompt
+        2. If step.prompt_artifact_id is set, read prompt from artifact
+        3. If step.prompt is a string, use it directly
+
+        Args:
+            step: WorkflowStep with prompt configuration
+            context: Workflow context for interpolation and invoke
+
+        Returns:
+            Resolved prompt string, or None if resolution fails
+        """
+        # Case 1: Prompt is an InvokeSpec dict (Plan #222 Phase 3)
+        if isinstance(step.prompt, dict) and InvokeSpec.is_invoke_spec(step.prompt):
+            spec = InvokeSpec.from_dict(step.prompt)
+            result = self._resolve_invoke_spec(spec, context)
+            if result is not None and isinstance(result, str):
+                logger.debug(f"Step '{step.name}' prompt resolved via InvokeSpec")
+                return result
+            elif result is not None:
+                # Artifact returned non-string, try to convert
+                logger.warning(
+                    f"Step '{step.name}' InvokeSpec returned non-string: {type(result)}, "
+                    "converting to string"
+                )
+                return str(result)
+            else:
+                # Fallback was None
+                logger.warning(f"Step '{step.name}' InvokeSpec returned None")
+                return None
+
+        # Case 2: Prompt artifact reference (Plan #146 Phase 3)
+        if step.prompt_artifact_id:
+            if not self.world:
+                logger.warning(
+                    f"Step '{step.name}' has prompt_artifact_id but no world reference"
+                )
+                # Fall through to step.prompt as fallback
+            else:
+                try:
+                    result = self.world.read_artifact(
+                        requester_id=context.get("agent_id", "workflow"),
+                        artifact_id=step.prompt_artifact_id,
+                    )
+                    # read_artifact returns dict directly or {"success": False, ...}
+                    if result.get("success", True) is not False:
+                        # Artifact content is the prompt
+                        prompt_content = result.get("content", "")
+                        if isinstance(prompt_content, str):
+                            logger.debug(
+                                f"Step '{step.name}' prompt loaded from artifact "
+                                f"'{step.prompt_artifact_id}'"
+                            )
+                            return prompt_content
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to load prompt artifact '{step.prompt_artifact_id}': {e}"
+                    )
+                    # Fall through to step.prompt as fallback
+
+        # Case 3: Static prompt string
+        if isinstance(step.prompt, str):
+            return step.prompt
+
+        return None
+
     def execute_step(
         self,
         step: WorkflowStep,
@@ -595,21 +671,24 @@ class WorkflowRunner:
     ) -> dict[str, Any]:
         """Execute an LLM step.
 
-        Interpolates context into prompt, calls LLM, stores response.
+        Plan #222 Phase 3: Supports dynamic prompts via artifact invocation.
+        Resolves prompt from multiple sources, interpolates context, calls LLM.
         """
-        if not step.prompt:
-            return {"success": False, "error": "LLM step missing prompt"}
-
         if not self.llm_provider:
             return {"success": False, "error": "No LLM provider configured"}
 
+        # Plan #222 Phase 3: Resolve prompt from various sources
+        raw_prompt = self._resolve_prompt(step, context)
+        if not raw_prompt:
+            return {"success": False, "error": "LLM step missing prompt (resolution failed)"}
+
         # Interpolate context into prompt
         try:
-            prompt = step.prompt.format(**context)
+            prompt = raw_prompt.format(**context)
         except KeyError as e:
             # Missing context variable - use prompt as-is
             logger.debug(f"Prompt interpolation missing key {e}, using raw prompt")
-            prompt = step.prompt
+            prompt = raw_prompt
 
         # Execute with retry logic
         attempts = 0
@@ -679,8 +758,11 @@ class WorkflowRunner:
         Returns:
             Result dict with decision, reasoning, and state_transition info
         """
+        # Resolve prompt (may be InvokeSpec, artifact reference, or static string)
+        resolved_prompt = self._resolve_prompt(step, context)
+
         # Evaluate transition using LLM
-        eval_result = self.evaluate_transition(context, step.prompt)
+        eval_result = self.evaluate_transition(context, resolved_prompt)
 
         if not eval_result.get("success"):
             return {
