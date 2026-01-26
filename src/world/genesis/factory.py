@@ -37,6 +37,7 @@ from .decision_artifacts import (
     GenesisRandomDecider,
     GenesisBalanceChecker,
     GenesisErrorDetector,
+    GenesisLoopDetector,
 )
 from .event_bus import GenesisEventBus
 from ..genesis_contracts import GENESIS_CONTRACTS
@@ -285,6 +286,10 @@ def create_genesis_artifacts(
 
     genesis_error_detector = GenesisErrorDetector(genesis_config=cfg)
     artifacts[genesis_error_detector.id] = genesis_error_detector
+
+    # Plan #226: Loop detector for automated workflow pivoting
+    genesis_loop_detector = GenesisLoopDetector(genesis_config=cfg)
+    artifacts[genesis_loop_detector.id] = genesis_loop_detector
 
     # Add event bus (GAP-AGENT-009: Event subscription service)
     # Provides convenient subscribe/unsubscribe API wrapping trigger artifacts

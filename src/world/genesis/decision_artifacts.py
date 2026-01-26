@@ -519,3 +519,142 @@ class GenesisErrorDetector(GenesisArtifact):
                 }
             ]
         }
+
+
+class GenesisLoopDetector(GenesisArtifact):
+    """Loop detection for automated workflow pivoting (Plan #226).
+
+    Detects when an agent is stuck repeating the same action, enabling
+    automated state machine transitions to break loops.
+
+    Methods:
+    - check_loop: Check if recent actions show a loop pattern
+    """
+
+    def __init__(self, genesis_config: GenesisConfig | None = None) -> None:
+        """Initialize the loop detector."""
+        super().__init__(
+            artifact_id="genesis_loop_detector",
+            description="Detect action loops for automated workflow pivoting (Plan #226)"
+        )
+
+        self.register_method(
+            name="check_loop",
+            handler=self._check_loop,
+            cost=0,
+            description="Check if agent is stuck in a loop"
+        )
+
+    def _check_loop(self, args: list[Any], invoker_id: str) -> dict[str, Any]:
+        """Check if recent actions show a loop pattern.
+
+        Args format: [action_history, threshold] where:
+        - action_history: String of numbered action history
+        - threshold: How many repeated actions to consider a loop (default: 5)
+
+        Returns:
+            {"in_loop": bool, "repeated_action": str|None, "count": int, "threshold": int}
+        """
+        if not args:
+            return {
+                "success": True,
+                "in_loop": False,
+                "reason": "no action history provided"
+            }
+
+        action_history = str(args[0]) if args[0] else ""
+        threshold = int(args[1]) if len(args) > 1 else 5
+
+        # Parse action history lines
+        # Format: "N. action_type → STATUS: message" or "N. action_type(target) → STATUS"
+        lines = [line.strip() for line in action_history.split("\n") if line.strip()]
+
+        if len(lines) < threshold:
+            return {
+                "success": True,
+                "in_loop": False,
+                "count": len(lines),
+                "threshold": threshold,
+                "reason": f"not enough actions ({len(lines)} < {threshold})"
+            }
+
+        # Extract action types from recent lines
+        recent = lines[-threshold:]
+        action_types: list[str] = []
+
+        for line in recent:
+            # Parse "N. action_type → STATUS" format
+            if ". " in line:
+                rest = line.split(". ", 1)[1]
+                # Get action type (before → or space)
+                if " → " in rest:
+                    action = rest.split(" → ")[0].strip()
+                elif " " in rest:
+                    action = rest.split(" ")[0].strip()
+                else:
+                    action = rest.strip()
+                # Remove parenthetical args like (artifact_id)
+                if "(" in action:
+                    action = action.split("(")[0]
+                action_types.append(action)
+
+        if not action_types:
+            return {
+                "success": True,
+                "in_loop": False,
+                "count": 0,
+                "threshold": threshold,
+                "reason": "could not parse action types"
+            }
+
+        # Count most common action in recent window
+        from collections import Counter
+        counts = Counter(action_types)
+        most_common_action, count = counts.most_common(1)[0]
+
+        # Check if any action type appears threshold times
+        if count >= threshold:
+            return {
+                "success": True,
+                "in_loop": True,
+                "repeated_action": most_common_action,
+                "count": count,
+                "threshold": threshold,
+            }
+
+        return {
+            "success": True,
+            "in_loop": False,
+            "most_common": most_common_action,
+            "count": count,
+            "threshold": threshold,
+        }
+
+    def get_interface(self) -> dict[str, Any]:
+        """Get interface schema (Plan #114)."""
+        return {
+            "description": self.description,
+            "dataType": "service",
+            "tools": [
+                {
+                    "name": "check_loop",
+                    "description": self.methods["check_loop"].description,
+                    "cost": 0,
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "action_history": {
+                                "type": "string",
+                                "description": "String of numbered action history"
+                            },
+                            "threshold": {
+                                "type": "integer",
+                                "description": "How many repeated actions to consider a loop",
+                                "default": 5
+                            }
+                        },
+                        "required": ["action_history"]
+                    }
+                }
+            ]
+        }
