@@ -37,7 +37,7 @@ prompt_fragment: |
 
   BEFORE PIVOTING - STORE THE LESSON:
   When escaping a loop, ALWAYS store what you learned first:
-  {"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add", "args": ["{agent_id}_longterm", "LESSON: [what failed] because [why]", {}]}
+  {{"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add", "args": ["{agent_id}_longterm", "LESSON: [what failed] because [why]", {{}}]}}
 
   Example lessons to store:
   - "LESSON: Checking escrow status repeatedly doesn't help - need to set authorized_writer first"

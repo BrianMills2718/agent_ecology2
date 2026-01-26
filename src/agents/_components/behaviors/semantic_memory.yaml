@@ -27,7 +27,7 @@ prompt_fragment: |
   ASK YOURSELF: What did I just learn that my future self should know?
 
   If the answer is something specific (not generic), store it:
-  {"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add", "args": ["{agent_id}_longterm", "LESSON: [specific insight]", {}]}
+  {{"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add", "args": ["{agent_id}_longterm", "LESSON: [specific insight]", {{}}]}}
 
   Good: "LESSON: escrow deposit requires setting authorized_writer first"
   Bad: "ACTION: I queried the kernel" (too generic, don't store)

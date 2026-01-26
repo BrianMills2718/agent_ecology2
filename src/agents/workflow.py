@@ -321,6 +321,7 @@ class WorkflowRunner:
         """
         step_results: list[dict[str, Any]] = []
         last_action: dict[str, Any] | None = None
+        last_reasoning: str = ""  # Plan #222: Track reasoning from LLM steps
 
         # Plan #222: Clear invoke cache at start of each workflow run
         self._invoke_cache = {}
@@ -352,10 +353,12 @@ class WorkflowRunner:
                     "state": state_machine.current_state if state_machine else None,
                 }
 
-            # Track action from LLM steps
+            # Track action and reasoning from LLM steps
             if result.get("success") and step.step_type == StepType.LLM:
                 if "action" in result:
                     last_action = result["action"]
+                if "reasoning" in result:
+                    last_reasoning = result["reasoning"]
 
         # Update context with final state
         if state_machine:
@@ -364,6 +367,7 @@ class WorkflowRunner:
         return {
             "success": True,
             "action": last_action,
+            "reasoning": last_reasoning,  # Plan #222: Include reasoning from LLM step
             "step_results": step_results,
             "state": state_machine.current_state if state_machine else None,
         }
@@ -782,7 +786,28 @@ class WorkflowRunner:
                     )
                 elif isinstance(result, dict):
                     # Artifact may return structured response
-                    decision = str(result.get("decision", result.get("state", "continue")))
+                    # Plan #222: Support multiple decision field names and boolean values
+                    # Common patterns: decision, state, above_threshold, should_continue
+                    # Note: Results from world.invoke_artifact wrap actual data in 'data' field
+                    data = result.get("data", result)  # Unwrap if nested
+                    if isinstance(data, dict):
+                        raw_decision = data.get(
+                            "decision",
+                            data.get(
+                                "state",
+                                data.get(
+                                    "above_threshold",  # genesis_error_detector
+                                    data.get("should_continue", "continue")
+                                )
+                            )
+                        )
+                    else:
+                        raw_decision = "continue"
+                    # Convert bool to lowercase string for transition_map matching
+                    if isinstance(raw_decision, bool):
+                        decision = "true" if raw_decision else "false"
+                    else:
+                        decision = str(raw_decision)
                     reasoning = str(result.get("reasoning", f"From {spec.artifact_id}"))
                     next_focus = str(result.get("next_focus", ""))
                 else:
@@ -920,19 +945,33 @@ class WorkflowRunner:
 
         # Build prompt from template
         template = prompt_template or DEFAULT_TRANSITION_PROMPT
+
+        # Plan #222: Merge context with defaults for all commonly-used transition variables
+        # This ensures transition prompts can use any standard variable without KeyError
+        defaults = {
+            "time_remaining": "(unknown)",
+            "success_rate": "0/0",
+            "revenue_earned": 0.0,
+            "action_history": "(No actions yet)",
+            "last_action_result": "(No previous action)",
+            "economic_context": "(Economic context unavailable)",
+            "balance": 0,
+            "agent_id": context.get("agent_id", "unknown"),
+            "tick": 0,
+            "progress_percent": "0%",
+            "artifacts": "(none)",
+            "my_artifacts": "(none)",
+            "artifacts_completed": 0,
+            "recent_actions": "(none)",
+        }
+        safe_context = {**defaults, **context}
+
         try:
-            prompt = template.format(**context)
-        except KeyError as e:
-            logger.debug(f"Transition prompt missing key {e}, using defaults")
-            # Fill in missing keys with defaults
-            safe_context = {
-                "time_remaining": context.get("time_remaining", "(unknown)"),
-                "success_rate": context.get("success_rate", "0/0"),
-                "revenue_earned": context.get("revenue_earned", 0.0),
-                "action_history": context.get("action_history", "(No actions yet)"),
-                "last_action_result": context.get("last_action_result", "(No previous action)"),
-            }
             prompt = template.format(**safe_context)
+        except KeyError as e:
+            logger.warning(f"Transition prompt missing key {e} even after defaults")
+            # Last resort: use fallback evaluation
+            return self._fallback_transition_evaluation(context)
 
         try:
             from .models import TransitionEvaluationResponse
