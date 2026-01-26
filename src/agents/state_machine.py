@@ -3,6 +3,11 @@
 Implements state machine behavior for agent workflows, allowing agents to
 have explicit states with validated transitions.
 
+Plan #222: Supports artifact-invoked transition conditions via InvokeSpec.
+Conditions can now be either:
+- String expressions (evaluated with safe_eval)
+- InvokeSpec dicts (invoke artifact and use result as condition)
+
 Usage:
     from src.agents.state_machine import WorkflowStateMachine, StateConfig
 
@@ -11,8 +16,13 @@ Usage:
         initial_state="idle",
         transitions=[
             {"from": "idle", "to": "planning"},
-            {"from": "planning", "to": "executing"},
-            {"from": "executing", "to": "idle"},
+            {"from": "planning", "to": "executing", "condition": "balance > 50"},
+            # Plan #222: Artifact-invoked condition
+            {"from": "executing", "to": "idle", "condition": {
+                "invoke": "my_decider",
+                "method": "should_stop",
+                "fallback": True
+            }},
         ]
     )
 
@@ -25,11 +35,15 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 from src.agents.safe_eval import try_safe_eval_condition
 
 logger = logging.getLogger(__name__)
+
+# Type alias for invoke resolver callback (Plan #222)
+# Takes (artifact_id, method, args, context) and returns result or fallback
+InvokeResolver = Callable[[str, str, list[Any], dict[str, Any], Any], Any]
 
 
 @dataclass
@@ -39,12 +53,14 @@ class StateTransition:
     Attributes:
         from_state: Source state (or "*" for any state)
         to_state: Target state
-        condition: Optional condition expression (evaluated with context)
+        condition: Optional condition - either:
+            - String expression (evaluated with safe_eval)
+            - Dict with InvokeSpec format (Plan #222): {"invoke": ..., "method": ..., "fallback": ...}
     """
 
     from_state: str
     to_state: str
-    condition: str | None = None
+    condition: str | dict[str, Any] | None = None
 
 
 @dataclass
@@ -111,25 +127,31 @@ class WorkflowStateMachine:
     The state machine validates transitions and tracks state history.
     State is stored in the workflow context for persistence.
 
+    Plan #222: Supports artifact-invoked transition conditions via invoke_resolver.
+
     Attributes:
         config: State machine configuration
         current_state: Current state name
         history: List of past states (most recent last)
+        invoke_resolver: Optional callback to resolve InvokeSpec conditions
     """
 
     def __init__(
         self,
         config: StateConfig,
         initial_context: dict[str, Any] | None = None,
+        invoke_resolver: InvokeResolver | None = None,
     ) -> None:
         """Initialize state machine.
 
         Args:
             config: State machine configuration
             initial_context: Optional context to restore state from
+            invoke_resolver: Optional callback to resolve InvokeSpec conditions (Plan #222)
         """
         self.config = config
         self.history: list[str] = []
+        self.invoke_resolver = invoke_resolver
 
         # Restore state from context if available
         if initial_context and "_state_machine" in initial_context:
@@ -166,9 +188,10 @@ class WorkflowStateMachine:
             if transition.from_state != "*" and transition.from_state != self.current_state:
                 continue
 
-            # Check condition if present using safe expression evaluator (Plan #123)
+            # Check condition if present
             if transition.condition and context:
-                if not try_safe_eval_condition(transition.condition, context, default=False):
+                condition_result = self._evaluate_condition(transition.condition, context)
+                if not condition_result:
                     continue
 
             return True
@@ -179,6 +202,73 @@ class WorkflowStateMachine:
             return True
 
         return False
+
+    def _evaluate_condition(
+        self,
+        condition: str | dict[str, Any],
+        context: dict[str, Any],
+    ) -> bool:
+        """Evaluate a transition condition.
+
+        Plan #222: Supports both string expressions and InvokeSpec dicts.
+
+        Args:
+            condition: Either a string expression or InvokeSpec dict
+            context: Context for evaluation
+
+        Returns:
+            Boolean result of condition evaluation
+        """
+        # Plan #222: Handle InvokeSpec condition (dict with "invoke" key)
+        if isinstance(condition, dict) and "invoke" in condition:
+            return self._evaluate_invoke_condition(condition, context)
+
+        # String condition: use safe expression evaluator (Plan #123)
+        if isinstance(condition, str):
+            return try_safe_eval_condition(condition, context, default=False)
+
+        # Unknown condition type - default to False
+        logger.warning(f"Unknown condition type: {type(condition)}")
+        return False
+
+    def _evaluate_invoke_condition(
+        self,
+        spec: dict[str, Any],
+        context: dict[str, Any],
+    ) -> bool:
+        """Evaluate an InvokeSpec condition by calling artifact.
+
+        Plan #222: Invokes artifact and interprets result as boolean.
+
+        Args:
+            spec: InvokeSpec dict with "invoke", "method", "args", "fallback"
+            context: Context to pass to artifact
+
+        Returns:
+            Boolean result from artifact or fallback
+        """
+        artifact_id = spec.get("invoke", "")
+        method = spec.get("method", "")
+        args = spec.get("args", [])
+        fallback = spec.get("fallback", False)
+
+        if not self.invoke_resolver:
+            logger.debug(
+                f"No invoke_resolver - using fallback {fallback} for {artifact_id}.{method}"
+            )
+            return bool(fallback)
+
+        try:
+            result = self.invoke_resolver(artifact_id, method, args, context, fallback)
+            logger.debug(
+                f"Invoke condition {artifact_id}.{method} returned: {result}"
+            )
+            return bool(result)
+        except Exception as e:
+            logger.warning(
+                f"Invoke condition {artifact_id}.{method} failed: {e}, using fallback {fallback}"
+            )
+            return bool(fallback)
 
     def transition_to(
         self,

@@ -10,11 +10,16 @@ Extended with state machine support (Plan #82) for VSM-aligned agents:
 - Transitions validate state changes
 - Steps can be conditional on current state
 
+Plan #222: Artifact-aware workflow engine
+- Workflow conditions can invoke artifacts for dynamic decisions
+- Supports InvokeSpec for transition conditions
+- Enables cognitive self-modification via artifacts
+
 Usage:
     from src.agents.workflow import WorkflowRunner, WorkflowConfig
 
     config = WorkflowConfig.from_dict(agent_workflow_config)
-    runner = WorkflowRunner(llm_provider=agent.llm)
+    runner = WorkflowRunner(llm_provider=agent.llm, world=world)
     result = runner.run_workflow(config, context={"agent_id": "alpha", ...})
 
     if result["success"]:
@@ -26,12 +31,13 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING
 
 from src.agents.safe_eval import SafeExpressionError, safe_eval_condition
 
 if TYPE_CHECKING:
     from llm_provider import LLMProvider
+    from src.world.world import World
 
 from .state_machine import StateConfig, WorkflowStateMachine
 
@@ -81,6 +87,49 @@ class ErrorPolicy(str, Enum):
     RETRY = "retry"  # Retry the step
     SKIP = "skip"  # Skip and continue workflow
     FAIL = "fail"  # Stop workflow execution
+
+
+@dataclass
+class InvokeSpec:
+    """Specification for invoking an artifact during workflow execution.
+
+    Plan #222: Enables workflow decisions to be delegated to artifacts.
+    When a workflow condition or prompt uses InvokeSpec, the workflow runner
+    invokes the specified artifact and uses its return value.
+
+    Attributes:
+        artifact_id: ID of the artifact to invoke
+        method: Method name to call on the artifact
+        args: Additional arguments to pass (context is always passed)
+        fallback: Value to use if invocation fails (REQUIRED for resilience)
+    """
+
+    artifact_id: str
+    method: str
+    args: list[Any] = field(default_factory=list)
+    fallback: Any = None  # Required per R2 in Plan #222
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "InvokeSpec":
+        """Create InvokeSpec from dictionary (parsed YAML).
+
+        Expected format:
+            invoke: "artifact_id"
+            method: "method_name"
+            args: []  # optional
+            fallback: true  # required
+        """
+        return cls(
+            artifact_id=data["invoke"],
+            method=data["method"],
+            args=data.get("args", []),
+            fallback=data.get("fallback"),
+        )
+
+    @classmethod
+    def is_invoke_spec(cls, data: Any) -> bool:
+        """Check if data represents an InvokeSpec (dict with 'invoke' key)."""
+        return isinstance(data, dict) and "invoke" in data
 
 
 @dataclass
@@ -223,17 +272,28 @@ class WorkflowRunner:
     Code steps execute Python expressions with the context as local variables.
     LLM steps call the LLM with an interpolated prompt and store results.
 
+    Plan #222: Supports artifact invocation for workflow decisions via world reference.
+
     Attributes:
         llm_provider: Optional LLM provider for LLM steps
+        world: Optional World reference for artifact invocation
     """
 
-    def __init__(self, llm_provider: "LLMProvider | None" = None) -> None:
+    def __init__(
+        self,
+        llm_provider: "LLMProvider | None" = None,
+        world: "World | None" = None,
+    ) -> None:
         """Initialize workflow runner.
 
         Args:
             llm_provider: LLM provider for executing LLM steps
+            world: World reference for artifact invocation (Plan #222)
         """
         self.llm_provider = llm_provider
+        self.world = world
+        # Per-run cache for invoke results (Plan #222)
+        self._invoke_cache: dict[str, Any] = {}
 
     def run_workflow(
         self,
@@ -257,10 +317,18 @@ class WorkflowRunner:
         step_results: list[dict[str, Any]] = []
         last_action: dict[str, Any] | None = None
 
+        # Plan #222: Clear invoke cache at start of each workflow run
+        self._invoke_cache = {}
+
         # Initialize state machine if configured
         state_machine: WorkflowStateMachine | None = None
         if config.state_machine:
-            state_machine = WorkflowStateMachine(config.state_machine, context)
+            # Plan #222: Pass invoke resolver for artifact-based conditions
+            state_machine = WorkflowStateMachine(
+                config.state_machine,
+                context,
+                invoke_resolver=self._create_invoke_resolver(context),
+            )
             # Add current state to context for step access
             context["_current_state"] = state_machine.current_state
             context.update(state_machine.to_context())
@@ -294,6 +362,133 @@ class WorkflowRunner:
             "step_results": step_results,
             "state": state_machine.current_state if state_machine else None,
         }
+
+    def _create_invoke_resolver(
+        self,
+        base_context: dict[str, Any],
+    ) -> "Callable[[str, str, list[Any], dict[str, Any], Any], Any]":
+        """Create an invoke resolver function for the state machine.
+
+        Plan #222: Returns a callable that resolves InvokeSpec conditions by
+        calling artifacts and caching results per-run.
+
+        Args:
+            base_context: Base context with agent_id and other info
+
+        Returns:
+            Resolver function (artifact_id, method, args, context, fallback) -> result
+        """
+        def resolver(
+            artifact_id: str,
+            method: str,
+            args: list[Any],
+            context: dict[str, Any],
+            fallback: Any,
+        ) -> Any:
+            return self._resolve_invoke(artifact_id, method, args, context, fallback)
+
+        return resolver
+
+    def _resolve_invoke(
+        self,
+        artifact_id: str,
+        method: str,
+        args: list[Any],
+        context: dict[str, Any],
+        fallback: Any,
+    ) -> Any:
+        """Invoke an artifact and return result, with caching.
+
+        Plan #222: Central method for artifact invocation in workflows.
+        Results are cached per-run to avoid repeated invocations.
+
+        Args:
+            artifact_id: ID of the artifact to invoke
+            method: Method name to call
+            args: Additional arguments (context is passed automatically)
+            context: Workflow context
+            fallback: Value to return if invocation fails
+
+        Returns:
+            Result from artifact or fallback on error
+        """
+        # Check cache first (per-run caching as per Plan #222 design decision)
+        cache_key = f"{artifact_id}:{method}:{str(args)}"
+        if cache_key in self._invoke_cache:
+            logger.debug(f"Invoke cache hit: {cache_key}")
+            return self._invoke_cache[cache_key]
+
+        # Need world reference to invoke artifacts
+        if not self.world:
+            logger.debug(
+                f"No world reference for invoke {artifact_id}.{method}, using fallback"
+            )
+            return fallback
+
+        # Get agent_id from context for the invoker
+        agent_id = context.get("agent_id", "unknown")
+
+        try:
+            # Build context to pass to artifact (Plan #222 standard context)
+            invoke_context = {
+                "agent_id": agent_id,
+                "current_state": context.get("_current_state", ""),
+                "balance": context.get("balance", 0),
+                "success_rate": context.get("success_rate", 0.0),
+                "recent_actions": context.get("action_history", ""),
+                "last_result": context.get("last_action_result", {}),
+            }
+
+            # Call artifact via world
+            result = self.world.invoke_artifact(
+                invoker_id=agent_id,
+                artifact_id=artifact_id,
+                method=method,
+                args=args + [invoke_context],  # Pass context as last arg
+            )
+
+            # Extract result value
+            if hasattr(result, "success") and hasattr(result, "data"):
+                # ActionResult-like object
+                value = result.data if result.success else fallback
+            else:
+                # Raw result
+                value = result
+
+            # Cache and return
+            self._invoke_cache[cache_key] = value
+            logger.debug(f"Invoke {artifact_id}.{method} returned: {value}")
+            return value
+
+        except Exception as e:
+            logger.warning(
+                f"Invoke {artifact_id}.{method} failed: {e}, using fallback {fallback}"
+            )
+            return fallback
+
+    def _resolve_invoke_spec(
+        self,
+        spec: InvokeSpec,
+        context: dict[str, Any],
+    ) -> Any:
+        """Resolve an InvokeSpec by invoking the artifact.
+
+        Plan #222: Convenience wrapper around _resolve_invoke.
+
+        Args:
+            spec: InvokeSpec with artifact_id, method, args, fallback
+            context: Workflow context
+
+        Returns:
+            Result from artifact or fallback
+        """
+        return self._resolve_invoke(
+            artifact_id=spec.artifact_id,
+            method=spec.method,
+            args=spec.args,
+            context=context,
+            fallback=spec.fallback,
+        )
 
     def execute_step(
         self,
