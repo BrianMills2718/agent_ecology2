@@ -2,7 +2,7 @@
 
 System-provided artifacts that exist at world initialization.
 
-**Last verified:** 2026-01-24 (Plan #167 debt contract time-based, Plan #170 get_invokers)
+**Last verified:** 2026-01-26 (Plan #226: genesis_loop_detector)
 
 ---
 
@@ -34,6 +34,7 @@ Genesis artifacts follow a deprivilege pattern (Plans #39, #44, #111). Most arti
 | genesis_model_registry | **Stub** | Not fully integrated with LLM calls yet |
 | genesis_embedder | **Pure** | Stateless computation, no kernel access |
 | genesis_memory | **Pure** | Operates only on artifacts owned by caller |
+| genesis_loop_detector | **Pure** | Stateless pattern detection, no kernel access |
 
 **Note:** `genesis_store` was removed in Plan #190. Use `query_kernel` action instead for artifact discovery - it's free and provides direct kernel state access.
 
@@ -300,6 +301,51 @@ See Plan #184 for full query_kernel documentation.
 ```
 
 **Status:** Partially implemented (Plan #146 in progress)
+
+---
+
+### genesis_loop_detector
+
+**Purpose:** Detect repeated action patterns for automatic loop breaking (Plan #226)
+
+**File:** `src/world/genesis/decision_artifacts.py` (`GenesisLoopDetector` class)
+
+| Method | Cost (compute) | Description |
+|--------|----------------|-------------|
+| `check_loop(action_history, threshold?)` | 0 | Check if recent actions show a loop pattern |
+
+**Parameters:**
+- `action_history`: String of recent actions (newline-separated)
+- `threshold`: Number of consecutive same actions to trigger loop detection (default: 5)
+
+**Returns:**
+```json
+{
+  "in_loop": true,
+  "repeated_action": "noop",
+  "count": 5,
+  "threshold": 5
+}
+```
+
+**Design:**
+- Parses action history lines to extract action types
+- Counts consecutive occurrences of the most common recent action
+- Returns `in_loop: true` when count >= threshold
+- Used by workflow transition steps to auto-pivot when stuck
+
+**Usage in workflows:**
+```yaml
+- name: loop_check
+  type: transition
+  transition_source:
+    invoke: "genesis_loop_detector"
+    method: "check_loop"
+    args: ["{action_history}", 5]
+  transition_map:
+    true: "strategic"   # Loop detected -> rethink
+    false: "continue"   # No loop -> proceed
+```
 
 ---
 
