@@ -52,23 +52,19 @@ workflow:
     states: ["observing", "discovering", "ideating", "designing", "implementing", "testing", "reflecting", "reflecting_llm", "shipping"]
     initial_state: "observing"
     transitions:
-      # IRR pattern: observe -> discover -> act
+      # Build cycle: All transitions are unconditional since they're driven by
+      # step transition_to fields. Conditions were causing issues because
+      # variables were evaluated before compute_metrics set them.
       - from: "observing"
         to: "discovering"
-        condition: "needs_interface_info"
       - from: "observing"
         to: "ideating"
-        condition: "has_context"
       - from: "discovering"
         to: "ideating"
-        condition: "has_evidence"
-      # Build cycle: ideate -> design -> implement -> test
       - from: "ideating"
         to: "designing"
-        condition: "has_idea"
       - from: "designing"
         to: "implementing"
-        condition: "has_design"
       - from: "implementing"
         to: "testing"
       - from: "testing"
@@ -92,10 +88,10 @@ workflow:
       # Shipping state returns to observing for next opportunity
       - from: "shipping"
         to: "observing"
-      # Allow pivots from any state (fallback)
+      # Allow unconditional fallback to observing from any state
+      # (for emergency pivots controlled by LLM decisions)
       - from: "*"
         to: "observing"
-        condition: "should_pivot"
 
   steps:
     # Step 0: Observing phase - gather context and evidence (IRR pattern)
@@ -170,16 +166,19 @@ workflow:
     - name: compute_metrics
       type: code
       code: |
-        recent_failures = context.get('recent_failures', [])
-        recent_successes = context.get('recent_successes', [])
+        # Context vars are available directly as local variables
+        # Use locals().get() for safe access with defaults
+        _locals = locals()
+        recent_failures = _locals.get('recent_failures', [])
+        recent_successes = _locals.get('recent_successes', [])
         failure_count = len(recent_failures) if recent_failures else 0
         success_count = len(recent_successes) if recent_successes else 0
         total_actions = failure_count + success_count
-        success_rate = success_count / max(total_actions, 1)
+        computed_success_rate = success_count / max(total_actions, 1)
         stuck_in_loop = failure_count >= 3
-        should_pivot = success_rate < 0.3 or stuck_in_loop
-        has_idea = balance >= 20
-        has_design = balance >= 15
+        should_pivot = computed_success_rate < 0.3 or stuck_in_loop
+        has_idea = _locals.get('balance', 0) >= 20
+        has_design = _locals.get('balance', 0) >= 15
         has_context = True  # After observing, we have context
         has_evidence = True  # After discovering, we have evidence
         needs_interface_info = False  # Set by agent during observe
