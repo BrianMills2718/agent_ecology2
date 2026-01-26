@@ -1,3 +1,11 @@
+# ============================================================================
+# DEPRECATED - This file is legacy. Use relationships.yaml instead.
+# ============================================================================
+# sync_governance.py reads from relationships.yaml when it exists.
+# This file is kept for backwards compatibility only.
+# See: Plan #215 (Unified Documentation Graph)
+# ============================================================================
+#
 # Governance Configuration
 #
 # Maps source files to the ADRs that govern them.

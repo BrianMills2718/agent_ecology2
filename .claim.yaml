@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-216-bidirectional-coupling
-task: Implement bidirectional coupling checks
-claimed_at: '2026-01-25T22:57:10Z'
-session_id: 03f1fd1a-f3fc-42e9-a2af-fda4748905c7
-plan: 216
+cc_id: plan-215-unified_documentation_graph
+task: Complete Plan 215 - add deprecation notices
+claimed_at: '2026-01-26T10:15:23Z'
+session_id: 380d2a54-af6a-4601-81dd-2b67f9cf8f9a
+plan: 215

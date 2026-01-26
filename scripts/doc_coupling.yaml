@@ -1,3 +1,11 @@
+# ============================================================================
+# DEPRECATED - This file is legacy. Use relationships.yaml instead.
+# ============================================================================
+# check_doc_coupling.py reads from relationships.yaml when it exists.
+# This file is kept for backwards compatibility only.
+# See: Plan #215 (Unified Documentation Graph)
+# ============================================================================
+#
 # Doc-Code Coupling Map
 #
 # Defines which docs must be reviewed when source files change.
