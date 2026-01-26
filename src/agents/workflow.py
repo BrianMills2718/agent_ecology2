@@ -151,6 +151,7 @@ class WorkflowStep:
         transition_map: For transition steps - maps decisions to target states
         transition_mode: How to determine next state - "llm", "condition", or "auto" (Plan #146)
         transition_prompt_artifact_id: Prompt artifact for LLM transitions (Plan #146)
+        transition_source: InvokeSpec for artifact-based transition decisions (Plan #222 Phase 4)
     """
 
     name: str
@@ -169,6 +170,8 @@ class WorkflowStep:
     # Plan #146 Phase 3: LLM-controlled transitions
     transition_mode: str | None = None  # "llm" | "condition" | "auto"
     transition_prompt_artifact_id: str | None = None  # Prompt artifact for LLM transitions
+    # Plan #222 Phase 4: Artifact-based transition decisions
+    transition_source: dict[str, Any] | None = None  # InvokeSpec for artifact-based decisions
 
     def __post_init__(self) -> None:
         """Validate step configuration."""
@@ -255,6 +258,7 @@ class WorkflowConfig:
                 transition_map=transition_map,
                 transition_mode=transition_mode,  # Plan #146
                 transition_prompt_artifact_id=step_dict.get("transition_prompt_artifact_id"),  # Plan #146
+                transition_source=step_dict.get("transition_source"),  # Plan #222 Phase 4
             )
             steps.append(step)
 
@@ -748,6 +752,7 @@ class WorkflowRunner:
         """Execute a transition evaluation step.
 
         Plan #157 Phase 4: Uses LLM to decide whether to continue, pivot, or ship.
+        Plan #222 Phase 4: Can use artifact invocation instead of LLM for decisions.
         Then maps the decision to a state transition via transition_map.
 
         Args:
@@ -758,21 +763,56 @@ class WorkflowRunner:
         Returns:
             Result dict with decision, reasoning, and state_transition info
         """
-        # Resolve prompt (may be InvokeSpec, artifact reference, or static string)
-        resolved_prompt = self._resolve_prompt(step, context)
+        decision: str
+        reasoning: str = ""
+        next_focus: str = ""
 
-        # Evaluate transition using LLM
-        eval_result = self.evaluate_transition(context, resolved_prompt)
+        # Plan #222 Phase 4: Check for artifact-based transition
+        if step.transition_source and InvokeSpec.is_invoke_spec(step.transition_source):
+            spec = InvokeSpec.from_dict(step.transition_source)
+            result = self._resolve_invoke_spec(spec, context)
 
-        if not eval_result.get("success"):
-            return {
-                "success": False,
-                "error": eval_result.get("error", "Transition evaluation failed"),
-            }
+            if result is not None:
+                # Artifact returned a decision
+                if isinstance(result, str):
+                    decision = result
+                    reasoning = f"Artifact {spec.artifact_id}.{spec.method} decided: {decision}"
+                    logger.debug(
+                        f"Transition step '{step.name}' decision from artifact: {decision}"
+                    )
+                elif isinstance(result, dict):
+                    # Artifact may return structured response
+                    decision = str(result.get("decision", result.get("state", "continue")))
+                    reasoning = str(result.get("reasoning", f"From {spec.artifact_id}"))
+                    next_focus = str(result.get("next_focus", ""))
+                else:
+                    decision = str(result)
+                    reasoning = f"Artifact {spec.artifact_id}.{spec.method} returned: {result}"
+            else:
+                # Fallback was None or invocation failed
+                logger.warning(
+                    f"Transition step '{step.name}' artifact invocation failed, "
+                    f"using fallback: {spec.fallback}"
+                )
+                decision = str(spec.fallback) if spec.fallback else "continue"
+                reasoning = f"Fallback (artifact {spec.artifact_id} unavailable)"
+        else:
+            # Standard LLM-based transition evaluation
+            # Resolve prompt (may be InvokeSpec, artifact reference, or static string)
+            resolved_prompt = self._resolve_prompt(step, context)
 
-        decision = eval_result.get("decision", "continue")
-        reasoning = eval_result.get("reasoning", "")
-        next_focus = eval_result.get("next_focus", "")
+            # Evaluate transition using LLM
+            eval_result = self.evaluate_transition(context, resolved_prompt)
+
+            if not eval_result.get("success"):
+                return {
+                    "success": False,
+                    "error": eval_result.get("error", "Transition evaluation failed"),
+                }
+
+            decision = eval_result.get("decision", "continue")
+            reasoning = eval_result.get("reasoning", "")
+            next_focus = eval_result.get("next_focus", "")
 
         # Store evaluation result in context
         context[step.name] = {
