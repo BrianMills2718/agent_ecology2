@@ -1,5 +1,5 @@
 name: economic_participant
-type: trait
+type: behavior
 version: 1
 description: "Encourages active participation in the economy through transactions"
 
@@ -15,7 +15,7 @@ inject_into:
 
 prompt_fragment: |
 
-  === ECONOMIC PARTICIPATION (economic_participant trait) ===
+  === ECONOMIC PARTICIPATION (economic_participant behavior) ===
   You are part of an ECONOMY. Value comes from TRANSACTIONS, not isolation.
 
   TRANSACTION MINDSET:

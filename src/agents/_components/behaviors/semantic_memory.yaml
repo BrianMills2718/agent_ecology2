@@ -1,5 +1,5 @@
 name: semantic_memory
-type: trait
+type: behavior
 version: 2
 description: "Guides agents to use semantic memory for long-term learning"
 

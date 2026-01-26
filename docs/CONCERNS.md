@@ -21,7 +21,6 @@ Potential issues to monitor. Not bugs, not plans - just things that might become
 
 | Concern | Risk | Watch For |
 |---------|------|-----------|
-| **Terminology debt** | Current term "traits" is confusing (not standard usage) | New contributors confused, documentation inconsistency |
 | **Schema rigidity** | Fixed prompt composition (step + injections appended) limits patterns | Agents wanting to prepend, insert, or conditionally compose prompts |
 | **Weak model performance** | Metacognitive prompts work for strong models but weak models still struggle | gemini-2.0-flash agents not storing lessons despite prompt improvements |
 
@@ -30,7 +29,6 @@ Potential issues to monitor. Not bugs, not plans - just things that might become
 | Concern | Risk | Watch For |
 |---------|------|-----------|
 | **Agent-specific code (~30%)** | LLM access, scheduling, workflow execution still privileged | Difficulty adding new "agent-like" patterns, code duplication |
-| **Genesis artifact sprawl** | Many genesis artifacts, unclear which are truly needed | Agents confused about which genesis artifact to use, overlapping functionality |
 
 ---
 
@@ -38,7 +36,8 @@ Potential issues to monitor. Not bugs, not plans - just things that might become
 
 | Concern | Resolution | Date |
 |---------|------------|------|
-| *None yet* | | |
+| **Terminology debt** | Renamed "traits" to "behaviors" across codebase: 1 directory, 6 behavior YAMLs, 3 agent YAMLs, component_loader.py, agent.py, tests. Term now accurately describes prompt modifiers. | 2026-01-25 |
+| **Genesis artifact sprawl** | Plan #199 removed genesis_store (redundant with query_kernel). Remaining artifacts (ledger, mint, escrow, memory, event_log, model_registry, voting, debt_contract) serve distinct purposes. | 2026-01-26 |
 
 ---
 
