@@ -201,55 +201,18 @@ invoke_context = {
 
 ---
 
-## Open Questions
+## Design Decisions (Approved)
 
-### Q1: World Reference
-**Issue:** WorkflowRunner currently doesn't have access to world for artifact invocation.
-**Options:**
-- A) Pass world to WorkflowRunner constructor
-- B) Pass invoke function as callback
-- C) Agent resolves invokes before passing to runner
-**Recommendation:** A) Pass world reference - simplest
+| Question | Decision | Rationale |
+|----------|----------|-----------|
+| **World reference** | Pass to WorkflowRunner constructor | Simplest option |
+| **Circular dependencies** | Pass minimal context, document constraints | Decision artifacts should be simple |
+| **Cost model** | Agent pays (same as actions) | Maintains economic incentives |
+| **Caching** | Per-workflow-run | Balances freshness with efficiency |
+| **Observability** | Log to thought capture | Unified tracing |
+| **Error handling** | Use fallback | Resilience over strictness |
 
-### Q2: Circular Dependencies
-**Issue:** What if decision artifact tries to invoke the agent? Or needs workflow state?
-**Options:**
-- A) Disallow - decision artifacts cannot invoke agents
-- B) Allow but document risk
-- C) Pass "safe" context that breaks cycles
-**Recommendation:** C) Pass minimal context, document that decision artifacts should be simple
-
-### Q3: Cost Model
-**Issue:** Who pays for artifact invocations in workflow decisions?
-**Options:**
-- A) Agent pays (same as actions)
-- B) Free (workflow overhead)
-- C) Configurable per-invoke
-**Recommendation:** A) Agent pays - maintains economic incentives
-
-### Q4: Caching
-**Issue:** If same artifact invoked multiple times per workflow run, cache results?
-**Options:**
-- A) No caching - always fresh
-- B) Cache per-workflow-run
-- C) Configurable TTL
-**Recommendation:** B) Cache per-run - balances freshness with efficiency
-
-### Q5: Observability
-**Issue:** How to trace artifact invocations within workflow execution?
-**Options:**
-- A) Log to agent's thought capture
-- B) Separate workflow trace
-- C) Both
-**Recommendation:** A) Include in thought capture for unified tracing
-
-### Q6: Error Handling
-**Issue:** What if decision artifact returns invalid value (not in transition_map)?
-**Options:**
-- A) Use fallback
-- B) Raise error, halt workflow
-- C) Retry once, then fallback
-**Recommendation:** A) Use fallback - resilience over strictness
+**Concerns tracked in:** `docs/CONCERNS.md` (circular deps, stale cache, observability noise)
 
 ---
 
