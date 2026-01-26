@@ -40,15 +40,13 @@ workflow:
     states: ["planning", "building", "deploying", "maintaining", "maintaining_llm", "deprecating"]
     initial_state: "planning"
     transitions:
+      # Unconditional transitions driven by workflow step transition_to fields
       - from: "planning"
         to: "building"
-        condition: "has_project_plan"
       - from: "building"
         to: "deploying"
-        condition: "build_complete"
       - from: "deploying"
         to: "maintaining"
-        condition: "deployment_verified"
       # Plan #222: Artifact-aware random exploration
       - from: "maintaining"
         to: "planning"      # Random chance to explore new projects
@@ -63,10 +61,9 @@ workflow:
         to: "deprecating"   # deprecate
       - from: "deprecating"
         to: "planning"
-      # Investment check
+      # Allow unconditional fallback to planning from any state
       - from: "*"
-        to: "maintaining"
-        condition: "has_infrastructure and balance < 20"
+        to: "planning"
 
   steps:
     # Step 0: Learning reflection - review last action and record lessons
@@ -102,6 +99,11 @@ workflow:
     - name: assess_project
       type: code
       code: |
+        # Access context variables safely using locals()
+        _locals = locals()
+        my_artifacts = _locals.get('my_artifacts', [])
+        balance = _locals.get('balance', 0)
+        tick = _locals.get('tick', 0)
         my_executables = [a for a in my_artifacts if 'executable' in str(a).lower()]
         has_infrastructure = len(my_executables) > 0
         has_project_plan = balance >= 30
