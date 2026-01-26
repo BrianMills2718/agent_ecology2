@@ -29,6 +29,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -402,16 +403,29 @@ def inject_components_into_workflow(
     return workflow_dict
 
 
-# Global registry singleton
+# Global registry singleton with thread-safe initialization (Plan #213 fix)
 _registry: ComponentRegistry | None = None
+_registry_lock = threading.Lock()
 
 
 def get_registry() -> ComponentRegistry:
-    """Get the global component registry (lazy-loaded)."""
+    """Get the global component registry (lazy-loaded, thread-safe).
+
+    Uses double-checked locking pattern to avoid lock contention after
+    initialization while ensuring thread-safety during first access.
+    """
     global _registry
-    if _registry is None:
-        _registry = ComponentRegistry()
-        _registry.load_all()
+    # Fast path: registry already initialized
+    if _registry is not None:
+        return _registry
+
+    # Slow path: need to initialize with lock
+    with _registry_lock:
+        # Double-check after acquiring lock (another thread may have initialized)
+        if _registry is None:
+            registry = ComponentRegistry()
+            registry.load_all()
+            _registry = registry  # Assign only after fully loaded
     return _registry
 
 
