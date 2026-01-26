@@ -67,7 +67,8 @@ fi
 
 # Block direct calls to finish_pr.py (must use make finish)
 # This ensures proper workflow and uses main's scripts
-if echo "$COMMAND" | grep -qE '(^|&&|;|\|)\s*python[3]?\s+scripts/finish_pr\.py'; then
+# Pattern matches any path ending in finish_pr.py (catches absolute paths too)
+if echo "$COMMAND" | grep -qE '(^|&&|;|\|)\s*python[3]?\s+[^ ]*finish_pr\.py'; then
     BRANCH=$(echo "$COMMAND" | grep -oE '\-\-branch\s+\S+' | sed 's/--branch\s*//' || echo "BRANCH")
     PR_NUM=$(echo "$COMMAND" | grep -oE '\-\-pr\s+[0-9]+' | grep -oE '[0-9]+' || echo "N")
 
@@ -84,7 +85,8 @@ fi
 # Block direct calls to merge_pr.py (must use make merge or make finish)
 # This script cleans up worktrees after merge, which can break shell CWD
 # Also ensures we use main's version of the script, not a stale worktree copy
-if echo "$COMMAND" | grep -qE '(^|&&|;|\|)\s*python[3]?\s+(scripts/)?merge_pr\.py'; then
+# Pattern matches any path ending in merge_pr.py (catches absolute paths too)
+if echo "$COMMAND" | grep -qE '(^|&&|;|\|)\s*python[3]?\s+[^ ]*merge_pr\.py'; then
     PR_NUM=$(echo "$COMMAND" | grep -oE '[0-9]+' | head -1 || echo "N")
 
     echo "BLOCKED: Direct script call is not allowed" >&2
