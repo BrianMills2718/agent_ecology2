@@ -33,6 +33,11 @@ from .model_registry import GenesisModelRegistry
 from .prompt_library import GenesisPromptLibrary
 from .embedder import GenesisEmbedder
 from .memory import GenesisMemory
+from .decision_artifacts import (
+    GenesisRandomDecider,
+    GenesisBalanceChecker,
+    GenesisErrorDetector,
+)
 from ..genesis_contracts import GENESIS_CONTRACTS
 
 
@@ -265,6 +270,20 @@ def create_genesis_artifacts(
     # Provides reusable prompt templates for agent behavior patterns
     genesis_prompt_library = GenesisPromptLibrary(genesis_config=cfg)
     artifacts[genesis_prompt_library.id] = genesis_prompt_library
+
+    # Add decision artifacts (Plan #222 R5: Genesis Decision Artifacts)
+    # Simple decision-making for artifact-aware workflows
+    genesis_random_decider = GenesisRandomDecider(genesis_config=cfg)
+    artifacts[genesis_random_decider.id] = genesis_random_decider
+
+    genesis_balance_checker = GenesisBalanceChecker(
+        ledger=ledger,
+        genesis_config=cfg
+    )
+    artifacts[genesis_balance_checker.id] = genesis_balance_checker
+
+    genesis_error_detector = GenesisErrorDetector(genesis_config=cfg)
+    artifacts[genesis_error_detector.id] = genesis_error_detector
 
     # Add MCP artifacts if any are enabled
     from ..mcp_bridge import create_mcp_artifacts
