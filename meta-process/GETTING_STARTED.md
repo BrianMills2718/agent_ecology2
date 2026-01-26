@@ -289,6 +289,8 @@ git config core.hooksPath
 git config core.hooksPath hooks
 ```
 
+> For complete hook documentation, see [Hooks Overview](hooks/README.md).
+
 ---
 
 ## Next Steps
