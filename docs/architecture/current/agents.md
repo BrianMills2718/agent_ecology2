@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-25 (Plan #146: Unified Artifact Intelligence)
+**Last verified:** 2026-01-26 (Plan #226: Agent Learning Fixes)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -253,7 +253,21 @@ working_memory:
 |--------|---------|
 | `_extract_working_memory(content)` | Extract from agent artifact content |
 | `_format_working_memory()` | Format for prompt injection with truncation |
+| `refresh_working_memory()` | Reload working memory from artifact store after LLM writes (Plan #226) |
 | `build_prompt()` | Injects working memory if enabled |
+
+### Workflow Context Variables (Plan #226)
+
+When workflows execute, the following working memory variables are available in step context:
+
+| Variable | Source | Purpose |
+|----------|--------|---------|
+| `working_memory` | `agent._working_memory` | Full working memory dict |
+| `strategic_goal` | `working_memory.get("strategic_goal")` | Current high-level goal |
+| `current_subgoal` | `working_memory.get("current_subgoal")` | Current tactical subgoal |
+| `subgoal_progress` | `working_memory.get("subgoal_progress")` | Progress tracking dict |
+
+**Auto-refresh:** After each LLM step completes, `WorkflowRunner` calls `refresh_working_memory()` and updates the context. This ensures goals persist across workflow steps even when the LLM writes to the agent's working memory artifact.
 
 ### Design Philosophy
 
