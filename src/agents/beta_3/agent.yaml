@@ -38,7 +38,7 @@ rag:
 # Three levels of planning granularity
 workflow:
   state_machine:
-    states: ["strategic", "tactical", "operational", "reviewing", "reviewing_llm"]
+    states: ["strategic", "tactical", "operational", "reviewing", "reviewing_balance", "reviewing_llm"]
     initial_state: "strategic"
     transitions:
       # Unconditional transitions driven by workflow step transition_to fields
@@ -48,11 +48,16 @@ workflow:
         to: "operational"
       - from: "operational"
         to: "reviewing"
+      # Plan #226: Loop detection before balance check
+      - from: "reviewing"
+        to: "strategic"           # Loop detected -> force rethink
+      - from: "reviewing"
+        to: "reviewing_balance"   # No loop -> check balance
       # Plan #222: Artifact-aware balance check before LLM decision
-      - from: "reviewing"
-        to: "strategic"  # If balance < 20, auto-rethink strategy
-      - from: "reviewing"
-        to: "reviewing_llm"  # If balance OK, let LLM decide
+      - from: "reviewing_balance"
+        to: "strategic"           # If balance < 20, auto-rethink strategy
+      - from: "reviewing_balance"
+        to: "reviewing_llm"       # If balance OK, let LLM decide
       # LLM-informed transitions from reviewing_llm
       - from: "reviewing_llm"
         to: "operational"  # continue
@@ -214,11 +219,25 @@ workflow:
 
         If you learned something, update your working_memory artifact.
 
-    # Step 6a: Balance check (Plan #222 - Artifact-Aware Workflow)
+    # Step 6a: Loop detection (Plan #226 - Break repetitive patterns)
+    # If stuck in a loop, force strategic rethink
+    - name: loop_check
+      type: transition
+      in_state: "reviewing"
+      transition_source:
+        invoke: "genesis_loop_detector"
+        method: "check_loop"
+        args: ["{action_history}", 5]
+        fallback: "continue"  # If check fails, proceed to balance check
+      transition_map:
+        true: "strategic"           # Loop detected -> force rethink
+        false: "reviewing_balance"  # No loop -> check balance
+
+    # Step 6b: Balance check (Plan #222 - Artifact-Aware Workflow)
     # If balance is critically low, go directly to strategic rethinking
     - name: balance_check
       type: transition
-      in_state: "reviewing"
+      in_state: "reviewing_balance"
       transition_source:
         invoke: "genesis_balance_checker"
         method: "check"
@@ -228,7 +247,7 @@ workflow:
         true: "reviewing_llm"   # Balance OK, let LLM decide
         false: "strategic"      # Balance low, auto-rethink strategy
 
-    # Step 6b: Strategic transition - LLM-informed state change (Plan #211)
+    # Step 6c: Strategic transition - LLM-informed state change (Plan #211)
     - name: strategic_transition
       type: transition
       in_state: "reviewing_llm"

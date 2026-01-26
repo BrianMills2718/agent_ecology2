@@ -438,6 +438,19 @@ class WorkflowRunner:
         agent_id = context.get("agent_id", "unknown")
 
         try:
+            # Plan #226: Interpolate template variables in args (e.g., "{action_history}")
+            interpolated_args: list[Any] = []
+            for arg in args:
+                if isinstance(arg, str) and "{" in arg and "}" in arg:
+                    # Attempt template interpolation from context
+                    try:
+                        interpolated_args.append(arg.format(**context))
+                    except KeyError:
+                        # Variable not in context, keep original
+                        interpolated_args.append(arg)
+                else:
+                    interpolated_args.append(arg)
+
             # Build context to pass to artifact (Plan #222 standard context)
             invoke_context = {
                 "agent_id": agent_id,
@@ -453,7 +466,7 @@ class WorkflowRunner:
                 invoker_id=agent_id,
                 artifact_id=artifact_id,
                 method=method,
-                args=args + [invoke_context],  # Pass context as last arg
+                args=interpolated_args + [invoke_context],  # Pass context as last arg
             )
 
             # Extract result value
