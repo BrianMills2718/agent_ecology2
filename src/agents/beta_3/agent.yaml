@@ -37,7 +37,7 @@ rag:
 # Three levels of planning granularity
 workflow:
   state_machine:
-    states: ["strategic", "tactical", "operational", "reviewing"]
+    states: ["strategic", "tactical", "operational", "reviewing", "reviewing_llm"]
     initial_state: "strategic"
     transitions:
       - from: "strategic"
@@ -48,11 +48,18 @@ workflow:
         condition: "has_subgoal"
       - from: "operational"
         to: "reviewing"
+      # Plan #222: Artifact-aware balance check before LLM decision
       - from: "reviewing"
-        to: "strategic"
-        condition: "needs_strategic_review"
+        to: "strategic"  # If balance < 20, auto-rethink strategy
       - from: "reviewing"
-        to: "tactical"
+        to: "reviewing_llm"  # If balance OK, let LLM decide
+      # LLM-informed transitions from reviewing_llm
+      - from: "reviewing_llm"
+        to: "operational"  # continue
+      - from: "reviewing_llm"
+        to: "tactical"     # pivot
+      - from: "reviewing_llm"
+        to: "strategic"    # rethink
       # Periodic strategic reviews
       - from: "*"
         to: "strategic"
@@ -205,10 +212,24 @@ workflow:
 
         If you learned something, update your working_memory artifact.
 
-    # Step 6: Strategic transition - LLM-informed state change (Plan #211)
-    - name: strategic_transition
+    # Step 6a: Balance check (Plan #222 - Artifact-Aware Workflow)
+    # If balance is critically low, go directly to strategic rethinking
+    - name: balance_check
       type: transition
       in_state: "reviewing"
+      transition_source:
+        invoke: "genesis_balance_checker"
+        method: "check"
+        args: [{threshold: 20}]
+        fallback: "continue"  # If check fails, proceed to LLM
+      transition_map:
+        true: "reviewing_llm"   # Balance OK, let LLM decide
+        false: "strategic"      # Balance low, auto-rethink strategy
+
+    # Step 6b: Strategic transition - LLM-informed state change (Plan #211)
+    - name: strategic_transition
+      type: transition
+      in_state: "reviewing_llm"
       prompt: |
         === DECISION: Continue, Pivot, or Rethink? ===
         Time remaining: {time_remaining} | Balance: {balance} | Success rate: {success_rate}
