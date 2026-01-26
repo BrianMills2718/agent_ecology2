@@ -1088,3 +1088,194 @@ class TestInvokeSpec:
 
         assert result == "computed"
         mock_world.invoke_artifact.assert_called_once()
+
+
+# Plan #222 Phase 3: Dynamic Prompt Tests
+
+
+class TestDynamicPrompts:
+    """Tests for dynamic prompt resolution (Plan #222 Phase 3)."""
+
+    def test_resolve_prompt_static_string(self) -> None:
+        """Static string prompt is returned as-is."""
+        from src.agents.workflow import WorkflowRunner, WorkflowStep, StepType
+
+        runner = WorkflowRunner(llm_provider=None)
+        step = WorkflowStep(
+            name="test_step",
+            step_type=StepType.LLM,
+            prompt="This is a static prompt",
+        )
+
+        result = runner._resolve_prompt(step, {"agent_id": "test"})
+
+        assert result == "This is a static prompt"
+
+    def test_resolve_prompt_invoke_spec(self) -> None:
+        """InvokeSpec dict invokes artifact to get prompt."""
+        from unittest.mock import MagicMock
+        from src.agents.workflow import WorkflowRunner, WorkflowStep, StepType
+
+        # mock-ok: Testing workflow logic without real world/artifacts
+        mock_world = MagicMock()
+        mock_world.invoke_artifact.return_value = MagicMock(
+            success=True, data="Dynamic prompt from artifact"
+        )
+
+        runner = WorkflowRunner(llm_provider=None, world=mock_world)
+        step = WorkflowStep(
+            name="test_step",
+            step_type=StepType.LLM,
+            prompt={
+                "invoke": "prompt_generator",
+                "method": "get_prompt",
+                "fallback": "Fallback prompt",
+            },
+        )
+
+        result = runner._resolve_prompt(step, {"agent_id": "test"})
+
+        assert result == "Dynamic prompt from artifact"
+        mock_world.invoke_artifact.assert_called_once()
+
+    def test_resolve_prompt_invoke_spec_fallback(self) -> None:
+        """InvokeSpec fallback used when invocation fails."""
+        from unittest.mock import MagicMock
+        from src.agents.workflow import WorkflowRunner, WorkflowStep, StepType
+
+        # mock-ok: Testing workflow logic without real world/artifacts
+        mock_world = MagicMock()
+        mock_world.invoke_artifact.side_effect = Exception("Artifact not found")
+
+        runner = WorkflowRunner(llm_provider=None, world=mock_world)
+        step = WorkflowStep(
+            name="test_step",
+            step_type=StepType.LLM,
+            prompt={
+                "invoke": "missing_artifact",
+                "method": "get_prompt",
+                "fallback": "Fallback prompt",
+            },
+        )
+
+        result = runner._resolve_prompt(step, {"agent_id": "test"})
+
+        assert result == "Fallback prompt"
+
+    def test_resolve_prompt_artifact_id(self) -> None:
+        """prompt_artifact_id loads prompt from artifact content."""
+        from unittest.mock import MagicMock
+        from src.agents.workflow import WorkflowRunner, WorkflowStep, StepType
+
+        # mock-ok: Testing workflow logic without real world/artifacts
+        mock_world = MagicMock()
+        # World.read_artifact returns a dict directly (not an object with .success/.data)
+        mock_world.read_artifact.return_value = {"content": "Prompt from artifact storage"}
+
+        runner = WorkflowRunner(llm_provider=None, world=mock_world)
+        step = WorkflowStep(
+            name="test_step",
+            step_type=StepType.LLM,
+            prompt=None,
+            prompt_artifact_id="stored_prompt_artifact",
+        )
+
+        result = runner._resolve_prompt(step, {"agent_id": "test"})
+
+        assert result == "Prompt from artifact storage"
+        mock_world.read_artifact.assert_called_once_with(
+            requester_id="test",
+            artifact_id="stored_prompt_artifact",
+        )
+
+    def test_resolve_prompt_artifact_id_fallback_to_prompt(self) -> None:
+        """Falls back to step.prompt if artifact read fails."""
+        from unittest.mock import MagicMock
+        from src.agents.workflow import WorkflowRunner, WorkflowStep, StepType
+
+        # mock-ok: Testing workflow logic without real world/artifacts
+        mock_world = MagicMock()
+        # World.read_artifact returns {"success": False, ...} on failure
+        mock_world.read_artifact.return_value = {"success": False, "error": "Not found"}
+
+        runner = WorkflowRunner(llm_provider=None, world=mock_world)
+        step = WorkflowStep(
+            name="test_step",
+            step_type=StepType.LLM,
+            prompt="Static fallback prompt",
+            prompt_artifact_id="missing_artifact",
+        )
+
+        result = runner._resolve_prompt(step, {"agent_id": "test"})
+
+        # Falls back to static prompt
+        assert result == "Static fallback prompt"
+
+    def test_resolve_prompt_no_world_uses_static(self) -> None:
+        """Without world reference, falls back to static prompt."""
+        from src.agents.workflow import WorkflowRunner, WorkflowStep, StepType
+
+        runner = WorkflowRunner(llm_provider=None, world=None)
+        step = WorkflowStep(
+            name="test_step",
+            step_type=StepType.LLM,
+            prompt="Static prompt",
+            prompt_artifact_id="some_artifact",  # Can't be used without world
+        )
+
+        result = runner._resolve_prompt(step, {"agent_id": "test"})
+
+        assert result == "Static prompt"
+
+    def test_workflow_step_accepts_invoke_spec_prompt(self) -> None:
+        """WorkflowStep can be created with InvokeSpec dict as prompt."""
+        from src.agents.workflow import WorkflowStep, StepType
+
+        step = WorkflowStep(
+            name="dynamic_step",
+            step_type=StepType.LLM,
+            prompt={
+                "invoke": "prompt_generator",
+                "method": "generate",
+                "fallback": "Default prompt",
+            },
+        )
+
+        assert isinstance(step.prompt, dict)
+        assert step.prompt["invoke"] == "prompt_generator"
+
+    def test_execute_llm_step_with_dynamic_prompt(self) -> None:
+        """LLM step execution uses resolved dynamic prompt."""
+        from unittest.mock import MagicMock
+        from src.agents.workflow import WorkflowRunner, WorkflowStep, StepType
+
+        # mock-ok: Testing workflow logic without real LLM/world
+        mock_world = MagicMock()
+        mock_world.invoke_artifact.return_value = MagicMock(
+            success=True, data="Dynamic prompt: {agent_id} should act"
+        )
+
+        mock_llm = MagicMock()
+        mock_response = MagicMock()
+        mock_response.reasoning = "Test reasoning"
+        mock_response.action = MagicMock()
+        mock_response.action.model_dump.return_value = {"type": "wait"}
+        mock_llm.generate.return_value = mock_response
+
+        runner = WorkflowRunner(llm_provider=mock_llm, world=mock_world)
+        step = WorkflowStep(
+            name="test_step",
+            step_type=StepType.LLM,
+            prompt={
+                "invoke": "prompt_generator",
+                "method": "get_prompt",
+                "fallback": "Fallback",
+            },
+        )
+
+        result = runner._execute_llm_step(step, {"agent_id": "alpha"})
+
+        assert result["success"] is True
+        # Verify LLM was called with interpolated prompt
+        call_args = mock_llm.generate.call_args
+        assert "Dynamic prompt: alpha should act" in call_args[0][0]
