@@ -245,7 +245,7 @@ Master index of all gaps and their implementation plans.
 | 223 | [Plan 223: Dashboard Entity Cross-Linking](223_dashboard_entity_crosslinks.md) | Medium | ✅ Complete | Dashboard usability |
 | 224 | [Dashboard Run Management](224_dashboard_run_management.md) | High | 📋 Planned | Dashboard usability for historical analysis |
 | 225 | [Agent Bootstrapping Guidance](225_agent_bootstrapping.md) | High | ✅ Complete | Agent learning, productive simulations |
-| 226 | [Agent Learning & Strategic Behavior Fixes](226_agent_learning_fixes.md) | Critical | 🚧 In Progress | Effective agent learning, strategic planning, reduced noop rates |
+| 226 | [Agent Learning & Strategic Behavior Fixes](226_agent_learning_fixes.md) | Critical | ✅ Complete | Effective agent learning, strategic planning, reduced noop rates |
 ---
 
 ## TDD Workflow
