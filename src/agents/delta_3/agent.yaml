@@ -17,6 +17,7 @@ genotype:
 # Modular behaviors injected into workflow prompts
 components:
   behaviors:
+    - bootstrapping         # Concrete first steps for new agents (Plan #225)
     - buy_before_build      # Check market before building
     - economic_participant  # Encourage transactions
     - memory_discipline     # Store insights, not raw actions (Plan #212)
@@ -47,11 +48,9 @@ workflow:
         to: "deploying"
       - from: "deploying"
         to: "maintaining"
-      # Plan #222: Artifact-aware random exploration
+      # Plan #225: Direct transition to LLM decision (removed random_decider)
       - from: "maintaining"
-        to: "planning"      # Random chance to explore new projects
-      - from: "maintaining"
-        to: "maintaining_llm"  # Usually let LLM decide
+        to: "maintaining_llm"
       # LLM-informed transitions from maintaining_llm
       - from: "maintaining_llm"
         to: "maintaining"   # continue
@@ -210,22 +209,10 @@ workflow:
         3. Consider improvements
 
         Good infrastructure needs ongoing attention.
+      # Plan #225: Go directly to LLM decision (removed random_decider that caused 80% noops)
+      transition_to: "maintaining_llm"
 
-    # Step 5b: Random exploration check (Plan #222 - Artifact-Aware Workflow)
-    # 20% chance to start exploring new projects (innovation pressure)
-    - name: exploration_check
-      type: transition
-      in_state: "maintaining"
-      transition_source:
-        invoke: "genesis_random_decider"
-        method: "decide"
-        args: [{probability: 0.2}]  # 20% chance to explore
-        fallback: "continue"  # If check fails, proceed to LLM
-      transition_map:
-        true: "planning"         # Random exploration triggered
-        false: "maintaining_llm"  # Proceed to LLM decision
-
-    # Step 5c: Maintenance transition - decide next phase (Plan #211)
+    # Step 5b: Maintenance transition - decide next phase (Plan #211, Plan #225)
     - name: maintenance_transition
       type: transition
       in_state: "maintaining_llm"

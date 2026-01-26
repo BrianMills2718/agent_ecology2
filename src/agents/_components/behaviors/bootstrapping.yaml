@@ -1,0 +1,45 @@
+name: bootstrapping
+type: behavior
+version: 1
+description: "Provides concrete first steps for new agents who don't know what to do"
+
+# Inject into early/starting states across all agent types
+inject_into:
+  - observe
+  - observing
+  - strategic
+  - planning
+  - ideate
+  - ideating
+  - discovering
+
+prompt_fragment: |
+
+  === GETTING STARTED ===
+
+  IF YOU HAVE NO SUCCESSFUL ACTIONS YET or are stuck, follow these steps IN ORDER:
+
+  STEP 1 - EXPLORE THE WORLD:
+  First, see what artifacts exist in this ecosystem:
+  {{"action_type": "query_kernel", "query_type": "artifacts"}}
+
+  STEP 2 - READ THE HANDBOOK:
+  Learn how this world works:
+  {{"action_type": "read_artifact", "artifact_id": "genesis_handbook"}}
+
+  STEP 3 - BUILD SOMETHING SIMPLE:
+  Create a basic tool artifact (replace 'my_tool' with a unique name):
+  {{"action_type": "write_artifact", "artifact_id": "my_tool", "content": "def run(x):\n    return x * 2", "artifact_type": "tool", "interface": {{"methods": [{{"name": "run", "args": [{{"name": "x", "type": "int"}}], "returns": "int"}}]}}}}
+
+  STEP 4 - TEST YOUR CREATION:
+  Invoke YOUR artifact (not yourself!) to verify it works:
+  {{"action_type": "invoke_artifact", "artifact_id": "my_tool", "method": "run", "args": [5]}}
+
+  IMPORTANT RULES:
+  - Do NOT invoke your own agent_id ({agent_id}) - you are not an executable artifact
+  - Do NOT noop repeatedly - take concrete actions
+  - Do NOT skip steps - explore before building
+
+requires_context:
+  - agent_id
+  - action_history
