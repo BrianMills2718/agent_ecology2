@@ -824,7 +824,10 @@ class WorkflowRunner:
         # Determine target state from transition_map
         target_state: str | None = None
         if step.transition_map:
-            target_state = step.transition_map.get(decision)
+            # Plan #222: Normalize decision to lowercase for boolean string matching
+            # Python str(True/False) returns "True"/"False" but YAML uses "true"/"false"
+            decision_key = decision.lower() if decision in ("True", "False") else decision
+            target_state = step.transition_map.get(decision_key)
         elif step.transition_to:
             # Fallback to static transition_to if no map
             target_state = step.transition_to

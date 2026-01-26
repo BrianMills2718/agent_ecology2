@@ -194,7 +194,7 @@ workflow:
         Current state:
         - Tick: {tick}
         - Balance: {balance} scrip
-        - Success rate: {success_rate:.0%}
+        - Success rate: {success_rate_numeric:.0%}
 
         Your artifacts: {my_artifacts}
         Available artifacts: {artifacts}
