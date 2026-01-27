@@ -36,8 +36,8 @@ if [[ -z "$FILE_PATH" ]]; then
     exit 0  # No file path, nothing to do
 fi
 
-# Get the main repo root
-MAIN_DIR=$(git rev-parse --git-common-dir 2>/dev/null | xargs dirname 2>/dev/null || echo "")
+# Get the main repo root (absolute path)
+MAIN_DIR=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
 if [[ -z "$MAIN_DIR" ]]; then
     exit 0  # Not in a git repo
 fi
