@@ -776,6 +776,11 @@ class ModelRegistryConfig(StrictModel):
 class GenesisConfig(StrictModel):
     """Configuration for all genesis artifacts."""
 
+    enabled: bool = Field(
+        default=True,
+        description="Master enable/disable for all genesis artifacts. "
+                    "When false, kernel runs in 'kernel-only' mode without convenience wrappers."
+    )
     artifacts: GenesisArtifactsEnabled = Field(default_factory=GenesisArtifactsEnabled)
     ledger: LedgerConfig = Field(default_factory=LedgerConfig)
     mint: MintConfig = Field(default_factory=MintConfig)
