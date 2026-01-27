@@ -88,7 +88,11 @@ models:
 # Scrip only flows via agent-to-agent trades and mint auction.
 # -----------------------------------------------------------------------------
 genesis:
-  # Which artifacts to create
+  # Master enable/disable for all genesis artifacts
+  # Set to false to run in "kernel-only" mode - proves genesis is optional
+  enabled: false  # KERNEL-ONLY: Disabled to demonstrate kernel works without genesis
+
+  # Which artifacts to create (only used when enabled: true)
   artifacts:
     ledger:
       enabled: true

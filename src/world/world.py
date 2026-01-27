@@ -272,39 +272,52 @@ class World:
             get_event_number=lambda: self.event_number,
         )
 
-        # Genesis artifacts (system-owned proxies)
-        self.genesis_artifacts = create_genesis_artifacts(
-            ledger=self.ledger,
-            mint_callback=self.mint_auction.mint_scrip,
-            artifact_store=self.artifacts,
-            logger=self.logger,
-            rights_config=self.rights_config
-        )
+        # Genesis artifacts (system-owned proxies) - OPTIONAL cold-start conveniences
+        # When genesis.enabled is false, the kernel still works but agents don't have
+        # convenience wrappers. This demonstrates genesis is not essential to the kernel.
+        genesis_enabled = config.get("genesis", {}).get("enabled", True)
 
-        # Register genesis artifacts in artifact store for unified invoke path (Plan #15)
-        for genesis_id, genesis in self.genesis_artifacts.items():
-            artifact = self.artifacts.write(
-                artifact_id=genesis_id,
-                type="genesis",
-                content=genesis.description,
-                created_by="system",
-                executable=True,
+        if genesis_enabled:
+            self.genesis_artifacts = create_genesis_artifacts(
+                ledger=self.ledger,
+                mint_callback=self.mint_auction.mint_scrip,
+                artifact_store=self.artifacts,
+                logger=self.logger,
+                rights_config=self.rights_config
             )
-            # Attach genesis methods for dispatch
-            artifact.genesis_methods = genesis.methods
 
-        # Store reference to rights registry for quota enforcement
-        rights_registry = self.genesis_artifacts.get("genesis_rights_registry")
-        self.rights_registry = rights_registry if isinstance(rights_registry, GenesisRightsRegistry) else None
+            # Register genesis artifacts in artifact store for unified invoke path (Plan #15)
+            for genesis_id, genesis in self.genesis_artifacts.items():
+                artifact = self.artifacts.write(
+                    artifact_id=genesis_id,
+                    type="genesis",
+                    content=genesis.description,
+                    created_by="system",
+                    executable=True,
+                )
+                # Attach genesis methods for dispatch
+                artifact.genesis_methods = genesis.methods
 
-# Wire up GenesisMint to use kernel primitives (Plan #44)
-        genesis_mint = self.genesis_artifacts.get("genesis_mint")
-        if isinstance(genesis_mint, GenesisMint):
-            genesis_mint.set_world(self)
+            # Store reference to rights registry for quota enforcement
+            rights_registry = self.genesis_artifacts.get("genesis_rights_registry")
+            self.rights_registry = rights_registry if isinstance(rights_registry, GenesisRightsRegistry) else None
 
-        # Wire up rights registry to delegate to kernel (Plan #42)
-        if self.rights_registry is not None:
-            self.rights_registry.set_world(self)
+            # Wire up GenesisMint to use kernel primitives (Plan #44)
+            genesis_mint = self.genesis_artifacts.get("genesis_mint")
+            if isinstance(genesis_mint, GenesisMint):
+                genesis_mint.set_world(self)
+
+            # Wire up rights registry to delegate to kernel (Plan #42)
+            if self.rights_registry is not None:
+                self.rights_registry.set_world(self)
+        else:
+            # Kernel-only mode: no genesis artifacts
+            # The kernel still has all primitives (KernelState, KernelActions)
+            # Agents can use query_kernel action for reads, but won't have
+            # convenience wrappers like genesis_ledger for writes.
+            # This proves genesis is cold-start convenience, not essential.
+            self.genesis_artifacts = {}
+            self.rights_registry = None
 
         # Seed genesis_handbook artifact (readable documentation for agents)
         self._seed_handbook()
