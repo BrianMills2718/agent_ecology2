@@ -2,6 +2,7 @@
 
 > **ALWAYS RUN FROM MAIN.** Your CWD should be `/home/brian/brian_projects/agent_ecology2/` (main).
 > Use worktrees as **paths** for file isolation, not as working directories.
+> **NEVER use `cd worktrees/...` as a separate command** - always chain with `&&` or use `git -C`.
 > This lets you handle the full lifecycle: create worktree → edit → commit → merge → cleanup.
 
 ---
@@ -193,6 +194,7 @@ make finish BRANCH=plan-123-foo PR=456    # Merge, cleanup, done!
 - Use `git worktree rmv` directly (use `make worktree-remove`)
 - Use `gh pr merge` directly (use `make merge PR=N` or `make finish`)
 - Skip the claim when creating worktrees (use `make worktree`)
+- Use `cd worktrees/...` as a separate command (chain with `&&` or use `git -C`)
 
 ---
 
@@ -230,6 +232,26 @@ Claims provide **coordination** so work doesn't collide:
 | Use `git worktree remove` directly | Bypasses safety checks |
 | Use `gh pr merge` directly | Bypasses validation, may break checks |
 | Run from inside worktree | If worktree is deleted, your shell breaks |
+
+### Git Commands in Worktrees - CRITICAL
+
+**NEVER** use `cd worktrees/...` as a separate command. This permanently changes your shell CWD.
+
+```bash
+# WRONG - shell CWD stays in worktree after command
+cd worktrees/plan-123-foo
+git add -A
+git commit -m "..."
+# Shell is now stuck in worktree - if deleted, shell breaks
+
+# RIGHT - CWD resets to main after command completes
+git -C worktrees/plan-123-foo add -A && git -C worktrees/plan-123-foo commit -m "..."
+
+# ALSO RIGHT - chain cd with && so CWD resets after
+cd worktrees/plan-123-foo && git add -A && git commit -m "..." && cd -
+```
+
+**Why this matters:** If your shell CWD is inside a worktree when `make finish` deletes it, all subsequent bash commands fail with no output. The shell is broken and needs a session restart.
 
 ### How to Recover
 
