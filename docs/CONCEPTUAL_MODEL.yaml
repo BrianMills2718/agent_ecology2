@@ -6,8 +6,8 @@
 # =============================================================================
 
 version: 1
-last_updated: "2026-01-27"
-status: draft
+last_updated: "2026-01-28"
+status: draft  # Open questions resolved; ready for code enforcement phase
 
 # =============================================================================
 # ARTIFACT - The Primal Entity
@@ -640,42 +640,60 @@ open_questions:
 
   kernel_provided_metadata:
     question: "What metadata should kernel provide to contracts to reduce friction?"
-    context: |
-      Caller identity could theoretically be handled without kernel (e.g., passwords/tokens),
-      but kernel providing verified caller ID reduces friction.
-      There may be OTHER metadata that's valuable for kernel to provide.
-    insight: |
-      Kernel-provided metadata is a CONVENIENCE that reduces friction.
-      Contracts could work around missing metadata, but with more complexity.
-      The question is: what metadata is valuable enough to standardize?
-    possible_metadata:
-      definitely_useful:
-        - "caller_id: verified identity of who is making the request"
-        - "target_id: artifact being accessed"
-        - "action: what operation (read, write, invoke, etc.)"
-      probably_useful:
-        - "target_created_by: who created the artifact being accessed"
-        - "caller_created_by: who created the caller (for hierarchical permissions)"
-        - "timestamp / event_number: when this is happening"
-      maybe_useful:
-        - "caller_labels: is caller an agent? principal? (properties)"
-        - "caller_balance: does caller have funds (for paywalls without extra query)"
-        - "call_chain: if A→B→C, the full provenance chain"
-        - "previous_interactions: has caller accessed this target before"
-    tradeoff: |
-      More metadata = more convenience for contract authors, but more kernel complexity.
-      Less metadata = simpler kernel, but contracts must query/verify themselves.
-    status: "needs discussion - what's the right set?"
+    status: "RESOLVED"
+    resolution: |
+      Kernel provides the following to contracts (verified in src/world/contracts.py):
+
+      ALWAYS PROVIDED (via function parameters):
+        - caller: str - Principal requesting access (verified by kernel)
+        - action: str - The action being attempted (read, write, invoke, etc.)
+        - target: str - Artifact ID being accessed
+
+      PROVIDED VIA CONTEXT DICT:
+        - target_created_by: Creator of the target artifact (immutable)
+        - target_metadata: Artifact metadata dict (if present)
+        - method: Method name (invoke actions only)
+        - args: Method arguments (invoke actions only)
+
+      FOR EXECUTABLE CONTRACTS (additional):
+        - ledger: ReadOnlyLedger - Read-only access for balance checks
+
+      Rationale for current set:
+        - Minimal but sufficient for common patterns
+        - caller/action/target are always needed
+        - target_created_by enables "creator controls" patterns
+        - target_metadata enables custom authorization (e.g., authorized_writer)
+        - ledger access enables paywalls without extra queries
+
+      NOT PROVIDED (must query if needed):
+        - caller_created_by (use kernel_state.get_artifact_metadata)
+        - caller_balance (use ledger for ExecutableContracts)
+        - event_number/timestamp (available but not commonly needed)
+        - call_chain (not tracked currently)
 
   what_governs_contracts:
     question: "What contract governs a contract artifact?"
-    context: |
-      Contract E is an artifact.
-      E could have its own access_contract_id pointing to Contract F.
-      What's the base case?
-    current_answer: "Eventually hit null, which uses default (creator has rights)"
-    concern: "This interacts with the regress problem above"
-    status: "partially resolved, but interacts with regress question"
+    status: "RESOLVED"
+    resolution: |
+      Contracts are artifacts and can have their own access_contract_id.
+      The chain terminates at null (default: creator has all rights).
+
+      Example:
+        - Artifact A has access_contract_id = Contract E
+        - Contract E has access_contract_id = Contract F
+        - Contract F has access_contract_id = null
+        - Null means: creator of Contract F controls it
+
+      This works because:
+        1. Kernel has privilege to read/invoke contracts for permission checking
+           (this doesn't require permission - it's how the kernel enforces policy)
+        2. Depth limit prevents infinite chains (e.g., A→B→C→D→...→A)
+        3. Null contract (default) provides the base case
+
+      In practice:
+        - Most contracts have access_contract_id = null (creator controls)
+        - Complex delegation is possible but rare
+        - Depth limit (configurable, default ~10) prevents abuse
 
   actions_specification:
     question: "Should actions be formally specified in the conceptual model?"
@@ -715,34 +733,69 @@ open_questions:
 
   scrip_currency:
     question: "How does scrip (internal currency) fit into the model?"
-    context: |
-      Scrip is internal economic currency for payments.
-      Rights are claims on physical capacity (CPU, memory, API).
-      Scrip is NOT a physical resource.
-    options:
-      kernel_tracked:
-        description: "Scrip is a kernel-tracked balance (not an artifact)"
-        pros: ["Simple", "Different from physical resources"]
-      right_artifact:
-        description: "Scrip is a special type of right artifact"
-        pros: ["Consistent with 'everything is artifact'"]
-    status: "deferred"
+    status: "RESOLVED"
+    resolution: |
+      Scrip is KERNEL-TRACKED, not an artifact.
+
+      Verified in src/world/ledger.py:
+        - Stored as: self.scrip = {principal_id: amount}
+        - Methods: get_scrip(), transfer_scrip(), can_afford_scrip()
+        - Part of Ledger (kernel infrastructure)
+
+      Rationale:
+        - Scrip is internal accounting, not a "thing" in the world
+        - Different from physical resources (CPU, memory, API)
+        - Simpler than making it an artifact (no contract overhead)
+        - Kernel tracks balances; contracts can query via kernel_state.get_balance()
+
+      Note: This is different from "rights" which ARE artifacts.
+        - Right artifact = claim on physical capacity (can be traded)
+        - Scrip = accounting unit (kernel-tracked balance)
 
   time_ordering:
     question: "How are events ordered in world history?"
-    options:
-      - "Event numbers (monotonically increasing sequence)"
-      - "Timestamps (wall clock)"
-      - "Both (event number primary, timestamp metadata)"
-    status: "deferred"
+    status: "RESOLVED"
+    resolution: |
+      BOTH event numbers and timestamps, with event_number as primary ordering.
+
+      Verified in src/world/world.py:
+        - self.event_number = 0 (monotonic counter)
+        - Incremented: self.event_number += 1
+        - Events include both: {"event_number": N, "timestamp": T}
+
+      Usage:
+        - event_number: Primary ordering (monotonically increasing)
+        - timestamp: Wall clock metadata (for human reference)
+        - Triggers use event_number for scheduling
+
+      Why event_number is primary:
+        - Deterministic ordering (no clock skew issues)
+        - Monotonically increasing guarantees
+        - Timestamps can be ambiguous across systems
 
   bootstrap:
     question: "What exists at time zero? How does first artifact get created?"
-    context: |
-      If contracts govern all access, who creates the first contract?
-      Need some bootstrap mechanism.
-    current_answer: "Configuration specifies initial state, null contract default breaks circularity"
-    status: "deferred"
+    status: "RESOLVED"
+    resolution: |
+      Configuration specifies initial state. Null contract default breaks circularity.
+
+      Verified in src/world/world.py:
+        1. create_genesis_artifacts() creates system artifacts at startup
+        2. ledger.create_principal() seeds principals with starting scrip/resources
+        3. Genesis artifacts registered in artifact store
+        4. Null contract (access_contract_id = null) means creator has all rights
+
+      Bootstrap sequence:
+        1. Configuration loaded (config.yaml specifies initial state)
+        2. Ledger created (tracks balances/resources)
+        3. Genesis artifacts created (ledger, mint, escrow, etc.)
+        4. Genesis artifacts registered in artifact store
+        5. Agents created with starting resources
+
+      Circularity broken by:
+        - Null contract default: creator has all rights, others have none
+        - Genesis artifacts start with access_contract_id = null
+        - No permission check needed for kernel creating initial state
 
 # =============================================================================
 # KERNEL'S RESPONSIBILITIES (RESOLVED)
