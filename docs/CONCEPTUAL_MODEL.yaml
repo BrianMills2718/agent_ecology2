@@ -7,7 +7,7 @@
 
 version: 1
 last_updated: "2026-01-28"
-status: draft  # Conceptual questions resolved. Code gaps identified (subscribe_artifact permission).
+status: draft  # Questions resolved. Code gaps: subscribe_artifact permission, terminology (Plan #230), invariants (Plan #231).
 
 # =============================================================================
 # ARTIFACT - The Primal Entity
@@ -98,10 +98,16 @@ properties:
     has_standing:
       type: bool
       description: "Can hold resources and bear costs"
+      implementation_note: |
+        Currently loosely coupled with ledger registration.
+        Plan #231 proposes tight coupling: has_standing=True ↔ ledger entry exists.
+        This would be a kernel invariant.
     has_loop:
       type: bool
       description: "Runs autonomously"
       implies: has_standing  # If you run, you bear execution costs
+      code_name: "can_execute"  # Plan #230 will rename code to match
+      note: "Code currently uses 'can_execute'; Plan #230 will align terminology"
 
   # Interface patterns (what the artifact implements)
   interface_patterns:
