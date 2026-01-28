@@ -10,6 +10,57 @@ Meta-process is a collection of patterns for coordinating AI coding assistants (
 - **Context loss** - AI forgetting project conventions mid-session
 - **Documentation drift** - Docs diverging from code over time
 - **Unverified completions** - "Done" work that doesn't actually work
+- **AI drift** - AI guessing instead of investigating, making wrong assumptions
+
+---
+
+## Choose Your Weight Level
+
+Before starting, decide how much process overhead you want:
+
+| Weight | Best For | Planning Patterns | Enforcement |
+|--------|----------|-------------------|-------------|
+| **minimal** | Quick experiments, spikes | None | Almost nothing |
+| **light** | Prototypes, solo work | Advisory (warnings) | Warnings only |
+| **medium** | Most projects (default) | Advisory + templates | Balanced |
+| **heavy** | Critical/regulated projects | Required + validation | Full enforcement |
+
+### Planning Patterns (New in v2)
+
+These patterns improve planning quality and reduce AI drift:
+
+| Pattern | What It Does | When to Use |
+|---------|--------------|-------------|
+| [Question-Driven Planning](patterns/28_question-driven-planning.md) | Surface questions BEFORE solutions | Always (low overhead) |
+| [Uncertainty Tracking](patterns/29_uncertainty-tracking.md) | Track unknowns across sessions | Medium+ projects |
+| [Conceptual Modeling](patterns/27_conceptual-modeling.md) | Define "what things ARE" | Complex architectures |
+
+**The core principle:** Don't guess, verify. Every "I believe" should become "I verified by reading X".
+
+### Configure in meta-process.yaml
+
+```yaml
+# Choose your weight
+weight: medium  # minimal | light | medium | heavy
+
+# Fine-tune planning patterns
+planning:
+  question_driven_planning: advisory  # disabled | advisory | required
+  uncertainty_tracking: advisory
+  conceptual_modeling: disabled       # Enable for complex projects
+  warn_on_unverified_claims: true     # Warn on "I believe", "might be"
+```
+
+### Project Type Guidance
+
+| If your project is... | Start with... |
+|-----------------------|---------------|
+| **New + Simple** | `weight: light`, planning: advisory |
+| **New + Complex** | `weight: medium`, enable conceptual_modeling |
+| **Existing + Adding meta-process** | `weight: light` first, increase over time |
+| **Regulated/Critical** | `weight: heavy`, all patterns required |
+
+---
 
 ## Quick Start (30 minutes)
 
@@ -297,13 +348,18 @@ git config core.hooksPath hooks
 
 After completing the basics:
 
-1. **Add acceptance gates** - Verify work actually works before marking complete
+1. **Adopt planning patterns** - Improve AI planning quality
+   - Start with: [Question-Driven Planning](patterns/28_question-driven-planning.md) (low overhead)
+   - Add: [Uncertainty Tracking](patterns/29_uncertainty-tracking.md) when context loss is painful
+   - Consider: [Conceptual Modeling](patterns/27_conceptual-modeling.md) for complex architectures
+
+2. **Add acceptance gates** - Verify work actually works before marking complete
    - See: [Acceptance-Gate-Driven Development](patterns/13_acceptance-gate-driven-development.md)
 
-2. **Add ADRs** - Preserve architectural decisions
+3. **Add ADRs** - Preserve architectural decisions
    - See: [ADR](patterns/07_adr.md), [ADR Governance](patterns/08_adr-governance.md)
 
-3. **Add inter-CC messaging** - Coordinate between Claude Code instances
+4. **Add inter-CC messaging** - Coordinate between Claude Code instances
    - See: `scripts/send_message.py`, `scripts/check_messages.py`
 
 ---
@@ -329,8 +385,21 @@ After completing the basics:
 | Stage | Patterns | Effort |
 |-------|----------|--------|
 | **Week 1** | CLAUDE.md, Worktrees, Claims, Plans | Low |
+| **Week 1** | Question-Driven Planning (use plan template) | Low |
 | **Week 2** | Git Hooks, Doc-Code Coupling | Low |
+| **Week 2** | Uncertainty Tracking (in plans) | Low |
 | **Month 1** | Mock Enforcement, Plan Verification | Medium |
+| **When needed** | Conceptual Modeling (complex architectures) | Medium |
 | **Later** | ADRs, Acceptance Gates, Full Graph | High |
 
 Start small. Add patterns when you feel the pain they solve.
+
+### Planning Pattern Adoption
+
+The new planning patterns have minimal overhead:
+
+1. **Question-Driven Planning** - Just use the updated plan template. Fill in "Open Questions" before "Plan".
+
+2. **Uncertainty Tracking** - Track uncertainties in the plan's table. Update status as you resolve them.
+
+3. **Conceptual Modeling** - Only add when AI instances repeatedly misunderstand your architecture. Create `docs/CONCEPTUAL_MODEL.yaml` with your core concepts.

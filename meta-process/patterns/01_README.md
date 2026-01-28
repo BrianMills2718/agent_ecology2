@@ -33,6 +33,9 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 | [Phased ADR Pattern](24_phased-adr-pattern.md) | Complex features need phased rollout | Medium |
 | [PR Review Process](25_pr-review-process.md) | Inconsistent review quality | Low |
 | [Ownership Respect](26_ownership-respect.md) | CC instances interfering with each other's work | Low |
+| [Conceptual Modeling](27_conceptual-modeling.md) | AI accumulates misconceptions about architecture | Medium |
+| [Question-Driven Planning](28_question-driven-planning.md) | AI guesses instead of investigating | Low |
+| [Uncertainty Tracking](29_uncertainty-tracking.md) | Uncertainties forgotten across sessions | Low |
 
 ## When to Use
 
@@ -45,6 +48,8 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 - Rebase Workflow - when using worktrees for parallel work (prevents "reverted" changes)
 - PR Review Process - standardized review checklists
 - Ownership Respect - prevent CC instances from fixing each other's work
+- Question-Driven Planning - AI tendency to guess instead of investigate
+- Uncertainty Tracking - preserve context across sessions
 
 **Add these when needed (more setup):**
 - Acceptance-Gate-Driven Development - comprehensive meta-process for verified progress, preventing AI drift/cheating
@@ -54,6 +59,7 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 - Plan Workflow - for larger acceptance gates with multiple steps
 - Claim System - for explicit parallel work coordination
 - Verification Enforcement - when plans need proof of completion
+- Conceptual Modeling - when AI instances repeatedly misunderstand core concepts
 
 ## Pattern Template
 
