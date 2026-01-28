@@ -54,7 +54,7 @@ All artifacts have these metadata fields (see `src/world/artifacts.py`):
 | `updated_at` | datetime | Last modification timestamp |
 | `deleted_by` | str \| None | Principal who deleted (if deleted) |
 | `has_standing` | bool | Can hold resources/bear costs |
-| `can_execute` | bool | Can be invoked as executable |
+| `can_execute` | bool | Can execute code autonomously (has own loop) |
 | `executable` | bool | Has executable code |
 | `is_memory` | bool | Is a memory artifact |
 | `memory_artifact_id` | str \| None | Linked memory artifact (for agents) |
@@ -324,22 +324,17 @@ The mint is the interface for scrip creation—but the *source* of value judgmen
 
 ---
 
-## Cognitive Schema (Plan #88)
+## Agent Response Format
 
 How agents structure their thinking and responses to the LLM.
 
 | Term | Definition | Notes |
 |------|------------|-------|
-| **cognitive_schema** | Config option controlling agent response structure | `"simple"` or `"ooda"` |
-| **thought_process** | Agent's reasoning (simple mode) | Single field for all thinking |
-| **OODA** | Observe-Orient-Decide-Act loop | Military decision-making framework |
-| **situation_assessment** | Analysis of current state (OODA mode) | Can be verbose |
-| **action_rationale** | Concise explanation for chosen action (OODA mode) | 1-2 sentences |
+| **reasoning** | Agent's explanation for chosen action | Standardized field name (Plan #132) |
 | **failure_history** | Recent failed actions shown to agent | Enables learning from mistakes |
 | **reasoning_effort** | Claude extended thinking level (Plan #187) | `"none"`, `"low"`, `"medium"`, `"high"`. Only works with Anthropic Claude models. Higher values improve reasoning but cost 5-10x more. |
 
-**Simple mode (default):** `thought_process` + `action`
-**OODA mode:** `situation_assessment` + `action_rationale` + `action`
+**Response format:** `reasoning` + `action` (Plan #132 standardized this)
 
 ---
 
@@ -378,6 +373,8 @@ We provide a **substrate**. Genesis agents are the **prescribed initial cognitiv
 - "Agent" implies LLM-based, anthropomorphic
 - "Autonomous principal" is substrate-neutral: any artifact that can hold resources and execute
 - An RL policy, a cron job, or an LLM could all be autonomous principals
+
+**Implementation status:** The `AgentLoop` architecture supports any decision engine (it only requires `decide_action()`, `execute_action()`, `is_alive()` callbacks). Currently only LLM-based implementations exist, but non-LLM autonomous principals are architecturally supported.
 
 ### State-of-the-Art (SOTA) Cognitive Architectures (Reference)
 
@@ -474,3 +471,7 @@ See [docs/meta/adr/](meta/adr/) for meta-process ADRs.
 | agent (when non-LLM) | autonomous principal | "Agent" implies LLM; principal is substrate-neutral |
 | the agents | genesis agents | Clarifies these are one implementation, not the only one |
 | owner (as kernel field) | `created_by` + contract rights | "Owner" is informal; `created_by` is immutable fact, rights determined by contracts (ADR-0016) |
+| cognitive_schema | `reasoning` field | Plan #132: Removed multi-schema support, standardized on single `reasoning` field |
+| thought_process | `reasoning` | Plan #132: Renamed to `reasoning` |
+| situation_assessment | `reasoning` | Plan #132: OODA mode removed, use `reasoning` |
+| action_rationale | `reasoning` | Plan #132: OODA mode removed, use `reasoning` |
