@@ -1,0 +1,778 @@
+# =============================================================================
+# CONCEPTUAL MODEL - Machine-readable architecture definition
+# =============================================================================
+# This is the canonical conceptual model for the Agent Ecology system.
+# Status: DRAFT - under active discussion
+# =============================================================================
+
+version: 1
+last_updated: "2026-01-27"
+status: draft
+
+# =============================================================================
+# ARTIFACT - The Primal Entity
+# =============================================================================
+# Everything in the system is an artifact. This is the base type.
+
+artifact:
+  definition: "Any persistent, addressable object in the system"
+  is_primal: true  # Everything else extends this
+
+  required_fields:
+    id:
+      type: string
+      description: "Unique identifier"
+    content:
+      type: string
+      description: "Stored data (may be empty string)"
+    interface:
+      type: Interface
+      description: "Schema describing what this artifact IS and DOES"
+    access_contract_id:
+      type: "string | null"
+      description: "Contract governing permissions (null = default behavior)"
+    created_by:
+      type: string
+      description: "Principal who created this (immutable)"
+      mutable: false
+
+  default_contract_behavior:
+    description: "When access_contract_id is null"
+    rule: "Creator has all rights, everyone else has no rights"
+
+# =============================================================================
+# INTERFACE - Required on All Artifacts
+# =============================================================================
+# Influenced by MCP (tool definitions) and StructGPT (data linearization)
+
+interface:
+  definition: "Schema describing what an artifact IS and what it can DO"
+  required_on: "ALL artifacts (data, executables, agents, contracts, rights)"
+
+  influences:
+    - name: "MCP (Model Context Protocol)"
+      what: "Tool definition pattern - description, methods, schemas"
+    - name: "StructGPT"
+      what: "dataType categorization, linearization for LLM presentation"
+
+  required_fields:
+    description:
+      type: string
+      description: "Human-readable summary of what this artifact is"
+    labels:
+      type: "list[string]"
+      description: "Convenience labels that apply (e.g., ['service', 'contract'])"
+      note: "NOT mutually exclusive. An artifact can have multiple labels."
+      common_values: ["data", "service", "contract", "right", "principal", "agent"]
+
+  optional_fields:
+    methods:
+      type: "list[MethodSchema]"
+      description: "Callable operations"
+      required_when: "dataType is 'service' or artifact is executable"
+    schema:
+      type: "JSONSchema"
+      description: "Structure of the content (for data artifacts)"
+    linearization:
+      type: string
+      description: "Template for presenting to LLM (StructGPT pattern)"
+    inputSchema:
+      type: "JSONSchema"
+      description: "Schema for method inputs"
+    outputSchema:
+      type: "JSONSchema"
+      description: "Schema for method outputs"
+
+# =============================================================================
+# ARTIFACT PROPERTIES
+# =============================================================================
+# Artifacts have properties. "Types" are just convenience labels for common
+# property combinations. Labels are NOT mutually exclusive.
+
+properties:
+  # Core structural properties (booleans)
+  structural:
+    executable:
+      type: bool
+      description: "Has runnable code"
+    has_standing:
+      type: bool
+      description: "Can hold resources and bear costs"
+    has_loop:
+      type: bool
+      description: "Runs autonomously"
+      implies: has_standing  # If you run, you bear execution costs
+
+  # Interface patterns (what the artifact implements)
+  interface_patterns:
+    implements_check_permission:
+      description: "Implements check_permission(caller, action, target) -> bool"
+      makes_it: "a contract"
+    content_is_resource_claim:
+      description: "Content follows resource claim schema (amount, resource, type)"
+      makes_it: "a right"
+    exposes_methods:
+      description: "Interface defines callable methods"
+      makes_it: "a service"
+
+  # Decision engine (for autonomous artifacts)
+  decision_engine:
+    description: "How an autonomous artifact makes decisions"
+    options:
+      - "LLM-based (implies 'agent')"
+      - "Rules/code-based (autonomous principal, not 'agent')"
+      - "RL policy, external API, etc."
+
+# =============================================================================
+# CONVENIENCE LABELS (Named Combinations)
+# =============================================================================
+# These are NOT mutually exclusive. An artifact can have multiple labels.
+
+labels:
+  data:
+    properties: "!executable"
+    description: "Stores information, not runnable"
+    interface_note: "Should have schema and/or linearization"
+
+  service:
+    properties: "executable, exposes_methods, !has_loop"
+    description: "Provides callable methods, invoked by others"
+    interface_note: "interface.methods must be defined"
+
+  contract:
+    properties: "executable, implements_check_permission"
+    description: "Answers permission questions"
+    governs: [read, write, edit, invoke, delete]
+    note: "A contract is also a service (it's executable with methods)"
+
+  right:
+    properties: "content_is_resource_claim"
+    description: "Represents a claim on physical capacity"
+    content_schema:
+      amount:
+        type: number
+        description: "Current amount (decreases on consumption)"
+      resource:
+        type: string
+        description: "What resource (e.g., 'llm_dollars', 'disk_bytes')"
+      resource_type:
+        type: enum
+        values: ["depletable", "allocatable", "renewable"]
+    key_insight: "Consuming = writing (reducing amount). Contract decides who can write."
+    note: "Any artifact can BE a right if its content follows this schema"
+
+  principal:
+    properties: "has_standing"
+    description: "Can hold resources and bear costs"
+
+  autonomous_principal:
+    properties: "has_standing, has_loop"
+    description: "Runs independently, bears its own costs"
+    note: "Generic term for anything that runs autonomously"
+
+  agent:
+    properties: "has_standing, has_loop, LLM-based decision engine"
+    description: "Autonomous principal using LLM for decisions"
+    note: "'Agent' specifically implies LLM. Use 'autonomous principal' for non-LLM."
+
+    content_schema:
+      status: "CONVENTION, NOT MANDATORY"
+      explanation: |
+        The current implementation uses a JSON schema for agent artifact content
+        (subscribed_artifacts, context_sections, system_prompt, etc.).
+
+        This schema is NOT required by the conceptual model:
+        - All fields are optional with sensible defaults
+        - Empty content {} is valid - agent uses defaults
+        - Different agents could use different content structures
+        - Kernel doesn't mandate agent content format
+
+        The convenience actions (subscribe_artifact, configure_context,
+        modify_system_prompt) are helpers for agents using the conventional schema.
+        They are NOT core actions - they're shortcuts for edit_artifact on
+        specific fields.
+
+# =============================================================================
+# EXAMPLES - What Label Applies?
+# =============================================================================
+
+examples:
+  code_adding_1_in_loop:
+    description: "Code that continuously increments a counter"
+    properties:
+      executable: true
+      has_loop: true
+      has_standing: true  # implied by has_loop
+      LLM_based: false
+    labels: ["autonomous_principal"]
+    not_labels: ["agent"]  # No LLM
+    note: "Autonomous but not an 'agent' since not LLM-based"
+
+  permission_checker:
+    description: "Code that checks if caller can access artifact"
+    properties:
+      executable: true
+      implements_check_permission: true
+      has_loop: false
+    labels: ["contract", "service"]
+    note: "Both labels apply - it's executable with the check_permission interface"
+
+  budget_artifact:
+    description: "Artifact tracking $10 LLM budget"
+    properties:
+      content_is_resource_claim: true
+      executable: false
+    labels: ["right", "data"]
+    note: "It's data that happens to follow the right schema"
+
+  llm_worker:
+    description: "Autonomous loop that uses LLM to decide actions"
+    properties:
+      executable: true
+      has_loop: true
+      has_standing: true
+      LLM_based: true
+    labels: ["agent", "autonomous_principal", "principal"]
+    note: "All three labels apply (agent implies the others)"
+
+# =============================================================================
+# RELATIONSHIPS
+# =============================================================================
+
+relationships:
+  property_implications:
+    - "has_loop → has_standing (if you run, you bear costs)"
+    - "agent → autonomous_principal → principal (label hierarchy)"
+
+  universal:
+    - "Everything is an artifact"
+    - "Every artifact has exactly one governing contract (or null = default)"
+    - "created_by is immutable metadata (ADR-0016)"
+    - "Contract determines ACCESS, not labels or properties"
+
+  labels:
+    - "Labels are NOT mutually exclusive"
+    - "An artifact can be both 'service' and 'contract'"
+    - "An artifact can be both 'data' and 'right'"
+
+# =============================================================================
+# ACTIONS
+# =============================================================================
+# Actions are operations that can be performed on artifacts.
+# Core actions go through contract permission. Kernel operations do not.
+
+actions:
+  core_actions:
+    description: "Actions that go through contract permission checking"
+    note: "Kernel executes contract logic to determine if action is allowed"
+
+    read:
+      description: "Read artifact content"
+      permission_check: "Contract check_permission(caller, 'read', target)"
+      returns: "Artifact content if allowed"
+
+    write:
+      description: "Create or replace artifact"
+      permission_check: "Contract check_permission(caller, 'write', target)"
+      note: "For new artifacts, null contract default applies (creator has rights)"
+
+    edit:
+      description: "Surgical modification of artifact content"
+      permission_check: "Contract check_permission(caller, 'edit', target)"
+      mechanism: "old_string/new_string replacement (like Claude Code Edit tool)"
+
+    invoke:
+      description: "Call method on executable artifact"
+      permission_check: "Contract check_permission(caller, 'invoke', target)"
+      context_provided: "method name, arguments"
+
+    delete:
+      description: "Remove artifact"
+      permission_check: "Contract check_permission(caller, 'delete', target)"
+      note: "May be soft delete (marked deleted) vs hard delete"
+
+  kernel_operations:
+    description: "Operations handled by kernel, no contract permission needed"
+
+    noop:
+      description: "Do nothing"
+      use_case: "Agent wants to wait/pass without acting"
+
+    query_kernel:
+      description: "Query kernel state directly"
+      examples:
+        - "List artifacts"
+        - "Check balances"
+        - "Query world history"
+      note: "Read-only access to kernel state, not artifact content"
+
+  convenience_actions:
+    description: "Implementation shortcuts - NOT part of conceptual model"
+    note: |
+      These exist in the current implementation as helpers for agents
+      using the conventional agent content schema. Conceptually, they
+      are just edit_artifact operations on specific fields.
+
+    subscribe_artifact:
+      what_it_does: "Edits agent's subscribed_artifacts field"
+      equivalent_to: "edit_artifact on agent's own artifact"
+
+    unsubscribe_artifact:
+      what_it_does: "Edits agent's subscribed_artifacts field"
+      equivalent_to: "edit_artifact on agent's own artifact"
+
+    configure_context:
+      what_it_does: "Edits agent's context_sections field"
+      equivalent_to: "edit_artifact on agent's own artifact"
+
+    modify_system_prompt:
+      what_it_does: "Edits agent's prompt modification field"
+      equivalent_to: "edit_artifact on agent's own artifact"
+
+    why_they_exist:
+      - "Domain-specific validation (valid section names, max subscriptions)"
+      - "Simpler than constructing full edit_artifact JSON"
+      - "Semantic clarity for agents"
+
+# =============================================================================
+# RESOURCES - Physical Capacity and Rights
+# =============================================================================
+# Resources are scarce physical capacities. Rights are artifacts that grant
+# permission to consume resources. The kernel enforces physics; contracts
+# decide policy.
+
+resources:
+  definition: "Scarce physical capacities that are consumed by actions"
+
+  # The three concerns (kept separate)
+  concerns:
+    permission:
+      question: "Can entity X use this resource?"
+      answered_by: "Contract on the right artifact"
+    measurement:
+      question: "How much was actually consumed?"
+      answered_by: "Kernel (physics - immutable fact)"
+    scarcity:
+      question: "Is there enough to consume?"
+      answered_by: "Kernel (physics - enforces non-negative)"
+
+  # Resource types by behavior
+  types:
+    depletable:
+      description: "Once consumed, gone forever"
+      examples: ["llm_dollars"]
+      analogy: "Coal - burn it and it's gone"
+    allocatable:
+      description: "Finite but reusable when freed"
+      examples: ["disk_bytes", "memory_bytes"]
+      analogy: "Land - occupied while in use, freed when released"
+    renewable:
+      description: "Replenishes over time (rate-limited)"
+      examples: ["llm_calls_per_minute", "cpu_seconds_per_minute"]
+      analogy: "Stream - flows continuously, can't exceed flow rate"
+
+  # How consumption works
+  consumption_model:
+    insight: "Consuming from a right IS writing to the right artifact"
+    flow:
+      - "Agent wants to consume X units from right artifact R"
+      - "Kernel asks R's contract: check_permission(agent, 'write', R)"
+      - "If allowed, kernel reduces R.amount by X"
+      - "If R.amount would go negative, kernel rejects (physics)"
+    key_points:
+      - "No special 'consume' action - it's just 'write'"
+      - "Contract on the right decides who can consume"
+      - "Kernel enforces scarcity (amount >= 0)"
+      - "Permission checks are free (no resource cost)"
+
+  # Delegation example
+  delegation:
+    scenario: "Agent A wants to use Firm F's budget"
+    how_it_works:
+      - "F has right artifact 'firm_f_budget' with contract allowing A to write"
+      - "A requests consumption from 'firm_f_budget'"
+      - "Contract permits (A is authorized)"
+      - "Kernel deducts from firm_f_budget"
+    note: "No special delegation mechanism - contracts handle it"
+
+  # What kernel tracks vs what's in artifacts
+  kernel_vs_artifacts:
+    in_artifacts:
+      - "Right amount (current balance)"
+      - "Right type (depletable/allocatable/renewable)"
+      - "Contract governing the right"
+    in_kernel:
+      - "Usage measurement (what was actually consumed - for observability)"
+      - "Rate windows (for renewable resources)"
+      - "Scarcity enforcement (can't go negative)"
+
+# =============================================================================
+# CONTRACTS - Permission is Everything
+# =============================================================================
+
+contracts:
+  definition: "Artifacts that answer permission questions"
+
+  core_principle: "ALL permissions come from contracts"
+
+  what_contracts_decide:
+    - "Who can read an artifact"
+    - "Who can write/edit an artifact"
+    - "Who can invoke an artifact"
+    - "Who can delete an artifact"
+    - "Who can consume from a right (via write permission)"
+
+  what_kernel_decides:
+    - "Nothing about permission - kernel only asks contracts"
+    - "Kernel enforces physics: scarcity, measurement, immutability of created_by"
+
+  null_contract_default:
+    when: "access_contract_id is null"
+    behavior: "Creator has all rights, everyone else has none"
+    rationale: "Simple default to break bootstrap circularity"
+    note: "This IS a policy baked into kernel - minimal necessary default"
+
+  permission_check_cost:
+    rule: "Permission checks are FREE"
+    rationale: "Avoids infinite regress (checking permission costs resources...)"
+    implication: "Contracts should be simple logic, not LLM calls"
+
+  immediate_caller:
+    rule: "When A invokes B, and B invokes C, C's contract sees B as caller"
+    rationale: "Enables explicit delegation chains"
+
+# =============================================================================
+# CREATED_BY - Just Metadata (ADR-0016)
+# =============================================================================
+
+created_by:
+  type: "Metadata field"
+  mutable: false
+  meaning: "Historical fact: who created this artifact"
+  analogous_to: "created_at (when it was created) - both are just metadata"
+
+  permissions_implied: "NONE"
+  explanation: "created_by has no bearing on permissions. Contracts decide everything."
+
+  null_contract_exception:
+    context: "Only when access_contract_id is null"
+    behavior: "Kernel uses created_by to grant default permissions"
+    rationale: "Bootstrap convenience to break circularity"
+    important: "This is a specific default, NOT a general principle"
+
+# =============================================================================
+# "OWNER" - Term Does Not Exist
+# =============================================================================
+
+owner:
+  status: "TERM DOES NOT EXIST IN THIS SYSTEM"
+  instruction: "Do not use this term. It causes confusion."
+
+  why_problematic:
+    - "Implies single entity has 'all rights' - but rights are Ostrom-style bundles"
+    - "Implies created_by grants rights - it doesn't (contracts do)"
+    - "Implies ownership is decidable - it's not (nested contracts)"
+    - "Every usage reinforces wrong mental model"
+
+  instead:
+    question: "Who has rights to artifact X?"
+    answer: "Ask the contract. It depends on context and may be undecidable."
+
+# =============================================================================
+# SYSTEM LAYERS
+# =============================================================================
+# Three layers: Infrastructure (external), Configuration (inputs), Kernel (the system)
+
+layers:
+  infrastructure:
+    description: "External reality outside our system"
+    includes:
+      - "Real machines (CPU, memory, disk)"
+      - "Container limits (Docker)"
+      - "External API providers (Anthropic, OpenAI, etc.)"
+      - "Real costs (dollars)"
+    relationship_to_system: "Constrains what's possible. Source of real scarcity."
+    note: "We don't control this - it's the reality we run on."
+
+  configuration:
+    description: "All parameters that initialize and control the system"
+    includes:
+      - "Resource limits and budgets"
+      - "Agent definitions (which agents, their prompts, starting resources)"
+      - "Genesis artifact settings"
+      - "Simulation parameters"
+      - "Logging and observability settings"
+      - "Model selection"
+      - "Rate limiting settings"
+    set_by: "Operator (god/user)"
+    relationship_to_system: "Inputs that parameterize the kernel"
+
+  kernel:
+    description: "The system itself - physics engine, storage, interface"
+
+    stores:
+      world_state:
+        description: "Current state of all artifacts"
+        what_it_contains: "All artifacts: rights, contracts, principals, agents, data"
+        note: "'World' = current state of artifacts stored by kernel"
+
+      world_history:
+        description: "Immutable log of all events that have occurred"
+        properties:
+          - "Immutable (cannot be altered or deleted)"
+          - "Complete (captures all state changes)"
+          - "Ordered (events have sequence)"
+        access_levels:
+          - "Operator/god: can see everything"
+          - "Agents: may have restricted view (configurable)"
+        use_cases:
+          - "Observability (what happened?)"
+          - "Provenance (who did what?)"
+          - "Debugging and replay"
+          - "Reputation (track record of behavior)"
+
+      measurement_state:
+        description: "Internal state for physics tracking"
+        includes:
+          - "Rate windows (for renewable resources)"
+          - "Usage tracking (for observability)"
+        note: "Not artifacts - kernel internal state for enforcement"
+
+    enforces:
+      - "Scarcity (amount >= 0, can't spend what doesn't exist)"
+      - "Immutability of created_by"
+      - "Immutability of world history"
+      - "Contract-based permissions (kernel asks contracts, doesn't decide)"
+      - "Permission checks are free (no resource cost)"
+
+    provides:
+      read_interface:
+        - "Query artifact by ID"
+        - "Query artifacts by properties"
+        - "Query world history (with access control)"
+        - "Query resource status (rate limits, usage)"
+
+      write_interface:
+        - "Create artifact (goes through contract permission)"
+        - "Modify artifact (goes through contract permission)"
+        - "Delete artifact (goes through contract permission)"
+        - "Consume from right (= write, goes through contract permission)"
+
+# =============================================================================
+# LAYER RELATIONSHIPS
+# =============================================================================
+
+layer_relationships:
+  diagram: |
+    Infrastructure (external reality: machines, APIs, $$$)
+           ↓ constrains
+    Configuration (all parameters set by operator)
+           ↓ parameterizes
+    Kernel (the system)
+      ├── stores: World state (current artifacts)
+      ├── stores: World history (immutable event log)
+      ├── stores: Measurement state (rate windows, usage)
+      ├── enforces: Physics (scarcity, immutability, contracts)
+      └── provides: Interface (read/write operations)
+
+  key_points:
+    - "Infrastructure is external - we don't control it"
+    - "Configuration is inputs - set by operator before/during runtime"
+    - "Kernel is the system - stores state, enforces physics, provides interface"
+    - "World state and world history are both inside the kernel"
+
+# =============================================================================
+# OPEN QUESTIONS AND UNCERTAINTIES
+# =============================================================================
+# These need further discussion before the model is finalized.
+
+open_questions:
+
+  kernel_vs_artifact_system:
+    question: "Where does contract checking belong - kernel or artifact layer?"
+    status: "RESOLVED"
+    resolution: |
+      Clean separation: Artifacts define policy, kernel enforces it.
+
+      - Artifacts define their own governance (contract is part of artifact's interface)
+      - Kernel executes the contract logic on behalf of the artifact
+      - The rules belong to the artifact, but kernel runs them
+
+      Analogy: A house has a lock (defined by owner), physics makes the lock work.
+      Owner defines the rules, physics enforces them.
+
+      This means:
+      - No artifact needs to implement permission checking
+      - Artifacts just define their contract (as part of interface)
+      - Kernel handles execution of all permission checks
+      - Kernel has privilege to read/invoke any contract for this purpose
+
+  contract_regress:
+    question: "How do we break the infinite regress when checking contracts?"
+    status: "RESOLVED"
+    resolution: |
+      Kernel invoking contracts for permission checking is a kernel function,
+      not an "access" that needs permission itself.
+
+      Like: a judge reading a law to make a ruling doesn't need "permission to read the law."
+      That's just how courts work.
+
+      Specifically:
+      - Kernel has privilege to read/invoke any contract for permission checking
+      - This is part of kernel's role as "enforcer of policy defined by artifacts"
+      - Contracts typically have access_contract_id = null (creator controls)
+      - If contracts call other contracts, depth limit (e.g., 10) prevents infinite loops
+
+    remaining_details:
+      - "Depth limit value (10?) - needs to be specified"
+      - "What happens when depth limit is hit? Deny by default?"
+
+  caller_identity:
+    question: "Who provides and guarantees caller identity?"
+    status: "RESOLVED"
+    resolution: |
+      Kernel provides verified caller identity. This is an irreducible kernel responsibility.
+
+      - Artifacts can't determine who is calling - they just receive requests
+      - Kernel knows the true caller (it routes all requests)
+      - Caller identity is provided as part of the permission check context
+      - Cannot be spoofed - kernel guarantees it
+
+  kernel_provided_metadata:
+    question: "What metadata should kernel provide to contracts to reduce friction?"
+    context: |
+      Caller identity could theoretically be handled without kernel (e.g., passwords/tokens),
+      but kernel providing verified caller ID reduces friction.
+      There may be OTHER metadata that's valuable for kernel to provide.
+    insight: |
+      Kernel-provided metadata is a CONVENIENCE that reduces friction.
+      Contracts could work around missing metadata, but with more complexity.
+      The question is: what metadata is valuable enough to standardize?
+    possible_metadata:
+      definitely_useful:
+        - "caller_id: verified identity of who is making the request"
+        - "target_id: artifact being accessed"
+        - "action: what operation (read, write, invoke, etc.)"
+      probably_useful:
+        - "target_created_by: who created the artifact being accessed"
+        - "caller_created_by: who created the caller (for hierarchical permissions)"
+        - "timestamp / event_number: when this is happening"
+      maybe_useful:
+        - "caller_labels: is caller an agent? principal? (properties)"
+        - "caller_balance: does caller have funds (for paywalls without extra query)"
+        - "call_chain: if A→B→C, the full provenance chain"
+        - "previous_interactions: has caller accessed this target before"
+    tradeoff: |
+      More metadata = more convenience for contract authors, but more kernel complexity.
+      Less metadata = simpler kernel, but contracts must query/verify themselves.
+    status: "needs discussion - what's the right set?"
+
+  what_governs_contracts:
+    question: "What contract governs a contract artifact?"
+    context: |
+      Contract E is an artifact.
+      E could have its own access_contract_id pointing to Contract F.
+      What's the base case?
+    current_answer: "Eventually hit null, which uses default (creator has rights)"
+    concern: "This interacts with the regress problem above"
+    status: "partially resolved, but interacts with regress question"
+
+  actions_specification:
+    question: "Should actions be formally specified in the conceptual model?"
+    status: "RESOLVED"
+    resolution: |
+      Actions fall into three categories:
+
+      CORE ACTIONS (go through contract permission):
+        - read: Read artifact content
+        - write: Create or replace artifact
+        - edit: Surgical modification of artifact content
+        - invoke: Call method on executable artifact
+        - delete: Remove artifact
+
+      KERNEL OPERATIONS (no permission needed):
+        - noop: Do nothing
+        - query_kernel: Query kernel state (world history, balances, etc.)
+
+      CONVENIENCE ACTIONS (shortcuts for edit_artifact):
+        - subscribe_artifact: Edit agent's subscribed_artifacts field
+        - unsubscribe_artifact: Edit agent's subscribed_artifacts field
+        - configure_context: Edit agent's context_sections field
+        - modify_system_prompt: Edit agent's prompt modifications
+
+      The convenience actions exist because:
+        - They provide domain-specific validation
+        - They're simpler than constructing full edit_artifact JSON
+        - They're shortcuts for agents using the conventional schema
+
+      Conceptually, only the core actions and kernel operations are fundamental.
+      Convenience actions are implementation helpers.
+
+    open_issue: |
+      subscribe_artifact doesn't check read permission on the target artifact.
+      Should subscribing require read access? (You're asking to have it injected
+      into your prompt, which implies reading it.)
+
+  scrip_currency:
+    question: "How does scrip (internal currency) fit into the model?"
+    context: |
+      Scrip is internal economic currency for payments.
+      Rights are claims on physical capacity (CPU, memory, API).
+      Scrip is NOT a physical resource.
+    options:
+      kernel_tracked:
+        description: "Scrip is a kernel-tracked balance (not an artifact)"
+        pros: ["Simple", "Different from physical resources"]
+      right_artifact:
+        description: "Scrip is a special type of right artifact"
+        pros: ["Consistent with 'everything is artifact'"]
+    status: "deferred"
+
+  time_ordering:
+    question: "How are events ordered in world history?"
+    options:
+      - "Event numbers (monotonically increasing sequence)"
+      - "Timestamps (wall clock)"
+      - "Both (event number primary, timestamp metadata)"
+    status: "deferred"
+
+  bootstrap:
+    question: "What exists at time zero? How does first artifact get created?"
+    context: |
+      If contracts govern all access, who creates the first contract?
+      Need some bootstrap mechanism.
+    current_answer: "Configuration specifies initial state, null contract default breaks circularity"
+    status: "deferred"
+
+# =============================================================================
+# KERNEL'S RESPONSIBILITIES (RESOLVED)
+# =============================================================================
+
+kernel_responsibilities:
+  summary: |
+    Artifacts define policy, kernel enforces it.
+    Kernel is the "physics" that makes artifact-defined rules actually work.
+
+  storage:
+    - "World state: all artifacts"
+    - "World history: immutable event log"
+    - "Measurement state: rate windows, usage tracking"
+
+  identity:
+    - "Verified caller identity: who is making a request (can't be spoofed)"
+    - "Provides caller_id and other metadata to contracts"
+
+  physics_enforcement:
+    - "Scarcity: can't spend what doesn't exist (amount >= 0)"
+    - "Immutability: created_by cannot change, history cannot be altered"
+    - "Resource measurement: track actual consumption"
+
+  permission_enforcement:
+    - "Execute contract logic on behalf of artifacts"
+    - "Read/invoke any contract for permission checking (kernel privilege)"
+    - "Route requests only if permission granted"
+    - "Artifacts define policy (contracts), kernel enforces it"
+
+  metadata_provision:
+    - "Provide verified context to contracts: caller_id, target_id, action"
+    - "May provide additional useful metadata (see open question on metadata)"

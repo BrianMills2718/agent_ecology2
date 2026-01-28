@@ -34,6 +34,8 @@ This directory contains hook templates for the meta-process framework. There are
 | `session-startup-cleanup.sh` | Session start | Auto-cleanup orphaned claims | No (cleanup) |
 | `refresh-session-marker.sh` | Edit/Write | Update session marker for worktree tracking | No (tracking) |
 | `check-hook-enabled.sh` | (helper) | Check if a hook is enabled in config | N/A |
+| `check-planning-patterns.sh` | Edit/Write (plans) | Validate planning patterns in plan files | Configurable |
+| `pre-commit-planning-patterns.sh` | pre-commit | Validate planning patterns before commit | Configurable |
 
 ## Exit Codes
 
@@ -255,8 +257,73 @@ git commit --no-verify -m "..."
 # Claude Code hooks - edit meta-process.yaml to disable
 ```
 
+---
+
+## Planning Pattern Hooks
+
+These hooks validate planning patterns in plan files. See [Question-Driven Planning](../patterns/28_question-driven-planning.md) and [Uncertainty Tracking](../patterns/29_uncertainty-tracking.md).
+
+### check-planning-patterns.sh
+
+**Purpose:** Validate planning patterns when editing plan files.
+
+**Checks:**
+- Open Questions section exists
+- No unverified claims ("I believe", "might be", etc.)
+- No prohibited terms from conceptual model
+
+**Configuration (meta-process.yaml):**
+```yaml
+planning:
+  question_driven_planning: advisory  # disabled | advisory | required
+  uncertainty_tracking: advisory
+  warn_on_unverified_claims: true
+  warn_on_prohibited_terms: true
+```
+
+**Behavior by level:**
+- `disabled` - No checks
+- `advisory` - Warnings only (default)
+- `required` - Errors block operation
+
+### pre-commit-planning-patterns.sh
+
+**Purpose:** Validate planning patterns in plan files before commit.
+
+**Usage:** Add to your pre-commit hook chain:
+```bash
+# In hooks/pre-commit
+source meta-process/hooks/pre-commit-planning-patterns.sh
+```
+
+### Validation Script
+
+For standalone validation:
+```bash
+# Check single plan
+python scripts/check_planning_patterns.py --plan 229
+
+# Check all plans
+python scripts/check_planning_patterns.py --all
+
+# Strict mode (advisory becomes required)
+python scripts/check_planning_patterns.py --plan 229 --strict
+```
+
+### CI Integration
+
+Copy `meta-process/ci/planning-patterns.yml` to `.github/workflows/` to enable CI validation.
+
+The CI workflow:
+- Runs on PRs that modify plan files
+- Uses `advisory` mode by default
+- Uses `required` mode when `weight: heavy`
+
 ## See Also
 
 - [Git Hooks Pattern](../patterns/06_git-hooks.md)
 - [Worktree Enforcement Pattern](../patterns/19_worktree-enforcement.md)
 - [Claim System Pattern](../patterns/18_claim-system.md)
+- [Question-Driven Planning](../patterns/28_question-driven-planning.md)
+- [Uncertainty Tracking](../patterns/29_uncertainty-tracking.md)
+- [Conceptual Modeling](../patterns/27_conceptual-modeling.md)

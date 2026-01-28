@@ -163,3 +163,90 @@ workflow:
 
   # Hours before a claim is considered stale (for cleanup)
   stale_claim_hours: 8
+
+# =============================================================================
+# Planning Patterns (Plan #229)
+# =============================================================================
+# Configure patterns that improve planning quality and reduce AI drift.
+# These patterns help AI assistants investigate before assuming and track
+# uncertainties across sessions.
+#
+# Each pattern can be: disabled, advisory, required
+#   disabled - Pattern not used
+#   advisory - Sections appear in templates, warnings if missing (default)
+#   required - Blocks work if sections missing or incomplete
+
+planning:
+  # ---------------------------------------------------------------------------
+  # Question-Driven Planning
+  # ---------------------------------------------------------------------------
+  # Requires surfacing and investigating questions BEFORE proposing solutions.
+  # Prevents AI from guessing when it should investigate.
+  #
+  # Pattern doc: meta-process/patterns/28_question-driven-planning.md
+  #
+  # Levels:
+  #   disabled - No enforcement
+  #   advisory - Plans should have Open Questions section (warning if missing)
+  #   required - Plans must have Open Questions, all resolved before implementation
+  question_driven_planning: advisory
+
+  # Warn when plan files contain unverified language ("I believe", "might be")
+  # Only applies when question_driven_planning is advisory or required
+  warn_on_unverified_claims: true
+
+  # ---------------------------------------------------------------------------
+  # Uncertainty Tracking
+  # ---------------------------------------------------------------------------
+  # Track uncertainties with explicit status (open/investigating/resolved/deferred).
+  # Preserves context across sessions and context compaction.
+  #
+  # Pattern doc: meta-process/patterns/29_uncertainty-tracking.md
+  #
+  # Levels:
+  #   disabled - No tracking
+  #   advisory - Template includes section, no enforcement
+  #   required - All uncertainties must have resolution before plan completion
+  uncertainty_tracking: advisory
+
+  # ---------------------------------------------------------------------------
+  # Conceptual Modeling
+  # ---------------------------------------------------------------------------
+  # Maintain a formal model of "what things ARE" in the system.
+  # Reduces AI misconceptions about architecture.
+  #
+  # Pattern doc: meta-process/patterns/27_conceptual-modeling.md
+  #
+  # Levels:
+  #   disabled - No model required
+  #   advisory - If model exists, CC should reference it
+  #   required - Must have docs/CONCEPTUAL_MODEL.yaml, terms validated
+  conceptual_modeling: disabled
+
+  # If conceptual_modeling is advisory or required:
+  # Warn when code/plans use terms from the model's non_existence section
+  warn_on_prohibited_terms: true
+
+  # Path to conceptual model file (if using conceptual_modeling)
+  conceptual_model_path: docs/CONCEPTUAL_MODEL.yaml
+
+# =============================================================================
+# Project Type (for new project setup)
+# =============================================================================
+# Helps configure defaults based on project characteristics.
+# Used by install.sh and for guidance.
+
+project:
+  # Type affects default pattern configuration
+  # Options: new, existing, prototype
+  #   new       - Starting fresh, can adopt full patterns
+  #   existing  - Adding meta-process to existing codebase
+  #   prototype - Quick experiments, minimal overhead
+  type: existing
+
+  # Complexity affects which patterns are recommended
+  # Options: simple, moderate, complex
+  #   simple   - Few files, solo developer, clear scope
+  #   moderate - Multiple modules, some coordination needed
+  #   complex  - Large codebase, multiple contributors, novel architecture
+  complexity: moderate

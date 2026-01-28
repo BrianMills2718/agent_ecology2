@@ -247,7 +247,7 @@ Master index of all gaps and their implementation plans.
 | 225 | [Agent Bootstrapping Guidance](225_agent_bootstrapping.md) | High | ✅ Complete | Agent learning, productive simulations |
 | 226 | [Agent Learning & Strategic Behavior Fixes](226_agent_learning_fixes.md) | Critical | ✅ Complete | Effective agent learning, strategic planning, reduced noop rates |
 | 227 | [Agent Catalog & Experiment Tracking](227_agent_catalog_experiment_tracking.md) | High | 🚧 In Progress | - |
-| 228 | [Plan 228: Backwards Compatibility Audit and Removal](228_backwards_compat_audit.md) | High | 📋 Planned | Architecture simplification, reduced maintenance burden |
+| 229 | [Plan 229: Conceptual Model and Required Interfaces](229_conceptual_model_and_required_interfaces.md) | High | 📋 Planned | CC instance comprehension, architecture consistency |
 ---
 
 ## TDD Workflow

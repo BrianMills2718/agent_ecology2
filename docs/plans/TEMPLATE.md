@@ -28,6 +28,34 @@ This forces exploration before implementation and creates traceability.
 
 ---
 
+## Open Questions
+
+**Required:** List unknowns BEFORE proposing solutions.
+Investigate each question - don't guess. See [Question-Driven Planning](../../meta-process/patterns/28_question-driven-planning.md).
+
+### Before Planning
+
+<!-- List questions that must be answered before you can plan -->
+
+1. [ ] **Question:** [What do you need to know?]
+   - **Status:** ❓ OPEN
+   - **Why it matters:** [Why this affects the plan]
+
+2. [ ] **Question:** [Another unknown]
+   - **Status:** ❓ OPEN
+   - **Why it matters:** [Impact on design]
+
+### Resolved
+
+<!-- Move questions here after INVESTIGATING (not guessing!) -->
+
+1. [x] **Question:** [Example resolved question]
+   - **Status:** ✅ RESOLVED
+   - **Answer:** [What you found by reading code/docs]
+   - **Verified in:** `src/path/file.py:45-60`
+
+---
+
 ## Files Affected
 
 **Required:** Declare what files will be touched. Hook blocks undeclared edits.
@@ -106,6 +134,21 @@ pytest tests/e2e/test_real_e2e.py -v --run-external
 - [ ] `plans/CLAUDE.md` index → `✅ Complete`
 - [ ] Claim released from Active Work table (root CLAUDE.md)
 - [ ] Branch merged or PR created
+
+---
+
+## Uncertainties
+
+Track uncertainties discovered during implementation.
+See [Uncertainty Tracking](../../meta-process/patterns/29_uncertainty-tracking.md).
+
+| Question | Status | Resolution |
+|----------|--------|------------|
+| [Uncertainty discovered during work] | ❓ Open | - |
+| [Example resolved] | ✅ Resolved | [What was decided and why] |
+| [Example deferred] | ⏸️ Deferred | [Accepted risk: ...] |
+
+**Status key:** ❓ Open | 🔍 Investigating | ✅ Resolved | ⏸️ Deferred | 🚫 Blocked
 
 ---
 

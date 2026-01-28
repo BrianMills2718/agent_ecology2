@@ -410,3 +410,5 @@ git commit -m "[Trivial] Fix formatting in config"
 - [Git hooks pattern](06_git-hooks.md) - Enforces plan references in commits
 - [PR coordination pattern](21_pr-coordination.md) - Auto-updates plan status on merge
 - [Claim system pattern](18_claim-system.md) - Tracks who's working on which plan
+- [Question-Driven Planning](28_question-driven-planning.md) - The principle behind "References Reviewed"
+- [Uncertainty Tracking](29_uncertainty-tracking.md) - Track open questions in plans
