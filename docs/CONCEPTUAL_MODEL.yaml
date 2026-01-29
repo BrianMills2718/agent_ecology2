@@ -7,7 +7,7 @@
 
 version: 1
 last_updated: "2026-01-28"
-status: draft  # All conceptual questions resolved. Code gaps: subscribe_artifact permission, terminology (Plan #230), invariants (Plan #231). Target architecture documented in artifact_self_handling section.
+status: accepted  # ADR-0024 resolved access control architecture. Code gaps: subscribe_artifact permission, terminology (Plan #230), invariants (Plan #231).
 
 # =============================================================================
 # ARTIFACT - The Primal Entity
@@ -30,15 +30,18 @@ artifact:
       description: "Schema describing what this artifact IS and DOES"
     access_contract_id:
       type: "string | null"
-      description: "Contract governing permissions (null = default behavior)"
+      description: "OPTIONAL METADATA - artifact may store reference to its access policy"
+      kernel_concept: false
+      note: "Kernel does NOT check this. Artifacts handle access in their code (ADR-0024)."
     created_by:
       type: string
       description: "Principal who created this (immutable)"
       mutable: false
 
   default_contract_behavior:
-    description: "When access_contract_id is null"
-    rule: "Creator has all rights, everyone else has no rights"
+    status: "SUPERSEDED by ADR-0024"
+    description: "Kernel does NOT have default behavior. Artifacts handle access in code."
+    note: "See ADR-0024: Artifact Self-Handled Access Control"
 
 # =============================================================================
 # INTERFACE - Required on All Artifacts
@@ -418,25 +421,27 @@ resources:
 
 contracts:
   definition: "Artifacts that answer permission questions"
+  status: "UPDATED per ADR-0024"
 
-  core_principle: "ALL permissions come from contracts"
+  core_principle: |
+    Contracts are just artifacts. Kernel does NOT check them automatically.
+    Artifacts that want to delegate access control invoke a contract from their handler.
+    See ADR-0024 and docs/explorations/access_control.md.
 
-  what_contracts_decide:
-    - "Who can read an artifact"
-    - "Who can write/edit an artifact"
-    - "Who can invoke an artifact"
-    - "Who can delete an artifact"
-    - "Who can consume from a right (via write permission)"
+  what_contracts_do:
+    - "Answer permission questions when invoked"
+    - "Reusable patterns (multiple artifacts can delegate to same contract)"
+    - "Not special to kernel - just artifacts with check_permission interface"
 
-  what_kernel_decides:
-    - "Nothing about permission - kernel only asks contracts"
-    - "Kernel enforces physics: scarcity, measurement, immutability of created_by"
+  what_kernel_does:
+    - "Routes requests to artifact handlers"
+    - "Provides verified caller identity"
+    - "Enforces physics: scarcity, storage, immutability"
+    - "Does NOT check permissions or interpret contracts (ADR-0024)"
 
   null_contract_default:
-    when: "access_contract_id is null"
-    behavior: "Creator has all rights, everyone else has none"
-    rationale: "Simple default to break bootstrap circularity"
-    note: "This IS a policy baked into kernel - minimal necessary default"
+    status: "SUPERSEDED by ADR-0024"
+    note: "No kernel defaults. Artifacts handle all access in their code."
 
   permission_check_cost:
     rule: "Permission checks are FREE"
@@ -814,43 +819,45 @@ open_questions:
         4. Genesis artifacts registered in artifact store
         5. Agents created with starting resources
 
-      Circularity broken by:
-        - Null contract default: creator has all rights, others have none
-        - Genesis artifacts start with access_contract_id = null
-        - No permission check needed for kernel creating initial state
+      Bootstrap enabled by (ADR-0024):
+        - First artifact has inline access logic in code (no delegation needed)
+        - First artifact can serve as contract for future artifacts
+        - No kernel defaults - agents figure it out through selection pressure
+        - See docs/explorations/access_control.md for bootstrap scenario
 
 # =============================================================================
 # KERNEL'S RESPONSIBILITIES (RESOLVED)
 # =============================================================================
 
 kernel_responsibilities:
+  status: "UPDATED per ADR-0024"
   summary: |
-    Artifacts define policy, kernel enforces it.
-    Kernel is the "physics" that makes artifact-defined rules actually work.
+    Kernel provides storage, verified identity, and physics.
+    Kernel does NOT enforce permissions - artifacts handle that in code.
+    See docs/explorations/access_control.md for why.
 
   storage:
     - "World state: all artifacts"
-    - "World history: immutable event log"
+    - "World history: immutable event log (append-only)"
     - "Measurement state: rate windows, usage tracking"
 
   identity:
     - "Verified caller identity: who is making a request (can't be spoofed)"
-    - "Provides caller_id and other metadata to contracts"
+    - "Provides caller_id to artifact handlers"
 
   physics_enforcement:
     - "Scarcity: can't spend what doesn't exist (amount >= 0)"
     - "Immutability: created_by cannot change, history cannot be altered"
     - "Resource measurement: track actual consumption"
 
-  permission_enforcement:
-    - "Execute contract logic on behalf of artifacts"
-    - "Read/invoke any contract for permission checking (kernel privilege)"
-    - "Route requests only if permission granted"
-    - "Artifacts define policy (contracts), kernel enforces it"
+  routing:
+    - "Route requests to artifact handlers with verified caller identity"
+    - "Does NOT check permissions - artifact handler decides (ADR-0024)"
 
-  metadata_provision:
-    - "Provide verified context to contracts: caller_id, target_id, action"
-    - "May provide additional useful metadata (see open question on metadata)"
+  not_responsible_for:
+    - "Permission checking (artifacts handle in their code)"
+    - "Access control defaults (no null contract behavior)"
+    - "Interpreting contracts (contracts are just artifacts)"
 
 # =============================================================================
 # STRESS TEST INSIGHTS (Escrow Example - 2026-01-28)
@@ -1195,18 +1202,22 @@ remaining_uncertainties:
 
   read_write_as_methods:
     question: "Should read/write/edit/delete be methods rather than kernel operations?"
-    status: "RESOLVED - See artifact_self_handling below"
-    resolution: "All operations route through artifact's handle_request"
+    status: "RESOLVED - ADR-0024"
+    resolution: |
+      All operations route through artifact's handle_request.
+      Kernel routes with verified identity; artifact decides everything.
+      See docs/explorations/access_control.md for full alternatives analysis.
 
 # =============================================================================
-# TARGET ARCHITECTURE: ARTIFACT SELF-HANDLING
+# TARGET ARCHITECTURE: ARTIFACT SELF-HANDLING (ADR-0024)
 # =============================================================================
-# This section documents the target architecture for artifact access control.
-# Status: PROPOSED - significant refactor from current implementation
-# Confidence: 75%
+# This section documents the accepted architecture for artifact access control.
+# Status: ACCEPTED - ADR-0024, 2026-01-29
+# Confidence: 80%
 #
 # Key insight: Artifacts handle their own access. Kernel only routes.
 # This maximizes flexibility and keeps kernel minimal.
+# See: docs/explorations/access_control.md for full reasoning.
 
 artifact_self_handling:
 
