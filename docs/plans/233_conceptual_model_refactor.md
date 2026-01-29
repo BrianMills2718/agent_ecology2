@@ -1,6 +1,6 @@
 # Plan #233: Refactor CONCEPTUAL_MODEL.yaml for Conciseness
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 **Priority:** Medium
 **Blocks:** None
 **Created:** 2026-01-29
@@ -61,11 +61,11 @@ Keep only status and pointer, not the full reasoning.
 
 ## Acceptance Criteria
 
-- [ ] CONCEPTUAL_MODEL.yaml is 500-700 lines
-- [ ] All historical reasoning moved to explorations
-- [ ] Each moved section has clear ADR/exploration reference
-- [ ] No information lost (just relocated)
-- [ ] Explorations index updated
+- [x] CONCEPTUAL_MODEL.yaml is 500-700 lines (actual: 333 lines)
+- [x] All historical reasoning moved to explorations
+- [x] Each moved section has clear ADR/exploration reference
+- [x] No information lost (just relocated)
+- [x] Explorations index updated
 
 ## Test Plan
 
