@@ -25,6 +25,9 @@ Each exploration documents:
 | File | ADR | Topic |
 |------|-----|-------|
 | `access_control.md` | ADR-0024 | Artifact self-handled access control |
+| `resolved_questions.md` | Various | Historical Q&A from model development |
+| `escrow_stress_test.md` | - | Insights from escrow artifact walkthrough |
+| `ostrom_rights_mapping.md` | - | Mapping to Ostrom's rights framework |
 
 ## When to Create an Exploration
 
