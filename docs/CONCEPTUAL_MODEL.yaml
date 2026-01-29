@@ -1143,7 +1143,337 @@ remaining_uncertainties:
 
   read_write_as_methods:
     question: "Should read/write/edit/delete be methods rather than kernel operations?"
-    status: "INTERESTING BUT BIG CHANGE"
-    current: "They are kernel-level operations"
-    alternative: "Everything is invoke, read/write are standard methods"
-    defer: true
+    status: "RESOLVED - See artifact_self_handling below"
+    resolution: "All operations route through artifact's handle_request"
+
+# =============================================================================
+# TARGET ARCHITECTURE: ARTIFACT SELF-HANDLING
+# =============================================================================
+# This section documents the target architecture for artifact access control.
+# Status: PROPOSED - significant refactor from current implementation
+# Confidence: 75%
+#
+# Key insight: Artifacts handle their own access. Kernel only routes.
+# This maximizes flexibility and keeps kernel minimal.
+
+artifact_self_handling:
+
+  summary: |
+    Every artifact handles its own requests, including access control.
+    The kernel's role is limited to: routing, verified identity, and physics.
+    There is no distinction between "data" and "code" artifacts - all have handlers.
+
+  # ---------------------------------------------------------------------------
+  # KERNEL RESPONSIBILITIES (MINIMAL)
+  # ---------------------------------------------------------------------------
+  kernel_responsibilities:
+    routing:
+      description: "Deliver requests from caller to target artifact"
+      details: |
+        When A wants to interact with B:
+        1. A sends request to kernel
+        2. Kernel attaches verified caller identity (A)
+        3. Kernel routes to B's handle_request
+        4. B's response returns to A
+
+    verified_identity:
+      description: "Guarantee who the caller is"
+      details: |
+        Kernel is the trusted party that verifies identity.
+        Artifacts receive caller_id from kernel and can trust it.
+        Caller cannot spoof identity - kernel guarantees it.
+
+    physics:
+      description: "Enforce scarcity and resource constraints"
+      includes:
+        - "Storage (where artifacts live)"
+        - "Resource limits (disk, memory, compute budget)"
+        - "Rate limiting (token bucket for renewable resources)"
+        - "Ledger (scrip balances)"
+
+    not_responsible_for:
+      - "Permission checking (artifacts handle this)"
+      - "Access control defaults (no null contract handling)"
+      - "Interpreting contracts (contracts are just artifacts)"
+
+  # ---------------------------------------------------------------------------
+  # ARTIFACT STRUCTURE
+  # ---------------------------------------------------------------------------
+  artifact_structure:
+    required_fields:
+      id:
+        type: string
+        description: "Unique identifier"
+      content:
+        type: string
+        description: "Stored data (may be empty)"
+      code:
+        type: string
+        description: "Handler code - REQUIRED for all artifacts"
+        note: "No distinction between 'data' and 'code' artifacts"
+      created_by:
+        type: string
+        description: "Who created this (immutable)"
+        mutable: false
+
+    removed_fields:
+      access_contract_id:
+        status: "REMOVED"
+        reason: |
+          Artifacts handle their own access. If an artifact wants to
+          delegate access control, it invokes another artifact from
+          within its handler. This is explicit, not kernel-mediated.
+
+  # ---------------------------------------------------------------------------
+  # HANDLE_REQUEST INTERFACE
+  # ---------------------------------------------------------------------------
+  handle_request:
+    description: "Standard interface every artifact must implement"
+
+    signature: |
+      def handle_request(caller: str, operation: str, args: dict) -> dict
+
+    parameters:
+      caller:
+        type: string
+        description: "Verified caller identity (guaranteed by kernel)"
+      operation:
+        type: string
+        enum: ["read", "write", "invoke", "delete"]
+        description: "What the caller wants to do"
+      args:
+        type: dict
+        description: "Operation-specific arguments"
+        examples:
+          read: "{}"
+          write: "{content: '...', code: '...'}"
+          invoke: "{method: 'foo', arguments: [...]}"
+          delete: "{}"
+
+    return_value:
+      type: dict
+      fields:
+        allowed:
+          type: bool
+          description: "Was the operation permitted?"
+        result:
+          type: any
+          description: "Operation result (content, method return, etc.)"
+        error:
+          type: string
+          optional: true
+          description: "Error message if not allowed or failed"
+
+    example_simple: |
+      # Simple private artifact - only creator can access
+      def handle_request(caller, operation, args):
+          if caller != self.created_by:
+              return {"allowed": False, "error": "Access denied"}
+
+          if operation == "read":
+              return {"allowed": True, "result": self.content}
+          elif operation == "invoke":
+              method = args.get("method")
+              # ... handle invoke
+
+          return {"allowed": False, "error": f"Unknown operation: {operation}"}
+
+    example_delegated: |
+      # Artifact that delegates to a contract artifact
+      def handle_request(caller, operation, args):
+          # Ask contract artifact if access is allowed
+          check_result = kernel_actions.invoke(
+              artifact_id="my_access_contract",
+              method="check_permission",
+              args={"caller": caller, "operation": operation, "target": self.id}
+          )
+
+          if not check_result.get("allowed"):
+              return {"allowed": False, "error": "Contract denied access"}
+
+          # Access granted - handle the operation
+          if operation == "read":
+              return {"allowed": True, "result": self.content}
+          # ... etc
+
+  # ---------------------------------------------------------------------------
+  # DELEGATION PATTERN
+  # ---------------------------------------------------------------------------
+  delegation:
+    description: "How artifacts delegate access control to other artifacts"
+
+    mechanism: |
+      Artifact A wants to use artifact C for access control:
+      1. A's handle_request receives request from caller X
+      2. A invokes C: "Should X be allowed to do this?"
+      3. C's handle_request runs, returns allow/deny
+      4. A acts on C's response
+
+    key_insight: |
+      Delegation is just artifact-to-artifact invocation.
+      No special kernel support needed.
+      The "contract" is just an artifact that answers permission questions.
+
+    reusability: |
+      Multiple artifacts can delegate to the same contract artifact.
+      This enables:
+        - Shared access policies (e.g., "firm_contract")
+        - Hierarchical permissions (firm → department → team)
+        - Composable patterns (AND multiple contracts)
+
+  # ---------------------------------------------------------------------------
+  # BOOTSTRAP
+  # ---------------------------------------------------------------------------
+  bootstrap:
+    challenge: "First artifact must be self-sufficient (no contracts exist yet)"
+
+    solution: |
+      First artifact created by an agent must have inline access logic.
+      It cannot delegate because there's nothing to delegate to yet.
+
+    example: |
+      # First artifact - a basic contract
+      id: "basic_private_contract"
+      content: "Contract that grants creator-only access"
+      code: |
+        def handle_request(caller, operation, args):
+            # For permission checks from other artifacts
+            if operation == "invoke" and args.get("method") == "check_permission":
+                target_creator = args.get("target_created_by")
+                requesting_caller = args.get("caller")
+                return {"allowed": True, "result": requesting_caller == target_creator}
+
+            # For access to this contract itself
+            if caller == self.created_by:
+                return {"allowed": True, "result": self.content}
+            return {"allowed": False}
+
+    progression: |
+      1. Agent creates first artifact with inline logic
+      2. That artifact can serve as contract for future artifacts
+      3. Agent creates more artifacts that delegate to it
+      4. Over time, better contracts emerge and replace early ones
+      5. No kernel defaults needed - agents figure it out
+
+  # ---------------------------------------------------------------------------
+  # ORGANIZATIONAL STRUCTURE (Coase-style Firms)
+  # ---------------------------------------------------------------------------
+  organizational_structure:
+    description: "How this enables low-friction internal operations"
+
+    firm_pattern: |
+      A firm creates a contract artifact:
+
+      id: "acme_firm_contract"
+      code: |
+        def handle_request(caller, operation, args):
+            if operation == "invoke" and args.get("method") == "check_permission":
+                # Low friction: all firm members have access
+                if caller in self.state.members:
+                    return {"allowed": True, "result": True}
+                # External: require explicit permission
+                return {"allowed": True, "result": False}
+            # ... handle other operations
+
+    benefits:
+      - "Internal operations: single check (is caller a member?)"
+      - "External operations: explicit permission needed"
+      - "Hierarchy: firm_contract can check department membership"
+      - "Composable: AND multiple contracts for complex policies"
+
+  # ---------------------------------------------------------------------------
+  # ERROR HANDLING
+  # ---------------------------------------------------------------------------
+  error_handling:
+    no_handler:
+      condition: "Artifact has no code / handle_request not defined"
+      behavior: "Kernel returns error: 'Artifact has no handler'"
+      rationale: "Selection pressure - agents learn to add handlers"
+
+    handler_crashes:
+      condition: "Handler code throws exception"
+      behavior: "Kernel returns error with exception details"
+      rationale: "Fail loud - don't hide errors"
+
+    handler_timeout:
+      condition: "Handler takes too long"
+      behavior: "Kernel returns timeout error"
+      configurable: "executor.timeout_seconds in config"
+
+    circular_delegation:
+      condition: "A delegates to B, B delegates to A"
+      behavior: "Depth limit exceeded error"
+      configurable: "executor.max_depth in config (default 10)"
+
+  # ---------------------------------------------------------------------------
+  # MIGRATION FROM CURRENT MODEL
+  # ---------------------------------------------------------------------------
+  migration:
+    current_model:
+      - "Artifacts have access_contract_id"
+      - "Kernel checks contract before granting access"
+      - "Null contract = kernel default (creator only)"
+
+    target_model:
+      - "Artifacts have code with handle_request"
+      - "Kernel routes requests to artifact"
+      - "No kernel defaults - artifact decides everything"
+
+    migration_path:
+      phase_1:
+        description: "Add handle_request to executor"
+        changes:
+          - "Executor calls handle_request instead of check_permission"
+          - "Existing contracts become artifacts with handle_request"
+      phase_2:
+        description: "Remove kernel permission checking"
+        changes:
+          - "Remove null contract default handling"
+          - "Remove kernel's check_permission calls"
+      phase_3:
+        description: "Update all tests and artifacts"
+        changes:
+          - "Add handler code to all test artifacts"
+          - "Update artifact creation to require code"
+
+    backwards_compatibility:
+      status: "NOT a goal"
+      rationale: |
+        This is a significant architecture change. Clean break is better
+        than maintaining two models. Current implementation is early
+        enough that migration cost is acceptable.
+
+  # ---------------------------------------------------------------------------
+  # COMPARISON TO CURRENT MODEL
+  # ---------------------------------------------------------------------------
+  comparison:
+    current:
+      kernel_role: "Routes AND interprets permissions"
+      artifact_role: "Passive - kernel checks on its behalf"
+      contracts: "Special artifacts that kernel executes"
+      friction: "Every access = kernel + contract execution"
+      flexibility: "Limited by contract interface"
+
+    proposed:
+      kernel_role: "Routes only"
+      artifact_role: "Active - handles own requests"
+      contracts: "Just artifacts that others can invoke"
+      friction: "Artifact-controlled (can be low for internal ops)"
+      flexibility: "Maximum - artifact decides everything"
+
+    tradeoffs:
+      more_code:
+        description: "Every artifact needs handler code"
+        mitigation: "LLMs are good at boilerplate. Standard patterns emerge."
+
+      more_responsibility:
+        description: "Artifacts responsible for security"
+        mitigation: "Selection pressure. Buggy artifacts fail. Good ones thrive."
+
+      simpler_kernel:
+        description: "Kernel has less logic"
+        benefit: "Easier to understand, fewer edge cases"
+
+      uniform_model:
+        description: "No data vs code distinction"
+        benefit: "Simpler mental model. Everything is an artifact with a handler."
