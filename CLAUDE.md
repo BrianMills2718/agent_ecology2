@@ -46,6 +46,7 @@ make kill                # Stop running simulation
 make pr-ready            # Rebase + push (run before PR)
 make pr                  # Create PR (opens browser)
 make finish BRANCH=plan-XX PR=N  # Merge + cleanup + auto-complete (run from main)
+make finish BRANCH=plan-XX PR=N SKIP_COMPLETE=1  # Skip plan completion (for partial work)
 ```
 
 ### PR Management

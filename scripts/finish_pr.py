@@ -292,7 +292,7 @@ def validate_finish_preconditions(
     return len(errors) == 0, errors, context
 
 
-def finish_pr(branch: str, pr_number: int, check_ci: bool = False) -> bool:
+def finish_pr(branch: str, pr_number: int, check_ci: bool = False, skip_complete: bool = False) -> bool:
     """Complete the full PR lifecycle.
 
     Plan #189 Phase 5: Atomic Finish
@@ -360,8 +360,8 @@ def finish_pr(branch: str, pr_number: int, check_ci: bool = False) -> bool:
     # PHASE 3: CLEANUP (best-effort, logged - PR is already merged)
     # ═══════════════════════════════════════════════════════════════════
 
-    # Step 3: Mark plan as complete (if this is a plan branch)
-    if plan_num:
+    # Step 3: Mark plan as complete (if this is a plan branch and not skipped)
+    if plan_num and not skip_complete:
         print(f"📋 Marking Plan #{plan_num} as complete...")
         complete_ok, complete_msg = complete_plan(plan_num)
         if complete_ok:
@@ -369,6 +369,9 @@ def finish_pr(branch: str, pr_number: int, check_ci: bool = False) -> bool:
         else:
             print(f"⚠️  Could not mark plan complete: {complete_msg}")
             print("   Run manually: python scripts/complete_plan.py --plan", plan_num)
+    elif plan_num and skip_complete:
+        print(f"⏭️  Skipping plan completion (--skip-complete)")
+        print(f"   Run manually when ready: python scripts/complete_plan.py --plan {plan_num}")
 
     # Step 4: Release claim
     print(f"🔓 Releasing claim for {branch}...")
@@ -414,6 +417,11 @@ def main() -> int:
         action="store_true",
         help="Validate only, don't actually merge (Plan #189 Phase 5)"
     )
+    parser.add_argument(
+        "--skip-complete",
+        action="store_true",
+        help="Skip auto-completing the plan (for partial work or doc-only changes)"
+    )
 
     args = parser.parse_args()
 
@@ -431,8 +439,10 @@ def main() -> int:
             if context.get("worktree_path"):
                 print(f"  1. Remove worktree: {context['worktree_path']}")
             print(f"  2. Merge PR #{args.pr}")
-            if context.get("plan_number"):
+            if context.get("plan_number") and not args.skip_complete:
                 print(f"  3. Mark Plan #{context['plan_number']} complete")
+            elif context.get("plan_number") and args.skip_complete:
+                print(f"  3. Skip plan completion (--skip-complete)")
             print(f"  4. Release claim for {args.branch}")
             print("  5. Pull latest main")
             return 0
@@ -442,7 +452,7 @@ def main() -> int:
                 print(f"  • {error}")
             return 1
 
-    success = finish_pr(args.branch, args.pr, args.check_ci)
+    success = finish_pr(args.branch, args.pr, args.check_ci, args.skip_complete)
     return 0 if success else 1
 
 
