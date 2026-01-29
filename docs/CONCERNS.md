@@ -30,6 +30,15 @@ Potential issues to monitor. Not bugs, not plans - just things that might become
 |---------|------|-----------|
 | **Agent-specific code (~30%)** | LLM access, scheduling, workflow execution still privileged | Difficulty adding new "agent-like" patterns, code duplication |
 
+### Access Control (ADR-0024)
+
+| Concern | Risk | Watch For |
+|---------|------|-----------|
+| **ArtifactStore no locking** | Concurrent artifact modifications could race | Data corruption, lost updates, inconsistent state |
+| **Access control bugs** | Artifact code could have logic bugs allowing unauthorized access | Artifacts with lax access being exploited, unexpected denials |
+| **Access boilerplate** | Every artifact needs access logic, could lead to forgotten checks | Inconsistent patterns, copy-paste errors, missing checks |
+| **"Owner" misconception recurring** | Despite documentation, "owner" mental model keeps appearing | CC instances or developers assuming created_by grants rights |
+
 ---
 
 ## Resolved Concerns
