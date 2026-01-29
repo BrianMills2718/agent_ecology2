@@ -33,12 +33,12 @@ if echo "$COMMAND" | grep -qE 'git\s+worktree\s+add'; then
     # Format 2: git worktree add <path> <existing-branch>
     BRANCH=""
     if echo "$COMMAND" | grep -qE '\-b\s+\S+'; then
-        # New branch with -b flag
-        BRANCH=$(echo "$COMMAND" | grep -oE '\-b\s+\S+' | sed 's/-b\s*//')
+        # New branch with -b flag (strip quotes from branch name)
+        BRANCH=$(echo "$COMMAND" | grep -oE '\-b\s+\S+' | sed 's/-b\s*//' | tr -d '"'"'")
     else
-        # Existing branch - last argument after the path
+        # Existing branch - last argument after the path (strip quotes)
         # Pattern: git worktree add <path> <branch>
-        BRANCH=$(echo "$COMMAND" | sed 's/.*git\s\+worktree\s\+add\s\+\S\+\s\+//' | awk '{print $1}')
+        BRANCH=$(echo "$COMMAND" | sed 's/.*git\s\+worktree\s\+add\s\+\S\+\s\+//' | awk '{print $1}' | tr -d '"'"'")
     fi
 
     # Check if this branch has an existing claim
