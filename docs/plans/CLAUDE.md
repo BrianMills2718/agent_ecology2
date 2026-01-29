@@ -250,6 +250,7 @@ Master index of all gaps and their implementation plans.
 | 229 | [Plan 229: Conceptual Model and Required Interfaces](229_conceptual_model_and_required_interfaces.md) | High | 📋 Planned | CC instance comprehension, architecture consistency |
 | 230 | [Plan 230: Rename can_execute to has_loop](230_rename_can_execute_to_has_loop.md) | Medium | 📋 Planned | - |
 | 231 | [Plan 231: Tight Coupling Between has_standing and Ledger Registration](231_has_standing_ledger_coupling.md) | Medium | 📋 Planned | - |
+| 232 | [Plan 232: Skip Plan Completion Flag in finish_pr.py](232_skip_complete_flag.md) | Medium | 📋 Planned | Fast iteration on documentation work |
 ---
 
 ## TDD Workflow

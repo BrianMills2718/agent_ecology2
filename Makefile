@@ -108,9 +108,9 @@ merge:  ## Merge PR (usage: make merge PR=5)
 	@if [ -z "$(PR)" ]; then echo "Usage: make merge PR=5"; exit 1; fi
 	python $(MAIN_DIR)/scripts/merge_pr.py $(PR)
 
-finish:  ## Complete PR lifecycle: merge + cleanup (usage: make finish BRANCH=plan-XX PR=N) - RUN FROM MAIN!
-	@if [ -z "$(BRANCH)" ] || [ -z "$(PR)" ]; then echo "Usage: make finish BRANCH=plan-XX PR=N"; exit 1; fi
-	cd $(MAIN_DIR) && python $(MAIN_DIR)/scripts/finish_pr.py --branch $(BRANCH) --pr $(PR)
+finish:  ## Complete PR lifecycle: merge + cleanup (usage: make finish BRANCH=plan-XX PR=N [SKIP_COMPLETE=1]) - RUN FROM MAIN!
+	@if [ -z "$(BRANCH)" ] || [ -z "$(PR)" ]; then echo "Usage: make finish BRANCH=plan-XX PR=N [SKIP_COMPLETE=1]"; exit 1; fi
+	cd $(MAIN_DIR) && python $(MAIN_DIR)/scripts/finish_pr.py --branch $(BRANCH) --pr $(PR) $(if $(SKIP_COMPLETE),--skip-complete,)
 
 pr-merge-admin:  ## Merge PR bypassing checks (usage: make pr-merge-admin PR=5)
 	@if [ -z "$(PR)" ]; then echo "Usage: make pr-merge-admin PR=5"; exit 1; fi
