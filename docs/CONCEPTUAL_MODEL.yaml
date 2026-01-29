@@ -851,3 +851,299 @@ kernel_responsibilities:
   metadata_provision:
     - "Provide verified context to contracts: caller_id, target_id, action"
     - "May provide additional useful metadata (see open question on metadata)"
+
+# =============================================================================
+# STRESS TEST INSIGHTS (Escrow Example - 2026-01-28)
+# =============================================================================
+# Insights from walking through a complex escrow artifact example.
+# Status: TENTATIVE - needs review
+
+stress_test_insights:
+
+  # ---------------------------------------------------------------------------
+  # CONTRACTS ARE JUST ARTIFACTS
+  # ---------------------------------------------------------------------------
+  contracts_are_artifacts:
+    status: "ESTABLISHED"
+    confidence: 85%
+
+    insight: |
+      Contracts are NOT a special kernel type. They are just artifacts that
+      implement the check_permission interface. The kernel calls check_permission()
+      on whatever artifact access_contract_id points to.
+
+    implications:
+      - "No special 'contract' type in kernel - just artifacts with an interface"
+      - "Any artifact can be a contract if it implements check_permission"
+      - "Kernel doesn't know or care if something is 'a contract' - just calls the interface"
+
+  # ---------------------------------------------------------------------------
+  # SELF-REFERENTIAL ACCESS (Constitution Pattern)
+  # ---------------------------------------------------------------------------
+  self_referential_access:
+    status: "ESTABLISHED"
+    confidence: 80%
+
+    insight: |
+      access_contract_id can point to SELF. This is the "constitution" pattern -
+      an artifact that governs its own access.
+
+    key_distinction: |
+      Self-reference does NOT mean "same rules for everyone."
+
+      A self-referential artifact has TWO COMPLETE ACCESS CONTROL RULESETS:
+        1. Governance rules: For artifacts that use me as their contract
+           - Covers: read, write, edit, delete, invoke (all methods/args)
+        2. Self-access rules: For access to ME (the contract artifact itself)
+           - Covers: read, write, edit, delete, invoke (all methods/args)
+
+      Both are FULL access control. The check_permission function distinguishes
+      by checking if target_artifact_id == self.id.
+
+    check_permission_logic: |
+      def check_permission(caller, operation, context):
+          if context.target_artifact_id == self.id:
+              # Accessing ME - apply my self-access rules
+              return self.self_access_rules.check(caller, operation, context)
+          else:
+              # Accessing another artifact that uses me - apply governance rules
+              return self.governance_rules.check(caller, operation, context)
+
+    chain_termination: |
+      Self-reference terminates the access chain. No infinite regress.
+      No need for a special kernel "root contract."
+
+  # ---------------------------------------------------------------------------
+  # CONTRACT SCOPE IS SELF-DEFINED
+  # ---------------------------------------------------------------------------
+  contract_scope_self_defined:
+    status: "ESTABLISHED"
+    confidence: 75%
+
+    insight: |
+      Contracts define their own scope - what state they query, what operations
+      they govern. Like a constitution defining its own limits, not just
+      the limits of what it governs.
+
+    mechanism: |
+      Kernel passes target artifact state as part of context to check_permission.
+      Contract decides what to examine and what rules to apply.
+
+  # ---------------------------------------------------------------------------
+  # ARTIFACTS CAN HAVE STANDING
+  # ---------------------------------------------------------------------------
+  artifacts_with_standing:
+    status: "ESTABLISHED"
+    confidence: 80%
+
+    insight: |
+      Artifacts CAN have standing (hold scrip). has_standing is an independent
+      property. This is necessary for value-holding use cases like escrow.
+
+    mechanism: |
+      An escrow_service artifact:
+        - Has has_standing: true (so it has a ledger entry)
+        - Holds scrip on behalf of parties
+        - Tracks internally which funds belong to which escrow
+
+      Ledger sees: escrow_service: 1500 scrip
+      Artifact tracks: { ESC-001: 500, ESC-002: 1000 }
+
+    deletion_invariant:
+      rule: "Artifacts with non-zero balance cannot be deleted"
+      confidence: 85%
+      rationale: "Prevents accidental fund loss"
+
+  # ---------------------------------------------------------------------------
+  # MCP AND STRUCTGPT INTEGRATION
+  # ---------------------------------------------------------------------------
+  interface_schemas:
+    status: "ESTABLISHED"
+    confidence: 75%
+
+    mcp_influence: |
+      MCP (Model Context Protocol) defines how tools/resources are discovered
+      and invoked. Key elements:
+        - Tools: name, title, description, inputSchema (required), outputSchema, annotations
+        - Resources: name, title, uri, description, mimeType, annotations, size
+        - Annotations: readOnlyHint, destructiveHint, idempotentHint, openWorldHint
+
+    structgpt_influence: |
+      StructGPT defines how structured data is presented to LLMs (linearization).
+        - Raw data (JSON, tables, graphs) converted to LLM-readable text
+        - Linearization strategy depends on the task/question
+        - Reduces token usage, improves reasoning
+
+    how_they_combine: |
+      MCP answers: "What can I invoke and how?" (interface/tools)
+      StructGPT answers: "How is content formatted for LLM consumption?" (linearization)
+
+  # ---------------------------------------------------------------------------
+  # TOOL RESULT FORMAT
+  # ---------------------------------------------------------------------------
+  tool_result_format:
+    status: "TENTATIVE"
+    confidence: 75%
+
+    recommendation: "MCP-style content blocks"
+
+    format: |
+      result:
+        - type: "text"
+          text: "Human-readable response for LLM"
+        - type: "structured"  # Optional extension
+          data: { ... }  # For programmatic access
+
+  # ---------------------------------------------------------------------------
+  # CONTENT/STATE RELATIONSHIP
+  # ---------------------------------------------------------------------------
+  content_state_relationship:
+    status: "TENTATIVE"
+    confidence: 60%
+
+    recommendation: "Artifact provides linearize() function"
+
+    mechanism: |
+      - Artifact has internal state (structured)
+      - Artifact provides linearize() that produces content
+      - Kernel calls linearize() when content is needed
+      - Default linearize() = JSON dump of state
+
+  # ---------------------------------------------------------------------------
+  # SEMANTIC METHODS VS RAW OPERATIONS
+  # ---------------------------------------------------------------------------
+  semantic_methods_pattern:
+    status: "INSIGHT"
+    confidence: 70%
+
+    insight: |
+      Instead of controlling raw edit operations, well-designed artifacts
+      expose semantic methods that can be individually permissioned.
+
+    example: |
+      Instead of:
+        - edit(allowed_readers, old="[alice]", new="[alice, bob]")
+
+      Expose:
+        - add_reader(user)    # Contract can allow
+        - remove_reader(user) # Contract can deny
+
+    implication: |
+      Raw edit is a low-level primitive. Higher-level artifacts should expose
+      semantic operations. Contracts control methods via invoke permissions.
+
+# =============================================================================
+# OSTROM RIGHTS ANALYSIS
+# =============================================================================
+
+ostrom_analysis:
+
+  rights_coverage:
+    access:
+      ostrom: "Enter and enjoy non-subtractive benefits"
+      our_model: "read"
+      covered: true
+
+    withdrawal:
+      ostrom: "Obtain resource units or products"
+      our_model: "invoke"
+      covered: true
+
+    management:
+      ostrom: "Regulate internal use patterns, transform resource"
+      our_model: "write, edit on artifact"
+      covered: true
+
+    exclusion:
+      ostrom: "Determine who has access/withdrawal rights"
+      our_model: "write/edit on the CONTRACT governing the artifact"
+      covered: true
+
+    alienation:
+      ostrom: "Sell or transfer management and exclusion rights"
+      our_model: "write/edit on contract's self-access rules"
+      covered: true
+      note: "Requires escrow pattern for atomic handoff"
+
+  # ---------------------------------------------------------------------------
+  # POTENTIAL GAPS
+  # ---------------------------------------------------------------------------
+  potential_gaps:
+
+    proposed_change_visibility:
+      status: "CONFIRMED GAP"
+      importance: "Medium"
+      confidence: 70%
+
+      description: |
+        For fine-grained edit control (e.g., "you can add but not remove"),
+        contracts need to see WHAT the edit will do, not just that an edit
+        is happening.
+
+      current_behavior: |
+        Contract receives: caller, operation, target_state
+        Contract does NOT receive: proposed_content, old_string, new_string
+
+      workaround: |
+        Use semantic methods (add_reader, remove_reader) instead of raw edit.
+        Contract controls methods via invoke permissions with args checking.
+
+      if_we_fix: |
+        Add to context for write/edit operations:
+          context["proposed_content"] = intent.content
+          context["proposed_code"] = intent.code
+
+    atomic_transfers:
+      status: "CONFIRMED GAP"
+      importance: "Low (escrow handles it)"
+      confidence: 60%
+
+      description: |
+        Alienation requires "give rights AND lose them" atomically.
+        Two separate edits could leave inconsistent intermediate state.
+
+      workaround: "Escrow pattern provides atomicity"
+
+      if_we_fix_later: |
+        Would need ACID-style transactions. Complex. Defer as tech debt.
+
+    per_method_invoke_control:
+      status: "NOT A GAP - ALREADY IMPLEMENTED"
+
+      description: |
+        Contracts CAN control access per-method and check argument values.
+        Verified in src/world/permission_checker.py:188-191
+
+      code_reference: |
+        if action == "invoke":
+            context["method"] = method
+            context["args"] = args if args is not None else []
+
+      example: |
+        Contract can express:
+          if method == "add" and all(arg < 42 for arg in args):
+              return ALLOW
+
+# =============================================================================
+# REMAINING UNCERTAINTIES
+# =============================================================================
+
+remaining_uncertainties:
+
+  contract_cross_artifact_queries:
+    question: "Can contracts query artifacts OTHER than the target?"
+    confidence: 55%
+    leaning: "No, for simplicity"
+    revisit_if: "Use case arises requiring it"
+
+  linearize_function_location:
+    question: "How is linearize() defined? Method in interface? Separate field?"
+    confidence: 50%
+    needs: "Implementation attempt to resolve"
+
+  read_write_as_methods:
+    question: "Should read/write/edit/delete be methods rather than kernel operations?"
+    status: "INTERESTING BUT BIG CHANGE"
+    current: "They are kernel-level operations"
+    alternative: "Everything is invoke, read/write are standard methods"
+    defer: true
