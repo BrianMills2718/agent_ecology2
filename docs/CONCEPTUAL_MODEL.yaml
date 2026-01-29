@@ -7,7 +7,7 @@
 
 version: 1
 last_updated: "2026-01-28"
-status: draft  # Questions resolved. Code gaps: subscribe_artifact permission, terminology (Plan #230), invariants (Plan #231).
+status: draft  # All conceptual questions resolved. Code gaps: subscribe_artifact permission, terminology (Plan #230), invariants (Plan #231). Target architecture documented in artifact_self_handling section.
 
 # =============================================================================
 # ARTIFACT - The Primal Entity
@@ -1132,14 +1132,66 @@ remaining_uncertainties:
 
   contract_cross_artifact_queries:
     question: "Can contracts query artifacts OTHER than the target?"
-    confidence: 55%
-    leaning: "No, for simplicity"
-    revisit_if: "Use case arises requiring it"
+    status: "RESOLVED"
+    confidence: 80%
+    resolution: |
+      Yes, artifacts (including contracts) can invoke other artifacts.
+
+      In the artifact_self_handling model:
+        - Artifacts handle their own requests via handle_request()
+        - An artifact's handler can invoke other artifacts
+        - Delegation is just artifact-to-artifact invocation
+        - Example: Contract A checks permission by invoking contract B
+
+      This enables:
+        - Hierarchical permissions (department → team contracts)
+        - Composable policies (AND multiple contracts)
+        - Shared access control (multiple artifacts delegate to same contract)
+
+      Depth limit (configurable, default 10) prevents infinite delegation chains.
 
   linearize_function_location:
     question: "How is linearize() defined? Method in interface? Separate field?"
-    confidence: 50%
-    needs: "Implementation attempt to resolve"
+    status: "RESOLVED"
+    confidence: 80%
+    resolution: |
+      Follow MCP protocols for compatibility. Linearization is optional.
+
+      Decision (informed by mcp-lite discussion, docs/archive/design_discussions_jan11.md):
+        1. Use MCP-style interfaces as the primary schema (for tool compatibility)
+        2. Linearization is an OPTIONAL field in the interface (not required)
+        3. When present, linearization provides LLM-readable text representation
+
+      Interface schema (MCP-compatible with optional linearization):
+        interface:
+          description: str        # Required - what this artifact is
+          labels: list[str]       # Required - convenience labels
+          methods: list[Method]   # Optional - if callable
+          inputSchema: JSONSchema # Optional - for method inputs
+          outputSchema: JSONSchema # Optional - for method outputs
+          linearization: str      # Optional - template for LLM presentation
+
+      Why MCP:
+        - Compact JSON Schema reduces token cost vs reading source code
+        - Constrained generation from schema prevents parameter hallucination
+        - Compatibility with MCP tooling ecosystem
+        - "MCP-Lite is sufficient to start" (80% certainty from prior discussion)
+
+      Why linearization is optional:
+        - Data artifacts may want custom text representation for LLM consumption
+        - StructGPT pattern: structured data → LLM-readable text
+        - But most artifacts work fine with MCP interface alone
+        - Optional allows gradual adoption, selection pressure
+
+      When linearization IS provided:
+        - Applied when artifact content is read by LLM-based agents
+        - Template substitution: "{{field_name}}" → actual value
+        - Agent sees text, not raw JSON (reduces token cost, improves reasoning)
+
+      When linearization is NOT provided:
+        - Default: JSON dump of content (compact but readable)
+        - Agent sees structured data directly
+        - Fine for simple artifacts, programmatic access
 
   read_write_as_methods:
     question: "Should read/write/edit/delete be methods rather than kernel operations?"
