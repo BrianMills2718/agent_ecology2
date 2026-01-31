@@ -468,9 +468,14 @@ class KernelQueryHandler:
                 "error_code": "not_found",
             }
 
-        # Get dependencies from artifact metadata
-        depends_on = artifact.metadata.get("depends_on", [])
-        dependents = artifact.metadata.get("dependents", [])
+        # Get dependencies from artifact field (not metadata)
+        depends_on = artifact.depends_on
+
+        # Compute reverse dependencies (artifacts that depend on this one)
+        dependents = [
+            a.id for a in self._world.artifacts.artifacts.values()
+            if not a.deleted and artifact_id in a.depends_on
+        ]
 
         return {
             "success": True,

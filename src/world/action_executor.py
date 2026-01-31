@@ -385,8 +385,9 @@ class ActionExecutor:
     def _execute_edit(self, intent: EditArtifactIntent) -> ActionResult:
         """Execute an edit_artifact action (Plan #131).
 
-        Applies a partial edit to an existing artifact. Only the specified
-        fields are updated; others are preserved.
+        Applies a surgical string replacement to an artifact's content using
+        old_string/new_string (Claude Code-style editing). Delegates to
+        ArtifactStore.edit_artifact() for the actual replacement logic.
         """
         w = self.world
         # Check if artifact exists
@@ -436,18 +437,12 @@ class ActionExecutor:
                 retriable=False,
             )
 
-        # Calculate size changes for quota
-        old_content_size = len(artifact.content.encode("utf-8"))
-        old_code_size = len(artifact.code.encode("utf-8"))
+        # Calculate size delta for quota check
+        old_size = len(intent.old_string.encode("utf-8"))
+        new_size = len(intent.new_string.encode("utf-8"))
+        size_delta = new_size - old_size
 
-        new_content = intent.content if intent.content is not None else artifact.content
-        new_code = intent.code if intent.code is not None else artifact.code
-
-        new_content_size = len(new_content.encode("utf-8"))
-        new_code_size = len(new_code.encode("utf-8"))
-        size_delta = (new_content_size + new_code_size) - (old_content_size + old_code_size)
-
-        # Check disk quota if growing
+        # Check disk quota if content is growing
         if size_delta > 0:
             available = w.get_available_capacity(intent.principal_id, "disk")
             if available < size_delta:
@@ -460,55 +455,32 @@ class ActionExecutor:
                     error_details={"required": size_delta, "available": available},
                 )
 
-        # Validate code if being updated and artifact is/becomes executable
-        new_executable = intent.executable if intent.executable is not None else artifact.executable
-        if new_executable and intent.code is not None:
-            executor = get_executor()
-            valid, error = executor.validate_code(intent.code)
-            if not valid:
-                return ActionResult(
-                    success=False,
-                    message=f"Code validation failed: {error}",
-                    error_code=ErrorCode.SYNTAX_ERROR.value,
-                    error_category=ErrorCategory.VALIDATION.value,
-                    retriable=True,
-                    error_details={"validation_error": error},
-                )
+        # Delegate to ArtifactStore.edit_artifact for the string replacement
+        result = w.artifacts.edit_artifact(
+            intent.artifact_id, intent.old_string, intent.new_string
+        )
 
-        # Build update dict with only specified fields
-        updates: dict[str, Any] = {}
-        if intent.content is not None:
-            updates["content"] = intent.content
-        if intent.code is not None:
-            updates["code"] = intent.code
-        if intent.executable is not None:
-            updates["executable"] = intent.executable
-        if intent.price is not None:
-            updates["price"] = intent.price
-        if intent.interface is not None:
-            updates["interface"] = intent.interface
-        if intent.access_contract_id is not None:
-            # Plan #235 Phase 0 (FM-7): Only creator can change access_contract_id
-            if (intent.access_contract_id != artifact.access_contract_id
-                    and intent.principal_id != artifact.created_by):
-                return ActionResult(
-                    success=False,
-                    message=f"Only creator '{artifact.created_by}' can change access_contract_id",
-                    error_code=ErrorCode.NOT_AUTHORIZED.value,
-                    error_category=ErrorCategory.PERMISSION.value,
-                    retriable=False,
-                )
-            updates["access_contract_id"] = intent.access_contract_id
-        if intent.metadata is not None:
-            # Merge metadata rather than replace
-            new_metadata = dict(artifact.metadata or {})
-            new_metadata.update(intent.metadata)
-            updates["metadata"] = new_metadata
+        if not result["success"]:
+            # Map edit_artifact error codes to ActionResult error codes
+            error = result.get("data", {}).get("error", "unknown")
+            error_code_map = {
+                "not_found": ErrorCode.NOT_FOUND,
+                "deleted": ErrorCode.NOT_FOUND,
+                "not_found_in_content": ErrorCode.INVALID_ARGUMENT,
+                "not_unique": ErrorCode.INVALID_ARGUMENT,
+                "no_change": ErrorCode.INVALID_ARGUMENT,
+            }
+            mapped_code = error_code_map.get(error, ErrorCode.INTERNAL_ERROR)
+            return ActionResult(
+                success=False,
+                message=result["message"],
+                error_code=mapped_code.value,
+                error_category=ErrorCategory.VALIDATION.value,
+                retriable=False,
+                error_details=result.get("data"),
+            )
 
-        # Apply updates
-        w.artifacts.update(intent.artifact_id, updates)
-
-        # Update disk quota
+        # Update disk quota if content grew
         if size_delta > 0:
             w.consume_quota(intent.principal_id, "disk", float(size_delta))
 
@@ -517,16 +489,14 @@ class ActionExecutor:
             "event_number": w.event_number,
             "artifact_id": intent.artifact_id,
             "edited_by": intent.principal_id,
-            "fields_updated": list(updates.keys()),
             "size_delta": size_delta,
         })
 
         return ActionResult(
             success=True,
-            message=f"Edited artifact {intent.artifact_id} (updated: {', '.join(updates.keys())})",
+            message=f"Edited artifact {intent.artifact_id}",
             data={
                 "artifact_id": intent.artifact_id,
-                "fields_updated": list(updates.keys()),
                 "size_delta": size_delta,
             },
         )
