@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-240-status-only
-task: Add --status-only flag to complete_plan.py
-claimed_at: '2026-01-31T21:47:39Z'
-session_id: 5a508910-4024-4415-b00b-122e3b2c9fd1
-plan: 240
+cc_id: plan-236-charge-delegation
+task: Charge delegation primitives
+claimed_at: '2026-01-31T22:48:44Z'
+session_id: 78b59e6b-7eda-4a9d-b510-9ad23e92ce7e
+plan: 236

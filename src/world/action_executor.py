@@ -1508,10 +1508,49 @@ class ActionExecutor:
         artifact_id = intent.artifact_id
         price = artifact.price
         created_by = artifact.created_by
-        resource_payer = intent.principal_id
 
-        # Check if caller can afford the price
-        if price > 0 and not w.ledger.can_afford_scrip(intent.principal_id, price):
+        # Plan #236: Resolve payer via charge_to delegation
+        # Atomicity note (FM-1): Settlement is safe because execution is
+        # single-threaded. If concurrency is added, wrap check→debit→record
+        # in a lock.
+        from .delegation import DelegationManager
+
+        charge_to = artifact.metadata.get("charge_to", "caller")
+        if charge_to == "caller":
+            resource_payer = intent.principal_id
+        else:
+            resource_payer = DelegationManager.resolve_payer(
+                charge_to, intent.principal_id, artifact
+            )
+            if resource_payer != intent.principal_id:
+                authorized, reason = w.delegation_manager.authorize_charge(
+                    charger_id=intent.principal_id,
+                    payer_id=resource_payer,
+                    amount=float(price),
+                )
+                if not authorized:
+                    duration_ms = (time.perf_counter() - start_time) * 1000
+                    self._log_invoke_failure(
+                        intent.principal_id, artifact_id, method_name,
+                        duration_ms, "delegation_denied",
+                        f"Charge delegation denied: {reason}"
+                    )
+                    return ActionResult(
+                        success=False,
+                        message=f"Charge delegation denied: {reason}",
+                        error_code=ErrorCode.NOT_AUTHORIZED.value,
+                        error_category=ErrorCategory.PERMISSION.value,
+                        retriable=False,
+                        error_details={
+                            "charge_to": charge_to,
+                            "payer": resource_payer,
+                            "charger": intent.principal_id,
+                            "reason": reason,
+                        },
+                    )
+
+        # Check if payer can afford the price
+        if price > 0 and not w.ledger.can_afford_scrip(resource_payer, price):
             duration_ms = (time.perf_counter() - start_time) * 1000
             self._log_invoke_failure(
                 intent.principal_id, artifact_id, method_name,
@@ -1520,11 +1559,11 @@ class ActionExecutor:
             )
             return ActionResult(
                 success=False,
-                message=f"Insufficient scrip for price: need {price}, have {w.ledger.get_scrip(intent.principal_id)}",
+                message=f"Insufficient scrip for price: need {price}, have {w.ledger.get_scrip(resource_payer)}",
                 error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
                 error_category=ErrorCategory.RESOURCE.value,
                 retriable=True,
-                error_details={"required": price, "available": w.ledger.get_scrip(intent.principal_id)},
+                error_details={"required": price, "available": w.ledger.get_scrip(resource_payer)},
             )
 
         # Execute the code
@@ -1569,26 +1608,32 @@ class ActionExecutor:
                 else:
                     w.ledger.spend_resource(resource_payer, resource, amount)
 
-            # Pay price to owner
-            if price > 0 and created_by != intent.principal_id:
-                w.ledger.deduct_scrip(intent.principal_id, price)
+            # Pay price to owner (Plan #236: resource_payer may differ from caller)
+            if price > 0 and created_by != resource_payer:
+                w.ledger.deduct_scrip(resource_payer, price)
                 w.ledger.credit_scrip(created_by, price)
                 w.logger.log("scrip_earned", {
                     "event_number": w.event_number,
                     "recipient": created_by,
                     "amount": price,
-                    "from": intent.principal_id,
+                    "from": resource_payer,
                     "artifact_id": artifact_id,
                     "method": method_name,
                 })
                 w.logger.log("scrip_spent", {
                     "event_number": w.event_number,
-                    "spender": intent.principal_id,
+                    "spender": resource_payer,
                     "amount": price,
                     "to": created_by,
                     "artifact_id": artifact_id,
                     "method": method_name,
                 })
+
+                # Plan #236: Record charge for rate window tracking
+                if resource_payer != intent.principal_id:
+                    w.delegation_manager.record_charge(
+                        resource_payer, intent.principal_id, float(price)
+                    )
 
             self._log_invoke_success(
                 intent.principal_id, artifact_id, method_name,
@@ -1596,8 +1641,10 @@ class ActionExecutor:
             )
 
             # Build message with price info
-            if price > 0 and created_by == intent.principal_id:
-                price_msg = f" (self-invoke: no scrip transferred, you paid yourself)"
+            if price > 0 and created_by == resource_payer:
+                price_msg = " (self-invoke: no scrip transferred, you paid yourself)"
+            elif price > 0 and resource_payer != intent.principal_id:
+                price_msg = f" (delegated: {resource_payer} paid {price} scrip to {created_by})"
             elif price > 0:
                 price_msg = f" (paid {price} scrip to {created_by})"
             else:

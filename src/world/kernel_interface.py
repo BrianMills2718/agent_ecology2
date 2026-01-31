@@ -423,6 +423,81 @@ class KernelActions:
         return self._world.consume_quota(principal_id, resource, amount)
 
     # -------------------------------------------------------------------------
+    # Charge Delegation (Plan #236)
+    # -------------------------------------------------------------------------
+
+    def grant_charge_delegation(
+        self,
+        caller_id: str,
+        charger_id: str,
+        max_per_call: float | None = None,
+        max_per_window: float | None = None,
+        window_seconds: int = 3600,
+        expires_at: str | None = None,
+    ) -> bool:
+        """Grant permission for *charger_id* to charge *caller_id*'s account.
+
+        Caller IS the payer — can only grant delegations from yourself.
+        Creates or updates ``charge_delegation:{caller_id}`` artifact
+        (kernel_protected, private).
+
+        Args:
+            caller_id: Payer granting the delegation (verified by kernel).
+            charger_id: Principal being authorized to charge.
+            max_per_call: Max amount per single charge (None = unlimited).
+            max_per_window: Max cumulative amount per window (None = unlimited).
+            window_seconds: Rolling window duration in seconds.
+            expires_at: ISO 8601 expiry (None = no expiry).
+
+        Returns:
+            True on success.
+        """
+        return self._world.delegation_manager.grant(
+            caller_id,
+            charger_id,
+            max_per_call=max_per_call,
+            max_per_window=max_per_window,
+            window_seconds=window_seconds,
+            expires_at=expires_at,
+        )
+
+    def revoke_charge_delegation(
+        self,
+        caller_id: str,
+        charger_id: str,
+    ) -> bool:
+        """Revoke a previously granted charge delegation.
+
+        Args:
+            caller_id: Payer revoking (verified by kernel).
+            charger_id: Charger whose delegation is being revoked.
+
+        Returns:
+            True if found and removed, False otherwise.
+        """
+        return self._world.delegation_manager.revoke(caller_id, charger_id)
+
+    def authorize_charge(
+        self,
+        charger_id: str,
+        payer_id: str,
+        amount: float,
+    ) -> tuple[bool, str]:
+        """Check if *charger_id* is authorized to charge *payer_id*.
+
+        Args:
+            charger_id: Who wants to charge.
+            payer_id: Whose account would be charged.
+            amount: The charge amount.
+
+        Returns:
+            ``(True, "ok")`` if authorized, ``(False, reason)`` otherwise.
+        """
+        return self._world.delegation_manager.authorize_charge(
+            charger_id, payer_id, amount
+        )
+
+    # -------------------------------------------------------------------------
     # Library Installation (Plan #29)
     # -------------------------------------------------------------------------
 
