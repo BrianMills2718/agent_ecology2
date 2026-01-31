@@ -20,6 +20,9 @@ python scripts/meta_status.py  # Full dashboard: claims, PRs, progress, issues
 make worktree            # Interactive: claim + create worktree (ALWAYS use this)
 make worktree-list       # List all worktrees
 make worktree-remove BRANCH=name  # Safe removal (checks uncommitted changes)
+
+# Non-interactive (for CC sessions that can't use interactive prompts):
+bash scripts/create_worktree.sh --branch plan-N-desc --plan N --task "description"
 ```
 
 ### During Implementation
@@ -97,7 +100,7 @@ python scripts/cleanup_claims_mess.py --apply      # Apply full cleanup
 | `check_claims.py --cleanup-stale` | Remove inactive claims (>8h default) |
 | `check_plan_tests.py --plan N` | Run plan's required tests |
 | `check_plan_tests.py --plan N --tdd` | See what tests to write |
-| `complete_plan.py --plan N` | Mark plan complete (runs tests, records evidence) |
+| `complete_plan.py --plan N` | Mark plan complete (runs tests, records evidence). Use `--status-only` for CI-validated PRs |
 | `validate_plan.py --plan N` | Pre-implementation validation |
 | `check_doc_coupling.py --suggest` | Which docs to update |
 | `sync_plan_status.py --check` | Validate plan statuses |
@@ -344,17 +347,30 @@ The kernel (`src/world/kernel_interface.py`) provides these primitives that ALL 
 |--------|---------|
 | `get_balance(principal_id)` | Get scrip balance |
 | `get_resource(principal_id, resource)` | Get resource amount |
+| `get_llm_budget(principal_id)` | Get LLM budget (convenience) |
+| `list_artifacts_by_owner(created_by)` | List artifact IDs by owner |
 | `get_artifact_metadata(artifact_id)` | Get artifact info |
-| `read_artifact(artifact_id, caller_id)` | Read artifact content |
+| `read_artifact(artifact_id, caller_id)` | Read artifact content (access-controlled) |
+| `get_mint_submissions()` | Get pending mint submissions |
+| `get_mint_history(limit)` | Get mint auction history |
+| `get_quota(principal_id, resource)` | Get quota limit |
+| `get_available_capacity(principal_id, resource)` | Get remaining capacity (quota - usage) |
+| `would_exceed_quota(principal_id, resource, amount)` | Pre-flight quota check |
 
 **KernelActions (write operations):**
 | Method | Purpose |
 |--------|---------|
-| `transfer_scrip(from_id, to_id, amount)` | Move scrip |
-| `spend_resource(principal_id, resource, amount)` | Consume resource |
-| `create_principal(principal_id, starting_scrip)` | Spawn new principal |
-| `transfer_ownership(caller_id, artifact_id, new_owner)` | Change ownership |
+| `transfer_scrip(caller_id, to, amount)` | Move scrip |
+| `transfer_resource(caller_id, to, resource, amount)` | Move resource |
+| `transfer_llm_budget(caller_id, to, amount)` | Move LLM budget (convenience) |
+| `write_artifact(caller_id, artifact_id, content, type)` | Write/update artifact (access-controlled) |
+| `create_principal(principal_id, starting_scrip, starting_compute)` | Spawn new principal |
+| `update_artifact_metadata(caller_id, artifact_id, key, value)` | Update artifact metadata |
+| `submit_for_mint(caller_id, artifact_id, bid)` | Submit artifact for mint auction |
+| `cancel_mint_submission(caller_id, submission_id)` | Cancel mint submission |
 | `transfer_quota(from_id, to_id, resource, amount)` | Move quota |
+| `consume_quota(principal_id, resource, amount)` | Record resource consumption |
+| `install_library(caller_id, library_name, version)` | Install Python library (costs disk quota) |
 
 **Genesis artifacts are just conveniences that wrap these primitives.** See `src/world/genesis/CLAUDE.md` for details.
 
