@@ -41,14 +41,19 @@ if [[ -z "$FILE_PATH" ]]; then
     exit 0  # No file_path, allow
 fi
 
-# Allow coordination files everywhere
+# Allow coordination files and meta-process infrastructure everywhere
+# These ARE the coordination mechanism - blocking them creates chicken-and-egg problems
 BASENAME=$(basename "$FILE_PATH")
 if [[ "$FILE_PATH" == *"/.claude/"* ]] || \
    [[ "$BASENAME" == "CLAUDE.md" ]] || \
    [[ "$FILE_PATH" == *"/.git/"* ]] || \
    [[ "$FILE_PATH" == */meta/patterns/*.md ]] || \
+   [[ "$FILE_PATH" == */meta-process/*.md ]] || \
+   [[ "$FILE_PATH" == */scripts/create_worktree.sh ]] || \
+   [[ "$FILE_PATH" == */scripts/check_claims.py ]] || \
+   [[ "$FILE_PATH" == */scripts/safe_worktree_remove.py ]] || \
    [[ "$BASENAME" == ".claude_session" ]]; then
-    exit 0  # Coordination files allowed
+    exit 0  # Coordination/meta-process infrastructure allowed
 fi
 
 # Get the main repo root (not the worktree's root)
