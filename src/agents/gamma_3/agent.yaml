@@ -44,25 +44,24 @@ workflow:
     states: ["solo", "discovering", "negotiating", "executing", "settling"]
     initial_state: "solo"
     transitions:
+      # Forward transitions - triggered by step completion, no conditions needed
       - from: "solo"
         to: "discovering"
-        condition: "can_afford_coordination"
       - from: "discovering"
         to: "negotiating"
-        condition: "found_partner"
-      - from: "discovering"
-        to: "solo"
-        condition: "no_opportunities"
       - from: "negotiating"
         to: "executing"
-        condition: "agreement_reached"
-      - from: "negotiating"
-        to: "solo"
-        condition: "negotiation_failed"
       - from: "executing"
         to: "settling"
       - from: "settling"
         to: "solo"
+      # Fallback transitions - go back to solo when stuck
+      - from: "discovering"
+        to: "solo"
+        condition: "no_opportunities"
+      - from: "negotiating"
+        to: "solo"
+        condition: "negotiation_failed"
       # Emergency exit
       - from: "*"
         to: "solo"

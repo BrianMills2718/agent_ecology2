@@ -1511,6 +1511,10 @@ class SimulationRunner:
         # Execute via world
         result = self.world.execute_action(intent)
 
+        # Increment event counter for each executed action (autonomous mode)
+        if result.success:
+            self.world.increment_event_counter()
+
         # Record the action for the agent
         action_type = action.get("action_type", "noop")
         agent.set_last_result(action_type, result.success, result.message, result.data)
