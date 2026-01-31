@@ -319,4 +319,4 @@ Need kernel-enforced ownership transfer mechanism:
 - **Plans:** #234, #235, #236
 - **ADRs:** ADR-0016 (created_by not owner), ADR-0019 (current), ADR-0024 (target)
 - **Source:** ChatGPT/Claude security dialogue (2026-01-31)
-- **Code:** `src/world/artifacts.py`, `src/world/action_executor.py`, `src/world/rights.py`
+- **Code:** `src/world/artifacts.py`, `src/world/action_executor.py` (rights.py removed per ADR-0025)

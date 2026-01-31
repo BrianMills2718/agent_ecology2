@@ -256,6 +256,7 @@ Master index of all gaps and their implementation plans.
 | 235 | [Plan 235: Kernel-Protected Artifacts](235_kernel_protected_artifacts.md) | High | 📋 Planned | #236 (Charge Delegation) |
 | 236 | [Plan 236: Charge Delegation](236_charge_delegation.md) | High | 📋 Planned | None (enables charge_to for Plan #234) |
 | 237 | [Plan 237: Non-Interactive Worktree Creation](237_worktree_script_cli_args.md) | High | ✅ Complete | None (but blocks Claude Code from using meta-process properly) |
+| 238 | [Plan 238: Defer Tokenized Rights](238_defer_tokenized_rights.md) | Medium | ✅ Complete | - |
 ---
 
 ## TDD Workflow
