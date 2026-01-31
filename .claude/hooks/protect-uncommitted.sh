@@ -16,8 +16,8 @@ if [[ -z "$COMMAND" ]]; then
     exit 0  # No command, allow
 fi
 
-# Only check destructive git commands
-if ! echo "$COMMAND" | grep -qE 'git\s+(checkout|reset|clean|stash)'; then
+# Only check destructive git commands (stash is safe - preserves changes)
+if ! echo "$COMMAND" | grep -qE 'git\s+(checkout|reset|clean)'; then
     exit 0  # Not a destructive git command, allow
 fi
 
@@ -40,8 +40,8 @@ cd "$MAIN_DIR"
 if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
     # There are uncommitted changes - check if this command would affect them
 
-    # git checkout <file> or git checkout . - dangerous
-    if echo "$COMMAND" | grep -qE 'git\s+checkout\s+(\.|[^-])'; then
+    # git checkout . - restores ALL files (dangerous)
+    if echo "$COMMAND" | grep -qE 'git\s+checkout\s+\.$'; then
         echo "BLOCKED: Uncommitted changes in main would be lost" >&2
         echo "" >&2
         echo "You have uncommitted changes. This command would discard them:" >&2
@@ -52,6 +52,26 @@ if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; th
         echo "  2. Stash your changes: git stash" >&2
         echo "  3. Move to a worktree for safety" >&2
         exit 2
+    fi
+
+    # git checkout <branch> - switching branches loses uncommitted changes
+    # But allow: git checkout <file-path> (contains / or file extension)
+    # Pattern: checkout + word without / or . extension = likely branch
+    if echo "$COMMAND" | grep -qE 'git\s+checkout\s+[a-zA-Z][a-zA-Z0-9_-]*(\s|$)'; then
+        # Check if it looks like a branch (no path separators, no extension)
+        CHECKOUT_ARG=$(echo "$COMMAND" | sed -n 's/.*git\s\+checkout\s\+\([^ ]*\).*/\1/p')
+        if [[ ! "$CHECKOUT_ARG" =~ [/\.]  ]]; then
+            echo "BLOCKED: Uncommitted changes in main would be lost" >&2
+            echo "" >&2
+            echo "You have uncommitted changes. Switching branches would discard them:" >&2
+            echo "  $COMMAND" >&2
+            echo "" >&2
+            echo "Options:" >&2
+            echo "  1. Commit your changes first: git add . && git commit -m 'WIP'" >&2
+            echo "  2. Stash your changes: git stash" >&2
+            echo "  3. Move to a worktree for safety" >&2
+            exit 2
+        fi
     fi
 
     # git reset --hard - always dangerous with uncommitted changes
