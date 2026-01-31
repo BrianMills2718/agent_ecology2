@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-232-fix-cwd
-task: Fix CWD invalidation after worktree deletion
-claimed_at: '2026-01-31T20:12:29Z'
-session_id: 42f27964-676a-4a9f-9af3-5783c17f5eef
-plan: 232
+cc_id: plan-235-kernel-protected-phase0
+task: 'Plan 235 Phase 0: type immutability + creator-only access_contract_id'
+claimed_at: '2026-01-31T20:17:03Z'
+session_id: 2bc41be8-34f4-4ea1-b61a-86c1c87a994d
+plan: 235

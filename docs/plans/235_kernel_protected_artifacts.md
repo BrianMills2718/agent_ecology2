@@ -1,6 +1,6 @@
 # Plan 235: Kernel-Protected Artifacts
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** High
 **Blocked By:** None
 **Blocks:** #236 (Charge Delegation)

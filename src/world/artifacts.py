@@ -793,6 +793,21 @@ class ArtifactStore:
         if artifact_id in self.artifacts:
             # Update existing
             artifact = self.artifacts[artifact_id]
+
+            # Plan #235 Phase 0 (FM-6): type is immutable after creation
+            if type != artifact.type:
+                raise ValueError(
+                    f"Cannot change artifact type from '{artifact.type}' to '{type}'"
+                )
+
+            # Plan #235 Phase 0 (FM-7): Only creator can change access_contract_id
+            if (access_contract_id is not None
+                    and access_contract_id != artifact.access_contract_id
+                    and created_by != artifact.created_by):
+                raise PermissionError(
+                    f"Only creator '{artifact.created_by}' can change access_contract_id"
+                )
+
             # Plan #182: Capture old state for index update
             old_type = artifact.type
             old_owner = artifact.created_by

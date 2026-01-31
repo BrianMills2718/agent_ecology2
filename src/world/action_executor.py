@@ -465,6 +465,16 @@ class ActionExecutor:
         if intent.interface is not None:
             updates["interface"] = intent.interface
         if intent.access_contract_id is not None:
+            # Plan #235 Phase 0 (FM-7): Only creator can change access_contract_id
+            if (intent.access_contract_id != artifact.access_contract_id
+                    and intent.principal_id != artifact.created_by):
+                return ActionResult(
+                    success=False,
+                    message=f"Only creator '{artifact.created_by}' can change access_contract_id",
+                    error_code=ErrorCode.NOT_AUTHORIZED.value,
+                    error_category=ErrorCategory.PERMISSION.value,
+                    retriable=False,
+                )
             updates["access_contract_id"] = intent.access_contract_id
         if intent.metadata is not None:
             # Merge metadata rather than replace

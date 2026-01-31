@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-25 (Plan #188 - Deliberative planning; action_executor unchanged for core artifact logic)
+**Last verified:** 2026-01-31 (Plan #235 Phase 0 - type immutability, creator-only access_contract_id)
 
 ---
 
@@ -45,6 +45,21 @@ class Artifact:
     # User-defined metadata (Plan #168)
     metadata: dict[str, Any] = {}  # Arbitrary key-value pairs for categorization
 ```
+
+### System Field Immutability (Plan #235 Phase 0)
+
+Certain artifact fields are immutable after creation:
+
+| Field | Mutability | Enforced In |
+|-------|-----------|-------------|
+| `id` | Immutable (structural) | N/A (dict key) |
+| `created_by` | Immutable (ADR-0016) | Convention (no setter) |
+| `type` | **Immutable after creation** (Plan #235 FM-6) | `ArtifactStore.write()` |
+| `access_contract_id` | **Creator-only** (Plan #235 FM-7) | `ArtifactStore.write()`, `_execute_edit()` |
+
+**Why `type` is immutable:** The kernel branches on artifact type (`trigger`, `right`, `config`, etc.). Allowing type mutation enables type-confusion attacks where an attacker flips a normal artifact to a privileged type.
+
+**Why `access_contract_id` is creator-only:** This field determines who can access the artifact. Allowing any writer to change it enables policy-pointer swap attacks (changing to a permissive contract).
 
 ### Artifact Metadata (Plan #168)
 
