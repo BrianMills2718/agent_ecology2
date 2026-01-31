@@ -1,6 +1,6 @@
 # Plan 237: Non-Interactive Worktree Creation
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
 **Priority:** High
 **Blocked By:** None
 **Blocks:** None (but blocks Claude Code from using meta-process properly)
