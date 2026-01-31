@@ -5,17 +5,42 @@
 # Status: ACCEPTED - ADR-0024
 #
 # For historical reasoning, see: docs/explorations/
+# For full version with examples, see: CONCEPTUAL_MODEL_FULL.yaml
 # =============================================================================
 
 version: 2
-last_updated: "2026-01-29"
+last_updated: "2026-01-31"
 status: accepted
 
+# =============================================================================
+# IMPLEMENTATION STATUS - IMPORTANT
+# =============================================================================
+# This model describes the TARGET architecture per ADR-0024.
+# The current implementation follows ADR-0019 (superseded).
+#
+# KEY DIFFERENCES (Current vs This Model):
+# ┌─────────────────────┬──────────────────────────────┬────────────────────────────┐
+# │ Aspect              │ Current Implementation       │ This Model (Target)        │
+# ├─────────────────────┼──────────────────────────────┼────────────────────────────┤
+# │ Handler interface   │ run(*args)                   │ handle_request(caller,     │
+# │                     │                              │   operation, args)         │
+# │ Permission checking │ Kernel checks contract       │ Artifact handles in code   │
+# │                     │ BEFORE artifact runs         │                            │
+# │ Kernel role         │ Routes AND interprets        │ Routes only                │
+# │ Defaults            │ Freeware contract fallback   │ No defaults                │
+# │ access_contract_id  │ Kernel uses for checking     │ Just metadata              │
+# │ charge_to           │ Not implemented              │ Artifact directs costs     │
+# └─────────────────────┴──────────────────────────────┴────────────────────────────┘
+#
+# Migration tracked in: Plan #234 (ADR-0024 Handle Request Migration)
+# =============================================================================
+
 # Code gaps tracked separately:
+# - handle_request interface (Plan #234) - MAJOR: core interface not implemented
+# - charge_to cost routing (GAP-ART-004) - artifacts can't direct costs
 # - subscribe_artifact permission (needs read check)
 # - terminology alignment (Plan #230)
 # - kernel invariants (Plan #231)
-
 # =============================================================================
 # ARTIFACT - The Primal Entity
 # =============================================================================
@@ -146,6 +171,9 @@ labels:
     properties: "has_standing, has_loop, LLM-based"
     description: "Autonomous principal using LLM"
 
+# INVARIANT: No kernel or artifact logic may branch on labels.
+# Labels are observational only (discovery, filtering, search).
+
 # =============================================================================
 # ACTIONS
 # =============================================================================
@@ -249,7 +277,7 @@ layers:
   kernel:
     description: "The system itself"
     stores: ["World state (artifacts)", "World history (immutable log)", "Measurement state"]
-    enforces: ["Scarcity", "Immutability", "Permission checks are free"]
+    enforces: ["Scarcity", "Immutability", "Permission checks are metered and bounded"]
     provides: ["Read interface", "Write interface"]
 
   diagram: |
@@ -275,13 +303,17 @@ kernel_responsibilities:
     - "Access control defaults"
     - "Interpret contracts"
 
+  opacity: "Kernel treats handle_request as opaque code - executes, does not interpret"
+
   reference: "docs/explorations/access_control.md"
 
 # =============================================================================
-# HANDLE_REQUEST INTERFACE (ADR-0024)
+# HANDLE_REQUEST INTERFACE (ADR-0024) - TARGET, NOT CURRENT
 # =============================================================================
 
 handle_request:
+  implementation_status: "NOT YET IMPLEMENTED - See Plan #234"
+  current_interface: "run(*args) with caller_id as injected global"
   description: "Standard interface every artifact implements"
 
   signature: "def handle_request(caller: str, operation: str, args: dict) -> dict"
@@ -293,10 +325,18 @@ handle_request:
 
   return_value:
     allowed: bool
+    charge_to: "enum [caller, target, contract, pool] - overrides cost_model for this frame"
     result: any
     error: "string (optional)"
 
   reference: "docs/explorations/access_control.md"
+
+# =============================================================================
+# OBSERVABILITY COMMITMENT
+# =============================================================================
+
+observability:
+  commitment: "All events logged with sufficient detail for post hoc surplus analysis"
 
 # =============================================================================
 # RELATIONSHIPS
