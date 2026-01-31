@@ -1,11 +1,15 @@
 #!/bin/bash
 # Session Startup Cleanup Hook (Plan #206)
 #
-# Automatically cleans up orphaned claims on session start.
+# Automatically cleans up orphaned claims and merged worktrees on session start.
 # Only runs once per session using a marker file.
 #
-# This removes claims where the worktree no longer exists,
-# which is safe because if the worktree is gone, the work is abandoned.
+# Two cleanup passes:
+#   1. Orphaned claims: claims where the worktree no longer exists
+#   2. Merged worktrees: worktrees whose branches were merged/deleted on remote
+#
+# This catches worktrees left behind when PRs are merged outside `make finish`
+# (e.g., via GitHub UI or `make merge`).
 #
 # Exit codes:
 #   0 - Always allow (this is just cleanup, not blocking)
@@ -41,22 +45,23 @@ fi
 # Create marker file first to prevent race conditions
 touch "$MARKER_FILE"
 
-# Run orphaned claim cleanup (non-blocking)
-# Use --dry-run first to check, then actually clean if there's something
+# Run cleanup from main repo root (non-blocking)
 cd "$MAIN_REPO_ROOT" || exit 0
 
+# 1. Clean orphaned claims (claims where worktree no longer exists)
 ORPHANED=$(python scripts/check_claims.py --cleanup-orphaned --dry-run 2>/dev/null | grep -c "Would remove")
 if [[ "$ORPHANED" -gt 0 ]]; then
     echo "" >&2
-    echo "╔════════════════════════════════════════════════════════════╗" >&2
-    echo "║  🧹 Session startup cleanup found $ORPHANED orphaned claim(s)     ║" >&2
-    echo "╠════════════════════════════════════════════════════════════╣" >&2
-    echo "║  Running: python scripts/check_claims.py --cleanup-orphaned ║" >&2
-    echo "╚════════════════════════════════════════════════════════════╝" >&2
-    echo "" >&2
-
-    # Actually run the cleanup
+    echo "🧹 Cleaning $ORPHANED orphaned claim(s)..." >&2
     python scripts/check_claims.py --cleanup-orphaned 2>/dev/null
+fi
+
+# 2. Clean merged worktrees (worktrees whose branches were merged/deleted on remote)
+MERGED=$(python scripts/cleanup_orphaned_worktrees.py 2>/dev/null | grep -c "branch deleted from remote\|branch merged")
+if [[ "$MERGED" -gt 0 ]]; then
+    echo "" >&2
+    echo "🧹 Cleaning $MERGED merged worktree(s)..." >&2
+    python scripts/cleanup_orphaned_worktrees.py --auto 2>/dev/null
 fi
 
 exit 0
