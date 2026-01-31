@@ -92,6 +92,24 @@ class GenesisArtifact:
             description=description
         )
 
+    def handle_request(
+        self, caller: str, operation: str, args: list[Any]
+    ) -> dict[str, Any]:
+        """ADR-0024: Standard handle_request interface for genesis artifacts.
+
+        Plan #234 Phase 1: Wraps existing method registry. Not called by
+        action_executor in Phase 1 (genesis dispatch unchanged). Added for
+        conceptual alignment and Phase 2 preparation.
+        """
+        method = self.methods.get(operation)
+        if not method:
+            return {
+                "success": False,
+                "error": f"Method '{operation}' not found on {self.id}. "
+                         f"Available: {list(self.methods.keys())}",
+            }
+        return method.handler(args, caller)
+
     def get_method(self, method_name: str) -> GenesisMethod | None:
         """Get a method by name"""
         return self.methods.get(method_name)

@@ -122,22 +122,33 @@ def execute_invoke(
             "price_paid": 0
         }
 
+    # Plan #234: Detect handle_request on target (ADR-0024)
+    target_has_handle_request = (
+        target.genesis_methods is None
+        and target.code
+        and "def handle_request(" in target.code
+    )
+
     # Check invoke permission using IMMEDIATE caller (this artifact)
     # ADR-0019: When A→B→C, C's contract sees B as caller, not A
     # artifact_id is the current artifact (immediate caller)
     # caller_id is the original agent (used for billing, not permission)
     immediate_caller = artifact_id if artifact_id else caller_id
-    # ADR-0019: pass method ("run") and args in context
-    allowed, reason = check_permission_func(
-        immediate_caller, "invoke", target, method="run", args=list(invoke_args)
-    )
-    if not allowed:
-        return {
-            "success": False,
-            "result": None,
-            "error": f"Caller {immediate_caller} not allowed to invoke {target_artifact_id}: {reason}",
-            "price_paid": 0
-        }
+
+    # Plan #234: Skip kernel permission check for handle_request targets.
+    # The target artifact handles its own access control.
+    if not target_has_handle_request:
+        # ADR-0019: pass method ("run") and args in context
+        allowed, reason = check_permission_func(
+            immediate_caller, "invoke", target, method="run", args=list(invoke_args)
+        )
+        if not allowed:
+            return {
+                "success": False,
+                "result": None,
+                "error": f"Caller {immediate_caller} not allowed to invoke {target_artifact_id}: {reason}",
+                "price_paid": 0
+            }
 
     # Determine price: contract cost (if any) + artifact price
     price = target.price
@@ -167,6 +178,7 @@ def execute_invoke(
         }
 
     # Recursively execute the target artifact
+    # Plan #234: Use correct entry point for handle_request targets
     nested_result = execute_with_invoke_func(
         code=target.code,
         args=list(invoke_args),
@@ -177,6 +189,8 @@ def execute_invoke(
         current_depth=current_depth + 1,
         max_depth=max_depth,
         world=world,
+        entry_point="handle_request" if target_has_handle_request else "run",
+        method_name="invoke" if target_has_handle_request else None,
     )
 
     if nested_result.get("success"):

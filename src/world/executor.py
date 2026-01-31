@@ -609,7 +609,10 @@ class SafeExecutor:
 
     def validate_code(self, code: str) -> tuple[bool, str]:
         """
-        Validate that code can be compiled and has a run() function.
+        Validate that code can be compiled and has a run() or handle_request() function.
+
+        Plan #234: Accept handle_request(caller, operation, args) as alternative
+        to run() for ADR-0024 artifact-handled access control.
 
         Returns:
             (success, error_message)
@@ -617,9 +620,11 @@ class SafeExecutor:
         if not code or not code.strip():
             return False, "Empty code"
 
-        # Check for run() function definition
-        if "def run(" not in code:
-            return False, "Code must define a run() function"
+        # Check for run() or handle_request() function definition
+        has_run = "def run(" in code
+        has_handle_request = "def handle_request(" in code
+        if not has_run and not has_handle_request:
+            return False, "Code must define a run() or handle_request(caller, operation, args) function"
 
         # Try to compile with standard Python
         try:
@@ -981,6 +986,8 @@ class SafeExecutor:
         current_depth: int = 0,
         max_depth: int | None = None,
         world: "World | None" = None,
+        entry_point: str = "run",
+        method_name: str | None = None,
     ) -> ExecutionResult:
         """
         Execute code with invoke() capability for artifact composition.
@@ -995,8 +1002,8 @@ class SafeExecutor:
         - caller_id: The ID of the invoking principal
 
         Args:
-            code: Python code defining a run() function
-            args: Arguments to pass to run()
+            code: Python code defining a run() or handle_request() function
+            args: Arguments to pass to run() or handle_request()
             caller_id: ID of the original caller (pays for nested invocations)
             artifact_id: ID of this artifact (for wallet access)
             ledger: Ledger instance for transfers
@@ -1004,6 +1011,9 @@ class SafeExecutor:
             current_depth: Current recursion depth (for preventing infinite loops)
             max_depth: Maximum allowed recursion depth
             world: World instance for kernel interface injection (Plan #39)
+            entry_point: "run" for legacy run(*args), "handle_request" for
+                ADR-0024 handle_request(caller, operation, args) (Plan #234)
+            method_name: Operation name passed to handle_request (Plan #234)
 
         Returns:
             Same as execute() - dict with success, result/error
@@ -1248,18 +1258,24 @@ class SafeExecutor:
                 "error": _format_runtime_error(e, "Execution error")
             }
 
-        # Check that run() was defined
-        if "run" not in controlled_globals:
-            return {"success": False, "error": "Code did not define a run() function"}
-
-        run_func = controlled_globals["run"]
-        if not callable(run_func):
-            return {"success": False, "error": "run is not callable"}
+        # Plan #234: Resolve entry point function
+        if entry_point == "handle_request":
+            if "handle_request" not in controlled_globals:
+                return {"success": False, "error": "Code did not define a handle_request() function"}
+            entry_func = controlled_globals["handle_request"]
+            if not callable(entry_func):
+                return {"success": False, "error": "handle_request is not callable"}
+        else:
+            if "run" not in controlled_globals:
+                return {"success": False, "error": "Code did not define a run() function"}
+            entry_func = controlled_globals["run"]
+            if not callable(entry_func):
+                return {"success": False, "error": "run is not callable"}
 
         # Plan #112: Parse JSON strings in args to Python objects
         args = parse_json_args(args)
 
-        # Call run() with args, measuring resource usage via ResourceMeasurer
+        # Call entry point, measuring resource usage via ResourceMeasurer
         start_time = time.perf_counter()
         execution_time_ms: float = 0.0
         result: Any = None
@@ -1269,7 +1285,13 @@ class SafeExecutor:
         with measure_resources() as measurer:
             try:
                 with _timeout_context(self.timeout):
-                    result = run_func(*args)
+                    # Plan #234: handle_request receives (caller, operation, args)
+                    if entry_point == "handle_request":
+                        result = entry_func(
+                            caller_id, method_name or "invoke", args
+                        )
+                    else:
+                        result = entry_func(*args)
                     execution_time_ms = (time.perf_counter() - start_time) * 1000
             except TimeoutError:
                 execution_time_ms = (time.perf_counter() - start_time) * 1000

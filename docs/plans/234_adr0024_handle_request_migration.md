@@ -1,6 +1,6 @@
 # Plan 234: ADR-0024 Handle Request Migration
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress (Phase 1 complete, Phases 2-3 future)
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** Full artifact autonomy, custom access control patterns
