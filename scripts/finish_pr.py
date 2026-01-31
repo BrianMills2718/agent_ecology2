@@ -138,9 +138,14 @@ def extract_plan_number(branch: str) -> str | None:
 
 
 def complete_plan(plan_number: str) -> tuple[bool, str]:
-    """Mark a plan as complete using complete_plan.py."""
+    """Mark a plan as complete using complete_plan.py.
+
+    Plan #240: Uses --status-only to skip test execution. By the time
+    finish_pr runs, CI has already validated the PR. Re-running the full
+    test suite here causes bash timeouts (>2min) and session crashes.
+    """
     result = run_cmd(
-        ["python", "scripts/complete_plan.py", "--plan", plan_number],
+        ["python", "scripts/complete_plan.py", "--plan", plan_number, "--status-only"],
         check=False,
     )
     if result.returncode != 0:

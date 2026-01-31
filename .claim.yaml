@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-239-fix-execute-edit
-task: Fix broken _execute_edit and depends_on bugs
-claimed_at: '2026-01-31T21:01:08Z'
-session_id: 68364d05-c36e-4f11-af55-df04dcab4ff2
-plan: 239
+cc_id: plan-240-status-only
+task: Add --status-only flag to complete_plan.py
+claimed_at: '2026-01-31T21:47:39Z'
+session_id: 5a508910-4024-4415-b00b-122e3b2c9fd1
+plan: 240
