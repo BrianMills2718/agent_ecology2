@@ -1,15 +1,14 @@
 # Gap Analysis Directory
 
-Comprehensive gap analysis comparing current vs target architecture.
+Gap analysis summary comparing current vs target architecture.
 
-**Created:** 2026-01-12
-**Total Gaps:** 142
+**Methodology:** See `meta-process/patterns/30_gap-analysis.md` (Pattern #30)
 
 ---
 
 ## Purpose
 
-This directory contains the **comprehensive gap analysis** - a detailed breakdown of all differences between current implementation and target architecture.
+This directory contains the **gap analysis summary** - a lightweight index of all identified gaps between current implementation and target architecture.
 
 **This is a reference resource, not the active tracking system.**
 
@@ -21,18 +20,18 @@ For active implementation tracking, see `docs/plans/CLAUDE.md`.
 
 | Directory | Purpose | Granularity |
 |-----------|---------|-------------|
-| `docs/plans/` | Active implementation tracking | 34 high-level gaps |
-| `docs/architecture/gaps/` | Comprehensive analysis | 142 detailed gaps |
-
-The 142 gaps here are a finer breakdown of the 34 gaps in `docs/plans/`. Use this directory to:
-- Understand the full scope of work
-- Find detailed gap definitions
-- See dependency relationships
+| `docs/plans/` | Active implementation tracking | High-level gaps with status |
+| `docs/architecture/gaps/` | Gap summary and index | 142 identified gaps |
 
 Use `docs/plans/` to:
 - Track implementation status
 - Assign work to CC instances
 - Follow implementation steps
+
+Use this directory to:
+- See the full scope of identified gaps
+- Understand workstream groupings and dependencies
+- Reference during plan creation
 
 ---
 
@@ -41,16 +40,16 @@ Use `docs/plans/` to:
 | File | Content |
 |------|---------|
 | `GAPS_SUMMARY.yaml` | Overview of all 142 gaps by workstream |
-| `IMPLEMENTATION_PLAN.md` | 4-phase implementation strategy |
-| `GAP_IDENTIFICATION_METHODOLOGY.md` | How gaps were identified |
-| `ws1_execution_model.yaml` | 23 execution model gaps |
-| `ws2_agents.yaml` | 22 agent gaps |
-| `ws3_resources.yaml` | Resource management gaps |
-| `ws4_genesis.yaml` | Genesis artifact gaps |
-| `ws5_artifacts.yaml` | Artifact system gaps |
-| `ws6_infrastructure.yaml` | Infrastructure gaps |
 
-**Archived:** Phase 1-2 implementation plans moved to `docs/archive/phase_implementation_plans/` (all complete)
+**Detailed worksheets archived externally:**
+`/home/brian/brian_projects/archive/agent_ecology2/docs/architecture/gaps/`
+- `ws1_execution_model.yaml` - 23 execution model gaps
+- `ws2_agents.yaml` - 22 agent gaps
+- `ws3_resources.yaml` - Resource management gaps
+- `ws4_genesis.yaml` - Genesis artifact gaps
+- `ws5_artifacts.yaml` - Artifact system gaps
+- `ws6_infrastructure.yaml` - Infrastructure gaps
+- `IMPLEMENTATION_PLAN.md` - Original 4-phase implementation strategy
 
 ---
 
@@ -69,11 +68,11 @@ Gaps use the format: `GAP-{WORKSTREAM}-{NUMBER}`
 
 ---
 
-## Completed Phases
+## Refreshing Gap Analysis
 
-| Phase | Status | Gaps Closed |
-|-------|--------|-------------|
-| Phase 1 | ✅ Complete | GAP-RES-001, GAP-GEN-001, GAP-EXEC-001, GAP-AGENT-001 |
-| Phase 2 | ✅ Complete | INT-001 through INT-004, CAP-001 through CAP-006 |
-| Phase 3 | Not started | - |
-| Phase 4 | Not started | - |
+Gap analysis should be re-run when:
+- Target architecture changes significantly
+- Major implementation milestones are reached
+- Current architecture understanding evolves
+
+See Pattern #30 (`meta-process/patterns/30_gap-analysis.md`) for the full methodology.

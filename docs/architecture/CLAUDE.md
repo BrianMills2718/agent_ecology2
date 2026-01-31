@@ -8,7 +8,7 @@ Structured documentation of system architecture.
 architecture/
 ├── current/    # What IS implemented (source of truth)
 ├── target/     # What we WANT (aspirational)
-└── gaps/       # Comprehensive gap analysis (142 gaps)
+└── gaps/       # Gap analysis summary (detailed worksheets in external archive)
 ```
 
 ## Current vs Target
@@ -17,25 +17,24 @@ architecture/
 |-----------|---------|-------------|
 | `current/` | Describes actual implementation | High - should match code |
 | `target/` | Describes desired future state | Reference only - verify before using |
-| `gaps/` | Comprehensive gap analysis | Reference - 142 detailed gaps |
+| `gaps/` | Gap analysis summary | Reference - summary index of 142 gaps |
 
 ## Gap Tracking
 
-Two levels of gap documentation:
+| Location | Content | Purpose |
+|----------|---------|---------|
+| `docs/plans/` | Active implementation plans | Tracking status, ownership |
+| `gaps/GAPS_SUMMARY.yaml` | Gap index by workstream | Reference during plan creation |
+| External archive | Detailed gap worksheets | Historical reference |
 
-| Location | Gaps | Purpose |
-|----------|------|---------|
-| `docs/plans/` | 34 high-level | Active tracking (status, CC-IDs) |
-| `gaps/` | 142 detailed | Comprehensive analysis (reference) |
-
-The 142 gaps are a finer breakdown of the 34 in `docs/plans/`.
+**Methodology:** See `meta-process/patterns/30_gap-analysis.md` (Pattern #30)
 
 ## Working on Architecture
 
 1. **Implementing a feature?**
    - Read `current/` for how things work now
    - Read `target/` for the vision
-   - Check `gaps/` for detailed gap definition
+   - Check `gaps/GAPS_SUMMARY.yaml` for gap context
    - Follow plan in `docs/plans/`
 
 2. **Finished implementing?**
@@ -45,3 +44,4 @@ The 142 gaps are a finer breakdown of the 34 in `docs/plans/`.
 3. **Making architecture decisions?**
    - Update `target/` with new vision
    - Document rationale in `docs/DESIGN_CLARIFICATIONS.md`
+   - Consider re-running gap analysis on affected workstreams (Pattern #30)

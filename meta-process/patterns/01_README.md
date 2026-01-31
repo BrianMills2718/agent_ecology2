@@ -36,6 +36,7 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 | [Conceptual Modeling](27_conceptual-modeling.md) | AI accumulates misconceptions about architecture | Medium |
 | [Question-Driven Planning](28_question-driven-planning.md) | AI guesses instead of investigating | Low |
 | [Uncertainty Tracking](29_uncertainty-tracking.md) | Uncertainties forgotten across sessions | Low |
+| [Gap Analysis](30_gap-analysis.md) | Ad-hoc planning misses gaps between current and target | Medium |
 
 ## When to Use
 
@@ -60,6 +61,7 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 - Claim System - for explicit parallel work coordination
 - Verification Enforcement - when plans need proof of completion
 - Conceptual Modeling - when AI instances repeatedly misunderstand core concepts
+- Gap Analysis - systematic comparison of current vs target architecture to inform planning
 
 ## Pattern Template
 
@@ -94,7 +96,7 @@ What this pattern doesn't solve.
 
 ## Archive
 
-Deprecated patterns are in `archive/`:
+Deprecated patterns are archived externally (not in repo):
 - `handoff-protocol.md` - Superseded by automatic context compaction
 
 ## Origin

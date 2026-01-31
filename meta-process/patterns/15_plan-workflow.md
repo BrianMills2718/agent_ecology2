@@ -437,3 +437,4 @@ for current development decisions, it belongs in the external archive.
 - [Claim system pattern](18_claim-system.md) - Tracks who's working on which plan
 - [Question-Driven Planning](28_question-driven-planning.md) - The principle behind "References Reviewed"
 - [Uncertainty Tracking](29_uncertainty-tracking.md) - Track open questions in plans
+- [Gap Analysis](30_gap-analysis.md) - Systematic gap identification that informs plan creation
