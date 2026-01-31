@@ -632,3 +632,33 @@ class KernelActions:
 
         return True
 
+    def modify_protected_content(
+        self,
+        artifact_id: str,
+        *,
+        content: str | None = None,
+        code: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> bool:
+        """Kernel-only: modify content of a kernel_protected artifact.
+
+        Plan #235 Phase 1: Bypasses kernel_protected checks.
+        Only kernel code should call this - it is NOT exposed to artifacts.
+
+        Args:
+            artifact_id: The artifact to modify
+            content: New content (None = keep existing)
+            code: New code (None = keep existing)
+            metadata: New metadata (None = keep existing)
+
+        Returns:
+            True if modified, False if artifact not found
+        """
+        try:
+            self._world.artifacts.modify_protected_content(
+                artifact_id, content=content, code=code, metadata=metadata
+            )
+            return True
+        except KeyError:
+            return False
+

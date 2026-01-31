@@ -189,6 +189,9 @@ class Artifact:
     # User-defined metadata for addressing/categorization (Plan #168)
     # Arbitrary key-value pairs for agent use (recipient, tags, priority, etc.)
     metadata: dict[str, Any] = field(default_factory=dict)
+    # Plan #235 Phase 1: Kernel protection (system field, not metadata)
+    # Once True, only kernel primitives can modify this artifact
+    kernel_protected: bool = False
 
     @property
     def price(self) -> int:
@@ -262,6 +265,9 @@ class Artifact:
         # Include dependencies if any (Plan #63)
         if self.depends_on:
             result["depends_on"] = self.depends_on
+        # Include kernel_protected if set (Plan #235 Phase 1)
+        if self.kernel_protected:
+            result["kernel_protected"] = True
         # Include metadata if any (Plan #168)
         if self.metadata:
             result["metadata"] = self.metadata
@@ -794,6 +800,13 @@ class ArtifactStore:
             # Update existing
             artifact = self.artifacts[artifact_id]
 
+            # Plan #235 Phase 1 (FM-1/FM-2): kernel_protected blocks all user modifications
+            if artifact.kernel_protected:
+                raise PermissionError(
+                    f"Artifact '{artifact_id}' is kernel_protected: "
+                    "modification only via kernel primitives"
+                )
+
             # Plan #235 Phase 0 (FM-6): type is immutable after creation
             if type != artifact.type:
                 raise ValueError(
@@ -845,6 +858,21 @@ class ArtifactStore:
                             self._index_by_metadata[field] = defaultdict(set)
                         self._index_by_metadata[field][new_value].add(artifact_id)
         else:
+            # Plan #235 Phase 1 (FM-4): Reserved ID namespace enforcement
+            if artifact_id.startswith("charge_delegation:"):
+                expected_owner = artifact_id.split(":", 1)[1]
+                if created_by != expected_owner:
+                    raise PermissionError(
+                        f"Cannot create charge_delegation artifact for another principal "
+                        f"(caller='{created_by}', owner='{expected_owner}')"
+                    )
+            elif artifact_id.startswith("right:"):
+                if created_by != "system":
+                    raise PermissionError(
+                        f"Cannot create right: artifact - only system/kernel can create rights "
+                        f"(caller='{created_by}')"
+                    )
+
             # Create new - register with ID registry if available (Plan #7)
             if self.id_registry is not None:
                 # Import here to avoid circular imports at module level
@@ -873,6 +901,43 @@ class ArtifactStore:
             # Plan #182: Add new artifact to indexes
             self._add_to_index(artifact)
 
+        return artifact
+
+    def modify_protected_content(
+        self,
+        artifact_id: str,
+        *,
+        content: str | None = None,
+        code: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> "Artifact":
+        """Kernel-only: modify a kernel_protected artifact.
+
+        Plan #235 Phase 1: This method bypasses kernel_protected checks.
+        It is NOT exposed to user-facing action paths (write_artifact/edit_artifact).
+        Only kernel primitives should call this method.
+
+        Args:
+            artifact_id: The artifact to modify
+            content: New content (None = keep existing)
+            code: New code (None = keep existing)
+            metadata: New metadata (None = keep existing)
+
+        Returns:
+            The modified artifact
+
+        Raises:
+            KeyError: If artifact doesn't exist
+        """
+        artifact = self.artifacts[artifact_id]
+        now = datetime.now(timezone.utc).isoformat()
+        if content is not None:
+            artifact.content = content
+        if code is not None:
+            artifact.code = code
+        if metadata is not None:
+            artifact.metadata = metadata
+        artifact.updated_at = now
         return artifact
 
     def _validate_dependencies(
