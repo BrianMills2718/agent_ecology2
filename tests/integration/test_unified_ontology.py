@@ -1,7 +1,7 @@
 """Tests for unified artifact ontology (Gap #6).
 
 Verifies that agents are artifact-backed by default, with proper
-has_standing and can_execute properties set.
+has_standing and has_loop properties set.
 
 TDD: Write these tests FIRST, then implement to make them pass.
 """
@@ -47,7 +47,7 @@ class TestArtifactOntologyProperties:
     """Test that artifact ontology properties work correctly."""
 
     def test_agent_artifact_has_correct_properties(self) -> None:
-        """Agent artifacts have has_standing=True and can_execute=True."""
+        """Agent artifacts have has_standing=True and has_loop=True."""
         artifact = create_agent_artifact(
             agent_id="test_agent",
             created_by="test_agent",
@@ -55,19 +55,19 @@ class TestArtifactOntologyProperties:
         )
 
         assert artifact.has_standing is True
-        assert artifact.can_execute is True
+        assert artifact.has_loop is True
         assert artifact.is_agent is True
         assert artifact.is_principal is True
 
     def test_memory_artifact_has_correct_properties(self) -> None:
-        """Memory artifacts have has_standing=False and can_execute=False."""
+        """Memory artifacts have has_standing=False and has_loop=False."""
         artifact = create_memory_artifact(
             memory_id="test_memory",
             created_by="test_agent",
         )
 
         assert artifact.has_standing is False
-        assert artifact.can_execute is False
+        assert artifact.has_loop is False
         assert artifact.is_agent is False
         assert artifact.is_principal is False
 
@@ -82,7 +82,7 @@ class TestArtifactOntologyProperties:
         )
 
         assert artifact.has_standing is False
-        assert artifact.can_execute is False
+        assert artifact.has_loop is False
         assert artifact.is_agent is False
         assert artifact.is_principal is False
 
@@ -242,7 +242,7 @@ class TestAgentArtifactBacking:
         assert result.is_agent is True
         assert result.id == "round_trip"
         assert result.has_standing is True
-        assert result.can_execute is True
+        assert result.has_loop is True
 
 
 class TestSimulationRunnerIntegration:
@@ -417,6 +417,6 @@ class TestCheckpointPreservesArtifacts:
                 a for a in data["artifacts"] if a["id"] == "checkpoint_agent"
             )
             assert agent_data.get("has_standing") is True
-            assert agent_data.get("can_execute") is True
+            assert agent_data.get("has_loop") is True
         finally:
             Path(checkpoint_path).unlink(missing_ok=True)

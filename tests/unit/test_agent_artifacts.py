@@ -2,17 +2,17 @@
 
 Tests the extensions to Artifact that enable agents as artifacts:
 - has_standing field: Can own things, enter contracts
-- can_execute field: Can execute code autonomously
+- has_loop field: Can execute code autonomously
 - memory_artifact_id field: Link to separate memory artifact
 - is_principal property: True if has_standing
-- is_agent property: True if has_standing AND can_execute
+- is_agent property: True if has_standing AND has_loop
 - create_agent_artifact() factory function
 - create_memory_artifact() factory function
 
 Test cases based on GAP-AGENT-001 implementation plan:
 - test_agent_is_artifact: Agent stored as artifact with is_agent == True
 - test_has_standing: Agent has standing
-- test_can_execute: Agent can execute
+- test_has_loop: Agent can execute
 - test_memory_artifact: Memory stored separately
 - test_agent_owns_memory: Agent owns its memory
 - test_non_agent_artifact: Regular artifact flags default to False
@@ -49,8 +49,8 @@ class TestArtifactPrincipalFields:
         )
         assert artifact.has_standing is False
 
-    def test_can_execute_default_false(self) -> None:
-        """Verify can_execute defaults to False for regular artifacts."""
+    def test_has_loop_default_false(self) -> None:
+        """Verify has_loop defaults to False for regular artifacts."""
         artifact = Artifact(
             id="test_artifact",
             type="data",
@@ -59,7 +59,7 @@ class TestArtifactPrincipalFields:
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
         )
-        assert artifact.can_execute is False
+        assert artifact.has_loop is False
 
     def test_memory_artifact_id_default_none(self) -> None:
         """Verify memory_artifact_id defaults to None."""
@@ -86,8 +86,8 @@ class TestArtifactPrincipalFields:
         )
         assert artifact.has_standing is True
 
-    def test_can_execute_can_be_set_true(self) -> None:
-        """Verify can_execute can be set to True."""
+    def test_has_loop_can_be_set_true(self) -> None:
+        """Verify has_loop can be set to True."""
         artifact = Artifact(
             id="agent_1",
             type="agent",
@@ -95,9 +95,9 @@ class TestArtifactPrincipalFields:
             created_by="agent_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
-            can_execute=True,
+            has_loop=True,
         )
-        assert artifact.can_execute is True
+        assert artifact.has_loop is True
 
     def test_memory_artifact_id_can_be_set(self) -> None:
         """Verify memory_artifact_id can be set to a string."""
@@ -142,8 +142,8 @@ class TestIsPrincipalProperty:
         )
         assert artifact.is_principal is True
 
-    def test_is_principal_independent_of_can_execute(self) -> None:
-        """Verify is_principal only depends on has_standing, not can_execute."""
+    def test_is_principal_independent_of_has_loop(self) -> None:
+        """Verify is_principal only depends on has_standing, not has_loop."""
         # Principal without execution capability (e.g., a DAO)
         dao = Artifact(
             id="dao_1",
@@ -153,7 +153,7 @@ class TestIsPrincipalProperty:
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             has_standing=True,
-            can_execute=False,
+            has_loop=False,
         )
         assert dao.is_principal is True
 
@@ -166,7 +166,7 @@ class TestIsPrincipalProperty:
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             has_standing=True,
-            can_execute=True,
+            has_loop=True,
         )
         assert agent.is_principal is True
 
@@ -196,13 +196,13 @@ class TestIsAgentProperty:
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             has_standing=True,
-            can_execute=False,
+            has_loop=False,
         )
         assert dao.is_agent is False
 
     def test_is_agent_false_with_only_execute(self) -> None:
-        """Verify is_agent is False with only can_execute (invalid state)."""
-        # This is a degenerate case - can_execute without has_standing
+        """Verify is_agent is False with only has_loop (invalid state)."""
+        # This is a degenerate case - has_loop without has_standing
         # should not occur in practice but we test the logic
         artifact = Artifact(
             id="code_1",
@@ -212,12 +212,12 @@ class TestIsAgentProperty:
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             has_standing=False,
-            can_execute=True,
+            has_loop=True,
         )
         assert artifact.is_agent is False
 
     def test_is_agent_true_with_both_capabilities(self) -> None:
-        """Verify is_agent is True when has_standing AND can_execute."""
+        """Verify is_agent is True when has_standing AND has_loop."""
         agent = Artifact(
             id="agent_1",
             type="agent",
@@ -226,7 +226,7 @@ class TestIsAgentProperty:
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
             has_standing=True,
-            can_execute=True,
+            has_loop=True,
         )
         assert agent.is_agent is True
 
@@ -279,14 +279,14 @@ class TestCreateAgentArtifact:
         )
         assert agent.has_standing is True
 
-    def test_can_execute_is_true(self) -> None:
-        """Verify factory sets can_execute=True."""
+    def test_has_loop_is_true(self) -> None:
+        """Verify factory sets has_loop=True."""
         agent = create_agent_artifact(
             agent_id="agent_001",
             created_by="agent_001",
             agent_config={},
         )
-        assert agent.can_execute is True
+        assert agent.has_loop is True
 
     def test_is_agent_is_true(self) -> None:
         """Verify created artifact reports is_agent=True."""
@@ -435,13 +435,13 @@ class TestCreateMemoryArtifact:
         )
         assert memory.has_standing is False
 
-    def test_can_execute_is_false(self) -> None:
+    def test_has_loop_is_false(self) -> None:
         """Verify memory cannot execute."""
         memory = create_memory_artifact(
             memory_id="agent_001_memory",
             created_by="agent_001",
         )
-        assert memory.can_execute is False
+        assert memory.has_loop is False
 
     def test_is_agent_is_false(self) -> None:
         """Verify memory is not an agent."""
@@ -583,8 +583,8 @@ class TestToDictWithNewFields:
         d = artifact.to_dict()
         assert d["has_standing"] is True
 
-    def test_to_dict_excludes_false_can_execute(self) -> None:
-        """Verify to_dict omits can_execute when False (default)."""
+    def test_to_dict_excludes_false_has_loop(self) -> None:
+        """Verify to_dict omits has_loop when False (default)."""
         artifact = Artifact(
             id="data_1",
             type="data",
@@ -594,10 +594,10 @@ class TestToDictWithNewFields:
             updated_at="2024-01-01T00:00:00",
         )
         d = artifact.to_dict()
-        assert "can_execute" not in d
+        assert "has_loop" not in d
 
-    def test_to_dict_includes_true_can_execute(self) -> None:
-        """Verify to_dict includes can_execute when True."""
+    def test_to_dict_includes_true_has_loop(self) -> None:
+        """Verify to_dict includes has_loop when True."""
         artifact = Artifact(
             id="agent_1",
             type="agent",
@@ -605,10 +605,10 @@ class TestToDictWithNewFields:
             created_by="agent_1",
             created_at="2024-01-01T00:00:00",
             updated_at="2024-01-01T00:00:00",
-            can_execute=True,
+            has_loop=True,
         )
         d = artifact.to_dict()
-        assert d["can_execute"] is True
+        assert d["has_loop"] is True
 
     def test_to_dict_excludes_none_memory_artifact_id(self) -> None:
         """Verify to_dict omits memory_artifact_id when None."""
@@ -651,7 +651,7 @@ class TestToDictWithNewFields:
         assert d["type"] == "agent"
         assert d["created_by"] == "agent_001"
         assert d["has_standing"] is True
-        assert d["can_execute"] is True
+        assert d["has_loop"] is True
         assert d["memory_artifact_id"] == "agent_001_memory"
 
 
@@ -825,7 +825,7 @@ class TestAgentTransfer:
         transferred = store.get("agent_001")
         assert transferred is not None
         assert transferred.has_standing is True
-        assert transferred.can_execute is True
+        assert transferred.has_loop is True
         assert transferred.memory_artifact_id == "agent_001_memory"
         # Config preserved
         config = json.loads(transferred.content)

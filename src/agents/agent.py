@@ -680,7 +680,7 @@ class Agent:
         if not artifact.is_agent:
             raise ValueError(
                 f"Cannot create Agent from non-agent artifact '{artifact.id}'. "
-                f"Artifact must have is_agent=True (has_standing=True and can_execute=True)."
+                f"Artifact must have is_agent=True (has_standing=True and has_loop=True)."
             )
 
         # Parse config from artifact content

@@ -251,7 +251,7 @@ Any principal can be owner. Principals are artifacts with `has_standing=True`:
 
 | Principal Type | Can Own? | Can Act Autonomously? |
 |----------------|----------|----------------------|
-| Agent | Yes | Yes (`can_execute=True`) |
+| Agent | Yes | Yes (`has_loop=True`) |
 | DAO/Firm | Yes | No (requires invocation) |
 | Contract | Yes | No |
 
@@ -455,14 +455,14 @@ kernel.sleep(
 - Evaluate conditions (on events, time, state changes)
 - Wake agents when conditions met
 
-### has_standing and can_execute Flags
+### has_standing and has_loop Flags
 
 These are kernel-level because kernel must know:
 
 | Flag | Kernel Needs to Know | Why |
 |------|---------------------|-----|
 | `has_standing` | Can this artifact have a ledger balance? | Kernel won't create ledger entries for non-principals |
-| `can_execute` | Should I schedule this for autonomous execution? | Kernel only runs agents, not passive artifacts |
+| `has_loop` | Should I schedule this for autonomous execution? | Kernel only runs agents, not passive artifacts |
 
 Cannot be contract-defined - kernel needs to know BEFORE asking contracts.
 
@@ -1155,7 +1155,7 @@ These shape agent behavior and emergence.
 - Formula: `total_resources / num_genesis_agents`
 
 **Runtime agent creation:**
-- Agents are artifacts with `can_execute=true`
+- Agents are artifacts with `has_loop=true`
 - Can create with 0 resources (empty artifact)
 - No minimum funding requirement
 - No special sponsorship mechanism required
@@ -1966,7 +1966,7 @@ This section identifies gaps between the architecture decisions documented above
 | **Agent World** | All artifacts including agents |
 | **Genesis Artifact** | Pre-seeded artifact that interfaces with kernel (NOT privileged) |
 | **Principal** | Artifact with `has_standing=True` - can own things, hold scrip |
-| **Agent** | Principal with `can_execute=True` - can act autonomously |
+| **Agent** | Principal with `has_loop=True` - can act autonomously |
 | **Akashic Record** | Immutable log of actions and state changes |
 | **Scrip** | Economic unit (not "credits") |
 | **Tick** | Deprecated - target architecture uses continuous time |

@@ -102,7 +102,7 @@ From `docs/architecture/target/01_README.md`:
 | #7 Single ID Namespace | 📋 Unblocked | Now ready for implementation |
 
 **Key Changes:**
-1. Add `has_standing`, `can_execute`, `access_contract_id` to all artifacts
+1. Add `has_standing`, `has_loop`, `access_contract_id` to all artifacts
 2. Implement MCP-compatible interface schemas
 3. Build genesis_store discovery methods
 

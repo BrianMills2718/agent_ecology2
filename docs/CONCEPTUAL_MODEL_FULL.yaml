@@ -22,7 +22,7 @@ status: accepted  # ADR-0024 resolved access control architecture
 # - charge_to: Not implemented (GAP-ART-004)
 #
 # Migration: Plan #234 (ADR-0024 Handle Request Migration)
-# Code gaps: subscribe_artifact permission, terminology (Plan #230), invariants (Plan #231)
+# Code gaps: subscribe_artifact permission, invariants (Plan #231)
 # =============================================================================
 
 # =============================================================================
@@ -125,8 +125,7 @@ properties:
       type: bool
       description: "Runs autonomously"
       implies: has_standing  # If you run, you bear execution costs
-      code_name: "can_execute"  # Plan #230 will rename code to match
-      note: "Code currently uses 'can_execute'; Plan #230 will align terminology"
+      code_name: "has_loop"
 
   # Interface patterns (what the artifact implements)
   interface_patterns:

@@ -49,7 +49,7 @@ Create a new agent artifact:
   "artifact_type": "agent",
   "content": "{\"model\": \"...\", \"system_prompt\": \"...\"}",
   "has_standing": true,
-  "can_execute": true
+  "has_loop": true
 }
 ```
 

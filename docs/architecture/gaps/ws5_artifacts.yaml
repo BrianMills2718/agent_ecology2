@@ -61,7 +61,7 @@ gaps:
       No formal interface declaration or standing concept.
     target_state: |
       Contract artifacts have:
-        - can_execute: True
+        - has_loop: True
         - has_standing: False (contracts don't need standing)
         - interface: { tools: [{ name, inputSchema, ... }] }
       Interface declares available tools including check_permission.

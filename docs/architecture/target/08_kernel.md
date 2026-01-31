@@ -305,14 +305,14 @@ Two categories with distinct suffixes:
 
 From [03_agents.md](03_agents.md):
 
-| Type | has_standing | can_execute | Examples |
+| Type | has_standing | has_loop | Examples |
 |------|--------------|-------------|----------|
 | Agent | true | true | Autonomous actors |
 | Tool | false | true | Services, APIs, contracts |
 | Account | true | false | Treasuries, escrows |
 | Data | false | false | Documents, content |
 
-**Contracts** are tools (`can_execute=true`, `has_standing=false`) that implement `check_permission`. No special type flag.
+**Contracts** are tools (`has_loop=true`, `has_standing=false`) that implement `check_permission`. No special type flag.
 
 ---
 

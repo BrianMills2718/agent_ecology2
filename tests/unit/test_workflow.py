@@ -796,7 +796,7 @@ class TestAgentWorkflowArtifactField:
 
         now = datetime.now(timezone.utc).isoformat()
         # Create an artifact with workflow_artifact_id in config
-        # Agent artifacts need has_standing=True and can_execute=True
+        # Agent artifacts need has_standing=True and has_loop=True
         artifact = Artifact(
             id="test_artifact",
             type="agent",
@@ -809,7 +809,7 @@ class TestAgentWorkflowArtifactField:
             created_at=now,
             updated_at=now,
             has_standing=True,
-            can_execute=True,
+            has_loop=True,
         )
 
         agent = Agent.from_artifact(artifact)

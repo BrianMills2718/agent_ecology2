@@ -66,7 +66,7 @@ commit: d760ff7
 ### Steps
 1. Extend `AgentDetail` model with new fields
 2. Update parser to extract config from:
-   - Agent artifacts (`has_standing=True`, `can_execute=True`)
+   - Agent artifacts (`has_standing=True`, `has_loop=True`)
    - Or fallback to `config/agents/*.yaml` files
 3. Update `/api/agents/{id}` endpoint
 4. Add frontend detail modal component

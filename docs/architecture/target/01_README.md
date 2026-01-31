@@ -179,7 +179,7 @@ genesis_store_api = {
                     "content": "any",
                     "interface": "dict",
                     "has_standing": "bool",
-                    "can_execute": "bool",
+                    "has_loop": "bool",
                     "access_contract_id": "string"
                 }
             },
@@ -202,7 +202,7 @@ What `get_metadata()` returns (without reading content):
 | `id` | string | Artifact ID |
 | `owner_id` | string | Current owner |
 | `has_standing` | bool | Can hold resources |
-| `can_execute` | bool | Has runnable code |
+| `has_loop` | bool | Has runnable code |
 | `interface_summary` | string | Brief description from interface |
 | `created_at` | timestamp | Creation time |
 | `size_bytes` | int | Content size |
@@ -223,7 +223,7 @@ Prevents "trial-and-error bankruptcy":
 | Term | Definition |
 |------|------------|
 | **Artifact** | Any persistent, addressable object in the system. Everything is an artifact: agents, contracts, data, tools. |
-| **Agent** | An artifact with `has_standing=true` and `can_execute=true`. Can think (call LLM), act, and bear costs. |
+| **Agent** | An artifact with `has_standing=true` and `has_loop=true`. Can think (call LLM), act, and bear costs. |
 | **Standing** | The property (`has_standing=true`) that allows an artifact to hold resources, enter contracts, and bear costs. Artifacts with standing are "principals" in the economic sense. |
 | **Principal** | Any artifact with standing. Can hold scrip, own other artifacts, and be held accountable. |
 | **Scrip** | The internal currency. Minted by oracle based on artifact quality scores. Used to pay for actions, trade, and coordinate. |

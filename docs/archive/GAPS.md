@@ -156,7 +156,7 @@ If agent exceeds rate allocation, they're blocked until rolling window allows mo
 
 **Current:** Separate concepts. Agents, artifacts, and principals are different things with different storage.
 
-**Target:** Everything is an artifact. Properties (`has_standing`, `can_execute`, `access_contract_id`) determine role.
+**Target:** Everything is an artifact. Properties (`has_standing`, `has_loop`, `access_contract_id`) determine role.
 
 **From DESIGN_CLARIFICATIONS.md (2026-01-11):**
 ```python
@@ -166,7 +166,7 @@ class Artifact:
     content: Any               # Data, code, config
     access_contract_id: str    # Who answers permission questions
     has_standing: bool         # Can hold scrip, bear costs
-    can_execute: bool          # Has runnable code
+    has_loop: bool          # Has runnable code
 ```
 
 **No Plan Yet.** Significant refactor affecting:
@@ -296,19 +296,19 @@ class Artifact:
     content: Any
     access_contract_id: str
     has_standing: bool
-    can_execute: bool
+    has_loop: bool
     created_by: str
-    interface: dict | None = None  # Required if can_execute=True
+    interface: dict | None = None  # Required if has_loop=True
 ```
 
-**Validation:** `if artifact.can_execute and not artifact.interface: raise ValueError`
+**Validation:** `if artifact.has_loop and not artifact.interface: raise ValueError`
 
 **Why Medium Priority:**
 - Without interface, agents waste resources on trial-and-error
 - Reading source code is expensive (tokens)
 - LLMs are trained on MCP-style schemas, reducing hallucination
 
-**Depends On:** #6 Unified Artifact Ontology (adds `can_execute` field first)
+**Depends On:** #6 Unified Artifact Ontology (adds `has_loop` field first)
 
 **No Plan Yet.** Changes needed:
 - Add `interface: dict | None` field to Artifact
@@ -404,7 +404,7 @@ info = invoke("genesis_store", "get_artifact_info", {id: X})
 | Via event_log (observe activity) | Emergent, no new artifact | Incomplete, only active agents |
 | genesis_ledger.all_balances (infer from principals) | Already exists | Doesn't distinguish agents from other principals |
 
-**Recommendation:** Wait for #6 (Unified Ontology). If agents are artifacts with `has_standing=true, can_execute=true`, discovery comes free via genesis_store.
+**Recommendation:** Wait for #6 (Unified Ontology). If agents are artifacts with `has_standing=true, has_loop=true`, discovery comes free via genesis_store.
 
 **Depends On:** #16 Artifact Discovery
 
@@ -674,7 +674,7 @@ class EcosystemMetrics:
 |----------|-------|
 | `id` | `system_auditor` |
 | `has_standing` | `false` (no costs) |
-| `can_execute` | `true` |
+| `has_loop` | `true` |
 | Read access | All artifacts, ledger, event log |
 | Write access | None (except own reports) |
 

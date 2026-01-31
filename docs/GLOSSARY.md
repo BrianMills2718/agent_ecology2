@@ -32,8 +32,8 @@ Everything is an artifact. Other entity types are artifacts with specific proper
 | **Artifact** | Any persistent, addressable object in the system | `id`, `content`, `access_contract_id` |
 | **Principal** | Any artifact with standing (can hold resources, bear costs) | `has_standing=true` |
 | **Autonomous Principal** | Principal with an execution loop (can act independently) | `has_standing=true`, has loop |
-| **Agent** | Autonomous principal using LLM for decisions (common case) | `has_standing=true`, `can_execute=true`, LLM-based |
-| **Contract** | Executable artifact that answers permission questions | `can_execute=true`, implements `check_permission` |
+| **Agent** | Autonomous principal using LLM for decisions (common case) | `has_standing=true`, `has_loop=true`, LLM-based |
+| **Contract** | Executable artifact that answers permission questions | `has_loop=true`, implements `check_permission` |
 | **Genesis Artifact** | Artifact created at system initialization | Prefixed with `genesis_`, solves cold-start |
 | **Genesis Agent** | Agent loaded from config at simulation startup (Plan #197) | `is_genesis=True`, can receive scoped prompt injection |
 | **Spawned Agent** | Agent created at runtime by another principal (Plan #197) | `is_genesis=False`, may not receive genesis-scoped injection |
@@ -54,7 +54,7 @@ All artifacts have these metadata fields (see `src/world/artifacts.py`):
 | `updated_at` | datetime | Last modification timestamp |
 | `deleted_by` | str \| None | Principal who deleted (if deleted) |
 | `has_standing` | bool | Can hold resources/bear costs |
-| `can_execute` | bool | Can execute code autonomously (has own loop) |
+| `has_loop` | bool | Can execute code autonomously (has own loop) |
 | `executable` | bool | Has executable code |
 | `is_memory` | bool | Is a memory artifact |
 | `memory_artifact_id` | str \| None | Linked memory artifact (for agents) |

@@ -27,8 +27,8 @@ def restore_artifact(store: ArtifactStore, artifact_data: dict[str, Any]) -> Non
     # Restore extra fields
     if artifact_data.get("has_standing"):
         artifact.has_standing = True
-    if artifact_data.get("can_execute"):
-        artifact.can_execute = True
+    if artifact_data.get("has_loop") or artifact_data.get("can_execute"):
+        artifact.has_loop = True
     if artifact_data.get("memory_artifact_id"):
         artifact.memory_artifact_id = artifact_data["memory_artifact_id"]
 

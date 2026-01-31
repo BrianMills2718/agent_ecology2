@@ -42,7 +42,7 @@ When an artifact with code is written, automatically extract `invoke()` targets:
 
 ```python
 # On write_artifact:
-if artifact.can_execute:
+if artifact.has_loop:
     deps = extract_invoke_targets(artifact.content)
     artifact.metadata["invokes"] = deps  # e.g., ["genesis_ledger", "genesis_escrow"]
 ```

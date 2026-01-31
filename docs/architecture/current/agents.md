@@ -659,7 +659,7 @@ Agent receives failure message in `last_action_result` for next iteration.
 
 ## Artifact-Backed Agents (Default)
 
-**SimulationRunner creates artifact-backed agents by default.** This implements the unified ontology (Gap #6): agents are artifacts with `has_standing=True` and `can_execute=True`.
+**SimulationRunner creates artifact-backed agents by default.** This implements the unified ontology (Gap #6): agents are artifacts with `has_standing=True` and `has_loop=True`.
 
 ### How It Works
 
@@ -696,7 +696,7 @@ updated_artifact = agent.to_artifact()
 | Field | Description |
 |-------|-------------|
 | `has_standing: True` | Agent is a principal (can own things) |
-| `can_execute: True` | Agent can execute code autonomously |
+| `has_loop: True` | Agent can execute code autonomously |
 | `memory_artifact_id` | Link to memory artifact (e.g., "alice_memory") |
 | `content` | JSON-encoded agent config (prompt, model, etc.) |
 
@@ -709,7 +709,7 @@ Each agent automatically gets a linked memory artifact:
 | `alice` | `alice_memory` |
 | `bob` | `bob_memory` |
 
-Memory artifacts have `has_standing=False` and `can_execute=False`.
+Memory artifacts have `has_standing=False` and `has_loop=False`.
 
 ### Spawned Agents
 

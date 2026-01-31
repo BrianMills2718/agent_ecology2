@@ -309,7 +309,7 @@ These gaps from the original Phase 2 plan are already done:
 |--------|-------------|--------------|
 | GAP-GEN-003 | Genesis contracts | Created in `genesis_contracts.py` |
 | GAP-ART-001 | access_contract_id field | Added to Artifact |
-| GAP-ART-002 | has_standing, can_execute | Added to Artifact |
+| GAP-ART-002 | has_standing, has_loop | Added to Artifact |
 | GAP-EXEC-002 | Agent sleep system | AgentLoop has sleep/wake |
 | GAP-ART-006 | Create genesis contracts | Done in Phase 1 |
 | GAP-ART-010 | check_permission interface | Done in contracts.py |

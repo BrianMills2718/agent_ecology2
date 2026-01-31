@@ -49,11 +49,11 @@ Transform from tick-synchronized to continuous autonomous execution.
 ### GAP-AGENT-001: Unified Ontology (Agents as Artifacts)
 **Complexity:** XL | **Risk:** Medium | **Files:** agent.py, artifacts.py, world.py
 
-Agents become artifacts with `has_standing=true` and `can_execute=true`.
+Agents become artifacts with `has_standing=true` and `has_loop=true`.
 
 **Tasks:**
 1. Add `has_standing` field to Artifact
-2. Add `can_execute` field to Artifact
+2. Add `has_loop` field to Artifact
 3. Create agent artifacts during initialization
 4. Update agent loading to read from artifacts
 5. Enable agent trading via artifact transfer
@@ -61,7 +61,7 @@ Agents become artifacts with `has_standing=true` and `can_execute=true`.
 **Acceptance Criteria:**
 - [ ] Agents are stored as artifacts
 - [ ] Agent ownership can be transferred
-- [ ] has_standing/can_execute fields work correctly
+- [ ] has_standing/has_loop fields work correctly
 
 ---
 

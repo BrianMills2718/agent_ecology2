@@ -134,7 +134,7 @@ Each genesis MCP artifact exposes an MCP-compatible interface:
 {
     "id": "genesis_fetch",
     "type": "genesis",
-    "can_execute": True,
+    "has_loop": True,
     "interface": {
         "tools": [
             {

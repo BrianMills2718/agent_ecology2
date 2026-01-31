@@ -573,7 +573,7 @@ Artifacts wrap external services:
 ```python
 {
     "id": "genesis_web_search",
-    "can_execute": true,
+    "has_loop": true,
     "has_standing": false,  # Tool - invoker pays
     "interface": {
         "tools": [{

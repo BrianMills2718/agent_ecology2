@@ -203,5 +203,5 @@ The 3-phase approach allows:
 ### Relationship to Other Plans
 
 - Plan #229 (Conceptual Model) - This implements what that describes
-- Plan #230 (Rename can_execute) - Terminology cleanup, independent
+- Plan #230 (Rename has_loop) - Terminology cleanup, independent
 - Plan #165 (Genesis Contracts as Artifacts) - Related, contracts become normal artifacts

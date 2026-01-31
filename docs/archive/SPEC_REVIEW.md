@@ -187,7 +187,7 @@ Comparison of `specs_summary.md` (original spec) vs current implementation and t
 ### 4. What makes an artifact "executable"?
 **Spec says:** Executable artifacts encapsulate logic that can be invoked.
 
-**RESOLVED:** `can_execute: true` property + required `interface` field (MCP-compatible schema). See DESIGN_CLARIFICATIONS.md.
+**RESOLVED:** `has_loop: true` property + required `interface` field (MCP-compatible schema). See DESIGN_CLARIFICATIONS.md.
 
 ### 5. How do firms/organizations emerge?
 **Spec says:** Firms are "bundles of contracts and artifacts."

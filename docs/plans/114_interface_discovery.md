@@ -47,7 +47,7 @@ def _artifact_to_dict(self, artifact: Any) -> dict[str, Any]:
         "owner_id": artifact.owner_id,
         "content": artifact.content,
         "has_standing": artifact.has_standing,
-        "can_execute": artifact.can_execute,
+        "has_loop": artifact.has_loop,
         "executable": artifact.executable,
         "interface": artifact.interface,  # ADD THIS
     }

@@ -51,7 +51,7 @@ ID format is simply a string. No type prefixes required (though `genesis_*` pref
 ### Neutral
 
 - Legacy `agent_id`, `principal_id` fields may appear in older code
-- Type is determined by properties (`has_standing`, `can_execute`), not ID
+- Type is determined by properties (`has_standing`, `has_loop`), not ID
 
 ## Related
 

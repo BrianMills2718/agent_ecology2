@@ -39,7 +39,6 @@ status: accepted
 # - handle_request interface (Plan #234) - MAJOR: core interface not implemented
 # - charge_to cost routing (GAP-ART-004) - artifacts can't direct costs
 # - subscribe_artifact permission (needs read check)
-# - terminology alignment (Plan #230)
 # - kernel invariants (Plan #231)
 # =============================================================================
 # ARTIFACT - The Primal Entity
@@ -117,7 +116,7 @@ properties:
       type: bool
       description: "Runs autonomously"
       implies: has_standing
-      code_name: "can_execute"  # Plan #230 will align
+      code_name: "has_loop"
 
   interface_patterns:
     implements_check_permission:
@@ -369,5 +368,4 @@ references:
 
   code_gaps:
     subscribe_permission: "Needs read check"
-    terminology: "Plan #230"
     invariants: "Plan #231"

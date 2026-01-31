@@ -1,6 +1,6 @@
 # Plan 230: Rename can_execute to has_loop
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** Medium
 **Blocked By:** -
 **Blocks:** -
