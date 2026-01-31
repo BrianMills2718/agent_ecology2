@@ -49,6 +49,7 @@ Master index of all gaps and their implementation plans.
 | 231 | [Plan 231: Tight Coupling Between has_standing and Ledger Registration](231_has_standing_ledger_coupling.md) | Medium | 📋 Planned | - |
 | 234 | [Plan 234: ADR-0024 Handle Request Migration](234_adr0024_handle_request_migration.md) | Medium | 📋 Planned | Full artifact autonomy, custom access control patterns |
 | 236 | [Plan 236: Charge Delegation](236_charge_delegation.md) | High | 📋 Planned | None (enables charge_to for Plan #234) |
+| 240 | [Plan 240: Cross-CC Review Enforcement](240_cross_cc_review_enforcement.md) | Medium | 📋 Deferred | - |
 ---
 
 ## TDD Workflow
