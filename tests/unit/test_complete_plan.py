@@ -256,3 +256,97 @@ Test problem.
 
             # Real E2E should NOT be called when skip flag is set
             mock_real_e2e.assert_not_called()
+
+
+@pytest.mark.plans(240)
+class TestStatusOnlyFlag:
+    """Tests for --status-only flag behavior (Plan #240).
+
+    The --status-only flag skips ALL test execution and just updates the
+    plan status. This is for cases where CI already validated the PR
+    (e.g., during make finish).
+    """
+
+    def _create_plan_file(self, tmp_path: Path, plan_num: int = 99) -> Path:
+        """Helper to create a minimal plan file."""
+        plans_dir = tmp_path / "docs" / "plans"
+        plans_dir.mkdir(parents=True)
+        plan_file = plans_dir / f"{plan_num}_test.md"
+        plan_file.write_text(f"""# Plan #{plan_num}: Test
+
+**Status:** 🚧 In Progress
+
+## Problem
+Test problem.
+""")
+        return plan_file
+
+    def test_status_only_skips_all_tests(self, tmp_path: Path) -> None:
+        """--status-only should not call any test runners."""
+        from complete_plan import complete_plan
+
+        self._create_plan_file(tmp_path)
+
+        # mock-ok: Verifying no test functions are called in status-only mode
+        with patch("complete_plan.run_unit_tests") as mock_unit, \
+             patch("complete_plan.run_e2e_tests") as mock_e2e, \
+             patch("complete_plan.run_real_e2e_tests") as mock_real_e2e, \
+             patch("complete_plan.check_doc_coupling") as mock_doc, \
+             patch("complete_plan.get_git_info", return_value=("abc1234", "main")):
+
+            result = complete_plan(
+                plan_number=99,
+                project_root=tmp_path,
+                status_only=True,
+                verbose=False,
+            )
+
+            assert result is True
+            mock_unit.assert_not_called()
+            mock_e2e.assert_not_called()
+            mock_real_e2e.assert_not_called()
+            mock_doc.assert_not_called()
+
+    def test_status_only_updates_plan_file(self, tmp_path: Path) -> None:
+        """--status-only should update the plan file status and record evidence."""
+        from complete_plan import complete_plan
+
+        plan_file = self._create_plan_file(tmp_path)
+
+        # mock-ok: Testing file update without running git
+        with patch("complete_plan.get_git_info", return_value=("abc1234", "main")):
+            result = complete_plan(
+                plan_number=99,
+                project_root=tmp_path,
+                status_only=True,
+                verbose=False,
+            )
+
+        assert result is True
+        content = plan_file.read_text()
+        assert "✅ Complete" in content
+        assert "skipped (--status-only" in content
+
+    def test_status_only_respects_already_complete(self, tmp_path: Path) -> None:
+        """--status-only on already-complete plan should return True without --force."""
+        from complete_plan import complete_plan
+
+        plans_dir = tmp_path / "docs" / "plans"
+        plans_dir.mkdir(parents=True)
+        plan_file = plans_dir / "99_test.md"
+        plan_file.write_text("""# Plan #99: Test
+
+**Status:** ✅ Complete
+
+## Problem
+Already done.
+""")
+
+        result = complete_plan(
+            plan_number=99,
+            project_root=tmp_path,
+            status_only=True,
+            verbose=False,
+        )
+
+        assert result is True

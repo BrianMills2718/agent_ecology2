@@ -416,8 +416,15 @@ def complete_plan(
     force: bool = False,
     human_verified: bool = False,
     verbose: bool = True,
+    status_only: bool = False,
 ) -> bool:
     """Complete a plan with full verification.
+
+    Args:
+        status_only: Skip all test execution, just update status. Use when
+            CI has already validated the code (e.g., during make finish after
+            PR merge). Plan #240: prevents bash timeout from running full
+            test suite during plan completion.
 
     Returns True if plan was completed successfully.
     """
@@ -456,53 +463,63 @@ def complete_plan(
     if human_review_section and human_verified and verbose:
         print(f"  (--human-verified: human review confirmed)")
 
-    # Run verification steps
-    all_passed = True
-
-    # 1. Unit tests
-    unit_passed, unit_summary = run_unit_tests(project_root, verbose)
-    if not unit_passed:
-        all_passed = False
-
-    # 2. E2E smoke tests
-    if skip_e2e:
-        e2e_smoke_passed, e2e_smoke_summary = True, "skipped (--skip-e2e)"
+    # Plan #240: Status-only mode skips all test execution.
+    # Use when CI has already validated the code (e.g., make finish after PR merge).
+    if status_only:
         if verbose:
-            print("\n[2/4] E2E smoke tests... SKIPPED (--skip-e2e flag)")
+            print("\n⏭️  Status-only mode: skipping all tests (CI-validated)")
+        unit_summary = "skipped (--status-only, CI-validated)"
+        e2e_smoke_summary = "skipped (--status-only, CI-validated)"
+        e2e_real_summary = "skipped (--status-only, CI-validated)"
+        doc_summary = "skipped (--status-only, CI-validated)"
     else:
-        e2e_smoke_passed, e2e_smoke_summary = run_e2e_tests(project_root, verbose)
-        if not e2e_smoke_passed:
+        # Run verification steps
+        all_passed = True
+
+        # 1. Unit tests
+        unit_passed, unit_summary = run_unit_tests(project_root, verbose)
+        if not unit_passed:
             all_passed = False
 
-    # 3. Real E2E tests (actual LLM calls)
-    if skip_e2e or skip_real_e2e:
-        e2e_real_passed, e2e_real_summary = True, "skipped (--skip-real-e2e)"
-        if verbose:
-            print("\n[3/4] Real E2E tests... SKIPPED (--skip-real-e2e flag)")
-    else:
-        e2e_real_passed, e2e_real_summary = run_real_e2e_tests(project_root, verbose)
-        if not e2e_real_passed:
+        # 2. E2E smoke tests
+        if skip_e2e:
+            e2e_smoke_passed, e2e_smoke_summary = True, "skipped (--skip-e2e)"
+            if verbose:
+                print("\n[2/4] E2E smoke tests... SKIPPED (--skip-e2e flag)")
+        else:
+            e2e_smoke_passed, e2e_smoke_summary = run_e2e_tests(project_root, verbose)
+            if not e2e_smoke_passed:
+                all_passed = False
+
+        # 3. Real E2E tests (actual LLM calls)
+        if skip_e2e or skip_real_e2e:
+            e2e_real_passed, e2e_real_summary = True, "skipped (--skip-real-e2e)"
+            if verbose:
+                print("\n[3/4] Real E2E tests... SKIPPED (--skip-real-e2e flag)")
+        else:
+            e2e_real_passed, e2e_real_summary = run_real_e2e_tests(project_root, verbose)
+            if not e2e_real_passed:
+                all_passed = False
+
+        # 4. Doc coupling
+        doc_passed, doc_summary = check_doc_coupling(project_root, verbose)
+        if not doc_passed:
             all_passed = False
 
-    # 4. Doc coupling
-    doc_passed, doc_summary = check_doc_coupling(project_root, verbose)
-    if not doc_passed:
-        all_passed = False
+        # Summary
+        if verbose:
+            print(f"\n{'='*60}")
+            print("VERIFICATION SUMMARY")
+            print(f"{'='*60}")
+            print(f"  Unit tests:      {'PASS' if unit_passed else 'FAIL'}")
+            print(f"  E2E smoke:       {'PASS' if e2e_smoke_passed else 'FAIL'}")
+            print(f"  E2E real (LLM):  {'PASS' if e2e_real_passed else 'FAIL'}")
+            print(f"  Doc coupling:    {'PASS' if doc_passed else 'FAIL'}")
 
-    # Summary
-    if verbose:
-        print(f"\n{'='*60}")
-        print("VERIFICATION SUMMARY")
-        print(f"{'='*60}")
-        print(f"  Unit tests:      {'PASS' if unit_passed else 'FAIL'}")
-        print(f"  E2E smoke:       {'PASS' if e2e_smoke_passed else 'FAIL'}")
-        print(f"  E2E real (LLM):  {'PASS' if e2e_real_passed else 'FAIL'}")
-        print(f"  Doc coupling:    {'PASS' if doc_passed else 'FAIL'}")
-
-    if not all_passed:
-        print(f"\nFAILED: Plan #{plan_number} cannot be marked complete.")
-        print("Fix the issues above and try again.")
-        return False
+        if not all_passed:
+            print(f"\nFAILED: Plan #{plan_number} cannot be marked complete.")
+            print("Fix the issues above and try again.")
+            return False
 
     # All passed - update plan file
     commit, branch = get_git_info(project_root)
@@ -571,6 +588,11 @@ def main() -> int:
         help="Confirm human review has been done (for plans with '## Human Review Required')"
     )
     parser.add_argument(
+        "--status-only",
+        action="store_true",
+        help="Skip all tests, just update status (Plan #240: for CI-validated PRs)"
+    )
+    parser.add_argument(
         "--quiet", "-q",
         action="store_true",
         help="Minimal output"
@@ -589,6 +611,7 @@ def main() -> int:
         force=args.force,
         human_verified=args.human_verified,
         verbose=not args.quiet,
+        status_only=args.status_only,
     )
 
     return 0 if success else 1
