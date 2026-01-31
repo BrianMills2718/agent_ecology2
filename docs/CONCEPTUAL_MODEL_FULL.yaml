@@ -1,12 +1,17 @@
 # =============================================================================
-# CONCEPTUAL MODEL - Machine-readable architecture definition
+# CONCEPTUAL MODEL (FULL) - Machine-readable architecture definition
 # =============================================================================
-# This is the canonical conceptual model for the Agent Ecology system.
-# Status: DRAFT - under active discussion
+# This is the expanded conceptual model with examples and discussion.
+# For the compact version, see: CONCEPTUAL_MODEL.yaml (version 2)
+#
+# WARNING: This document contains sections written under both ADR-0019 and
+# ADR-0024. Sections marked STALE were written under ADR-0019 (kernel-mediated
+# permissions) and have not been updated for ADR-0024 (artifact self-handled
+# access). See SCHEMA_AUDIT.md for a full cross-reference of inconsistencies.
 # =============================================================================
 
 version: 1
-last_updated: "2026-01-28"
+last_updated: "2026-01-31"
 status: accepted  # ADR-0024 resolved access control architecture
 
 # =============================================================================
@@ -282,7 +287,7 @@ relationships:
 
   universal:
     - "Everything is an artifact"
-    - "Every artifact has exactly one governing contract (or null = default)"
+    - "Every artifact has exactly one governing contract (or null = default)"  # STALE: ADR-0024 removes kernel contract checking
     - "created_by is immutable metadata (ADR-0016)"
     - "Contract determines ACCESS, not labels or properties"
 
@@ -301,6 +306,8 @@ actions:
   core_actions:
     description: "Actions that go through contract permission checking"
     note: "Kernel executes contract logic to determine if action is allowed"
+    # STALE (ADR-0019): Per ADR-0024, artifacts handle access in their code.
+    # Kernel routes requests to artifact handlers, does NOT check contracts.
 
     read:
       description: "Read artifact content"
@@ -580,7 +587,7 @@ layers:
       - "Scarcity (amount >= 0, can't spend what doesn't exist)"
       - "Immutability of created_by"
       - "Immutability of world history"
-      - "Contract-based permissions (kernel asks contracts, doesn't decide)"
+      - "Contract-based permissions (kernel asks contracts, doesn't decide)"  # STALE: ADR-0024 - kernel does NOT check contracts
       - "Permission checks are metered and bounded, but do not debit rights-based resources unless explicitly invoked"
 
     provides:
@@ -591,8 +598,8 @@ layers:
         - "Query resource status (rate limits, usage)"
 
       write_interface:
-        - "Create artifact (goes through contract permission)"
-        - "Modify artifact (goes through contract permission)"
+        - "Create artifact (goes through contract permission)"  # STALE: ADR-0024 - artifacts handle access, not kernel
+        - "Modify artifact (goes through contract permission)"  # STALE: ADR-0024 - artifacts handle access, not kernel
         - "Delete artifact (goes through contract permission)"
         - "Consume from right (= write, goes through contract permission)"
 
@@ -642,13 +649,20 @@ observability_commitment:
     - "Mandatory observability infrastructure"
 
 
+# =============================================================================
+# STALE SECTION - open_questions was resolved under ADR-0019 (kernel-mediated).
+# ADR-0024 supersedes these resolutions: artifacts handle access in their code,
+# kernel does NOT check contracts. These resolutions are kept for historical
+# context but should NOT be treated as current architecture.
+# See SCHEMA_AUDIT.md §5.1 and kernel_responsibilities section below.
+# =============================================================================
 open_questions:
 
   kernel_vs_artifact_system:
     question: "Where does contract checking belong - kernel or artifact layer?"
-    status: "RESOLVED"
+    status: "RESOLVED - BUT STALE (resolved under ADR-0019, superseded by ADR-0024)"
     resolution: |
-      Clean separation: Artifacts define policy, kernel enforces it.
+      STALE RESOLUTION (ADR-0019): Clean separation: Artifacts define policy, kernel enforces it.
 
       - Artifacts define their own governance (contract is part of artifact's interface)
       - Kernel executes the contract logic on behalf of the artifact
@@ -663,12 +677,15 @@ open_questions:
       - Kernel handles execution of all permission checks
       - Kernel has privilege to read/invoke any contract for this purpose
 
+      ADR-0024 SUPERSEDES: Artifacts handle ALL access in their code.
+      Kernel routes requests, provides verified identity, does NOT check contracts.
+
   contract_regress:
     question: "How do we break the infinite regress when checking contracts?"
-    status: "RESOLVED"
+    status: "RESOLVED - BUT STALE (resolved under ADR-0019, superseded by ADR-0024)"
     resolution: |
-      Kernel invoking contracts for permission checking is a kernel function,
-      not an "access" that needs permission itself.
+      STALE RESOLUTION (ADR-0019): Kernel invoking contracts for permission
+      checking is a kernel function, not an "access" that needs permission itself.
 
       Like: a judge reading a law to make a ruling doesn't need "permission to read the law."
       That's just how courts work.
