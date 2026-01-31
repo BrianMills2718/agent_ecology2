@@ -1,9 +1,12 @@
 #!/bin/bash
 # Create a worktree with mandatory claiming
-# Usage: ./scripts/create_worktree.sh
+# Usage:
+#   ./scripts/create_worktree.sh                                    # Interactive mode
+#   ./scripts/create_worktree.sh --branch NAME --task "desc"        # Non-interactive
+#   ./scripts/create_worktree.sh --branch NAME --task "desc" --plan N  # With plan
 #
 # This script enforces the coordination protocol:
-# 1. Prompts for task description and plan number
+# 1. Prompts for task description and plan number (or accepts via args)
 # 2. Claims the work in .claude/active-work.yaml
 # 3. Creates the worktree based on latest origin/main
 #
@@ -16,6 +19,66 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Parse arguments
+BRANCH=""
+TASK=""
+PLAN=""
+INTERACTIVE=true
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --branch)
+            BRANCH="$2"
+            INTERACTIVE=false
+            shift 2
+            ;;
+        --task)
+            TASK="$2"
+            shift 2
+            ;;
+        --plan)
+            PLAN="$2"
+            shift 2
+            ;;
+        --help|-h)
+            echo "Usage: $0 [OPTIONS]"
+            echo ""
+            echo "Create a git worktree with mandatory work claiming."
+            echo ""
+            echo "Options:"
+            echo "  --branch NAME   Branch name (required for non-interactive mode)"
+            echo "  --task DESC     Task description (required for non-interactive mode)"
+            echo "  --plan N        Plan number (optional)"
+            echo "  --help, -h      Show this help message"
+            echo ""
+            echo "Without arguments, runs in interactive mode with prompts."
+            echo ""
+            echo "Examples:"
+            echo "  $0                                          # Interactive"
+            echo "  $0 --branch fix-bug --task 'Fix the bug'    # Non-interactive"
+            echo "  $0 --branch plan-237-cli --task 'Implement Plan 237' --plan 237"
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}Unknown option: $1${NC}"
+            echo "Use --help for usage information."
+            exit 1
+            ;;
+    esac
+done
+
+# Validate non-interactive mode has required args
+if [ "$INTERACTIVE" = false ]; then
+    if [ -z "$BRANCH" ]; then
+        echo -e "${RED}Error: --branch is required for non-interactive mode${NC}"
+        exit 1
+    fi
+    if [ -z "$TASK" ]; then
+        echo -e "${RED}Error: --task is required for non-interactive mode${NC}"
+        exit 1
+    fi
+fi
 
 echo "=== Create Worktree with Claim ==="
 echo ""
@@ -60,12 +123,15 @@ if [ "$WARN_OPEN_PRS" != "none" ]; then
             echo -e "${RED}BLOCKED: WARN_OPEN_PRS=block prevents creating new worktrees${NC}"
             echo "Set WARN_OPEN_PRS=warn or WARN_OPEN_PRS=none to override"
             exit 1
-        else
+        elif [ "$INTERACTIVE" = true ]; then
             read -p "Continue creating worktree anyway? (y/N): " PR_RESPONSE
             if [[ ! "$PR_RESPONSE" =~ ^[Yy]$ ]]; then
                 echo "Aborting. Merge existing PRs first."
                 exit 0
             fi
+            echo ""
+        else
+            echo -e "${YELLOW}Non-interactive mode: continuing despite open PRs${NC}"
             echo ""
         fi
     fi
@@ -78,37 +144,43 @@ if [ "$OPEN_PRS" -gt 5 ]; then
     echo ""
 fi
 
-# Get task description
-read -p "Task description (required): " TASK
-if [ -z "$TASK" ]; then
-    echo -e "${RED}Error: Task description is required${NC}"
-    exit 1
-fi
-
-# Get plan number (optional)
-read -p "Plan number (or press Enter for none): " PLAN
-
-# Generate branch name
-if [ -n "$PLAN" ]; then
-    # Suggest branch name based on plan
-    PLAN_FILE=$(ls docs/plans/${PLAN}_*.md 2>/dev/null | head -1)
-    if [ -n "$PLAN_FILE" ]; then
-        SUGGESTED=$(basename "$PLAN_FILE" .md | sed 's/^[0-9]*_/plan-'$PLAN'-/')
-        read -p "Branch name [$SUGGESTED]: " BRANCH
-        BRANCH=${BRANCH:-$SUGGESTED}
-    else
-        read -p "Branch name (e.g., plan-$PLAN-feature): " BRANCH
+# Get task description (interactive only)
+if [ "$INTERACTIVE" = true ]; then
+    read -p "Task description (required): " TASK
+    if [ -z "$TASK" ]; then
+        echo -e "${RED}Error: Task description is required${NC}"
+        exit 1
     fi
-else
-    read -p "Branch name (e.g., fix-something): " BRANCH
 fi
 
-if [ -z "$BRANCH" ]; then
-    echo -e "${RED}Error: Branch name is required${NC}"
-    exit 1
+# Get plan number (interactive only, already set if non-interactive)
+if [ "$INTERACTIVE" = true ]; then
+    read -p "Plan number (or press Enter for none): " PLAN
 fi
 
-# Confirm before proceeding
+# Generate branch name (interactive only, already set if non-interactive)
+if [ "$INTERACTIVE" = true ]; then
+    if [ -n "$PLAN" ]; then
+        # Suggest branch name based on plan
+        PLAN_FILE=$(ls docs/plans/${PLAN}_*.md 2>/dev/null | head -1)
+        if [ -n "$PLAN_FILE" ]; then
+            SUGGESTED=$(basename "$PLAN_FILE" .md | sed 's/^[0-9]*_/plan-'$PLAN'-/')
+            read -p "Branch name [$SUGGESTED]: " BRANCH
+            BRANCH=${BRANCH:-$SUGGESTED}
+        else
+            read -p "Branch name (e.g., plan-$PLAN-feature): " BRANCH
+        fi
+    else
+        read -p "Branch name (e.g., fix-something): " BRANCH
+    fi
+
+    if [ -z "$BRANCH" ]; then
+        echo -e "${RED}Error: Branch name is required${NC}"
+        exit 1
+    fi
+fi
+
+# Confirm before proceeding (interactive only)
 echo ""
 echo -e "${YELLOW}Will create:${NC}"
 echo "  Task: $TASK"
@@ -116,12 +188,15 @@ echo "  Task: $TASK"
 echo "  Branch: $BRANCH"
 echo "  Worktree: worktrees/$BRANCH"
 echo ""
-read -p "Proceed? [Y/n]: " CONFIRM
-CONFIRM=${CONFIRM:-Y}
 
-if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
-    echo "Aborted."
-    exit 0
+if [ "$INTERACTIVE" = true ]; then
+    read -p "Proceed? [Y/n]: " CONFIRM
+    CONFIRM=${CONFIRM:-Y}
+
+    if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+        echo "Aborted."
+        exit 0
+    fi
 fi
 
 # Plan #176: Check for conflicts BEFORE creating worktree
