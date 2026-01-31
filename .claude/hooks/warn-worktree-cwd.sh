@@ -1,17 +1,18 @@
 #!/bin/bash
-# Warn if Claude Code session is running from inside a worktree
-# This causes problems because:
-#   1. If the worktree is deleted, the shell CWD becomes invalid
-#   2. CC can't run 'make finish' from inside its own worktree
-#   3. Session becomes stuck, requiring user intervention
+# Block if Claude Code session CWD is inside a worktree.
 #
-# The correct workflow is:
-#   - Start Claude from main repo
-#   - Use worktrees as PATHS for file isolation, not as working directories
-#   - Edit files using absolute paths: worktrees/plan-X/path/to/file
+# If CWD is in a worktree, any 'make finish' will delete that directory
+# and permanently break the shell. Fix: cd to main first.
+#
+# This fires on Read|Glob (the first tools any session uses).
+# Bash commands are NOT blocked — so the model can run 'cd' to fix itself.
+#
+# See meta-process/CWD_INCIDENT_LOG.md (Incident #3) for why this blocks
+# instead of warning.
 #
 # Exit codes:
-#   0 - Always allow (this is a warning, not a block)
+#   0 - CWD is not in a worktree (allow)
+#   2 - CWD is in a worktree (block until model runs cd)
 #
 # Configuration:
 #   Controlled by hooks.warn_worktree_cwd in meta-process.yaml
@@ -23,43 +24,24 @@ if ! is_hook_enabled "warn_worktree_cwd"; then
     exit 0  # Hook disabled in config
 fi
 
-# Only run once per session (check for marker)
-MARKER_FILE="/tmp/.claude-worktree-warning-$$"
-if [[ -f "$MARKER_FILE" ]]; then
-    exit 0
-fi
-
 # Get current working directory
 CWD=$(pwd 2>/dev/null || echo "")
 
 # Check if CWD is inside a worktree
 if [[ "$CWD" == */worktrees/* ]]; then
-    # Create marker so we only warn once
-    touch "$MARKER_FILE"
-
     # Extract main directory
     MAIN_DIR=$(echo "$CWD" | sed 's|/worktrees/.*||')
-    WORKTREE_NAME=$(basename "$CWD")
 
-    echo "═══════════════════════════════════════════════════════════════" >&2
-    echo "⚠️  WARNING: Running from inside a worktree" >&2
-    echo "═══════════════════════════════════════════════════════════════" >&2
+    echo "BLOCKED: Session CWD is inside a worktree." >&2
     echo "" >&2
-    echo "Your session CWD: $CWD" >&2
+    echo "  CWD: $CWD" >&2
     echo "" >&2
-    echo "This can cause problems:" >&2
-    echo "  • If this worktree is deleted, your shell will break" >&2
-    echo "  • You can't run 'make finish' from here (hooks will block)" >&2
-    echo "  • You'll need user intervention to complete your work" >&2
+    echo "If a worktree is deleted while CWD points into it, the shell" >&2
+    echo "breaks permanently. Fix by running this Bash command first:" >&2
     echo "" >&2
-    echo "RECOMMENDED: Start Claude sessions from main repo instead:" >&2
     echo "  cd $MAIN_DIR" >&2
-    echo "  claude" >&2
     echo "" >&2
-    echo "Then edit files using paths:" >&2
-    echo "  worktrees/$WORKTREE_NAME/path/to/file" >&2
-    echo "═══════════════════════════════════════════════════════════════" >&2
+    exit 2
 fi
 
-# Always allow - this is just a warning
 exit 0
