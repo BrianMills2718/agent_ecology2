@@ -20,6 +20,7 @@
 10. [Deferred Features](#10-deferred-features)
 11. [Open Questions](#11-open-questions)
 12. [Known Code Bugs (Schema Audit)](#12-known-code-bugs-schema-audit)
+13. [Pending Decisions (User Review Required)](#13-pending-decisions-user-review-required)
 
 ---
 
@@ -262,8 +263,8 @@ Configuration can control **behavior** (timeouts, limits, features) but not **se
 | Feature | Plan | Status | Dependency |
 |---------|------|--------|------------|
 | ADR-0024 migration | #234 | Planned | None |
-| Kernel-protected artifacts | #235 | Planned | None |
-| Charge delegation | #236 | Planned | #235 |
+| Kernel-protected artifacts | #235 | ✅ Complete (Phase 0+1) | None |
+| Charge delegation | #236 | Planned | #235 ✅ |
 | Contract-governed policy upgrades | Future | Deferred | ADR-0024 |
 | Ownership/control transfer (kernel-enforced) | Future | Deferred | ADR-0024 |
 | Scrip-as-rights (conceptual purity) | Future | Deferred | #235 (non-forgeable rights) |
@@ -349,10 +350,85 @@ The `_execute_edit` method crashed on any `edit_artifact` action because:
 
 ---
 
+## 13. Pending Decisions (User Review Required)
+
+**Why record:** Consolidates all open architecture decisions from across the codebase into one actionable list. These need human judgment — they involve trade-offs that affect the project's direction.
+
+**Added:** 2026-01-31
+
+### 13.1 CONCEPTUAL_MODEL_FULL.yaml: Deprecate or Update?
+
+**Context:** `docs/CONCEPTUAL_MODEL_FULL.yaml` (CMF) mixes ADR-0019 (current) and ADR-0024 (target) content without clear boundaries. Staleness markers were added (2026-01-31 audit) but the document remains confusing.
+
+**Options:**
+1. **Deprecate CMF** — Archive to `docs/archive/`, rely on `docs/architecture/current/` + `target/` as source of truth. Simpler, less maintenance.
+2. **Update CMF** — Rewrite to clearly separate current vs target sections. More comprehensive single reference, but high maintenance burden.
+3. **Partial update** — Keep CMF as aspirational-only (remove current-state claims), point to `architecture/current/` for implementation reality.
+
+**Recommendation:** Option 3 (partial update) — lowest effort, eliminates the main confusion source.
+
+### 13.2 Plan #231: has_standing ↔ Ledger Coupling Mechanism
+
+**Context:** `has_standing` on artifacts and ledger registration are currently independent — you can have one without the other, creating invalid states.
+
+**Options:**
+1. **Artifact-driven** — Setting `artifact.has_standing = True` auto-creates ledger entry. Single operation but couples artifact store to ledger.
+2. **Ledger-driven** (plan recommends) — `create_principal()` is the ONLY way. Creates ledger entry AND sets `has_standing=True`. Clear single source of truth.
+3. **New kernel primitive** — `create_standing_artifact()` creates both atomically. Cleanest semantics but adds API surface.
+
+**Additional question:** What happens on checkpoint restore if artifact has `has_standing` but ledger entry doesn't exist yet? (Order of operations)
+
+**Reference:** `docs/plans/231_has_standing_ledger_coupling.md`
+
+### 13.3 Plan #234: ADR-0024 Migration Design Questions
+
+**Context:** ADR-0024 proposes moving from kernel-mediated permission checking (`run()`) to artifact self-handled access (`handle_request(caller, operation, args)`). Major architectural shift.
+
+**Questions:**
+1. **Data artifacts (no code):** Currently `code: ""` is valid for data artifacts. Under handle_request, do they need stub handlers, or should the kernel provide a default "deny all" / "allow read" handler?
+2. **Performance impact:** Current permission checks are lightweight Python contract calls. Full artifact code execution per operation is heavier. Is this acceptable, or do we need a fast-path optimization?
+
+**Reference:** `docs/plans/234_adr0024_handle_request_migration.md`
+
+### 13.4 Plan #236: Can Artifacts Be Payers?
+
+**Context:** Charge delegation enables "target pays" and "pool pays" patterns. The plan's FM-3 restricts payers to principals only as an interim measure.
+
+**Question:** Should artifacts with `has_standing=True` be allowed as payers? This would enable contract-as-treasury patterns but complicates the authority model.
+
+**Current interim:** Principals only.
+
+**Reference:** `docs/plans/236_charge_delegation.md`
+
+### 13.5 Interface Validation: Advisory or Mandatory?
+
+**Context:** Artifact interfaces are currently advisory — stored in the `interface` field, used for discovery and LLM presentation, but not enforced at the kernel level.
+
+**Question:** Should interface validation become mandatory (kernel rejects operations that don't match declared interface), or remain advisory (agents can ignore it)?
+
+**Trade-off:** Mandatory = safer, less emergent flexibility. Advisory = more emergent, but agents can make mistakes the system won't catch.
+
+**Reference:** §11.2 above
+
+### 13.6 Long-Term Control Mechanism
+
+**Context:** `created_by` is immutable and non-transferable — it represents provenance, not current control. We need a transferable authority mechanism for ownership transfer.
+
+**Options:**
+1. **`controller_id` system field** — Mutable by current controller, kernel-enforced
+2. **Rights-based authority** — Holder of specific right controls artifact
+3. **Contract-governed** — Contract code determines controller
+
+**Blocked by:** ADR-0024 + Plan #235 (non-forgeable rights). This is a future decision but should be on the radar.
+
+**Reference:** §11.3 above, §4 (Hard Anchors)
+
+---
+
 ## References
 
-- **Plans:** #234, #235, #236
-- **ADRs:** ADR-0016 (created_by not owner), ADR-0019 (current), ADR-0024 (target)
+- **Plans:** #231, #234, #235, #236
+- **ADRs:** ADR-0016 (created_by not owner), ADR-0019 (current), ADR-0024 (target), ADR-0025 (rights removal)
 - **Source:** ChatGPT/Claude security dialogue (2026-01-31), Schema audit (2026-01-31)
 - **Code:** `src/world/artifacts.py`, `src/world/action_executor.py`, `src/world/kernel_queries.py` (rights.py removed per ADR-0025)
 - **Audit:** `docs/SCHEMA_AUDIT.md`

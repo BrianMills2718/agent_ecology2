@@ -1,6 +1,6 @@
 # Plan #224: Dashboard Run Management
 
-**Status:** Planned
+**Status:** ✅ Complete
 **Priority:** High
 **Blocked By:** None
 **Blocks:** Dashboard usability for historical analysis
