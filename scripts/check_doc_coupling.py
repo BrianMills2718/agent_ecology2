@@ -6,6 +6,7 @@ Usage:
     python scripts/check_doc_coupling.py --staged  # For pre-commit hook
     python scripts/check_doc_coupling.py --bidirectional  # Check both directions
     python scripts/check_doc_coupling.py --suggest-all FILE  # Show all relationships
+    python scripts/check_doc_coupling.py --check-orphans  # Find uncoupled docs
 
 Compares current branch against BASE_REF (default: origin/main) to find
 changed files, then checks if coupled docs were also updated.
@@ -155,6 +156,7 @@ def load_relationships(config_path: Path | None = None) -> dict[str, Any]:
         "adrs": data.get("adrs", {}),
         "governance": data.get("governance", []),
         "couplings": data.get("couplings", []),
+        "orphan_detection": data.get("orphan_detection", {}),
     }
 
 
@@ -473,6 +475,71 @@ def print_suggestions(changed_files: set[str], couplings: list[dict]) -> None:
         print()
 
 
+def check_orphan_docs(relationships: dict[str, Any]) -> list[str]:
+    """Find docs not referenced in the coupling graph.
+
+    Uses the orphan_detection section of relationships.yaml to determine
+    which docs to scan and which are exempt. Any doc found that isn't
+    referenced in a coupling entry is considered an orphan.
+
+    Returns list of orphan doc paths.
+    """
+    orphan_config = relationships.get("orphan_detection", {})
+    if not orphan_config:
+        return []
+
+    scan_dirs = orphan_config.get("scan_directories", [])
+    scan_files = orphan_config.get("scan_files", [])
+    exempt_paths = orphan_config.get("exempt_paths", [])
+
+    # Collect all docs to check
+    docs_to_check: set[str] = set()
+
+    # Add explicitly listed files
+    for f in scan_files:
+        if Path(f).exists():
+            docs_to_check.add(f)
+
+    # Scan directories for .md and .yaml files
+    for scan_dir in scan_dirs:
+        dir_path = Path(scan_dir)
+        if not dir_path.exists():
+            continue
+        for ext in ("*.md", "*.yaml", "*.yml"):
+            for found in dir_path.rglob(ext):
+                docs_to_check.add(str(found))
+
+    # Remove exempt paths
+    filtered: set[str] = set()
+    for doc in docs_to_check:
+        exempt = False
+        for exempt_path in exempt_paths:
+            if doc.startswith(exempt_path) or doc == exempt_path.rstrip("/"):
+                exempt = True
+                break
+        if not exempt:
+            filtered.add(doc)
+
+    # Collect all docs referenced in couplings
+    referenced_docs: set[str] = set()
+    for coupling in relationships.get("couplings", []):
+        for doc in coupling.get("docs", []):
+            referenced_docs.add(doc)
+
+    # Also count docs referenced in governance (ADR files)
+    for entry in relationships.get("governance", []):
+        adr_defs = relationships.get("adrs", {})
+        for adr_num in entry.get("adrs", []):
+            adr_info = adr_defs.get(adr_num, {})
+            adr_file = adr_info.get("file", "")
+            if adr_file:
+                referenced_docs.add(f"docs/adr/{adr_file}")
+
+    # Find orphans
+    orphans = sorted(filtered - referenced_docs)
+    return orphans
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Check doc-code coupling")
     parser.add_argument(
@@ -520,6 +587,11 @@ def main() -> int:
         action="store_true",
         help="Check meta-process weight before running (Plan #218)",
     )
+    parser.add_argument(
+        "--check-orphans",
+        action="store_true",
+        help="Check for docs not referenced in the coupling graph",
+    )
     args = parser.parse_args()
 
     # Plan #218: Check if this check is enabled at current weight
@@ -553,6 +625,29 @@ def main() -> int:
         output = get_suggest_all_output(Path(args.suggest_all), relationships)
         print(output)
         return 0
+
+    # --check-orphans mode: find docs not in coupling graph
+    if args.check_orphans:
+        relationships = load_relationships()
+        orphans = check_orphan_docs(relationships)
+        if orphans:
+            print("=" * 60)
+            print("ORPHAN DOCS (not in coupling graph)")
+            print("=" * 60)
+            print()
+            print("These docs are not referenced in any coupling entry in")
+            print("scripts/relationships.yaml. They may drift without warning.")
+            print()
+            for orphan in orphans:
+                print(f"  {orphan}")
+            print()
+            print("To fix: add a coupling entry in scripts/relationships.yaml")
+            print("Or add to orphan_detection.exempt_paths if intentionally uncoupled.")
+            print("=" * 60)
+            return 1 if args.strict else 0
+        else:
+            print("Orphan doc check passed: all docs are in the coupling graph.")
+            return 0
 
     # Get changed files based on mode
     if args.staged:

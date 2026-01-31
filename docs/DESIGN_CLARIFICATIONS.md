@@ -356,16 +356,13 @@ The `_execute_edit` method crashed on any `edit_artifact` action because:
 
 **Added:** 2026-01-31
 
-### 13.1 CONCEPTUAL_MODEL_FULL.yaml: Deprecate or Update?
+### 13.1 CONCEPTUAL_MODEL_FULL.yaml: Deprecate or Update? — CLOSED
 
-**Context:** `docs/CONCEPTUAL_MODEL_FULL.yaml` (CMF) mixes ADR-0019 (current) and ADR-0024 (target) content without clear boundaries. Staleness markers were added (2026-01-31 audit) but the document remains confusing.
+**Decision (2026-01-31):** Full rewrite (Option 2). CMF v3 rewrites from scratch using code as source of truth, with clear 3-part structure: Part 1 (Current ADR-0019), Part 2 (Target ADR-0024), Part 3 (Reference). Maintenance burden addressed by adding CMF to `scripts/relationships.yaml` coupling graph — future code changes to `artifacts.py`, `actions.py`, `kernel_interface.py` now trigger CMF update checks.
 
-**Options:**
-1. **Deprecate CMF** — Archive to `docs/archive/`, rely on `docs/architecture/current/` + `target/` as source of truth. Simpler, less maintenance.
-2. **Update CMF** — Rewrite to clearly separate current vs target sections. More comprehensive single reference, but high maintenance burden.
-3. **Partial update** — Keep CMF as aspirational-only (remove current-state claims), point to `architecture/current/` for implementation reality.
+**Original context:** `docs/CONCEPTUAL_MODEL_FULL.yaml` (CMF) mixed ADR-0019 (current) and ADR-0024 (target) content without clear boundaries. Root cause: CMF was never in the doc-code coupling graph, so it drifted silently.
 
-**Recommendation:** Option 3 (partial update) — lowest effort, eliminates the main confusion source.
+**Resolution:** All 17 SCHEMA_AUDIT.md inconsistencies resolved by CMF v3. See `docs/SCHEMA_AUDIT.md` for resolution status per inconsistency.
 
 ### 13.2 Plan #231: has_standing ↔ Ledger Coupling Mechanism
 

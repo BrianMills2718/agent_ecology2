@@ -25,15 +25,17 @@
 
 This audit found **3 code-level issues** (1 bug, 2 security gaps), **17 cross-document inconsistencies**, and **7 architecture doc issues**. The root cause is a documentation transition from ADR-0019 (kernel-mediated permissions) to ADR-0024 (artifact self-handled access) that was applied unevenly across docs.
 
+**Resolution status (2026-01-31):** All 17 cross-document inconsistencies resolved by CMF v3 rewrite. Code bugs fixed by Plan #239. Security gaps fixed by Plan #235 Phase 0+1.
+
 **Priority triage:**
 
 | Priority | Issue | Action |
 |----------|-------|--------|
 | P0 (bug) | `_execute_edit` is broken | **FIXED** (Plan #239) |
-| P0 (security) | `access_contract_id` mutable by any writer | Plan #235 Phase 0 |
-| P0 (security) | `type` mutable + unvalidated | Plan #235 Phase 0 |
+| P0 (security) | `access_contract_id` mutable by any writer | **FIXED** (Plan #235 Phase 0) |
+| P0 (security) | `type` mutable + unvalidated | **FIXED** (Plan #235 Phase 0) |
 | P1 (semantic) | `depends_on` split-brain | **FIXED** (Plan #239) |
-| P2 (doc drift) | CMF not updated for ADR-0024 | Mark stale sections |
+| P2 (doc drift) | CMF not updated for ADR-0024 | **RESOLVED** (CMF v3 rewrite) |
 | P2 (doc drift) | GLOSSARY describes ADR-0019 only | Update for ADR-0024 |
 | P3 (tech debt) | `price` vs `policy["invoke_price"]` | Defer |
 | P3 (naming) | `can_execute` vs `has_loop` | Plan #230 (completed) |
@@ -122,13 +124,19 @@ These are already documented in DESIGN_CLARIFICATIONS.md sections 3.1-3.3 but ar
 
 ## 4. Cross-Document Inconsistencies
 
+> **All 17 inconsistencies below resolved by CMF v3 rewrite (2026-01-31).** Both CM and CMF are now version 3, status `current_implementation`, with code as source of truth. The key structural fix is separating Part 1 (current ADR-0019) from Part 2 (target ADR-0024), eliminating all mixed-architecture confusion.
+
 ### 4.1 CM vs CMF: Version and Status
+
+**RESOLVED:** Both are now version 3 with status `current_implementation`.
 
 CM is version 2 (2026-01-31). CMF is version 1 (2026-01-28). CMF was not updated when CM was revised. They should be the same model (CM line 8: "For full version with examples, see: CONCEPTUAL_MODEL_FULL.yaml").
 
 CMF header says "DRAFT - under active discussion" but its `status` field says `accepted`.
 
 ### 4.2 Artifact Required Fields — Direct Contradiction
+
+**RESOLVED:** CMF v3 lists all 21 dataclass fields with types, defaults, and mutability. CM v3 lists all fields in required/optional groups matching code.
 
 | Field | CM | CMF | Code |
 |-------|-----|------|------|
@@ -146,6 +154,8 @@ No two sources agree on what fields an artifact must have.
 
 ### 4.3 `access_contract_id` — Triple Contradiction Within CMF
 
+**RESOLVED:** CMF v3 Part 1: optional field with default `"genesis_contract_freeware"`. Part 2 (target): field removed. No contradiction.
+
 - CMF:47-51 — Listed as **required** field (but "OPTIONAL METADATA")
 - CMF:286 — "Every artifact has exactly one governing contract (or **null = default**)"
 - CMF:1334-1339 — Status: **"REMOVED"**
@@ -153,6 +163,8 @@ No two sources agree on what fields an artifact must have.
 Required, optional, and removed in the same document.
 
 ### 4.4 Kernel Permission Checking — CMF Contradicts Itself
+
+**RESOLVED:** CMF v3 separates Part 1 (ADR-0019: kernel checks contracts) from Part 2 (ADR-0024: artifacts handle own). No mixing.
 
 | CMF Location | Says |
 |----------|------|
@@ -165,16 +177,22 @@ The `open_questions` section (lines 646-873) was written under ADR-0019 and neve
 
 ### 4.5 Null Contract — CMF Self-Contradiction
 
+**RESOLVED:** CMF v3 Part 1: default is `genesis_contract_freeware` (not null). Part 2: no defaults. Clean separation.
+
 - CMF:470-472 — "SUPERSEDED by ADR-0024. No kernel defaults."
 - CMF:286 — "or null = default"
 - CMF:853-860 — "Null contract means creator has all rights"
 
 ### 4.6 Actions Framing Differs
 
+**RESOLVED:** Both CM v3 and CMF v3 Part 1 describe core actions as "contract-checked (ADR-0019)". Part 2 describes "artifact-handled (ADR-0024)".
+
 - CM:183-184 — Core actions "Route through artifact handler (ADR-0024)"
 - CMF:301-305 — Core actions "Go through contract permission checking" / "Kernel executes contract logic" (ADR-0019)
 
 ### 4.7 `interface` — Required vs Advisory vs Optional
+
+**RESOLVED:** CMF v3 Part 1: optional field (default `None`), enforcement configurable. CM v3 lists as optional. Matches code.
 
 | Source | Says |
 |--------|------|
@@ -185,13 +203,19 @@ The `open_questions` section (lines 646-873) was written under ADR-0019 and neve
 
 ### 4.8 `labels` Field — Documented but Nonexistent
 
+**RESOLVED:** CMF v3 and CM v3 both explicitly state labels are "CONCEPTUAL ONLY — NOT a dataclass field." No longer implies a field exists.
+
 CM:83-86 and CMF:81-85 define a `labels` field with common values (`data`, `service`, `contract`, `right`, `principal`, `agent`). No such field exists on the `Artifact` dataclass.
 
 ### 4.9 `code` Field — Required in CM, Optional in Code
 
+**RESOLVED:** CMF v3 Part 1: optional (default `""`). Part 2: required for active artifacts under ADR-0024. CM v3 lists as optional. Matches code.
+
 CM line 59: required ("all artifacts have handlers"). CMF `artifact_self_handling` line 1326: required. Code: `code: str = ""` (optional).
 
 ### 4.10 Missing Fields in Both Conceptual Models
+
+**RESOLVED:** CMF v3 lists all 21 dataclass fields with types, defaults, mutability, and source references. CM v3 lists all fields in required/optional groups.
 
 Fields in code but absent from CM/CMF required or optional fields:
 
@@ -203,6 +227,8 @@ Fields in code but absent from CM/CMF required or optional fields:
 
 ### 5.1 CMF contains two incompatible architectures
 
+**RESOLVED:** CMF v3 separates Part 1 (current ADR-0019) from Part 2 (target ADR-0024) with clear banners. No mixing.
+
 CMF lines 33-872 (main body) describe **ADR-0019**: kernel checks contracts before execution, `access_contract_id` required, null contract has defaults.
 
 CMF lines 1268-1601 (`artifact_self_handling` section) describe **ADR-0024**: artifacts handle own access, `access_contract_id` removed, no kernel defaults.
@@ -211,9 +237,13 @@ The `open_questions` section resolves questions under ADR-0019 while the `kernel
 
 ### 5.2 CM is consistent but incomplete
 
+**RESOLVED:** CM v3 lists all 21 fields, all 11 actions, and all kernel interface methods. Describes current implementation (ADR-0019), not target.
+
 CM (version 2) is consistently ADR-0024 but only lists 4 required fields and omits most dataclass fields. It describes the target, not code.
 
 ### 5.3 Neither model matches current code
+
+**RESOLVED:** CMF v3 Part 1 and CM v3 both match current code (ADR-0019). Written from code as source of truth.
 
 Code follows ADR-0019: kernel checks `access_contract_id` before execution, null contract falls back to configurable default, `run(*args)` interface.
 

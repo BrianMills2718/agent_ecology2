@@ -192,3 +192,59 @@ couplings:
       - docs/architecture/current/agents.md
     description: "Agent response models - update if new fields added"
     soft: true
+
+  # Conceptual model (CMF + CM)
+  - sources:
+      - src/world/artifacts.py
+      - src/world/actions.py
+      - src/world/kernel_interface.py
+    docs:
+      - docs/CONCEPTUAL_MODEL_FULL.yaml
+      - docs/CONCEPTUAL_MODEL.yaml
+    description: "Conceptual model - artifact fields, actions, kernel interface"
+
+  # Permission system in conceptual model
+  - sources:
+      - src/world/permission_checker.py
+      - src/world/contracts.py
+      - src/world/genesis_contracts.py
+    docs:
+      - docs/CONCEPTUAL_MODEL_FULL.yaml
+    description: "Permission system documented in conceptual model"
+    soft: true
+
+  # Ledger/resources in conceptual model
+  - sources:
+      - src/world/ledger.py
+      - src/world/rate_tracker.py
+    docs:
+      - docs/CONCEPTUAL_MODEL_FULL.yaml
+    description: "Resource types and scrip documented in conceptual model"
+    soft: true
+
+# =============================================================================
+# ORPHAN DOC DETECTION
+# =============================================================================
+# Docs in these directories are checked against the coupling graph.
+# Any doc not referenced in a coupling entry above → warning.
+
+orphan_detection:
+  scan_directories:
+    - docs/architecture/current
+    - docs/architecture/target
+  scan_files:
+    - docs/CONCEPTUAL_MODEL.yaml
+    - docs/CONCEPTUAL_MODEL_FULL.yaml
+    - docs/GLOSSARY.md
+    - docs/SECURITY.md
+    - docs/DESIGN_CLARIFICATIONS.md
+    - docs/SCHEMA_AUDIT.md
+  exempt_paths:
+    - docs/plans/          # Plans have their own tracking
+    - docs/archive/        # Archived docs are intentionally uncoupled
+    - docs/adr/            # ADRs use governance edges, not couplings
+    - docs/CLAUDE.md       # Meta-docs
+    - docs/SIMULATION_LEARNINGS.md  # Observational notes
+    - docs/architecture/current/CLAUDE.md   # Directory meta-doc
+    - docs/architecture/current/README.md   # Directory index
+    - docs/architecture/target/             # Aspirational docs (not code-coupled)
