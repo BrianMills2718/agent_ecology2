@@ -255,6 +255,7 @@ Master index of all gaps and their implementation plans.
 | 234 | [Plan 234: ADR-0024 Handle Request Migration](234_adr0024_handle_request_migration.md) | Medium | 📋 Planned | Full artifact autonomy, custom access control patterns |
 | 235 | [Plan 235: Kernel-Protected Artifacts](235_kernel_protected_artifacts.md) | High | 📋 Planned | #236 (Charge Delegation) |
 | 236 | [Plan 236: Charge Delegation](236_charge_delegation.md) | High | 📋 Planned | None (enables charge_to for Plan #234) |
+| 237 | [Plan 237: Non-Interactive Worktree Creation](237_worktree_script_cli_args.md) | High | 📋 Planned | None (but blocks Claude Code from using meta-process properly) |
 ---
 
 ## TDD Workflow
