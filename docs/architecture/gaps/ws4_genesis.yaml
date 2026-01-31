@@ -29,7 +29,7 @@ gaps:
       Every artifact has an access_contract_id pointing to the contract that governs its permissions.
       Permission checks become contract invocations.
     delta: |
-      - Implement contract artifact type with can_execute=true
+      - Implement contract artifact type with has_loop=true
       - Add check_permission tool interface to contracts
       - Add access_contract_id field to all artifacts
       - Remove policy field from Artifact model
@@ -608,15 +608,15 @@ gaps:
   - id: GAP-GEN-031
     component: genesis_artifacts
     dimension: interfaces
-    title: "Missing can_execute field on artifacts"
+    title: "Missing has_loop field on artifacts"
     current_state: |
-      Genesis artifacts are executable but no can_execute field on artifact model.
+      Genesis artifacts are executable but no has_loop field on artifact model.
       Executability determined by artifact type/class.
     target_state: |
-      Explicit can_execute: true field on artifacts.
-      Contracts are artifacts with can_execute=true.
+      Explicit has_loop: true field on artifacts.
+      Contracts are artifacts with has_loop=true.
     delta: |
-      - Add can_execute field to artifact model
+      - Add has_loop field to artifact model
       - Set true for executable artifacts (contracts)
       - Set false for data artifacts
       - Validate before execution attempts
@@ -628,7 +628,7 @@ gaps:
       - src/world/artifacts.py
       - src/world/executor.py
     acceptance_criteria:
-      - can_execute field on all artifacts
+      - has_loop field on all artifacts
       - Execution checks field before running
       - Field required at creation
 
@@ -717,7 +717,7 @@ gaps:
       - src/world/artifacts.py
       - src/world/executor.py
     acceptance_criteria:
-      - Agents can create_artifact with can_execute=true
+      - Agents can create_artifact with has_loop=true
       - Created contracts validated for interface
       - Custom contracts execute correctly
       - Examples work (paid read, multi-sig)

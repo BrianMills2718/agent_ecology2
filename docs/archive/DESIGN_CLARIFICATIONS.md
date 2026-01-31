@@ -663,7 +663,7 @@ def check_permission(artifact_id, action, requester_id, context):
 
 The architectural unit is the **autonomous principal**, not the "agent". An autonomous principal is:
 - A principal (`has_standing=true`) that can hold resources and bear costs
-- Has autonomous execution capability (`can_execute=true`, has a loop)
+- Has autonomous execution capability (`has_loop=true`, has a loop)
 - Consumes resources (tracked generically)
 
 The **decision engine** is an implementation detail, not an architectural category:

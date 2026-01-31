@@ -33,7 +33,7 @@ class Artifact:
     access_contract_id: str      # Contract governing access
     artifact_type: str           # Advisory typing
     has_standing: bool           # Can hold resources (principal)
-    can_execute: bool            # Can run code (autonomous)
+    has_loop: bool            # Can run code (autonomous)
 ```
 
 **Implications:**
@@ -56,7 +56,7 @@ Artifacts can have "standing" - the ability to hold resources and bear costs:
 ```
 Artifact (base)
   └── Principal (has_standing=true) - can hold scrip, quota
-        └── Autonomous Principal (can_execute=true) - has a loop
+        └── Autonomous Principal (has_loop=true) - has a loop
 ```
 
 **Implications:**

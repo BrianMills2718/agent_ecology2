@@ -11,13 +11,13 @@ An **agent** is an artifact with two properties:
 | Property | Value | Meaning |
 |----------|-------|---------|
 | `has_standing` | `True` | Can hold scrip, bear costs, own things |
-| `can_execute` | `True` | Has runnable code, can take actions |
+| `has_loop` | `True` | Has runnable code, can take actions |
 
 ```python
 # From artifacts.py
 @property
 def is_agent(self) -> bool:
-    return self.has_standing and self.can_execute
+    return self.has_standing and self.has_loop
 ```
 
 ---
@@ -26,7 +26,7 @@ def is_agent(self) -> bool:
 
 All entities in the system are artifacts. The properties determine category:
 
-| Category | has_standing | can_execute | Example |
+| Category | has_standing | has_loop | Example |
 |----------|--------------|-------------|---------|
 | **Agent** | True | True | alpha_3, beta_3, delta_3 |
 | **Tool** | False | True | Executable artifact, invoker pays costs |
@@ -43,7 +43,7 @@ Agents are stored as artifacts in the artifact store:
 {
     "id": "alpha_3",
     "has_standing": True,
-    "can_execute": True,
+    "has_loop": True,
     "created_by": "system",  # Genesis agents created by system
     "content": {
         "llm_model": "gemini/gemini-2.0-flash",

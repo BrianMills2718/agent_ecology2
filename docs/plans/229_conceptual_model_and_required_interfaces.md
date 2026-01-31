@@ -18,7 +18,7 @@ The codebase has drifted from its intended design:
 
 From ADR-0001:
 ```
-interface: dict | None     # Required if can_execute=True
+interface: dict | None     # Required if has_loop=True
 ```
 
 From code (artifacts.py):
@@ -81,8 +81,8 @@ concepts:
   principal:
     definition: "Entity that can own things and be party to contracts"
     includes:
-      - "Agents (has_standing=True, can_execute=True)"
-      - "Non-agent principals (has_standing=True, can_execute=False)"
+      - "Agents (has_standing=True, has_loop=True)"
+      - "Non-agent principals (has_standing=True, has_loop=False)"
     has: "Scrip balance, resource quotas"
 
   kernel:

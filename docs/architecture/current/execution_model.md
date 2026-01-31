@@ -24,7 +24,7 @@ agents = load_agents_from_store(world.artifacts, log_dir, run_id, default_model)
 ```
 
 Each agent gets:
-- An agent artifact with `has_standing=True`, `can_execute=True`
+- An agent artifact with `has_standing=True`, `has_loop=True`
 - A linked memory artifact with `is_memory=True`
 - Properties set via `_load_from_artifact()`
 

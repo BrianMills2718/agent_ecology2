@@ -265,7 +265,7 @@ These questions have been resolved:
 #### 4. Can artifacts have standing?
 **Yes - via `has_standing` property.** This creates clean derived categories:
 
-| Category | has_standing | can_execute | Example |
+| Category | has_standing | has_loop | Example |
 |----------|--------------|-------------|---------|
 | **Agent** | true | true | Autonomous actor, pays for actions |
 | **Tool** | false | true | Executable, invoker pays |
@@ -281,10 +281,10 @@ class Artifact:
     content: Any               # Data, code, config, bundle, whatever
     access_contract_id: str    # Who answers permission questions
     has_standing: bool         # Can hold scrip, bear costs, enter contracts
-    can_execute: bool          # Has runnable code
+    has_loop: bool          # Has runnable code
 ```
 
-- **Agent** = artifact where `has_standing=True` and `can_execute=True`
+- **Agent** = artifact where `has_standing=True` and `has_loop=True`
 - **Principal** = artifact where `has_standing=True` (may or may not execute)
 - Everything is an artifact; roles emerge from properties
 
@@ -304,10 +304,10 @@ Everything is an artifact. Properties determine role:
 
 ```
 artifact
-├── has_standing: false, can_execute: false → data/content
-├── has_standing: false, can_execute: true  → tool (invoker pays)
-├── has_standing: true,  can_execute: false → account/treasury
-└── has_standing: true,  can_execute: true  → agent
+├── has_standing: false, has_loop: false → data/content
+├── has_standing: false, has_loop: true  → tool (invoker pays)
+├── has_standing: true,  has_loop: false → account/treasury
+└── has_standing: true,  has_loop: true  → agent
 ```
 
 Single namespace. Single type. Roles emerge from properties. The store and ledger are genesis artifacts, not special kernel constructs.
@@ -538,7 +538,7 @@ Agent memories are stored as artifacts, not in a separate system.
     "content": {"text": "...", "embedding": [...]},
     "access_contract_id": "alice",  # Agent owns their memories
     "has_standing": False,
-    "can_execute": False
+    "has_loop": False
 }
 ```
 
@@ -637,14 +637,14 @@ class Artifact:
     content: Any
     access_contract_id: str
     has_standing: bool
-    can_execute: bool
+    has_loop: bool
     created_by: str
-    interface: dict | None = None  # Required if can_execute=True
+    interface: dict | None = None  # Required if has_loop=True
 ```
 
 **Validation rule:**
 ```python
-if artifact.can_execute and not artifact.interface:
+if artifact.has_loop and not artifact.interface:
     raise ValueError("Executable artifacts must have an interface")
 ```
 
@@ -653,7 +653,7 @@ if artifact.can_execute and not artifact.interface:
 ```json
 {
     "id": "risk_calculator",
-    "can_execute": true,
+    "has_loop": true,
     "interface": {
         "tools": [
             {
@@ -703,7 +703,7 @@ if artifact.can_execute and not artifact.interface:
 3. Agent checks `access_contract_id` - can I access this?
 4. Agent calls `invoke_artifact` with correct parameters (metered)
 
-**Non-executable artifacts** (data, `can_execute=false`) don't need an interface - agents just read their content directly.
+**Non-executable artifacts** (data, `has_loop=false`) don't need an interface - agents just read their content directly.
 
 ### MCP-Lite: Known Issues and Solutions (DOCUMENTED 2026-01-12)
 
@@ -863,7 +863,7 @@ External MCP servers are accessed the same way as any external API. An artifact 
 ```python
 {
     "id": "mcp_bridge_filesystem",
-    "can_execute": true,
+    "has_loop": true,
     "interface": {
         "tools": [
             {"name": "read_file", ...},
@@ -939,7 +939,7 @@ import pandas as pd
 ```python
 {
     "id": "genesis_package_manager",
-    "can_execute": True,
+    "has_loop": True,
     "interface": {
         "tools": [
             {
@@ -1548,7 +1548,7 @@ agents:
     },
     "access_contract_id": "alice",
     "has_standing": False,
-    "can_execute": False
+    "has_loop": False
 }
 ```
 
@@ -1807,7 +1807,7 @@ These decisions resolve remaining ambiguities in the contract system, invocation
 
 **Decision:** Contracts ARE executable artifacts.
 
-The `access_contract_id` on an artifact points to another artifact that has `can_execute: true` and exposes a `check_permission` tool in its interface.
+The `access_contract_id` on an artifact points to another artifact that has `has_loop: true` and exposes a `check_permission` tool in its interface.
 
 **How permission checks work:**
 
@@ -1828,7 +1828,7 @@ def check_permission(artifact, action, requester_id) -> bool:
 ```json
 {
     "id": "genesis_freeware",
-    "can_execute": true,
+    "has_loop": true,
     "interface": {
         "tools": [
             {
@@ -2217,7 +2217,7 @@ genesis_artifacts:
   genesis_kernel:
     access_contract_id: null  # Special: no contract controls this
     has_standing: false
-    can_execute: true
+    has_loop: true
     # Logic hardcoded in kernel, not in content
 
   # Base contracts
@@ -2233,12 +2233,12 @@ genesis_artifacts:
   genesis_ledger:
     access_contract_id: genesis_self_owned
     has_standing: true
-    can_execute: true
+    has_loop: true
 
   genesis_store:
     access_contract_id: genesis_self_owned
     has_standing: true
-    can_execute: true
+    has_loop: true
 
   # ...other genesis artifacts
 ```
@@ -2514,7 +2514,7 @@ A read-only observer agent that generates natural language reports.
 |----------|-------|
 | `id` | `system_auditor` |
 | `has_standing` | `false` (no costs) |
-| `can_execute` | `true` |
+| `has_loop` | `true` |
 | Read access | All artifacts, ledger, event log |
 | Write access | None (except its own reports) |
 
@@ -2818,7 +2818,7 @@ Data must be passed in via `context` parameter. Caller pre-fetches what contract
 # Contract declares caching behavior
 {
     "id": "genesis_freeware",
-    "can_execute": True,
+    "has_loop": True,
     "content": {...},
     "cache_policy": {
         "cacheable": True,
@@ -3003,7 +3003,7 @@ async def call_external_api(agent_id: str, request: dict):
 invoke("genesis_store", "create", {
     "content": {"prompt": "...", "model": "..."},
     "has_standing": True,
-    "can_execute": True,
+    "has_loop": True,
     "access_contract_id": "genesis_self_owned"
 })
 # Returns artifact_id
@@ -3313,7 +3313,7 @@ artifacts:
 # Genesis ledger interface
 {
     "id": "genesis_ledger",
-    "can_execute": True,
+    "has_loop": True,
     "interface": {
         "tools": [
             {"name": "balance", "inputSchema": {...}},
@@ -3429,7 +3429,7 @@ These gaps were identified during architecture review and have been added to GAP
 ```python
 genesis_store = {
     "id": "genesis_store",
-    "can_execute": True,
+    "has_loop": True,
     "has_standing": True,
     "interface": {
         "tools": [
@@ -3450,7 +3450,7 @@ genesis_store = {
 | id | string | Artifact ID |
 | owner_id | string | Current owner |
 | has_standing | bool | Can hold resources |
-| can_execute | bool | Has runnable code |
+| has_loop | bool | Has runnable code |
 | interface_summary | string | Brief description from interface |
 | created_at | timestamp | Creation time |
 
@@ -3468,9 +3468,9 @@ genesis_store = {
 
 **Recommendation (75% certainty):** Defer to Unified Ontology (#6).
 
-**Rationale:** If agents are artifacts with `has_standing=true, can_execute=true`, then:
+**Rationale:** If agents are artifacts with `has_standing=true, has_loop=true`, then:
 - `genesis_store.list_all()` includes agents
-- `genesis_store.search(query="can_execute:true has_standing:true")` finds agents
+- `genesis_store.search(query="has_loop:true has_standing:true")` finds agents
 - No separate mechanism needed
 
 **Interim (before #6):** Agents can use `genesis_ledger.all_balances()` to see principals with scrip, then observe which are active via event log.
@@ -4209,7 +4209,7 @@ If config is tradeable but memory isn't, trading creates identity crises:
 {
     "id": "agent_alice",
     "has_standing": True,
-    "can_execute": True,
+    "has_loop": True,
     "content": {"prompt": "...", "model": "..."},
     "memory_artifact_id": "alice_memories",  # Separate artifact
     "access_contract_id": "genesis_self_owned"
@@ -4219,7 +4219,7 @@ If config is tradeable but memory isn't, trading creates identity crises:
 {
     "id": "alice_memories",
     "has_standing": False,   # Memory doesn't pay costs
-    "can_execute": False,    # Memory isn't executable
+    "has_loop": False,    # Memory isn't executable
     "content": {
         "storage_type": "qdrant",
         "collection_id": "alice_mem_collection"

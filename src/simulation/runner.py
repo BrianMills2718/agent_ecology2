@@ -264,7 +264,7 @@ class SimulationRunner:
         """Restore world state from checkpoint.
 
         Properly restores agent artifacts with their principal capabilities
-        (has_standing, can_execute, memory_artifact_id) for unified ontology.
+        (has_standing, has_loop, memory_artifact_id) for unified ontology.
         """
         # Restore event counter from checkpoint
         # In autonomous mode this is used for event ordering in logs, not execution control
@@ -291,8 +291,8 @@ class SimulationRunner:
             # Restore principal capabilities (unified ontology)
             if artifact_data.get("has_standing"):
                 artifact.has_standing = True
-            if artifact_data.get("can_execute"):
-                artifact.can_execute = True
+            if artifact_data.get("has_loop") or artifact_data.get("can_execute"):
+                artifact.has_loop = True
             if artifact_data.get("memory_artifact_id"):
                 artifact.memory_artifact_id = artifact_data["memory_artifact_id"]
 
@@ -308,7 +308,7 @@ class SimulationRunner:
         """Create artifact-backed Agent instances from config.
 
         Uses the unified ontology (Gap #6): agents are artifacts with
-        has_standing=True and can_execute=True. Agent artifacts are
+        has_standing=True and has_loop=True. Agent artifacts are
         stored in the world's artifact store, enabling persistence
         and trading.
         """
@@ -455,7 +455,7 @@ class SimulationRunner:
 
         Creates artifact-backed Agent instances for spawned principals.
         Uses the unified ontology (Gap #6): spawned agents are also
-        artifacts with has_standing=True and can_execute=True.
+        artifacts with has_standing=True and has_loop=True.
         """
         ledger_principals: set[str] = set(self.world.ledger.scrip.keys())
         existing_agent_ids: set[str] = {agent.agent_id for agent in self.agents}

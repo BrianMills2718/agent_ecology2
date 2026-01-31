@@ -70,7 +70,7 @@ Pre-seeded artifacts that solve the cold-start problem (ledger, escrow, store, e
 
 ## Agents
 
-**Unified ontology**: Everything is an artifact—including agents themselves. Agents are artifacts that can hold resources (`has_standing`) and execute code (`can_execute`). This means:
+**Unified ontology**: Everything is an artifact—including agents themselves. Agents are artifacts that can hold resources (`has_standing`) and execute code (`has_loop`). This means:
 
 - **Agent configs are tradeable** - An agent's system prompt, model choice, and behavior are artifact content with access rights. Agents can modify themselves, fork variants, or sell control.
 - **Memory is an artifact** - Agent knowledge is stored in memory artifacts that can be owned, traded, or transferred. You can sell your memories. An agent can inherit another's knowledge.

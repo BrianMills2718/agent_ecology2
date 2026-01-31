@@ -165,7 +165,7 @@ Contract-dependent. Infinitely flexible already.
 
 ### 1. Execution Loop
 If agents aren't special, what triggers the pattern loop?
-- Kernel runs all `can_execute=True` artifacts?
+- Kernel runs all `has_loop=True` artifacts?
 - Patterns self-trigger?
 - External scheduler?
 
@@ -222,7 +222,7 @@ Multiple patterns, same artifacts. Race conditions? Locking?
 
 ### To Fully Unify Would Need
 1. `genesis_llm_interface` for LLM calls through invoke
-2. Generic scheduler for anything with `can_execute=True`
+2. Generic scheduler for anything with `has_loop=True`
 3. Workflow execution moved out of Agent class
 
 ---

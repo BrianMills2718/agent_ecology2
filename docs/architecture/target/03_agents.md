@@ -19,9 +19,9 @@ class Artifact:
     content: Any               # For agents: config, prompt, code
     access_contract_id: str    # Who answers permission questions
     has_standing: bool         # Can hold scrip, bear costs
-    can_execute: bool          # Has runnable code
+    has_loop: bool          # Has runnable code
 
-# Agent = artifact where has_standing=True AND can_execute=True
+# Agent = artifact where has_standing=True AND has_loop=True
 ```
 
 ### Why This Matters
@@ -35,7 +35,7 @@ class Artifact:
 
 ### Derived Categories
 
-| Category | has_standing | can_execute | Example |
+| Category | has_standing | has_loop | Example |
 |----------|--------------|-------------|---------|
 | **Agent** | true | true | Autonomous actor |
 | **Tool** | false | true | Executable, invoker pays |
@@ -138,7 +138,7 @@ Each agent has a `memory_artifact_id` pointing to their memory collection:
 {
     "id": "agent_alice",
     "has_standing": True,
-    "can_execute": True,
+    "has_loop": True,
     "content": {
         "prompt": "...",
         "model": "...",
@@ -150,7 +150,7 @@ Each agent has a `memory_artifact_id` pointing to their memory collection:
 {
     "id": "alice_memories",
     "has_standing": False,  # Memory doesn't pay costs
-    "can_execute": False,   # Memory isn't executable
+    "has_loop": False,   # Memory isn't executable
     "content": {
         "storage_type": "qdrant",
         "collection_id": "alice_mem_collection"
@@ -499,7 +499,7 @@ Agents create new agents via `genesis_store.create()`:
 invoke("genesis_store", "create", {
     "content": {"prompt": "...", "model": "..."},
     "has_standing": True,
-    "can_execute": True,
+    "has_loop": True,
     "access_contract_id": "genesis_self_owned"  # New agent owns itself
 })
 # Returns new artifact_id (which IS the agent ID)

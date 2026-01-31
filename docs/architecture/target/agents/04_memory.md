@@ -234,7 +234,7 @@ Memory is stored in separate artifacts, enabling trading:
 {
     "id": "alice_memories",
     "has_standing": False,  # Memory doesn't pay costs
-    "can_execute": False,   # Memory isn't executable
+    "has_loop": False,   # Memory isn't executable
     "content": {
         "storage_type": "qdrant",
         "collection_id": "alice_mem_collection",

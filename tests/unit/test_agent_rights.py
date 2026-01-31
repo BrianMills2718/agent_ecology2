@@ -63,7 +63,7 @@ class TestAgentConfigReload:
             created_at=artifact.created_at,
             updated_at="2026-01-20T15:00:00",
             has_standing=True,
-            can_execute=True,
+            has_loop=True,
         )
         store.artifacts[updated_artifact.id] = updated_artifact
 
@@ -141,7 +141,7 @@ class TestAgentConfigReload:
             created_at=artifact.created_at,
             updated_at="2026-01-20T15:00:00",
             has_standing=True,
-            can_execute=True,
+            has_loop=True,
         )
         store.artifacts[invalid_artifact.id] = invalid_artifact
 
@@ -217,7 +217,7 @@ class TestAgentConfigReload:
             created_at=artifact.created_at,
             updated_at="2026-01-20T15:00:00",
             has_standing=True,
-            can_execute=True,
+            has_loop=True,
         )
         store.artifacts[updated_artifact.id] = updated_artifact
 

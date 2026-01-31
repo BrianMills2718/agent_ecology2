@@ -29,7 +29,7 @@ memory_artifact = Artifact(
     },
     access_contract_id="agent_001",  # Self-owned
     has_standing=False,
-    can_execute=False
+    has_loop=False
 )
 ```
 

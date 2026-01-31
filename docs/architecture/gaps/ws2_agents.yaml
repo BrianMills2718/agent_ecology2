@@ -30,12 +30,12 @@ gaps:
       - content: Config, prompt, code
       - access_contract_id: Who answers permission questions
       - has_standing: true (can hold scrip, bear costs)
-      - can_execute: true (has runnable code)
+      - has_loop: true (has runnable code)
 
       This enables agents to be ownable property in a single namespace.
     delta: |
       - Refactor Agent class to extend/implement Artifact
-      - Add has_standing and can_execute properties
+      - Add has_standing and has_loop properties
       - Move agent_id to unified artifact id namespace
       - Make agents discoverable via genesis_store
       - Enable agent ownership and trading
@@ -168,13 +168,13 @@ gaps:
       Agents cannot create other agents.
     target_state: |
       Agents create new agents via genesis_store.create():
-      - invoke("genesis_store", "create", {content, has_standing, can_execute, ...})
+      - invoke("genesis_store", "create", {content, has_standing, has_loop, ...})
       - New agent starts with 0 scrip, 0 compute
       - Spawner must transfer resources to make viable
       - Ownership configurable: self-owned, creator-owned, or contract-based
     delta: |
       - Add agent creation to genesis_store
-      - Implement artifact creation with has_standing=True, can_execute=True
+      - Implement artifact creation with has_standing=True, has_loop=True
       - Add resource transfer from spawner to new agent
       - Support different ownership models via access_contract_id
       - Start new agent's async loop after creation
@@ -207,7 +207,7 @@ gaps:
       Memory cannot be traded or owned separately.
     target_state: |
       Each agent has memory_artifact_id pointing to separate memory artifact:
-      - Memory artifact: {id, has_standing: false, can_execute: false, content: {storage_type, collection_id, embedding_model, vector_size}}
+      - Memory artifact: {id, has_standing: false, has_loop: false, content: {storage_type, collection_id, embedding_model, vector_size}}
       - Memory has own access_contract_id for independent access control
       - Enables: sell config only (factory reset), sell both (full transfer), sell memory only (knowledge transfer)
     delta: |

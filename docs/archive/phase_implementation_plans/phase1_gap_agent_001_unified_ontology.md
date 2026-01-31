@@ -9,7 +9,7 @@
 
 ## Summary
 
-Transform agents from a separate entity type into artifacts with special properties. Agents become artifacts with `has_standing=true` (can own things, enter contracts) and `can_execute=true` (can run code). This enables agent trading, unified ownership model, and cleaner architecture.
+Transform agents from a separate entity type into artifacts with special properties. Agents become artifacts with `has_standing=true` (can own things, enter contracts) and `has_loop=true` (can run code). This enables agent trading, unified ownership model, and cleaner architecture.
 
 ---
 
@@ -25,7 +25,7 @@ Transform agents from a separate entity type into artifacts with special propert
 
 ## Target State
 
-- Agents are artifacts with `has_standing=true` and `can_execute=true`
+- Agents are artifacts with `has_standing=true` and `has_loop=true`
 - Agent "definition" stored as artifact content
 - Agent ownership transferable via standard artifact transfer
 - Single ontology for all entities
@@ -37,7 +37,7 @@ Transform agents from a separate entity type into artifacts with special propert
 
 | File | Changes |
 |------|---------|
-| `src/world/artifacts.py` | Add `has_standing`, `can_execute` fields |
+| `src/world/artifacts.py` | Add `has_standing`, `has_loop` fields |
 | `src/agents/agent.py` | Refactor to work with artifact storage |
 | `src/agents/loader.py` | Load agents from artifacts |
 | `src/world/world.py` | Unified agent/artifact management |
@@ -64,7 +64,7 @@ class Artifact:
 
     Special flags enable artifact-based entities:
     - has_standing=True: Can own things, enter contracts (principals)
-    - can_execute=True: Can execute code, run autonomously (agents)
+    - has_loop=True: Can execute code, run autonomously (agents)
     """
 
     artifact_id: str
@@ -77,7 +77,7 @@ class Artifact:
 
     # Principal capabilities
     has_standing: bool = False  # Can own things, be party to contracts
-    can_execute: bool = False   # Can execute code autonomously
+    has_loop: bool = False   # Can execute code autonomously
 
     # Metadata
     created_at: float = field(default_factory=lambda: time.time())
@@ -94,7 +94,7 @@ class Artifact:
     @property
     def is_agent(self) -> bool:
         """Is this an autonomous agent?"""
-        return self.has_standing and self.can_execute
+        return self.has_standing and self.has_loop
 
     def to_dict(self) -> dict:
         """Serialize artifact."""
@@ -105,7 +105,7 @@ class Artifact:
             "content": self.content,
             "access_contract_id": self.access_contract_id,
             "has_standing": self.has_standing,
-            "can_execute": self.can_execute,
+            "has_loop": self.has_loop,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "memory_artifact_id": self.memory_artifact_id,
@@ -144,7 +144,7 @@ def create_agent_artifact(
         content=agent_config,
         access_contract_id=access_contract_id,
         has_standing=True,
-        can_execute=True,
+        has_loop=True,
         memory_artifact_id=memory_artifact_id,
     )
 
@@ -166,7 +166,7 @@ def create_memory_artifact(
         content=initial_content or {"history": [], "knowledge": {}},
         access_contract_id="genesis_contract_self_owned",
         has_standing=False,
-        can_execute=False,
+        has_loop=False,
     )
 ```
 
@@ -184,7 +184,7 @@ class Agent:
     """
     Runtime representation of an agent.
 
-    Backed by an artifact with has_standing=True and can_execute=True.
+    Backed by an artifact with has_standing=True and has_loop=True.
     The artifact stores persistent state; this class handles runtime behavior.
     """
 
@@ -218,7 +218,7 @@ class Agent:
         if not artifact.is_agent:
             raise ValueError(
                 f"Artifact {artifact.artifact_id} is not an agent "
-                f"(has_standing={artifact.has_standing}, can_execute={artifact.can_execute})"
+                f"(has_standing={artifact.has_standing}, has_loop={artifact.has_loop})"
             )
         return cls(artifact=artifact)
 
@@ -480,7 +480,7 @@ class Artifact:
     content: Any
     access_contract_id: str
     has_standing: bool  # NEW
-    can_execute: bool   # NEW
+    has_loop: bool   # NEW
     memory_artifact_id: Optional[str]  # NEW
 
     @property
@@ -503,7 +503,7 @@ class Agent:
 
 ## Migration Strategy
 
-1. **Phase 1A:** Add `has_standing`, `can_execute` fields to Artifact (default False)
+1. **Phase 1A:** Add `has_standing`, `has_loop` fields to Artifact (default False)
 2. **Phase 1B:** Add `memory_artifact_id` field to Artifact
 3. **Phase 1C:** Implement `Agent.from_artifact()` and factory functions
 4. **Phase 1D:** Add feature flag `use_artifact_storage: false`
@@ -520,7 +520,7 @@ class Agent:
 |------|-------------|----------|
 | `test_agent_is_artifact` | Agent stored as artifact | `artifact.is_agent == True` |
 | `test_has_standing` | Agent has standing | `artifact.has_standing == True` |
-| `test_can_execute` | Agent can execute | `artifact.can_execute == True` |
+| `test_has_loop` | Agent can execute | `artifact.has_loop == True` |
 | `test_memory_artifact` | Memory stored separately | Memory artifact exists |
 | `test_load_from_artifact` | Agent loads from store | Agent runtime works |
 | `test_transfer_agent` | Agent ownership transfers | New owner owns agent |
@@ -533,7 +533,7 @@ class Agent:
 ## Acceptance Criteria
 
 - [ ] Agents are stored as artifacts in artifact store
-- [ ] Artifacts have `has_standing` and `can_execute` fields
+- [ ] Artifacts have `has_standing` and `has_loop` fields
 - [ ] Agent ownership can be transferred via artifact transfer
 - [ ] Memory is a separate artifact owned by agent
 - [ ] `Agent.from_artifact()` creates runtime from artifact

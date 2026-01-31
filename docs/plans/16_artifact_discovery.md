@@ -51,7 +51,7 @@ commit: d7ca40d
     "type": "agent" | "memory" | "data" | "executable" | "genesis",
     "owner": "owner_id",
     "has_standing": True | False,
-    "can_execute": True | False,
+    "has_loop": True | False,
     "limit": 100,
     "offset": 0
 }

@@ -21,9 +21,9 @@ commit: d7ca40d
 
 ## Gap
 
-**Current:** Partial implementation - the artifact model supports unified ontology (`has_standing`, `can_execute`, `is_agent`, `is_principal` properties exist) but `SimulationRunner` creates agents directly without artifact backing.
+**Current:** Partial implementation - the artifact model supports unified ontology (`has_standing`, `has_loop`, `is_agent`, `is_principal` properties exist) but `SimulationRunner` creates agents directly without artifact backing.
 
-**Target:** Everything is an artifact with properties. Agents are artifacts where `has_standing=True` AND `can_execute=True`. All agents are artifact-backed by default.
+**Target:** Everything is an artifact with properties. Agents are artifacts where `has_standing=True` AND `has_loop=True`. All agents are artifact-backed by default.
 
 **Why Medium:** This is foundational for agent trading (#8), single ID namespace (#7), MCP interface (#14), and artifact discovery (#16). Once implemented, agents become first-class tradeable entities.
 
@@ -32,7 +32,7 @@ commit: d7ca40d
 ## Current State Analysis
 
 ### Already Implemented ✅
-1. `Artifact` class has `has_standing`, `can_execute` fields (artifacts.py:125-127)
+1. `Artifact` class has `has_standing`, `has_loop` fields (artifacts.py:125-127)
 2. `is_principal` and `is_agent` properties on Artifact (artifacts.py:139-165)
 3. `create_agent_artifact()` factory function (artifacts.py:261-335)
 4. `create_memory_artifact()` factory function (artifacts.py:338-402)
@@ -90,7 +90,7 @@ Create these tests FIRST, before implementing:
 |-----------|---------------|------------------|
 | `tests/integration/test_unified_ontology.py` | `TestSimulationRunnerIntegration::test_runner_creates_agent_artifacts` | SimulationRunner populates artifact store with agent artifacts |
 | `tests/integration/test_unified_ontology.py` | `TestSimulationRunnerIntegration::test_runner_agents_are_artifact_backed` | All agents from runner have `is_artifact_backed=True` |
-| `tests/integration/test_unified_ontology.py` | `TestArtifactOntologyProperties::test_agent_artifact_has_correct_properties` | Agent artifacts have `has_standing=True`, `can_execute=True` |
+| `tests/integration/test_unified_ontology.py` | `TestArtifactOntologyProperties::test_agent_artifact_has_correct_properties` | Agent artifacts have `has_standing=True`, `has_loop=True` |
 | `tests/integration/test_unified_ontology.py` | `TestSimulationRunnerIntegration::test_runner_creates_memory_artifacts` | Each agent has a linked memory artifact |
 | `tests/integration/test_unified_ontology.py` | `TestCheckpointPreservesArtifacts::test_checkpoint_includes_agent_artifacts` | Checkpoint save/restore maintains agent artifacts |
 

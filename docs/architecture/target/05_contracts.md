@@ -13,10 +13,10 @@ What we're building toward.
 Contracts are executable artifacts that answer permission questions.
 
 ```python
-# Contract = artifact with can_execute=true and check_permission tool
+# Contract = artifact with has_loop=true and check_permission tool
 {
     "id": "genesis_freeware",
-    "can_execute": True,
+    "has_loop": True,
     "has_standing": False,  # Contracts don't need standing
     "interface": {
         "tools": [{
@@ -247,7 +247,7 @@ Agents can create contracts for any access pattern.
 ```python
 {
     "id": "contract_paid_read",
-    "can_execute": True,
+    "has_loop": True,
     "content": """
 def check_permission(artifact_id, action, requester_id):
     if action == "read":
@@ -267,7 +267,7 @@ def check_permission(artifact_id, action, requester_id):
 ```python
 {
     "id": "contract_multisig_2of3",
-    "can_execute": True,
+    "has_loop": True,
     "content": """
 def check_permission(artifact_id, action, requester_id):
     if action in ["write", "edit", "delete"]:
@@ -510,7 +510,7 @@ All contracts can opt into fast-path caching. No genesis privilege.
 # Contract declares caching behavior
 {
     "id": "genesis_freeware_contract",
-    "can_execute": True,
+    "has_loop": True,
     "cache_policy": {
         "cacheable": True,
         "ttl_seconds": 3600,

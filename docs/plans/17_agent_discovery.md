@@ -35,7 +35,7 @@ The `genesis_store` artifact provides agent discovery via:
 
 | Method | Description |
 |--------|-------------|
-| `list_agents()` | List all agent artifacts (has_standing=True AND can_execute=True) |
+| `list_agents()` | List all agent artifacts (has_standing=True AND has_loop=True) |
 | `list_principals()` | List all principals (artifacts with has_standing=True) |
 
 Agents can also use the general `list()` method with filters:
@@ -62,4 +62,4 @@ invoke("genesis_store", "list_principals", [])
 
 ## Notes
 
-This gap was completed as a natural part of Gap #16 implementation. Since agents are artifacts with `has_standing=True` and `can_execute=True`, the unified artifact discovery system handles agent discovery automatically.
+This gap was completed as a natural part of Gap #16 implementation. Since agents are artifacts with `has_standing=True` and `has_loop=True`, the unified artifact discovery system handles agent discovery automatically.

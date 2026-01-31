@@ -11,7 +11,7 @@ How agents are configured and how they execute. This documentation separates:
 
 | Term | Definition | YAML Field |
 |------|------------|------------|
-| **Agent** | Artifact with `has_standing=True` AND `can_execute=True` | - |
+| **Agent** | Artifact with `has_standing=True` AND `has_loop=True` | - |
 | **Workflow** | Sequence of steps an agent executes | `workflow:` |
 | **State Machine** | States with conditional transitions | `workflow.state_machine:` |
 | **Step** | Single unit of work (LLM call, code, or transition decision) | `workflow.steps:` |

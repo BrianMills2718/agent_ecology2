@@ -139,7 +139,7 @@ class Artifact:
 
     Principal capabilities (GAP-AGENT-001 Unified Ontology):
     - has_standing=True: Can own things, be party to contracts (principals)
-    - can_execute=True: Can execute code autonomously (agents)
+    - has_loop=True: Can execute code autonomously (agents)
     - memory_artifact_id: Link to separate memory artifact (for agents)
 
     Interface schema (Plan #14 Artifact Interface Schema):
@@ -164,7 +164,7 @@ class Artifact:
     policy: dict[str, Any] = field(default_factory=default_policy)
     # Principal capabilities (GAP-AGENT-001)
     has_standing: bool = False  # Can own things, be party to contracts
-    can_execute: bool = False  # Can execute code autonomously
+    has_loop: bool = False  # Can execute code autonomously
     # For agents: link to memory artifact
     memory_artifact_id: str | None = None
     # Soft deletion fields (Plan #18: Dangling Reference Handling)
@@ -216,16 +216,16 @@ class Artifact:
     def is_agent(self) -> bool:
         """Is this an autonomous agent?
 
-        Agents are artifacts with both has_standing=True AND can_execute=True.
+        Agents are artifacts with both has_standing=True AND has_loop=True.
         They are principals that can also:
         - Execute code autonomously
         - Make decisions via LLM
         - Take actions in the world
 
-        A principal without can_execute (e.g., a DAO) can own things but
+        A principal without has_loop (e.g., a DAO) can own things but
         cannot act autonomously - it requires external invocation.
         """
-        return self.has_standing and self.can_execute
+        return self.has_standing and self.has_loop
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -247,8 +247,8 @@ class Artifact:
         # Include principal capabilities if set (GAP-AGENT-001)
         if self.has_standing:
             result["has_standing"] = True
-        if self.can_execute:
-            result["can_execute"] = True
+        if self.has_loop:
+            result["has_loop"] = True
         if self.memory_artifact_id is not None:
             result["memory_artifact_id"] = self.memory_artifact_id
         # Include deletion fields if deleted (Plan #18)
@@ -308,7 +308,7 @@ def create_agent_artifact(
 
     Creates an artifact configured as an autonomous agent with:
     - has_standing=True: Can own things, enter contracts
-    - can_execute=True: Can execute code autonomously
+    - has_loop=True: Can execute code autonomously
     - artifact_type="agent"
     - Self-owned access contract by default
 
@@ -369,7 +369,7 @@ def create_agent_artifact(
         code="",
         policy=artifact_policy,
         has_standing=True,
-        can_execute=True,
+        has_loop=True,
         memory_artifact_id=memory_artifact_id,
     )
 
@@ -385,7 +385,7 @@ def create_memory_artifact(
     - artifact_type="memory"
     - Self-owned access contract (private by default)
     - has_standing=False: Memory cannot own things
-    - can_execute=False: Memory is passive storage
+    - has_loop=False: Memory is passive storage
 
     Memory is private by default because it often contains:
     - Agent reasoning traces
@@ -436,7 +436,7 @@ def create_memory_artifact(
         code="",
         policy=artifact_policy,
         has_standing=False,
-        can_execute=False,
+        has_loop=False,
         memory_artifact_id=None,
     )
 
@@ -534,7 +534,7 @@ def create_config_artifact(
         code="",  # Uses genesis method dispatch
         policy=artifact_policy,
         has_standing=False,
-        can_execute=False,
+        has_loop=False,
         memory_artifact_id=None,
         interface=interface,
     )

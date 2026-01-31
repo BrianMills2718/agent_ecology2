@@ -26,15 +26,15 @@ class Artifact:
     content: Any               # Data, code, config
     access_contract_id: str    # Who answers permission questions
     has_standing: bool         # Can hold scrip, bear costs (= principal)
-    can_execute: bool          # Has runnable code
+    has_loop: bool          # Has runnable code
     created_by: str            # Creator's artifact ID
-    interface: dict | None     # Required if can_execute=True
+    interface: dict | None     # Required if has_loop=True
 ```
 
 **Relationships:**
-- Agent = artifact with `has_standing=True, can_execute=True`
+- Agent = artifact with `has_standing=True, has_loop=True`
 - Principal = artifact with `has_standing=True`
-- Contract = artifact with `can_execute=True`, implements `check_permission`
+- Contract = artifact with `has_loop=True`, implements `check_permission`
 - Data = artifact with both False
 
 ## Consequences

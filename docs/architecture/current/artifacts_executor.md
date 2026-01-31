@@ -632,7 +632,7 @@ Artifacts can now represent principals (agents, DAOs, contracts).
 class Artifact:
     # ... existing fields ...
     has_standing: bool = False   # Can own things, enter contracts
-    can_execute: bool = False    # Can execute code autonomously
+    has_loop: bool = False    # Can execute code autonomously
     memory_artifact_id: str | None = None  # Link to memory artifact
 ```
 
@@ -641,7 +641,7 @@ class Artifact:
 | Property | Condition | Description |
 |----------|-----------|-------------|
 | `is_principal` | `has_standing == True` | Can own artifacts, hold scrip |
-| `is_agent` | `has_standing and can_execute` | Autonomous agent |
+| `is_agent` | `has_standing and has_loop` | Autonomous agent |
 
 ### Factory Functions
 

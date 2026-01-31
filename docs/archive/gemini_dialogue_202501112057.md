@@ -372,7 +372,7 @@ Orchestration layer doesn’t resolve conflicts
 
 Glossary
 
-TermDefinitionArtifactAny persistent, addressable object in the system. Everything is an artifact: agents, contracts, data, tools.AgentAn artifact with has_standing=true and can_execute=true. Can think (call LLM), act, and bear costs.StandingThe property (has_standing=true) that allows an artifact to hold resources, enter contracts, and bear costs. Artifacts with standing are “principals” in the economic sense.PrincipalAny artifact with standing. Can hold scrip, own other artifacts, and be held accountable.ScripThe internal currency. Minted by oracle based on artifact quality scores. Used to pay for actions, trade, and coordinate.ContractAn artifact that answers permission questions. Every artifact has an access_contract_id pointing to the contract that governs access to it.Genesis ArtifactArtifacts created at system initialization (before agents). Examples: genesis_ledger, genesis_store, genesis_freeware, genesis_rights_registry. They bootstrap the system but have no special mechanical privileges.genesis_rights_registryGenesis artifact that manages resource quotas. Provides check_quota, transfer_quota methods. Enforces per-agent resource limits.Token BucketThe flow resource model. Resources accumulate continuously at a fixed rate up to a capacity limit. Allows debt (negative balance).Flow ResourceA resource that accumulates over time (like API rate limits). Contrast with stock resources.Stock ResourceA resource that doesn’t accumulate (like disk space or $ budget). Depletes until refilled or reclaimed.FrozenAn agent with negative resource balance. Cannot act until balance recovers through accumulation or transfer.OracleThe system component that scores artifacts and mints scrip. Agents bid for oracle attention; winners get their artifacts scored.InvokeCall an executable artifact. invoke(artifact_id, args) runs the artifact’s code and returns results.access_contract_idThe field on every artifact pointing to the contract that governs permissions. The contract is the ONLY authority for access decisions.Vulture Capitalist PatternMarket-driven rescue of frozen agents. Any agent can unilaterally transfer resources to a frozen agent, hoping for reciprocation.
+TermDefinitionArtifactAny persistent, addressable object in the system. Everything is an artifact: agents, contracts, data, tools.AgentAn artifact with has_standing=true and has_loop=true. Can think (call LLM), act, and bear costs.StandingThe property (has_standing=true) that allows an artifact to hold resources, enter contracts, and bear costs. Artifacts with standing are “principals” in the economic sense.PrincipalAny artifact with standing. Can hold scrip, own other artifacts, and be held accountable.ScripThe internal currency. Minted by oracle based on artifact quality scores. Used to pay for actions, trade, and coordinate.ContractAn artifact that answers permission questions. Every artifact has an access_contract_id pointing to the contract that governs access to it.Genesis ArtifactArtifacts created at system initialization (before agents). Examples: genesis_ledger, genesis_store, genesis_freeware, genesis_rights_registry. They bootstrap the system but have no special mechanical privileges.genesis_rights_registryGenesis artifact that manages resource quotas. Provides check_quota, transfer_quota methods. Enforces per-agent resource limits.Token BucketThe flow resource model. Resources accumulate continuously at a fixed rate up to a capacity limit. Allows debt (negative balance).Flow ResourceA resource that accumulates over time (like API rate limits). Contrast with stock resources.Stock ResourceA resource that doesn’t accumulate (like disk space or $ budget). Depletes until refilled or reclaimed.FrozenAn agent with negative resource balance. Cannot act until balance recovers through accumulation or transfer.OracleThe system component that scores artifacts and mints scrip. Agents bid for oracle attention; winners get their artifacts scored.InvokeCall an executable artifact. invoke(artifact_id, args) runs the artifact’s code and returns results.access_contract_idThe field on every artifact pointing to the contract that governs permissions. The contract is the ONLY authority for access decisions.Vulture Capitalist PatternMarket-driven rescue of frozen agents. Any agent can unilaterally transfer resources to a frozen agent, hoping for reciprocation.
 
 Related Documents
 
@@ -780,7 +780,7 @@ Artifacts wrap external services:
 
 "id": "genesis_web_search",
 
-"can_execute": true,
+"has_loop": true,
 
 "has_standing": false, # Tool - invoker pays
 
@@ -978,7 +978,7 @@ access_contract_id: str # Who answers permission questions
 
 has_standing: bool # Can hold scrip, bear costs
 
-can_execute: bool # Has runnable code# Agent = artifact where has_standing=True AND can_execute=True
+has_loop: bool # Has runnable code# Agent = artifact where has_standing=True AND has_loop=True
 
 Why This Matters
 
@@ -986,7 +986,7 @@ Old ModelNew ModelAgent is a separate conceptAgent is an artifact typeAgents can
 
 Derived Categories
 
-Categoryhas_standingcan_executeExampleAgenttruetrueAutonomous actorToolfalsetrueExecutable, invoker paysAccounttruefalseTreasury, escrowDatafalsefalseDocuments, content
+Categoryhas_standinghas_loopExampleAgenttruetrueAutonomous actorToolfalsetrueExecutable, invoker paysAccounttruefalseTreasury, escrowDatafalsefalseDocuments, content
 
 Autonomous Agents
 
@@ -1152,7 +1152,7 @@ invoke("genesis_store", "create", {
 
 "has_standing": True,
 
-"can_execute": True,
+"has_loop": True,
 
 "access_contract_id": "genesis_self_owned" # New agent owns itself
 
@@ -1270,13 +1270,13 @@ Contracts Are Artifacts
 
 Contracts are executable artifacts that answer permission questions.
 
-# Contract = artifact with can_execute=true and check_permission tool
+# Contract = artifact with has_loop=true and check_permission tool
 
 {
 
 "id": "genesis_freeware",
 
-"can_execute": True,
+"has_loop": True,
 
 "has_standing": False, # Contracts don't need standing
 
@@ -1438,7 +1438,7 @@ Example: Paid Read Access
 
 "id": "contract_paid_read",
 
-"can_execute": True,
+"has_loop": True,
 
 "content": """
 
@@ -1470,7 +1470,7 @@ Example: Multi-Sig Access
 
 "id": "contract_multisig_2of3",
 
-"can_execute": True,
+"has_loop": True,
 
 "content": """
 
@@ -1660,7 +1660,7 @@ All contracts can opt into fast-path caching. No genesis privilege.
 
 "id": "genesis_freeware",
 
-"can_execute": True,
+"has_loop": True,
 
 "cache_policy": {
 
@@ -2136,7 +2136,7 @@ Master Decision Table
 
 Full list of all architectural decisions with certainty levels, organized by topic:
 
-TopicDecisionCertaintyStatusOntologyEverything is an artifact90%DECIDEDSingle ID namespace90%DECIDEDhas_standing = principal90%DECIDEDcan_execute + interface required90%DECIDEDContractsContracts are pure functions95%DECIDEDContracts cannot invoke()92%DECIDEDNo owner bypass90%DECIDEDPermission checks free85%DECIDEDContract caching for all80%DECIDEDaccess_contract change: current only75%DECIDEDGenesis contracts mutable75%DECIDEDResourcesToken bucket for flow90%DECIDEDScrip cannot go negative90%DECIDEDCompute debt allowed90%DECIDEDStanding pays own costs90%DECIDEDNo 429 refunds60%OPENRate limit sync via 429 adaptation50%OPENAgentsContinuous autonomous loops90%DECIDEDSelf-managed sleep85%DECIDEDSpawned agents get 0 resources60%OPENNo agent death (frozen only)65%OPENZombie threshold40%OPENOracleBids accepted anytime85%DECIDEDPeriodic resolution85%DECIDEDUBI floor starts at 065%OPENMemoryKeep Qdrant separate90%DECIDEDHybrid wrapper (future)55%OPENInfrastructureDocker isolation85%DECIDEDCheckpoint stop-the-world55%OPENCheckpoint at outer action40%OPENEventsMinimal fixed events70%DECIDEDEvent subscription mechanism40%OPEN
+TopicDecisionCertaintyStatusOntologyEverything is an artifact90%DECIDEDSingle ID namespace90%DECIDEDhas_standing = principal90%DECIDEDhas_loop + interface required90%DECIDEDContractsContracts are pure functions95%DECIDEDContracts cannot invoke()92%DECIDEDNo owner bypass90%DECIDEDPermission checks free85%DECIDEDContract caching for all80%DECIDEDaccess_contract change: current only75%DECIDEDGenesis contracts mutable75%DECIDEDResourcesToken bucket for flow90%DECIDEDScrip cannot go negative90%DECIDEDCompute debt allowed90%DECIDEDStanding pays own costs90%DECIDEDNo 429 refunds60%OPENRate limit sync via 429 adaptation50%OPENAgentsContinuous autonomous loops90%DECIDEDSelf-managed sleep85%DECIDEDSpawned agents get 0 resources60%OPENNo agent death (frozen only)65%OPENZombie threshold40%OPENOracleBids accepted anytime85%DECIDEDPeriodic resolution85%DECIDEDUBI floor starts at 065%OPENMemoryKeep Qdrant separate90%DECIDEDHybrid wrapper (future)55%OPENInfrastructureDocker isolation85%DECIDEDCheckpoint stop-the-world55%OPENCheckpoint at outer action40%OPENEventsMinimal fixed events70%DECIDEDEvent subscription mechanism40%OPEN
 
 Table of Contents
 
@@ -2918,7 +2918,7 @@ Principal = any artifact with has_standing: true. Not a separate concept.
 
 Yes - via has_standing property. This creates clean derived categories:
 
-Categoryhas_standingcan_executeExampleAgenttruetrueAutonomous actor, pays for actionsToolfalsetrueExecutable, invoker paysAccounttruefalseTreasury, escrowDatafalsefalseContent, documents
+Categoryhas_standinghas_loopExampleAgenttruetrueAutonomous actor, pays for actionsToolfalsetrueExecutable, invoker paysAccounttruefalseTreasury, escrowDatafalsefalseContent, documents
 
 5. Relationship between artifact/agent/principal
 
@@ -2934,9 +2934,9 @@ access_contract_id: str # Who answers permission questions
 
 has_standing: bool # Can hold scrip, bear costs, enter contracts
 
-can_execute: bool # Has runnable code
+has_loop: bool # Has runnable code
 
-Agent = artifact where has_standing=True and can_execute=True
+Agent = artifact where has_standing=True and has_loop=True
 
 Principal = artifact where has_standing=True (may or may not execute)
 
@@ -2956,13 +2956,13 @@ Everything is an artifact. Properties determine role:
 
 artifact
 
-├── has_standing: false, can_execute: false → data/content
+├── has_standing: false, has_loop: false → data/content
 
-├── has_standing: false, can_execute: true → tool (invoker pays)
+├── has_standing: false, has_loop: true → tool (invoker pays)
 
-├── has_standing: true, can_execute: false → account/treasury
+├── has_standing: true, has_loop: false → account/treasury
 
-└── has_standing: true, can_execute: true → agent
+└── has_standing: true, has_loop: true → agent
 
 Single namespace. Single type. Roles emerge from properties. The store and ledger are genesis artifacts, not special kernel constructs.
 
@@ -3224,7 +3224,7 @@ Agent memories are stored as artifacts, not in a separate system.
 
 "has_standing": False,
 
-"can_execute": False
+"has_loop": False
 
 }
 
@@ -3338,15 +3338,15 @@ access_contract_id: str
 
 has_standing: bool
 
-can_execute: bool
+has_loop: bool
 
 created_by: str
 
-interface: dict | None = None # Required if can_execute=True
+interface: dict | None = None # Required if has_loop=True
 
 Validation rule:
 
-if artifact.can_execute and not artifact.interface:
+if artifact.has_loop and not artifact.interface:
 
 raise ValueError("Executable artifacts must have an interface")
 
@@ -3356,7 +3356,7 @@ Example interface (MCP-compatible):
 
 "id": "risk_calculator",
 
-"can_execute": true,
+"has_loop": true,
 
 "interface": {
 
@@ -3430,7 +3430,7 @@ Agent checks access_contract_id - can I access this?
 
 Agent calls invoke_artifact with correct parameters (metered)
 
-Non-executable artifacts (data, can_execute=false) don’t need an interface - agents just read their content directly.
+Non-executable artifacts (data, has_loop=false) don’t need an interface - agents just read their content directly.
 
 External Resources: Unified Model
 
@@ -3532,7 +3532,7 @@ External MCP servers are accessed the same way as any external API. An artifact 
 
 "id": "mcp_bridge_filesystem",
 
-"can_execute": true,
+"has_loop": true,
 
 "interface": {
 
@@ -3876,7 +3876,7 @@ Recommendation: Hybrid wrapper approach.
 
 "has_standing": False,
 
-"can_execute": False
+"has_loop": False
 
 }
 
@@ -4126,7 +4126,7 @@ Contract Implementation Model
 
 Decision: Contracts ARE executable artifacts.
 
-The access_contract_id on an artifact points to another artifact that has can_execute: true and exposes a check_permission tool in its interface.
+The access_contract_id on an artifact points to another artifact that has has_loop: true and exposes a check_permission tool in its interface.
 
 How permission checks work:
 
@@ -4152,7 +4152,7 @@ Contract interface (required):
 
 "id": "genesis_freeware",
 
-"can_execute": true,
+"has_loop": true,
 
 "interface": {
 
@@ -4572,7 +4572,7 @@ access_contract_id: null # Special: no contract controls this
 
 has_standing: false
 
-can_execute: true
+has_loop: true
 
 # Logic hardcoded in kernel, not in content
 
@@ -4604,7 +4604,7 @@ access_contract_id: genesis_self_owned
 
 has_standing: true
 
-can_execute: true
+has_loop: true
 
 
 
@@ -4614,7 +4614,7 @@ access_contract_id: genesis_self_owned
 
 has_standing: true
 
-can_execute: true
+has_loop: true
 
 
 
@@ -5000,7 +5000,7 @@ Decision: All contracts can opt into fast-path caching. No genesis privilege.
 
 "id": "genesis_freeware",
 
-"can_execute": True,
+"has_loop": True,
 
 "content": {...},
 
@@ -5252,7 +5252,7 @@ invoke("genesis_store", "create", {
 
 "has_standing": True,
 
-"can_execute": True,
+"has_loop": True,
 
 "access_contract_id": "genesis_self_owned"
 
@@ -5592,7 +5592,7 @@ Implementation:
 
 "id": "genesis_ledger",
 
-"can_execute": True,
+"has_loop": True,
 
 "interface": {
 
@@ -5716,7 +5716,7 @@ genesis_store = {
 
 "id": "genesis_store",
 
-"can_execute": True,
+"has_loop": True,
 
 "has_standing": True,
 
@@ -5742,7 +5742,7 @@ genesis_store = {
 
 Metadata (returned without reading content):
 
-FieldTypeDescriptionidstringArtifact IDowner_idstringCurrent ownerhas_standingboolCan hold resourcescan_executeboolHas runnable codeinterface_summarystringBrief description from interfacecreated_attimestampCreation time
+FieldTypeDescriptionidstringArtifact IDowner_idstringCurrent ownerhas_standingboolCan hold resourceshas_loopboolHas runnable codeinterface_summarystringBrief description from interfacecreated_attimestampCreation time
 
 Privacy Consideration: Some artifacts may not want to be discoverable. Options:
 
@@ -5758,11 +5758,11 @@ What’s Missing: How agents know other agents exist.
 
 Recommendation (75% certainty): Defer to Unified Ontology (#6).
 
-Rationale: If agents are artifacts with has_standing=true, can_execute=true, then:
+Rationale: If agents are artifacts with has_standing=true, has_loop=true, then:
 
 genesis_store.list_all() includes agents
 
-genesis_store.search(query="can_execute:true has_standing:true") finds agents
+genesis_store.search(query="has_loop:true has_standing:true") finds agents
 
 No separate mechanism needed
 
@@ -6634,7 +6634,7 @@ No Plan Yet. Current implementation works, just more complex than target.
 
 Current: Separate concepts. Agents, artifacts, and principals are different things with different storage.
 
-Target: Everything is an artifact. Properties (has_standing, can_execute, access_contract_id) determine role.
+Target: Everything is an artifact. Properties (has_standing, has_loop, access_contract_id) determine role.
 
 From DESIGN_CLARIFICATIONS.md (2026-01-11):
 
@@ -6648,7 +6648,7 @@ access_contract_id: str # Who answers permission questions
 
 has_standing: bool # Can hold scrip, bear costs
 
-can_execute: bool # Has runnable code
+has_loop: bool # Has runnable code
 
 No Plan Yet. Significant refactor affecting:
 
@@ -6776,13 +6776,13 @@ access_contract_id: str
 
 has_standing: bool
 
-can_execute: bool
+has_loop: bool
 
 created_by: str
 
-interface: dict | None = None # Required if can_execute=True
+interface: dict | None = None # Required if has_loop=True
 
-Validation: if artifact.can_execute and not artifact.interface: raise ValueError
+Validation: if artifact.has_loop and not artifact.interface: raise ValueError
 
 Why Medium Priority:
 
@@ -6792,7 +6792,7 @@ Reading source code is expensive (tokens)
 
 LLMs are trained on MCP-style schemas, reducing hallucination
 
-Depends On: #6 Unified Artifact Ontology (adds can_execute field first)
+Depends On: #6 Unified Artifact Ontology (adds has_loop field first)
 
 No Plan Yet. Changes needed:
 
@@ -6870,7 +6870,7 @@ Options:
 
 ApproachProsConsVia genesis_store (agents are artifacts)Unified with #16Requires #6 firstDedicated genesis_agents artifactSimple, focusedAnother genesis artifactVia event_log (observe activity)Emergent, no new artifactIncomplete, only active agentsgenesis_ledger.all_balances (infer from principals)Already existsDoesn’t distinguish agents from other principals
 
-Recommendation: Wait for #6 (Unified Ontology). If agents are artifacts with has_standing=true, can_execute=true, discovery comes free via genesis_store.
+Recommendation: Wait for #6 (Unified Ontology). If agents are artifacts with has_standing=true, has_loop=true, discovery comes free via genesis_store.
 
 Depends On: #16 Artifact Discovery
 
@@ -7919,7 +7919,7 @@ Emergent Competition: Because this privilege is only "semantic" and not "mechani
 2. Spawning as "Standard Creation"
 Your view that spawning is just another artifact creation is mechanically cleaner than a "Birth Policy."
 
-The "Agent = Artifact" Rule: An agent is just an artifact where can_execute=true and has_standing=true.
+The "Agent = Artifact" Rule: An agent is just an artifact where has_loop=true and has_standing=true.
 
 The Spawning Flow:
 
