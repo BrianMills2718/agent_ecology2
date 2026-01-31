@@ -85,19 +85,21 @@ class TestMetadataIndexing:
         )
         assert "art1" in store._index_by_type["data"]
 
-        # Update type
-        store.write(
-            artifact_id="art1",
-            type="executable",
-            content="code",
-            created_by="alice",
-            executable=True,
-            code="def run(): pass",
-        )
+        # Plan #235 Phase 0: type is immutable after creation (FM-6)
+        # Attempting to change type should raise ValueError
+        with pytest.raises(ValueError, match="Cannot change artifact type"):
+            store.write(
+                artifact_id="art1",
+                type="executable",
+                content="code",
+                created_by="alice",
+                executable=True,
+                code="def run(): pass",
+            )
 
-        # Old type should not have it, new type should
-        assert "art1" not in store._index_by_type["data"]
-        assert "art1" in store._index_by_type["executable"]
+        # Index should be unchanged - artifact still indexed under original type
+        assert "art1" in store._index_by_type["data"]
+        assert "art1" not in store._index_by_type.get("executable", set())
 
     def test_index_updated_on_metadata_change(self) -> None:
         """Metadata index is updated when metadata changes."""
