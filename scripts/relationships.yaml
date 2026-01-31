@@ -166,22 +166,6 @@ couplings:
     description: "Gap closure tracking - update plan status if gap closed"
     soft: true
 
-  # Token bucket implementation
-  - sources:
-      - src/world/rate_tracker.py
-    docs:
-      - docs/plans/01_rate_allocation.md
-    description: "Token bucket implementation - update plan status"
-    soft: true
-
-  # Continuous execution
-  - sources:
-      - src/simulation/continuous_runner.py
-    docs:
-      - docs/plans/02_continuous_execution.md
-    description: "Continuous execution - update plan status"
-    soft: true
-
   # Terminology changes
   - sources:
       - src/world/ledger.py

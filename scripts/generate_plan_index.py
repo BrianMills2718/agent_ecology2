@@ -130,6 +130,10 @@ Master index of all gaps and their implementation plans.
 > **Note:** This index is auto-generated from plan files. Edit the plan files,
 > not this index. The pre-commit hook regenerates this file automatically.
 
+> **Archive:** Completed plans (1-226) are archived at
+> `/home/brian/brian_projects/archive/agent_ecology2/docs/plans/`.
+> Only active plans (planned, in-progress, deferred) remain in this directory.
+
 ### Status Key
 
 | Status | Meaning |
