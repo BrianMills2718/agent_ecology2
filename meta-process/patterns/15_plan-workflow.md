@@ -402,8 +402,33 @@ git commit -m "[Trivial] Fix formatting in config"
 1. **Use `[Trivial]` for tiny changes** - Typos, formatting, comments
 2. **Use `[Unplanned]` sparingly** - CI blocks these; reserved for emergencies
 3. **Keep plans small** - One feature per plan, not epics
-4. **Archive completed plans** - Move to `docs/plans/archive/` after a quarter
+4. **Archive completed plans** - Move to external archive to keep repo lean for AI navigation
 5. **Link PRs to plans** - PR description should reference plan
+
+## Archival Policy
+
+Completed and historical documentation should be moved out of the repo to an
+external archive. This prevents AI coding assistants (Claude Code, etc.) from
+wasting context on irrelevant material during grep/glob/exploration.
+
+**What to archive:**
+- Completed plan files (after merge)
+- Historical design discussions and research notes
+- Deprecated documentation (old handbooks, superseded specs)
+
+**What stays in repo:**
+- Active plans (planned, in-progress, deferred)
+- Current architecture docs (`docs/architecture/current/`)
+- ADRs (immutable historical record, actively referenced)
+- Glossary, security docs, design clarifications (living documents)
+- Conceptual model (`docs/CONCEPTUAL_MODEL.yaml`)
+
+**Archive location:** External directory outside the git repo (e.g.,
+`/path/to/archive/project/docs/`). Content is preserved but doesn't
+pollute searches or exploration.
+
+**Principle:** If a file is only useful for historical reference and not
+for current development decisions, it belongs in the external archive.
 
 ## See Also
 

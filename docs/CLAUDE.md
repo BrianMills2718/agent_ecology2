@@ -11,16 +11,21 @@ docs/
 │   ├── current/          # What IS implemented (source of truth)
 │   ├── target/           # What we WANT (aspirational)
 │   └── gaps/             # Comprehensive gap analysis (142 gaps)
-├── archive/              # Historical/deprecated docs
-├── plans/                # Gap tracking + implementation plans
+├── plans/                # Active implementation plans only
 ├── GLOSSARY.md           # Canonical terminology (single source)
 ├── DESIGN_CLARIFICATIONS.md  # Decision rationale archive
 └── SECURITY.md           # Security model
 
 # See also:
 meta/
-├── patterns/             # Reusable meta-process patterns (moved from docs/meta/)
-└── acceptance_gates/     # Feature specifications (moved from root)
+├── patterns/             # Reusable meta-process patterns
+└── acceptance_gates/     # Feature specifications
+
+# External archive (not in repo):
+/home/brian/brian_projects/archive/agent_ecology2/docs/
+├── plans/                # Completed plans (1-239)
+├── research/             # Historical research notes
+└── (historical docs)     # Old design discussions, handbooks, etc.
 ```
 
 ## Key Files
