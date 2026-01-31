@@ -19,6 +19,12 @@ pwd: error retrieving current directory: getcwd: cannot access parent directorie
 **Recovery:** Restart the CC session. The shell cannot be recovered within a session
 once the CWD is invalidated.
 
+**Prevention:** Don't cd into worktrees. If CWD stays in main, deleting a worktree
+can't invalidate it. The workflow is: edit via paths (`worktrees/plan-X/src/file.py`),
+commit via `git -C worktrees/plan-X/...`, never `cd worktrees/...`. Existing defenses
+(`check-cwd-valid.sh` hook, CLAUDE.md rules) enforce this. If followed, Class A
+cannot occur.
+
 See [UNDERSTANDING_CWD.md](UNDERSTANDING_CWD.md) for the theory.
 
 ### Class B: Command Timeout (complete_plan.py)
@@ -33,6 +39,8 @@ real E2E + doc coupling) with a 300s internal timeout. But CC's Bash tool has a
 **Recovery:** Kill the background task, edit plan files directly. But this leads to
 cascade failures (committing to main, branch protection rejection, messy git gymnastics).
 
+**Fix (Plan #240):** Added `--status-only` flag. `finish_pr.py` now uses it.
+
 ### Class C: Cascade from Workaround
 
 **Symptom:** After Class B timeout, session tries to commit directly to main (rejected
@@ -43,6 +51,8 @@ session gets into a bad state.
 **Root cause:** The session is trying to do simple plan status updates but the
 infrastructure forces a heavyweight workflow (full test suite for status changes,
 branch protection for doc-only edits).
+
+**Fix:** Prevented by fixing Class B.
 
 ## Defenses In Place
 
@@ -55,43 +65,30 @@ branch protection for doc-only edits).
 | CWD validation hook | `check-cwd-valid.sh` | PreToolUse hook blocks if CWD invalid |
 | CLAUDE.md rules | Root CLAUDE.md | "NEVER use cd worktrees/..." |
 | CWD doc | `meta-process/UNDERSTANDING_CWD.md` | Full explanation of the problem |
-
-## Known Limitations
-
-These defenses are **insufficient** because:
-1. `os.chdir()` in Python only affects the Python subprocess, NOT the Bash tool's tracked CWD
-2. `cd $(MAIN_DIR)` in Makefile recipe only affects Make's subshell, NOT the Bash tool
-3. The Bash tool's CWD tracking is opaque — we can't directly reset it
-4. The process CWD check only catches processes already in the worktree, not future ones
-5. `complete_plan.py` runs full test suite even for status-only updates — overkill and slow
+| `--status-only` flag | `complete_plan.py` | Plan #240: skip tests during make finish |
 
 ## What Would Actually Fix This
 
-### For Class A (CWD Invalidation):
-1. **Bash tool enhancement**: Auto-detect deleted CWD and fall back to project root
-2. **CC-level hook**: After any worktree-deleting command, verify CWD with `pwd`
-3. **Never delete worktrees from Make**: Instead, queue them for manual deletion
+### For Class A (CWD Invalidation) — PREVENTABLE:
+Don't cd into worktrees. Edit via paths, commit via `git -C`. The existing hooks
+and CLAUDE.md rules enforce this. If followed, Class A cannot occur. Once CWD IS
+invalid, the Bash tool can't recover — but the fix is prevention, not recovery.
 
-None of these are currently feasible without changes to the CC Bash tool implementation.
-
-### For Class B (Command Timeout) — FIXABLE NOW:
-1. **Add `--status-only` flag to `complete_plan.py`**: Just update status without running
-   tests. CI already validates tests before PRs merge — re-running them at completion
-   is redundant ceremony.
-2. **`finish_pr.py` should use `--skip-e2e` or `--status-only`**: The PR is already
-   CI-validated at merge time. Running tests again during `make finish` is waste.
-3. **Set explicit timeout**: When calling `complete_plan.py` from CC, use
-   `timeout 300` parameter on the Bash tool call.
+### For Class B (Command Timeout) — FIXED (Plan #240):
+1. **`--status-only` flag added to `complete_plan.py`**: Skips all test execution,
+   just updates status. Records "skipped (--status-only, CI-validated)" as evidence.
+2. **`finish_pr.py` now uses `--status-only`**: No more re-running tests after merge.
 
 ### For Class C (Cascade):
-Fixing Class B prevents Class C entirely. If plan completion doesn't hang, sessions
-don't resort to desperate git gymnastics.
+Fixed by fixing Class B. If plan completion doesn't hang, sessions don't resort
+to desperate git gymnastics.
 
 ## Incident Log
 
 ### Incident #1 - 2026-01-31
 
 **Session:** Implementing Plan #238 (defer tokenized rights)
+**Class:** A (CWD invalidation)
 **Trigger:** `make finish BRANCH=plan-238-defer-tokenized-rights PR=842`
 **Symptoms:**
 - `make finish` printed `pwd: error retrieving current directory` at start of output
@@ -104,7 +101,7 @@ don't resort to desperate git gymnastics.
   invalid when `make finish` ran
 - `gh pr view` (the previous command) succeeded because it's a network API call that
   doesn't depend on CWD
-- Unclear how CWD became invalid - possibly inherited from a previous session or
+- Unclear how CWD became invalid — possibly inherited from a previous session or
   terminal state where the user was inside a worktree that got deleted
 
 **Resolution:** Session restart required. User had to start a new CC session.
@@ -141,10 +138,8 @@ don't resort to desperate git gymnastics.
 
 **Resolution:** Session restarted by user.
 
-**Proposed fix:**
-- Add `--status-only` flag to `complete_plan.py` (skip tests, just update status)
-- `finish_pr.py` should NOT re-run tests (CI already validated the PR)
-- For already-merged PRs, plan status updates should be trivial operations
+**Follow-up:** Plan #240 (PR #851) — added `--status-only` flag to `complete_plan.py`,
+`finish_pr.py` now uses it. Class B and C should not recur.
 
 ---
 
@@ -154,6 +149,7 @@ don't resort to desperate git gymnastics.
 ### Incident #N - YYYY-MM-DD
 
 **Session:** What was being worked on
+**Class:** A, B, or C
 **Trigger:** Exact command that broke things (or that ran before breakage was noticed)
 **Symptoms:** What happened (error messages, which commands failed)
 **Analysis:** Root cause investigation findings
