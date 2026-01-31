@@ -252,6 +252,9 @@ Master index of all gaps and their implementation plans.
 | 231 | [Plan 231: Tight Coupling Between has_standing and Ledger Registration](231_has_standing_ledger_coupling.md) | Medium | 📋 Planned | - |
 | 232 | [Plan 232: Skip Plan Completion Flag in finish_pr.py](232_skip_complete_flag.md) | Medium | 📋 Planned | Fast iteration on documentation work |
 | 233 | [Refactor CONCEPTUAL_MODEL.yaml for Conciseness](233_conceptual_model_refactor.md) | Medium | ✅ Complete | - |
+| 234 | [Plan 234: ADR-0024 Handle Request Migration](234_adr0024_handle_request_migration.md) | Medium | 📋 Planned | Full artifact autonomy, custom access control patterns |
+| 235 | [Plan 235: Kernel-Protected Artifacts](235_kernel_protected_artifacts.md) | High | 📋 Planned | #236 (Charge Delegation) |
+| 236 | [Plan 236: Charge Delegation](236_charge_delegation.md) | High | 📋 Planned | None (enables charge_to for Plan #234) |
 ---
 
 ## TDD Workflow
