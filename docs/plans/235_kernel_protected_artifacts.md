@@ -10,13 +10,12 @@
 ## Gap
 
 **Current:**
-- Rights artifacts (Plan #166) store amounts in JSON content
-- `update_right_amount()` in `src/world/rights.py` modifies artifact content with NO permission checking
 - Any artifact with write permission can have its content/metadata modified via `edit_artifact`
 - No mechanism to mark artifacts as "kernel-only modifiable"
 - Reserved ID namespaces (like `charge_delegation:{payer_id}`) have no creation restrictions
 - **`type` field is mutable** - used for kernel branching but can be changed via `write_artifact` (type-confusion vulnerability)
 - **`access_contract_id` is mutable by anyone with write permission** - policy-pointer swap vulnerability
+- **Note:** `src/world/rights.py` was removed per ADR-0025 (tokenized rights deferred), but these protections are still needed for any value-storing artifacts (triggers, configs, future tokens)
 
 **Target:**
 - `kernel_protected: true` system field prevents `edit_artifact`/`write_artifact` modifications
@@ -37,15 +36,14 @@
 
 ## References Reviewed
 
-- `src/world/rights.py:update_right_amount()` - NO permission check before modifying artifact content
 - `src/world/action_executor.py:469-473` - Metadata merge happens without field restrictions
 - `src/world/action_executor.py:_execute_edit()` - edit_artifact path
 - `src/world/action_executor.py:467-468` - `access_contract_id` modifiable via edit
 - `src/world/artifacts.py:793-861` - **Central enforcement point**: `ArtifactStore.write()`
 - `src/world/artifacts.py:802` - `artifact.type = type` allows type mutation
 - `src/world/artifacts.py:810-811` - `access_contract_id` mutation path
-- `src/world/rights.py:250,277,312,383,471` - Kernel branches on `artifact.type != "right"`
 - `src/world/triggers.py:209` - Kernel branches on `artifact.type != "trigger"`
+- ~~`src/world/rights.py`~~ - Removed per ADR-0025 (tokenized rights deferred)
 - `docs/adr/0016-created-by-not-owner.md` - Immutability pattern for `created_by`
 - `docs/CONCEPTUAL_MODEL.yaml` - Target architecture definitions
 - ChatGPT dialogue (2026-01-31) - Identified rights forgery, ID squatting, type-confusion, policy-pointer swap attacks
@@ -77,8 +75,8 @@
 
 - `src/world/action_executor.py` (modify) - Add kernel_protected check in edit/write paths
 - `src/world/artifacts.py` (modify) - Add reserved ID namespace validation in create
-- `src/world/rights.py` (modify) - Use kernel primitives instead of direct content modification
 - `src/world/kernel_interface.py` (modify) - Add `modify_protected_artifact()` primitive
+- Note: `src/world/rights.py` removed per ADR-0025. When tokenized rights resume, they would use these kernel primitives.
 - `tests/unit/test_kernel_protected.py` (create)
 - `tests/integration/test_rights_protection.py` (create)
 
@@ -96,7 +94,7 @@
 | `action_executor.py` | Check `kernel_protected` system field before allowing edit/write | Phase 1 |
 | `artifacts.py` | Validate reserved ID prefixes on artifact creation | Phase 1 |
 | `artifacts.py` | Add `kernel_protected` as system field (not metadata) | Phase 1 |
-| `rights.py` | Route through kernel primitive instead of direct `artifact.content =` | Phase 1 |
+| ~~`rights.py`~~ | ~~Route through kernel primitive~~ (removed per ADR-0025) | N/A |
 | `kernel_interface.py` | Add `modify_protected_content()` for kernel-only updates | Phase 1 |
 
 ### Steps
@@ -183,16 +181,9 @@ def modify_protected_content(self, artifact_id: str, new_content: str) -> bool:
     return True
 ```
 
-**1.4. Update rights.py to use kernel primitive**
-```python
-def update_right_amount(kernel_actions, artifact_id, new_amount) -> bool:
-    # Use kernel primitive instead of direct modification
-    right_data = RightData.from_json(artifact.content)
-    right_data.amount = new_amount
-    return kernel_actions.modify_protected_content(artifact_id, right_data.to_json())
-```
+**1.4. (Deferred)** ~~Update rights.py to use kernel primitive~~ - Removed per ADR-0025. When tokenized rights resume, they would use `modify_protected_content()`.
 
-**1.5. Mark rights artifacts as kernel_protected on creation**
+**1.5. (Deferred)** ~~Mark rights artifacts as kernel_protected on creation~~ - Removed per ADR-0025.
 
 ---
 
@@ -228,7 +219,7 @@ def update_right_amount(kernel_actions, artifact_id, new_amount) -> bool:
 
 | Test Pattern | Why |
 |--------------|-----|
-| `tests/unit/test_rights*.py` | Rights functionality preserved |
+| ~~`tests/unit/test_rights*.py`~~ | ~~Rights functionality~~ (removed per ADR-0025) |
 | `tests/unit/test_executor*.py` | Executor behavior unchanged for non-protected artifacts |
 | `tests/integration/test_artifact*.py` | Artifact operations work for normal artifacts |
 

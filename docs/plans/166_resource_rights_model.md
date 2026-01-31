@@ -1,8 +1,26 @@
 # Plan 166: Resource Rights Model
 
-**Status:** ✅ Complete
+**Status:** ⏸️ Partially Complete (Phases 1-3, 5 done; Phase 4 deferred)
 **Priority:** High
 **Complexity:** High
+
+## Deferral Note (2026-01-31)
+
+**Phases 1-3, 5 were implemented but Phase 4 (Kernel Enforcement) was never completed.**
+
+The `consume_from_*_right()` functions exist in `kernel_interface.py` but are never called in production. All actual resource enforcement uses the ledger/quota system:
+- `ledger.spend_resource("llm_budget", cost)`
+- `world.get_available_capacity(agent_id, "disk")`
+
+Additionally, the implementation lacks critical invariants for token soundness:
+- `artifact.type` is mutable (allows forging)
+- `artifact.content` is mutable via write/edit (allows inflating amounts)
+- No `holder_id` field (ownership conflated with `created_by`)
+- No atomic settlement
+
+**Decision:** Defer tokenized rights. See ADR-0025 and Plan #238 for details.
+
+**Code recovery:** `git show 8072654:src/world/rights.py`
 
 ## Problem
 

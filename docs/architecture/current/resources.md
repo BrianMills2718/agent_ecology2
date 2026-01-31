@@ -2,59 +2,22 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-01-25 (Plan #166 - Rights as Artifacts)
+**Last verified:** 2026-01-31 (Plan #238 - Tokenized rights deferred, see ADR-0025)
 
 **See target:** [../target/resources.md](../target/resources.md)
 
 ---
 
-## Rights-Based Resource Model (Plan #166)
+## Resource Enforcement Model
 
-Plan #166 introduced **rights as artifacts** - a model where resource permissions are tradeable artifacts, separate from usage tracking.
+Resources are enforced via the **ledger/quota system**:
+- `ledger.spend_resource("llm_budget", cost)` - depletable resources
+- `world.get_available_capacity(agent_id, "disk")` - allocatable resources
+- `RateTracker` - renewable resources (rolling window)
 
-### Three Concerns
+Quota allocation is managed by `genesis/rights_registry.py` (the `GenesisRightsRegistry`).
 
-| Concern | Purpose | Tradeable? | Stored As |
-|---------|---------|------------|-----------|
-| **Usage** | Metrics (what was used) | No | `UsageTracker` |
-| **Rights** | What you're allowed to use | Yes | Artifacts with `type="right"` |
-| **Capacity** | External limits | No | Config |
-
-### Right Types
-
-| Right Type | Resource | Consumable? | Example |
-|------------|----------|-------------|---------|
-| `dollar_budget` | LLM API cost | Yes (shrinks) | "Can spend $0.50" |
-| `rate_capacity` | API calls/window | Renewable | "100 calls/min to gemini" |
-| `disk_quota` | Storage bytes | Allocatable | "Can use 100KB" |
-
-### Key Files
-
-| File | Purpose |
-|------|---------|
-| `src/world/rights.py` | RightType enum, RightData dataclass, create/query/update functions |
-| `src/world/usage_tracker.py` | UsageTracker for per-model metrics |
-| `src/world/kernel_interface.py` | Rights-based checking/consumption methods |
-
-### Trading Rights
-
-Rights are artifacts, so they use existing trading mechanisms:
-
-```python
-# Via escrow
-invoke_artifact("genesis_escrow", "deposit", {"artifact_id": "my_dollar_budget_right", "price": 50})
-
-# Direct transfer
-invoke_artifact("genesis_ledger", "transfer_ownership", {"artifact_id": "my_right", "to_id": "other_agent"})
-
-# Split a right
-from src.world.rights import split_right
-split_right(artifact_store, "my_right", [0.25, 0.25], caller_id)  # $0.50 → two $0.25 rights
-
-# Merge rights
-from src.world.rights import merge_rights
-merge_rights(artifact_store, ["right1", "right2"], caller_id)  # Combine into one
-```
+**Note:** Plan #166 previously implemented tokenized rights-as-artifacts (`src/world/rights.py`), but these were deferred and removed per ADR-0025. The design was sound but lacked critical token soundness invariants (type immutability, atomic settlement). See ADR-0025 for resumption criteria and restore recipe.
 
 ---
 
