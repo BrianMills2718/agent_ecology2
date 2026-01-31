@@ -19,7 +19,7 @@ CC instances will bypass the intended process unless hooks actively block non-co
 - `.claude/hooks/protect-main.sh` - existing hook pattern for blocking edits
 - `.claude/hooks/block-worktree-remove.sh` - existing hook pattern for bash commands
 - `.claude/settings.json` - hook configuration structure
-- `docs/meta/META_TEMPLATE_SPEC_V0.1.md:449-480` - hooks specification
+- `meta-process/patterns/META_TEMPLATE_SPEC_V0.1.md:449-480` - hooks specification
 - `scripts/check_claims.py` - existing claims checking logic
 - `docs/plans/TEMPLATE.md` - plan template format (for parsing)
 
