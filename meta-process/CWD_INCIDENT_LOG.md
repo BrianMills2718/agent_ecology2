@@ -66,13 +66,15 @@ branch protection for doc-only edits).
 | CLAUDE.md rules | Root CLAUDE.md | "NEVER use cd worktrees/..." |
 | CWD doc | `meta-process/UNDERSTANDING_CWD.md` | Full explanation of the problem |
 | `--status-only` flag | `complete_plan.py` | Plan #240: skip tests during make finish |
+| Worktree CWD block | `warn-worktree-cwd.sh` | Blocks Read/Glob when CWD is in a worktree (Incident #3 fix) |
 
 ## What Would Actually Fix This
 
-### For Class A (CWD Invalidation) — PREVENTABLE:
-Don't cd into worktrees. Edit via paths, commit via `git -C`. The existing hooks
-and CLAUDE.md rules enforce this. If followed, Class A cannot occur. Once CWD IS
-invalid, the Bash tool can't recover — but the fix is prevention, not recovery.
+### For Class A (CWD Invalidation) — FIXED (Incident #3):
+`warn-worktree-cwd.sh` now blocks (exit 2) instead of warning when CWD is inside
+a worktree. Read/Glob are blocked; Bash is not (so the model can `cd` to main).
+This enforces "don't operate from inside a worktree" at the hook level, even if
+the CC session was launched from a worktree directory.
 
 ### For Class B (Command Timeout) — FIXED (Plan #240):
 1. **`--status-only` flag added to `complete_plan.py`**: Skips all test execution,
@@ -140,6 +142,50 @@ to desperate git gymnastics.
 
 **Follow-up:** Plan #240 (PR #851) — added `--status-only` flag to `complete_plan.py`,
 `finish_pr.py` now uses it. Class B and C should not recur.
+
+### Incident #3 - 2026-01-31
+
+**Session:** implement_0611 — Implementing Plan #236 (charge delegation)
+**Class:** A (CWD invalidation)
+**Trigger:** `make finish BRANCH=plan-236-charge-delegation PR=855`
+**Symptoms:**
+- `make finish` succeeded: PR merged, worktree deleted, plan marked complete
+- ALL subsequent Bash commands failed with exit code 1 (no output)
+- Even `cd /home/brian/brian_projects/agent_ecology2 && pwd` failed
+- Even `echo "hello"` failed — shell completely broken
+- Non-bash tools (Read, Glob, WebFetch) eventually also failed due to hooks
+  running bash internally
+- Session had to be abandoned and restarted
+
+**Analysis:**
+- CC was **launched from inside the worktree**: CWD was
+  `~/brian_projects/agent_ecology2/worktrees/plan-236-charge-delegation`
+  (visible in session header)
+- `warn-worktree-cwd.sh` hook fires on Read|Glob and warns, but does NOT
+  block (exit 0 always). Warning was likely emitted but session continued
+- During implementation, git commands correctly used absolute paths
+  (`git -C /home/brian/...`), so the session worked fine until deletion
+- `make finish` called `finish_pr.py` which does `os.chdir(project_root)` —
+  but this only resets the **Python subprocess** CWD, not the CC bash tool's
+  persistent CWD
+- Makefile's `cd $(MAIN_DIR) &&` similarly only affects the make subprocess
+- After worktree deletion, CC's persistent bash CWD pointed to a nonexistent
+  directory. The `check-cwd-valid.sh` hook correctly detected this on the
+  next command, but detection ≠ prevention — the damage was already done
+
+**Gap identified:**
+No hook blocks `make finish` (or `finish_pr.py`) when CC's CWD is inside
+the worktree about to be deleted. Existing safeguards operate in child
+processes; the parent bash shell CWD is never corrected.
+
+**Resolution:** Session restart required. New session pulled main and continued.
+
+**Follow-up:**
+- Added this incident entry
+- Upgraded `warn-worktree-cwd.sh` from warning (exit 0) to **block** (exit 2):
+  if CWD is inside a worktree, Read/Glob are blocked until the model runs
+  `cd /path/to/main`. Bash commands are NOT blocked so the model can fix itself.
+  This stops the problem at the source — no worktree CWD means no deletion risk.
 
 ---
 
