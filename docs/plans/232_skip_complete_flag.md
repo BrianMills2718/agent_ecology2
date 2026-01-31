@@ -1,6 +1,6 @@
 # Plan 232: Skip Plan Completion Flag in finish_pr.py
 
-**Status:** Planned
+**Status:** ✅ Complete
 **Priority:** Medium
 **Blocked By:** None
 **Blocks:** Fast iteration on documentation work
@@ -29,6 +29,6 @@ Add `--skip-complete` flag to `finish_pr.py` and `SKIP_COMPLETE=1` to Makefile.
 
 ## Acceptance Criteria
 
-- [ ] `--skip-complete` flag added to finish_pr.py
-- [ ] Makefile supports SKIP_COMPLETE=1
-- [ ] Documentation updated
+- [x] `--skip-complete` flag added to finish_pr.py
+- [x] Makefile supports SKIP_COMPLETE=1
+- [x] Documentation updated (CLAUDE.md line 49)
