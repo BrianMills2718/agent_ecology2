@@ -34,6 +34,22 @@ if TYPE_CHECKING:
     from .world import World
 
 
+def _artifact_has_handle_request(artifact: Artifact) -> bool:
+    """Check if artifact uses handle_request interface (ADR-0024).
+
+    Plan #234: Artifacts with handle_request() handle their own access
+    control. The kernel skips permission checking and provides verified
+    caller_id instead.
+
+    Detection mirrors validate_code()'s "def run(" check.
+    """
+    if artifact.genesis_methods is not None:
+        return False  # Genesis: existing dispatch in Phase 1
+    if not artifact.code:
+        return False
+    return "def handle_request(" in artifact.code
+
+
 def get_error_message(error_type: str, **kwargs: Any) -> str:
     """Get a configurable error message with placeholders filled in.
 
@@ -566,25 +582,28 @@ class ActionExecutor:
                     error_details={"artifact_id": artifact_id, "executable": False},
                 )
 
-            # Check invoke permission via contracts (ADR-0019: pass method/args in context)
-            executor = get_executor()
-            allowed, reason = executor._check_permission(
-                intent.principal_id, "invoke", artifact, method=method_name, args=args
-            )
-            if not allowed:
-                duration_ms = (time.perf_counter() - start_time) * 1000
-                self._log_invoke_failure(
-                    intent.principal_id, artifact_id, method_name,
-                    duration_ms, "permission_denied",
-                    reason
+            # Plan #234: Skip kernel permission check for handle_request artifacts.
+            # ADR-0024: Artifact handles its own access control in handle_request().
+            if not _artifact_has_handle_request(artifact):
+                # Legacy path: kernel checks permission (ADR-0019)
+                executor = get_executor()
+                allowed, reason = executor._check_permission(
+                    intent.principal_id, "invoke", artifact, method=method_name, args=args
                 )
-                return ActionResult(
-                    success=False,
-                    message=get_error_message("access_denied_invoke", artifact_id=artifact_id),
-                    error_code=ErrorCode.NOT_AUTHORIZED.value,
-                    error_category=ErrorCategory.PERMISSION.value,
-                    retriable=False,
-                )
+                if not allowed:
+                    duration_ms = (time.perf_counter() - start_time) * 1000
+                    self._log_invoke_failure(
+                        intent.principal_id, artifact_id, method_name,
+                        duration_ms, "permission_denied",
+                        reason
+                    )
+                    return ActionResult(
+                        success=False,
+                        message=get_error_message("access_denied_invoke", artifact_id=artifact_id),
+                        error_code=ErrorCode.NOT_AUTHORIZED.value,
+                        error_category=ErrorCategory.PERMISSION.value,
+                        retriable=False,
+                    )
 
             # Plan #161: Auto-describe method
             if method_name == "describe":
@@ -677,7 +696,14 @@ class ActionExecutor:
             if artifact.genesis_methods is not None:
                 return self._invoke_genesis_method(intent, artifact, method_name, effective_args, start_time)
 
-            # Regular artifact code execution path
+            # Plan #234: handle_request dispatch (ADR-0024)
+            if _artifact_has_handle_request(artifact):
+                return self._invoke_user_artifact(
+                    intent, artifact, method_name, effective_args, start_time,
+                    entry_point="handle_request",
+                )
+
+            # Legacy: run() dispatch
             return self._invoke_user_artifact(intent, artifact, method_name, effective_args, start_time)
 
         # Artifact not found
@@ -1493,6 +1519,7 @@ class ActionExecutor:
         method_name: str,
         args: Any,
         start_time: float,
+        entry_point: str = "run",
     ) -> ActionResult:
         """Execute a user-defined artifact method.
 
@@ -1576,6 +1603,8 @@ class ActionExecutor:
             ledger=w.ledger,
             artifact_store=w.artifacts,
             world=w,
+            entry_point=entry_point,
+            method_name=method_name if entry_point == "handle_request" else None,
         )
 
         # Extract resource consumption

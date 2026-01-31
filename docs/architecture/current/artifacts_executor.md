@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-31 (Plan #235 Phase 1 - kernel_protected, reserved ID namespaces)
+**Last verified:** 2026-01-31 (Plan #234 Phase 1 - handle_request interface, ADR-0024)
 
 ---
 
@@ -30,7 +30,7 @@ class Artifact:
     created_at: str      # ISO timestamp
     updated_at: str      # ISO timestamp
     executable: bool     # Can be invoked?
-    code: str            # Python code (must define run())
+    code: str            # Python code (must define run() or handle_request())
     policy: dict         # Access control and pricing
     # Soft deletion fields (Plan #18)
     deleted: bool = False         # Is artifact deleted?
@@ -172,6 +172,40 @@ If a dependency is deleted after artifact creation:
 |------|------------|------|----------|
 | Data | False | "" | Notes, configs, documents |
 | Executable | True | `def run()...` | Services, contracts, tools |
+| Executable (handle_request) | True | `def handle_request()...` | Self-access-controlled services (ADR-0024) |
+
+### handle_request Interface (Plan #234, ADR-0024)
+
+Artifacts can define `handle_request(caller, operation, args)` instead of `run(*args)`. These artifacts handle their own access control — the kernel skips permission checking and provides verified `caller_id`.
+
+**Key differences from run():**
+
+| Aspect | `run(*args)` | `handle_request(caller, op, args)` |
+|--------|-------------|-------------------------------------|
+| Permission check | Kernel checks via `access_contract_id` | Skipped — artifact handles it |
+| Caller identity | Not provided to code | `caller` parameter (verified by kernel) |
+| Operation routing | Single entry point | `operation` parameter for method dispatch |
+| Arguments | Positional `*args` | List passed as `args` parameter |
+
+**Example artifact code:**
+
+```python
+def handle_request(caller, operation, args):
+    # Self-handled access control
+    if operation == "admin" and caller != "owner_id":
+        return {"success": False, "error": "Admin access denied"}
+
+    if operation == "read":
+        return {"success": True, "result": "public data"}
+    elif operation == "write":
+        return {"success": True, "result": "written"}
+    else:
+        return {"success": False, "error": f"Unknown operation: {operation}"}
+```
+
+**Detection:** The kernel detects handle_request artifacts by checking `"def handle_request(" in artifact.code`. Genesis artifacts are excluded (they use method dispatch in Phase 1).
+
+**Backwards compatibility:** Existing `run()` artifacts are unchanged. The kernel permission check still applies to them.
 
 
 ### Interface Reserved Terms (Plan #54)
@@ -438,9 +472,9 @@ def run():
     pay("alice", 10)             # Transfer from artifact wallet
 ```
 
-#### `execute_with_invoke(code, args, caller_id, artifact_id, ledger, artifact_store, world)` - Full composition
+#### `execute_with_invoke(code, args, caller_id, artifact_id, ledger, artifact_store, world, entry_point, method_name)` - Full composition
 
-Adds `invoke()` for artifact-to-artifact calls:
+Adds `invoke()` for artifact-to-artifact calls. The `entry_point` parameter selects `run` (default) or `handle_request` dispatch. When `entry_point="handle_request"`, the function calls `handle_request(caller_id, method_name, args)` instead of `run(*args)`.
 
 ```python
 def run():
