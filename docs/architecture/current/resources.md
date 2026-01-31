@@ -181,6 +181,73 @@ def can_afford_scrip(self, principal_id: str, amount: int) -> bool:
 
 ---
 
+## Charge Delegation (Plan #236)
+
+Principals can authorize others to charge their accounts, enabling "target pays" and "pool pays" economic patterns.
+
+### Core Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Delegation grant** | Principal A authorizes principal B to charge A's account |
+| **`charge_to` directive** | Artifact metadata field that controls who pays on invocation |
+| **Rate caps** | Per-call and per-window limits on delegated charges |
+
+### `charge_to` Resolution
+
+Set in artifact metadata. Resolved during `_invoke_user_artifact()` settlement:
+
+| Value | Payer | Use Case |
+|-------|-------|----------|
+| `"caller"` (default) | Invoker pays | Normal artifact invocation |
+| `"target"` | `artifact.created_by` pays | Creator-sponsored services |
+| `"contract"` | `artifact.created_by` pays | Contract-sponsored invocations |
+| `"pool:{id}"` | Principal `{id}` pays | Third-party sponsorship |
+
+**Security:** Payer resolution uses only the immutable `created_by` field, never mutable metadata. This prevents forgery attacks where an artifact's metadata is modified to redirect charges.
+
+### Delegation Artifacts
+
+Delegations are stored as kernel-protected artifacts:
+- **ID format:** `charge_delegation:{payer_id}` (reserved namespace, Plan #235)
+- **Type:** `"charge_delegation"`
+- **Content:** JSON with delegations list
+- **Protection:** `kernel_protected=True` — only kernel can modify
+
+### Rate Limiting
+
+Each delegation grant includes optional caps:
+
+| Cap | Default | Purpose |
+|-----|---------|---------|
+| `max_per_call` | None (unlimited) | Maximum scrip per single invocation |
+| `max_per_window` | None (unlimited) | Maximum cumulative scrip in window |
+| `window_seconds` | 3600 | Rolling window duration |
+| `expires_at` | None (never) | ISO timestamp for delegation expiry |
+
+**Window tracking** is ephemeral (in-memory deque, same as RateTracker). Windows reset on restart. History is bounded to 1000 entries per payer-charger pair.
+
+### Settlement Flow
+
+In `_invoke_user_artifact()` (`src/world/action_executor.py`):
+
+1. Read `charge_to` from artifact metadata (default: `"caller"`)
+2. Resolve payer via `DelegationManager.resolve_payer()`
+3. If payer != caller, check delegation via `authorize_charge()`
+4. Check payer's balance (affordability)
+5. Deduct from payer, credit to artifact owner
+6. Record charge for rate window tracking
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/world/delegation.py` | `DelegationManager`, `DelegationEntry`, `resolve_payer()` |
+| `src/world/kernel_interface.py` | `grant_charge_delegation()`, `revoke_charge_delegation()`, `authorize_charge()` |
+| `src/world/action_executor.py` | Settlement integration (~line 1511) |
+
+---
+
 ## Cost Types
 
 ### Thinking Cost (LLM Tokens)

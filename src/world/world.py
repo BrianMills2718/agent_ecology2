@@ -41,6 +41,7 @@ from .resource_manager import ResourceManager, ResourceType
 from .resource_metrics import ResourceMetricsProvider
 from .mint_auction import MintAuction, KernelMintSubmission, KernelMintResult
 from .triggers import TriggerRegistry
+from .delegation import DelegationManager
 
 from ..config import get as config_get, compute_per_agent_quota, PerAgentQuota
 
@@ -179,6 +180,8 @@ class World:
     _installed_libraries: dict[str, list[tuple[str, str | None]]]
     # Global ID registry for collision prevention (Plan #7)
     id_registry: IDRegistry
+    # Charge delegation management (Plan #236)
+    delegation_manager: DelegationManager
 
     def __init__(self, config: ConfigDict, run_id: str | None = None) -> None:
         self.config = config
@@ -374,6 +377,9 @@ class World:
         # NOTE: _quota_limits and _quota_usage are initialized earlier (line ~222)
         # to ensure they exist before rights_registry.ensure_agent() is called
 
+
+        # Charge delegation management (Plan #236)
+        self.delegation_manager = DelegationManager(self.artifacts, self.ledger)
 
         # Log world init
         default_quotas = self.rights_config.get("default_quotas", {})

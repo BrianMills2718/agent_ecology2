@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-26 (Updated doc_coupling.yaml → relationships.yaml reference)
+Last verified: 2026-01-31 (Date bump - pre-existing coupling violation, content still accurate)
 
 ---
 
