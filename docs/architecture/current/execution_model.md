@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-25 (Plan #213 - Re-verified, learning changes do not affect execution model)
+**Last verified:** 2026-01-31 (Plan #239 - Fixed action type count: 6 → 11, fixed _execute_edit bug)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
@@ -45,9 +45,11 @@ See `docs/architecture/current/agents.md` for artifact-backed agent details.
 
 ---
 
-## The Narrow Waist: 6 Action Types + Reasoning
+## The Narrow Waist: 11 Action Types + Reasoning
 
-All agent actions must be one of these 6 types (`src/world/actions.py`):
+All agent actions must be one of these types (`src/world/actions.py`):
+
+### Core Physics Verbs (6)
 
 | Action Type | Purpose |
 |-------------|---------|
@@ -57,6 +59,16 @@ All agent actions must be one of these 6 types (`src/world/actions.py`):
 | `edit_artifact` | Surgical edit of artifact content (Plan #131) |
 | `invoke_artifact` | Call method on artifact |
 | `delete_artifact` | Delete artifact and free disk quota |
+
+### Kernel & Context Actions (5)
+
+| Action Type | Purpose |
+|-------------|---------|
+| `query_kernel` | Direct kernel state queries (Plan #184) |
+| `subscribe_artifact` | Subscribe to artifact change notifications (Plan #191) |
+| `unsubscribe_artifact` | Unsubscribe from artifact notifications (Plan #191) |
+| `configure_context` | Control context section visibility (Plan #192) |
+| `modify_system_prompt` | Self-modify system prompt sections (Plan #194) |
 
 **Note:** There is no `transfer` action. All transfers go through `genesis_ledger.transfer()`.
 
