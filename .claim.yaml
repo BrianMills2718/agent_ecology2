@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-230-rename-can-execute
-task: Rename can_execute to has_loop
-claimed_at: '2026-01-31T20:27:57Z'
-session_id: 50490076-6df0-426a-a672-4a823b74f6ff
-plan: 230
+cc_id: plan-235-kernel-protected-phase1
+task: 'Implement Plan 235 Phase 1: kernel_protected + reserved namespaces'
+claimed_at: '2026-01-31T20:48:00Z'
+session_id: 6bcd724e-ac37-4753-a67e-af9eb16a88ef
+plan: 235

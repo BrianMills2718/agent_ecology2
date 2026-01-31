@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-31 (Plan #235 Phase 0 - type immutability, creator-only access_contract_id)
+**Last verified:** 2026-01-31 (Plan #235 Phase 1 - kernel_protected, reserved ID namespaces)
 
 ---
 
@@ -46,7 +46,7 @@ class Artifact:
     metadata: dict[str, Any] = {}  # Arbitrary key-value pairs for categorization
 ```
 
-### System Field Immutability (Plan #235 Phase 0)
+### System Field Immutability (Plan #235)
 
 Certain artifact fields are immutable after creation:
 
@@ -54,12 +54,30 @@ Certain artifact fields are immutable after creation:
 |-------|-----------|-------------|
 | `id` | Immutable (structural) | N/A (dict key) |
 | `created_by` | Immutable (ADR-0016) | Convention (no setter) |
-| `type` | **Immutable after creation** (Plan #235 FM-6) | `ArtifactStore.write()` |
-| `access_contract_id` | **Creator-only** (Plan #235 FM-7) | `ArtifactStore.write()`, `_execute_edit()` |
+| `type` | **Immutable after creation** (Phase 0, FM-6) | `ArtifactStore.write()` |
+| `access_contract_id` | **Creator-only** (Phase 0, FM-7) | `ArtifactStore.write()`, `_execute_edit()` |
+| `kernel_protected` | **System field** (Phase 1, FM-1) | Not user-writable; set by kernel only |
 
 **Why `type` is immutable:** The kernel branches on artifact type (`trigger`, `right`, `config`, etc.). Allowing type mutation enables type-confusion attacks where an attacker flips a normal artifact to a privileged type.
 
 **Why `access_contract_id` is creator-only:** This field determines who can access the artifact. Allowing any writer to change it enables policy-pointer swap attacks (changing to a permissive contract).
+
+### Kernel-Protected Artifacts (Plan #235 Phase 1)
+
+Artifacts with `kernel_protected=True` cannot be modified via user-facing paths (`write_artifact`, `edit_artifact`). Only kernel primitives (`modify_protected_content()`) can update them.
+
+**Enforcement layers:**
+1. `ArtifactStore.write()` - raises `PermissionError` if artifact is kernel_protected
+2. `_execute_edit()` - returns error ActionResult before any modification
+3. `_execute_write()` - returns error ActionResult before any modification
+
+**Reserved ID namespaces** (FM-4):
+| Prefix | Who Can Create | Purpose |
+|--------|---------------|---------|
+| `charge_delegation:<owner>` | Only `<owner>` | Delegation records |
+| `right:*` | Only `system` | Rights artifacts (kernel-managed) |
+
+**Kernel primitive:** `modify_protected_content(artifact_id, content=..., code=..., metadata=...)` bypasses protection for kernel-only updates.
 
 ### Artifact Metadata (Plan #168)
 

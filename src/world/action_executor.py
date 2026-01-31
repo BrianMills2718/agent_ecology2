@@ -245,6 +245,17 @@ class ActionExecutor:
         # Check if artifact exists (for update permission check)
         existing = w.artifacts.get(intent.artifact_id)
         if existing:
+            # Plan #235 Phase 1: Block writes to kernel_protected artifacts
+            if getattr(existing, "kernel_protected", False):
+                return ActionResult(
+                    success=False,
+                    message=f"Artifact '{intent.artifact_id}' is kernel_protected: "
+                            "modification only via kernel primitives",
+                    error_code=ErrorCode.NOT_AUTHORIZED.value,
+                    error_category=ErrorCategory.PERMISSION.value,
+                    retriable=False,
+                    error_details={"artifact_id": intent.artifact_id},
+                )
             # Check write permission via contracts
             executor = get_executor()
             allowed, reason = executor._check_permission(intent.principal_id, "write", existing)
@@ -395,6 +406,18 @@ class ActionExecutor:
             return ActionResult(
                 success=False,
                 message=f"Cannot edit genesis artifact {intent.artifact_id}",
+                error_code=ErrorCode.NOT_AUTHORIZED.value,
+                error_category=ErrorCategory.PERMISSION.value,
+                retriable=False,
+                error_details={"artifact_id": intent.artifact_id},
+            )
+
+        # Plan #235 Phase 1: Block edits to kernel_protected artifacts
+        if getattr(artifact, "kernel_protected", False):
+            return ActionResult(
+                success=False,
+                message=f"Artifact '{intent.artifact_id}' is kernel_protected: "
+                        "modification only via kernel primitives",
                 error_code=ErrorCode.NOT_AUTHORIZED.value,
                 error_category=ErrorCategory.PERMISSION.value,
                 retriable=False,
