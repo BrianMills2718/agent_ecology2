@@ -158,9 +158,21 @@ couplings:
   # SOFT COUPLINGS (warning-only unless strict_doc_coupling: true)
   # ---------------------------------------------------------------------------
 
-  # Gap closure tracking
+  # Gap closure tracking (excludes ci.md — CI docs don't close plans)
   - sources:
-      - docs/architecture/current/*.md
+      - docs/architecture/current/execution_model.md
+      - docs/architecture/current/agents.md
+      - docs/architecture/current/resources.md
+      - docs/architecture/current/genesis_artifacts.md
+      - docs/architecture/current/artifacts_executor.md
+      - docs/architecture/current/configuration.md
+      - docs/architecture/current/supporting_systems.md
+      - docs/architecture/current/agent_cognition.md
+      - docs/architecture/current/contracts.md
+      - docs/architecture/current/mint.md
+      - docs/architecture/current/coordination_patterns.md
+      - docs/architecture/current/genesis_agents.md
+      - docs/architecture/current/running.md
     docs:
       - docs/plans/CLAUDE.md
     description: "Gap closure tracking - update plan status if gap closed"
@@ -222,6 +234,75 @@ couplings:
     description: "Resource types and scrip documented in conceptual model"
     soft: true
 
+  # Agent cognitive architecture
+  - sources:
+      - src/agents/agent.py
+      - src/agents/workflow.py
+      - src/agents/state_machine.py
+      - src/agents/memory.py
+      - src/agents/reflex.py
+    docs:
+      - docs/architecture/current/agent_cognition.md
+    description: "Agent decision-making, state machine, memory, workflow"
+
+  # Contract system
+  - sources:
+      - src/world/contracts.py
+      - src/world/genesis_contracts.py
+      - src/world/permission_checker.py
+    docs:
+      - docs/architecture/current/contracts.md
+    description: "Contract types, permission checking, genesis contracts"
+
+  # Mint system
+  - sources:
+      - src/world/genesis/mint.py
+      - src/world/mint_scorer.py
+      - src/world/mint_auction.py
+    docs:
+      - docs/architecture/current/mint.md
+    description: "Mint auction, scoring, genesis mint"
+
+  # Coordination patterns
+  - sources:
+      - src/world/genesis/escrow.py
+      - src/world/artifacts.py
+      - src/world/executor.py
+      - src/world/kernel_interface.py
+    docs:
+      - docs/architecture/current/coordination_patterns.md
+    description: "Coordination patterns using escrow, artifacts, kernel interface"
+    soft: true
+
+  # Genesis agents
+  - sources:
+      - src/agents/loader.py
+      - src/agents/agent.py
+    docs:
+      - docs/architecture/current/genesis_agents.md
+    description: "Agent loading and genesis agent configuration"
+    soft: true
+
+  # Running guide
+  - sources:
+      - src/simulation/runner.py
+      - src/simulation/checkpoint.py
+      - src/config.py
+      - src/dashboard/server.py
+    docs:
+      - docs/architecture/current/running.md
+    description: "Simulation runner, checkpoint, config, dashboard"
+    soft: true
+
+  # Security model
+  - sources:
+      - src/world/executor.py
+      - src/simulation/runner.py
+    docs:
+      - docs/SECURITY.md
+    description: "Executor security model, runner budget enforcement"
+    soft: true
+
 # =============================================================================
 # ORPHAN DOC DETECTION
 # =============================================================================
@@ -248,3 +329,5 @@ orphan_detection:
     - docs/architecture/current/CLAUDE.md   # Directory meta-doc
     - docs/architecture/current/README.md   # Directory index
     - docs/architecture/target/             # Aspirational docs (not code-coupled)
+    - docs/DESIGN_CLARIFICATIONS.md        # Design rationale archive (not code-coupled)
+    - docs/SCHEMA_AUDIT.md                 # Historical audit report (not code-coupled)

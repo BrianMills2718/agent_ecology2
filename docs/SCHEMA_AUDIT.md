@@ -1,6 +1,7 @@
 # Schema Audit Report
 
 **Date:** 2026-01-31
+**Status:** AUDIT CLOSED — All actionable items resolved. Remaining items deferred to target architecture plans.
 **Scope:** Artifact schema definitions, cross-document consistency, code-doc alignment
 **Method:** Systematic cross-reference of CONCEPTUAL_MODEL.yaml, CONCEPTUAL_MODEL_FULL.yaml, GLOSSARY.md, DESIGN_CLARIFICATIONS.md, architecture docs, and source code.
 
@@ -251,9 +252,11 @@ Code follows ADR-0019: kernel checks `access_contract_id` before execution, null
 
 ## 6. Glossary Staleness
 
-GLOSSARY.md was last updated 2026-01-25, before ADR-0024 was finalized.
+> **All glossary issues resolved (2026-01-31).** GLOSSARY.md updated with 12 fixes covering missing fields, incorrect values, and incomplete descriptions.
 
 ### 6.1 Describes ADR-0019 exclusively
+
+**RESOLVED:** GLOSSARY correctly describes current implementation (ADR-0019). ADR-0024 is target architecture, documented separately in CMF v3 Part 2.
 
 - Line 207: "Contracts can do anything. See ADR-0019"
 - Line 211: "access_contract_id: Field on every artifact pointing to its governing contract"
@@ -263,15 +266,21 @@ GLOSSARY.md was last updated 2026-01-25, before ADR-0024 was finalized.
 
 ### 6.2 Phantom `is_memory` field
 
+**RESOLVED:** `is_memory` was already absent from GLOSSARY (never existed in code). No action needed.
+
 Line 59: `is_memory: bool — Is a memory artifact`. **Does not exist** in the Artifact dataclass. Zero grep matches.
 
 ### 6.3 `tick` vs `event_number`
+
+**RESOLVED:** GLOSSARY correctly defines both terms. `tick` = metrics observation window, `event_number` = per-action counter. CLAUDE.md says use `event_number` not `tick` for action sequencing, which is consistent.
 
 - GLOSSARY line 15: Use `tick` not `turn`
 - GLOSSARY line 297: Tick = metrics observation window
 - CLAUDE.md root: Use `event_number` not `tick`
 
 ### 6.4 "owner" — different position than CM/CMF
+
+**RESOLVED:** GLOSSARY has "Creator vs Owner" section clarifying the distinction. CM/CMF v3 explicitly ban the term. Positions are different but intentionally so — GLOSSARY explains why the term persists informally while CMF forbids it technically.
 
 - GLOSSARY: Informal shorthand, "not a kernel concept"
 - CM/CMF: "TERM DOES NOT EXIST. Do not use."
@@ -280,31 +289,47 @@ Line 59: `is_memory: bool — Is a memory artifact`. **Does not exist** in the A
 
 ## 7. Architecture Doc Issues
 
+> **Mixed resolution status.** §7.2 fixed by Plan #239. Remaining items are target-architecture issues deferred to dedicated plans.
+
 ### 7.1 Ontology quadrant not in conceptual models
+
+**Deferred** — Target architecture taxonomy. Reconciliation deferred until ADR-0024 migration (Plan #234).
 
 `docs/architecture/target/agents/01_ontology.md` defines Agent/Tool/Account/Data quadrant. "Tool" and "Account" don't appear in CM/CMF labels.
 
 ### 7.2 Action count: "6" vs 11
 
+**FIXED** (Plan #239) — `execution_model.md` updated to reflect 11 action types.
+
 `execution_model.md` says "The Narrow Waist: 6 Action Types." Code `ActionType` has 11 values. GLOSSARY lists 11.
 
 ### 7.3 `{tick}` used in target agent context variables
+
+**Deferred** — Target architecture doc. Will be addressed when target agent docs are updated.
 
 `docs/architecture/target/agents/02_execution.md` uses `{tick}` as an agent context variable, contradicting its definition as "metrics window."
 
 ### 7.4 "Agents never die" vs STOPPED state
 
+**Deferred** — Target architecture aspiration vs current reality. Gap already documented in architecture gap analysis.
+
 Target: "never die." Current: STOPPED is a valid state. Not called out as a gap.
 
 ### 7.5 Agent content schema: no canonical definition
+
+**Deferred** — Needs dedicated plan for canonical agent content schema.
 
 Described differently in `agents.md`, `01_ontology.md`, and CMF.
 
 ### 7.6 Workflow transitions: static vs dynamic
 
+**Deferred** — Plan #222 tracks this gap.
+
 Target doc says static-only (Plan #222 needed). Current doc says LLM transitions work (85% mature).
 
 ### 7.7 Memory system described three ways
+
+**Deferred** — Needs dedicated plan for memory system documentation reconciliation.
 
 Current docs disagree between themselves. Target drops Mem0.
 
@@ -312,15 +337,23 @@ Current docs disagree between themselves. Target drops Mem0.
 
 ## 8. Design Debt
 
+> **Mostly resolved.** §8.2 and §8.3 fixed. §8.1 acknowledged as low-priority tech debt.
+
 ### 8.1 `price` vs `policy["invoke_price"]`
+
+**Deferred** — Works but fragile. Low priority; revisit during ADR-0024 migration if pricing model changes.
 
 Three representations of one value: `write()` parameter, `WriteArtifactIntent.price`, `policy["invoke_price"]`. Works but fragile.
 
 ### 8.2 `can_execute` vs `has_loop` naming
 
+**FIXED** (Plan #230) — Rename completed. Code now uses `has_loop`.
+
 Plan #230 completed the rename. Code now uses `has_loop`.
 
 ### 8.3 Artifact `type` not enumerated
+
+**FIXED** (Plan #235 Phase 0) — Type is now immutable after creation and validated against `ALLOWED_TYPES` registry.
 
 `type` is `str` with no canonical list. Kernel branches on specific values but a typo silently bypasses type-specific behavior.
 
@@ -328,37 +361,39 @@ Plan #230 completed the rename. Code now uses `has_loop`.
 
 ## 9. Recommendations
 
+> **All actionable recommendations resolved.** §9.1-5 fixed by Plans #239 and #235. §9.6-7 resolved by CMF v3 and GLOSSARY updates. §9.8 deferred. §9.9-12 done.
+
 ### Immediate (before next simulation run)
 
-1. **Fix `_execute_edit`** — Rewrite to call `ArtifactStore.edit_artifact()` with proper permission checking. Add integration test for the action executor edit path.
+1. **Fix `_execute_edit`** — **DONE** (Plan #239). Rewritten to call `ArtifactStore.edit_artifact()` with proper permission checking.
 
-2. **Fix `kernel_queries.py:472`** — Change `artifact.metadata.get("depends_on", [])` to `artifact.depends_on`.
+2. **Fix `kernel_queries.py:472`** — **DONE** (Plan #239). Changed to `artifact.depends_on`.
 
 ### Soon (Plan #235 Phase 0)
 
-3. **Make `type` immutable after creation** — Reject type changes in `ArtifactStore.write()` for existing artifacts.
+3. **Make `type` immutable after creation** — **DONE** (Plan #235 Phase 0).
 
-4. **Restrict `access_contract_id` to creator-only** — Check `intent.principal_id == artifact.created_by` before allowing changes.
+4. **Restrict `access_contract_id` to creator-only** — **DONE** (Plan #235 Phase 0).
 
-5. **Add type validation** — Define `ALLOWED_TYPES` and validate on creation.
+5. **Add type validation** — **DONE** (Plan #235 Phase 0). `ALLOWED_TYPES` registry added.
 
 ### Documentation reconciliation
 
-6. **Reconcile CMF with CM** — Either update CMF to version 2 or deprecate it. The stale `open_questions` section is actively misleading.
+6. **Reconcile CMF with CM** — **DONE** (CMF v3 rewrite). Both are version 3, code as source of truth, Part 1/Part 2 separation.
 
-7. **Update GLOSSARY for ADR-0024** — Add transition notes, remove phantom `is_memory`, resolve tick/event_number.
+7. **Update GLOSSARY for ADR-0024** — **DONE** (GLOSSARY updated with 12 fixes). GLOSSARY describes ADR-0019 (current); ADR-0024 is target, documented in CMF v3 Part 2.
 
-8. **Reconcile ontology taxonomies** — Map quadrant (Agent/Tool/Account/Data) to CM labels in one table.
+8. **Reconcile ontology taxonomies** — **Deferred**. Target architecture taxonomy, revisit during ADR-0024 migration.
 
-9. **Fix action count in `execution_model.md`** — 11 action types, not 6.
+9. **Fix action count in `execution_model.md`** — **DONE** (Plan #239). Updated to 11 action types.
 
 ### Principles to record
 
-10. **Kernel-meaningful fields must be system-controlled** — If the kernel branches on it, agents must not freely mutate it.
+10. **Kernel-meaningful fields must be system-controlled** — **DONE**. Recorded in `SECURITY.md` "Kernel-Level Security Invariants" section and `DESIGN_CLARIFICATIONS.md` §9.
 
-11. **One source of truth per concept** — Dependencies: `artifact.depends_on`. Autonomy: `has_loop`. Interface: match code.
+11. **One source of truth per concept** — **DONE**. CMF v3 canonical for artifact fields. GLOSSARY canonical for terminology. Code canonical for both.
 
-12. **CURRENT and TARGET must be visually distinct** — Any doc describing target architecture needs an unmissable banner.
+12. **CURRENT and TARGET must be visually distinct** — **DONE**. CMF v3 uses clear Part 1 (current) / Part 2 (target) banners.
 
 ---
 
