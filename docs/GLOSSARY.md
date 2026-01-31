@@ -2,7 +2,7 @@
 
 Canonical terminology for Agent Ecology.
 
-**Last updated:** 2026-01-25
+**Last updated:** 2026-01-31
 
 ---
 
@@ -12,7 +12,7 @@ Canonical terminology for Agent Ecology.
 |-----|-----|-----|
 | `scrip` | `credits` | Consistency |
 | `principal` | `account` | Principals include artifacts/contracts |
-| `tick` | `turn` | Consistency |
+| `event_number` | `tick` | No tick-synchronized execution (see Execution Model) |
 | `artifact` | `object/entity` | Everything is an artifact |
 | `mint` | `oracle` | Describes function (creating scrip) |
 | `substrate` | `platform` | Emphasizes primitives, not orchestration |
@@ -47,18 +47,24 @@ All artifacts have these metadata fields (see `src/world/artifacts.py`):
 | Property | Type | Description |
 |----------|------|-------------|
 | `id` | str | Unique artifact identifier |
+| `type` | str | Artifact type (e.g. `"agent"`, `"trigger"`, `"config"`, `"memory_store"`, `"right"`). Kernel branches on this value. |
 | `content` | str | Artifact content (code, data, config) |
+| `code` | str | Executable code (default `""`) |
 | `access_contract_id` | str | Governing contract for permissions |
 | `created_by` | str | Principal who created the artifact |
 | `created_at` | datetime | Creation timestamp |
 | `updated_at` | datetime | Last modification timestamp |
+| `deleted` | bool | Whether artifact has been deleted |
+| `deleted_at` | datetime \| None | When artifact was deleted |
 | `deleted_by` | str \| None | Principal who deleted (if deleted) |
 | `has_standing` | bool | Can hold resources/bear costs |
 | `has_loop` | bool | Can execute code autonomously (has own loop) |
 | `executable` | bool | Has executable code |
-| `is_memory` | bool | Is a memory artifact |
+| `interface` | dict \| None | Describes callable methods (advisory, not enforced) |
 | `memory_artifact_id` | str \| None | Linked memory artifact (for agents) |
-| `depends_on` | list[str] | Artifact dependencies (Plan #63) |
+| `depends_on` | list[str] | Artifact dependencies with cycle detection (Plan #63) |
+| `metadata` | dict | User-defined key-value metadata |
+| `policy` | dict | Artifact policies (e.g. `invoke_price`, `read_price`) |
 | `genesis_methods` | dict | Method dispatch for genesis artifacts |
 
 **Key relationships:**
@@ -206,6 +212,11 @@ Eleven action types:
 
 **Contracts can do anything.** Invoker pays all costs. See ADR-0019 for unified architecture.
 
+> **Architecture transition (ADR-0024):** The target architecture moves permission checking from
+> kernel-mediated (ADR-0019: kernel checks contracts before execution) to artifact self-handled
+> (ADR-0024: artifacts handle their own access via `handle_request`). Current code still follows
+> ADR-0019. See DESIGN_CLARIFICATIONS.md and SCHEMA_AUDIT.md for details.
+
 | Term | Definition |
 |------|------------|
 | **access_contract_id** | Field on every artifact pointing to its governing contract |
@@ -294,7 +305,8 @@ Pre-seeded artifacts that provide interfaces to system primitives. Agents could 
 
 | Term | Definition | Notes |
 |------|------------|-------|
-| **Tick** | Metrics observation window | NOT an execution trigger |
+| **event_number** | Monotonically increasing counter for each action | Canonical term for ordering events |
+| **Tick** | Metrics observation window | NOT an execution trigger. Do not use as synonym for event_number. |
 
 Agents use **continuous autonomous loops**:
 
@@ -464,7 +476,8 @@ See [docs/meta/adr/](meta/adr/) for meta-process ADRs.
 | **feature** (for E2E checkpoint) | **acceptance gate** | "Feature" is overloaded; see [META-ADR-0001](meta/adr/0001-acceptance-gate-terminology.md) |
 | credits | scrip | Consistency |
 | account | principal | Principals include non-agents |
-| turn | tick | Consistency |
+| turn | event_number | No tick-synchronized execution |
+| tick (as execution trigger) | event_number | "Tick" = metrics observation window only |
 | transfer (as action) | invoke_artifact | No direct transfer action |
 | platform | substrate | "Platform" implies orchestration; we provide primitives |
 | agent framework | cognitive architecture | Framework = library; architecture = internal structure |

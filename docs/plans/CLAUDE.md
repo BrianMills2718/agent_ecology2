@@ -248,7 +248,7 @@ Master index of all gaps and their implementation plans.
 | 226 | [Agent Learning & Strategic Behavior Fixes](226_agent_learning_fixes.md) | Critical | ✅ Complete | Effective agent learning, strategic planning, reduced noop rates |
 | 227 | [Agent Catalog & Experiment Tracking](227_agent_catalog_experiment_tracking.md) | High | 🚧 In Progress | - |
 | 229 | [Plan 229: Conceptual Model and Required Interfaces](229_conceptual_model_and_required_interfaces.md) | High | 📋 Planned | CC instance comprehension, architecture consistency |
-| 230 | [Plan 230: Rename can_execute to has_loop](230_rename_can_execute_to_has_loop.md) | Medium | 📋 Planned | - |
+| 230 | [Plan 230: Rename can_execute to has_loop](230_rename_can_execute_to_has_loop.md) | Medium | 🚧 In Progress | - |
 | 231 | [Plan 231: Tight Coupling Between has_standing and Ledger Registration](231_has_standing_ledger_coupling.md) | Medium | 📋 Planned | - |
 | 232 | [Plan 232: Skip Plan Completion Flag in finish_pr.py](232_skip_complete_flag.md) | Medium | ✅ Complete | Fast iteration on documentation work |
 | 233 | [Refactor CONCEPTUAL_MODEL.yaml for Conciseness](233_conceptual_model_refactor.md) | Medium | ✅ Complete | - |
@@ -257,6 +257,7 @@ Master index of all gaps and their implementation plans.
 | 236 | [Plan 236: Charge Delegation](236_charge_delegation.md) | High | 📋 Planned | None (enables charge_to for Plan #234) |
 | 237 | [Plan 237: Non-Interactive Worktree Creation](237_worktree_script_cli_args.md) | High | ✅ Complete | None (but blocks Claude Code from using meta-process properly) |
 | 238 | [Plan 238: Defer Tokenized Rights](238_defer_tokenized_rights.md) | Medium | ✅ Complete | - |
+| 239 | [Plan 239: Fix Broken _execute_edit() and Related Bugs](239_fix_execute_edit_and_bugs.md) | Critical | ✅ Complete | - |
 ---
 
 ## TDD Workflow

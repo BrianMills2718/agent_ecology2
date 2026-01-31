@@ -19,6 +19,7 @@
 9. [Schema Safety Principles](#9-schema-safety-principles)
 10. [Deferred Features](#10-deferred-features)
 11. [Open Questions](#11-open-questions)
+12. [Known Code Bugs (Schema Audit)](#12-known-code-bugs-schema-audit)
 
 ---
 
@@ -65,10 +66,14 @@
 
 **Attack:** Type confusion - attacker creates normal artifact, changes `type` to "right"/"trigger"/"config", gains privileged kernel handling.
 
-**Kernel branching locations:**
-- `rights.py:250,277,312,383,471` - `if artifact.type != "right"`
-- `triggers.py:209` - `if artifact.type != "trigger"`
-- `genesis/memory.py:187` - `if artifact.type != "memory_store"`
+**Kernel branching locations (verified 2026-01-31):**
+- `action_executor.py:220` - `type == "trigger"` triggers refresh
+- `action_executor.py:614` - `type == "config"` routes to config invoke
+- `triggers.py:209` - `type != "trigger"` skip
+- `genesis/memory.py:187` - `type != "memory_store"` reject
+- `genesis/event_bus.py:238` - `type != "trigger"` skip
+
+> Note: `rights.py` was removed per ADR-0025. Previous references to `rights.py:250,277,312,383,471` are obsolete.
 
 **Mitigation:** `type` must be immutable after creation. Plan #235 Phase 0.
 
@@ -314,9 +319,40 @@ Need kernel-enforced ownership transfer mechanism:
 
 ---
 
+## 12. Known Code Bugs (Schema Audit)
+
+**Why record:** These are verified code-level issues found during the 2026-01-31 schema audit. See `docs/SCHEMA_AUDIT.md` for full analysis.
+
+### 12.1 `_execute_edit` was entirely broken (FIXED - Plan #239)
+
+**Location:** `src/world/action_executor.py`
+
+The `_execute_edit` method crashed on any `edit_artifact` action because:
+1. It accessed fields (`intent.content`, `intent.code`, etc.) that don't exist on `EditArtifactIntent` (which only has `artifact_id`, `old_string`, `new_string`)
+2. It called `w.artifacts.update()` which doesn't exist on `ArtifactStore`
+
+**Fixed in Plan #239:** Rewritten to call `ArtifactStore.edit_artifact()` with proper permission checking. Integration test added.
+
+### 12.2 `depends_on` queried from wrong source (FIXED - Plan #239)
+
+**Location:** `src/world/kernel_queries.py`
+
+`artifact.metadata.get("depends_on", [])` queried user-defined metadata instead of the validated `artifact.depends_on` dataclass field.
+
+**Fixed in Plan #239:** Changed to `artifact.depends_on`.
+
+### 12.3 Action count mismatch (FIXED - Plan #239)
+
+`docs/architecture/current/execution_model.md` said "6 Action Types" but `ActionType` has 11 values.
+
+**Fixed in Plan #239:** Updated to show all 11 action types.
+
+---
+
 ## References
 
 - **Plans:** #234, #235, #236
 - **ADRs:** ADR-0016 (created_by not owner), ADR-0019 (current), ADR-0024 (target)
-- **Source:** ChatGPT/Claude security dialogue (2026-01-31)
-- **Code:** `src/world/artifacts.py`, `src/world/action_executor.py` (rights.py removed per ADR-0025)
+- **Source:** ChatGPT/Claude security dialogue (2026-01-31), Schema audit (2026-01-31)
+- **Code:** `src/world/artifacts.py`, `src/world/action_executor.py`, `src/world/kernel_queries.py` (rights.py removed per ADR-0025)
+- **Audit:** `docs/SCHEMA_AUDIT.md`
