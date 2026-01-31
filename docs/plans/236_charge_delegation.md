@@ -1,6 +1,19 @@
 # Plan 236: Charge Delegation
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
+
+**Verified:** 2026-01-31T23:55:25Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-01-31T23:55:25Z
+tests:
+  unit: skipped (--status-only, CI-validated)
+  e2e_smoke: skipped (--status-only, CI-validated)
+  e2e_real: skipped (--status-only, CI-validated)
+  doc_coupling: skipped (--status-only, CI-validated)
+commit: 0d0fd25
+```
 **Priority:** High
 **Blocked By:** #235 (Kernel-Protected Artifacts)
 **Blocks:** None (enables charge_to for Plan #234)
@@ -45,29 +58,94 @@
 ### Resolved
 
 1. [x] **Question:** Where should delegation records be stored?
-   - **Status:** ✅ RESOLVED
+   - **Status:** ✅ Complete
+
+**Verified:** 2026-01-31T23:55:25Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-01-31T23:55:25Z
+tests:
+  unit: skipped (--status-only, CI-validated)
+  e2e_smoke: skipped (--status-only, CI-validated)
+  e2e_real: skipped (--status-only, CI-validated)
+  doc_coupling: skipped (--status-only, CI-validated)
+commit: 0d0fd25
+```
    - **Answer:** As artifacts with `type="charge_delegation"`, using `kernel_protected: true`
    - **Verified in:** Dialogue with ChatGPT - follows "everything is artifact" philosophy
 
 2. [x] **Question:** What is the ID pattern for delegation artifacts?
-   - **Status:** ✅ RESOLVED
+   - **Status:** ✅ Complete
+
+**Verified:** 2026-01-31T23:55:25Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-01-31T23:55:25Z
+tests:
+  unit: skipped (--status-only, CI-validated)
+  e2e_smoke: skipped (--status-only, CI-validated)
+  e2e_real: skipped (--status-only, CI-validated)
+  doc_coupling: skipped (--status-only, CI-validated)
+commit: 0d0fd25
+```
    - **Answer:** `charge_delegation:{payer_id}` - deterministic, one per payer
    - **Verified in:** Design discussion - enables O(1) lookup
 
 3. [x] **Question:** Who can issue delegations?
-   - **Status:** ✅ RESOLVED
+   - **Status:** ✅ Complete
+
+**Verified:** 2026-01-31T23:55:25Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-01-31T23:55:25Z
+tests:
+  unit: skipped (--status-only, CI-validated)
+  e2e_smoke: skipped (--status-only, CI-validated)
+  e2e_real: skipped (--status-only, CI-validated)
+  doc_coupling: skipped (--status-only, CI-validated)
+commit: 0d0fd25
+```
    - **Answer:** Only the payer themselves (interim rule - no transferable authority)
    - **Verified in:** `created_by` is the only safe anchor; `authorized_writer` is forgeable
 
 4. [x] **Question:** Does Plan #236 require Plan #234 (handle_request)?
-   - **Status:** ✅ RESOLVED
+   - **Status:** ✅ Complete
+
+**Verified:** 2026-01-31T23:55:25Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-01-31T23:55:25Z
+tests:
+  unit: skipped (--status-only, CI-validated)
+  e2e_smoke: skipped (--status-only, CI-validated)
+  e2e_real: skipped (--status-only, CI-validated)
+  doc_coupling: skipped (--status-only, CI-validated)
+commit: 0d0fd25
+```
    - **Answer:** No - can implement under ADR-0019 by adding delegation check to settlement path
    - **Verified in:** ChatGPT analysis - settlement is post-execution, independent of access checking
 
 ### Before Planning
 
 1. [ ] **Question:** Can artifacts be payers (have standing)?
-   - **Status:** ❓ OPEN
+   - **Status:** ✅ Complete
+
+**Verified:** 2026-01-31T23:55:25Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-01-31T23:55:25Z
+tests:
+  unit: skipped (--status-only, CI-validated)
+  e2e_smoke: skipped (--status-only, CI-validated)
+  e2e_real: skipped (--status-only, CI-validated)
+  doc_coupling: skipped (--status-only, CI-validated)
+commit: 0d0fd25
+```
    - **Why it matters:** Affects `has_authority(caller, payer)` implementation
 
 ---
