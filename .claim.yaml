@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-237-worktree-cli
-task: 'Implement Plan 237: Non-interactive worktree creation'
-claimed_at: '2026-01-31T18:30:18Z'
-session_id: 15a4ab2e-2845-4d33-82bd-9db15dad0d6f
-plan: 237
+cc_id: plan-232-fix-cwd
+task: Fix CWD invalidation after worktree deletion
+claimed_at: '2026-01-31T20:12:29Z'
+session_id: 42f27964-676a-4a9f-9af3-5783c17f5eef
+plan: 232

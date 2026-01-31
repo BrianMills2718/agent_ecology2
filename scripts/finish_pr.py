@@ -391,6 +391,13 @@ def finish_pr(branch: str, pr_number: int, check_ci: bool = False, skip_complete
 
 
 def main() -> int:
+    # Prevent CWD-in-deleted-worktree issue (matches merge_pr.py)
+    # Always ensure we're in the project root before doing anything.
+    # If the caller's CWD is inside a worktree that gets deleted,
+    # subsequent commands will fail with "cannot access parent directories".
+    project_root = Path(__file__).parent.parent
+    os.chdir(project_root)
+
     parser = argparse.ArgumentParser(
         description="Complete PR lifecycle: merge, release claim, cleanup worktree.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
