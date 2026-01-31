@@ -50,11 +50,30 @@ workflow:
         3. Create something DIFFERENT next
         4. NEVER rewrite an artifact you already created
 
+        ## CRITICAL: Code Requirements
+        - Code MUST define a `run(*args)` function - this is MANDATORY
+        - Example: `def run(*args):\n    return {'result': 'hello'}`
+        - Without run(), your artifact WILL FAIL validation
+
         ## RULES
         - If you see write_artifact(X) in your history, do NOT write X again
         - Each artifact should be UNIQUE - different name, different function
         - Variety wins: calculator, string tool, data processor, etc.
-        - Include interface: {description, tools: [{name, description, inputSchema}]}
+        - Include interface: {description, tools: [{name": "run", "description": "...", "inputSchema": {...}}]}
+
+        ## Example write_artifact:
+        ```json
+        {
+          "action_type": "write_artifact",
+          "artifact_id": "my_tool",
+          "artifact_type": "executable",
+          "content": "A useful tool",
+          "executable": true,
+          "price": 5,
+          "code": "def run(*args):\n    return {'result': 'value'}",
+          "interface": {"description": "Does X", "tools": [{"name": "run", "description": "Does X", "inputSchema": {"type": "object"}}]}
+        }
+        ```
 
         What do you do next? Create something NEW.
 
