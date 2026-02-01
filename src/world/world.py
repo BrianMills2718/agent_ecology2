@@ -157,7 +157,7 @@ class World:
     logger: EventLogger
     genesis_artifacts: dict[str, GenesisArtifact]
     rights_registry: GenesisRightsRegistry | None
-    principal_ids: list[str]
+    # principal_ids is a derived property (Plan #231)
     # Rate limiting mode: when True, resources use rolling windows (RateTracker)
     use_rate_tracker: bool
     # Autonomous loop support
@@ -312,8 +312,7 @@ class World:
         # Seed genesis_handbook artifact (readable documentation for agents)
         self._seed_handbook()
 
-        # Initialize principals from config
-        self.principal_ids = []
+        # Initialize principals from config (Plan #231: principal_ids is now a derived property)
         default_starting_scrip: int = config_get("scrip.starting_amount") or 100
 
         # Per-agent LLM budget (Plan #12)
@@ -343,7 +342,10 @@ class World:
                 starting_scrip=starting_scrip,
                 starting_resources=starting_resources if starting_resources else None,
             )
-            self.principal_ids.append(p["id"])
+            # Plan #231: ResourceManager entry for init-time principals
+            if hasattr(self, 'resource_manager'):
+                self.resource_manager.create_principal(p["id"])
+            # (principal_ids is now derived from ledger — no append needed)
             # Initialize agent in rights registry
             if self.rights_registry:
                 self.rights_registry.ensure_agent(p["id"])
@@ -403,6 +405,30 @@ class World:
                 for p in config["principals"]
             ]
         })
+
+    @property
+    def principal_ids(self) -> list[str]:
+        """Derived from ledger state (Plan #231). Excludes genesis artifacts."""
+        return self.ledger.get_agent_principal_ids()
+
+    def validate_principal_invariant(self) -> list[str]:
+        """Check that has_standing <-> ledger entry invariant holds (Plan #231).
+
+        Returns list of violation descriptions (empty = valid).
+        """
+        violations: list[str] = []
+        agent_pids = self.ledger.get_agent_principal_ids()
+
+        for pid in agent_pids:
+            artifact = self.artifacts.artifacts.get(pid)
+            if artifact and not artifact.has_standing:
+                violations.append(f"{pid}: in ledger but has_standing=False")
+
+        for aid, artifact in self.artifacts.artifacts.items():
+            if artifact.has_standing and aid not in self.ledger.scrip:
+                violations.append(f"{aid}: has_standing=True but not in ledger")
+
+        return violations
 
     def _seed_handbook(self) -> None:
         """Seed handbook artifacts from src/agents/_handbook/ files.

@@ -1,6 +1,6 @@
 # Plan 231: Tight Coupling Between has_standing and Ledger Registration
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** Medium
 **Blocked By:** -
 **Blocks:** -
@@ -12,11 +12,11 @@
 **Current:** `artifact.has_standing` and ledger registration are independent:
 - An artifact can have `has_standing=True` without being in the ledger
 - The runner tries to sync them but they can diverge
-- This creates contradictory states ("can hold resources" but has no ledger entry)
+- Four independent registries can drift: `ledger.scrip`, `world.principal_ids`, `artifact.has_standing`, `resource_manager._principals`
 
-**Target:** Kernel invariant: `has_standing=True` ↔ registered in ledger. They are always in sync.
+**Target:** Kernel invariant: `has_standing=True` <=> registered in ledger. They are always in sync.
 
-**Why Medium:** Inconsistency is confusing but current best-effort sync mostly works.
+**Why Medium:** Inconsistency is confusing but current best-effort sync mostly works. Also fixes a confirmed bug where spawned agents are invisible to `get_state_summary()`.
 
 ---
 
@@ -24,9 +24,11 @@
 
 - `src/world/artifacts.py:166` - `has_standing: bool = False`
 - `src/world/ledger.py:180-200` - `create_principal()` creates ledger entry
-- `src/simulation/runner.py:453-460` - Runner syncs ledger→artifact
-- `src/world/kernel_interface.py:635-661` - `create_principal()` kernel primitive
-- `docs/CONCEPTUAL_MODEL.yaml` - `has_standing` definition
+- `src/world/ledger.py:589` - `get_agent_principal_ids()` derives from ledger
+- `src/simulation/runner.py:453-460` - Runner syncs ledger->artifact
+- `src/world/kernel_interface.py:640-666` - `create_principal()` kernel primitive
+- `src/world/resource_manager.py:118-134` - `create_principal()` ResourceManager entry
+- `src/world/world.py:316,346` - `principal_ids` init-only list (bug)
 
 ---
 
@@ -34,73 +36,56 @@
 
 ### Before Planning
 
-1. [ ] **Question:** Should setting `has_standing=True` on artifact auto-create ledger entry?
-   - **Status:** ❓ OPEN
-   - **Why it matters:** Determines where the coupling is enforced
+1. [x] **Question:** Should setting `has_standing=True` on artifact auto-create ledger entry?
+   - **Answer:** No. Ledger-driven: `create_principal()` is the single entry point.
 
-2. [ ] **Question:** Should `create_principal()` also set artifact `has_standing=True`?
-   - **Status:** ❓ OPEN
-   - **Why it matters:** Determines single point of truth
+2. [x] **Question:** Should `create_principal()` also set artifact `has_standing=True`?
+   - **Answer:** Yes. This is the core of the design.
 
-3. [ ] **Question:** What happens on checkpoint restore if artifact has `has_standing` but ledger doesn't have entry yet?
-   - **Status:** ❓ OPEN
-   - **Why it matters:** Order of operations during restore
+3. [x] **Question:** What happens on checkpoint restore if artifact has `has_standing` but ledger doesn't have entry yet?
+   - **Answer:** Ledger first, then artifacts, then validate. Post-restore invariant enforcement fixes drift using raw dict access (IDRegistry already registered the ID).
 
 ---
 
-## Design Options
+## Design Decision: Modified Option B (Ledger-Driven)
 
-### Option A: Artifact-driven
-Setting `artifact.has_standing = True` auto-creates ledger entry with 0 balance.
+### Why Option B
 
-**Pros:** Single operation to make something a principal
-**Cons:** Artifact store needs ledger reference, coupling
+- **Option A (Artifact-driven)**: Would require artifacts.py to depend on ledger.py. Higher coupling.
+- **Option B (Ledger-driven)**: `create_principal()` already exists. Natural extension.
+- **Option C (New primitive)**: Unnecessary new API. Option B achieves the same.
 
-### Option B: Ledger-driven (Recommended)
-`create_principal()` is the ONLY way to create a principal. It:
-1. Creates ledger entry
-2. If artifact exists, sets `has_standing=True`
-3. If artifact doesn't exist, creates it with `has_standing=True`
+### Key Choices
 
-**Pros:** Single source of truth (ledger), clear responsibility
-**Cons:** Can't create artifact with standing without ledger call
-
-### Option C: Kernel primitive creates both atomically
-New kernel primitive `create_standing_artifact()` that creates both in one call.
-
-**Pros:** Atomic, clear semantics
-**Cons:** New primitive needed
-
----
-
-## Tradeoffs
-
-| Aspect | Loose (current) | Tight (proposed) |
-|--------|-----------------|------------------|
-| Mental model | Complex | Simple |
-| Contradictions | Possible | Impossible |
-| Checkpoint restore | Flexible | Need care |
-| Code coupling | Low | Higher |
-| Failure modes | Silent drift | Explicit failure |
+1. `world.principal_ids` becomes a derived `@property` using `ledger.get_agent_principal_ids()`
+2. `KernelActions.create_principal()` atomically creates ledger entry + sets `has_standing` + ResourceManager entry
+3. `Ledger.credit_scrip()` auto-create unchanged (genesis artifacts, not principals)
+4. Checkpoint restore gets post-validation to fix drift
 
 ---
 
 ## Files Affected
 
-TBD based on design option chosen.
-
-Likely:
-- `src/world/kernel_interface.py` (modify)
-- `src/world/artifacts.py` (modify)
-- `src/world/ledger.py` (modify)
-- `src/simulation/runner.py` (modify)
-- `src/simulation/checkpoint.py` (modify)
+- `src/world/world.py` (modify) - Derived `principal_ids` property, `validate_principal_invariant()`
+- `src/world/kernel_interface.py` (modify) - Atomic `create_principal()`
+- `src/simulation/runner.py` (modify) - Invariant enforcement in checkpoint restore, ResourceManager sync
+- `tests/unit/test_standing_invariant.py` (create) - 9 unit tests
+- `tests/integration/test_standing_invariant.py` (create) - 4 integration tests
 
 ---
 
 ## Plan
 
-TBD after design option is chosen.
+### Phase 1: Derived principal_ids + Atomic create_principal
+
+| Step | File | Change |
+|------|------|--------|
+| 1 | `src/world/world.py` | `principal_ids` -> `@property` from `ledger.get_agent_principal_ids()` |
+| 2 | `src/world/kernel_interface.py` | `create_principal()` sets `has_standing` + ResourceManager |
+| 3 | `src/world/world.py` | `__init__` removes `.append()`, adds ResourceManager sync |
+| 4 | `src/simulation/runner.py` | `_restore_checkpoint()` invariant enforcement |
+| 5 | `src/simulation/runner.py` | `_check_for_new_principals()` ResourceManager sync |
+| 6 | `src/world/world.py` | `validate_principal_invariant()` method |
 
 ---
 
@@ -110,27 +95,41 @@ TBD after design option is chosen.
 
 | Test File | Test Function | What It Verifies |
 |-----------|---------------|------------------|
-| `tests/unit/test_standing_invariant.py` | `test_has_standing_implies_ledger_entry` | Invariant holds |
-| `tests/unit/test_standing_invariant.py` | `test_create_principal_sets_has_standing` | Both set together |
-| `tests/unit/test_standing_invariant.py` | `test_checkpoint_restore_maintains_invariant` | Restore is correct |
+| `tests/unit/test_standing_invariant.py` | `test_principal_ids_derived_from_ledger` | Derived property works |
+| `tests/unit/test_standing_invariant.py` | `test_principal_ids_excludes_genesis` | Genesis artifacts filtered |
+| `tests/unit/test_standing_invariant.py` | `test_principal_ids_includes_spawned` | Spawned agents visible |
+| `tests/unit/test_standing_invariant.py` | `test_create_principal_sets_has_standing` | Atomic operation |
+| `tests/unit/test_standing_invariant.py` | `test_create_principal_creates_resource_manager_entry` | ResourceManager sync |
+| `tests/unit/test_standing_invariant.py` | `test_create_principal_idempotent` | No double-create |
+| `tests/unit/test_standing_invariant.py` | `test_validate_invariant_clean` | No violations on clean state |
+| `tests/unit/test_standing_invariant.py` | `test_validate_invariant_detects_missing_standing` | Detects drift |
+| `tests/unit/test_standing_invariant.py` | `test_validate_invariant_detects_missing_ledger` | Detects drift |
+| `tests/integration/test_standing_invariant.py` | `test_spawn_principal_full_invariant` | All registries consistent |
+| `tests/integration/test_standing_invariant.py` | `test_checkpoint_restore_fixes_missing_standing` | Drift correction |
+| `tests/integration/test_standing_invariant.py` | `test_checkpoint_restore_fixes_missing_ledger` | Drift correction |
+| `tests/integration/test_standing_invariant.py` | `test_spawned_agent_appears_in_state_summary` | Bug fix verification |
 
 ---
 
 ## Verification
 
 ### Tests & Quality
-- [ ] Invariant tests pass
-- [ ] Checkpoint round-trip maintains invariant
-- [ ] No contradictory states possible
+- [x] All 13 new tests pass
+- [x] Full test suite passes: 2869 passed, 0 failed
+- [ ] Type check passes: `python -m mypy src/ --ignore-missing-imports`
+- [ ] `make lint` passes
 
-### Documentation
-- [ ] Conceptual model updated to document invariant
-- [ ] Glossary clarifies relationship
+### Completion Ceremony
+- [ ] Plan file status -> Complete
+- [ ] `plans/CLAUDE.md` index -> Complete
+- [ ] Branch merged or PR created
 
 ---
 
 ## Notes
 
-This is a design decision that needs discussion. The current loose coupling works but creates potential for confusion. Tight coupling is simpler conceptually but requires more careful implementation.
+### Bug Fixed
 
-Recommend: Start with Option B (ledger-driven) as it has clearest single source of truth.
+`world.principal_ids` was a stored `list[str]` only populated at `__init__` time. Spawned agents (created via `KernelActions.create_principal()`) were never added, making them invisible to `get_state_summary()`, `get_frozen_agents()`, and `rights_registry.quotas`.
+
+Now `principal_ids` is a derived `@property` from `ledger.get_agent_principal_ids()`, so spawned agents appear immediately.

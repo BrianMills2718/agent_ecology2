@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-234-handle-request
-task: ADR-0024 handle_request migration Phase 1
-claimed_at: '2026-01-31T23:35:21Z'
-session_id: 9ad8f3a6-f88c-47cd-a7b8-787de301cb8e
-plan: 234
+cc_id: plan-231-standing-invariant
+task: Enforce has_standing <-> ledger invariant
+claimed_at: '2026-02-01T00:15:38Z'
+session_id: 2f67eed1-4c7e-4928-9fdb-5f2e27ac51ab
+plan: 231
