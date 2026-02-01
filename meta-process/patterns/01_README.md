@@ -51,6 +51,7 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 
 **Add these when needed (more setup):**
 - Plan Workflow - for larger tasks with multiple steps
+- Claim System - prevents duplicate work across worktrees or instances
 - Worktree Enforcement - if using parallel workspaces
 - Rebase Workflow - when using worktrees (prevents "reverted" changes)
 - Acceptance-Gate-Driven Development - verified progress, preventing AI drift/cheating
@@ -62,7 +63,6 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 - Gap Analysis - systematic comparison of current vs target architecture to inform planning
 
 **Multi-CC only (enable when 3+ instances run concurrently):**
-- Claim System - prevents duplicate work across instances
 - PR Coordination - tracks review requests between instances
 - Ownership Respect - prevents instances from editing each other's work
 - PR Review Process - standardized review checklists for cross-instance PRs
