@@ -323,6 +323,34 @@ takes effect and persists across Bash tool invocations.
 - CLAUDE.md wording needs strengthening: "NEVER cd into a worktree, period. Not even
   chained with &&." — the current wording is ambiguous and keeps being misread.
 
+### Incident #7 - 2026-01-31
+
+**Session:** meta_1100 — Renaming genesis_contracts to kernel_contracts
+**Class:** A (CWD invalidation)
+**Trigger:** `make finish BRANCH=trivial-kernel-contracts-rename PR=919`
+**Symptoms:**
+- `make finish` output started with `pwd: error retrieving current directory`
+- PR merged successfully, worktree deleted
+- ALL subsequent Bash commands failed with exit code 1, no output
+- Even `cd /home/brian/brian_projects/agent_ecology2 && pwd` failed
+- Non-Bash tools (Read, Glob) continued working fine
+
+**Analysis:**
+
+**Direct cause:** Session ran `cd /home/brian/brian_projects/agent_ecology2/worktrees/trivial-kernel-contracts-rename && python -m pytest tests/unit/test_kernel_contracts.py ...` to run tests. Despite using an absolute path, this still changed the Bash tool's persistent CWD to the worktree. When `make finish` deleted the worktree, the CWD became invalid.
+
+**Pattern recurrence:** This is the same class of error as Incidents #4 and #6. The form `cd <worktree-path> && <command>` persists the CWD change, regardless of whether the path is relative or absolute.
+
+**Correct alternative for running tests in worktree:**
+- `python -m pytest worktrees/trivial-kernel-contracts-rename/tests/...` (no cd needed)
+- Or run from main: `make check` (which runs tests in main's copy)
+
+**Resolution:** User refreshed the session to get a fresh shell.
+
+**Follow-up:**
+- Recorded in CWD_INCIDENT_LOG.md (this entry)
+- The pattern `cd <absolute-path-to-worktree> && command` is just as dangerous as `cd worktrees/X && command` — the absolute path doesn't prevent CWD persistence
+
 ---
 
 ## Template for New Incidents
