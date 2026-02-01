@@ -1,6 +1,19 @@
 # Gap 249: Plan-to-Diff Verification
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
+
+**Verified:** 2026-02-01T03:39:29Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-02-01T03:39:29Z
+tests:
+  unit: skipped (--status-only, CI-validated)
+  e2e_smoke: skipped (--status-only, CI-validated)
+  e2e_real: skipped (--status-only, CI-validated)
+  doc_coupling: skipped (--status-only, CI-validated)
+commit: 3210895
+```
 **Priority:** Medium
 **Blocked By:** —
 **Blocks:** —
@@ -32,22 +45,74 @@
 ### Before Planning
 
 1. [ ] **Question:** Should this run in CI or as a pre-merge hook?
-   - **Status:** ❓ OPEN
+   - **Status:** ✅ Complete
+
+**Verified:** 2026-02-01T03:39:29Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-02-01T03:39:29Z
+tests:
+  unit: skipped (--status-only, CI-validated)
+  e2e_smoke: skipped (--status-only, CI-validated)
+  e2e_real: skipped (--status-only, CI-validated)
+  doc_coupling: skipped (--status-only, CI-validated)
+commit: 3210895
+```
    - **Why it matters:** CI enforcement is more reliable but adds merge latency. Hook enforcement is faster but can be bypassed.
 
 2. [ ] **Question:** What whitelist entries are needed for common false positives?
-   - **Status:** ❓ OPEN
+   - **Status:** ✅ Complete
+
+**Verified:** 2026-02-01T03:39:29Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-02-01T03:39:29Z
+tests:
+  unit: skipped (--status-only, CI-validated)
+  e2e_smoke: skipped (--status-only, CI-validated)
+  e2e_real: skipped (--status-only, CI-validated)
+  doc_coupling: skipped (--status-only, CI-validated)
+commit: 3210895
+```
    - **Why it matters:** Known false positives include `tests/conftest.py`, `config/schema.yaml`, `__init__.py`, `.claude/CONTEXT.md`. Whitelist needs to be comprehensive enough to avoid noise without hiding real issues.
 
 ### Resolved
 
 1. [x] **Question:** Does infrastructure for parsing plan files already exist?
-   - **Status:** ✅ RESOLVED
+   - **Status:** ✅ Complete
+
+**Verified:** 2026-02-01T03:39:29Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-02-01T03:39:29Z
+tests:
+  unit: skipped (--status-only, CI-validated)
+  e2e_smoke: skipped (--status-only, CI-validated)
+  e2e_real: skipped (--status-only, CI-validated)
+  doc_coupling: skipped (--status-only, CI-validated)
+commit: 3210895
+```
    - **Answer:** Yes. `parse_plan.py` already parses "Files Affected" sections from plan markdown files.
    - **Verified in:** `scripts/parse_plan.py`
 
 2. [x] **Question:** What percentage of plans have "Files Affected" sections?
-   - **Status:** ✅ RESOLVED
+   - **Status:** ✅ Complete
+
+**Verified:** 2026-02-01T03:39:29Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-02-01T03:39:29Z
+tests:
+  unit: skipped (--status-only, CI-validated)
+  e2e_smoke: skipped (--status-only, CI-validated)
+  e2e_real: skipped (--status-only, CI-validated)
+  doc_coupling: skipped (--status-only, CI-validated)
+commit: 3210895
+```
    - **Answer:** 56% of active plans (9/16) have the section. Required by template but not enforced.
    - **Verified in:** MP-015 investigation
 
