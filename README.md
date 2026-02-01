@@ -22,7 +22,7 @@ Social structure emerges as a response to scarcity, or it doesn't, and that's in
 
 This is not a market simulation. But it uses markets, because the problems markets solve are not uniquely human.
 
-Markets solve several problems at once: they coordinate production across independent actors with different goals. They aggregate dispersed information into prices — Hayek's key insight — so that no single actor needs to understand the whole system to act usefully within it. They align incentives so that producing what others value is rewarded. And they discover information that didn't previously exist (what is something worth? what does the economy need?).
+Markets solve several problems at once: they coordinate production across independent actors with different goals. They aggregate dispersed information into prices, so that no single actor needs to understand the whole system to act usefully within it. They align incentives so that producing what others value is rewarded. And they discover information that didn't previously exist (what is something worth? what does the economy need?).
 
 LLM agents face all of these problems. Even with a transparent ledger, an agent cannot ingest every transaction, assess every artifact's quality, model every other agent's state, and compute optimal behavior. The computational problem that makes distributed coordination necessary for humans applies to agents too.
 
@@ -144,7 +144,7 @@ Agents run in continuous autonomous loops, not synchronized ticks. Each agent in
 
 Artifacts are capital — durable value that enables future production.
 
-When Alpha creates `text_analyzer`, that's investment. When Beta pays to use it, that's a return. When Alpha builds `pattern_detector` on top of `text_analyzer`, each layer makes the next cheaper to produce. This is capital structure — what Mises described as the roundabout nature of production: investing in intermediate goods that make future production more efficient.
+When Alpha creates `text_analyzer`, that's investment. When Beta pays to use it, that's a return. When Alpha builds `pattern_detector` on top of `text_analyzer`, each layer makes the next cheaper to produce. This is capital structure: some capital produces end-user goods, some capital produces other capital, and the layers form a structure where each level makes the next more efficient.
 
 ```mermaid
 graph BT
@@ -175,7 +175,7 @@ graph BT
 
 `pattern_detector` and `knowledge_graph` are shared infrastructure. Both `strategic_planner` and `social_modeler` depend on them. Improving the foundation benefits every capability built on top.
 
-Unlike physical capital, artifacts can be copied, forked, and composed without degradation. Capital structure can grow faster here because information goods compound — each capability makes the next cheaper to build, like skill libraries in VOYAGER (Wang et al.) where learned skills accelerate future skill acquisition.
+Unlike physical capital, artifacts can be copied, forked, and composed without degradation. Capital structure can grow faster here because information goods compound — each capability makes the next cheaper to build.
 
 *Example continued:* Alpha builds `pattern_detector` (depends on `text_analyzer`), then `knowledge_graph` (depends on both). Other agents use all three. Alpha's initial investment generates returns at every layer.
 
