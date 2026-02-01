@@ -199,8 +199,7 @@ fi
 # Set up git hooks symlink
 echo "Setting up git hooks..."
 if [[ -d "$TARGET_DIR/.git" ]]; then
-    cd "$TARGET_DIR"
-    git config core.hooksPath hooks
+    git -C "$TARGET_DIR" config core.hooksPath hooks
     echo -e "  ${GREEN}Configured git to use hooks/ directory${NC}"
 fi
 
@@ -222,16 +221,17 @@ if [[ ! -f "$TARGET_DIR/CLAUDE.md" ]]; then
     # Create from template with substitutions
     sed -e "s|{{PROJECT_NAME}}|$PROJECT_NAME|g" \
         -e "s|{{REPO_PATH}}|$REPO_PATH|g" \
-        -e "s|{{PRINCIPLE_1_NAME}}|Fail Loud|g" \
-        -e "s|{{PRINCIPLE_1_DESC}}|No silent fallbacks|g" \
-        -e "s|{{PRINCIPLE_2_NAME}}|Test First|g" \
-        -e "s|{{PRINCIPLE_2_DESC}}|Write tests before implementation|g" \
-        -e "s|{{PRINCIPLE_3_NAME}}|Explicit Over Implicit|g" \
-        -e "s|{{PRINCIPLE_3_DESC}}|Clear configuration, no magic|g" \
-        -e "s|{{TERM_1}}|term|g" \
-        -e "s|{{TERM_1_ALT}}|alternate_term|g" \
+        -e "s|{{PRINCIPLE_1_NAME}}|YOUR_PRINCIPLE_1|g" \
+        -e "s|{{PRINCIPLE_1_DESC}}|TODO: describe your first design principle|g" \
+        -e "s|{{PRINCIPLE_2_NAME}}|YOUR_PRINCIPLE_2|g" \
+        -e "s|{{PRINCIPLE_2_DESC}}|TODO: describe your second design principle|g" \
+        -e "s|{{PRINCIPLE_3_NAME}}|YOUR_PRINCIPLE_3|g" \
+        -e "s|{{PRINCIPLE_3_DESC}}|TODO: describe your third design principle|g" \
+        -e "s|{{TERM_1}}|your_term|g" \
+        -e "s|{{TERM_1_ALT}}|alternate_name|g" \
         "$SCRIPT_DIR/templates/CLAUDE.md.root" > "$TARGET_DIR/CLAUDE.md"
-    echo -e "  ${GREEN}Created: CLAUDE.md (customize for your project!)${NC}"
+    echo -e "  ${GREEN}Created: CLAUDE.md${NC}"
+    echo -e "  ${YELLOW}  → Customize design principles and terminology in CLAUDE.md${NC}"
 else
     echo -e "  ${YELLOW}Skipped: CLAUDE.md (already exists)${NC}"
 fi
@@ -248,14 +248,6 @@ if [[ ! -f "$TARGET_DIR/tests/CLAUDE.md" ]] && [[ -d "$TARGET_DIR/tests" ]]; the
     echo -e "  ${GREEN}Created: tests/CLAUDE.md${NC}"
 fi
 
-# docs/plans/CLAUDE.md (use the plans-index template if exists)
-if [[ ! -f "$TARGET_DIR/docs/plans/CLAUDE.md" ]]; then
-    if [[ -f "$SCRIPT_DIR/templates/CLAUDE.md.docs-plans" ]]; then
-        cp "$SCRIPT_DIR/templates/CLAUDE.md.docs-plans" "$TARGET_DIR/docs/plans/CLAUDE.md"
-        echo -e "  ${GREEN}Created: docs/plans/CLAUDE.md${NC}"
-    fi
-fi
-
 # docs/adr/CLAUDE.md (only in full mode)
 if [[ "$MODE" == "--full" ]] && [[ ! -f "$TARGET_DIR/docs/adr/CLAUDE.md" ]]; then
     cp "$SCRIPT_DIR/templates/CLAUDE.md.docs-adr" "$TARGET_DIR/docs/adr/CLAUDE.md"
@@ -267,8 +259,13 @@ echo -e "${GREEN}Installation complete!${NC}"
 echo ""
 echo "Next steps:"
 echo "  1. Edit meta-process.yaml to configure patterns"
-echo "  2. Add project-specific mappings to scripts/doc_coupling.yaml"
+echo "  2. Customize design principles and terminology in CLAUDE.md"
+if [[ "$MODE" == "--full" ]]; then
+echo "  3. Add project-specific mappings to scripts/doc_coupling.yaml"
+echo "  4. Run 'make status' to verify setup"
+else
 echo "  3. Run 'make status' to verify setup"
+fi
 echo ""
 echo "Quick start:"
 echo "  make worktree           # Create isolated workspace"
