@@ -55,7 +55,7 @@ Master index of all gaps and their implementation plans.
 | 245 | [Schema Audit Cleanup](245_schema_audit_cleanup.md) | P1 (code bug) + P2 (doc consistency) | ✅ Complete | - |
 | 246 | [Plan 246: Pre-Merge Plan Completion Enforcement](246_pre_merge_plan_completion.md) | Medium | ✅ Complete | - |
 | 247 | [Plan 247: Remove Legacy Tick-Based Resource Mode](247_legacy_tick_removal.md) | High | ✅ Complete | - |
-| 248 | [Gap 248: Script Testing — Critical Scripts Untested](248_script_testing.md) | Medium | 📋 Planned | — |
+| 248 | [Gap 248: Script Testing — Critical Scripts Untested](248_script_testing.md) | Medium | ✅ Complete | — |
 | 249 | [Gap 249: Plan-to-Diff Verification](249_plan_to_diff_verification.md) | Medium | ✅ Complete | — |
 | 250 | [Plan 250: Meta-Process Enforcement Gaps](250_meta_process_enforcement_gaps.md) | High | ✅ Complete | - |
 ---
