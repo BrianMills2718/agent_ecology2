@@ -3,7 +3,7 @@
 **Status:** 📋 Planned
 **Priority:** Low
 **Created:** 2026-02-01
-**Context:** Plan #247 removed tick-based execution mode, but ~77 references to "tick" remain in config schema and docs. Gemini review flagged this inconsistency.
+**Context:** Plan #247 removed tick-based execution mode, but ~77 references to "tick" remain in config schema and docs. Also, `use_autonomous_loops` config field is dead code (runner hardcodes True). Gemini review flagged these inconsistencies.
 
 ---
 
@@ -21,6 +21,21 @@ This creates confusion: new readers see "tick" references but ticks no longer ex
 ---
 
 ## Solution
+
+### 0. Remove Dead `use_autonomous_loops` Config
+
+The `use_autonomous_loops` config field is ignored — `runner.py` hardcodes `True`:
+```python
+# Plan #102: Tick-based mode removed - always use autonomous loops
+self.use_autonomous_loops = True
+```
+
+**Remove from:**
+- `src/config_schema.py` — Field definition
+- `src/world/world.py` — Attribute and reading from config
+- `config/config.yaml` — The setting
+- `config/CLAUDE.md` — Documentation reference
+- Error messages referencing it
 
 ### 1. Audit All References
 
@@ -84,7 +99,11 @@ Files to review:
 
 | File | Change |
 |------|--------|
-| `src/config_schema.py` | Rename fields, update descriptions |
+| `src/config_schema.py` | Remove `use_autonomous_loops`, rename tick fields, update descriptions |
+| `src/world/world.py` | Remove `use_autonomous_loops` attribute |
+| `src/simulation/runner.py` | Clean up comments/error messages |
+| `config/config.yaml` | Remove `use_autonomous_loops` line |
+| `config/CLAUDE.md` | Remove reference |
 | `docs/architecture/current/execution_model.md` | Remove tick references |
 | `docs/architecture/current/supporting_systems.md` | Update checkpoint description |
 | `docs/GLOSSARY.md` | Update/remove tick entry |
