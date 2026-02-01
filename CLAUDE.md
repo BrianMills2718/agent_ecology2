@@ -77,16 +77,6 @@ worktrees/plan-123-foo/.claude/CONTEXT.md
 
 The file is ephemeral - deleted when the worktree is removed after merge.
 
-Example workflow:
-```bash
-make worktree PLAN=123                    # Creates worktrees/plan-123-foo/
-# Edit files using paths: worktrees/plan-123-foo/src/...
-git -C worktrees/plan-123-foo add -A && git -C worktrees/plan-123-foo commit -m "[Plan #123] ..."
-make pr-ready BRANCH=plan-123-foo         # Rebase and push
-make pr BRANCH=plan-123-foo               # Create PR
-make finish BRANCH=plan-123-foo PR=456    # Merge, cleanup, done!
-```
-
 ### Commit Messages
 
 ```bash
@@ -179,23 +169,7 @@ git -C worktrees/plan-123-foo add -A && git -C worktrees/plan-123-foo commit -m 
 
 ### How to Recover
 
-**Stale claim blocking your work:**
-```bash
-python scripts/check_claims.py --cleanup-orphaned  # Remove claims with missing worktrees
-python scripts/check_claims.py --cleanup-merged     # Remove claims for merged branches
-```
-
-**Orphaned worktree (branch merged but worktree remains):**
-```bash
-python scripts/cleanup_orphaned_worktrees.py         # Find orphaned worktrees
-python scripts/cleanup_orphaned_worktrees.py --auto  # Auto-cleanup (safe only)
-```
-
-**Full diagnostics:**
-```bash
-python scripts/health_check.py        # Check everything
-python scripts/health_check.py --fix  # Auto-fix issues
-```
+Run `python scripts/health_check.py --fix` for diagnostics and auto-repair.
 
 ---
 
@@ -303,45 +277,3 @@ agent_ecology/
 
 See `docs/CLAUDE.md` for the full documentation index. Doc-code coupling is enforced by `make check`.
 
----
-
-## Session Continuity
-
-When context compacts, you'll see:
-```
-read the full transcript at: ~/.claude/projects/.../[session-id].jsonl
-```
-
-Use the Read tool on that file if you need prior context.
-
----
-
-## Pre-Merge Checklist
-
-- [ ] `make check` passes (runs test + mypy + lint + doc-coupling)
-- [ ] Code matches task description
-- [ ] Plan status updated
-
----
-
-## References
-
-| Doc | Purpose |
-|-----|---------|
-| `README.md` | Full philosophy, theoretical grounding |
-| `docs/plans/CLAUDE.md` | Plan index and template |
-| `meta-process/patterns/01_README.md` | Meta-pattern index |
-| `docs/GLOSSARY.md` | Canonical terminology |
-| `scripts/CLAUDE.md` | Script usage reference |
-| `src/config_schema.py` | All config options (Pydantic) |
-
----
-
-## Active Work
-
-Check current claims with:
-```bash
-python scripts/check_claims.py --list
-```
-
-Claims are stored locally in `.claude/active-work.yaml` (not tracked in git) to prevent conflicts when PRs merge.
