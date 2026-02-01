@@ -1,15 +1,14 @@
 #!/bin/bash
 # Session Startup Cleanup Hook (Plan #206)
 #
-# Automatically cleans up orphaned claims and merged worktrees on session start.
+# Automatically cleans up stale state on session start.
 # Only runs once per session using a marker file.
 #
-# Two cleanup passes:
+# Four cleanup passes:
 #   1. Orphaned claims: claims where the worktree no longer exists
 #   2. Merged worktrees: worktrees whose branches were merged/deleted on remote
-#
-# This catches worktrees left behind when PRs are merged outside `make finish`
-# (e.g., via GitHub UI or `make merge`).
+#   3. Completed claims: old completed entries in active-work.yaml (>24h)
+#   4. Session markers: stale session files in .claude/sessions/ (>24h)
 #
 # Exit codes:
 #   0 - Always allow (this is just cleanup, not blocking)
@@ -62,6 +61,25 @@ if [[ "$MERGED" -gt 0 ]]; then
     echo "" >&2
     echo "🧹 Cleaning $MERGED merged worktree(s)..." >&2
     python scripts/cleanup_orphaned_worktrees.py --auto 2>/dev/null
+fi
+
+# 3. Clean old completed claims (>24h)
+# --cleanup is always safe (only removes completed entries >24h old)
+CLEANUP_OUTPUT=$(python scripts/check_claims.py --cleanup 2>/dev/null)
+if echo "$CLEANUP_OUTPUT" | grep -q "Cleaned up"; then
+    echo "" >&2
+    echo "🧹 $CLEANUP_OUTPUT" >&2
+fi
+
+# 4. Clean stale session markers (>24h old)
+SESSIONS_DIR="$MAIN_REPO_ROOT/.claude/sessions"
+if [[ -d "$SESSIONS_DIR" ]]; then
+    STALE_SESSIONS=$(find "$SESSIONS_DIR" -name "*.session" -mmin +1440 2>/dev/null | wc -l)
+    if [[ "$STALE_SESSIONS" -gt 0 ]]; then
+        echo "" >&2
+        echo "🧹 Cleaning $STALE_SESSIONS stale session marker(s)..." >&2
+        find "$SESSIONS_DIR" -name "*.session" -mmin +1440 -delete 2>/dev/null
+    fi
 fi
 
 exit 0
