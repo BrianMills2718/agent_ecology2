@@ -218,5 +218,5 @@ Per design philosophy, these are **accepted risks**:
 
 - [SECURITY.md](SECURITY.md) - Infrastructure security (Docker, API keys)
 - [CLAUDE.md](../CLAUDE.md) - Design philosophy ("observe, don't prevent")
-- [DESIGN_CLARIFICATIONS.md](DESIGN_CLARIFICATIONS.md) - Section 17: Edge Case Decisions
+- [DESIGN_CLARIFICATIONS.md](DESIGN_CLARIFICATIONS.md) - Design rationale and security invariants
 - [docs/architecture/current/artifacts_executor.md](architecture/current/artifacts_executor.md) - Executor security model
