@@ -12,8 +12,8 @@ tests/
 │   ├── test_*_acceptance.py # Feature acceptance tests (AC-mapped)
 │   └── test_*.py            # Component integration tests
 └── e2e/                     # Full system tests
-    ├── test_smoke.py        # Mocked LLM (fast, CI)
-    └── test_real_e2e.py     # Real LLM (slow, $$$, --run-external)
+    ├── e2e/test_smoke.py    # Mocked LLM (fast, CI)
+    └── e2e/test_real_e2e.py # Real LLM (slow, $$$, --run-external)
 ```
 
 ## Running Tests
@@ -93,9 +93,9 @@ Feature acceptance tests live in `tests/integration/test_*_acceptance.py`:
 
 | File | Feature | Maps To |
 |------|---------|---------|
-| `test_escrow_acceptance.py` | escrow | meta/acceptance_gates/escrow.yaml |
-| `test_rate_limiting_acceptance.py` | rate_limiting | meta/acceptance_gates/rate_limiting.yaml |
-| `test_agent_loop_acceptance.py` | agent_loop | meta/acceptance_gates/agent_loop.yaml |
+| `integration/test_escrow_acceptance.py` | escrow | meta/acceptance_gates/escrow.yaml |
+| `integration/test_rate_limiting_acceptance.py` | rate_limiting | meta/acceptance_gates/rate_limiting.yaml |
+| `integration/test_agent_loop_acceptance.py` | agent_loop | meta/acceptance_gates/agent_loop.yaml |
 
 **Naming convention:** Test functions map to acceptance criteria:
 - `test_ac_1_*` → AC-1 from feature spec
@@ -115,7 +115,7 @@ Feature acceptance tests live in `tests/integration/test_*_acceptance.py`:
 |-----------|-----------|
 | `unit/` | test_ledger.py, test_executor.py, test_contracts.py, test_agent_loop.py |
 | `integration/` | test_escrow.py, test_*_acceptance.py, test_invoke.py |
-| `e2e/` | test_smoke.py (mocked), test_real_e2e.py (real LLM) |
+| `e2e/` | e2e/test_smoke.py (mocked), e2e/test_real_e2e.py (real LLM) |
 
 ## Test Conventions
 

@@ -10,7 +10,7 @@ ADRs capture significant architectural decisions with context, rationale, and co
 
 | Pattern | Purpose |
 |---------|---------|
-| `NNNN-short-title.md` | Individual ADR (sequential numbering) |
+| `NNNN-*.md` | Individual ADR (sequential numbering) |
 | `TEMPLATE.md` | Template for new ADRs |
 | `README.md` | Human-readable index and instructions |
 
