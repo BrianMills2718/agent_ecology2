@@ -657,6 +657,12 @@ def main() -> int:
             return 0
     else:
         changed_files = get_changed_files(args.base)
+        # In strict mode (pre-commit hook), also include staged files.
+        # This allows a commit to fix coupling violations from prior commits
+        # on the branch — without this, the hook sees the source change in
+        # the branch diff but can't see the doc fix being committed now.
+        if args.strict:
+            changed_files |= get_staged_files()
         if not changed_files:
             print("No changed files detected.")
             return 0

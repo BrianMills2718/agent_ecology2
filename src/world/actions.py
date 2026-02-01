@@ -11,7 +11,7 @@ from ..agents.schema import ActionType as ActionTypeLiteral
 
 
 class ActionType(str, Enum):
-    """The narrow waist - 6 physics verbs (plus noop, query, subscriptions, context)"""
+    """The narrow waist - 11 action types (6 core + 5 kernel/context)"""
 
     NOOP = "noop"
     READ_ARTIFACT = "read_artifact"
@@ -594,4 +594,4 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
         return UnsubscribeArtifactIntent(principal_id, artifact_id, reasoning=reasoning)
 
     else:
-        return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel, subscribe_artifact, unsubscribe_artifact"
+        return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel, subscribe_artifact, unsubscribe_artifact, configure_context, modify_system_prompt"

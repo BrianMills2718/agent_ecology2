@@ -52,10 +52,10 @@ All artifacts have these metadata fields (see `src/world/artifacts.py`):
 | `code` | str | Executable Python code; must define `run()` if executable (default `""`) |
 | `access_contract_id` | str | Governing contract for permissions (default: `genesis_contract_freeware`). Creator-only mutable (Plan #235). |
 | `created_by` | str | Principal who created the artifact |
-| `created_at` | datetime | Creation timestamp |
-| `updated_at` | datetime | Last modification timestamp |
+| `created_at` | str | Creation timestamp (ISO format string) |
+| `updated_at` | str | Last modification timestamp (ISO format string) |
 | `deleted` | bool | Whether artifact has been deleted |
-| `deleted_at` | datetime \| None | When artifact was deleted |
+| `deleted_at` | str \| None | When artifact was deleted (ISO format string) |
 | `deleted_by` | str \| None | Principal who deleted (if deleted) |
 | `has_standing` | bool | Can hold resources/bear costs |
 | `has_loop` | bool | Can execute code autonomously (has own loop) |

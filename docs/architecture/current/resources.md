@@ -2,7 +2,7 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-01-31 (Plan #238 - Tokenized rights deferred, see ADR-0025)
+**Last verified:** 2026-01-31 (Verified after ledger.py docstring ref fix)
 
 **See target:** [../target/resources.md](../target/resources.md)
 

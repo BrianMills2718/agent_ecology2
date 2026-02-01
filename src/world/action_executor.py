@@ -1002,7 +1002,7 @@ class ActionExecutor:
         new_content = json.dumps(config, indent=2)
         w.artifacts.write(
             artifact_id=agent_id,
-            type=agent_artifact.artifact_type,
+            type=agent_artifact.type,
             content=new_content,
             created_by=agent_artifact.created_by,
             executable=agent_artifact.executable,
@@ -1066,7 +1066,7 @@ class ActionExecutor:
         new_content = json.dumps(config, indent=2)
         w.artifacts.write(
             artifact_id=agent_id,
-            type=agent_artifact.artifact_type,
+            type=agent_artifact.type,
             content=new_content,
             created_by=agent_artifact.created_by,
             executable=agent_artifact.executable,
@@ -1169,7 +1169,7 @@ class ActionExecutor:
         new_content = json.dumps(config, indent=2)
         w.artifacts.write(
             artifact_id=agent_id,
-            type=agent_artifact.artifact_type,
+            type=agent_artifact.type,
             content=new_content,
             created_by=agent_artifact.created_by,
             executable=agent_artifact.executable,
@@ -1233,7 +1233,7 @@ class ActionExecutor:
         # Handle operation
         if intent.operation == "append":
             # Append content to a section
-            section = intent.section or "custom"
+            section = intent.section_marker or "custom"
             current = modifications.get(section, "")
             if current:
                 modifications[section] = f"{current}\n{intent.content}"
@@ -1243,7 +1243,7 @@ class ActionExecutor:
 
         elif intent.operation == "prepend":
             # Prepend content to a section
-            section = intent.section or "custom"
+            section = intent.section_marker or "custom"
             current = modifications.get(section, "")
             if current:
                 modifications[section] = f"{intent.content}\n{current}"
@@ -1253,13 +1253,13 @@ class ActionExecutor:
 
         elif intent.operation == "replace":
             # Replace a section entirely
-            section = intent.section or "custom"
+            section = intent.section_marker or "custom"
             modifications[section] = intent.content
             changes.append(f"replaced {section}")
 
         elif intent.operation == "remove":
             # Remove a section
-            section = intent.section or "custom"
+            section = intent.section_marker or "custom"
             if section in modifications:
                 del modifications[section]
                 changes.append(f"removed {section}")
@@ -1305,7 +1305,7 @@ class ActionExecutor:
         new_content = json.dumps(config, indent=2)
         w.artifacts.write(
             artifact_id=agent_id,
-            type=agent_artifact.artifact_type,
+            type=agent_artifact.type,
             content=new_content,
             created_by=agent_artifact.created_by,
             executable=agent_artifact.executable,

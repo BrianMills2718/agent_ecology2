@@ -198,7 +198,7 @@ class World:
         quotas: PerAgentQuota = compute_per_agent_quota(num_agents) if num_agents > 0 else empty_quotas
 
         # Rights configuration (Layer 2: Means of Production)
-        # See docs/RESOURCE_MODEL.md for design rationale
+        # See docs/architecture/current/resources.md for design rationale
         # Values come from config via compute_per_agent_quota()
         # Use new generic format with default_quotas dict
         if "rights" in config and "default_quotas" in config["rights"]:

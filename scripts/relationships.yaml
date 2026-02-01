@@ -47,7 +47,7 @@ governance:
   - source: src/world/genesis_contracts.py
     adrs: [1, 3]
     context: |
-      Four built-in contracts: freeware, self_owned, private, public.
+      Five built-in contracts: freeware, transferable_freeware, self_owned, private, public.
       These are Python classes, not artifacts (current implementation).
 
   - source: src/world/ledger.py
@@ -87,7 +87,7 @@ couplings:
       - src/world/world.py
     docs:
       - docs/architecture/current/execution_model.md
-    description: "Tick loop and two-phase execution"
+    description: "Execution model and event loop"
 
   # Resource accounting
   - sources:
@@ -99,7 +99,8 @@ couplings:
 
   # Genesis artifacts
   - sources:
-      - src/world/genesis.py
+      - src/world/genesis/__init__.py
+      - src/world/genesis/factory.py
       - src/world/mcp_bridge.py
     docs:
       - docs/architecture/current/genesis_artifacts.md
@@ -123,9 +124,10 @@ couplings:
       - src/world/interface_validation.py
       - src/world/invoke_handler.py
       - src/world/actions.py
+      - src/world/kernel_interface.py
     docs:
       - docs/architecture/current/artifacts_executor.md
-    description: "Artifact storage, policies, code execution, permission checking"
+    description: "Artifact storage, policies, code execution, kernel interface, permission checking"
 
   # Configuration
   - sources:

@@ -2,7 +2,7 @@
 
 How access control works today.
 
-**Last verified:** 2026-01-23 (Plan #160 - Clarified kernel defaults vs cold-start conveniences)
+**Last verified:** 2026-01-31 (Added transferable_freeware, Plan #241 audit cleanup)
 
 **See also:** ADR-0019 (Unified Permission Architecture)
 
@@ -97,6 +97,7 @@ Pre-made permission presets available at initialization. Like genesis artifacts 
 | **SelfOwned** | `genesis_contract_self_owned` | Only artifact itself (or creator) can access |
 | **Private** | `genesis_contract_private` | Only creator can access |
 | **Public** | `genesis_contract_public` | Anyone can do anything |
+| **TransferableFreeware** | `genesis_contract_transferable_freeware` | Like freeware + authorized_writer can write |
 
 **Note on `created_by`:** The genesis contracts reference `created_by` for access decisions. This is a contract policy choice, not kernel privilege. `created_by` is just metadata - contracts can use it however they want (or ignore it entirely for pure Ostrom-style rights). Custom contracts can implement any access pattern.
 

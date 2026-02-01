@@ -18,7 +18,7 @@ Precision Strategy (Plan #84):
     - This hybrid approach is intentional: float storage for simplicity,
       Decimal arithmetic for correctness
 
-See docs/RESOURCE_MODEL.md for full design rationale.
+See docs/architecture/current/resources.md for full design rationale.
 """
 
 # --- GOVERNANCE START (do not edit) ---

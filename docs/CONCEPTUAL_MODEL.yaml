@@ -94,7 +94,7 @@ kernel_interface:
       - "would_exceed_quota(principal_id, resource, amount) -> bool"
 
   kernel_actions:
-    description: "Write operations with verified caller (12 methods)"
+    description: "Write operations with verified caller (15 methods)"
     methods:
       - "transfer_scrip(caller_id, to, amount) -> bool"
       - "transfer_resource(caller_id, to, resource, amount) -> bool"
@@ -108,6 +108,9 @@ kernel_interface:
       - "create_principal(principal_id, starting_scrip, starting_compute) -> bool"
       - "update_artifact_metadata(caller_id, artifact_id, key, value) -> bool"
       - "modify_protected_content(artifact_id, content, code, metadata) -> bool"
+      - "grant_charge_delegation(caller_id, delegate_id, max_per_call, max_per_window) -> bool"
+      - "revoke_charge_delegation(caller_id, delegate_id) -> bool"
+      - "authorize_charge(caller_id, payer_id, amount) -> bool"
 
 # =============================================================================
 # PERMISSION SYSTEM (ADR-0019 - current)
@@ -122,7 +125,6 @@ permission_system:
     - "self_owned (owner-only everything)"
     - "private (owner-only)"
     - "public (everyone)"
-    - "creator_only (creator-only)"
     - "transferable_freeware (freeware + authorized_writer)"
 
 # =============================================================================
