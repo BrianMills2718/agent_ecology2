@@ -285,6 +285,16 @@ If yes → **stop and ask** before proceeding.
 - **Delete > Comment.** Remove unused code, don't comment it out.
 - **Flat > Nested.** Prefer flat structures over deep hierarchies.
 
+### Process Awareness
+
+If you find yourself doing something that isn't covered by the meta-process
+(no pattern, no template, no convention), treat it as a signal:
+
+- Either the meta-process has a gap — record it in `meta-process/ISSUES.md`
+- Or you're deviating from process — stop and ask before continuing
+
+Don't silently invent new conventions. Make them explicit.
+
 ---
 
 ## Project Structure
