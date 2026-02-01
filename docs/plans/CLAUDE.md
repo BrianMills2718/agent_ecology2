@@ -58,6 +58,7 @@ Master index of all gaps and their implementation plans.
 | 248 | [Gap 248: Script Testing — Critical Scripts Untested](248_script_testing.md) | Medium | ✅ Complete | — |
 | 249 | [Gap 249: Plan-to-Diff Verification](249_plan_to_diff_verification.md) | Medium | ✅ Complete | — |
 | 250 | [Plan 250: Meta-Process Enforcement Gaps](250_meta_process_enforcement_gaps.md) | High | ✅ Complete | - |
+| 253 | [Plan 253: Feature → Gate Terminology Cleanup](253_feature_to_gate_terminology.md) | Medium | ✅ Complete | - |
 ---
 
 ## TDD Workflow
