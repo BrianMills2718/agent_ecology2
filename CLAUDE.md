@@ -306,6 +306,28 @@ make clean-worktrees-auto  # Auto-cleanup (safe only)
 4. **Strong Typing** - `mypy --strict`, Pydantic models
 5. **Real Tests, Not Mocks** - Use `# mock-ok: <reason>` if mock needed
 6. **Prefer Libraries** - Ask before hand-rolling algorithms
+7. **Simplest thing that works** - Every solution should be the simplest that solves the problem
+
+### Hard Rules - Stop and Ask If Tempted
+
+Before writing code, check if you're about to:
+
+- **Hack** - Workaround instead of fixing the root cause
+- **Overengineer** - Add abstraction, config, or flexibility "for later"
+- **Add fallbacks** - Handle cases that won't happen
+- **Support legacy** - Keep old code paths "just in case"
+- **Leave dead code** - Commented out, unused, or orphaned code
+- **Create complexity** - Giant files, deep folder nesting, abstract inheritance
+
+If yes → **stop and ask** before proceeding.
+
+### Working Style
+
+- Don't jump into coding complex problems. Brainstorm first, finalize the approach together.
+- Recommend the simplest solution. Present multiple approaches when they exist and ask which is preferred.
+- Raise concerns early. If something feels off or unclear, ask rather than assume.
+- **Delete > Comment.** Remove unused code, don't comment it out.
+- **Flat > Nested.** Prefer flat structures over deep hierarchies.
 
 ---
 
