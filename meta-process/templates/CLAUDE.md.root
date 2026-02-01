@@ -100,6 +100,13 @@ make finish BRANCH=X PR=N  # Merge + cleanup
 - All significant work requires a plan in `docs/plans/NN_name.md`
 - Use `[Trivial]` only for <20 lines, no src/ changes
 
+### Process Awareness
+- If you're doing something not covered by the meta-process (no pattern, no
+  template, no convention), treat it as a signal:
+  - Either the meta-process has a gap — record it in `meta-process/ISSUES.md`
+  - Or you're deviating from process — stop and ask before continuing
+- Don't silently invent new conventions. Make them explicit.
+
 ---
 
 ## Design Principles

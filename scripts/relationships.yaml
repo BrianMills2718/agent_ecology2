@@ -207,7 +207,7 @@ couplings:
     description: "Agent response models - update if new fields added"
     soft: true
 
-  # Conceptual model (CMF + CM)
+  # Conceptual model
   - sources:
       - src/world/artifacts.py
       - src/world/actions.py

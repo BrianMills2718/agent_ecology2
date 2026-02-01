@@ -156,6 +156,12 @@ if [[ ! -f "$TARGET_DIR/docs/plans/CLAUDE.md" ]]; then
     echo -e "  ${GREEN}Created: docs/plans/CLAUDE.md${NC}"
 fi
 
+# Issues tracking (for recording observed problems, concerns, tech debt)
+if [[ ! -f "$TARGET_DIR/ISSUES.md" ]]; then
+    cp "$SCRIPT_DIR/templates/issues.md.template" "$TARGET_DIR/ISSUES.md"
+    echo -e "  ${GREEN}Created: ISSUES.md${NC}"
+fi
+
 if [[ "$MODE" == "--full" ]]; then
     if [[ ! -f "$TARGET_DIR/scripts/doc_coupling.yaml" ]]; then
         cp "$SCRIPT_DIR/templates/doc_coupling.yaml.example" "$TARGET_DIR/scripts/doc_coupling.yaml"
