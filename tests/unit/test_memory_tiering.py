@@ -77,7 +77,7 @@ class TestArtifactMemoryTiering:
         content = memory._get_memory_content("agent1")
         assert content["history"][0]["tier"] == 1  # critical
 
-    @patch("src.agents.memory.config_get")
+    @patch("src.agents.memory.config_get")  # mock-ok: config requires filesystem setup
     def test_pinned_limit_enforced(self, mock_config: MagicMock, memory: ArtifactMemory) -> None:
         """Should reject pinned memories when limit is reached."""
         mock_config.return_value = 2  # max 2 pinned
@@ -182,7 +182,7 @@ class TestArtifactMemoryTiering:
         success = memory.set_memory_tier("agent1", 99, tier=0)
         assert success is False
 
-    @patch("src.agents.memory.config_get")
+    @patch("src.agents.memory.config_get")  # mock-ok: config requires filesystem setup
     def test_set_memory_tier_respects_pinned_limit(
         self, mock_config: MagicMock, memory: ArtifactMemory
     ) -> None:
@@ -228,8 +228,8 @@ class TestAgentMemoryTiering:
         mock.search.return_value = {"results": []}
         return mock
 
-    @patch("src.agents.memory.Memory")
-    @patch("src.agents.memory.config_get")
+    @patch("src.agents.memory.Memory")  # mock-ok: Mem0 Memory requires external service
+    @patch("src.agents.memory.config_get")  # mock-ok: config requires filesystem setup
     def test_add_passes_tier_as_metadata(
         self, mock_config: MagicMock, mock_memory_class: MagicMock, mock_mem0: MagicMock
     ) -> None:

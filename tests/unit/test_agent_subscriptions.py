@@ -114,7 +114,7 @@ class TestAgentSubscribedArtifacts:
         agent = Agent(agent_id="agent_001")
         assert agent._subscribed_artifacts == []
 
-    @patch("src.agents.agent.config_get")
+    @patch("src.agents.agent.config_get")  # mock-ok: config requires filesystem setup
     def test_subscribed_artifacts_injected_into_prompt(
         self, mock_config_get: MagicMock
     ) -> None:
@@ -163,7 +163,7 @@ class TestAgentSubscribedArtifacts:
         assert "my_handbook" in prompt
         assert "This is the handbook content" in prompt
 
-    @patch("src.agents.agent.config_get")
+    @patch("src.agents.agent.config_get")  # mock-ok: config requires filesystem setup
     def test_subscribed_artifacts_truncated_if_too_large(
         self, mock_config_get: MagicMock
     ) -> None:
@@ -213,7 +213,7 @@ class TestAgentSubscribedArtifacts:
         # Should not contain full content
         assert large_content not in prompt
 
-    @patch("src.agents.agent.config_get")
+    @patch("src.agents.agent.config_get")  # mock-ok: config requires filesystem setup
     def test_max_subscribed_artifacts_limit(
         self, mock_config_get: MagicMock
     ) -> None:
@@ -260,7 +260,7 @@ class TestAgentSubscribedArtifacts:
         assert "Content 3" not in prompt
         assert "Content 4" not in prompt
 
-    @patch("src.agents.agent.config_get")
+    @patch("src.agents.agent.config_get")  # mock-ok: config requires filesystem setup
     def test_nonexistent_subscribed_artifact_skipped(
         self, mock_config_get: MagicMock
     ) -> None:
