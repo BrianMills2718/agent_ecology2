@@ -111,7 +111,7 @@ class TestSectionBudget:
             agent._llm_model = "gpt-4"
             return agent
 
-    @patch("src.agents.agent.config_get")
+    @patch("src.agents.agent.config_get")  # mock-ok: config requires filesystem setup
     def test_get_section_budget_from_config(
         self, mock_config: MagicMock, mock_agent: Agent
     ) -> None:
@@ -130,7 +130,7 @@ class TestSectionBudget:
         assert priority == "high"
         assert strategy == "end"
 
-    @patch("src.agents.agent.config_get")
+    @patch("src.agents.agent.config_get")  # mock-ok: config requires filesystem setup
     def test_get_section_budget_defaults(
         self, mock_config: MagicMock, mock_agent: Agent
     ) -> None:
@@ -155,7 +155,7 @@ class TestApplyContextBudget:
             agent._llm_model = "gpt-4"
             return agent
 
-    @patch("src.agents.agent.config_get")
+    @patch("src.agents.agent.config_get")  # mock-ok: config requires filesystem setup
     def test_budget_disabled_returns_original(
         self, mock_config: MagicMock, mock_agent: Agent
     ) -> None:
@@ -169,7 +169,7 @@ class TestApplyContextBudget:
         assert result == sections
         assert "test" in stats
 
-    @patch("src.agents.agent.config_get")
+    @patch("src.agents.agent.config_get")  # mock-ok: config requires filesystem setup
     def test_budget_enabled_truncates_sections(
         self, mock_config: MagicMock, mock_agent: Agent
     ) -> None:
@@ -204,7 +204,7 @@ class TestBudgetVisibility:
             agent._llm_model = "gpt-4"
             return agent
 
-    @patch("src.agents.agent.config_get")
+    @patch("src.agents.agent.config_get")  # mock-ok: config requires filesystem setup
     def test_format_budget_hidden_when_disabled(
         self, mock_config: MagicMock, mock_agent: Agent
     ) -> None:
@@ -216,7 +216,7 @@ class TestBudgetVisibility:
 
         assert result == ""
 
-    @patch("src.agents.agent.config_get")
+    @patch("src.agents.agent.config_get")  # mock-ok: config requires filesystem setup
     def test_format_budget_visible_when_enabled(
         self, mock_config: MagicMock, mock_agent: Agent
     ) -> None:
@@ -238,7 +238,7 @@ class TestBudgetVisibility:
         assert "rag_memories" in result
         assert "500/600" in result
 
-    @patch("src.agents.agent.config_get")
+    @patch("src.agents.agent.config_get")  # mock-ok: config requires filesystem setup
     def test_format_budget_warns_near_limit(
         self, mock_config: MagicMock, mock_agent: Agent
     ) -> None:
