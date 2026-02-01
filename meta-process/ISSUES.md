@@ -195,30 +195,24 @@ gap coverage, (3) cleanup_claims_mess.py, (4) recover.py.
 
 ---
 
-### MP-008: install.sh — all 6 reported issues confirmed, never tested externally
+### MP-008: install.sh — 4 of 6 issues fixed, 2 deferred as feature additions
 
 **Observed:** 2026-01-31
 **Investigated:** 2026-01-31
-**Status:** `confirmed`
+**Status:** `confirmed` (partially resolved)
 
-All 6 originally reported issues confirmed through investigation:
+4 of 6 originally reported issues have been fixed:
 
-| Issue | Severity | Detail |
-|-------|----------|--------|
-| `cd "$TARGET_DIR"` (line 202) changes CWD | Low | Runs in subshell so doesn't leak, but violates the framework's own CWD principles |
-| `docs/plans/CLAUDE.md` copy logic duplicated | Low | Lines 154-156 copy the file; lines 252-256 try again but it's dead code (file already exists) |
-| Hardcoded principles ("Fail Loud", "Test First") | Medium | `sed` substitutions at lines 223-233 bake agent_ecology2 principles into any adopter's CLAUDE.md |
-| `--minimal` mode references `scripts/doc_coupling.yaml` | Medium | Final instructions (line 270) tell user to edit a file that only exists after `--full` |
-| No `--dry-run` option | Medium | Compare with `export_meta_process.py` which has `--dry-run` |
-| No uninstall or upgrade path | Medium | No way to cleanly remove or update the meta-process |
+| Issue | Status | Fix |
+|-------|--------|-----|
+| `cd "$TARGET_DIR"` changes CWD | Fixed | Replaced with `git -C "$TARGET_DIR"` |
+| `docs/plans/CLAUDE.md` copy logic duplicated | Fixed | Removed dead code (lines 251-257) |
+| Hardcoded principles ("Fail Loud", "Test First") | Fixed | Changed to generic `YOUR_PRINCIPLE_N` + TODO prompts |
+| `--minimal` mode references `scripts/doc_coupling.yaml` | Fixed | Made conditional on `--full` mode |
+| No `--dry-run` option | Deferred | Feature addition — needs a plan |
+| No uninstall or upgrade path | Deferred | Feature addition — needs a plan |
 
-**Additional finding:** No evidence this script has ever been run on a non-agent_ecology2
-project. No test files, no CI coverage, no external usage documentation. The portability
-claim is untested.
-
-**Fix:** This overlaps with MP-001 (identity crisis). If the framework is meant to be
-portable, install.sh needs significant rework. If not, it should be simplified to just
-set up the current project.
+**Relates to:** MP-001 (identity crisis).
 
 ---
 
