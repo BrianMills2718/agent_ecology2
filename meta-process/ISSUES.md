@@ -222,36 +222,6 @@ set up the current project.
 
 ---
 
----
-
-### MP-011: Circular documentation references with no linear reading path
-
-**Observed:** 2026-01-31
-**Investigated:** 2026-01-31
-**Status:** `confirmed`
-
-**Finding:** Real cycles exist in the documentation reference graph. Entry point
-(README → GETTING_STARTED) is clear, but GETTING_STARTED immediately branches into
-4 weight levels and reads patterns in non-sequential order (2, 19, 18, 15, 23, 6, 10...).
-Patterns reference each other bidirectionally without indicating reading order (Pattern 18
-↔ Pattern 19, Pattern 15 ↔ Pattern 21).
-
-**Key problems:**
-- GETTING_STARTED uses "plan" and "claim" before they're defined
-- Day 1-2 patterns reference Day 3-4 patterns via "See also" links
-- No pattern declares prerequisites ("Requires: X, Y")
-- Hub patterns (13, 15, 18) are heavily referenced but not identified as hubs
-
-A newcomer following every "See also" link reads 15 patterns to understand 3. Stopping
-at links means missing context. The cross-referencing helps experts but overwhelms newcomers.
-
-**Fix:** (1) Add dependency/prerequisite rows to `01_README.md`, (2) reorder
-GETTING_STARTED Day 1-2 to read prerequisites first, (3) mark "See also" links as
-"core" vs "optional deep dive", (4) add a "Core Concepts" glossary section before
-pattern references.
-
----
-
 ### MP-013: Overengineered — ~30% of infrastructure unused at current scale
 
 **Observed:** 2026-01-31
@@ -319,6 +289,7 @@ and untouched declared files as WARN (plan drift). Could integrate into `make ch
 | MP-005 | Pattern 12 unlabeled as PROPOSED in index | Added *(proposed)* annotation to Pattern 12 entry in `01_README.md` index. | 2026-01-31 |
 | MP-009 | Undocumented pattern dependencies; 3 non-patterns | Added `Requires` column to pattern index in `01_README.md` with prerequisite numbers for 14 patterns. Added note identifying 3 convention/infrastructure entries (06, 11, 26). | 2026-01-31 |
 | MP-016 | No implementation-time escalation convention | Added "Escalation: When Plan Meets Reality" section to Pattern 28 with 3-step process (record in CONTEXT.md, update plan, decide continue/reduce/stop). Added "Discovered Conflicts" section to CONTEXT.md template. | 2026-01-31 |
+| MP-011 | Circular docs with no linear reading path | Added "Core Concepts" glossary before adoption path in GETTING_STARTED.md. Reordered Day 1-2 reading list to follow dependency order (18 before 19). Pattern index Requires column (MP-009) addresses prerequisite visibility. | 2026-01-31 |
 
 ---
 
