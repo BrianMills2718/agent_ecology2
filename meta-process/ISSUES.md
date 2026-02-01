@@ -107,36 +107,6 @@ between CC instances become common.
 
 ## Confirmed
 
-### MP-001: Portable framework claims, project-specific examples
-
-**Observed:** 2026-01-31
-**Investigated:** 2026-01-31
-**Status:** `confirmed`
-
-**Finding:** The framework IS genuinely trying to be portable (README: "a portable
-framework for coordinating AI coding assistants"). But 16 of 29 patterns (55%) contain
-agent_ecology2-specific terminology (escrow, kernel, ledger, scrip, principal, genesis,
-artifact, mint) — 437 total matches.
-
-4 patterns are heavily contaminated (>20 project-specific terms each): Pattern 13
-(Acceptance Gates, 48), Pattern 18 (Claims, 31), Pattern 03 (Testing, 30), Pattern 14
-(Gate Linkage, 27). These use project-specific domain concepts as running examples
-throughout.
-
-No export mechanism strips project-specific content. `install.sh` copies all patterns
-verbatim. No customization guide exists.
-
-**The core tension:** Concepts are generic (plans, claims, worktrees, acceptance gates)
-but all examples are project-specific. An adopter gets portable patterns wrapped in
-agent_ecology2 vocabulary.
-
-**Fix options:**
-- **Low effort:** Add honest disclaimers + customization guide (find-replace list)
-- **Medium effort:** Separate `meta-process/patterns/core/` from project-specific case studies
-- **High effort:** Rewrite examples using generic domain (e.g., e-commerce)
-
-**Relates to:** MP-008 (install.sh), MP-009 (pattern deps)
-
 ---
 
 ### MP-006: Pattern 13 is too large — 724 lines, 3x average, mixed concerns
@@ -258,6 +228,7 @@ and untouched declared files as WARN (plan drift). Could integrate into `make ch
 | MP-016 | No implementation-time escalation convention | Added "Escalation: When Plan Meets Reality" section to Pattern 28 with 3-step process (record in CONTEXT.md, update plan, decide continue/reduce/stop). Added "Discovered Conflicts" section to CONTEXT.md template. | 2026-01-31 |
 | MP-011 | Circular docs with no linear reading path | Added "Core Concepts" glossary before adoption path in GETTING_STARTED.md. Reordered Day 1-2 reading list to follow dependency order (18 before 19). Pattern index Requires column (MP-009) addresses prerequisite visibility. | 2026-01-31 |
 | MP-013 | ~30% of infrastructure unused at current scale | Added "Multi-CC only" tier to pattern index "When to Use" section, listing 5 patterns + 4 scripts to skip for solo/small setups. Added "skip for solo" note to GETTING_STARTED.md adoption stage. Features remain available but clearly marked as scale-dependent. | 2026-01-31 |
+| MP-001 | Portable framework, project-specific examples | Added "Customizing for Your Project" section to README.md with find-replace table for 8 agent_ecology2-specific terms. Identified the 4 most affected patterns. Low-effort fix; medium/high-effort options (example rewrites, core/project split) remain as future work. | 2026-01-31 |
 
 ---
 

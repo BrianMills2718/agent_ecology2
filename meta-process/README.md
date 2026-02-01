@@ -100,6 +100,23 @@ See `patterns/` directory for detailed documentation of each pattern:
 - `patterns/18_claim-system.md` - How claims work
 - `patterns/13_acceptance-gate-driven-development.md` - Full acceptance gate system
 
+## Customizing for Your Project
+
+The patterns are generic but examples come from [agent_ecology2](https://github.com/BrianMills2718/agent_ecology2), the project where this framework was developed. When adopting, replace these project-specific terms in pattern documentation:
+
+| agent_ecology2 term | Replace with |
+|----------------------|--------------|
+| `scrip` | Your currency/points system (or remove) |
+| `principal` | Your user/account concept |
+| `artifact` | Your entity/object concept |
+| `kernel` | Your core/engine module |
+| `ledger` | Your transaction/state store |
+| `escrow` | Your holding/pending mechanism (or remove) |
+| `genesis` | Your bootstrap/seed data |
+| `mint` | Your creation/issuance process (or remove) |
+
+**Most affected patterns** (>20 project-specific terms each): Pattern 13 (Acceptance Gates), Pattern 18 (Claims), Pattern 03 (Testing), Pattern 14 (Gate Linkage). The core concepts in these patterns are fully generic — only the examples need customization.
+
 ## Origin
 
 Emerged from the [agent_ecology](https://github.com/BrianMills2718/agent_ecology2) project while coordinating multiple Claude Code instances.
