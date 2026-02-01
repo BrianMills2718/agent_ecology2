@@ -7,7 +7,6 @@ All runtime configuration lives here. No magic numbers in code.
 | File | Purpose |
 |------|---------|
 | `config.yaml` | Runtime values (the one you edit) |
-| `schema.yaml` | Documentation of structure (reference only) |
 
 ## Key Sections in config.yaml
 

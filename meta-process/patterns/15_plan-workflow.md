@@ -99,7 +99,7 @@ mkdir -p docs/plans
 - src/module.py (modify)
 - src/new_feature.py (create)
 - tests/test_feature.py (create)
-- config/schema.yaml (modify)
+- config/config.yaml (modify)
 
 ---
 

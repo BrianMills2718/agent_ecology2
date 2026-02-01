@@ -13,9 +13,8 @@ Typos and invalid values fail fast with clear error messages.
 
 **Key files:**
 - `config/config.yaml` - Runtime values
-- `config/schema.yaml` - Structure documentation (for humans)
 - `src/config.py` - Config loader with dot-path access
-- `src/config_schema.py` - Pydantic validation models
+- `src/config_schema.py` - Pydantic validation models (schema + defaults)
 
 ---
 
@@ -386,9 +385,8 @@ mint:
 | File | Purpose |
 |------|---------|
 | `src/config.py` | Loader with `get()` and `get_validated_config()` |
-| `src/config_schema.py` | Pydantic models (894 lines) |
+| `src/config_schema.py` | Pydantic models (schema + defaults) |
 | `config/config.yaml` | Runtime values |
-| `config/schema.yaml` | Human-readable structure docs |
 
 ---
 
@@ -417,7 +415,7 @@ from config import (
 ### No Magic Numbers
 - All numeric values from config
 - Missing config = immediate failure (no silent defaults in code)
-- See `config/schema.yaml` for all options
+- See `src/config_schema.py` for all options and defaults
 
 ### Typed Access
 - `get_validated_config()` returns typed `AppConfig`

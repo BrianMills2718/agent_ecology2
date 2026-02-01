@@ -407,8 +407,7 @@ scrip:
 agent_ecology/
   run.py              # Entry point
   config/
-    config.yaml       # Runtime values
-    schema.yaml       # Config documentation
+    config.yaml       # Runtime values (validated by src/config_schema.py)
   src/
     world/            # World state, ledger, executor
     agents/           # Agent loading, LLM interaction
