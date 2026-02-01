@@ -293,8 +293,6 @@ python scripts/check_feature_coverage.py
 | File | Purpose |
 |------|---------|
 | `features.yaml` | Single source of truth (gate definitions) |
-| `scripts/derive_governance.py` | Generate governance.yaml from gates |
-| `scripts/derive_doc_coupling.py` | Generate doc_coupling.yaml from gates |
 | `scripts/check_feature_coverage.py` | Ensure all code assigned |
 
 ## Benefits

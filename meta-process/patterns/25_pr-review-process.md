@@ -1,4 +1,4 @@
-# PR Review Process
+# Pattern: PR Review Process
 
 How code reviews work in this codebase.
 
