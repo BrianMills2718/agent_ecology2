@@ -245,6 +245,47 @@ origin main && python scripts/complete_plan.py --plan 246 --status-only`.
 - For non-git worktree operations (like Python imports), use
   `PYTHONPATH=/abs/path python -c "..."` instead of `cd worktree && python`
 
+### Incident #5 - 2026-01-31
+
+**Session:** readme_1056 — Adding repomix meta-process config and pattern doc
+**Class:** A (CWD invalidation)
+**Trigger:** `make finish BRANCH=trivial-repomix-meta PR=918`
+**Symptoms:**
+- `make finish` output started with `pwd: error retrieving current directory`
+- PR merged successfully, worktree deleted, plan completion succeeded
+- ALL subsequent Bash commands failed with exit code 1, no output
+- Even `bash -c 'cd /home/brian/brian_projects/agent_ecology2 && pwd'` failed
+- Even `echo "test"` failed — shell completely broken
+- Non-Bash tools (Read, Glob) continued working fine
+
+**Analysis:**
+
+Session workflow was correct throughout:
+- Created worktree with `git worktree add worktrees/trivial-repomix-meta`
+- All edits used absolute paths (`/home/brian/.../worktrees/trivial-repomix-meta/...`)
+- All git commands used `git -C worktrees/trivial-repomix-meta ...`
+- Never ran an explicit `cd worktrees/...` command
+
+**However**, the Bash tool's internal CWD state appears to have become invalid
+during or after the `make finish` execution. The `pwd: error` message appeared
+at the START of `make finish` output, suggesting the CWD may have already been
+stale before the command ran (possibly from a previous session state, worktree
+operations, or the Makefile's internal cd operations).
+
+**Key observation:** Even when the CC session follows all CWD rules perfectly,
+`make finish` can still break the shell because it deletes a worktree that
+may be tracked in Bash tool state from earlier operations (possibly across
+session boundaries or from Makefile subprocess behavior).
+
+**Resolution:** User refreshed the session to get a fresh shell.
+
+**Follow-up:**
+- Recorded in CWD_INCIDENT_LOG.md (this entry)
+- The fundamental problem remains: Bash tool CWD state is invisible to hooks
+  and can become invalid when worktrees are deleted
+- Possible investigation: does `make finish` or the Makefile's `cd $(MAIN_DIR)`
+  somehow affect the Bash tool's tracked CWD in unexpected ways?
+
 ---
 
 ## Template for New Incidents
