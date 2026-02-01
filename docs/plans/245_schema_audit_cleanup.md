@@ -1,9 +1,21 @@
 # Plan #245: Schema Audit Cleanup
 
-**Status:** Planned
+**Status:** ✅ Complete
 **Priority:** P1 (code bug) + P2 (doc consistency)
 **Blocked By:** None
-**Branch:** (pending)
+**Branch:** plan-245-schema-audit
+
+**Verified:** 2026-02-01T03:30:00Z
+**Verification Evidence:**
+```yaml
+completed_by: manual audit
+timestamp: 2026-02-01T03:30:00Z
+finding: All 23 issues resolved by prior work (Plans #241, CMF-v3, others)
+tests:
+  unit: not needed (no code changes)
+  e2e_smoke: not needed (no code changes)
+  doc_coupling: passed (no coupling changes)
+```
 
 ## Context
 
