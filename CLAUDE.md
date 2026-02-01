@@ -68,24 +68,13 @@ make release             # Release claim
 ### Cleanup
 ```bash
 make clean               # Remove __pycache__, .pytest_cache
-make clean-claims        # Remove old completed claims
-make clean-merged        # Cleanup claims for merged branches (Plan #189)
 make clean-branches      # List stale remote branches
 make clean-branches-delete  # Delete stale remote branches
 make clean-worktrees     # Find orphaned worktrees
 make clean-worktrees-auto  # Auto-cleanup orphaned worktrees
 ```
 
-### Claim Cleanup (Plan #206)
-```bash
-# Cleanup commands for claim lifecycle management
-python scripts/check_claims.py --cleanup-orphaned  # Remove claims with missing worktrees
-python scripts/check_claims.py --cleanup-stale     # Remove claims inactive >8h
-python scripts/check_claims.py --cleanup-stale --stale-hours 4  # Custom threshold
-python scripts/check_claims.py --cleanup-orphaned --dry-run  # Preview changes
-python scripts/cleanup_claims_mess.py --dry-run    # One-time full cleanup preview
-python scripts/cleanup_claims_mess.py --apply      # Apply full cleanup
-```
+Note: Claim cleanup (orphaned, stale, completed) runs automatically on session startup via `.claude/hooks/session-startup-cleanup.sh`.
 ---
 
 ## Quick Reference - Scripts
@@ -260,8 +249,8 @@ cd worktrees/plan-123-foo && git add -A && git commit -m "..." && cd -
 
 **Stale claim blocking your work:**
 ```bash
-make clean-merged          # Auto-cleanup claims for merged branches
-make clean-claims          # Remove old completed claims
+python scripts/check_claims.py --cleanup-orphaned  # Remove claims with missing worktrees
+python scripts/check_claims.py --cleanup-merged     # Remove claims for merged branches
 ```
 
 **Orphaned worktree (branch merged but worktree remains):**

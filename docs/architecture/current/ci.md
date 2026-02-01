@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-31 (Added orphan doc detection, CMF coupling entries)
+Last verified: 2026-01-31 (Removed stale CMF coupling refs, redirected to CM)
 
 ---
 

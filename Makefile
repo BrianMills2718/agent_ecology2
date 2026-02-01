@@ -5,7 +5,7 @@
 # This ensures we always use main's scripts, not potentially stale worktree copies
 MAIN_DIR := $(shell git worktree list | head -1 | awk '{print $$1}')
 
-.PHONY: help install test mypy lint check clean claim release gaps status rebase pr-ready pr finish pr-list pr-view worktree worktree-remove worktree-remove-force clean-branches clean-branches-delete clean-worktrees clean-worktrees-auto kill ci-status ci-require ci-optional run dash dash-run analyze health health-fix recover recover-auto
+.PHONY: help install test mypy lint check clean claim release status pr-ready pr finish pr-list pr-view worktree worktree-remove worktree-remove-force clean-branches clean-branches-delete clean-worktrees clean-worktrees-auto kill ci-status ci-require ci-optional run dash dash-run analyze health health-fix recover recover-auto
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -43,17 +43,6 @@ lint:  ## Check doc-code coupling
 lint-suggest:  ## Show which docs need updates
 	python scripts/check_doc_coupling.py --suggest
 
-# Plan/Gap management
-gaps:  ## Show gap status summary
-	@echo "=== Gap Status ==="
-	@python scripts/sync_plan_status.py --list 2>/dev/null || echo "Run from project root"
-
-gaps-sync:  ## Sync plan statuses
-	python scripts/sync_plan_status.py --sync
-
-gaps-check:  ## Check plan status consistency
-	python scripts/sync_plan_status.py --check
-
 claim:  ## Claim work (usage: make claim TASK="description" PLAN=N)
 	python scripts/check_claims.py --claim --task "$(TASK)" $(if $(PLAN),--plan $(PLAN),)
 
@@ -84,10 +73,6 @@ worktree-remove:  ## Remove a worktree safely (usage: make worktree-remove BRANC
 worktree-remove-force:  ## Force remove worktree (LOSES uncommitted changes!)
 	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree-remove-force BRANCH=feature-name"; exit 1; fi
 	python $(MAIN_DIR)/scripts/safe_worktree_remove.py --force $(MAIN_DIR)/worktrees/$(BRANCH)
-
-rebase:  ## Rebase current branch onto latest origin/main
-	git fetch origin
-	git rebase origin/main
 
 pr-ready:  ## Rebase and push (run before creating PR)
 	git fetch origin
@@ -126,12 +111,6 @@ clean:  ## Remove generated files
 	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .mypy_cache -exec rm -rf {} + 2>/dev/null || true
 	rm -f run.jsonl checkpoint.json 2>/dev/null || true
-
-clean-claims:  ## Remove old completed claims
-	python scripts/check_claims.py --cleanup
-
-clean-merged:  ## Cleanup claims for merged branches (Plan #189 Phase 3)
-	python scripts/check_claims.py --cleanup-merged
 
 # Meta-process health and recovery
 health:  ## Run meta-process health check
