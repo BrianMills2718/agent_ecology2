@@ -1,13 +1,30 @@
 # Consolidated Gap Analysis Summary
-# Generated: 2026-01-12
-# Methodology: docs/architecture/GAP_IDENTIFICATION_METHODOLOGY.md
+# Original: 2026-01-12 (142 gaps)
+# Refreshed: 2026-01-31
+# Methodology: meta-process/patterns/30_gap-analysis.md (Pattern #30)
 
 metadata:
   created: 2026-01-12
-  total_gaps: 142
+  refreshed: 2026-01-31
+  original_total: 142
+  closed: 65
+  remaining: 92  # 32 still_open + 45 modified + 15 new
+  new_gaps: 15
+  cross_workstream_duplicates: ~10  # overlapping gaps counted in multiple workstreams
+  estimated_unique_remaining: ~82
   sources:
     current: docs/architecture/current/
     target: docs/architecture/target/
+  plans_completed_since_original:
+    - "Plan #102: Autonomous agent loops (WS-1, WS-2)"
+    - "Plan #181: Split executor.py & world.py (WS-5)"
+    - "Plan #229: Conceptual model + required interfaces (WS-2, WS-5)"
+    - "Plan #230: Renamed can_execute -> has_loop (WS-2)"
+    - "Plan #231: has_standing <-> ledger invariant (WS-2, WS-5)"
+    - "Plan #235: Kernel-protected artifacts, type immutability (WS-5)"
+    - "Plan #236: Charge delegation (WS-3, WS-4)"
+    - "Plan #239: Fixed broken edit_artifact + 2 bugs (WS-5)"
+    - "Plan #245: Schema audit: runtime crash fix + doc cleanups (WS-5)"
   workstream_files:
     - ws1_execution_model.yaml
     - ws2_agents.yaml
@@ -24,190 +41,297 @@ workstream_summary:
   - id: WS-1
     name: "Execution Model"
     file: ws1_execution_model.yaml
-    gap_count: 23
-    key_gaps:
-      - GAP-EXEC-001: "Continuous autonomous agent loops (XL, high risk)"
-      - GAP-EXEC-002: "Agent sleep system with wake conditions"
-      - GAP-EXEC-017: "Worker process isolation pattern (XL)"
+    original_count: 23
+    closed: 13
+    still_open: 2
+    modified: 8
+    new: 0
+    remaining: 10
+    key_remaining:
+      - GAP-EXEC-002: "Agent sleep: infrastructure exists, not agent-accessible (L, medium)"
+      - GAP-EXEC-017: "Worker process: thread pool exists, not process-isolated (XL, high)"
+      - GAP-EXEC-022: "SQLite-backed ledger: only state store uses SQLite (L, medium)"
     description: |
-      Transform from tick-synchronized execution to continuous autonomous agent loops.
-      The most fundamental architectural change - agents become self-driving.
+      Foundational transformation COMPLETE. Plan #102 removed tick-based execution,
+      AgentLoop provides continuous autonomous loops, RateTracker handles resource
+      gating. Remaining work: agent-facing sleep API, worker process isolation,
+      SQLite ledger backend, context hash verification.
 
   - id: WS-2
     name: "Agents"
     file: ws2_agents.yaml
-    gap_count: 22
-    key_gaps:
-      - GAP-AGENT-001: "Unified ontology - agents as artifacts (XL)"
-      - GAP-AGENT-002: "Autonomous agent execution loop"
-      - GAP-AGENT-006: "Memory as separate tradeable artifact"
-      - GAP-AGENT-009: "Event bus for agent wake triggers"
+    original_count: 22
+    closed: 10
+    still_open: 4
+    modified: 8
+    new: 3
+    remaining: 15
+    key_remaining:
+      - GAP-AGENT-004: "Config rights trading (L, medium)"
+      - GAP-AGENT-007: "Agent state observability (M, low) -> enables vulture rescue"
+      - GAP-AGENT-019: "Permission check costs not charged (L, medium)"
+      - GAP-AGENT-024: "Cognitive self-modification safety (M, medium) [NEW]"
     description: |
-      Agents become artifacts with has_standing=true. Memory becomes independently
-      tradeable. Agents own their execution loop and can be bought/sold.
+      45% closed. All foundational gaps done (unified ontology, autonomous loops,
+      event bus, memory as artifact). Remaining: config rights trading, state
+      observability, memory quotas, permission check costs. 3 new gaps emerged
+      from implementation experience.
 
   - id: WS-3
     name: "Resources"
     file: ws3_resources.yaml
-    gap_count: 30
-    key_gaps:
-      - GAP-RES-001: "RateTracker class - rolling window rate limiting"
-      - GAP-RES-008: "ProcessPoolExecutor for action execution"
-      - GAP-RES-018: "Remove tick-based reset behavior"
-      - GAP-RES-019: "Action blocking vs skip on resource exhaustion"
+    original_count: 30
+    closed: 6
+    still_open: 10
+    modified: 14
+    new: 3
+    remaining: 27
+    key_remaining:
+      - GAP-RES-008: "ProcessPoolExecutor for worker isolation (XL, high)"
+      - GAP-RES-004: "Per-agent LLM rate allocation (M, medium)"
+      - GAP-RES-019: "Action blocking vs skip on resource exhaustion (L, high)"
+      - GAP-RES-031: "Charge delegation vs has_standing reconciliation (M, medium) [NEW]"
     description: |
-      Three-category resource model (depletable/allocatable/renewable).
-      Rolling window rate limiting replaces tick-based refresh.
-      All quotas become tradeable.
+      Most gaps remaining of any workstream (27/30). Plan #53 closed 4 and
+      partially addressed 4 more. Legacy tick-based mode creates a shadow
+      set of "mostly closed" gaps. Per-agent rate allocation cluster and
+      worker isolation chain are the key remaining groups.
 
   - id: WS-4
-    name: "Genesis Artifacts"
+    name: "Genesis/Contracts"
     file: ws4_genesis.yaml
-    gap_count: 27
-    key_gaps:
-      - GAP-GEN-001: "Contract-based access control system (XL)"
-      - GAP-GEN-003: "Genesis contracts (freeware, self_owned, private, public)"
-      - GAP-GEN-020: "Anytime bidding replaces tick-based windows"
-      - GAP-GEN-034: "Custom contract support"
+    original_count: 27
+    closed: 18
+    still_open: 1
+    modified: 8
+    new: 5
+    remaining: 14
+    key_remaining:
+      - GAP-GEN-042: "Contracts cannot invoke/call_llm (L, high) [NEW]"
+      - GAP-GEN-040: "Genesis contracts are Python classes, not artifacts (L, medium) [NEW]"
+      - GAP-GEN-041: "Charge delegation not wired to contracts (M, medium) [NEW]"
+      - GAP-GEN-010: "Policy field vestigial but still exists (M, medium)"
     description: |
-      Access control moves from inline policies to contract artifacts.
-      Oracle shifts from tick-based to time-based resolution.
-      Four genesis contracts provide default access patterns.
+      67% closed. Plan #100 was the major milestone (10+ gaps). Contract system
+      fully functional with 5 genesis contracts, custom ExecutableContracts,
+      caching, depth limits, and timeout. Remaining: contract sandbox enrichment
+      (invoke/LLM), structural alignment (genesis as artifacts), mint cleanup.
 
   - id: WS-5
-    name: "Artifacts & Executor"
+    name: "Artifacts/Executor/Kernel"
     file: ws5_artifacts.yaml
-    gap_count: 22
-    key_gaps:
-      - GAP-ART-001: "access_contract_id field replaces policy dict"
-      - GAP-ART-006: "Genesis contracts creation"
-      - GAP-ART-008: "Remove owner bypass (high risk)"
-      - GAP-ART-010: "check_permission interface standard"
+    original_count: 22
+    closed: 14
+    still_open: 3
+    modified: 5
+    new: 4
+    remaining: 12
+    key_remaining:
+      - GAP-ART-012: "Expand contract execution namespace (L, medium)"
+      - GAP-ART-019: "Resource limits for contracts (L, medium)"
+      - GAP-ART-023: "Policy dict coexists with access_contract_id (M, medium) [NEW]"
+      - GAP-ART-026: "handle_request bypasses contract system (S, low) [NEW]"
     description: |
-      Policy dicts replaced by contract references. Owner bypass removed.
-      Contracts become the ONLY authority for permissions.
-      New action types: delete, transfer.
+      Most improved workstream (64% closed). Plan #100 alone closed 12 of 22
+      original gaps. Contract system fully operational. Remaining: sandbox
+      enrichment (overlaps WS-4), policy dict cleanup, contract composition,
+      kernel storage abstraction.
 
   - id: WS-6
     name: "Infrastructure"
     file: ws6_infrastructure.yaml
-    gap_count: 18
-    key_gaps:
-      - GAP-INFRA-001: "Docker containerization"
-      - GAP-INFRA-006: "PostgreSQL for distributed ledger"
-      - GAP-INFRA-007: "Redis event bus"
-      - GAP-INFRA-011: "Local LLM support (XL)"
+    original_count: 18
+    closed: 4
+    still_open: 12
+    modified: 2
+    new: 0
+    remaining: 14
+    key_remaining:
+      - GAP-INFRA-006: "PostgreSQL for distributed ledger (L, medium)"
+      - GAP-INFRA-011: "Local LLM support (XL, high)"
+      - GAP-INFRA-012: "Git-backed artifact store (L, medium)"
+      - GAP-INFRA-003: "Token bucket rate calibration to container CPU (M, low)"
     description: |
-      Docker isolation, multi-container scaling with PostgreSQL/Redis,
-      Git-backed artifact store, local LLM support.
+      Only 4 closed (all Docker-related, Plan #3). Remaining gaps are mostly
+      scaling and advanced features. Single-node deployment works. Multi-container
+      (PostgreSQL, Redis) and advanced features (local LLM, Git store) untouched.
+      No new gaps - target architecture stable.
 
 # =============================================================================
-# COMPLEXITY DISTRIBUTION
+# CROSS-WORKSTREAM OVERLAPS
+# =============================================================================
+
+cross_workstream_overlaps:
+  description: |
+    Several gaps describe the same underlying work from different workstream
+    perspectives. Implementing one typically closes or substantially addresses
+    the others. ~10 gaps are near-duplicates, reducing effective unique remaining
+    from 92 to ~82.
+
+  clusters:
+    - topic: "Contract sandbox enrichment"
+      gaps: [GAP-GEN-042, GAP-ART-011, GAP-ART-012]
+      description: "Adding invoke/call_llm/charge to contract execution namespace"
+
+    - topic: "Policy dict removal"
+      gaps: [GAP-GEN-010, GAP-ART-023]
+      description: "Remove vestigial policy field from Artifact model"
+
+    - topic: "Contract composition"
+      gaps: [GAP-GEN-009, GAP-ART-009]
+      description: "Support multiple contracts per artifact"
+
+    - topic: "Absolute time injection"
+      gaps: [GAP-EXEC-005, GAP-AGENT-021]
+      description: "Add ISO 8601 wall-clock timestamp to agent context"
+
+    - topic: "Worker process isolation"
+      gaps: [GAP-EXEC-017, GAP-RES-008]
+      description: "ProcessPoolExecutor upgrade for true per-worker isolation"
+
+    - topic: "Charge delegation integration"
+      gaps: [GAP-AGENT-025, GAP-RES-031, GAP-GEN-041]
+      description: "Wire Plan #236 charge delegation into agents/contracts/resource model"
+
+    - topic: "Permission check costs"
+      gaps: [GAP-RES-021, GAP-AGENT-019]
+      description: "Charge requesters for permission checks (partial overlap)"
+
+# =============================================================================
+# COMPLEXITY DISTRIBUTION (remaining gaps only)
 # =============================================================================
 
 complexity_summary:
-  S: 41   # < 50 lines
-  M: 60   # 50-200 lines
-  L: 31   # 200-500 lines
-  XL: 10  # > 500 lines, cross-component
+  description: "Complexity of 92 remaining gaps"
+  S: 29
+  M: 38
+  L: 21
+  XL: 4
 
 # =============================================================================
-# RISK DISTRIBUTION
+# RISK DISTRIBUTION (remaining gaps only)
 # =============================================================================
 
 risk_summary:
-  low: 48
-  medium: 68
-  high: 26
+  description: "Risk of 92 remaining gaps"
+  low: 51
+  medium: 34
+  high: 7
 
 # =============================================================================
-# CRITICAL PATH - FOUNDATIONAL GAPS
+# CRITICAL PATH - UPDATED
 # =============================================================================
 
 critical_path:
   description: |
-    These gaps must be addressed first as they are foundational.
-    Other gaps depend on these being complete.
+    Phase 1 foundations (original analysis) are ALL CLOSED:
+    - GAP-EXEC-001 (autonomous loops) -> Plan #102
+    - GAP-AGENT-001 (unified ontology) -> Plan #229/230
+    - GAP-GEN-001 (contract system) -> Plan #100
+    - GAP-RES-001 (RateTracker) -> Plan #53
 
-  phase_1_foundations:
-    - GAP-EXEC-001: "Continuous autonomous agent loops"
-    - GAP-AGENT-001: "Unified ontology - agents as artifacts"
-    - GAP-GEN-001: "Contract-based access control system"
-    - GAP-RES-001: "RateTracker class"
+    The critical path has shifted from foundational to integration/enrichment.
 
-  phase_2_core_systems:
-    - GAP-EXEC-002: "Agent sleep system"
-    - GAP-GEN-003: "Genesis contracts"
-    - GAP-ART-001: "access_contract_id field"
-    - GAP-RES-008: "ProcessPoolExecutor"
+  phase_A_high_value:
+    description: "High-value remaining work that unlocks target architecture vision"
+    items:
+      - GAP-GEN-042: "Contract sandbox enrichment (invoke/call_llm) - blocks ADR-0003"
+      - GAP-GEN-041: "Charge delegation in contracts - enables full cost model"
+      - "GAP-RES-004/013/022: Per-agent rate allocation cluster - enables market allocation"
+      - GAP-AGENT-007: "Agent state observability -> enables vulture capitalist pattern"
 
-  phase_3_integration:
-    - GAP-AGENT-009: "Event bus for wake triggers"
-    - GAP-ART-008: "Remove owner bypass"
-    - GAP-RES-018: "Remove tick-based reset"
-    - GAP-INFRA-001: "Docker containerization"
+  phase_B_cleanup:
+    description: "Medium-value cleanup that removes legacy and aligns with target"
+    items:
+      - "GAP-RES-018/019/028/029/030: Legacy tick mode removal (closes 5 gaps)"
+      - "GAP-GEN-010 + GAP-ART-023: Policy dict removal"
+      - "GAP-EXEC-002/011: Agent-facing sleep API"
+      - GAP-AGENT-004: "Config rights trading"
+
+  phase_C_infrastructure:
+    description: "Lower-value infrastructure work, can be deferred"
+    items:
+      - "GAP-EXEC-017 + GAP-RES-008: Worker process isolation (XL, high risk)"
+      - "GAP-INFRA-006/007/008/009/010: Multi-container scaling"
+      - "GAP-INFRA-011: Local LLM support (XL, high risk)"
+      - "GAP-INFRA-012: Git-backed artifact store"
 
 # =============================================================================
-# PARALLELIZABLE WORKSTREAMS
+# PARALLELIZABLE WORKSTREAMS - UPDATED
 # =============================================================================
 
 parallel_workstreams:
   description: |
-    Groups of gaps that can be worked on simultaneously because they
-    don't have dependencies on each other.
+    With foundations complete, the remaining work is more modular.
+    Multiple streams can proceed concurrently.
 
-  stream_A_execution:
-    name: "Execution Model Transformation"
-    gaps_from: [WS-1, WS-2]
-    key_changes:
-      - Autonomous agent loops
-      - Agent sleep system
-      - Agents as artifacts
-    can_parallel_with: [stream_C_infrastructure]
+  stream_A_contract_enrichment:
+    name: "Contract Sandbox Enrichment"
+    gaps: [GAP-GEN-042, GAP-GEN-041, GAP-ART-011, GAP-ART-012]
+    description: "Add invoke/call_llm/charge to contract sandbox"
+    can_parallel_with: [stream_B, stream_C, stream_D]
 
-  stream_B_access_control:
-    name: "Contract-Based Access Control"
-    gaps_from: [WS-4, WS-5]
-    key_changes:
-      - Contract system
-      - Genesis contracts
-      - Remove owner bypass
-    can_parallel_with: [stream_C_infrastructure]
+  stream_B_resource_model:
+    name: "Resource Model Completion"
+    gaps: [GAP-RES-004, GAP-RES-013, GAP-RES-022, GAP-RES-027]
+    description: "Per-agent rate allocation with provider limit partitioning"
+    can_parallel_with: [stream_A, stream_C, stream_D]
 
-  stream_C_infrastructure:
-    name: "Infrastructure & Resources"
-    gaps_from: [WS-3, WS-6]
-    key_changes:
-      - RateTracker
-      - Docker isolation
-      - Distributed storage
-    can_parallel_with: [stream_A_execution, stream_B_access_control]
+  stream_C_legacy_removal:
+    name: "Legacy Mode Removal"
+    gaps: [GAP-RES-018, GAP-RES-019, GAP-RES-028, GAP-RES-029, GAP-RES-030, GAP-RES-033]
+    description: "Remove tick-based fallback paths, enable rate limiting by default"
+    can_parallel_with: [stream_A, stream_B, stream_D]
+
+  stream_D_agent_enrichment:
+    name: "Agent Capability Enrichment"
+    gaps: [GAP-AGENT-007, GAP-AGENT-013, GAP-EXEC-002, GAP-EXEC-011]
+    description: "State observability, vulture rescue, agent-facing sleep API"
+    can_parallel_with: [stream_A, stream_B, stream_C]
+
+  stream_E_cleanup:
+    name: "Structural Cleanup"
+    gaps: [GAP-GEN-010, GAP-ART-023, GAP-GEN-040, GAP-ART-025]
+    description: "Policy dict removal, genesis contracts as artifacts, naming"
+    can_parallel_with: [stream_A, stream_B, stream_C, stream_D]
 
 # =============================================================================
-# IMPLEMENTATION RECOMMENDATIONS
+# IMPLEMENTATION RECOMMENDATIONS - UPDATED
 # =============================================================================
 
 recommendations:
-  - title: "Start with foundations"
+  - title: "Foundations are done - shift to integration"
     description: |
-      Phase 1 gaps (4 items) must complete before major progress elsewhere.
-      These are: autonomous loops, unified ontology, contract system, rate tracker.
+      All Phase 1 foundational gaps are closed. The system has autonomous loops,
+      unified ontology, contract-based access control, and rate tracking. Focus
+      shifts from building foundations to enriching and connecting existing systems.
 
-  - title: "Parallel workstreams after Phase 1"
+  - title: "Legacy tick mode removal is high-ROI"
     description: |
-      After Phase 1, three parallel workstreams can proceed:
-      - Stream A: Execution model (WS-1 + WS-2)
-      - Stream B: Access control (WS-4 + WS-5)
-      - Stream C: Infrastructure (WS-3 + WS-6)
+      Removing legacy tick-based fallback paths (rate_limiting.enabled=false default)
+      would close or substantially close 5-6 gaps simultaneously across WS-3.
+      Low risk since autonomous mode already works correctly.
 
-  - title: "High-risk gaps need careful review"
+  - title: "Contract sandbox enrichment is highest-value remaining work"
     description: |
-      26 high-risk gaps identified. Key ones:
-      - GAP-EXEC-001: Core execution model change
-      - GAP-ART-008: Removing owner bypass (security implications)
-      - GAP-INFRA-011: Local LLM support (complexity)
+      GAP-GEN-042 (contracts cannot invoke/call_LLM) is the single highest-impact
+      remaining gap. It blocks the full ADR-0003 vision of "contracts can do anything."
+      However, it carries high risk due to re-entrancy and security concerns.
 
-  - title: "Some gaps may be deferrable"
+  - title: "WS-3 (Resources) needs most attention"
     description: |
-      Infrastructure gaps (WS-6) are largely additive and can be done last.
-      Focus on execution model and access control first.
+      27 of 92 remaining gaps are in Resources. The per-agent rate allocation
+      cluster (4 gaps) and legacy removal cluster (6 gaps) are the two highest-
+      value groups to address.
+
+  - title: "WS-6 (Infrastructure) can be deferred safely"
+    description: |
+      Infrastructure gaps are largely additive scaling features. Single-node
+      deployment works. Multi-container and advanced features can wait until
+      agent count exceeds ~50.
+
+  - title: "Cross-workstream deduplication saves effort"
+    description: |
+      ~10 of 92 remaining gaps are near-duplicates across workstreams.
+      Implementing one cluster (e.g., contract sandbox enrichment) typically
+      closes 2-3 gap entries simultaneously.
