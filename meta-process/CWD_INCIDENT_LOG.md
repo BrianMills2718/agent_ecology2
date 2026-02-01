@@ -63,24 +63,26 @@ branch protection for doc-only edits).
 | `cd $(MAIN_DIR) &&` | `Makefile:finish` | Explicit cd in Make recipe |
 | Process CWD check | `safe_worktree_remove.py` | Warns if a process CWD is in worktree |
 | CWD validation hook | `check-cwd-valid.sh` | PreToolUse hook blocks if CWD invalid |
-| CLAUDE.md rules | Root CLAUDE.md | "NEVER use cd worktrees/..." |
+| CLAUDE.md rules | Root CLAUDE.md | "NEVER cd into a worktree, period" |
 | CWD doc | `meta-process/UNDERSTANDING_CWD.md` | Full explanation of the problem |
 | `--status-only` flag | `complete_plan.py` | Plan #240: skip tests during make finish |
 | Worktree CWD block | `warn-worktree-cwd.sh` | **INEFFECTIVE** — checks hook runner's CWD, not Bash tool's CWD (see Incident #4) |
+| **cd worktree block** | `block-cd-worktree.sh` | PreToolUse hook blocks `cd worktrees/...` commands (added after Incident #6) |
 
 ## What Would Actually Fix This
 
-### For Class A (CWD Invalidation) — NOT FIXED:
-`warn-worktree-cwd.sh` was added in Incident #3 to block when CWD is in a
-worktree. However, Incident #4 revealed it is **ineffective**: hooks run in the
-CC hook runner's process (CWD = project root), not the Bash tool's process.
-The hook always sees the project root and exits 0.
+### For Class A (CWD Invalidation) — PARTIALLY FIXED (Incident #6 follow-up):
+`warn-worktree-cwd.sh` (Incident #3) was ineffective because hooks can't see
+the Bash tool's CWD. However, **`block-cd-worktree.sh`** was added after
+Incident #6 to inspect the command text for `cd worktrees/...` patterns.
 
-**What would actually work:**
-- CC platform support: pass Bash tool's tracked CWD as env var to hooks
-- Or: a PreToolUse hook on Bash that inspects the *command text* for `cd worktrees`
-  patterns (fragile but better than nothing)
-- Or: stronger CLAUDE.md instructions (currently the only real defense)
+**Current defenses:**
+- `block-cd-worktree.sh`: PreToolUse hook blocks `cd worktrees/...` commands
+- CLAUDE.md: Clarified to "NEVER cd into a worktree, period. Not even with &&."
+
+**Remaining gap:** If a session starts with CWD already inside a worktree
+(e.g., launched from that directory), the hook can't help — the CWD is already
+invalid. This requires CC platform support (pass Bash tool's CWD as env var).
 
 ### For Class B (Command Timeout) — FIXED (Plan #240):
 1. **`--status-only` flag added to `complete_plan.py`**: Skips all test execution,
@@ -322,6 +324,34 @@ takes effect and persists across Bash tool invocations.
 - Recorded in CWD_INCIDENT_LOG.md (this entry)
 - CLAUDE.md wording needs strengthening: "NEVER cd into a worktree, period. Not even
   chained with &&." — the current wording is ambiguous and keeps being misread.
+
+### Incident #7 - 2026-01-31
+
+**Session:** meta_1100 — Renaming genesis_contracts to kernel_contracts
+**Class:** A (CWD invalidation)
+**Trigger:** `make finish BRANCH=trivial-kernel-contracts-rename PR=919`
+**Symptoms:**
+- `make finish` output started with `pwd: error retrieving current directory`
+- PR merged successfully, worktree deleted
+- ALL subsequent Bash commands failed with exit code 1, no output
+- Even `cd /home/brian/brian_projects/agent_ecology2 && pwd` failed
+- Non-Bash tools (Read, Glob) continued working fine
+
+**Analysis:**
+
+**Direct cause:** Session ran `cd /home/brian/brian_projects/agent_ecology2/worktrees/trivial-kernel-contracts-rename && python -m pytest tests/unit/test_kernel_contracts.py ...` to run tests. Despite using an absolute path, this still changed the Bash tool's persistent CWD to the worktree. When `make finish` deleted the worktree, the CWD became invalid.
+
+**Pattern recurrence:** This is the same class of error as Incidents #4 and #6. The form `cd <worktree-path> && <command>` persists the CWD change, regardless of whether the path is relative or absolute.
+
+**Correct alternative for running tests in worktree:**
+- `python -m pytest worktrees/trivial-kernel-contracts-rename/tests/...` (no cd needed)
+- Or run from main: `make check` (which runs tests in main's copy)
+
+**Resolution:** User refreshed the session to get a fresh shell.
+
+**Follow-up:**
+- Recorded in CWD_INCIDENT_LOG.md (this entry)
+- The pattern `cd <absolute-path-to-worktree> && command` is just as dangerous as `cd worktrees/X && command` — the absolute path doesn't prevent CWD persistence
 
 ---
 
