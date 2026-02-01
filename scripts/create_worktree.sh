@@ -269,6 +269,10 @@ ${PLAN_REF:-None (trivial change)}
 <!-- CC: Document key decisions and why. -->
 
 
+## Discovered Conflicts
+<!-- CC: Record plan-reality mismatches found during implementation. See Pattern 28. -->
+
+
 ## Files Changed
 <!-- CC: List files you've modified. -->
 

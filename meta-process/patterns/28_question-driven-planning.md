@@ -143,6 +143,34 @@ in the context I expected.
 **Investigation:** Reading kernel_interface.py...
 ```
 
+### Escalation: When Plan Meets Reality
+
+When investigation reveals the plan's assumptions are wrong, follow these steps:
+
+**1. Record in CONTEXT.md**
+
+Add the conflict to the "Discovered Conflicts" section so it survives context compaction:
+
+```markdown
+## Discovered Conflicts
+- Plan assumes caller_id in handler context, but handler receives request_id only
+- Impact: Step 3 needs redesign; requires ledger lookup
+```
+
+**2. Update the plan file**
+
+Add a note to the plan documenting what changed and why. This keeps the plan as a living document, not a stale spec.
+
+**3. Decide: continue, scope-reduce, or stop**
+
+| Situation | Action |
+|-----------|--------|
+| Plan achievable with adjustment | Update plan steps, commit with `[Plan #N] Adjust: <reason>`, continue |
+| Scope needs reduction | Mark deferred steps in plan, commit with explanation, continue reduced |
+| Fundamental assumption collapsed | Stop, commit progress with `[Plan #N] BLOCKED: <reason>`, ask human |
+
+The key discipline: **never silently deviate from the plan.** Every divergence gets a commit message explaining why.
+
 ### The Investigation Discipline
 
 When tempted to guess:
