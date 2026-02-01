@@ -63,24 +63,26 @@ branch protection for doc-only edits).
 | `cd $(MAIN_DIR) &&` | `Makefile:finish` | Explicit cd in Make recipe |
 | Process CWD check | `safe_worktree_remove.py` | Warns if a process CWD is in worktree |
 | CWD validation hook | `check-cwd-valid.sh` | PreToolUse hook blocks if CWD invalid |
-| CLAUDE.md rules | Root CLAUDE.md | "NEVER use cd worktrees/..." |
+| CLAUDE.md rules | Root CLAUDE.md | "NEVER cd into a worktree, period" |
 | CWD doc | `meta-process/UNDERSTANDING_CWD.md` | Full explanation of the problem |
 | `--status-only` flag | `complete_plan.py` | Plan #240: skip tests during make finish |
 | Worktree CWD block | `warn-worktree-cwd.sh` | **INEFFECTIVE** — checks hook runner's CWD, not Bash tool's CWD (see Incident #4) |
+| **cd worktree block** | `block-cd-worktree.sh` | PreToolUse hook blocks `cd worktrees/...` commands (added after Incident #6) |
 
 ## What Would Actually Fix This
 
-### For Class A (CWD Invalidation) — NOT FIXED:
-`warn-worktree-cwd.sh` was added in Incident #3 to block when CWD is in a
-worktree. However, Incident #4 revealed it is **ineffective**: hooks run in the
-CC hook runner's process (CWD = project root), not the Bash tool's process.
-The hook always sees the project root and exits 0.
+### For Class A (CWD Invalidation) — PARTIALLY FIXED (Incident #6 follow-up):
+`warn-worktree-cwd.sh` (Incident #3) was ineffective because hooks can't see
+the Bash tool's CWD. However, **`block-cd-worktree.sh`** was added after
+Incident #6 to inspect the command text for `cd worktrees/...` patterns.
 
-**What would actually work:**
-- CC platform support: pass Bash tool's tracked CWD as env var to hooks
-- Or: a PreToolUse hook on Bash that inspects the *command text* for `cd worktrees`
-  patterns (fragile but better than nothing)
-- Or: stronger CLAUDE.md instructions (currently the only real defense)
+**Current defenses:**
+- `block-cd-worktree.sh`: PreToolUse hook blocks `cd worktrees/...` commands
+- CLAUDE.md: Clarified to "NEVER cd into a worktree, period. Not even with &&."
+
+**Remaining gap:** If a session starts with CWD already inside a worktree
+(e.g., launched from that directory), the hook can't help — the CWD is already
+invalid. This requires CC platform support (pass Bash tool's CWD as env var).
 
 ### For Class B (Command Timeout) — FIXED (Plan #240):
 1. **`--status-only` flag added to `complete_plan.py`**: Skips all test execution,
