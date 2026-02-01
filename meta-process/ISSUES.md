@@ -308,31 +308,6 @@ and untouched declared files as WARN (plan drift). Could integrate into `make ch
 
 ---
 
-### MP-016: No implementation-time escalation convention
-
-**Observed:** 2026-01-31
-**Investigated:** 2026-01-31
-**Status:** `confirmed`
-**Source:** Traycer.ai's "Bart" orchestrator
-
-**Finding:** Pattern 28 (Question-Driven Planning) has a "When Assumptions Break During
-Work" section (lines 131-144) that shows what a blocking discovery looks like. But it
-leaves the escalation steps undefined: where to record it, who to notify, when to stop,
-whether to modify the plan.
-
-Evidence this happens: Plan #234 required a 3-phase migration when assumptions changed.
-Plan #241 triggered a gap re-analysis because "detailed worksheets are stale."
-
-**CLAUDE.md has "Fail Loud" philosophy** but no specific guidance for "plan says X,
-reality is Y." The Process Awareness rule says "record gaps in ISSUES.md" but that's
-for meta-process gaps, not plan-reality conflicts.
-
-**CONTEXT.md template has no section** for discovered conflicts or plan deviations.
-
-**Fix:** Extend Pattern 28 with explicit escalation steps: (1) record conflict in
-CONTEXT.md, (2) update plan file with discovery, (3) stop or scope-reduce with clear
-commit note. Add a "Discovered Conflicts" section to the CONTEXT.md template.
-
 ---
 
 ## Resolved
@@ -343,6 +318,7 @@ commit note. Add a "Discovered Conflicts" section to the CONTEXT.md template.
 | MP-004 | Phantom script/file references | Annotated all 5 phantom references as "not yet implemented" in Patterns 09, 13, 14. Added status note to Pattern 14 explaining `features.yaml` is not yet built. | 2026-01-31 |
 | MP-005 | Pattern 12 unlabeled as PROPOSED in index | Added *(proposed)* annotation to Pattern 12 entry in `01_README.md` index. | 2026-01-31 |
 | MP-009 | Undocumented pattern dependencies; 3 non-patterns | Added `Requires` column to pattern index in `01_README.md` with prerequisite numbers for 14 patterns. Added note identifying 3 convention/infrastructure entries (06, 11, 26). | 2026-01-31 |
+| MP-016 | No implementation-time escalation convention | Added "Escalation: When Plan Meets Reality" section to Pattern 28 with 3-step process (record in CONTEXT.md, update plan, decide continue/reduce/stop). Added "Discovered Conflicts" section to CONTEXT.md template. | 2026-01-31 |
 
 ---
 
