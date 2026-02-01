@@ -152,6 +152,86 @@ def complete_plan(plan_number: str) -> tuple[bool, str]:
         return False, result.stderr or result.stdout or "Unknown error"
     return True, "Completed"
 
+
+def is_plan_already_complete(plan_number: str, worktree_path: Path) -> bool:
+    """Check if a plan file already shows Complete status in a worktree."""
+    plans_dir = worktree_path / "docs" / "plans"
+    # Find plan file by number (handles both 246_name.md and 06_name.md formats)
+    for pattern in [f"{plan_number}_*.md", f"{int(plan_number):02d}_*.md"]:
+        matches = list(plans_dir.glob(pattern))
+        if matches:
+            content = matches[0].read_text()
+            return "✅ Complete" in content or "✅ complete" in content.lower()
+    return False
+
+
+def ensure_plan_complete(
+    plan_number: str, worktree_path: Path, branch: str
+) -> tuple[bool, str]:
+    """Ensure plan is marked Complete in the worktree before merge.
+
+    Plan #246: Runs complete_plan.py --status-only in the worktree directory,
+    commits the result, and pushes to the branch. This makes plan completion
+    part of the PR itself, preventing plans from staying "In Progress" after merge.
+
+    Returns:
+        (success, message)
+    """
+    # Check if already complete — idempotent
+    if is_plan_already_complete(plan_number, worktree_path):
+        return True, "Already complete"
+
+    # Run complete_plan.py in the worktree context
+    result = subprocess.run(
+        ["python", "scripts/complete_plan.py", "--plan", plan_number, "--status-only"],
+        cwd=str(worktree_path),
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        error = result.stderr or result.stdout or "Unknown error"
+        return False, f"complete_plan.py failed: {error}"
+
+    # Check if anything actually changed
+    status_result = subprocess.run(
+        ["git", "-C", str(worktree_path), "status", "--porcelain", "docs/plans/"],
+        capture_output=True,
+        text=True,
+    )
+    if not status_result.stdout.strip():
+        # No changes — plan was already marked complete by the script
+        return True, "No changes needed"
+
+    # Stage plan files
+    subprocess.run(
+        ["git", "-C", str(worktree_path), "add", "docs/plans/"],
+        capture_output=True,
+        text=True,
+    )
+
+    # Commit (--no-verify: mechanical status update by automation, not code change)
+    commit_result = subprocess.run(
+        ["git", "-C", str(worktree_path), "commit", "--no-verify", "-m",
+         f"[Plan #{plan_number}] Mark plan complete"],
+        capture_output=True,
+        text=True,
+    )
+    if commit_result.returncode != 0:
+        error = commit_result.stderr or commit_result.stdout
+        return False, f"Commit failed: {error}"
+
+    # Push
+    push_result = subprocess.run(
+        ["git", "-C", str(worktree_path), "push"],
+        capture_output=True,
+        text=True,
+    )
+    if push_result.returncode != 0:
+        error = push_result.stderr or push_result.stdout
+        return False, f"Push failed: {error}"
+
+    return True, "Completed and pushed"
+
 def find_worktree_path(branch: str) -> Path | None:
     """Find the worktree path for a branch."""
     result = run_cmd(["git", "worktree", "list", "--porcelain"], check=False)
@@ -328,12 +408,32 @@ def finish_pr(branch: str, pr_number: int, check_ci: bool = False, skip_complete
     print("✅ All preconditions validated")
     print()
 
+    worktree_path = context.get("worktree_path")
+    plan_num = context.get("plan_number")
+
+    # ═══════════════════════════════════════════════════════════════════
+    # PHASE 1.5: PRE-MERGE PLAN COMPLETION (Plan #246)
+    # Complete the plan in the worktree BEFORE merge, so the completion
+    # is part of the PR itself. Prevents plans staying "In Progress".
+    # ═══════════════════════════════════════════════════════════════════
+    if plan_num and not skip_complete and worktree_path:
+        print(f"📋 Completing Plan #{plan_num} in worktree (pre-merge)...")
+        complete_ok, complete_msg = ensure_plan_complete(plan_num, worktree_path, branch)
+        if not complete_ok:
+            print(f"❌ Plan completion failed: {complete_msg}")
+            print(f"   Fix the issue or use SKIP_COMPLETE=1 to skip.")
+            return False
+        print(f"✅ Plan #{plan_num}: {complete_msg}")
+        print()
+    elif plan_num and not skip_complete and not worktree_path:
+        print(f"⚠️  No worktree found for {branch} — plan completion will be post-merge")
+    elif plan_num and skip_complete:
+        print(f"⏭️  Skipping plan completion (--skip-complete)")
+        print(f"   Run manually when ready: python scripts/complete_plan.py --plan {plan_num}")
+
     # ═══════════════════════════════════════════════════════════════════
     # PHASE 2: EXECUTION (atomic - either completes fully or not at all)
     # ═══════════════════════════════════════════════════════════════════
-
-    worktree_path = context.get("worktree_path")
-    plan_num = context.get("plan_number")
 
     # Step 1: Remove worktree FIRST (before merge, so branch can be deleted)
     if worktree_path:
@@ -365,18 +465,17 @@ def finish_pr(branch: str, pr_number: int, check_ci: bool = False, skip_complete
     # PHASE 3: CLEANUP (best-effort, logged - PR is already merged)
     # ═══════════════════════════════════════════════════════════════════
 
-    # Step 3: Mark plan as complete (if this is a plan branch and not skipped)
-    if plan_num and not skip_complete:
-        print(f"📋 Marking Plan #{plan_num} as complete...")
+    # Step 3: Mark plan as complete (fallback for no-worktree case only)
+    # Plan #246: Normal path completes in worktree before merge (Phase 1.5).
+    # This fallback handles the case where no worktree existed.
+    if plan_num and not skip_complete and not worktree_path:
+        print(f"📋 Marking Plan #{plan_num} as complete (post-merge fallback)...")
         complete_ok, complete_msg = complete_plan(plan_num)
         if complete_ok:
             print(f"✅ Plan #{plan_num} marked complete")
         else:
             print(f"⚠️  Could not mark plan complete: {complete_msg}")
             print("   Run manually: python scripts/complete_plan.py --plan", plan_num)
-    elif plan_num and skip_complete:
-        print(f"⏭️  Skipping plan completion (--skip-complete)")
-        print(f"   Run manually when ready: python scripts/complete_plan.py --plan {plan_num}")
 
     # Step 4: Release claim
     print(f"🔓 Releasing claim for {branch}...")
@@ -448,15 +547,24 @@ def main() -> int:
             print("✅ All preconditions validated - PR can be finished")
             print()
             print("Would perform:")
-            if context.get("worktree_path"):
-                print(f"  1. Remove worktree: {context['worktree_path']}")
-            print(f"  2. Merge PR #{args.pr}")
-            if context.get("plan_number") and not args.skip_complete:
-                print(f"  3. Mark Plan #{context['plan_number']} complete")
+            step = 1
+            if context.get("plan_number") and not args.skip_complete and context.get("worktree_path"):
+                print(f"  {step}. Complete Plan #{context['plan_number']} in worktree (pre-merge)")
+                step += 1
             elif context.get("plan_number") and args.skip_complete:
-                print(f"  3. Skip plan completion (--skip-complete)")
-            print(f"  4. Release claim for {args.branch}")
-            print("  5. Pull latest main")
+                print(f"  {step}. Skip plan completion (--skip-complete)")
+                step += 1
+            if context.get("worktree_path"):
+                print(f"  {step}. Remove worktree: {context['worktree_path']}")
+                step += 1
+            print(f"  {step}. Merge PR #{args.pr}")
+            step += 1
+            if context.get("plan_number") and not args.skip_complete and not context.get("worktree_path"):
+                print(f"  {step}. Complete Plan #{context['plan_number']} (post-merge fallback)")
+                step += 1
+            print(f"  {step}. Release claim for {args.branch}")
+            step += 1
+            print(f"  {step}. Pull latest main")
             return 0
         else:
             print("❌ Validation failed:")
