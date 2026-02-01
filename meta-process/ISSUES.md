@@ -105,41 +105,32 @@ between CC instances become common.
 
 ---
 
-## Confirmed
+## Planned
 
----
-
----
-
-### MP-007: Script testing gap — 49 scripts, ~20% tested, critical scripts untested
+### MP-007: Script testing gap → [Plan #248](../../docs/plans/248_script_testing.md)
 
 **Observed:** 2026-01-31
 **Investigated:** 2026-01-31
-**Status:** `confirmed`
+**Status:** `planned`
 
-**Original observation:** "20 Python scripts with zero tests" was inaccurate.
-
-**Corrected finding:** 49 Python scripts totaling ~17,881 lines. ~10 scripts (20%)
-have test coverage via 9 test files with ~1,854 lines of tests. The remaining 39
-scripts (80%) are untested.
-
-**Critical untested scripts (destructive or core):**
-
-| Script | Lines | Risk |
-|--------|-------|------|
-| `cleanup_orphaned_worktrees.py` | 275 | Deletes worktrees with `--force` — logic error = lost work |
-| `cleanup_claims_mess.py` | 220 | Modifies `.claude/active-work.yaml` — no rollback |
-| `recover.py` | 247 | Auto-repair orchestrator — can corrupt state |
-| `check_plan_blockers.py` | 276 | Modifies plan files — missed blockers block release |
-| `check_plan_overlap.py` | 238 | Complex PR analysis — false negatives allow collisions |
-
-**Scripts safe to deprioritize:** `concat_for_review.py`, `get_governance_context.py`,
-`view_log.py`, `meta_config.py` (read-only, simple transformations).
-
-**Fix:** Priority test investment: (1) cleanup_orphaned_worktrees.py, (2) check_claims.py
-gap coverage, (3) cleanup_claims_mess.py, (4) recover.py.
+49 Python scripts (~17,881 lines), ~20% tested. Critical destructive scripts untested:
+`cleanup_orphaned_worktrees.py`, `cleanup_claims_mess.py`, `recover.py`, `check_plan_blockers.py`.
 
 ---
+
+### MP-015: Plan-to-diff verification → [Plan #249](../../docs/plans/249_plan_to_diff_verification.md)
+
+**Observed:** 2026-01-31
+**Investigated:** 2026-01-31
+**Status:** `planned`
+**Source:** Traycer.ai research
+
+`parse_plan.py` parses "Files Affected" but no merge-time check compares actual diff
+to declarations. Plan drift (declared files never touched) is undetected.
+
+---
+
+## Confirmed
 
 ### MP-008: install.sh — 4 of 6 issues fixed, 2 deferred as feature additions
 
@@ -159,35 +150,6 @@ gap coverage, (3) cleanup_claims_mess.py, (4) recover.py.
 | No uninstall or upgrade path | Deferred | Feature addition — needs a plan |
 
 **Relates to:** MP-001 (identity crisis).
-
----
-
----
-
-### MP-015: Plan-to-diff verification — partial infrastructure, plan drift undetected
-
-**Observed:** 2026-01-31
-**Investigated:** 2026-01-31
-**Status:** `confirmed`
-**Source:** Traycer.ai research
-
-**Finding:** Infrastructure partially exists but the gap is real:
-
-- `parse_plan.py` (137 lines) already parses "Files Affected" sections from plans
-- `check-file-scope.sh` hook blocks edits to undeclared files during implementation
-  (disabled by default — "too strict for exploratory work")
-- 56% of active plans (9/16) have "Files Affected" sections (required by template)
-
-**What's missing:** No script compares `git diff --name-only` against the plan's
-declarations at merge time. Scope creep prevention exists (hook, disabled), but **plan
-drift** (declared files never touched = incomplete implementation) is completely undetected.
-
-**False positive risk:** Moderate. Common false positives: `tests/conftest.py`,
-`config/schema.yaml`, `__init__.py`, `.claude/CONTEXT.md`. Manageable with a whitelist.
-
-**Fix:** Add a merge-time check that compares actual diff to declared files. Flag
-undeclared `src/` modifications as HIGH (scope creep), undeclared `tests/` as MEDIUM,
-and untouched declared files as WARN (plan drift). Could integrate into `make check`.
 
 ---
 
