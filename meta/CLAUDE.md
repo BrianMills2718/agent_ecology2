@@ -6,11 +6,11 @@ This directory contains project-specific meta-process configuration.
 
 ```
 meta/
-└── acceptance_gates/     # This project's feature definitions
-    ├── CLAUDE.md         # How to use acceptance gates
-    ├── ledger.yaml       # Ledger feature scope
-    ├── escrow.yaml       # Escrow feature scope
-    └── ...               # Other project features
+└── acceptance_gates/                    # This project's feature definitions
+    ├── acceptance_gates/CLAUDE.md       # How to use acceptance gates
+    ├── acceptance_gates/ledger.yaml     # Ledger feature scope
+    ├── acceptance_gates/escrow.yaml     # Escrow feature scope
+    └── ...                              # Other project features
 ```
 
 ## Portable Template
@@ -19,13 +19,13 @@ The reusable meta-process framework is in `meta-process/`:
 
 ```
 meta-process/
-├── README.md             # How to use the framework
-├── install.sh            # Install to new project
-├── patterns/             # Pattern documentation (26 patterns)
-├── scripts/              # Portable scripts
-├── hooks/                # Git + Claude Code hooks
-├── ci/                   # CI workflow templates
-└── templates/            # Starter file templates
+├── meta-process/README.md      # How to use the framework
+├── meta-process/install.sh     # Install to new project
+├── meta-process/patterns/      # Pattern documentation (26 patterns)
+├── meta-process/scripts/       # Portable scripts
+├── meta-process/hooks/         # Git + Claude Code hooks
+├── meta-process/ci/            # CI workflow templates
+└── meta-process/templates/     # Starter file templates
 ```
 
 To use the meta-process in a new project:

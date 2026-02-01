@@ -29,15 +29,15 @@ Build config in `vite.config.ts` sets `base: '/static-v2/'` and `outDir: '../src
 
 ```
 src/
-├── App.tsx           # Root application component
-├── main.tsx          # Entry point (renders App)
-├── api/              # API client functions
-├── components/       # React components
-├── hooks/            # Custom React hooks
-├── stores/           # Zustand state stores
-├── types/            # TypeScript type definitions
-├── utils/            # Shared utility functions
-└── test/             # Test utilities
+├── src/App.tsx       # Root application component
+├── src/main.tsx      # Entry point (renders App)
+├── src/api/          # API client functions
+├── src/components/   # React components
+├── src/hooks/        # Custom React hooks
+├── src/stores/       # Zustand state stores
+├── src/types/        # TypeScript type definitions
+├── src/utils/        # Shared utility functions
+└── src/test/         # Test utilities
 ```
 
 ## Relationship to Backend

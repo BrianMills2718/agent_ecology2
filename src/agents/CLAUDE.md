@@ -29,8 +29,8 @@ LLM-powered agents that observe world state and propose actions.
 Each agent lives in `src/agents/{name}/`:
 ```
 src/agents/alpha/
-├── agent.yaml      # Config (model, starting_scrip, RAG settings)
-└── system_prompt.md  # Agent personality and instructions
+├── alpha/agent.yaml        # Config (model, starting_scrip, RAG settings)
+└── alpha/system_prompt.md  # Agent personality and instructions
 ```
 
 ## Agent Generations
