@@ -129,16 +129,32 @@ If that worked, you're ready!
 
 ---
 
+## Core Concepts
+
+These terms appear throughout the guide. Quick definitions before diving in:
+
+| Concept | What It Is |
+|---------|------------|
+| **Worktree** | An isolated copy of your repo for one task. Prevents parallel edits from conflicting. |
+| **Claim** | A declaration that you're working on something. Prevents duplicate work. |
+| **Plan** | A markdown file in `docs/plans/` describing what to build. Required for significant work. |
+| **Pattern** | A reusable solution to a coordination problem. See the [Pattern Index](patterns/01_README.md) (the `Requires` column shows dependencies). |
+| **Weight** | How much process enforcement — from `minimal` (almost nothing) to `heavy` (full validation). |
+
+Detailed explanations of [CWD rules](#always-run-from-main), [claims](#claims-prevent-conflicts), and [commit conventions](#commit-message-convention) are in the Key Concepts section below.
+
+---
+
 ## First Week Adoption Path
 
 ### Day 1-2: Core Workflow
 
 **Goal:** Get comfortable with worktrees and claims.
 
-1. **Read patterns:**
+1. **Read patterns** (in this order — each builds on the previous):
    - [CLAUDE.md Authoring](patterns/02_claude-md-authoring.md) - Project context
-   - [Worktree Enforcement](patterns/19_worktree-enforcement.md) - File isolation
    - [Claim System](patterns/18_claim-system.md) - Coordination
+   - [Worktree Enforcement](patterns/19_worktree-enforcement.md) - File isolation (requires Claims)
 
 2. **Set up your CLAUDE.md:**
    ```markdown
