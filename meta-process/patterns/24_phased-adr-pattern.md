@@ -1,4 +1,4 @@
-# Phased ADR Pattern
+# Pattern: Phased ADR
 
 A pattern for documenting architectural decisions that involve intentional phasing - building simpler versions first while preserving the thinking about more powerful future options.
 

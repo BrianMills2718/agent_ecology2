@@ -96,8 +96,10 @@ What this pattern doesn't solve.
 
 ## Archive
 
-Deprecated patterns are archived externally (not in repo):
+Deprecated patterns and non-pattern files are archived externally (not in repo):
 - `handoff-protocol.md` - Superseded by automatic context compaction
+- `META_TEMPLATE_SPEC_V0.1.md` - Comprehensive spec, superseded by GETTING_STARTED.md + individual patterns
+- `PLAN_TEMPLATE_HOOKS.md` - Completed implementation plan (not a pattern)
 
 ## Origin
 

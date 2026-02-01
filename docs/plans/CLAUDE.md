@@ -50,6 +50,7 @@ Master index of all gaps and their implementation plans.
 | 234 | [Plan 234: ADR-0024 Handle Request Migration](234_adr0024_handle_request_migration.md) | Medium | ✅ Complete | Full artifact autonomy, custom access control patterns |
 | 236 | [Plan 236: Charge Delegation](236_charge_delegation.md) | High | ✅ Complete | None (enables charge_to for Plan #234) |
 | 240 | [Plan 240: Cross-CC Review Enforcement](240_cross_cc_review_enforcement.md) | Medium | 📋 Deferred | - |
+| 241 | [Gap 241: Re-run Gap Analysis Using Pattern #30](241_gap_reanalysis.md) | Medium | 📋 Planned | - |
 ---
 
 ## TDD Workflow
