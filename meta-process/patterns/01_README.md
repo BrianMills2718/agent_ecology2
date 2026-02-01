@@ -6,37 +6,39 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 
 ## Pattern Index
 
-| Pattern | Problem Solved | Complexity |
-|---------|----------------|------------|
-| [CLAUDE.md Authoring](02_claude-md-authoring.md) | AI assistants lack project context | Low |
-| [Testing Strategy](03_testing-strategy.md) | Inconsistent test approaches | Low |
-| [Mocking Policy](04_mocking-policy.md) | When to mock, when not to | Low |
-| [Mock Enforcement](05_mock-enforcement.md) | Green CI, broken production | Low |
-| [Git Hooks](06_git-hooks.md) | CI failures caught late | Low |
-| [ADR](07_adr.md) | Architectural decisions get lost | Medium |
-| [ADR Governance](08_adr-governance.md) | ADRs not linked to code | Medium |
-| [Documentation Graph](09_documentation-graph.md) | Can't trace decisions → code | Medium |
-| [Doc-Code Coupling](10_doc-code-coupling.md) | Docs drift from code | Medium |
-| [Terminology](11_terminology.md) | Inconsistent terms | Low |
-| [Structured Logging](12_structured-logging.md) *(proposed)* | Unreadable logs | Low |
-| [Acceptance-Gate-Driven Development](13_acceptance-gate-driven-development.md) | AI drift, cheating, big bang integration | High |
-| [Acceptance Gate Linkage](14_acceptance-gate-linkage.md) | Sparse file-to-constraint mappings | Medium |
-| [Plan Workflow](15_plan-workflow.md) | Untracked work, scope creep | Medium |
-| [Plan Blocker Enforcement](16_plan-blocker-enforcement.md) | Blocked plans started anyway | Medium |
-| [Verification Enforcement](17_verification-enforcement.md) | Untested "complete" work | Medium |
-| [Claim System](18_claim-system.md) | Parallel work conflicts | Medium |
-| [Worktree Enforcement](19_worktree-enforcement.md) | Main directory corruption from parallel edits | Low |
-| [Rebase Workflow](20_rebase-workflow.md) | Stale worktrees causing "reverted" changes | Low |
-| [PR Coordination](21_pr-coordination.md) | Lost review requests | Low |
-| [Human Review Pattern](22_human-review-pattern.md) | Risky changes merged without review | Medium |
-| [Plan Status Validation](23_plan-status-validation.md) | Status/content mismatch in plans | Low |
-| [Phased ADR Pattern](24_phased-adr-pattern.md) | Complex features need phased rollout | Medium |
-| [PR Review Process](25_pr-review-process.md) | Inconsistent review quality | Low |
-| [Ownership Respect](26_ownership-respect.md) | CC instances interfering with each other's work | Low |
-| [Conceptual Modeling](27_conceptual-modeling.md) | AI accumulates misconceptions about architecture | Medium |
-| [Question-Driven Planning](28_question-driven-planning.md) | AI guesses instead of investigating | Low |
-| [Uncertainty Tracking](29_uncertainty-tracking.md) | Uncertainties forgotten across sessions | Low |
-| [Gap Analysis](30_gap-analysis.md) | Ad-hoc planning misses gaps between current and target | Medium |
+| Pattern | Problem Solved | Complexity | Requires |
+|---------|----------------|------------|----------|
+| [CLAUDE.md Authoring](02_claude-md-authoring.md) | AI assistants lack project context | Low | — |
+| [Testing Strategy](03_testing-strategy.md) | Inconsistent test approaches | Low | — |
+| [Mocking Policy](04_mocking-policy.md) | When to mock, when not to | Low | — |
+| [Mock Enforcement](05_mock-enforcement.md) | Green CI, broken production | Low | 04 |
+| [Git Hooks](06_git-hooks.md) | CI failures caught late | Low | — |
+| [ADR](07_adr.md) | Architectural decisions get lost | Medium | — |
+| [ADR Governance](08_adr-governance.md) | ADRs not linked to code | Medium | 07 |
+| [Documentation Graph](09_documentation-graph.md) | Can't trace decisions → code | Medium | 07, 10 |
+| [Doc-Code Coupling](10_doc-code-coupling.md) | Docs drift from code | Medium | — |
+| [Terminology](11_terminology.md) | Inconsistent terms | Low | — |
+| [Structured Logging](12_structured-logging.md) *(proposed)* | Unreadable logs | Low | — |
+| [Acceptance-Gate-Driven Development](13_acceptance-gate-driven-development.md) | AI drift, cheating, big bang integration | High | 07 |
+| [Acceptance Gate Linkage](14_acceptance-gate-linkage.md) | Sparse file-to-constraint mappings | Medium | 13 |
+| [Plan Workflow](15_plan-workflow.md) | Untracked work, scope creep | Medium | — |
+| [Plan Blocker Enforcement](16_plan-blocker-enforcement.md) | Blocked plans started anyway | Medium | 15 |
+| [Verification Enforcement](17_verification-enforcement.md) | Untested "complete" work | Medium | 15 |
+| [Claim System](18_claim-system.md) | Parallel work conflicts | Medium | — |
+| [Worktree Enforcement](19_worktree-enforcement.md) | Main directory corruption from parallel edits | Low | 18 |
+| [Rebase Workflow](20_rebase-workflow.md) | Stale worktrees causing "reverted" changes | Low | 19 |
+| [PR Coordination](21_pr-coordination.md) | Lost review requests | Low | 15, 18 |
+| [Human Review Pattern](22_human-review-pattern.md) | Risky changes merged without review | Medium | 17 |
+| [Plan Status Validation](23_plan-status-validation.md) | Status/content mismatch in plans | Low | 15 |
+| [Phased ADR Pattern](24_phased-adr-pattern.md) | Complex features need phased rollout | Medium | 07 |
+| [PR Review Process](25_pr-review-process.md) | Inconsistent review quality | Low | — |
+| [Ownership Respect](26_ownership-respect.md) | CC instances interfering with each other's work | Low | — |
+| [Conceptual Modeling](27_conceptual-modeling.md) | AI accumulates misconceptions about architecture | Medium | — |
+| [Question-Driven Planning](28_question-driven-planning.md) | AI guesses instead of investigating | Low | — |
+| [Uncertainty Tracking](29_uncertainty-tracking.md) | Uncertainties forgotten across sessions | Low | — |
+| [Gap Analysis](30_gap-analysis.md) | Ad-hoc planning misses gaps between current and target | Medium | 28 |
+
+> **Conventions vs. patterns:** Patterns 06 (Git Hooks), 11 (Terminology), and 26 (Ownership Respect) are infrastructure or conventions rather than coordination patterns. They have no dependencies and can be adopted independently.
 
 ## When to Use
 

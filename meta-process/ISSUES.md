@@ -139,8 +139,6 @@ agent_ecology2 vocabulary.
 
 ---
 
----
-
 ### MP-006: Pattern 13 is too large — 724 lines, 3x average, mixed concerns
 
 **Observed:** 2026-01-31
@@ -223,33 +221,6 @@ portable, install.sh needs significant rework. If not, it should be simplified t
 set up the current project.
 
 ---
-
-### MP-009: 11+ patterns have undocumented dependencies; 3 aren't patterns
-
-**Observed:** 2026-01-31
-**Investigated:** 2026-01-31
-**Status:** `confirmed`
-
-**Finding:** Of 30 listed patterns, 11+ have implicit dependencies that aren't documented
-anywhere. Key dependency chains:
-
-- Pattern 17 (Verification) requires 15 (Plan Workflow) + 3 (Testing Strategy)
-- Pattern 19 (Worktree Enforcement) requires 18 (Claims) + 20 (Branch Naming)
-- Pattern 21 (PR Coordination) requires 15 + 18
-- Pattern 22 (Human Review) requires 15 + 17
-- Pattern 13 (Acceptance Gates) requires 7 (ADR) + 8 + 11 + 14
-
-**3 patterns are categorically misclassified:**
-- Pattern 6 (Git Hooks) — tool configuration, not a coordination pattern
-- Pattern 11 (Terminology) — naming convention / glossary
-- Pattern 26 (Ownership Respect) — behavioral norm / discipline
-
-The pattern index presents all 30 as equally independent with only a complexity rating.
-An adopter has no way to know which patterns can be adopted standalone vs which form
-prerequisite chains.
-
-**Fix:** Add `Requires` and `Works With` columns to `01_README.md`. Consider reclassifying
-non-patterns as "conventions" or "infrastructure" in a separate section.
 
 ---
 
@@ -371,6 +342,7 @@ commit note. Add a "Discovered Conflicts" section to the CONTEXT.md template.
 | MP-002 | GETTING_STARTED.md config examples wrong | Updated config examples to match actual `meta-process.yaml` format (`weight:`, `hooks:`, `enforcement:`, `planning:` sections). Fixed `scripts/meta/` → `scripts/` path references. | 2026-01-31 |
 | MP-004 | Phantom script/file references | Annotated all 5 phantom references as "not yet implemented" in Patterns 09, 13, 14. Added status note to Pattern 14 explaining `features.yaml` is not yet built. | 2026-01-31 |
 | MP-005 | Pattern 12 unlabeled as PROPOSED in index | Added *(proposed)* annotation to Pattern 12 entry in `01_README.md` index. | 2026-01-31 |
+| MP-009 | Undocumented pattern dependencies; 3 non-patterns | Added `Requires` column to pattern index in `01_README.md` with prerequisite numbers for 14 patterns. Added note identifying 3 convention/infrastructure entries (06, 11, 26). | 2026-01-31 |
 
 ---
 
