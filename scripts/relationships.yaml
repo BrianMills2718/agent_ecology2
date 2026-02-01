@@ -213,7 +213,6 @@ couplings:
       - src/world/actions.py
       - src/world/kernel_interface.py
     docs:
-      - docs/CONCEPTUAL_MODEL_FULL.yaml
       - docs/CONCEPTUAL_MODEL.yaml
     description: "Conceptual model - artifact fields, actions, kernel interface"
 
@@ -223,7 +222,7 @@ couplings:
       - src/world/contracts.py
       - src/world/genesis_contracts.py
     docs:
-      - docs/CONCEPTUAL_MODEL_FULL.yaml
+      - docs/CONCEPTUAL_MODEL.yaml
     description: "Permission system documented in conceptual model"
     soft: true
 
@@ -232,7 +231,7 @@ couplings:
       - src/world/ledger.py
       - src/world/rate_tracker.py
     docs:
-      - docs/CONCEPTUAL_MODEL_FULL.yaml
+      - docs/CONCEPTUAL_MODEL.yaml
     description: "Resource types and scrip documented in conceptual model"
     soft: true
 
@@ -317,7 +316,6 @@ orphan_detection:
     - docs/architecture/target
   scan_files:
     - docs/CONCEPTUAL_MODEL.yaml
-    - docs/CONCEPTUAL_MODEL_FULL.yaml
     - docs/GLOSSARY.md
     - docs/SECURITY.md
     - docs/DESIGN_CLARIFICATIONS.md
