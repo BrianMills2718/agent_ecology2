@@ -148,12 +148,45 @@ The `protect-main.sh` hook should block these edits, but they're appearing anywa
 - The worktree `explore-v4-architecture` exists and may be involved
 - Possibly from a merge/rebase operation that brought in uncommitted changes
 
+**Investigation findings:**
+
+Checked all potential sources of uncommitted changes:
+
+1. **Git stashes (7 total)** — None contain large genesis changes. Only stash@{6} has
+   genesis-related work, but just 16 lines in action_executor.py, not 190+.
+
+2. **explore-v4-architecture worktree** — Only has modified `.claim.yaml` (local file)
+   and untracked exploration files. No genesis changes.
+
+3. **Local branches** — `fix-genesis-method-costs` and `plan-109-genesis-deprivilege`
+   have no diff against main.
+
+4. **Reflog** — Shows normal operations (checkouts, pulls, rebases). No suspicious
+   operations like failed merges or hard resets.
+
+**Source: UNKNOWN.** The genesis changes cannot be traced to any identifiable git state.
+They may have come from:
+- A tool outside Claude Code that modified files directly
+- An interrupted session that wrote to disk but didn't commit
+- A filesystem sync or backup restoration that reverted files
+
 **Resolution:** Cleaned up with `git checkout src/ tests/`
 
-**Follow-up:**
-1. Need to investigate the explore-v4-architecture worktree
-2. Check if the worktree's state is bleeding into main somehow
-3. This is the 3rd occurrence of genesis-related changes leaking into main
+**Follow-up (completed):**
+- ✓ Investigated explore-v4-architecture worktree — not the source
+- ✓ Checked all git stashes — not the source
+- ✓ Checked local branches — not the source
+- ✓ Reviewed reflog — no unusual operations
+
+**Cleanup completed:**
+- ✓ Released claim for explore-v4-architecture
+- ✓ Force-removed orphaned worktree
+- Old stashes (7) retained — all from merged PRs, not causing issues
+
+**Remaining concerns:**
+- Source still unknown after thorough investigation
+- This is the 3rd occurrence of genesis-related changes in main
+- Monitor for future occurrences to identify pattern
 
 ---
 
