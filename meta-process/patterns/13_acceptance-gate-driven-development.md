@@ -48,13 +48,6 @@ Unit tests can pass with mocks. Integration tests can pass with mocks. Only real
 
 ## Problem
 
-### The "Fingers Crossed" Problem
-Without this pattern:
-- Work for days on implementation
-- Hope everything integrates at the end
-- Discover fundamental issues too late
-- Painful "big bang" integration failures
-
 ### The AI Drift Problem
 AI coding assistants (Claude Code, etc.):
 - Forget ADRs and architectural constraints mid-implementation
@@ -438,81 +431,14 @@ ADR references in source file headers keep constraints visible:
 
 ## Process Flow
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│ 1. ACCEPTANCE GATE DEFINITION (What/Why)                            │
-├─────────────────────────────────────────────────────────────────────┤
-│ AI: Writes problem statement, out_of_scope                          │
-│ Human: Reviews/approves (if guided/detailed mode)                   │
-│ Output: acceptance_gates/<name>.yaml (problem, out_of_scope)        │
-└─────────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 2. SPEC WRITING (What exactly)                                      │
-├─────────────────────────────────────────────────────────────────────┤
-│ AI: Writes Given/When/Then acceptance criteria                      │
-│ Human: Reviews/approves (if guided/detailed mode)                   │
-│ CI: Validates spec completeness (minimum requirements)              │
-│ Output: acceptance_criteria added to gate file                      │
-└─────────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 3. DESIGN (How - Optional based on planning_mode)                   │
-├─────────────────────────────────────────────────────────────────────┤
-│ AI: Writes approach, key_decisions, risks (plain English)           │
-│ Human: Reviews architectural choices                                │
-│ Skip if: autonomous mode, small gate, obvious implementation        │
-│ Output: design section added to gate file                           │
-└─────────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 4. LOCK                                                             │
-├─────────────────────────────────────────────────────────────────────┤
-│ Feature file committed to git (specs + design locked)               │
-│ CI will reject future modifications to locked sections              │
-│ Tests auto-generated from acceptance criteria (also locked)         │
-└─────────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 5. PRE-IMPLEMENTATION CHECKLIST                                     │
-├─────────────────────────────────────────────────────────────────────┤
-│ AI: Documents ADR conformance plan                                  │
-│ AI: Acknowledges out_of_scope constraints                           │
-│ AI: Confirms design approach (if design section exists)             │
-│ AI: Lists acceptance criteria being addressed                       │
-└─────────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 6. IMPLEMENTATION                                                   │
-├─────────────────────────────────────────────────────────────────────┤
-│ AI: Writes code to pass locked specs                                │
-│ AI: Cannot modify specs or generated tests                          │
-│ Human: Not involved                                                 │
-└─────────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 7. VERIFICATION                                                     │
-├─────────────────────────────────────────────────────────────────────┤
-│ CI: All tests pass                                                  │
-│ CI: Locked files unchanged                                          │
-│ CI: Doc-coupling check passes                                       │
-│ CI: ADR conformance documented                                      │
-└─────────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ 8. MERGE                                                            │
-├─────────────────────────────────────────────────────────────────────┤
-│ Human: Sees green CI = done                                         │
-│ No code review needed (specs are the contract)                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
+1. **Define** — AI writes problem statement + out_of_scope; human reviews (if guided/detailed)
+2. **Spec** — AI writes Given/When/Then acceptance criteria; human reviews; CI validates completeness
+3. **Design** — AI writes approach + key decisions in plain English (optional, based on planning mode)
+4. **Lock** — Gate file committed to git; CI enforces immutability of locked sections
+5. **Checklist** — AI documents ADR conformance, out_of_scope acknowledgment, criteria addressed
+6. **Implement** — AI writes code to pass locked specs; cannot modify specs
+7. **Verify** — CI: all tests pass, locked files unchanged, doc-coupling passes
+8. **Merge** — Human sees green CI = done; no code review needed (specs are the contract)
 
 ## Task Types
 
@@ -620,28 +546,10 @@ claude "Implement cooperation v2"
 
 ## CI Enforcement
 
-```yaml
-# .github/workflows/ci.yml
-
-jobs:
-  validate-specs:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check spec completeness
-        run: python scripts/validate_spec.py --all
-
-  check-locks:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Verify locked files unchanged
-        run: python scripts/check_locked_files.py --locked "acceptance_gates/*/spec.yaml"
-
-  gate-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run acceptance gate tests
-        run: pytest tests/acceptance_gates/ -v
-```
+Add these checks to your CI pipeline:
+- **Spec validation:** `python scripts/validate_spec.py --all`
+- **Lock enforcement:** `python scripts/check_locked_files.py`
+- **Gate tests:** `pytest tests/acceptance_gates/ -v`
 
 ## Customization
 
@@ -719,12 +627,3 @@ Emerged from coordination problems with multiple Claude Code instances on [agent
 - Difficulty tracing requirements to code to tests
 - Human unable to validate code but able to validate requirements
 
-## Enterprise Patterns Incorporated
-
-| Pattern | Source | How Used |
-|---------|--------|----------|
-| PRD structure | Product management | Problem, acceptance criteria, out of scope |
-| BDD | Agile testing | Given/When/Then format |
-| ATDD | Test-driven development | Tests before implementation |
-| Requirements traceability | Systems engineering | Feature → Code → Test chain |
-| Definition of Done | Scrum | Per-task-type verification |
