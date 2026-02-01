@@ -153,6 +153,7 @@ Not applicable — these are meta-process script tests, not simulation features.
 |----------|--------|------------|
 | Mock strategy — subprocess mocks vs refactoring for testability? | ❓ Open | May need to extract logic from `if __name__` blocks |
 | check_plan_overlap.py — complex GitHub API interaction, hard to test | ❓ Open | May need integration test with fixture data |
+| **Scope: "write tests" vs "refactor then test"** | ❓ Open | Implementer must check each target script upfront. If logic lives entirely in `if __name__` with no importable functions, refactoring IS the work — not a side effect. This changes the plan from "add test files" to "restructure scripts + add tests." Decide per-script before writing any tests. |
 
 ---
 
