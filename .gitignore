@@ -83,6 +83,9 @@ Thumbs.db
 # Generated documentation packages (regeneratable via build scripts)
 docs/EXTERNAL_REVIEW_PACKAGE.md
 docs/meta/META_REVIEW_PACKAGE.md
+repomix-*.md
+repomix-*.xml
+repomix-*.json
 logs/
 
 # Simulation outputs

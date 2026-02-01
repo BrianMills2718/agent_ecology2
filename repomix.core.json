@@ -1,0 +1,33 @@
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "include": [
+    "README.md",
+    "src/world/*.py",
+    "src/agents/agent.py",
+    "src/agents/agent_schema.py",
+    "src/simulation/runner.py",
+    "src/config.py",
+    "src/config_schema.py",
+    "config/config.yaml",
+    "docs/architecture/current/*.md",
+    "docs/architecture/CONCEPTUAL_MODEL.yaml",
+    "docs/adr/0001_*.md",
+    "docs/adr/0002_*.md",
+    "docs/adr/0003_*.md",
+    "docs/GLOSSARY.md"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "__pycache__",
+      "*.pyc"
+    ]
+  },
+  "output": {
+    "filePath": "repomix-core.md",
+    "style": "markdown",
+    "showLineNumbers": false,
+    "removeEmptyLines": false
+  }
+}
