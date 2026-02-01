@@ -326,7 +326,7 @@ agent_ecology/
   run.py                    # Main entry point
   config/
     config.yaml             # Runtime values
-    schema.yaml             # Structure + defaults
+    # Validation via Pydantic in src/config_schema.py
   src/
     config.py               # Config helpers
     world/                  # World state, ledger, executor, artifacts
@@ -503,7 +503,7 @@ Use the Read tool on that file if you need prior context.
 | `meta-process/patterns/01_README.md` | Meta-pattern index |
 | `docs/GLOSSARY.md` | Canonical terminology |
 | `scripts/CLAUDE.md` | Script usage reference |
-| `config/schema.yaml` | All config options |
+| `src/config_schema.py` | All config options (Pydantic) |
 
 ---
 

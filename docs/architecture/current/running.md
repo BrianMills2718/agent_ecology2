@@ -193,7 +193,7 @@ scrip:
   starting_amount: 100    # Per agent
 ```
 
-See `config/schema.yaml` for full documentation.
+See `src/config_schema.py` for all config options and defaults.
 
 ---
 

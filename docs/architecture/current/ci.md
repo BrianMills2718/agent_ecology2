@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-31 (Removed stale CMF coupling refs, redirected to CM)
+Last verified: 2026-01-31 (Config cleanup: removed dead schema.yaml, stale CMF refs)
 
 ---
 
