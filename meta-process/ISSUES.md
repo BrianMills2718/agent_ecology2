@@ -33,8 +33,22 @@ confirmed issues, plans, or dismissed.
 ### MP-018: Uncommitted changes accumulating in main
 
 **Observed:** 2026-01-31
-**Updated:** 2026-02-01
+**Updated:** 2026-01-31 (recurrence #2)
 **Status:** `monitoring`
+
+**Recurrence #2 (2026-01-31):**
+
+Found 3 more uncommitted files in main:
+- `src/simulation/runner.py` - genesis import removal, method rename
+- `tests/integration/test_component_agents.py` - test skip added
+- `tests/integration/test_runner.py` - test class skip added
+
+These appear to be incomplete genesis removal work. The genesis/ directory still exists
+with 20 files, so these changes would break the build if committed. Cleaned up via
+`git checkout`.
+
+**Pattern:** Both occurrences involve genesis-related refactoring work leaking into main.
+The hook (`protect-main.sh`) should block this, but somehow these edits are getting through.
 
 **Finding (updated after investigation):**
 
