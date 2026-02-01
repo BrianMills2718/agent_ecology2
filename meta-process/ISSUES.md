@@ -24,183 +24,120 @@ confirmed issues, plans, or dismissed.
 
 ## Unconfirmed
 
-Items observed but not yet investigated in depth. Each needs someone to dig in
-and determine whether it's a real problem, and if so, what category it falls into.
-
-### MP-001: Identity crisis — portable framework vs project documentation
-
-**Observed:** 2026-01-31
-**Status:** `unconfirmed`
-
-Patterns are saturated with agent_ecology2-specific examples (escrow, kernel, ledger,
-artifact trading). The framework claims portability (`install.sh`, generic docs) but
-examples are deeply project-specific. A developer installing this into a different project
-would need to mentally translate every example.
-
-**To investigate:** Is the intent to be truly portable? If so, which patterns need
-generic examples? If not, should `install.sh` and portability framing be removed?
+(All items have been investigated. New observations go here.)
 
 ---
 
-### MP-006: Pattern 13 (Acceptance-Gate-Driven Development) is too large for a single pattern
-
-**Observed:** 2026-01-31
-**Status:** `unconfirmed`
-
-At 725 lines, Pattern 13 includes a process flow diagram, schema definitions, CI
-templates, role assignments, planning mode taxonomy, anti-cheating mechanisms, ADR
-conformance checklists, and enterprise pattern comparisons. This is a specification
-document, not a pattern.
-
-**To investigate:** Would splitting into sub-documents (concept overview, schema
-reference, process flow, CI integration) improve adoptability? Or is the monolithic
-format intentional?
-
----
-
-### MP-007: No tests for meta-process scripts
-
-**Observed:** 2026-01-31
-**Status:** `unconfirmed`
-
-20 Python scripts totaling ~230KB of code with zero test files. `check_claims.py`
-alone is 42KB. For a framework whose central thesis is TDD and "real tests over mocks,"
-the absence of tests for its own tooling is a credibility gap.
-
-**To investigate:** What's the risk profile? Are these scripts stable enough that
-tests aren't needed, or are there latent bugs? What would a minimal test suite cover?
-
----
-
----
-
-### MP-011: Circular documentation reading path
-
-**Observed:** 2026-01-31
-**Status:** `unconfirmed`
-
-README says see GETTING_STARTED.md. GETTING_STARTED references pattern files. Pattern
-files reference other patterns, ADRs, templates, and back to the README. A newcomer
-has no clear entry point or reading order.
-
-**To investigate:** Would a single "read this first" document (no forward references,
-complete end-to-end overview) solve this? Or is the cross-referencing working fine for
-actual adopters?
-
----
+## Monitoring
 
 ### MP-012: No success metrics
 
 **Observed:** 2026-01-31
-**Status:** `unconfirmed`
+**Investigated:** 2026-01-31
+**Status:** `monitoring`
 
-Nothing measures whether the meta-process is helping. No way to track rework rate,
-time to merge, claim conflict frequency, or whether acceptance gates catch real issues
-vs adding ceremony.
+**Finding:** Real gap. `meta_status.py` reports operational status (active claims, open
+PRs, plan progress) but nothing tracks process effectiveness: rework rate, time-to-merge,
+claim conflict frequency, or whether acceptance gates catch real issues vs adding ceremony.
 
-**To investigate:** Is this a real problem or premature optimization? What lightweight
-metrics would indicate the process is working (or not)? Does Traycer.ai or similar
-tooling offer ideas here?
+The framework's philosophy emphasizes "observability over control" but doesn't observe
+itself. No CI effectiveness tracking, no process ROI analysis.
 
----
+**Why monitoring (not confirmed):** At current scale (1-2 CC instances), process overhead
+is low and problems are visible without metrics. Metrics become important when the project
+scales or when multiple adopters need to compare effectiveness.
 
-### MP-013: Overengineered for actual scale
-
-**Observed:** 2026-01-31
-**Status:** `unconfirmed`
-
-The inter-CC messaging system, scope-based claim conflicts, file-level access control,
-and locked spec enforcement appear designed for 10+ concurrent AI agents on a massive
-codebase. The actual project runs 2-3 Claude Code instances.
-
-**To investigate:** Is this forward-looking design (preparing for scale) or premature
-complexity? Which features are earning their keep vs adding overhead? Could some be
-disabled by default and documented as "enable at scale"?
+**Trigger:** Revisit when (a) 3+ CC instances run concurrently, (b) time-to-merge
+exceeds 24h regularly, or (c) a second project adopts the framework.
 
 ---
 
-### MP-014: No convention for project-specific extensions to the meta-process
+### MP-014: No convention for project-specific extensions
 
 **Observed:** 2026-01-31
-**Status:** `unconfirmed`
+**Investigated:** 2026-01-31
+**Status:** `monitoring`
 
-The meta-process provides standard directories (`meta-process/patterns/`, `docs/plans/`,
-`docs/adr/`, `meta/acceptance_gates/`). But when a project needs domain-specific tracking
-— e.g., agent experiment results, design catalogs, simulation learnings — there's no
-convention for how to add it.
+**Finding:** The gap is real but not currently causing problems. Project-specific
+directories (`logs/`, `llm_logs/`, `dashboard-v2/`) are properly documented in architecture
+docs. `src/agents/catalog.yaml` (Plan #227) works fine as an ad-hoc domain catalog —
+it tracks agent lineage, versions, and genotypes without formal framework integration.
 
-Current result: project-specific concerns get invented ad-hoc (Plan #227 proposes
-`experiments/`, `catalog.yaml`, and metrics scripts with no connection to existing
-meta-process infrastructure like evidence recording, gap closure, or acceptance gates).
+The lack of convention means no discoverability pattern, no schema validation for
+project-specific catalogs, and no integration with evidence recording or gap closure.
+But these aren't causing friction yet.
 
-**Initial instinct:** A `meta/project/` (or similar) directory for project-specific
-subdirectories, with configurable rules for how they integrate with the meta-process
-(e.g., what links to gap closure, what feeds into evidence, what has a schema).
+**Relates to:** MP-001 (identity crisis). If the framework becomes truly portable,
+extension conventions become critical.
 
-**To investigate:** What should the standard vs. project-specific boundary look like?
-Should integration rules be pattern-based (guidance) or config-based (enforced)?
-How does this relate to MP-001 (portability identity crisis)?
-
----
-
-### MP-015: No plan-to-diff verification
-
-**Observed:** 2026-01-31
-**Status:** `unconfirmed`
-**Source:** Traycer.ai research — their verification phase compares actual diffs against plans
-
-Every plan declares a "Files Affected" section listing what will be touched. But nothing
-checks whether the actual changes match that declaration. Undeclared file modifications
-(scope creep) and declared files never touched (plan drift) go undetected.
-
-**To investigate:** How hard would a script be that compares `git diff --name-only`
-against the plan's "Files Affected" list? Could this be added to `make check`? What's
-the false positive rate (e.g., touching conftest.py that's not in the plan)?
-
----
-
-### MP-016: No implementation-time escalation convention
-
-**Observed:** 2026-01-31
-**Status:** `unconfirmed`
-**Source:** Traycer.ai's "Bart" orchestrator pauses and asks the human when code conflicts with spec
-
-Question-driven planning (Pattern 28) surfaces unknowns *before* implementation. But
-when a CC instance discovers mid-implementation that the plan's assumptions are wrong,
-there's no structured response. The instance either silently deviates from the plan or
-stops without explanation.
-
-**To investigate:** Would a convention like "if reality contradicts the plan, update
-CONTEXT.md with the conflict and stop" be sufficient? Should this be a hook, a pattern,
-or just CLAUDE.md guidance? How does Traycer's approach compare?
+**Trigger:** Revisit when (a) another project-specific catalog or tracking structure
+is created, (b) Plan #227 Phase 2 (experiments/, metrics scripts) is implemented,
+or (c) a second project adopts the framework.
 
 ---
 
 ### MP-017: CONTEXT.md is optional and often forgotten
 
 **Observed:** 2026-01-31
-**Status:** `unconfirmed`
-**Source:** Traycer.ai's "Ralph" pattern — aggressive externalization of state to disk prevents context rot
+**Investigated:** 2026-01-31
+**Status:** `monitoring`
+**Source:** Traycer.ai's "Ralph" pattern
 
-Each worktree has a `.claude/CONTEXT.md` for tracking progress across sessions, but it's
-advisory. In practice it often doesn't get updated. Traycer's approach treats externalized
-state as mandatory — the agent reads state from disk on every cycle rather than relying
-on chat history.
+**Finding:** CONTEXT.md is systematically created by `create_worktree.sh` but zero
+evidence of being updated after creation (0 commits referencing CONTEXT.md updates in
+a 6-day window with 50+ commits merged). The feature is inert.
 
-**To investigate:** Could a hook warn when CONTEXT.md hasn't been updated in the current
-worktree? Would that be annoying or useful? What's the minimum useful content for
-CONTEXT.md to actually help session continuity?
+**Root causes:** (1) Advisory with no enforcement — every other practice has hooks but
+CONTEXT.md has none. (2) No workflow integration — not staged in git, not included in
+PR descriptions. (3) Most work completes in a single session, so session continuity
+isn't needed.
 
----
+**When it would help:** Multi-session work (3+ sessions on same branch), complex
+explorations with decision branches, handoffs between developers. These are currently
+rare.
 
-## Monitoring
+**Fix options (when triggered):** Lighten the template to 2 sections ("What Changed &
+Why" + "Open Questions"), integrate into PR workflow (`make pr` pulls from CONTEXT.md),
+or add a hook that only warns on branches older than 24h.
 
-(None yet — items move here from Unconfirmed after investigation confirms
-they're real but not urgent)
+**Trigger:** Revisit when multi-session work exceeds 20% of PRs, or when handoffs
+between CC instances become common.
 
 ---
 
 ## Confirmed
+
+### MP-001: Portable framework claims, project-specific examples
+
+**Observed:** 2026-01-31
+**Investigated:** 2026-01-31
+**Status:** `confirmed`
+
+**Finding:** The framework IS genuinely trying to be portable (README: "a portable
+framework for coordinating AI coding assistants"). But 16 of 29 patterns (55%) contain
+agent_ecology2-specific terminology (escrow, kernel, ledger, scrip, principal, genesis,
+artifact, mint) — 437 total matches.
+
+4 patterns are heavily contaminated (>20 project-specific terms each): Pattern 13
+(Acceptance Gates, 48), Pattern 18 (Claims, 31), Pattern 03 (Testing, 30), Pattern 14
+(Gate Linkage, 27). These use project-specific domain concepts as running examples
+throughout.
+
+No export mechanism strips project-specific content. `install.sh` copies all patterns
+verbatim. No customization guide exists.
+
+**The core tension:** Concepts are generic (plans, claims, worktrees, acceptance gates)
+but all examples are project-specific. An adopter gets portable patterns wrapped in
+agent_ecology2 vocabulary.
+
+**Fix options:**
+- **Low effort:** Add honest disclaimers + customization guide (find-replace list)
+- **Medium effort:** Separate `meta-process/patterns/core/` from project-specific case studies
+- **High effort:** Rewrite examples using generic domain (e.g., e-commerce)
+
+**Relates to:** MP-008 (install.sh), MP-009 (pattern deps)
+
+---
 
 ### MP-002: GETTING_STARTED.md config examples don't match actual meta-process.yaml
 
@@ -271,6 +208,62 @@ inline (e.g., "Structured Logging *(proposed)*"). Minimal change, high clarity g
 
 ---
 
+### MP-006: Pattern 13 is too large — 724 lines, 3x average, mixed concerns
+
+**Observed:** 2026-01-31
+**Investigated:** 2026-01-31
+**Status:** `confirmed`
+
+**Finding:** At 724 lines with 22 major sections, Pattern 13 is 3x the average pattern
+size (231 lines) and 65% larger than the 2nd-largest pattern (Pattern 15 at 440 lines).
+
+The content is cohesive but mixes conceptual framework with operational reference:
+YAML schema definitions (82 lines), CI enforcement templates (23 lines), 8-step process
+flow diagram (76 lines), 4 planning depth modes, AI anti-cheating mechanisms, ADR
+conformance checklists, and an incomplete enterprise pattern comparison.
+
+**Natural split points identified:**
+- YAML schema → separate reference document (~82 lines saved)
+- CI enforcement template → repository's `.github/workflows/` (~23 lines)
+- Incomplete enterprise comparison → expand or remove (~13 lines)
+- Process flow diagram → simplify to ~40 lines
+
+**Fix:** Keep Pattern 13 as conceptual/process pattern (~500 lines), extract YAML
+schema to reference doc, move CI template to actual workflow files, address the
+incomplete enterprise section. Reduces size while losing zero learning content.
+
+---
+
+### MP-007: Script testing gap — 49 scripts, ~20% tested, critical scripts untested
+
+**Observed:** 2026-01-31
+**Investigated:** 2026-01-31
+**Status:** `confirmed`
+
+**Original observation:** "20 Python scripts with zero tests" was inaccurate.
+
+**Corrected finding:** 49 Python scripts totaling ~17,881 lines. ~10 scripts (20%)
+have test coverage via 9 test files with ~1,854 lines of tests. The remaining 39
+scripts (80%) are untested.
+
+**Critical untested scripts (destructive or core):**
+
+| Script | Lines | Risk |
+|--------|-------|------|
+| `cleanup_orphaned_worktrees.py` | 275 | Deletes worktrees with `--force` — logic error = lost work |
+| `cleanup_claims_mess.py` | 220 | Modifies `.claude/active-work.yaml` — no rollback |
+| `recover.py` | 247 | Auto-repair orchestrator — can corrupt state |
+| `check_plan_blockers.py` | 276 | Modifies plan files — missed blockers block release |
+| `check_plan_overlap.py` | 238 | Complex PR analysis — false negatives allow collisions |
+
+**Scripts safe to deprioritize:** `concat_for_review.py`, `get_governance_context.py`,
+`view_log.py`, `meta_config.py` (read-only, simple transformations).
+
+**Fix:** Priority test investment: (1) cleanup_orphaned_worktrees.py, (2) check_claims.py
+gap coverage, (3) cleanup_claims_mess.py, (4) recover.py.
+
+---
+
 ### MP-008: install.sh — all 6 reported issues confirmed, never tested externally
 
 **Observed:** 2026-01-31
@@ -324,6 +317,117 @@ prerequisite chains.
 
 **Fix:** Add `Requires` and `Works With` columns to `01_README.md`. Consider reclassifying
 non-patterns as "conventions" or "infrastructure" in a separate section.
+
+---
+
+### MP-011: Circular documentation references with no linear reading path
+
+**Observed:** 2026-01-31
+**Investigated:** 2026-01-31
+**Status:** `confirmed`
+
+**Finding:** Real cycles exist in the documentation reference graph. Entry point
+(README → GETTING_STARTED) is clear, but GETTING_STARTED immediately branches into
+4 weight levels and reads patterns in non-sequential order (2, 19, 18, 15, 23, 6, 10...).
+Patterns reference each other bidirectionally without indicating reading order (Pattern 18
+↔ Pattern 19, Pattern 15 ↔ Pattern 21).
+
+**Key problems:**
+- GETTING_STARTED uses "plan" and "claim" before they're defined
+- Day 1-2 patterns reference Day 3-4 patterns via "See also" links
+- No pattern declares prerequisites ("Requires: X, Y")
+- Hub patterns (13, 15, 18) are heavily referenced but not identified as hubs
+
+A newcomer following every "See also" link reads 15 patterns to understand 3. Stopping
+at links means missing context. The cross-referencing helps experts but overwhelms newcomers.
+
+**Fix:** (1) Add dependency/prerequisite rows to `01_README.md`, (2) reorder
+GETTING_STARTED Day 1-2 to read prerequisites first, (3) mark "See also" links as
+"core" vs "optional deep dive", (4) add a "Core Concepts" glossary section before
+pattern references.
+
+---
+
+### MP-013: Overengineered — ~30% of infrastructure unused at current scale
+
+**Observed:** 2026-01-31
+**Investigated:** 2026-01-31
+**Status:** `confirmed`
+
+**Finding:** The project typically runs 1 active CC instance. Several features designed
+for multi-CC coordination have never been used:
+
+| Feature | Status | Usage Evidence |
+|---------|--------|----------------|
+| Inter-CC messaging (`send_message.py`, `check_messages.py`) | Fully implemented, 730+ lines | Config: `inter_cc_messaging: false`. Never enabled. |
+| File-level access control (`check_locked_files.py`) | Partially implemented | Not in CI, not enforced |
+| Cross-CC review (Plan #240) | Planned, deferred | "Deferred until multi-CC workflows are common" |
+| Session tracking (`sessions.yaml`) | Implemented | Created but never referenced |
+
+~5,275 lines of script code (~30%) are devoted to multi-CC coordination infrastructure
+that has zero actual usage. Every contributor must read through messaging, session
+management, and scope conflict documentation to learn a single-CC workflow.
+
+**What earns its keep:** Worktree lifecycle, plans, doc coupling, acceptance gates,
+git hooks, basic claims.
+
+**Fix:** Disable unused features by default. Document as "enable at scale" with explicit
+trigger conditions (e.g., "enable inter-CC messaging when 3+ CCs run concurrently").
+Archive or collapse enterprise-scale patterns. Reduce cognitive load for single-CC setup.
+
+---
+
+### MP-015: Plan-to-diff verification — partial infrastructure, plan drift undetected
+
+**Observed:** 2026-01-31
+**Investigated:** 2026-01-31
+**Status:** `confirmed`
+**Source:** Traycer.ai research
+
+**Finding:** Infrastructure partially exists but the gap is real:
+
+- `parse_plan.py` (137 lines) already parses "Files Affected" sections from plans
+- `check-file-scope.sh` hook blocks edits to undeclared files during implementation
+  (disabled by default — "too strict for exploratory work")
+- 56% of active plans (9/16) have "Files Affected" sections (required by template)
+
+**What's missing:** No script compares `git diff --name-only` against the plan's
+declarations at merge time. Scope creep prevention exists (hook, disabled), but **plan
+drift** (declared files never touched = incomplete implementation) is completely undetected.
+
+**False positive risk:** Moderate. Common false positives: `tests/conftest.py`,
+`config/schema.yaml`, `__init__.py`, `.claude/CONTEXT.md`. Manageable with a whitelist.
+
+**Fix:** Add a merge-time check that compares actual diff to declared files. Flag
+undeclared `src/` modifications as HIGH (scope creep), undeclared `tests/` as MEDIUM,
+and untouched declared files as WARN (plan drift). Could integrate into `make check`.
+
+---
+
+### MP-016: No implementation-time escalation convention
+
+**Observed:** 2026-01-31
+**Investigated:** 2026-01-31
+**Status:** `confirmed`
+**Source:** Traycer.ai's "Bart" orchestrator
+
+**Finding:** Pattern 28 (Question-Driven Planning) has a "When Assumptions Break During
+Work" section (lines 131-144) that shows what a blocking discovery looks like. But it
+leaves the escalation steps undefined: where to record it, who to notify, when to stop,
+whether to modify the plan.
+
+Evidence this happens: Plan #234 required a 3-phase migration when assumptions changed.
+Plan #241 triggered a gap re-analysis because "detailed worksheets are stale."
+
+**CLAUDE.md has "Fail Loud" philosophy** but no specific guidance for "plan says X,
+reality is Y." The Process Awareness rule says "record gaps in ISSUES.md" but that's
+for meta-process gaps, not plan-reality conflicts.
+
+**CONTEXT.md template has no section** for discovered conflicts or plan deviations.
+
+**Fix:** Extend Pattern 28 with explicit escalation steps: (1) record conflict in
+CONTEXT.md, (2) update plan file with discovery, (3) stop or scope-reduce with clear
+commit note. Add a "Discovered Conflicts" section to the CONTEXT.md template.
 
 ---
 
