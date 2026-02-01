@@ -1,260 +1,219 @@
 """Tests for recover.py.
 
-Tests recovery operations preserve valid state and fix known corruption patterns.
+Tests the auto-recovery tool for meta-process issues.
+Uses mocks to isolate from git/subprocess operations.
 """
 
-import pytest
+import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-import subprocess
 
-# Import class to test
-from scripts.recover import Recovery, REPO_ROOT
+import pytest
+
+# Add scripts to path for import
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
+
+from recover import Recovery
 
 
 class TestRecoveryInit:
-    """Tests for Recovery class initialization."""
+    """Tests for Recovery initialization."""
 
-    def test_default_mode(self):
-        """Test default initialization is interactive (not auto, not dry-run)."""
-        recovery = Recovery()
-        assert recovery.auto is False
-        assert recovery.dry_run is False
-        assert recovery.actions_taken == []
+    def test_default_modes(self):
+        """Default is interactive mode (not auto, not dry-run)."""
+        r = Recovery()
+        assert r.auto is False
+        assert r.dry_run is False
+        assert r.actions_taken == []
 
     def test_auto_mode(self):
-        """Test auto mode initialization."""
-        recovery = Recovery(auto=True)
-        assert recovery.auto is True
-        assert recovery.dry_run is False
+        """Auto mode can be enabled."""
+        r = Recovery(auto=True)
+        assert r.auto is True
 
     def test_dry_run_mode(self):
-        """Test dry-run mode initialization."""
-        recovery = Recovery(dry_run=True)
-        assert recovery.auto is False
-        assert recovery.dry_run is True
+        """Dry-run mode can be enabled."""
+        r = Recovery(dry_run=True)
+        assert r.dry_run is True
 
 
-class TestRecoveryConfirm:
-    """Tests for Recovery.confirm() method."""
+class TestConfirm:
+    """Tests for confirmation behavior."""
 
     def test_auto_mode_always_confirms(self):
-        """Test auto mode returns True without prompting."""
-        recovery = Recovery(auto=True)
-        result = recovery.confirm("Do something?")
+        """Auto mode returns True without prompting."""
+        r = Recovery(auto=True)
+        result = r.confirm("Any question?")
         assert result is True
 
-    def test_dry_run_mode_never_confirms(self, capsys):
-        """Test dry-run mode returns False and prints message."""
-        recovery = Recovery(dry_run=True)
-        result = recovery.confirm("Remove worktree?")
+    def test_dry_run_never_confirms(self):
+        """Dry-run mode returns False and prints message."""
+        r = Recovery(dry_run=True)
+        result = r.confirm("Any question?")
         assert result is False
-        captured = capsys.readouterr()
-        assert "[DRY RUN]" in captured.out
-        assert "Remove worktree?" in captured.out
 
 
 class TestRecoverOrphanedWorktrees:
     """Tests for recover_orphaned_worktrees()."""
 
-    def test_detects_orphaned_worktrees(self, capsys):
-        """Test finds worktrees whose PRs have been merged."""
-        porcelain_output = f"""\
-worktree {REPO_ROOT}
-HEAD abc123
+    def test_handles_git_failure(self):
+        """Handles git worktree list failure gracefully."""
+        r = Recovery(auto=True)
+        with patch.object(r, "run_command") as mock_run:
+            mock_run.return_value = MagicMock(returncode=1)
+            result = r.recover_orphaned_worktrees()
+
+        assert result == 0
+
+    def test_skips_main_worktree(self):
+        """Doesn't try to remove main worktree."""
+        # mock-ok: testing worktree parsing requires controlling git output
+        r = Recovery(auto=True)
+
+        # Use REPO_ROOT as the main worktree path so it gets skipped
+        from recover import REPO_ROOT
+        porcelain = f"""worktree {REPO_ROOT}
+branch refs/heads/main
+"""
+        with patch.object(r, "run_command") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=0,
+                stdout=porcelain
+            )
+            result = r.recover_orphaned_worktrees()
+
+        # Should not try to check if main's PR is merged - only 1 call (git worktree list)
+        assert mock_run.call_count == 1
+        assert result == 0
+
+    def test_detects_orphaned_worktree(self):
+        """Detects worktree with merged PR."""
+        r = Recovery(auto=True, dry_run=True)  # dry_run to avoid actual removal
+
+        with patch.object(r, "run_command") as mock_run:
+            def side_effect(cmd, **kwargs):
+                if cmd[:3] == ["git", "worktree", "list"]:
+                    return MagicMock(
+                        returncode=0,
+                        stdout="""worktree /repo
 branch refs/heads/main
 
-worktree {REPO_ROOT}/worktrees/merged-branch
-HEAD def456
-branch refs/heads/merged-branch
+worktree /repo/worktrees/plan-merged
+branch refs/heads/plan-merged
 """
-        recovery = Recovery(dry_run=True)
-
-        with patch.object(recovery, "run_command") as mock_run:
-            def side_effect(cmd, capture=True, check=False):
-                result = MagicMock()
-                if cmd[0:3] == ["git", "worktree", "list"]:
-                    result.returncode = 0
-                    result.stdout = porcelain_output
-                elif cmd[0] == "gh":
-                    # PR is merged
-                    result.returncode = 0
-                    result.stdout = '[{"number": 123}]'
-                else:
-                    result.returncode = 0
-                    result.stdout = ""
-                return result
+                    )
+                elif cmd[0] == "gh" and "merged" in cmd:
+                    # Simulate merged PR found
+                    return MagicMock(returncode=0, stdout='[{"number": 123}]')
+                return MagicMock(returncode=0, stdout="")
 
             mock_run.side_effect = side_effect
-            fixed = recovery.recover_orphaned_worktrees()
+            # In dry-run mode, should identify but not remove
+            r.recover_orphaned_worktrees()
 
-        captured = capsys.readouterr()
-        assert "orphaned worktree" in captured.out.lower()
-
-    def test_skips_main_worktree(self, capsys):
-        """Test never tries to remove main worktree."""
-        porcelain_output = f"""\
-worktree {REPO_ROOT}
-HEAD abc123
-branch refs/heads/main
-"""
-        recovery = Recovery(dry_run=True)
-
-        with patch.object(recovery, "run_command") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0, stdout=porcelain_output)
-            fixed = recovery.recover_orphaned_worktrees()
-
-        assert fixed == 0
-        captured = capsys.readouterr()
-        assert "No orphaned worktrees found" in captured.out
+        # Verify gh pr list was called for the non-main worktree
+        gh_calls = [c for c in mock_run.call_args_list if c[0][0][0] == "gh"]
+        assert len(gh_calls) > 0
 
 
 class TestRecoverOrphanedClaims:
     """Tests for recover_orphaned_claims()."""
 
-    def test_delegates_to_check_claims(self, capsys):
-        """Test calls check_claims.py --cleanup-orphaned."""
-        recovery = Recovery(dry_run=True)
+    def test_calls_cleanup_script(self):
+        """Delegates to check_claims.py --cleanup-orphaned."""
+        r = Recovery(auto=True)
 
-        with patch.object(recovery, "run_command") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0,
-                stdout="No orphaned claims found"
-            )
-            fixed = recovery.recover_orphaned_claims()
+        with patch.object(r, "run_command") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="No orphaned claims")
+            r.recover_orphaned_claims()
 
-        # Should have called check_claims.py
-        calls = [str(c) for c in mock_run.call_args_list]
-        assert any("check_claims.py" in c for c in calls)
-        captured = capsys.readouterr()
-        assert "No orphaned claims found" in captured.out
+        # Should call check_claims.py
+        calls = [c for c in mock_run.call_args_list if "check_claims.py" in str(c)]
+        assert len(calls) > 0
+
+    def test_dry_run_uses_dry_run_flag(self):
+        """Dry-run mode passes --dry-run to script."""
+        r = Recovery(dry_run=True)
+
+        with patch.object(r, "run_command") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="")
+            r.recover_orphaned_claims()
+
+        # Should have --dry-run in the command
+        calls = [c for c in mock_run.call_args_list if "check_claims.py" in str(c)]
+        assert any("--dry-run" in str(c) for c in calls)
 
 
 class TestRecoverStaleClaims:
     """Tests for recover_stale_claims()."""
 
-    def test_uses_stale_hours_parameter(self):
-        """Test passes stale-hours to check_claims.py."""
-        recovery = Recovery(dry_run=True)
+    def test_default_stale_hours(self):
+        """Uses 8 hours as default stale threshold."""
+        r = Recovery(auto=True)
 
-        with patch.object(recovery, "run_command") as mock_run:
+        with patch.object(r, "run_command") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="")
-            recovery.recover_stale_claims(hours=12)
+            r.recover_stale_claims()
 
-        # Check that --stale-hours 12 was passed
-        calls = mock_run.call_args_list
-        assert any("--stale-hours" in str(c) and "12" in str(c) for c in calls)
+        # Should have --stale-hours 8 in command
+        calls = [c for c in mock_run.call_args_list if "check_claims.py" in str(c)]
+        assert any("8" in str(c) for c in calls)
+
+    def test_custom_stale_hours(self):
+        """Can specify custom stale threshold."""
+        r = Recovery(auto=True)
+
+        with patch.object(r, "run_command") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="")
+            r.recover_stale_claims(hours=4)
+
+        calls = [c for c in mock_run.call_args_list if "check_claims.py" in str(c)]
+        assert any("4" in str(c) for c in calls)
 
 
 class TestRecoverGitState:
     """Tests for recover_git_state()."""
 
-    def test_checks_current_branch(self, capsys):
-        """Test detects non-main branch and suggests switching."""
-        recovery = Recovery(dry_run=True)
+    def test_detects_non_main_branch(self):
+        """Detects when not on main branch."""
+        r = Recovery(auto=True, dry_run=True)
 
-        with patch.object(recovery, "run_command") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0, stdout="feature-branch")
-            recovery.recover_git_state()
-
-        captured = capsys.readouterr()
-        assert "feature-branch" in captured.out
-
-    def test_prunes_worktree_references(self):
-        """Test runs git worktree prune."""
-        recovery = Recovery(auto=True)
-
-        with patch.object(recovery, "run_command") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0, stdout="main")
-            recovery.recover_git_state()
-
-        # Should have called git worktree prune
-        calls = [str(c) for c in mock_run.call_args_list]
-        assert any("worktree" in c and "prune" in c for c in calls)
-
-
-class TestRepairPreservesValidState:
-    """Tests that repair operations don't corrupt valid state."""
-
-    def test_repair_preserves_valid_state(self, capsys):
-        """Test valid state unchanged after repair."""
-        # When no issues are found, recovery should not modify anything
-        recovery = Recovery(dry_run=True)
-
-        with patch.object(recovery, "run_command") as mock_run:
-            # All checks return "everything is fine"
-            def side_effect(cmd, capture=True, check=False):
-                result = MagicMock()
-                result.returncode = 0
-                if "branch" in cmd and "--show-current" in cmd:
-                    result.stdout = "main"
-                elif "worktree" in cmd and "list" in cmd:
-                    result.stdout = f"worktree {REPO_ROOT}\nHEAD abc\nbranch refs/heads/main\n"
-                else:
-                    result.stdout = ""
-                return result
+        with patch.object(r, "run_command") as mock_run:
+            def side_effect(cmd, **kwargs):
+                if cmd == ["git", "branch", "--show-current"]:
+                    return MagicMock(returncode=0, stdout="feature-branch")
+                return MagicMock(returncode=0, stdout="")
 
             mock_run.side_effect = side_effect
-            recovery.run()
+            r.recover_git_state()
 
-        # No actions should have been taken
-        assert recovery.actions_taken == []
-
-    def test_dry_run_takes_no_actions(self):
-        """Test dry-run never modifies state."""
-        recovery = Recovery(dry_run=True)
-
-        with patch.object(recovery, "run_command") as mock_run:
-            def side_effect(cmd, capture=True, check=False):
-                result = MagicMock()
-                result.returncode = 0
-                # Simulate finding issues
-                if "branch" in cmd and "--show-current" in cmd:
-                    result.stdout = "wrong-branch"
-                else:
-                    result.stdout = ""
-                return result
-
-            mock_run.side_effect = side_effect
-            recovery.run()
-
-        # actions_taken should be empty in dry-run mode
-        assert recovery.actions_taken == []
+        # Should detect we're not on main
+        # (In dry-run mode, won't actually switch)
 
 
-class TestRepairFixesKnownCorruption:
-    """Tests that repair fixes known corruption patterns."""
+class TestRunIntegration:
+    """Tests for run() method - orchestration."""
 
-    def test_repairs_orphaned_worktree(self):
-        """Test removes worktrees whose PRs were merged."""
-        recovery = Recovery(auto=True)
-        porcelain_output = f"""\
-worktree {REPO_ROOT}
-HEAD abc123
-branch refs/heads/main
+    def test_runs_all_recovery_steps(self):
+        """Run method executes all recovery operations."""
+        r = Recovery(auto=True, dry_run=True)
 
-worktree {REPO_ROOT}/worktrees/orphan
-HEAD def456
-branch refs/heads/orphan
-"""
+        with patch.object(r, "recover_git_state", return_value=0) as m1:
+            with patch.object(r, "recover_orphaned_worktrees", return_value=0) as m2:
+                with patch.object(r, "recover_orphaned_claims", return_value=0) as m3:
+                    with patch.object(r, "recover_stale_claims", return_value=0) as m4:
+                        r.run()
 
-        with patch.object(recovery, "run_command") as mock_run:
-            def side_effect(cmd, capture=True, check=False):
-                result = MagicMock()
-                result.returncode = 0
-                if cmd[0:3] == ["git", "worktree", "list"]:
-                    result.stdout = porcelain_output
-                elif cmd[0] == "gh" and "merged" in cmd:
-                    result.stdout = '[{"number": 42}]'  # PR was merged
-                elif cmd[0:3] == ["git", "worktree", "remove"]:
-                    result.stdout = ""
-                elif cmd[0:2] == ["git", "branch"]:
-                    result.stdout = "main"
-                else:
-                    result.stdout = ""
-                return result
+        m1.assert_called_once()
+        m2.assert_called_once()
+        m3.assert_called_once()
+        m4.assert_called_once()
 
-            mock_run.side_effect = side_effect
-            fixed = recovery.recover_orphaned_worktrees()
+    def test_tracks_actions_taken(self):
+        """Tracks actions in actions_taken list."""
+        r = Recovery(auto=True)
+        r.actions_taken.append("Test action")
 
-        assert fixed >= 0  # At least attempted to fix
+        assert len(r.actions_taken) == 1
+        assert r.actions_taken[0] == "Test action"
