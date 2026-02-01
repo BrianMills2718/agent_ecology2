@@ -140,36 +140,22 @@ Build internal economy first, then add external interfaces.
 
 ## Multi-Model Adapter
 
-**Status**: Deferred
-**Priority**: Low
-**Depends on**: Need for model diversity
+**Status**: Implemented (basic support)
+**Priority**: N/A
 
-### Problem
+### What Exists
 
-Currently all agents use `gemini/gemini-3-flash-preview`. Future might want:
-- Different models for different agents
-- Agent choice of model (trade compute cost vs capability)
-- Fallback when one provider is down
+Multi-model support is implemented via LiteLLM:
+- Per-agent `allowed_models` config field (`config_schema.py`)
+- Per-model pricing in `ModelsConfig` with LiteLLM fallback
+- Model registry genesis artifact for quota management
+- Simulation experiments have used gemini-2.0-flash, gemini-2.5-flash, and gemini-3-flash-preview
 
-### Proposed Design
+### What Remains (not yet needed)
 
-Abstract LLM interface:
-```python
-class LLMProvider(Protocol):
-    async def complete(self, messages: list[Message]) -> Completion: ...
-    def estimate_cost(self, input_tokens: int, output_tokens: int) -> float: ...
-```
-
-Config allows specifying provider per agent or globally.
-
-### Why Deferred
-
-Single model simplifies:
-- Cost tracking
-- Behavior consistency
-- Debugging
-
-Add when there's a specific need for model diversity.
+- Agent self-selection of model at runtime (currently operator-configured)
+- Automatic fallback when a provider is down
+- Agent-to-agent model quota trading
 
 ---
 
