@@ -8,29 +8,6 @@ Tracked architectural concerns and potential improvements. Items here are candid
 
 ## Active Debt (Should Address)
 
-### TD-001: World.py is too large (2000+ lines)
-
-**Problem:** `src/world/world.py` has accumulated too many responsibilities:
-- State management (ledger, artifacts)
-- Mint auction logic (~300 lines)
-- Resource quota management
-- Event logging coordination
-- Genesis artifact coordination
-
-**Impact:** Hard to test in isolation, hard to understand, merge conflicts likely.
-
-**Recommended fix:** Extract into focused components:
-```
-World (orchestrator)
-├── MintAuction (auction logic) ← Start here
-├── QuotaManager (resource enforcement)
-└── Keep: ledger, artifacts, logger refs
-```
-
-**Effort:** Medium | **Risk:** Low (behavior-preserving refactor)
-
----
-
 ### TD-002: Circular coupling World ↔ RightsRegistry
 
 **Problem:** Bidirectional reference creates tight coupling:
@@ -170,6 +147,7 @@ GENESIS_MINT = "genesis_mint"
 
 | ID | Description | Resolved In | Date |
 |----|-------------|-------------|------|
+| TD-001 | World.py too large (extract MintAuction) | Already extracted to `mint_auction.py` (Plan #44) | 2026-01-31 |
 | TD-004 | Inconsistent resource naming | Constants in `resources.py` (already existed), config/code fixed | 2026-01-31 |
 
 ---
