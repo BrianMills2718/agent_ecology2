@@ -113,11 +113,10 @@ def merge_pr(pr_number: int) -> tuple[bool, str]:
 
 
 def release_claim(branch: str) -> bool:
-    """Release any claim for this branch.
+    """Release any claim for this branch from active-work.yaml.
 
-    Plan #176: With atomic claims (claim stored in worktree), the claim file
-    is deleted when the worktree is removed. This just adds to completed history.
-    We don't use --force since ownership should be verified.
+    Called BEFORE worktree removal so the claim is freed even if removal fails.
+    Worktree removal then deletes worktree/.claim.yaml, covering both sources.
     """
     result = run_cmd(
         ["python", "scripts/check_claims.py", "--release", "--id", branch],
@@ -435,7 +434,17 @@ def finish_pr(branch: str, pr_number: int, check_ci: bool = False, skip_complete
     # PHASE 2: EXECUTION (atomic - either completes fully or not at all)
     # ═══════════════════════════════════════════════════════════════════
 
-    # Step 1: Remove worktree FIRST (before merge, so branch can be deleted)
+    # Step 1: Release claim BEFORE worktree removal.
+    # Claims live in two places: .claude/active-work.yaml and worktree/.claim.yaml.
+    # Releasing from YAML first ensures the claim is freed even if worktree
+    # removal fails. Worktree removal then deletes .claim.yaml, covering both.
+    print(f"🔓 Releasing claim for {branch}...")
+    if release_claim(branch):
+        print("✅ Claim released")
+    else:
+        print("⚠️  No claim to release (or already released)")
+
+    # Step 2: Remove worktree (before merge, so branch can be deleted)
     if worktree_path:
         print(f"🧹 Removing worktree at {worktree_path}...")
         # Remove session marker if present (we're the owner finishing our own work)
@@ -452,7 +461,7 @@ def finish_pr(branch: str, pr_number: int, check_ci: bool = False, skip_complete
             print("   Then retry: make finish ...")
             return False
 
-    # Step 2: Merge PR (now safe - branch not in use by worktree)
+    # Step 3: Merge PR (now safe - branch not in use by worktree)
     # This is the only truly irreversible operation
     print(f"🔀 Merging PR #{pr_number}...")
     merge_ok, merge_msg = merge_pr(pr_number)
@@ -465,7 +474,7 @@ def finish_pr(branch: str, pr_number: int, check_ci: bool = False, skip_complete
     # PHASE 3: CLEANUP (best-effort, logged - PR is already merged)
     # ═══════════════════════════════════════════════════════════════════
 
-    # Step 3: Mark plan as complete (fallback for no-worktree case only)
+    # Step 4: Mark plan as complete (fallback for no-worktree case only)
     # Plan #246: Normal path completes in worktree before merge (Phase 1.5).
     # This fallback handles the case where no worktree existed.
     if plan_num and not skip_complete and not worktree_path:
@@ -476,13 +485,6 @@ def finish_pr(branch: str, pr_number: int, check_ci: bool = False, skip_complete
         else:
             print(f"⚠️  Could not mark plan complete: {complete_msg}")
             print("   Run manually: python scripts/complete_plan.py --plan", plan_num)
-
-    # Step 4: Release claim
-    print(f"🔓 Releasing claim for {branch}...")
-    if release_claim(branch):
-        print("✅ Claim released")
-    else:
-        print("⚠️  No claim to release (or already released)")
 
     # Step 5: Pull main
     print("📥 Pulling latest main...")
@@ -554,6 +556,8 @@ def main() -> int:
             elif context.get("plan_number") and args.skip_complete:
                 print(f"  {step}. Skip plan completion (--skip-complete)")
                 step += 1
+            print(f"  {step}. Release claim for {args.branch}")
+            step += 1
             if context.get("worktree_path"):
                 print(f"  {step}. Remove worktree: {context['worktree_path']}")
                 step += 1
@@ -562,8 +566,6 @@ def main() -> int:
             if context.get("plan_number") and not args.skip_complete and not context.get("worktree_path"):
                 print(f"  {step}. Complete Plan #{context['plan_number']} (post-merge fallback)")
                 step += 1
-            print(f"  {step}. Release claim for {args.branch}")
-            step += 1
             print(f"  {step}. Pull latest main")
             return 0
         else:
