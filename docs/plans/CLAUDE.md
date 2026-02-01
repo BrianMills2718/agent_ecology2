@@ -46,12 +46,12 @@ Master index of all gaps and their implementation plans.
 | 207 | [Executor Method Refactoring](207_executor_refactor.md) | Low | 📋 Deferred | - |
 | 209 | [Trigger-Hook Integration](209_trigger_hook_integration.md) | Low | 📋 Deferred | - |
 | 227 | [Agent Catalog & Experiment Tracking](227_agent_catalog_experiment_tracking.md) | High | 🚧 In Progress | - |
-| 231 | [Plan 231: Tight Coupling Between has_standing and Ledger Registration](231_has_standing_ledger_coupling.md) | Medium | 🚧 In Progress | - |
+| 231 | [Plan 231: Tight Coupling Between has_standing and Ledger Registration](231_has_standing_ledger_coupling.md) | Medium | ✅ Complete | - |
 | 234 | [Plan 234: ADR-0024 Handle Request Migration](234_adr0024_handle_request_migration.md) | Medium | ✅ Complete | Full artifact autonomy, custom access control patterns |
 | 236 | [Plan 236: Charge Delegation](236_charge_delegation.md) | High | ✅ Complete | None (enables charge_to for Plan #234) |
 | 240 | [Plan 240: Cross-CC Review Enforcement](240_cross_cc_review_enforcement.md) | Medium | 📋 Deferred | - |
 | 241 | [Gap 241: Re-run Gap Analysis Using Pattern #30](241_gap_reanalysis.md) | Medium | 📋 Planned | - |
-| 242 | [Gap 242: Makefile Workflow Simplification](242_makefile_simplification.md) | Medium | 🚧 In Progress | - |
+| 242 | [Gap 242: Makefile Workflow Simplification](242_makefile_simplification.md) | Medium | ✅ Complete | - |
 | 245 | [Schema Audit Cleanup](245_schema_audit_cleanup.md) | P1 (code bug) + P2 (doc consistency) | 📋 Planned | - |
 ---
 
