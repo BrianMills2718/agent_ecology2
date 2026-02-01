@@ -33,10 +33,10 @@ Everything is an artifact. Other entity types are artifacts with specific proper
 | **Principal** | Any artifact with standing (can hold resources, bear costs) | `has_standing=true` |
 | **Autonomous Principal** | Principal with an execution loop (can act independently) | `has_standing=true`, has loop |
 | **Agent** | Autonomous principal using LLM for decisions (common case) | `has_standing=true`, `has_loop=true`, LLM-based |
-| **Contract** | Executable artifact that answers permission questions | `has_loop=true`, implements `check_permission` |
+| **Contract** | Executable artifact that answers permission questions | `type="contract"`, implements `check_permission` |
 | **Genesis Artifact** | Artifact created at system initialization | Prefixed with `genesis_`, solves cold-start |
-| **Genesis Agent** | Agent loaded from config at simulation startup (Plan #197) | `is_genesis=True`, can receive scoped prompt injection |
-| **Spawned Agent** | Agent created at runtime by another principal (Plan #197) | `is_genesis=False`, may not receive genesis-scoped injection |
+| **Genesis Agent** | Agent loaded from config at simulation startup (Plan #197) | Loaded from config, can receive scoped prompt injection |
+| **Spawned Agent** | Agent created at runtime by another principal (Plan #197) | Created dynamically at runtime, may not receive genesis-scoped injection |
 
 **Note:** "Agent" is often used loosely. Prefer "autonomous principal" when the decision engine could be non-LLM (RL, rules, code). "Agent" implies LLM-based.
 
@@ -47,15 +47,15 @@ All artifacts have these metadata fields (see `src/world/artifacts.py`):
 | Property | Type | Description |
 |----------|------|-------------|
 | `id` | str | Unique artifact identifier |
-| `type` | str | Artifact type (e.g. `"agent"`, `"trigger"`, `"config"`, `"memory_store"`, `"right"`). Kernel branches on this value. |
+| `type` | str | Artifact type (e.g. `"agent"`, `"trigger"`, `"config"`, `"memory"`, `"contract"`, `"right"`). Kernel branches on this value. Immutable after creation (Plan #235). |
 | `content` | str | Artifact content (code, data, config) |
-| `code` | str | Executable code (default `""`) |
-| `access_contract_id` | str | Governing contract for permissions |
+| `code` | str | Executable Python code; must define `run()` if executable (default `""`) |
+| `access_contract_id` | str | Governing contract for permissions (default: `genesis_contract_freeware`). Creator-only mutable (Plan #235). |
 | `created_by` | str | Principal who created the artifact |
-| `created_at` | datetime | Creation timestamp |
-| `updated_at` | datetime | Last modification timestamp |
+| `created_at` | str | Creation timestamp (ISO format string) |
+| `updated_at` | str | Last modification timestamp (ISO format string) |
 | `deleted` | bool | Whether artifact has been deleted |
-| `deleted_at` | datetime \| None | When artifact was deleted |
+| `deleted_at` | str \| None | When artifact was deleted (ISO format string) |
 | `deleted_by` | str \| None | Principal who deleted (if deleted) |
 | `has_standing` | bool | Can hold resources/bear costs |
 | `has_loop` | bool | Can execute code autonomously (has own loop) |
@@ -65,7 +65,8 @@ All artifacts have these metadata fields (see `src/world/artifacts.py`):
 | `depends_on` | list[str] | Artifact dependencies with cycle detection (Plan #63) |
 | `metadata` | dict | User-defined key-value metadata |
 | `policy` | dict | Artifact policies (e.g. `invoke_price`, `read_price`) |
-| `genesis_methods` | dict | Method dispatch for genesis artifacts |
+| `genesis_methods` | dict | Maps method names to handlers for genesis artifacts (Plan #15) |
+| `kernel_protected` | bool | If true, only kernel primitives can modify this artifact (Plan #235 Phase 1) |
 
 **Key relationships:**
 - Agent ⊂ Principal ⊂ Artifact
@@ -153,7 +154,7 @@ Rights are artifacts that grant permission to use physical capacity:
 
 | Right Type | Resource | Consumable? | Example |
 |------------|----------|-------------|---------|
-| `dollar_budget` | LLM API cost | Yes (shrinks on use) | "Can spend $0.50" |
+| `dollar_budget` | LLM API cost | Yes (shrinks on use) | "Can spend $0.50". Note: `llm_budget` is the resource name in config/ledger; `dollar_budget` is the right type. |
 | `rate_capacity` | API calls/window | Renewable | "100 calls/min to gemini" |
 | `disk_quota` | Storage bytes | Allocatable | "Can use 100KB" |
 
@@ -222,7 +223,7 @@ Eleven action types:
 | **access_contract_id** | Field on every artifact pointing to its governing contract |
 | **check_permission** | Required method contracts implement to answer permission questions |
 | **immediate caller** | When A→B→C, C's contract sees B (not A) as the caller |
-| **null contract** | When `access_contract_id` is null, default: creator has full rights, others blocked |
+| **null contract** | When `access_contract_id` is null (rare — default is `genesis_contract_freeware`), creator has full rights, others blocked |
 | **dangling contract** | When `access_contract_id` points to deleted contract, falls back to configurable default |
 
 **Five Kernel Actions** (all contract-checked, see ADR-0019):
@@ -239,6 +240,8 @@ Eleven action types:
 - `caller`, `action`, `target`, `target_created_by` - always provided
 - `method`, `args` - only for invoke
 - Everything else (balances, history) → contracts fetch via invoke
+
+**Genesis contracts:** Freeware, Self-owned, Private, Public, Transferable Freeware (allows `authorized_writer` metadata-based write access).
 
 Common contract patterns: Freeware, Self-owned, Gatekeeper, Escrow, Paywall.
 

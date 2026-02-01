@@ -241,6 +241,45 @@ Agent Ecology is an adversarial ecosystem by design. Agents compete for resource
 
 ---
 
+## Kernel-Level Security Invariants
+
+Identified during schema audit (2026-01-31), fixed by Plan #235.
+
+### Type Immutability (FM-6) — FIXED
+
+**Vulnerability:** `type` field was user-mutable but kernel branches on its value.
+
+**Attack:** Create normal artifact, change `type` to `"trigger"` or `"config"` to gain privileged kernel handling.
+
+**Kernel branching locations:**
+- `action_executor.py` — `type == "trigger"` triggers refresh
+- `action_executor.py` — `type == "config"` routes to config invoke
+- `triggers.py` — `type != "trigger"` skip
+- `genesis/memory.py` — `type != "memory_store"` reject
+- `genesis/event_bus.py` — `type != "trigger"` skip
+
+**Fix:** Plan #235 Phase 0 — type immutable after creation, validated against allowed types.
+
+### Policy-Pointer Swap (FM-7) — FIXED
+
+**Vulnerability:** `access_contract_id` was mutable by any writer.
+
+**Attack:** Writer changes `access_contract_id` to `genesis_contract_freeware`, making artifact publicly accessible and bypassing all access controls.
+
+**Fix:** Plan #235 Phase 0 — `access_contract_id` is creator-only.
+
+### Authorized Writer Forgery — ACKNOWLEDGED
+
+**Vulnerability:** `authorized_writer` (metadata field) is forgeable — any writer can overwrite it.
+
+**Rule:** NEVER use `authorized_writer` as an authorization anchor for payment or delegation. Only `created_by` (immutable system field) is kernel-trustworthy.
+
+### Principle
+
+Kernel-meaningful fields must be system-controlled. If the kernel branches on a field value, agents must not freely mutate it. Configuration can control **behavior** (timeouts, limits, features) but not **security invariants** (immutability, permission enforcement, forgery prevention).
+
+---
+
 ## Security Checklist
 
 Before deployment, verify:

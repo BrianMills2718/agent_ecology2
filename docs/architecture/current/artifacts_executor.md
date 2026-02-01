@@ -553,7 +553,7 @@ resources_consumed = {"cpu_seconds": usage.cpu_seconds}
 
 ## ActionResult (Plan #40)
 
-All three narrow waist actions return `ActionResult` with structured error information.
+All narrow waist actions return `ActionResult` with structured error information.
 
 ### ActionResult Structure
 
@@ -620,7 +620,14 @@ class ActionIntent:
 | `NoopIntent` | NOOP | - |
 | `ReadArtifactIntent` | READ_ARTIFACT | `artifact_id` |
 | `WriteArtifactIntent` | WRITE_ARTIFACT | `artifact_id`, `artifact_type`, `content`, `price`, `code`, `policy` |
+| `EditArtifactIntent` | EDIT_ARTIFACT | `artifact_id`, `old_string`, `new_string` |
+| `DeleteArtifactIntent` | DELETE_ARTIFACT | `artifact_id` |
 | `InvokeArtifactIntent` | INVOKE_ARTIFACT | `artifact_id`, `method`, `args` |
+| `QueryKernelIntent` | QUERY_KERNEL | `query_type`, `query_params` |
+| `SubscribeArtifactIntent` | SUBSCRIBE_ARTIFACT | `artifact_id` |
+| `UnsubscribeArtifactIntent` | UNSUBSCRIBE_ARTIFACT | `artifact_id` |
+| `ConfigureContextIntent` | CONFIGURE_CONTEXT | `section_name`, `enabled`, `priority` |
+| `ModifySystemPromptIntent` | MODIFY_SYSTEM_PROMPT | `operation`, `content`, `section_name` |
 
 ### Reasoning Field
 

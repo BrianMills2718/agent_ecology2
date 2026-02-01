@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-31 (Date bump - pre-existing coupling violation, content still accurate)
+Last verified: 2026-01-31 (Added orphan doc detection, CMF coupling entries)
 
 ---
 
@@ -259,6 +259,9 @@ couplings:
 **Coupling types:**
 - **Strict** (default): CI fails if source changes without doc update
 - **Soft** (`soft: true`): CI warns but doesn't fail - for reminder couplings
+
+**Orphan doc detection:**
+Use `--check-orphans` to find docs not referenced in any coupling entry. Configured via `orphan_detection:` section in `relationships.yaml` (scan directories, scan files, exempt paths).
 
 **Weight-aware checks (Plan #218):**
 Use `--weight-aware` flag to respect meta-process weight settings from `meta-process.yaml`.

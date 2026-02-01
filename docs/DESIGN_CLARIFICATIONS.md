@@ -26,73 +26,19 @@
 
 ## 1. Current vs Target Architecture
 
-**Why record:** Prevents documentation drift where the conceptual model reads as implemented reality.
-
-| Aspect | Current (ADR-0019) | Target (ADR-0024) |
-|--------|-------------------|-------------------|
-| Runtime model | Kernel-mediated permission checks | Artifact-handled access |
-| Interface | `run(*args)` | `handle_request(caller, operation, args)` |
-| Contract execution | Contracts executed BEFORE artifact code | Artifacts handle access in their code |
-| Kernel role | Routes AND interprets policy | Routes only (kernel opacity) |
-| Defaults | Freeware contract fallback | No defaults |
-
-**Kernel opacity:** Under ADR-0024, kernel treats artifact code as a black box - executes but does not interpret policy.
-
-**Reference:** `docs/CONCEPTUAL_MODEL.yaml` (implementation status table)
+**Status: RESOLVED** — CMF v3 (2026-01-31) separates Part 1 (current ADR-0019) from Part 2 (target ADR-0024). See `docs/CONCEPTUAL_MODEL_FULL.yaml`.
 
 ---
 
 ## 2. Interface Mismatch Limitation
 
-**Why record:** Bounds what "contracts are just artifacts" can mean today.
-
-`handle_request` does not exist in code today; only `run()` exists.
-
-**Implications:**
-- No operation-level dispatch (read/write/invoke/delete) inside artifact code under current model
-- Current contracts cannot distinguish between operation types in a standard way
-- Artifacts cannot implement fine-grained access control per operation
-
-**Migration:** Plan #234 (ADR-0024 Handle Request Migration)
+**Status: DOCUMENTED** — CMF v3 Part 2 covers the target `handle_request` interface. Plan #234 tracks implementation. See `docs/CONCEPTUAL_MODEL_FULL.yaml` Part 2.
 
 ---
 
 ## 3. Security-Critical Invariants
 
-**Why record:** These are concrete privilege-escalation channels, not style preferences.
-
-### 3.1 Type Mutation (FM-6)
-
-**Vulnerability:** `type` is currently user-mutable but used for kernel branching.
-
-**Attack:** Type confusion - attacker creates normal artifact, changes `type` to "right"/"trigger"/"config", gains privileged kernel handling.
-
-**Kernel branching locations (verified 2026-01-31):**
-- `action_executor.py:220` - `type == "trigger"` triggers refresh
-- `action_executor.py:614` - `type == "config"` routes to config invoke
-- `triggers.py:209` - `type != "trigger"` skip
-- `genesis/memory.py:187` - `type != "memory_store"` reject
-- `genesis/event_bus.py:238` - `type != "trigger"` skip
-
-> Note: `rights.py` was removed per ADR-0025. Previous references to `rights.py:250,277,312,383,471` are obsolete.
-
-**Mitigation:** `type` must be immutable after creation. Plan #235 Phase 0.
-
-### 3.2 Policy-Pointer Swap (FM-7)
-
-**Vulnerability:** `access_contract_id` is currently mutable by anyone with write permission.
-
-**Attack:** Attacker with write permission changes `access_contract_id` to `genesis_contract_freeware`, making artifact publicly accessible.
-
-**Mitigation:** `access_contract_id` is creator-only - only `created_by` can change it. Plan #235 Phase 0.
-
-### 3.3 Authorized Writer Forgery
-
-**Vulnerability:** `authorized_writer` (metadata field) is forgeable - any writer can rewrite it.
-
-**Rule:** NEVER use `authorized_writer` as an authorization anchor for payment or delegation.
-
-**Safe anchors:** Only `created_by` (immutable system field) is kernel-trustworthy.
+**Status: FIXED + INTEGRATED** — All invariants fixed by Plan #235 Phase 0+1. Attack scenarios and kernel branching locations integrated into `docs/SECURITY.md` "Kernel-Level Security Invariants" section.
 
 ---
 
@@ -130,22 +76,7 @@ A **hard anchor** is a kernel-trustworthy identity fact - something the enforcem
 
 ## 5. Non-Forgeable Rights Requirement
 
-**Why record:** "Scarcity" (cannot counterfeit) is foundational for any resource economy.
-
-### Current Problem
-
-Rights-as-artifacts are currently forgeable because:
-1. Content can be edited directly via `edit_artifact`
-2. Contract validation cannot reliably prevent "counterfeiting" because contracts don't see proposed deltas/content in a strong way
-
-### Solution
-
-Near-term fix requires kernel-enforced immutability:
-- A `kernel_protected` field (system field, not metadata)
-- `kernel_protected: true` means only kernel primitives can modify
-- Normal write/edit actions are rejected
-
-**Implementation:** Plan #235 (Kernel-Protected Artifacts)
+**Status: FIXED** — Plan #235 Phase 1 added `kernel_protected` field. See `docs/GLOSSARY.md` Artifact Properties.
 
 ---
 
@@ -211,23 +142,7 @@ async def atomic_settlement(self, payer_id, charger_id, amount):
 
 ## 8. Reserved Namespaces and ID Squatting
 
-**Why record:** Otherwise delegation artifacts are not trustworthy.
-
-### The Problem
-
-Deterministic IDs like `charge_delegation:{payer}` are vulnerable to **ID squatting**:
-- Attacker creates `charge_delegation:victim` before victim does
-- Attacker's artifact is now the canonical delegation record for victim
-- Victim cannot create their own
-
-### Mitigation
-
-Kernel must enforce **reserved ID namespaces**:
-- `charge_delegation:X` can ONLY be created by principal X
-- `right:*` reserved for kernel-created rights
-- Validation at artifact creation time in `ArtifactStore.write()`
-
-**Implementation:** Plan #235 Phase 1 (Reserved Namespaces)
+**Status: FIXED** — Plan #235 Phase 1 implemented reserved ID namespaces. See `src/world/artifacts.py` reserved namespace validation.
 
 ---
 
@@ -322,31 +237,7 @@ Need kernel-enforced ownership transfer mechanism:
 
 ## 12. Known Code Bugs (Schema Audit)
 
-**Why record:** These are verified code-level issues found during the 2026-01-31 schema audit. See `docs/SCHEMA_AUDIT.md` for full analysis.
-
-### 12.1 `_execute_edit` was entirely broken (FIXED - Plan #239)
-
-**Location:** `src/world/action_executor.py`
-
-The `_execute_edit` method crashed on any `edit_artifact` action because:
-1. It accessed fields (`intent.content`, `intent.code`, etc.) that don't exist on `EditArtifactIntent` (which only has `artifact_id`, `old_string`, `new_string`)
-2. It called `w.artifacts.update()` which doesn't exist on `ArtifactStore`
-
-**Fixed in Plan #239:** Rewritten to call `ArtifactStore.edit_artifact()` with proper permission checking. Integration test added.
-
-### 12.2 `depends_on` queried from wrong source (FIXED - Plan #239)
-
-**Location:** `src/world/kernel_queries.py`
-
-`artifact.metadata.get("depends_on", [])` queried user-defined metadata instead of the validated `artifact.depends_on` dataclass field.
-
-**Fixed in Plan #239:** Changed to `artifact.depends_on`.
-
-### 12.3 Action count mismatch (FIXED - Plan #239)
-
-`docs/architecture/current/execution_model.md` said "6 Action Types" but `ActionType` has 11 values.
-
-**Fixed in Plan #239:** Updated to show all 11 action types.
+**Status: ALL FIXED** — All bugs fixed by Plan #239. See `docs/SCHEMA_AUDIT.md` section 2 for historical detail.
 
 ---
 
@@ -356,16 +247,13 @@ The `_execute_edit` method crashed on any `edit_artifact` action because:
 
 **Added:** 2026-01-31
 
-### 13.1 CONCEPTUAL_MODEL_FULL.yaml: Deprecate or Update?
+### 13.1 CONCEPTUAL_MODEL_FULL.yaml: Deprecate or Update? — CLOSED
 
-**Context:** `docs/CONCEPTUAL_MODEL_FULL.yaml` (CMF) mixes ADR-0019 (current) and ADR-0024 (target) content without clear boundaries. Staleness markers were added (2026-01-31 audit) but the document remains confusing.
+**Decision (2026-01-31):** Full rewrite (Option 2). CMF v3 rewrites from scratch using code as source of truth, with clear 3-part structure: Part 1 (Current ADR-0019), Part 2 (Target ADR-0024), Part 3 (Reference). Maintenance burden addressed by adding CMF to `scripts/relationships.yaml` coupling graph — future code changes to `artifacts.py`, `actions.py`, `kernel_interface.py` now trigger CMF update checks.
 
-**Options:**
-1. **Deprecate CMF** — Archive to `docs/archive/`, rely on `docs/architecture/current/` + `target/` as source of truth. Simpler, less maintenance.
-2. **Update CMF** — Rewrite to clearly separate current vs target sections. More comprehensive single reference, but high maintenance burden.
-3. **Partial update** — Keep CMF as aspirational-only (remove current-state claims), point to `architecture/current/` for implementation reality.
+**Original context:** `docs/CONCEPTUAL_MODEL_FULL.yaml` (CMF) mixed ADR-0019 (current) and ADR-0024 (target) content without clear boundaries. Root cause: CMF was never in the doc-code coupling graph, so it drifted silently.
 
-**Recommendation:** Option 3 (partial update) — lowest effort, eliminates the main confusion source.
+**Resolution:** All 17 SCHEMA_AUDIT.md inconsistencies resolved by CMF v3. See `docs/SCHEMA_AUDIT.md` for resolution status per inconsistency.
 
 ### 13.2 Plan #231: has_standing ↔ Ledger Coupling Mechanism
 

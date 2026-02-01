@@ -392,7 +392,11 @@ The kernel (`src/world/kernel_interface.py`) provides these primitives that ALL 
 | `cancel_mint_submission(caller_id, submission_id)` | Cancel mint submission |
 | `transfer_quota(from_id, to_id, resource, amount)` | Move quota |
 | `consume_quota(principal_id, resource, amount)` | Record resource consumption |
+| `grant_charge_delegation(caller_id, delegate_id, max_per_call, max_per_window)` | Grant charge delegation (Plan #236) |
+| `revoke_charge_delegation(caller_id, delegate_id)` | Revoke charge delegation |
+| `authorize_charge(caller_id, payer_id, amount)` | Charge via delegation |
 | `install_library(caller_id, library_name, version)` | Install Python library (costs disk quota) |
+| `modify_protected_content(artifact_id, content, code, metadata)` | Kernel-only: modify protected artifact |
 
 **Genesis artifacts are just conveniences that wrap these primitives.** See `src/world/genesis/CLAUDE.md` for details.
 

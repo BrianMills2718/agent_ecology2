@@ -26,7 +26,7 @@ See also:
 # ADR-0001: Everything is an artifact
 # ADR-0003: Contracts can do anything
 #
-# Four built-in contracts: freeware, self_owned, private, public.
+# Five built-in contracts: freeware, transferable_freeware, self_owned, private, public.
 # These are Python classes, not artifacts (current implementation).
 # --- GOVERNANCE END ---
 from __future__ import annotations

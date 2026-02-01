@@ -1,341 +1,170 @@
 # =============================================================================
-# CONCEPTUAL MODEL - Machine-readable architecture definition
+# CONCEPTUAL MODEL - Machine-readable architecture definition (compact)
 # =============================================================================
-# This is the canonical conceptual model for the Agent Ecology system.
-# Status: ACCEPTED - ADR-0024
+# Version 3 - Aligned with CONCEPTUAL_MODEL_FULL.yaml (Part 1: Current).
 #
-# For historical reasoning, see: docs/explorations/
-# For full version with examples, see: CONCEPTUAL_MODEL_FULL.yaml
+# This is the concise reference. For full details, examples, and discussion,
+# see: CONCEPTUAL_MODEL_FULL.yaml
 # =============================================================================
 
-version: 2
+version: 3
 last_updated: "2026-01-31"
-status: accepted
+status: current_implementation
+source_of_truth: "src/world/artifacts.py, src/world/actions.py, src/world/kernel_interface.py"
 
 # =============================================================================
-# IMPLEMENTATION STATUS - IMPORTANT
+# ARTIFACT - The Primal Entity (21 dataclass fields)
 # =============================================================================
-# This model describes the TARGET architecture per ADR-0024.
-# The current implementation follows ADR-0019 (superseded).
-#
-# KEY DIFFERENCES (Current vs This Model):
-# ┌─────────────────────┬──────────────────────────────┬────────────────────────────┐
-# │ Aspect              │ Current Implementation       │ This Model (Target)        │
-# ├─────────────────────┼──────────────────────────────┼────────────────────────────┤
-# │ Handler interface   │ run(*args)                   │ handle_request(caller,     │
-# │                     │                              │   operation, args)         │
-# │ Permission checking │ Kernel checks contract       │ Artifact handles in code   │
-# │                     │ BEFORE artifact runs         │                            │
-# │ Kernel role         │ Routes AND interprets        │ Routes only                │
-# │ Defaults            │ Freeware contract fallback   │ No defaults                │
-# │ access_contract_id  │ Kernel uses for checking     │ Just metadata              │
-# │ charge_to           │ Not implemented              │ Artifact directs costs     │
-# └─────────────────────┴──────────────────────────────┴────────────────────────────┘
-#
-# Migration tracked in: Plan #234 (ADR-0024 Handle Request Migration)
-# =============================================================================
-
-# Code gaps tracked separately:
-# - handle_request interface (Plan #234) - MAJOR: core interface not implemented
-# - charge_to cost routing (GAP-ART-004) - artifacts can't direct costs
-# - subscribe_artifact permission (needs read check)
-# - kernel invariants (Plan #231)
-# =============================================================================
-# ARTIFACT - The Primal Entity
-# =============================================================================
+# Source: src/world/artifacts.py:120-194
 
 artifact:
   definition: "Any persistent, addressable object in the system"
-  is_primal: true  # Everything else extends this
+  is_primal: true
 
+  # Required fields (no default)
   required_fields:
-    id:
-      type: string
-      description: "Unique identifier"
-    content:
-      type: string
-      description: "Stored data (may be empty)"
-    code:
-      type: string
-      description: "Handler code (ADR-0024: all artifacts have handlers)"
-    created_by:
-      type: string
-      description: "Principal who created this (immutable)"
-      mutable: false
+    id: { type: str, mutable: false }
+    type: { type: str, mutable: false, note: "Immutable after creation (Plan #235)" }
+    content: { type: str, mutable: true }
+    created_by: { type: str, mutable: false, note: "ADR-0016: immutable metadata" }
+    created_at: { type: str, mutable: false }
+    updated_at: { type: str, mutable: true }
 
-  # ADR-0024: Artifacts handle their own access in code
-  # No kernel defaults. See docs/explorations/access_control.md
-
-# =============================================================================
-# INTERFACE - Required on All Artifacts
-# =============================================================================
-
-interface:
-  definition: "Schema describing what an artifact IS and what it can DO"
-  required_on: "ALL artifacts"
-  influences: ["MCP (tool definitions)", "StructGPT (linearization)"]
-
-  required_fields:
-    description:
-      type: string
-      description: "Human-readable summary"
-    labels:
-      type: "list[string]"
-      description: "Convenience labels (NOT mutually exclusive)"
-      common_values: ["data", "service", "contract", "right", "principal", "agent"]
-
+  # Optional fields (have defaults)
   optional_fields:
-    methods:
-      type: "list[MethodSchema]"
-      description: "Callable operations"
-    schema:
-      type: "JSONSchema"
-      description: "Structure of content"
-    linearization:
-      type: string
-      description: "Template for LLM presentation"
-    inputSchema:
-      type: "JSONSchema"
-    outputSchema:
-      type: "JSONSchema"
+    executable: { type: bool, default: false }
+    code: { type: str, default: '""' }
+    policy: { type: dict, default: "default_policy()" }
+    has_standing: { type: bool, default: false, note: "Can hold resources" }
+    has_loop: { type: bool, default: false, note: "Runs autonomously" }
+    memory_artifact_id: { type: "str | None", default: "None" }
+    deleted: { type: bool, default: false }
+    deleted_at: { type: "str | None", default: "None" }
+    deleted_by: { type: "str | None", default: "None" }
+    interface: { type: "dict | None", default: "None", note: "MCP-compatible schema" }
+    genesis_methods: { type: "dict | None", default: "None" }
+    depends_on: { type: list, default: "[]" }
+    access_contract_id: { type: str, default: '"genesis_contract_freeware"' }
+    metadata: { type: dict, default: "{}" }
+    kernel_protected: { type: bool, default: false, note: "Plan #235 Phase 1" }
+
+  computed_properties:
+    price: "policy['invoke_price'] (backwards compat)"
+    is_principal: "has_standing == True"
+    is_agent: "has_standing and has_loop"
 
 # =============================================================================
-# PROPERTIES
+# ACTIONS (11 total)
 # =============================================================================
-
-properties:
-  structural:
-    executable:
-      type: bool
-      description: "Has runnable code"
-    has_standing:
-      type: bool
-      description: "Can hold resources and bear costs"
-      note: "Plan #231 proposes tight coupling with ledger"
-    has_loop:
-      type: bool
-      description: "Runs autonomously"
-      implies: has_standing
-      code_name: "has_loop"
-
-  interface_patterns:
-    implements_check_permission:
-      description: "Implements check_permission(caller, action, target) -> bool"
-      makes_it: "a contract"
-    content_is_resource_claim:
-      description: "Content follows resource claim schema"
-      makes_it: "a right"
-    exposes_methods:
-      description: "Interface defines callable methods"
-      makes_it: "a service"
-
-  decision_engine:
-    options: ["LLM-based (agent)", "Rules/code-based", "RL policy", "External API"]
-
-# =============================================================================
-# LABELS (Named Combinations)
-# =============================================================================
-
-labels:
-  data:
-    properties: "!executable"
-    description: "Stores information, not runnable"
-
-  service:
-    properties: "executable, exposes_methods, !has_loop"
-    description: "Provides callable methods"
-
-  contract:
-    properties: "executable, implements_check_permission"
-    description: "Answers permission questions"
-    governs: [read, write, edit, invoke, delete]
-
-  right:
-    properties: "content_is_resource_claim"
-    description: "Claim on physical capacity"
-    content_schema:
-      amount: { type: number }
-      resource: { type: string }
-      resource_type: { type: enum, values: ["depletable", "allocatable", "renewable"] }
-
-  principal:
-    properties: "has_standing"
-    description: "Can hold resources and bear costs"
-
-  autonomous_principal:
-    properties: "has_standing, has_loop"
-    description: "Runs independently"
-
-  agent:
-    properties: "has_standing, has_loop, LLM-based"
-    description: "Autonomous principal using LLM"
-
-# INVARIANT: No kernel or artifact logic may branch on labels.
-# Labels are observational only (discovery, filtering, search).
-
-# =============================================================================
-# ACTIONS
-# =============================================================================
+# Source: src/world/actions.py:13-26
 
 actions:
   core:
-    description: "Route through artifact handler (ADR-0024)"
-    operations: [read, write, edit, invoke, delete]
+    description: "Go through contract permission checking (ADR-0019)"
+    operations: [read_artifact, write_artifact, edit_artifact, invoke_artifact, delete_artifact]
 
   kernel:
     description: "No permission needed"
     operations: [noop, query_kernel]
 
   convenience:
-    description: "Shortcuts for edit_artifact"
+    description: "Shortcuts for edit_artifact on agent's own artifact"
     operations: [subscribe_artifact, unsubscribe_artifact, configure_context, modify_system_prompt]
-    note: "subscribe_artifact needs read permission check (code gap)"
+    note: "subscribe_artifact does NOT check read permission (known gap)"
+
+# =============================================================================
+# KERNEL INTERFACE
+# =============================================================================
+# Source: src/world/kernel_interface.py
+
+kernel_interface:
+  kernel_state:
+    description: "Read-only (11 methods)"
+    methods:
+      - "get_balance(principal_id) -> int"
+      - "get_resource(principal_id, resource) -> float"
+      - "get_llm_budget(principal_id) -> float"
+      - "list_artifacts_by_owner(created_by) -> list[str]"
+      - "get_artifact_metadata(artifact_id) -> dict | None"
+      - "read_artifact(artifact_id, caller_id) -> str | None"
+      - "get_mint_submissions() -> list[dict]"
+      - "get_mint_history(limit) -> list[dict]"
+      - "get_quota(principal_id, resource) -> float"
+      - "get_available_capacity(principal_id, resource) -> float"
+      - "would_exceed_quota(principal_id, resource, amount) -> bool"
+
+  kernel_actions:
+    description: "Write operations with verified caller (15 methods)"
+    methods:
+      - "transfer_scrip(caller_id, to, amount) -> bool"
+      - "transfer_resource(caller_id, to, resource, amount) -> bool"
+      - "transfer_llm_budget(caller_id, to, amount) -> bool"
+      - "write_artifact(caller_id, artifact_id, content, type) -> bool"
+      - "submit_for_mint(caller_id, artifact_id, bid) -> dict"
+      - "cancel_mint_submission(caller_id, submission_id) -> bool"
+      - "transfer_quota(from_id, to_id, resource, amount) -> bool"
+      - "consume_quota(principal_id, resource, amount) -> bool"
+      - "install_library(caller_id, library_name, version) -> dict"
+      - "create_principal(principal_id, starting_scrip, starting_compute) -> bool"
+      - "update_artifact_metadata(caller_id, artifact_id, key, value) -> bool"
+      - "modify_protected_content(artifact_id, content, code, metadata) -> bool"
+      - "grant_charge_delegation(caller_id, delegate_id, max_per_call, max_per_window) -> bool"
+      - "revoke_charge_delegation(caller_id, delegate_id) -> bool"
+      - "authorize_charge(caller_id, payer_id, amount) -> bool"
+
+# =============================================================================
+# PERMISSION SYSTEM (ADR-0019 - current)
+# =============================================================================
+
+permission_system:
+  architecture: "ADR-0019 (kernel-mediated contract checking)"
+  flow: "Agent → Kernel → Contract.check_permission() → Allow/Deny → Kernel enforces"
+  default_contract: "genesis_contract_freeware"
+  genesis_contracts:
+    - "freeware (public read/invoke, owner-only write)"
+    - "self_owned (owner-only everything)"
+    - "private (owner-only)"
+    - "public (everyone)"
+    - "transferable_freeware (freeware + authorized_writer)"
 
 # =============================================================================
 # RESOURCES
 # =============================================================================
 
 resources:
-  definition: "Scarce physical capacities"
-
-  concerns:
-    permission: "Contract on the right artifact"
-    measurement: "Kernel (physics)"
-    scarcity: "Kernel (physics)"
-
   types:
-    depletable:
-      description: "Once consumed, gone forever"
-      examples: ["llm_dollars"]
-    allocatable:
-      description: "Finite but reusable when freed"
-      examples: ["disk_bytes", "memory_bytes"]
-    renewable:
-      description: "Replenishes over time (rate-limited)"
-      examples: ["llm_calls_per_minute"]
-
-  consumption:
-    insight: "Consuming from a right IS writing to the right artifact"
-    note: "Contract on the right decides who can consume"
+    depletable: { examples: ["llm_dollars"], note: "Gone forever" }
+    allocatable: { examples: ["disk_bytes"], note: "Reusable when freed" }
+    renewable: { examples: ["llm_calls_per_minute"], note: "Token bucket rate-limited" }
+  scrip: "Internal accounting unit, kernel-tracked (not an artifact)"
 
 # =============================================================================
-# CONTRACTS (ADR-0024)
+# LABELS (Conceptual Only - NOT a dataclass field)
 # =============================================================================
 
-contracts:
-  definition: "Artifacts that answer permission questions"
-
-  core_principle: |
-    Contracts are just artifacts. Kernel does NOT check them automatically.
-    Artifacts that want to delegate invoke a contract from their handler.
-    See docs/explorations/access_control.md
-
-  what_kernel_does:
-    - "Routes requests to artifact handlers"
-    - "Provides verified caller identity"
-    - "Enforces physics (scarcity, storage, immutability)"
-
-  what_kernel_does_not:
-    - "Check permissions"
-    - "Interpret contracts"
-    - "Provide access control defaults"
-
-# =============================================================================
-# CREATED_BY (ADR-0016)
-# =============================================================================
-
-created_by:
-  type: "Metadata field"
-  mutable: false
-  meaning: "Historical fact: who created this artifact"
-  permissions_implied: "NONE - contracts decide everything"
-
-# =============================================================================
-# "OWNER" - Term Does Not Exist
-# =============================================================================
-
-owner:
-  status: "TERM DOES NOT EXIST"
-  instruction: "Do not use. Causes confusion."
-  why: "Rights are Ostrom-style bundles, not unified ownership"
-  instead: "Ask the contract. May be undecidable."
+labels:
+  status: "CONCEPTUAL ONLY"
+  invariant: "No kernel or artifact logic may branch on labels"
+  common: [data, service, contract, right, principal, autonomous_principal, agent]
 
 # =============================================================================
 # SYSTEM LAYERS
 # =============================================================================
 
 layers:
-  infrastructure:
-    description: "External reality"
-    includes: ["Real machines", "Container limits", "External APIs", "Real costs"]
-
-  configuration:
-    description: "Parameters set by operator"
-    includes: ["Resource limits", "Agent definitions", "Genesis artifacts", "Model selection"]
-
-  kernel:
-    description: "The system itself"
-    stores: ["World state (artifacts)", "World history (immutable log)", "Measurement state"]
-    enforces: ["Scarcity", "Immutability", "Permission checks are metered and bounded"]
-    provides: ["Read interface", "Write interface"]
-
-  diagram: |
-    Infrastructure (external reality)
-           ↓ constrains
-    Configuration (operator parameters)
-           ↓ parameterizes
-    Kernel (storage, identity, physics)
+  infrastructure: "External reality (machines, APIs, costs)"
+  configuration: "Operator parameters (config.yaml)"
+  kernel: "Storage + identity + physics enforcement"
 
 # =============================================================================
-# KERNEL RESPONSIBILITIES (ADR-0024)
+# TARGET ARCHITECTURE (ADR-0024 - NOT IMPLEMENTED)
 # =============================================================================
 
-kernel_responsibilities:
-  does:
-    storage: "World state, history, measurement"
-    identity: "Verified caller identity (can't be spoofed)"
-    physics: "Scarcity, immutability, resource measurement"
-    routing: "Route requests to artifact handlers"
-
-  does_not:
-    - "Permission checking (artifacts handle in code)"
-    - "Access control defaults"
-    - "Interpret contracts"
-
-  opacity: "Kernel treats handle_request as opaque code - executes, does not interpret"
-
-  reference: "docs/explorations/access_control.md"
-
-# =============================================================================
-# HANDLE_REQUEST INTERFACE (ADR-0024) - TARGET, NOT CURRENT
-# =============================================================================
-
-handle_request:
-  implementation_status: "NOT YET IMPLEMENTED - See Plan #234"
-  current_interface: "run(*args) with caller_id as injected global"
-  description: "Standard interface every artifact implements"
-
-  signature: "def handle_request(caller: str, operation: str, args: dict) -> dict"
-
-  parameters:
-    caller: "Verified by kernel"
-    operation: "[read, write, invoke, delete]"
-    args: "Operation-specific"
-
-  return_value:
-    allowed: bool
-    charge_to: "enum [caller, target, contract, pool] - overrides cost_model for this frame"
-    result: any
-    error: "string (optional)"
-
-  reference: "docs/explorations/access_control.md"
-
-# =============================================================================
-# OBSERVABILITY COMMITMENT
-# =============================================================================
-
-observability:
-  commitment: "All events logged with sufficient detail for post hoc surplus analysis"
+target_architecture:
+  status: "NOT YET IMPLEMENTED — See Plan #234"
+  key_change: "Artifacts handle own access via handle_request(caller, operation, args)"
+  kernel_role: "Routes only (does not check permissions)"
+  reference: "CONCEPTUAL_MODEL_FULL.yaml Part 2"
 
 # =============================================================================
 # RELATIONSHIPS
@@ -345,27 +174,24 @@ relationships:
   implications:
     - "has_loop → has_standing"
     - "agent → autonomous_principal → principal"
-
   universal:
     - "Everything is an artifact"
+    - "Every artifact has one governing contract (access_contract_id)"
     - "created_by is immutable metadata (ADR-0016)"
     - "Labels are NOT mutually exclusive"
+  owner_term: "DOES NOT EXIST — use 'created_by' for creator, 'contract' for access"
 
 # =============================================================================
 # REFERENCES
 # =============================================================================
 
 references:
+  full_model: "docs/CONCEPTUAL_MODEL_FULL.yaml"
   decisions:
     ADR-0016: "created_by as immutable metadata"
-    ADR-0024: "Artifact self-handled access control"
-
-  explorations:
-    access_control: "Full reasoning for ADR-0024"
-    resolved_questions: "Historical Q&A from model development"
-    escrow_stress_test: "Insights from escrow walkthrough"
-    ostrom_rights_mapping: "Mapping to Ostrom's rights framework"
-
+    ADR-0019: "Kernel-mediated permission checking (current)"
+    ADR-0024: "Artifact self-handled access (target, not implemented)"
   code_gaps:
-    subscribe_permission: "Needs read check"
+    subscribe_permission: "Needs read check on target"
+    handle_request: "Plan #234 (not implemented)"
     invariants: "Plan #231"

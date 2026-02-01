@@ -25,7 +25,7 @@ class GenesisRightsRegistry(GenesisArtifact):
     - llm_tokens: LLM tokens (rate-limited via rolling window)
     - disk: Bytes of storage (fixed pool)
 
-    See docs/RESOURCE_MODEL.md for full design rationale.
+    See docs/architecture/current/resources.md for full design rationale.
     All method costs and descriptions are configurable via config.yaml.
     """
 
