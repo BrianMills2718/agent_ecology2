@@ -51,31 +51,53 @@ However, there ARE 4 uncommitted modified files in main that shouldn't be there:
 These look like Plan #247 work (removing genesis-related code) that was accidentally
 done in main instead of the `plan-247-legacy-tick-removal` worktree.
 
-**Investigation findings:**
-1. `protect-main.sh` hook exists and is correctly configured
-2. Hook has been in place since Plan #102
-3. Found evidence of earlier Edit calls to main's files (Jan 22, Jan 24) - hook didn't block
-4. Possible causes: (a) hook not enabled in some sessions, (b) edits via Bash, (c) bug
+**Deep investigation findings (2026-02-01):**
 
-**Why it wasn't caught:**
-- The `protect-main.sh` hook should block Edit/Write to main
-- But edits are still getting through somehow
-- `check_claims.py` "ACTIVE (no claim)" warning is advisory, not blocking
+1. **Hook history:**
+   - Added in PR #43 (2026-01-12) with hardcoded path `/home/azureuser/brian_misc/agent_ecology`
+   - Updated to dynamic path detection in PR #119 (2026-01-14)
+   - Config-driven enabling added in PR #733 (2026-01-25)
 
-**Immediate action needed:**
+2. **Sessions that edited main directly:**
+   - Session `7c3288af` on 2026-01-18 (CC version 2.1.12)
+   - Session `12c67bbd` on 2026-01-22 (CC version 2.1.14/2.1.15)
+   - Session `1dc76a95` on 2026-01-24 (CC version 2.1.19)
+
+   All sessions had the hook properly configured in `.claude/settings.json`.
+
+3. **Hook logic verified working:**
+   Manual test confirms the blocking logic is correct. **Verified in current session:**
+   attempting to edit `src/simulation/runner.py` was correctly BLOCKED with proper
+   error message.
+
+4. **Root cause hypothesis:**
+   The edits that bypassed protection happened with older Claude Code versions
+   (2.1.12-2.1.19). Possible explanations:
+   - PreToolUse hooks may not have been reliably executed in those versions
+   - The hook script may have silently failed (jq error, timeout, etc.)
+   - Settings.json may not have been loaded correctly
+
+   Without access to Claude Code source, we cannot confirm which.
+
+**Current state:** Files have been cleaned up. The hook is confirmed working in
+current sessions (CC version 2.1.29).
+
+**Immediate action taken:**
 ```bash
 git checkout src/simulation/runner.py src/world/__init__.py src/world/invoke_handler.py src/world/permission_checker.py
 ```
+(Completed - main is now clean)
 
-**Potential fixes:**
-1. Verify hook is running: add logging to `protect-main.sh` to debug
-2. Add startup check in session to warn about dirty main state
-3. Add `health_check.py` detection for uncommitted `src/`/`tests/` files in main
+**Recommended additional safeguards (optional):**
+1. Add logging to `protect-main.sh` to confirm hook execution on each Edit/Write
+2. Add session startup check that warns about dirty main state
+3. Periodic health check detecting uncommitted src/ changes in main
 
-**Why monitoring (not confirmed):** The hook exists and should work. Need more data on
-why it's not blocking in all cases before implementing additional enforcement.
+**Why monitoring:** Hook is working in current sessions. Past issues appear to be with
+older CC versions (2.1.12-2.1.19). Will continue monitoring for any new occurrences
+with current CC version (2.1.29+).
 
-**Trigger:** Revisit if uncommitted files cause lost work or merge conflicts.
+**Trigger:** Revisit if uncommitted files appear in main with current CC version.
 
 ---
 
