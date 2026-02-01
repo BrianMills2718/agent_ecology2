@@ -30,7 +30,7 @@ scrip:
 # -----------------------------------------------------------------------------
 # COSTS - DEPRECATED (Plan #153)
 # -----------------------------------------------------------------------------
-# These abstract "compute cost" rates are deprecated. The system now uses
+# These abstract cost rates are deprecated. The system now uses
 # actual dollar costs from the models.pricing section below.
 # Kept for backward compatibility - will be ignored.
 costs:
@@ -114,19 +114,19 @@ genesis:
     description: "System ledger - check balances (flow/scrip) and transfer scrip"
     methods:
       balance:
-        cost: 0                 # 0 compute - reading balance is free
+        cost: 0                 # free - reading balance is free
         description: "Get flow and scrip balance for an agent. Args: [agent_id]"
       all_balances:
-        cost: 0                 # 0 compute - public information
+        cost: 0                 # free - public information
         description: "Get all agent balances (flow and scrip). Args: []"
       transfer:
-        cost: 1                 # 1 compute
+        cost: 1                 # cost 1
         description: "Transfer SCRIP to another agent. Args: [from_id, to_id, amount]"
       spawn_principal:
-        cost: 1                 # 1 compute
-        description: "Spawn a new principal with 0 scrip and 0 compute. Args: []"
+        cost: 1                 # cost 1
+        description: "Spawn a new principal with 0 scrip and no resources. Args: []"
       transfer_ownership:
-        cost: 1                 # 1 compute
+        cost: 1                 # cost 1
         description: "Transfer artifact ownership to another principal. Args: [artifact_id, to_id]"
 
   # Genesis Mint - auction-based scoring and minting
@@ -149,29 +149,29 @@ genesis:
 
     methods:
       status:
-        cost: 0                 # 0 compute
+        cost: 0                 # free
         description: "Check auction status (phase, tick, bid count). Args: []"
       bid:
-        cost: 0                 # 0 compute - bidding is free
+        cost: 0                 # free - bidding is free
         description: "Submit sealed bid during bidding window. Args: [artifact_id, amount]"
       check:
-        cost: 0                 # 0 compute
+        cost: 0                 # free
         description: "Check your bid/submission status. Args: [artifact_id]"
 
   # Genesis Rights Registry - quota management
   rights_registry:
     id: "genesis_rights_registry"
-    description: "Rights registry - manage compute and disk quotas"
+    description: "Rights registry - manage resource quotas (llm_budget, disk)"
     methods:
       check_quota:
-        cost: 0                 # 0 compute
+        cost: 0                 # free
         description: "Check quotas for an agent. Args: [agent_id]"
       all_quotas:
-        cost: 0                 # 0 compute - public information
+        cost: 0                 # free - public information
         description: "Get all agent quotas. Args: []"
       transfer_quota:
-        cost: 1                 # 1 compute
-        description: "Transfer quota to another agent. Args: [from_id, to_id, 'compute'|'disk', amount]"
+        cost: 1                 # cost 1
+        description: "Transfer quota to another agent. Args: [from_id, to_id, 'llm_tokens'|'disk', amount]"
 
   # Genesis Event Log - passive observability
   event_log:
@@ -181,7 +181,7 @@ genesis:
     buffer_size: 1000           # Internal buffer size
     methods:
       read:
-        cost: 0                 # 0 compute - but consumes input tokens
+        cost: 0                 # free - but consumes input tokens
         description: "Read recent events. Args: [offset, limit] - both optional. Default: last 50 events."
 
   # Genesis Escrow - trustless artifact trading
@@ -190,19 +190,19 @@ genesis:
     description: "Trustless escrow for artifact trading. Seller deposits, buyer purchases, escrow handles exchange."
     methods:
       deposit:
-        cost: 1                 # 1 compute
+        cost: 1                 # cost 1
         description: "Deposit artifact for sale. First transfer ownership to escrow. Args: [artifact_id, price] or [artifact_id, price, buyer_id]"
       purchase:
-        cost: 0                 # 0 compute - buyer already pays the price
+        cost: 0                 # free - buyer already pays the price
         description: "Purchase a listed artifact. Pays price to seller, transfers ownership to buyer. Args: [artifact_id]"
       cancel:
-        cost: 0                 # 0 compute - encourage cleanup
+        cost: 0                 # free - encourage cleanup
         description: "Cancel listing and return artifact to seller. Only seller can cancel. Args: [artifact_id]"
       check:
-        cost: 0                 # 0 compute
+        cost: 0                 # free
         description: "Check status of an escrow listing. Args: [artifact_id]"
       list_active:
-        cost: 0                 # 0 compute - encourage discovery
+        cost: 0                 # free - encourage discovery
         description: "List all active escrow listings. Args: []"
 
   # Genesis Debt Contract - non-privileged lending example
@@ -211,28 +211,28 @@ genesis:
     description: "Non-privileged debt contract example. Issue, accept, repay, collect debts. No magic enforcement - bad debtors get bad reputation."
     methods:
       issue:
-        cost: 1                 # 1 compute
+        cost: 1                 # cost 1
         description: "Issue a debt. Invoker becomes debtor. Args: [creditor_id, principal, interest_rate, due_tick]"
       accept:
-        cost: 0                 # 0 compute - creditor accepts
+        cost: 0                 # free - creditor accepts
         description: "Accept a pending debt (creditor must call). Args: [debt_id]"
       repay:
-        cost: 0                 # 0 compute - debtor pays
+        cost: 0                 # free - debtor pays
         description: "Repay debt (debtor pays creditor). Args: [debt_id, amount]"
       collect:
-        cost: 0                 # 0 compute - attempt collection
+        cost: 0                 # free - attempt collection
         description: "Collect overdue debt (creditor only, after due_tick). Args: [debt_id]"
       transfer_creditor:
-        cost: 1                 # 1 compute
+        cost: 1                 # cost 1
         description: "Transfer creditor rights to another principal (sell the debt). Args: [debt_id, new_creditor_id]"
       check:
-        cost: 0                 # 0 compute
+        cost: 0                 # free
         description: "Check status of a debt. Args: [debt_id]"
       list_debts:
-        cost: 0                 # 0 compute
+        cost: 0                 # free
         description: "List debts for a principal. Args: [principal_id]"
       list_all:
-        cost: 0                 # 0 compute
+        cost: 0                 # free
         description: "List all debts. Args: []"
 
   # Genesis Voting - multi-party consensus (Plan #183)
@@ -241,16 +241,16 @@ genesis:
     description: "Multi-party voting for consensus. Create proposals, vote, track results."
     methods:
       create_proposal:
-        cost: 1                 # 1 compute - costs to create a proposal
+        cost: 1                 # cost 1 - costs to create a proposal
         description: "Create a proposal. Args: [{title, description?, options?, quorum?, threshold?, deadline_seconds?}]"
       vote:
-        cost: 0                 # 0 compute - voting is free
+        cost: 0                 # free - voting is free
         description: "Vote on a proposal. Args: [{proposal_id, choice}]"
       get_result:
-        cost: 0                 # 0 compute - reading results is free
+        cost: 0                 # free - reading results is free
         description: "Get proposal results. Args: [proposal_id]"
       list_proposals:
-        cost: 0                 # 0 compute - listing is free
+        cost: 0                 # free - listing is free
         description: "List proposals with optional filter. Args: [{status?, creator?, limit?}]"
 
   # Note: genesis_store removed in Plan #190. Use query_kernel action instead.

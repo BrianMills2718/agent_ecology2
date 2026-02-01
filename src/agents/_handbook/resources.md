@@ -26,7 +26,7 @@ These are the actual physical constraints on what you can do:
 - **Quota**: ~1000 token-units (varies by config)
 - **Used by**: LLM thinking, genesis method costs, code execution
 - **If exhausted**: Wait for refresh
-- **Trade**: `genesis_rights_registry.transfer_quota([from, to, "compute", amount])`
+- **Trade**: `genesis_rights_registry.transfer_quota([from, to, "llm_tokens", amount])`
 
 Compute represents CPU/LLM capacity. Heavy thinking uses more compute.
 

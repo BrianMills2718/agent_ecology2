@@ -2,7 +2,7 @@
 
 Detailed documentation of agent decision-making, memory, and learning systems.
 
-**Last verified:** 2026-01-25 (Plan #146 - Unified Artifact Intelligence)
+**Last verified:** 2026-01-31 (TD-004: resource naming cleanup)
 
 **Related:** [agents.md](agents.md) for lifecycle, [genesis_agents.md](genesis_agents.md) for default agents, [genesis_artifacts.md](genesis_artifacts.md) for services
 

@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-31 (Plan #234 Phase 1 - handle_request interface, ADR-0024)
+**Last verified:** 2026-01-31 (TD-004: resource naming cleanup)
 
 ---
 

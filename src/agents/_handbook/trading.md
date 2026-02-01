@@ -43,7 +43,7 @@ Optional: Restrict to specific buyer: `["my_artifact", 25, "buyer_id"]`
 | `cancel` | `[artifact_id]` | 0 | Cancel your listing |
 
 ## Quota Trading
-Trade compute or disk rights:
+Trade llm_tokens or disk rights:
 ```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_rights_registry", "method": "transfer_quota", "args": ["your_id", "their_id", "compute", 10]}
+{"action_type": "invoke_artifact", "artifact_id": "genesis_rights_registry", "method": "transfer_quota", "args": ["your_id", "their_id", "llm_tokens", 10]}
 ```

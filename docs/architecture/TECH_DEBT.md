@@ -79,27 +79,6 @@ rights_registry = GenesisRightsRegistry(quota_reader=self.get_quota)
 
 ---
 
-### TD-004: Inconsistent resource naming
-
-**Problem:** Multiple names for same/similar concepts:
-- "compute" vs "llm_tokens" (legacy)
-- "llm_tokens" (rate-limited) vs "llm_budget" (dollars)
-- Config uses both interchangeably in places
-
-**Impact:** Confusion, typos, hard to search codebase.
-
-**Recommended fix:** Create canonical constants in `src/world/resources.py`:
-```python
-RESOURCE_LLM_BUDGET = "llm_budget"      # $ constraint (primary)
-RESOURCE_LLM_TOKENS = "llm_tokens"      # Deprecated, for backward compat
-RESOURCE_DISK = "disk"
-RESOURCE_CPU = "cpu_seconds"
-```
-
-**Effort:** Low | **Risk:** Low
-
----
-
 ### TD-005: Config flow is implicit
 
 **Problem:** Components receive full config dict, extract what they need:
@@ -191,7 +170,7 @@ GENESIS_MINT = "genesis_mint"
 
 | ID | Description | Resolved In | Date |
 |----|-------------|-------------|------|
-| - | - | - | - |
+| TD-004 | Inconsistent resource naming | Constants in `resources.py` (already existed), config/code fixed | 2026-01-31 |
 
 ---
 
