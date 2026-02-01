@@ -39,6 +39,13 @@ Potential issues to monitor. Not bugs, not plans - just things that might become
 | **Access boilerplate** | Every artifact needs access logic, could lead to forgotten checks | Inconsistent patterns, copy-paste errors, missing checks |
 | **"Owner" misconception recurring** | Despite documentation, "owner" mental model keeps appearing | CC instances or developers assuming created_by grants rights |
 
+### Documentation Structure
+
+| Concern | Risk | Watch For |
+|---------|------|-----------|
+| **CONCERNS.md / DC §11 overlap** | `CONCERNS.md` tracks "symptoms to watch for" (operational); `DESIGN_CLARIFICATIONS.md` §11 tracks "unresolved design questions" (architectural). Both track open problems with no cross-references. | Same issue appearing in both files with divergent status, or contributors unsure which file to use |
+| **Simulation learnings split across two locations** | Root `SIMULATION_LEARNINGS.md` has detailed experiment logs (model comparisons, quantitative data). `simulation_learnings/` directory has date-stamped observation files (bug reports, qualitative notes). Different formats, overlapping purpose. | Contributors adding experiment data to the directory instead of the root file (or vice versa), making it hard to find learnings |
+
 ---
 
 ## Resolved Concerns
