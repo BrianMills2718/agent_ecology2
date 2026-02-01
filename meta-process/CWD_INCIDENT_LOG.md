@@ -66,15 +66,21 @@ branch protection for doc-only edits).
 | CLAUDE.md rules | Root CLAUDE.md | "NEVER use cd worktrees/..." |
 | CWD doc | `meta-process/UNDERSTANDING_CWD.md` | Full explanation of the problem |
 | `--status-only` flag | `complete_plan.py` | Plan #240: skip tests during make finish |
-| Worktree CWD block | `warn-worktree-cwd.sh` | Blocks Read/Glob when CWD is in a worktree (Incident #3 fix) |
+| Worktree CWD block | `warn-worktree-cwd.sh` | **INEFFECTIVE** — checks hook runner's CWD, not Bash tool's CWD (see Incident #4) |
 
 ## What Would Actually Fix This
 
-### For Class A (CWD Invalidation) — FIXED (Incident #3):
-`warn-worktree-cwd.sh` now blocks (exit 2) instead of warning when CWD is inside
-a worktree. Read/Glob are blocked; Bash is not (so the model can `cd` to main).
-This enforces "don't operate from inside a worktree" at the hook level, even if
-the CC session was launched from a worktree directory.
+### For Class A (CWD Invalidation) — NOT FIXED:
+`warn-worktree-cwd.sh` was added in Incident #3 to block when CWD is in a
+worktree. However, Incident #4 revealed it is **ineffective**: hooks run in the
+CC hook runner's process (CWD = project root), not the Bash tool's process.
+The hook always sees the project root and exits 0.
+
+**What would actually work:**
+- CC platform support: pass Bash tool's tracked CWD as env var to hooks
+- Or: a PreToolUse hook on Bash that inspects the *command text* for `cd worktrees`
+  patterns (fragile but better than nothing)
+- Or: stronger CLAUDE.md instructions (currently the only real defense)
 
 ### For Class B (Command Timeout) — FIXED (Plan #240):
 1. **`--status-only` flag added to `complete_plan.py`**: Skips all test execution,
@@ -186,6 +192,58 @@ processes; the parent bash shell CWD is never corrected.
   if CWD is inside a worktree, Read/Glob are blocked until the model runs
   `cd /path/to/main`. Bash commands are NOT blocked so the model can fix itself.
   This stops the problem at the source — no worktree CWD means no deletion risk.
+
+### Incident #4 - 2026-01-31
+
+**Session:** ff5883d2 — Implementing Plan #246 (pre-merge plan completion)
+**Class:** A (CWD invalidation)
+**Trigger:** `make finish BRANCH=plan-246-pre-merge-completion PR=889`
+**Symptoms:**
+- `make finish` output started with `pwd: error retrieving current directory`
+- PR merged successfully, worktree deleted, but plan completion failed
+  (old `finish_pr.py` from main ran, not the new one from the branch)
+- ALL subsequent Bash commands failed (exit code 1, no output)
+- `cd /home/brian/brian_projects/agent_ecology2 && pwd` failed
+- `echo hello` failed — shell completely broken
+- Non-Bash tools (Read, Glob, Edit) continued working
+
+**Analysis:**
+
+**Proximate cause:** Session ran `cd worktrees/plan-246-pre-merge-completion &&
+python -c "import scripts.finish_pr; print('Import OK')"` to verify an import.
+The `cd` changed the Bash tool's persistent CWD to the worktree. When `make finish`
+deleted the worktree, the CWD became invalid.
+
+**Defense failure — `warn-worktree-cwd.sh` is fundamentally broken:**
+
+The hook (added in Incident #3) runs `pwd` to check if CWD is in a worktree.
+But hooks run in the CC hook runner's process, which has its OWN CWD (always
+the project root). The Bash tool tracks a SEPARATE persistent CWD that is
+invisible to hooks. The hook always sees the project root and exits 0 — it
+can never detect when the Bash tool's CWD is in a worktree.
+
+This means:
+- The Incident #3 fix was never effective
+- `warn-worktree-cwd.sh` has been a no-op since it was created
+- No hook CAN prevent this, because hook processes don't share the Bash tool's CWD
+
+**CLAUDE.md guidance ambiguity:** The rule "NEVER use `cd worktrees/...` as a
+separate command — always chain with `&&` or use `git -C`" can be misread as
+"cd worktrees/X && command is OK". It is NOT — the `&&` chains execution but
+the CWD change persists across Bash tool invocations.
+
+**Resolution:** User restarted shell. Remaining manual steps: `git pull --rebase
+origin main && python scripts/complete_plan.py --plan 246 --status-only`.
+
+**Follow-up:**
+- Record in CWD_INCIDENT_LOG.md (this entry)
+- Need to clarify CLAUDE.md: "NEVER cd into a worktree, period. Not even
+  chained with &&. Use absolute paths or git -C."
+- Need to acknowledge `warn-worktree-cwd.sh` is ineffective (hook CWD ≠
+  Bash CWD). Either find a way to access Bash tool's CWD from hooks (may
+  require CC platform support) or remove the false sense of security.
+- For non-git worktree operations (like Python imports), use
+  `PYTHONPATH=/abs/path python -c "..."` instead of `cd worktree && python`
 
 ---
 
