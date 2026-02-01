@@ -150,6 +150,8 @@ Not applicable — this is a meta-process verification script, not a simulation 
 |----------|--------|------------|
 | False positive rate in practice — is whitelist sufficient? | ❓ Open | Start advisory, tune whitelist from real usage |
 | Plans without "Files Affected" — enforce or skip? | ❓ Open | Skip with warning initially; enforcement is a separate concern |
+| **Is `parse_plan.py` importable or CLI-only?** | ❓ Open | If logic is in `if __name__` / `main()` with no importable API, must refactor it first or duplicate parsing logic. Check before assuming reuse. |
+| **When does advisory graduate to enforcement?** | ❓ Open | Need a concrete trigger: e.g., "enforce after 10 PRs pass with zero false positives" or "enforce after whitelist is stable for 2 weeks." Without a trigger, advisory mode becomes permanent and the check never catches anything. |
 
 ---
 
