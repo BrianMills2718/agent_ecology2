@@ -2,7 +2,7 @@
 
 > **ALWAYS RUN FROM MAIN.** Your CWD should be `/home/brian/brian_projects/agent_ecology2/` (main).
 > Use worktrees as **paths** for file isolation, not as working directories.
-> **NEVER use `cd worktrees/...` as a separate command** - always chain with `&&` or use `git -C`.
+> **NEVER cd into a worktree, period.** Not even with `&&`. Use `git -C` for git commands.
 > This lets you handle the full lifecycle: create worktree → edit → commit → merge → cleanup.
 
 ---
@@ -180,7 +180,7 @@ The file is ephemeral - deleted when the worktree is removed after merge.
 - Use `git worktree rmv` directly (use `make worktree-remove`)
 - Use `gh pr merge` directly (use `make finish`)
 - Skip the claim when creating worktrees (use `make worktree`)
-- Use `cd worktrees/...` as a separate command (chain with `&&` or use `git -C`)
+- cd into a worktree (use `git -C` instead — even `cd worktrees/X && cmd` breaks the shell)
 
 ---
 
