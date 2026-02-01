@@ -87,17 +87,6 @@ make pr BRANCH=plan-123-foo               # Create PR
 make finish BRANCH=plan-123-foo PR=456    # Merge, cleanup, done!
 ```
 
-### Work Priorities (in order)
-
-| Priority | Action | Why |
-|----------|--------|-----|
-| 0 | **Check ownership** | Never touch others' work |
-| 1 | Surface uncertainties | Ask early, avoid wasted work |
-| 2 | Merge your ready PRs | Clear the queue (self-merge when ready) |
-| 3 | Resolve PR conflicts | Keep work mergeable |
-| 4 | Update stale docs | Low risk, high value |
-| 5 | New implementation | Requires a plan first |
-
 ### Commit Messages
 
 ```bash
@@ -182,11 +171,8 @@ git add -A
 git commit -m "..."
 # Shell is now stuck in worktree - if deleted, shell breaks
 
-# RIGHT - CWD resets to main after command completes
+# RIGHT - CWD stays at main
 git -C worktrees/plan-123-foo add -A && git -C worktrees/plan-123-foo commit -m "..."
-
-# ALSO RIGHT - chain cd with && so CWD resets after
-cd worktrees/plan-123-foo && git add -A && git commit -m "..." && cd -
 ```
 
 **Why this matters:** If your shell CWD is inside a worktree when `make finish` deletes it, all subsequent bash commands fail with no output. The shell is broken and needs a session restart.
@@ -312,23 +298,7 @@ agent_ecology/
 
 ## Documentation
 
-| Doc | Purpose |
-|-----|---------|
-| `docs/plans/` | Implementation plans (gap tracking) |
-| `meta-process/patterns/` | Reusable meta-process patterns (26 patterns) |
-| `meta/acceptance_gates/` | This project's feature specifications (YAML) |
-| `docs/adr/` | Architecture Decision Records |
-| `docs/architecture/current/` | What IS implemented |
-| `docs/architecture/target/` | What we WANT |
-| `docs/GLOSSARY.md` | Canonical terminology |
-
-### Doc-Code Coupling
-
-```bash
-python scripts/check_doc_coupling.py --suggest  # Show which docs to update
-```
-
-Source-to-doc mappings in `scripts/relationships.yaml`. Run `make check` to validate.
+See `docs/CLAUDE.md` for the full documentation index. Doc-code coupling is enforced by `make check`.
 
 ---
 
