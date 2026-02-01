@@ -3,10 +3,10 @@
 # Also blocks direct script calls that bypass make targets
 #
 # Rules:
-# 1. No direct GitHub merge CLI - must use make merge/finish
+# 1. No direct GitHub merge CLI - must use make finish
 # 2. No direct python scripts/safe_worktree_remove.py - must use make worktree-remove
 # 3. No direct python scripts/finish_pr.py - must use make finish
-# 4. No direct python scripts/merge_pr.py - must use make merge/finish
+# 4. No direct python scripts/merge_pr.py - must use make finish
 #
 # NOTE: We no longer block commands from inside worktrees. Claude Code
 # handles CWD deletion gracefully, and blocking caused worse outcomes
@@ -42,10 +42,10 @@ if echo "$COMMAND" | grep -qE 'gh\s+pr\s+merge'; then
 
     echo "BLOCKED: Direct GitHub CLI merge is not allowed" >&2
     echo "" >&2
-    echo "This bypasses worktree auto-cleanup - orphan worktrees will accumulate." >&2
+    echo "This bypasses worktree cleanup and claim release." >&2
     echo "" >&2
     echo "Use the proper command instead:" >&2
-    echo "  make merge PR=$PR_NUM" >&2
+    echo "  make finish BRANCH=<branch> PR=$PR_NUM" >&2
     exit 2
 fi
 
@@ -97,8 +97,6 @@ if echo "$COMMAND" | grep -qE '(^|&&|;|\|)\s*python[3]?\s+[^ ]*merge_pr\.py'; th
     echo "  - Break your shell if CWD is in a worktree being cleaned up" >&2
     echo "" >&2
     echo "Use the proper command instead:" >&2
-    echo "  make merge PR=$PR_NUM" >&2
-    echo "Or for full workflow (from main):" >&2
     echo "  make finish BRANCH=<branch> PR=$PR_NUM" >&2
     exit 2
 fi

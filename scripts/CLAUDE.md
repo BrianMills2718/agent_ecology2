@@ -138,12 +138,9 @@ python scripts/check_claims.py --claim --plan N --task "X"     # Claim plan
 python scripts/check_claims.py --claim --feature NAME --task "X"  # Claim feature
 python scripts/check_claims.py --release --validate # Done + verify
 
-# Merge PRs
+# Merge PRs (use make finish for full lifecycle)
 python scripts/merge_pr.py 123           # Merge PR #123
 python scripts/merge_pr.py 123 --dry-run # Check without merging
-# Or via make:
-make merge PR=123                        # Preferred way to merge
-# Note: Branch protection ensures CI passes before merge
 
 # Branch cleanup (stale branches from merged PRs)
 python scripts/cleanup_branches.py           # List stale branches
@@ -155,9 +152,6 @@ python scripts/cleanup_branches.py --all     # Include abandoned PRs too
 python scripts/cleanup_orphaned_worktrees.py         # Report orphaned worktrees
 python scripts/cleanup_orphaned_worktrees.py --auto  # Auto-cleanup (safe only)
 python scripts/cleanup_orphaned_worktrees.py --force # Force cleanup (loses uncommitted!)
-# Or via make:
-make clean-worktrees                         # Report orphans
-make clean-worktrees-auto                    # Auto-cleanup
 ```
 
 ## Meta-Process Weight (Plan #218)
