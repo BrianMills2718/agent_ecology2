@@ -9,72 +9,34 @@
 
 ## Quick Reference - Make Commands
 
-### Session Start
+The Makefile has 15 targets. Use `make help` to see them all.
+
+### Core Workflow
 ```bash
 make status              # Git status + active claims
-python scripts/meta_status.py  # Full dashboard: claims, PRs, progress, issues
+make worktree            # Create worktree with claim (ALWAYS use this to start work)
+make test                # Run pytest
+make check               # All CI checks (test + mypy + lint + doc-coupling)
+make pr-ready            # Rebase + push
+make pr                  # Create PR
+make finish BRANCH=X PR=N  # Merge + cleanup + auto-complete (from main)
 ```
 
-### Worktree Lifecycle (REQUIRED for implementation)
+### Other
 ```bash
-make worktree            # Interactive: claim + create worktree (ALWAYS use this)
-make worktree-list       # List all worktrees
-make worktree-remove BRANCH=name  # Safe removal (checks uncommitted changes)
+make worktree-remove BRANCH=X  # Safe removal (add FORCE=1 to skip checks)
+make clean               # Remove __pycache__, .pytest_cache, .mypy_cache
+make run                 # Run simulation (DURATION=60 AGENTS=2)
+make dash                # View dashboard
+make kill                # Stop simulation
+```
 
-# Non-interactive (for CC sessions that can't use interactive prompts):
+### Non-interactive worktree creation (for CC sessions):
+```bash
 bash scripts/create_worktree.sh --branch plan-N-desc --plan N --task "description"
 ```
 
-### During Implementation
-```bash
-make test                # Run pytest
-make test-quick          # Quick test (no traceback)
-make mypy                # Type checking
-make check               # All checks locally
-make check-quick         # Fast checks
-make lint                # Doc-code coupling check
-make lint-suggest        # Show which docs need updates
-```
-
-### Simulation & Dashboard
-```bash
-make run                 # Run simulation (DURATION=60 AGENTS=2)
-make dash                # View existing run.jsonl in dashboard
-make dash-run            # Run simulation with dashboard (DURATION=60)
-make kill                # Stop running simulation
-```
-
-### Finishing Work
-```bash
-make pr-ready            # Rebase + push (run before PR)
-make pr                  # Create PR (opens browser)
-make finish BRANCH=plan-XX PR=N  # Merge + cleanup + auto-complete (run from main)
-make finish BRANCH=plan-XX PR=N SKIP_COMPLETE=1  # Skip plan completion (for partial work)
-```
-
-### PR Management
-```bash
-make pr-list             # List open PRs
-make pr-view PR=123      # View PR details
-```
-
-### Claims
-```bash
-make claims              # List active claims
-make claim TASK="desc" PLAN=N  # Claim work (usually use make worktree instead)
-make release             # Release claim
-```
-
-### Cleanup
-```bash
-make clean               # Remove __pycache__, .pytest_cache
-make clean-branches      # List stale remote branches
-make clean-branches-delete  # Delete stale remote branches
-make clean-worktrees     # Find orphaned worktrees
-make clean-worktrees-auto  # Auto-cleanup orphaned worktrees
-```
-
-Note: Claim cleanup (orphaned, stale, completed) runs automatically on session startup via `.claude/hooks/session-startup-cleanup.sh`.
+Claim and worktree cleanup runs automatically on session startup.
 ---
 
 ## Quick Reference - Scripts
@@ -105,7 +67,7 @@ Note: Claim cleanup (orphaned, stale, completed) runs automatically on session s
        |
 2. IMPLEMENT        -->  Edit files in worktrees/plan-N-xxx/src/... (paths from main)
        |
-3. VERIFY           -->  make test && make lint (run from main)
+3. VERIFY           -->  make check (run from main)
        |
 4. SHIP             -->  make pr-ready && make pr && make finish BRANCH=X PR=N
 ```
@@ -210,7 +172,7 @@ Claims provide **coordination** so work doesn't collide:
 - Branch-based: if a `plan-N-*` branch exists, work is claimed
 - Stale detection: branches merged or inactive >48h with no worktree = stale
 - Auto-release: when branches merge, claims automatically release
-- Visible: check with `make claims` or `python scripts/check_claims.py --list`
+- Visible: check with `make status` or `python scripts/check_claims.py --list`
 
 **Without claims:** Two sessions might start the same plan simultaneously, creating conflicting PRs.
 
@@ -255,8 +217,14 @@ python scripts/check_claims.py --cleanup-merged     # Remove claims for merged b
 
 **Orphaned worktree (branch merged but worktree remains):**
 ```bash
-make clean-worktrees       # Find orphaned worktrees
-make clean-worktrees-auto  # Auto-cleanup (safe only)
+python scripts/cleanup_orphaned_worktrees.py         # Find orphaned worktrees
+python scripts/cleanup_orphaned_worktrees.py --auto  # Auto-cleanup (safe only)
+```
+
+**Full diagnostics:**
+```bash
+python scripts/health_check.py        # Check everything
+python scripts/health_check.py --fix  # Auto-fix issues
 ```
 
 ---
@@ -449,7 +417,7 @@ When enabled, unread messages block Edit/Write until acknowledged.
 python scripts/check_doc_coupling.py --suggest  # Show which docs to update
 ```
 
-Source-to-doc mappings in `scripts/relationships.yaml`. Run `make lint` to check.
+Source-to-doc mappings in `scripts/relationships.yaml`. Run `make check` to validate.
 
 ### Meta-Process Configuration
 
@@ -484,13 +452,9 @@ Use the Read tool on that file if you need prior context.
 
 ## Pre-Merge Checklist
 
-- [ ] `make test` passes
-- [ ] `make mypy` passes
-- [ ] `make lint` passes
-- [ ] `python scripts/check_mock_usage.py --strict` passes
+- [ ] `make check` passes (runs test + mypy + lint + doc-coupling)
 - [ ] Code matches task description
 - [ ] Plan status updated
-- [ ] Claim released
 
 ---
 

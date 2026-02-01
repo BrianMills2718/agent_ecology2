@@ -1,7 +1,7 @@
 # Gap 242: Makefile Workflow Simplification
 
-**Status:** 📋 Planned
-**Priority:** Low
+**Status:** 🚧 In Progress
+**Priority:** Medium
 **Blocked By:** None
 **Blocks:** None
 
@@ -9,54 +9,34 @@
 
 ## Gap
 
-**Current:** The Makefile has ~40 targets covering the full meta-process workflow plus cleanup, recovery, CI config, and gap management. Many cleanup targets (clean-claims, clean-merged, clean-branches, clean-worktrees) exist because automated hooks don't yet cover all maintenance. Recovery targets (health, health-fix, recover, recover-auto) are rarely used. The gap management targets (gaps, gaps-sync, gaps-check) overlap with plan scripts.
+**Current:** Makefile had 54 targets (before this work began). Many were thin wrappers around single scripts, redundant variants, or dead targets. The large surface area made CLAUDE.md bloated and the workflow unclear.
 
-**Target:** A leaner Makefile where:
-1. Cleanup targets are unnecessary because session-startup-cleanup.sh handles them automatically
-2. Recovery is folded into health checks or startup hooks
-3. Gap management uses scripts directly (not make wrappers)
-4. The core workflow (worktree → check → finish) is the primary interface
+**Target:** ~15 targets covering only the core workflow and simulation. Everything else accessed via scripts directly. CC hooks enforce that dangerous operations (merge, worktree management) go through make.
 
-## Analysis
+## What Was Done
 
-### Targets by Category (post-trivial-cleanup)
+### Phase 1 (PR #868): Remove dead targets
+Removed 8 targets: `branch`, `pr-create`, `merge`, `pr-merge-admin`, 5x `dash-v2-*`. (54 → 46)
 
-**Core workflow (keep):** status, worktree, test, check, pr-ready, pr, finish (~7)
-**Useful variants (keep):** test-quick, check-quick, mypy, lint, lint-suggest, worktree-list, worktree-remove, worktree-remove-force (~8)
-**Simulation (keep):** run, dash, dash-run, kill, analyze (~5)
-**Claims (keep for now):** claim, release, claims (~3)
-**CI config (keep):** ci-status, ci-require, ci-optional (~3)
-**PR info (keep):** pr-list, pr-view (~2)
-**Setup (keep):** install, install-hooks, help (~3)
+### Phase 2 (PR #870): Remove redundant wrappers
+Removed 6 targets: `rebase`, `gaps`/`gaps-sync`/`gaps-check`, `clean-claims`/`clean-merged`. (46 → 40)
 
-**Candidates for automation/removal (deferred):**
-- clean-claims, clean-merged → automate in session-startup-cleanup.sh
-- clean-branches, clean-branches-delete → automate or run periodically
-- clean-worktrees, clean-worktrees-auto → automate in session-startup-cleanup.sh
-- health, health-fix → fold into startup hook or `make check`
-- recover, recover-auto → fold into health-fix
-- gaps, gaps-sync, gaps-check → use scripts directly
-- rebase → redundant with pr-ready (which also rebases)
-- clean → rarely needed manually
+### Phase 3 (this PR): Slim to core
+Removed 25 targets that were thin wrappers or rarely-used variants:
+- **Thin wrappers** (script is just as easy to call directly): `claim`, `release`, `claims`, `pr-list`, `pr-view`, `worktree-list`, `mypy`, `lint`, `lint-suggest`, `install`
+- **Variants** (consolidated as flags): `test-quick`, `check-quick`, `worktree-remove-force` (now `FORCE=1`), `health-fix` (now `--fix` flag), `recover-auto` (now `--auto` flag)
+- **Rarely used**: `health`, `recover`, `clean-branches`, `clean-branches-delete`, `clean-worktrees`, `clean-worktrees-auto`, `ci-status`, `ci-require`, `ci-optional`, `install-hooks`
 
-### Dependencies
+Final: 15 targets (14 public + 1 internal). (40 → 15)
 
-- session-startup-cleanup.sh must reliably handle all automated cleanup before targets can be removed
-- Hooks reference specific make target names - need audit
-- CLAUDE.md documents all targets - needs update with each removal
-
-## Implementation Plan
-
-1. Extend session-startup-cleanup.sh to cover: stale branches, orphaned worktrees
-2. Remove cleanup targets that are fully automated
-3. Consolidate recovery into health checks
-4. Remove gap management make targets (scripts work directly)
-5. Remove `rebase` (subset of `pr-ready`)
-6. Update CLAUDE.md and pattern docs
+Also:
+- Fixed `enforce-make-merge.sh` hook: removed stale `make merge` references
+- Updated CLAUDE.md: slimmed quick reference, fixed all stale make target refs
+- Updated scripts/CLAUDE.md: removed stale `make merge`/`make clean-worktrees` refs
 
 ## Acceptance Criteria
 
-- [ ] Makefile has <30 targets
-- [ ] All removed cleanup is handled by automation
-- [ ] No broken references in CLAUDE.md or patterns
-- [ ] `make help` shows a clean, focused command list
+- [x] Makefile has <20 targets
+- [x] CC hooks enforce dangerous operations go through make
+- [x] No broken references in CLAUDE.md or patterns
+- [x] `make help` shows a clean, focused command list
