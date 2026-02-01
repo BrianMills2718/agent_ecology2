@@ -42,80 +42,6 @@ generic examples? If not, should `install.sh` and portability framing be removed
 
 ---
 
-### MP-002: Configuration schema contradictions
-
-**Observed:** 2026-01-31
-**Status:** `unconfirmed`
-
-Three different config formats appear in documentation:
-
-1. `GETTING_STARTED.md` shows `enabled: { plans: true }` flat format
-2. `templates/meta-process.yaml.example` uses `meta_process.plans.enabled` nested format
-3. `GETTING_STARTED.md` also shows `weight: medium` / `planning:` format
-
-No script appears to actually read `meta-process.yaml`. Each script has its own config
-file (`doc_coupling.yaml`, `governance.yaml`, etc.).
-
-**To investigate:** Does any script parse `meta-process.yaml`? If not, is the config
-file purely aspirational? Should we pick one schema and make scripts actually use it,
-or drop the central config?
-
----
-
-### MP-003: Competing "single source of truth" architectures
-
-**Observed:** 2026-01-31
-**Status:** `unconfirmed`
-
-Three patterns each claim to be the single source of truth for file relationships:
-
-- Pattern 09 (Documentation Graph): `relationships.yaml` with nodes/edges
-- Pattern 14 (Acceptance Gate Linkage): `features.yaml` with gate-based mappings
-- Pattern 13 (Acceptance-Gate-Driven Development): `acceptance_gates/*.yaml` per-gate files
-
-These are mutually contradictory architectures. Pattern 09 says it "subsumes" patterns
-08 and 10, but `install.sh` still installs `governance.yaml` and `doc_coupling.yaml`
-as separate files.
-
-**To investigate:** Which approach does the actual project use? Which (if any) is
-the intended direction? Should losing patterns be marked superseded?
-
----
-
-### MP-004: Phantom script/file references
-
-**Observed:** 2026-01-31
-**Status:** `unconfirmed`
-
-Multiple patterns reference scripts and files that don't exist:
-
-| Referenced | In Pattern | Exists? |
-|-----------|-----------|---------|
-| `generate_tests.py` | 13 (Acceptance Gates) | No |
-| `migrate_to_relationships.py` | 09 (Documentation Graph) | No |
-| `view_log.py` | 12 (Structured Logging) | No |
-| `features.yaml` | 14 (Gate Linkage) | No template |
-| `relationships.yaml` template | 09 (Documentation Graph) | No template |
-| `config/spec_requirements.yaml` | 13 | No template |
-| `config/defaults.yaml` | 13 | No template |
-
-**To investigate:** Are these planned but not yet built, or stale references from
-earlier designs? Should they be removed or implemented?
-
----
-
-### MP-005: Pattern 12 (Structured Logging) is undeployed but listed alongside deployed patterns
-
-**Observed:** 2026-01-31
-**Status:** `unconfirmed`
-
-Pattern 12 is explicitly marked "PROPOSED" / "NOT DEPLOYED" in its body, but the
-pattern index (`01_README.md`) lists it without any such distinction. An adopter
-scanning the index has no way to know this pattern isn't battle-tested.
-
-**To investigate:** Should it be removed from the index, marked differently in the
-index, or moved to an "experimental" section?
-
 ---
 
 ### MP-006: Pattern 13 (Acceptance-Gate-Driven Development) is too large for a single pattern
@@ -333,7 +259,72 @@ they're real but not urgent)
 
 ## Confirmed
 
-(None yet — items move here when they need a fix but don't have a plan yet)
+### MP-002: GETTING_STARTED.md config examples don't match actual meta-process.yaml
+
+**Observed:** 2026-01-31
+**Investigated:** 2026-01-31
+**Status:** `confirmed`
+
+**Original observation:** Thought no script read `meta-process.yaml` and three config
+formats contradicted each other.
+
+**Finding:** `meta-process.yaml` IS actively parsed by 5+ scripts (`meta_process_config.py`,
+`check_doc_coupling.py`, `sync_plan_status.py`, `check_planning_patterns.py`,
+`bootstrap_meta_process.py`, `health_check.py`, `meta_config.py`). The central config is
+real and functional.
+
+**Remaining problem:** `GETTING_STARTED.md` shows config examples (`enabled: { plans: true }`,
+`weight: medium`) that don't match the actual `meta-process.yaml` format. An adopter
+following the docs would write a config that doesn't match what scripts expect.
+
+**Fix:** Update GETTING_STARTED.md examples to match the actual schema, or add a config
+validation script that catches format mismatches.
+
+---
+
+### MP-004: Phantom script/file references (5 of 7 confirmed)
+
+**Observed:** 2026-01-31
+**Investigated:** 2026-01-31
+**Status:** `confirmed`
+
+**Original observation:** 7 referenced scripts/files appeared missing.
+
+**Finding:** 2 of 7 actually exist:
+- `view_log.py` — exists at `scripts/view_log.py`
+- `relationships.yaml` — exists at `scripts/relationships.yaml` (deployed file, not a template)
+
+5 references are genuinely phantom:
+
+| Referenced | In Pattern | Status |
+|-----------|-----------|--------|
+| `generate_tests.py` | 13 (Acceptance Gates) | Not implemented |
+| `migrate_to_relationships.py` | 09 (Documentation Graph) | Not implemented (pattern notes it's optional) |
+| `features.yaml` | 14 (Gate Linkage) | Not implemented, no template |
+| `config/spec_requirements.yaml` | 13 | Not implemented, no template |
+| `config/defaults.yaml` | 13 | Not implemented, no template |
+
+**Fix:** Either implement the missing scripts/templates or remove the references from
+the patterns. Most of these come from Pattern 13 which is already flagged as oversized
+(MP-006) — removing aspirational references during a refactor would be natural.
+
+---
+
+### MP-005: Pattern 12 listed as active in index but marked PROPOSED
+
+**Observed:** 2026-01-31
+**Investigated:** 2026-01-31
+**Status:** `confirmed`
+
+**Finding confirmed:** `01_README.md` line 21 lists Pattern 12 as
+`[Structured Logging](12_structured-logging.md) | Unreadable logs | Low` with no
+status qualifier. But the pattern file itself says:
+
+> **STATUS: PROPOSED** — Currently NOT DEPLOYED. The system uses standard Python logging.
+> See Plan #60 for the current logging approach (SummaryLogger).
+
+**Fix:** Add a status column to the pattern index table, or annotate undeployed patterns
+inline (e.g., "Structured Logging *(proposed)*"). Minimal change, high clarity gain.
 
 ---
 
@@ -349,7 +340,7 @@ they're real but not urgent)
 
 | ID | Description | Why Dismissed | Date |
 |----|-------------|---------------|------|
-| - | - | - | - |
+| MP-003 | Competing "single source of truth" architectures | Not competing. `relationships.yaml` (Pattern 09) is the unified source of truth for doc-code coupling, actively enforced by `check_doc_coupling.py` and `sync_governance.py`. `doc_coupling.yaml` and `governance.yaml` are deprecated (have explicit headers). Acceptance gates (`meta/acceptance_gates/*.yaml`, Patterns 13/14) serve an orthogonal purpose: feature completion verification, not doc-code relationships. The patterns describe different concerns, not contradictory architectures. | 2026-01-31 |
 
 ---
 
