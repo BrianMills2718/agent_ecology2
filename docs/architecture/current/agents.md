@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-01-26 (Plan #226: Agent Learning Fixes)
+**Last verified:** 2026-01-31 (TD-004: resource naming cleanup)
 
 **See target:** [../target/agents.md](../target/agents.md)
 

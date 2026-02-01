@@ -27,7 +27,7 @@ Manages compute and disk quotas.
 |--------|------|------|-------------|
 | `check_quota` | `[agent_id]` | 0 | Check compute/disk quotas |
 | `all_quotas` | `[]` | 0 | See all agent quotas |
-| `transfer_quota` | `[from, to, type, amount]` | 1 | Trade quotas (type: "compute" or "disk") |
+| `transfer_quota` | `[from, to, type, amount]` | 1 | Trade quotas (type: "llm_tokens" or "disk") |
 
 ## genesis_debt_contract
 **Lending and credit.** Issue debts, accept loans, track repayment.

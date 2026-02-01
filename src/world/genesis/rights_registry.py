@@ -380,7 +380,7 @@ class GenesisRightsRegistry(GenesisArtifact):
                             },
                             "resource": {
                                 "type": "string",
-                                "description": "Resource type to transfer (e.g., 'compute', 'disk')"
+                                "description": "Resource type to transfer (e.g., 'llm_tokens', 'disk')"
                             },
                             "amount": {
                                 "type": "number",

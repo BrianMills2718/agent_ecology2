@@ -353,7 +353,7 @@ class ActionResult:
     """Result of executing an action.
 
     Includes resource consumption tracking for the two-layer model:
-    - resources_consumed: Physical resources used (compute, disk, etc.)
+    - resources_consumed: Physical resources used (llm_budget, disk, etc.)
     - charged_to: Principal who paid the resource cost
 
     Error fields (Plan #40) for structured error handling:

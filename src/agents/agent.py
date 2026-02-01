@@ -1202,8 +1202,6 @@ class Agent:
                         metrics_lines.append(f"  - Burn rate: ${burn_rate:.6f}/second")
                 elif resource_name == 'disk':
                     metrics_lines.append(f"- Disk: {remaining:.0f} / {initial:.0f} {unit} ({percentage:.1f}% remaining)")
-                elif resource_name == 'compute':
-                    metrics_lines.append(f"- Compute: {remaining:.0f} / {initial:.0f} {unit} ({percentage:.1f}% remaining)")
                 else:
                     metrics_lines.append(f"- {resource_name}: {remaining} / {initial} {unit} ({percentage:.1f}% remaining)")
 
