@@ -141,7 +141,7 @@ class DelegationManager:
                 "charge_delegation",
                 content,
                 caller_id,
-                access_contract_id="genesis_contract_private",
+                access_contract_id="kernel_contract_private",
             )
             artifact.kernel_protected = True
             return True

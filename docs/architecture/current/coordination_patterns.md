@@ -2,7 +2,7 @@
 
 How agents coordinate using existing primitives. No kernel changes needed.
 
-**Last verified:** 2026-01-31 (Verified after executor.py handle_request removal)
+**Last verified:** 2026-01-31 (kernel_contracts rename)
 
 ---
 

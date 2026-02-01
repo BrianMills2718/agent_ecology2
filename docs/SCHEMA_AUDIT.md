@@ -100,7 +100,7 @@ These are already documented in DESIGN_CLARIFICATIONS.md sections 3.1-3.3 but ar
 - `action_executor.py:340` (write path — via `ArtifactStore.write()`)
 - `artifacts.py` write method sets fields without creator check
 
-**Attack scenario:** Agent A has write permission on artifact X (e.g., via a permissive contract). Agent A changes `access_contract_id` to `genesis_contract_freeware`, making X publicly accessible. All other protections on X are bypassed.
+**Attack scenario:** Agent A has write permission on artifact X (e.g., via a permissive contract). Agent A changes `access_contract_id` to `kernel_contract_freeware`, making X publicly accessible. All other protections on X are bypassed.
 
 **Status:** Plan #235 Phase 0 (creator-only restriction).
 
@@ -146,7 +146,7 @@ CMF header says "DRAFT - under active discussion" but its `status` field says `a
 | `code` | **Required** | Not listed | Optional (default `""`) |
 | `created_by` | Required | Required | Required |
 | `interface` | Separate section | **Required** | Optional (default `None`) |
-| `access_contract_id` | Not listed | **Required** / "OPTIONAL" / "REMOVED" | Optional (default `"genesis_contract_freeware"`) |
+| `access_contract_id` | Not listed | **Required** / "OPTIONAL" / "REMOVED" | Optional (default `"kernel_contract_freeware"`) |
 | `type` | Not listed | Not listed | **Required** (no default) |
 | `created_at` | Not listed | Not listed | **Required** (no default) |
 | `updated_at` | Not listed | Not listed | **Required** (no default) |
@@ -155,7 +155,7 @@ No two sources agree on what fields an artifact must have.
 
 ### 4.3 `access_contract_id` — Triple Contradiction Within CMF
 
-**RESOLVED:** CMF v3 Part 1: optional field with default `"genesis_contract_freeware"`. Part 2 (target): field removed. No contradiction.
+**RESOLVED:** CMF v3 Part 1: optional field with default `"kernel_contract_freeware"`. Part 2 (target): field removed. No contradiction.
 
 - CMF:47-51 — Listed as **required** field (but "OPTIONAL METADATA")
 - CMF:286 — "Every artifact has exactly one governing contract (or **null = default**)"
@@ -178,7 +178,7 @@ The `open_questions` section (lines 646-873) was written under ADR-0019 and neve
 
 ### 4.5 Null Contract — CMF Self-Contradiction
 
-**RESOLVED:** CMF v3 Part 1: default is `genesis_contract_freeware` (not null). Part 2: no defaults. Clean separation.
+**RESOLVED:** CMF v3 Part 1: default is `kernel_contract_freeware` (not null). Part 2: no defaults. Clean separation.
 
 - CMF:470-472 — "SUPERSEDED by ADR-0024. No kernel defaults."
 - CMF:286 — "or null = default"

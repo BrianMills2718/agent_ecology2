@@ -1111,7 +1111,7 @@ def check_permission(caller, action, target, context, ledger):
         executor.set_ledger(self.ledger)
         assert executor._ledger is self.ledger
 
-    def test_fallback_to_genesis_contracts(self) -> None:
+    def test_fallback_to_kernel_contracts(self) -> None:
         """Test that unknown contracts fall back to freeware."""
         # Set artifact to use unknown contract
         self.artifact.access_contract_id = "nonexistent_contract"  # type: ignore[attr-defined]
@@ -1123,10 +1123,10 @@ def check_permission(caller, action, target, context, ledger):
         assert result.allowed is True
         assert "freeware" in result.reason.lower()
 
-    def test_genesis_contracts_still_work(self) -> None:
+    def test_kernel_contracts_still_work(self) -> None:
         """Test that genesis contracts still work with executable contract support."""
         # Use private contract
-        self.artifact.access_contract_id = "genesis_contract_private"  # type: ignore[attr-defined]
+        self.artifact.access_contract_id = "kernel_contract_private"  # type: ignore[attr-defined]
 
         # Owner should have access
         result = self.executor._check_permission_via_contract(
@@ -1174,7 +1174,7 @@ class TestContractDepthLimit:
             created_at=datetime.utcnow().isoformat(),
             updated_at=datetime.utcnow().isoformat(),
         )
-        self.artifact.access_contract_id = "genesis_contract_freeware"  # type: ignore[attr-defined]
+        self.artifact.access_contract_id = "kernel_contract_freeware"  # type: ignore[attr-defined]
 
     def test_permission_check_at_depth_zero(self) -> None:
         """Test that permission checks work at default depth 0."""
@@ -1773,7 +1773,7 @@ class TestDanglingContractHandling:
 
         # Default should be freeware
         default = get("contracts.default_on_missing")
-        assert default == "genesis_contract_freeware"
+        assert default == "kernel_contract_freeware"
 
     def test_private_artifact_accessible_after_contract_deletion(self) -> None:
         """Test that previously private artifact becomes accessible via freeware."""
@@ -1817,7 +1817,7 @@ class TestDanglingContractHandling:
     def test_valid_contract_does_not_trigger_dangling_logic(self) -> None:
         """Test that valid contracts don't trigger dangling contract handling."""
         # Use a valid genesis contract
-        self.artifact.access_contract_id = "genesis_contract_freeware"  # type: ignore[attr-defined]
+        self.artifact.access_contract_id = "kernel_contract_freeware"  # type: ignore[attr-defined]
 
         result = self.executor._check_permission_via_contract(
             "test_user", "read", self.artifact

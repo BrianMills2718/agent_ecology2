@@ -99,7 +99,7 @@ class ArtifactState:
     # Artifact dependencies (Plan #63)
     depends_on: list[str] = field(default_factory=list)
     # Access control contract (Plan #133)
-    access_contract_id: str = "genesis_contract_freeware"
+    access_contract_id: str = "kernel_contract_freeware"
 
 
 @dataclass
@@ -490,7 +490,7 @@ class JSONLParser:
                     content=content[:10000] if content else None,  # Cap at 10KB
                     interface=intent.get("interface"),  # Plan #54: Interface for discoverability
                     depends_on=intent.get("depends_on", []),  # Plan #63: Artifact dependencies
-                    access_contract_id=intent.get("access_contract_id", "genesis_contract_freeware"),  # Plan #133
+                    access_contract_id=intent.get("access_contract_id", "kernel_contract_freeware"),  # Plan #133
                 )
                 if artifact_id not in self.state.agents[agent_id].artifacts_owned:
                     self.state.agents[agent_id].artifacts_owned.append(artifact_id)

@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-25 (Plan #149 - Dashboard Architecture Refactor Phase 2)
+**Last verified:** 2026-01-31 (kernel_contracts rename)
 
 ---
 

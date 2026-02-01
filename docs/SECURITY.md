@@ -264,7 +264,7 @@ Identified during schema audit (2026-01-31), fixed by Plan #235.
 
 **Vulnerability:** `access_contract_id` was mutable by any writer.
 
-**Attack:** Writer changes `access_contract_id` to `genesis_contract_freeware`, making artifact publicly accessible and bypassing all access controls.
+**Attack:** Writer changes `access_contract_id` to `kernel_contract_freeware`, making artifact publicly accessible and bypassing all access controls.
 
 **Fix:** Plan #235 Phase 0 — `access_contract_id` is creator-only.
 

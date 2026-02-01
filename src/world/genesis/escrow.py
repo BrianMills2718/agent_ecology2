@@ -4,7 +4,7 @@ Implements the Gatekeeper pattern for safe trading without trusting counterparti
 
 **Trading Flow (Plan #213):**
 1. Seller creates artifact with:
-   - access_contract_id = "genesis_contract_transferable_freeware"
+   - access_contract_id = "kernel_contract_transferable_freeware"
    - metadata["authorized_writer"] = seller_id
 2. Seller grants escrow write access: set authorized_writer = "genesis_escrow"
 3. Seller deposits artifact on escrow (escrow verifies it has write access)

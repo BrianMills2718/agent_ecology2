@@ -275,7 +275,7 @@ def run(*args):
             created_by="owner",  # Only owner can invoke
         )
         # Use private contract - only owner can access
-        target.access_contract_id = "genesis_contract_private"  # type: ignore[attr-defined]
+        target.access_contract_id = "kernel_contract_private"  # type: ignore[attr-defined]
         self.store.artifacts["restricted"] = target
 
         caller_code = """

@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-31 (TD-004: resource naming cleanup)
+**Last verified:** 2026-01-31 (kernel_contracts rename)
 
 ---
 

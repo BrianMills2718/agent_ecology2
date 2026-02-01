@@ -19,7 +19,7 @@ This enables:
 - Dynamic permission logic via executable contract code (CAP-006)
 
 See also:
-- genesis_contracts.py: The four built-in genesis contracts
+- kernel_contracts.py: The five built-in kernel contracts
 - GAP-GEN-001: Implementation plan for this system
 """
 
@@ -121,7 +121,7 @@ class AccessContract(Protocol):
     def contract_id(self) -> str:
         """Unique identifier for this contract.
 
-        For genesis contracts, this is a fixed string like 'genesis_contract_freeware'.
+        For kernel contracts, this is a fixed string like 'kernel_contract_freeware'.
         For custom contracts, this is the artifact ID of the contract artifact.
         """
         ...

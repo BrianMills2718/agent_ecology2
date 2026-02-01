@@ -1770,7 +1770,7 @@ class ContractsConfig(StrictModel):
         description="Behavior when access_contract_id is NULL. Options: 'creator_only' (only creator can access, ADR-0019 default), 'freeware' (legacy behavior)"
     )
     default_on_missing: str = Field(
-        default="genesis_contract_freeware",
+        default="kernel_contract_freeware",
         description="Default contract to use when access_contract_id points to deleted/missing contract (ADR-0017)"
     )
 
