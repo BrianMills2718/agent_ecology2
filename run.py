@@ -376,9 +376,6 @@ def main() -> None:
         if "execution" not in config:
             config["execution"] = {}
         config["execution"]["use_autonomous_loops"] = True
-        if "rate_limiting" not in config:
-            config["rate_limiting"] = {}
-        config["rate_limiting"]["enabled"] = True
 
     # Dashboard-only mode
     if args.dashboard_only:

@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-31 (kernel_contracts rename)
+**Last verified:** 2026-01-31 (Plan #247 - rate_limiting.enabled default now True)
 
 ---
 

@@ -24,7 +24,6 @@ class TestRunnerOutputMode:
         use_autonomous_loops: bool = False,
         max_ticks: int = 100,
         max_api_cost: float = 1.0,
-        rate_limiting_enabled: bool = False,
     ) -> Any:
         """Create a mock runner for testing output."""
         # mock-ok: Testing output formatting, not actual runner behavior
@@ -33,7 +32,7 @@ class TestRunnerOutputMode:
         runner.use_autonomous_loops = use_autonomous_loops
         runner.config = {
             "rate_limiting": {
-                "enabled": rate_limiting_enabled,
+                "enabled": True,
                 "window_seconds": 60.0,
                 "resources": {
                     "llm_tokens": {"max_per_window": 10000},

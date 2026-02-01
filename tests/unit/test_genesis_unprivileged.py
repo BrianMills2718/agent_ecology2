@@ -17,6 +17,10 @@ from typing import Any
 
 import pytest
 
+# Compute project root from test file location
+# tests/unit/test_genesis_unprivileged.py -> project_root
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+
 
 # Helper to find privileged access patterns in source code
 def get_privileged_patterns() -> dict[str, list[str]]:
@@ -118,7 +122,7 @@ class TestGenesisUnprivileged:
         should use KernelActions instead of direct ledger/artifact_store access.
         """
         # Verify the code checks for _world in the spawn_principal method
-        source_file = Path("src/world/genesis/ledger.py")
+        source_file = PROJECT_ROOT / "src/world/genesis/ledger.py"
         with open(source_file) as f:
             source = f.read()
 
@@ -154,7 +158,7 @@ class TestGenesisUnprivileged:
         transfer_ownership() to set authorized_writer, keeping created_by
         immutable per ADR-0016.
         """
-        source_file = Path("src/world/genesis/escrow.py")
+        source_file = PROJECT_ROOT / "src/world/genesis/escrow.py"
         with open(source_file) as f:
             source = f.read()
 

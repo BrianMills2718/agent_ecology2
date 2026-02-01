@@ -22,7 +22,6 @@ from ..world.actions import parse_intent_from_json, ActionIntent
 from ..world.simulation_engine import SimulationEngine
 from ..world.world import StateSummary, ConfigDict
 from ..world.genesis import GenesisMint, AuctionResult
-from ..world.rate_tracker import RateTracker
 from ..agents import Agent
 from ..agents.loader import load_agents, create_agent_artifacts, load_agents_from_store, AgentConfig
 from ..agents.agent import ActionResult as AgentActionResult, TokenUsage
@@ -178,13 +177,8 @@ class SimulationRunner:
         self.use_autonomous_loops = True
 
         # Create AgentLoopManager (always needed in autonomous mode)
-        # Need a RateTracker for resource gating
-        # Use world's rate_tracker if available, otherwise create one
+        # Plan #247: Ledger.from_config() always creates a RateTracker
         rate_tracker = self.world.rate_tracker
-        if rate_tracker is None:
-            # Create a default rate tracker for autonomous mode
-            rate_tracker = RateTracker(window_seconds=60.0)
-            self.world.rate_tracker = rate_tracker
         self.world.loop_manager = AgentLoopManager(rate_tracker)
 
         # Worker pool support (Plan #53)
@@ -1020,13 +1014,12 @@ class SimulationRunner:
             else:
                 print(f"Runtime limit: {mins}m")
 
-        # Show rate limit info if rate limiting is enabled
+        # Show rate limit info
         rate_config = self.config.get("rate_limiting", {})
-        if rate_config.get("enabled", False):
-            window = rate_config.get("window_seconds", 60.0)
-            llm_limit = rate_config.get("resources", {}).get("llm_tokens", {}).get("max_per_window", 0)
-            if llm_limit > 0 and llm_limit < 1_000_000_000:  # Don't show if "unlimited"
-                print(f"LLM rate limit: {llm_limit:,} tokens/{window}s window")
+        window = rate_config.get("window_seconds", 60.0)
+        llm_limit = rate_config.get("resources", {}).get("llm_tokens", {}).get("max_per_window", 0)
+        if llm_limit > 0 and llm_limit < 1_000_000_000:  # Don't show if "unlimited"
+            print(f"LLM rate limit: {llm_limit:,} tokens/{window}s window")
 
         print(f"Starting scrip: {self.world.ledger.get_all_scrip()}")
         print()
@@ -1241,8 +1234,7 @@ class SimulationRunner:
         """
         if not self.world.loop_manager:
             raise RuntimeError(
-                "loop_manager not initialized. Ensure use_autonomous_loops=True in config "
-                "and rate_limiting.enabled=True"
+                "loop_manager not initialized. Ensure use_autonomous_loops=True in config"
             )
 
         if self.verbose:

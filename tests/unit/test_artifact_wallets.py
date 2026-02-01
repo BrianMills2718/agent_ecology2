@@ -70,7 +70,7 @@ class TestArtifactWallets:
 
         assert ledger.principal_exists("new_artifact")
         assert ledger.get_scrip("new_artifact") == 0
-        assert ledger.get_llm_tokens("new_artifact") == 0
+        assert ledger.get_resource("new_artifact", "llm_tokens") == 0
 
     def test_principal_exists_checks_both_balances(self) -> None:
         """principal_exists returns True if in scrip OR compute."""

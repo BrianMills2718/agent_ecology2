@@ -2,6 +2,8 @@
 
 This document explains the security architecture of Agent Ecology, including design decisions, risk acknowledgments, and deployment expectations.
 
+**Last verified:** 2026-01-31 (Plan #247: No security model changes)
+
 ## Overview
 
 Agent Ecology uses a **defense-in-depth** model with security boundaries at the infrastructure level (Docker) rather than the code execution level.

@@ -105,17 +105,15 @@ class Ledger:
     - Renewable: Rate-limited via RateTracker (llm_tokens, bandwidth)
     - Stock: Never reset (disk, api_budget)
 
-    Integrates with RateTracker for rolling-window rate limiting
-    when rate_limiting.enabled is True in config (default).
-    
+    Integrates with RateTracker for rolling-window rate limiting.
+
     Optionally integrates with IDRegistry for global ID collision prevention
     (Plan #7: Single ID Namespace).
     """
 
     resources: dict[str, dict[str, float]]
     scrip: dict[str, int]
-    rate_tracker: RateTracker | None
-    use_rate_tracker: bool
+    rate_tracker: RateTracker
     id_registry: "IDRegistry | None"
     _scrip_lock: asyncio.Lock
     _resource_lock: asyncio.Lock
@@ -123,16 +121,14 @@ class Ledger:
     def __init__(
         self,
         rate_tracker: RateTracker | None = None,
-        use_rate_tracker: bool = False,
         id_registry: "IDRegistry | None" = None,
     ) -> None:
         # Generic resources: {principal_id: {resource_name: amount}}
         self.resources = {}
         # Scrip: persistent currency (accumulates/depletes)
         self.scrip = {}
-        # Rate tracker for rolling-window rate limiting
-        self.rate_tracker = rate_tracker
-        self.use_rate_tracker = use_rate_tracker
+        # Rate tracker for rolling-window rate limiting (always active, Plan #247)
+        self.rate_tracker = rate_tracker or RateTracker(window_seconds=60.0)
         # ID registry for global collision prevention (Plan #7)
         self.id_registry = id_registry
         # Async locks for thread-safe concurrent access
@@ -158,22 +154,18 @@ class Ledger:
             Configured Ledger instance
         """
         rate_limiting_config = config.get("rate_limiting", {})
-        use_rate_tracker = rate_limiting_config.get("enabled", False)
 
-        rate_tracker = None
-        if use_rate_tracker:
-            rate_tracker = RateTracker(
-                window_seconds=rate_limiting_config.get("window_seconds", 60.0)
-            )
-            # Configure limits from config
-            resources = rate_limiting_config.get("resources", {})
-            for resource_name, resource_config in resources.items():
-                max_per_window = resource_config.get("max_per_window", float("inf"))
-                rate_tracker.configure_limit(resource_name, max_per_window)
+        rate_tracker = RateTracker(
+            window_seconds=rate_limiting_config.get("window_seconds", 60.0)
+        )
+        # Configure limits from config
+        resources = rate_limiting_config.get("resources", {})
+        for resource_name, resource_config in resources.items():
+            max_per_window = resource_config.get("max_per_window", float("inf"))
+            rate_tracker.configure_limit(resource_name, max_per_window)
 
         return cls(
             rate_tracker=rate_tracker,
-            use_rate_tracker=use_rate_tracker,
             id_registry=id_registry,
         )
 
@@ -254,13 +246,6 @@ class Ledger:
     def get_all_resources(self, principal_id: str) -> dict[str, float]:
         """Get all resource balances for a principal."""
         return dict(self.resources.get(principal_id, {}))
-
-    def reset_flow_resources(self, principal_id: str, quotas: dict[str, float]) -> None:
-        """Reset flow resources to their quotas (legacy, prefer RateTracker)."""
-        if principal_id not in self.resources:
-            self.resources[principal_id] = {}
-        for resource, quota in quotas.items():
-            self.resources[principal_id][resource] = quota
 
     # ===== ASYNC RESOURCE OPERATIONS (Thread-Safe) =====
 
@@ -478,13 +463,11 @@ class Ledger:
             DeprecationWarning,
             stacklevel=2,
         )
-        if self.use_rate_tracker and self.rate_tracker:
-            remaining = self.get_resource_remaining(principal_id, "llm_tokens")
-            # Handle infinity (unconfigured resource = unlimited)
-            if remaining == float("inf"):
-                return 999999  # Large value indicating unlimited
-            return int(remaining)
-        return int(self.get_resource(principal_id, "llm_tokens"))
+        remaining = self.get_resource_remaining(principal_id, "llm_tokens")
+        # Handle infinity (unconfigured resource = unlimited)
+        if remaining == float("inf"):
+            return 999999  # Large value indicating unlimited
+        return int(remaining)
 
     def can_spend_llm_tokens(self, principal_id: str, amount: int) -> bool:
         """DEPRECATED (Plan #166): Check if principal can afford to spend LLM tokens.
@@ -500,9 +483,7 @@ class Ledger:
             DeprecationWarning,
             stacklevel=2,
         )
-        if self.use_rate_tracker and self.rate_tracker:
-            return self.check_resource_capacity(principal_id, "llm_tokens", float(amount))
-        return self.can_spend_resource(principal_id, "llm_tokens", float(amount))
+        return self.check_resource_capacity(principal_id, "llm_tokens", float(amount))
 
     def spend_llm_tokens(self, principal_id: str, amount: int) -> bool:
         """DEPRECATED (Plan #166): Spend LLM tokens for a principal.
@@ -521,25 +502,14 @@ class Ledger:
             DeprecationWarning,
             stacklevel=2,
         )
-        if self.use_rate_tracker and self.rate_tracker:
-            return self.consume_resource(principal_id, "llm_tokens", float(amount))
-        return self.spend_resource(principal_id, "llm_tokens", float(amount))
+        return self.consume_resource(principal_id, "llm_tokens", float(amount))
 
     def reset_llm_tokens(self, principal_id: str, quota: int) -> None:
         """Reset LLM token balance for a principal.
 
-        Note: When rate limiting is enabled (default), this method should not
-        be used. Resources flow continuously via RateTracker instead.
-        This method will emit a warning if called when rate tracking is enabled.
+        Note: With RateTracker active, this sets the underlying balance but
+        get_llm_tokens() returns RateTracker remaining capacity instead.
         """
-        if self.use_rate_tracker:
-            warnings.warn(
-                "reset_llm_tokens() called with rate limiting enabled. "
-                "Legacy resource resets are deprecated when using RateTracker. "
-                "Resources should flow continuously via rolling windows instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
         self.set_resource(principal_id, "llm_tokens", float(quota))
 
     def get_all_llm_tokens(self) -> dict[str, int]:
@@ -645,9 +615,6 @@ class Ledger:
     ) -> bool:
         """Check if agent has capacity for resource consumption.
 
-        Uses RateTracker if enabled, otherwise always returns True
-        (legacy mode manages resources differently).
-
         Args:
             agent_id: ID of the agent
             resource: Name of the resource
@@ -656,9 +623,7 @@ class Ledger:
         Returns:
             True if the agent can use the requested amount
         """
-        if self.use_rate_tracker and self.rate_tracker:
-            return self.rate_tracker.has_capacity(agent_id, resource, amount)
-        return True  # Legacy mode: no pre-check
+        return self.rate_tracker.has_capacity(agent_id, resource, amount)
 
     def consume_resource(
         self,
@@ -666,9 +631,8 @@ class Ledger:
         resource: str,
         amount: float = 1.0,
     ) -> bool:
-        """Consume resource capacity.
+        """Consume resource capacity via RateTracker.
 
-        Uses RateTracker if enabled.
         Returns True if successful, False if insufficient capacity.
 
         Args:
@@ -679,9 +643,7 @@ class Ledger:
         Returns:
             True if successful, False if insufficient capacity
         """
-        if self.use_rate_tracker and self.rate_tracker:
-            return self.rate_tracker.consume(agent_id, resource, amount)
-        return True  # Legacy mode: no rate limiting
+        return self.rate_tracker.consume(agent_id, resource, amount)
 
     def get_resource_remaining(
         self,
@@ -697,9 +659,7 @@ class Ledger:
         Returns:
             Amount of resource still available in the current window
         """
-        if self.use_rate_tracker and self.rate_tracker:
-            return self.rate_tracker.get_remaining(agent_id, resource)
-        return float("inf")  # Legacy mode: unlimited
+        return self.rate_tracker.get_remaining(agent_id, resource)
 
     async def wait_for_resource(
         self,
@@ -710,7 +670,6 @@ class Ledger:
     ) -> bool:
         """Wait until resource capacity is available.
 
-        Only works with RateTracker enabled.
         Returns True if capacity acquired, False if timeout.
 
         Args:
@@ -722,11 +681,9 @@ class Ledger:
         Returns:
             True if capacity was acquired, False if timeout occurred
         """
-        if self.use_rate_tracker and self.rate_tracker:
-            return await self.rate_tracker.wait_for_capacity(
-                agent_id, resource, amount, timeout
-            )
-        return True  # Legacy mode: immediate success
+        return await self.rate_tracker.wait_for_capacity(
+            agent_id, resource, amount, timeout
+        )
 
     async def consume_resource_async(
         self,
@@ -749,9 +706,7 @@ class Ledger:
             True if successful, False if insufficient capacity
         """
         async with self._resource_lock:
-            if self.use_rate_tracker and self.rate_tracker:
-                return self.rate_tracker.consume(agent_id, resource, amount)
-            return True  # Legacy mode: no rate limiting
+            return self.rate_tracker.consume(agent_id, resource, amount)
 
     # ===== THINKING COST (LLM tokens) =====
 

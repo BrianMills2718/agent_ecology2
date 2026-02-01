@@ -27,8 +27,8 @@ class TestFixtures:
         # Check principals were created
         assert test_ledger.get_scrip("test_agent_1") == 100
         assert test_ledger.get_scrip("test_agent_2") == 200
-        assert test_ledger.get_llm_tokens("test_agent_1") == 50
-        assert test_ledger.get_llm_tokens("test_agent_2") == 50
+        assert test_ledger.get_resource("test_agent_1", "llm_tokens") == 50
+        assert test_ledger.get_resource("test_agent_2", "llm_tokens") == 50
 
     def test_test_world_fixture(self, test_world):
         """Verify test_world fixture creates a valid World."""
@@ -70,6 +70,7 @@ class TestFixtures:
         assert test_ledger.get_scrip("test_agent_1") == 150
         assert test_ledger.get_scrip("test_agent_2") == 150
 
-        # Test compute spending
+        # Test compute spending (consumes from RateTracker, not balance)
         assert test_ledger.spend_llm_tokens("test_agent_1", 10) is True
-        assert test_ledger.get_llm_tokens("test_agent_1") == 40
+        # Balance unchanged; RateTracker capacity decreased
+        assert test_ledger.get_resource("test_agent_1", "llm_tokens") == 50

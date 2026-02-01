@@ -158,11 +158,9 @@ class World:
     genesis_artifacts: dict[str, GenesisArtifact]
     rights_registry: GenesisRightsRegistry | None
     # principal_ids is a derived property (Plan #231)
-    # Rate limiting mode: when True, resources use rolling windows (RateTracker)
-    use_rate_tracker: bool
     # Autonomous loop support
     use_autonomous_loops: bool
-    rate_tracker: RateTracker | None
+    rate_tracker: RateTracker
     loop_manager: "AgentLoopManager | None"
     # Invocation tracking for observability (Gap #27)
     invocation_registry: InvocationRegistry
@@ -211,10 +209,6 @@ class World:
                     "disk": float(quotas.get("disk_quota", config_get("resources.stock.disk.total") or 10000))
                 }
             }
-
-        # Check if rate limiting (rolling windows) is enabled
-        rate_limiting_config = cast(dict[str, Any], config.get("rate_limiting", {}))
-        self.use_rate_tracker = rate_limiting_config.get("enabled", False)
 
         # Global ID registry for collision prevention (Plan #7)
         self.id_registry = IDRegistry()
@@ -355,18 +349,8 @@ class World:
         execution_config = cast(dict[str, Any], config.get("execution", {}))
         self.use_autonomous_loops = execution_config.get("use_autonomous_loops", False)
 
-        # Create rate tracker if rate limiting is enabled (rate_limiting_config defined above)
-        if self.use_rate_tracker:
-            window_seconds = rate_limiting_config.get("window_seconds", 60.0)
-            self.rate_tracker = RateTracker(window_seconds=window_seconds)
-            # Configure limits for each resource
-            resources_config = rate_limiting_config.get("resources", {})
-            for resource_name, resource_cfg in resources_config.items():
-                if isinstance(resource_cfg, dict):
-                    max_per_window = resource_cfg.get("max_per_window", float("inf"))
-                    self.rate_tracker.configure_limit(resource_name, max_per_window)
-        else:
-            self.rate_tracker = None
+        # Plan #247: RateTracker is always active. Use the one from Ledger.
+        self.rate_tracker = self.ledger.rate_tracker
 
         # AgentLoopManager will be created by SimulationRunner when autonomous mode is enabled
         # We store it here so it's accessible to components that need it
