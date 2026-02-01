@@ -46,24 +46,31 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 - CLAUDE.md Authoring - any project using AI coding assistants
 - Mock Enforcement - if using pytest with mocks
 - Git Hooks - any project with CI
-- PR Coordination - if multiple people/instances work in parallel
-- Worktree Enforcement - if multiple Claude Code instances share a repo
-- Rebase Workflow - when using worktrees for parallel work (prevents "reverted" changes)
-- PR Review Process - standardized review checklists
-- Ownership Respect - prevent CC instances from fixing each other's work
 - Question-Driven Planning - AI tendency to guess instead of investigate
 - Uncertainty Tracking - preserve context across sessions
 
 **Add these when needed (more setup):**
-- Acceptance-Gate-Driven Development - comprehensive meta-process for verified progress, preventing AI drift/cheating
+- Plan Workflow - for larger tasks with multiple steps
+- Worktree Enforcement - if using parallel workspaces
+- Rebase Workflow - when using worktrees (prevents "reverted" changes)
+- Acceptance-Gate-Driven Development - verified progress, preventing AI drift/cheating
 - ADR - when architectural decisions need to be preserved long-term
 - Phased ADR Pattern - when building simpler first but preserving full design vision
 - Documentation Graph - when you need to trace ADR → target → current → code
-- Plan Workflow - for larger acceptance gates with multiple steps
-- Claim System - for explicit parallel work coordination
 - Verification Enforcement - when plans need proof of completion
 - Conceptual Modeling - when AI instances repeatedly misunderstand core concepts
 - Gap Analysis - systematic comparison of current vs target architecture to inform planning
+
+**Multi-CC only (enable when 3+ instances run concurrently):**
+- Claim System - prevents duplicate work across instances
+- PR Coordination - tracks review requests between instances
+- Ownership Respect - prevents instances from editing each other's work
+- PR Review Process - standardized review checklists for cross-instance PRs
+- Human Review Pattern - gates for risky changes when self-merge is default
+
+> **Scripts also scale-dependent:** Inter-CC messaging (`send_message.py`, `check_messages.py`),
+> session tracking (`session_manager.py`), and file-level access control (`check_locked_files.py`)
+> are disabled by default. Enable only when multi-CC coordination becomes necessary.
 
 ## Pattern Template
 

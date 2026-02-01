@@ -222,33 +222,6 @@ set up the current project.
 
 ---
 
-### MP-013: Overengineered — ~30% of infrastructure unused at current scale
-
-**Observed:** 2026-01-31
-**Investigated:** 2026-01-31
-**Status:** `confirmed`
-
-**Finding:** The project typically runs 1 active CC instance. Several features designed
-for multi-CC coordination have never been used:
-
-| Feature | Status | Usage Evidence |
-|---------|--------|----------------|
-| Inter-CC messaging (`send_message.py`, `check_messages.py`) | Fully implemented, 730+ lines | Config: `inter_cc_messaging: false`. Never enabled. |
-| File-level access control (`check_locked_files.py`) | Partially implemented | Not in CI, not enforced |
-| Cross-CC review (Plan #240) | Planned, deferred | "Deferred until multi-CC workflows are common" |
-| Session tracking (`sessions.yaml`) | Implemented | Created but never referenced |
-
-~5,275 lines of script code (~30%) are devoted to multi-CC coordination infrastructure
-that has zero actual usage. Every contributor must read through messaging, session
-management, and scope conflict documentation to learn a single-CC workflow.
-
-**What earns its keep:** Worktree lifecycle, plans, doc coupling, acceptance gates,
-git hooks, basic claims.
-
-**Fix:** Disable unused features by default. Document as "enable at scale" with explicit
-trigger conditions (e.g., "enable inter-CC messaging when 3+ CCs run concurrently").
-Archive or collapse enterprise-scale patterns. Reduce cognitive load for single-CC setup.
-
 ---
 
 ### MP-015: Plan-to-diff verification — partial infrastructure, plan drift undetected
@@ -290,6 +263,7 @@ and untouched declared files as WARN (plan drift). Could integrate into `make ch
 | MP-009 | Undocumented pattern dependencies; 3 non-patterns | Added `Requires` column to pattern index in `01_README.md` with prerequisite numbers for 14 patterns. Added note identifying 3 convention/infrastructure entries (06, 11, 26). | 2026-01-31 |
 | MP-016 | No implementation-time escalation convention | Added "Escalation: When Plan Meets Reality" section to Pattern 28 with 3-step process (record in CONTEXT.md, update plan, decide continue/reduce/stop). Added "Discovered Conflicts" section to CONTEXT.md template. | 2026-01-31 |
 | MP-011 | Circular docs with no linear reading path | Added "Core Concepts" glossary before adoption path in GETTING_STARTED.md. Reordered Day 1-2 reading list to follow dependency order (18 before 19). Pattern index Requires column (MP-009) addresses prerequisite visibility. | 2026-01-31 |
+| MP-013 | ~30% of infrastructure unused at current scale | Added "Multi-CC only" tier to pattern index "When to Use" section, listing 5 patterns + 4 scripts to skip for solo/small setups. Added "skip for solo" note to GETTING_STARTED.md adoption stage. Features remain available but clearly marked as scale-dependent. | 2026-01-31 |
 
 ---
 
