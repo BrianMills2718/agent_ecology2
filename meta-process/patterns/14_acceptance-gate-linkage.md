@@ -4,6 +4,10 @@ How to structure relationships between ADRs, acceptance gates, code, tests, and 
 
 > **Note:** This pattern uses the `acceptance_gates/` directory and `features.yaml` filename for historical reasons.
 > The authoritative term is "acceptance gate" - see [META-ADR-0001](adr/0001-acceptance-gate-terminology.md).
+>
+> **Status:** `features.yaml` as described here is not yet implemented. The project uses
+> individual `acceptance_gates/*.yaml` files (Pattern 13) and `scripts/relationships.yaml`
+> (Pattern 09) instead. This pattern describes the intended unified linkage architecture.
 
 ## Complete Linkage Diagram
 

@@ -76,31 +76,33 @@ This creates:
 - `docs/plans/` - Work tracking
 - `hooks/` - Git hooks
 - `.claude/hooks/` - Claude Code hooks
-- `scripts/meta/` - Utility scripts
+- `scripts/` - Utility scripts
 
 ### Step 2: Configure
 
 Edit `meta-process.yaml`:
 
 ```yaml
-# Start with these enabled
-enabled:
-  plans: true           # Track work in plan files
-  claims: true          # Prevent parallel conflicts
-  worktrees: true       # File isolation
-  git_hooks: true       # Pre-commit checks
+# Choose your weight level (controls which checks run)
+weight: medium  # minimal | light | medium | heavy
 
-# Disable until ready
-disabled:
-  doc_coupling: true    # Add later
-  acceptance_gates: true
+# Hook configuration
+hooks:
+  protect_main: true       # Require worktrees for edits
+  enforce_workflow: true   # Enforce make commands
+  enforce_file_scope: false  # Enable later for strict scope control
+
+# Planning patterns
+planning:
+  question_driven_planning: advisory  # disabled | advisory | required
+  uncertainty_tracking: advisory
 ```
 
 ### Step 3: Verify
 
 ```bash
 make status              # Should show clean state
-python scripts/meta/check_claims.py --list   # Should show no claims
+python scripts/check_claims.py --list   # Should show no claims
 ```
 
 ### Step 4: Test the Workflow
@@ -224,10 +226,10 @@ If that worked, you're ready!
        description: "API documentation"
    ```
 
-3. **Enable in meta-process.yaml:**
+3. **Enable strict enforcement in meta-process.yaml:**
    ```yaml
-   enabled:
-     doc_coupling: true
+   enforcement:
+     strict_doc_coupling: true
    ```
 
 ### Add Mock Enforcement
@@ -236,7 +238,7 @@ If that worked, you're ready!
 
 2. **Run check:**
    ```bash
-   python scripts/meta/check_mock_usage.py
+   python scripts/check_mock_usage.py
    ```
 
 ---
@@ -274,7 +276,7 @@ make worktree     # Automatically creates claim
 Other instances see your claim:
 
 ```bash
-python scripts/meta/check_claims.py --list
+python scripts/check_claims.py --list
 # Active claims:
 #   plan-1-feature  ->  Plan #1: Add feature X
 ```
@@ -310,7 +312,7 @@ Someone else claimed this work:
 
 ```bash
 # Check who
-python scripts/meta/check_claims.py --list
+python scripts/check_claims.py --list
 
 # Either:
 # 1. Work on something else
@@ -359,9 +361,6 @@ After completing the basics:
 3. **Add ADRs** - Preserve architectural decisions
    - See: [ADR](patterns/07_adr.md), [ADR Governance](patterns/08_adr-governance.md)
 
-4. **Add inter-CC messaging** - Coordinate between Claude Code instances
-   - See: `scripts/send_message.py`, `scripts/check_messages.py`
-
 ---
 
 ## Quick Reference
@@ -371,7 +370,7 @@ After completing the basics:
 | Check status | `make status` |
 | Create workspace | `make worktree` |
 | List workspaces | `make worktree-list` |
-| See claims | `python scripts/meta/check_claims.py --list` |
+| See claims | `python scripts/check_claims.py --list` |
 | Run tests | `make test` |
 | Run checks | `make check` |
 | Prepare PR | `make pr-ready` |

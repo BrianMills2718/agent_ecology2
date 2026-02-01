@@ -552,7 +552,7 @@ Every unit of work must prove it works end-to-end before declaring success.
 | `acceptance_gates/*.yaml` | Acceptance gate definitions (single source of truth) |
 | `scripts/validate_spec.py` | Validates spec completeness |
 | `scripts/check_locked_files.py` | Ensures locked files unchanged |
-| `scripts/generate_tests.py` | Generates test stubs from specs |
+| `scripts/generate_tests.py` | Generates test stubs from specs *(not yet implemented)* |
 
 See [META-ADR-0004: Gate YAML Is Documentation](adr/0004-gate-yaml-is-documentation.md) for why gate definitions live in YAML, not separate markdown files.
 
@@ -567,7 +567,7 @@ See [META-ADR-0004: Gate YAML Is Documentation](adr/0004-gate-yaml-is-documentat
    - name: check-locked-files
      run: python scripts/check_locked_files.py
    ```
-3. Configure minimum spec requirements in `config/spec_requirements.yaml`
+3. Configure minimum spec requirements *(config/spec_requirements.yaml — not yet implemented, use acceptance gate YAML directly)*
 4. Add feature definition template
 
 ## Usage
@@ -647,8 +647,11 @@ jobs:
 
 ### Adjusting Minimum Spec Requirements
 
+> *Note: `config/spec_requirements.yaml` is not yet implemented. Configure requirements
+> directly in acceptance gate YAML files.*
+
 ```yaml
-# config/spec_requirements.yaml
+# config/spec_requirements.yaml (planned, not yet implemented)
 minimum_scenarios: 3  # Increase for critical gates
 required_categories:
   - happy_path
@@ -659,8 +662,11 @@ required_categories:
 
 ### Planning Mode Defaults
 
+> *Note: `config/defaults.yaml` is not yet implemented. Configure planning modes
+> in `meta-process.yaml` under the `planning:` section.*
+
 ```yaml
-# config/defaults.yaml
+# config/defaults.yaml (planned, not yet implemented)
 default_planning_mode: guided
 allow_autonomous: true
 require_approval_for_lock: true

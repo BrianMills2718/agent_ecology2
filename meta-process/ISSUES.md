@@ -139,73 +139,6 @@ agent_ecology2 vocabulary.
 
 ---
 
-### MP-002: GETTING_STARTED.md config examples don't match actual meta-process.yaml
-
-**Observed:** 2026-01-31
-**Investigated:** 2026-01-31
-**Status:** `confirmed`
-
-**Original observation:** Thought no script read `meta-process.yaml` and three config
-formats contradicted each other.
-
-**Finding:** `meta-process.yaml` IS actively parsed by 5+ scripts (`meta_process_config.py`,
-`check_doc_coupling.py`, `sync_plan_status.py`, `check_planning_patterns.py`,
-`bootstrap_meta_process.py`, `health_check.py`, `meta_config.py`). The central config is
-real and functional.
-
-**Remaining problem:** `GETTING_STARTED.md` shows config examples (`enabled: { plans: true }`,
-`weight: medium`) that don't match the actual `meta-process.yaml` format. An adopter
-following the docs would write a config that doesn't match what scripts expect.
-
-**Fix:** Update GETTING_STARTED.md examples to match the actual schema, or add a config
-validation script that catches format mismatches.
-
----
-
-### MP-004: Phantom script/file references (5 of 7 confirmed)
-
-**Observed:** 2026-01-31
-**Investigated:** 2026-01-31
-**Status:** `confirmed`
-
-**Original observation:** 7 referenced scripts/files appeared missing.
-
-**Finding:** 2 of 7 actually exist:
-- `view_log.py` — exists at `scripts/view_log.py`
-- `relationships.yaml` — exists at `scripts/relationships.yaml` (deployed file, not a template)
-
-5 references are genuinely phantom:
-
-| Referenced | In Pattern | Status |
-|-----------|-----------|--------|
-| `generate_tests.py` | 13 (Acceptance Gates) | Not implemented |
-| `migrate_to_relationships.py` | 09 (Documentation Graph) | Not implemented (pattern notes it's optional) |
-| `features.yaml` | 14 (Gate Linkage) | Not implemented, no template |
-| `config/spec_requirements.yaml` | 13 | Not implemented, no template |
-| `config/defaults.yaml` | 13 | Not implemented, no template |
-
-**Fix:** Either implement the missing scripts/templates or remove the references from
-the patterns. Most of these come from Pattern 13 which is already flagged as oversized
-(MP-006) — removing aspirational references during a refactor would be natural.
-
----
-
-### MP-005: Pattern 12 listed as active in index but marked PROPOSED
-
-**Observed:** 2026-01-31
-**Investigated:** 2026-01-31
-**Status:** `confirmed`
-
-**Finding confirmed:** `01_README.md` line 21 lists Pattern 12 as
-`[Structured Logging](12_structured-logging.md) | Unreadable logs | Low` with no
-status qualifier. But the pattern file itself says:
-
-> **STATUS: PROPOSED** — Currently NOT DEPLOYED. The system uses standard Python logging.
-> See Plan #60 for the current logging approach (SummaryLogger).
-
-**Fix:** Add a status column to the pattern index table, or annotate undeployed patterns
-inline (e.g., "Structured Logging *(proposed)*"). Minimal change, high clarity gain.
-
 ---
 
 ### MP-006: Pattern 13 is too large — 724 lines, 3x average, mixed concerns
@@ -435,7 +368,9 @@ commit note. Add a "Discovered Conflicts" section to the CONTEXT.md template.
 
 | ID | Description | Resolution | Date |
 |----|-------------|------------|------|
-| - | - | - | - |
+| MP-002 | GETTING_STARTED.md config examples wrong | Updated config examples to match actual `meta-process.yaml` format (`weight:`, `hooks:`, `enforcement:`, `planning:` sections). Fixed `scripts/meta/` → `scripts/` path references. | 2026-01-31 |
+| MP-004 | Phantom script/file references | Annotated all 5 phantom references as "not yet implemented" in Patterns 09, 13, 14. Added status note to Pattern 14 explaining `features.yaml` is not yet built. | 2026-01-31 |
+| MP-005 | Pattern 12 unlabeled as PROPOSED in index | Added *(proposed)* annotation to Pattern 12 entry in `01_README.md` index. | 2026-01-31 |
 
 ---
 
