@@ -42,8 +42,6 @@ generic examples? If not, should `install.sh` and portability framing be removed
 
 ---
 
----
-
 ### MP-006: Pattern 13 (Acceptance-Gate-Driven Development) is too large for a single pattern
 
 **Observed:** 2026-01-31
@@ -73,61 +71,6 @@ the absence of tests for its own tooling is a credibility gap.
 tests aren't needed, or are there latent bugs? What would a minimal test suite cover?
 
 ---
-
-### MP-008: install.sh issues
-
-**Observed:** 2026-01-31
-**Status:** `unconfirmed`
-
-Several potential problems in the installation script:
-
-- Line 196: `cd "$TARGET_DIR"` changes CWD permanently (ironic given the CWD docs)
-- Lines 153-156 vs 246-251: `docs/plans/CLAUDE.md` copy logic appears duplicated
-- Template substitution hardcodes agent_ecology2 principles ("Fail Loud", "Test First")
-- Line 265 references `scripts/doc_coupling.yaml` even in `--minimal` mode (file only
-  exists after `--full`)
-- No `--dry-run` option
-- No uninstall or upgrade path
-
-**To investigate:** How broken is this in practice? Has anyone actually run `install.sh`
-on a non-agent_ecology2 project?
-
----
-
-### MP-009: 30 patterns with invisible dependency chains
-
-**Observed:** 2026-01-31
-**Status:** `unconfirmed`
-
-Pattern dependencies are undocumented. Pattern 17 (Verification Enforcement) requires
-15 (Plan Workflow) and 18 (Claims), but nothing says so. Pattern 21 (PR Coordination)
-requires GitHub Actions. Pattern 22 (Human Review) requires a label system. The
-"Low/Medium/High" complexity ratings describe setup effort, not prerequisites.
-
-Some listed patterns aren't patterns in the traditional sense — they're tool configs
-(Pattern 6: Git Hooks), naming conventions (Pattern 11: Terminology), or behavioral
-norms (Pattern 26: Ownership Respect).
-
-**To investigate:** Would a dependency graph in the pattern index help? Should some
-items be reclassified as "conventions" vs "patterns"? What's the minimal set of
-genuinely independent patterns?
-
----
-
-### MP-010: Documentation repetition across files
-
-**Observed:** 2026-01-31
-**Status:** `unconfirmed`
-
-The CWD rule is explained in: root CLAUDE.md, UNDERSTANDING_CWD.md (228 lines),
-CWD_INCIDENT_LOG.md, Pattern 19, GETTING_STARTED.md, and hooks/README.md. The claim
-system is similarly explained in 4+ places.
-
-Same information, slightly different wording, creates maintenance burden and drift risk.
-
-**To investigate:** Is the repetition intentional (each doc is self-contained) or
-accidental drift? Would a "single source, reference elsewhere" approach work without
-hurting readability?
 
 ---
 
@@ -328,6 +271,62 @@ inline (e.g., "Structured Logging *(proposed)*"). Minimal change, high clarity g
 
 ---
 
+### MP-008: install.sh — all 6 reported issues confirmed, never tested externally
+
+**Observed:** 2026-01-31
+**Investigated:** 2026-01-31
+**Status:** `confirmed`
+
+All 6 originally reported issues confirmed through investigation:
+
+| Issue | Severity | Detail |
+|-------|----------|--------|
+| `cd "$TARGET_DIR"` (line 202) changes CWD | Low | Runs in subshell so doesn't leak, but violates the framework's own CWD principles |
+| `docs/plans/CLAUDE.md` copy logic duplicated | Low | Lines 154-156 copy the file; lines 252-256 try again but it's dead code (file already exists) |
+| Hardcoded principles ("Fail Loud", "Test First") | Medium | `sed` substitutions at lines 223-233 bake agent_ecology2 principles into any adopter's CLAUDE.md |
+| `--minimal` mode references `scripts/doc_coupling.yaml` | Medium | Final instructions (line 270) tell user to edit a file that only exists after `--full` |
+| No `--dry-run` option | Medium | Compare with `export_meta_process.py` which has `--dry-run` |
+| No uninstall or upgrade path | Medium | No way to cleanly remove or update the meta-process |
+
+**Additional finding:** No evidence this script has ever been run on a non-agent_ecology2
+project. No test files, no CI coverage, no external usage documentation. The portability
+claim is untested.
+
+**Fix:** This overlaps with MP-001 (identity crisis). If the framework is meant to be
+portable, install.sh needs significant rework. If not, it should be simplified to just
+set up the current project.
+
+---
+
+### MP-009: 11+ patterns have undocumented dependencies; 3 aren't patterns
+
+**Observed:** 2026-01-31
+**Investigated:** 2026-01-31
+**Status:** `confirmed`
+
+**Finding:** Of 30 listed patterns, 11+ have implicit dependencies that aren't documented
+anywhere. Key dependency chains:
+
+- Pattern 17 (Verification) requires 15 (Plan Workflow) + 3 (Testing Strategy)
+- Pattern 19 (Worktree Enforcement) requires 18 (Claims) + 20 (Branch Naming)
+- Pattern 21 (PR Coordination) requires 15 + 18
+- Pattern 22 (Human Review) requires 15 + 17
+- Pattern 13 (Acceptance Gates) requires 7 (ADR) + 8 + 11 + 14
+
+**3 patterns are categorically misclassified:**
+- Pattern 6 (Git Hooks) — tool configuration, not a coordination pattern
+- Pattern 11 (Terminology) — naming convention / glossary
+- Pattern 26 (Ownership Respect) — behavioral norm / discipline
+
+The pattern index presents all 30 as equally independent with only a complexity rating.
+An adopter has no way to know which patterns can be adopted standalone vs which form
+prerequisite chains.
+
+**Fix:** Add `Requires` and `Works With` columns to `01_README.md`. Consider reclassifying
+non-patterns as "conventions" or "infrastructure" in a separate section.
+
+---
+
 ## Resolved
 
 | ID | Description | Resolution | Date |
@@ -341,6 +340,7 @@ inline (e.g., "Structured Logging *(proposed)*"). Minimal change, high clarity g
 | ID | Description | Why Dismissed | Date |
 |----|-------------|---------------|------|
 | MP-003 | Competing "single source of truth" architectures | Not competing. `relationships.yaml` (Pattern 09) is the unified source of truth for doc-code coupling, actively enforced by `check_doc_coupling.py` and `sync_governance.py`. `doc_coupling.yaml` and `governance.yaml` are deprecated (have explicit headers). Acceptance gates (`meta/acceptance_gates/*.yaml`, Patterns 13/14) serve an orthogonal purpose: feature completion verification, not doc-code relationships. The patterns describe different concerns, not contradictory architectures. | 2026-01-31 |
+| MP-010 | Documentation repetition across files | Intentional audience segmentation, not accidental drift. CWD rule appears in 5 places but each serves a distinct audience: CLAUDE.md (canonical rules), UNDERSTANDING_CWD.md (deep reference), CWD_INCIDENT_LOG.md (forensic/historical), GETTING_STARTED.md (onboarding with cross-refs to deep docs), Pattern 19 (enforcement mechanism). Claims similarly follow progressive disclosure. Minor issue: GETTING_STARTED.md line 103 references `scripts/meta/check_claims.py` (wrong path, should be `scripts/check_claims.py`). | 2026-01-31 |
 
 ---
 
