@@ -549,8 +549,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--config",
-        default="scripts/doc_coupling.yaml",
-        help="Path to coupling config (default: scripts/doc_coupling.yaml)",
+        default="scripts/relationships.yaml",
+        help="Path to relationships.yaml (unified doc graph)",
     )
     parser.add_argument(
         "--strict",

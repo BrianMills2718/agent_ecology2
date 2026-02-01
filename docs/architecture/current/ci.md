@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-31 (Plan #244: added claude_md config section to relationships.yaml)
+Last verified: 2026-02-01 (Updated script defaults to relationships.yaml)
 
 ---
 

@@ -331,8 +331,8 @@ def main() -> int:
     parser.add_argument(
         "--config",
         type=Path,
-        default=Path("scripts/governance.yaml"),
-        help="Path to governance.yaml",
+        default=Path("scripts/relationships.yaml"),
+        help="Path to relationships.yaml (unified doc graph)",
     )
 
     args = parser.parse_args()
