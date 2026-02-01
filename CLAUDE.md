@@ -7,6 +7,75 @@
 
 ---
 
+## Philosophy & Goals
+
+**What this is:** An experiment in emergent collective capability for LLM agents under real resource constraints.
+
+**Core thesis:** Give agents scarcity (compute, disk, API budget), sound coordination primitives (contracts, escrow, ledger), and observe what emerges.
+
+**Key principles:**
+- **Physics-first** - Scarcity drives behavior; social structure emerges
+- **Emergence over prescription** - No predefined roles; agents build what they need
+- **Observability over control** - Make behavior observable, not "correct"
+- **Accept risk, observe outcomes** - Learn from what happens
+
+### Architecture Decision Heuristics
+
+1. **Emergence is the goal** - Ask "what does this incentivize?"
+2. **Minimal kernel, maximum flexibility** - Kernel provides primitives for maximum agent capability. "Minimal" means focused on physics/primitives, NOT fewer features. If a kernel primitive expands what agents can do, it increases flexibility. Kernel should not impose policy - just provide building blocks agents compose.
+3. **Align incentives** - Bad incentives = bad emergence
+4. **Pragmatism over purity** - Don't let elegance obstruct goals
+5. **Avoid defaults** - Prefer explicit choice; make defaults configurable
+6. **Genesis as cold-start conveniences** - Genesis artifacts (ledger, escrow) and genesis contracts (freeware, private) are unprivileged conveniences that solve cold-start. They're NOT kernel features - agents could build equivalents. Kernel defaults (what happens when no contract exists) are separate from genesis.
+7. **Selection pressure over protection** - Let agents fail and learn
+8. **Observe, don't prevent** - Reputation emerges from observation
+9. **When in doubt, contract decides** - Contracts are flexible; kernel isn't
+
+---
+
+## Design Principles
+
+1. **Fail Loud** - No silent fallbacks, no `except: pass`
+2. **Maximum Observability** - Log all state changes with context
+3. **Maximum Configurability** - All values from `config/config.yaml`
+4. **Strong Typing** - `mypy --strict`, Pydantic models
+5. **Real Tests, Not Mocks** - Use `# mock-ok: <reason>` if mock needed
+6. **Prefer Libraries** - Ask before hand-rolling algorithms
+7. **Simplest thing that works** - Every solution should be the simplest that solves the problem
+
+### Hard Rules - Stop and Ask If Tempted
+
+Before writing code, check if you're about to:
+
+- **Hack** - Workaround instead of fixing the root cause
+- **Overengineer** - Add abstraction, config, or flexibility "for later"
+- **Add fallbacks** - Handle cases that won't happen
+- **Support legacy** - Keep old code paths "just in case"
+- **Leave dead code** - Commented out, unused, or orphaned code
+- **Create complexity** - Giant files, deep folder nesting, abstract inheritance
+
+If yes → **stop and ask** before proceeding.
+
+### Working Style
+
+- Don't jump into coding complex problems. Brainstorm first, finalize the approach together.
+- Recommend the simplest solution. Present multiple approaches when they exist and ask which is preferred.
+- Raise concerns early. If something feels off or unclear, ask rather than assume.
+- **Delete > Comment.** Remove unused code, don't comment it out.
+- **Flat > Nested.** Prefer flat structures over deep hierarchies.
+
+### Process Awareness
+
+If you find yourself doing something that isn't covered by the meta-process
+(no pattern, no template, no convention), treat it as a signal:
+
+- Either the meta-process has a gap — record it in `meta-process/ISSUES.md`
+- Or you're deviating from process — stop and ask before continuing
+
+Don't silently invent new conventions. Make them explicit.
+
+---
+
 ## Quick Reference - Make Commands
 
 The Makefile has 15 targets. Use `make help` to see them all.
@@ -173,74 +242,6 @@ Run `python scripts/health_check.py --fix` for diagnostics and auto-repair.
 
 ---
 
-## Philosophy & Goals
-
-**What this is:** An experiment in emergent collective capability for LLM agents under real resource constraints.
-
-**Core thesis:** Give agents scarcity (compute, disk, API budget), sound coordination primitives (contracts, escrow, ledger), and observe what emerges.
-
-**Key principles:**
-- **Physics-first** - Scarcity drives behavior; social structure emerges
-- **Emergence over prescription** - No predefined roles; agents build what they need
-- **Observability over control** - Make behavior observable, not "correct"
-- **Accept risk, observe outcomes** - Learn from what happens
-
-### Architecture Decision Heuristics
-
-1. **Emergence is the goal** - Ask "what does this incentivize?"
-2. **Minimal kernel, maximum flexibility** - Kernel provides primitives for maximum agent capability. "Minimal" means focused on physics/primitives, NOT fewer features. If a kernel primitive expands what agents can do, it increases flexibility. Kernel should not impose policy - just provide building blocks agents compose.
-3. **Align incentives** - Bad incentives = bad emergence
-4. **Pragmatism over purity** - Don't let elegance obstruct goals
-5. **Avoid defaults** - Prefer explicit choice; make defaults configurable
-6. **Genesis as cold-start conveniences** - Genesis artifacts (ledger, escrow) and genesis contracts (freeware, private) are unprivileged conveniences that solve cold-start. They're NOT kernel features - agents could build equivalents. Kernel defaults (what happens when no contract exists) are separate from genesis.
-7. **Selection pressure over protection** - Let agents fail and learn
-8. **Observe, don't prevent** - Reputation emerges from observation
-9. **When in doubt, contract decides** - Contracts are flexible; kernel isn't
----
-
-## Design Principles
-
-1. **Fail Loud** - No silent fallbacks, no `except: pass`
-2. **Maximum Observability** - Log all state changes with context
-3. **Maximum Configurability** - All values from `config/config.yaml`
-4. **Strong Typing** - `mypy --strict`, Pydantic models
-5. **Real Tests, Not Mocks** - Use `# mock-ok: <reason>` if mock needed
-6. **Prefer Libraries** - Ask before hand-rolling algorithms
-7. **Simplest thing that works** - Every solution should be the simplest that solves the problem
-
-### Hard Rules - Stop and Ask If Tempted
-
-Before writing code, check if you're about to:
-
-- **Hack** - Workaround instead of fixing the root cause
-- **Overengineer** - Add abstraction, config, or flexibility "for later"
-- **Add fallbacks** - Handle cases that won't happen
-- **Support legacy** - Keep old code paths "just in case"
-- **Leave dead code** - Commented out, unused, or orphaned code
-- **Create complexity** - Giant files, deep folder nesting, abstract inheritance
-
-If yes → **stop and ask** before proceeding.
-
-### Working Style
-
-- Don't jump into coding complex problems. Brainstorm first, finalize the approach together.
-- Recommend the simplest solution. Present multiple approaches when they exist and ask which is preferred.
-- Raise concerns early. If something feels off or unclear, ask rather than assume.
-- **Delete > Comment.** Remove unused code, don't comment it out.
-- **Flat > Nested.** Prefer flat structures over deep hierarchies.
-
-### Process Awareness
-
-If you find yourself doing something that isn't covered by the meta-process
-(no pattern, no template, no convention), treat it as a signal:
-
-- Either the meta-process has a gap — record it in `meta-process/ISSUES.md`
-- Or you're deviating from process — stop and ask before continuing
-
-Don't silently invent new conventions. Make them explicit.
-
----
-
 ## Project Structure
 
 ```
@@ -276,4 +277,3 @@ agent_ecology/
 ## Documentation
 
 See `docs/CLAUDE.md` for the full documentation index. Doc-code coupling is enforced by `make check`.
-
