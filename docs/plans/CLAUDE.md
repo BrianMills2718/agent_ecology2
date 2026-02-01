@@ -53,7 +53,7 @@ Master index of all gaps and their implementation plans.
 | 241 | [Gap 241: Re-run Gap Analysis Using Pattern #30](241_gap_reanalysis.md) | Medium | ✅ Complete | - |
 | 242 | [Gap 242: Makefile Workflow Simplification](242_makefile_simplification.md) | Medium | ✅ Complete | - |
 | 245 | [Schema Audit Cleanup](245_schema_audit_cleanup.md) | P1 (code bug) + P2 (doc consistency) | 📋 Planned | - |
-| 246 | [Plan 246: Pre-Merge Plan Completion Enforcement](246_pre_merge_plan_completion.md) | Medium | 🚧 In Progress | - |
+| 246 | [Plan 246: Pre-Merge Plan Completion Enforcement](246_pre_merge_plan_completion.md) | Medium | ✅ Complete | - |
 ---
 
 ## TDD Workflow
