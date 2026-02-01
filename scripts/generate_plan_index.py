@@ -203,9 +203,20 @@ def generate_index() -> str:
     plan_files = sorted(PLANS_DIR.glob("[0-9]*_*.md"))
 
     plans = []
+    seen_numbers: dict[int, str] = {}
     for pf in plan_files:
         meta = parse_plan_file(pf)
         if meta:
+            if meta["number"] in seen_numbers:
+                print(
+                    f"ERROR: Duplicate plan number {meta['number']}:\n"
+                    f"  - {seen_numbers[meta['number']]}\n"
+                    f"  - {meta['file']}\n"
+                    f"Rename one file to the next available number.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            seen_numbers[meta["number"]] = meta["file"]
             plans.append(meta)
 
     # Sort by plan number

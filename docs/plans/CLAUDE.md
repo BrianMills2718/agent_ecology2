@@ -52,7 +52,7 @@ Master index of all gaps and their implementation plans.
 | 240 | [Plan 240: Cross-CC Review Enforcement](240_cross_cc_review_enforcement.md) | Medium | 📋 Deferred | - |
 | 241 | [Gap 241: Re-run Gap Analysis Using Pattern #30](241_gap_reanalysis.md) | Medium | 📋 Planned | - |
 | 242 | [Gap 242: Makefile Workflow Simplification](242_makefile_simplification.md) | Medium | 🚧 In Progress | - |
-| 242 | [Schema Audit Cleanup](242_schema_audit_cleanup.md) | P1 (code bug) + P2 (doc consistency) | 📋 Planned | - |
+| 245 | [Schema Audit Cleanup](245_schema_audit_cleanup.md) | P1 (code bug) + P2 (doc consistency) | 📋 Planned | - |
 ---
 
 ## TDD Workflow

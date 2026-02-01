@@ -43,16 +43,23 @@ TEST_TIMEOUT_SECONDS = 300  # 5 minutes
 
 
 def find_plan_file(plan_number: int, plans_dir: Path) -> Path | None:
-    """Find a plan file by number."""
+    """Find a plan file by number. Fails if duplicates exist."""
     patterns = [
         f"{plan_number:02d}_*.md",
         f"{plan_number}_*.md",
     ]
+    all_matches: list[Path] = []
     for pattern in patterns:
-        matches = list(plans_dir.glob(pattern))
-        if matches:
-            return matches[0]
-    return None
+        all_matches.extend(plans_dir.glob(pattern))
+    # Deduplicate (both patterns may match same file)
+    unique = list({m.resolve(): m for m in all_matches}.values())
+    if len(unique) > 1:
+        print(f"ERROR: Multiple plan files for #{plan_number}:")
+        for m in unique:
+            print(f"  - {m.name}")
+        print("Rename one file to the next available number.")
+        sys.exit(1)
+    return unique[0] if unique else None
 
 
 def get_plan_status(plan_file: Path) -> str:
@@ -371,39 +378,26 @@ commit: {commit}
     return True
 
 
-def update_plan_index(
-    plan_number: int,
-    plans_dir: Path,
+def regenerate_plan_index(
     dry_run: bool = False,
 ) -> bool:
-    """Update plan status in CLAUDE.md index.
+    """Regenerate CLAUDE.md index from plan files (single source of truth).
 
-    Returns True if updated successfully.
+    Returns True if successful.
     """
-    index_file = plans_dir / "CLAUDE.md"
-    if not index_file.exists():
-        return False
-
-    content = index_file.read_text()
-
-    # Find and update the plan row
-    # Pattern: | N | [Name](file.md) | Priority | Status | Blocks |
-    pattern = rf"(\|\s*{plan_number}\s*\|[^|]+\|[^|]+\|)\s*[^|]+(\s*\|)"
-
-    # Use literal checkmark to avoid regex escape issues
-    checkmark = "\u2705"  # ✅
-    replacement = f"\\1 {checkmark} Complete \\2"
-    new_content = re.sub(pattern, replacement, content)
-
-    if new_content == content:
-        print(f"  WARNING: Could not find plan #{plan_number} in index")
-        return False
-
     if dry_run:
-        print(f"[DRY RUN] Would update plans/CLAUDE.md index")
+        print("[DRY RUN] Would regenerate plans/CLAUDE.md index")
         return True
 
-    index_file.write_text(new_content)
+    result = subprocess.run(
+        [sys.executable, "scripts/generate_plan_index.py", "--write"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if result.returncode != 0:
+        print(f"  WARNING: Failed to regenerate plan index: {result.stderr}")
+        return False
     return True
 
 
@@ -537,7 +531,7 @@ def complete_plan(
         dry_run,
     )
 
-    update_plan_index(plan_number, plans_dir, dry_run)
+    regenerate_plan_index(dry_run)
 
     if not dry_run:
         print(f"\n\u2705 Plan #{plan_number} marked COMPLETE")

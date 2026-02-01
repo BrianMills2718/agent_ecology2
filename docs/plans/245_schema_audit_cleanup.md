@@ -1,4 +1,4 @@
-# Plan #242: Schema Audit Cleanup
+# Plan #245: Schema Audit Cleanup
 
 **Status:** Planned
 **Priority:** P1 (code bug) + P2 (doc consistency)
