@@ -353,7 +353,7 @@ class TestCreateAgentArtifact:
             agent_id="agent_001",
             created_by="agent_001",
             agent_config={},
-            access_contract_id="genesis_contract_freeware",
+            access_contract_id="kernel_contract_freeware",
         )
         # Freeware uses default policy (open read)
         assert "*" in agent.policy["allow_read"]
@@ -364,7 +364,7 @@ class TestCreateAgentArtifact:
             agent_id="agent_001",
             created_by="agent_001",
             agent_config={},
-            access_contract_id="genesis_contract_public",
+            access_contract_id="kernel_contract_public",
         )
         assert "*" in agent.policy["allow_read"]
         assert "*" in agent.policy["allow_write"]

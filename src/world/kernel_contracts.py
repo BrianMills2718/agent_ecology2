@@ -1,6 +1,6 @@
-"""Genesis contracts - built-in access control contracts.
+"""Kernel contracts - built-in access control contracts.
 
-This module provides the five genesis contracts that are available at world
+This module provides the five kernel contracts that are available at world
 initialization. These contracts cover the most common access patterns:
 
 - FreewareContract: Anyone can read/execute/invoke, only creator can modify
@@ -10,8 +10,8 @@ initialization. These contracts cover the most common access patterns:
 - PrivateContract: Only creator can access
 - PublicContract: Anyone can do anything (true commons)
 
-Genesis contracts are immutable and cannot be modified. They are referenced
-by their contract_id (e.g., 'genesis_contract_freeware') and are available
+Kernel contracts are immutable and cannot be modified. They are referenced
+by their contract_id (e.g., 'kernel_contract_freeware') and are available
 without needing to be created as artifacts.
 
 Custom contracts can be created by agents as executable artifacts that
@@ -52,7 +52,7 @@ class FreewareContract:
     freeware software, anyone can use it but only the author can change it.
     """
 
-    contract_id: str = "genesis_contract_freeware"
+    contract_id: str = "kernel_contract_freeware"
     contract_type: str = "freeware"
 
     def check_permission(
@@ -114,7 +114,7 @@ class TransferableFreewareContract:
     is tied to the immutable created_by field.
     """
 
-    contract_id: str = "genesis_contract_transferable_freeware"
+    contract_id: str = "kernel_contract_transferable_freeware"
     contract_type: str = "transferable_freeware"
 
     def check_permission(
@@ -183,7 +183,7 @@ class SelfOwnedContract:
     during execution.
     """
 
-    contract_id: str = "genesis_contract_self_owned"
+    contract_id: str = "kernel_contract_self_owned"
     contract_type: str = "self_owned"
 
     def check_permission(
@@ -235,7 +235,7 @@ class PrivateContract:
     with a private contract cannot even access itself - only the owner can.
     """
 
-    contract_id: str = "genesis_contract_private"
+    contract_id: str = "kernel_contract_private"
     contract_type: str = "private"
 
     def check_permission(
@@ -288,7 +288,7 @@ class PublicContract:
     use freeware instead.
     """
 
-    contract_id: str = "genesis_contract_public"
+    contract_id: str = "kernel_contract_public"
     contract_type: str = "public"
 
     def check_permission(
@@ -312,8 +312,8 @@ class PublicContract:
         return PermissionResult(allowed=True, reason="public: open access")
 
 
-# Registry of genesis contracts - singleton instances
-GENESIS_CONTRACTS: dict[str, AccessContract] = {
+# Registry of kernel contracts - singleton instances
+KERNEL_CONTRACTS: dict[str, AccessContract] = {
     "freeware": FreewareContract(),
     "transferable_freeware": TransferableFreewareContract(),
     "self_owned": SelfOwnedContract(),
@@ -322,8 +322,8 @@ GENESIS_CONTRACTS: dict[str, AccessContract] = {
 }
 
 
-def get_genesis_contract(contract_type: str) -> AccessContract:
-    """Get a genesis contract by type.
+def get_kernel_contract(contract_type: str) -> AccessContract:
+    """Get a kernel contract by type.
 
     Args:
         contract_type: One of 'freeware', 'self_owned', 'private', 'public'
@@ -332,37 +332,37 @@ def get_genesis_contract(contract_type: str) -> AccessContract:
         The corresponding AccessContract instance
 
     Raises:
-        ValueError: If contract_type is not a valid genesis contract type
+        ValueError: If contract_type is not a valid kernel contract type
     """
-    if contract_type not in GENESIS_CONTRACTS:
-        valid_types = ", ".join(sorted(GENESIS_CONTRACTS.keys()))
+    if contract_type not in KERNEL_CONTRACTS:
+        valid_types = ", ".join(sorted(KERNEL_CONTRACTS.keys()))
         raise ValueError(
-            f"Unknown genesis contract type: '{contract_type}'. "
+            f"Unknown kernel contract type: '{contract_type}'. "
             f"Valid types: {valid_types}"
         )
-    return GENESIS_CONTRACTS[contract_type]
+    return KERNEL_CONTRACTS[contract_type]
 
 
 def get_contract_by_id(contract_id: str) -> AccessContract | None:
-    """Get a genesis contract by its full contract_id.
+    """Get a kernel contract by its full contract_id.
 
     Args:
         contract_id: The contract's unique identifier
-                    (e.g., 'genesis_contract_freeware')
+                    (e.g., 'kernel_contract_freeware')
 
     Returns:
         The corresponding AccessContract instance, or None if not found
     """
-    for contract in GENESIS_CONTRACTS.values():
+    for contract in KERNEL_CONTRACTS.values():
         if contract.contract_id == contract_id:
             return contract
     return None
 
 
-def list_genesis_contracts() -> list[str]:
-    """List all available genesis contract types.
+def list_kernel_contracts() -> list[str]:
+    """List all available kernel contract types.
 
     Returns:
         List of contract type names (e.g., ['freeware', 'private', ...])
     """
-    return list(GENESIS_CONTRACTS.keys())
+    return list(KERNEL_CONTRACTS.keys())

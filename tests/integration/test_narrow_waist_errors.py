@@ -53,7 +53,7 @@ class TestReadArtifactErrors:
             artifact_id="private_artifact",
             artifact_type="data",
             content="Secret content",
-            access_contract_id="genesis_contract_private",  # Only owner can access
+            access_contract_id="kernel_contract_private",  # Only owner can access
         )
         world_with_agent.execute_action(write_intent)
 
@@ -238,7 +238,7 @@ class TestInvokeArtifactErrors:
             executable=True,
             price=0,
             code="def run(*args): return 'secret'",
-            access_contract_id="genesis_contract_private",  # Only owner can access
+            access_contract_id="kernel_contract_private",  # Only owner can access
             interface=interface,
         )
         world_with_agent.execute_action(write_intent)

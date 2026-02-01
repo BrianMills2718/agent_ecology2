@@ -354,7 +354,7 @@ executor:
 # -----------------------------------------------------------------------------
 contracts:
   default_when_null: creator_only                # Null contract: only creator can access (ADR-0019)
-  default_on_missing: genesis_contract_freeware  # Dangling contract: fallback to freeware (ADR-0017)
+  default_on_missing: kernel_contract_freeware  # Dangling contract: fallback to freeware (ADR-0017)
 
 # -----------------------------------------------------------------------------
 # VALIDATION - Input validation limits to prevent DoS

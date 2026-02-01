@@ -124,8 +124,7 @@ def execute_invoke(
 
     # Plan #234: Detect handle_request on target (ADR-0024)
     target_has_handle_request = (
-        target.genesis_methods is None
-        and target.code
+        target.code
         and "def handle_request(" in target.code
     )
 

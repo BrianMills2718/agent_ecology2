@@ -72,7 +72,7 @@ class ArtifactInfo(BaseModel):
     updated_at: str
     mint_score: float | None = None
     mint_status: Literal["pending", "scored", "none"] = "none"
-    access_contract_id: str = "genesis_contract_freeware"  # Plan #133
+    access_contract_id: str = "kernel_contract_freeware"  # Plan #133
 
 
 class ActionEvent(BaseModel):
@@ -453,7 +453,7 @@ class ArtifactDetail(BaseModel):
     # Interface schema for discoverability (Plan #54)
     interface: dict[str, Any] | None = None
     # Access control contract (Plan #133)
-    access_contract_id: str = "genesis_contract_freeware"
+    access_contract_id: str = "kernel_contract_freeware"
 
 
 # Dependency Graph Models (Plan #64)

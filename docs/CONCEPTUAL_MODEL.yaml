@@ -44,7 +44,7 @@ artifact:
     interface: { type: "dict | None", default: "None", note: "MCP-compatible schema" }
     genesis_methods: { type: "dict | None", default: "None" }
     depends_on: { type: list, default: "[]" }
-    access_contract_id: { type: str, default: '"genesis_contract_freeware"' }
+    access_contract_id: { type: str, default: '"kernel_contract_freeware"' }
     metadata: { type: dict, default: "{}" }
     kernel_protected: { type: bool, default: false, note: "Plan #235 Phase 1" }
 
@@ -119,8 +119,8 @@ kernel_interface:
 permission_system:
   architecture: "ADR-0019 (kernel-mediated contract checking)"
   flow: "Agent → Kernel → Contract.check_permission() → Allow/Deny → Kernel enforces"
-  default_contract: "genesis_contract_freeware"
-  genesis_contracts:
+  default_contract: "kernel_contract_freeware"
+  kernel_contracts:
     - "freeware (public read/invoke, owner-only write)"
     - "self_owned (owner-only everything)"
     - "private (owner-only)"

@@ -15,7 +15,7 @@ This is the heart of the simulation. All world state, resources, and execution l
 | `interface_validation.py` | Argument validation against interface schemas (Plan #181) |
 | `invoke_handler.py` | Invoke closure factory for artifact-to-artifact calls (Plan #181) |
 | `actions.py` | Action definitions (noop, read, write, invoke) |
-| `genesis_contracts.py` | Built-in access control contracts |
+| `kernel_contracts.py` | Built-in access control contracts |
 | `contracts.py` | Contract types and permission checking |
 | `kernel_interface.py` | KernelState/KernelActions for artifact sandbox |
 | `invocation_registry.py` | Track artifact invocations |

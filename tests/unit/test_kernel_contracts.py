@@ -1,16 +1,16 @@
-"""Unit tests for genesis contracts (ADR-0019).
+"""Unit tests for kernel contracts (ADR-0019).
 
-Tests each of the four genesis contracts defined in src/world/genesis_contracts.py:
+Tests each of the four kernel contracts defined in src/world/kernel_contracts.py:
 - FreewareContract: Open read/invoke, owner-only write/edit/delete
 - SelfOwnedContract: Self or owner access only
 - PrivateContract: Owner-only access
 - PublicContract: Open access for all actions
 
 Also tests the helper functions:
-- get_genesis_contract()
+- get_kernel_contract()
 - get_contract_by_id()
-- list_genesis_contracts()
-- GENESIS_CONTRACTS registry
+- list_kernel_contracts()
+- KERNEL_CONTRACTS registry
 """
 
 from __future__ import annotations
@@ -18,15 +18,15 @@ from __future__ import annotations
 import pytest
 
 from src.world.contracts import AccessContract, PermissionAction, PermissionResult
-from src.world.genesis_contracts import (
-    GENESIS_CONTRACTS,
+from src.world.kernel_contracts import (
+    KERNEL_CONTRACTS,
     FreewareContract,
     PrivateContract,
     PublicContract,
     SelfOwnedContract,
     get_contract_by_id,
-    get_genesis_contract,
-    list_genesis_contracts,
+    get_kernel_contract,
+    list_kernel_contracts,
 )
 
 
@@ -51,7 +51,7 @@ class TestFreewareContract:
 
     def test_contract_id(self, contract: FreewareContract) -> None:
         """Verify contract has correct ID."""
-        assert contract.contract_id == "genesis_contract_freeware"
+        assert contract.contract_id == "kernel_contract_freeware"
 
     def test_contract_type(self, contract: FreewareContract) -> None:
         """Verify contract has correct type."""
@@ -169,7 +169,7 @@ class TestSelfOwnedContract:
 
     def test_contract_id(self, contract: SelfOwnedContract) -> None:
         """Verify contract has correct ID."""
-        assert contract.contract_id == "genesis_contract_self_owned"
+        assert contract.contract_id == "kernel_contract_self_owned"
 
     def test_contract_type(self, contract: SelfOwnedContract) -> None:
         """Verify contract has correct type."""
@@ -278,7 +278,7 @@ class TestPrivateContract:
 
     def test_contract_id(self, contract: PrivateContract) -> None:
         """Verify contract has correct ID."""
-        assert contract.contract_id == "genesis_contract_private"
+        assert contract.contract_id == "kernel_contract_private"
 
     def test_contract_type(self, contract: PrivateContract) -> None:
         """Verify contract has correct type."""
@@ -340,7 +340,7 @@ class TestPublicContract:
 
     def test_contract_id(self, contract: PublicContract) -> None:
         """Verify contract has correct ID."""
-        assert contract.contract_id == "genesis_contract_public"
+        assert contract.contract_id == "kernel_contract_public"
 
     def test_contract_type(self, contract: PublicContract) -> None:
         """Verify contract has correct type."""
@@ -383,68 +383,68 @@ class TestPublicContract:
         assert delete_result.allowed is True
 
 
-class TestGenesisContractsRegistry:
-    """Tests for the GENESIS_CONTRACTS registry."""
+class TestKernelContractsRegistry:
+    """Tests for the KERNEL_CONTRACTS registry."""
 
     def test_registry_contains_all_contracts(self) -> None:
-        """Verify registry contains all five genesis contracts (Plan #213)."""
+        """Verify registry contains all five kernel contracts (Plan #213)."""
         expected_types = {"freeware", "transferable_freeware", "self_owned", "private", "public"}
-        assert set(GENESIS_CONTRACTS.keys()) == expected_types
+        assert set(KERNEL_CONTRACTS.keys()) == expected_types
 
     def test_registry_values_are_contracts(self) -> None:
         """Verify all registry values implement AccessContract."""
-        for name, contract in GENESIS_CONTRACTS.items():
+        for name, contract in KERNEL_CONTRACTS.items():
             assert isinstance(
                 contract, AccessContract
             ), f"{name} should implement AccessContract"
 
     def test_registry_contracts_have_correct_types(self) -> None:
         """Verify registry contracts have matching types."""
-        for name, contract in GENESIS_CONTRACTS.items():
+        for name, contract in KERNEL_CONTRACTS.items():
             assert (
                 contract.contract_type == name
             ), f"Contract type should match registry key"
 
     def test_registry_contracts_are_singletons(self) -> None:
         """Verify registry returns same instances."""
-        contract1 = GENESIS_CONTRACTS["freeware"]
-        contract2 = GENESIS_CONTRACTS["freeware"]
+        contract1 = KERNEL_CONTRACTS["freeware"]
+        contract2 = KERNEL_CONTRACTS["freeware"]
         assert contract1 is contract2
 
 
-class TestGetGenesisContract:
-    """Tests for get_genesis_contract() helper."""
+class TestGetKernelContract:
+    """Tests for get_kernel_contract() helper."""
 
     def test_get_freeware(self) -> None:
         """Verify can get freeware contract."""
-        contract = get_genesis_contract("freeware")
+        contract = get_kernel_contract("freeware")
         assert isinstance(contract, FreewareContract)
         assert contract.contract_type == "freeware"
 
     def test_get_self_owned(self) -> None:
         """Verify can get self_owned contract."""
-        contract = get_genesis_contract("self_owned")
+        contract = get_kernel_contract("self_owned")
         assert isinstance(contract, SelfOwnedContract)
 
     def test_get_private(self) -> None:
         """Verify can get private contract."""
-        contract = get_genesis_contract("private")
+        contract = get_kernel_contract("private")
         assert isinstance(contract, PrivateContract)
 
     def test_get_public(self) -> None:
         """Verify can get public contract."""
-        contract = get_genesis_contract("public")
+        contract = get_kernel_contract("public")
         assert isinstance(contract, PublicContract)
 
     def test_invalid_type_raises(self) -> None:
         """Verify invalid type raises ValueError."""
-        with pytest.raises(ValueError, match="Unknown genesis contract type"):
-            get_genesis_contract("invalid")
+        with pytest.raises(ValueError, match="Unknown kernel contract type"):
+            get_kernel_contract("invalid")
 
     def test_error_message_shows_valid_types(self) -> None:
         """Verify error message lists valid types."""
         with pytest.raises(ValueError) as exc_info:
-            get_genesis_contract("bad_type")
+            get_kernel_contract("bad_type")
         error_msg = str(exc_info.value)
         assert "freeware" in error_msg
         assert "private" in error_msg
@@ -455,25 +455,25 @@ class TestGetContractById:
 
     def test_get_by_freeware_id(self) -> None:
         """Verify can get contract by freeware ID."""
-        contract = get_contract_by_id("genesis_contract_freeware")
+        contract = get_contract_by_id("kernel_contract_freeware")
         assert contract is not None
         assert isinstance(contract, FreewareContract)
 
     def test_get_by_self_owned_id(self) -> None:
         """Verify can get contract by self_owned ID."""
-        contract = get_contract_by_id("genesis_contract_self_owned")
+        contract = get_contract_by_id("kernel_contract_self_owned")
         assert contract is not None
         assert isinstance(contract, SelfOwnedContract)
 
     def test_get_by_private_id(self) -> None:
         """Verify can get contract by private ID."""
-        contract = get_contract_by_id("genesis_contract_private")
+        contract = get_contract_by_id("kernel_contract_private")
         assert contract is not None
         assert isinstance(contract, PrivateContract)
 
     def test_get_by_public_id(self) -> None:
         """Verify can get contract by public ID."""
-        contract = get_contract_by_id("genesis_contract_public")
+        contract = get_contract_by_id("kernel_contract_public")
         assert contract is not None
         assert isinstance(contract, PublicContract)
 
@@ -488,22 +488,22 @@ class TestGetContractById:
         assert result is None
 
 
-class TestListGenesisContracts:
-    """Tests for list_genesis_contracts() helper."""
+class TestListKernelContracts:
+    """Tests for list_kernel_contracts() helper."""
 
     def test_returns_all_types(self) -> None:
         """Verify returns all five types (Plan #213)."""
-        types = list_genesis_contracts()
+        types = list_kernel_contracts()
         assert set(types) == {"freeware", "transferable_freeware", "self_owned", "private", "public"}
 
     def test_returns_list(self) -> None:
         """Verify returns a list."""
-        result = list_genesis_contracts()
+        result = list_kernel_contracts()
         assert isinstance(result, list)
 
     def test_returns_strings(self) -> None:
         """Verify all items are strings."""
-        types = list_genesis_contracts()
+        types = list_kernel_contracts()
         assert all(isinstance(t, str) for t in types)
 
 
@@ -512,8 +512,8 @@ class TestContractComparison:
 
     @pytest.fixture
     def all_contracts(self) -> dict[str, AccessContract]:
-        """Get all genesis contracts."""
-        return dict(GENESIS_CONTRACTS)
+        """Get all kernel contracts."""
+        return dict(KERNEL_CONTRACTS)
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
@@ -625,7 +625,7 @@ class TestContractComparison:
     def test_zero_cost_by_default(
         self, all_contracts: dict[str, AccessContract], context: dict[str, object]
     ) -> None:
-        """Verify genesis contracts don't charge by default."""
+        """Verify kernel contracts don't charge by default."""
         for name, contract in all_contracts.items():
             result = contract.check_permission(
                 caller="owner_agent",

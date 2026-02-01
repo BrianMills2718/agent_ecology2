@@ -2,7 +2,7 @@
 
 System-provided artifacts that exist at world initialization.
 
-**Last verified:** 2026-01-26 (Plan #226: genesis_loop_detector)
+**Last verified:** 2026-01-31 (kernel_contracts rename)
 
 ---
 

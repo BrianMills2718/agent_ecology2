@@ -40,17 +40,17 @@ from .decision_artifacts import (
     GenesisLoopDetector,
 )
 from .event_bus import GenesisEventBus
-from ..genesis_contracts import GENESIS_CONTRACTS
+from ..kernel_contracts import KERNEL_CONTRACTS
 
 
 def _create_contract_artifacts(artifact_store: ArtifactStore) -> None:
-    """Create readable artifacts for genesis contracts (Plan #165).
+    """Create readable artifacts for kernel contracts (Plan #165).
 
     These artifacts describe the contract rules in a human-readable format.
     They are not executable - the actual permission checking still uses
     the Python contract classes. This enables:
     - Discovery via query_kernel artifacts {type: "contract"}
-    - Reading rules via read_artifact genesis_contract_freeware
+    - Reading rules via read_artifact kernel_contract_freeware
     - Filtering by metadata.rules using Plan #168 metadata feature
 
     Args:
@@ -127,7 +127,7 @@ def _create_contract_artifacts(artifact_store: ArtifactStore) -> None:
     }
 
     for contract_type, info in contract_info.items():
-        contract_id = f"genesis_contract_{contract_type}"
+        contract_id = f"kernel_contract_{contract_type}"
         artifact_store.write(
             artifact_id=contract_id,
             type="contract",

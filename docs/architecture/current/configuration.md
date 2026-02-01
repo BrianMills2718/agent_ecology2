@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-25 (Plan #190 - StoreConfig removed, genesis_store no longer configured)
+**Last verified:** 2026-01-31 (kernel_contracts rename)
 
 ---
 

@@ -17,10 +17,15 @@ from .simulation_engine import SimulationEngine, ThinkingCostResult, BudgetCheck
 from .rate_tracker import RateTracker, UsageRecord
 from .invocation_registry import InvocationRegistry, InvocationRecord, InvocationStats
 from .contracts import PermissionAction, PermissionResult, AccessContract
-from .genesis_contracts import (
+from .kernel_contracts import (
     FreewareContract, SelfOwnedContract, PrivateContract, PublicContract,
-    GENESIS_CONTRACTS, get_genesis_contract, get_contract_by_id, list_genesis_contracts
+    TransferableFreewareContract,
+    KERNEL_CONTRACTS, get_kernel_contract, get_contract_by_id, list_kernel_contracts,
 )
+# Backward-compatible aliases (deprecated - use kernel_* names)
+GENESIS_CONTRACTS = KERNEL_CONTRACTS
+get_genesis_contract = get_kernel_contract
+list_genesis_contracts = list_kernel_contracts
 from .mint_auction import MintAuction, KernelMintSubmission, KernelMintResult
 from .resources import (
     RESOURCE_LLM_BUDGET, RESOURCE_DISK, RESOURCE_LLM_TOKENS, RESOURCE_CPU,
@@ -41,7 +46,10 @@ __all__ = [
     "InvocationRegistry", "InvocationRecord", "InvocationStats",
     "PermissionAction", "PermissionResult", "AccessContract",
     "FreewareContract", "SelfOwnedContract", "PrivateContract", "PublicContract",
-    "GENESIS_CONTRACTS", "get_genesis_contract", "get_contract_by_id", "list_genesis_contracts",
+    "KERNEL_CONTRACTS", "get_kernel_contract", "get_contract_by_id", "list_kernel_contracts",
+    # Backward-compatible aliases (deprecated)
+    "GENESIS_CONTRACTS", "get_genesis_contract", "list_genesis_contracts",
+    "TransferableFreewareContract",
     # MintAuction (extracted from World - TD-001)
     "MintAuction", "KernelMintSubmission", "KernelMintResult",
     # Resource constants (TD-004)

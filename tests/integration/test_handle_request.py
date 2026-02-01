@@ -78,7 +78,7 @@ def handle_request(caller, operation, args):
         # Set restrictive access contract that would block run() artifacts
         artifact = w.artifacts.get("hr_service")
         assert artifact is not None
-        artifact.access_contract_id = "genesis_contract_private"
+        artifact.access_contract_id = "kernel_contract_private"
 
         # Bob invokes — kernel permission check is skipped for handle_request
         intent = InvokeArtifactIntent(
@@ -107,7 +107,7 @@ class TestHandleRequestBackwardsCompat:
         # Set private contract
         artifact = w.artifacts.get("private_service")
         assert artifact is not None
-        artifact.access_contract_id = "genesis_contract_private"
+        artifact.access_contract_id = "kernel_contract_private"
 
         # Bob tries to invoke — should be denied by kernel permission
         intent = InvokeArtifactIntent(

@@ -1,6 +1,6 @@
-"""Tests for Plan #165: Genesis Contracts as Artifacts.
+"""Tests for Plan #165: Kernel Contracts as Artifacts.
 
-Tests that genesis contracts are discoverable as artifacts, so agents can
+Tests that kernel contracts are discoverable as artifacts, so agents can
 read them via query_kernel to understand permission rules.
 
 Note: genesis_store was removed in Plan #190. Discovery now uses query_kernel action.
@@ -11,9 +11,9 @@ import pytest
 from src.world.artifacts import ArtifactStore
 from src.world.ledger import Ledger
 from src.world.genesis.factory import create_genesis_artifacts
-from src.world.genesis_contracts import (
+from src.world.kernel_contracts import (
     get_contract_by_id,
-    list_genesis_contracts,
+    list_kernel_contracts,
 )
 
 
@@ -43,19 +43,19 @@ def genesis_artifacts(ledger: Ledger, artifact_store: ArtifactStore) -> dict:
 
 
 class TestContractArtifactDiscovery:
-    """Test that contracts are discoverable via genesis_store."""
+    """Test that contracts are discoverable via artifact store."""
 
     def test_contract_artifacts_created(
         self,
         artifact_store: ArtifactStore,
         genesis_artifacts: dict,
     ) -> None:
-        """Genesis contract info artifacts are created."""
+        """Kernel contract info artifacts are created."""
         # Contract artifacts should exist in artifact store
-        assert artifact_store.exists("genesis_contract_freeware")
-        assert artifact_store.exists("genesis_contract_private")
-        assert artifact_store.exists("genesis_contract_self_owned")
-        assert artifact_store.exists("genesis_contract_public")
+        assert artifact_store.exists("kernel_contract_freeware")
+        assert artifact_store.exists("kernel_contract_private")
+        assert artifact_store.exists("kernel_contract_self_owned")
+        assert artifact_store.exists("kernel_contract_public")
 
     def test_contract_artifacts_have_correct_type(
         self,
@@ -63,7 +63,7 @@ class TestContractArtifactDiscovery:
         genesis_artifacts: dict,
     ) -> None:
         """Contract artifacts have type 'contract'."""
-        freeware = artifact_store.get("genesis_contract_freeware")
+        freeware = artifact_store.get("kernel_contract_freeware")
         assert freeware is not None
         assert freeware.type == "contract"
 
@@ -73,7 +73,7 @@ class TestContractArtifactDiscovery:
         genesis_artifacts: dict,
     ) -> None:
         """Contract artifact content describes the permission rules."""
-        freeware = artifact_store.get("genesis_contract_freeware")
+        freeware = artifact_store.get("kernel_contract_freeware")
         assert freeware is not None
         content = freeware.content
 
@@ -88,7 +88,7 @@ class TestContractArtifactDiscovery:
         genesis_artifacts: dict,
     ) -> None:
         """Contract artifacts are not executable (just info)."""
-        freeware = artifact_store.get("genesis_contract_freeware")
+        freeware = artifact_store.get("kernel_contract_freeware")
         assert freeware is not None
         assert freeware.executable is False
 
@@ -101,7 +101,7 @@ class TestContractPermissionCheckingUnchanged:
 
     def test_get_contract_by_id_still_works(self) -> None:
         """get_contract_by_id returns the Python contract object."""
-        contract = get_contract_by_id("genesis_contract_freeware")
+        contract = get_contract_by_id("kernel_contract_freeware")
         assert contract is not None
         assert hasattr(contract, "check_permission")
 
@@ -109,7 +109,7 @@ class TestContractPermissionCheckingUnchanged:
         """Freeware contract still allows read access."""
         from src.world.contracts import PermissionAction
 
-        contract = get_contract_by_id("genesis_contract_freeware")
+        contract = get_contract_by_id("kernel_contract_freeware")
         assert contract is not None
 
         result = contract.check_permission(
@@ -124,7 +124,7 @@ class TestContractPermissionCheckingUnchanged:
         """Private contract still denies non-owner access."""
         from src.world.contracts import PermissionAction
 
-        contract = get_contract_by_id("genesis_contract_private")
+        contract = get_contract_by_id("kernel_contract_private")
         assert contract is not None
 
         result = contract.check_permission(
@@ -145,7 +145,7 @@ class TestContractArtifactMetadata:
         genesis_artifacts: dict,
     ) -> None:
         """Contract artifacts have metadata describing rules."""
-        freeware = artifact_store.get("genesis_contract_freeware")
+        freeware = artifact_store.get("kernel_contract_freeware")
         assert freeware is not None
 
         # Metadata should contain structured rule info

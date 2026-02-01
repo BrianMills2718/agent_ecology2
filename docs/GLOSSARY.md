@@ -50,7 +50,7 @@ All artifacts have these metadata fields (see `src/world/artifacts.py`):
 | `type` | str | Artifact type (e.g. `"agent"`, `"trigger"`, `"config"`, `"memory"`, `"contract"`, `"right"`). Kernel branches on this value. Immutable after creation (Plan #235). |
 | `content` | str | Artifact content (code, data, config) |
 | `code` | str | Executable Python code; must define `run()` if executable (default `""`) |
-| `access_contract_id` | str | Governing contract for permissions (default: `genesis_contract_freeware`). Creator-only mutable (Plan #235). |
+| `access_contract_id` | str | Governing contract for permissions (default: `kernel_contract_freeware`). Creator-only mutable (Plan #235). |
 | `created_by` | str | Principal who created the artifact |
 | `created_at` | str | Creation timestamp (ISO format string) |
 | `updated_at` | str | Last modification timestamp (ISO format string) |
@@ -223,7 +223,7 @@ Eleven action types:
 | **access_contract_id** | Field on every artifact pointing to its governing contract |
 | **check_permission** | Required method contracts implement to answer permission questions |
 | **immediate caller** | When A→B→C, C's contract sees B (not A) as the caller |
-| **null contract** | When `access_contract_id` is null (rare — default is `genesis_contract_freeware`), creator has full rights, others blocked |
+| **null contract** | When `access_contract_id` is null (rare — default is `kernel_contract_freeware`), creator has full rights, others blocked |
 | **dangling contract** | When `access_contract_id` points to deleted contract, falls back to configurable default |
 
 **Five Kernel Actions** (all contract-checked, see ADR-0019):

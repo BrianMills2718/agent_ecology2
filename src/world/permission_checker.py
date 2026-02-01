@@ -24,7 +24,7 @@ from .contracts import (
     PermissionAction,
     PermissionResult,
 )
-from .genesis_contracts import get_contract_by_id, get_genesis_contract
+from .kernel_contracts import get_contract_by_id, get_kernel_contract
 
 if TYPE_CHECKING:
     from .artifacts import Artifact
@@ -52,7 +52,7 @@ def get_contract_with_fallback_info(
 ) -> tuple[AccessContract | ExecutableContract, bool, str | None]:
     """Get contract by ID, with info about whether fallback was used.
 
-    Checks genesis contracts first, then falls back to configurable
+    Checks kernel contracts first, then falls back to configurable
     default if not found. Also supports ExecutableContracts registered
     via register_executable_contract().
 
@@ -72,7 +72,7 @@ def get_contract_with_fallback_info(
     if contract_id in contract_cache:
         return contract_cache[contract_id], False, None
 
-    # Check genesis contracts
+    # Check kernel contracts
     contract = get_contract_by_id(contract_id)
     if contract:
         contract_cache[contract_id] = contract
@@ -83,7 +83,7 @@ def get_contract_with_fallback_info(
 
     # Log warning for observability
     logger = logging.getLogger(__name__)
-    default_contract_id = config_get("contracts.default_on_missing") or "genesis_contract_freeware"
+    default_contract_id = config_get("contracts.default_on_missing") or "kernel_contract_freeware"
     logger.warning(
         f"Dangling contract: '{contract_id}' not found, "
         f"falling back to '{default_contract_id}'"
@@ -92,7 +92,7 @@ def get_contract_with_fallback_info(
     # Get the default contract
     contract = get_contract_by_id(default_contract_id)
     if not contract:
-        contract = get_genesis_contract("freeware")
+        contract = get_kernel_contract("freeware")
 
     # Cache the original ID pointing to fallback contract
     contract_cache[contract_id] = contract
@@ -114,7 +114,7 @@ def check_permission_via_contract(
 ) -> PermissionResult:
     """Check permission using artifact's access contract.
 
-    Supports both genesis contracts (static logic) and executable
+    Supports both kernel contracts (static logic) and executable
     contracts (dynamic code). Executable contracts receive read-only
     ledger access for balance checks.
 
@@ -147,7 +147,7 @@ def check_permission_via_contract(
         )
 
     # Get contract ID from artifact (default to freeware)
-    contract_id = getattr(artifact, "access_contract_id", "genesis_contract_freeware")
+    contract_id = getattr(artifact, "access_contract_id", "kernel_contract_freeware")
     contract, is_fallback, original_contract_id = get_contract_with_fallback_info(
         contract_id, contract_cache, dangling_count_tracker
     )
@@ -206,7 +206,7 @@ def check_permission_via_contract(
             if ttl_seconds > 0:
                 permission_cache.put(cache_key, result, ttl_seconds)
     else:
-        # Genesis/static contracts use standard interface
+        # Kernel/static contracts use standard interface
         result = contract.check_permission(
             caller=caller,
             action=perm_action,
@@ -256,7 +256,7 @@ def check_permission_legacy(
 
     # CAP-003: No special owner bypass. Delegate to freeware contract
     # which properly handles owner access for write/delete/transfer actions.
-    freeware = get_genesis_contract("freeware")
+    freeware = get_kernel_contract("freeware")
 
     # Convert action string to PermissionAction
     try:

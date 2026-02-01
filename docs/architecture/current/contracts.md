@@ -2,7 +2,7 @@
 
 How access control works today.
 
-**Last verified:** 2026-01-31 (Added transferable_freeware, Plan #241 audit cleanup)
+**Last verified:** 2026-01-31 (kernel_contracts rename)
 
 **See also:** ADR-0019 (Unified Permission Architecture)
 
@@ -89,15 +89,15 @@ These defaults are kernel infrastructure, not artifacts.
 
 Pre-made permission presets available at initialization. Like genesis artifacts (ledger, escrow), these are **conveniences, not privileged**. Agents could build equivalent contracts themselves.
 
-**Important:** Genesis contracts are NOT artifacts. They're Python class instances stored in `GENESIS_CONTRACTS` dict, accessed by ID string (e.g., `"genesis_contract_freeware"`). Custom contracts created by agents ARE artifacts - see ExecutableContract below.
+**Important:** Kernel contracts are NOT artifacts. They're Python class instances stored in `KERNEL_CONTRACTS` dict, accessed by ID string (e.g., `"kernel_contract_freeware"`). Custom contracts created by agents ARE artifacts - see ExecutableContract below.
 
 | Contract | ID | Behavior |
 |----------|-----|----------|
-| **Freeware** | `genesis_contract_freeware` | Anyone reads/invokes; only creator writes/deletes |
-| **SelfOwned** | `genesis_contract_self_owned` | Only artifact itself (or creator) can access |
-| **Private** | `genesis_contract_private` | Only creator can access |
-| **Public** | `genesis_contract_public` | Anyone can do anything |
-| **TransferableFreeware** | `genesis_contract_transferable_freeware` | Like freeware + authorized_writer can write |
+| **Freeware** | `kernel_contract_freeware` | Anyone reads/invokes; only creator writes/deletes |
+| **SelfOwned** | `kernel_contract_self_owned` | Only artifact itself (or creator) can access |
+| **Private** | `kernel_contract_private` | Only creator can access |
+| **Public** | `kernel_contract_public` | Anyone can do anything |
+| **TransferableFreeware** | `kernel_contract_transferable_freeware` | Like freeware + authorized_writer can write |
 
 **Note on `created_by`:** The genesis contracts reference `created_by` for access decisions. This is a contract policy choice, not kernel privilege. `created_by` is just metadata - contracts can use it however they want (or ignore it entirely for pure Ostrom-style rights). Custom contracts can implement any access pattern.
 
@@ -243,7 +243,7 @@ def check_permission(caller, action, target, context, ledger):
 
 | Current | Target |
 |---------|--------|
-| Genesis contracts are Python classes | Contracts are artifacts (partially done) |
+| Kernel contracts are Python classes | Contracts are artifacts (partially done) |
 | Custom contracts fully supported | ✅ Done (Plan #100) |
 | Permission caching available | ✅ Done (Plan #100) |
 | No LLM in contracts | Contracts can call LLM (capability exists) |

@@ -160,7 +160,7 @@ class TestExecuteEditPermission:
         """edit_artifact should block non-owner edits on private artifacts."""
         _write_artifact(world, "private_doc", "Secret content",
                         principal_id="alice",
-                        access_contract_id="genesis_contract_private")
+                        access_contract_id="kernel_contract_private")
 
         intent = EditArtifactIntent("bob", "private_doc", "Secret", "Public")
         result = world.execute_action(intent)
@@ -172,7 +172,7 @@ class TestExecuteEditPermission:
         """edit_artifact should allow owner to edit their private artifact."""
         _write_artifact(world, "private_doc", "Secret content",
                         principal_id="alice",
-                        access_contract_id="genesis_contract_private")
+                        access_contract_id="kernel_contract_private")
 
         intent = EditArtifactIntent("alice", "private_doc", "Secret", "Updated")
         result = world.execute_action(intent)

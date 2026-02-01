@@ -67,14 +67,14 @@ class TestCreatorOnlyAccessContract:
         store = ArtifactStore()
         store.write(
             "test-artifact", "document", "content", "creator1",
-            access_contract_id="genesis_contract_private",
+            access_contract_id="kernel_contract_private",
         )
 
         # Attacker tries to swap to freeware
         with pytest.raises(PermissionError, match="Only creator .* can change access_contract_id"):
             store.write(
                 "test-artifact", "document", "content", "attacker",
-                access_contract_id="genesis_contract_freeware",
+                access_contract_id="kernel_contract_freeware",
             )
 
     def test_creator_can_change_access_contract(self) -> None:
@@ -82,29 +82,29 @@ class TestCreatorOnlyAccessContract:
         store = ArtifactStore()
         store.write(
             "test-artifact", "document", "content", "creator1",
-            access_contract_id="genesis_contract_private",
+            access_contract_id="kernel_contract_private",
         )
 
         # Creator changes to freeware - should succeed
         artifact = store.write(
             "test-artifact", "document", "content", "creator1",
-            access_contract_id="genesis_contract_freeware",
+            access_contract_id="kernel_contract_freeware",
         )
-        assert artifact.access_contract_id == "genesis_contract_freeware"
+        assert artifact.access_contract_id == "kernel_contract_freeware"
 
     def test_authorized_writer_cannot_swap_access_contract(self) -> None:
         """An authorized writer (not creator) cannot swap access_contract_id."""
         store = ArtifactStore()
         store.write(
             "test-artifact", "document", "content", "creator1",
-            access_contract_id="genesis_contract_private",
+            access_contract_id="kernel_contract_private",
         )
 
         # authorized_writer tries to change contract
         with pytest.raises(PermissionError, match="Only creator .* can change access_contract_id"):
             store.write(
                 "test-artifact", "document", "hacked content", "authorized_writer",
-                access_contract_id="genesis_contract_freeware",
+                access_contract_id="kernel_contract_freeware",
             )
 
     def test_access_contract_unchanged_write_succeeds(self) -> None:
@@ -112,39 +112,39 @@ class TestCreatorOnlyAccessContract:
         store = ArtifactStore()
         store.write(
             "test-artifact", "document", "content", "creator1",
-            access_contract_id="genesis_contract_private",
+            access_contract_id="kernel_contract_private",
         )
 
         # Different caller writes with same contract - should succeed
         artifact = store.write(
             "test-artifact", "document", "updated", "other_agent",
-            access_contract_id="genesis_contract_private",
+            access_contract_id="kernel_contract_private",
         )
         assert artifact.content == "updated"
-        assert artifact.access_contract_id == "genesis_contract_private"
+        assert artifact.access_contract_id == "kernel_contract_private"
 
     def test_access_contract_none_on_update_leaves_unchanged(self) -> None:
         """Passing access_contract_id=None on update preserves existing value."""
         store = ArtifactStore()
         store.write(
             "test-artifact", "document", "content", "creator1",
-            access_contract_id="genesis_contract_private",
+            access_contract_id="kernel_contract_private",
         )
 
         # Update without specifying access_contract_id
         artifact = store.write(
             "test-artifact", "document", "updated", "other_agent",
         )
-        assert artifact.access_contract_id == "genesis_contract_private"
+        assert artifact.access_contract_id == "kernel_contract_private"
 
     def test_access_contract_set_on_create(self) -> None:
         """access_contract_id can be set freely on first creation."""
         store = ArtifactStore()
         artifact = store.write(
             "test-artifact", "document", "content", "creator1",
-            access_contract_id="genesis_contract_private",
+            access_contract_id="kernel_contract_private",
         )
-        assert artifact.access_contract_id == "genesis_contract_private"
+        assert artifact.access_contract_id == "kernel_contract_private"
 
 
 # ---------------------------------------------------------------------------
