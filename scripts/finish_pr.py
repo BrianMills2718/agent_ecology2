@@ -321,6 +321,18 @@ def validate_finish_preconditions(
         )
         return False, errors, context
 
+    # 1b. Must be on main branch (not a feature branch checked out in main)
+    # This prevents find_worktree_path from incorrectly matching main as the worktree
+    # when a feature branch is checked out - git worktree list shows the current branch
+    result = run_cmd(["git", "branch", "--show-current"], check=False)
+    current_branch = result.stdout.strip() if result.returncode == 0 else ""
+    if current_branch and current_branch != "main":
+        errors.append(
+            f"Must be on 'main' branch, not '{current_branch}'. "
+            f"Run: git checkout main && make finish ..."
+        )
+        return False, errors, context
+
     # 2. Check PR exists and is mergeable
     result = run_cmd(
         ["gh", "pr", "view", str(pr_number), "--json", "state,mergeable,headRefName"],
