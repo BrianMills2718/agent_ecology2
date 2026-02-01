@@ -10,7 +10,7 @@ Catch issues before they reach CI. These hooks run locally on every commit.
 
 | Hook | Purpose |
 |------|---------|
-| `pre-commit` | Doc-coupling, mypy, config validation, branch divergence check |
+| `pre-commit` | Doc-coupling, CLAUDE.md validation, mypy, config validation, branch divergence check |
 | `commit-msg` | Validates commit message format (`[Plan #N]` or `[Trivial]`) |
 | `post-commit` | Reminds about unpushed commits to prevent divergence |
 | `pre-push` | Warns if pushing branch without active claim (warning only) |
@@ -43,10 +43,12 @@ git commit --no-verify -m "..."
 
 **pre-commit:**
 1. Doc-coupling violations (strict mode)
-2. Mypy on staged `src/` files
-3. Coupling config validity
-4. Plan status consistency (when plan files staged)
-5. Branch divergence detection (blocks if diverged, warns if behind)
+2. Plan index regeneration
+3. CLAUDE.md validation (progressive — only checks touched directories)
+4. Mypy on staged `src/` files
+5. Coupling config validity
+6. Plan status consistency (when plan files staged)
+7. Branch divergence detection (blocks if diverged, warns if behind)
 
 > **Note:** Plan status check (#4) prevents manual status edits that don't update both
 > the plan file AND the index. Always use `complete_plan.py` instead of editing manually.

@@ -12,12 +12,19 @@ These docs describe what IS implemented today. They are the source of truth for 
 
 | File | Describes |
 |------|-----------|
+| `README.md` | Architecture overview and system summary |
 | `execution_model.md` | Tick loop, two-phase commit, timing |
 | `agents.md` | Agent lifecycle, thinking, memory |
+| `agent_cognition.md` | Agent decision-making, memory, and learning systems |
+| `contracts.md` | Contract system and access control |
+| `coordination_patterns.md` | How agents coordinate using existing primitives |
 | `resources.md` | Flow/stock resources, scrip, ledger |
 | `genesis_artifacts.md` | System services (ledger, mint, escrow) |
+| `genesis_agents.md` | Default agents that ship with the system |
+| `mint.md` | Artifact scoring and scrip minting |
 | `artifacts_executor.md` | Artifact storage, policies, code execution |
 | `configuration.md` | Config loading, Pydantic validation |
+| `running.md` | Practical guide to running simulations |
 | `supporting_systems.md` | Checkpoint, logging, dashboard |
 | `ci.md` | GitHub Actions CI pipeline |
 

@@ -10,6 +10,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 |--------|---------|
 | `meta_status.py` | **Dashboard**: claims, PRs, progress, issues |
 | `check_claims.py` | Manage active work claims (scope-based) |
+| `create_worktree.sh` | Create worktree with mandatory claiming (interactive or --branch/--task) |
 | `finish_pr.py` | Complete PR lifecycle: merge + cleanup + release claim |
 | `merge_pr.py` | Merge PRs via GitHub CLI |
 | `complete_plan.py` | Mark plan complete (runs tests, records evidence) |
@@ -29,6 +30,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `parse_plan.py` | Parse plan file structure |
 | `plan_progress.py` | Show plan implementation progress |
 | `sync_plan_status.py` | Sync plan status + validate content consistency |
+| `generate_plan_index.py` | Auto-generate docs/plans/CLAUDE.md index from plan files |
 
 ### Documentation & Quality
 
@@ -36,22 +38,27 @@ Utility scripts for development and CI. All scripts support `--help` for options
 |--------|---------|
 | `check_doc_coupling.py` | Verify docs updated when source changes |
 | `check_adr_requirement.py` | Check if ADR is required for changes |
+| `check_planning_patterns.py` | Validate planning patterns (Open Questions, uncertainties, claims) |
 | `sync_governance.py` | Sync ADR governance headers |
 | `check_mock_usage.py` | Detect suspicious mock patterns in tests |
 | `check_mock_tests.py` | Detect mock usage in test files |
+| `check_claude_md.py` | Validate CLAUDE.md existence, coverage, and phantom refs |
 | `check_feature_coverage.py` | Verify all src files assigned to features |
 | `check_locked_files.py` | Protect locked acceptance criteria |
 | `check_new_code_tests.py` | Verify new code has test coverage |
 | `validate_spec.py` | Validate feature spec YAML format |
 | `validate_code_map.py` | Validate code mapping files |
+| `get_governance_context.py` | Get governance context for a file from relationships.yaml |
 
 ### Meta-Process Configuration (Plan #218-220)
 
 | Script | Purpose |
 |--------|---------|
 | `meta_process_config.py` | Check/configure meta-process weight level |
+| `meta_config.py` | Read meta-process configuration (used by hooks/scripts) |
 | `symbol_extractor.py` | Extract symbols from Python files (AST-based) |
 | `bootstrap_meta_process.py` | Bootstrap meta-process for existing repos |
+| `export_meta_process.py` | Export meta-process to standalone template repository |
 
 ### Inter-CC Messaging
 
@@ -67,15 +74,26 @@ Utility scripts for development and CI. All scripts support `--help` for options
 |--------|---------|
 | `cleanup_branches.py` | Delete stale remote branches (merged PRs) |
 | `cleanup_orphaned_worktrees.py` | Find/clean orphaned worktrees (merged PRs) |
+| `cleanup_claims_mess.py` | One-time cleanup of stale/duplicate claims |
+| `recover.py` | Auto-recover from meta-process issues (orphaned worktrees, stale claims, etc.) |
 | `analyze_run.py` | Analyze simulation run results |
 | `view_log.py` | Parse run.jsonl events |
 | `concat_for_review.py` | Concatenate files for review |
+| `build_review_package.sh` | Build EXTERNAL_REVIEW_PACKAGE.md from target architecture docs |
+
+### CI/Check
+
+| Script | Purpose |
+|--------|---------|
+| `check.sh` | One-command validation: runs all CI checks locally (pytest, mypy, lint, doc-coupling) |
+| `health_check.py` | Meta-process health check (validates worktrees, claims, hooks, config, git state) |
 
 ### Setup
 
 | Script | Purpose |
 |--------|---------|
 | `setup_hooks.sh` | Install git hooks |
+| `repo_root.sh` | Get repository root directory (used by hooks/scripts) |
 
 Config: `relationships.yaml` (unified doc graph; legacy: `doc_coupling.yaml`, `governance.yaml`)
 

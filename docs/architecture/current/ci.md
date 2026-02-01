@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-01-31 (Config cleanup: removed dead schema.yaml, stale CMF refs)
+Last verified: 2026-01-31 (Plan #244: added claude_md config section to relationships.yaml)
 
 ---
 

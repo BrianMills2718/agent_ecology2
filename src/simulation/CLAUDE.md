@@ -6,10 +6,14 @@ Orchestrates autonomous agent loops and manages persistence.
 
 | File | Responsibility |
 |------|----------------|
+| `__init__.py` | Module exports (SimulationRunner, checkpoint, types, agent loop) |
 | `runner.py` | Main SimulationRunner, autonomous agent loops |
 | `checkpoint.py` | Save/restore world state to JSON |
 | `types.py` | Type definitions for simulation |
 | `agent_loop.py` | Individual agent loop management |
+| `pool.py` | WorkerPool for parallel agent turn execution via ThreadPoolExecutor |
+| `supervisor.py` | AgentSupervisor: auto-restart crashed agents with backoff and death classification |
+| `worker.py` | Worker functions for isolated agent turn execution with resource measurement |
 
 ## Execution Model (Plan #102 - Autonomous Only)
 
