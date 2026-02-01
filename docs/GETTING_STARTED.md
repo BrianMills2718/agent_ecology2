@@ -101,7 +101,7 @@ Standards:
 | Document | Purpose |
 |----------|---------|
 | [Current Architecture](architecture/current/README.md) | What exists today |
-| [Target Architecture](architecture/target/README.md) | What we're building toward |
+| [Target Architecture](architecture/target/01_README.md) | What we're building toward |
 | [Design Clarifications](DESIGN_CLARIFICATIONS.md) | Decision rationale with certainty levels |
 | [Glossary](GLOSSARY.md) | Canonical terminology |
 | [Docker Deployment](DOCKER.md) | Container setup with resource limits |
