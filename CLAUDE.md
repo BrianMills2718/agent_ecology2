@@ -37,24 +37,8 @@ bash scripts/create_worktree.sh --branch plan-N-desc --plan N --task "descriptio
 ```
 
 Claim and worktree cleanup runs automatically on session startup.
----
 
-## Quick Reference - Scripts
-
-| Script | Usage |
-|--------|-------|
-| `meta_status.py` | Dashboard: `python scripts/meta_status.py` |
-| `check_claims.py --list` | See active claims |
-| `check_claims.py --list-features` | Available feature scopes |
-| `check_claims.py --cleanup-orphaned` | Remove claims with missing worktrees |
-| `check_claims.py --cleanup-stale` | Remove inactive claims (>8h default) |
-| `check_plan_tests.py --plan N` | Run plan's required tests |
-| `check_plan_tests.py --plan N --tdd` | See what tests to write |
-| `complete_plan.py --plan N` | Mark plan complete (runs tests, records evidence). Use `--status-only` for CI-validated PRs |
-| `validate_plan.py --plan N` | Pre-implementation validation |
-| `check_doc_coupling.py --suggest` | Which docs to update |
-| `sync_plan_status.py --check` | Validate plan statuses |
-| `cleanup_claims_mess.py --dry-run` | Preview full claim cleanup |
+Script reference: see `scripts/CLAUDE.md`.
 
 ---
 
@@ -326,89 +310,6 @@ agent_ecology/
 
 ---
 
-## Kernel Primitives
-
-The kernel (`src/world/kernel_interface.py`) provides these primitives that ALL artifacts use:
-
-**KernelState (read-only):**
-| Method | Purpose |
-|--------|---------|
-| `get_balance(principal_id)` | Get scrip balance |
-| `get_resource(principal_id, resource)` | Get resource amount |
-| `get_llm_budget(principal_id)` | Get LLM budget (convenience) |
-| `list_artifacts_by_owner(created_by)` | List artifact IDs by owner |
-| `get_artifact_metadata(artifact_id)` | Get artifact info |
-| `read_artifact(artifact_id, caller_id)` | Read artifact content (access-controlled) |
-| `get_mint_submissions()` | Get pending mint submissions |
-| `get_mint_history(limit)` | Get mint auction history |
-| `get_quota(principal_id, resource)` | Get quota limit |
-| `get_available_capacity(principal_id, resource)` | Get remaining capacity (quota - usage) |
-| `would_exceed_quota(principal_id, resource, amount)` | Pre-flight quota check |
-
-**KernelActions (write operations):**
-| Method | Purpose |
-|--------|---------|
-| `transfer_scrip(caller_id, to, amount)` | Move scrip |
-| `transfer_resource(caller_id, to, resource, amount)` | Move resource |
-| `transfer_llm_budget(caller_id, to, amount)` | Move LLM budget (convenience) |
-| `write_artifact(caller_id, artifact_id, content, type)` | Write/update artifact (access-controlled) |
-| `create_principal(principal_id, starting_scrip, starting_compute)` | Spawn new principal |
-| `update_artifact_metadata(caller_id, artifact_id, key, value)` | Update artifact metadata |
-| `submit_for_mint(caller_id, artifact_id, bid)` | Submit artifact for mint auction |
-| `cancel_mint_submission(caller_id, submission_id)` | Cancel mint submission |
-| `transfer_quota(from_id, to_id, resource, amount)` | Move quota |
-| `consume_quota(principal_id, resource, amount)` | Record resource consumption |
-| `grant_charge_delegation(caller_id, delegate_id, max_per_call, max_per_window)` | Grant charge delegation (Plan #236) |
-| `revoke_charge_delegation(caller_id, delegate_id)` | Revoke charge delegation |
-| `authorize_charge(caller_id, payer_id, amount)` | Charge via delegation |
-| `install_library(caller_id, library_name, version)` | Install Python library (costs disk quota) |
-| `modify_protected_content(artifact_id, content, code, metadata)` | Kernel-only: modify protected artifact |
-
-**Genesis artifacts are just conveniences that wrap these primitives.** See `src/world/genesis/CLAUDE.md` for details.
-
----
-
-## Terminology
-
-| Use | Not | Why |
-|-----|-----|-----|
-| `scrip` | `credits` | Consistency |
-| `principal` | `account` | Principals include artifacts/contracts |
-| `event_number` | `tick` | No tick-synchronized execution |
-| `artifact` | `object/entity` | Everything is an artifact |
-
-**Resource types:**
-- **Depletable**: LLM budget ($) - once spent, gone
-- **Allocatable**: Disk, memory (bytes) - quota, reclaimable
-- **Renewable**: CPU, LLM rate - rate-limited via token bucket
-
-See `docs/GLOSSARY.md` for full definitions.
-
----
-
-## Inter-CC Messaging (Disabled by Default)
-
-Optional async messaging between CC instances. **Disabled by default.**
-
-To enable, set in `.claude/meta-config.yaml`:
-```yaml
-inter_cc_messaging: true
-```
-
-When enabled:
-```bash
-# Send message
-python scripts/send_message.py --to <recipient> --type <type> --subject "Subject" --content "Content"
-
-# Check inbox
-python scripts/check_messages.py --list
-python scripts/check_messages.py --ack     # Acknowledge (required before editing)
-```
-
-When enabled, unread messages block Edit/Write until acknowledged.
-
----
-
 ## Documentation
 
 | Doc | Purpose |
@@ -428,24 +329,6 @@ python scripts/check_doc_coupling.py --suggest  # Show which docs to update
 ```
 
 Source-to-doc mappings in `scripts/relationships.yaml`. Run `make check` to validate.
-
-### Meta-Process Configuration
-
-Enforcement strictness is configured in `meta-process.yaml` (repo root):
-
-```yaml
-enforcement:
-  # Auto-add new plan files to docs/plans/CLAUDE.md index
-  plan_index_auto_add: true      # Default: true
-
-  # Treat ALL doc-code couplings as strict (ignores soft: true)
-  strict_doc_coupling: true      # Default: true
-
-  # Show warning when running in non-strict mode
-  show_strictness_warning: true  # Default: true
-```
-
-**Warning:** Reducing enforcement strictness allows drift to accumulate silently. Only downgrade if you have alternative enforcement mechanisms.
 
 ---
 
