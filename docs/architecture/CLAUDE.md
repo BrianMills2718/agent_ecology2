@@ -18,6 +18,7 @@ architecture/
 | `current/` | Describes actual implementation | High - should match code |
 | `target/` | Describes desired future state | Reference only - verify before using |
 | `gaps/` | Gap analysis summary | Reference - summary index of 142 gaps |
+| `TECH_DEBT.md` | Technical debt tracking | Reference only |
 
 ## Gap Tracking
 

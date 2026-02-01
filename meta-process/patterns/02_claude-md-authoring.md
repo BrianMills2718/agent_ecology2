@@ -201,10 +201,55 @@ monorepo/
 | Cursor | `.cursorrules` | Different format |
 | GitHub Copilot | No equivalent | Use comments |
 
+## Enforcement (Plan #244)
+
+CLAUDE.md files can be enforced via `check_claude_md.py`:
+
+### Three validation types
+
+| Check | What it catches |
+|-------|----------------|
+| **Existence** | Directories with 2+ tracked files missing a CLAUDE.md |
+| **Coverage** | CLAUDE.md files that don't reference all files in their directory |
+| **Phantom** | CLAUDE.md references to files that no longer exist |
+
+### Pre-commit integration (progressive)
+
+```bash
+# In pre-commit hook — only checks directories touched by staged files
+python scripts/check_claude_md.py --staged --strict
+```
+
+Progressive enforcement means existing stale files don't block unrelated commits.
+But touching a directory forces you to bring its CLAUDE.md current.
+
+### Full audit
+
+```bash
+# CI or periodic audit — checks every directory
+python scripts/check_claude_md.py --all --strict
+
+# Human-friendly output
+python scripts/check_claude_md.py --suggest
+```
+
+### Configuration
+
+Exemptions in `scripts/relationships.yaml` under `claude_md:`:
+
+```yaml
+claude_md:
+  exempt_dirs:
+    - "*/static/*"        # Asset directories
+    - ".github/*"         # GitHub config
+  exempt_files:
+    - "CLAUDE.md"         # Doesn't self-reference
+    - ".gitignore"        # Infrastructure
+```
+
 ## Limitations
 
 - **Token cost** - Large files consume context window
-- **Staleness** - Must be maintained manually
 - **Tool-specific** - Different AI tools use different files
 - **Not enforced** - AI may still ignore instructions
 

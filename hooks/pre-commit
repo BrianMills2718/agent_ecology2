@@ -36,7 +36,17 @@ if ! python scripts/check_doc_coupling.py --strict 2>/dev/null; then
     exit 1
 fi
 
-# 3. Mypy on changed src/ files
+# 3. CLAUDE.md validation (progressive — only checks touched directories)
+echo "Validating CLAUDE.md files..."
+if ! python scripts/check_claude_md.py --staged --strict 2>/dev/null; then
+    echo ""
+    echo "ERROR: CLAUDE.md validation failed!"
+    echo "Run 'python scripts/check_claude_md.py --suggest' for details."
+    echo ""
+    exit 1
+fi
+
+# 4. Mypy on changed src/ files
 STAGED_SRC=$(echo "$STAGED_PY" | grep '^src/' || true)
 if [ -n "$STAGED_SRC" ]; then
     echo "Running mypy on changed files..."
@@ -59,7 +69,7 @@ if [ -n "$STAGED_SRC" ]; then
     fi
 fi
 
-# 4. Validate coupling config
+# 5. Validate coupling config
 echo "Validating coupling config..."
 if ! python scripts/check_doc_coupling.py --validate-config 2>/dev/null; then
     echo ""
@@ -68,7 +78,7 @@ if ! python scripts/check_doc_coupling.py --validate-config 2>/dev/null; then
     exit 1
 fi
 
-# 5. Plan content validation (status must match content)
+# 6. Plan content validation (status must match content)
 echo "Validating plan content..."
 VALIDATION_ERRORS=""
 for plan_file in docs/plans/[0-9]*_*.md; do
@@ -104,7 +114,7 @@ if [ -n "$VALIDATION_ERRORS" ]; then
     exit 1
 fi
 
-# 6. Branch divergence check (prevents merge conflicts)
+# 7. Branch divergence check (prevents merge conflicts)
 echo "Checking branch freshness..."
 git fetch origin 2>/dev/null || true  # Silent fetch, don't fail if offline
 

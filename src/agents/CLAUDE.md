@@ -6,13 +6,23 @@ LLM-powered agents that observe world state and propose actions.
 
 | File | Responsibility |
 |------|----------------|
+| `__init__.py` | Package exports (Agent, ActionResult, load_agents, etc.) |
 | `agent.py` | LLM integration, action proposal, token tracking |
-| `memory.py` | Mem0/Qdrant integration for persistent memory |
+| `agent_schema.py` | Pydantic schema for agent.yaml validation |
+| `catalog.yaml` | Agent lineage tracking and genotype characteristics |
+| `component_loader.py` | Modular prompt component loading and injection |
+| `hooks.py` | Workflow hooks for auto-invocation at timing points |
 | `loader.py` | Agent discovery from `src/agents/*/` directories |
-| `schema.py` | Action schema definitions for LLM |
+| `memory.py` | Mem0/Qdrant integration for persistent memory |
 | `models.py` | Pydantic models for agent config and results |
-| `workflow.py` | Configurable workflow execution with state machine support |
+| `planning.py` | Plan artifact pattern for deliberative agent behavior |
+| `reflex.py` | Fast pre-LLM decision scripts (agent-created artifacts) |
+| `safe_eval.py` | Secure expression evaluation for workflow conditions |
+| `schema.py` | Action schema definitions for LLM |
 | `state_machine.py` | State machine definitions and transitions |
+| `state_store.py` | SQLite-backed agent state persistence between turns |
+| `template.py` | Safe `{{variable}}` template rendering for workflow context |
+| `workflow.py` | Configurable workflow execution with state machine support |
 
 ## Agent Directories
 

@@ -15,7 +15,6 @@ This is the heart of the simulation. All world state, resources, and execution l
 | `interface_validation.py` | Argument validation against interface schemas (Plan #181) |
 | `invoke_handler.py` | Invoke closure factory for artifact-to-artifact calls (Plan #181) |
 | `actions.py` | Action definitions (noop, read, write, invoke) |
-| `genesis.py` | System artifacts (ledger, mint, escrow, event_log, store) |
 | `genesis_contracts.py` | Built-in access control contracts |
 | `contracts.py` | Contract types and permission checking |
 | `kernel_interface.py` | KernelState/KernelActions for artifact sandbox |
@@ -26,6 +25,17 @@ This is the heart of the simulation. All world state, resources, and execution l
 | `mint_scorer.py` | LLM-based artifact scoring for auctions |
 | `errors.py` | Error response conventions |
 | `logger.py` | Event logging to JSONL |
+| `__init__.py` | Package exports (World, ActionIntent, Ledger, ArtifactStore, etc.) |
+| `delegation.py` | Charge delegation management (Plan #236) |
+| `id_registry.py` | Unified ID registry -- global uniqueness across agents/artifacts/principals |
+| `kernel_queries.py` | Read-only kernel state queries for `query_kernel` action (Plan #184) |
+| `mint_auction.py` | Mint auction logic: submissions, bid escrow, second-price resolution |
+| `model_access.py` | Per-agent model access quotas, tradeable model access (Plan #113) |
+| `resource_manager.py` | Unified resource system: balance tracking, rate limiting, quotas (Plan #95) |
+| `resource_metrics.py` | Read-only resource metrics aggregation for agent visibility (Plan #93) |
+| `resources.py` | Resource type constants (depletable, allocatable, renewable) |
+| `triggers.py` | Kernel event triggers -- "when event X, invoke artifact Y" (Plan #169) |
+| `usage_tracker.py` | LLM usage tracking: per-model tokens, calls, cost (Plan #166) |
 
 ## Key Patterns
 
@@ -55,7 +65,7 @@ Changes here MUST update `docs/architecture/current/`:
 |--------|-----|
 | `world.py` | `execution_model.md` |
 | `ledger.py`, `simulation_engine.py` | `resources.md` |
-| `genesis.py` | `genesis_artifacts.md` |
+| `genesis/` | `genesis_artifacts.md` |
 | `artifacts.py`, `executor.py`, `permission_checker.py`, `interface_validation.py`, `invoke_handler.py`, `kernel_interface.py` | `artifacts_executor.md` |
 
 ## Testing

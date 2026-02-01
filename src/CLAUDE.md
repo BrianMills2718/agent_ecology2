@@ -6,6 +6,7 @@ All production code lives here. Tests are in `tests/`.
 
 ```
 src/
+├── __init__.py         # Package marker
 ├── config.py           # Config loading helpers
 ├── config_schema.py    # Pydantic validation (all config options)
 ├── world/              # Core simulation kernel (see world/CLAUDE.md)

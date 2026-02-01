@@ -292,6 +292,9 @@ agent_ecology/
     patterns/               # Pattern documentation (26 patterns)
     scripts/                # Portable scripts
     hooks/                  # Hook templates
+  scripts/                  # Utility scripts for CI and development
+  hooks/                    # Git hooks (pre-commit, commit-msg)
+  dashboard-v2/             # React dashboard frontend (builds to src/dashboard/static-v2/)
 ```
 
 ---

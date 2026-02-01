@@ -1,23 +1,30 @@
-# Genesis Artifacts
+# Genesis Artifacts Package
 
-Cold-start conveniences that wrap kernel primitives. These are NOT privileged - agents could build equivalents.
+Cold-start conveniences that wrap kernel primitives. These are NOT privileged -- agents could build equivalents.
 
 **Key principle:** Genesis artifacts use the same `kernel_state` and `kernel_actions` interfaces as agent-built artifacts. They have no special access.
 
-## Available Genesis Artifacts
+## Files
 
-| Artifact | Purpose | Wraps Kernel Primitive |
-|----------|---------|------------------------|
-| `genesis_ledger` | Balances, transfers | `kernel_actions.transfer_scrip()`, `create_principal()` |
-| `genesis_mint` | Auction-based scoring | `kernel_actions.credit_resource()` |
-| `genesis_escrow` | Trustless trading | `kernel_actions.transfer_ownership()` |
-| `genesis_debt_contract` | Credit/lending | `kernel_actions.transfer_scrip()` |
-| `genesis_event_log` | Passive observability | Read-only log access |
-| `genesis_rights_registry` | Quota management | `kernel_actions.transfer_quota()` |
-| `genesis_model_registry` | LLM model access | Quota-based model access |
-| `genesis_memory` | Agent memory storage | Artifact read/write |
-
-**Note:** Artifact discovery uses `query_kernel` action (Plan #184), not a genesis artifact. The `query_kernel` action provides direct, cost-free access to kernel state for discovery.
+| File | Responsibility |
+|------|----------------|
+| `__init__.py` | Package exports, backward-compatible imports from original genesis.py |
+| `base.py` | `GenesisArtifact` base class, `GenesisMethod`, `SYSTEM_OWNER` constant |
+| `types.py` | Shared TypedDict definitions used across genesis artifacts |
+| `factory.py` | `create_genesis_artifacts()` factory, creates all enabled genesis artifacts |
+| `ledger.py` | `GenesisLedger` -- balances, scrip transfers, ownership transfers, budget mgmt |
+| `mint.py` | `GenesisMint` -- auction-based artifact scoring, sealed bids, UBI distribution |
+| `escrow.py` | `GenesisEscrow` -- trustless artifact trading via Gatekeeper pattern |
+| `debt_contract.py` | `GenesisDebtContract` -- non-privileged lending/credit example |
+| `rights_registry.py` | `GenesisRightsRegistry` -- resource quota management (compute, disk) |
+| `event_log.py` | `GenesisEventLog` -- passive observability, agents must actively read |
+| `event_bus.py` | `GenesisEventBus` -- event subscription API wrapping trigger artifacts |
+| `model_registry.py` | `GenesisModelRegistry` -- LLM model access as tradeable quotas |
+| `voting.py` | `GenesisVoting` -- multi-party proposals and consensus |
+| `embedder.py` | `GenesisEmbedder` -- text embedding generation as paid service |
+| `memory.py` | `GenesisMemory` -- semantic memory storage and search |
+| `prompt_library.py` | `GenesisPromptLibrary` -- reusable/tradeable prompt templates |
+| `decision_artifacts.py` | Decision helpers: random decider, balance checker, error/loop detectors |
 
 ## Implementation Pattern
 
@@ -27,15 +34,8 @@ Each genesis artifact:
 3. Uses injected `kernel_state` / `kernel_actions` for all operations
 4. Has no direct access to World internals
 
-```python
-class GenesisLedger(GenesisArtifact):
-    def _transfer(self, args, invoker_id):
-        # Uses kernel_actions, NOT direct ledger access
-        return self._kernel_actions.transfer_scrip(from_id, to_id, amount)
-```
-
 ## Testing
 
-Genesis artifacts are tested like any other artifact - no special test infrastructure.
+Genesis artifacts are tested like any other artifact -- no special test infrastructure.
 
 See `docs/architecture/current/genesis_artifacts.md` for detailed documentation.

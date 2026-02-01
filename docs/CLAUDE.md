@@ -36,8 +36,16 @@ meta/
 | `../meta/patterns/` | Reusable process patterns | New patterns identified |
 | `../meta/acceptance_gates/` | Feature specifications | New features defined |
 | `GLOSSARY.md` | Canonical terminology | New concepts added |
+| `CONCEPTUAL_MODEL.yaml` | Structured conceptual model of the system | Model changes |
+| `CONCERNS.md` | Open concerns and known issues | New concerns identified |
+| `DEFERRED_FEATURES.md` | Features intentionally deferred | Deferral decisions |
 | `DESIGN_CLARIFICATIONS.md` | WHY decisions were made | Architecture discussions |
+| `DOCKER.md` | Docker setup and containerization | Docker config changes |
+| `SCHEMA_AUDIT.md` | Config schema audit findings | Schema changes |
 | `SECURITY.md` | Security model and boundaries | Security changes |
+| `THREAT_MODEL.md` | Threat analysis and mitigations | Security model changes |
+| `V1_ACCEPTANCE.md` | V1 acceptance criteria and readiness | Milestone progress |
+| `references` | Symlink to shared references (external) | External references |
 
 ## Doc Types
 

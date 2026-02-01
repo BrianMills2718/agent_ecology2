@@ -25,6 +25,7 @@ These docs describe what we WANT to build. They are aspirational, not current re
 | `05_contracts.md` | Contract-based access control |
 | `06_mint.md` | Anytime bidding, continuous scoring, minting |
 | `07_infrastructure.md` | Docker isolation, real resource limits |
+| `08_kernel.md` | Target kernel architecture and primitives |
 
 ## Warning
 

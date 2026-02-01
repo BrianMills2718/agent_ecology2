@@ -331,3 +331,69 @@ orphan_detection:
     - docs/architecture/target/             # Aspirational docs (not code-coupled)
     - docs/DESIGN_CLARIFICATIONS.md        # Design rationale archive (not code-coupled)
     - docs/SCHEMA_AUDIT.md                 # Historical audit report (not code-coupled)
+
+# =============================================================================
+# CLAUDE.MD VALIDATION (Plan #244)
+# =============================================================================
+# Enforces that code directories have CLAUDE.md files listing their contents.
+# Used by scripts/check_claude_md.py
+
+claude_md:
+  # Directories exempt from CLAUDE.md requirement
+  exempt_dirs:
+    # Infrastructure / tooling (directory + all subdirs)
+    - ".claude/"                            # Claude Code internal config
+    - ".claude/*"
+    - ".github/"                            # GitHub config and templates
+    - ".github/*"
+    - "meta-process/"                       # Portable framework (not project-specific)
+    - "meta-process/*"
+    - "llm_provider_standalone/"            # Standalone utility
+    - "llm_provider_standalone/*"
+    - "scripts/dev_scripts/"                # Small dev utilities
+
+    # Asset / build directories
+    - "*/static/*"                          # Asset directories
+    - "*/static-v2/*"                       # Build output
+
+    # Dashboard internals (described by parent CLAUDE.md)
+    - "dashboard-v2/src/"                   # Described by dashboard-v2/CLAUDE.md
+    - "dashboard-v2/src/*"
+    - "dashboard-v2/public/"                # Static assets
+    - "src/dashboard/api/"                  # Described by src/dashboard/CLAUDE.md
+    - "src/dashboard/api/*"
+    - "src/dashboard/core_v2/"              # Described by src/dashboard/CLAUDE.md
+    - "src/dashboard/models_v2/"            # Described by src/dashboard/CLAUDE.md
+
+    # Agent personality directories (config, not code modules)
+    - "src/agents/_handbook/"               # Template/reference
+    - "src/agents/_template/"               # Agent template
+    - "src/agents/alpha*"                   # Agent personality configs
+    - "src/agents/beta*"                    # Agent personality configs
+    - "src/agents/gamma*"                   # Agent personality configs
+    - "src/agents/delta*"                   # Agent personality configs
+    - "src/agents/epsilon*"                 # Agent personality configs
+    - "src/agents/v4_*"                     # Agent personality configs
+    - "src/agents/_components/behaviors/"   # Described by parent CLAUDE.md
+    - "src/agents/_components/evaluators/"  # Described by parent CLAUDE.md
+
+    # Docs subdirectories
+    - "docs/architecture/gaps/"             # Summary file only
+    - "docs/architecture/target/agents/"    # Target/aspirational
+    - "docs/explorations/"                  # Exploration notes
+    - "docs/simulation_learnings/"          # Single-purpose directory
+
+    # Test subdirectories (described by parent CLAUDE.md)
+    - "tests/scripts/"                      # Test helper scripts
+    - "tests/unit/dashboard/"               # Test subdirectory
+
+  # Files exempt from coverage requirement (not expected in CLAUDE.md tables)
+  exempt_files:
+    - "CLAUDE.md"          # Doesn't self-reference
+    - ".gitignore"         # Infrastructure, not module content
+    - "*.lock"             # Lock files (package-lock.json, etc.)
+    - "py.typed"           # PEP 561 marker
+    - "CONTEXT.md"         # Ephemeral worktree context
+    - "*.svg"              # Static assets
+    - "*.css"              # Stylesheets
+    - "*.html"             # HTML templates (in asset dirs)
