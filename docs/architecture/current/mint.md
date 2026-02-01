@@ -2,7 +2,7 @@
 
 How artifact scoring and scrip minting works today.
 
-**Last verified:** 2026-01-24 (Plan #5 - Anytime bidding)
+**Last verified:** 2026-02-01 (Clarified Vickrey pricing vs mint reward)
 
 **Source:** `src/world/genesis.py` (GenesisMint), `src/world/mint_scorer.py`
 
@@ -89,10 +89,24 @@ LLM evaluates submitted artifacts on:
 When auction period elapses (every `period_seconds` seconds):
 
 1. **Select winner(s)** - Top N bids (N = `slots_per_auction`)
-2. **Score artifact** - LLM evaluates winner's submitted artifact
-3. **Mint scrip** - `score / mint_ratio` scrip to winner
-4. **Distribute UBI** - Losing bids split among all agents (excluding winner)
-5. **Refund** - If scoring fails and `refund_on_scoring_failure` is true
+2. **Winner pays (Vickrey)** - Winner pays the *second-highest* bid, not their own bid. Difference refunded.
+3. **Score artifact** - LLM evaluates winner's submitted artifact
+4. **Mint scrip** - Winner *receives* `score / mint_ratio` newly minted scrip
+5. **Distribute UBI** - Price paid by winner split among all other agents
+6. **Refund** - If scoring fails and `refund_on_scoring_failure` is true
+
+### Two Different "Prices"
+
+| What | How Determined | Flow |
+|------|----------------|------|
+| **Bid paid** | Second-highest bid (Vickrey auction) | Winner → UBI pool → other agents |
+| **Scrip minted** | `score / mint_ratio` | New scrip → Winner |
+
+**Example:** Agent bids 50, wins. Second-highest bid was 30.
+- Agent pays 30 (refunded 20)
+- Artifact scores 80, mint_ratio=10
+- Agent receives 8 newly minted scrip
+- The 30 paid is distributed as UBI to other agents
 
 ---
 
