@@ -109,30 +109,6 @@ between CC instances become common.
 
 ---
 
-### MP-006: Pattern 13 is too large — 724 lines, 3x average, mixed concerns
-
-**Observed:** 2026-01-31
-**Investigated:** 2026-01-31
-**Status:** `confirmed`
-
-**Finding:** At 724 lines with 22 major sections, Pattern 13 is 3x the average pattern
-size (231 lines) and 65% larger than the 2nd-largest pattern (Pattern 15 at 440 lines).
-
-The content is cohesive but mixes conceptual framework with operational reference:
-YAML schema definitions (82 lines), CI enforcement templates (23 lines), 8-step process
-flow diagram (76 lines), 4 planning depth modes, AI anti-cheating mechanisms, ADR
-conformance checklists, and an incomplete enterprise pattern comparison.
-
-**Natural split points identified:**
-- YAML schema → separate reference document (~82 lines saved)
-- CI enforcement template → repository's `.github/workflows/` (~23 lines)
-- Incomplete enterprise comparison → expand or remove (~13 lines)
-- Process flow diagram → simplify to ~40 lines
-
-**Fix:** Keep Pattern 13 as conceptual/process pattern (~500 lines), extract YAML
-schema to reference doc, move CI template to actual workflow files, address the
-incomplete enterprise section. Reduces size while losing zero learning content.
-
 ---
 
 ### MP-007: Script testing gap — 49 scripts, ~20% tested, critical scripts untested
@@ -215,8 +191,6 @@ and untouched declared files as WARN (plan drift). Could integrate into `make ch
 
 ---
 
----
-
 ## Resolved
 
 | ID | Description | Resolution | Date |
@@ -229,6 +203,7 @@ and untouched declared files as WARN (plan drift). Could integrate into `make ch
 | MP-011 | Circular docs with no linear reading path | Added "Core Concepts" glossary before adoption path in GETTING_STARTED.md. Reordered Day 1-2 reading list to follow dependency order (18 before 19). Pattern index Requires column (MP-009) addresses prerequisite visibility. | 2026-01-31 |
 | MP-013 | ~30% of infrastructure unused at current scale | Added "Multi-CC only" tier to pattern index "When to Use" section, listing 5 patterns + 4 scripts to skip for solo/small setups. Added "skip for solo" note to GETTING_STARTED.md adoption stage. Features remain available but clearly marked as scale-dependent. | 2026-01-31 |
 | MP-001 | Portable framework, project-specific examples | Added "Customizing for Your Project" section to README.md with find-replace table for 8 agent_ecology2-specific terms. Identified the 4 most affected patterns. Low-effort fix; medium/high-effort options (example rewrites, core/project split) remain as future work. | 2026-01-31 |
+| MP-006 | Pattern 13 too large (730 lines, mixed concerns) | Trimmed to 629 lines (~14%): removed redundant problem restatement, replaced 76-line ASCII process flow with 8-line compact list, replaced 23-line CI YAML with 3-line summary, removed incomplete enterprise patterns table. YAML schema extraction to separate doc deferred as future work. | 2026-01-31 |
 
 ---
 
