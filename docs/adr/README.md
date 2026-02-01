@@ -78,7 +78,11 @@ To update governance:
 | [0018](0018-bootstrap-and-eris.md) | Bootstrap Phase and Eris | Accepted |
 | [0019](0019-unified-permission-architecture.md) | Unified Permission Architecture | Accepted |
 | [0020](0020-event-schema-contract.md) | Event Schema Contract | Proposed |
-| [0021](0021-resource-attribution.md) | Resource Attribution Model | Accepted |
+| [0021](0021-executor-design-principles.md) | Executor Design Principles | Accepted |
+| [0022](0022-research-system-trust-model.md) | Research System Trust Model | Accepted |
+| [0023](0023-resource-attribution.md) | Resource Attribution Model | Accepted |
+| [0024](0024-artifact-self-handled-access.md) | Artifact Self-Handled Access Control | Accepted |
+| [0025](0025-deferred-tokenized-rights.md) | Deferred Tokenized Rights | Accepted |
 
 ---
 
