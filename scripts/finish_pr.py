@@ -431,6 +431,23 @@ def finish_pr(branch: str, pr_number: int, check_ci: bool = False, skip_complete
         print(f"   Run manually when ready: python scripts/complete_plan.py --plan {plan_num}")
 
     # ═══════════════════════════════════════════════════════════════════
+    # PHASE 1.6: PLAN-TO-DIFF VERIFICATION (Plan #249 - advisory only)
+    # Compare actual git diff against plan's declared "Files Affected".
+    # Reports scope creep and plan drift but does not block merge.
+    # ═══════════════════════════════════════════════════════════════════
+    if plan_num:
+        print(f"🔍 Checking plan-to-diff alignment...")
+        diff_check = run_cmd(
+            ["python", "scripts/check_plan_diff.py", "--plan", str(plan_num), "--branch", branch],
+            check=False,
+        )
+        if diff_check.stdout.strip():
+            print(diff_check.stdout.strip())
+        if diff_check.returncode != 0 and "No 'Files Affected'" not in (diff_check.stderr or ""):
+            print("   (Advisory: not blocking merge)")
+        print()
+
+    # ═══════════════════════════════════════════════════════════════════
     # PHASE 2: EXECUTION (atomic - either completes fully or not at all)
     # ═══════════════════════════════════════════════════════════════════
 
@@ -555,6 +572,9 @@ def main() -> int:
                 step += 1
             elif context.get("plan_number") and args.skip_complete:
                 print(f"  {step}. Skip plan completion (--skip-complete)")
+                step += 1
+            if context.get("plan_number"):
+                print(f"  {step}. Check plan-to-diff alignment (advisory)")
                 step += 1
             print(f"  {step}. Release claim for {args.branch}")
             step += 1

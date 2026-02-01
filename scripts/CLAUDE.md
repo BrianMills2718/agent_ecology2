@@ -22,6 +22,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 |--------|---------|
 | `check_plan_tests.py` | Verify/run plan test requirements |
 | `check_plan_blockers.py` | Detect stale blockers (blocked by complete plans) |
+| `check_plan_diff.py` | Compare plan declarations against actual git diff |
 | `check_plan_exclusivity.py` | Enforce unique plan numbers across open PRs |
 | `check_plan_overlap.py` | Detect overlapping plan implementations |
 | `check_plan_completion.py` | Verify plan completion requirements |

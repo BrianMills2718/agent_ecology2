@@ -56,8 +56,9 @@
 ## Files Affected
 
 - `scripts/check_plan_diff.py` (create) — main verification script
-- `tests/unit/test_check_plan_diff.py` (create)
-- `Makefile` (modify) — add `check-plan-diff` target
+- `tests/test_check_plan_diff.py` (create) — unit tests
+- `scripts/finish_pr.py` (modify) — add Phase 1.6 advisory check
+- `scripts/CLAUDE.md` (modify) — document new script
 
 ---
 
