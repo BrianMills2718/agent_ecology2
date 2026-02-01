@@ -30,33 +30,52 @@ confirmed issues, plans, or dismissed.
 
 ## Monitoring
 
-### MP-018: No protection against creating files directly in main
+### MP-018: Uncommitted changes accumulating in main
 
 **Observed:** 2026-01-31
+**Updated:** 2026-02-01
 **Status:** `monitoring`
 
-**Finding:** Files were created directly in main without a worktree or claim:
-- `src/world/kernel_contracts.py` (12,967 bytes)
-- `tests/unit/test_kernel_contracts.py` (23,594 bytes)
-- Also modified: `src/world/delegation.py`, `invoke_handler.py`, `permission_checker.py`
+**Finding (updated after investigation):**
 
-The files are legitimate work (kernel contract implementations) but violate the
-"all work in worktrees" rule.
+Original report of orphaned `kernel_contracts.py` files was misleading — those files
+exist properly in `worktrees/trivial-kernel-contracts-rename/` as staged renames from
+`genesis_contracts.py`. That work is proceeding correctly.
+
+However, there ARE 4 uncommitted modified files in main that shouldn't be there:
+- `src/simulation/runner.py` - modified Jan 31 22:55
+- `src/world/__init__.py` - modified Jan 31 22:55
+- `src/world/invoke_handler.py` - modified Jan 31 22:57
+- `src/world/permission_checker.py` - modified Jan 31 22:56
+
+These look like Plan #247 work (removing genesis-related code) that was accidentally
+done in main instead of the `plan-247-legacy-tick-removal` worktree.
+
+**Investigation findings:**
+1. `protect-main.sh` hook exists and is correctly configured
+2. Hook has been in place since Plan #102
+3. Found evidence of earlier Edit calls to main's files (Jan 22, Jan 24) - hook didn't block
+4. Possible causes: (a) hook not enabled in some sessions, (b) edits via Bash, (c) bug
 
 **Why it wasn't caught:**
-- Hooks only fire on commit, not file creation
-- No filesystem monitoring for edits to `src/` or `tests/` in main
-- The "ACTIVE (no claim)" warning in `check_claims.py` is advisory, not blocking
+- The `protect-main.sh` hook should block Edit/Write to main
+- But edits are still getting through somehow
+- `check_claims.py` "ACTIVE (no claim)" warning is advisory, not blocking
+
+**Immediate action needed:**
+```bash
+git checkout src/simulation/runner.py src/world/__init__.py src/world/invoke_handler.py src/world/permission_checker.py
+```
 
 **Potential fixes:**
-1. Add detection to `health_check.py` — warn about uncommitted `src/`/`tests/` files in main
-2. Add a pre-edit hook (if Claude Code supports it) that warns when editing main directly
-3. Periodic cleanup script that moves orphaned files to a quarantine directory
+1. Verify hook is running: add logging to `protect-main.sh` to debug
+2. Add startup check in session to warn about dirty main state
+3. Add `health_check.py` detection for uncommitted `src/`/`tests/` files in main
 
-**Why monitoring (not confirmed):** Enforcement at file-creation time is hard (requires
-filesystem watching). The cost of enforcement might exceed the cost of occasional cleanup.
+**Why monitoring (not confirmed):** The hook exists and should work. Need more data on
+why it's not blocking in all cases before implementing additional enforcement.
 
-**Trigger:** Revisit if orphaned files in main cause lost work or merge conflicts.
+**Trigger:** Revisit if uncommitted files cause lost work or merge conflicts.
 
 ---
 
