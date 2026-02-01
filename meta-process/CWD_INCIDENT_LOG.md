@@ -286,6 +286,43 @@ session boundaries or from Makefile subprocess behavior).
 - Possible investigation: does `make finish` or the Makefile's `cd $(MAIN_DIR)`
   somehow affect the Bash tool's tracked CWD in unexpected ways?
 
+### Incident #6 - 2026-01-31
+
+**Session:** ff5883d2 — Marking TD-001 as resolved in TECH_DEBT.md
+**Class:** A (CWD invalidation)
+**Trigger:** `make finish BRANCH=trivial-td001-resolved PR=920`
+**Symptoms:**
+- `make finish` output started with `pwd: error retrieving current directory`
+- PR merged successfully, worktree deleted
+- ALL subsequent Bash commands failed with exit code 1, no output
+- Even `bash -c 'cd /home/brian/brian_projects/agent_ecology2 && pwd'` failed
+- Even `/bin/bash -c '...'` with absolute paths failed
+- Non-Bash tools (Read, Glob) were not tested before session refresh
+
+**Analysis:**
+
+**Direct cause identified:** Session ran `cd worktrees/trivial-td001-resolved && gh pr create ...`
+to create the PR. Despite CLAUDE.md guidance, the `cd worktrees/X && command` pattern
+was used. This changed the Bash tool's persistent CWD to the worktree. When `make finish`
+deleted the worktree, the CWD became invalid.
+
+**Note:** This is exactly the pattern warned about in Incident #4 analysis — the rule
+"NEVER use `cd worktrees/...` as a separate command — always chain with `&&`" was
+misinterpreted. Chaining with `&&` does NOT prevent CWD persistence; the cd still
+takes effect and persists across Bash tool invocations.
+
+**Correct alternatives:**
+- `gh pr create --repo BrianMills2718/agent_ecology2` (no cd needed for gh commands)
+- `git -C worktrees/trivial-td001-resolved ...` for git operations
+- Push from main after the branch exists: `git push -u origin trivial-td001-resolved`
+
+**Resolution:** User refreshed the session to get a fresh shell.
+
+**Follow-up:**
+- Recorded in CWD_INCIDENT_LOG.md (this entry)
+- CLAUDE.md wording needs strengthening: "NEVER cd into a worktree, period. Not even
+  chained with &&." — the current wording is ambiguous and keeps being misread.
+
 ---
 
 ## Template for New Incidents
