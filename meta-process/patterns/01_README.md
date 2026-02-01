@@ -18,7 +18,7 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 | [Documentation Graph](09_documentation-graph.md) | Can't trace decisions → code | Medium |
 | [Doc-Code Coupling](10_doc-code-coupling.md) | Docs drift from code | Medium |
 | [Terminology](11_terminology.md) | Inconsistent terms | Low |
-| [Structured Logging](12_structured-logging.md) | Unreadable logs | Low |
+| [Structured Logging](12_structured-logging.md) *(proposed)* | Unreadable logs | Low |
 | [Acceptance-Gate-Driven Development](13_acceptance-gate-driven-development.md) | AI drift, cheating, big bang integration | High |
 | [Acceptance Gate Linkage](14_acceptance-gate-linkage.md) | Sparse file-to-constraint mappings | Medium |
 | [Plan Workflow](15_plan-workflow.md) | Untracked work, scope creep | Medium |

@@ -70,7 +70,7 @@ edges:
 1. **Create relationships.yaml** from existing configs:
 ```bash
 # Merge governance.yaml + doc_coupling.yaml into relationships.yaml
-python scripts/migrate_to_relationships.py  # (if migration script exists)
+python scripts/migrate_to_relationships.py  # (not yet implemented — merge manually)
 ```
 
 2. **Update scripts** to read new format (or use existing scripts until migrated)
