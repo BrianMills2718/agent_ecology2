@@ -642,8 +642,9 @@ class KernelActions:
     ) -> bool:
         """Create a new principal with optional starting resources.
 
-        This enables genesis artifacts (and agent-built artifacts) to spawn
-        new principals without privileged access to the Ledger.
+        This is the single atomic operation for principal creation (Plan #231).
+        Creates ledger entry, sets has_standing on artifact, and creates
+        ResourceManager entry.
 
         Args:
             principal_id: ID for the new principal (must be unique)
@@ -657,12 +658,21 @@ class KernelActions:
         if self._world.ledger.principal_exists(principal_id):
             return False
 
-        # Create the principal via ledger
+        # 1. Ledger entry
         self._world.ledger.create_principal(
             principal_id,
             starting_scrip=starting_scrip,
             starting_compute=starting_compute
         )
+
+        # 2. Artifact has_standing (Plan #231: ledger <-> has_standing invariant)
+        if principal_id in self._world.artifacts.artifacts:
+            self._world.artifacts.artifacts[principal_id].has_standing = True
+
+        # 3. ResourceManager entry
+        if hasattr(self._world, 'resource_manager'):
+            self._world.resource_manager.create_principal(principal_id)
+
         return True
 
     def update_artifact_metadata(

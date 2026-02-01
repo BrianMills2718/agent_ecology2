@@ -296,6 +296,22 @@ class SimulationRunner:
             if artifact_data.get("memory_artifact_id"):
                 artifact.memory_artifact_id = artifact_data["memory_artifact_id"]
 
+        # Plan #231: Enforce has_standing <-> ledger invariant after restore
+        for pid in self.world.ledger.scrip:
+            if pid.startswith("genesis_"):
+                continue
+            artifact = self.world.artifacts.artifacts.get(pid)
+            if artifact and not artifact.has_standing:
+                artifact.has_standing = True
+
+        for aid, artifact in self.world.artifacts.artifacts.items():
+            if artifact.has_standing and aid not in self.world.ledger.scrip:
+                # Fix drift: has standing but no ledger entry.
+                # Use raw dict access because ID is already registered as 'artifact'
+                # in IDRegistry — create_principal() would raise IDCollisionError.
+                self.world.ledger.scrip[aid] = 0
+                self.world.ledger.resources[aid] = {}
+
         if self.verbose:
             print("=== Resuming from checkpoint ===")
             print(f"Event counter: {checkpoint.get('event_number', checkpoint.get('tick', 0))}")
@@ -518,6 +534,11 @@ class SimulationRunner:
                 memory_artifact_id=memory_id,
             )
             self.world.artifacts.artifacts[principal_id] = agent_artifact
+
+            # Plan #231: Ensure ResourceManager knows about this principal
+            if hasattr(self.world, 'resource_manager'):
+                if not self.world.resource_manager.principal_exists(principal_id):
+                    self.world.resource_manager.create_principal(principal_id)
 
             # Create agent from artifact
             # Plan #197: Spawned agents are not genesis agents
