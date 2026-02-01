@@ -12,6 +12,7 @@ docs/
 │   ├── target/           # What we WANT (aspirational)
 │   └── gaps/             # Comprehensive gap analysis (142 gaps)
 ├── plans/                # Active implementation plans only
+├── GETTING_STARTED.md    # Installation, config, development
 ├── GLOSSARY.md           # Canonical terminology (single source)
 ├── DESIGN_CLARIFICATIONS.md  # Decision rationale archive
 └── SECURITY.md           # Security model
@@ -35,6 +36,7 @@ meta/
 | `adr/` | Architecture Decision Records | New architectural decisions |
 | `../meta/patterns/` | Reusable process patterns | New patterns identified |
 | `../meta/acceptance_gates/` | Feature specifications | New features defined |
+| `GETTING_STARTED.md` | Installation, configuration, development | Setup/tooling changes |
 | `GLOSSARY.md` | Canonical terminology | New concepts added |
 | `CONCEPTUAL_MODEL.yaml` | Structured conceptual model of the system | Model changes |
 | `CONCERNS.md` | Open concerns and known issues | New concerns identified |
