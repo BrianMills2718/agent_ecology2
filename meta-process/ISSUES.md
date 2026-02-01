@@ -85,6 +85,13 @@ of how files were modified is unclear. Monitoring to detect any future occurrenc
 
 **Trigger:** Revisit if uncommitted files appear in main again.
 
+**Potential improvement (if recurs):**
+Add hook execution logging to `protect-main.sh`:
+```bash
+echo "[$(date -Iseconds)] BLOCKED: $FILE_PATH" >> .claude/hook-blocks.log
+```
+This would help trace future incidents without digging through session transcripts.
+
 ---
 
 ### MP-012: No success metrics
