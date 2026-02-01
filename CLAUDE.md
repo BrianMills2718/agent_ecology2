@@ -56,7 +56,6 @@ make finish BRANCH=plan-XX PR=N SKIP_COMPLETE=1  # Skip plan completion (for par
 ```bash
 make pr-list             # List open PRs
 make pr-view PR=123      # View PR details
-make merge PR=123        # Merge only (use 'make finish' instead for full cleanup)
 ```
 
 ### Claims
@@ -196,7 +195,7 @@ make finish BRANCH=plan-123-foo PR=456    # Merge, cleanup, done!
 ### Never
 - Commit directly to main (use feature branches)
 - Use `git worktree rmv` directly (use `make worktree-remove`)
-- Use `gh pr merge` directly (use `make merge PR=N` or `make finish`)
+- Use `gh pr merge` directly (use `make finish`)
 - Skip the claim when creating worktrees (use `make worktree`)
 - Use `cd worktrees/...` as a separate command (chain with `&&` or use `git -C`)
 

@@ -5,8 +5,7 @@
 # This ensures we always use main's scripts, not potentially stale worktree copies
 MAIN_DIR := $(shell git worktree list | head -1 | awk '{print $$1}')
 
-# Plan #176: Removed worktree-quick (no bypass path for claiming)
-.PHONY: help install test mypy lint check validate clean claim release gaps status rebase pr-ready pr pr-create merge finish pr-merge-admin pr-list pr-view worktree worktree-remove worktree-remove-force clean-branches clean-branches-delete clean-worktrees clean-worktrees-auto kill ci-status ci-require ci-optional run dash dash-run analyze health health-fix recover recover-auto
+.PHONY: help install test mypy lint check clean claim release gaps status rebase pr-ready pr finish pr-list pr-view worktree worktree-remove worktree-remove-force clean-branches clean-branches-delete clean-worktrees clean-worktrees-auto kill ci-status ci-require ci-optional run dash dash-run analyze health health-fix recover recover-auto
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -72,9 +71,6 @@ status:  ## Show git and claim status
 	@echo "=== Active Claims ==="
 	@python scripts/check_claims.py --list 2>/dev/null || true
 
-branch:  ## Create plan branch (usage: make branch PLAN=3 NAME=docker)
-	git checkout -b plan-$(PLAN)-$(NAME)
-
 worktree:  ## Create worktree with mandatory claim (interactive)
 	@./scripts/create_worktree.sh
 
@@ -101,20 +97,9 @@ pr-ready:  ## Rebase and push (run before creating PR)
 pr:  ## Create PR (opens browser)
 	GIT_CONFIG_NOSYSTEM=1 gh pr create --web
 
-pr-create:  ## Create PR from CLI (usage: make pr-create TITLE="Fix bug" BODY="Description")
-	GIT_CONFIG_NOSYSTEM=1 gh pr create --title "$(TITLE)" --body "$(BODY)"
-
-merge:  ## Merge PR (usage: make merge PR=5)
-	@if [ -z "$(PR)" ]; then echo "Usage: make merge PR=5"; exit 1; fi
-	python $(MAIN_DIR)/scripts/merge_pr.py $(PR)
-
 finish:  ## Complete PR lifecycle: merge + cleanup (usage: make finish BRANCH=plan-XX PR=N [SKIP_COMPLETE=1]) - RUN FROM MAIN!
 	@if [ -z "$(BRANCH)" ] || [ -z "$(PR)" ]; then echo "Usage: make finish BRANCH=plan-XX PR=N [SKIP_COMPLETE=1]"; exit 1; fi
 	cd $(MAIN_DIR) && python $(MAIN_DIR)/scripts/finish_pr.py --branch $(BRANCH) --pr $(PR) $(if $(SKIP_COMPLETE),--skip-complete,)
-
-pr-merge-admin:  ## Merge PR bypassing checks (usage: make pr-merge-admin PR=5)
-	@if [ -z "$(PR)" ]; then echo "Usage: make pr-merge-admin PR=5"; exit 1; fi
-	GIT_CONFIG_NOSYSTEM=1 gh pr merge $(PR) --squash --admin --delete-branch
 
 pr-list:  ## List open PRs
 	GIT_CONFIG_NOSYSTEM=1 gh pr list
@@ -131,23 +116,6 @@ dash:  ## View existing run.jsonl in dashboard (no simulation)
 
 dash-run:  ## Run simulation with dashboard (usage: make dash-run DURATION=60)
 	python run.py --dashboard --duration $(or $(DURATION),60) --agents $(or $(AGENTS),1)
-
-# Dashboard v2 (React)
-dash-v2-install:  ## Install dashboard v2 dependencies
-	cd dashboard-v2 && npm install
-
-dash-v2-dev:  ## Run dashboard v2 in dev mode (hot reload, proxies to backend)
-	cd dashboard-v2 && npm run dev
-
-dash-v2-build:  ## Build dashboard v2 for production
-	cd dashboard-v2 && npm run build
-
-dash-v2-test:  ## Run dashboard v2 tests
-	cd dashboard-v2 && npm test
-
-dash-v2-types:  ## Generate TypeScript types from API (requires backend running)
-	@echo "Fetching OpenAPI spec from http://localhost:9000/openapi.json..."
-	cd dashboard-v2 && curl -s http://localhost:9000/openapi.json | npx openapi-typescript /dev/stdin -o src/types/api.ts
 
 analyze:  ## Analyze simulation run (usage: make analyze RUN=logs/latest)
 	python scripts/analyze_run.py $(or $(RUN),logs/latest)
