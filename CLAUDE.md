@@ -221,20 +221,24 @@ Claims provide **coordination** so work doesn't collide:
 
 ### Git Commands in Worktrees - CRITICAL
 
-**NEVER** use `cd worktrees/...` as a separate command. This permanently changes your shell CWD.
+**NEVER cd into a worktree, period.** Not even with `&&`. The Bash tool's CWD persists across invocations.
 
 ```bash
-# WRONG - shell CWD stays in worktree after command
+# WRONG - CWD changes and persists, even with &&
+cd worktrees/plan-123-foo && git add -A && git commit -m "..."
+# CWD is now worktrees/plan-123-foo - if worktree is deleted, shell breaks
+
+# ALSO WRONG - separate cd command
 cd worktrees/plan-123-foo
 git add -A
-git commit -m "..."
-# Shell is now stuck in worktree - if deleted, shell breaks
 
 # RIGHT - CWD stays at main
 git -C worktrees/plan-123-foo add -A && git -C worktrees/plan-123-foo commit -m "..."
 ```
 
 **Why this matters:** If your shell CWD is inside a worktree when `make finish` deletes it, all subsequent bash commands fail with no output. The shell is broken and needs a session restart.
+
+**Defense:** A PreToolUse hook (`block-cd-worktree.sh`) blocks `cd worktrees/...` commands.
 
 ### How to Recover
 
