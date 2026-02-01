@@ -30,6 +30,36 @@ confirmed issues, plans, or dismissed.
 
 ## Monitoring
 
+### MP-018: No protection against creating files directly in main
+
+**Observed:** 2026-01-31
+**Status:** `monitoring`
+
+**Finding:** Files were created directly in main without a worktree or claim:
+- `src/world/kernel_contracts.py` (12,967 bytes)
+- `tests/unit/test_kernel_contracts.py` (23,594 bytes)
+- Also modified: `src/world/delegation.py`, `invoke_handler.py`, `permission_checker.py`
+
+The files are legitimate work (kernel contract implementations) but violate the
+"all work in worktrees" rule.
+
+**Why it wasn't caught:**
+- Hooks only fire on commit, not file creation
+- No filesystem monitoring for edits to `src/` or `tests/` in main
+- The "ACTIVE (no claim)" warning in `check_claims.py` is advisory, not blocking
+
+**Potential fixes:**
+1. Add detection to `health_check.py` — warn about uncommitted `src/`/`tests/` files in main
+2. Add a pre-edit hook (if Claude Code supports it) that warns when editing main directly
+3. Periodic cleanup script that moves orphaned files to a quarantine directory
+
+**Why monitoring (not confirmed):** Enforcement at file-creation time is hard (requires
+filesystem watching). The cost of enforcement might exceed the cost of occasional cleanup.
+
+**Trigger:** Revisit if orphaned files in main cause lost work or merge conflicts.
+
+---
+
 ### MP-012: No success metrics
 
 **Observed:** 2026-01-31
