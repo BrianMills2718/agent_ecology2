@@ -203,7 +203,9 @@ def check_content_consistency() -> list[dict]:
             })
 
         # Check: "Planned" but missing plan content
-        if status == "📋" and not has_plan:
+        # Skip deferred plans - they're allowed to lack ## Plan sections
+        is_deferred = "deferred" in plan["status_raw"].lower()
+        if status == "📋" and not has_plan and not is_deferred:
             issues.append({
                 "plan": plan["number"],
                 "issue": "missing_content",

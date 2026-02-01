@@ -82,4 +82,18 @@ if [[ -d "$SESSIONS_DIR" ]]; then
     fi
 fi
 
+# 5. Warn if main has uncommitted src/ or tests/ changes (Plan #250)
+# This catches cases where protect-main.sh was bypassed (e.g., CC version bugs)
+DIRTY_FILES=$(git -C "$MAIN_REPO_ROOT" status --short src/ tests/ 2>/dev/null | wc -l)
+if [[ "$DIRTY_FILES" -gt 0 ]]; then
+    echo "" >&2
+    echo "⚠️  WARNING: Main has $DIRTY_FILES uncommitted file(s) in src/ or tests/:" >&2
+    git -C "$MAIN_REPO_ROOT" status --short src/ tests/ 2>/dev/null | head -10 >&2
+    echo "" >&2
+    echo "   This may indicate a hook bypass. Consider:" >&2
+    echo "   - git stash                    # Save changes temporarily" >&2
+    echo "   - git checkout -- src/ tests/  # Discard changes" >&2
+    echo "" >&2
+fi
+
 exit 0
