@@ -67,9 +67,7 @@ class TestLedgerLLMBudget:
         ledger.spend_resource("agent_a", "llm_budget", 0.50)
         assert ledger.get_resource("agent_a", "llm_budget") == pytest.approx(0.50)
 
-        # Unlike flow resources, budget should NOT be reset
-        # (reset_flow_resources doesn't affect llm_budget since it's a stock)
-        # The World handles this - llm_budget is in stock_resources config
+        # llm_budget is a stock resource - never reset by RateTracker
 
     def test_llm_budget_transfer(self) -> None:
         """Test transferring llm_budget between agents."""

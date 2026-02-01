@@ -2,7 +2,7 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-01-31 (Verified after ledger.py docstring ref fix)
+**Last verified:** 2026-01-31 (Plan #247: Legacy tick mode removed)
 
 **See target:** [../target/resources.md](../target/resources.md)
 
@@ -21,7 +21,7 @@ Quota allocation is managed by `genesis/rights_registry.py` (the `GenesisRightsR
 
 ---
 
-## Terminology (Legacy)
+## Terminology
 
 | Term | Meaning | Internal Name | Category |
 |------|---------|---------------|----------|
@@ -31,8 +31,6 @@ Quota allocation is managed by `genesis/rights_registry.py` (the `GenesisRightsR
 | **cpu_seconds** | CPU time per rolling window | `cpu_seconds` | Renewable (rate-limited) |
 | **memory_bytes** | Memory usage per rolling window | `memory_bytes` | Renewable (rate-limited) |
 | **scrip** | Internal currency | `scrip` | Economic signal |
-
-**Note:** Legacy config uses `resources.flow.compute` which maps to `llm_tokens`. The term "compute" is reserved for future local CPU tracking.
 
 ---
 
@@ -49,27 +47,15 @@ Resources and scrip are independent. Spending resources doesn't cost scrip (exce
 
 ## Renewable Resources (Rate-Limited)
 
-### Discrete Per-Tick Refresh (Legacy Mode)
-
-**`World.advance_tick()`** in `src/world/world.py`
-
-Flow resources reset to quota at start of each tick:
-
-```python
-# In advance_tick()
-for pid in self.principal_ids:
-    quota = self.rights_registry.get_quota(pid, "compute")
-    self.ledger.set_resource(pid, "llm_tokens", quota)
-```
+All renewable resources use `RateTracker` for rolling-window rate limiting (Plan #247 removed the legacy tick-based mode).
 
 ### LLM Tokens
 
 | Property | Value |
 |----------|-------|
-| Config key (rate limiting) | `rate_limiting.resources.llm_tokens.max_per_window` |
-| Config key (legacy tick) | `resources.flow.compute.per_tick` |
+| Config key | `rate_limiting.resources.llm_tokens.max_per_window` |
 | Internal name | `llm_tokens` |
-| Default | 1000 per window (or per tick in legacy mode) |
+| Default | 1000 per window |
 
 **Used for:**
 - Thinking cost (LLM input/output tokens)
@@ -305,10 +291,10 @@ Set by artifact owner:
 
 ## Implications
 
-### Use-or-Lose (Legacy Tick Mode Only)
-- When `rate_limiting.enabled=false`, unused tokens vanish at tick end
-- When `rate_limiting.enabled=true`, tokens use rolling window (no tick reset)
-- RateTracker mode allows more natural consumption patterns
+### Rolling Window Rate Limiting
+- RateTracker uses rolling time windows for natural consumption patterns
+- No use-or-lose: capacity replenishes continuously over the window
+- Tokens consumed at start of window become available again as window slides
 
 ### Strict Constraints = No Speculation
 - Cannot spend what you don't have
@@ -323,25 +309,27 @@ Set by artifact owner:
 
 ---
 
-## RateTracker Integration (Phase 2)
+## RateTracker Integration
 
-When `rate_limiting.enabled: true`, `Ledger` integrates with `RateTracker` for rolling-window rate limiting.
+`Ledger` always integrates with `RateTracker` for rolling-window rate limiting (Plan #247 removed the optional toggle).
 
 ```python
-# Ledger now accepts optional RateTracker
-ledger = Ledger.from_config(config, agent_ids)  # Creates RateTracker if enabled
+# Ledger always creates RateTracker
+ledger = Ledger.from_config(config, agent_ids)
 
-# Record resource usage (replaces tick-based reset)
-ledger.rate_tracker.record("llm_calls", agent_id, 1)
+# Check and consume resource
+if ledger.check_resource_capacity(agent_id, "llm_calls", 1):
+    ledger.consume_resource(agent_id, "llm_calls", 1)
 
-# Check if within limits
-can_proceed = ledger.rate_tracker.can_consume("llm_calls", agent_id, 1)
+# Get remaining capacity
+remaining = ledger.get_resource_remaining(agent_id, "llm_calls")
 ```
 
-**Key differences from tick-based:**
-- Rolling time window instead of discrete tick reset
+**Key behaviors:**
+- Rolling time window (not discrete ticks)
 - No use-or-lose: capacity replenishes continuously
 - Async-safe: uses `asyncio.Lock` for concurrent access
+- Unconfigured resources have infinite capacity
 
 See `docs/architecture/current/configuration.md` for rate limiting config options.
 

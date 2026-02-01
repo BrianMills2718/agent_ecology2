@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-31 (Plan #239 - Fixed action type count: 6 → 11, fixed _execute_edit bug)
+**Last verified:** 2026-01-31 (Plan #247 - Legacy tick mode removed, no execution model changes)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

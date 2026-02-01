@@ -61,9 +61,10 @@ class TestSpawnPrincipalCreatesLedgerEntry:
         # Get the new principal's ID
         new_id = result["principal_id"]
 
-        # Verify the new principal exists in the ledger with 0 balances
+        # Verify the new principal exists in the ledger with 0 scrip
         assert ledger_with_agent.get_scrip(new_id) == 0
-        assert ledger_with_agent.get_llm_tokens(new_id) == 0
+        # get_llm_tokens uses RateTracker (returns capacity, not balance)
+        assert ledger_with_agent.get_resource(new_id, "llm_tokens") == 0
 
     def test_spawn_principal_new_id_in_all_balances(
         self, genesis_ledger: GenesisLedger, ledger_with_agent: Ledger
@@ -199,7 +200,8 @@ class TestSpawnMultiplePrincipals:
 
         for principal_id in ids:
             assert ledger_with_agent.get_scrip(principal_id) == 0
-            assert ledger_with_agent.get_llm_tokens(principal_id) == 0
+            # get_llm_tokens uses RateTracker (returns capacity, not balance)
+            assert ledger_with_agent.get_resource(principal_id, "llm_tokens") == 0
 
 
 class TestSpawnedPrincipalCanReceiveTransfer:

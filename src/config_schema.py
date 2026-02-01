@@ -983,8 +983,8 @@ class RateLimitingConfig(StrictModel):
     """
 
     enabled: bool = Field(
-        default=False,
-        description="Enable rate limiting (disabled by default during migration)"
+        default=True,
+        description="Rate limiting is always active (Plan #247: legacy tick mode removed)"
     )
     window_seconds: float = Field(
         default=60.0,

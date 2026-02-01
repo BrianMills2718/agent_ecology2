@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-231-standing-invariant
-task: Enforce has_standing <-> ledger invariant
-claimed_at: '2026-02-01T00:15:38Z'
-session_id: 2f67eed1-4c7e-4928-9fdb-5f2e27ac51ab
-plan: 231
+cc_id: plan-247-legacy-tick-removal
+task: Remove legacy tick-based resource mode
+claimed_at: '2026-02-01T02:54:13Z'
+session_id: 2f27498a-435e-41a9-a555-951db4796699
+plan: 247

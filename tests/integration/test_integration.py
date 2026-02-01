@@ -323,8 +323,8 @@ class TestFullTickCycle:
         world.advance_tick()
         assert world.event_number == 1
 
-        # Get initial compute
-        initial_compute = world.ledger.get_llm_tokens("agent_1")
+        # Get initial compute (RateTracker capacity, not raw balance)
+        initial_compute = world.ledger.get_resource_remaining("agent_1", "llm_tokens")
         assert initial_compute > 0
 
         # Execute noop action (actions are free - no compute cost)
@@ -333,15 +333,15 @@ class TestFullTickCycle:
         assert result.success is True
 
         # Compute should be unchanged (actions are free)
-        compute_after_action = world.ledger.get_llm_tokens("agent_1")
+        compute_after_action = world.ledger.get_resource_remaining("agent_1", "llm_tokens")
         assert compute_after_action == initial_compute
 
         # Advance to next tick
         world.advance_tick()
         assert world.event_number == 2
 
-        # Compute should still be the same after reset
-        compute_after_reset = world.ledger.get_llm_tokens("agent_1")
+        # Compute should still be the same after tick (RateTracker, no reset)
+        compute_after_reset = world.ledger.get_resource_remaining("agent_1", "llm_tokens")
         assert compute_after_reset == initial_compute
 
         # Scrip should NOT change (it persists)
@@ -387,13 +387,13 @@ class TestComputeAndScripSeparation:
 
         # Get initial values
         initial_scrip = world.ledger.get_scrip("agent_1")
-        initial_compute = world.ledger.get_llm_tokens("agent_1")
+        initial_compute = world.ledger.get_resource_remaining("agent_1", "llm_tokens")
 
         # Execute action - actions are free, but compute can be spent explicitly
         world.ledger.spend_llm_tokens("agent_1", 5)
 
-        # Compute should decrease, scrip should stay same
-        assert world.ledger.get_llm_tokens("agent_1") < initial_compute
+        # Compute capacity should decrease, scrip should stay same
+        assert world.ledger.get_resource_remaining("agent_1", "llm_tokens") < initial_compute
         assert world.ledger.get_scrip("agent_1") == initial_scrip
 
     def test_compute_and_scrip_are_independent(self, world_with_temp_log):
@@ -402,16 +402,16 @@ class TestComputeAndScripSeparation:
         world.advance_tick()
 
         initial_scrip = world.ledger.get_scrip("agent_1")
-        initial_compute = world.ledger.get_llm_tokens("agent_1")
+        initial_compute = world.ledger.get_resource_remaining("agent_1", "llm_tokens")
 
-        # Spend some compute
+        # Spend some compute (consumes from RateTracker)
         world.ledger.spend_llm_tokens("agent_1", 10)
 
         # Transfer some scrip
         world.ledger.transfer_scrip("agent_1", "agent_2", 20)
 
         # Verify they changed independently
-        assert world.ledger.get_llm_tokens("agent_1") == initial_compute - 10
+        assert world.ledger.get_resource_remaining("agent_1", "llm_tokens") == initial_compute - 10
         assert world.ledger.get_scrip("agent_1") == initial_scrip - 20
 
 

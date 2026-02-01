@@ -456,49 +456,18 @@ class TestPrincipalConfig:
             assert runner.world.ledger.get_scrip("agent") == 500
 
 
-class TestAdvanceTickResourceReset:
-    """Tests for advance_tick resource reset behavior based on rate limiting mode."""
+class TestRateTrackerResourceBehavior:
+    """Tests for RateTracker-based resource behavior (Plan #247: legacy tick mode removed)."""
 
     @patch("src.simulation.runner.load_agents")
-    def test_advance_tick_resets_compute_in_legacy_mode(self, mock_load: MagicMock) -> None:
-        """advance_tick resets compute when rate limiting is disabled (legacy mode)."""
-        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = make_minimal_config(tmpdir)
-            # Ensure rate limiting is disabled (default behavior)
-            config["rate_limiting"] = {"enabled": False}
-            runner = SimulationRunner(config, verbose=False)
-
-            # Set initial compute
-            runner.world.ledger.set_resource("agent", "llm_tokens", 1000.0)
-            assert runner.world.ledger.get_llm_tokens("agent") == 1000
-
-            # Spend some compute
-            runner.world.ledger.spend_llm_tokens("agent", 600)
-            assert runner.world.ledger.get_llm_tokens("agent") == 400
-
-            # Advance tick should reset compute (legacy mode)
-            runner.world.advance_tick()
-
-            # Compute should be reset to quota (based on config)
-            # In legacy mode, compute resets to default_quotas.compute or config value
-            assert runner.world.ledger.get_llm_tokens("agent") > 0  # Reset happened
-
-    @patch("src.simulation.runner.load_agents")
-    def test_advance_tick_no_reset_when_rate_tracker_enabled(
+    def test_advance_tick_does_not_reset_rate_tracker(
         self, mock_load: MagicMock
     ) -> None:
-        """advance_tick does NOT reset compute when rate limiting is enabled.
-
-        With rate_limiting enabled, get_compute and spend_compute use RateTracker
-        instead of tick-based balance. advance_tick should not affect RateTracker.
-        """
+        """advance_tick does NOT affect RateTracker capacity."""
         mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
-            # Enable rate limiting with "llm_tokens" resource configured
             config["rate_limiting"] = {
                 "enabled": True,
                 "window_seconds": 60.0,
@@ -506,7 +475,7 @@ class TestAdvanceTickResourceReset:
             }
             runner = SimulationRunner(config, verbose=False)
 
-            # get_compute returns RateTracker remaining (full capacity initially)
+            # get_llm_tokens returns RateTracker remaining (full capacity initially)
             assert runner.world.ledger.get_llm_tokens("agent") == 1000
 
             # Spend some compute (consumes from RateTracker)
@@ -520,33 +489,23 @@ class TestAdvanceTickResourceReset:
             assert runner.world.ledger.get_llm_tokens("agent") == 400
 
     @patch("src.simulation.runner.load_agents")
-    def test_world_use_rate_tracker_flag_from_config(self, mock_load: MagicMock) -> None:
-        """World.use_rate_tracker is correctly set from config."""
+    def test_rate_tracker_always_created(self, mock_load: MagicMock) -> None:
+        """RateTracker is always created regardless of config (Plan #247)."""
         mock_load.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Test with rate limiting disabled
             config = make_minimal_config(tmpdir)
-            config["rate_limiting"] = {"enabled": False}
             runner = SimulationRunner(config, verbose=False)
-            assert runner.world.use_rate_tracker is False
-
-            # Test with rate limiting enabled
-            config2 = make_minimal_config(tmpdir)
-            config2["rate_limiting"] = {"enabled": True}
-            config2["logging"]["output_file"] = f"{tmpdir}/run2.jsonl"
-            runner2 = SimulationRunner(config2, verbose=False)
-            assert runner2.world.use_rate_tracker is True
+            assert runner.world.rate_tracker is not None
+            assert runner.world.ledger.rate_tracker is not None
 
     @patch("src.simulation.runner.load_agents")
-    def test_scrip_never_resets_in_either_mode(self, mock_load: MagicMock) -> None:
-        """Scrip never resets regardless of rate limiting mode."""
+    def test_scrip_never_resets(self, mock_load: MagicMock) -> None:
+        """Scrip never resets on advance_tick."""
         mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Test legacy mode
             config = make_minimal_config(tmpdir)
-            config["rate_limiting"] = {"enabled": False}
             runner = SimulationRunner(config, verbose=False)
 
             # Spend some scrip
@@ -558,22 +517,6 @@ class TestAdvanceTickResourceReset:
 
             # Scrip should remain at 70 (never resets)
             assert runner.world.ledger.get_scrip("agent") == 70
-
-            # Test rate limiting mode
-            config2 = make_minimal_config(tmpdir)
-            config2["rate_limiting"] = {"enabled": True}
-            config2["logging"]["output_file"] = f"{tmpdir}/run2.jsonl"
-            runner2 = SimulationRunner(config2, verbose=False)
-
-            # Spend some scrip
-            runner2.world.ledger.deduct_scrip("agent", 30)
-            assert runner2.world.ledger.get_scrip("agent") == 70
-
-            # Advance tick
-            runner2.world.advance_tick()
-
-            # Scrip should remain at 70 (never resets)
-            assert runner2.world.ledger.get_scrip("agent") == 70
 
 
 class TestAutonomousMode:
@@ -617,11 +560,9 @@ class TestAutonomousMode:
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
             config["execution"] = {"use_autonomous_loops": True}
-            # rate_limiting disabled (no rate_tracker from config)
-            config["rate_limiting"] = {"enabled": False}
             runner = SimulationRunner(config, verbose=False)
 
-            # rate_tracker should be created even if rate_limiting is disabled
+            # Plan #247: RateTracker is always created
             assert runner.world.rate_tracker is not None
             assert runner.world.loop_manager is not None
 

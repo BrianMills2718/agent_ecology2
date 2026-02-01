@@ -111,7 +111,7 @@ class TestUnifiedInvokePath:
     def test_genesis_method_cost_charged(self, world: World) -> None:
         """Genesis method with cost should charge compute."""
         # Get initial compute
-        initial_compute = world.ledger.get_llm_tokens("test_agent")
+        initial_compute = world.ledger.get_resource("test_agent", "llm_tokens")
 
         # Find a method with cost (mint.status has cost=1)
         intent = InvokeArtifactIntent(
@@ -127,7 +127,7 @@ class TestUnifiedInvokePath:
         assert result.success is True
 
         # Compute should be reduced if method has cost > 0
-        final_compute = world.ledger.get_llm_tokens("test_agent")
+        final_compute = world.ledger.get_resource("test_agent", "llm_tokens")
         # Note: If method cost is 0, this may not change
         # The important thing is the invoke succeeded via unified path
 

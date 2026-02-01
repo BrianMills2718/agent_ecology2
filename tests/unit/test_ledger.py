@@ -14,8 +14,15 @@ def ledger() -> Ledger:
 
 
 @pytest.fixture
-def ledger_with_agents(ledger: Ledger) -> Ledger:
-    """Create a Ledger with two agents initialized."""
+def ledger_with_agents() -> Ledger:
+    """Create a Ledger with two agents and configured rate limits."""
+    config = {
+        "rate_limiting": {
+            "window_seconds": 60.0,
+            "resources": {"llm_tokens": {"max_per_window": 500}},
+        }
+    }
+    ledger = Ledger.from_config(config, [])
     ledger.create_principal("agent_a", starting_scrip=100, starting_compute=500)
     ledger.create_principal("agent_b", starting_scrip=50, starting_compute=300)
     return ledger
@@ -29,14 +36,14 @@ class TestInitialBalances:
         ledger.create_principal("agent_1", starting_scrip=100, starting_compute=500)
 
         assert ledger.get_scrip("agent_1") == 100
-        assert ledger.get_llm_tokens("agent_1") == 500
+        assert ledger.get_resource("agent_1", "llm_tokens") == 500
 
     def test_initial_balances_default_compute(self, ledger: Ledger) -> None:
         """Verify agents can be created with default compute of 0."""
         ledger.create_principal("agent_1", starting_scrip=100)
 
         assert ledger.get_scrip("agent_1") == 100
-        assert ledger.get_llm_tokens("agent_1") == 0
+        assert ledger.get_resource("agent_1", "llm_tokens") == 0
 
     def test_initial_balances_zero_values(self, ledger: Ledger) -> None:
         """Verify agents can be created with 0 starting scrip and compute.
@@ -46,7 +53,7 @@ class TestInitialBalances:
         ledger.create_principal("spawned_agent", starting_scrip=0, starting_compute=0)
 
         assert ledger.get_scrip("spawned_agent") == 0
-        assert ledger.get_llm_tokens("spawned_agent") == 0
+        assert ledger.get_resource("spawned_agent", "llm_tokens") == 0
         # Verify the agent exists in the ledger
         assert "spawned_agent" in ledger.get_all_balances()
 
@@ -55,9 +62,9 @@ class TestInitialBalances:
     ) -> None:
         """Verify multiple agents have independent balances."""
         assert ledger_with_agents.get_scrip("agent_a") == 100
-        assert ledger_with_agents.get_llm_tokens("agent_a") == 500
+        assert ledger_with_agents.get_resource("agent_a", "llm_tokens") == 500
         assert ledger_with_agents.get_scrip("agent_b") == 50
-        assert ledger_with_agents.get_llm_tokens("agent_b") == 300
+        assert ledger_with_agents.get_resource("agent_b", "llm_tokens") == 300
 
 
 class TestGetScrip:
@@ -74,16 +81,16 @@ class TestGetScrip:
 
 
 class TestGetCompute:
-    """Tests for get_compute method."""
+    """Tests for get_resource (llm_tokens balance)."""
 
     def test_get_compute(self, ledger_with_agents: Ledger) -> None:
-        """Test get_compute returns correct value."""
-        assert ledger_with_agents.get_llm_tokens("agent_a") == 500
-        assert ledger_with_agents.get_llm_tokens("agent_b") == 300
+        """Test get_resource returns correct llm_tokens balance."""
+        assert ledger_with_agents.get_resource("agent_a", "llm_tokens") == 500
+        assert ledger_with_agents.get_resource("agent_b", "llm_tokens") == 300
 
     def test_get_compute_unknown_agent(self, ledger: Ledger) -> None:
-        """Test get_compute returns 0 for unknown agent."""
-        assert ledger.get_llm_tokens("unknown_agent") == 0
+        """Test get_resource returns 0 for unknown agent."""
+        assert ledger.get_resource("unknown_agent", "llm_tokens") == 0
 
 
 class TestTransferScrip:
@@ -175,7 +182,8 @@ class TestDeductThinkingCost:
 
         assert success is True
         assert cost == 2
-        assert ledger_with_agents.get_llm_tokens("agent_a") == 498
+        # RateTracker capacity decreased (500 - 2 = 498)
+        assert ledger_with_agents.get_resource_remaining("agent_a", "llm_tokens") == 498
 
     def test_deduct_thinking_cost_rounds_up(self, ledger_with_agents: Ledger) -> None:
         """Thinking cost rounds up to nearest integer."""
@@ -190,13 +198,14 @@ class TestDeductThinkingCost:
 
         assert success is True
         assert cost == 1
-        assert ledger_with_agents.get_llm_tokens("agent_a") == 499
+        # RateTracker capacity decreased (500 - 1 = 499)
+        assert ledger_with_agents.get_resource_remaining("agent_a", "llm_tokens") == 499
 
     def test_deduct_thinking_cost_insufficient(
         self, ledger_with_agents: Ledger
     ) -> None:
-        """Fails when not enough compute for thinking."""
-        # Request more compute than available (500)
+        """Fails when not enough capacity for thinking."""
+        # Request more compute than available (500 capacity)
         # 100000 input tokens at 10.0 rate = 1000 compute units
         success, cost = ledger_with_agents.deduct_thinking_cost(
             "agent_a",
@@ -208,31 +217,35 @@ class TestDeductThinkingCost:
 
         assert success is False
         assert cost == 1000
-        # Compute should remain unchanged
-        assert ledger_with_agents.get_llm_tokens("agent_a") == 500
+        # Capacity should remain unchanged
+        assert ledger_with_agents.get_resource_remaining("agent_a", "llm_tokens") == 500
 
 
 class TestResetCompute:
-    """Tests for resetting compute each tick."""
+    """Tests for reset_llm_tokens behavior.
 
-    def test_reset_compute(self, ledger_with_agents: Ledger) -> None:
-        """Verify compute resets each tick."""
-        # First spend some compute
-        ledger_with_agents.spend_llm_tokens("agent_a", 200)
-        assert ledger_with_agents.get_llm_tokens("agent_a") == 300
+    Plan #247: reset_llm_tokens sets the raw balance, which is separate from
+    RateTracker capacity. get_llm_tokens returns RateTracker capacity.
+    """
 
-        # Reset compute to quota
+    def test_reset_sets_raw_balance(self, ledger_with_agents: Ledger) -> None:
+        """reset_llm_tokens sets raw balance (not RateTracker)."""
+        # Raw balance starts at 500 (from fixture)
+        assert ledger_with_agents.get_resource("agent_a", "llm_tokens") == 500
+
+        # Reset balance to 1000
         ledger_with_agents.reset_llm_tokens("agent_a", 1000)
 
-        assert ledger_with_agents.get_llm_tokens("agent_a") == 1000
+        # Raw balance changed
+        assert ledger_with_agents.get_resource("agent_a", "llm_tokens") == 1000
 
-    def test_reset_compute_to_lower_value(self, ledger_with_agents: Ledger) -> None:
-        """Reset compute can set to lower value than current."""
-        assert ledger_with_agents.get_llm_tokens("agent_a") == 500
+    def test_reset_to_lower_value(self, ledger_with_agents: Ledger) -> None:
+        """reset_llm_tokens can set to lower value than current."""
+        assert ledger_with_agents.get_resource("agent_a", "llm_tokens") == 500
 
         ledger_with_agents.reset_llm_tokens("agent_a", 100)
 
-        assert ledger_with_agents.get_llm_tokens("agent_a") == 100
+        assert ledger_with_agents.get_resource("agent_a", "llm_tokens") == 100
 
 
 class TestMintScrip:
@@ -305,21 +318,22 @@ class TestGetAllBalances:
 
 
 class TestRateTrackerIntegration:
-    """Tests for Ledger + RateTracker integration."""
+    """Tests for Ledger + RateTracker integration.
 
-    def test_rate_tracker_disabled_by_default(self) -> None:
-        """Rate tracker not used when disabled."""
+    Plan #247: RateTracker is always active. Legacy tick-based mode removed.
+    """
+
+    def test_rate_tracker_always_exists(self) -> None:
+        """RateTracker is always created, even with empty config."""
         ledger = Ledger()
-        assert ledger.use_rate_tracker is False
-        assert ledger.rate_tracker is None
-        # Legacy mode: check_resource_capacity always returns True
+        assert ledger.rate_tracker is not None
+        # Default RateTracker has no limits, so capacity is infinite
         assert ledger.check_resource_capacity("agent1", "llm_calls") is True
 
-    def test_rate_tracker_enabled_from_config(self) -> None:
-        """Rate tracker initialized from config."""
+    def test_rate_tracker_from_config_with_limits(self) -> None:
+        """RateTracker initialized with limits from config."""
         config = {
             "rate_limiting": {
-                "enabled": True,
                 "window_seconds": 60.0,
                 "resources": {
                     "llm_calls": {"max_per_window": 100}
@@ -327,26 +341,17 @@ class TestRateTrackerIntegration:
             }
         }
         ledger = Ledger.from_config(config, ["agent1"])
-        assert ledger.use_rate_tracker is True
         assert ledger.rate_tracker is not None
+        # Configured limit is enforced
+        assert ledger.get_resource_remaining("agent1", "llm_calls") == 100
 
-    def test_rate_tracker_disabled_from_config(self) -> None:
-        """Rate tracker not initialized when disabled in config."""
-        config = {
-            "rate_limiting": {
-                "enabled": False,
-            }
-        }
-        ledger = Ledger.from_config(config, ["agent1"])
-        assert ledger.use_rate_tracker is False
-        assert ledger.rate_tracker is None
-
-    def test_rate_tracker_empty_config(self) -> None:
-        """Rate tracker disabled when config section missing."""
+    def test_rate_tracker_empty_config_has_no_limits(self) -> None:
+        """Empty config creates RateTracker with no limits (infinite capacity)."""
         config: dict[str, object] = {}
         ledger = Ledger.from_config(config, ["agent1"])
-        assert ledger.use_rate_tracker is False
-        assert ledger.rate_tracker is None
+        assert ledger.rate_tracker is not None
+        # No limits = infinite capacity
+        assert ledger.get_resource_remaining("agent1", "llm_calls") == float("inf")
 
     def test_check_capacity_uses_rate_tracker(self) -> None:
         """check_resource_capacity delegates to RateTracker."""
@@ -411,58 +416,52 @@ class TestRateTrackerIntegration:
         # Should have 70 remaining
         assert ledger.get_resource_remaining("agent1", "llm_calls") == 70
 
-    def test_legacy_mode_check_capacity_always_true(self) -> None:
-        """Legacy mode: check_resource_capacity always returns True."""
+    def test_unconfigured_resource_check_capacity_always_true(self) -> None:
+        """Unconfigured resources have infinite capacity."""
         ledger = Ledger()
-        # Even with high amount, should return True (legacy mode)
+        # Unconfigured resources have no limits
         assert ledger.check_resource_capacity("agent1", "any_resource", 999999) is True
 
-    def test_legacy_mode_consume_always_true(self) -> None:
-        """Legacy mode: consume_resource always returns True."""
+    def test_unconfigured_resource_consume_always_true(self) -> None:
+        """Unconfigured resources can always be consumed."""
         ledger = Ledger()
-        # Should always succeed in legacy mode
+        # No limits = always succeeds
         assert ledger.consume_resource("agent1", "any_resource", 999999) is True
 
-    def test_legacy_mode_remaining_is_infinite(self) -> None:
-        """Legacy mode: get_resource_remaining returns infinity."""
+    def test_rate_tracker_always_created(self) -> None:
+        """Plan #247: Ledger always has a RateTracker."""
         ledger = Ledger()
-        assert ledger.get_resource_remaining("agent1", "any_resource") == float("inf")
+        assert ledger.rate_tracker is not None
 
-    def test_legacy_reset_compute_still_works(self) -> None:
-        """Legacy tick-based mode unchanged when disabled."""
-        ledger = Ledger()
-        ledger.create_principal("agent1", starting_scrip=100, starting_compute=500)
-
-        # Spend some compute
-        ledger.spend_llm_tokens("agent1", 200)
-        assert ledger.get_llm_tokens("agent1") == 300
-
-        # Reset should work
-        ledger.reset_llm_tokens("agent1", 1000)
-        assert ledger.get_llm_tokens("agent1") == 1000
-
-    def test_reset_compute_with_rate_tracker_enabled(self) -> None:
-        """reset_compute sets tick balance but get_compute returns RateTracker capacity.
-
-        When rate_limiting is enabled, get_compute is mode-aware and returns
-        the RateTracker remaining capacity, not the tick-based balance.
-        """
+    def test_get_resource_remaining_uses_rate_tracker(self) -> None:
+        """get_resource_remaining delegates to RateTracker."""
         config = {
             "rate_limiting": {
-                "enabled": True,
+                "resources": {"llm_tokens": {"max_per_window": 1000}}
+            }
+        }
+        ledger = Ledger.from_config(config, ["agent1"])
+        # Unconfigured resource returns infinity
+        assert ledger.get_resource_remaining("agent1", "unknown_resource") == float("inf")
+        # Configured resource returns max capacity
+        assert ledger.get_resource_remaining("agent1", "llm_tokens") == 1000.0
+
+    def test_rate_tracker_capacity_tracking(self) -> None:
+        """RateTracker tracks consumption and returns remaining capacity."""
+        config = {
+            "rate_limiting": {
                 "resources": {"llm_tokens": {"max_per_window": 1000}}
             }
         }
         ledger = Ledger.from_config(config, ["agent1"])
         ledger.create_principal("agent1", starting_scrip=100, starting_compute=500)
 
-        # get_compute returns RateTracker capacity, not tick-based balance
-        assert ledger.get_llm_tokens("agent1") == 1000  # Full RateTracker capacity
-
-        # Reset compute sets the tick-based balance (legacy API)
-        ledger.reset_llm_tokens("agent1", 2000)
-        # But get_compute still returns RateTracker capacity
+        # get_llm_tokens returns RateTracker capacity
         assert ledger.get_llm_tokens("agent1") == 1000
+
+        # reset_llm_tokens sets underlying balance but get_llm_tokens returns RateTracker capacity
+        ledger.reset_llm_tokens("agent1", 2000)
+        assert ledger.get_llm_tokens("agent1") == 1000  # Still RateTracker capacity
 
         # Consuming via RateTracker reduces capacity
         ledger.spend_llm_tokens("agent1", 100)
@@ -523,11 +522,11 @@ class TestRateTrackerIntegration:
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_wait_for_resource_legacy_mode_immediate(self) -> None:
-        """wait_for_resource returns immediately in legacy mode."""
+    async def test_wait_for_resource_unconfigured_immediate(self) -> None:
+        """wait_for_resource returns immediately for unconfigured resources."""
         ledger = Ledger()
 
-        # Should succeed immediately in legacy mode
+        # Unconfigured resources have infinite capacity = immediate success
         result = await ledger.wait_for_resource("agent1", "any_resource", 999999)
         assert result is True
 
@@ -546,46 +545,22 @@ class TestRateTrackerIntegration:
         assert ledger.check_resource_capacity("agent1", "unconfigured", 999999) is True
         assert ledger.consume_resource("agent1", "unconfigured", 999999) is True
 
-    def test_reset_compute_warns_when_rate_tracker_enabled(self) -> None:
-        """reset_compute emits deprecation warning when rate limiting enabled."""
-        import warnings
-
+    def test_reset_llm_tokens_sets_balance_not_rate_tracker(self) -> None:
+        """reset_llm_tokens sets balance; get_llm_tokens returns RateTracker capacity."""
         config = {
             "rate_limiting": {
-                "enabled": True,
                 "resources": {"llm_tokens": {"max_per_window": 500}}
             }
         }
         ledger = Ledger.from_config(config, ["agent1"])
         ledger.create_principal("agent1", starting_scrip=100, starting_compute=500)
 
-        # Should emit a deprecation warning
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            ledger.reset_llm_tokens("agent1", 1000)
-            assert len(w) == 1
-            assert issubclass(w[0].category, DeprecationWarning)
-            assert "rate limiting enabled" in str(w[0].message)
+        ledger.reset_llm_tokens("agent1", 1000)
 
-        # get_compute returns RateTracker capacity (500), not tick balance (1000)
+        # get_resource returns the raw balance (1000)
+        assert ledger.get_resource("agent1", "llm_tokens") == 1000
+        # get_llm_tokens returns RateTracker capacity (500)
         assert ledger.get_llm_tokens("agent1") == 500
-
-    def test_reset_compute_no_warning_when_rate_tracker_disabled(self) -> None:
-        """reset_compute does NOT warn when rate limiting is disabled (legacy mode)."""
-        import warnings
-
-        ledger = Ledger()
-        ledger.create_principal("agent1", starting_scrip=100, starting_compute=500)
-
-        # Should NOT emit a deprecation warning in legacy mode
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            ledger.reset_llm_tokens("agent1", 1000)
-            # Filter for DeprecationWarnings only
-            dep_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]
-            assert len(dep_warnings) == 0
-
-        assert ledger.get_llm_tokens("agent1") == 1000
 
 
 class TestCpuSecondsResourceType:
