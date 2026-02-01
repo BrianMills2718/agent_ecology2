@@ -1,7 +1,6 @@
 {
   "$schema": "https://repomix.com/schemas/latest/schema.json",
   "include": [
-    "README.md",
     "src/world/*.py",
     "src/agents/agent.py",
     "src/agents/agent_schema.py",

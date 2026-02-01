@@ -247,7 +247,8 @@ Run `python scripts/health_check.py --fix` for diagnostics and auto-repair.
 ```
 agent_ecology/
   run.py                    # Main entry point
-  repomix.core.json         # Config for external LLM review bundle (npx repomix --config repomix.core.json)
+  repomix.core.json         # External LLM review: system code + docs (~230K tokens)
+  repomix.meta-process.json # External LLM review: meta-process (~135K tokens)
   config/
     config.yaml             # Runtime values
     # Validation via Pydantic in src/config_schema.py

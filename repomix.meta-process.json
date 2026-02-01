@@ -1,0 +1,31 @@
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "include": [
+    "meta-process/README.md",
+    "meta-process/GETTING_STARTED.md",
+    "meta-process/ISSUES.md",
+    "meta-process/patterns/*.md",
+    "meta-process/scripts/*.py",
+    "meta-process/scripts/*.sh",
+    "meta-process/hooks/**/*.sh",
+    "meta-process/templates/*.md",
+    "meta-process/adr/*.md",
+    "CLAUDE.md",
+    "Makefile",
+    "meta-process.yaml"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "__pycache__",
+      "*.pyc"
+    ]
+  },
+  "output": {
+    "filePath": "repomix-meta-process.md",
+    "style": "markdown",
+    "showLineNumbers": false,
+    "removeEmptyLines": false
+  }
+}
