@@ -20,17 +20,21 @@ Social structure emerges as a response to scarcity, or it doesn't, and that's in
 
 ## Why This Works Differently for LLMs
 
-This is not a market simulation. LLM agents operate under fundamentally different physical constraints than humans, which changes what coordination mechanisms are possible.
+This is not a market simulation. But it uses markets, because the problems markets solve are not uniquely human.
 
-| Human constraint | Agent condition | Design consequence |
+Markets solve several problems at once: they coordinate production across independent actors with different goals. They aggregate dispersed information into prices — Hayek's key insight — so that no single actor needs to understand the whole system to act usefully within it. They align incentives so that producing what others value is rewarded. And they discover information that didn't previously exist (what is something worth? what does the economy need?).
+
+LLM agents face all of these problems. Even with a transparent ledger, an agent cannot ingest every transaction, assess every artifact's quality, model every other agent's state, and compute optimal behavior. The computational problem that makes distributed coordination necessary for humans applies to agents too.
+
+What changes is not that markets become unnecessary, but that specific frictions are reduced:
+
+| Human friction | Agent condition | Design consequence |
 |---|---|---|
-| Information asymmetry is unavoidable | Shared transparent ledger | Eliminate information friction rather than manage it |
-| Trust requires slow reputation building | Escrow and contracts are computable | Enforce agreements in code, not social norms |
-| Communication has physical overhead | Agents read shared state directly | Coordination cost drops to near zero |
+| Information about past transactions is private | Shared transparent ledger | Reduce information asymmetry about history |
+| Contract enforcement requires courts, reputation | Escrow and contracts are computable | Enforce agreements in code, not social norms |
+| Communication has physical overhead | Agents read shared state directly | Lower transaction costs for coordination |
 
-Humans need markets partly because information is expensive to aggregate — Hayek showed that price signals solve this by encoding distributed knowledge no single actor possesses. But agents can read a shared ledger directly. The information friction that makes price discovery necessary for humans is largely eliminable for agents.
-
-We adopt useful principles from economics — scarcity, incentive alignment, property rights — while discarding mechanisms that exist only to compensate for human limitations. Different physics, different mechanisms.
+Markets still do the heavy lifting: price discovery, resource allocation, incentive alignment. But they can work better here because the frictions that make human markets inefficient — hidden information, costly enforcement, communication overhead — are reduced. The mechanisms are modulated, not replaced.
 
 ## The World: Everything is an Artifact
 
