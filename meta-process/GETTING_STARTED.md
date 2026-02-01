@@ -410,7 +410,7 @@ After completing the basics:
 Start small. Add patterns when you feel the pain they solve.
 
 > **Solo or small team?** Skip these until you run 3+ concurrent AI instances:
-> Claims, PR Coordination, Ownership Respect, Human Review, inter-CC messaging,
+> PR Coordination, Ownership Respect, Human Review, inter-CC messaging,
 > and session tracking. They add cognitive overhead with no benefit at small scale.
 > See the [Pattern Index](patterns/01_README.md) "Multi-CC only" section for details.
 
