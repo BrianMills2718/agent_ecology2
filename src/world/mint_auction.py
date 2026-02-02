@@ -10,6 +10,7 @@ Plan #44 - Kernel Mint Primitives
 
 from __future__ import annotations
 
+import time
 import uuid
 from typing import Any, TypedDict, TYPE_CHECKING, Callable
 
@@ -82,6 +83,14 @@ class MintAuction:
         # Cost tracking callbacks (Plan #153)
         self._is_budget_exhausted: Callable[[], bool] | None = None
         self._track_api_cost: Callable[[float], None] | None = None
+
+        # Time-based auction state (Plan #254: moved from GenesisMint)
+        self._start_time = time.time()
+        self._auction_start_time: float | None = None
+        # Config defaults - could be made configurable
+        self._first_auction_delay_seconds = 30.0
+        self._bidding_window_seconds = 60.0
+        self._period_seconds = 120.0
 
     def set_cost_callbacks(
         self,
@@ -236,6 +245,49 @@ class MintAuction:
         })
 
         return True
+
+    def update(self) -> KernelMintResult | None:
+        """Update auction state based on current time (Plan #254 - time-based).
+
+        Call this periodically to:
+        - Start bidding windows when first_auction_delay_seconds elapses
+        - Resolve auctions when bidding_window_seconds ends
+
+        Returns KernelMintResult if an auction was resolved, None otherwise.
+        """
+        now = time.time()
+        elapsed = now - self._start_time
+
+        # Not yet time for first auction
+        if elapsed < self._first_auction_delay_seconds:
+            return None
+
+        # Check if we should start a new bidding window
+        if self._auction_start_time is None:
+            # Start first auction
+            self._auction_start_time = now
+            return None
+
+        # Calculate time since this auction period started
+        time_since_auction_start = now - self._auction_start_time
+
+        # Check if bidding window just ended (need to resolve)
+        if time_since_auction_start >= self._bidding_window_seconds:
+            # Check if we haven't already resolved this auction
+            # by seeing if we're past the bidding window but before next period
+            if time_since_auction_start < self._period_seconds:
+                # Resolve the auction
+                result = self.resolve()
+                # Schedule next auction at the end of this period
+                self._auction_start_time = self._auction_start_time + self._period_seconds
+                return result
+            else:
+                # We're past the period - start a new auction
+                # This handles cases where update() wasn't called for a while
+                self._auction_start_time = now
+                return None
+
+        return None
 
     def resolve(self, _mock_score: int | None = None) -> KernelMintResult:
         """Resolve the current mint auction.

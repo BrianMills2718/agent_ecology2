@@ -167,42 +167,15 @@ class JSONLParser:
         self._per_1k_input_cost: float = 1.0  # Default: 1 compute per 1K input tokens
         self._per_1k_output_cost: float = 3.0  # Default: 3 compute per 1K output tokens
 
-        # Add genesis artifacts to state so they appear in Artifacts panel
-        self._init_genesis_artifacts()
+        # Plan #254: Genesis artifacts removed - kernel actions replace them
+        pass
 
     def _init_genesis_artifacts(self) -> None:
-        """Initialize genesis system artifacts in state.
+        """No-op: Plan #254 removed genesis artifacts.
 
-        Genesis artifacts are system-provided artifacts that exist from
-        simulation start. They need to be in the artifacts dict so they
-        appear in the Artifacts panel alongside agent-created artifacts.
+        Kernel actions (transfer, mint, query_kernel) replace genesis artifacts.
         """
-        genesis_artifacts = [
-            ("genesis_ledger", "ledger", "Manages scrip balances, transfers, and ownership"),
-            ("genesis_mint", "mint", "Scores artifacts and mints scrip rewards"),
-            ("genesis_store", "store", "Artifact discovery and creation registry"),
-            ("genesis_escrow", "escrow", "Trustless artifact trading marketplace"),
-            ("genesis_event_log", "event_log", "Passive observability and event history"),
-            ("genesis_handbook", "handbook", "Seeded documentation for agents"),
-            ("genesis_debt_contract", "debt_contract", "Non-privileged credit/lending"),
-            ("genesis_model_registry", "model_registry", "LLM model access as contractable resource"),
-            ("genesis_embedder", "embedder", "Text embedding for semantic search"),
-        ]
-
-        for artifact_id, artifact_type, description in genesis_artifacts:
-            self.state.artifacts[artifact_id] = ArtifactState(
-                artifact_id=artifact_id,
-                artifact_type=f"genesis_{artifact_type}",
-                created_by="[system]",
-                executable=True,
-                price=0,
-                size_bytes=0,
-                created_at="(genesis)",
-                updated_at="",
-                mint_score=None,
-                mint_status="none",
-                content=description,
-            )
+        pass
 
     def parse_full(self) -> SimulationState:
         """Parse the entire file from the beginning."""
@@ -1452,25 +1425,9 @@ class JSONLParser:
                 created_at=artifact.created_at,
             ))
 
-        # Add genesis artifacts that might not be in state.artifacts
-        genesis_artifacts = [
-            "genesis_ledger", "genesis_mint", "genesis_store",
-            "genesis_escrow", "genesis_event_log", "genesis_handbook",
-            "genesis_debt_contract",
-        ]
-        for genesis_id in genesis_artifacts:
-            if genesis_id not in seen_nodes:
-                seen_nodes.add(genesis_id)
-                nodes.append(ArtifactNode(
-                    id=genesis_id,
-                    label=genesis_id,
-                    artifact_type="genesis",
-                    created_by="system",
-                    executable=True,
-                    invocation_count=0,
-                ))
+        # Plan #254: Genesis artifacts removed - kernel actions replace them
 
-        # Build invocation edges from invocation_events (includes genesis!)
+        # Build invocation edges from invocation_events
         invocation_counts: dict[tuple[str, str], int] = {}
         for inv in self.state.invocation_events:
             if not in_time_range(inv.timestamp):

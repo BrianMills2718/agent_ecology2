@@ -21,7 +21,7 @@ from ..world import World
 from ..world.actions import parse_intent_from_json, ActionIntent
 from ..world.simulation_engine import SimulationEngine
 from ..world.world import StateSummary, ConfigDict
-from ..world.genesis import GenesisMint, AuctionResult
+from ..world.mint_auction import KernelMintResult
 from ..agents import Agent
 from ..agents.loader import load_agents, create_agent_artifacts, load_agents_from_store, AgentConfig
 from ..agents.agent import ActionResult as AgentActionResult, TokenUsage
@@ -217,33 +217,11 @@ class SimulationRunner:
         self._hook_executor: HookExecutor | None = None
 
     def _wire_embedder_cost_callbacks(self) -> None:
-        """Wire up cost tracking callbacks for genesis artifacts.
+        """Wire up cost tracking callbacks for kernel components.
 
-        This integrates all genesis artifact API costs into the global budget
-        tracking system, including:
-        - Embedder: embedding API calls
-        - Mint (genesis): scorer LLM calls during artifact evaluation
+        This integrates API costs into the global budget tracking system:
         - MintAuction (kernel): scorer LLM calls during auction resolution
         """
-        from ..world.genesis.embedder import GenesisEmbedder
-        from ..world.genesis.mint import GenesisMint
-
-        # Wire up embedder callbacks
-        embedder = self.world.genesis_artifacts.get("genesis_embedder")
-        if embedder is not None and isinstance(embedder, GenesisEmbedder):
-            embedder.set_cost_callbacks(
-                is_budget_exhausted=self.engine.is_budget_exhausted,
-                track_api_cost=lambda cost: self.engine.track_api_cost(cost),
-            )
-
-        # Wire up genesis mint scorer callbacks
-        mint = self.world.genesis_artifacts.get("genesis_mint")
-        if mint is not None and isinstance(mint, GenesisMint):
-            mint.set_cost_callbacks(
-                is_budget_exhausted=self.engine.is_budget_exhausted,
-                track_api_cost=lambda cost: self.engine.track_api_cost(cost),
-            )
-
         # Wire up kernel mint auction scorer callbacks
         self.world.mint_auction.set_cost_callbacks(
             is_budget_exhausted=self.engine.is_budget_exhausted,
@@ -354,39 +332,10 @@ class SimulationRunner:
                             agent._working_memory = wm
                             print(f"  Restored working_memory for {agent.agent_id}")
 
-        # Plan #213: Set world reference and create longterm memory for genesis agents
-        genesis_memory = self.world.genesis_artifacts.get("genesis_memory")
-        genesis_agent_ids = {"alpha_3", "beta_3", "delta_3"}  # Genesis agent IDs
+        # Plan #254: Genesis memory removed - agents use working_memory directly
         for agent in agents:
             # Set world reference for semantic memory access
             agent.set_world(self.world)
-
-            # Create longterm memory artifact for genesis agents
-            if genesis_memory and agent.agent_id in genesis_agent_ids:
-                longterm_id = f"{agent.agent_id}_longterm"
-                # Check if already exists
-                if not self.world.artifacts.get(longterm_id):
-                    result = genesis_memory._create_memory([longterm_id], agent.agent_id)
-                    if result.get("success"):
-                        agent.longterm_memory_artifact_id = longterm_id
-                        if self.verbose:
-                            print(f"  Created longterm memory: {longterm_id}")
-                        # Plan #213: Pre-seed common lessons to bootstrap agent learning
-                        preseeded_lessons = [
-                            "LESSON: To deposit an artifact to escrow, first set its metadata.authorized_writer to escrow using edit_artifact action",
-                            "LESSON: Use integers for prices and amounts, not strings (10 not '10')",
-                            "LESSON: Check artifact ownership before trying to transfer or deposit it",
-                            "LESSON: Use query_kernel('artifacts', {}) to discover what artifacts exist before trying to buy or interact with them",
-                            "LESSON: Always check your scrip balance with query_kernel('balances', {'principal_id': 'your_id'}) before making purchases",
-                        ]
-                        for lesson in preseeded_lessons:
-                            genesis_memory._add_entry(
-                                [longterm_id, lesson, {"preseeded": True}],
-                                agent.agent_id
-                            )
-                else:
-                    # Already exists, just link it
-                    agent.longterm_memory_artifact_id = longterm_id
 
         return agents
 
@@ -467,10 +416,12 @@ class SimulationRunner:
         existing_agent_ids: set[str] = {agent.agent_id for agent in self.agents}
         new_principal_ids: set[str] = ledger_principals - existing_agent_ids
 
-        # Filter out genesis artifacts (they're not agents)
+        # Filter out system principals (they're not agents)
+        # - genesis_* prefixed IDs (legacy)
+        # - kernel_mint_agent (Plan #254: system principal for minting)
         new_principal_ids = {
             pid for pid in new_principal_ids
-            if not pid.startswith("genesis_")
+            if not pid.startswith("genesis_") and pid != "kernel_mint_agent"
         }
 
         new_agents: list[Agent] = []
@@ -546,32 +497,24 @@ class SimulationRunner:
 
         return new_agents
 
-    def _handle_mint_update(self) -> AuctionResult | None:
+    def _handle_mint_update(self) -> KernelMintResult | None:
         """Handle mint auction update (Plan #83 - time-based).
 
-        Calls the mint's update method to check if auctions need to:
+        Calls the kernel mint auction's update method to check if auctions need to:
         - Start new bidding windows
         - Resolve completed auctions
         - Distribute UBI from winning bids
 
         Returns:
-            AuctionResult dict if an auction was resolved, None otherwise.
+            KernelMintResult dict if an auction was resolved, None otherwise.
         """
-        mint = self.world.genesis_artifacts.get("genesis_mint")
-        if mint is None:
-            return None
-
-        # Check if mint has update method (time-based mint)
-        if not hasattr(mint, "update"):
-            return None
-
-        # Cast to GenesisMint since we verified it has update
-        result = cast(GenesisMint, mint).update()
+        # Plan #254: Use kernel mint_auction directly
+        result = self.world.mint_auction.update()
 
         self._log_mint_result(result)
         return result
 
-    def _log_mint_result(self, result: AuctionResult | None) -> None:
+    def _log_mint_result(self, result: KernelMintResult | None) -> None:
         """Log a mint auction result if one occurred."""
         if result:
             self.world.logger.log(
@@ -1135,45 +1078,14 @@ class SimulationRunner:
         }
 
     def _migrate_working_memory_to_longterm(self) -> None:
-        """Migrate important working_memory entries to longterm at session end (Plan #213).
+        """Migrate important working_memory entries to longterm at session end.
 
-        Looks for entries that look like lessons/strategies and saves them
-        to the agent's longterm memory for future sessions.
+        Plan #254: Genesis memory removed. Working memory migration is now
+        handled via checkpointing instead of genesis_memory.
         """
-        genesis_memory = self.world.genesis_artifacts.get("genesis_memory")
-        if not genesis_memory:
-            return
-
-        # Keywords that indicate valuable entries worth preserving
-        valuable_prefixes = ("LESSON:", "STRATEGY:", "INFO:", "INSIGHT:", "NOTE:")
-
-        for agent in self.agents:
-            if not agent.longterm_memory_artifact_id:
-                continue
-
-            # Get working memory entries
-            working_mem = getattr(agent, "working_memory", {})
-            migrated = 0
-
-            for key, value in working_mem.items():
-                # Skip non-string values and internal keys
-                if not isinstance(value, str):
-                    continue
-                if key.startswith("_"):
-                    continue
-
-                # Check if the value looks like a lesson worth preserving
-                value_upper = value.upper()
-                if any(value_upper.startswith(prefix) for prefix in valuable_prefixes):
-                    # Migrate to longterm memory
-                    genesis_memory._add_entry(
-                        [agent.longterm_memory_artifact_id, value, {"migrated_from": "working_memory", "key": key}],
-                        agent.agent_id
-                    )
-                    migrated += 1
-
-            if migrated > 0 and self.verbose:
-                print(f"  [LEARNING] Migrated {migrated} entries from {agent.agent_id} working_memory to longterm")
+        # Plan #254: Genesis memory removed - no-op for now
+        # Working memory is persisted via checkpoint
+        pass
 
     def is_runtime_exceeded(self) -> bool:
         """Check if maximum runtime has been exceeded.

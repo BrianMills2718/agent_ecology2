@@ -177,14 +177,19 @@ class Ledger:
         starting_compute: int = 0,  # Backward compat
     ) -> None:
         """Create a new principal with starting balances.
-        
-        If id_registry is set, registers the principal ID and raises
-        IDCollisionError if the ID is already in use (Plan #7).
+
+        If id_registry is set, registers the principal ID. Allows
+        artifact→principal registration for unified ontology (Plan #254).
         """
         # Register with ID registry if available (Plan #7)
+        # Plan #254: Allow if already registered as artifact (unified ontology)
         if self.id_registry is not None:
-            from .id_registry import IDCollisionError
-            self.id_registry.register(principal_id, "principal")
+            existing_type = self.id_registry.lookup(principal_id)
+            if existing_type is None:
+                # Not registered - register as principal
+                self.id_registry.register(principal_id, "principal")
+            # If already registered as artifact or principal, skip registration
+            # This supports unified ontology where artifacts can be principals
         self.scrip[principal_id] = starting_scrip
         self.resources[principal_id] = starting_resources.copy() if starting_resources else {}
         # Backward compat: if starting_compute provided, set llm_tokens

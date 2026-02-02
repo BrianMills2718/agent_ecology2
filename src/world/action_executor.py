@@ -186,14 +186,7 @@ class ActionExecutor:
                 message=f"Read artifact {intent.artifact_id}" + (f" (paid {read_price} scrip to {artifact.created_by})" if read_price > 0 else ""),
                 data={"artifact": artifact.to_dict(), "read_price_paid": read_price}
             )
-        # Check genesis artifacts (always public, free)
-        elif intent.artifact_id in w.genesis_artifacts:
-            genesis = w.genesis_artifacts[intent.artifact_id]
-            return ActionResult(
-                success=True,
-                message=f"Read genesis artifact {intent.artifact_id}",
-                data={"artifact": genesis.to_dict()}
-            )
+        # Plan #254: Genesis artifacts removed - artifact not found
         else:
             # Plan #190: Suggest discovery via query_kernel
             # Plan #211: Clarify query_kernel is an ACTION type, not an artifact
@@ -254,16 +247,7 @@ class ActionExecutor:
         - Artifact creation/update via ArtifactStore.write_artifact()
         """
         w = self.world
-        # Protect genesis artifacts from modification
-        if intent.artifact_id in w.genesis_artifacts:
-            return ActionResult(
-                success=False,
-                message=f"Cannot modify system artifact {intent.artifact_id}",
-                error_code=ErrorCode.NOT_AUTHORIZED.value,
-                error_category=ErrorCategory.PERMISSION.value,
-                retriable=False,
-                error_details={"artifact_id": intent.artifact_id},
-            )
+        # Plan #254: Genesis artifacts removed - kernel_ prefixed artifacts are protected in World.delete_artifact
 
         # Check if artifact exists (for update permission check)
         existing = w.artifacts.get(intent.artifact_id)
@@ -452,16 +436,7 @@ class ActionExecutor:
                 error_details={"artifact_id": intent.artifact_id},
             )
 
-        # Protect genesis artifacts from modification
-        if intent.artifact_id in w.genesis_artifacts:
-            return ActionResult(
-                success=False,
-                message=f"Cannot edit genesis artifact {intent.artifact_id}",
-                error_code=ErrorCode.NOT_AUTHORIZED.value,
-                error_category=ErrorCategory.PERMISSION.value,
-                retriable=False,
-                error_details={"artifact_id": intent.artifact_id},
-            )
+        # Plan #254: Genesis artifacts removed - kernel_ prefixed artifacts protected by kernel_protected flag
 
         # Plan #235 Phase 1: Block edits to kernel_protected artifacts
         if getattr(artifact, "kernel_protected", False):
@@ -987,9 +962,9 @@ class ActionExecutor:
             )
 
         # Check if target artifact exists
+        # Plan #254: Genesis artifacts removed - only check regular artifacts
         target_artifact = w.artifacts.get(artifact_id)
-        target_is_genesis = artifact_id in w.genesis_artifacts
-        if target_artifact is None and not target_is_genesis:
+        if target_artifact is None:
             return ActionResult(
                 success=False,
                 message=f"Artifact '{artifact_id}' not found. Cannot subscribe to non-existent artifact.",

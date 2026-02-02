@@ -1,12 +1,13 @@
-"""MCP Server Bridge - Genesis artifacts wrapping MCP servers.
+"""MCP Server Bridge - Artifacts wrapping MCP servers.
 
 Plan #28: Pre-seeded MCP Servers
+Plan #254: Removed GenesisArtifact inheritance
 
 This module provides:
-1. GenesisMcpBridge: Base class for MCP server wrapper artifacts
-2. GenesisFetch: HTTP fetch capability
-3. GenesisFilesystem: File I/O (sandboxed)
-4. GenesisWebSearch: Internet search
+1. McpBridge: Base class for MCP server wrapper artifacts
+2. McpFetch: HTTP fetch capability
+3. McpFilesystem: File I/O (sandboxed)
+4. McpWebSearch: Internet search
 
 MCP servers run as subprocesses, communicating via JSON-RPC over stdio.
 """
@@ -17,12 +18,11 @@ import json
 import logging
 import subprocess
 import threading
-from dataclasses import dataclass
-from typing import Any, cast
+from dataclasses import dataclass, field
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
-from .genesis import GenesisArtifact
 from ..config_schema import McpConfig
 from ..config import get_validated_config
 
@@ -35,23 +35,35 @@ class McpToolInfo:
     input_schema: dict[str, Any]
 
 
-class GenesisMcpBridge(GenesisArtifact):
-    """Base class for MCP server wrapper artifacts.
+@dataclass
+class McpMethod:
+    """A method registered on an MCP bridge artifact."""
+    name: str
+    handler: Callable[[list[Any], str], dict[str, Any]]
+    cost: int
+    description: str
+
+
+class McpBridge:
+    """Base class for MCP server wrapper artifacts (Plan #254: standalone, no GenesisArtifact).
 
     Manages MCP server subprocess lifecycle and JSON-RPC communication.
 
     Attributes:
+        artifact_id: Unique identifier for this bridge
+        description: Human-readable description
         server_command: Command to start MCP server (e.g., "npx")
         server_args: Arguments to pass to command
         server_env: Environment variables for server process
-        _process: Subprocess handle when running
-        _request_id: Counter for JSON-RPC request IDs
-        _lock: Thread lock for subprocess communication
+        methods: Registered methods for this artifact
     """
 
+    artifact_id: str
+    description: str
     server_command: str
     server_args: list[str]
     server_env: dict[str, str]
+    methods: dict[str, McpMethod]
     _process: subprocess.Popen[bytes] | None
     _request_id: int
     _lock: threading.Lock
@@ -67,19 +79,42 @@ class GenesisMcpBridge(GenesisArtifact):
         """Initialize MCP bridge.
 
         Args:
-            artifact_id: Unique artifact identifier (e.g., "genesis_fetch")
+            artifact_id: Unique artifact identifier (e.g., "mcp_fetch")
             description: Human-readable description
             server_command: Command to start MCP server
             server_args: Additional command arguments
             server_env: Environment variables for server
         """
-        super().__init__(artifact_id, description)
+        self.artifact_id = artifact_id
+        self.description = description
         self.server_command = server_command
         self.server_args = server_args or []
         self.server_env = server_env or {}
+        self.methods = {}
         self._process = None
         self._request_id = 0
         self._lock = threading.Lock()
+
+    def register_method(
+        self,
+        name: str,
+        handler: Callable[[list[Any], str], dict[str, Any]],
+        cost: int,
+        description: str,
+    ) -> None:
+        """Register a method on this artifact."""
+        self.methods[name] = McpMethod(
+            name=name, handler=handler, cost=cost, description=description
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return artifact representation for queries."""
+        return {
+            "id": self.artifact_id,
+            "type": "mcp_bridge",
+            "description": self.description,
+            "methods": list(self.methods.keys()),
+        }
 
     def start_server(self) -> None:
         """Start the MCP server subprocess.
@@ -235,8 +270,8 @@ class GenesisMcpBridge(GenesisArtifact):
         self.stop_server()
 
 
-class GenesisFetch(GenesisMcpBridge):
-    """Genesis artifact for HTTP fetch capability.
+class McpFetch(McpBridge):
+    """MCP artifact for HTTP fetch capability (Plan #254: renamed from GenesisFetch).
 
     Wraps the @anthropic/mcp-server-fetch MCP server.
 
@@ -250,7 +285,7 @@ class GenesisFetch(GenesisMcpBridge):
         args: list[str] | None = None,
         env: dict[str, str] | None = None,
     ) -> None:
-        """Initialize genesis_fetch.
+        """Initialize mcp_fetch.
 
         Args:
             command: Command to run MCP server (default: npx)
@@ -258,7 +293,7 @@ class GenesisFetch(GenesisMcpBridge):
             env: Environment variables
         """
         super().__init__(
-            artifact_id="genesis_fetch",
+            artifact_id="mcp_fetch",
             description="HTTP fetch capability via MCP server",
             server_command=command,
             server_args=args or ["@anthropic/mcp-server-fetch"],
@@ -295,8 +330,8 @@ class GenesisFetch(GenesisMcpBridge):
         })
 
 
-class GenesisFilesystem(GenesisMcpBridge):
-    """Genesis artifact for sandboxed file I/O.
+class McpFilesystem(McpBridge):
+    """MCP artifact for sandboxed file I/O (Plan #254: renamed from GenesisFilesystem).
 
     Wraps the @anthropic/mcp-server-filesystem MCP server.
     Access is restricted to the agent's sandbox directory.
@@ -316,7 +351,7 @@ class GenesisFilesystem(GenesisMcpBridge):
         args: list[str] | None = None,
         env: dict[str, str] | None = None,
     ) -> None:
-        """Initialize genesis_filesystem.
+        """Initialize mcp_filesystem.
 
         Args:
             sandbox_root: Root directory for sandboxed access
@@ -328,7 +363,7 @@ class GenesisFilesystem(GenesisMcpBridge):
         server_args = args or ["@anthropic/mcp-server-filesystem", sandbox_root]
 
         super().__init__(
-            artifact_id="genesis_filesystem",
+            artifact_id="mcp_filesystem",
             description="Sandboxed file I/O via MCP server",
             server_command=command,
             server_args=server_args,
@@ -403,8 +438,8 @@ class GenesisFilesystem(GenesisMcpBridge):
         return self.call_tool("list_directory", {"path": path})
 
 
-class GenesisWebSearch(GenesisMcpBridge):
-    """Genesis artifact for internet search.
+class McpWebSearch(McpBridge):
+    """MCP artifact for internet search (Plan #254: renamed from GenesisWebSearch).
 
     Wraps the @anthropic/mcp-server-brave-search MCP server.
     Requires BRAVE_API_KEY environment variable.
@@ -419,7 +454,7 @@ class GenesisWebSearch(GenesisMcpBridge):
         args: list[str] | None = None,
         env: dict[str, str] | None = None,
     ) -> None:
-        """Initialize genesis_web_search.
+        """Initialize mcp_web_search.
 
         Args:
             command: Command to run MCP server
@@ -427,7 +462,7 @@ class GenesisWebSearch(GenesisMcpBridge):
             env: Environment variables (should include BRAVE_API_KEY)
         """
         super().__init__(
-            artifact_id="genesis_web_search",
+            artifact_id="mcp_web_search",
             description="Internet search via Brave Search MCP server",
             server_command=command,
             server_args=args or ["@anthropic/mcp-server-brave-search"],
@@ -463,20 +498,22 @@ class GenesisWebSearch(GenesisMcpBridge):
 
 def create_mcp_artifacts(
     mcp_config: McpConfig,
-) -> dict[str, GenesisMcpBridge]:
+) -> dict[str, McpBridge]:
     """Factory function to create enabled MCP artifacts.
+
+    Plan #254: Renamed from genesis_* to mcp_* artifact IDs.
 
     Args:
         mcp_config: MCP configuration from config schema
 
     Returns:
-        Dict mapping artifact_id -> GenesisMcpBridge
+        Dict mapping artifact_id -> McpBridge
     """
-    artifacts: dict[str, GenesisMcpBridge] = {}
+    artifacts: dict[str, McpBridge] = {}
 
     # Create fetch if enabled
     if mcp_config.fetch.enabled:
-        artifacts["genesis_fetch"] = GenesisFetch(
+        artifacts["mcp_fetch"] = McpFetch(
             command=mcp_config.fetch.command,
             args=mcp_config.fetch.args,
             env=mcp_config.fetch.env,
@@ -484,7 +521,7 @@ def create_mcp_artifacts(
 
     # Create filesystem if enabled
     if mcp_config.filesystem.enabled:
-        artifacts["genesis_filesystem"] = GenesisFilesystem(
+        artifacts["mcp_filesystem"] = McpFilesystem(
             command=mcp_config.filesystem.command,
             args=mcp_config.filesystem.args,
             env=mcp_config.filesystem.env,
@@ -492,7 +529,7 @@ def create_mcp_artifacts(
 
     # Create web search if enabled
     if mcp_config.web_search.enabled:
-        artifacts["genesis_web_search"] = GenesisWebSearch(
+        artifacts["mcp_web_search"] = McpWebSearch(
             command=mcp_config.web_search.command,
             args=mcp_config.web_search.args,
             env=mcp_config.web_search.env,

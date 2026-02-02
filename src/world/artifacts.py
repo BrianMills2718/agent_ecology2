@@ -13,7 +13,7 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, TypedDict, TYPE_CHECKING
+from typing import Any, Callable, TypedDict, TYPE_CHECKING
 
 
 def extract_invoke_targets(code: str) -> list[str]:
@@ -45,8 +45,19 @@ def extract_invoke_targets(code: str) -> list[str]:
     return unique_targets
 
 if TYPE_CHECKING:
-    from .genesis import GenesisMethod
     from .id_registry import IDRegistry
+
+
+@dataclass
+class GenesisMethod:
+    """Method dispatch for artifacts (Plan #254: moved from genesis module).
+
+    Used by artifacts with genesis_methods field for method-based invocation.
+    """
+    name: str
+    handler: Callable[[list[Any], str], dict[str, Any]]
+    cost: int
+    description: str
 
 
 # Type alias for policy allow fields: either a static list or a contract reference
@@ -181,7 +192,7 @@ class Artifact:
     # Genesis method dispatch (Plan #15: invoke() Genesis Support)
     # If set, this artifact uses method dispatch instead of code execution
     # Enables unified invoke path for genesis and user artifacts
-    genesis_methods: dict[str, "GenesisMethod"] | None = None
+    genesis_methods: dict[str, GenesisMethod] | None = None
     # Declared dependencies (Plan #63: Artifact Dependencies)
     # List of artifact IDs this artifact depends on
     # Dependencies are resolved and injected at invocation time
@@ -747,6 +758,7 @@ class ArtifactStore:
         metadata: dict[str, Any] | None = None,
         has_standing: bool = False,
         has_loop: bool = False,
+        capabilities: list[str] | None = None,
     ) -> Artifact:
         """Create or update an artifact. Returns the artifact.
 
@@ -777,7 +789,9 @@ class ArtifactStore:
         Principal creation (Plan #254):
         - has_standing: If True, artifact is a principal (can hold scrip/resources)
         - has_loop: If True, artifact can execute autonomously (agent)
+        - capabilities: List of privileged capabilities (e.g., ['can_mint'])
         """
+        capabilities = capabilities or []
         now = datetime.now(timezone.utc).isoformat()
         depends_on = depends_on or []
         metadata = metadata or {}
@@ -910,6 +924,7 @@ class ArtifactStore:
                 metadata=metadata,
                 has_standing=has_standing,
                 has_loop=has_loop,
+                capabilities=capabilities,
             )
             self.artifacts[artifact_id] = artifact
             # Plan #182: Add new artifact to indexes

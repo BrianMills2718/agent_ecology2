@@ -384,46 +384,6 @@ class TestCreateAgents:
             assert runner.agents[0].llm_model == "my-custom-model"
 
 
-class TestHandleMintUpdate:
-    """Tests for _handle_mint_update method (Plan #79)."""
-
-    @patch("src.simulation.runner.load_agents")
-    def test_returns_none_when_no_mint(self, mock_load: MagicMock) -> None:
-        """_handle_mint_update returns None when mint not configured."""
-        mock_load.return_value = []
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = make_minimal_config(tmpdir)
-            # Disable mint
-            config["genesis"]["artifacts"]["mint"] = {"enabled": False}
-            runner = SimulationRunner(config, verbose=False)
-
-            # Remove mint if it exists
-            if "genesis_mint" in runner.world.genesis_artifacts:
-                del runner.world.genesis_artifacts["genesis_mint"]
-
-            result = runner._handle_mint_update()
-
-            assert result is None
-
-    @patch("src.simulation.runner.load_agents")
-    def test_returns_none_when_mint_has_no_update(self, mock_load: MagicMock) -> None:
-        """_handle_mint_update returns None for mints without update method."""
-        mock_load.return_value = []
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = make_minimal_config(tmpdir)
-            runner = SimulationRunner(config, verbose=False)
-
-            # Replace mint with mock without update attribute
-            mock_mint = MagicMock(spec=[])  # No update attribute
-            runner.world.genesis_artifacts["genesis_mint"] = mock_mint
-
-            result = runner._handle_mint_update()
-
-            assert result is None
-
-
 class TestPrincipalConfig:
     """Tests for principal config building."""
 
@@ -851,36 +811,6 @@ class TestCostCallbackWiring:
     """Tests for cost callback wiring (Plan #153)."""
 
     @patch("src.simulation.runner.load_agents")
-    def test_embedder_cost_callbacks_wired(self, mock_load: MagicMock) -> None:
-        """Genesis embedder has cost callbacks wired."""
-        mock_load.return_value = []
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = make_minimal_config(tmpdir)
-            runner = SimulationRunner(config, verbose=False)
-
-            # Check embedder has callbacks set
-            embedder = runner.world.genesis_artifacts.get("genesis_embedder")
-            assert embedder is not None
-            assert embedder._is_budget_exhausted is not None
-            assert embedder._track_api_cost is not None
-
-    @patch("src.simulation.runner.load_agents")
-    def test_mint_cost_callbacks_wired(self, mock_load: MagicMock) -> None:
-        """Genesis mint has cost callbacks wired."""
-        mock_load.return_value = []
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = make_minimal_config(tmpdir)
-            runner = SimulationRunner(config, verbose=False)
-
-            # Check genesis mint has callbacks set
-            mint = runner.world.genesis_artifacts.get("genesis_mint")
-            assert mint is not None
-            assert mint._is_budget_exhausted is not None
-            assert mint._track_api_cost is not None
-
-    @patch("src.simulation.runner.load_agents")
     def test_mint_auction_cost_callbacks_wired(self, mock_load: MagicMock) -> None:
         """Kernel mint auction has cost callbacks wired."""
         mock_load.return_value = []
@@ -894,8 +824,8 @@ class TestCostCallbackWiring:
             assert runner.world.mint_auction._track_api_cost is not None
 
     @patch("src.simulation.runner.load_agents")
-    def test_embedder_callback_tracks_cost(self, mock_load: MagicMock) -> None:
-        """Embedder cost callback updates engine cumulative cost."""
+    def test_mint_auction_callback_tracks_cost(self, mock_load: MagicMock) -> None:
+        """Mint auction cost callback updates engine cumulative cost."""
         mock_load.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -903,27 +833,9 @@ class TestCostCallbackWiring:
             runner = SimulationRunner(config, verbose=False)
 
             initial_cost = runner.engine.cumulative_api_cost
-            embedder = runner.world.genesis_artifacts.get("genesis_embedder")
-
-            # Manually trigger cost callback (simulating what embedder does after API call)
-            embedder._track_api_cost(0.001)
-
-            assert runner.engine.cumulative_api_cost == initial_cost + 0.001
-
-    @patch("src.simulation.runner.load_agents")
-    def test_mint_callback_tracks_cost(self, mock_load: MagicMock) -> None:
-        """Mint cost callback updates engine cumulative cost."""
-        mock_load.return_value = []
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = make_minimal_config(tmpdir)
-            runner = SimulationRunner(config, verbose=False)
-
-            initial_cost = runner.engine.cumulative_api_cost
-            mint = runner.world.genesis_artifacts.get("genesis_mint")
 
             # Manually trigger cost callback (simulating what scorer does)
-            mint._track_api_cost(0.05)
+            runner.world.mint_auction._track_api_cost(0.05)
 
             assert runner.engine.cumulative_api_cost == initial_cost + 0.05
 
@@ -939,13 +851,11 @@ class TestCostCallbackWiring:
             config["budget"]["max_api_cost"] = 0.10  # Low budget
             runner = SimulationRunner(config, verbose=False)
 
-            embedder = runner.world.genesis_artifacts.get("genesis_embedder")
-
             # Initially budget not exhausted
-            assert embedder._is_budget_exhausted() is False
+            assert runner.world.mint_auction._is_budget_exhausted() is False
 
             # Exhaust budget
             runner.engine.track_api_cost(0.15)
 
             # Now callback should return True
-            assert embedder._is_budget_exhausted() is True
+            assert runner.world.mint_auction._is_budget_exhausted() is True

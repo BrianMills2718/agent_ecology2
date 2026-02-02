@@ -65,7 +65,7 @@ Changes here MUST update `docs/architecture/current/`:
 |--------|-----|
 | `world.py` | `execution_model.md` |
 | `ledger.py`, `simulation_engine.py` | `resources.md` |
-| `genesis/` | `genesis_artifacts.md` |
+| *(Plan #254: genesis/ removed)* | *(genesis_artifacts.md deprecated)* |
 | `artifacts.py`, `executor.py`, `permission_checker.py`, `interface_validation.py`, `invoke_handler.py`, `kernel_interface.py` | `artifacts_executor.md` |
 
 ## Testing

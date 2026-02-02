@@ -306,13 +306,12 @@ class World:
         self._action_executor = ActionExecutor(self)
 
         self.logger.log("world_init", {
-            "rights": self.rights_config,
             "costs": self.costs,
             "principals": [
                 {
                     "id": p["id"],
                     "starting_scrip": p.get("starting_scrip", p.get("starting_credits", default_starting_scrip)),
-                    "llm_tokens_quota": int(default_quotas.get("llm_tokens", quotas.get("llm_tokens_quota", 50)))
+                    "llm_tokens_quota": int(quotas.get("llm_tokens_quota", 50))
                 }
                 for p in config["principals"]
             ]
@@ -831,7 +830,7 @@ class World:
         }
 
         # Disk usage tracked by artifact store
-        disk_used = self.artifacts.get_disk_usage(agent_id)
+        disk_used = self.artifacts.get_owner_usage(agent_id)
         resources["disk"] = {
             "used": float(disk_used),
         }
