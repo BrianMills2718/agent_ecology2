@@ -82,15 +82,36 @@ See `templates/meta-process.yaml.example` for all options.
 ```
 your-project/
 ├── meta-process.yaml        # Your configuration
+├── meta-process/            # Portable framework (copy this to new projects)
+│   ├── scripts/             # Baseline scripts (portable)
+│   ├── patterns/            # Pattern documentation
+│   └── hooks/               # Hook templates
+├── scripts/                 # Project-specific scripts (may extend meta-process/)
 ├── docs/
 │   └── plans/               # Implementation plans
 ├── acceptance_gates/        # Feature definitions (if enabled)
-├── scripts/
-│   └── meta/                # Meta-process scripts
 ├── hooks/                   # Git hooks
 └── .claude/
     └── hooks/               # Claude Code hooks
 ```
+
+## Portable vs. Project-Specific Scripts
+
+The framework separates **portable** scripts from **project-specific** extensions:
+
+| Directory | Purpose | When to Modify |
+|-----------|---------|----------------|
+| `meta-process/scripts/` | Baseline scripts that work in any project | Never (modify upstream in meta-process repo) |
+| `scripts/` | Project-specific scripts that extend the baseline | Add features specific to your project |
+
+**Example:** `meta-process/scripts/check_doc_coupling.py` is a 283-line baseline. A project might
+extend it in `scripts/check_doc_coupling.py` (770 lines) with project-specific checks like
+`--bidirectional` or `--check-orphans`.
+
+**When adopting meta-process:**
+1. Copy `meta-process/` directory to your project
+2. Create project-specific scripts in `scripts/` as needed
+3. Project scripts can import from meta-process or replace them entirely
 
 ## Full Documentation
 
