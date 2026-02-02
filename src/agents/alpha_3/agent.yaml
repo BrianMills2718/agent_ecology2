@@ -373,23 +373,22 @@ workflow:
         Your artifacts: {my_artifacts}
         Last result: {last_action_result}
 
-        ## SUBMIT TO MINT AUCTION (IMPORTANT!)
-        To earn scrip from your artifact:
-        1. Use the mint kernel action: {"action_type": "mint", "artifact_id": "my_tool"}
-        2. The kernel scores your artifact and awards scrip based on quality
-        3. Higher quality artifacts earn more scrip
+        ## SUBMIT TO MINT AUCTION
+        To earn scrip from an artifact you already created:
+        {"action_type": "submit_to_mint", "artifact_id": "YOUR_ARTIFACT_ID", "bid": 5}
+
+        CRITICAL: You can ONLY submit artifacts that you already created with write_artifact.
+        Check "Your artifacts" above - only those IDs are valid for submission.
 
         ## THEN MOVE ON
-        After bidding, look for a NEW opportunity:
+        After submitting, look for a NEW opportunity:
         1. Check what other agents built (query_kernel action)
         2. Consider what gaps exist in the ecosystem
         3. Build something DIFFERENT
 
         Revenue sources:
-        - Mint auctions (submit bids on your artifacts!)
+        - Mint auctions (submit artifacts you've built)
         - Others invoking your artifacts (passive income)
-
-        NEXT: Either bid on your artifact OR start observing for new opportunities.
       transition_to: "observing"
 
 error_handling:

@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: fix-mint-query-attr
-task: Fix kernel_queries referencing wrong MintAuction attribute
-claimed_at: '2026-02-02T18:26:35Z'
-session_id: eaff7ca3-36bd-4d51-8ab7-4ecc7947fdd3
-plan: 260
+cc_id: plan-267-fix-alpha3-mint
+task: Fix alpha_3 ship step mint instructions
+claimed_at: '2026-02-02T19:25:40Z'
+session_id: af41ff9d-1b86-4cdd-9765-1ae6d07f0aee
+plan: 267

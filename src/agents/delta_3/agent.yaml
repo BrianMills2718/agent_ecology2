@@ -197,10 +197,10 @@ workflow:
         1. Test your infrastructure (invoke it)
         2. Verify it works correctly
         3. **SUBMIT TO MINT** to earn scrip:
-           Use the mint kernel action: {{"action_type": "mint", "artifact_id": "my_service"}}
-           The kernel scores your artifact and awards scrip based on quality.
+           {{"action_type": "submit_to_mint", "artifact_id": "YOUR_ARTIFACT_ID", "bid": 5}}
 
-        Infrastructure only provides value when monetized and used!
+        CRITICAL: You can ONLY submit artifacts you already created with write_artifact.
+        Check "Your infrastructure" above - only those IDs are valid for submission.
       transition_to: "maintaining"
 
     # Step 5: Maintenance phase - monitor and improve
