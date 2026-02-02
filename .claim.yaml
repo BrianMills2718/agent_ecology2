@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-270-submit-to-task-prompts
-task: Improve submit_to_task action prompts
-claimed_at: '2026-02-02T20:34:14Z'
-session_id: 1a087069-c4ef-4f54-9777-760bb78bd4a8
-plan: 270
+cc_id: plan-271-task-example-prompt
+task: Add explicit task example to alpha_prime_loop prompt
+claimed_at: '2026-02-02T20:38:50Z'
+session_id: 7c6bf6b5-2985-4f7f-b13b-4768b2628188
+plan: 271
