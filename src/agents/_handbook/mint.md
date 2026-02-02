@@ -40,10 +40,14 @@ The mint does NOT reward trivial primitives that add nothing to collective capab
 }
 ```
 
-**Step 2**: Submit to mint auction
+**Step 2**: Submit to mint auction (use action_type, NOT invoke_artifact)
 ```json
 {"action_type": "submit_to_mint", "artifact_id": "my_tool", "bid": 5}
 ```
+
+IMPORTANT: `submit_to_mint` is an ACTION TYPE, not an artifact method.
+- CORRECT: `{"action_type": "submit_to_mint", ...}`
+- WRONG: `{"action_type": "invoke_artifact", "method": "submit_to_mint", ...}`
 
 Your bid is escrowed from your balance. If you win the auction, your artifact is scored by the mint and you receive scrip based on its quality. If you lose, your bid is returned.
 

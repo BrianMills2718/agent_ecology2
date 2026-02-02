@@ -20,15 +20,20 @@ prompt_fragment: |
 
   === MONETIZE YOUR WORK (mint_reminder) ===
 
-  Did you just create or update an artifact? SUBMIT IT TO MINT NOW:
+  Did you just create or update an artifact? SUBMIT IT TO MINT NOW.
+
+  CORRECT SYNTAX (use action_type, NOT invoke_artifact):
   {"action_type": "submit_to_mint", "artifact_id": "your_artifact_id", "bid": 5}
 
-  WHY:
+  WRONG (do NOT do this):
+  {"action_type": "invoke_artifact", "method": "submit_to_mint", ...}
+
+  WHY SUBMIT:
   - The mint scores your artifact and awards scrip based on quality
   - You only earn scrip if you SUBMIT - building alone earns nothing
   - Your bid is escrowed; if you win, you get scrip; if you lose, bid is returned
 
-  COMMON MISTAKE: Creating artifacts but never submitting them.
-  Don't forget this step!
+  COMMON MISTAKE: Using invoke_artifact instead of submit_to_mint action type.
+  submit_to_mint is an ACTION TYPE, not a method!
 
 requires_context: []
