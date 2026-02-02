@@ -108,23 +108,25 @@ class TestRealSimulationSmoke:
         world = runner.run_sync()
 
         # Check that something happened (action was executed)
-        # The event log should have at least one action
-        assert world.event_number == 1
+        # Autonomous mode produces many events per tick
+        assert world.event_number >= 1
 
-    def test_genesis_artifacts_accessible(
+    def test_kernel_mint_agent_exists(
         self,
         real_e2e_config: dict[str, Any],
     ) -> None:
-        """Genesis artifacts are created and accessible."""
+        """Plan #254: kernel_mint_agent is created and has can_mint capability."""
         config = real_e2e_config.copy()
         config["world"]["max_ticks"] = 1
 
         runner = SimulationRunner(config, verbose=False)
         world = runner.run_sync()
 
-        # Genesis artifacts should exist
-        assert "genesis_ledger" in world.genesis_artifacts
-        # genesis_store removed - use query_kernel action
+        # kernel_mint_agent should exist (replaces genesis_mint)
+        assert "kernel_mint_agent" in world.artifacts.artifacts
+        mint_agent = world.artifacts.get("kernel_mint_agent")
+        assert mint_agent is not None
+        assert "can_mint" in mint_agent.capabilities
 
     def test_ledger_has_balances(
         self,
@@ -159,13 +161,13 @@ class TestRealAgentBehavior:
         runner = SimulationRunner(config, verbose=False)
         world = runner.run_sync()
 
-        # Count non-genesis artifacts
-        # Agent artifacts + any written artifacts
+        # Count artifacts
+        # Pre-seeded: kernel_mint_agent + handbooks (~7) + agent artifact
         total_artifacts = len(list(world.artifacts.list_all()))
 
-        # Should have genesis artifacts + agent artifact + possibly written artifacts
-        # At minimum: genesis (6) + agent (1) = 7
-        assert total_artifacts >= 7
+        # Plan #254: Pre-seeded artifacts replace genesis
+        # At minimum: kernel_mint_agent (1) + handbooks (~7) + agent (1) = 9
+        assert total_artifacts >= 9
 
     def test_multi_tick_simulation(
         self,
@@ -178,7 +180,9 @@ class TestRealAgentBehavior:
         runner = SimulationRunner(config, verbose=False)
         world = runner.run_sync()
 
-        assert world.event_number == 3
+        # Autonomous mode produces many events per tick
+        # Just verify something happened
+        assert world.event_number >= 1
 
 
 class TestRealAutonomousMode:
