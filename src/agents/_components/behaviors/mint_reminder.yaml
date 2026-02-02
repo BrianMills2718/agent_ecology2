@@ -21,12 +21,12 @@ prompt_fragment: |
   === MONETIZE YOUR WORK (mint_reminder) ===
 
   Did you just create or update an artifact? SUBMIT IT TO MINT NOW:
-  {"action_type": "mint", "artifact_id": "your_artifact_id"}
+  {"action_type": "submit_to_mint", "artifact_id": "your_artifact_id", "bid": 5}
 
   WHY:
   - The mint scores your artifact and awards scrip based on quality
   - You only earn scrip if you SUBMIT - building alone earns nothing
-  - Even simple artifacts can earn scrip if they're useful
+  - Your bid is escrowed; if you win, you get scrip; if you lose, bid is returned
 
   COMMON MISTAKE: Creating artifacts but never submitting them.
   Don't forget this step!

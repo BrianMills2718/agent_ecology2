@@ -18,6 +18,7 @@ ActionType = Literal[
     "unsubscribe_artifact",  # Plan #191: Unsubscribe from artifact
     "transfer",  # Plan #254: Move scrip between principals
     "mint",  # Plan #254: Create scrip (privileged)
+    "submit_to_mint",  # Plan #259: Submit artifact to mint auction
     # Deprecated (Plan #254) - use edit_artifact on self instead:
     "configure_context",  # Plan #192: Deprecated
     "modify_system_prompt",  # Plan #194: Deprecated
@@ -30,7 +31,7 @@ ActionValidationResult = dict[str, Any] | str
 ACTION_SCHEMA: str = """
 You must respond with a single JSON object representing your action.
 
-## Available Actions (11 types)
+## Available Actions (12 types)
 
 1. read_artifact - Read artifact content
    {"action_type": "read_artifact", "artifact_id": "<id>"}
@@ -76,7 +77,13 @@ You must respond with a single JSON object representing your action.
    Only artifacts with 'can_mint' capability can use this.
    Used by kernel_mint_agent for bounties/auctions.
 
-11. configure_context - Configure prompt context sections (DEPRECATED - use edit_artifact on self)
+11. submit_to_mint - Submit artifact to mint auction (Plan #259)
+   {"action_type": "submit_to_mint", "artifact_id": "<id>", "bid": <integer>}
+   Submit your artifact for scoring by the mint. Bid amount is escrowed from your balance.
+   If you win the auction, your artifact is scored and you receive scrip based on quality.
+   If you lose, your bid is returned.
+
+12. configure_context - Configure prompt context sections (DEPRECATED - use edit_artifact on self)
    {"action_type": "configure_context", "sections": {"<section>": true/false, ...}}
    Optional: "priorities": {"<section>": <0-100>, ...}
    Enables/disables sections of your prompt context. Valid sections:
@@ -84,7 +91,7 @@ You must respond with a single JSON object representing your action.
    resource_metrics, mint_submissions, quota_info, metacognitive, subscribed_artifacts
    Priorities control section ordering (higher = appears earlier in prompt, default 50)
 
-12. modify_system_prompt - Modify your system prompt (DEPRECATED - use edit_artifact on self)
+13. modify_system_prompt - Modify your system prompt (DEPRECATED - use edit_artifact on self)
    {"action_type": "modify_system_prompt", "operation": "<op>", ...}
    Operations:
    - append: {"operation": "append", "content": "<text to add>"}
@@ -172,7 +179,7 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
     valid_actions = [
         "noop", "read_artifact", "write_artifact", "edit_artifact", "delete_artifact",
         "invoke_artifact", "query_kernel", "subscribe_artifact", "unsubscribe_artifact",
-        "transfer", "mint",  # Plan #254: Value actions
+        "transfer", "mint", "submit_to_mint",  # Plan #254, #259: Value actions
         "configure_context", "modify_system_prompt",  # Deprecated but still accepted
     ]
     if action_type not in valid_actions:
@@ -305,6 +312,21 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
             return "mint requires 'reason' (e.g., 'bounty:task_123')"
         if not isinstance(reason, str):
             return "mint 'reason' must be a string"
+
+    elif action_type == "submit_to_mint":
+        # Plan #259: Submit artifact to mint auction
+        if not data.get("artifact_id"):
+            return "submit_to_mint requires 'artifact_id'"
+        artifact_id = str(data.get("artifact_id", ""))
+        if len(artifact_id) > max_artifact_id_length:
+            return f"artifact_id exceeds max length ({max_artifact_id_length} chars)"
+        bid = data.get("bid")
+        if bid is None:
+            return "submit_to_mint requires 'bid'"
+        if not isinstance(bid, int):
+            return "submit_to_mint 'bid' must be an integer"
+        if bid <= 0:
+            return "submit_to_mint 'bid' must be positive"
 
     elif action_type == "configure_context":
         # Plan #192: Configure prompt context sections
