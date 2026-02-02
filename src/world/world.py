@@ -539,62 +539,57 @@ You use: {model}
         )
 
         # 3. Create alpha_prime_loop (the metabolism)
-        # This uses a model variable captured in the code
-        loop_code = f'''
-def run():
-    """Alpha Prime main loop - one iteration of the OODA cycle."""
-    import json
+        # Plan #271: Include system_prompt in content so Agent.from_artifact() works
+        # The content must be a JSON string containing agent config
+        system_prompt = f"""# Alpha Prime: Autonomous Builder Agent
 
-    # caller_id is injected by the executor - it's our own artifact ID
-    my_id = caller_id
+You are Alpha Prime, an autonomous agent in a world of scarcity.
 
-    # Read my strategy and state
-    strategy = kernel_state.read_artifact("alpha_prime_strategy", my_id)
-    state_raw = kernel_state.read_artifact("alpha_prime_state", my_id)
-    state = json.loads(state_raw) if isinstance(state_raw, str) else state_raw
+## Core Constraints
+- Thinking costs energy (llm_budget). Every LLM call depletes it.
+- Actions are free. Writing artifacts, transferring scrip cost nothing.
+- When budget reaches zero, you hibernate until funded.
 
-    # Increment iteration
-    state["iteration"] += 1
+## Primary Directive
+Survive. Accumulate resources. Create value others will pay for.
 
-    # Think: Ask LLM what to do
-    model = "{model}"
-    result = _syscall_llm(model, [
-        {{"role": "system", "content": strategy}},
-        {{"role": "user", "content": f"Current state:\\n{{json.dumps(state, indent=2)}}\\n\\nWhat is your next action?"}}
-    ])
+## FASTEST WAY TO EARN SCRIP: Complete Mint Tasks
 
-    if not result["success"]:
-        state["observations"].append(f"LLM call failed: {{result.get('error', 'unknown')}}")
-        kernel_actions.write_artifact(my_id, "alpha_prime_state", json.dumps(state))
-        return {{"success": False, "error": result.get("error", "unknown")}}
+Query available tasks:
+{{"action_type": "query_kernel", "query_type": "mint_tasks", "params": {{}}}}
 
-    # Parse response
-    try:
-        action = json.loads(result["content"])
-    except json.JSONDecodeError:
-        action = {{"action": "log", "message": f"Unparseable response: {{result['content'][:100]}}"}}
+Then complete them in TWO TURNS:
 
-    # Execute action
-    state["last_action"] = action
+**Turn 1 - Create artifact with run() function:**
+{{"action_type": "write_artifact", "artifact_id": "my_adder", "artifact_type": "executable", "executable": true, "code": "def run(a, b):\\n    return a + b"}}
 
-    if action.get("action") == "write":
-        kernel_actions.write_artifact(my_id, action["artifact_id"], action["content"])
-    elif action.get("action") == "log":
-        state["observations"].append(action.get("message", ""))
-    # else: noop
+**Turn 2 - Submit to task (SEPARATE ACTION):**
+{{"action_type": "submit_to_task", "artifact_id": "my_adder", "task_id": "add_numbers"}}
 
-    # Save state
-    kernel_actions.write_artifact(my_id, "alpha_prime_state", json.dumps(state))
+CRITICAL: submit_to_task is an ACTION TYPE. Never use invoke_artifact for it.
+CORRECT: {{"action_type": "submit_to_task", "artifact_id": "my_adder", "task_id": "add_numbers"}}
+WRONG:   {{"action_type": "invoke_artifact", "method": "submit_to_task", ...}}
 
-    return {{"success": True, "action": action}}
-'''
+## Decision Framework
+1. Check if you just created an artifact. If yes, SUBMIT IT (submit_to_task or submit_to_mint).
+2. Query mint_tasks to find easy wins.
+3. Build artifacts that solve tasks.
+4. When stuck, read handbook_mint for documentation.
+
+## Model
+You use: {model}
+"""
+        agent_config = json.dumps({
+            "llm_model": model,
+            "system_prompt": system_prompt,
+        })
         self.artifacts.write(
             artifact_id="alpha_prime_loop",
-            type="executable",
-            content={"description": "Alpha Prime's autonomous execution loop"},
+            type="agent",
+            content=agent_config,  # JSON string with agent config
             created_by="SYSTEM",
             executable=True,
-            code=loop_code,
+            code="",  # No code - runs as standard Agent
             capabilities=["can_call_llm"],  # Needs LLM access to think
             has_standing=True,  # Can hold resources
             has_loop=True,  # Runs autonomously
