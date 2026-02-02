@@ -1,6 +1,19 @@
 # Plan #252: Tick Terminology Cleanup
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
+
+**Verified:** 2026-02-02T02:16:21Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-02-02T02:16:21Z
+tests:
+  unit: skipped (--status-only, CI-validated)
+  e2e_smoke: skipped (--status-only, CI-validated)
+  e2e_real: skipped (--status-only, CI-validated)
+  doc_coupling: skipped (--status-only, CI-validated)
+commit: ded9837
+```
 **Priority:** Low
 **Created:** 2026-02-01
 **Context:** Plan #247 removed tick-based execution mode, but ~77 references to "tick" remain in config schema and docs. Also, `use_autonomous_loops` config field is dead code (runner hardcodes True). Gemini review flagged these inconsistencies.

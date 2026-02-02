@@ -75,9 +75,7 @@ def real_e2e_config(tmp_path: Path) -> dict[str, Any]:
         "rate_limiting": {
             "enabled": False,
         },
-        "execution": {
-            "use_autonomous_loops": False,
-        },
+        # Note: Runner is always autonomous (Plan #102 removed tick-based mode)
     }
 
 
@@ -191,10 +189,9 @@ class TestRealAutonomousMode:
         self,
         real_e2e_config: dict[str, Any],
     ) -> None:
-        """Autonomous mode runs without crashing."""
+        """Autonomous mode runs without crashing (Plan #102: always autonomous)."""
         config = real_e2e_config.copy()
         config["execution"] = {
-            "use_autonomous_loops": True,
             "agent_loop": {
                 "min_loop_delay": 0.5,
                 "max_loop_delay": 1.0,

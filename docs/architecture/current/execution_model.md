@@ -241,8 +241,7 @@ python run.py
 ### Configuration
 
 ```yaml
-execution:
-  use_autonomous_loops: true  # Always true (Plan #102)
+# Note: Autonomous mode is always enabled (Plan #102 removed tick-based mode)
 rate_limiting:
   enabled: true
   window_seconds: 60.0

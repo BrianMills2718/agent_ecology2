@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-01-31 (kernel_contracts rename)
+**Last verified:** 2026-02-01 (Plan #252: tick terminology cleanup)
 
 ---
 

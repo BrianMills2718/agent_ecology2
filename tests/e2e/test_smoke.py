@@ -91,9 +91,9 @@ class TestAutonomousModeSmoke:
         mock_llm: MagicMock,
         e2e_autonomous_config: dict[str, Any],
     ) -> None:
-        """Autonomous mode simulation can start."""
+        """Autonomous mode simulation can start (Plan #102: always autonomous)."""
         runner = SimulationRunner(e2e_autonomous_config, verbose=False)
-        assert runner.use_autonomous_loops is True
+        assert runner.world.loop_manager is not None
 
     @pytest.mark.asyncio
     async def test_autonomous_mode_runs_briefly(

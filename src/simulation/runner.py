@@ -172,11 +172,7 @@ class SimulationRunner:
         # Initialize agents
         self.agents = self._create_agents(agent_configs)
 
-        # Autonomous loop support (INT-003)
-        # Plan #102: Tick-based mode removed - always use autonomous loops
-        self.use_autonomous_loops = True
-
-        # Create AgentLoopManager (always needed in autonomous mode)
+        # Create AgentLoopManager (always autonomous mode, Plan #102)
         # Plan #247: Ledger.from_config() always creates a RateTracker
         rate_tracker = self.world.rate_tracker
         self.world.loop_manager = AgentLoopManager(rate_tracker)
@@ -1233,9 +1229,7 @@ class SimulationRunner:
             duration: Maximum seconds to run (optional, runs until stopped if not provided)
         """
         if not self.world.loop_manager:
-            raise RuntimeError(
-                "loop_manager not initialized. Ensure use_autonomous_loops=True in config"
-            )
+            raise RuntimeError("loop_manager not initialized")
 
         if self.verbose:
             print(f"  [AUTONOMOUS] Creating loops for {len(self.agents)} agents...")
@@ -1799,7 +1793,7 @@ class SimulationRunner:
         """
         if timeout is None:
             timeout = get_validated_config().timeouts.simulation_shutdown
-        if self.use_autonomous_loops and self.world.loop_manager:
+        if self.world.loop_manager:
             await self.world.loop_manager.stop_all(timeout=timeout)
         if self._worker_pool is not None:
             self._worker_pool.stop()

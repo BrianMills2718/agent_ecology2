@@ -1,7 +1,7 @@
 """Unit tests for simulation runner output messaging.
 
 Tests for Plan #73: Fix Simulation Output Messaging
-- Verifies mode-appropriate timing output (autonomous vs tick-based)
+- Verifies autonomous mode output (tick-based removed in Plan #102)
 - Verifies correct LLM terminology (no legacy "compute")
 """
 
@@ -21,15 +21,12 @@ class TestRunnerOutputMode:
 
     def _create_mock_runner(
         self,
-        use_autonomous_loops: bool = False,
-        max_ticks: int = 100,
         max_api_cost: float = 1.0,
     ) -> Any:
         """Create a mock runner for testing output."""
         # mock-ok: Testing output formatting, not actual runner behavior
         runner = MagicMock()
         runner.verbose = True
-        runner.use_autonomous_loops = use_autonomous_loops
         runner.config = {
             "rate_limiting": {
                 "enabled": True,
@@ -42,7 +39,6 @@ class TestRunnerOutputMode:
 
         # Mock world
         runner.world = MagicMock()
-        runner.world.max_ticks = max_ticks
         runner.world.ledger = MagicMock()
         runner.world.ledger.get_all_scrip.return_value = {"alice": 100, "bob": 100}
 
@@ -59,10 +55,10 @@ class TestRunnerOutputMode:
         return runner
 
     def test_autonomous_output_no_ticks(self) -> None:
-        """Autonomous mode output does NOT show 'Max ticks'."""
+        """Autonomous mode output does NOT show 'Max ticks' (Plan #102)."""
         from src.simulation.runner import SimulationRunner
 
-        runner = self._create_mock_runner(use_autonomous_loops=True)
+        runner = self._create_mock_runner()
 
         # Capture stdout
         captured = io.StringIO()
@@ -76,31 +72,10 @@ class TestRunnerOutputMode:
         assert "Autonomous" in output
         assert "agents run independently" in output
 
-        # Should NOT show "Max ticks"
+        # Should NOT show "Max ticks" (tick-based removed in Plan #102)
         assert "Max ticks" not in output
         assert "max ticks" not in output
-
-    def test_autonomous_mode_always_shown(self) -> None:
-        """Plan #102: Autonomous mode is always shown (tick-based mode removed)."""
-        from src.simulation.runner import SimulationRunner
-
-        # Even with use_autonomous_loops=False, output should show Autonomous
-        # because tick-based mode was removed in Plan #102
-        runner = self._create_mock_runner(use_autonomous_loops=False, max_ticks=50)
-
-        # Capture stdout
-        captured = io.StringIO()
-        with patch.object(sys, "stdout", captured):
-            SimulationRunner._print_startup_info(runner)
-
-        output = captured.getvalue()
-
-        # Plan #102: Always shows autonomous mode
-        assert "Autonomous" in output
-
-        # Should NOT show tick-based mode
         assert "Tick-based" not in output
-        assert "max ticks" not in output
 
 
 @pytest.mark.feature("runner_output")
@@ -112,7 +87,6 @@ class TestRunnerOutputTerminology:
         # mock-ok: Testing output formatting, not actual runner behavior
         runner = MagicMock()
         runner.verbose = True
-        runner.use_autonomous_loops = False
         runner.config = {
             "rate_limiting": {
                 "enabled": True,
@@ -125,7 +99,6 @@ class TestRunnerOutputTerminology:
 
         # Mock world
         runner.world = MagicMock()
-        runner.world.max_ticks = 100
         runner.world.ledger = MagicMock()
         runner.world.ledger.get_all_scrip.return_value = {"alice": 100}
 
@@ -189,7 +162,6 @@ class TestRunnerOutputTerminology:
         # mock-ok: Testing output formatting, not actual runner behavior
         runner = MagicMock()
         runner.verbose = True
-        runner.use_autonomous_loops = False
         runner.config = {
             "rate_limiting": {
                 "enabled": True,
@@ -200,7 +172,6 @@ class TestRunnerOutputTerminology:
             },
         }
         runner.world = MagicMock()
-        runner.world.max_ticks = 100
         runner.world.ledger = MagicMock()
         runner.world.ledger.get_all_scrip.return_value = {}
         runner.engine = MagicMock()

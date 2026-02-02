@@ -2,7 +2,7 @@
 
 Canonical terminology for Agent Ecology.
 
-**Last updated:** 2026-01-31 (Plan #247: No terminology changes)
+**Last updated:** 2026-02-01 (Plan #252: Tick terminology cleanup)
 
 ---
 

@@ -47,9 +47,9 @@ Schema has sensible defaults for everything. You only need to specify overrides:
 
 ```yaml
 # Minimal config - everything else uses defaults
-# Simulation runs in autonomous mode by default (no tick limits)
-execution:
-  use_autonomous_loops: true
+# Simulation always runs in autonomous mode (Plan #102)
+budget:
+  max_api_cost: 1.0  # Limit spend to $1.00
 ```
 
 ## Doc Coupling

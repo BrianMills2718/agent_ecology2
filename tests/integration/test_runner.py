@@ -531,35 +531,18 @@ class TestAutonomousMode:
             config = make_minimal_config(tmpdir)
             runner = SimulationRunner(config, verbose=False)
 
-            # Plan #102: Autonomous mode is always used
-            assert runner.use_autonomous_loops is True
+            # Plan #102: Autonomous mode is always used, loop_manager always created
             assert runner.world.loop_manager is not None
 
     @patch("src.simulation.runner.load_agents")
-    def test_autonomous_mode_enabled_from_config(self, mock_load: MagicMock) -> None:
-        """Autonomous mode is enabled when configured."""
-        mock_load.return_value = []
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = make_minimal_config(tmpdir)
-            config["execution"] = {"use_autonomous_loops": True}
-            runner = SimulationRunner(config, verbose=False)
-
-            assert runner.use_autonomous_loops is True
-            assert runner.world.use_autonomous_loops is True
-            # loop_manager should be created
-            assert runner.world.loop_manager is not None
-
-    @patch("src.simulation.runner.load_agents")
-    def test_autonomous_mode_creates_rate_tracker_if_missing(
+    def test_rate_tracker_always_created(
         self, mock_load: MagicMock
     ) -> None:
-        """Autonomous mode creates a rate tracker if not configured."""
+        """RateTracker is always created (Plan #247)."""
         mock_load.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
-            config["execution"] = {"use_autonomous_loops": True}
             runner = SimulationRunner(config, verbose=False)
 
             # Plan #247: RateTracker is always created
@@ -567,15 +550,14 @@ class TestAutonomousMode:
             assert runner.world.loop_manager is not None
 
     @patch("src.simulation.runner.load_agents")
-    def test_autonomous_mode_uses_existing_rate_tracker(
+    def test_rate_tracker_uses_config_values(
         self, mock_load: MagicMock
     ) -> None:
-        """Autonomous mode uses existing rate tracker when available."""
+        """RateTracker uses config values when provided."""
         mock_load.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
-            config["execution"] = {"use_autonomous_loops": True}
             config["rate_limiting"] = {
                 "enabled": True,
                 "window_seconds": 120.0,
@@ -588,22 +570,6 @@ class TestAutonomousMode:
             assert runner.world.rate_tracker.window_seconds == 120.0
 
     @patch("src.simulation.runner.load_agents")
-    def test_autonomous_mode_ignores_config_false(
-        self, mock_load: MagicMock
-    ) -> None:
-        """Autonomous mode is used even if config says false (Plan #102)."""
-        mock_load.return_value = []
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = make_minimal_config(tmpdir)
-            config["execution"] = {"use_autonomous_loops": False}  # Ignored
-            runner = SimulationRunner(config, verbose=False)
-
-            # Plan #102: Always uses autonomous mode
-            assert runner.use_autonomous_loops is True
-            assert runner.world.loop_manager is not None
-
-    @patch("src.simulation.runner.load_agents")
     def test_create_agent_loop_with_config(self, mock_load: MagicMock) -> None:
         """_create_agent_loop uses config values."""
         mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
@@ -611,7 +577,6 @@ class TestAutonomousMode:
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
             config["execution"] = {
-                "use_autonomous_loops": True,
                 "agent_loop": {
                     "min_loop_delay": 0.5,
                     "max_loop_delay": 20.0,
@@ -640,7 +605,6 @@ class TestAutonomousMode:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
-            config["execution"] = {"use_autonomous_loops": True}
             runner = SimulationRunner(config, verbose=False)
 
             # Should be able to call shutdown even when not running
@@ -650,10 +614,10 @@ class TestAutonomousMode:
             assert runner._running is False
 
     @patch("src.simulation.runner.load_agents")
-    def test_world_loop_manager_created_for_autonomous_mode(
+    def test_world_loop_manager_always_created(
         self, mock_load: MagicMock
     ) -> None:
-        """World.loop_manager is created when autonomous mode is enabled."""
+        """World.loop_manager is always created (Plan #102)."""
         mock_load.return_value = [
             {"id": "agent1", "starting_scrip": 100},
             {"id": "agent2", "starting_scrip": 100},
@@ -661,7 +625,6 @@ class TestAutonomousMode:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
-            config["execution"] = {"use_autonomous_loops": True}
             runner = SimulationRunner(config, verbose=False)
 
             assert runner.world.loop_manager is not None

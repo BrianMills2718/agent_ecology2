@@ -10,14 +10,10 @@ Last verified: 2026-01-15
 
 The Agent Ecology is a multi-agent system where LLM-powered agents observe shared world state, propose actions, and execute them within resource constraints.
 
-**Default: Autonomous Execution** (`use_autonomous_loops: true`)
+**Autonomous Execution** (always enabled, Plan #102)
 - Agents run independently via `AgentLoop`
 - Resource-gated by `RateTracker` (rolling window rate limiting)
 - No tick synchronization required
-
-**Legacy: Tick-Synchronized Mode** (`--ticks N` CLI flag)
-- Two-phase commit: Observe (parallel) → Execute (sequential randomized)
-- Useful for debugging/deterministic replay
 
 **Key Constraints:**
 - **Strict resource limits** - No debt, cannot spend more than available
