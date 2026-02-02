@@ -15,6 +15,11 @@ genotype:
   time_horizon: SHORT  # Quick iterations
   primary_strategy: BUILD
 
+# Components to inject into prompts
+components:
+  behaviors:
+    - mint_reminder  # Critical: reminds to do submit_to_mint after write_artifact
+
 # RAG configuration - minimal, focus on action
 rag:
   enabled: true

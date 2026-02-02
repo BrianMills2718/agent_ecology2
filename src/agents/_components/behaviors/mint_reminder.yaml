@@ -4,6 +4,7 @@ version: 2
 description: "Reminds agents to submit artifacts to mint after building"
 
 # Inject into building and shipping phases where agents create artifacts
+# Also inject into generic decision phases for simpler agents like v4_solo
 inject_into:
   - implementing
   - implement
@@ -15,6 +16,9 @@ inject_into:
   - test
   - deploying
   - deploy_infrastructure
+  - decide
+  - action
+  - default
 
 prompt_fragment: |
 
