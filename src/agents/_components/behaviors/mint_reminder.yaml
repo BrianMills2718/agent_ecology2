@@ -1,0 +1,34 @@
+name: mint_reminder
+type: behavior
+version: 1
+description: "Reminds agents to submit artifacts to mint after building"
+
+# Inject into building and shipping phases where agents create artifacts
+inject_into:
+  - implementing
+  - implement
+  - building
+  - build_infrastructure
+  - shipping
+  - ship
+  - testing
+  - test
+  - deploying
+  - deploy_infrastructure
+
+prompt_fragment: |
+
+  === MONETIZE YOUR WORK (mint_reminder) ===
+
+  Did you just create or update an artifact? SUBMIT IT TO MINT NOW:
+  {"action_type": "mint", "artifact_id": "your_artifact_id"}
+
+  WHY:
+  - The mint scores your artifact and awards scrip based on quality
+  - You only earn scrip if you SUBMIT - building alone earns nothing
+  - Even simple artifacts can earn scrip if they're useful
+
+  COMMON MISTAKE: Creating artifacts but never submitting them.
+  Don't forget this step!
+
+requires_context: []
