@@ -8,8 +8,10 @@ from typing import Annotated, Any, Literal, Union
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic.functional_validators import BeforeValidator
 
-# Action type literal
-ActionType = Literal["noop", "read_artifact", "write_artifact", "invoke_artifact"]
+# Plan #262: Import ActionType from schema.py (source of truth for all action types)
+# Previously: ActionType = Literal["noop", "read_artifact", "write_artifact", "invoke_artifact"]
+# This was causing submit_to_mint and other action types to be rejected!
+from .schema import ActionType
 
 # JSON-compatible argument type (Gemini structured output doesn't support Any)
 ArgValue = str | int | float | bool | None
@@ -162,10 +164,12 @@ class FlatAction(BaseModel):
 
     All fields are present with defaults. Validation checks required fields
     based on action_type after parsing.
+    Plan #262: Added fields for all action types to prevent silent conversion to noop.
     """
 
     action_type: ActionType = "noop"
-    # For read_artifact, write_artifact, invoke_artifact
+    # For read_artifact, write_artifact, invoke_artifact, edit_artifact, delete_artifact,
+    # subscribe_artifact, unsubscribe_artifact, submit_to_mint
     artifact_id: str = ""
     # For write_artifact
     artifact_type: str = "data"
@@ -177,10 +181,33 @@ class FlatAction(BaseModel):
     # For invoke_artifact
     method: str = ""
     args: list[ArgValue] = Field(default_factory=list)
+    # Plan #262: Fields for additional action types
+    # For edit_artifact
+    old_string: str = ""
+    new_string: str = ""
+    # For transfer, mint
+    recipient_id: str = ""
+    amount: int = 0
+    memo: str = ""  # For transfer (optional)
+    reason: str = ""  # For mint
+    # For submit_to_mint
+    bid: int = 0
+    # For query_kernel
+    query_type: str = ""
+    params: dict[str, ArgValue] = Field(default_factory=dict)
+    # For configure_context
+    sections: dict[str, bool] = Field(default_factory=dict)
+    priorities: dict[str, int] = Field(default_factory=dict)
+    # For modify_system_prompt
+    operation: str = ""
+    section_marker: str = ""
 
     @model_validator(mode="after")
     def validate_required_fields(self) -> "FlatAction":
-        """Validate required fields based on action_type."""
+        """Validate required fields based on action_type.
+
+        Plan #262: Added validation for all action types.
+        """
         if self.action_type == "read_artifact":
             if not self.artifact_id:
                 raise ValueError("artifact_id is required for read_artifact")
@@ -196,10 +223,52 @@ class FlatAction(BaseModel):
                 raise ValueError("artifact_id is required for invoke_artifact")
             if not self.method:
                 raise ValueError("method is required for invoke_artifact")
+        elif self.action_type == "edit_artifact":
+            if not self.artifact_id:
+                raise ValueError("artifact_id is required for edit_artifact")
+            if not self.old_string:
+                raise ValueError("old_string is required for edit_artifact")
+        elif self.action_type == "delete_artifact":
+            if not self.artifact_id:
+                raise ValueError("artifact_id is required for delete_artifact")
+        elif self.action_type in ("subscribe_artifact", "unsubscribe_artifact"):
+            if not self.artifact_id:
+                raise ValueError(f"artifact_id is required for {self.action_type}")
+        elif self.action_type == "submit_to_mint":
+            if not self.artifact_id:
+                raise ValueError("artifact_id is required for submit_to_mint")
+            if self.bid <= 0:
+                raise ValueError("bid must be positive for submit_to_mint")
+        elif self.action_type == "transfer":
+            if not self.recipient_id:
+                raise ValueError("recipient_id is required for transfer")
+            if self.amount <= 0:
+                raise ValueError("amount must be positive for transfer")
+        elif self.action_type == "mint":
+            if not self.recipient_id:
+                raise ValueError("recipient_id is required for mint")
+            if self.amount <= 0:
+                raise ValueError("amount must be positive for mint")
+            if not self.reason:
+                raise ValueError("reason is required for mint")
+        elif self.action_type == "query_kernel":
+            if not self.query_type:
+                raise ValueError("query_type is required for query_kernel")
+        elif self.action_type == "configure_context":
+            if not self.sections:
+                raise ValueError("sections is required for configure_context")
+        elif self.action_type == "modify_system_prompt":
+            if not self.operation:
+                raise ValueError("operation is required for modify_system_prompt")
         return self
 
-    def to_typed_action(self) -> Action:
-        """Convert flat action to appropriate typed action model."""
+    def to_typed_action(self) -> "Action | FlatAction":
+        """Convert flat action to appropriate typed action model.
+
+        Plan #262: Return self for action types that don't have typed models
+        instead of converting to NoopAction. This preserves the original
+        action_type and fields for execution.
+        """
         if self.action_type == "noop":
             return NoopAction()
         elif self.action_type == "read_artifact":
@@ -222,7 +291,9 @@ class FlatAction(BaseModel):
                 args=self.args,
             )
         else:
-            return NoopAction()
+            # Plan #262: Return self for all other action types
+            # This preserves the action_type and all fields for proper execution
+            return self
 
 
 class ActionResponse(BaseModel):
@@ -230,10 +301,11 @@ class ActionResponse(BaseModel):
 
     Uses ActionField (discriminated union) for internal use.
     Plan #132: Standardized 'reasoning' field name.
+    Plan #262: Accept FlatAction for action types without typed models.
     """
 
     reasoning: str = Field(description="Agent's reasoning for this action")
-    action: ActionField = Field(description="The action to execute")
+    action: Action | FlatAction = Field(description="The action to execute")
 
 
 class FlatActionResponse(BaseModel):

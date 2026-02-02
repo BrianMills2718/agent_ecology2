@@ -68,6 +68,7 @@ Master index of all gaps and their implementation plans.
 | 258 | [Plan 258: Improve Mint Prompting](258_mint_prompting.md) | Medium | ❓ | - |
 | 259 | [Plan 259: Add submit_to_mint Action Type](259_submit_to_mint_action.md) | Medium | ❓ | - |
 | 260 | [Improve Mint Prompts](260_improve_mint_prompts.md) | Medium | ❓ | - |
+| 262 | [Fix FlatAction to Support All Action Types](262_fix_action_model.md) | Medium | ❓ | - |
 ---
 
 ## TDD Workflow
