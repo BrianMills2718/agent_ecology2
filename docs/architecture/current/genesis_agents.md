@@ -2,7 +2,7 @@
 
 Default agents that ship with the system. These are specific instantiations of the agent architecture.
 
-**Last verified:** 2026-01-31 (TD-004: resource naming cleanup)
+**Last verified:** 2026-02-01 (Plan #252: tick terminology cleanup)
 
 **Related:** [agent_cognition.md](agent_cognition.md) for architecture, [agents.md](agents.md) for lifecycle
 

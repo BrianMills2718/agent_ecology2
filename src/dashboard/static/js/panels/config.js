@@ -70,14 +70,11 @@ const ConfigPanel = {
 
         let html = '';
 
-        // World settings
-        if (config.world) {
-            html += '<div class="config-section"><h4>World</h4>' +
-                this.renderItems({
-                    'Max Ticks': config.world.max_ticks,
-                    'Autonomous Mode': config.world.use_autonomous_loops ? 'Yes' : 'No'
-                }) + '</div>';
-        }
+        // Execution mode (always autonomous, Plan #102)
+        html += '<div class="config-section"><h4>Execution</h4>' +
+            this.renderItems({
+                'Mode': 'Autonomous (continuous)'
+            }) + '</div>';
 
         // Resource settings
         if (config.resources) {

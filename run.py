@@ -371,11 +371,7 @@ def main() -> None:
     # Validate LLM config at startup (Plan #129)
     validate_llm_config(config, verbose=not args.quiet)
 
-    # Enable autonomous mode if --duration or --autonomous specified
-    if args.duration or args.autonomous:
-        if "execution" not in config:
-            config["execution"] = {}
-        config["execution"]["use_autonomous_loops"] = True
+    # Note: Autonomous mode is always enabled (Plan #102 removed tick-based mode)
 
     # Dashboard-only mode
     if args.dashboard_only:

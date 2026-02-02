@@ -159,7 +159,6 @@ class World:
     rights_registry: GenesisRightsRegistry | None
     # principal_ids is a derived property (Plan #231)
     # Autonomous loop support
-    use_autonomous_loops: bool
     rate_tracker: RateTracker
     loop_manager: "AgentLoopManager | None"
     # Invocation tracking for observability (Gap #27)
@@ -343,11 +342,6 @@ class World:
             # Initialize agent in rights registry
             if self.rights_registry:
                 self.rights_registry.ensure_agent(p["id"])
-
-        # Autonomous loop support (INT-003)
-        # Check if autonomous mode is enabled via config
-        execution_config = cast(dict[str, Any], config.get("execution", {}))
-        self.use_autonomous_loops = execution_config.get("use_autonomous_loops", False)
 
         # Plan #247: RateTracker is always active. Use the one from Ledger.
         self.rate_tracker = self.ledger.rate_tracker

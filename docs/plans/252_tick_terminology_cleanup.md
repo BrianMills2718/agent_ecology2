@@ -1,6 +1,6 @@
 # Plan #252: Tick Terminology Cleanup
 
-**Status:** 📋 Planned
+**Status:** 🚧 In Progress
 **Priority:** Low
 **Created:** 2026-02-01
 **Context:** Plan #247 removed tick-based execution mode, but ~77 references to "tick" remain in config schema and docs. Also, `use_autonomous_loops` config field is dead code (runner hardcodes True). Gemini review flagged these inconsistencies.

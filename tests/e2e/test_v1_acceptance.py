@@ -75,9 +75,7 @@ def v1_config(tmp_path: Path) -> dict[str, Any]:
         "rate_limiting": {
             "enabled": False,  # Tested separately
         },
-        "execution": {
-            "use_autonomous_loops": False,
-        },
+        # Note: Runner is always autonomous (Plan #102 removed tick-based mode)
     }
 
 
@@ -229,13 +227,14 @@ class TestV1ResourceConstraints:
         - No crashes from rate limit enforcement
         """
         config = v1_rate_limited_config.copy()
-        config["execution"]["use_autonomous_loops"] = True
-        config["execution"]["agent_loop"] = {
-            "min_loop_delay": 0.1,
-            "max_loop_delay": 0.5,
-            "resource_check_interval": 0.1,
-            "max_consecutive_errors": 3,
-            "resources_to_check": [],
+        config["execution"] = {
+            "agent_loop": {
+                "min_loop_delay": 0.1,
+                "max_loop_delay": 0.5,
+                "resource_check_interval": 0.1,
+                "max_consecutive_errors": 3,
+                "resources_to_check": [],
+            },
         }
 
         runner = SimulationRunner(config, max_agents=1, verbose=False)

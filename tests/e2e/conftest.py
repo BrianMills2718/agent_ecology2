@@ -111,7 +111,7 @@ def e2e_config(tmp_path: Path) -> dict[str, Any]:
         "rate_limiting": {
             "enabled": False,
         },
-        # Plan #102: use_autonomous_loops removed - runner is always autonomous now
+        # Note: Runner is always autonomous (Plan #102 removed tick-based mode)
     }
 
 
@@ -120,7 +120,6 @@ def e2e_autonomous_config(e2e_config: dict[str, Any]) -> dict[str, Any]:
     """Configuration for autonomous mode E2E tests."""
     config = e2e_config.copy()
     config["execution"] = {
-        "use_autonomous_loops": True,
         "agent_loop": {
             "min_loop_delay": 0.01,
             "max_loop_delay": 0.1,

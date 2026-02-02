@@ -1346,13 +1346,13 @@ Before choosing your next action, briefly consider:
         executable_count = sum(1 for a in artifacts if a.get('executable') and not a.get('methods'))
         data_count = len(artifacts) - genesis_count - executable_count
 
-        # First-tick hint (configurable)
-        first_tick_section: str = ""
-        first_tick_enabled: bool = config_get("agent.prompt.first_tick_enabled") or False
-        if first_tick_enabled and tick == 1:
-            first_tick_hint: str = config_get("agent.prompt.first_tick_hint") or ""
-            if first_tick_hint:
-                first_tick_section = f"\n## Getting Started\n{first_tick_hint}\n"
+        # Startup hint for first iteration (configurable)
+        startup_section: str = ""
+        startup_hint_enabled: bool = config_get("agent.prompt.startup_hint_enabled") or False
+        if startup_hint_enabled and tick == 1:
+            startup_hint: str = config_get("agent.prompt.startup_hint") or ""
+            if startup_hint:
+                startup_section = f"\n## Getting Started\n{startup_hint}\n"
 
         # Working memory injection (Plan #59, Plan #192: section control)
         # Also check for {agent_id}_working_memory artifact if no embedded working_memory
@@ -1574,9 +1574,9 @@ You are {self.agent_id}. Time remaining: {time_remaining_str} ({progress_str} co
 - Artifacts created: {len(my_artifacts)}
 
 {effective_system_prompt}
-{first_tick_section}{sorted_sections_content}
+{startup_section}{sorted_sections_content}
 ## Current State
-- Tick: {world_state.get('tick', 0)}
+- Event: {world_state.get('event_number', 0)}
 - Your scrip: {world_state.get('balances', {}).get(self.agent_id, 0)}
 
 ## World Summary

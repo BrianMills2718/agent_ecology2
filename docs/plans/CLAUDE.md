@@ -59,7 +59,7 @@ Master index of all gaps and their implementation plans.
 | 249 | [Gap 249: Plan-to-Diff Verification](249_plan_to_diff_verification.md) | Medium | ✅ Complete | — |
 | 250 | [Plan 250: Meta-Process Enforcement Gaps](250_meta_process_enforcement_gaps.md) | High | ✅ Complete | - |
 | 251 | [Resource Terminology Cleanup](251_resource_terminology_cleanup.md) | Medium | ✅ Complete | - |
-| 252 | [Tick Terminology Cleanup](252_tick_terminology_cleanup.md) | Low | 📋 Planned | - |
+| 252 | [Tick Terminology Cleanup](252_tick_terminology_cleanup.md) | Low | 🚧 In Progress | - |
 | 253 | [Plan 253: Feature → Gate Terminology Cleanup](253_feature_to_gate_terminology.md) | Medium | ✅ Complete | - |
 | 254 | [Remove Genesis Artifacts, Promote Transfer to Kernel](254_remove_genesis_artifacts.md) | High | 📋 Planned | - |
 ---

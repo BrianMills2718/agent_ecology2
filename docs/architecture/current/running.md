@@ -2,7 +2,7 @@
 
 Practical guide to running and observing agent ecology simulations.
 
-**Last verified:** 2026-01-31 (Plan #247: No running behavior changes)
+**Last verified:** 2026-02-01 (Plan #252: tick terminology cleanup)
 
 ---
 

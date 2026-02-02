@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-247-legacy-tick-removal
-task: Remove legacy tick-based resource mode
-claimed_at: '2026-02-01T02:54:13Z'
-session_id: 2f27498a-435e-41a9-a555-951db4796699
-plan: 247
+cc_id: plan-252-tick-cleanup
+task: Remove tick terminology and dead use_autonomous_loops config
+claimed_at: '2026-02-02T02:01:48Z'
+session_id: 02dea0b9-ba26-4408-8c27-d657438174c3
+plan: 252

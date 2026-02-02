@@ -918,12 +918,11 @@ class WorkerPoolConfig(StrictModel):
 
 
 class ExecutionConfig(StrictModel):
-    """Configuration for agent execution model."""
+    """Configuration for agent execution model.
 
-    use_autonomous_loops: bool = Field(
-        default=False,
-        description="Enable continuous autonomous agent loops (default: tick-based)"
-    )
+    Note: Autonomous loops are always enabled (Plan #102 removed tick-based mode).
+    """
+
     use_worker_pool: bool = Field(
         default=False,
         description="Use worker pool for process-isolated turns (Plan #53)"
@@ -1190,10 +1189,10 @@ class HealthScoringConfig(StrictModel):
         ge=0,
         description="Threshold for trend detection"
     )
-    trend_history_ticks: int = Field(
+    trend_history_events: int = Field(
         default=10,
         gt=0,
-        description="Ticks of history to analyze for trends"
+        description="Events of history to analyze for trends"
     )
 
 
@@ -1223,7 +1222,7 @@ class WorldConfig(StrictModel):
     """World simulation configuration.
 
     Note: max_ticks was removed in Plan #102. Use duration-based execution
-    via rate_limiting and execution.use_autonomous_loops instead.
+    via rate_limiting and budget sections.
     """
 
     # Placeholder to allow world: {} in config files without error
@@ -1256,7 +1255,7 @@ class BudgetConfig(StrictModel):
     checkpoint_interval: int = Field(
         default=10,
         ge=0,
-        description="Save checkpoint every N ticks (0 = disable periodic saves)"
+        description="Save checkpoint every N events (0 = disable periodic saves)"
     )
     checkpoint_on_end: bool = Field(
         default=True,
@@ -1342,17 +1341,17 @@ class AgentPromptConfig(StrictModel):
         gt=0,
         description="Maximum number of relevant memories to include"
     )
-    first_tick_hint: str = Field(
+    startup_hint: str = Field(
         default="TIP: New to this world? Read handbook_genesis to learn available methods, or handbook_trading for how to buy/sell.",
-        description="Hint shown on first tick (empty string to disable)"
+        description="Hint shown on agent's first iteration (empty string to disable)"
     )
-    first_tick_enabled: bool = Field(
+    startup_hint_enabled: bool = Field(
         default=True,
-        description="Whether to show first_tick_hint on tick 1"
+        description="Whether to show startup_hint on first iteration"
     )
 
 
-DEFAULT_RAG_QUERY_TEMPLATE: str = """Tick {tick}. I am {agent_id} with {balance} scrip.
+DEFAULT_RAG_QUERY_TEMPLATE: str = """Event {event_number}. I am {agent_id} with {balance} scrip.
 My artifacts: {my_artifacts}.
 Other agents: {other_agents}.
 {last_action}
@@ -1376,7 +1375,7 @@ class RAGConfig(StrictModel):
     )
     query_template: str = Field(
         default=DEFAULT_RAG_QUERY_TEMPLATE,
-        description="Template for RAG query. Variables: {tick}, {agent_id}, {balance}, {my_artifacts}, {other_agents}, {last_action}"
+        description="Template for RAG query. Variables: {event_number}, {agent_id}, {balance}, {my_artifacts}, {other_agents}, {last_action}"
     )
 
 

@@ -86,11 +86,11 @@ costs:
   per_1k_output_tokens: 3   # Compute cost per 1K output
 ```
 
-### Execution (Plan #53)
+### Execution (Plan #53, #102)
 
 ```yaml
 execution:
-  use_autonomous_loops: true      # Enable autonomous agent loops (default)
+  # Note: Autonomous mode is always enabled (Plan #102 removed tick-based mode)
   use_worker_pool: false          # Enable worker pool for 100+ agents (Plan #53)
   worker_pool:
     num_workers: 4                # Number of parallel worker threads
