@@ -657,3 +657,12 @@ dashboard:
 # -----------------------------------------------------------------------------
 id_generation:
   uuid_hex_length: 8            # Characters from UUID hex for IDs
+
+# -----------------------------------------------------------------------------
+# ALPHA PRIME - V4 Artifact-Based Agent
+# -----------------------------------------------------------------------------
+alpha_prime:
+  enabled: true                           # Enable Alpha Prime bootstrap on World init
+  starting_scrip: 100                     # Initial scrip balance
+  starting_llm_budget: 1.0                # Initial LLM budget in dollars
+  model: "gemini/gemini-2.0-flash"        # Model for Alpha Prime's cognition
