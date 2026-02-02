@@ -53,24 +53,26 @@ def sample_function():
 '''
     (src_dir / "sample.py").write_text(sample_py)
 
-    # Create governance.yaml
-    governance = {
-        "files": {
-            "src/world/sample.py": {
-                "adrs": [1],
-                "context": "Sample context for testing.",
-            }
-        },
+    # Create relationships.yaml (unified doc graph format)
+    relationships = {
+        "version": 1,
         "adrs": {
             1: {
                 "title": "Test Decision",
                 "file": "0001-test-decision.md",
             }
         },
+        "governance": [
+            {
+                "source": "src/world/sample.py",
+                "adrs": [1],
+                "context": "Sample context for testing.",
+            }
+        ],
     }
     scripts_dir = tmp_path / "scripts"
     scripts_dir.mkdir()
-    (scripts_dir / "governance.yaml").write_text(yaml.dump(governance))
+    (scripts_dir / "relationships.yaml").write_text(yaml.dump(relationships))
 
     # Initialize git repo (needed for dirty check)
     subprocess.run(
@@ -167,10 +169,10 @@ class TestMarkerBehavior:
         # Get content after first sync
         content_after_first = sample_file.read_text()
 
-        # Modify governance.yaml to change context
-        gov_file = temp_project / "scripts" / "governance.yaml"
+        # Modify relationships.yaml to change context
+        gov_file = temp_project / "scripts" / "relationships.yaml"
         gov_data = yaml.safe_load(gov_file.read_text())
-        gov_data["files"]["src/world/sample.py"]["context"] = "Updated context."
+        gov_data["governance"][0]["context"] = "Updated context."
         gov_file.write_text(yaml.dump(gov_data))
 
         # Run sync again
@@ -232,10 +234,10 @@ class TestConfigValidation:
 
     def test_missing_adr_fails(self, temp_project: Path) -> None:
         """Referencing a nonexistent ADR should fail."""
-        # Modify governance.yaml to reference nonexistent ADR
-        gov_file = temp_project / "scripts" / "governance.yaml"
+        # Modify relationships.yaml to reference nonexistent ADR
+        gov_file = temp_project / "scripts" / "relationships.yaml"
         gov_data = yaml.safe_load(gov_file.read_text())
-        gov_data["files"]["src/world/sample.py"]["adrs"] = [1, 999]  # 999 doesn't exist
+        gov_data["governance"][0]["adrs"] = [1, 999]  # 999 doesn't exist
         gov_file.write_text(yaml.dump(gov_data))
 
         result = run_sync(temp_project)
@@ -246,9 +248,9 @@ class TestConfigValidation:
 
     def test_missing_file_fails(self, temp_project: Path) -> None:
         """Referencing a nonexistent file should fail."""
-        gov_file = temp_project / "scripts" / "governance.yaml"
+        gov_file = temp_project / "scripts" / "relationships.yaml"
         gov_data = yaml.safe_load(gov_file.read_text())
-        gov_data["files"]["src/nonexistent.py"] = {"adrs": [1]}
+        gov_data["governance"].append({"source": "src/nonexistent.py", "adrs": [1]})
         gov_file.write_text(yaml.dump(gov_data))
 
         result = run_sync(temp_project)

@@ -61,33 +61,33 @@ class GovernanceConfig:
         - relationships.yaml (unified): has 'governance' list + 'adrs' dict
         - governance.yaml (legacy): has 'files' dict + 'adrs' dict
 
-        If path is governance.yaml but relationships.yaml exists and has
-        governance section, prefer relationships.yaml (unified source of truth).
+        Auto-detects format based on content, not filename.
         """
-        # Check if we should use relationships.yaml instead
+        # Check if we should use relationships.yaml instead (legacy support)
         relationships_path = path.parent / "relationships.yaml"
         if path.name == "governance.yaml" and relationships_path.exists():
-            with open(relationships_path) as f:
-                unified_data = yaml.safe_load(f)
-            if unified_data and "governance" in unified_data:
-                # Convert relationships.yaml format to internal format
-                files = {}
-                for entry in unified_data.get("governance", []):
-                    source = entry.get("source", "")
-                    if source:
-                        files[source] = {
-                            "adrs": entry.get("adrs", []),
-                            "context": entry.get("context", ""),
-                        }
-                return cls(
-                    files=files,
-                    adrs=unified_data.get("adrs", {}),
-                )
+            path = relationships_path
 
-        # Fall back to legacy governance.yaml format
         with open(path) as f:
             data = yaml.safe_load(f)
 
+        # Detect unified format (has 'governance' list)
+        if data and "governance" in data:
+            # Convert relationships.yaml format to internal format
+            files = {}
+            for entry in data.get("governance", []):
+                source = entry.get("source", "")
+                if source:
+                    files[source] = {
+                        "adrs": entry.get("adrs", []),
+                        "context": entry.get("context", ""),
+                    }
+            return cls(
+                files=files,
+                adrs=data.get("adrs", {}),
+            )
+
+        # Legacy governance.yaml format (has 'files' dict)
         return cls(
             files=data.get("files", {}),
             adrs=data.get("adrs", {}),
