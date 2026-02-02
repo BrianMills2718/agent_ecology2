@@ -39,7 +39,7 @@ class Artifact:
     # Interface schema (Plan #14)
     interface: dict | None = None # JSON Schema for discoverability
     # Genesis method dispatch (Plan #15)
-    genesis_methods: dict | None = None  # Method dispatch for genesis artifacts
+    genesis_methods: dict | None = None  # Legacy: Method dispatch (Plan #254: genesis removed)
     # Artifact dependencies (Plan #63)
     depends_on: list[str] = []  # List of artifact IDs this depends on
     # User-defined metadata (Plan #168)
@@ -107,12 +107,12 @@ When an executable artifact is written, the system automatically extracts `invok
 # When you write executable code like:
 code = '''
 def run(ctx):
-    invoke("genesis_ledger", "transfer", [10])
-    invoke("genesis_escrow", "deposit", [100])
+    invoke("my_ledger", "transfer", [10])
+    invoke("mcp_escrow", "deposit", [100])
     return True
 '''
 # The artifact's metadata is auto-populated:
-# metadata["invokes"] = ["genesis_escrow", "genesis_ledger"]
+# metadata["invokes"] = ["mcp_escrow", "my_ledger"]
 ```
 
 **Key properties:**
@@ -360,7 +360,7 @@ Contract references will enable DAOs, conditional access, and contracts governin
 ## Access Checks
 
 Per ADR-0016 and Plan #210: "Ownership" is not a kernel concept. Contracts decide access.
-Standard genesis contracts (freeware, self_owned, private) check `target_created_by`.
+Standard kernel contracts (freeware, self_owned, private) check `target_created_by`.
 
 **Contract-Based Permission Checks (default)**
 
@@ -525,7 +525,7 @@ def run():
 
 The `caller_id` is also injected so artifacts know who invoked them.
 
-**Key principle:** Agent-built artifacts have equal access to kernel interfaces as genesis artifacts - no privilege difference.
+**Key principle:** All artifacts have equal access to kernel interfaces - no privilege difference (Plan #254).
 
 ### Recursion Protection
 
@@ -851,7 +851,7 @@ Soft delete with tombstones - deleted artifacts remain in storage with metadata.
 ### Deletion Rules
 
 - Only artifact owner can delete
-- Genesis artifacts (`genesis_*`) cannot be deleted
+- Pre-seeded MCP artifacts (`mcp_*`) cannot be deleted
 - Deletion is logged as `artifact_deleted` event
 - Deleted artifacts count toward storage but cannot be modified
 

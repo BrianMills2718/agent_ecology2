@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-02-01 (Updated script defaults to relationships.yaml)
+Last verified: 2026-02-01 (Plan #254: relationships.yaml updated for genesis removal)
 
 ---
 

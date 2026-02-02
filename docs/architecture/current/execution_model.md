@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-01-31 (Plan #247 - Legacy tick mode removed, no execution model changes)
+**Last verified:** 2026-02-01 (Plan #254 - transfer and mint promoted to kernel actions)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
@@ -45,7 +45,7 @@ See `docs/architecture/current/agents.md` for artifact-backed agent details.
 
 ---
 
-## The Narrow Waist: 11 Action Types + Reasoning
+## The Narrow Waist: 13 Action Types + Reasoning
 
 All agent actions must be one of these types (`src/world/actions.py`):
 
@@ -60,6 +60,13 @@ All agent actions must be one of these types (`src/world/actions.py`):
 | `invoke_artifact` | Call method on artifact |
 | `delete_artifact` | Delete artifact and free disk quota |
 
+### Kernel Primitives (2) - Plan #254
+
+| Action Type | Purpose |
+|-------------|---------|
+| `transfer` | Transfer scrip to another principal |
+| `mint` | Submit artifact for scoring and scrip minting |
+
 ### Kernel & Context Actions (5)
 
 | Action Type | Purpose |
@@ -70,7 +77,7 @@ All agent actions must be one of these types (`src/world/actions.py`):
 | `configure_context` | Control context section visibility (Plan #192) |
 | `modify_system_prompt` | Self-modify system prompt sections (Plan #194) |
 
-**Note:** There is no `transfer` action. All transfers go through `genesis_ledger.transfer()`.
+**Note (Plan #254):** `transfer` and `mint` are now kernel actions. Previously, transfers went through `genesis_ledger.transfer()` invocation.
 
 ### Edit vs Write (Plan #131)
 

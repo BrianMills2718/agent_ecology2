@@ -2,7 +2,7 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-01-31 (Plan #247: Legacy tick mode removed)
+**Last verified:** 2026-02-01 (Plan #254: Genesis removed, transfer is now kernel action)
 
 **See target:** [../target/resources.md](../target/resources.md)
 
@@ -15,7 +15,7 @@ Resources are enforced via the **ledger/quota system**:
 - `world.get_available_capacity(agent_id, "disk")` - allocatable resources
 - `RateTracker` - renewable resources (rolling window)
 
-Quota allocation is managed by `genesis/rights_registry.py` (the `GenesisRightsRegistry`).
+Quota allocation is managed by the `Ledger` class (`src/world/ledger.py`).
 
 **Note:** Plan #166 previously implemented tokenized rights-as-artifacts (`src/world/rights.py`), but these were deferred and removed per ADR-0025. The design was sound but lacked critical token soundness invariants (type immutability, atomic settlement). See ADR-0025 for resumption criteria and restore recipe.
 
@@ -244,19 +244,17 @@ Paid for every LLM call, regardless of action success.
 Cost = ceil(input_tokens/1000 * 1) + ceil(output_tokens/1000 * 3)
 ```
 
-### Genesis Method Cost (LLM Tokens)
+### Kernel Action Costs
 
-Configurable per method in config.yaml:
+Kernel actions have fixed costs (Plan #254):
 
-```yaml
-genesis:
-  ledger:
-    methods:
-      balance:
-        cost: 0        # Free
-      transfer:
-        cost: 1        # 1 llm_token unit
-```
+| Action | Cost |
+|--------|------|
+| `transfer` | 0 (free) |
+| `mint` | 0 (free) |
+| `query_kernel` | 0 (free) |
+
+**Note:** All kernel actions are free. The economic cost of minting comes from the bid escrow, not an action cost.
 
 ### Artifact Prices (Scrip)
 
@@ -275,10 +273,10 @@ Set by artifact owner:
 |------|---------------|-------------|
 | `src/world/ledger.py` | `Ledger`, `can_spend_resource()`, `can_afford_scrip()` | Resource tracking |
 | `src/world/ledger.py` | `calculate_thinking_cost()`, `deduct_thinking_cost()` | Thinking cost calculation |
+| `src/world/ledger.py` | `transfer_scrip()`, `distribute_ubi()` | Scrip transfers (Plan #254) |
 | `src/world/world.py` | `World.advance_tick()` | Tick resource reset |
 | `src/world/simulation_engine.py` | `calculate_thinking_cost()`, `is_budget_exhausted()` | Cost calculation, budget tracking |
 | `src/world/simulation_engine.py` | `ResourceUsage`, `ResourceMeasurer`, `measure_resources()` | Action resource measurement |
-| `src/world/genesis.py` | `GenesisRightsRegistry` | Quota management |
 
 ### Implementation Notes
 

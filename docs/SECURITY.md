@@ -2,7 +2,7 @@
 
 This document explains the security architecture of Agent Ecology, including design decisions, risk acknowledgments, and deployment expectations.
 
-**Last verified:** 2026-02-01 (Plan #252: tick terminology cleanup)
+**Last verified:** 2026-02-01 (Plan #254: genesis removal, security model unchanged)
 
 ## Overview
 

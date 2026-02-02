@@ -36,7 +36,7 @@ These files are strictly coupled to source:
 |--------|-----|
 | `src/simulation/runner.py`, `src/world/world.py` | `execution_model.md` |
 | `src/world/ledger.py`, `src/world/simulation_engine.py` | `resources.md` |
-| `src/world/genesis.py` | `genesis_artifacts.md` |
+| `src/world/mcp_bridge.py`, `src/world/mint_auction.py` | `genesis_artifacts.md` |
 | `src/agents/*.py` | `agents.md` |
 | `src/world/artifacts.py`, `executor.py`, `actions.py` | `artifacts_executor.md` |
 | `src/config.py`, `src/config_schema.py` | `configuration.md` |

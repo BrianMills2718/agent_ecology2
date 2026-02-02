@@ -2,7 +2,7 @@
 
 Detailed documentation of agent decision-making, memory, and learning systems.
 
-**Last verified:** 2026-02-01 (Plan #252: tick terminology cleanup)
+**Last verified:** 2026-02-01 (Plan #254: genesis removal, no impact on cognition)
 
 **Related:** [agents.md](agents.md) for lifecycle, [genesis_agents.md](genesis_agents.md) for default agents, [genesis_artifacts.md](genesis_artifacts.md) for services
 

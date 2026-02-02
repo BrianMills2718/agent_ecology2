@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-01-31 (Plan #247 - rate_limiting.enabled default now True)
+**Last verified:** 2026-02-01 (Plan #254 - genesis config section still valid for MCP bridges)
 
 ---
 
