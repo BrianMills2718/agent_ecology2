@@ -114,6 +114,11 @@ class TestAlphaPrimePrincipal:
         budget = world_with_alpha_prime.ledger.get_resource("alpha_prime_loop", "llm_budget")
         assert budget == 1.0
 
+    def test_loop_has_disk_quota(self, world_with_alpha_prime: World) -> None:
+        """alpha_prime_loop has disk quota set in ResourceManager."""
+        quota = world_with_alpha_prime.resource_manager.get_quota("alpha_prime_loop", "disk")
+        assert quota == 10000  # Default disk quota
+
 
 @pytest.mark.plans([256])
 class TestAlphaPrimeConfig:

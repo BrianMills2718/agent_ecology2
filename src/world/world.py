@@ -584,6 +584,13 @@ def run():
             # Set LLM budget
             self.ledger.set_resource("alpha_prime_loop", "llm_budget", float(starting_llm_budget))
 
+        # 5. Set up ResourceManager entry with disk quota
+        if hasattr(self, 'resource_manager'):
+            self.resource_manager.create_principal("alpha_prime_loop")
+            # Use config disk_quota or default of 10000 bytes
+            disk_quota = float(alpha_config.get("disk_quota", 10000))
+            self.resource_manager.set_quota("alpha_prime_loop", "disk", disk_quota)
+
     def _seed_handbook(self) -> None:
         """Seed handbook artifacts from src/agents/_handbook/ files.
 

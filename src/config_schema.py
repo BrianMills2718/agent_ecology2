@@ -1870,6 +1870,11 @@ class AlphaPrimeConfig(StrictModel):
         default="gemini/gemini-2.0-flash",
         description="LLM model for Alpha Prime to use via kernel_llm_gateway"
     )
+    disk_quota: int = Field(
+        default=10000,
+        description="Disk quota in bytes for Alpha Prime's artifacts",
+        ge=0
+    )
 
 
 # =============================================================================
