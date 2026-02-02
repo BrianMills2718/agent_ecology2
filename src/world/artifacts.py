@@ -141,6 +141,7 @@ class Artifact:
     - has_standing=True: Can own things, be party to contracts (principals)
     - has_loop=True: Can execute code autonomously (agents)
     - memory_artifact_id: Link to separate memory artifact (for agents)
+    - capabilities: List of privileged capabilities (e.g., ['can_mint'])
 
     Interface schema (Plan #14 Artifact Interface Schema):
     - interface: Optional JSON Schema describing inputs/outputs
@@ -165,6 +166,8 @@ class Artifact:
     # Principal capabilities (GAP-AGENT-001)
     has_standing: bool = False  # Can own things, be party to contracts
     has_loop: bool = False  # Can execute code autonomously
+    # Privileged capabilities (Plan #254: e.g., ['can_mint'])
+    capabilities: list[str] = field(default_factory=list)
     # For agents: link to memory artifact
     memory_artifact_id: str | None = None
     # Soft deletion fields (Plan #18: Dangling Reference Handling)
@@ -252,6 +255,9 @@ class Artifact:
             result["has_standing"] = True
         if self.has_loop:
             result["has_loop"] = True
+        # Include privileged capabilities if any (Plan #254)
+        if self.capabilities:
+            result["capabilities"] = self.capabilities
         if self.memory_artifact_id is not None:
             result["memory_artifact_id"] = self.memory_artifact_id
         # Include deletion fields if deleted (Plan #18)

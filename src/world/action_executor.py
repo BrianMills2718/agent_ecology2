@@ -17,6 +17,7 @@ from .actions import (
     NoopIntent, ReadArtifactIntent, WriteArtifactIntent,
     EditArtifactIntent, InvokeArtifactIntent, DeleteArtifactIntent,
     QueryKernelIntent, SubscribeArtifactIntent, UnsubscribeArtifactIntent,
+    TransferIntent, MintIntent,  # Plan #254: Value actions
     ConfigureContextIntent, ModifySystemPromptIntent,
 )
 from .artifacts import Artifact
@@ -129,6 +130,12 @@ class ActionExecutor:
 
         elif isinstance(intent, UnsubscribeArtifactIntent):
             result = self._execute_unsubscribe(intent)
+
+        elif isinstance(intent, TransferIntent):
+            result = self._execute_transfer(intent)
+
+        elif isinstance(intent, MintIntent):
+            result = self._execute_mint(intent)
 
         elif isinstance(intent, ConfigureContextIntent):
             result = self._execute_configure_context(intent)
@@ -1081,6 +1088,174 @@ class ActionExecutor:
             success=True,
             message=f"Unsubscribed from '{artifact_id}'. It will no longer be auto-injected.",
             data={"subscribed_artifacts": subscribed},
+        )
+
+    def _execute_transfer(self, intent: TransferIntent) -> ActionResult:
+        """Execute a transfer action (Plan #254).
+
+        Moves scrip from the caller to a recipient principal.
+        """
+        w = self.world
+        sender_id = intent.principal_id
+        recipient_id = intent.recipient_id
+        amount = intent.amount
+
+        # Validate amount
+        if amount <= 0:
+            return ActionResult(
+                success=False,
+                message=f"Transfer amount must be positive, got {amount}",
+                error_code=ErrorCode.INVALID_ARGUMENT.value,
+                error_category=ErrorCategory.VALIDATION.value,
+                retriable=True,
+            )
+
+        # Check sender exists and is a principal
+        if not w.ledger.principal_exists(sender_id):
+            return ActionResult(
+                success=False,
+                message=f"Sender '{sender_id}' is not a principal",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
+
+        # Check recipient exists and is a principal
+        if not w.ledger.principal_exists(recipient_id):
+            return ActionResult(
+                success=False,
+                message=f"Recipient '{recipient_id}' is not a principal",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
+
+        # Check sender has sufficient balance
+        sender_balance = w.ledger.get_scrip(sender_id)
+        if sender_balance < amount:
+            return ActionResult(
+                success=False,
+                message=f"Insufficient scrip: have {sender_balance}, need {amount}",
+                error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=True,
+            )
+
+        # Execute the transfer
+        try:
+            w.ledger.transfer_scrip(sender_id, recipient_id, amount)
+        except Exception as e:
+            return ActionResult(
+                success=False,
+                message=f"Transfer failed: {e}",
+                error_code=ErrorCode.RUNTIME_ERROR.value,
+                error_category=ErrorCategory.SYSTEM.value,
+                retriable=False,
+            )
+
+        # Log the transfer
+        w.logger.log("transfer", {
+            "sender": sender_id,
+            "recipient": recipient_id,
+            "amount": amount,
+            "memo": intent.memo,
+            "sender_balance_after": w.ledger.get_scrip(sender_id),
+            "recipient_balance_after": w.ledger.get_scrip(recipient_id),
+        })
+
+        return ActionResult(
+            success=True,
+            message=f"Transferred {amount} scrip to '{recipient_id}'",
+            data={
+                "amount": amount,
+                "recipient": recipient_id,
+                "sender_balance": w.ledger.get_scrip(sender_id),
+            },
+        )
+
+    def _execute_mint(self, intent: MintIntent) -> ActionResult:
+        """Execute a mint action (Plan #254).
+
+        Creates new scrip. Privileged - requires 'can_mint' capability.
+        """
+        w = self.world
+        minter_id = intent.principal_id
+        recipient_id = intent.recipient_id
+        amount = intent.amount
+        reason = intent.reason
+
+        # Check minter has can_mint capability
+        minter_artifact = w.artifacts.get(minter_id)
+        if minter_artifact is None:
+            return ActionResult(
+                success=False,
+                message=f"Minter '{minter_id}' not found",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
+
+        # Check capability
+        capabilities = getattr(minter_artifact, 'capabilities', None) or []
+        if 'can_mint' not in capabilities:
+            return ActionResult(
+                success=False,
+                message=f"'{minter_id}' lacks 'can_mint' capability. Minting is privileged.",
+                error_code=ErrorCode.NOT_AUTHORIZED.value,
+                error_category=ErrorCategory.PERMISSION.value,
+                retriable=False,
+            )
+
+        # Validate amount
+        if amount <= 0:
+            return ActionResult(
+                success=False,
+                message=f"Mint amount must be positive, got {amount}",
+                error_code=ErrorCode.INVALID_ARGUMENT.value,
+                error_category=ErrorCategory.VALIDATION.value,
+                retriable=True,
+            )
+
+        # Check recipient exists and is a principal
+        if not w.ledger.principal_exists(recipient_id):
+            return ActionResult(
+                success=False,
+                message=f"Recipient '{recipient_id}' is not a principal",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
+
+        # Execute the mint
+        try:
+            w.ledger.credit_scrip(recipient_id, amount)
+        except Exception as e:
+            return ActionResult(
+                success=False,
+                message=f"Mint failed: {e}",
+                error_code=ErrorCode.RUNTIME_ERROR.value,
+                error_category=ErrorCategory.SYSTEM.value,
+                retriable=False,
+            )
+
+        # Log the mint
+        w.logger.log("mint", {
+            "minter": minter_id,
+            "recipient": recipient_id,
+            "amount": amount,
+            "reason": reason,
+            "recipient_balance_after": w.ledger.get_scrip(recipient_id),
+        })
+
+        return ActionResult(
+            success=True,
+            message=f"Minted {amount} scrip to '{recipient_id}' ({reason})",
+            data={
+                "amount": amount,
+                "recipient": recipient_id,
+                "reason": reason,
+                "recipient_balance": w.ledger.get_scrip(recipient_id),
+            },
         )
 
     def _execute_configure_context(self, intent: ConfigureContextIntent) -> ActionResult:

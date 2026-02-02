@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-31 (kernel_contracts rename)
+**Last verified:** 2026-02-01 (Plan #254: transfer/mint actions)
 
 ---
 
@@ -44,6 +44,8 @@ class Artifact:
     depends_on: list[str] = []  # List of artifact IDs this depends on
     # User-defined metadata (Plan #168)
     metadata: dict[str, Any] = {}  # Arbitrary key-value pairs for categorization
+    # Privileged capabilities (Plan #254)
+    capabilities: list[str] = []  # e.g., ['can_mint'] for mint authorization
 ```
 
 ### System Field Immutability (Plan #235)
@@ -590,6 +592,14 @@ class ActionResult:
 | invoke | Insufficient scrip | `insufficient_funds` | resource | Yes |
 | invoke | Timeout | `timeout` | execution | Yes |
 | invoke | Runtime error | `runtime_error` | execution | No |
+| transfer | Insufficient balance | `insufficient_funds` | resource | Yes |
+| transfer | Recipient not found | `not_found` | resource | No |
+| transfer | Recipient not a principal | `invalid_type` | validation | No |
+| transfer | Invalid amount | `invalid_argument` | validation | No |
+| mint | Not authorized (no can_mint) | `not_authorized` | permission | No |
+| mint | Recipient not found | `not_found` | resource | No |
+| mint | Recipient not a principal | `invalid_type` | validation | No |
+| mint | Invalid amount | `invalid_argument` | validation | No |
 
 ### Retriability
 
@@ -626,8 +636,10 @@ class ActionIntent:
 | `QueryKernelIntent` | QUERY_KERNEL | `query_type`, `query_params` |
 | `SubscribeArtifactIntent` | SUBSCRIBE_ARTIFACT | `artifact_id` |
 | `UnsubscribeArtifactIntent` | UNSUBSCRIBE_ARTIFACT | `artifact_id` |
-| `ConfigureContextIntent` | CONFIGURE_CONTEXT | `section_name`, `enabled`, `priority` |
-| `ModifySystemPromptIntent` | MODIFY_SYSTEM_PROMPT | `operation`, `content`, `section_name` |
+| `TransferIntent` | TRANSFER | `recipient_id`, `amount`, `memo` (Plan #254) |
+| `MintIntent` | MINT | `recipient_id`, `amount`, `reason` (Plan #254, privileged) |
+| `ConfigureContextIntent` | CONFIGURE_CONTEXT | `section_name`, `enabled`, `priority` (deprecated) |
+| `ModifySystemPromptIntent` | MODIFY_SYSTEM_PROMPT | `operation`, `content`, `section_name` (deprecated) |
 
 ### Reasoning Field
 
@@ -735,6 +747,68 @@ def check_permission(caller, action, target, context):
 ### ReadOnlyLedger
 
 Contracts execute with `ReadOnlyLedger` - can read balances but not modify.
+
+---
+
+## Transfer and Mint Actions (Plan #254)
+
+The kernel provides two value-layer primitives for scrip management.
+
+### Transfer Action
+
+Moves scrip from the caller to a recipient. This is a kernel primitive, not a genesis artifact invocation.
+
+```python
+# TransferIntent
+{
+    "action_type": "transfer",
+    "recipient_id": "bob",
+    "amount": 50,
+    "memo": "Payment for service"  # Optional
+}
+```
+
+**Validation:**
+- Caller must have sufficient balance
+- Amount must be positive integer
+- Recipient must exist and have `has_standing=True` (is a principal)
+
+### Mint Action
+
+Creates new scrip. This is a **privileged** action requiring the `can_mint` capability.
+
+```python
+# MintIntent
+{
+    "action_type": "mint",
+    "recipient_id": "alice",
+    "amount": 100,
+    "reason": "bounty:task_123"  # Required for audit trail
+}
+```
+
+**Authorization:**
+- Caller must have `capabilities` including `"can_mint"`
+- Only kernel_mint_agent (or similar bootstrap artifacts) have this capability
+- The `reason` field creates an audit trail for all scrip creation
+
+### Capabilities System (Plan #254)
+
+Artifacts can have a `capabilities` list for privilege checking:
+
+```python
+artifact.capabilities = ["can_mint"]  # Authorized to mint scrip
+```
+
+Capabilities are:
+- Set at artifact creation by the kernel
+- Not modifiable via normal write/edit actions
+- Checked by the kernel before executing privileged actions
+
+Currently defined capabilities:
+| Capability | Action | Description |
+|------------|--------|-------------|
+| `can_mint` | `mint` | Authorized to create new scrip |
 
 ---
 

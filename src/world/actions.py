@@ -11,7 +11,20 @@ from ..agents.schema import ActionType as ActionTypeLiteral
 
 
 class ActionType(str, Enum):
-    """The narrow waist - 11 action types (6 core + 5 kernel/context)"""
+    """The narrow waist - 11 physics primitives + 2 deprecated (Plan #254: V4 architecture)
+
+    Core categories (11 primitives):
+    - Control: noop
+    - Storage: read, write, edit, delete
+    - Execution: invoke
+    - Value: transfer, mint
+    - Observation: query_kernel
+    - Signal: subscribe, unsubscribe
+
+    Deprecated (2):
+    - configure_context (use edit_artifact on self)
+    - modify_system_prompt (use edit_artifact on self)
+    """
 
     NOOP = "noop"
     READ_ARTIFACT = "read_artifact"
@@ -22,9 +35,11 @@ class ActionType(str, Enum):
     QUERY_KERNEL = "query_kernel"  # Plan #184: Direct kernel state queries
     SUBSCRIBE_ARTIFACT = "subscribe_artifact"  # Plan #191: Subscribe to artifact
     UNSUBSCRIBE_ARTIFACT = "unsubscribe_artifact"  # Plan #191: Unsubscribe
-    CONFIGURE_CONTEXT = "configure_context"  # Plan #192: Context section control
-    MODIFY_SYSTEM_PROMPT = "modify_system_prompt"  # Plan #194: Self-modifying system prompt
-    # NOTE: No TRANSFER - all transfers via genesis_ledger.transfer()
+    TRANSFER = "transfer"  # Plan #254: Move scrip between principals
+    MINT = "mint"  # Plan #254: Create scrip (privileged, requires can_mint capability)
+    # Deprecated (Plan #254) - convenience actions that wrap edit_artifact
+    CONFIGURE_CONTEXT = "configure_context"  # Plan #192: Deprecated
+    MODIFY_SYSTEM_PROMPT = "modify_system_prompt"  # Plan #194: Deprecated
 
 
 @dataclass
@@ -278,6 +293,74 @@ class UnsubscribeArtifactIntent(ActionIntent):
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
         d["artifact_id"] = self.artifact_id
+        return d
+
+
+@dataclass
+class TransferIntent(ActionIntent):
+    """Transfer scrip between principals (Plan #254).
+
+    Moves scrip from the caller to a recipient. The kernel validates:
+    - Caller has sufficient balance
+    - Recipient exists and is a principal (has_standing=True)
+    """
+
+    recipient_id: str
+    amount: int
+    memo: str | None = None  # Optional note for audit trail
+
+    def __init__(
+        self,
+        principal_id: str,
+        recipient_id: str,
+        amount: int,
+        memo: str | None = None,
+        reasoning: str = "",
+    ) -> None:
+        super().__init__(ActionType.TRANSFER, principal_id, reasoning=reasoning)
+        self.recipient_id = recipient_id
+        self.amount = amount
+        self.memo = memo
+
+    def to_dict(self) -> dict[str, Any]:
+        d = super().to_dict()
+        d["recipient_id"] = self.recipient_id
+        d["amount"] = self.amount
+        if self.memo is not None:
+            d["memo"] = self.memo
+        return d
+
+
+@dataclass
+class MintIntent(ActionIntent):
+    """Create new scrip (Plan #254).
+
+    Privileged action - only callers with 'can_mint' capability can mint.
+    The kernel validates the caller has the capability before creating scrip.
+    """
+
+    recipient_id: str
+    amount: int
+    reason: str  # Why minting (audit trail, e.g., "bounty:task_123")
+
+    def __init__(
+        self,
+        principal_id: str,
+        recipient_id: str,
+        amount: int,
+        reason: str,
+        reasoning: str = "",
+    ) -> None:
+        super().__init__(ActionType.MINT, principal_id, reasoning=reasoning)
+        self.recipient_id = recipient_id
+        self.amount = amount
+        self.reason = reason
+
+    def to_dict(self) -> dict[str, Any]:
+        d = super().to_dict()
+        d["recipient_id"] = self.recipient_id
+        d["amount"] = self.amount
+        d["reason"] = self.reason
         return d
 
 
@@ -536,8 +619,44 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
         return EditArtifactIntent(principal_id, artifact_id, old_string, new_string, reasoning=reasoning)
 
     elif action_type == "transfer":
-        # Transfer removed from kernel - use genesis_ledger instead
-        return "transfer is not a kernel action. Use: invoke_artifact('genesis_ledger', 'transfer', [from_id, to_id, amount])"
+        # Plan #254: Transfer is now a kernel action
+        recipient_id = data.get("recipient_id")
+        amount = data.get("amount")
+        memo = data.get("memo")
+        if not recipient_id:
+            return "transfer requires 'recipient_id'"
+        if not isinstance(recipient_id, str):
+            return "recipient_id must be a string"
+        if amount is None:
+            return "transfer requires 'amount'"
+        if not isinstance(amount, int):
+            return "transfer 'amount' must be an integer"
+        if amount <= 0:
+            return "transfer 'amount' must be positive"
+        if memo is not None and not isinstance(memo, str):
+            return "transfer 'memo' must be a string or null"
+        return TransferIntent(principal_id, recipient_id, amount, memo, reasoning=reasoning)
+
+    elif action_type == "mint":
+        # Plan #254: Mint is a privileged kernel action
+        recipient_id = data.get("recipient_id")
+        amount = data.get("amount")
+        reason = data.get("reason")
+        if not recipient_id:
+            return "mint requires 'recipient_id'"
+        if not isinstance(recipient_id, str):
+            return "recipient_id must be a string"
+        if amount is None:
+            return "mint requires 'amount'"
+        if not isinstance(amount, int):
+            return "mint 'amount' must be an integer"
+        if amount <= 0:
+            return "mint 'amount' must be positive"
+        if not reason:
+            return "mint requires 'reason' (e.g., 'bounty:task_123')"
+        if not isinstance(reason, str):
+            return "mint 'reason' must be a string"
+        return MintIntent(principal_id, recipient_id, amount, reason, reasoning=reasoning)
 
     elif action_type == "invoke_artifact":
         artifact_id = data.get("artifact_id")
@@ -593,5 +712,28 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
             return "artifact_id must be a string"
         return UnsubscribeArtifactIntent(principal_id, artifact_id, reasoning=reasoning)
 
+    elif action_type == "configure_context":
+        # Plan #192: Configure prompt context sections
+        sections = data.get("sections")
+        if sections is None:
+            return "configure_context requires 'sections'"
+        if not isinstance(sections, dict):
+            return "configure_context 'sections' must be a dict"
+        priorities = data.get("priorities")
+        if priorities is not None and not isinstance(priorities, dict):
+            return "configure_context 'priorities' must be a dict"
+        return ConfigureContextIntent(principal_id, sections, priorities, reasoning=reasoning)
+
+    elif action_type == "modify_system_prompt":
+        # Plan #194: Self-modifying system prompt
+        operation = data.get("operation")
+        if not operation:
+            return "modify_system_prompt requires 'operation'"
+        if not isinstance(operation, str):
+            return "modify_system_prompt 'operation' must be a string"
+        content = data.get("content", "")
+        section_marker = data.get("section_marker", "")
+        return ModifySystemPromptIntent(principal_id, operation, content, section_marker, reasoning=reasoning)
+
     else:
-        return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel, subscribe_artifact, unsubscribe_artifact, configure_context, modify_system_prompt"
+        return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel, subscribe_artifact, unsubscribe_artifact, transfer, mint, configure_context, modify_system_prompt"

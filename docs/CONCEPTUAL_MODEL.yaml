@@ -8,7 +8,7 @@
 # =============================================================================
 
 version: 3
-last_updated: "2026-01-31"  # Plan #247: No changes to ledger resource types
+last_updated: "2026-02-01"  # Plan #254: transfer/mint as kernel actions
 status: current_implementation
 source_of_truth: "src/world/artifacts.py, src/world/actions.py, src/world/kernel_interface.py"
 
@@ -47,6 +47,7 @@ artifact:
     access_contract_id: { type: str, default: '"kernel_contract_freeware"' }
     metadata: { type: dict, default: "{}" }
     kernel_protected: { type: bool, default: false, note: "Plan #235 Phase 1" }
+    capabilities: { type: list, default: "[]", note: "Plan #254: e.g., ['can_mint']" }
 
   computed_properties:
     price: "policy['invoke_price'] (backwards compat)"
@@ -54,23 +55,38 @@ artifact:
     is_agent: "has_standing and has_loop"
 
 # =============================================================================
-# ACTIONS (11 total)
+# ACTIONS (11 core + 2 deprecated)
 # =============================================================================
-# Source: src/world/actions.py:13-26
+# Source: src/world/actions.py:13-40
 
 actions:
-  core:
-    description: "Go through contract permission checking (ADR-0019)"
-    operations: [read_artifact, write_artifact, edit_artifact, invoke_artifact, delete_artifact]
+  storage:
+    description: "Artifact CRUD, go through contract permission checking (ADR-0019)"
+    operations: [read_artifact, write_artifact, edit_artifact, delete_artifact]
 
-  kernel:
-    description: "No permission needed"
+  execution:
+    description: "Code execution, goes through contract permission checking"
+    operations: [invoke_artifact]
+
+  value:
+    description: "Scrip management (Plan #254)"
+    operations: [transfer, mint]
+    notes:
+      transfer: "Move scrip between principals, validates balance"
+      mint: "Create scrip, privileged (requires can_mint capability)"
+
+  observation:
+    description: "Read-only kernel state access"
     operations: [noop, query_kernel]
 
-  convenience:
-    description: "Shortcuts for edit_artifact on agent's own artifact"
-    operations: [subscribe_artifact, unsubscribe_artifact, configure_context, modify_system_prompt]
+  signal:
+    description: "Subscription management"
+    operations: [subscribe_artifact, unsubscribe_artifact]
     note: "subscribe_artifact does NOT check read permission (known gap)"
+
+  deprecated:
+    description: "Convenience actions, use edit_artifact on self instead"
+    operations: [configure_context, modify_system_prompt]
 
 # =============================================================================
 # KERNEL INTERFACE
