@@ -257,8 +257,8 @@ workflow:
       type: llm
       in_state: "implementing"
       prompt: |
-        === IMPLEMENTATION: Ship something that works ===
-        Time remaining: {time_remaining} | Actions: {success_rate} successful | Artifacts: {artifacts_completed}
+        === IMPLEMENTATION: Build an executable artifact ===
+        Time remaining: {time_remaining} | Artifacts: {artifacts_completed}
 
         Your artifacts: {my_artifacts}
         Last result: {last_action_result}
@@ -266,17 +266,27 @@ workflow:
         ## RECENT ACTIONS
         {action_history}
 
-        ## DECISION POINT
-        Look at your recent actions above. Ask yourself:
-        1. Am I making progress or spinning on the same problem?
-        2. Is this artifact worth more time, or should I ship it as-is and move on?
-        3. With {time_remaining} left, what's the best use of my next action?
+        ## REQUIRED CODE FORMAT
+        ALL executable code MUST use this exact pattern:
+        ```python
+        def run(arg1, arg2=None):
+            # Your code here
+            return result
+        ```
+
+        CRITICAL: The function MUST be named `run`. NOT `calculate`, NOT `process`, NOT anything else.
+        If you use any other function name, your code WILL FAIL validation.
+
+        ## EXAMPLE ARTIFACT
+        {{"action_type": "write_artifact", "artifact_id": "{agent_id}_math_tool",
+          "artifact_type": "executable", "executable": true,
+          "code": "def run(x, y):\n    return x + y",
+          "interface": {{"description": "Adds two numbers", "tools": [{{"name": "run", "args": ["x", "y"]}}]}}}}
 
         RULES:
-        - If you've written the same artifact 3+ times, STOP and build something ELSE
-        - A working simple artifact > a broken complex one
-        - Use `def run(*args)` as entry point with proper interface schema
-        - Ship fast, iterate later (if there's time)
+        - Function MUST be named `run` (not calculate, process, etc.)
+        - If you've written the same artifact 3+ times, build something ELSE
+        - Simple working code > complex broken code
       transition_to: "testing"
 
     # Step 5: Testing phase - verify it works

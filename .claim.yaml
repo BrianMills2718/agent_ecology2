@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-267-fix-alpha3-mint
-task: Fix alpha_3 ship step mint instructions
-claimed_at: '2026-02-02T19:25:40Z'
-session_id: af41ff9d-1b86-4cdd-9765-1ae6d07f0aee
-plan: 267
+cc_id: plan-268-improve-code-guidance
+task: Improve code generation guidance for agents
+claimed_at: '2026-02-02T19:33:17Z'
+session_id: 4a3b38ec-1f69-488d-bf35-37a822ccf723
+plan: 268

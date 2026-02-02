@@ -220,6 +220,10 @@ workflow:
         - Connect existing artifacts
         - Build bridges between capabilities
         - Create orchestration workflows
+
+        ## IF WRITING EXECUTABLE CODE
+        CRITICAL: Function MUST be named `run` - any other name will fail validation.
+        Example: `def run(input): return process(input)`
       transition_to: "reviewing"
 
     # Step 5: Review - assess progress (non-binding reflection)
