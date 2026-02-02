@@ -342,14 +342,20 @@ class ArtifactLoopManager:
         self._loops: dict[str, ArtifactLoop] = {}
 
     def discover_loops(self) -> list[str]:
-        """Discover all artifacts with has_loop=True and create loops for them.
+        """Discover all artifacts with has_loop=True and executable code.
+
+        Only creates loops for artifacts that have actual code to execute.
+        File-based agents (loaded via load_agents()) have has_loop=True but
+        no code - they run through AgentLoopManager instead.
 
         Returns:
             List of artifact IDs for which loops were created.
         """
         discovered = []
         for artifact_id, artifact in self.world.artifacts.artifacts.items():
-            if artifact.has_loop and artifact_id not in self._loops:
+            # Only create loops for artifacts with actual code to execute
+            # File-based agents have has_loop=True but code="" - skip them
+            if artifact.has_loop and artifact.code and artifact_id not in self._loops:
                 self.create_loop(artifact_id)
                 discovered.append(artifact_id)
                 logger.info(f"Discovered has_loop artifact: {artifact_id}")
