@@ -44,11 +44,13 @@ workflow:
 
         Last result: {last_action_result}
 
-        ## SOLO STRATEGY
-        1. Create an artifact (with proper interface!)
-        2. It auto-submits to mint - you're done with it
+        ## SOLO STRATEGY (TWO-STEP PROCESS!)
+        1. Create an artifact with write_artifact
+        2. THEN submit it with submit_to_mint (NEXT turn!)
         3. Create something DIFFERENT next
         4. NEVER rewrite an artifact you already created
+
+        CRITICAL: Artifacts do NOT auto-submit! You MUST use submit_to_mint!
 
         ## CRITICAL: Code Requirements
         - Code MUST define a `run(*args)` function - this is MANDATORY
@@ -61,7 +63,7 @@ workflow:
         - Variety wins: calculator, string tool, data processor, etc.
         - Include interface: {description, tools: [{name": "run", "description": "...", "inputSchema": {...}}]}
 
-        ## Example write_artifact:
+        ## Example TURN 1 - Create artifact:
         ```json
         {
           "action_type": "write_artifact",
@@ -75,7 +77,16 @@ workflow:
         }
         ```
 
-        What do you do next? Create something NEW.
+        ## Example TURN 2 - Submit to mint (REQUIRED!):
+        ```json
+        {"action_type": "submit_to_mint", "artifact_id": "my_tool", "bid": 5}
+        ```
+
+        CHECK YOUR LAST ACTION:
+        - If write_artifact → do submit_to_mint NOW!
+        - If submit_to_mint → create something NEW!
+
+        What do you do next?
 
 error_handling:
   default_on_failure: retry
