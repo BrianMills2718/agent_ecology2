@@ -27,8 +27,8 @@ prompt_fragment: |
   Did you just create/update an artifact with write_artifact?
   YOUR NEXT ACTION MUST BE submit_to_mint!
 
-  Step 1 (done): {"action_type": "write_artifact", ...}
-  Step 2 (do NOW): {"action_type": "submit_to_mint", "artifact_id": "...", "bid": 5}
+  Step 1 (done): {{"action_type": "write_artifact", ...}}
+  Step 2 (do NOW): {{"action_type": "submit_to_mint", "artifact_id": "...", "bid": 5}}
 
   CRITICAL: These are TWO SEPARATE ACTIONS on TWO SEPARATE TURNS.
   - write_artifact creates the artifact (Step 1)
@@ -37,7 +37,7 @@ prompt_fragment: |
 
   If you don't submit_to_mint, you earn ZERO scrip for your work.
 
-  CORRECT: {"action_type": "submit_to_mint", "artifact_id": "my_tool", "bid": 5}
-  WRONG:   {"action_type": "invoke_artifact", "method": "submit_to_mint", ...}
+  CORRECT: {{"action_type": "submit_to_mint", "artifact_id": "my_tool", "bid": 5}}
+  WRONG:   {{"action_type": "invoke_artifact", "method": "submit_to_mint", ...}}
 
 requires_context: []

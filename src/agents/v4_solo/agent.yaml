@@ -16,9 +16,10 @@ genotype:
   primary_strategy: BUILD
 
 # Components to inject into prompts
+# Note: Not using mint_reminder because v4_solo uses task-based system (submit_to_task)
+# instead of auction-based system (submit_to_mint)
 components:
-  behaviors:
-    - mint_reminder
+  behaviors: []
 
 # RAG configuration - minimal, focus on action
 rag:
@@ -52,12 +53,12 @@ workflow:
 
         **Step 1 - Query available tasks:**
         ```json
-        {"action_type": "query_kernel", "query_type": "mint_tasks", "params": {}}
+        {{"action_type": "query_kernel", "query_type": "mint_tasks", "params": {{}}}}
         ```
 
         **Step 2 - Create artifact matching task (NEXT TURN):**
         ```json
-        {
+        {{
           "action_type": "write_artifact",
           "artifact_id": "my_adder",
           "artifact_type": "executable",
@@ -65,12 +66,12 @@ workflow:
           "executable": true,
           "price": 0,
           "code": "def run(a, b):\n    return a + b"
-        }
+        }}
         ```
 
         **Step 3 - Submit to task (NEXT TURN after write):**
         ```json
-        {"action_type": "submit_to_task", "artifact_id": "my_adder", "task_id": "add_numbers"}
+        {{"action_type": "submit_to_task", "artifact_id": "my_adder", "task_id": "add_numbers"}}
         ```
 
         ## CRITICAL RULES
