@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-254-remove-genesis
-task: Remove genesis artifacts, implement 11-action kernel
-claimed_at: '2026-02-02T02:05:31Z'
-session_id: cd04357d-edc8-409b-aa96-f580d6f82537
-plan: 254
+cc_id: plan-255-llm-gateway
+task: Implement kernel LLM gateway
+claimed_at: '2026-02-02T06:51:40Z'
+session_id: aedcb82a-2c6a-4836-88c3-45cc03195cf8
+plan: 255

@@ -39,6 +39,7 @@ from .types import (
 )
 from .checkpoint import save_checkpoint, load_checkpoint
 from .agent_loop import AgentLoopManager, AgentLoopConfig
+from .artifact_loop import ArtifactLoopManager  # Plan #255: V4 artifact loops
 from .pool import WorkerPool, PoolConfig
 from ..agents.state_store import AgentStateStore
 from ..agents.reflex import ReflexExecutor, build_reflex_context
@@ -176,6 +177,9 @@ class SimulationRunner:
         # Plan #247: Ledger.from_config() always creates a RateTracker
         rate_tracker = self.world.rate_tracker
         self.world.loop_manager = AgentLoopManager(rate_tracker)
+
+        # Plan #255: Create ArtifactLoopManager for V4 has_loop artifacts
+        self.artifact_loop_manager = ArtifactLoopManager(self.world, rate_tracker)
 
         # Worker pool support (Plan #53)
         execution_config = config.get("execution", {})
@@ -1150,11 +1154,22 @@ class SimulationRunner:
         for agent in self.agents:
             self._create_agent_loop(agent)
 
+        # Plan #255: Discover has_loop artifacts (V4 artifact-based agents)
+        artifact_loop_ids = self.artifact_loop_manager.discover_loops()
+        if artifact_loop_ids and self.verbose:
+            print(f"  [AUTONOMOUS] Discovered {len(artifact_loop_ids)} artifact loops: {artifact_loop_ids}")
+
         if self.verbose:
             print(f"  [AUTONOMOUS] Starting all agent loops...")
 
         # Start all loops
         await self.world.loop_manager.start_all()
+
+        # Plan #255: Start artifact loops
+        if self.artifact_loop_manager.loop_count > 0:
+            if self.verbose:
+                print(f"  [AUTONOMOUS] Starting {self.artifact_loop_manager.loop_count} artifact loops...")
+            await self.artifact_loop_manager.start_all()
 
         # Plan #83: Start mint update background task
         mint_task = asyncio.create_task(self._mint_update_loop())
@@ -1221,6 +1236,9 @@ class SimulationRunner:
 
             # Graceful shutdown
             await self.world.loop_manager.stop_all()
+            # Plan #255: Stop artifact loops
+            if self.artifact_loop_manager.loop_count > 0:
+                await self.artifact_loop_manager.stop_all()
             if self.verbose:
                 print(f"  [AUTONOMOUS] All loops stopped.")
 
@@ -1707,6 +1725,9 @@ class SimulationRunner:
             timeout = get_validated_config().timeouts.simulation_shutdown
         if self.world.loop_manager:
             await self.world.loop_manager.stop_all(timeout=timeout)
+        # Plan #255: Stop artifact loops
+        if self.artifact_loop_manager.loop_count > 0:
+            await self.artifact_loop_manager.stop_all(timeout=timeout)
         if self._worker_pool is not None:
             self._worker_pool.stop()
             self._worker_pool = None

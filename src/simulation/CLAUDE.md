@@ -11,6 +11,7 @@ Orchestrates autonomous agent loops and manages persistence.
 | `checkpoint.py` | Save/restore world state to JSON |
 | `types.py` | Type definitions for simulation |
 | `agent_loop.py` | Individual agent loop management |
+| `artifact_loop.py` | V4 artifact loop management (Plan #255) |
 | `pool.py` | WorkerPool for parallel agent turn execution via ThreadPoolExecutor |
 | `supervisor.py` | AgentSupervisor: auto-restart crashed agents with backoff and death classification |
 | `worker.py` | Worker functions for isolated agent turn execution with resource measurement |

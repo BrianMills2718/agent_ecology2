@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-01 (Plan #254 - transfer and mint promoted to kernel actions)
+**Last verified:** 2026-02-02 (Plan #255 - ArtifactLoopManager for V4 has_loop artifacts)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

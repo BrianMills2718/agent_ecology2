@@ -13,6 +13,9 @@ from .agent_loop import (
     AgentLoop, AgentLoopManager, AgentLoopConfig,
     AgentState, WakeCondition, AgentProtocol
 )
+from .artifact_loop import (  # Plan #255
+    ArtifactLoop, ArtifactLoopManager, ArtifactLoopConfig, ArtifactState
+)
 
 __all__ = [
     "SimulationRunner",
@@ -29,4 +32,9 @@ __all__ = [
     "AgentState",
     "WakeCondition",
     "AgentProtocol",
+    # Plan #255: Artifact loops
+    "ArtifactLoop",
+    "ArtifactLoopManager",
+    "ArtifactLoopConfig",
+    "ArtifactState",
 ]

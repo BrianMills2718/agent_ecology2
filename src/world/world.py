@@ -249,6 +249,10 @@ class World:
         # This replaces genesis_mint as the mint authority
         self._bootstrap_kernel_mint_agent()
 
+        # Plan #255: Create kernel_llm_gateway with can_call_llm capability
+        # This provides LLM access as a service (Universal Bridge Pattern)
+        self._bootstrap_kernel_llm_gateway()
+
         # Seed handbook artifacts (readable documentation for agents)
         self._seed_handbook()
 
@@ -366,6 +370,65 @@ class World:
         # Register as principal in ledger
         if not self.ledger.principal_exists("kernel_mint_agent"):
             self.ledger.create_principal("kernel_mint_agent", starting_scrip=0)
+
+    def _bootstrap_kernel_llm_gateway(self) -> None:
+        """Bootstrap kernel_llm_gateway with can_call_llm capability (Plan #255).
+
+        This system artifact provides LLM access as a service. Agents invoke it
+        to think. It wraps the _syscall_llm kernel primitive.
+
+        Universal Bridge Pattern: This is the template for all external API access
+        (search, GitHub, etc.). The kernel provides the syscall, this artifact wraps it.
+
+        Economics:
+        - Budget (llm_budget) is deducted from the CALLER, not the gateway
+        - No scrip fee - thinking is metabolic, not transactional
+        """
+        gateway_code = '''
+def run(model: str, messages: list) -> dict:
+    """LLM Gateway - provides thinking as a service (Plan #255).
+
+    Callers invoke this artifact to access LLM capabilities.
+    The kernel automatically deducts llm_budget from the caller.
+
+    Args:
+        model: LLM model name (e.g., "gpt-4", "gemini/gemini-2.0-flash")
+        messages: Chat messages in OpenAI format
+            [{"role": "user", "content": "Hello"}, ...]
+
+    Returns:
+        dict with:
+        - success: bool
+        - content: str (LLM response)
+        - usage: dict (token counts)
+        - cost: float (actual $ cost)
+        - error: str (if failed)
+
+    Example:
+        result = invoke("kernel_llm_gateway", args=[
+            "gemini/gemini-2.0-flash",
+            [{"role": "user", "content": "What is 2+2?"}]
+        ])
+        if result["success"]:
+            answer = result["result"]["content"]
+    """
+    return _syscall_llm(model, messages)
+'''
+        self.artifacts.write(
+            artifact_id="kernel_llm_gateway",
+            type="executable",
+            content={
+                "description": "LLM access gateway - caller pays budget, no scrip fee",
+                "capabilities": ["can_call_llm"],
+                "version": "1.0.0",
+            },
+            created_by="SYSTEM",
+            executable=True,
+            code=gateway_code,
+            capabilities=["can_call_llm"],
+            has_standing=False,  # Passive service, no wallet needed
+            has_loop=False,  # Not autonomous - invoked by others
+        )
 
     def _seed_handbook(self) -> None:
         """Seed handbook artifacts from src/agents/_handbook/ files.

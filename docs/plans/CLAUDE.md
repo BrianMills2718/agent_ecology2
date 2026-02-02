@@ -62,6 +62,7 @@ Master index of all gaps and their implementation plans.
 | 252 | [Tick Terminology Cleanup](252_tick_terminology_cleanup.md) | Low | ✅ Complete | - |
 | 253 | [Plan 253: Feature → Gate Terminology Cleanup](253_feature_to_gate_terminology.md) | Medium | ✅ Complete | - |
 | 254 | [Remove Genesis Artifacts, Promote Transfer to Kernel](254_remove_genesis_artifacts.md) | High | ✅ Complete | - |
+| 255 | [Kernel LLM Gateway](255_kernel_llm_gateway.md) | Medium | ✅ Complete | - |
 ---
 
 ## TDD Workflow
