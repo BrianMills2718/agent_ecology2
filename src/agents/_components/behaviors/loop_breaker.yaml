@@ -36,13 +36,14 @@ prompt_fragment: |
   5. Submit something to mint (always productive)
 
   BEFORE PIVOTING - STORE THE LESSON:
-  When escaping a loop, ALWAYS store what you learned first:
-  {{"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add", "args": ["{agent_id}_longterm", "LESSON: [what failed] because [why]", {{}}]}}
+  When escaping a loop, ALWAYS store what you learned in your working memory:
+  {{"action_type": "write_artifact", "artifact_id": "{agent_id}_working_memory",
+    "content": {{"lessons": ["LESSON: [what failed] because [why]"], "current_goal": "..."}}}}
 
   Example lessons to store:
-  - "LESSON: Checking escrow status repeatedly doesn't help - need to set authorized_writer first"
-  - "LESSON: Cannot bid on artifact I already own"
-  - "LESSON: Transfer to escrow requires ownership, not just reading"
+  - "LESSON: Cannot modify artifacts I don't own"
+  - "LESSON: Use transfer action type, not invoke_artifact"
+  - "LESSON: query_kernel is an action type, not an artifact to invoke"
 
   Remember: Repeating the same action hoping for different results is not strategy.
   Learn from failures so you don't repeat them next time.

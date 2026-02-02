@@ -304,22 +304,16 @@ workflow:
         After testing, you'll reflect on whether to continue, pivot, or ship.
       transition_to: "reflecting"
 
-    # Step 6a: Artifact-aware error check (Plan #222 - Artifact-Aware Workflow)
+    # Step 6a: Error check based on compute_metrics (Plan #257)
     # IMPORTANT: Must come AFTER test step (which transitions to "reflecting")
     # Automatically pivots if error rate is too high, skipping LLM call
+    # Previously used genesis_error_detector (removed in Plan #254), now uses code-computed should_pivot
     - name: error_check
       type: transition
       in_state: "reflecting"
-      # Plan #222: Use genesis_error_detector for automatic pivot decision
-      transition_source:
-        invoke: "genesis_error_detector"
-        method: "get_error_rate"
-        args: [{recent_actions: "{recent_actions}", threshold: 0.6}]
-        fallback: "continue"  # If artifact call fails, proceed to LLM decision
-      # Map artifact result.above_threshold to transition
-      transition_map:
-        true: "observing"      # High error rate -> auto-pivot
-        false: "reflecting_llm"  # Low error rate -> let LLM decide
+      # Use code-computed should_pivot from compute_metrics step
+      run_if: "should_pivot"  # Only trigger auto-pivot if metrics say so
+      transition_to: "observing"  # High error rate -> auto-pivot
 
     # Step 6b: Strategic reflection - LLM-informed transition decision (Plan #157 Phase 4)
     # Uses transition step type for LLM-driven state transitions
@@ -380,10 +374,9 @@ workflow:
 
         ## SUBMIT TO MINT AUCTION (IMPORTANT!)
         To earn scrip from your artifact:
-        1. Submit a bid: invoke_artifact genesis_mint.bid with args [artifact_id, amount]
-           Example: invoke_artifact(genesis_mint, bid, [my_tool, 5])
-        2. Auctions run every 60 seconds - highest-scored artifact wins
-        3. Winner earns scrip based on artifact quality score
+        1. Use the mint kernel action: {"action_type": "mint", "artifact_id": "my_tool"}
+        2. The kernel scores your artifact and awards scrip based on quality
+        3. Higher quality artifacts earn more scrip
 
         ## THEN MOVE ON
         After bidding, look for a NEW opportunity:

@@ -113,9 +113,9 @@ workflow:
         2. What lesson about integration/strategy should I remember?
         3. Am I making progress toward my strategic goal?
 
-        If you learned something valuable, store it in your longterm memory:
-        {{"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add",
-          "args": ["{agent_id}_longterm", "LESSON: [your insight]", {{}}]}}
+        If you learned something valuable, store it in your working memory:
+        {{"action_type": "write_artifact", "artifact_id": "{agent_id}_working_memory",
+          "content": {{"lessons": ["LESSON: [your insight]"], "strategic_goal": "...", "current_subgoal": "..."}}}}
 
         Otherwise, proceed to the next planning step with a simple observation.
 
@@ -249,32 +249,34 @@ workflow:
           "content": {{"strategic_goal": "...", "current_subgoal": "...", "lessons": [...]}}}}
 
     # Step 6a: Loop detection (Plan #226 - Break repetitive patterns)
-    # If stuck in a loop, force strategic rethink
+    # If stuck in a loop (subgoal_stuck from load_goals), force strategic rethink
+    # Plan #257: Converted from genesis_loop_detector invoke to code-based check
     - name: loop_check
       type: transition
       in_state: "reviewing"
-      transition_source:
-        invoke: "genesis_loop_detector"
-        method: "check_loop"
-        args: ["{action_history}", 5]
-        fallback: "continue"  # If check fails, proceed to balance check
-      transition_map:
-        true: "strategic"           # Loop detected -> force rethink
-        false: "reviewing_balance"  # No loop -> check balance
+      run_if: "subgoal_stuck"  # Use code-computed variable from load_goals step
+      transition_to: "strategic"  # Loop detected -> force rethink
+
+    # Step 6a-fallback: No loop -> proceed to balance check
+    - name: loop_check_pass
+      type: transition
+      in_state: "reviewing"
+      transition_to: "reviewing_balance"
 
     # Step 6b: Balance check (Plan #222 - Artifact-Aware Workflow)
     # If balance is critically low, go directly to strategic rethinking
-    - name: balance_check
+    # Plan #257: Converted from genesis_balance_checker invoke to code-based check
+    - name: balance_check_low
       type: transition
       in_state: "reviewing_balance"
-      transition_source:
-        invoke: "genesis_balance_checker"
-        method: "check"
-        args: [{threshold: 20}]
-        fallback: "continue"  # If check fails, proceed to LLM
-      transition_map:
-        true: "reviewing_llm"   # Balance OK, let LLM decide
-        false: "strategic"      # Balance low, auto-rethink strategy
+      run_if: "balance < 20"
+      transition_to: "strategic"  # Balance low, auto-rethink strategy
+
+    # Step 6b-fallback: Balance OK -> proceed to LLM decision
+    - name: balance_check_ok
+      type: transition
+      in_state: "reviewing_balance"
+      transition_to: "reviewing_llm"
 
     # Step 6c: Strategic transition - LLM-informed state change (Plan #211)
     - name: strategic_transition

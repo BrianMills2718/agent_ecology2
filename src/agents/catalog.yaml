@@ -60,7 +60,7 @@ lineages:
         notes: |
           Goal hierarchy with 6 states:
           strategic → tactical → operational → reviewing → reviewing_balance → reviewing_llm
-          Features: Loop detection (genesis_loop_detector), balance gate, working memory persistence
+          Features: Code-based loop detection, balance gate, working memory persistence
           BEST PERFORMER - 0% noop rate after Plan #226 fixes
         metrics:
           noop_rate: "0%"
@@ -172,12 +172,12 @@ architecture_notes: |
   - `type: code` steps - Programmatic Python logic
   - `type: transition` steps - Either artifact invocation or LLM-driven state change
 
-  ## Key Artifacts Used
+  ## Key Patterns Used (Plan #257)
 
-  - genesis_loop_detector: Detects repeated action patterns (Plan #226)
-  - genesis_balance_checker: Gates transitions on balance thresholds (Plan #222)
-  - genesis_error_detector: Gates transitions on error rates (Plan #222)
-  - genesis_memory: Semantic memory storage with deduplication (Plan #213, #226)
+  State transition gating now uses code-based checks instead of genesis artifacts:
+  - Loop detection: `subgoal_stuck` variable computed in `load_goals` step
+  - Balance gating: `run_if: "balance < 20"` condition in transition steps
+  - Error rate: `should_pivot` variable computed in `compute_metrics` step
 
   ## Working Memory Pattern
 

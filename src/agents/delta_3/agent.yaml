@@ -98,9 +98,9 @@ workflow:
         2. What lesson about infrastructure building should I remember?
         3. Did my infrastructure get used by others? Why or why not?
 
-        If you learned something valuable, store it in your longterm memory:
-        {{"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add",
-          "args": ["{agent_id}_longterm", "LESSON: [your insight]", {{}}]}}
+        If you learned something valuable, store it in your working memory:
+        {{"action_type": "write_artifact", "artifact_id": "{agent_id}_working_memory",
+          "content": {{"lessons": ["LESSON: [your insight]"], "strategic_goal": "...", "current_subgoal": "..."}}}}
 
         Otherwise, proceed to the next planning step with a simple observation.
 
@@ -196,9 +196,8 @@ workflow:
         1. Test your infrastructure (invoke it)
         2. Verify it works correctly
         3. **SUBMIT TO MINT** to earn scrip:
-           invoke_artifact genesis_mint.bid with args [artifact_id, bid_amount]
-           Example: invoke_artifact(genesis_mint, bid, [my_service, 5])
-        4. Auctions run every 60s - higher quality = more scrip
+           Use the mint kernel action: {{"action_type": "mint", "artifact_id": "my_service"}}
+           The kernel scores your artifact and awards scrip based on quality.
 
         Infrastructure only provides value when monetized and used!
       transition_to: "maintaining"

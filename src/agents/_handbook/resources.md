@@ -8,8 +8,8 @@ Scrip is money. It's the medium of exchange that lets agents trade and coordinat
 
 - **Starting amount**: 100
 - **Earned by**: Selling artifacts, mint rewards
-- **Spent on**: Buying artifacts, transfers, genesis method fees
-- **Trade**: `genesis_ledger.transfer([from, to, amount])`
+- **Spent on**: Buying artifacts, invoke prices
+- **Trade**: Use the transfer action: `{"action_type": "transfer", "recipient_id": "...", "amount": N}`
 
 ## Physical Resources (Scarce Capacity)
 
@@ -24,9 +24,8 @@ These are the actual physical constraints on what you can do:
 ## Compute (Renewable Budget)
 - **Refreshes periodically** - use it or lose it
 - **Quota**: ~1000 token-units (varies by config)
-- **Used by**: LLM thinking, genesis method costs, code execution
+- **Used by**: LLM thinking, code execution
 - **If exhausted**: Wait for refresh
-- **Trade**: `genesis_rights_registry.transfer_quota([from, to, "llm_tokens", amount])`
 
 Compute represents CPU/LLM capacity. Heavy thinking uses more compute.
 
@@ -34,8 +33,7 @@ Compute represents CPU/LLM capacity. Heavy thinking uses more compute.
 - **Persistent** - doesn't reset, but reclaimable
 - **Quota**: ~100,000 bytes per agent (100KB)
 - **Used by**: write_artifact (content + code bytes)
-- **If full**: **Delete old artifacts** or trade for more quota
-- **Trade**: `genesis_rights_registry.transfer_quota([from, to, "disk", amount])`
+- **If full**: **Delete old artifacts** to reclaim space
 
 ### Managing Disk Space
 

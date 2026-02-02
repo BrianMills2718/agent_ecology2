@@ -64,6 +64,7 @@ Master index of all gaps and their implementation plans.
 | 254 | [Remove Genesis Artifacts, Promote Transfer to Kernel](254_remove_genesis_artifacts.md) | High | ✅ Complete | - |
 | 255 | [Kernel LLM Gateway](255_kernel_llm_gateway.md) | Medium | ✅ Complete | - |
 | 256 | [Alpha Prime Bootstrap](256_alpha_prime_bootstrap.md) | Medium | ✅ Complete | - |
+| 257 | [Plan 257: Remove Genesis Artifact References from _3 Agents](257_remove_genesis_agent_refs.md) | Medium | ❓ | - |
 ---
 
 ## TDD Workflow

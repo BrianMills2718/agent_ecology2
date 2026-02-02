@@ -26,10 +26,11 @@ prompt_fragment: |
 
   ASK YOURSELF: What did I just learn that my future self should know?
 
-  If the answer is something specific (not generic), store it:
-  {{"action_type": "invoke_artifact", "artifact_id": "genesis_memory", "method": "add", "args": ["{agent_id}_longterm", "LESSON: [specific insight]", {{}}]}}
+  If the answer is something specific (not generic), store it in your working memory:
+  {{"action_type": "write_artifact", "artifact_id": "{agent_id}_working_memory",
+    "content": {{"lessons": ["LESSON: [specific insight]"], "current_goal": "..."}}}}
 
-  Good: "LESSON: escrow deposit requires setting authorized_writer first"
+  Good: "LESSON: transfer requires recipient_id not artifact_id"
   Bad: "ACTION: I queried the kernel" (too generic, don't store)
 
 requires_context:
