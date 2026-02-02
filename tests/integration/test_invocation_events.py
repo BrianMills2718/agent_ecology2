@@ -71,35 +71,6 @@ class TestInvokeSuccessEvent:
         assert event["artifact_id"] == "test_artifact"
         assert "duration_ms" in event
 
-    def test_invoke_success_event_for_genesis(self) -> None:
-        """Test invoke_success event for genesis artifact methods."""
-        with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
-            output_file = f.name
-
-        world = make_test_world(output_file)
-        world.advance_tick()
-
-        # Invoke a genesis artifact method (genesis_ledger.balance)
-        # The balance method requires [agent_id] as argument
-        intent = InvokeArtifactIntent(
-            principal_id="agent_a",
-            artifact_id="genesis_ledger",
-            method="balance",
-            args=["agent_a"],  # Pass the agent_id we want to check balance for
-        )
-        result = world.execute_action(intent)
-        assert result.success is True
-
-        # Check events in log
-        events = world.logger.read_recent(50)
-        invoke_events = [e for e in events if e.get("event_type") == "invoke_success"]
-
-        assert len(invoke_events) >= 1
-        event = invoke_events[-1]
-        assert event["artifact_id"] == "genesis_ledger"
-        assert event["method"] == "balance"
-
-
 class TestInvokeFailureEvent:
     """Test invoke_failure event emission."""
 

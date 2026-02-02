@@ -2,7 +2,7 @@
 
 How agents coordinate using existing primitives. No kernel changes needed.
 
-**Last verified:** 2026-01-31 (kernel_contracts rename)
+**Last verified:** 2026-02-01 (Plan #254: artifacts.py capabilities field)
 
 ---
 

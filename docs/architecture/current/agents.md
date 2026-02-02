@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-02-01 (Plan #252: tick terminology cleanup)
+**Last verified:** 2026-02-01 (Plan #254: transfer/mint actions)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -589,14 +589,27 @@ System prompt is in separate `system_prompt.md` file.
 
 ## Action Types
 
-Agents can only propose 4 action types:
+Agents can propose 11 core action types (Plan #254: V4 architecture):
 
+| Action | Category | Purpose |
+|--------|----------|---------|
+| noop | Control | Do nothing this iteration |
+| read_artifact | Storage | Read artifact content |
+| write_artifact | Storage | Create/update artifact |
+| edit_artifact | Storage | Surgical string replacement (Plan #131) |
+| delete_artifact | Storage | Soft delete artifact (Plan #18) |
+| invoke_artifact | Execution | Call method on executable artifact |
+| query_kernel | Observation | Read-only kernel state queries (Plan #184) |
+| subscribe_artifact | Signal | Subscribe to artifact for auto-injection (Plan #191) |
+| unsubscribe_artifact | Signal | Unsubscribe from artifact (Plan #191) |
+| transfer | Value | Move scrip between principals (Plan #254) |
+| mint | Value | Create new scrip (privileged, Plan #254) |
+
+**Deprecated actions** (still accepted, use edit_artifact on self instead):
 | Action | Purpose |
 |--------|---------|
-| noop | Do nothing this iteration |
-| read_artifact | Read artifact content |
-| write_artifact | Create/update artifact |
-| invoke_artifact | Call method on executable artifact |
+| configure_context | Configure prompt context sections (Plan #192) |
+| modify_system_prompt | Modify system prompt (Plan #194) |
 
 ---
 

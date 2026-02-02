@@ -1342,7 +1342,7 @@ class AgentPromptConfig(StrictModel):
         description="Maximum number of relevant memories to include"
     )
     startup_hint: str = Field(
-        default="TIP: New to this world? Read handbook_genesis to learn available methods, or handbook_trading for how to buy/sell.",
+        default="TIP: New to this world? Read handbook_actions for available actions, or handbook_trading for how to buy/sell.",
         description="Hint shown on agent's first iteration (empty string to disable)"
     )
     startup_hint_enabled: bool = Field(
@@ -1402,11 +1402,11 @@ class ErrorMessagesConfig(StrictModel):
         description="Error when invoke access denied"
     )
     method_not_found: str = Field(
-        default="Method '{method}' not found on {artifact_id}. Available: {methods}. See handbook_genesis for method details.",
+        default="Method '{method}' not found on {artifact_id}. Available: {methods}. TIP: Call invoke_artifact('{artifact_id}', 'describe', []) to see method details.",
         description="Error when method doesn't exist"
     )
     escrow_not_owner: str = Field(
-        default="Escrow does not own {artifact_id}. See handbook_trading for the 2-step process: 1) genesis_ledger.transfer_ownership([artifact_id, '{escrow_id}']), 2) deposit.",
+        default="Escrow does not own {artifact_id}. See handbook_trading for the 2-step process: 1) edit_artifact to set owner to escrow, 2) deposit.",
         description="Error when trying to deposit artifact not owned by escrow"
     )
 

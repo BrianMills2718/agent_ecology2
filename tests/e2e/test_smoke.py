@@ -53,15 +53,17 @@ class TestSimulationSmoke:
         mock_llm: MagicMock,
         e2e_config: dict[str, Any],
     ) -> None:
-        """Simulation has genesis artifacts."""
+        """Simulation has artifacts (Plan #254: genesis removed, check artifact store)."""
         runner = SimulationRunner(e2e_config, verbose=False)
         world = runner.run_sync(duration=TEST_DURATION)
 
-        # Genesis artifacts should exist (stored in genesis_artifacts dict)
-        assert len(world.genesis_artifacts) > 0
+        # Artifact store should have artifacts (handbooks, agent artifacts, etc.)
+        all_artifacts = world.artifacts.list_all()
+        assert len(all_artifacts) > 0
 
-        # Check for expected genesis artifacts
-        assert "genesis_ledger" in world.genesis_artifacts
+        # Check for expected pre-seeded artifacts (handbooks)
+        artifact_ids = [a["id"] for a in all_artifacts]
+        assert any("handbook" in aid for aid in artifact_ids), "Should have handbook artifacts"
 
     def test_simulation_tracks_balances(
         self,

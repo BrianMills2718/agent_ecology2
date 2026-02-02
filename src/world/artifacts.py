@@ -13,7 +13,7 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, TypedDict, TYPE_CHECKING
+from typing import Any, Callable, TypedDict, TYPE_CHECKING
 
 
 def extract_invoke_targets(code: str) -> list[str]:
@@ -45,8 +45,19 @@ def extract_invoke_targets(code: str) -> list[str]:
     return unique_targets
 
 if TYPE_CHECKING:
-    from .genesis import GenesisMethod
     from .id_registry import IDRegistry
+
+
+@dataclass
+class GenesisMethod:
+    """Method dispatch for artifacts (Plan #254: moved from genesis module).
+
+    Used by artifacts with genesis_methods field for method-based invocation.
+    """
+    name: str
+    handler: Callable[[list[Any], str], dict[str, Any]]
+    cost: int
+    description: str
 
 
 # Type alias for policy allow fields: either a static list or a contract reference
@@ -141,6 +152,7 @@ class Artifact:
     - has_standing=True: Can own things, be party to contracts (principals)
     - has_loop=True: Can execute code autonomously (agents)
     - memory_artifact_id: Link to separate memory artifact (for agents)
+    - capabilities: List of privileged capabilities (e.g., ['can_mint'])
 
     Interface schema (Plan #14 Artifact Interface Schema):
     - interface: Optional JSON Schema describing inputs/outputs
@@ -165,6 +177,8 @@ class Artifact:
     # Principal capabilities (GAP-AGENT-001)
     has_standing: bool = False  # Can own things, be party to contracts
     has_loop: bool = False  # Can execute code autonomously
+    # Privileged capabilities (Plan #254: e.g., ['can_mint'])
+    capabilities: list[str] = field(default_factory=list)
     # For agents: link to memory artifact
     memory_artifact_id: str | None = None
     # Soft deletion fields (Plan #18: Dangling Reference Handling)
@@ -178,7 +192,7 @@ class Artifact:
     # Genesis method dispatch (Plan #15: invoke() Genesis Support)
     # If set, this artifact uses method dispatch instead of code execution
     # Enables unified invoke path for genesis and user artifacts
-    genesis_methods: dict[str, "GenesisMethod"] | None = None
+    genesis_methods: dict[str, GenesisMethod] | None = None
     # Declared dependencies (Plan #63: Artifact Dependencies)
     # List of artifact IDs this artifact depends on
     # Dependencies are resolved and injected at invocation time
@@ -252,6 +266,9 @@ class Artifact:
             result["has_standing"] = True
         if self.has_loop:
             result["has_loop"] = True
+        # Include privileged capabilities if any (Plan #254)
+        if self.capabilities:
+            result["capabilities"] = self.capabilities
         if self.memory_artifact_id is not None:
             result["memory_artifact_id"] = self.memory_artifact_id
         # Include deletion fields if deleted (Plan #18)
@@ -739,6 +756,9 @@ class ArtifactStore:
         require_interface: bool = False,
         access_contract_id: str | None = None,
         metadata: dict[str, Any] | None = None,
+        has_standing: bool = False,
+        has_loop: bool = False,
+        capabilities: list[str] | None = None,
     ) -> Artifact:
         """Create or update an artifact. Returns the artifact.
 
@@ -765,7 +785,13 @@ class ArtifactStore:
 
         Metadata (Plan #168):
         - metadata: User-defined key-value pairs for addressing/categorization
+
+        Principal creation (Plan #254):
+        - has_standing: If True, artifact is a principal (can hold scrip/resources)
+        - has_loop: If True, artifact can execute autonomously (agent)
+        - capabilities: List of privileged capabilities (e.g., ['can_mint'])
         """
+        capabilities = capabilities or []
         now = datetime.now(timezone.utc).isoformat()
         depends_on = depends_on or []
         metadata = metadata or {}
@@ -896,6 +922,9 @@ class ArtifactStore:
                 interface=interface,
                 access_contract_id=contract_id,
                 metadata=metadata,
+                has_standing=has_standing,
+                has_loop=has_loop,
+                capabilities=capabilities,
             )
             self.artifacts[artifact_id] = artifact
             # Plan #182: Add new artifact to indexes

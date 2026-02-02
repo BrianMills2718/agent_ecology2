@@ -27,11 +27,7 @@ from .actions import (
     ReadArtifactIntent, WriteArtifactIntent,
 )
 from .kernel_queries import KernelQueryHandler
-# NOTE: TransferIntent removed - all transfers via genesis_ledger.transfer()
-from .genesis import (
-    create_genesis_artifacts, GenesisArtifact, GenesisRightsRegistry,
-    GenesisMint, GenesisDebtContract, RightsConfig, SubmissionInfo
-)
+# Plan #254: Genesis removed - transfer/mint are now kernel actions
 from .executor import get_executor
 from .action_executor import ActionExecutor
 from .rate_tracker import RateTracker
@@ -66,7 +62,7 @@ def get_error_message(error_type: str, **kwargs: Any) -> str:
         "access_denied_write": "Access denied: you are not allowed to write to {artifact_id}. See handbook_actions for permissions.",
         "access_denied_invoke": "Access denied: you are not allowed to invoke {artifact_id}. See handbook_actions for permissions.",
         "method_not_found": "Method '{method}' not found on {artifact_id}. Available: {methods}. TIP: Call invoke_artifact('{artifact_id}', 'describe', []) to see method details before invoking.",
-        "escrow_not_owner": "Escrow does not own {artifact_id}. See handbook_trading for the 2-step process: 1) genesis_ledger.transfer_ownership([artifact_id, '{escrow_id}']), 2) deposit.",
+        "escrow_not_owner": "Escrow does not own {artifact_id}. See handbook_trading for the 2-step process: 1) edit_artifact to set owner to escrow, 2) deposit.",
     }
 
     # Get from config (or use default)
@@ -110,7 +106,6 @@ class ConfigDict(TypedDict, total=False):
     costs: CostsConfig
     logging: LoggingConfig
     principals: list[PrincipalConfig]
-    rights: RightsConfig
 
 
 class BalanceInfo(TypedDict):
@@ -151,12 +146,10 @@ class World:
     config: ConfigDict
     event_number: int  # Monotonic counter for event ordering in logs
     costs: CostsConfig
-    rights_config: RightsConfig
     ledger: Ledger
     artifacts: ArtifactStore
     logger: EventLogger
-    genesis_artifacts: dict[str, GenesisArtifact]
-    rights_registry: GenesisRightsRegistry | None
+    # Plan #254: genesis_artifacts removed - use kernel actions instead
     # principal_ids is a derived property (Plan #231)
     # Autonomous loop support
     rate_tracker: RateTracker
@@ -194,20 +187,7 @@ class World:
         empty_quotas: PerAgentQuota = {"llm_tokens_quota": 0, "disk_quota": 0, "llm_budget_quota": 0.0}
         quotas: PerAgentQuota = compute_per_agent_quota(num_agents) if num_agents > 0 else empty_quotas
 
-        # Rights configuration (Layer 2: Means of Production)
-        # See docs/architecture/current/resources.md for design rationale
-        # Values come from config via compute_per_agent_quota()
-        # Use new generic format with default_quotas dict
-        if "rights" in config and "default_quotas" in config["rights"]:
-            self.rights_config = config["rights"]
-        else:
-            # Build generic quotas from computed values (rolling window rate limiting)
-            self.rights_config = {
-                "default_quotas": {
-                    "llm_tokens": float(quotas.get("llm_tokens_quota", 50)),
-                    "disk": float(quotas.get("disk_quota", config_get("resources.stock.disk.total") or 10000))
-                }
-            }
+        # Plan #254: Rights configuration removed - ResourceManager handles quotas
 
         # Global ID registry for collision prevention (Plan #7)
         self.id_registry = IDRegistry()
@@ -215,10 +195,9 @@ class World:
         # Core state - create ledger with rate_limiting config and ID registry
         self.ledger = Ledger.from_config(cast(dict[str, Any], config), [], self.id_registry)
 
-        # Plan #182: Get indexed metadata fields from genesis.store config
-        genesis_config = config.get("genesis", {})
-        store_config = genesis_config.get("store", {})
-        indexed_metadata_fields = store_config.get("indexed_metadata_fields", [])
+        # Plan #182: Get indexed metadata fields from artifacts config
+        artifacts_config = config.get("artifacts", {})
+        indexed_metadata_fields = artifacts_config.get("indexed_metadata_fields", [])
         self.artifacts = ArtifactStore(
             id_registry=self.id_registry,
             indexed_metadata_fields=indexed_metadata_fields,
@@ -236,7 +215,6 @@ class World:
             self.logger = EventLogger(output_file=config["logging"]["output_file"])
 
         # Unified resource manager (Plan #95)
-        # Must be initialized BEFORE genesis artifacts since rights_registry delegates here
         self.resource_manager = ResourceManager()
 
         # Resource metrics provider for visibility (Plan #93)
@@ -260,7 +238,6 @@ class World:
         self._installed_libraries = {}
 
         # Initialize MintAuction (extracted from World - TD-001)
-        # Must be before genesis_artifacts since mint_callback needs it
         self.mint_auction = MintAuction(
             ledger=self.ledger,
             artifacts=self.artifacts,
@@ -268,41 +245,11 @@ class World:
             get_event_number=lambda: self.event_number,
         )
 
-        # Genesis artifacts (system-owned proxies)
-        self.genesis_artifacts = create_genesis_artifacts(
-            ledger=self.ledger,
-            mint_callback=self.mint_auction.mint_scrip,
-            artifact_store=self.artifacts,
-            logger=self.logger,
-            rights_config=self.rights_config
-        )
+        # Plan #254: Create kernel_mint_agent with can_mint capability
+        # This replaces genesis_mint as the mint authority
+        self._bootstrap_kernel_mint_agent()
 
-        # Register genesis artifacts in artifact store for unified invoke path (Plan #15)
-        for genesis_id, genesis in self.genesis_artifacts.items():
-            artifact = self.artifacts.write(
-                artifact_id=genesis_id,
-                type="genesis",
-                content=genesis.description,
-                created_by="system",
-                executable=True,
-            )
-            # Attach genesis methods for dispatch
-            artifact.genesis_methods = genesis.methods
-
-        # Store reference to rights registry for quota enforcement
-        rights_registry = self.genesis_artifacts.get("genesis_rights_registry")
-        self.rights_registry = rights_registry if isinstance(rights_registry, GenesisRightsRegistry) else None
-
-# Wire up GenesisMint to use kernel primitives (Plan #44)
-        genesis_mint = self.genesis_artifacts.get("genesis_mint")
-        if isinstance(genesis_mint, GenesisMint):
-            genesis_mint.set_world(self)
-
-        # Wire up rights registry to delegate to kernel (Plan #42)
-        if self.rights_registry is not None:
-            self.rights_registry.set_world(self)
-
-        # Seed genesis_handbook artifact (readable documentation for agents)
+        # Seed handbook artifacts (readable documentation for agents)
         self._seed_handbook()
 
         # Initialize principals from config (Plan #231: principal_ids is now a derived property)
@@ -338,31 +285,21 @@ class World:
             # Plan #231: ResourceManager entry for init-time principals
             if hasattr(self, 'resource_manager'):
                 self.resource_manager.create_principal(p["id"])
-            # (principal_ids is now derived from ledger — no append needed)
-            # Initialize agent in rights registry
-            if self.rights_registry:
-                self.rights_registry.ensure_agent(p["id"])
+                # Plan #254: Set disk quota (previously done by rights_registry.ensure_agent)
+                disk_quota = float(quotas.get("disk_quota", 10000))
+                self.resource_manager.set_quota(p["id"], "disk", disk_quota)
 
         # Plan #247: RateTracker is always active. Use the one from Ledger.
         self.rate_tracker = self.ledger.rate_tracker
 
         # AgentLoopManager will be created by SimulationRunner when autonomous mode is enabled
-        # We store it here so it's accessible to components that need it
         self.loop_manager = None
 
         # Invocation registry for observability (Gap #27)
-        # Tracks all artifact invocations for stats and reputation emergence
         self.invocation_registry = InvocationRegistry()
-
-        # NOTE: _quota_limits and _quota_usage are initialized earlier (line ~222)
-        # to ensure they exist before rights_registry.ensure_agent() is called
-
 
         # Charge delegation management (Plan #236)
         self.delegation_manager = DelegationManager(self.artifacts, self.ledger)
-
-        # Log world init
-        default_quotas = self.rights_config.get("default_quotas", {})
         # Kernel query handler (Plan #184)
         # Provides read-only access to kernel state via query_kernel action
         self.kernel_query_handler = KernelQueryHandler(self)
@@ -372,13 +309,12 @@ class World:
         self._action_executor = ActionExecutor(self)
 
         self.logger.log("world_init", {
-            "rights": self.rights_config,
             "costs": self.costs,
             "principals": [
                 {
                     "id": p["id"],
                     "starting_scrip": p.get("starting_scrip", p.get("starting_credits", default_starting_scrip)),
-                    "llm_tokens_quota": int(default_quotas.get("llm_tokens", quotas.get("llm_tokens_quota", 50)))
+                    "llm_tokens_quota": int(quotas.get("llm_tokens_quota", 50))
                 }
                 for p in config["principals"]
             ]
@@ -386,7 +322,7 @@ class World:
 
     @property
     def principal_ids(self) -> list[str]:
-        """Derived from ledger state (Plan #231). Excludes genesis artifacts."""
+        """Derived from ledger state (Plan #231). Excludes system principals."""
         return self.ledger.get_agent_principal_ids()
 
     def validate_principal_invariant(self) -> list[str]:
@@ -408,6 +344,29 @@ class World:
 
         return violations
 
+    def _bootstrap_kernel_mint_agent(self) -> None:
+        """Bootstrap kernel_mint_agent with can_mint capability (Plan #254).
+
+        This system artifact is the only entity that can call the mint action.
+        It replaces genesis_mint as the mint authority.
+        """
+        # Create the mint agent as a system artifact
+        self.artifacts.write(
+            artifact_id="kernel_mint_agent",
+            type="system",
+            content={
+                "description": "Kernel mint authority - handles auction submissions and minting",
+                "capabilities": ["can_mint"],
+            },
+            created_by="SYSTEM",
+            executable=False,  # Not directly invocable by agents
+            capabilities=["can_mint"],
+            has_standing=True,  # Can hold scrip
+        )
+        # Register as principal in ledger
+        if not self.ledger.principal_exists("kernel_mint_agent"):
+            self.ledger.create_principal("kernel_mint_agent", starting_scrip=0)
+
     def _seed_handbook(self) -> None:
         """Seed handbook artifacts from src/agents/_handbook/ files.
 
@@ -421,7 +380,7 @@ class World:
             "_index": "handbook_toc",
             "actions": "handbook_actions",
             "tools": "handbook_tools",
-            "genesis": "handbook_genesis",
+            # "genesis" removed - Plan #254 eliminates genesis artifacts
             "resources": "handbook_resources",
             "trading": "handbook_trading",
             "mint": "handbook_mint",
@@ -474,9 +433,8 @@ class World:
         Plan #181: Delegates to ActionExecutor for all action processing.
 
         Actions are free. Real costs come from:
-        - LLM tokens (thinking) - costs from compute budget
+        - LLM tokens (thinking) - costs from LLM budget
         - Disk quota (writing) - costs from disk allocation
-        - Genesis method costs (configurable per-method)
         - Artifact prices (scrip paid to owner)
         """
         return self._action_executor.execute(intent)
@@ -488,12 +446,6 @@ class World:
         Plan #185: Also fires any triggers scheduled for this event.
         """
         self.event_number += 1
-
-        # Update event_number in debt contract if present (for backward compat)
-        # Note: Debt contract still uses tick internally - needs separate redesign
-        debt_contract = self.genesis_artifacts.get("genesis_debt_contract")
-        if isinstance(debt_contract, GenesisDebtContract):
-            debt_contract.set_tick(self.event_number)
 
         # Plan #185: Check for scheduled triggers at this event
         self.check_scheduled_triggers()
@@ -513,39 +465,28 @@ class World:
 
     def get_state_summary(self) -> StateSummary:
         """Get a summary of current world state"""
-        # Get all artifacts from store (includes genesis artifacts which
-        # were registered in __init__ via artifacts.write())
         all_artifacts: list[dict[str, Any]] = self.artifacts.list_all()
 
-        # Get quota info for all agents
+        # Plan #254: Quota info now managed by ResourceManager
+        # For now, return empty quotas - callers should use query_kernel("quotas") instead
         quotas: dict[str, QuotaInfo] = {}
-        if self.rights_registry:
-            for pid in self.principal_ids:
-                quotas[pid] = {
-                    "llm_tokens_quota": self.rights_registry.get_llm_tokens_quota(pid),
-                    "disk_quota": self.rights_registry.get_disk_quota(pid),
-                    "disk_used": self.rights_registry.get_disk_used(pid),
-                    "disk_available": self.rights_registry.get_disk_quota(pid) - self.rights_registry.get_disk_used(pid)
-                }
 
-        # Get mint submission status
+        # Get mint submission status from mint_auction directly
         mint_status: dict[str, MintSubmissionStatus] = {}
-        mint = self.genesis_artifacts.get("genesis_mint")
-        if mint and isinstance(mint, GenesisMint) and hasattr(mint, 'submissions'):
-            for artifact_id, sub in mint.submissions.items():
+        for submission in self.mint_auction.get_submissions():
+            artifact_id = submission.get("artifact_id", "")
+            if artifact_id:
                 mint_status[artifact_id] = {
-                    "status": sub.get("status", "unknown"),
-                    "submitter": sub.get("submitter", "unknown"),
-                    "score": sub.get("score") if sub.get("status") == "scored" else None
+                    "status": submission.get("status", "unknown"),
+                    "submitter": submission.get("submitter", "unknown"),
+                    "score": submission.get("score") if submission.get("status") == "scored" else None
                 }
 
         # Get resource metrics for all agents (Plan #93)
-        # Note: We iterate over principal_ids since World doesn't have agents dict
-        # LLM stats will be supplemented in build_prompt()
         resource_metrics: dict[str, dict[str, Any]] = {}
         for agent_id in self.principal_ids:
-            if agent_id.startswith("genesis_"):
-                continue  # Skip genesis artifacts
+            if agent_id.startswith(("SYSTEM", "kernel_")):
+                continue  # Skip system principals
             metrics = self.resource_metrics_provider.get_agent_metrics(
                 agent_id=agent_id,
                 ledger_resources=self.ledger.resources,
@@ -605,7 +546,7 @@ class World:
         """Delete an artifact (soft delete with tombstone).
 
         Permission is checked via the artifact's access contract (Plan #140).
-        Genesis artifacts cannot be deleted (kernel-level protection).
+        System artifacts (kernel_*, SYSTEM-owned) cannot be deleted.
 
         Args:
             artifact_id: ID of artifact to delete
@@ -618,9 +559,9 @@ class World:
         from datetime import datetime, timezone
         from src.world.executor import get_executor
 
-        # Check if genesis artifact (kernel-level protection)
-        if artifact_id.startswith("genesis_"):
-            return {"success": False, "error": "Cannot delete genesis artifacts"}
+        # Check if system artifact (kernel-level protection)
+        if artifact_id.startswith(("kernel_", "handbook_")):
+            return {"success": False, "error": "Cannot delete system artifacts"}
 
         # Check if artifact exists
         artifact = self.artifacts.get(artifact_id)
@@ -879,24 +820,23 @@ class World:
         # Build resource state
         resources: dict[str, dict[str, float]] = {}
 
-        # LLM tokens (renewable)
+        # LLM tokens (renewable via rate tracker)
         llm_tokens_used = self.ledger.get_resource(agent_id, "llm_tokens")
-        if self.rights_registry:
-            llm_tokens_quota = self.rights_registry.get_llm_tokens_quota(agent_id)
-            resources["llm_tokens"] = {
-                "used": float(llm_tokens_used),
-                "quota": float(llm_tokens_quota),
-                "remaining": float(llm_tokens_quota - llm_tokens_used),
-            }
+        resources["llm_tokens"] = {
+            "used": float(llm_tokens_used),
+        }
 
-        # Disk (allocatable)
-        if self.rights_registry:
-            disk_used = self.rights_registry.get_disk_used(agent_id)
-            disk_quota = self.rights_registry.get_disk_quota(agent_id)
-            resources["disk"] = {
-                "used": float(disk_used),
-                "quota": float(disk_quota),
-            }
+        # LLM budget (depletable)
+        llm_budget = self.ledger.get_resource(agent_id, "llm_budget")
+        resources["llm_budget"] = {
+            "remaining": float(llm_budget),
+        }
+
+        # Disk usage tracked by artifact store
+        disk_used = self.artifacts.get_owner_usage(agent_id)
+        resources["disk"] = {
+            "used": float(disk_used),
+        }
 
         self.logger.log_agent_state(
             agent_id=agent_id,

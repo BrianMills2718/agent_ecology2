@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from ..config import get
 
-# Literal type for valid action types (narrow waist: 6 verbs + query + subscriptions + config + prompt)
+# Literal type for valid action types (Plan #254: 11 physics primitives)
 ActionType = Literal[
     "noop",
     "read_artifact",
@@ -16,8 +16,11 @@ ActionType = Literal[
     "query_kernel",  # Plan #184: Direct kernel state queries
     "subscribe_artifact",  # Plan #191: Subscribe to artifact for auto-injection
     "unsubscribe_artifact",  # Plan #191: Unsubscribe from artifact
-    "configure_context",  # Plan #192: Configure prompt context sections
-    "modify_system_prompt",  # Plan #194: Self-modifying system prompt
+    "transfer",  # Plan #254: Move scrip between principals
+    "mint",  # Plan #254: Create scrip (privileged)
+    # Deprecated (Plan #254) - use edit_artifact on self instead:
+    "configure_context",  # Plan #192: Deprecated
+    "modify_system_prompt",  # Plan #194: Deprecated
 ]
 
 # Type alias for action validation result
@@ -27,7 +30,7 @@ ActionValidationResult = dict[str, Any] | str
 ACTION_SCHEMA: str = """
 You must respond with a single JSON object representing your action.
 
-## Available Actions (10 types)
+## Available Actions (11 types)
 
 1. read_artifact - Read artifact content
    {"action_type": "read_artifact", "artifact_id": "<id>"}
@@ -37,6 +40,8 @@ You must respond with a single JSON object representing your action.
    For executable: add "executable": true, "price": <scrip>, "code": "<python with run(*args)>",
    "interface": {"description": "<what it does>", "tools": [{"name": "run", "description": "<method desc>", "inputSchema": {...}}]}
    REQUIRED: Executables MUST have interface with description and tools array - see handbook_actions for full example
+   To create a principal (can hold scrip/resources): add "has_standing": true
+   To create an agent (autonomous): add "has_standing": true, "has_loop": true
 
 3. edit_artifact - Edit artifact using string replacement (Plan #131)
    {"action_type": "edit_artifact", "artifact_id": "<id>", "old_string": "<text to find>", "new_string": "<replacement>"}
@@ -61,7 +66,17 @@ You must respond with a single JSON object representing your action.
    {"action_type": "unsubscribe_artifact", "artifact_id": "<id>"}
    Removes the artifact from your subscribed list.
 
-9. configure_context - Configure prompt context sections (Plan #192, #193)
+9. transfer - Transfer scrip to another principal (Plan #254)
+   {"action_type": "transfer", "recipient_id": "<principal_id>", "amount": <integer>}
+   Optional: "memo": "<note>" for audit trail.
+   Moves scrip from you to the recipient. Must have sufficient balance.
+
+10. mint - Create new scrip (Plan #254, PRIVILEGED)
+   {"action_type": "mint", "recipient_id": "<principal_id>", "amount": <integer>, "reason": "<why>"}
+   Only artifacts with 'can_mint' capability can use this.
+   Used by kernel_mint_agent for bounties/auctions.
+
+11. configure_context - Configure prompt context sections (DEPRECATED - use edit_artifact on self)
    {"action_type": "configure_context", "sections": {"<section>": true/false, ...}}
    Optional: "priorities": {"<section>": <0-100>, ...}
    Enables/disables sections of your prompt context. Valid sections:
@@ -69,7 +84,7 @@ You must respond with a single JSON object representing your action.
    resource_metrics, mint_submissions, quota_info, metacognitive, subscribed_artifacts
    Priorities control section ordering (higher = appears earlier in prompt, default 50)
 
-10. modify_system_prompt - Modify your system prompt (Plan #194)
+12. modify_system_prompt - Modify your system prompt (DEPRECATED - use edit_artifact on self)
    {"action_type": "modify_system_prompt", "operation": "<op>", ...}
    Operations:
    - append: {"operation": "append", "content": "<text to add>"}
@@ -93,16 +108,6 @@ You must respond with a single JSON object representing your action.
    - libraries: Installed libraries (params: principal_id)
    - dependencies: Artifact dependencies (params: artifact_id)
 
-## Genesis Artifacts (System)
-
-| Artifact | Key Methods |
-|----------|-------------|
-| genesis_ledger | balance, all_balances, transfer, transfer_ownership |
-| genesis_rights_registry | check_quota, all_quotas, transfer_quota |
-| genesis_mint | status, bid, check |
-| genesis_event_log | read |
-| genesis_escrow | list_active, deposit, purchase, cancel |
-
 ## Reference Documentation
 
 Read these for detailed information (use read_artifact):
@@ -110,15 +115,14 @@ Read these for detailed information (use read_artifact):
 | Handbook | Contents |
 |----------|----------|
 | handbook_actions | How to read, write, invoke |
-| handbook_genesis | All genesis methods and costs |
 | handbook_resources | Scrip, compute, disk explained |
 | handbook_trading | Escrow, transfers, buying/selling |
 | handbook_mint | Auction system and minting |
 
 ## Quick Reference
 - SCRIP: Economic currency (persistent, tradeable)
-- COMPUTE: Per-tick budget (resets each tick)
-- DISK: Storage quota (persistent)
+- LLM_BUDGET: API budget (depletable, never replenished)
+- DISK: Storage quota (allocatable, freed when artifacts deleted)
 
 Respond with ONLY the JSON object, no other text.
 """
@@ -165,10 +169,14 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
         return "Response must be a JSON object"
 
     action_type: ActionType | str = data.get("action_type", "").lower()
-    if action_type not in ["noop", "read_artifact", "write_artifact", "edit_artifact", "delete_artifact", "invoke_artifact", "query_kernel", "subscribe_artifact", "unsubscribe_artifact", "configure_context", "modify_system_prompt"]:
-        if action_type == "transfer":
-            return "transfer is not a kernel action. Use: invoke_artifact('genesis_ledger', 'transfer', [from_id, to_id, amount])"
-        return f"Invalid action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel, configure_context, modify_system_prompt"
+    valid_actions = [
+        "noop", "read_artifact", "write_artifact", "edit_artifact", "delete_artifact",
+        "invoke_artifact", "query_kernel", "subscribe_artifact", "unsubscribe_artifact",
+        "transfer", "mint",  # Plan #254: Value actions
+        "configure_context", "modify_system_prompt",  # Deprecated but still accepted
+    ]
+    if action_type not in valid_actions:
+        return f"Invalid action_type: {action_type}. Valid types: {', '.join(valid_actions)}"
 
     # Get validation limits from config
     max_artifact_id_length: int = get("validation.max_artifact_id_length") or 128
@@ -262,6 +270,41 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
         artifact_id = str(data.get("artifact_id", ""))
         if len(artifact_id) > max_artifact_id_length:
             return f"artifact_id exceeds max length ({max_artifact_id_length} chars)"
+
+    elif action_type == "transfer":
+        # Plan #254: Transfer scrip between principals
+        if not data.get("recipient_id"):
+            return "transfer requires 'recipient_id'"
+        recipient_id = str(data.get("recipient_id", ""))
+        if len(recipient_id) > max_artifact_id_length:
+            return f"recipient_id exceeds max length ({max_artifact_id_length} chars)"
+        amount = data.get("amount")
+        if amount is None:
+            return "transfer requires 'amount'"
+        if not isinstance(amount, int):
+            return "transfer 'amount' must be an integer"
+        if amount <= 0:
+            return "transfer 'amount' must be positive"
+
+    elif action_type == "mint":
+        # Plan #254: Create new scrip (privileged)
+        if not data.get("recipient_id"):
+            return "mint requires 'recipient_id'"
+        recipient_id = str(data.get("recipient_id", ""))
+        if len(recipient_id) > max_artifact_id_length:
+            return f"recipient_id exceeds max length ({max_artifact_id_length} chars)"
+        amount = data.get("amount")
+        if amount is None:
+            return "mint requires 'amount'"
+        if not isinstance(amount, int):
+            return "mint 'amount' must be an integer"
+        if amount <= 0:
+            return "mint 'amount' must be positive"
+        reason = data.get("reason")
+        if not reason:
+            return "mint requires 'reason' (e.g., 'bounty:task_123')"
+        if not isinstance(reason, str):
+            return "mint 'reason' must be a string"
 
     elif action_type == "configure_context":
         # Plan #192: Configure prompt context sections

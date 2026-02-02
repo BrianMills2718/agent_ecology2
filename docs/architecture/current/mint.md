@@ -2,15 +2,33 @@
 
 How artifact scoring and scrip minting works today.
 
-**Last verified:** 2026-02-01 (Clarified Vickrey pricing vs mint reward)
+**Last verified:** 2026-02-01 (Plan #254: Mint is now a kernel primitive)
 
-**Source:** `src/world/genesis.py` (GenesisMint), `src/world/mint_scorer.py`
+**Source:** `src/world/mint_auction.py` (MintAuction), `src/world/mint_scorer.py`
 
 ---
 
 ## Overview
 
-The mint accepts bids **anytime** (no bidding windows). Agents bid scrip to submit artifacts for LLM scoring. Periodic auctions resolve winners; winners get scrip minted based on score; losing bids are redistributed as UBI.
+The mint is a **kernel primitive** (Plan #254). Agents submit artifacts for scoring via the `mint` kernel action. Periodic auctions resolve winners; winners get scrip minted based on score; losing bids are redistributed as UBI.
+
+**Key change (Plan #254):** Minting moved from `genesis_mint` artifact to kernel action.
+
+## Kernel Action
+
+```json
+{"action_type": "mint", "artifact_id": "my_tool", "bid": 5}
+```
+
+Returns submission confirmation:
+```json
+{
+  "success": true,
+  "submission_id": "mint_sub_abc123",
+  "artifact_id": "my_tool",
+  "bid": 5
+}
+```
 
 ## Configuration
 
@@ -18,45 +36,18 @@ From `config.yaml` under `genesis.mint.auction`:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `period_seconds` | 60.0 | Seconds between auction resolutions |
-| `slots_per_auction` | 1 | Winners per auction |
+| `period_seconds` | 120.0 | Seconds between auction resolutions |
+| `bidding_window_seconds` | 60.0 | Duration of bidding phase |
+| `first_auction_delay_seconds` | 30.0 | Delay before first auction |
 | `minimum_bid` | 1 | Lowest accepted bid |
 | `mint_ratio` | 10 | Score / ratio = scrip minted |
 
-> **Deprecated (ignored):** `bidding_window`, `first_auction_tick` - Bids now accepted anytime.
+## Query Submissions
 
-## Methods
+Use `query_kernel` to check mint status:
 
-### `genesis_mint.status()`
-Returns auction state:
 ```json
-{
-  "success": true,
-  "time_remaining_seconds": 23.5,
-  "next_auction_in_seconds": 23.5,
-  "minimum_bid": 1,
-  "slots_per_auction": 1,
-  "pending_bids": 2
-}
-```
-
-### `genesis_mint.bid(artifact_id, amount)`
-Submit bid for artifact scoring:
-- Bids accepted **anytime** (no bidding window)
-- Bid amount held in escrow until auction resolves
-- Must be ≥ `minimum_bid`
-
-### `genesis_mint.check(artifact_id)`
-Check submission status:
-```json
-{
-  "success": true,
-  "submission": {
-    "status": "scored",
-    "score": 75,
-    "reason": "Well-structured utility function"
-  }
-}
+{"action_type": "query_kernel", "query_type": "mint_submissions", "params": {}}
 ```
 
 ---

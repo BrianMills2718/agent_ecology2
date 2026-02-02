@@ -421,32 +421,3 @@ def run(*args):
 
         assert result["success"]
         assert "submissions" in result.get("result", {})
-
-    def test_genesis_mint_api_uses_kernel_primitives(self, world: World) -> None:
-        """GenesisMintApi (after refactor) should use kernel primitives."""
-        # This test verifies that after Phase 3 refactor,
-        # GenesisMint delegates to kernel instead of using mint_callback
-
-        # Get the genesis_mint artifact
-        genesis_mint = world.genesis_artifacts.get("genesis_mint")
-        assert genesis_mint is not None
-
-        # Create an artifact to submit
-        world.artifacts.write(
-            "test_artifact", "executable", "code", "alice", executable=True
-        )
-
-        # Call bid method through genesis_mint
-        bid_method = genesis_mint.get_method("bid")
-        assert bid_method is not None
-
-        # After refactoring, this should:
-        # 1. Use KernelActions.submit_for_mint internally
-        # 2. Not directly call mint_callback
-
-        # For now, just verify the method exists
-        # After implementation, we'll add assertion that it uses kernel primitives
-        result = bid_method.handler(["test_artifact", 20], "alice")
-
-        # Currently may fail because auction timing
-        # After Phase 3, should work through kernel primitives

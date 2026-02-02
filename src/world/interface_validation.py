@@ -99,7 +99,7 @@ def convert_positional_to_named_args(
 ) -> dict[str, Any]:
     """Convert positional args list to named args dict based on interface schema.
 
-    When agents pass args as a list like ["genesis_ledger"], and the interface
+    When agents pass args as a list like ["some_artifact"], and the interface
     schema expects named properties like {"artifact_id": "..."}, this function
     maps positional arguments to the expected property names.
 

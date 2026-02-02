@@ -9,6 +9,7 @@ from typing import Any
 
 from src.world.world import World
 from src.world.artifacts import ArtifactStore
+from src.world.actions import WriteArtifactIntent
 
 
 class TestAgentSelfUpdate:
@@ -21,22 +22,30 @@ class TestAgentSelfUpdate:
         # Get the agent artifact
         agent_id = "alpha"
 
-        # Check if alpha exists, if not use first available agent
+        # Check if alpha exists, if not use first available user agent
         if world.artifacts.get(agent_id) is None:
-            # Get first agent artifact
+            # Get first non-kernel agent artifact
             all_artifacts = list(world.artifacts.artifacts.values())
-            agent_artifacts = [a for a in all_artifacts if a.has_standing]
+            agent_artifacts = [
+                a for a in all_artifacts
+                if a.has_standing and not a.id.startswith("kernel_")
+            ]
             if not agent_artifacts:
-                pytest.skip("No agent artifacts found")
+                pytest.skip("No user agent artifacts found")
             agent_id = agent_artifacts[0].id
 
         # Get current artifact content
         artifact = world.artifacts.get(agent_id)
         assert artifact is not None
 
-        # Parse current content
+        # Parse current content (content may be dict or JSON string)
         try:
-            current_content = json.loads(artifact.content) if artifact.content else {}
+            if isinstance(artifact.content, dict):
+                current_content = artifact.content
+            elif artifact.content:
+                current_content = json.loads(artifact.content)
+            else:
+                current_content = {}
         except json.JSONDecodeError:
             current_content = {}
 
@@ -49,14 +58,15 @@ class TestAgentSelfUpdate:
         }
 
         # Agent writes to self
-        result = world.execute_action({
-            "action_type": "write_artifact",
-            "principal_id": agent_id,
-            "artifact_id": agent_id,
-            "content": json.dumps(new_content),
-        })
+        intent = WriteArtifactIntent(
+            principal_id=agent_id,
+            artifact_id=agent_id,
+            artifact_type="agent",
+            content=json.dumps(new_content),
+        )
+        result = world.execute_action(intent)
 
-        assert result.success, f"Write failed: {result.error}"
+        assert result.success, f"Write failed: {result.message}"
 
         # Verify the update persisted
         updated = world.artifacts.get(agent_id)

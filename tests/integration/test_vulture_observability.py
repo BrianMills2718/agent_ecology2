@@ -166,18 +166,6 @@ class TestPublicLedgerAccess:
         assert bob_scrip == 200
         assert vulture_scrip == 500
 
-    def test_genesis_ledger_accessible(self, world_with_temp_log) -> None:
-        """Genesis ledger artifact is accessible to agents."""
-        world, _ = world_with_temp_log
-
-        # Genesis ledger should exist
-        genesis_ledger = world.genesis_artifacts.get("genesis_ledger")
-        assert genesis_ledger is not None
-
-        # Should be able to query balance (no auth required for reads)
-        # The genesis_ledger provides read access to all principals
-
-
 class TestFrozenAgentList:
     """Test listing frozen agents for vulture discovery."""
 

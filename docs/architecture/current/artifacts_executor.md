@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-01-31 (kernel_contracts rename)
+**Last verified:** 2026-02-01 (Plan #254: transfer/mint + has_standing auto-principal)
 
 ---
 
@@ -39,11 +39,13 @@ class Artifact:
     # Interface schema (Plan #14)
     interface: dict | None = None # JSON Schema for discoverability
     # Genesis method dispatch (Plan #15)
-    genesis_methods: dict | None = None  # Method dispatch for genesis artifacts
+    genesis_methods: dict | None = None  # Legacy: Method dispatch (Plan #254: genesis removed)
     # Artifact dependencies (Plan #63)
     depends_on: list[str] = []  # List of artifact IDs this depends on
     # User-defined metadata (Plan #168)
     metadata: dict[str, Any] = {}  # Arbitrary key-value pairs for categorization
+    # Privileged capabilities (Plan #254)
+    capabilities: list[str] = []  # e.g., ['can_mint'] for mint authorization
 ```
 
 ### System Field Immutability (Plan #235)
@@ -105,12 +107,12 @@ When an executable artifact is written, the system automatically extracts `invok
 # When you write executable code like:
 code = '''
 def run(ctx):
-    invoke("genesis_ledger", "transfer", [10])
-    invoke("genesis_escrow", "deposit", [100])
+    invoke("my_ledger", "transfer", [10])
+    invoke("mcp_escrow", "deposit", [100])
     return True
 '''
 # The artifact's metadata is auto-populated:
-# metadata["invokes"] = ["genesis_escrow", "genesis_ledger"]
+# metadata["invokes"] = ["mcp_escrow", "my_ledger"]
 ```
 
 **Key properties:**
@@ -358,7 +360,7 @@ Contract references will enable DAOs, conditional access, and contracts governin
 ## Access Checks
 
 Per ADR-0016 and Plan #210: "Ownership" is not a kernel concept. Contracts decide access.
-Standard genesis contracts (freeware, self_owned, private) check `target_created_by`.
+Standard kernel contracts (freeware, self_owned, private) check `target_created_by`.
 
 **Contract-Based Permission Checks (default)**
 
@@ -523,7 +525,7 @@ def run():
 
 The `caller_id` is also injected so artifacts know who invoked them.
 
-**Key principle:** Agent-built artifacts have equal access to kernel interfaces as genesis artifacts - no privilege difference.
+**Key principle:** All artifacts have equal access to kernel interfaces - no privilege difference (Plan #254).
 
 ### Recursion Protection
 
@@ -590,6 +592,14 @@ class ActionResult:
 | invoke | Insufficient scrip | `insufficient_funds` | resource | Yes |
 | invoke | Timeout | `timeout` | execution | Yes |
 | invoke | Runtime error | `runtime_error` | execution | No |
+| transfer | Insufficient balance | `insufficient_funds` | resource | Yes |
+| transfer | Recipient not found | `not_found` | resource | No |
+| transfer | Recipient not a principal | `invalid_type` | validation | No |
+| transfer | Invalid amount | `invalid_argument` | validation | No |
+| mint | Not authorized (no can_mint) | `not_authorized` | permission | No |
+| mint | Recipient not found | `not_found` | resource | No |
+| mint | Recipient not a principal | `invalid_type` | validation | No |
+| mint | Invalid amount | `invalid_argument` | validation | No |
 
 ### Retriability
 
@@ -626,8 +636,10 @@ class ActionIntent:
 | `QueryKernelIntent` | QUERY_KERNEL | `query_type`, `query_params` |
 | `SubscribeArtifactIntent` | SUBSCRIBE_ARTIFACT | `artifact_id` |
 | `UnsubscribeArtifactIntent` | UNSUBSCRIBE_ARTIFACT | `artifact_id` |
-| `ConfigureContextIntent` | CONFIGURE_CONTEXT | `section_name`, `enabled`, `priority` |
-| `ModifySystemPromptIntent` | MODIFY_SYSTEM_PROMPT | `operation`, `content`, `section_name` |
+| `TransferIntent` | TRANSFER | `recipient_id`, `amount`, `memo` (Plan #254) |
+| `MintIntent` | MINT | `recipient_id`, `amount`, `reason` (Plan #254, privileged) |
+| `ConfigureContextIntent` | CONFIGURE_CONTEXT | `section_name`, `enabled`, `priority` (deprecated) |
+| `ModifySystemPromptIntent` | MODIFY_SYSTEM_PROMPT | `operation`, `content`, `section_name` (deprecated) |
 
 ### Reasoning Field
 
@@ -707,6 +719,29 @@ class Artifact:
 - `create_agent_artifact(agent_id, owner_id, config)` - Create agent artifact
 - `create_memory_artifact(memory_id, owner_id)` - Create memory artifact
 
+### Auto-Principal Creation (Plan #254)
+
+When `write_artifact` creates a NEW artifact with `has_standing=True`, the kernel automatically:
+
+1. Creates the artifact with `has_standing=True` (and `has_loop` if specified)
+2. Registers the artifact as a principal in the ledger
+3. Grants starting scrip (from config `agents.starting_scrip`)
+4. Logs a `principal_created` event
+
+**Example:**
+```python
+# Agent creates a new DAO artifact that can hold scrip
+write_artifact(
+    artifact_id="my_dao",
+    artifact_type="dao",
+    content={"rules": "..."},
+    has_standing=True,  # ← triggers auto-principal creation
+)
+# Result: my_dao can now hold scrip, be party to contracts
+```
+
+This replaces the old `genesis_ledger.spawn_principal()` pattern. The artifact IS the principal.
+
 ---
 
 ## Contract-Based Permission Checks
@@ -738,6 +773,68 @@ Contracts execute with `ReadOnlyLedger` - can read balances but not modify.
 
 ---
 
+## Transfer and Mint Actions (Plan #254)
+
+The kernel provides two value-layer primitives for scrip management.
+
+### Transfer Action
+
+Moves scrip from the caller to a recipient. This is a kernel primitive, not a genesis artifact invocation.
+
+```python
+# TransferIntent
+{
+    "action_type": "transfer",
+    "recipient_id": "bob",
+    "amount": 50,
+    "memo": "Payment for service"  # Optional
+}
+```
+
+**Validation:**
+- Caller must have sufficient balance
+- Amount must be positive integer
+- Recipient must exist and have `has_standing=True` (is a principal)
+
+### Mint Action
+
+Creates new scrip. This is a **privileged** action requiring the `can_mint` capability.
+
+```python
+# MintIntent
+{
+    "action_type": "mint",
+    "recipient_id": "alice",
+    "amount": 100,
+    "reason": "bounty:task_123"  # Required for audit trail
+}
+```
+
+**Authorization:**
+- Caller must have `capabilities` including `"can_mint"`
+- Only kernel_mint_agent (or similar bootstrap artifacts) have this capability
+- The `reason` field creates an audit trail for all scrip creation
+
+### Capabilities System (Plan #254)
+
+Artifacts can have a `capabilities` list for privilege checking:
+
+```python
+artifact.capabilities = ["can_mint"]  # Authorized to mint scrip
+```
+
+Capabilities are:
+- Set at artifact creation by the kernel
+- Not modifiable via normal write/edit actions
+- Checked by the kernel before executing privileged actions
+
+Currently defined capabilities:
+| Capability | Action | Description |
+|------------|--------|-------------|
+| `can_mint` | `mint` | Authorized to create new scrip |
+
+---
+
 ## Artifact Deletion (Plan #18)
 
 Soft delete with tombstones - deleted artifacts remain in storage with metadata.
@@ -754,7 +851,7 @@ Soft delete with tombstones - deleted artifacts remain in storage with metadata.
 ### Deletion Rules
 
 - Only artifact owner can delete
-- Genesis artifacts (`genesis_*`) cannot be deleted
+- Pre-seeded MCP artifacts (`mcp_*`) cannot be deleted
 - Deletion is logged as `artifact_deleted` event
 - Deleted artifacts count toward storage but cannot be modified
 

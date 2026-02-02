@@ -203,26 +203,21 @@ class TestCrossSystemCollision:
 class TestWorldIntegration:
     """Test IDRegistry integration with World (full collision prevention)."""
 
-    def test_genesis_artifacts_registered_on_world_init(self) -> None:
-        """Genesis artifacts are registered when World is created."""
+    def test_kernel_mint_agent_registered_on_world_init(self) -> None:
+        """Kernel mint agent is registered when World is created (Plan #254)."""
         from src.world.world import World
-        from src.world.id_registry import IDRegistry
 
         config = {
             "world": {"max_ticks": 10},
             "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 2},
             "logging": {"output_file": "/dev/null"},
             "principals": [],
-            "rights": {"default_quotas": {"compute": 100.0, "disk": 10000.0}},
         }
         world = World(config)
 
-        # Genesis artifacts should be registered
-        # Note: genesis_store removed in Plan #190 - use query_kernel action
-        assert world.id_registry.exists("genesis_ledger")
-        assert world.id_registry.exists("genesis_mint")
-        assert world.id_registry.exists("genesis_escrow")
-        assert world.id_registry.lookup("genesis_ledger") == "genesis"
+        # Kernel mint agent should be registered
+        assert world.id_registry.exists("kernel_mint_agent")
+        assert world.id_registry.lookup("kernel_mint_agent") == "artifact"
 
     def test_principals_registered_on_world_init(self) -> None:
         """Principals are registered when World is created."""

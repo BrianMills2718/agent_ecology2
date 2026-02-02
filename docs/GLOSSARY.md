@@ -2,7 +2,7 @@
 
 Canonical terminology for Agent Ecology.
 
-**Last updated:** 2026-02-01 (Plan #252: Tick terminology cleanup)
+**Last updated:** 2026-02-01 (Plan #254: transfer/mint now kernel actions)
 
 ---
 

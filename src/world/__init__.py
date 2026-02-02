@@ -2,16 +2,18 @@
 from .world import World
 from .actions import (
     ActionIntent, NoopIntent, ReadArtifactIntent, WriteArtifactIntent,
-    EditArtifactIntent, InvokeArtifactIntent, DeleteArtifactIntent
+    EditArtifactIntent, InvokeArtifactIntent, DeleteArtifactIntent,
+    TransferIntent, MintIntent,  # Plan #254: Kernel value actions
 )
-# NOTE: TransferIntent removed - all transfers via genesis_ledger.transfer()
 from .ledger import Ledger
 from .artifacts import ArtifactStore, Artifact, WriteResult
 from .logger import EventLogger
-from .genesis import (
-    GenesisArtifact, GenesisLedger, GenesisMint,
-    GenesisRightsRegistry, GenesisEventLog, SYSTEM_OWNER
-)
+# Plan #254: Genesis exports removed - use kernel actions instead
+# Transfer: TransferIntent or transfer action
+# Mint: MintIntent or mint action (requires can_mint capability)
+# Balances: query_kernel("balances", ...)
+# Events: query_kernel("events", ...)
+SYSTEM_OWNER = "SYSTEM"  # Constant for system-owned artifacts
 from .executor import SafeExecutor, get_executor
 from .simulation_engine import SimulationEngine, ThinkingCostResult, BudgetCheckResult
 from .rate_tracker import RateTracker, UsageRecord
@@ -22,10 +24,6 @@ from .kernel_contracts import (
     TransferableFreewareContract,
     KERNEL_CONTRACTS, get_kernel_contract, get_contract_by_id, list_kernel_contracts,
 )
-# Backward-compatible aliases (deprecated - use kernel_* names)
-GENESIS_CONTRACTS = KERNEL_CONTRACTS
-get_genesis_contract = get_kernel_contract
-list_genesis_contracts = list_kernel_contracts
 from .mint_auction import MintAuction, KernelMintSubmission, KernelMintResult
 from .resources import (
     RESOURCE_LLM_BUDGET, RESOURCE_DISK, RESOURCE_LLM_TOKENS, RESOURCE_CPU,
@@ -36,10 +34,11 @@ __all__ = [
     "World",
     "ActionIntent", "NoopIntent", "ReadArtifactIntent", "WriteArtifactIntent",
     "EditArtifactIntent", "InvokeArtifactIntent", "DeleteArtifactIntent",
+    "TransferIntent", "MintIntent",  # Plan #254: Kernel value actions
     "Ledger",
     "ArtifactStore", "Artifact", "WriteResult",
     "EventLogger",
-    "GenesisArtifact", "GenesisLedger", "GenesisMint", "GenesisRightsRegistry", "GenesisEventLog", "SYSTEM_OWNER",
+    "SYSTEM_OWNER",  # Plan #254: Constant only (genesis classes removed)
     "SafeExecutor", "get_executor",
     "SimulationEngine", "ThinkingCostResult", "BudgetCheckResult",
     "RateTracker", "UsageRecord",
@@ -47,8 +46,6 @@ __all__ = [
     "PermissionAction", "PermissionResult", "AccessContract",
     "FreewareContract", "SelfOwnedContract", "PrivateContract", "PublicContract",
     "KERNEL_CONTRACTS", "get_kernel_contract", "get_contract_by_id", "list_kernel_contracts",
-    # Backward-compatible aliases (deprecated)
-    "GENESIS_CONTRACTS", "get_genesis_contract", "list_genesis_contracts",
     "TransferableFreewareContract",
     # MintAuction (extracted from World - TD-001)
     "MintAuction", "KernelMintSubmission", "KernelMintResult",

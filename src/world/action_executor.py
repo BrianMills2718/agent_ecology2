@@ -17,6 +17,7 @@ from .actions import (
     NoopIntent, ReadArtifactIntent, WriteArtifactIntent,
     EditArtifactIntent, InvokeArtifactIntent, DeleteArtifactIntent,
     QueryKernelIntent, SubscribeArtifactIntent, UnsubscribeArtifactIntent,
+    TransferIntent, MintIntent,  # Plan #254: Value actions
     ConfigureContextIntent, ModifySystemPromptIntent,
 )
 from .artifacts import Artifact
@@ -67,7 +68,7 @@ def get_error_message(error_type: str, **kwargs: Any) -> str:
         "access_denied_write": "Access denied: you are not allowed to write to {artifact_id}. See handbook_actions for permissions.",
         "access_denied_invoke": "Access denied: you are not allowed to invoke {artifact_id}. See handbook_actions for permissions.",
         "method_not_found": "Method '{method}' not found on {artifact_id}. Available: {methods}. TIP: Call invoke_artifact('{artifact_id}', 'describe', []) to see method details before invoking.",
-        "escrow_not_owner": "Escrow does not own {artifact_id}. See handbook_trading for the 2-step process: 1) genesis_ledger.transfer_ownership([artifact_id, '{escrow_id}']), 2) deposit.",
+        "escrow_not_owner": "Escrow does not own {artifact_id}. See handbook_trading for the 2-step process: 1) edit_artifact to set owner to escrow, 2) deposit.",
     }
 
     # Get from config (or use default)
@@ -130,6 +131,12 @@ class ActionExecutor:
         elif isinstance(intent, UnsubscribeArtifactIntent):
             result = self._execute_unsubscribe(intent)
 
+        elif isinstance(intent, TransferIntent):
+            result = self._execute_transfer(intent)
+
+        elif isinstance(intent, MintIntent):
+            result = self._execute_mint(intent)
+
         elif isinstance(intent, ConfigureContextIntent):
             result = self._execute_configure_context(intent)
 
@@ -179,14 +186,7 @@ class ActionExecutor:
                 message=f"Read artifact {intent.artifact_id}" + (f" (paid {read_price} scrip to {artifact.created_by})" if read_price > 0 else ""),
                 data={"artifact": artifact.to_dict(), "read_price_paid": read_price}
             )
-        # Check genesis artifacts (always public, free)
-        elif intent.artifact_id in w.genesis_artifacts:
-            genesis = w.genesis_artifacts[intent.artifact_id]
-            return ActionResult(
-                success=True,
-                message=f"Read genesis artifact {intent.artifact_id}",
-                data={"artifact": genesis.to_dict()}
-            )
+        # Plan #254: Genesis artifacts removed - artifact not found
         else:
             # Plan #190: Suggest discovery via query_kernel
             # Plan #211: Clarify query_kernel is an ACTION type, not an artifact
@@ -247,16 +247,7 @@ class ActionExecutor:
         - Artifact creation/update via ArtifactStore.write_artifact()
         """
         w = self.world
-        # Protect genesis artifacts from modification
-        if intent.artifact_id in w.genesis_artifacts:
-            return ActionResult(
-                success=False,
-                message=f"Cannot modify system artifact {intent.artifact_id}",
-                error_code=ErrorCode.NOT_AUTHORIZED.value,
-                error_category=ErrorCategory.PERMISSION.value,
-                retriable=False,
-                error_details={"artifact_id": intent.artifact_id},
-            )
+        # Plan #254: Genesis artifacts removed - kernel_ prefixed artifacts are protected in World.delete_artifact
 
         # Check if artifact exists (for update permission check)
         existing = w.artifacts.get(intent.artifact_id)
@@ -353,7 +344,7 @@ class ActionExecutor:
                                 retriable=True,
                             )
 
-        # Write the artifact
+        # Write the artifact (Plan #254: include principal creation fields)
         artifact: Artifact = w.artifacts.write(
             artifact_id=intent.artifact_id,
             type=intent.artifact_type,
@@ -366,7 +357,28 @@ class ActionExecutor:
             interface=interface,
             access_contract_id=intent.access_contract_id,
             metadata=intent.metadata,
+            has_standing=getattr(intent, 'has_standing', False),
+            has_loop=getattr(intent, 'has_loop', False),
         )
+
+        # Plan #254: Auto-create principal if has_standing=True on NEW artifacts
+        # This enables write_artifact to spawn principals (replacing genesis_ledger.spawn_principal)
+        is_new_artifact = existing is None
+        has_standing = getattr(intent, 'has_standing', False)
+        if is_new_artifact and has_standing:
+            # Create principal in ledger (holds scrip and resources)
+            if not w.ledger.principal_exists(intent.artifact_id):
+                # Get starting resources from config if available
+                from ..config import get
+                starting_scrip = get("agents.starting_scrip") or 0
+                w.ledger.create_principal(intent.artifact_id, starting_scrip)
+                w.logger.log("principal_created", {
+                    "principal_id": intent.artifact_id,
+                    "created_by": intent.principal_id,
+                    "has_standing": True,
+                    "has_loop": getattr(intent, 'has_loop', False),
+                    "starting_scrip": starting_scrip,
+                })
 
         # Consume disk quota for the size delta
         if size_delta > 0:
@@ -385,16 +397,22 @@ class ActionExecutor:
             "executable": intent.executable,
             "size_bytes": total_size,
             "was_update": existing is not None,
+            "has_standing": has_standing,
+            "has_loop": getattr(intent, 'has_loop', False),
         })
 
         action = "Updated" if existing else "Created"
+        principal_note = " (principal created)" if is_new_artifact and has_standing else ""
         return ActionResult(
             success=True,
-            message=f"{action} artifact {intent.artifact_id} ({total_size} bytes)",
+            message=f"{action} artifact {intent.artifact_id} ({total_size} bytes){principal_note}",
             data={
                 "artifact_id": intent.artifact_id,
                 "size_bytes": total_size,
                 "was_update": existing is not None,
+                "has_standing": has_standing,
+                "has_loop": getattr(intent, 'has_loop', False),
+                "principal_created": is_new_artifact and has_standing,
             },
         )
 
@@ -418,16 +436,7 @@ class ActionExecutor:
                 error_details={"artifact_id": intent.artifact_id},
             )
 
-        # Protect genesis artifacts from modification
-        if intent.artifact_id in w.genesis_artifacts:
-            return ActionResult(
-                success=False,
-                message=f"Cannot edit genesis artifact {intent.artifact_id}",
-                error_code=ErrorCode.NOT_AUTHORIZED.value,
-                error_category=ErrorCategory.PERMISSION.value,
-                retriable=False,
-                error_details={"artifact_id": intent.artifact_id},
-            )
+        # Plan #254: Genesis artifacts removed - kernel_ prefixed artifacts protected by kernel_protected flag
 
         # Plan #235 Phase 1: Block edits to kernel_protected artifacts
         if getattr(artifact, "kernel_protected", False):
@@ -953,9 +962,9 @@ class ActionExecutor:
             )
 
         # Check if target artifact exists
+        # Plan #254: Genesis artifacts removed - only check regular artifacts
         target_artifact = w.artifacts.get(artifact_id)
-        target_is_genesis = artifact_id in w.genesis_artifacts
-        if target_artifact is None and not target_is_genesis:
+        if target_artifact is None:
             return ActionResult(
                 success=False,
                 message=f"Artifact '{artifact_id}' not found. Cannot subscribe to non-existent artifact.",
@@ -1081,6 +1090,174 @@ class ActionExecutor:
             success=True,
             message=f"Unsubscribed from '{artifact_id}'. It will no longer be auto-injected.",
             data={"subscribed_artifacts": subscribed},
+        )
+
+    def _execute_transfer(self, intent: TransferIntent) -> ActionResult:
+        """Execute a transfer action (Plan #254).
+
+        Moves scrip from the caller to a recipient principal.
+        """
+        w = self.world
+        sender_id = intent.principal_id
+        recipient_id = intent.recipient_id
+        amount = intent.amount
+
+        # Validate amount
+        if amount <= 0:
+            return ActionResult(
+                success=False,
+                message=f"Transfer amount must be positive, got {amount}",
+                error_code=ErrorCode.INVALID_ARGUMENT.value,
+                error_category=ErrorCategory.VALIDATION.value,
+                retriable=True,
+            )
+
+        # Check sender exists and is a principal
+        if not w.ledger.principal_exists(sender_id):
+            return ActionResult(
+                success=False,
+                message=f"Sender '{sender_id}' is not a principal",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
+
+        # Check recipient exists and is a principal
+        if not w.ledger.principal_exists(recipient_id):
+            return ActionResult(
+                success=False,
+                message=f"Recipient '{recipient_id}' is not a principal",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
+
+        # Check sender has sufficient balance
+        sender_balance = w.ledger.get_scrip(sender_id)
+        if sender_balance < amount:
+            return ActionResult(
+                success=False,
+                message=f"Insufficient scrip: have {sender_balance}, need {amount}",
+                error_code=ErrorCode.INSUFFICIENT_FUNDS.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=True,
+            )
+
+        # Execute the transfer
+        try:
+            w.ledger.transfer_scrip(sender_id, recipient_id, amount)
+        except Exception as e:
+            return ActionResult(
+                success=False,
+                message=f"Transfer failed: {e}",
+                error_code=ErrorCode.RUNTIME_ERROR.value,
+                error_category=ErrorCategory.SYSTEM.value,
+                retriable=False,
+            )
+
+        # Log the transfer
+        w.logger.log("transfer", {
+            "sender": sender_id,
+            "recipient": recipient_id,
+            "amount": amount,
+            "memo": intent.memo,
+            "sender_balance_after": w.ledger.get_scrip(sender_id),
+            "recipient_balance_after": w.ledger.get_scrip(recipient_id),
+        })
+
+        return ActionResult(
+            success=True,
+            message=f"Transferred {amount} scrip to '{recipient_id}'",
+            data={
+                "amount": amount,
+                "recipient": recipient_id,
+                "sender_balance": w.ledger.get_scrip(sender_id),
+            },
+        )
+
+    def _execute_mint(self, intent: MintIntent) -> ActionResult:
+        """Execute a mint action (Plan #254).
+
+        Creates new scrip. Privileged - requires 'can_mint' capability.
+        """
+        w = self.world
+        minter_id = intent.principal_id
+        recipient_id = intent.recipient_id
+        amount = intent.amount
+        reason = intent.reason
+
+        # Check minter has can_mint capability
+        minter_artifact = w.artifacts.get(minter_id)
+        if minter_artifact is None:
+            return ActionResult(
+                success=False,
+                message=f"Minter '{minter_id}' not found",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
+
+        # Check capability
+        capabilities = getattr(minter_artifact, 'capabilities', None) or []
+        if 'can_mint' not in capabilities:
+            return ActionResult(
+                success=False,
+                message=f"'{minter_id}' lacks 'can_mint' capability. Minting is privileged.",
+                error_code=ErrorCode.NOT_AUTHORIZED.value,
+                error_category=ErrorCategory.PERMISSION.value,
+                retriable=False,
+            )
+
+        # Validate amount
+        if amount <= 0:
+            return ActionResult(
+                success=False,
+                message=f"Mint amount must be positive, got {amount}",
+                error_code=ErrorCode.INVALID_ARGUMENT.value,
+                error_category=ErrorCategory.VALIDATION.value,
+                retriable=True,
+            )
+
+        # Check recipient exists and is a principal
+        if not w.ledger.principal_exists(recipient_id):
+            return ActionResult(
+                success=False,
+                message=f"Recipient '{recipient_id}' is not a principal",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
+
+        # Execute the mint
+        try:
+            w.ledger.credit_scrip(recipient_id, amount)
+        except Exception as e:
+            return ActionResult(
+                success=False,
+                message=f"Mint failed: {e}",
+                error_code=ErrorCode.RUNTIME_ERROR.value,
+                error_category=ErrorCategory.SYSTEM.value,
+                retriable=False,
+            )
+
+        # Log the mint
+        w.logger.log("mint", {
+            "minter": minter_id,
+            "recipient": recipient_id,
+            "amount": amount,
+            "reason": reason,
+            "recipient_balance_after": w.ledger.get_scrip(recipient_id),
+        })
+
+        return ActionResult(
+            success=True,
+            message=f"Minted {amount} scrip to '{recipient_id}' ({reason})",
+            data={
+                "amount": amount,
+                "recipient": recipient_id,
+                "reason": reason,
+                "recipient_balance": w.ledger.get_scrip(recipient_id),
+            },
         )
 
     def _execute_configure_context(self, intent: ConfigureContextIntent) -> ActionResult:

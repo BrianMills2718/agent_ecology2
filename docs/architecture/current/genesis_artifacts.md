@@ -1,394 +1,93 @@
-# Current Genesis Artifacts
+# Pre-Seeded Artifacts
 
-System-provided artifacts that exist at world initialization.
+Artifacts that exist at world initialization for cold-start convenience.
 
-**Last verified:** 2026-01-31 (kernel_contracts rename)
+**Last verified:** 2026-02-01 (Plan #254: Genesis module removed)
 
 ---
 
 ## Overview
 
-Genesis artifacts are created during world initialization (`World._create_genesis_artifacts()`). They provide core system services that agents interact with via `invoke_artifact`.
+Pre-seeded artifacts are created during world initialization (`World._create_preseeded_artifacts()`). They provide useful services that agents can use immediately. They are NOT privileged - agents could build equivalent functionality.
 
-All genesis artifacts:
-- Have `created_by: "system"` (metadata only, not privileged)
-- Are cold-start conveniences - agents could build equivalent functionality
-- Are configured in `config/config.yaml` under `genesis:`
+**Key change (Plan #254):** The `src/world/genesis/` module has been removed. "Genesis artifacts" are now just pre-seeded artifacts with no special status:
+- MCP server artifacts (`mcp_fetch`, `mcp_filesystem`, `mcp_web_search`)
+- Handbook artifacts (`handbook_actions`, etc.)
 
-**Note:** Genesis contracts (freeware, private, etc.) are NOT artifacts at all - they're Python classes stored in a dict, not in the artifact store. See `contracts.md` for details. They are also cold-start conveniences, but they're permission presets, not invokable services.
-
----
-
-## Privilege Status
-
-Genesis artifacts follow a deprivilege pattern (Plans #39, #44, #111). Most artifacts now delegate to kernel interfaces rather than accessing internal state directly.
-
-| Artifact | Status | Notes |
-|----------|--------|-------|
-| genesis_ledger | **Dual-path** | Uses `KernelActions` when `_world` set, direct access fallback |
-| genesis_mint | **Delegated** | Uses kernel primitives for bid storage, UBI |
-| genesis_escrow | **Dual-path** | Has `set_world()` support, implementation partially migrated |
-| genesis_rights_registry | **Dual-path** | Thin wrapper around kernel quotas, legacy fallback |
-| genesis_event_log | **Pure** | Read-only from EventLogger |
-| genesis_debt_contract | **Pure** | Truly unprivileged example contract |
-| genesis_model_registry | **Stub** | Not fully integrated with LLM calls yet |
-| genesis_embedder | **Pure** | Stateless computation, no kernel access |
-| genesis_memory | **Pure** | Operates only on artifacts owned by caller |
-| genesis_loop_detector | **Pure** | Stateless pattern detection, no kernel access |
-
-**Note:** `genesis_store` was removed in Plan #190. Use `query_kernel` action instead for artifact discovery - it's free and provides direct kernel state access.
-
-**Pattern:** Artifacts have optional `set_world()` method. When world is set, they use `KernelState`/`KernelActions` interfaces. When world is None, they fall back to direct access (backward compatibility).
+Services that were previously genesis artifacts are now kernel primitives:
+- `transfer` - now a kernel action
+- `mint` - now a kernel action via `MintAuction`
+- Balance queries - now via `query_kernel`
 
 ---
 
-## Genesis Artifacts
+## Pre-Seeded Artifacts
 
-### genesis_ledger
+### MCP Server Artifacts (Plan #28, #254)
 
-**Purpose:** Scrip balances, transfers, principal management
-
-**File:** `src/world/genesis.py` (`GenesisLedger` class)
-
-| Method | Cost (compute) | Description |
-|--------|----------------|-------------|
-| `balance(principal_id)` | 0 | Get scrip balance for a principal |
-| `all_balances()` | 0 | Get all scrip balances |
-| `transfer(from_id, to_id, amount)` | 1 | Transfer scrip (from_id must be caller) |
-| `spawn_principal()` | 1 | Create new principal with 0 scrip/compute |
-| `transfer_ownership(artifact_id, to_id)` | 1 | Transfer artifact ownership |
-| `transfer_budget(to_id, amount)` | 1 | Transfer LLM budget to another agent (Plan #30) |
-| `get_budget(agent_id)` | 0 | Get LLM budget for an agent (Plan #30) |
-
-**Notes:**
-- Transfers deduct from caller, credit to recipient
-- spawn_principal creates principal with 0 resources (parent must fund)
-- Ownership transfer requires caller to be current owner
-- **Artifact wallets:** Transfers auto-create recipients with 0 balance, enabling scrip transfers to contracts/artifacts
-
----
-
-### genesis_mint
-
-**Purpose:** Auction-based artifact scoring and scrip minting
-
-**File:** `src/world/genesis.py` (`GenesisMint` class)
-
-| Method | Cost (compute) | Description |
-|--------|----------------|-------------|
-| `status()` | 0 | Get current auction status (phase, tick, bid count) |
-| `bid(artifact_id, amount)` | 0 | Place bid on artifact for scoring |
-| `check(artifact_id)` | 0 | Check submission/bid status |
-
-**Auction Flow:**
-1. Agent bids on their artifact (accepted anytime)
-2. Mint collects bids until next auction resolution
-3. At resolution: scores artifacts via external LLM
-4. Winner pays second-highest bid (Vickrey auction)
-5. Scrip minted based on score
-6. UBI distributed to all principals
-
-**Anytime Bidding (Plan #5):** Bids are accepted at any tick, not just
-during a specific bidding window. Auctions still resolve on schedule.
-
-**Config:** `config/config.yaml` under `genesis.mint`
-
----
-
-### genesis_rights_registry
-
-**Purpose:** Resource quota management
-
-**File:** `src/world/genesis.py` (`GenesisRightsRegistry` class)
-
-| Method | Cost (compute) | Description |
-|--------|----------------|-------------|
-| `check_quota(principal_id, resource)` | 0 | Get quota for resource |
-| `all_quotas(principal_id)` | 0 | Get all quotas for principal |
-| `transfer_quota(from_id, to_id, resource, amount)` | 1 | Transfer quota (from_id must be caller) |
-
-**Resources tracked:**
-- `compute` - Per-tick compute quota
-- `disk` - Disk storage quota
-
----
-
-### genesis_event_log
-
-**Purpose:** Passive observability, world history
-
-**File:** `src/world/genesis/event_log.py` (`GenesisEventLog` class)
-
-| Method | Cost (compute) | Description |
-|--------|----------------|-------------|
-| `read(limit, offset, filters)` | 0 | Read event history |
-| `get_invokers(artifact_id)` | 0 | Get list of principals that have invoked an artifact (Plan #170) |
-
-**Event Types:**
-- `tick` - Tick started
-- `action` - Agent action executed
-- `thinking` - Agent thinking completed
-- `thinking_failed` - Agent ran out of compute
-- `intent_rejected` - Invalid action rejected
-- `mint_auction` - Auction resolved
-- `mint` - Scrip minted
-- `world_init` - World initialized
-- `invoke` - Artifact invocation (used by get_invokers)
-
-**Runtime Dependency Tracking (Plan #170):**
-The `get_invokers(artifact_id)` method queries the event log to find all principals that have invoked a specific artifact. Returns a deduplicated, sorted list of invoker IDs. Useful for:
-- Finding usage examples of artifacts
-- Assessing adoption/trust of artifacts
-- Understanding artifact relationships
-
-**Config:** `max_per_read` limits returned events (default: 100)
-
----
-
-### genesis_escrow
-
-**Purpose:** Trustless artifact trading (Gatekeeper pattern)
-
-**File:** `src/world/genesis.py` (`GenesisEscrow` class)
-
-| Method | Cost (compute) | Description |
-|--------|----------------|-------------|
-| `deposit(artifact_id, price)` | 1 | List artifact for sale |
-| `purchase(artifact_id)` | 0 | Buy listed artifact (buyer pays price in scrip) |
-| `cancel(artifact_id)` | 0 | Cancel listing (seller only) |
-| `check(artifact_id)` | 0 | Check listing status |
-| `list_active()` | 0 | List all active listings |
-
-**Flow:**
-1. Seller deposits artifact → escrow takes ownership
-2. Buyer purchases → escrow transfers ownership + scrip atomically
-3. Or seller cancels → escrow returns artifact
-
-**Demonstrates Gatekeeper pattern:** Contract holds ownership, manages multi-party access.
-
----
-
-### genesis_debt_contract
-
-**Purpose:** Non-privileged credit/lending example (Plan #9)
-
-**File:** `src/world/genesis/debt_contract.py` (`GenesisDebtContract` class)
-
-| Method | Cost (compute) | Description |
-|--------|----------------|-------------|
-| `issue(creditor, principal, rate_per_day, due_in_seconds)` | 1 | Create debt request (debtor initiates) |
-| `accept(debt_id)` | 0 | Creditor accepts debt |
-| `repay(debt_id, amount)` | 0 | Debtor pays back (partial or full) |
-| `collect(debt_id)` | 0 | Creditor collects after due_at time |
-| `transfer_creditor(debt_id, new_creditor)` | 1 | Sell debt rights to another |
-| `check(debt_id)` | 0 | Get debt status with current_owed |
-| `list_debts(principal_id)` | 0 | List debts for a principal |
-| `list_all()` | 0 | List all debts in system |
-
-**Flow:**
-1. Debtor issues debt request → status="pending"
-2. Creditor accepts → status="active", interest starts accruing
-3. Debtor repays (partial or full) → transfers scrip to creditor
-4. After due_at: creditor can collect remaining (forced transfer)
-5. If debtor broke: status="defaulted" (no magic enforcement)
-
-**Time-based scheduling (Plan #167):**
-- `due_in_seconds`: How long until debt is due (from issue time)
-- `rate_per_day`: Daily interest rate (e.g., 0.01 = 1% per day)
-- `due_at`: ISO8601 timestamp when debt is due
-- `created_at`: ISO8601 timestamp when debt was created
-
-**Interest:** Simple interest: `current_owed = principal + (principal * rate_per_day * days_elapsed) - amount_paid`
-
-**Tradeable debt:** Creditor can sell debt rights via `transfer_creditor()`. Payment goes to whoever currently holds the debt.
-
-**Key insight:** No kernel-level enforcement. Bad debtors observable via event log. Reputation emerges from observed behavior.
-
-**Demonstrates:** How credit/lending can work without privileged kernel support - just a genesis artifact example.
-
----
-
-### Artifact Discovery (query_kernel)
-
-**Note:** `genesis_store` was removed in Plan #190. Artifact discovery is now provided by the `query_kernel` action, which offers:
-
-- **Free access** - No invocation cost (unlike genesis artifact invocations)
-- **Direct kernel state** - Read-only access to kernel state without intermediary
-- **Comprehensive queries** - artifacts, principals, balances, resources, quotas, etc.
-
-**Example usage:**
-```json
-{"action_type": "query_kernel", "query_type": "artifacts", "params": {}}
-{"action_type": "query_kernel", "query_type": "artifact", "params": {"artifact_id": "..."}}
-{"action_type": "query_kernel", "query_type": "principals", "params": {}}
-```
-
-See Plan #184 for full query_kernel documentation.
-
----
-
-### genesis_model_registry
-
-**Purpose:** LLM model access management as tradeable resource (Plan #113)
-
-**File:** `src/world/genesis/model_registry.py` (`GenesisModelRegistry` class)
-
-| Method | Cost (compute) | Description |
-|--------|----------------|-------------|
-| `list_models()` | 0 | List all available models with properties |
-| `get_quota(agent_id, model_id)` | 0 | Get remaining quota for agent on model |
-| `transfer_quota(to_agent, model_id, amount)` | 0 | Transfer model quota to another agent |
-| `get_available_models(agent_id)` | 0 | Get models agent has quota for |
-
-**Design:**
-- Transforms LLM model access into a scarce, tradeable resource
-- Enables emergence of model markets and access trading
-- Agents can specialize (e.g., one agent accumulates GPT-4 quota for complex tasks)
-- Quota transfers use same pattern as scrip transfers
-
-**Config:** Model quotas configured in `config/config.yaml` under agent settings.
-
----
-
-### genesis_embedder
-
-**Purpose:** Semantic embedding generation service (Plan #146)
-
-**File:** `src/world/genesis/embedder.py` (`GenesisEmbedder` class)
-
-| Method | Cost (scrip) | Description |
-|--------|--------------|-------------|
-| `embed(text)` | 1 | Generate embedding for text (768-dim vector) |
-| `embed_batch(texts_list)` | N | Generate embeddings for multiple texts (1 scrip per text) |
-| `get_config()` | 0 | Get embedder configuration (model, dimensions) |
-
-**Design:**
-- Makes embeddings scarce: costs scrip per embedding
-- Creates strategic choice: what to remember?
-- Uses configured embedding model (default: `text-embedding-004`)
-
-**Status:** Partially implemented (Plan #146 in progress)
-
----
-
-### genesis_memory
-
-**Purpose:** Semantic memory operations on memory artifacts (Plan #146)
-
-**File:** `src/world/genesis/memory.py` (`GenesisMemory` class)
-
-| Method | Cost (scrip) | Description |
-|--------|--------------|-------------|
-| `add(artifact_id, text, metadata?)` | 1 | Add entry to memory artifact (generates embedding) |
-| `search(artifact_id, query)` | 0 | Semantic search within memory artifact |
-| `delete(artifact_id, entry_id)` | 0 | Remove entry from memory artifact |
-| `create(metadata?)` | 5 | Create new memory artifact |
-
-**Design:**
-- Memory artifacts store entries as JSON with embeddings
-- Enables tradeable memories: artifacts can be sold via escrow
-- Cosine similarity for search (implemented in-place)
-
-**Entry structure:**
-```json
-{
-  "id": "entry_uuid",
-  "text": "The original text",
-  "embedding": [0.1, 0.2, ...],
-  "metadata": {"key": "value"},
-  "created_at": "2024-01-21T00:00:00Z"
-}
-```
-
-**Status:** Partially implemented (Plan #146 in progress)
-
----
-
-### genesis_loop_detector
-
-**Purpose:** Detect repeated action patterns for automatic loop breaking (Plan #226)
-
-**File:** `src/world/genesis/decision_artifacts.py` (`GenesisLoopDetector` class)
-
-| Method | Cost (compute) | Description |
-|--------|----------------|-------------|
-| `check_loop(action_history, threshold?)` | 0 | Check if recent actions show a loop pattern |
-
-**Parameters:**
-- `action_history`: String of recent actions (newline-separated)
-- `threshold`: Number of consecutive same actions to trigger loop detection (default: 5)
-
-**Returns:**
-```json
-{
-  "in_loop": true,
-  "repeated_action": "noop",
-  "count": 5,
-  "threshold": 5
-}
-```
-
-**Design:**
-- Parses action history lines to extract action types
-- Counts consecutive occurrences of the most common recent action
-- Returns `in_loop: true` when count >= threshold
-- Used by workflow transition steps to auto-pivot when stuck
-
-**Usage in workflows:**
-```yaml
-- name: loop_check
-  type: transition
-  transition_source:
-    invoke: "genesis_loop_detector"
-    method: "check_loop"
-    args: ["{action_history}", 5]
-  transition_map:
-    true: "strategic"   # Loop detected -> rethink
-    false: "continue"   # No loop -> proceed
-```
-
----
-
-## MCP Server Artifacts (Plan #28)
-
-Genesis artifacts that wrap MCP (Model Context Protocol) servers, providing external capabilities to agents.
+MCP (Model Context Protocol) server wrappers providing external capabilities.
 
 **File:** `src/world/mcp_bridge.py`
 
-### genesis_fetch
+| Artifact | Purpose | Methods |
+|----------|---------|---------|
+| `mcp_fetch` | HTTP fetch capability | `fetch(url, method?, headers?)` |
+| `mcp_filesystem` | Sandboxed file I/O | `read_file(path)`, `write_file(path, content)`, `list_directory(path)` |
+| `mcp_web_search` | Internet search | `search(query, limit?)` |
 
-**Purpose:** HTTP fetch capability
+**Architecture:**
+```
+Agent
+  └── invoke_artifact("mcp_fetch", "fetch", [...])
+        └── McpFetch (McpBridge subclass)
+              └── JSON-RPC over stdio
+                    └── MCP Server subprocess (npx @anthropic/mcp-server-*)
+```
 
-| Method | Cost (compute) | Description |
-|--------|----------------|-------------|
+**Design decisions:**
+- All MCP methods cost 0 (rate-limited by RateTracker, not scrip)
+- Servers start lazily on first invocation
+- Servers stop on artifact cleanup
+- JSON-RPC 2.0 protocol over stdin/stdout
+
+**Config:** `config/config.yaml` under `genesis.mcp`
+
+---
+
+### mcp_fetch
+
+HTTP fetch capability via MCP server.
+
+| Method | Cost | Description |
+|--------|------|-------------|
 | `fetch(url, method?, headers?)` | 0 | Fetch URL and return content |
 
 **MCP Server:** `@anthropic/mcp-server-fetch`
 
 ---
 
-### genesis_filesystem
+### mcp_filesystem
 
-**Purpose:** Sandboxed file I/O
+Sandboxed file I/O via MCP server.
 
-| Method | Cost (compute) | Description |
-|--------|----------------|-------------|
+| Method | Cost | Description |
+|--------|------|-------------|
 | `read_file(path)` | 0 | Read file contents from sandbox |
 | `write_file(path, content)` | 0 | Write content to file in sandbox |
 | `list_directory(path)` | 0 | List directory contents in sandbox |
 
 **MCP Server:** `@anthropic/mcp-server-filesystem`
 
-**Security:** All paths are validated to be within the configured sandbox directory.
+**Security:** All paths validated to be within configured sandbox directory.
 
 ---
 
-### genesis_web_search
+### mcp_web_search
 
-**Purpose:** Internet search via Brave Search
+Internet search via Brave Search.
 
-| Method | Cost (compute) | Description |
-|--------|----------------|-------------|
+| Method | Cost | Description |
+|--------|------|-------------|
 | `search(query, limit?)` | 0 | Search the web |
 
 **MCP Server:** `@anthropic/mcp-server-brave-search`
@@ -397,117 +96,119 @@ Genesis artifacts that wrap MCP (Model Context Protocol) servers, providing exte
 
 ---
 
-### MCP Architecture
-
-```
-Agent
-  └── invoke_artifact("genesis_fetch", "fetch", [...])
-        └── GenesisFetch (GenesisMcpBridge subclass)
-              └── JSON-RPC over stdio
-                    └── MCP Server subprocess (npx @anthropic/mcp-server-*)
-```
-
-**Design decisions:**
-- All MCP methods cost 0 (rate-limited by compute, not scrip)
-- Servers start lazily on first invocation
-- Servers are stopped on artifact cleanup
-- JSON-RPC 2.0 protocol over stdin/stdout
-
-**Config:** `config/config.yaml` under `genesis.mcp`
-
----
-
 ### Handbook Artifacts
 
-**Purpose:** Seeded documentation for agents
+Seeded documentation for agents.
 
-**File:** `src/world/world.py` (`World._seed_handbook()`, seeded during init)
+**File:** `src/world/world.py` (`World._seed_handbook()`)
 
-**Note:** These are regular data artifacts (not genesis artifacts), but documented here as they are system-provided.
+**Note:** These are regular data artifacts (not invokable), created during init.
 
-**Artifacts created:**
-- `handbook_actions` - Action format examples and permissions
-- `handbook_genesis` - Genesis artifact method reference
-- `handbook_resources` - Resource system documentation
-- `handbook_trading` - Escrow trading guide
-- `handbook_mint` - Mint bidding guide
-- `handbook_coordination` - Multi-agent coordination patterns
+| Artifact | Content |
+|----------|---------|
+| `handbook_actions` | Action format examples and permissions |
+| `handbook_genesis` | *(Deprecated name - now describes kernel actions)* |
+| `handbook_resources` | Resource system documentation |
+| `handbook_trading` | Escrow trading guide |
+| `handbook_mint` | Mint bidding guide |
+| `handbook_coordination` | Multi-agent coordination patterns |
 
 **Source:** `src/agents/_handbook/*.md` files
 
-Agents can `read_artifact("handbook_genesis")` to learn the genesis methods, or other handbooks for specific topics.
+Agents can `read_artifact("handbook_actions")` to learn available actions.
+
+---
+
+## Kernel Primitives (Not Pre-Seeded Artifacts)
+
+The following capabilities are now kernel primitives, not invokable artifacts:
+
+### transfer (Kernel Action)
+
+Scrip transfers are now a kernel action:
+
+```json
+{"action_type": "transfer", "to": "bob", "amount": 10}
+```
+
+See `docs/architecture/current/resources.md` for details.
+
+### mint (Kernel Action)
+
+Artifact scoring and scrip minting via `MintAuction`:
+
+```json
+{"action_type": "mint", "artifact_id": "my_tool", "bid": 5}
+```
+
+**File:** `src/world/mint_auction.py`
+
+See `docs/architecture/current/mint.md` for details.
+
+### query_kernel (Kernel Action)
+
+Direct kernel state queries (balances, artifacts, principals):
+
+```json
+{"action_type": "query_kernel", "query_type": "balance", "params": {}}
+```
+
+See Plan #184 for full query_kernel documentation.
+
+---
+
+## Removed Genesis Artifacts (Plan #254)
+
+The following have been removed:
+
+| Was | Replaced By |
+|-----|-------------|
+| `genesis_ledger` | `transfer` kernel action + `query_kernel` |
+| `genesis_mint` | `mint` kernel action + `MintAuction` kernel class |
+| `genesis_rights_registry` | `query_kernel` with `quotas` query type |
+| `genesis_escrow` | *(Not yet replaced - future plan)* |
+| `genesis_event_log` | `query_kernel` with `events` query type |
+| `genesis_debt_contract` | *(Not yet replaced - future plan)* |
+| `genesis_model_registry` | `query_kernel` with `model_quotas` query type |
+| `genesis_embedder` | *(Not yet replaced - future plan)* |
+| `genesis_memory` | *(Not yet replaced - future plan)* |
+| `genesis_loop_detector` | *(Not yet replaced - future plan)* |
+| `genesis_store` | `query_kernel` with `artifacts` query type (Plan #190) |
+
+**Migration pattern:** Functions that were privileged genesis operations are now:
+1. Kernel actions (transfer, mint) - for state-changing operations
+2. query_kernel queries - for read-only state access
 
 ---
 
 ## Configuration
 
-All genesis artifacts are configured in `config/config.yaml`:
+MCP artifacts configured in `config/config.yaml`:
 
 ```yaml
 genesis:
-  artifacts:
-    ledger:
+  mcp:
+    fetch:
       enabled: true
-    mint:
+      command: "npx"
+      args: ["@anthropic/mcp-server-fetch"]
+    filesystem:
       enabled: true
-    rights_registry:
+      command: "npx"
+      args: ["@anthropic/mcp-server-filesystem", "/tmp/agent_sandbox"]
+    web_search:
       enabled: true
-    event_log:
-      enabled: true
-    escrow:
-      enabled: true
-    store:
-      enabled: true
-    debt_contract:
-      enabled: true
-  # Note: handbook_* artifacts are seeded separately from _handbook/*.md files
-
-  ledger:
-    methods:
-      balance: { cost: 0, description: "Get balance" }
-      transfer: { cost: 1, description: "Transfer scrip" }
-      # ...
-
-  mint:
-    methods:
-      status: { cost: 0, description: "Get auction status" }
-      # ...
-    auction:
-      period: 10       # Ticks between auction resolutions
-      minimum_bid: 1   # Lowest accepted bid
-      # ...
+      command: "npx"
+      args: ["@anthropic/mcp-server-brave-search"]
 ```
-
----
-
-## Known Limitations
-
-### In-Memory Storage
-
-Some genesis artifacts store state in-memory only (lost on restart):
-
-| Artifact | State Lost |
-|----------|------------|
-| genesis_escrow | Active listings |
-| genesis_debt_contract | Debt records |
-| genesis_model_registry | Quotas, usage tracking |
-
-**Impact:** Long-running simulations should checkpoint before shutdown. Resume may not restore all state.
-
-### Atomic Transactions
-
-Multi-step operations (e.g., escrow purchase) could fail mid-way. No rollback mechanism exists for partial failures.
 
 ---
 
 ## Key Files
 
-| File | Key Functions | Description |
-|------|---------------|-------------|
-| `src/world/genesis/` | `Genesis*` classes | Genesis artifact implementations (split by artifact) |
-| `src/world/genesis/factory.py` | `create_genesis_artifacts()` | Factory function for all genesis artifacts |
-| `src/world/genesis/base.py` | `GenesisArtifact` | Base class, SYSTEM_OWNER constant |
-| `src/world/genesis/types.py` | TypedDict definitions | Result types for all genesis methods |
-| `src/world/world.py` | `World._create_genesis_artifacts()` | Genesis artifact initialization |
-| `src/world/mcp_bridge.py` | `create_mcp_artifacts()` | MCP-bridged artifact creation |
-| `config/config.yaml` | `genesis:` section | Configuration |
+| File | Description |
+|------|-------------|
+| `src/world/mcp_bridge.py` | MCP server wrapper artifacts |
+| `src/world/mint_auction.py` | Mint auction logic (kernel primitive) |
+| `src/world/world.py` | `_create_preseeded_artifacts()`, `_seed_handbook()` |
+| `config/config.yaml` | `genesis.mcp` section |

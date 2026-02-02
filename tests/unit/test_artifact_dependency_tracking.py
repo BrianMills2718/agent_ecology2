@@ -9,7 +9,7 @@ import tempfile
 
 from src.world.artifacts import ArtifactStore, extract_invoke_targets
 from src.world.logger import EventLogger
-from src.world.genesis.event_log import GenesisEventLog
+# Plan #254: GenesisEventLog removed
 
 
 class TestExtractInvokeTargets:
@@ -249,111 +249,4 @@ def run(ctx):
         assert artifact.metadata.get("invokes") == ["genesis_mint"]
 
 
-class TestGetInvokers:
-    """Test the get_invokers() method on genesis_event_log."""
-
-    @pytest.fixture
-    def logger(self) -> EventLogger:
-        """Create a temporary event logger."""
-        with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
-            return EventLogger(str(f.name))
-
-    @pytest.fixture
-    def event_log(self, logger: EventLogger) -> GenesisEventLog:
-        """Create a genesis event log instance."""
-        return GenesisEventLog(logger=logger)
-
-    def test_get_invokers_empty(self, event_log: GenesisEventLog, logger: EventLogger) -> None:
-        """No invokers when artifact hasn't been invoked."""
-        result = event_log._get_invokers(args=["some_artifact"], invoker_id="anyone")
-        assert result["success"] is True
-        assert result["invokers"] == []
-        assert result["count"] == 0
-
-    def test_get_invokers_single(self, event_log: GenesisEventLog, logger: EventLogger) -> None:
-        """Find single invoker from event log."""
-        # Log an invocation event
-        logger.log("invoke", {
-            "invoker": "alice",
-            "artifact_id": "my_bot",
-            "method": "run",
-        })
-
-        result = event_log._get_invokers(args=["my_bot"], invoker_id="anyone")
-        assert result["success"] is True
-        assert "alice" in result["invokers"]
-
-    def test_get_invokers_multiple(self, event_log: GenesisEventLog, logger: EventLogger) -> None:
-        """Find multiple invokers from event log."""
-        # Multiple agents invoke same artifact
-        logger.log("invoke", {
-            "invoker": "alice",
-            "artifact_id": "price_oracle",
-            "method": "get_price",
-        })
-        logger.log("invoke", {
-            "invoker": "bob",
-            "artifact_id": "price_oracle",
-            "method": "get_price",
-        })
-        logger.log("invoke", {
-            "invoker": "charlie",
-            "artifact_id": "price_oracle",
-            "method": "subscribe",
-        })
-
-        result = event_log._get_invokers(args=["price_oracle"], invoker_id="anyone")
-        assert result["success"] is True
-        assert set(result["invokers"]) == {"alice", "bob", "charlie"}
-        assert result["count"] == 3
-
-    def test_get_invokers_deduplicates(self, event_log: GenesisEventLog, logger: EventLogger) -> None:
-        """Same invoker multiple times is only listed once."""
-        # Alice invokes multiple times
-        logger.log("invoke", {
-            "invoker": "alice",
-            "artifact_id": "my_bot",
-            "method": "run",
-        })
-        logger.log("invoke", {
-            "invoker": "alice",
-            "artifact_id": "my_bot",
-            "method": "run",
-        })
-        logger.log("invoke", {
-            "invoker": "alice",
-            "artifact_id": "my_bot",
-            "method": "check",
-        })
-
-        result = event_log._get_invokers(args=["my_bot"], invoker_id="anyone")
-        assert result["success"] is True
-        assert result["invokers"] == ["alice"]
-        assert result["count"] == 1
-
-    def test_get_invokers_filters_by_artifact(
-        self, event_log: GenesisEventLog, logger: EventLogger
-    ) -> None:
-        """Only returns invokers of the specified artifact."""
-        logger.log("invoke", {
-            "invoker": "alice",
-            "artifact_id": "artifact_a",
-            "method": "run",
-        })
-        logger.log("invoke", {
-            "invoker": "bob",
-            "artifact_id": "artifact_b",
-            "method": "run",
-        })
-
-        result = event_log._get_invokers(args=["artifact_a"], invoker_id="anyone")
-        assert result["invokers"] == ["alice"]
-
-        result = event_log._get_invokers(args=["artifact_b"], invoker_id="anyone")
-        assert result["invokers"] == ["bob"]
-
-    def test_get_invokers_requires_artifact_id(self, event_log: GenesisEventLog) -> None:
-        """Error when artifact_id not provided."""
-        result = event_log._get_invokers(args=[], invoker_id="anyone")
-        assert result["success"] is False
-        assert "artifact_id" in result["error"].lower()
+# Plan #254: TestGetInvokers class removed - GenesisEventLog deleted

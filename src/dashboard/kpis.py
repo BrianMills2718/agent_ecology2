@@ -453,50 +453,31 @@ def calculate_reuse_ratio(state: SimulationState) -> float:
 
     artifacts_used_by_others = len(invoked_by_others)
 
-    # Count non-genesis artifacts
-    non_genesis_artifacts = sum(
-        1 for art in state.artifacts.values()
-        if not art.artifact_id.startswith("genesis_")
-    )
+    # Plan #254: Genesis artifacts removed - count all artifacts
+    total_artifacts = len(state.artifacts)
 
-    if non_genesis_artifacts == 0:
+    if total_artifacts == 0:
         return 0.0
 
-    return artifacts_used_by_others / non_genesis_artifacts
+    return artifacts_used_by_others / total_artifacts
 
 
 def calculate_genesis_independence(state: SimulationState) -> float:
     """Calculate genesis independence ratio.
 
-    genesis_independence = non_genesis_ops / total_ops
+    Plan #254: Genesis artifacts removed. This metric now returns 1.0
+    since all operations are non-genesis by definition.
 
-    Measures ecosystem maturity - higher values indicate agents are
-    using each other's artifacts rather than just genesis services.
+    Kept for backwards compatibility with existing dashboards.
 
     Args:
         state: The simulation state
 
     Returns:
-        Genesis independence ratio between 0.0 and 1.0
+        Always returns 1.0 (no genesis artifacts to depend on)
     """
-    genesis_invocations = 0
-    non_genesis_invocations = 0
-
-    for interaction in state.interactions:
-        if interaction.interaction_type == "genesis_invoke":
-            genesis_invocations += 1
-        elif interaction.interaction_type == "artifact_invoke":
-            artifact_id = interaction.artifact_id
-            if artifact_id and artifact_id.startswith("genesis_"):
-                genesis_invocations += 1
-            else:
-                non_genesis_invocations += 1
-
-    total = genesis_invocations + non_genesis_invocations
-    if total == 0:
-        return 0.0
-
-    return non_genesis_invocations / total
+    # Plan #254: Genesis artifacts removed - always independent
+    return 1.0
 
 
 def calculate_capital_depth(state: SimulationState) -> int:
