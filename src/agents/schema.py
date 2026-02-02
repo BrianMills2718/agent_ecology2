@@ -40,6 +40,8 @@ You must respond with a single JSON object representing your action.
    For executable: add "executable": true, "price": <scrip>, "code": "<python with run(*args)>",
    "interface": {"description": "<what it does>", "tools": [{"name": "run", "description": "<method desc>", "inputSchema": {...}}]}
    REQUIRED: Executables MUST have interface with description and tools array - see handbook_actions for full example
+   To create a principal (can hold scrip/resources): add "has_standing": true
+   To create an agent (autonomous): add "has_standing": true, "has_loop": true
 
 3. edit_artifact - Edit artifact using string replacement (Plan #131)
    {"action_type": "edit_artifact", "artifact_id": "<id>", "old_string": "<text to find>", "new_string": "<replacement>"}

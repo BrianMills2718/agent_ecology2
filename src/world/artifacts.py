@@ -745,6 +745,8 @@ class ArtifactStore:
         require_interface: bool = False,
         access_contract_id: str | None = None,
         metadata: dict[str, Any] | None = None,
+        has_standing: bool = False,
+        has_loop: bool = False,
     ) -> Artifact:
         """Create or update an artifact. Returns the artifact.
 
@@ -771,6 +773,10 @@ class ArtifactStore:
 
         Metadata (Plan #168):
         - metadata: User-defined key-value pairs for addressing/categorization
+
+        Principal creation (Plan #254):
+        - has_standing: If True, artifact is a principal (can hold scrip/resources)
+        - has_loop: If True, artifact can execute autonomously (agent)
         """
         now = datetime.now(timezone.utc).isoformat()
         depends_on = depends_on or []
@@ -902,6 +908,8 @@ class ArtifactStore:
                 interface=interface,
                 access_contract_id=contract_id,
                 metadata=metadata,
+                has_standing=has_standing,
+                has_loop=has_loop,
             )
             self.artifacts[artifact_id] = artifact
             # Plan #182: Add new artifact to indexes

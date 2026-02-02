@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-252-tick-cleanup
-task: Remove tick terminology and dead use_autonomous_loops config
-claimed_at: '2026-02-02T02:01:48Z'
-session_id: 02dea0b9-ba26-4408-8c27-d657438174c3
-plan: 252
+cc_id: plan-254-remove-genesis
+task: Remove genesis artifacts, implement 11-action kernel
+claimed_at: '2026-02-02T02:05:31Z'
+session_id: cd04357d-edc8-409b-aa96-f580d6f82537
+plan: 254

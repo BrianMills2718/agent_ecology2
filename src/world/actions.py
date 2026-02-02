@@ -89,7 +89,11 @@ class ReadArtifactIntent(ActionIntent):
 
 @dataclass
 class WriteArtifactIntent(ActionIntent):
-    """Write/create an artifact (optionally executable)"""
+    """Write/create an artifact (optionally executable)
+
+    Plan #254: When has_standing=True, the kernel auto-creates a principal
+    in the ledger for the new artifact (enabling it to hold scrip/resources).
+    """
 
     artifact_id: str
     artifact_type: str
@@ -106,6 +110,9 @@ class WriteArtifactIntent(ActionIntent):
     access_contract_id: str | None = None
     # User-defined metadata (Plan #168)
     metadata: dict[str, Any] | None = None
+    # Principal creation fields (Plan #254)
+    has_standing: bool = False  # Can own things, hold scrip
+    has_loop: bool = False  # Can execute autonomously (agent)
 
     def __init__(
         self,
@@ -120,6 +127,8 @@ class WriteArtifactIntent(ActionIntent):
         interface: dict[str, Any] | None = None,
         access_contract_id: str | None = None,
         metadata: dict[str, Any] | None = None,
+        has_standing: bool = False,
+        has_loop: bool = False,
         reasoning: str = "",
     ) -> None:
         super().__init__(ActionType.WRITE_ARTIFACT, principal_id, reasoning=reasoning)
@@ -133,6 +142,8 @@ class WriteArtifactIntent(ActionIntent):
         self.interface = interface
         self.access_contract_id = access_contract_id
         self.metadata = metadata
+        self.has_standing = has_standing
+        self.has_loop = has_loop
 
     def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
@@ -151,6 +162,11 @@ class WriteArtifactIntent(ActionIntent):
             d["access_contract_id"] = self.access_contract_id
         if self.metadata is not None:
             d["metadata"] = self.metadata
+        # Plan #254: Include principal creation fields when set
+        if self.has_standing:
+            d["has_standing"] = True
+        if self.has_loop:
+            d["has_loop"] = True
         return d
 
 
@@ -549,6 +565,9 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
         policy: dict[str, Any] | None = data.get("policy")  # Can be None or a dict
         interface: dict[str, Any] | None = data.get("interface")  # Plan #114: Interface schema
         metadata: dict[str, Any] | None = data.get("metadata")  # Plan #168: User metadata
+        # Plan #254: Principal creation fields
+        has_standing = data.get("has_standing", False)
+        has_loop = data.get("has_loop", False)
 
         if not artifact_id:
             return "write_artifact requires 'artifact_id'"
@@ -583,6 +602,15 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
         if not isinstance(price, int):
             price = 0
 
+        # Plan #254: Validate has_standing/has_loop
+        if not isinstance(has_standing, bool):
+            has_standing = bool(has_standing)
+        if not isinstance(has_loop, bool):
+            has_loop = bool(has_loop)
+        # has_loop implies has_standing (agents are principals)
+        if has_loop and not has_standing:
+            has_standing = True
+
         return WriteArtifactIntent(
             principal_id,
             artifact_id,
@@ -594,6 +622,8 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
             policy=policy,
             interface=interface,
             metadata=metadata,
+            has_standing=has_standing,
+            has_loop=has_loop,
             reasoning=reasoning,
         )
 

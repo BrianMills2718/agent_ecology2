@@ -360,7 +360,7 @@ class ActionExecutor:
                                 retriable=True,
                             )
 
-        # Write the artifact
+        # Write the artifact (Plan #254: include principal creation fields)
         artifact: Artifact = w.artifacts.write(
             artifact_id=intent.artifact_id,
             type=intent.artifact_type,
@@ -373,7 +373,28 @@ class ActionExecutor:
             interface=interface,
             access_contract_id=intent.access_contract_id,
             metadata=intent.metadata,
+            has_standing=getattr(intent, 'has_standing', False),
+            has_loop=getattr(intent, 'has_loop', False),
         )
+
+        # Plan #254: Auto-create principal if has_standing=True on NEW artifacts
+        # This enables write_artifact to spawn principals (replacing genesis_ledger.spawn_principal)
+        is_new_artifact = existing is None
+        has_standing = getattr(intent, 'has_standing', False)
+        if is_new_artifact and has_standing:
+            # Create principal in ledger (holds scrip and resources)
+            if not w.ledger.principal_exists(intent.artifact_id):
+                # Get starting resources from config if available
+                from ..config import get
+                starting_scrip = get("agents.starting_scrip") or 0
+                w.ledger.create_principal(intent.artifact_id, starting_scrip)
+                w.logger.log("principal_created", {
+                    "principal_id": intent.artifact_id,
+                    "created_by": intent.principal_id,
+                    "has_standing": True,
+                    "has_loop": getattr(intent, 'has_loop', False),
+                    "starting_scrip": starting_scrip,
+                })
 
         # Consume disk quota for the size delta
         if size_delta > 0:
@@ -392,16 +413,22 @@ class ActionExecutor:
             "executable": intent.executable,
             "size_bytes": total_size,
             "was_update": existing is not None,
+            "has_standing": has_standing,
+            "has_loop": getattr(intent, 'has_loop', False),
         })
 
         action = "Updated" if existing else "Created"
+        principal_note = " (principal created)" if is_new_artifact and has_standing else ""
         return ActionResult(
             success=True,
-            message=f"{action} artifact {intent.artifact_id} ({total_size} bytes)",
+            message=f"{action} artifact {intent.artifact_id} ({total_size} bytes){principal_note}",
             data={
                 "artifact_id": intent.artifact_id,
                 "size_bytes": total_size,
                 "was_update": existing is not None,
+                "has_standing": has_standing,
+                "has_loop": getattr(intent, 'has_loop', False),
+                "principal_created": is_new_artifact and has_standing,
             },
         )
 

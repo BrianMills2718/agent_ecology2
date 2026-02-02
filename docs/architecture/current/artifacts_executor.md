@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-02-01 (Plan #254: transfer/mint actions)
+**Last verified:** 2026-02-01 (Plan #254: transfer/mint + has_standing auto-principal)
 
 ---
 
@@ -718,6 +718,29 @@ class Artifact:
 
 - `create_agent_artifact(agent_id, owner_id, config)` - Create agent artifact
 - `create_memory_artifact(memory_id, owner_id)` - Create memory artifact
+
+### Auto-Principal Creation (Plan #254)
+
+When `write_artifact` creates a NEW artifact with `has_standing=True`, the kernel automatically:
+
+1. Creates the artifact with `has_standing=True` (and `has_loop` if specified)
+2. Registers the artifact as a principal in the ledger
+3. Grants starting scrip (from config `agents.starting_scrip`)
+4. Logs a `principal_created` event
+
+**Example:**
+```python
+# Agent creates a new DAO artifact that can hold scrip
+write_artifact(
+    artifact_id="my_dao",
+    artifact_type="dao",
+    content={"rules": "..."},
+    has_standing=True,  # ← triggers auto-principal creation
+)
+# Result: my_dao can now hold scrip, be party to contracts
+```
+
+This replaces the old `genesis_ledger.spawn_principal()` pattern. The artifact IS the principal.
 
 ---
 
