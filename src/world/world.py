@@ -561,13 +561,13 @@ Query available tasks:
 Then complete them in TWO TURNS:
 
 **Turn 1 - Create artifact with run() function:**
-{{"action_type": "write_artifact", "artifact_id": "my_adder", "artifact_type": "executable", "executable": true, "code": "def run(a, b):\\n    return a + b"}}
+{{"action_type": "write_artifact", "artifact_id": "alpha_prime_adder", "artifact_type": "executable", "executable": true, "code": "def run(a, b):\\n    return a + b"}}
 
 **Turn 2 - Submit to task (SEPARATE ACTION):**
-{{"action_type": "submit_to_task", "artifact_id": "my_adder", "task_id": "add_numbers"}}
+{{"action_type": "submit_to_task", "artifact_id": "alpha_prime_adder", "task_id": "add_numbers"}}
 
 CRITICAL: submit_to_task is an ACTION TYPE. Never use invoke_artifact for it.
-CORRECT: {{"action_type": "submit_to_task", "artifact_id": "my_adder", "task_id": "add_numbers"}}
+CORRECT: {{"action_type": "submit_to_task", "artifact_id": "alpha_prime_adder", "task_id": "add_numbers"}}
 WRONG:   {{"action_type": "invoke_artifact", "method": "submit_to_task", ...}}
 
 ## Decision Framework
