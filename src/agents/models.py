@@ -192,6 +192,8 @@ class FlatAction(BaseModel):
     reason: str = ""  # For mint
     # For submit_to_mint
     bid: int = 0
+    # For submit_to_task (Plan #269)
+    task_id: str = ""
     # For query_kernel
     query_type: str = ""
     params: dict[str, ArgValue] = Field(default_factory=dict)
@@ -274,6 +276,12 @@ class FlatAction(BaseModel):
                 raise ValueError("artifact_id is required for submit_to_mint")
             if self.bid <= 0:
                 raise ValueError("bid must be positive for submit_to_mint")
+        elif self.action_type == "submit_to_task":
+            # Plan #269: Submit artifact as task solution
+            if not self.artifact_id:
+                raise ValueError("artifact_id is required for submit_to_task")
+            if not self.task_id:
+                raise ValueError("task_id is required for submit_to_task")
         elif self.action_type == "transfer":
             if not self.recipient_id:
                 raise ValueError("recipient_id is required for transfer")
