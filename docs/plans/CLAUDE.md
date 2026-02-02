@@ -67,6 +67,7 @@ Master index of all gaps and their implementation plans.
 | 257 | [Plan 257: Remove Genesis Artifact References from _3 Agents](257_remove_genesis_agent_refs.md) | Medium | ❓ | - |
 | 258 | [Plan 258: Improve Mint Prompting](258_mint_prompting.md) | Medium | ❓ | - |
 | 259 | [Plan 259: Add submit_to_mint Action Type](259_submit_to_mint_action.md) | Medium | ❓ | - |
+| 260 | [Improve Mint Prompts](260_improve_mint_prompts.md) | Medium | ❓ | - |
 ---
 
 ## TDD Workflow
