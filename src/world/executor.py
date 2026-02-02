@@ -76,6 +76,123 @@ class InvokeResult(TypedDict):
     price_paid: int
 
 
+class LLMSyscallResult(TypedDict):
+    """Result from _syscall_llm kernel primitive (Plan #255)."""
+    success: bool
+    content: str
+    usage: dict[str, Any]
+    cost: float
+    error: str
+
+
+class BudgetExhaustedError(Exception):
+    """Raised when caller cannot afford an LLM call (Plan #255)."""
+    pass
+
+
+def create_syscall_llm(
+    world: "World",
+    caller_id: str,
+) -> Callable[[str, list[dict[str, Any]]], LLMSyscallResult]:
+    """Create _syscall_llm function for artifact sandbox (Plan #255).
+
+    This is the kernel primitive for LLM access. It:
+    1. Checks caller's llm_budget
+    2. Calls LLM via LLMProvider
+    3. Deducts actual cost from caller's budget
+    4. Returns response
+
+    The Universal Bridge Pattern: This is the template for all external
+    API access (search, GitHub, etc.). The kernel provides the syscall,
+    a gateway artifact wraps it.
+
+    Args:
+        world: World instance for ledger access
+        caller_id: Principal ID who pays for the call
+
+    Returns:
+        _syscall_llm function that can be injected into artifact sandbox
+    """
+    import sys
+    from pathlib import Path
+
+    # Add llm_provider_standalone to path if not already
+    project_root = Path(__file__).parent.parent.parent
+    llm_provider_path = str(project_root / 'llm_provider_standalone')
+    if llm_provider_path not in sys.path:
+        sys.path.insert(0, llm_provider_path)
+
+    from llm_provider import LLMProvider
+
+    def _syscall_llm(
+        model: str,
+        messages: list[dict[str, Any]],
+    ) -> LLMSyscallResult:
+        """Kernel syscall for LLM access (Plan #255).
+
+        Deducts llm_budget from caller automatically. Only available to
+        artifacts with can_call_llm capability.
+
+        Args:
+            model: LLM model name (e.g., "gpt-4", "gemini/gemini-2.0-flash")
+            messages: Chat messages in OpenAI format
+
+        Returns:
+            LLMSyscallResult with content, usage, and cost
+
+        Raises:
+            BudgetExhaustedError: If caller cannot afford the call
+        """
+        # Estimate cost (rough: $0.001 per message as minimum)
+        # Real cost will be calculated after the call
+        estimated_cost = max(0.001, len(messages) * 0.0005)
+
+        # Check budget
+        if not world.ledger.can_afford_llm_call(caller_id, estimated_cost):
+            current_budget = world.ledger.get_llm_budget(caller_id)
+            return LLMSyscallResult(
+                success=False,
+                content="",
+                usage={},
+                cost=0.0,
+                error=f"Budget exhausted: {caller_id} has ${current_budget:.4f}, need ~${estimated_cost:.4f}",
+            )
+
+        try:
+            # Create provider for this call
+            log_dir = get("logging.log_dir", "llm_logs")
+            provider = LLMProvider(model=model, log_dir=log_dir)
+
+            # Make the call
+            response = provider.generate(messages)
+
+            # Get actual cost from usage
+            usage = provider.last_usage
+            actual_cost = usage.get("cost", estimated_cost)
+
+            # Deduct from caller's budget
+            world.ledger.deduct_llm_cost(caller_id, actual_cost)
+
+            return LLMSyscallResult(
+                success=True,
+                content=response if isinstance(response, str) else str(response),
+                usage=usage,
+                cost=actual_cost,
+                error="",
+            )
+
+        except Exception as e:
+            return LLMSyscallResult(
+                success=False,
+                content="",
+                usage={},
+                cost=0.0,
+                error=f"LLM call failed: {e}",
+            )
+
+    return _syscall_llm
+
+
 def get_max_invoke_depth() -> int:
     """Get max recursion depth for nested invoke() calls from config."""
     return get_validated_config().executor.max_invoke_depth
@@ -1060,6 +1177,15 @@ class SafeExecutor:
         # Inject caller_id so artifacts know who invoked them
         if caller_id is not None:
             controlled_globals["caller_id"] = caller_id
+
+        # Plan #255: Inject _syscall_llm for artifacts with can_call_llm capability
+        # This is the Universal Bridge Pattern - kernel provides syscall, artifact wraps it
+        if world is not None and artifact_id and artifact_store:
+            artifact = artifact_store.get(artifact_id)
+            if artifact and "can_call_llm" in getattr(artifact, 'capabilities', []):
+                # Caller pays - use caller_id (the one who invoked this artifact)
+                paying_principal = caller_id if caller_id else artifact_id
+                controlled_globals["_syscall_llm"] = create_syscall_llm(world, paying_principal)
 
         # Track payments made during execution
         payments_made: list[PaymentResult] = []
