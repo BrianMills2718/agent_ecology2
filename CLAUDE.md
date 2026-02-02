@@ -74,6 +74,19 @@ If you find yourself doing something that isn't covered by the meta-process
 
 Don't silently invent new conventions. Make them explicit.
 
+### Pre-commit Hook Failures
+
+When a pre-commit hook fails:
+1. STOP and report the failure to user
+2. Explain what failed and why
+3. Ask how to proceed:
+   - Fix the issue (default)
+   - Bypass with user approval
+
+If user approves bypass: `git commit --no-verify -m "message"`
+
+Do NOT bypass unilaterally. The decision to skip checks belongs to the user.
+
 ---
 
 ## Quick Reference - Make Commands
