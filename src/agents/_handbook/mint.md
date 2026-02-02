@@ -2,6 +2,19 @@
 
 The mint creates new scrip by scoring code artifacts based on their contribution to the ecosystem's long-term emergent capability.
 
+## CRITICAL: Two Separate Actions Required
+
+**Submitting to mint requires TWO SEPARATE ACTIONS on TWO SEPARATE TURNS:**
+
+1. **TURN 1**: Create the artifact with `write_artifact`
+2. **TURN 2**: Submit it with `submit_to_mint` (a SEPARATE action)
+
+You CANNOT combine these. Each turn produces ONE action. If you want to submit to mint, you MUST:
+1. First turn: write_artifact to create your tool
+2. Next turn: submit_to_mint to submit it for scoring
+
+**COMMON MISTAKE**: Thinking "create and submit" and only doing write_artifact. You must ALSO do submit_to_mint as a separate action on a subsequent turn!
+
 ## What the Mint Values
 
 **Emergent capability** = capital structure. Artifacts that compound over time, enabling increasingly sophisticated work. The mint rewards:
@@ -20,14 +33,9 @@ The mint does NOT reward trivial primitives that add nothing to collective capab
 4. **Scrip Minted** - Winner receives scrip based on score
 5. **UBI Distribution** - Winning bid is redistributed to all agents
 
-## Auction Cycle
+## Example Workflow (Two Turns)
 
-- **Period**: Configurable interval (runs periodically during simulation)
-- **Submission**: Agents submit artifacts for minting at any time
-
-## Using the Mint
-
-**Step 1**: Create an executable artifact
+**Turn 1 - Create artifact:**
 ```json
 {
   "action_type": "write_artifact",
@@ -36,20 +44,28 @@ The mint does NOT reward trivial primitives that add nothing to collective capab
   "content": "A useful utility that does X",
   "executable": true,
   "price": 5,
-  "code": "def run(*args):\n    # Your code here\n    return {'result': 'value'}"
+  "code": "def run(*args):\n    return {'result': 'value'}"
 }
 ```
 
-**Step 2**: Submit to mint auction (use action_type, NOT invoke_artifact)
+**Turn 2 - Submit to mint (SEPARATE ACTION):**
 ```json
 {"action_type": "submit_to_mint", "artifact_id": "my_tool", "bid": 5}
 ```
 
-IMPORTANT: `submit_to_mint` is an ACTION TYPE, not an artifact method.
-- CORRECT: `{"action_type": "submit_to_mint", ...}`
-- WRONG: `{"action_type": "invoke_artifact", "method": "submit_to_mint", ...}`
+## Submit to Mint Syntax
 
-Your bid is escrowed from your balance. If you win the auction, your artifact is scored by the mint and you receive scrip based on its quality. If you lose, your bid is returned.
+**CORRECT** (use action_type):
+```json
+{"action_type": "submit_to_mint", "artifact_id": "my_tool", "bid": 5}
+```
+
+**WRONG** (do NOT use invoke_artifact):
+```json
+{"action_type": "invoke_artifact", "method": "submit_to_mint", ...}
+```
+
+`submit_to_mint` is an ACTION TYPE, not an artifact method. Never invoke it.
 
 ## Scoring Criteria
 
@@ -64,6 +80,7 @@ Higher scores = more scrip minted. Trivial primitives (basic math, one-liners) s
 
 ## Tips
 
-- Build infrastructure that enables other agents to build more
+- **After creating any artifact, your NEXT action should be submit_to_mint**
+- Building alone earns ZERO scrip - you must submit to earn
 - Think about what the ecosystem needs, not just what's easy to build
 - Check what already exists before building duplicates
