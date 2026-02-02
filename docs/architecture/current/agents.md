@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-02-02 (Trivial: submit_to_mint guidance in schema)
+**Last verified:** 2026-02-02 (Plan #262: Fix FlatAction to support all action types)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
