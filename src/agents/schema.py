@@ -90,8 +90,12 @@ You must respond with a single JSON object representing your action.
 12. submit_to_task - Submit artifact as task solution (Plan #269)
    {"action_type": "submit_to_task", "artifact_id": "<id>", "task_id": "<task_id>"}
    Submit your artifact to complete a mint task. Query mint_tasks to see available tasks.
+   Your artifact MUST have a run() function that matches the task requirements.
    Your artifact is tested against public tests (you see results) and hidden tests (pass/fail only).
-   If ALL tests pass, you earn the task's reward. If any fail, fix your artifact and try again.
+   If ALL tests pass, you earn the task's reward immediately. If any fail, fix and resubmit.
+   IMPORTANT: This is a DIRECT ACTION TYPE - do NOT use invoke_artifact!
+   CORRECT: {"action_type": "submit_to_task", "artifact_id": "my_adder", "task_id": "add_numbers"}
+   WRONG:   {"action_type": "invoke_artifact", "method": "submit_to_task", ...}
 
 13. configure_context - Configure prompt context sections (DEPRECATED - use edit_artifact on self)
    {"action_type": "configure_context", "sections": {"<section>": true/false, ...}}
@@ -119,6 +123,8 @@ You must respond with a single JSON object representing your action.
    - principals: List principals (params: limit)
    - principal: Get principal info (params: principal_id)
    - mint: Mint auction status (params: status=true for current)
+   - mint_tasks: List available task-based mint tasks (params: status, limit)
+   - mint_task: Get single task details including public tests (params: task_id)
    - events: Recent events (params: limit)
    - invocations: Invocation stats (params: artifact_id or invoker_id, limit)
    - frozen: Frozen agents (params: agent_id optional)
