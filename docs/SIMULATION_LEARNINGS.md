@@ -164,6 +164,66 @@ The metacognitive approach is a step toward "conditions for emergence" but doesn
 
 ---
 
+## 2026-02-02: Alpha Prime V4 Agent First Run (Plan #256)
+
+### Experiment
+First test of Alpha Prime - a V4 artifact-based agent (3-artifact cluster: strategy, state, loop) running alongside traditional agents.
+
+### Initial Bug: Disk Quota Not Set
+The Alpha Prime bootstrap created the principal with scrip and LLM budget but **didn't allocate disk quota**. Every write attempt failed:
+```
+"Disk quota exceeded: need 232 bytes, have 0.0 available"
+```
+
+**Fix:** Added disk_quota allocation in `_bootstrap_alpha_prime()` via `resource_manager.set_quota()`. Default 10000 bytes. [PR #949]
+
+### Results (45 second simulation, post-fix)
+
+| Metric | Value |
+|--------|-------|
+| Alpha Prime iterations | 27 |
+| Working memory writes | 1 (successful) |
+| Total actions | ~350 |
+| Scrip balance | 100 (unchanged) |
+| LLM cost | ~$0.008 |
+
+### Key Observations
+
+1. **Intelligent Learning Behavior**: Alpha Prime reads handbooks, sets goals, shows metacognition ("I have been repeatedly reading the handbook_trading artifact without making any progress...")
+
+2. **Outdated Handbook References**: The agent tried to invoke `genesis_ledger` for scrip transfers - but this artifact was removed in Plan #254. The handbooks still reference it.
+   - **Failure pattern**: `invoke_artifact(genesis_ledger, transfer) → "Artifact not found"`
+   - **Root cause**: `handbook_trading.md` references genesis_ledger which no longer exists
+
+3. **Stuck in Learning Loop**: Without correct information about how transfers work (kernel action, not genesis artifact), Alpha Prime kept reading the same handbook repeatedly.
+
+4. **Successful Self-Storage**: Once disk quota was fixed, Alpha Prime successfully created `alpha_prime_loop_working_memory` to persist its goals.
+
+### Architecture Insights
+
+**Good:**
+- V4 artifact-based agent architecture works
+- Agent can read/write artifacts, invoke LLM, maintain state
+- Shows intelligent reasoning and self-reflection
+
+**Issues:**
+- Handbooks need updating for Plan #254 (genesis artifacts removed)
+- Alpha Prime's strategy prompt should mention `transfer_scrip` action type
+- The agent doesn't know that scrip transfers are kernel actions, not artifact invocations
+
+### Wrong Lesson (Avoided)
+"Add hard-coded help text when genesis_ledger is not found" - This is prescriptive. Better to fix the handbook documentation.
+
+### Right Lesson
+**Keep handbooks up-to-date when kernel primitives change.** Plan #254 removed genesis artifacts but didn't update all references. This created confusion for agents trying to learn from documentation.
+
+### Action Items
+- [ ] Update `handbook_trading.md` to remove genesis_ledger references
+- [ ] Document that scrip transfers use `transfer_scrip` action type
+- [ ] Consider adding "getting started" examples to Alpha Prime's strategy
+
+---
+
 ## Future Experiments
 
 - [x] ~~Evaluate metacognitive prompt strategies~~ (done: simplified prompt improves quality)
