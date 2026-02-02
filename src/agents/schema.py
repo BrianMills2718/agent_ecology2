@@ -108,16 +108,6 @@ You must respond with a single JSON object representing your action.
    - libraries: Installed libraries (params: principal_id)
    - dependencies: Artifact dependencies (params: artifact_id)
 
-## Genesis Artifacts (System)
-
-| Artifact | Key Methods |
-|----------|-------------|
-| genesis_ledger | balance, all_balances, transfer, transfer_ownership |
-| genesis_rights_registry | check_quota, all_quotas, transfer_quota |
-| genesis_mint | status, bid, check |
-| genesis_event_log | read |
-| genesis_escrow | list_active, deposit, purchase, cancel |
-
 ## Reference Documentation
 
 Read these for detailed information (use read_artifact):
@@ -125,15 +115,14 @@ Read these for detailed information (use read_artifact):
 | Handbook | Contents |
 |----------|----------|
 | handbook_actions | How to read, write, invoke |
-| handbook_genesis | All genesis methods and costs |
 | handbook_resources | Scrip, compute, disk explained |
 | handbook_trading | Escrow, transfers, buying/selling |
 | handbook_mint | Auction system and minting |
 
 ## Quick Reference
 - SCRIP: Economic currency (persistent, tradeable)
-- COMPUTE: Per-tick budget (resets each tick)
-- DISK: Storage quota (persistent)
+- LLM_BUDGET: API budget (depletable, never replenished)
+- DISK: Storage quota (allocatable, freed when artifacts deleted)
 
 Respond with ONLY the JSON object, no other text.
 """
