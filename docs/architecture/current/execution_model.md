@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-02 (Plan #256 - Alpha Prime bootstrap with disk quota fix)
+**Last verified:** 2026-02-02 (Plan #258 - Alpha Prime strategy prompt update)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

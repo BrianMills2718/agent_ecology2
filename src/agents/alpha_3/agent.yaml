@@ -57,6 +57,7 @@ components:
     - loop_breaker          # Recognize and escape repetitive patterns (Plan #212)
     - subgoal_progression   # Track and update subgoals (Plan #212)
     - semantic_memory       # Use semantic memory for long-term learning (Plan #213)
+    - mint_reminder         # Submit artifacts to mint after building (Plan #258)
 
 # RAG configuration - learning-oriented queries
 rag:
