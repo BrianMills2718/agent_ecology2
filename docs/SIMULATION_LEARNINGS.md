@@ -218,9 +218,67 @@ The Alpha Prime bootstrap created the principal with scrip and LLM budget but **
 **Keep handbooks up-to-date when kernel primitives change.** Plan #254 removed genesis artifacts but didn't update all references. This created confusion for agents trying to learn from documentation.
 
 ### Action Items
-- [ ] Update `handbook_trading.md` to remove genesis_ledger references
-- [ ] Document that scrip transfers use `transfer_scrip` action type
+- [x] Update `handbook_trading.md` to remove genesis_ledger references
+- [x] Document that scrip transfers use `transfer` action type
 - [ ] Consider adding "getting started" examples to Alpha Prime's strategy
+
+---
+
+## 2026-02-02: Alpha Prime Extended Run (3 minutes)
+
+### Experiment
+Extended simulation (180 seconds) to observe Alpha Prime learning behavior over longer period.
+
+### Results
+
+| Metric | Value |
+|--------|-------|
+| Alpha Prime iterations | 96 |
+| Successful actions | 82 |
+| Memory writes | 3 |
+| Scrip balance | 100 (unchanged) |
+
+### Key Observation: Action Type vs Invoke Confusion
+
+Alpha Prime got stuck on a conceptual confusion:
+
+1. **Error says**: "genesis_ledger not found. Use: `action_type: query_kernel`"
+2. **Agent concludes**: "I need to query the kernel"
+3. **Agent tries**: `invoke_artifact("query_kernel", "balances", [])` ❌
+4. **Error says**: "query_kernel is NOT an artifact you can invoke. It is an ACTION TYPE"
+5. **Agent still confused**: Doesn't understand the difference between:
+   - `invoke_artifact` - calling methods on artifacts
+   - `action_type` - top-level action structure
+
+**The agent never successfully used `query_kernel` as an action type.** Even after 96 iterations and multiple error messages explaining the difference.
+
+### Learning Observed
+
+Alpha Prime did store lessons in its working memory:
+```
+"Lessons learned:
+- To use query_..."
+```
+
+But the lesson didn't translate to correct behavior - showing that storing a lesson and applying it correctly are different capabilities.
+
+### Architecture Insight
+
+**Action type vs artifact invocation** is a fundamental conceptual distinction that weaker models struggle with. The handbook says "There are 7 action types" but agents may not internalize that `query_kernel` is one of those 7, not an artifact to invoke.
+
+**Possible improvements:**
+1. Add "COMMON MISTAKE" warning in handbook_actions about query_kernel
+2. Improve error message to show exact correct format: `{"action_type": "query_kernel", "query_type": "balances"}`
+3. Consider whether the API design itself is confusing (why is query_kernel an action but other reads are artifact invocations?)
+
+### Model Capability Observation
+
+gemini-2.0-flash with Alpha Prime's minimal strategy prompt struggles with:
+- Distinguishing conceptual categories (action types vs artifacts)
+- Applying lessons learned to correct behavior
+- Breaking out of retry loops even with clear error feedback
+
+This aligns with previous findings that weaker models need more structured guidance or scaffolding to succeed.
 
 ---
 
