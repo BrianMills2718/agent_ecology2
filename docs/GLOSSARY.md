@@ -2,7 +2,7 @@
 
 Canonical terminology for Agent Ecology.
 
-**Last updated:** 2026-02-01 (Plan #254: transfer/mint now kernel actions)
+**Last updated:** 2026-02-02 (Plan #256: Alpha Prime config - no new terms, uses existing artifact ontology)
 
 ---
 

@@ -11,6 +11,7 @@ Usage:
 
 from __future__ import annotations
 
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Literal
 
@@ -1839,6 +1840,39 @@ class PromptInjectionConfig(StrictModel):
 
 
 # =============================================================================
+# ALPHA PRIME CONFIG (Plan #256)
+# =============================================================================
+
+class AlphaPrimeConfig(StrictModel):
+    """Configuration for Alpha Prime - the first V4 artifact-based agent.
+
+    Alpha Prime is a 3-artifact cluster:
+    - alpha_prime_loop: The metabolism (executable, has_loop=True)
+    - alpha_prime_strategy: The constitution (text, system prompt)
+    - alpha_prime_state: The memory (JSON, persistent state)
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable Alpha Prime bootstrap on World init"
+    )
+    starting_scrip: int = Field(
+        default=100,
+        description="Initial scrip balance for alpha_prime_loop principal",
+        ge=0
+    )
+    starting_llm_budget: Decimal = Field(
+        default=Decimal("1.0"),
+        description="Initial LLM budget in dollars (e.g., 1.0 = $1 = ~10-20 iterations with gemini-flash)",
+        ge=Decimal("0")
+    )
+    model: str = Field(
+        default="gemini/gemini-2.0-flash",
+        description="LLM model for Alpha Prime to use via kernel_llm_gateway"
+    )
+
+
+# =============================================================================
 # ROOT CONFIG MODEL
 # =============================================================================
 
@@ -1873,6 +1907,7 @@ class AppConfig(StrictModel):
     id_generation: IdGenerationConfig = Field(default_factory=IdGenerationConfig)
     learning: LearningConfig = Field(default_factory=LearningConfig)  # Plan #186
     prompt_injection: PromptInjectionConfig = Field(default_factory=PromptInjectionConfig)  # Plan #197
+    alpha_prime: AlphaPrimeConfig = Field(default_factory=AlphaPrimeConfig)  # Plan #256
 
     # Dynamic fields set at runtime
     principals: list[dict[str, int | str]] = Field(

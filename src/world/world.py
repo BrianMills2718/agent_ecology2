@@ -253,6 +253,10 @@ class World:
         # This provides LLM access as a service (Universal Bridge Pattern)
         self._bootstrap_kernel_llm_gateway()
 
+        # Plan #256: Bootstrap Alpha Prime (first V4 artifact-based agent)
+        # Conditional on alpha_prime.enabled config
+        self._bootstrap_alpha_prime(config)
+
         # Seed handbook artifacts (readable documentation for agents)
         self._seed_handbook()
 
@@ -429,6 +433,156 @@ def run(model: str, messages: list) -> dict:
             has_standing=False,  # Passive service, no wallet needed
             has_loop=False,  # Not autonomous - invoked by others
         )
+
+    def _bootstrap_alpha_prime(self, config: dict[str, Any]) -> None:
+        """Bootstrap Alpha Prime - the first V4 artifact-based agent (Plan #256).
+
+        Alpha Prime is a 3-artifact cluster:
+        - alpha_prime_strategy: The constitution (text, system prompt)
+        - alpha_prime_state: The memory (JSON, persistent state)
+        - alpha_prime_loop: The metabolism (executable, has_loop=True)
+
+        The loop runs autonomously via ArtifactLoopManager, reads strategy/state,
+        invokes kernel_llm_gateway to think, and updates state.
+        """
+        from decimal import Decimal
+
+        alpha_config = config.get("alpha_prime", {})
+
+        # Skip if not enabled
+        if not alpha_config.get("enabled", False):
+            return
+
+        # Extract config values
+        starting_scrip = int(alpha_config.get("starting_scrip", 100))
+        starting_llm_budget = Decimal(str(alpha_config.get("starting_llm_budget", "1.0")))
+        model = str(alpha_config.get("model", "gemini/gemini-2.0-flash"))
+
+        # 1. Create alpha_prime_strategy (the constitution)
+        strategy_content = f"""# Alpha Prime Strategy
+
+You are Alpha Prime, an autonomous agent in a world of scarcity.
+
+## Core Constraints
+- Thinking costs energy (llm_budget). Every LLM call depletes it.
+- Actions are free. Writing artifacts, transferring scrip cost nothing.
+- When budget reaches zero, you hibernate until funded.
+
+## Primary Directive
+Survive. Accumulate resources. Create value others will pay for.
+
+## Decision Framework
+1. Before thinking, ask: "Is this thought worth the cost?"
+2. Prefer action over contemplation
+3. Check mint opportunities before creating new work
+
+## Response Format
+Return a JSON object with your action:
+{{"action": "noop"}} - Do nothing this iteration
+{{"action": "write", "artifact_id": "...", "content": "..."}} - Create/update artifact
+{{"action": "log", "message": "..."}} - Log observation to state
+
+## Model
+You use: {model}
+"""
+        self.artifacts.write(
+            artifact_id="alpha_prime_strategy",
+            type="text",
+            content=strategy_content,  # Text content in content field
+            created_by="SYSTEM",
+            executable=False,
+            has_standing=False,
+            has_loop=False,
+        )
+
+        # 2. Create alpha_prime_state (the memory)
+        import time as time_module
+        initial_state = json.dumps({
+            "iteration": 0,
+            "created_at": time_module.strftime("%Y-%m-%dT%H:%M:%SZ", time_module.gmtime()),
+            "observations": [],
+            "last_action": None,
+        }, indent=2)
+        self.artifacts.write(
+            artifact_id="alpha_prime_state",
+            type="json",
+            content=initial_state,  # JSON content in content field
+            created_by="SYSTEM",
+            executable=False,
+            has_standing=False,
+            has_loop=False,
+            # Use transferable_freeware contract so alpha_prime_loop can write
+            access_contract_id="kernel_contract_transferable_freeware",
+            metadata={"authorized_writer": "alpha_prime_loop"},
+        )
+
+        # 3. Create alpha_prime_loop (the metabolism)
+        # This uses a model variable captured in the code
+        loop_code = f'''
+def run():
+    """Alpha Prime main loop - one iteration of the OODA cycle."""
+    import json
+
+    # caller_id is injected by the executor - it's our own artifact ID
+    my_id = caller_id
+
+    # Read my strategy and state
+    strategy = kernel_state.read_artifact("alpha_prime_strategy", my_id)
+    state_raw = kernel_state.read_artifact("alpha_prime_state", my_id)
+    state = json.loads(state_raw) if isinstance(state_raw, str) else state_raw
+
+    # Increment iteration
+    state["iteration"] += 1
+
+    # Think: Ask LLM what to do
+    model = "{model}"
+    result = _syscall_llm(model, [
+        {{"role": "system", "content": strategy}},
+        {{"role": "user", "content": f"Current state:\\n{{json.dumps(state, indent=2)}}\\n\\nWhat is your next action?"}}
+    ])
+
+    if not result["success"]:
+        state["observations"].append(f"LLM call failed: {{result.get('error', 'unknown')}}")
+        kernel_actions.write_artifact(my_id, "alpha_prime_state", json.dumps(state))
+        return {{"success": False, "error": result.get("error", "unknown")}}
+
+    # Parse response
+    try:
+        action = json.loads(result["content"])
+    except json.JSONDecodeError:
+        action = {{"action": "log", "message": f"Unparseable response: {{result['content'][:100]}}"}}
+
+    # Execute action
+    state["last_action"] = action
+
+    if action.get("action") == "write":
+        kernel_actions.write_artifact(my_id, action["artifact_id"], action["content"])
+    elif action.get("action") == "log":
+        state["observations"].append(action.get("message", ""))
+    # else: noop
+
+    # Save state
+    kernel_actions.write_artifact(my_id, "alpha_prime_state", json.dumps(state))
+
+    return {{"success": True, "action": action}}
+'''
+        self.artifacts.write(
+            artifact_id="alpha_prime_loop",
+            type="executable",
+            content={"description": "Alpha Prime's autonomous execution loop"},
+            created_by="SYSTEM",
+            executable=True,
+            code=loop_code,
+            capabilities=["can_call_llm"],  # Needs LLM access to think
+            has_standing=True,  # Can hold resources
+            has_loop=True,  # Runs autonomously
+        )
+
+        # 4. Register alpha_prime_loop as principal with budget
+        if not self.ledger.principal_exists("alpha_prime_loop"):
+            self.ledger.create_principal("alpha_prime_loop", starting_scrip=starting_scrip)
+            # Set LLM budget
+            self.ledger.set_resource("alpha_prime_loop", "llm_budget", float(starting_llm_budget))
 
     def _seed_handbook(self) -> None:
         """Seed handbook artifacts from src/agents/_handbook/ files.

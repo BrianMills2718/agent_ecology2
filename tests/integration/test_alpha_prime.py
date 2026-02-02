@@ -1,0 +1,169 @@
+"""Integration tests for Alpha Prime (Plan #256).
+
+Tests the Alpha Prime 3-artifact cluster integration:
+- ArtifactLoopManager discovers alpha_prime_loop
+- Loop executes one iteration (mocked LLM)
+- State updates correctly
+- Budget is deducted
+"""
+
+import pytest
+import json
+import sys
+from pathlib import Path
+from unittest.mock import patch, MagicMock
+
+from src.world.world import World
+from src.simulation.artifact_loop import ArtifactLoopManager
+
+
+@pytest.fixture
+def world_with_alpha_prime(minimal_config: dict, tmp_path: Path) -> World:
+    """Create a World with alpha_prime.enabled=True."""
+    config = minimal_config.copy()
+    config["logging"] = {"output_file": str(tmp_path / "alpha_prime.jsonl")}
+    config["alpha_prime"] = {
+        "enabled": True,
+        "starting_scrip": 100,
+        "starting_llm_budget": "1.0",
+        "model": "gemini/gemini-2.0-flash",
+    }
+    return World(config)
+
+
+@pytest.mark.plans([256])
+class TestAlphaPrimeArtifactLoopIntegration:
+    """Test Alpha Prime integration with ArtifactLoopManager."""
+
+    def test_loop_manager_discovers_alpha_prime(self, world_with_alpha_prime: World) -> None:
+        """ArtifactLoopManager discovers alpha_prime_loop."""
+        manager = ArtifactLoopManager(world_with_alpha_prime, world_with_alpha_prime.rate_tracker)
+        discovered = manager.discover_loops()
+
+        assert "alpha_prime_loop" in discovered
+
+    def test_loop_manager_creates_loop_for_alpha_prime(self, world_with_alpha_prime: World) -> None:
+        """ArtifactLoopManager can create a loop for alpha_prime_loop."""
+        from src.simulation.artifact_loop import ArtifactState
+
+        manager = ArtifactLoopManager(world_with_alpha_prime, world_with_alpha_prime.rate_tracker)
+        loop = manager.create_loop("alpha_prime_loop")
+
+        assert loop is not None
+        assert loop.artifact_id == "alpha_prime_loop"
+        # New loops start in STOPPED state (becomes STARTING when start() is called)
+        assert loop.state == ArtifactState.STOPPED
+
+
+@pytest.mark.plans([256])
+class TestAlphaPrimeExecution:
+    """Test Alpha Prime execution cycle."""
+
+    def test_loop_reads_strategy_and_state(self, world_with_alpha_prime: World) -> None:
+        """Alpha Prime loop can read its strategy and state artifacts."""
+        # Read artifacts directly to verify they're accessible
+        strategy = world_with_alpha_prime.artifacts.get("alpha_prime_strategy")
+        state_artifact = world_with_alpha_prime.artifacts.get("alpha_prime_state")
+
+        assert strategy is not None
+        assert state_artifact is not None
+
+        # Strategy should have the prompt content (in content field)
+        assert "Alpha Prime" in strategy.content
+        assert "Primary Directive" in strategy.content
+
+        # State should be valid JSON (in content field)
+        state = json.loads(state_artifact.content)
+        assert state["iteration"] == 0
+        assert state["observations"] == []
+
+    def test_loop_executes_with_mocked_llm(self, world_with_alpha_prime: World) -> None:
+        """Alpha Prime loop executes one iteration with mocked LLM."""
+        from src.world.executor import get_executor
+
+        # mock-ok: LLM calls are external API
+        mock_module = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.generate.return_value = '{"action": "noop"}'
+        mock_provider.last_usage = {"cost": 0.001, "prompt_tokens": 10, "completion_tokens": 5}
+        mock_module.LLMProvider.return_value = mock_provider
+
+        with patch.dict(sys.modules, {'llm_provider': mock_module}):
+            executor = get_executor()
+            result = executor.execute_with_invoke(
+                artifact_id="alpha_prime_loop",
+                code=world_with_alpha_prime.artifacts.get("alpha_prime_loop").code,
+                world=world_with_alpha_prime,
+                caller_id="alpha_prime_loop",
+                artifact_store=world_with_alpha_prime.artifacts,  # Needed for syscall injection
+            )
+
+        assert result["success"] is True
+        assert result["result"]["success"] is True
+        assert result["result"]["action"]["action"] == "noop"
+
+    def test_loop_updates_state_after_execution(self, world_with_alpha_prime: World) -> None:
+        """Alpha Prime loop updates state after execution."""
+        from src.world.executor import get_executor
+
+        # Get initial state (in content field)
+        initial_state = json.loads(world_with_alpha_prime.artifacts.get("alpha_prime_state").content)
+        assert initial_state["iteration"] == 0
+
+        # mock-ok: LLM calls are external API
+        mock_module = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.generate.return_value = '{"action": "log", "message": "Hello world"}'
+        mock_provider.last_usage = {"cost": 0.001, "prompt_tokens": 10, "completion_tokens": 5}
+        mock_module.LLMProvider.return_value = mock_provider
+
+        with patch.dict(sys.modules, {'llm_provider': mock_module}):
+            executor = get_executor()
+            result = executor.execute_with_invoke(
+                artifact_id="alpha_prime_loop",
+                code=world_with_alpha_prime.artifacts.get("alpha_prime_loop").code,
+                world=world_with_alpha_prime,
+                caller_id="alpha_prime_loop",
+                artifact_store=world_with_alpha_prime.artifacts,  # Needed for syscall injection
+            )
+
+        assert result["success"] is True
+
+        # Check state was updated (state is in content field)
+        updated_state = json.loads(world_with_alpha_prime.artifacts.get("alpha_prime_state").content)
+        assert updated_state["iteration"] == 1
+        assert "Hello world" in updated_state["observations"]
+        assert updated_state["last_action"] == {"action": "log", "message": "Hello world"}
+
+    def test_budget_deducted_from_loop_principal(self, world_with_alpha_prime: World) -> None:
+        """LLM calls deduct budget from alpha_prime_loop's llm_budget."""
+        from src.world.executor import get_executor
+
+        # Get initial budget
+        initial_budget = world_with_alpha_prime.ledger.get_resource("alpha_prime_loop", "llm_budget")
+        assert initial_budget == 1.0
+
+        # mock-ok: LLM calls are external API
+        mock_module = MagicMock()
+        mock_provider = MagicMock()
+        mock_provider.generate.return_value = '{"action": "noop"}'
+        mock_provider.last_usage = {"cost": 0.05, "prompt_tokens": 100, "completion_tokens": 50}
+        mock_module.LLMProvider.return_value = mock_provider
+
+        with patch.dict(sys.modules, {'llm_provider': mock_module}):
+            executor = get_executor()
+            result = executor.execute_with_invoke(
+                artifact_id="alpha_prime_loop",
+                code=world_with_alpha_prime.artifacts.get("alpha_prime_loop").code,
+                world=world_with_alpha_prime,
+                caller_id="alpha_prime_loop",
+                artifact_store=world_with_alpha_prime.artifacts,  # Needed for syscall injection
+            )
+
+        assert result["success"] is True
+
+        # Check budget was deducted
+        final_budget = world_with_alpha_prime.ledger.get_resource("alpha_prime_loop", "llm_budget")
+        assert final_budget < initial_budget
+        # Budget should be reduced by cost (0.05)
+        assert final_budget == pytest.approx(initial_budget - 0.05, abs=0.001)
