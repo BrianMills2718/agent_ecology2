@@ -371,7 +371,7 @@ class KernelQueryHandler:
             # Get current auction status
             if self._world.mint_auction:
                 result["current_auction"] = {
-                    "pending_submissions": len(self._world.mint_auction._pending_submissions),
+                    "pending_submissions": len(self._world.mint_auction._submissions),
                 }
 
         if show_history:

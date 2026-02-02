@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-255-llm-gateway
-task: Implement kernel LLM gateway
-claimed_at: '2026-02-02T06:51:40Z'
-session_id: aedcb82a-2c6a-4836-88c3-45cc03195cf8
-plan: 255
+cc_id: fix-mint-query-attr
+task: Fix kernel_queries referencing wrong MintAuction attribute
+claimed_at: '2026-02-02T18:26:35Z'
+session_id: eaff7ca3-36bd-4d51-8ab7-4ecc7947fdd3
+plan: 260
