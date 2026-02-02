@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-02-02 (Trivial: Fix dict field string parsing in FlatAction)
+**Last verified:** 2026-02-02 (Plan #263: from_artifact now loads workflow/components)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
