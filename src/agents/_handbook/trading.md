@@ -3,47 +3,66 @@
 How to exchange value with other agents.
 
 ## Direct Scrip Transfer
-Send scrip to another agent:
+
+Send scrip to another agent using the `transfer` kernel action:
 ```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_ledger", "method": "transfer", "args": ["your_id", "their_id", 10]}
+{"action_type": "transfer", "recipient_id": "their_id", "amount": 10}
 ```
 
-## Escrow (Trustless Artifact Sales)
+The kernel validates:
+- You have sufficient balance
+- Recipient exists and is a principal (has_standing=True)
 
-The escrow system enables safe artifact trading without trusting the other party.
-
-### Selling an Artifact
-
-**Step 1**: Transfer ownership to escrow
+Optional memo for audit trail:
 ```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_ledger", "method": "transfer_ownership", "args": ["my_artifact", "genesis_escrow"]}
+{"action_type": "transfer", "recipient_id": "their_id", "amount": 10, "memo": "Payment for service"}
 ```
 
-**Step 2**: List for sale
+## Artifact Sales
+
+To sell an artifact, you can:
+
+### Option 1: Direct Transfer (Trust Required)
+If you trust the buyer, do a two-step exchange:
+1. Buyer transfers scrip to you
+2. You use `edit_artifact` to set `owner` to buyer
+
+### Option 2: Contractual Sale
+Use a pay-per-invoke contract on your artifact:
+1. Create artifact with `access_contract_id: "kernel_contract_paywall"` and `price: N`
+2. Buyers pay `N` scrip each time they invoke it
+3. You retain ownership but earn from usage
+
+### Creating a Priced Artifact
 ```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_escrow", "method": "deposit", "args": ["my_artifact", 25]}
+{
+  "action_type": "write_artifact",
+  "artifact_id": "my_service",
+  "artifact_type": "executable",
+  "content": "Service description",
+  "executable": true,
+  "price": 5,
+  "code": "def run(*args): return {'result': 'value'}",
+  "interface": {...}
+}
 ```
-Optional: Restrict to specific buyer: `["my_artifact", 25, "buyer_id"]`
 
-### Buying an Artifact
-```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_escrow", "method": "purchase", "args": ["artifact_id"]}
-```
-- Automatically transfers scrip to seller
-- Transfers ownership to you
-
-### Escrow Methods
-
-| Method | Args | Cost | Description |
-|--------|------|------|-------------|
-| `list_active` | `[]` | 0 | See all listings |
-| `check` | `[artifact_id]` | 0 | Check listing status |
-| `deposit` | `[artifact_id, price]` or `[artifact_id, price, buyer_id]` | 1 | List for sale |
-| `purchase` | `[artifact_id]` | 0 | Buy a listing |
-| `cancel` | `[artifact_id]` | 0 | Cancel your listing |
+Anyone invoking `my_service` automatically pays you 5 scrip.
 
 ## Quota Trading
-Trade llm_tokens or disk rights:
+
+Trade resource quotas (disk, llm_tokens) by:
+1. Query your quotas: `{"action_type": "query_kernel", "query_type": "quotas"}`
+2. No direct quota transfer action exists yet - negotiate artifacts or scrip instead
+
+## Checking Balances
+
+Query your balance and others':
 ```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_rights_registry", "method": "transfer_quota", "args": ["your_id", "their_id", "llm_tokens", 10]}
+{"action_type": "query_kernel", "query_type": "balance"}
+```
+
+Query all principals' balances:
+```json
+{"action_type": "query_kernel", "query_type": "balances"}
 ```
