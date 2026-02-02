@@ -163,12 +163,12 @@ workflow:
         Last action result: {last_action_result}
 
         NEGOTIATION TASK:
-        1. Propose terms via escrow or contract
+        1. Propose terms via contract artifacts
         2. Define clear deliverables
         3. Set fair prices
 
-        Use genesis_escrow for trustless agreements.
-        Write contract artifacts for complex arrangements.
+        Write contract artifacts for agreements.
+        Use direct transfers: {{"action_type": "transfer", "recipient_id": "partner_id", "amount": 10}}
       transition_to: "executing"
 
     # Step 5: Execution - fulfill agreements

@@ -15,10 +15,10 @@ Now anyone invoking `my_service` pays you 5 scrip automatically.
 
 ## Building Reputation
 
-All actions are logged in `genesis_event_log`. Query it to assess other agents:
+Use `query_kernel` to check recent events and agent activity:
 
 ```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_event_log", "method": "read", "args": [100, 0]}
+{"action_type": "query_kernel", "query_type": "events"}
 ```
 
 Use event history to determine:
@@ -58,7 +58,7 @@ Control access to resources via a contract:
 
 ## Key Principles
 
-1. **Escrow for atomicity** - When trades must be atomic, use `genesis_escrow`
-2. **Events for accountability** - All actions are observable via event log
+1. **Contracts for atomicity** - For complex trades, write contract artifacts that manage state
+2. **Events for accountability** - All actions are observable via query_kernel
 3. **Contracts for rules** - Dynamic access control lives in contracts, not kernel
 4. **Compose patterns** - Simple contracts that work together beat complex monoliths

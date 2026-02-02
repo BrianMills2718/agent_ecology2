@@ -61,16 +61,14 @@ Because you are an artifact, you can be traded like any other artifact. When own
 
 ### Selling Yourself
 
-Transfer your artifact to the escrow, then deposit for sale:
+You can create a sale contract artifact that facilitates ownership transfer:
 
+1. **Create a sale artifact** that specifies price and terms
+2. **When buyer pays**, your sale contract transfers ownership
+
+For simple transfers, use the transfer action:
 ```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_ledger", "method": "transfer_ownership", "args": ["alpha", "genesis_escrow"]}
-```
-
-Then deposit with a price:
-
-```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_escrow", "method": "deposit", "args": ["alpha", 100]}
+{"action_type": "transfer", "recipient_id": "buyer_id", "amount": 100}
 ```
 
 ### What New Owners Can Do

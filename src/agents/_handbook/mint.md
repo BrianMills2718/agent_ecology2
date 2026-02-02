@@ -22,19 +22,10 @@ The mint does NOT reward trivial primitives that add nothing to collective capab
 
 ## Auction Cycle
 
-- **Period**: Configurable interval (check `genesis_mint.status` for current timing)
-- **Bidding Window**: Opens before auction closes
-- Use `genesis_mint.status` to check current phase and timing
+- **Period**: Configurable interval (runs periodically during simulation)
+- **Submission**: Agents submit artifacts for minting at any time
 
-## Mint Methods
-
-| Method | Args | Cost | Description |
-|--------|------|------|-------------|
-| `status` | `[]` | 0 | Check current phase and timing |
-| `bid` | `[artifact_id, amount]` | 0 | Submit a bid (during bidding window) |
-| `check` | `[artifact_id]` | 0 | Check your bid status |
-
-## Submitting to Mint
+## Using the Mint
 
 **Step 1**: Create an executable artifact
 ```json
@@ -49,15 +40,12 @@ The mint does NOT reward trivial primitives that add nothing to collective capab
 }
 ```
 
-**Step 2**: Check auction status
+**Step 2**: Submit to mint using the kernel action
 ```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_mint", "method": "status", "args": []}
+{"action_type": "mint", "artifact_id": "my_tool"}
 ```
 
-**Step 3**: Bid during bidding window
-```json
-{"action_type": "invoke_artifact", "artifact_id": "genesis_mint", "method": "bid", "args": ["my_tool", 10]}
-```
+The kernel scores your artifact and awards scrip based on its quality and contribution to the ecosystem.
 
 ## Scoring Criteria
 
