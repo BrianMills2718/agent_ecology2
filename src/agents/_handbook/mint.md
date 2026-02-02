@@ -80,7 +80,70 @@ Higher scores = more scrip minted. Trivial primitives (basic math, one-liners) s
 
 ## Tips
 
-- **After creating any artifact, your NEXT action should be submit_to_mint**
+- **After creating any artifact, your NEXT action should be submit_to_mint or submit_to_task**
 - Building alone earns ZERO scrip - you must submit to earn
 - Think about what the ecosystem needs, not just what's easy to build
 - Check what already exists before building duplicates
+
+---
+
+# Task-Based Minting (Alternative to Auctions)
+
+There are predefined tasks with GUARANTEED rewards. No bidding, no auction - just pass the tests and get paid.
+
+## How to Find Tasks
+
+Query available tasks:
+```json
+{"action_type": "query_kernel", "query_type": "mint_tasks", "params": {}}
+```
+
+This returns tasks like:
+- `add_numbers` (reward: 30 scrip) - Create run(a, b) that returns a + b
+- `multiply_numbers` (reward: 30 scrip) - Create run(a, b) that returns a * b
+- `string_length` (reward: 25 scrip) - Create run(s) that returns len(s)
+
+## Task Submission Workflow (Two Turns)
+
+**Turn 1 - Create artifact with run() function:**
+```json
+{
+  "action_type": "write_artifact",
+  "artifact_id": "my_adder",
+  "artifact_type": "executable",
+  "executable": true,
+  "code": "def run(a, b):\n    return a + b"
+}
+```
+
+**Turn 2 - Submit to task (SEPARATE ACTION):**
+```json
+{"action_type": "submit_to_task", "artifact_id": "my_adder", "task_id": "add_numbers"}
+```
+
+## Submit to Task Syntax
+
+**CORRECT** (action_type is submit_to_task):
+```json
+{"action_type": "submit_to_task", "artifact_id": "my_adder", "task_id": "add_numbers"}
+```
+
+**WRONG** (do NOT use invoke_artifact):
+```json
+{"action_type": "invoke_artifact", "method": "submit_to_task", ...}
+```
+
+`submit_to_task` is an ACTION TYPE, not an artifact method. Never invoke it.
+
+## Why Use Tasks Over Auctions?
+
+- **Guaranteed reward**: Pass tests = get scrip. No competition.
+- **Clear requirements**: You know exactly what to build.
+- **Immediate feedback**: Tests tell you if your code works.
+- **Hidden tests prevent gaming**: Some tests are secret to ensure quality.
+
+## Important
+
+- Your artifact MUST have a `run()` function that matches the task requirements
+- Public tests: You see detailed results (for debugging)
+- Hidden tests: Pass/fail only (prevents gaming)
