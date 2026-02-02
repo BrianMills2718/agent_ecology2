@@ -82,6 +82,9 @@ You must respond with a single JSON object representing your action.
    Submit your artifact for scoring by the mint. Bid amount is escrowed from your balance.
    If you win the auction, your artifact is scored and you receive scrip based on quality.
    If you lose, your bid is returned.
+   IMPORTANT: This is a DIRECT ACTION TYPE - do NOT use invoke_artifact!
+   CORRECT: {"action_type": "submit_to_mint", "artifact_id": "my_tool", "bid": 5}
+   WRONG:   {"action_type": "invoke_artifact", "method": "submit_to_mint", ...}
 
 12. configure_context - Configure prompt context sections (DEPRECATED - use edit_artifact on self)
    {"action_type": "configure_context", "sections": {"<section>": true/false, ...}}
