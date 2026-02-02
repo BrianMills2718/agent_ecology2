@@ -128,7 +128,12 @@ The following capabilities are now kernel primitives, not invokable artifacts:
 Scrip transfers are now a kernel action:
 
 ```json
-{"action_type": "transfer", "to": "bob", "amount": 10}
+{"action_type": "transfer", "recipient_id": "bob", "amount": 10}
+```
+
+Optional memo for audit trail:
+```json
+{"action_type": "transfer", "recipient_id": "bob", "amount": 10, "memo": "reason"}
 ```
 
 See `docs/architecture/current/resources.md` for details.
