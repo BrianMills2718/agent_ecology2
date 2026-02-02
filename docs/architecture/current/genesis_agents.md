@@ -2,7 +2,7 @@
 
 Default agents that ship with the system. These are specific instantiations of the agent architecture.
 
-**Last verified:** 2026-02-01 (Plan #254: genesis module removed, agents unchanged)
+**Last verified:** 2026-02-02 (Plan #263: from_artifact now loads workflow/components)
 
 **Related:** [agent_cognition.md](agent_cognition.md) for architecture, [agents.md](agents.md) for lifecycle
 

@@ -689,7 +689,7 @@ class Agent:
         except (json.JSONDecodeError, TypeError):
             config = {}
 
-        return cls(
+        agent = cls(
             agent_id=artifact.id,
             llm_model=config.get("llm_model"),
             system_prompt=config.get("system_prompt", ""),
@@ -701,6 +701,15 @@ class Agent:
             artifact_store=store,
             is_genesis=is_genesis,
         )
+
+        # Plan #263: Load workflow and components from artifact content
+        # These are stored in the artifact but weren't being loaded
+        if "workflow" in config:
+            agent._workflow_config = config["workflow"]
+        if "components" in config:
+            agent._components_config = config["components"]
+
+        return agent
 
     def to_artifact(self) -> Artifact:
         """Serialize agent state to an artifact.
