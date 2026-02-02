@@ -1,5 +1,9 @@
 # Pattern: ADR Governance
 
+> **Note:** This pattern originally referenced `governance.yaml`. That file has been
+> unified into `relationships.yaml` (Pattern 09). The concepts remain the same;
+> only the config file location changed.
+
 ## Problem
 
 AI coding assistants (Claude Code, etc.) lose track of architectural decisions over long sessions. They start ignoring ADRs, drifting from established patterns, and making inconsistent choices. By the time you notice, significant rework may be needed.
@@ -23,7 +27,7 @@ Make decisions visible at the point of relevance by embedding governance headers
 When Claude reads a governed file, it immediately sees which ADRs apply and any context about how they apply to this specific file.
 
 **Key properties:**
-- Single source of truth: `governance.yaml` defines file → ADR mappings
+- Single source of truth: `relationships.yaml` defines file → ADR mappings (see Pattern 09)
 - Headers are generated, not manually maintained
 - CI enforces sync between config and headers
 - Dry-run by default - no accidental modifications
@@ -34,7 +38,7 @@ When Claude reads a governed file, it immediately sees which ADRs apply and any 
 |------|---------|
 | `docs/adr/` | Architecture Decision Records |
 | `docs/adr/TEMPLATE.md` | Template for new ADRs |
-| `scripts/governance.yaml` | File → ADR mappings (can be unified into `relationships.yaml`) |
+| `scripts/relationships.yaml` | Unified doc graph including ADR governance (see Pattern 09) |
 | `scripts/sync_governance.py` | Generates headers from config |
 | `tests/test_sync_governance.py` | Tests for sync script |
 
@@ -50,11 +54,11 @@ mkdir -p docs/adr
 # See docs/adr/TEMPLATE.md and docs/adr/README.md in this project
 ```
 
-3. **Create governance.yaml:**
+3. **Add governance to relationships.yaml:**
 ```yaml
-# scripts/governance.yaml
-files:
-  src/core/module.py:
+# scripts/relationships.yaml (governance section)
+governance:
+  - source: src/core/module.py
     adrs: [1, 3]
     context: |
       Why these ADRs apply to this file.
@@ -114,8 +118,8 @@ python scripts/sync_governance.py --check
 **Adding a new ADR:**
 1. Copy `docs/adr/TEMPLATE.md` to `docs/adr/NNNN-title.md`
 2. Fill in the template
-3. Add to `scripts/governance.yaml` under `adrs:`
-4. Add file mappings under `files:`
+3. Add to `scripts/relationships.yaml` under `adrs:`
+4. Add file mappings under `governance:`
 5. Run `--apply` to generate headers
 
 ## Customization
