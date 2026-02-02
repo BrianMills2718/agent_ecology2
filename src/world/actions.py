@@ -773,6 +773,22 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
             return "artifact_id must be a string"
         return UnsubscribeArtifactIntent(principal_id, artifact_id, reasoning=reasoning)
 
+    elif action_type == "submit_to_mint":
+        # Plan #259: Submit artifact to mint auction
+        artifact_id = data.get("artifact_id")
+        if not artifact_id:
+            return "submit_to_mint requires 'artifact_id'"
+        if not isinstance(artifact_id, str):
+            return "artifact_id must be a string"
+        bid = data.get("bid")
+        if bid is None:
+            return "submit_to_mint requires 'bid'"
+        if not isinstance(bid, int):
+            return "submit_to_mint 'bid' must be an integer"
+        if bid <= 0:
+            return "submit_to_mint 'bid' must be positive"
+        return SubmitToMintIntent(principal_id, artifact_id, bid, reasoning=reasoning)
+
     elif action_type == "configure_context":
         # Plan #192: Configure prompt context sections
         sections = data.get("sections")
@@ -797,4 +813,4 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
         return ModifySystemPromptIntent(principal_id, operation, content, section_marker, reasoning=reasoning)
 
     else:
-        return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel, subscribe_artifact, unsubscribe_artifact, transfer, mint, configure_context, modify_system_prompt"
+        return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel, subscribe_artifact, unsubscribe_artifact, transfer, mint, submit_to_mint, configure_context, modify_system_prompt"
