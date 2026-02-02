@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-02-02 (Plan #255 - _syscall_llm injection for can_call_llm capability)
+**Last verified:** 2026-02-02 (Plan #259 - submit_to_mint action type)
 
 ---
 

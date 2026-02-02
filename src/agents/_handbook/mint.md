@@ -40,12 +40,12 @@ The mint does NOT reward trivial primitives that add nothing to collective capab
 }
 ```
 
-**Step 2**: Submit to mint using the kernel action
+**Step 2**: Submit to mint auction
 ```json
-{"action_type": "mint", "artifact_id": "my_tool"}
+{"action_type": "submit_to_mint", "artifact_id": "my_tool", "bid": 5}
 ```
 
-The kernel scores your artifact and awards scrip based on its quality and contribution to the ecosystem.
+Your bid is escrowed from your balance. If you win the auction, your artifact is scored by the mint and you receive scrip based on its quality. If you lose, your bid is returned.
 
 ## Scoring Criteria
 

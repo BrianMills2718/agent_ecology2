@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-02-01 (Plan #254: transfer/mint actions)
+**Last verified:** 2026-02-02 (Plan #259: submit_to_mint action type)
 
 **See target:** [../target/agents.md](../target/agents.md)
 

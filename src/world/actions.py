@@ -37,6 +37,7 @@ class ActionType(str, Enum):
     UNSUBSCRIBE_ARTIFACT = "unsubscribe_artifact"  # Plan #191: Unsubscribe
     TRANSFER = "transfer"  # Plan #254: Move scrip between principals
     MINT = "mint"  # Plan #254: Create scrip (privileged, requires can_mint capability)
+    SUBMIT_TO_MINT = "submit_to_mint"  # Plan #259: Submit artifact to mint auction
     # Deprecated (Plan #254) - convenience actions that wrap edit_artifact
     CONFIGURE_CONTEXT = "configure_context"  # Plan #192: Deprecated
     MODIFY_SYSTEM_PROMPT = "modify_system_prompt"  # Plan #194: Deprecated
@@ -377,6 +378,36 @@ class MintIntent(ActionIntent):
         d["recipient_id"] = self.recipient_id
         d["amount"] = self.amount
         d["reason"] = self.reason
+        return d
+
+
+@dataclass
+class SubmitToMintIntent(ActionIntent):
+    """Submit artifact to mint auction (Plan #259).
+
+    Submits an artifact for mint consideration. The bid amount is escrowed
+    from the caller's balance. If the artifact wins the auction, the caller
+    receives scrip based on the artifact's quality score.
+    """
+
+    artifact_id: str
+    bid: int  # Amount to bid (escrowed from balance)
+
+    def __init__(
+        self,
+        principal_id: str,
+        artifact_id: str,
+        bid: int,
+        reasoning: str = "",
+    ) -> None:
+        super().__init__(ActionType.SUBMIT_TO_MINT, principal_id, reasoning=reasoning)
+        self.artifact_id = artifact_id
+        self.bid = bid
+
+    def to_dict(self) -> dict[str, Any]:
+        d = super().to_dict()
+        d["artifact_id"] = self.artifact_id
+        d["bid"] = self.bid
         return d
 
 

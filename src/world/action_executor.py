@@ -17,7 +17,7 @@ from .actions import (
     NoopIntent, ReadArtifactIntent, WriteArtifactIntent,
     EditArtifactIntent, InvokeArtifactIntent, DeleteArtifactIntent,
     QueryKernelIntent, SubscribeArtifactIntent, UnsubscribeArtifactIntent,
-    TransferIntent, MintIntent,  # Plan #254: Value actions
+    TransferIntent, MintIntent, SubmitToMintIntent,  # Plan #254, #259: Value actions
     ConfigureContextIntent, ModifySystemPromptIntent,
 )
 from .artifacts import Artifact
@@ -136,6 +136,9 @@ class ActionExecutor:
 
         elif isinstance(intent, MintIntent):
             result = self._execute_mint(intent)
+
+        elif isinstance(intent, SubmitToMintIntent):
+            result = self._execute_submit_to_mint(intent)
 
         elif isinstance(intent, ConfigureContextIntent):
             result = self._execute_configure_context(intent)
@@ -1257,6 +1260,78 @@ class ActionExecutor:
                 "recipient": recipient_id,
                 "reason": reason,
                 "recipient_balance": w.ledger.get_scrip(recipient_id),
+            },
+        )
+
+    def _execute_submit_to_mint(self, intent: SubmitToMintIntent) -> ActionResult:
+        """Execute a submit_to_mint action (Plan #259).
+
+        Submits an artifact to the mint auction. The bid amount is escrowed
+        from the caller's balance.
+        """
+        w = self.world
+        principal_id = intent.principal_id
+        artifact_id = intent.artifact_id
+        bid = intent.bid
+
+        # Validate artifact exists
+        artifact = w.artifacts.get(artifact_id)
+        if artifact is None:
+            return ActionResult(
+                success=False,
+                message=f"Artifact '{artifact_id}' not found",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+            )
+
+        # Validate caller owns the artifact
+        if artifact.created_by != principal_id:
+            return ActionResult(
+                success=False,
+                message=f"You don't own '{artifact_id}'. Only the owner can submit to mint.",
+                error_code=ErrorCode.NOT_AUTHORIZED.value,
+                error_category=ErrorCategory.PERMISSION.value,
+                retriable=False,
+            )
+
+        # Validate bid amount
+        if bid < 0:
+            return ActionResult(
+                success=False,
+                message=f"Bid must be non-negative, got {bid}",
+                error_code=ErrorCode.INVALID_ARGUMENT.value,
+                error_category=ErrorCategory.VALIDATION.value,
+                retriable=True,
+            )
+
+        # Submit to mint auction
+        try:
+            submission_id = w.submit_for_mint(principal_id, artifact_id, bid)
+        except Exception as e:
+            return ActionResult(
+                success=False,
+                message=f"Mint submission failed: {e}",
+                error_code=ErrorCode.RUNTIME_ERROR.value,
+                error_category=ErrorCategory.SYSTEM.value,
+                retriable=True,
+            )
+
+        # Log the submission
+        w.logger.log("mint_submission", {
+            "principal": principal_id,
+            "artifact_id": artifact_id,
+            "bid": bid,
+            "submission_id": submission_id,
+        })
+
+        return ActionResult(
+            success=True,
+            message=f"Submitted '{artifact_id}' to mint auction (bid: {bid}, submission: {submission_id})",
+            data={
+                "artifact_id": artifact_id,
+                "bid": bid,
+                "submission_id": submission_id,
             },
         )
 
