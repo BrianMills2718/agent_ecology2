@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-02 (Plan #258 - Alpha Prime strategy prompt update)
+**Last verified:** 2026-02-02 (Plan #269 - mint_task_manager initialization in World)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

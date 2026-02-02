@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-02-02 (Plan #259 - submit_to_mint action type)
+**Last verified:** 2026-02-02 (Plan #269 - submit_to_task action type)
 
 ---
 

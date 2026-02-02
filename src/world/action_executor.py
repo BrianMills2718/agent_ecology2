@@ -17,7 +17,7 @@ from .actions import (
     NoopIntent, ReadArtifactIntent, WriteArtifactIntent,
     EditArtifactIntent, InvokeArtifactIntent, DeleteArtifactIntent,
     QueryKernelIntent, SubscribeArtifactIntent, UnsubscribeArtifactIntent,
-    TransferIntent, MintIntent, SubmitToMintIntent,  # Plan #254, #259: Value actions
+    TransferIntent, MintIntent, SubmitToMintIntent, SubmitToTaskIntent,  # Plan #254, #259, #269
     ConfigureContextIntent, ModifySystemPromptIntent,
 )
 from .artifacts import Artifact
@@ -139,6 +139,9 @@ class ActionExecutor:
 
         elif isinstance(intent, SubmitToMintIntent):
             result = self._execute_submit_to_mint(intent)
+
+        elif isinstance(intent, SubmitToTaskIntent):
+            result = self._execute_submit_to_task(intent)
 
         elif isinstance(intent, ConfigureContextIntent):
             result = self._execute_configure_context(intent)
@@ -1333,6 +1336,41 @@ class ActionExecutor:
                 "bid": bid,
                 "submission_id": submission_id,
             },
+        )
+
+    def _execute_submit_to_task(self, intent: SubmitToTaskIntent) -> ActionResult:
+        """Execute a submit_to_task action (Plan #269).
+
+        Submits an artifact as a solution to a mint task. The artifact is
+        tested against public tests (results shown) and hidden tests
+        (pass/fail only). If all tests pass, the reward is credited.
+        """
+        w = self.world
+        principal_id = intent.principal_id
+        artifact_id = intent.artifact_id
+        task_id = intent.task_id
+
+        # Check if task-based mint is enabled
+        if not hasattr(w, "mint_task_manager") or w.mint_task_manager is None:
+            return ActionResult(
+                success=False,
+                message="Task-based mint system is not enabled",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.SYSTEM.value,
+                retriable=False,
+            )
+
+        # Submit solution through the manager
+        result = w.mint_task_manager.submit_solution(principal_id, artifact_id, task_id)
+
+        # Convert result to ActionResult
+        return ActionResult(
+            success=result.success,
+            message=result.message,
+            data=result.to_dict(),
+            error_code=None if result.success else ErrorCode.RUNTIME_ERROR.value,
+            error_category=None if result.success else ErrorCategory.VALIDATION.value,
+            retriable=not result.success,
         )
 
     def _execute_configure_context(self, intent: ConfigureContextIntent) -> ActionResult:

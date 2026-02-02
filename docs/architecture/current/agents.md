@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-02-02 (Plan #263: from_artifact now loads workflow/components)
+**Last verified:** 2026-02-02 (Plan #269: submit_to_task action in schema)
 
 **See target:** [../target/agents.md](../target/agents.md)
 

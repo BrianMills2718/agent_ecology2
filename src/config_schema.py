@@ -1878,6 +1878,55 @@ class AlphaPrimeConfig(StrictModel):
 
 
 # =============================================================================
+# MINT TASKS CONFIG (Plan #269)
+# =============================================================================
+
+class TaskTestConfig(StrictModel):
+    """Configuration for a single task test case."""
+
+    description: str = Field(description="Human-readable test description")
+    args: list[Any] = Field(description="Arguments to pass to run()")
+    expected: Any = Field(description="Expected return value")
+    assertion: Literal["equals", "contains", "type_is", "truthy"] = Field(
+        default="equals",
+        description="Assertion type"
+    )
+
+
+class SeedTaskConfig(StrictModel):
+    """Configuration for a seeded mint task."""
+
+    task_id: str = Field(description="Unique task identifier")
+    description: str = Field(description="Task description for agents")
+    reward: int = Field(gt=0, description="Scrip reward for completion")
+    expires_after_seconds: int | None = Field(
+        default=None,
+        description="Optional expiration time in seconds"
+    )
+    public_tests: list[TaskTestConfig] = Field(
+        default_factory=list,
+        description="Tests visible to agents"
+    )
+    hidden_tests: list[TaskTestConfig] = Field(
+        default_factory=list,
+        description="Tests hidden from agents (kernel-only)"
+    )
+
+
+class MintTasksConfig(StrictModel):
+    """Task-based mint configuration (Plan #269)."""
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable task-based mint system"
+    )
+    seed_tasks: list[SeedTaskConfig] = Field(
+        default_factory=list,
+        description="Tasks to seed on world initialization"
+    )
+
+
+# =============================================================================
 # ROOT CONFIG MODEL
 # =============================================================================
 
@@ -1913,6 +1962,7 @@ class AppConfig(StrictModel):
     learning: LearningConfig = Field(default_factory=LearningConfig)  # Plan #186
     prompt_injection: PromptInjectionConfig = Field(default_factory=PromptInjectionConfig)  # Plan #197
     alpha_prime: AlphaPrimeConfig = Field(default_factory=AlphaPrimeConfig)  # Plan #256
+    mint_tasks: MintTasksConfig = Field(default_factory=MintTasksConfig)  # Plan #269
 
     # Dynamic fields set at runtime
     principals: list[dict[str, int | str]] = Field(

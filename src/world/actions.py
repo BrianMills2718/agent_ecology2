@@ -38,6 +38,7 @@ class ActionType(str, Enum):
     TRANSFER = "transfer"  # Plan #254: Move scrip between principals
     MINT = "mint"  # Plan #254: Create scrip (privileged, requires can_mint capability)
     SUBMIT_TO_MINT = "submit_to_mint"  # Plan #259: Submit artifact to mint auction
+    SUBMIT_TO_TASK = "submit_to_task"  # Plan #269: Submit artifact as task solution
     # Deprecated (Plan #254) - convenience actions that wrap edit_artifact
     CONFIGURE_CONTEXT = "configure_context"  # Plan #192: Deprecated
     MODIFY_SYSTEM_PROMPT = "modify_system_prompt"  # Plan #194: Deprecated
@@ -408,6 +409,36 @@ class SubmitToMintIntent(ActionIntent):
         d = super().to_dict()
         d["artifact_id"] = self.artifact_id
         d["bid"] = self.bid
+        return d
+
+
+@dataclass
+class SubmitToTaskIntent(ActionIntent):
+    """Submit artifact as task solution (Plan #269).
+
+    Submits an artifact to complete a mint task. The artifact is tested
+    against public tests (results shown) and hidden tests (pass/fail only).
+    If all tests pass, the caller receives the task reward.
+    """
+
+    artifact_id: str
+    task_id: str
+
+    def __init__(
+        self,
+        principal_id: str,
+        artifact_id: str,
+        task_id: str,
+        reasoning: str = "",
+    ) -> None:
+        super().__init__(ActionType.SUBMIT_TO_TASK, principal_id, reasoning=reasoning)
+        self.artifact_id = artifact_id
+        self.task_id = task_id
+
+    def to_dict(self) -> dict[str, Any]:
+        d = super().to_dict()
+        d["artifact_id"] = self.artifact_id
+        d["task_id"] = self.task_id
         return d
 
 
@@ -788,6 +819,20 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
         if bid <= 0:
             return "submit_to_mint 'bid' must be positive"
         return SubmitToMintIntent(principal_id, artifact_id, bid, reasoning=reasoning)
+
+    elif action_type == "submit_to_task":
+        # Plan #269: Submit artifact as task solution
+        artifact_id = data.get("artifact_id")
+        if not artifact_id:
+            return "submit_to_task requires 'artifact_id'"
+        if not isinstance(artifact_id, str):
+            return "artifact_id must be a string"
+        task_id = data.get("task_id")
+        if not task_id:
+            return "submit_to_task requires 'task_id'"
+        if not isinstance(task_id, str):
+            return "task_id must be a string"
+        return SubmitToTaskIntent(principal_id, artifact_id, task_id, reasoning=reasoning)
 
     elif action_type == "configure_context":
         # Plan #192: Configure prompt context sections

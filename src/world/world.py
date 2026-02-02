@@ -36,6 +36,7 @@ from .id_registry import IDRegistry
 from .resource_manager import ResourceManager, ResourceType
 from .resource_metrics import ResourceMetricsProvider
 from .mint_auction import MintAuction, KernelMintSubmission, KernelMintResult
+from .mint_tasks import MintTaskManager  # Plan #269
 from .triggers import TriggerRegistry
 from .delegation import DelegationManager
 
@@ -244,6 +245,21 @@ class World:
             logger=self.logger,
             get_event_number=lambda: self.event_number,
         )
+
+        # Initialize MintTaskManager (Plan #269)
+        self.mint_task_manager: MintTaskManager | None = None
+        if config_get("mint_tasks.enabled", False):
+            from .executor import get_executor
+            self.mint_task_manager = MintTaskManager(
+                ledger=self.ledger,
+                artifacts=self.artifacts,
+                executor=get_executor(),
+                logger=self.logger,
+            )
+            # Seed tasks from config
+            seed_tasks = config_get("mint_tasks.seed_tasks", [])
+            if seed_tasks:
+                self.mint_task_manager.seed_from_config(seed_tasks)
 
         # Plan #254: Create kernel_mint_agent with can_mint capability
         # This replaces genesis_mint as the mint authority

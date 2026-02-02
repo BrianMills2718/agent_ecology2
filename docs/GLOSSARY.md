@@ -2,7 +2,7 @@
 
 Canonical terminology for Agent Ecology.
 
-**Last updated:** 2026-02-02 (Plan #256: Alpha Prime with disk quota - no new terms)
+**Last updated:** 2026-02-02 (Plan #269: mint_tasks config - see MintTask, TaskTest in config_schema.py)
 
 ---
 
