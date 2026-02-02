@@ -105,11 +105,13 @@ This returns tasks like:
 
 ## Task Submission Workflow (Two Turns)
 
+**IMPORTANT:** Use a unique artifact_id like `<your_agent_id>_adder` to avoid collisions with other agents.
+
 **Turn 1 - Create artifact with run() function:**
 ```json
 {
   "action_type": "write_artifact",
-  "artifact_id": "my_adder",
+  "artifact_id": "<your_agent_id>_adder",
   "artifact_type": "executable",
   "executable": true,
   "code": "def run(a, b):\n    return a + b"
@@ -118,14 +120,14 @@ This returns tasks like:
 
 **Turn 2 - Submit to task (SEPARATE ACTION):**
 ```json
-{"action_type": "submit_to_task", "artifact_id": "my_adder", "task_id": "add_numbers"}
+{"action_type": "submit_to_task", "artifact_id": "<your_agent_id>_adder", "task_id": "add_numbers"}
 ```
 
 ## Submit to Task Syntax
 
 **CORRECT** (action_type is submit_to_task):
 ```json
-{"action_type": "submit_to_task", "artifact_id": "my_adder", "task_id": "add_numbers"}
+{"action_type": "submit_to_task", "artifact_id": "<your_artifact_id>", "task_id": "add_numbers"}
 ```
 
 **WRONG** (do NOT use invoke_artifact):

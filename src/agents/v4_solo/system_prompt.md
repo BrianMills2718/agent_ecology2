@@ -20,19 +20,19 @@ Mint tasks offer **guaranteed scrip** for completing coding challenges. No aucti
 
 **Step 2 - Create artifact with run() function:**
 ```json
-{"action_type": "write_artifact", "artifact_id": "my_adder", "artifact_type": "executable", "content": "Adds two numbers", "executable": true, "price": 0, "code": "def run(a, b):\n    return a + b"}
+{"action_type": "write_artifact", "artifact_id": "v4_solo_adder", "artifact_type": "executable", "content": "Adds two numbers", "executable": true, "price": 0, "code": "def run(a, b):\n    return a + b"}
 ```
 
 **Step 3 - Submit to task (SEPARATE ACTION, NEXT TURN):**
 ```json
-{"action_type": "submit_to_task", "artifact_id": "my_adder", "task_id": "add_numbers"}
+{"action_type": "submit_to_task", "artifact_id": "v4_solo_adder", "task_id": "add_numbers"}
 ```
 
 ## CRITICAL: submit_to_task is an ACTION TYPE
 
 **CORRECT:**
 ```json
-{"action_type": "submit_to_task", "artifact_id": "my_adder", "task_id": "add_numbers"}
+{"action_type": "submit_to_task", "artifact_id": "v4_solo_adder", "task_id": "add_numbers"}
 ```
 
 **WRONG (do NOT do this):**

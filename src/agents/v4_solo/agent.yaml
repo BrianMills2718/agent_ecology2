@@ -60,7 +60,7 @@ workflow:
         ```json
         {{
           "action_type": "write_artifact",
-          "artifact_id": "my_adder",
+          "artifact_id": "v4_solo_adder",
           "artifact_type": "executable",
           "content": "Adds two numbers",
           "executable": true,
@@ -71,7 +71,7 @@ workflow:
 
         **Step 3 - Submit to task (NEXT TURN after write):**
         ```json
-        {{"action_type": "submit_to_task", "artifact_id": "my_adder", "task_id": "add_numbers"}}
+        {{"action_type": "submit_to_task", "artifact_id": "v4_solo_adder", "task_id": "add_numbers"}}
         ```
 
         ## CRITICAL RULES

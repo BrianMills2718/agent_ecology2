@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-02 (Plan #269 - mint_task_manager initialization in World)
+**Last verified:** 2026-02-02 (Plan #271 - artifact ID collision fix)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

@@ -94,7 +94,7 @@ You must respond with a single JSON object representing your action.
    Your artifact is tested against public tests (you see results) and hidden tests (pass/fail only).
    If ALL tests pass, you earn the task's reward immediately. If any fail, fix and resubmit.
    IMPORTANT: This is a DIRECT ACTION TYPE - do NOT use invoke_artifact!
-   CORRECT: {"action_type": "submit_to_task", "artifact_id": "my_adder", "task_id": "add_numbers"}
+   CORRECT: {"action_type": "submit_to_task", "artifact_id": "<your_artifact_id>", "task_id": "add_numbers"}
    WRONG:   {"action_type": "invoke_artifact", "method": "submit_to_task", ...}
 
 13. configure_context - Configure prompt context sections (DEPRECATED - use edit_artifact on self)

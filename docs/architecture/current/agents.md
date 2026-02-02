@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-02-02 (Plan #269: submit_to_task action in schema)
+**Last verified:** 2026-02-02 (Plan #271: unique artifact ID examples)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
