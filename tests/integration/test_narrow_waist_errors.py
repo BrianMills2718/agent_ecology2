@@ -97,21 +97,6 @@ class TestReadArtifactErrors:
 class TestWriteArtifactErrors:
     """Tests for write_artifact error responses."""
 
-    def test_write_genesis_not_authorized(self, world_with_agent: World) -> None:
-        """Write to genesis artifact returns NOT_AUTHORIZED error."""
-        intent = WriteArtifactIntent(
-            principal_id="alice",
-            artifact_id="genesis_ledger",
-            artifact_type="data",
-            content="Hacked!",
-        )
-        result = world_with_agent.execute_action(intent)
-
-        assert result.success is False
-        assert result.error_code == ErrorCode.NOT_AUTHORIZED.value
-        assert result.error_category == ErrorCategory.PERMISSION.value
-        assert result.retriable is False
-
     def test_write_permission_denied(self, world_with_agent: World) -> None:
         """Write to artifact without permission returns NOT_AUTHORIZED error."""
         # Alice creates an artifact

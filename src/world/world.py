@@ -285,6 +285,9 @@ class World:
             # Plan #231: ResourceManager entry for init-time principals
             if hasattr(self, 'resource_manager'):
                 self.resource_manager.create_principal(p["id"])
+                # Plan #254: Set disk quota (previously done by rights_registry.ensure_agent)
+                disk_quota = float(quotas.get("disk_quota", 10000))
+                self.resource_manager.set_quota(p["id"], "disk", disk_quota)
 
         # Plan #247: RateTracker is always active. Use the one from Ledger.
         self.rate_tracker = self.ledger.rate_tracker

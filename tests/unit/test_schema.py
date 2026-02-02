@@ -116,17 +116,16 @@ class TestInvalidActions:
 class TestEdgeCases:
     """Tests for edge cases and special handling."""
 
-    def test_transfer_deprecation_message(self) -> None:
-        """Transfer action type returns helpful deprecation message."""
+    def test_transfer_requires_recipient(self) -> None:
+        """Transfer action type requires recipient_id (Plan #254: now a kernel action)."""
         json_str = '{"action_type": "transfer", "from": "a", "to": "b", "amount": 10}'
         result = validate_action_json(json_str)
         assert isinstance(result, str)
-        assert "transfer is not a kernel action" in result
-        assert "invoke_artifact" in result
+        assert "recipient_id" in result  # Now a kernel action, requires correct field
 
     def test_invoke_missing_method(self) -> None:
         """invoke_artifact without method returns error."""
-        json_str = '{"action_type": "invoke_artifact", "artifact_id": "genesis_ledger"}'
+        json_str = '{"action_type": "invoke_artifact", "artifact_id": "test_artifact"}'
         result = validate_action_json(json_str)
         assert isinstance(result, str)
         assert "requires 'method'" in result

@@ -119,21 +119,6 @@ class TestExecuteEditNotFound:
 
 
 @pytest.mark.plans([239])
-class TestExecuteEditGenesisProtected:
-    """Tests that genesis artifacts cannot be edited."""
-
-    def test_execute_edit_genesis_artifact_blocked(self, world: World) -> None:
-        """edit_artifact should block edits to genesis artifacts."""
-        # genesis_ledger is a genesis artifact
-        intent = EditArtifactIntent("alice", "genesis_ledger", "old", "new")
-        result = world.execute_action(intent)
-
-        assert result.success is False
-        assert result.error_code == ErrorCode.NOT_AUTHORIZED.value
-        assert "genesis" in result.message.lower() or "not found" in result.message.lower()
-
-
-@pytest.mark.plans([239])
 class TestExecuteEditKernelProtected:
     """Tests that kernel_protected artifacts cannot be edited."""
 

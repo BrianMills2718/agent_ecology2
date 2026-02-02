@@ -24,14 +24,12 @@ def world_with_quota() -> World:
         "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 3},
         "logging": {"output_file": "/dev/null"},
         "principals": [{"id": "agent_1", "starting_scrip": 100}],
-        "rights": {
-            "default_quotas": {
-                "compute": 1000.0,
-                "disk": 10_000_000.0,  # 10MB disk quota
-            }
-        },
     }
-    return World(config)
+    world = World(config)
+    # Plan #254: Set disk quota directly via ResourceManager
+    # (rights.default_quotas config removed)
+    world.resource_manager.set_quota("agent_1", "disk", 10_000_000.0)  # 10MB
+    return world
 
 
 class TestLibraryInstall:

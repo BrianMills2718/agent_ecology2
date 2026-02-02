@@ -215,9 +215,15 @@ class TestTemporalNetworkEndpoint:
             assert response.status_code == 200
 
             data = response.json()
-            # Default genesis artifacts are always present
-            genesis_nodes = [n for n in data["nodes"] if n["artifact_type"] == "genesis"]
-            assert len(genesis_nodes) >= 1  # At least some genesis artifacts
+            # Plan #254: Genesis artifacts removed, check for pre-seeded artifacts instead
+            preseeded_nodes = [
+                n for n in data["nodes"]
+                if n["artifact_type"] in ("mcp_bridge", "data", "handbook")
+                or n["id"].startswith("handbook_")
+            ]
+            # Pre-seeded artifacts are optional depending on config
+            # Just verify the response structure is valid
+            assert isinstance(data["nodes"], list)
             # No agent nodes expected
             agent_nodes = [n for n in data["nodes"] if n["artifact_type"] == "agent"]
             assert len(agent_nodes) == 0

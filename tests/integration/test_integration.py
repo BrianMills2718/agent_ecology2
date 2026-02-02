@@ -88,31 +88,6 @@ class TestWorldInitialization:
         assert world.ledger.get_scrip("agent_2") == 100
 
 
-class TestGenesisArtifacts:
-    """Tests for genesis artifacts existence and basic functionality."""
-
-    def test_genesis_artifacts_exist(self, world_with_temp_log):
-        """Verify genesis_ledger, genesis_mint etc. exist after init."""
-        world = world_with_temp_log
-
-        # Check genesis artifacts exist
-        assert "genesis_ledger" in world.genesis_artifacts
-        assert "genesis_mint" in world.genesis_artifacts
-        assert "genesis_event_log" in world.genesis_artifacts
-        assert "genesis_rights_registry" in world.genesis_artifacts
-
-        # Verify they are proper genesis artifacts with methods
-        genesis_ledger = world.genesis_artifacts["genesis_ledger"]
-        assert genesis_ledger.id == "genesis_ledger"
-        assert genesis_ledger.created_by == "system"
-
-        # Check genesis_ledger has expected methods
-        methods = [m["name"] for m in genesis_ledger.list_methods()]
-        assert "balance" in methods
-        assert "all_balances" in methods
-        assert "transfer" in methods
-
-
 class TestEventCounter:
     """Tests for World event counter behavior.
 
@@ -176,24 +151,6 @@ class TestExecuteNoop:
 class TestExecuteReadArtifact:
     """Tests for read_artifact action execution."""
 
-    def test_execute_read_artifact_genesis(self, world_with_temp_log):
-        """Read a genesis artifact successfully."""
-        world = world_with_temp_log
-
-        # Need to advance tick first to get compute
-        world.advance_tick()
-
-        intent = ReadArtifactIntent(
-            principal_id="agent_1",
-            artifact_id="genesis_ledger"
-        )
-        result = world.execute_action(intent)
-
-        assert result.success is True
-        assert "genesis_ledger" in result.message
-        assert result.data is not None
-        assert "artifact" in result.data
-
     def test_execute_read_artifact_not_found(self, world_with_temp_log):
         """Reading non-existent artifact fails."""
         world = world_with_temp_log
@@ -233,81 +190,6 @@ class TestExecuteWriteArtifact:
         assert artifact is not None
         assert artifact.content == "This is test content"
         assert artifact.created_by == "agent_1"
-
-    def test_execute_write_artifact_cannot_modify_genesis(self, world_with_temp_log):
-        """Cannot write to genesis artifacts."""
-        world = world_with_temp_log
-        world.advance_tick()
-
-        intent = WriteArtifactIntent(
-            principal_id="agent_1",
-            artifact_id="genesis_ledger",
-            artifact_type="data",
-            content="Trying to overwrite genesis"
-        )
-        result = world.execute_action(intent)
-
-        assert result.success is False
-        assert "system artifact" in result.message or "Cannot modify" in result.message
-
-
-class TestExecuteInvokeArtifact:
-    """Tests for invoke_artifact action execution."""
-
-    def test_execute_invoke_ledger_balance(self, world_with_temp_log):
-        """Invoke genesis_ledger.balance method successfully."""
-        world = world_with_temp_log
-        world.advance_tick()
-
-        intent = InvokeArtifactIntent(
-            principal_id="agent_1",
-            artifact_id="genesis_ledger",
-            method="balance",
-            args=["agent_1"]
-        )
-        result = world.execute_action(intent)
-
-        assert result.success is True
-        assert result.data is not None
-        assert result.data.get("success") is True
-        assert result.data.get("agent_id") == "agent_1"
-        assert result.data.get("scrip") == 100
-
-    def test_execute_invoke_ledger_all_balances(self, world_with_temp_log):
-        """Invoke genesis_ledger.all_balances method."""
-        world = world_with_temp_log
-        world.advance_tick()
-
-        intent = InvokeArtifactIntent(
-            principal_id="agent_1",
-            artifact_id="genesis_ledger",
-            method="all_balances",
-            args=[]
-        )
-        result = world.execute_action(intent)
-
-        assert result.success is True
-        assert result.data is not None
-        balances = result.data.get("balances", {})
-        assert "agent_1" in balances
-        assert "agent_2" in balances
-
-    def test_execute_invoke_method_not_found(self, world_with_temp_log):
-        """Invoking non-existent method fails."""
-        world = world_with_temp_log
-        world.advance_tick()
-
-        intent = InvokeArtifactIntent(
-            principal_id="agent_1",
-            artifact_id="genesis_ledger",
-            method="nonexistent_method",
-            args=[]
-        )
-        result = world.execute_action(intent)
-
-        assert result.success is False
-        assert "not found" in result.message
-
 
 class TestFullTickCycle:
     """Tests for full tick cycle behavior."""
@@ -372,9 +254,9 @@ class TestFullTickCycle:
         artifact_ids = [a["id"] for a in state["artifacts"]]
         assert "summary_test_artifact" in artifact_ids
 
-        # Genesis artifacts should also be in the list
-        assert "genesis_ledger" in artifact_ids
-        assert "genesis_mint" in artifact_ids
+        # Plan #254: Pre-seeded artifacts (handbooks, kernel_mint_agent) replace genesis
+        assert any("handbook" in aid for aid in artifact_ids)
+        assert "kernel_mint_agent" in artifact_ids
 
 
 class TestComputeAndScripSeparation:
@@ -415,54 +297,50 @@ class TestComputeAndScripSeparation:
         assert world.ledger.get_scrip("agent_1") == initial_scrip - 20
 
 
-class TestTransferVieLedger:
-    """Tests for scrip transfer via genesis_ledger."""
+class TestTransferKernelAction:
+    """Tests for scrip transfer via kernel action (Plan #254)."""
 
-    def test_transfer_scrip_via_ledger(self, world_with_temp_log):
-        """Transfer scrip using genesis_ledger.transfer method."""
+    def test_transfer_scrip_via_kernel(self, world_with_temp_log):
+        """Transfer scrip using transfer kernel action."""
+        from src.world.actions import TransferIntent
+
         world = world_with_temp_log
         world.advance_tick()
 
         initial_agent1 = world.ledger.get_scrip("agent_1")
         initial_agent2 = world.ledger.get_scrip("agent_2")
 
-        intent = InvokeArtifactIntent(
+        intent = TransferIntent(
             principal_id="agent_1",
-            artifact_id="genesis_ledger",
-            method="transfer",
-            args=["agent_1", "agent_2", 25]
+            recipient_id="agent_2",
+            amount=25,
         )
         result = world.execute_action(intent)
 
         assert result.success is True
-        assert result.data is not None
-        assert result.data.get("success") is True
-        assert result.data.get("transferred") == 25
 
         # Verify balances changed
-        # Transfer method costs 1 scrip to invoke, plus the 25 transferred
         final_agent1 = world.ledger.get_scrip("agent_1")
         final_agent2 = world.ledger.get_scrip("agent_2")
 
-        # agent_1: started with 100, transferred 25, method cost 1 = 74
-        # agent_2: started with 100, received 25 = 125
-        assert final_agent1 == initial_agent1 - 25 - 1  # -25 transfer, -1 method cost
+        # Plan #254: transfer is a free kernel action (no method cost)
+        assert final_agent1 == initial_agent1 - 25  # -25 transfer
         assert final_agent2 == initial_agent2 + 25
 
-    def test_cannot_transfer_from_other_agent(self, world_with_temp_log):
-        """Cannot transfer scrip from another agent's account."""
+    def test_cannot_transfer_more_than_balance(self, world_with_temp_log):
+        """Cannot transfer more scrip than you have."""
+        from src.world.actions import TransferIntent
+
         world = world_with_temp_log
         world.advance_tick()
 
-        intent = InvokeArtifactIntent(
+        intent = TransferIntent(
             principal_id="agent_1",
-            artifact_id="genesis_ledger",
-            method="transfer",
-            args=["agent_2", "agent_1", 25]  # Trying to transfer FROM agent_2
+            recipient_id="agent_2",
+            amount=500,  # More than the 100 starting scrip
         )
         result = world.execute_action(intent)
 
-        # The method call should fail due to security check
-        # When genesis method returns error, it's wrapped in ActionResult
+        # Should fail due to insufficient funds
         assert result.success is False
-        assert "Cannot transfer from" in result.message
+        assert "insufficient" in result.message.lower() or "balance" in result.message.lower()
