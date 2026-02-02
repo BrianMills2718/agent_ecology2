@@ -557,14 +557,14 @@ class Ledger:
         return dict(self.scrip)
 
     def get_agent_principal_ids(self) -> list[str]:
-        """Get list of agent principal IDs (excludes genesis artifacts).
+        """Get list of agent principal IDs (excludes system principals).
 
         Used for UBI distribution - only real agents receive UBI, not
-        system artifacts like genesis_ledger, genesis_mint, etc.
+        system principals (those starting with 'SYSTEM' or 'kernel_').
         """
         return [
             pid for pid in self.scrip.keys()
-            if not pid.startswith("genesis_")
+            if not pid.startswith(("genesis_", "SYSTEM", "kernel_"))
         ]
 
     def distribute_ubi(self, amount: int, exclude: str | None = None) -> dict[str, int]:

@@ -27,7 +27,8 @@ from .actions import (
     ReadArtifactIntent, WriteArtifactIntent,
 )
 from .kernel_queries import KernelQueryHandler
-# NOTE: TransferIntent removed - all transfers via genesis_ledger.transfer()
+# Plan #254: Genesis imports still needed during transition (Phase 3-4)
+# After Phase 4, these will be removed and transfer/mint are kernel actions
 from .genesis import (
     create_genesis_artifacts, GenesisArtifact, GenesisRightsRegistry,
     GenesisMint, GenesisDebtContract, RightsConfig, SubmissionInfo
@@ -66,7 +67,7 @@ def get_error_message(error_type: str, **kwargs: Any) -> str:
         "access_denied_write": "Access denied: you are not allowed to write to {artifact_id}. See handbook_actions for permissions.",
         "access_denied_invoke": "Access denied: you are not allowed to invoke {artifact_id}. See handbook_actions for permissions.",
         "method_not_found": "Method '{method}' not found on {artifact_id}. Available: {methods}. TIP: Call invoke_artifact('{artifact_id}', 'describe', []) to see method details before invoking.",
-        "escrow_not_owner": "Escrow does not own {artifact_id}. See handbook_trading for the 2-step process: 1) genesis_ledger.transfer_ownership([artifact_id, '{escrow_id}']), 2) deposit.",
+        "escrow_not_owner": "Escrow does not own {artifact_id}. See handbook_trading for the 2-step process: 1) edit_artifact to set owner to escrow, 2) deposit.",
     }
 
     # Get from config (or use default)
@@ -421,7 +422,7 @@ class World:
             "_index": "handbook_toc",
             "actions": "handbook_actions",
             "tools": "handbook_tools",
-            "genesis": "handbook_genesis",
+            # "genesis" removed - Plan #254 eliminates genesis artifacts
             "resources": "handbook_resources",
             "trading": "handbook_trading",
             "mint": "handbook_mint",

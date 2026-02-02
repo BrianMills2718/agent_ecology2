@@ -373,11 +373,11 @@ class SimulationRunner:
                             print(f"  Created longterm memory: {longterm_id}")
                         # Plan #213: Pre-seed common lessons to bootstrap agent learning
                         preseeded_lessons = [
-                            "LESSON: To deposit an artifact to escrow, first set its metadata.authorized_writer to 'genesis_escrow' using write_artifact action",
+                            "LESSON: To deposit an artifact to escrow, first set its metadata.authorized_writer to escrow using edit_artifact action",
                             "LESSON: Use integers for prices and amounts, not strings (10 not '10')",
                             "LESSON: Check artifact ownership before trying to transfer or deposit it",
-                            "LESSON: Use genesis_store.list to discover what artifacts exist before trying to buy or interact with them",
-                            "LESSON: Always check your scrip balance with genesis_ledger.balance before making purchases",
+                            "LESSON: Use query_kernel('artifacts', {}) to discover what artifacts exist before trying to buy or interact with them",
+                            "LESSON: Always check your scrip balance with query_kernel('balances', {'principal_id': 'your_id'}) before making purchases",
                         ]
                         for lesson in preseeded_lessons:
                             genesis_memory._add_entry(

@@ -1582,9 +1582,9 @@ You are {self.agent_id}. Time remaining: {time_remaining_str} ({progress_str} co
 ## World Summary
 - Artifacts: {len(artifacts)} total ({genesis_count} genesis, {executable_count} executable, {data_count} data)
 - Use `read_artifact` to inspect any artifact
-- Use `genesis_ledger.all_balances([])` to see all agent balances
-- Use `genesis_event_log.read([])` for world history
-- Read handbooks for help: handbook_genesis, handbook_trading, handbook_actions
+- Use `query_kernel("balances", {})` to see all agent balances
+- Use `query_kernel("events", {"limit": 10})` for world history
+- Read handbooks for help: handbook_actions, handbook_trading, handbook_resources
 
 ## Available Actions
 {self.action_schema}
