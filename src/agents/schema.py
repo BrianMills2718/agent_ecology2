@@ -19,6 +19,7 @@ ActionType = Literal[
     "transfer",  # Plan #254: Move scrip between principals
     "mint",  # Plan #254: Create scrip (privileged)
     "submit_to_mint",  # Plan #259: Submit artifact to mint auction
+    "submit_to_task",  # Plan #269: Submit artifact as task solution
     # Deprecated (Plan #254) - use edit_artifact on self instead:
     "configure_context",  # Plan #192: Deprecated
     "modify_system_prompt",  # Plan #194: Deprecated
@@ -86,7 +87,13 @@ You must respond with a single JSON object representing your action.
    CORRECT: {"action_type": "submit_to_mint", "artifact_id": "my_tool", "bid": 5}
    WRONG:   {"action_type": "invoke_artifact", "method": "submit_to_mint", ...}
 
-12. configure_context - Configure prompt context sections (DEPRECATED - use edit_artifact on self)
+12. submit_to_task - Submit artifact as task solution (Plan #269)
+   {"action_type": "submit_to_task", "artifact_id": "<id>", "task_id": "<task_id>"}
+   Submit your artifact to complete a mint task. Query mint_tasks to see available tasks.
+   Your artifact is tested against public tests (you see results) and hidden tests (pass/fail only).
+   If ALL tests pass, you earn the task's reward. If any fail, fix your artifact and try again.
+
+13. configure_context - Configure prompt context sections (DEPRECATED - use edit_artifact on self)
    {"action_type": "configure_context", "sections": {"<section>": true/false, ...}}
    Optional: "priorities": {"<section>": <0-100>, ...}
    Enables/disables sections of your prompt context. Valid sections:
@@ -182,7 +189,7 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
     valid_actions = [
         "noop", "read_artifact", "write_artifact", "edit_artifact", "delete_artifact",
         "invoke_artifact", "query_kernel", "subscribe_artifact", "unsubscribe_artifact",
-        "transfer", "mint", "submit_to_mint",  # Plan #254, #259: Value actions
+        "transfer", "mint", "submit_to_mint", "submit_to_task",  # Plan #254, #259, #269
         "configure_context", "modify_system_prompt",  # Deprecated but still accepted
     ]
     if action_type not in valid_actions:
@@ -330,6 +337,19 @@ def validate_action_json(json_str: str) -> dict[str, Any] | str:
             return "submit_to_mint 'bid' must be an integer"
         if bid <= 0:
             return "submit_to_mint 'bid' must be positive"
+
+    elif action_type == "submit_to_task":
+        # Plan #269: Submit artifact as task solution
+        if not data.get("artifact_id"):
+            return "submit_to_task requires 'artifact_id'"
+        artifact_id = str(data.get("artifact_id", ""))
+        if len(artifact_id) > max_artifact_id_length:
+            return f"artifact_id exceeds max length ({max_artifact_id_length} chars)"
+        if not data.get("task_id"):
+            return "submit_to_task requires 'task_id'"
+        task_id = str(data.get("task_id", ""))
+        if len(task_id) > max_artifact_id_length:
+            return f"task_id exceeds max length ({max_artifact_id_length} chars)"
 
     elif action_type == "configure_context":
         # Plan #192: Configure prompt context sections

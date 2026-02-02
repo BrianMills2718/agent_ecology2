@@ -8,7 +8,7 @@
 # =============================================================================
 
 version: 3
-last_updated: "2026-02-02"  # Plan #259: submit_to_mint action type
+last_updated: "2026-02-02"  # Plan #269: submit_to_task action type
 status: current_implementation
 source_of_truth: "src/world/artifacts.py, src/world/actions.py, src/world/kernel_interface.py"
 
@@ -69,11 +69,12 @@ actions:
     operations: [invoke_artifact]
 
   value:
-    description: "Scrip management (Plan #254)"
-    operations: [transfer, mint]
+    description: "Scrip management (Plan #254, #269)"
+    operations: [transfer, mint, submit_to_task]
     notes:
       transfer: "Move scrip between principals, validates balance"
-      mint: "Create scrip, privileged (requires can_mint capability)"
+      mint: "Submit artifact to auction-based mint (Plan #254)"
+      submit_to_task: "Submit artifact to task-based mint for test evaluation (Plan #269)"
 
   observation:
     description: "Read-only kernel state access"

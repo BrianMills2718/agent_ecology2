@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-268-improve-code-guidance
-task: Improve code generation guidance for agents
-claimed_at: '2026-02-02T19:33:17Z'
-session_id: 4a3b38ec-1f69-488d-bf35-37a822ccf723
-plan: 268
+cc_id: plan-269-task-based-mint
+task: Implement task-based mint system
+claimed_at: '2026-02-02T20:05:34Z'
+session_id: e8005e84-8b64-4ba1-beb1-41978989b244
+plan: 269

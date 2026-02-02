@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-02-02 (Plan #256 - alpha_prime config with disk_quota option)
+**Last verified:** 2026-02-02 (Plan #269 - mint_tasks config for task-based minting)
 
 ---
 

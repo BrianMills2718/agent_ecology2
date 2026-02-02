@@ -666,3 +666,57 @@ alpha_prime:
   starting_scrip: 100                     # Initial scrip balance
   starting_llm_budget: 1.0                # Initial LLM budget in dollars
   model: "gemini/gemini-2.0-flash"        # Model for Alpha Prime's cognition
+
+# -----------------------------------------------------------------------------
+# MINT TASKS - Task-Based Minting (Plan #269)
+# -----------------------------------------------------------------------------
+mint_tasks:
+  enabled: true                           # Enable task-based mint system
+  seed_tasks:
+    - task_id: "add_numbers"
+      description: "Create an artifact that adds two numbers. Your run(a, b) function should return a + b."
+      reward: 30
+      public_tests:
+        - description: "2 + 3 = 5"
+          args: [2, 3]
+          expected: 5
+        - description: "0 + 0 = 0"
+          args: [0, 0]
+          expected: 0
+      hidden_tests:
+        - description: "Negative numbers"
+          args: [-5, 3]
+          expected: -2
+        - description: "Large numbers"
+          args: [999, 1]
+          expected: 1000
+
+    - task_id: "multiply_numbers"
+      description: "Create an artifact that multiplies two numbers. Your run(a, b) function should return a * b."
+      reward: 30
+      public_tests:
+        - description: "3 * 4 = 12"
+          args: [3, 4]
+          expected: 12
+        - description: "0 * 5 = 0"
+          args: [0, 5]
+          expected: 0
+      hidden_tests:
+        - description: "Negative product"
+          args: [-2, 3]
+          expected: -6
+
+    - task_id: "string_length"
+      description: "Create an artifact that returns the length of a string. Your run(s) function should return len(s)."
+      reward: 25
+      public_tests:
+        - description: "hello has 5 chars"
+          args: ["hello"]
+          expected: 5
+        - description: "empty string"
+          args: [""]
+          expected: 0
+      hidden_tests:
+        - description: "With spaces"
+          args: ["hello world"]
+          expected: 11

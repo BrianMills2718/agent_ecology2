@@ -66,6 +66,15 @@ QUERY_SCHEMA: dict[str, dict[str, Any]] = {
         "params": ["artifact_id"],
         "required": ["artifact_id"],
     },
+    # Plan #269: Task-based mint queries
+    "mint_tasks": {
+        "params": ["status", "limit"],
+        "required": [],
+    },
+    "mint_task": {
+        "params": ["task_id"],
+        "required": ["task_id"],
+    },
 }
 
 
@@ -491,4 +500,87 @@ class KernelQueryHandler:
             "artifact_id": artifact_id,
             "depends_on": depends_on,
             "dependents": dependents,
+        }
+
+    # -------------------------------------------------------------------------
+    # Plan #269: Task-based mint queries
+    # -------------------------------------------------------------------------
+
+    def _query_mint_tasks(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Get available mint tasks.
+
+        Args:
+            params: Query parameters
+                - status: Filter by status ("open", "completed", or None for all)
+                - limit: Maximum number of tasks to return (default 20)
+
+        Returns:
+            List of tasks (hidden tests excluded)
+        """
+        # Check if task-based mint is enabled
+        if not hasattr(self._world, "mint_task_manager") or self._world.mint_task_manager is None:
+            return {
+                "success": False,
+                "error": "Task-based mint system is not enabled",
+                "error_code": "not_enabled",
+            }
+
+        status_filter = params.get("status")
+        limit = params.get("limit", 20)
+
+        manager = self._world.mint_task_manager
+        all_tasks = list(manager._tasks.values())
+
+        # Filter by status
+        if status_filter == "open":
+            tasks = [t for t in all_tasks if t.is_open]
+        elif status_filter == "completed":
+            tasks = [t for t in all_tasks if not t.is_open]
+        else:
+            tasks = all_tasks
+
+        # Apply limit
+        tasks = tasks[:limit]
+
+        return {
+            "success": True,
+            "query_type": "mint_tasks",
+            "total": len(tasks),
+            "returned": len(tasks),
+            "tasks": [t.to_dict(include_hidden=False) for t in tasks],
+        }
+
+    def _query_mint_task(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Get details of a specific mint task.
+
+        Args:
+            params: Query parameters
+                - task_id: Required task identifier
+
+        Returns:
+            Task details (hidden tests excluded)
+        """
+        # Check if task-based mint is enabled
+        if not hasattr(self._world, "mint_task_manager") or self._world.mint_task_manager is None:
+            return {
+                "success": False,
+                "error": "Task-based mint system is not enabled",
+                "error_code": "not_enabled",
+            }
+
+        task_id = params["task_id"]
+        manager = self._world.mint_task_manager
+        task = manager.get_task(task_id)
+
+        if task is None:
+            return {
+                "success": False,
+                "error": f"Task '{task_id}' not found",
+                "error_code": "not_found",
+            }
+
+        return {
+            "success": True,
+            "query_type": "mint_task",
+            "task": task.to_dict(include_hidden=False),
         }
