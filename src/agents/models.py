@@ -202,6 +202,41 @@ class FlatAction(BaseModel):
     operation: str = ""
     section_marker: str = ""
 
+    @field_validator("params", "sections", "priorities", mode="before")
+    @classmethod
+    def parse_dict_string(cls, v: Any) -> dict[str, Any]:  # noqa: ANN401
+        """Parse JSON string to dict if needed.
+
+        Gemini sometimes returns dict fields as JSON strings instead of
+        actual objects. This validator auto-parses them.
+
+        Handles edge cases:
+        1. Regular JSON strings: '{}'
+        2. Null strings: 'null'
+        3. Malformed strings: ':{}', etc.
+        """
+        if v is None:
+            return {}
+        if isinstance(v, str):
+            # Handle empty or null strings
+            if not v or v == "null":
+                return {}
+            # Try parsing as JSON
+            try:
+                parsed = json.loads(v)
+                # If parsing returns None, convert to empty dict
+                return parsed if parsed is not None else {}
+            except json.JSONDecodeError:
+                # Handle double-escaped JSON
+                try:
+                    unescaped = v.replace('\\"', '"')
+                    parsed = json.loads(unescaped)
+                    return parsed if parsed is not None else {}
+                except json.JSONDecodeError:
+                    # Malformed string - return empty dict
+                    return {}
+        return v
+
     @model_validator(mode="after")
     def validate_required_fields(self) -> "FlatAction":
         """Validate required fields based on action_type.
