@@ -49,6 +49,12 @@ workflow:
 
         Last result: {last_action_result}
 
+        ## AVAILABLE TASKS (examples)
+        There are multiple tasks you can complete:
+        - **add_numbers** (30 scrip): Create artifact that adds two numbers
+        - **multiply_numbers** (35 scrip): Create artifact that multiplies two numbers
+        - **string_length** (25 scrip): Create artifact that returns string length
+
         ## STRATEGY: Three Steps to Earn Scrip
 
         **Step 1 - Query available tasks:**
@@ -56,36 +62,46 @@ workflow:
         {{"action_type": "query_kernel", "query_type": "mint_tasks", "params": {{}}}}
         ```
 
-        **Step 2 - Create artifact matching task (NEXT TURN):**
+        **Step 2 - Create artifact for an OPEN task (NEXT TURN):**
+        Use a UNIQUE artifact_id for each task! Examples:
+
+        For add_numbers:
         ```json
-        {{
-          "action_type": "write_artifact",
-          "artifact_id": "v4_solo_adder",
-          "artifact_type": "executable",
-          "content": "Adds two numbers",
-          "executable": true,
-          "price": 0,
-          "code": "def run(a, b):\n    return a + b"
-        }}
+        {{"action_type": "write_artifact", "artifact_id": "v4_solo_adder", "artifact_type": "executable", "content": "Adds two numbers", "executable": true, "price": 0, "code": "def run(a, b):\n    return a + b"}}
+        ```
+
+        For multiply_numbers:
+        ```json
+        {{"action_type": "write_artifact", "artifact_id": "v4_solo_multiplier", "artifact_type": "executable", "content": "Multiplies two numbers", "executable": true, "price": 0, "code": "def run(a, b):\n    return a * b"}}
+        ```
+
+        For string_length:
+        ```json
+        {{"action_type": "write_artifact", "artifact_id": "v4_solo_strlen", "artifact_type": "executable", "content": "Returns string length", "executable": true, "price": 0, "code": "def run(s):\n    return len(s)"}}
         ```
 
         **Step 3 - Submit to task (NEXT TURN after write):**
         ```json
-        {{"action_type": "submit_to_task", "artifact_id": "v4_solo_adder", "task_id": "add_numbers"}}
+        {{"action_type": "submit_to_task", "artifact_id": "<your_artifact>", "task_id": "<task_id>"}}
         ```
 
         ## CRITICAL RULES
         - Code MUST define a `run()` function - MANDATORY
         - submit_to_task is an ACTION TYPE, not invoke_artifact!
         - Each turn = ONE action only
-        - If you haven't queried tasks yet, do that FIRST
+        - Use DIFFERENT artifact_id for each different task!
+        - If a task is completed/closed, try a DIFFERENT task
 
         ## CHECK YOUR LAST ACTION:
         - No action history → query_kernel for mint_tasks
-        - query_kernel → write_artifact matching a task
-        - write_artifact → submit_to_task for that artifact
-        - submit_to_task succeeded → query for more tasks
-        - submit_to_task failed → check error and try again
+        - query_kernel shows open tasks → write_artifact for ONE of them
+        - write_artifact succeeded → submit_to_task for that artifact
+        - submit_to_task succeeded → query for more tasks (try a DIFFERENT one!)
+        - submit_to_task failed "task not open" → query tasks, pick a DIFFERENT open task
+        - submit_to_task failed other error → check error, fix and retry
+
+        ## IMPORTANT: After completing a task, it becomes CLOSED.
+        Look at the query results to see which tasks are still OPEN, then try those!
 
         What do you do next?
 
