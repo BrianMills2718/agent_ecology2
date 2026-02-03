@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-272-action-insights
-task: Structured action insights for loop breaking
-claimed_at: '2026-02-03T16:21:20Z'
-session_id: 7f301f92-b374-4463-9b42-af81cf2a9106
-plan: 272
+cc_id: plan-273-alpha-prime-babyagi
+task: Alpha Prime BabyAGI upgrade with task queue
+claimed_at: '2026-02-03T16:56:52Z'
+session_id: 3205f91d-dd5f-4cd0-951c-fb4d372b45f4
+plan: 273
