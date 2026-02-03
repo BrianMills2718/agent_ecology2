@@ -652,14 +652,24 @@ def run():
     insights = state.get("insights", {})
     objective = state.get("objective", "Earn scrip by completing mint tasks")
 
+    # Plan #275: Include mint tasks data in prompt so LLM can see available tasks
+    available_tasks = state.get("last_mint_tasks_query", [])
+    action_history = state.get("action_history", [])[-3:]  # Last 3 actions
+
     prompt = f"""You are Alpha Prime. Execute your current task and plan next steps.
 
 OBJECTIVE: {objective}
 
 CURRENT TASK (id={current_task['id']}): {current_task['description']}
 
+AVAILABLE MINT TASKS (from last query):
+{json.dumps(available_tasks, indent=2) if available_tasks else "(Query mint_tasks first to see available tasks)"}
+
 RECENT RESULTS:
 {json.dumps(recent_completed, indent=2) if recent_completed else "(none yet)"}
+
+RECENT ACTIONS:
+{json.dumps(action_history, indent=2) if action_history else "(none yet)"}
 
 INSIGHTS:
 - Closed tasks (don't retry): {insights.get('closed_tasks', [])}
@@ -718,11 +728,21 @@ CRITICAL: Use UNIQUE artifact IDs. submit_to_task is an action_type, not invoke_
     # Remove current task from queue
     state["task_queue"] = [t for t in task_queue if t["id"] != current_task["id"]]
 
-    # Add to completed tasks
+    # Plan #275: Track action in history for observability
+    state.setdefault("action_history", []).append({
+        "task_id": current_task["id"],
+        "action_type": action.get("action_type", "noop"),
+        "action": action,
+    })
+    # Keep only last 5 actions
+    state["action_history"] = state["action_history"][-5:]
+
+    # Add to completed tasks - note: actual action_result will be added after execution
     state["completed_tasks"].append({
         "id": current_task["id"],
         "description": current_task["description"],
-        "result": task_result
+        "result": task_result,
+        "action_type": action.get("action_type", "noop"),
     })
     # Keep only last 10 completed tasks
     state["completed_tasks"] = state["completed_tasks"][-10:]
@@ -760,6 +780,10 @@ CRITICAL: Use UNIQUE artifact IDs. submit_to_task is an action_type, not invoke_
             # Plan #274: Pass caller_id for logging
             result = kernel_state.query(query_type, params, caller_id=caller_id)
             action_result = {"success": True, "result": result}
+            # Plan #275: Store query results in state so LLM can see them
+            if query_type == "mint_tasks":
+                state["last_mint_tasks_query"] = result.get("tasks", [])
+                kernel_actions.write_artifact(caller_id, "alpha_prime_state", json.dumps(state, indent=2))
         except Exception as e:
             action_result = {"success": False, "error": str(e)}
 
@@ -780,6 +804,10 @@ CRITICAL: Use UNIQUE artifact IDs. submit_to_task is an action_type, not invoke_
                 code=code if executable else None,
             )
             action_result = {"success": True, "result": f"Created artifact {artifact_id}"}
+            # Plan #275: Track artifact creation in insights
+            if artifact_id not in state["insights"].get("artifacts_created", []):
+                state["insights"].setdefault("artifacts_created", []).append(artifact_id)
+                kernel_actions.write_artifact(caller_id, "alpha_prime_state", json.dumps(state, indent=2))
         except Exception as e:
             action_result = {"success": False, "error": str(e)}
 

@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-03 (Plan #274 - kernel interface event logging)
+**Last verified:** 2026-02-03 (Plan #275 - alpha prime prompt observability)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
