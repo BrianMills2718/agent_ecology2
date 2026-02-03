@@ -1,9 +1,9 @@
-"""Tests for Alpha Prime bootstrap (Plan #256).
+"""Tests for Alpha Prime bootstrap (Plan #256, Plan #273).
 
 Tests the Alpha Prime 3-artifact cluster:
 - alpha_prime_strategy (constitution/prompt)
-- alpha_prime_state (memory/JSON)
-- alpha_prime_loop (metabolism/has_loop=True)
+- alpha_prime_state (memory/JSON with BabyAGI task queue - Plan #273)
+- alpha_prime_loop (metabolism/has_loop=True, BabyAGI task loop - Plan #273)
 """
 
 import pytest
@@ -27,7 +27,7 @@ def world_with_alpha_prime(minimal_config: dict, tmp_path: Path) -> World:
     return World(config)
 
 
-@pytest.mark.plans([256])
+@pytest.mark.plans([256, 273])
 class TestAlphaPrimeBootstrap:
     """Test Alpha Prime cluster bootstrap."""
 
@@ -55,10 +55,11 @@ class TestAlphaPrimeBootstrap:
         # Should contain the strategy content in content field
         assert artifact.content is not None
         assert "Alpha Prime" in artifact.content
-        assert "Primary Directive" in artifact.content
+        # Plan #273: BabyAGI-style task management
+        assert "Task Management Loop" in artifact.content
 
     def test_state_is_json_artifact(self, world_with_alpha_prime: World) -> None:
-        """alpha_prime_state is a JSON artifact with initial state."""
+        """alpha_prime_state is a JSON artifact with BabyAGI task queue (Plan #273)."""
         artifact = world_with_alpha_prime.artifacts.get("alpha_prime_state")
         assert artifact is not None
         assert artifact.type == "json"
@@ -69,8 +70,14 @@ class TestAlphaPrimeBootstrap:
         assert artifact.content is not None
         state = json.loads(artifact.content)
         assert state["iteration"] == 0
-        assert state["observations"] == []
-        assert state["last_action"] is None
+        # Plan #273: BabyAGI task queue structure
+        assert "task_queue" in state
+        assert len(state["task_queue"]) >= 1  # Has initial task
+        assert "completed_tasks" in state
+        assert state["completed_tasks"] == []
+        assert "next_task_id" in state
+        assert "insights" in state
+        assert "objective" in state
         assert "created_at" in state
 
     def test_loop_has_correct_flags(self, world_with_alpha_prime: World) -> None:
@@ -84,7 +91,7 @@ class TestAlphaPrimeBootstrap:
         assert "can_call_llm" in artifact.capabilities
 
     def test_loop_has_code(self, world_with_alpha_prime: World) -> None:
-        """alpha_prime_loop has executable code with run() function."""
+        """alpha_prime_loop has BabyAGI task loop code (Plan #273)."""
         artifact = world_with_alpha_prime.artifacts.get("alpha_prime_loop")
         assert artifact is not None
         assert artifact.code is not None
@@ -92,8 +99,10 @@ class TestAlphaPrimeBootstrap:
         assert "_syscall_llm" in artifact.code
         assert "kernel_state.read_artifact" in artifact.code
         assert "kernel_actions.write_artifact" in artifact.code
-        # Uses caller_id for access control
-        assert "my_id = caller_id" in artifact.code
+        # Plan #273: BabyAGI task queue management
+        assert "task_queue" in artifact.code
+        assert "current_task" in artifact.code
+        assert "new_tasks" in artifact.code
 
 
 @pytest.mark.plans([256])

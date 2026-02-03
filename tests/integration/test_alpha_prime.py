@@ -1,9 +1,9 @@
-"""Integration tests for Alpha Prime (Plan #256).
+"""Integration tests for Alpha Prime (Plan #256, Plan #273).
 
 Tests the Alpha Prime 3-artifact cluster integration:
 - ArtifactLoopManager discovers alpha_prime_loop
 - Loop executes one iteration (mocked LLM)
-- State updates correctly
+- State updates correctly (BabyAGI task queue - Plan #273)
 - Budget is deducted
 """
 
@@ -55,7 +55,7 @@ class TestAlphaPrimeArtifactLoopIntegration:
         assert loop.state == ArtifactState.STOPPED
 
 
-@pytest.mark.plans([256])
+@pytest.mark.plans([256, 273])
 class TestAlphaPrimeExecution:
     """Test Alpha Prime execution cycle."""
 
@@ -70,40 +70,46 @@ class TestAlphaPrimeExecution:
 
         # Strategy should have the prompt content (in content field)
         assert "Alpha Prime" in strategy.content
-        assert "Primary Directive" in strategy.content
+        # Plan #273: BabyAGI-style task management
+        assert "Task Management Loop" in strategy.content
 
-        # State should be valid JSON (in content field)
+        # State should be valid JSON with BabyAGI task queue (Plan #273)
         state = json.loads(state_artifact.content)
         assert state["iteration"] == 0
-        assert state["observations"] == []
+        assert "task_queue" in state
+        assert "completed_tasks" in state
 
     def test_loop_executes_with_mocked_llm(self, world_with_alpha_prime: World) -> None:
-        """Alpha Prime loop executes one iteration with mocked LLM."""
+        """Alpha Prime loop executes one iteration with mocked LLM (Plan #273)."""
         from src.world.executor import get_executor
 
         # mock-ok: LLM calls are external API
-        mock_module = MagicMock()
         mock_provider = MagicMock()
-        mock_provider.generate.return_value = '{"action": "noop"}'
+        # Plan #273: BabyAGI response format with action + task_update
+        mock_provider.generate.return_value = json.dumps({
+            "action": {"action_type": "noop"},
+            "task_result": "Executed query",
+            "new_tasks": []
+        })
         mock_provider.last_usage = {"cost": 0.001, "prompt_tokens": 10, "completion_tokens": 5}
-        mock_module.LLMProvider.return_value = mock_provider
 
-        with patch.dict(sys.modules, {'llm_provider': mock_module}):
+        with patch('llm_provider.LLMProvider', return_value=mock_provider):
             executor = get_executor()
             result = executor.execute_with_invoke(
                 artifact_id="alpha_prime_loop",
                 code=world_with_alpha_prime.artifacts.get("alpha_prime_loop").code,
                 world=world_with_alpha_prime,
                 caller_id="alpha_prime_loop",
-                artifact_store=world_with_alpha_prime.artifacts,  # Needed for syscall injection
+                artifact_store=world_with_alpha_prime.artifacts,
             )
 
-        assert result["success"] is True
+        assert result["success"] is True, f"Execution failed: {result.get('error', result)}"
         assert result["result"]["success"] is True
-        assert result["result"]["action"]["action"] == "noop"
+        # Plan #273: BabyAGI loop returns action in result
+        assert result["result"]["action"]["action_type"] == "noop"
 
     def test_loop_updates_state_after_execution(self, world_with_alpha_prime: World) -> None:
-        """Alpha Prime loop updates state after execution."""
+        """Alpha Prime loop updates state after execution (Plan #273)."""
         from src.world.executor import get_executor
 
         # Get initial state (in content field)
@@ -111,32 +117,41 @@ class TestAlphaPrimeExecution:
         assert initial_state["iteration"] == 0
 
         # mock-ok: LLM calls are external API
-        mock_module = MagicMock()
         mock_provider = MagicMock()
-        mock_provider.generate.return_value = '{"action": "log", "message": "Hello world"}'
+        # Plan #273: BabyAGI response with task completion and new tasks
+        mock_provider.generate.return_value = json.dumps({
+            "action": {"action_type": "query_kernel", "query_type": "mint_tasks", "params": {}},
+            "task_result": "Found 3 mint tasks",
+            "new_tasks": [
+                {"description": "Build adder artifact", "priority": 8}
+            ]
+        })
         mock_provider.last_usage = {"cost": 0.001, "prompt_tokens": 10, "completion_tokens": 5}
-        mock_module.LLMProvider.return_value = mock_provider
 
-        with patch.dict(sys.modules, {'llm_provider': mock_module}):
+        with patch('llm_provider.LLMProvider', return_value=mock_provider):
             executor = get_executor()
             result = executor.execute_with_invoke(
                 artifact_id="alpha_prime_loop",
                 code=world_with_alpha_prime.artifacts.get("alpha_prime_loop").code,
                 world=world_with_alpha_prime,
                 caller_id="alpha_prime_loop",
-                artifact_store=world_with_alpha_prime.artifacts,  # Needed for syscall injection
+                artifact_store=world_with_alpha_prime.artifacts,
             )
 
         assert result["success"] is True
 
         # Check state was updated (state is in content field)
         updated_state = json.loads(world_with_alpha_prime.artifacts.get("alpha_prime_state").content)
+        # Plan #273: BabyAGI task queue structure
         assert updated_state["iteration"] == 1
-        assert "Hello world" in updated_state["observations"]
-        assert updated_state["last_action"] == {"action": "log", "message": "Hello world"}
+        # Task should be completed and new task added
+        assert len(updated_state["completed_tasks"]) == 1
+        assert "Found 3 mint tasks" in updated_state["completed_tasks"][0]["result"]
+        # New task should be in queue
+        assert len(updated_state["task_queue"]) >= 1
 
     def test_budget_deducted_from_loop_principal(self, world_with_alpha_prime: World) -> None:
-        """LLM calls deduct budget from alpha_prime_loop's llm_budget."""
+        """LLM calls deduct budget from alpha_prime_loop's llm_budget (Plan #273)."""
         from src.world.executor import get_executor
 
         # Get initial budget
@@ -144,20 +159,22 @@ class TestAlphaPrimeExecution:
         assert initial_budget == 1.0
 
         # mock-ok: LLM calls are external API
-        mock_module = MagicMock()
         mock_provider = MagicMock()
-        mock_provider.generate.return_value = '{"action": "noop"}'
+        mock_provider.generate.return_value = json.dumps({
+            "action": {"action_type": "noop"},
+            "task_result": "Done",
+            "new_tasks": []
+        })
         mock_provider.last_usage = {"cost": 0.05, "prompt_tokens": 100, "completion_tokens": 50}
-        mock_module.LLMProvider.return_value = mock_provider
 
-        with patch.dict(sys.modules, {'llm_provider': mock_module}):
+        with patch('llm_provider.LLMProvider', return_value=mock_provider):
             executor = get_executor()
             result = executor.execute_with_invoke(
                 artifact_id="alpha_prime_loop",
                 code=world_with_alpha_prime.artifacts.get("alpha_prime_loop").code,
                 world=world_with_alpha_prime,
                 caller_id="alpha_prime_loop",
-                artifact_store=world_with_alpha_prime.artifacts,  # Needed for syscall injection
+                artifact_store=world_with_alpha_prime.artifacts,
             )
 
         assert result["success"] is True
