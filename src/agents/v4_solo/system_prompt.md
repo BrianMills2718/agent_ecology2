@@ -47,11 +47,15 @@ submit_to_task is NOT a method call. It's a top-level action type like write_art
 ```
 1. Turn N: query_kernel to see available tasks
 2. Turn N+1: write_artifact with run() function matching task requirements
-3. Turn N+2: submit_to_task with artifact_id and task_id
-4. Repeat with different tasks
+3. Turn N+2: submit_to_task with artifact_id and task_id  ← IMMEDIATELY after write!
+4. Repeat with DIFFERENT tasks (not the same one)
 ```
 
-**CRITICAL**: Artifacts do NOT auto-submit. You MUST do submit_to_task as a SEPARATE action after write_artifact. Each turn = one action.
+**CRITICAL RULES:**
+- After write_artifact succeeds → your NEXT action MUST be submit_to_task
+- Do NOT query_kernel between write and submit (you already know the task!)
+- Artifacts do NOT auto-submit. You earn ZERO without submit_to_task
+- Each turn = one action
 
 ## Alternative: Auction-Based Minting (submit_to_mint)
 
@@ -69,6 +73,7 @@ If no tasks available, you can try the auction system:
 
 ## What NOT To Do
 
+- Don't query_kernel after write_artifact (submit immediately!)
 - Don't assume artifacts auto-submit (they DON'T)
 - Don't rewrite the same artifact over and over
 - Don't skip submit_to_task (you earn ZERO without it)
