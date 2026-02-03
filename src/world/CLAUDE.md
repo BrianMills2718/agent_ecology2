@@ -30,6 +30,7 @@ This is the heart of the simulation. All world state, resources, and execution l
 | `id_registry.py` | Unified ID registry -- global uniqueness across agents/artifacts/principals |
 | `kernel_queries.py` | Read-only kernel state queries for `query_kernel` action (Plan #184) |
 | `mint_auction.py` | Mint auction logic: submissions, bid escrow, second-price resolution |
+| `mint_tasks.py` | Task-based mint system: verifiable tasks with public/hidden tests (Plan #269) |
 | `model_access.py` | Per-agent model access quotas, tradeable model access (Plan #113) |
 | `resource_manager.py` | Unified resource system: balance tracking, rate limiting, quotas (Plan #95) |
 | `resource_metrics.py` | Read-only resource metrics aggregation for agent visibility (Plan #93) |

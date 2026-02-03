@@ -451,15 +451,17 @@ def run(model: str, messages: list) -> dict:
         )
 
     def _bootstrap_alpha_prime(self, config: dict[str, Any]) -> None:
-        """Bootstrap Alpha Prime - the first V4 artifact-based agent (Plan #256).
+        """Bootstrap Alpha Prime - BabyAGI-style task-driven agent (Plan #273).
 
         Alpha Prime is a 3-artifact cluster:
         - alpha_prime_strategy: The constitution (text, system prompt)
-        - alpha_prime_state: The memory (JSON, persistent state)
+        - alpha_prime_state: The memory (JSON, persistent state with task queue)
         - alpha_prime_loop: The metabolism (executable, has_loop=True)
 
-        The loop runs autonomously via ArtifactLoopManager, reads strategy/state,
-        invokes kernel_llm_gateway to think, and updates state.
+        Plan #273: Upgraded to BabyAGI-style task management:
+        - Maintains prioritized task queue
+        - Creates new tasks based on results
+        - Tracks completed tasks for context
         """
         from decimal import Decimal
 
@@ -472,124 +474,290 @@ def run(model: str, messages: list) -> dict:
         # Extract config values
         starting_scrip = int(alpha_config.get("starting_scrip", 100))
         starting_llm_budget = Decimal(str(alpha_config.get("starting_llm_budget", "1.0")))
-        model = str(alpha_config.get("model", "gemini/gemini-2.0-flash"))
+        model = str(alpha_config.get("model", "gemini/gemini-2.5-flash"))  # Plan #273: Use thinking model
 
-        # 1. Create alpha_prime_strategy (the constitution)
-        strategy_content = f"""# Alpha Prime Strategy
+        # 1. Create alpha_prime_strategy (the constitution) - kept for reference
+        strategy_content = f"""# Alpha Prime Strategy (Plan #273: BabyAGI-Style)
 
-You are Alpha Prime, an autonomous agent in a world of scarcity.
+You are Alpha Prime, a task-driven autonomous agent.
 
-## Core Constraints
-- Thinking costs energy (llm_budget). Every LLM call depletes it.
-- Actions are free. Writing artifacts, transferring scrip cost nothing.
-- When budget reaches zero, you hibernate until funded.
+## Task Management Loop
+1. POP: Execute the highest-priority task from your queue
+2. STORE: Record the result
+3. CREATE: Generate 1-3 new follow-up tasks
+4. REPEAT
 
-## Primary Directive
-Survive. Accumulate resources. Create value others will pay for.
-
-## Decision Framework
-1. Before thinking, ask: "Is this thought worth the cost?"
-2. Prefer action over contemplation
-3. BUILD something useful, then SUBMIT it to mint
-
-## Revenue Generation
-The ONLY way to earn scrip is to submit artifacts to mint:
-{{"action_type": "mint", "artifact_id": "your_artifact_id"}}
-
-BUILD → TEST → MINT. Don't just create - monetize!
-
-## Response Format
-Return a JSON object with your action:
-{{"action": "noop"}} - Do nothing this iteration
-{{"action": "write", "artifact_id": "...", "content": "..."}} - Create/update artifact
-{{"action": "log", "message": "..."}} - Log observation to state
-
-## Model
-You use: {model}
+## Model: {model}
 """
         self.artifacts.write(
             artifact_id="alpha_prime_strategy",
             type="text",
-            content=strategy_content,  # Text content in content field
+            content=strategy_content,
             created_by="SYSTEM",
             executable=False,
             has_standing=False,
             has_loop=False,
         )
 
-        # 2. Create alpha_prime_state (the memory)
+        # 2. Create alpha_prime_state with BabyAGI task queue (Plan #273)
         import time as time_module
         initial_state = json.dumps({
             "iteration": 0,
             "created_at": time_module.strftime("%Y-%m-%dT%H:%M:%SZ", time_module.gmtime()),
-            "observations": [],
-            "last_action": None,
+            "objective": "Earn 200 scrip by completing mint tasks",
+            "task_queue": [
+                {"id": 1, "description": "Query available mint tasks", "priority": 10},
+            ],
+            "completed_tasks": [],
+            "next_task_id": 2,
+            "insights": {
+                "closed_tasks": [],
+                "completed_tasks": [],
+                "artifacts_created": [],
+            },
         }, indent=2)
         self.artifacts.write(
             artifact_id="alpha_prime_state",
             type="json",
-            content=initial_state,  # JSON content in content field
+            content=initial_state,
             created_by="SYSTEM",
             executable=False,
             has_standing=False,
             has_loop=False,
-            # Use transferable_freeware contract so alpha_prime_loop can write
             access_contract_id="kernel_contract_transferable_freeware",
             metadata={"authorized_writer": "alpha_prime_loop"},
         )
 
-        # 3. Create alpha_prime_loop (the metabolism)
-        # Plan #271: Include system_prompt in content so Agent.from_artifact() works
-        # The content must be a JSON string containing agent config
-        system_prompt = f"""# Alpha Prime: Autonomous Builder Agent
+        # 3. Create alpha_prime_loop with BabyAGI-style prompt (Plan #273)
+        system_prompt = f"""# Alpha Prime: BabyAGI-Style Task Agent (Plan #273)
 
-You are Alpha Prime, an autonomous agent in a world of scarcity.
+You are Alpha Prime, a task-driven autonomous agent. You maintain a TASK QUEUE and work through it systematically.
 
-## Core Constraints
-- Thinking costs energy (llm_budget). Every LLM call depletes it.
-- Actions are free. Writing artifacts, transferring scrip cost nothing.
-- When budget reaches zero, you hibernate until funded.
+## YOUR TASK QUEUE
+Your state artifact (alpha_prime_state) contains:
+- `task_queue`: Tasks to do, sorted by priority (highest first)
+- `completed_tasks`: Results from finished tasks (use for context)
+- `insights`: What you've learned (closed tasks, artifacts created)
 
-## Primary Directive
-Survive. Accumulate resources. Create value others will pay for.
+## EACH TURN: Execute Current Task + Plan Next Tasks
 
-## FASTEST WAY TO EARN SCRIP: Complete Mint Tasks
+**Step 1: Look at your current task** (first item in task_queue)
+**Step 2: Execute an action to complete it**
+**Step 3: In your response, include new tasks to add**
 
-Query available tasks:
+## RESPONSE FORMAT (CRITICAL)
+
+Return JSON with TWO parts:
+```json
+{{
+  "action": {{"action_type": "...", ...}},
+  "task_update": {{
+    "completed_task_result": "Brief result of current task",
+    "new_tasks": [
+      {{"description": "Next thing to do", "priority": 8}},
+      {{"description": "Another follow-up", "priority": 5}}
+    ]
+  }}
+}}
+```
+
+Priority: 10=urgent, 5=normal, 1=low
+
+## AVAILABLE ACTIONS
+
+**Query mint tasks:**
 {{"action_type": "query_kernel", "query_type": "mint_tasks", "params": {{}}}}
 
-Then complete them in TWO TURNS:
-
-**Turn 1 - Create artifact with run() function:**
+**Create artifact (use unique IDs like alpha_prime_adder, alpha_prime_multiplier):**
 {{"action_type": "write_artifact", "artifact_id": "alpha_prime_adder", "artifact_type": "executable", "executable": true, "code": "def run(a, b):\\n    return a + b"}}
 
-**Turn 2 - Submit to task (SEPARATE ACTION):**
+**Submit to task (AFTER creating artifact):**
 {{"action_type": "submit_to_task", "artifact_id": "alpha_prime_adder", "task_id": "add_numbers"}}
 
-CRITICAL: submit_to_task is an ACTION TYPE. Never use invoke_artifact for it.
-CORRECT: {{"action_type": "submit_to_task", "artifact_id": "alpha_prime_adder", "task_id": "add_numbers"}}
-WRONG:   {{"action_type": "invoke_artifact", "method": "submit_to_task", ...}}
+## TASK CREATION GUIDELINES
 
-## Decision Framework
-1. Check if you just created an artifact. If yes, SUBMIT IT (submit_to_task or submit_to_mint).
-2. Query mint_tasks to find easy wins.
-3. Build artifacts that solve tasks.
-4. When stuck, read handbook_mint for documentation.
+After each action, think: "What tasks should I add?"
 
-## Model
-You use: {model}
+Good task sequences:
+1. "Query mint tasks" → creates: "Build adder for add_numbers", "Build multiplier for multiply_numbers"
+2. "Build adder" → creates: "Submit adder to add_numbers task"
+3. "Submit succeeded" → creates: "Build next artifact for multiply_numbers"
+4. "Submit failed (task closed)" → creates: "Try different task", and add task to insights.closed_tasks
+
+DON'T create tasks for things in insights.closed_tasks!
+
+## EXAMPLE TURN
+
+Current task: "Build adder artifact"
+
+Your response:
+```json
+{{
+  "action": {{"action_type": "write_artifact", "artifact_id": "alpha_prime_adder", "artifact_type": "executable", "executable": true, "code": "def run(a, b):\\n    return a + b"}},
+  "task_update": {{
+    "completed_task_result": "Created alpha_prime_adder artifact",
+    "new_tasks": [
+      {{"description": "Submit alpha_prime_adder to add_numbers task", "priority": 9}}
+    ]
+  }}
+}}
+```
+
+## CONSTRAINTS
+- Thinking costs budget. Be efficient.
+- One action per turn. Task updates are free.
+- submit_to_task is an ACTION TYPE, not invoke_artifact.
+- Use UNIQUE artifact IDs (alpha_prime_adder, alpha_prime_multiplier, alpha_prime_strlen).
+
+## Model: {model}
 """
-        agent_config = json.dumps({
-            "llm_model": model,
-            "system_prompt": system_prompt,
+        # 3b. Create the actual loop code (Plan #273: BabyAGI task management)
+        # This is executable code that manages the task queue
+        loop_code = '''
+def run():
+    """Alpha Prime BabyAGI Loop - Plan #273.
+
+    Each iteration:
+    1. Read state with task queue
+    2. Pop current task
+    3. Call LLM to decide action + create new tasks
+    4. Execute action
+    5. Update state with results and new tasks
+    """
+    import json
+
+    # Read current state (caller_id is injected by executor)
+    state_raw = kernel_state.read_artifact("alpha_prime_state", caller_id)
+    try:
+        state = json.loads(state_raw) if isinstance(state_raw, str) else state_raw
+    except (json.JSONDecodeError, TypeError):
+        state = {"iteration": 0, "task_queue": [], "completed_tasks": [], "next_task_id": 1, "insights": {}, "objective": "Earn scrip"}
+
+    state["iteration"] = state.get("iteration", 0) + 1
+
+    # Get current task (highest priority)
+    task_queue = state.get("task_queue", [])
+    if not task_queue:
+        # No tasks - add initial task
+        task_queue = [{"id": 1, "description": "Query available mint tasks", "priority": 10}]
+        state["task_queue"] = task_queue
+        state["next_task_id"] = 2
+
+    # Sort by priority (descending) and pop first
+    task_queue.sort(key=lambda t: t.get("priority", 5), reverse=True)
+    current_task = task_queue[0]
+
+    # Build context for LLM
+    recent_completed = state.get("completed_tasks", [])[-3:]  # Last 3 results
+    insights = state.get("insights", {})
+    objective = state.get("objective", "Earn scrip by completing mint tasks")
+
+    prompt = f"""You are Alpha Prime. Execute your current task and plan next steps.
+
+OBJECTIVE: {objective}
+
+CURRENT TASK (id={current_task['id']}): {current_task['description']}
+
+RECENT RESULTS:
+{json.dumps(recent_completed, indent=2) if recent_completed else "(none yet)"}
+
+INSIGHTS:
+- Closed tasks (don't retry): {insights.get('closed_tasks', [])}
+- Completed submissions: {insights.get('completed_tasks', [])}
+- Artifacts created: {insights.get('artifacts_created', [])}
+
+RESPOND WITH JSON:
+{{
+  "action": {{"action_type": "...", ...}},
+  "task_result": "Brief description of what this action accomplishes",
+  "new_tasks": [
+    {{"description": "Follow-up task", "priority": 8}}
+  ]
+}}
+
+ACTIONS:
+- Query tasks: {{"action_type": "query_kernel", "query_type": "mint_tasks", "params": {{}}}}
+- Write artifact: {{"action_type": "write_artifact", "artifact_id": "alpha_prime_X", "artifact_type": "executable", "executable": true, "code": "def run(...):\\n    ..."}}
+- Submit to task: {{"action_type": "submit_to_task", "artifact_id": "alpha_prime_X", "task_id": "task_name"}}
+
+CRITICAL: Use UNIQUE artifact IDs. submit_to_task is an action_type, not invoke_artifact."""
+
+    # Call LLM
+    llm_result = _syscall_llm("''' + model + '''", [
+        {"role": "user", "content": prompt}
+    ])
+
+    if not llm_result.get("success"):
+        # LLM call failed - log and return
+        state["completed_tasks"].append({
+            "id": current_task["id"],
+            "description": current_task["description"],
+            "result": f"LLM error: {llm_result.get('error', 'unknown')}"
         })
+        kernel_actions.write_artifact(caller_id, "alpha_prime_state", json.dumps(state, indent=2))
+        return {"success": False, "error": llm_result.get("error")}
+
+    # Parse LLM response
+    response_text = llm_result.get("content", "{}")
+
+    # Extract JSON from response (handle markdown code blocks)
+    if "```json" in response_text:
+        response_text = response_text.split("```json")[1].split("```")[0]
+    elif "```" in response_text:
+        response_text = response_text.split("```")[1].split("```")[0]
+
+    try:
+        response = json.loads(response_text.strip())
+    except json.JSONDecodeError:
+        response = {"action": {"action_type": "noop"}, "task_result": "Failed to parse response", "new_tasks": []}
+
+    action = response.get("action", {"action_type": "noop"})
+    task_result = response.get("task_result", "Completed")
+    new_tasks = response.get("new_tasks", [])
+
+    # Remove current task from queue
+    state["task_queue"] = [t for t in task_queue if t["id"] != current_task["id"]]
+
+    # Add to completed tasks
+    state["completed_tasks"].append({
+        "id": current_task["id"],
+        "description": current_task["description"],
+        "result": task_result
+    })
+    # Keep only last 10 completed tasks
+    state["completed_tasks"] = state["completed_tasks"][-10:]
+
+    # Add new tasks
+    for new_task in new_tasks:
+        if isinstance(new_task, dict) and "description" in new_task:
+            state["task_queue"].append({
+                "id": state.get("next_task_id", 1),
+                "description": new_task["description"],
+                "priority": new_task.get("priority", 5)
+            })
+            state["next_task_id"] = state.get("next_task_id", 1) + 1
+
+    # Update insights based on action
+    if action.get("action_type") == "write_artifact":
+        artifact_id = action.get("artifact_id", "")
+        if artifact_id and artifact_id not in state["insights"].get("artifacts_created", []):
+            state["insights"].setdefault("artifacts_created", []).append(artifact_id)
+
+    # Save state BEFORE executing action (so state is preserved even if action fails)
+    kernel_actions.write_artifact(caller_id, "alpha_prime_state", json.dumps(state, indent=2))
+
+    # Return the action for the kernel to execute
+    return {"success": True, "action": action, "task_completed": current_task["description"]}
+'''
+        # Plan #273: Use code-based loop instead of Agent wrapper
+        # The loop_code manages its own task queue via _syscall_llm
         self.artifacts.write(
             artifact_id="alpha_prime_loop",
-            type="agent",
-            content=agent_config,  # JSON string with agent config
+            type="executable",
+            content=json.dumps({"description": "BabyAGI-style task agent", "system_prompt": system_prompt}),
             created_by="SYSTEM",
             executable=True,
-            code="",  # No code - runs as standard Agent
+            code=loop_code,  # Plan #273: Actual BabyAGI loop code
             capabilities=["can_call_llm"],  # Needs LLM access to think
             has_standing=True,  # Can hold resources
             has_loop=True,  # Runs autonomously

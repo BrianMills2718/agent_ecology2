@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-02 (Plan #271 - artifact ID collision fix)
+**Last verified:** 2026-02-03 (Plan #273 - Alpha Prime BabyAGI upgrade)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
