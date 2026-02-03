@@ -113,17 +113,6 @@ def create_syscall_llm(
     Returns:
         _syscall_llm function that can be injected into artifact sandbox
     """
-    import sys
-    from pathlib import Path
-
-    # Add llm_provider_standalone to path if not already
-    project_root = Path(__file__).parent.parent.parent
-    llm_provider_path = str(project_root / 'llm_provider_standalone')
-    if llm_provider_path not in sys.path:
-        sys.path.insert(0, llm_provider_path)
-
-    from llm_provider import LLMProvider
-
     def _syscall_llm(
         model: str,
         messages: list[dict[str, Any]],
@@ -159,12 +148,46 @@ def create_syscall_llm(
             )
 
         try:
+            # Plan #273: Import inside function for proper mockability
+            # Import here (not at module level) so tests can patch it
+            import sys
+            from pathlib import Path
+
+            # Add llm_provider_standalone to path if not already
+            project_root = Path(__file__).parent.parent.parent
+            llm_provider_path = str(project_root / 'llm_provider_standalone')
+            if llm_provider_path not in sys.path:
+                sys.path.insert(0, llm_provider_path)
+
+            from llm_provider import LLMProvider
+
             # Create provider for this call
             log_dir = get("logging.log_dir", "llm_logs")
             provider = LLMProvider(model=model, log_dir=log_dir)
 
-            # Make the call
-            response = provider.generate(messages)
+            # Plan #273: Convert messages to prompt string
+            # LLMProvider expects a prompt string, not OpenAI-style messages list
+            # Extract user message content
+            prompt_parts = []
+            system_prompt = None
+            for msg in messages:
+                if msg.get("role") == "system":
+                    system_prompt = msg.get("content", "")
+                elif msg.get("role") == "user":
+                    prompt_parts.append(msg.get("content", ""))
+            prompt = "\n".join(prompt_parts)
+
+            # Plan #273: Run sync generate in a thread to avoid async context detection
+            # The artifact loop runs async, so litellm sees an event loop and refuses sync calls
+            import concurrent.futures
+
+            def _run_sync() -> str:
+                return provider.generate(prompt, system_prompt=system_prompt)
+
+            # Always run in thread to avoid async context issues
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(_run_sync)
+                response = future.result(timeout=60)
 
             # Get actual cost from usage
             usage = provider.last_usage

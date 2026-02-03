@@ -2,7 +2,7 @@
 
 This document explains the security architecture of Agent Ecology, including design decisions, risk acknowledgments, and deployment expectations.
 
-**Last verified:** 2026-02-02 (Plan #255 - LLM gateway uses existing security model)
+**Last verified:** 2026-02-03 (Plan #273 - ThreadPoolExecutor for async-safe LLM calls)
 
 ## Overview
 

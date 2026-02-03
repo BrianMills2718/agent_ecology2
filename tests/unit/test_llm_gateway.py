@@ -132,11 +132,11 @@ class TestSyscallLLM:
         syscall = create_syscall_llm(test_world, "syscall_caller_4")
 
         # Mock-ok: LLM calls are external API
-        with patch.dict(sys.modules, {'llm_provider': MagicMock()}):
-            mock_provider = MagicMock()
-            mock_provider.generate.side_effect = Exception("API error")
-            sys.modules['llm_provider'].LLMProvider.return_value = mock_provider
-
+        # Use patch on the already-imported llm_provider module (Plan #273 fix)
+        import llm_provider
+        mock_provider = MagicMock()
+        mock_provider.generate.side_effect = Exception("API error")
+        with patch.object(llm_provider, 'LLMProvider', return_value=mock_provider):
             result = syscall("gpt-4", [{"role": "user", "content": "Hi"}])
 
         assert result["success"] is False
