@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-02-03 (Plan #272: action insights for loop breaking)
+**Last verified:** 2026-02-03 (Plan #273: skip code-based agents in loader)
 
 **See target:** [../target/agents.md](../target/agents.md)
 

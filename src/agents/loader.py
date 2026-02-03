@@ -277,6 +277,10 @@ def load_agents_from_store(
 
     for artifact in store.artifacts.values():
         if artifact.is_agent:
+            # Skip artifacts with actual code - they run via ArtifactLoopManager
+            # Plan #273: Code-based agents (like BabyAGI loops) execute their code directly
+            if artifact.code:
+                continue
             agent = Agent.from_artifact(
                 artifact,
                 store=store,
