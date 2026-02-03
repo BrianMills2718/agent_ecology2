@@ -76,6 +76,7 @@ Master index of all gaps and their implementation plans.
 | 273 | [Alpha Prime BabyAGI Upgrade](273_alpha_prime_babyagi.md) | High | ✅ Complete | - |
 | 274 | [Kernel Interface Event Logging](274_kernel_interface_logging.md) | Medium | ✅ Complete | - |
 | 275 | [Alpha Prime Prompt Observability](275_alpha_prime_observability.md) | Medium | ✅ Complete | - |
+| 276 | [Complete KernelActions Logging](276_kernel_actions_logging.md) | Medium | ✅ Complete | - |
 ---
 
 ## TDD Workflow

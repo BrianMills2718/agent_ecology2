@@ -2,7 +2,7 @@
 
 How agents coordinate using existing primitives. No kernel changes needed.
 
-**Last verified:** 2026-02-03 (Plan #274 - kernel interface event logging)
+**Last verified:** 2026-02-03 (Plan #276 - complete KernelActions logging)
 
 ---
 
