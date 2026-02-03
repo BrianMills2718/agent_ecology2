@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-274-kernel-logging
-task: Add event logging to kernel_interface
-claimed_at: '2026-02-03T22:03:41Z'
-session_id: 5097e3aa-8445-4ad4-9fcd-bcd893fcd05f
-plan: 274
+cc_id: plan-275-alpha-prime-fix
+task: Fix Alpha Prime query result feedback
+claimed_at: '2026-02-03T22:25:44Z'
+session_id: 875977b5-9237-40d1-b20e-ff5f45deb682
+plan: 275

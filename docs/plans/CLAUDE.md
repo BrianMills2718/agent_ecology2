@@ -74,6 +74,7 @@ Master index of all gaps and their implementation plans.
 | 271 | [Plan 271: Add Task-Based Mint to Handbook](271_task_example_prompt.md) | High | ✅ Complete | - |
 | 272 | [Structured Action Insights for Loop Breaking](272_action_insights.md) | High | ✅ Complete | - |
 | 273 | [Alpha Prime BabyAGI Upgrade](273_alpha_prime_babyagi.md) | High | ✅ Complete | - |
+| 274 | [Kernel Interface Event Logging](274_kernel_interface_logging.md) | Medium | ✅ Complete | - |
 ---
 
 ## TDD Workflow
