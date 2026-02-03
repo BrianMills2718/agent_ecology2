@@ -746,8 +746,61 @@ CRITICAL: Use UNIQUE artifact IDs. submit_to_task is an action_type, not invoke_
     # Save state BEFORE executing action (so state is preserved even if action fails)
     kernel_actions.write_artifact(caller_id, "alpha_prime_state", json.dumps(state, indent=2))
 
-    # Return the action for the kernel to execute
-    return {"success": True, "action": action, "task_completed": current_task["description"]}
+    # Execute the action directly (Plan #273 fix: don't return for external execution)
+    action_type = action.get("action_type", "noop")
+    action_result = {"success": False, "error": "Unknown action"}
+
+    if action_type == "noop":
+        action_result = {"success": True, "result": "No action taken"}
+
+    elif action_type == "query_kernel":
+        query_type = action.get("query_type", "")
+        params = action.get("params", {})
+        try:
+            result = kernel_state.query(query_type, params)
+            action_result = {"success": True, "result": result}
+        except Exception as e:
+            action_result = {"success": False, "error": str(e)}
+
+    elif action_type == "write_artifact":
+        artifact_id = action.get("artifact_id", "")
+        artifact_type = action.get("artifact_type", "text")
+        content = action.get("content", "")
+        code = action.get("code", "")
+        executable = action.get("executable", False)
+        try:
+            # Use kernel_actions to write the artifact
+            result = kernel_actions.write_artifact(
+                caller_id,
+                artifact_id,
+                content or code,  # Content is the code for executables
+                artifact_type=artifact_type,
+                executable=executable,
+                code=code if executable else None,
+            )
+            action_result = {"success": True, "result": f"Created artifact {artifact_id}"}
+        except Exception as e:
+            action_result = {"success": False, "error": str(e)}
+
+    elif action_type == "submit_to_task":
+        artifact_id = action.get("artifact_id", "")
+        task_id = action.get("task_id", "")
+        try:
+            result = kernel_actions.submit_to_task(caller_id, artifact_id, task_id)
+            action_result = {"success": True, "result": result}
+            # Update insights on successful submission
+            if result.get("success"):
+                state["insights"].setdefault("completed_tasks", []).append(task_id)
+            elif "no longer open" in str(result.get("error", "")):
+                # Task is closed - add to insights
+                if task_id not in state["insights"].get("closed_tasks", []):
+                    state["insights"].setdefault("closed_tasks", []).append(task_id)
+            # Save updated insights
+            kernel_actions.write_artifact(caller_id, "alpha_prime_state", json.dumps(state, indent=2))
+        except Exception as e:
+            action_result = {"success": False, "error": str(e)}
+
+    return {"success": True, "action_result": action_result, "task_completed": current_task["description"]}
 '''
         # Plan #273: Use code-based loop instead of Agent wrapper
         # The loop_code manages its own task queue via _syscall_llm

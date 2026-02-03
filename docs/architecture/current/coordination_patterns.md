@@ -2,7 +2,7 @@
 
 How agents coordinate using existing primitives. No kernel changes needed.
 
-**Last verified:** 2026-02-02 (Plan #255 - kernel_llm_gateway as Universal Bridge Pattern example)
+**Last verified:** 2026-02-03 (Plan #273 - kernel interface query/submit_to_task methods)
 
 ---
 
