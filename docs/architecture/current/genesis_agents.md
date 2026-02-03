@@ -2,7 +2,7 @@
 
 Default agents that ship with the system. These are specific instantiations of the agent architecture.
 
-**Last verified:** 2026-02-02 (Plan #263: from_artifact now loads workflow/components)
+**Last verified:** 2026-02-03 (Plan #272: action insights for loop breaking)
 
 **Related:** [agent_cognition.md](agent_cognition.md) for architecture, [agents.md](agents.md) for lifecycle
 

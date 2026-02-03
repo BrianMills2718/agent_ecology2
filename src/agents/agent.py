@@ -324,6 +324,14 @@ class Agent:
         self.action_history: list[str] = []
         self._action_history_max: int = config_get("agent.action_history_max") or 15
 
+        # Plan #272: Structured action insights for loop breaking
+        # Auto-extracted learnings from action results (e.g., closed tasks)
+        self._action_insights: dict[str, set[str]] = {
+            "tried_tasks": set(),
+            "closed_tasks": set(),
+            "completed_tasks": set(),
+        }
+
         # Plan #157: Opportunity cost tracking
         # Track metrics so agent can reason about time/effort spent
         self.actions_taken: int = 0
@@ -647,6 +655,53 @@ class Agent:
             lines.append(f"- {pattern}: {count}x ({successes} ok, {failures} fail)")
 
         return "\n".join(lines)
+
+    def _extract_action_insights(
+        self,
+        action_type: ActionType,
+        success: bool,
+        message: str,
+        data: dict[str, Any] | None,
+    ) -> None:
+        """Extract structured insights from action result (Plan #272).
+
+        Auto-detects patterns like task closure, completion, etc.
+        Populates self._action_insights for prompt injection to help
+        agents avoid repeating failed actions (loop breaking).
+        """
+        import re
+
+        if action_type == "submit_to_task":
+            task_id = data.get("task_id") if data else None
+            if task_id:
+                self._action_insights["tried_tasks"].add(task_id)
+
+                if success:
+                    self._action_insights["completed_tasks"].add(task_id)
+                else:
+                    # Check for "Task 'X' is no longer open" pattern
+                    match = re.search(r"Task '([^']+)' is no longer open", message)
+                    if match:
+                        closed_task = match.group(1)
+                        self._action_insights["closed_tasks"].add(closed_task)
+
+    def _format_action_insights(self) -> str:
+        """Format action insights for prompt injection (Plan #272).
+
+        Returns natural language summary of extracted insights to help
+        agents make better decisions (e.g., don't retry closed tasks).
+        """
+        lines: list[str] = []
+
+        closed = self._action_insights.get("closed_tasks", set())
+        if closed:
+            lines.append(f"CLOSED tasks (don't retry): {', '.join(sorted(closed))}")
+
+        completed = self._action_insights.get("completed_tasks", set())
+        if completed:
+            lines.append(f"COMPLETED tasks: {', '.join(sorted(completed))}")
+
+        return "\n".join(lines) if lines else "(No task insights yet)"
 
     @classmethod
     def from_artifact(
@@ -1950,6 +2005,9 @@ Your response should include:
             if len(self.failure_history) > self._failure_history_max:
                 self.failure_history = self.failure_history[-self._failure_history_max:]
 
+        # Plan #272: Extract structured insights for loop breaking
+        self._extract_action_insights(action_type, success, message, data)
+
         # Plan #157: Track opportunity cost metrics
         self.actions_taken += 1
         if success:
@@ -2275,6 +2333,9 @@ Your response should include:
             # Action history for loop detection (Plan #156)
             "action_history": list(self.action_history),
 
+            # Action insights for loop breaking (Plan #272)
+            "action_insights": {k: list(v) for k, v in self._action_insights.items()},
+
             # Failure history for learning from mistakes (Plan #88)
             "failure_history": list(self.failure_history),
 
@@ -2310,6 +2371,13 @@ Your response should include:
         action_history = state.get("action_history", [])
         if isinstance(action_history, list):
             self.action_history = list(action_history)
+
+        # Action insights (Plan #272)
+        action_insights = state.get("action_insights", {})
+        if isinstance(action_insights, dict):
+            for key in ["tried_tasks", "closed_tasks", "completed_tasks"]:
+                if key in action_insights and isinstance(action_insights[key], list):
+                    self._action_insights[key] = set(action_insights[key])
 
         # Failure history (Plan #88)
         failure_history = state.get("failure_history", [])
@@ -2419,6 +2487,7 @@ Your response should include:
             "last_action_result": self.last_action_result or "(No previous action)",
             "action_history": self._format_action_history(),  # Plan #156: Loop detection
             "action_history_length": self._action_history_max,  # Plan #156: For prompt display
+            "action_insights": self._format_action_insights(),  # Plan #272: Loop breaking
             "system_prompt": self._system_prompt,
             "goal": self._system_prompt,  # Alias for convenience
             "self": self,  # Allow workflow steps to call agent methods

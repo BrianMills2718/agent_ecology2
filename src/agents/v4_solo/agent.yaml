@@ -4,7 +4,7 @@
 
 id: v4_solo
 enabled: true
-llm_model: "gemini/gemini-2.0-flash"
+llm_model: "gemini/gemini-2.5-flash"  # Plan #272: Upgraded for thinking capability
 starting_credits: 100
 
 # Genotype: balanced defaults
@@ -46,6 +46,9 @@ workflow:
 
         ## YOUR LAST ACTIONS
         {action_history}
+
+        ## TASK STATUS (from your attempts)
+        {action_insights}
 
         Last result: {last_action_result}
 

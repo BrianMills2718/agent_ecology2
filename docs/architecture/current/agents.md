@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-02-02 (Plan #271: unique artifact ID examples)
+**Last verified:** 2026-02-03 (Plan #272: action insights for loop breaking)
 
 **See target:** [../target/agents.md](../target/agents.md)
 

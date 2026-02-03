@@ -72,6 +72,7 @@ Master index of all gaps and their implementation plans.
 | 269 | [Plan 269: Task-Based Mint System](269_task_based_mint.md) | High | ✅ Complete | - |
 | 270 | [Plan 270: Improve submit_to_task Action Prompts](270_submit_to_task_prompts.md) | High | ✅ Complete | - |
 | 271 | [Plan 271: Add Task-Based Mint to Handbook](271_task_example_prompt.md) | High | ✅ Complete | - |
+| 272 | [Structured Action Insights for Loop Breaking](272_action_insights.md) | High | ✅ Complete | - |
 ---
 
 ## TDD Workflow
