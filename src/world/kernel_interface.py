@@ -205,6 +205,24 @@ class KernelState:
         available = self.get_available_capacity(principal_id, resource)
         return amount > available
 
+    def query(self, query_type: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Execute a kernel query (Plan #273: For code-based agents).
+
+        Delegates to KernelQueryHandler. This provides artifacts with the same
+        query capabilities that agents have via query_kernel action.
+
+        Args:
+            query_type: Type of query (e.g., "mint_tasks", "artifacts", "balances")
+            params: Query parameters
+
+        Returns:
+            Query result dict
+        """
+        from .kernel_queries import KernelQueryHandler
+        handler = KernelQueryHandler(self._world)
+        return handler.execute(query_type, params or {})
+
+
 class KernelActions:
     """Action interface for artifacts - caller is verified.
 
@@ -299,14 +317,20 @@ class KernelActions:
         artifact_id: str,
         content: str,
         artifact_type: str = "generic",
+        executable: bool = False,
+        code: str | None = None,
     ) -> bool:
         """Write or update an artifact (access controlled via contracts).
+
+        Plan #273: Extended to support executable artifacts with code.
 
         Args:
             caller_id: Who is writing
             artifact_id: Artifact to write
             content: New content
             artifact_type: Type if creating new
+            executable: Whether the artifact is executable (Plan #273)
+            code: Executable code if creating executable artifact (Plan #273)
 
         Returns:
             True if write succeeded, False otherwise
@@ -322,13 +346,61 @@ class KernelActions:
             if not allowed:
                 return False
             existing.content = content
+            if code is not None:
+                existing.code = code
             return True
         else:
-            # Create new
-            self._world.artifacts.write(
-                artifact_id, artifact_type, content, caller_id
-            )
+            # Create new - Plan #273: Support executable artifacts
+            kwargs: dict[str, Any] = {
+                "artifact_id": artifact_id,
+                "type": artifact_type,
+                "content": content,
+                "created_by": caller_id,
+                "executable": executable,
+            }
+            if code is not None:
+                kwargs["code"] = code
+            self._world.artifacts.write(**kwargs)
             return True
+
+    def submit_to_task(
+        self,
+        caller_id: str,
+        artifact_id: str,
+        task_id: str,
+    ) -> dict[str, Any]:
+        """Submit an artifact as a solution to a mint task (Plan #273).
+
+        This is the kernel interface equivalent of the submit_to_task action.
+
+        Args:
+            caller_id: Who is submitting (verified by kernel)
+            artifact_id: The artifact being submitted
+            task_id: The task to submit to
+
+        Returns:
+            {"success": True, "reward": ...} on success
+            {"success": False, "error": ...} on failure
+        """
+        # Check if task-based mint is enabled
+        if not hasattr(self._world, "mint_task_manager") or self._world.mint_task_manager is None:
+            return {
+                "success": False,
+                "error": "Task-based mint system is not enabled",
+            }
+
+        # Submit to task - submit_solution handles all validation
+        manager = self._world.mint_task_manager
+        result = manager.submit_solution(caller_id, artifact_id, task_id)
+
+        # Convert TaskSubmissionResult to dict
+        return {
+            "success": result.success,
+            "task_id": result.task_id,
+            "artifact_id": result.artifact_id,
+            "message": result.message,
+            "reward": result.reward,
+        }
 
     # --- Kernel Mint Action Methods (Plan #44) ---
 

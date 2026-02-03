@@ -105,8 +105,8 @@ class TestAlphaPrimeExecution:
 
         assert result["success"] is True, f"Execution failed: {result.get('error', result)}"
         assert result["result"]["success"] is True
-        # Plan #273: BabyAGI loop returns action in result
-        assert result["result"]["action"]["action_type"] == "noop"
+        # Plan #273: BabyAGI loop executes action and returns action_result
+        assert result["result"]["action_result"]["success"] is True
 
     def test_loop_updates_state_after_execution(self, world_with_alpha_prime: World) -> None:
         """Alpha Prime loop updates state after execution (Plan #273)."""
