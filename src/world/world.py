@@ -757,7 +757,8 @@ CRITICAL: Use UNIQUE artifact IDs. submit_to_task is an action_type, not invoke_
         query_type = action.get("query_type", "")
         params = action.get("params", {})
         try:
-            result = kernel_state.query(query_type, params)
+            # Plan #274: Pass caller_id for logging
+            result = kernel_state.query(query_type, params, caller_id=caller_id)
             action_result = {"success": True, "result": result}
         except Exception as e:
             action_result = {"success": False, "error": str(e)}

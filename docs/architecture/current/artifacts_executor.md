@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-02-03 (Plan #273 - kernel interface query/submit_to_task methods)
+**Last verified:** 2026-02-03 (Plan #274 - kernel interface event logging)
 
 ---
 

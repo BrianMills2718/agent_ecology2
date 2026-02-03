@@ -9,6 +9,10 @@ Design principles:
 - KernelActions: Write access verified against caller identity
 - Both are injected into artifact sandbox during execution
 - Access controls are enforced by the kernel, not by artifacts
+
+Plan #274: Added event logging to KernelActions for observability.
+All write operations are now logged to the event system, making
+artifact-based agents (BabyAGI loops) as observable as file-based agents.
 """
 
 from __future__ import annotations
@@ -17,6 +21,34 @@ from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from src.world.world import World
+
+
+def _log_kernel_action(
+    world: "World",
+    action_type: str,
+    caller_id: str,
+    success: bool,
+    data: dict[str, Any],
+) -> None:
+    """Log a kernel action to the event system (Plan #274).
+
+    This makes artifact-based agents observable in the same way as
+    file-based agents that use action_executor.
+
+    Args:
+        world: World instance for logging
+        action_type: Type of action (e.g., "kernel_write_artifact")
+        caller_id: Who performed the action
+        success: Whether the action succeeded
+        data: Action-specific data to log
+    """
+    world.logger.log(action_type, {
+        "event_number": world.event_number,
+        "principal_id": caller_id,
+        "success": success,
+        **data,
+        "scrip_after": world.ledger.get_scrip(caller_id),
+    })
 
 
 class KernelState:
@@ -205,7 +237,9 @@ class KernelState:
         available = self.get_available_capacity(principal_id, resource)
         return amount > available
 
-    def query(self, query_type: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    def query(
+        self, query_type: str, params: dict[str, Any] | None = None, caller_id: str | None = None
+    ) -> dict[str, Any]:
         """Execute a kernel query (Plan #273: For code-based agents).
 
         Delegates to KernelQueryHandler. This provides artifacts with the same
@@ -214,13 +248,25 @@ class KernelState:
         Args:
             query_type: Type of query (e.g., "mint_tasks", "artifacts", "balances")
             params: Query parameters
+            caller_id: Who is making the query (for logging, Plan #274)
 
         Returns:
             Query result dict
         """
         from .kernel_queries import KernelQueryHandler
         handler = KernelQueryHandler(self._world)
-        return handler.execute(query_type, params or {})
+        result = handler.execute(query_type, params or {})
+
+        # Plan #274: Log query for observability (only if caller_id provided)
+        if caller_id is not None:
+            self._world.logger.log("kernel_query", {
+                "event_number": self._world.event_number,
+                "principal_id": caller_id,
+                "query_type": query_type,
+                "success": result.get("success", True),
+            })
+
+        return result
 
 
 class KernelActions:
@@ -250,16 +296,27 @@ class KernelActions:
             True if transfer succeeded, False otherwise
         """
         if amount <= 0:
+            _log_kernel_action(self._world, "kernel_transfer_scrip", caller_id, False, {
+                "to": to, "amount": amount, "error": "Invalid amount"
+            })
             return False
 
         # Check caller has sufficient balance
         balance = self._world.ledger.get_scrip(caller_id)
         if balance < amount:
+            _log_kernel_action(self._world, "kernel_transfer_scrip", caller_id, False, {
+                "to": to, "amount": amount, "error": "Insufficient balance"
+            })
             return False
 
         # Perform transfer
         self._world.ledger.deduct_scrip(caller_id, amount)
         self._world.ledger.credit_scrip(to, amount)
+
+        # Plan #274: Log successful transfer
+        _log_kernel_action(self._world, "kernel_transfer_scrip", caller_id, True, {
+            "to": to, "amount": amount,
+        })
 
         return True
 
@@ -344,10 +401,20 @@ class KernelActions:
             executor = get_executor()
             allowed, _reason = executor._check_permission(caller_id, "write", existing)
             if not allowed:
+                # Plan #274: Log failed update
+                _log_kernel_action(self._world, "kernel_write_artifact", caller_id, False, {
+                    "artifact_id": artifact_id, "was_update": True,
+                    "error": f"Permission denied: {_reason}",
+                })
                 return False
             existing.content = content
             if code is not None:
                 existing.code = code
+            # Plan #274: Log successful update
+            _log_kernel_action(self._world, "kernel_write_artifact", caller_id, True, {
+                "artifact_id": artifact_id, "was_update": True,
+                "artifact_type": existing.type, "executable": existing.executable,
+            })
             return True
         else:
             # Create new - Plan #273: Support executable artifacts
@@ -361,6 +428,11 @@ class KernelActions:
             if code is not None:
                 kwargs["code"] = code
             self._world.artifacts.write(**kwargs)
+            # Plan #274: Log successful creation
+            _log_kernel_action(self._world, "kernel_write_artifact", caller_id, True, {
+                "artifact_id": artifact_id, "was_update": False,
+                "artifact_type": artifact_type, "executable": executable,
+            })
             return True
 
     def submit_to_task(
@@ -384,23 +456,38 @@ class KernelActions:
         """
         # Check if task-based mint is enabled
         if not hasattr(self._world, "mint_task_manager") or self._world.mint_task_manager is None:
-            return {
+            error_result = {
                 "success": False,
                 "error": "Task-based mint system is not enabled",
             }
+            # Plan #274: Log failed submission
+            _log_kernel_action(self._world, "kernel_submit_to_task", caller_id, False, {
+                "artifact_id": artifact_id, "task_id": task_id,
+                "error": error_result["error"],
+            })
+            return error_result
 
         # Submit to task - submit_solution handles all validation
         manager = self._world.mint_task_manager
         result = manager.submit_solution(caller_id, artifact_id, task_id)
 
         # Convert TaskSubmissionResult to dict
-        return {
+        result_dict = {
             "success": result.success,
             "task_id": result.task_id,
             "artifact_id": result.artifact_id,
             "message": result.message,
             "reward": result.reward,
         }
+
+        # Plan #274: Log submission result
+        _log_kernel_action(self._world, "kernel_submit_to_task", caller_id, result.success, {
+            "artifact_id": artifact_id, "task_id": task_id,
+            "reward": result.reward if result.success else 0,
+            "message": result.message,
+        })
+
+        return result_dict
 
     # --- Kernel Mint Action Methods (Plan #44) ---
 
