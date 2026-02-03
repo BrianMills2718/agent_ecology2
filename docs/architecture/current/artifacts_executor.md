@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-02-03 (Plan #274 - kernel interface event logging)
+**Last verified:** 2026-02-03 (Plan #276 - complete KernelActions logging)
 
 ---
 

@@ -335,17 +335,28 @@ class KernelActions:
             True if transfer succeeded, False otherwise
         """
         if amount <= 0:
+            _log_kernel_action(self._world, "kernel_transfer_resource", caller_id, False, {
+                "to": to, "resource": resource, "amount": amount, "error": "Invalid amount"
+            })
             return False
 
         # Check caller has sufficient resource
         current = self._world.ledger.get_resource(caller_id, resource)
         if current < amount:
+            _log_kernel_action(self._world, "kernel_transfer_resource", caller_id, False, {
+                "to": to, "resource": resource, "amount": amount, "error": "Insufficient resource"
+            })
             return False
 
         # Perform transfer
         self._world.ledger.spend_resource(caller_id, resource, amount)
         new_recipient = self._world.ledger.get_resource(to, resource) + amount
         self._world.ledger.set_resource(to, resource, new_recipient)
+
+        # Plan #276: Log successful transfer
+        _log_kernel_action(self._world, "kernel_transfer_resource", caller_id, True, {
+            "to": to, "resource": resource, "amount": amount,
+        })
 
         return True
 
@@ -513,8 +524,16 @@ class KernelActions:
                 artifact_id=artifact_id,
                 bid=bid
             )
+            # Plan #276: Log successful submission
+            _log_kernel_action(self._world, "kernel_submit_for_mint", caller_id, True, {
+                "artifact_id": artifact_id, "bid": bid, "submission_id": submission_id,
+            })
             return {"success": True, "submission_id": submission_id}
         except ValueError as e:
+            # Plan #276: Log failed submission
+            _log_kernel_action(self._world, "kernel_submit_for_mint", caller_id, False, {
+                "artifact_id": artifact_id, "bid": bid, "error": str(e),
+            })
             return {"success": False, "error": str(e)}
 
     def cancel_mint_submission(self, caller_id: str, submission_id: str) -> bool:
@@ -529,7 +548,12 @@ class KernelActions:
         Returns:
             True if cancelled, False if not allowed
         """
-        return self._world.cancel_mint_submission(caller_id, submission_id)
+        result = self._world.cancel_mint_submission(caller_id, submission_id)
+        # Plan #276: Log cancellation result
+        _log_kernel_action(self._world, "kernel_cancel_mint_submission", caller_id, result, {
+            "submission_id": submission_id,
+        })
+        return result
 
     # -------------------------------------------------------------------------
     # Quota Primitives (Plan #42) - Write access to kernel quota state
@@ -552,17 +576,28 @@ class KernelActions:
             True if transfer succeeded, False if insufficient quota
         """
         if amount <= 0:
+            _log_kernel_action(self._world, "kernel_transfer_quota", from_id, False, {
+                "to": to_id, "resource": resource, "amount": amount, "error": "Invalid amount"
+            })
             return False
 
         # Check source has sufficient quota
         from_quota = self._world.get_quota(from_id, resource)
         if from_quota < amount:
+            _log_kernel_action(self._world, "kernel_transfer_quota", from_id, False, {
+                "to": to_id, "resource": resource, "amount": amount, "error": "Insufficient quota"
+            })
             return False
 
         # Perform atomic transfer
         to_quota = self._world.get_quota(to_id, resource)
         self._world.set_quota(from_id, resource, from_quota - amount)
         self._world.set_quota(to_id, resource, to_quota + amount)
+
+        # Plan #276: Log successful transfer
+        _log_kernel_action(self._world, "kernel_transfer_quota", from_id, True, {
+            "to": to_id, "resource": resource, "amount": amount,
+        })
 
         return True
 
@@ -579,7 +614,12 @@ class KernelActions:
         Returns:
             True if consumption recorded, False if would exceed quota
         """
-        return self._world.consume_quota(principal_id, resource, amount)
+        result = self._world.consume_quota(principal_id, resource, amount)
+        # Plan #276: Log consumption result
+        _log_kernel_action(self._world, "kernel_consume_quota", principal_id, result, {
+            "resource": resource, "amount": amount,
+        })
+        return result
 
     # -------------------------------------------------------------------------
     # Charge Delegation (Plan #236)
@@ -611,7 +651,7 @@ class KernelActions:
         Returns:
             True on success.
         """
-        return self._world.delegation_manager.grant(
+        result = self._world.delegation_manager.grant(
             caller_id,
             charger_id,
             max_per_call=max_per_call,
@@ -619,6 +659,14 @@ class KernelActions:
             window_seconds=window_seconds,
             expires_at=expires_at,
         )
+        # Plan #276: Log delegation grant
+        _log_kernel_action(self._world, "kernel_grant_delegation", caller_id, result, {
+            "charger_id": charger_id,
+            "max_per_call": max_per_call,
+            "max_per_window": max_per_window,
+            "window_seconds": window_seconds,
+        })
+        return result
 
     def revoke_charge_delegation(
         self,
@@ -634,7 +682,12 @@ class KernelActions:
         Returns:
             True if found and removed, False otherwise.
         """
-        return self._world.delegation_manager.revoke(caller_id, charger_id)
+        result = self._world.delegation_manager.revoke(caller_id, charger_id)
+        # Plan #276: Log delegation revocation
+        _log_kernel_action(self._world, "kernel_revoke_delegation", caller_id, result, {
+            "charger_id": charger_id,
+        })
+        return result
 
     def authorize_charge(
         self,
@@ -691,6 +744,9 @@ class KernelActions:
         # Validate library name format (prevent command injection)
         # Allow: letters, numbers, hyphens, underscores, dots, brackets for extras
         if not re.match(r'^[a-zA-Z0-9_\-.\[\]]+$', library_name):
+            _log_kernel_action(self._world, "kernel_install_library", caller_id, False, {
+                "library": library_name, "error_code": "INVALID_NAME",
+            })
             return {
                 "success": False,
                 "error": f"Invalid library name format: '{library_name}'",
@@ -699,6 +755,9 @@ class KernelActions:
 
         # Check blocklist
         if lib_lower in blocked_libs:
+            _log_kernel_action(self._world, "kernel_install_library", caller_id, False, {
+                "library": library_name, "error_code": "BLOCKED_PACKAGE",
+            })
             return {
                 "success": False,
                 "error": f"Package '{library_name}' is blocked for security reasons",
@@ -708,6 +767,9 @@ class KernelActions:
         # Check if genesis library (free, pre-installed)
         if lib_lower in genesis_libs:
             # Don't record - genesis libs are always available
+            _log_kernel_action(self._world, "kernel_install_library", caller_id, True, {
+                "library": library_name, "is_genesis": True, "quota_cost": 0,
+            })
             return {
                 "success": True,
                 "message": f"Library '{library_name}' is a genesis library (pre-installed)",
@@ -721,6 +783,9 @@ class KernelActions:
         # Check disk quota
         available = self._world.get_available_capacity(caller_id, "disk")
         if estimated_size > available:
+            _log_kernel_action(self._world, "kernel_install_library", caller_id, False, {
+                "library": library_name, "error_code": "QUOTA_EXCEEDED",
+            })
             return {
                 "success": False,
                 "error": f"Insufficient disk quota. Need ~{estimated_size} bytes, have {available}",
@@ -734,6 +799,9 @@ class KernelActions:
         if version:
             # Validate version format
             if not re.match(r'^[<>=!~\d.,a-zA-Z*]+$', version):
+                _log_kernel_action(self._world, "kernel_install_library", caller_id, False, {
+                    "library": library_name, "version": version, "error_code": "INVALID_VERSION",
+                })
                 return {
                     "success": False,
                     "error": f"Invalid version format: '{version}'",
@@ -756,6 +824,9 @@ class KernelActions:
                 # Truncate long error messages
                 if len(error_msg) > 200:
                     error_msg = error_msg[:200] + "..."
+                _log_kernel_action(self._world, "kernel_install_library", caller_id, False, {
+                    "library": library_name, "error_code": "PIP_FAILED",
+                })
                 return {
                     "success": False,
                     "error": f"pip install failed: {error_msg}",
@@ -763,12 +834,18 @@ class KernelActions:
                 }
 
         except subprocess.TimeoutExpired:
+            _log_kernel_action(self._world, "kernel_install_library", caller_id, False, {
+                "library": library_name, "error_code": "TIMEOUT",
+            })
             return {
                 "success": False,
                 "error": "Package installation timed out (>120s)",
                 "error_code": "TIMEOUT",
             }
         except Exception as e:
+            _log_kernel_action(self._world, "kernel_install_library", caller_id, False, {
+                "library": library_name, "error_code": "INSTALL_ERROR",
+            })
             return {
                 "success": False,
                 "error": f"Installation error: {str(e)}",
@@ -777,6 +854,9 @@ class KernelActions:
 
         # Installation succeeded - consume quota and record
         if not self._world.consume_quota(caller_id, "disk", float(estimated_size)):
+            _log_kernel_action(self._world, "kernel_install_library", caller_id, False, {
+                "library": library_name, "error_code": "QUOTA_CONSUME_FAILED",
+            })
             return {
                 "success": False,
                 "error": "Failed to consume disk quota",
@@ -785,6 +865,11 @@ class KernelActions:
 
         # Track installation in world state
         self._world.record_library_install(caller_id, library_name, version)
+
+        # Plan #276: Log successful installation
+        _log_kernel_action(self._world, "kernel_install_library", caller_id, True, {
+            "library": library_name, "version": version, "quota_cost": estimated_size,
+        })
 
         return {
             "success": True,
@@ -815,6 +900,9 @@ class KernelActions:
         """
         # Check if principal already exists
         if self._world.ledger.principal_exists(principal_id):
+            _log_kernel_action(self._world, "kernel_create_principal", principal_id, False, {
+                "error": "Principal already exists",
+            })
             return False
 
         # 1. Ledger entry
@@ -831,6 +919,11 @@ class KernelActions:
         # 3. ResourceManager entry
         if hasattr(self._world, 'resource_manager'):
             self._world.resource_manager.create_principal(principal_id)
+
+        # Plan #276: Log successful creation
+        _log_kernel_action(self._world, "kernel_create_principal", principal_id, True, {
+            "starting_scrip": starting_scrip, "starting_compute": starting_compute,
+        })
 
         return True
 
@@ -859,12 +952,18 @@ class KernelActions:
 
         artifact = self._world.artifacts.get(artifact_id)
         if artifact is None:
+            _log_kernel_action(self._world, "kernel_update_metadata", caller_id, False, {
+                "artifact_id": artifact_id, "key": key, "error": "Artifact not found",
+            })
             return False
 
         # Check write permission via contract
         executor = get_executor()
         allowed, _reason = executor._check_permission(caller_id, "write", artifact)
         if not allowed:
+            _log_kernel_action(self._world, "kernel_update_metadata", caller_id, False, {
+                "artifact_id": artifact_id, "key": key, "error": f"Permission denied: {_reason}",
+            })
             return False
 
         # Update the metadata
@@ -873,6 +972,11 @@ class KernelActions:
             artifact.metadata.pop(key, None)
         else:
             artifact.metadata[key] = value
+
+        # Plan #276: Log successful metadata update
+        _log_kernel_action(self._world, "kernel_update_metadata", caller_id, True, {
+            "artifact_id": artifact_id, "key": key, "action": "delete" if value is None else "set",
+        })
 
         return True
 
