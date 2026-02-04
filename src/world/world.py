@@ -179,14 +179,27 @@ class World:
         self.event_number = 0  # Monotonic counter for event ordering in logs
         self.costs = config["costs"]
 
-        # Compute per-agent quotas from resource totals
+        # Compute per-agent quotas from resource totals (Plan #282)
+        # Read from passed config dict, NOT global config (for test isolation)
         # Precision note (Plan #84): Quotas are typically whole numbers (compute units,
         # disk bytes) or simple decimals (llm_budget dollars). No Decimal arithmetic
         # needed here - precision issues only arise from repeated add/subtract operations,
         # which happen in ledger.py (where Decimal helpers are used).
         num_agents = len(config.get("principals", []))
-        empty_quotas: PerAgentQuota = {"llm_tokens_quota": 0, "disk_quota": 0, "llm_budget_quota": 0.0}
-        quotas: PerAgentQuota = compute_per_agent_quota(num_agents) if num_agents > 0 else empty_quotas
+        resources_config = config.get("resources", {})
+        stock_config = resources_config.get("stock", {})
+        llm_budget_config = stock_config.get("llm_budget", {})
+        disk_config = stock_config.get("disk", {})
+
+        # Get totals from config, default to 0 if not configured
+        llm_budget_total = float(llm_budget_config.get("total", 0.0))
+        disk_total = int(disk_config.get("total", 0))
+
+        quotas: PerAgentQuota = {
+            "llm_tokens_quota": 0,  # Derived from rate_limiting, not stock
+            "disk_quota": disk_total // num_agents if num_agents > 0 else 0,
+            "llm_budget_quota": llm_budget_total / num_agents if num_agents > 0 else 0.0,
+        }
 
         # Plan #254: Rights configuration removed - ResourceManager handles quotas
 
@@ -279,15 +292,10 @@ class World:
         # Initialize principals from config (Plan #231: principal_ids is now a derived property)
         default_starting_scrip: int = config_get("scrip.starting_amount") or 100
 
-        # Per-agent LLM budget (Plan #12)
-        # Get default from agents.initial_resources.llm_budget or budget.per_agent_budget
-        budget_config = cast(dict[str, Any], config.get("budget", {}))
-        agents_config = cast(dict[str, Any], config.get("agents", {}))
-        initial_resources = cast(dict[str, Any], agents_config.get("initial_resources", {}))
-        default_llm_budget: float = float(initial_resources.get(
-            "llm_budget",
-            budget_config.get("per_agent_budget", 0.0)  # 0 = no per-agent enforcement
-        ))
+        # Per-agent LLM budget (Plan #12, Plan #282)
+        # Use computed quota from resources.stock.llm_budget.total / num_agents
+        # Per-principal override via "llm_budget" field still supported
+        default_llm_budget: float = float(quotas.get("llm_budget_quota", 0.0))
 
         for p in config["principals"]:
             # Initialize with starting scrip (persistent currency)
