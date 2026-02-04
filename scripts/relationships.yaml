@@ -30,6 +30,57 @@ adrs:
   3:
     title: "Contracts can do anything"
     file: "0003-contracts-can-do-anything.md"
+  4:
+    title: "Mint as system primitive"
+    file: "0004-mint-system-primitive.md"
+  7:
+    title: "Single ID namespace"
+    file: "0007-single-id-namespace.md"
+  8:
+    title: "Token bucket rate limiting"
+    file: "0008-token-bucket-rate-limiting.md"
+  9:
+    title: "Memory as artifact"
+    file: "0009-memory-as-artifact.md"
+  10:
+    title: "Continuous agent loops"
+    file: "0010-continuous-agent-loops.md"
+  11:
+    title: "Standing pays costs"
+    file: "0011-standing-pays-costs.md"
+  12:
+    title: "Scrip non-negative"
+    file: "0012-scrip-non-negative.md"
+  13:
+    title: "Configurable agent workflows"
+    file: "0013-configurable-agent-workflows.md"
+  14:
+    title: "Continuous execution primary"
+    file: "0014-continuous-execution-primary.md"
+  15:
+    title: "Contracts as artifacts"
+    file: "0015-contracts-as-artifacts.md"
+  16:
+    title: "created_by replaces owner_id"
+    file: "0016-created-by-not-owner.md"
+  17:
+    title: "Dangling contracts fail open"
+    file: "0017-dangling-contracts-fail-open.md"
+  19:
+    title: "Unified permission architecture"
+    file: "0019-unified-permission-architecture.md"
+  20:
+    title: "Event schema contract"
+    file: "0020-event-schema-contract.md"
+  21:
+    title: "Executor design principles"
+    file: "0021-executor-design-principles.md"
+  23:
+    title: "Resource attribution"
+    file: "0023-resource-attribution.md"
+  24:
+    title: "Artifact self-handled access"
+    file: "0024-artifact-self-handled-access.md"
 
 # =============================================================================
 # GOVERNANCE: ADR -> Source
@@ -38,30 +89,108 @@ adrs:
 # sync_governance.py uses these to embed headers in source files.
 
 governance:
-  - source: src/world/contracts.py
-    adrs: [1, 3]
-    context: |
-      Permission checks are the hot path - keep them fast.
-      Contracts return decisions; kernel applies state changes.
-
-  - source: src/world/kernel_contracts.py
-    adrs: [1, 3]
-    context: |
-      Five built-in contracts: freeware, transferable_freeware, self_owned, private, public.
-      These are Python classes, not artifacts (current implementation).
-      Renamed from genesis_contracts.py per Plan #254.
-
-  - source: src/world/ledger.py
-    adrs: [1, 2]
-    context: |
-      All balance mutations go through here.
-      Never allow negative balances - fail loud.
-
   - source: src/world/artifacts.py
-    adrs: [1]
+    adrs: [1, 11, 16]
     context: |
       Core artifact storage and management.
       Everything is an artifact - agents, contracts, data.
+      Use 'created_by' not 'owner' (ADR-0016).
+      'has_standing' determines who can hold resources (ADR-0011).
+
+  # ADR-0016: created_by terminology applies to contracts too
+  - source: src/world/contracts.py
+    adrs: [1, 3, 15, 16, 19]
+    context: |
+      Permission checks are the hot path - keep them fast.
+      Contracts return decisions; kernel applies state changes.
+      Use 'created_by' in context, not 'owner' (ADR-0016).
+      Contracts are artifacts (ADR-0015).
+
+  - source: src/world/kernel_contracts.py
+    adrs: [1, 3, 15, 16, 17]
+    context: |
+      Five built-in contracts: freeware, transferable_freeware, self_owned, private, public.
+      Use 'created_by' in permission checks (ADR-0016).
+      Dangling contracts fail open (ADR-0017).
+
+  # ADR-0012: Scrip non-negative enforcement
+  - source: src/world/ledger.py
+    adrs: [1, 2, 11, 12]
+    context: |
+      All balance mutations go through here.
+      Never allow negative balances - fail loud (ADR-0012).
+      Only principals (has_standing) can hold resources (ADR-0011).
+
+  # ADR-0021: Executor design principles
+  - source: src/world/executor.py
+    adrs: [1, 11, 21, 23]
+    context: |
+      Executor applies state changes.
+      Charges costs to principals (ADR-0011, ADR-0023).
+      Follow executor design principles (ADR-0021).
+
+  # ADR-0008: Rate limiting
+  - source: src/world/rate_tracker.py
+    adrs: [8]
+    context: |
+      Token bucket rate limiting for flow resources (ADR-0008).
+
+  # ADR-0009: Memory as artifact
+  - source: src/agents/memory.py
+    adrs: [1, 9]
+    context: |
+      Agent memory stored as artifacts (ADR-0009).
+
+  # ADR-0010, ADR-0013, ADR-0014: Agent execution models
+  - source: src/agents/agent.py
+    adrs: [1, 10, 13, 14]
+    context: |
+      Continuous agent loops (ADR-0010).
+      Configurable workflows (ADR-0013).
+      Continuous execution primary model (ADR-0014).
+
+  - source: src/agents/workflow.py
+    adrs: [13, 14]
+    context: |
+      Configurable agent workflows (ADR-0013).
+      Continuous execution primary model (ADR-0014).
+
+  # ADR-0004: Mint system
+  - source: src/world/mint_auction.py
+    adrs: [1, 4]
+    context: |
+      Mint as system primitive (ADR-0004).
+
+  - source: src/world/mint_scorer.py
+    adrs: [4]
+    context: |
+      Mint scoring for task evaluation (ADR-0004).
+
+  # ADR-0007: Single ID namespace
+  - source: src/world/world.py
+    adrs: [1, 7]
+    context: |
+      Single ID namespace across all artifacts (ADR-0007).
+
+  # ADR-0019: Unified permission architecture
+  - source: src/world/permission_checker.py
+    adrs: [1, 3, 19]
+    context: |
+      Unified permission architecture (ADR-0019).
+      Contracts decide permissions (ADR-0003).
+
+  # ADR-0020: Event schema
+  - source: src/world/logger.py
+    adrs: [20]
+    context: |
+      Event schema contract (ADR-0020).
+
+  # ADR-0024: Artifact self-handled access
+  - source: src/world/kernel_interface.py
+    adrs: [1, 24]
+    context: |
+      Kernel interface for agent actions.
+      Artifact self-handled access control (ADR-0024).
 
   # NOTE: src/world/genesis/factory.py removed in Plan #254
   # Genesis artifacts replaced with kernel primitives (transfer, mint)

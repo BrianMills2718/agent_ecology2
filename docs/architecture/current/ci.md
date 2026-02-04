@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-02-04 (Plan #284: relationships.yaml expanded with document hierarchy and target-current links)
+Last verified: 2026-02-04 (Plan #289: relationships.yaml expanded with complete governance mappings)
 
 ---
 

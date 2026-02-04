@@ -15,7 +15,8 @@ docs/
 ├── GETTING_STARTED.md    # Installation, config, development
 ├── GLOSSARY.md           # Canonical terminology (single source)
 ├── DESIGN_CLARIFICATIONS.md  # Decision rationale archive
-└── SECURITY.md           # Security model
+├── SECURITY.md           # Security model
+└── EXPLORATION_NOTES_288.md  # Plan #288 exploration (context provision)
 
 # See also:
 meta/
@@ -48,6 +49,7 @@ meta/
 | `THREAT_MODEL.md` | Threat analysis and mitigations | Security model changes |
 | `V1_ACCEPTANCE.md` | V1 acceptance criteria and readiness | Milestone progress |
 | `references` | Symlink to shared references (external) | External references |
+| `EXPLORATION_NOTES_288.md` | Exploration notes for Plan #288 (context provision) | Historical |
 
 ## Doc Types
 
