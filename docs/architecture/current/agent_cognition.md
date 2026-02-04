@@ -2,7 +2,7 @@
 
 Detailed documentation of agent decision-making, memory, and learning systems.
 
-**Last verified:** 2026-02-03 (Plan #279: workflow observability events)
+**Last verified:** 2026-02-04 (Plan #280: workflow single step per iteration)
 
 **Related:** [agents.md](agents.md) for lifecycle, [genesis_agents.md](genesis_agents.md) for default agents, [genesis_artifacts.md](genesis_artifacts.md) for services
 
