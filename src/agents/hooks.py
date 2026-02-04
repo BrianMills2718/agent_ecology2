@@ -312,6 +312,15 @@ class HookExecutor:
                 inject_as=hook.inject_as,
             )
 
+        # Special case: reading data artifacts (Plan #191 subscriptions)
+        # Data artifacts aren't executable, so we read content directly instead of invoking
+        if not artifact.executable and hook.method == "read_content":
+            return HookResult(
+                success=True,
+                result=artifact.content,
+                inject_as=hook.inject_as,
+            )
+
         # Execute via invoker
         try:
             self._current_depth += 1

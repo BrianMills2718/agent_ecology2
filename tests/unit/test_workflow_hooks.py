@@ -362,6 +362,86 @@ class TestHookExecutor:
 
         assert context["my_key"] == "injected_value"
 
+    @pytest.mark.asyncio
+    async def test_execute_hook_data_artifact_read_content(self):
+        """Test read_content on data artifacts reads content directly (Plan #191 fix).
+
+        Data artifacts aren't executable, so trying to invoke read_content on them
+        would fail. The hook executor should detect this case and read the artifact
+        content directly instead.
+        """
+        # mock-ok: testing hook executor behavior, not artifact storage
+        # Create a mock data artifact (executable=False)
+        artifact = Mock()
+        artifact.executable = False
+        artifact.content = "This is the artifact content for subscription injection"
+
+        store = Mock()
+        store.get.return_value = artifact
+
+        # Invoker should NOT be called for data artifacts
+        mock_invoker = Mock()
+
+        executor = HookExecutor(
+            artifact_store=store,
+            invoker=mock_invoker,
+        )
+        # This is the hook pattern created by expand_subscribed_artifacts
+        hook = HookDefinition(
+            artifact_id="working_memory",
+            method="read_content",
+            inject_as="subscribed_working_memory",
+        )
+
+        result = await executor.execute_hook(hook, "agent1", {})
+
+        # Should succeed and return the content directly
+        assert result.success
+        assert result.result == "This is the artifact content for subscription injection"
+        assert result.inject_as == "subscribed_working_memory"
+
+        # Invoker should NOT have been called (we read directly)
+        mock_invoker.invoke_artifact.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_execute_hook_executable_artifact_read_content(self):
+        """Test read_content on executable artifacts still uses invoker.
+
+        Executable artifacts may have their own read_content method that should
+        be invoked normally.
+        """
+        # mock-ok: testing hook executor behavior, not artifact invocation
+        # Create a mock executable artifact
+        artifact = Mock()
+        artifact.executable = True
+
+        store = Mock()
+        store.get.return_value = artifact
+
+        mock_invoker = Mock()
+        mock_invoker.invoke_artifact.return_value = {
+            "success": True,
+            "data": "invoked result",
+            "message": "OK",
+        }
+
+        executor = HookExecutor(
+            artifact_store=store,
+            invoker=mock_invoker,
+        )
+        hook = HookDefinition(
+            artifact_id="executable_tool",
+            method="read_content",
+            inject_as="result",
+        )
+
+        result = await executor.execute_hook(hook, "agent1", {})
+
+        # Should use invoker for executable artifacts
+        assert result.success
+        assert result.result == "invoked result"
+        mock_invoker.invoke_artifact.assert_called_once()
+
 
 class TestExpandSubscribedArtifacts:
     """Tests for subscribed artifacts to hooks expansion."""
