@@ -39,7 +39,7 @@ src/agents/alpha/
 | Generation | Agents | Features |
 |------------|--------|----------|
 | Original | alpha, beta, gamma, delta, epsilon | Basic workflows, RAG memory |
-| _2 (VSM-aligned) | alpha_2, beta_2 | Self-audit, goal hierarchies, adaptation triggers |
+| _2 (VSM-aligned) | *(removed)* | Was: self-audit, goal hierarchies. Superseded by _3. |
 | _3 (State machines) | alpha_3, beta_3, gamma_3, delta_3, epsilon_3 | Explicit state machines |
 
 ### _3 Generation State Machines

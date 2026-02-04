@@ -15,7 +15,7 @@ Genesis agents are pre-configured agents in `src/agents/`. Three generations exi
 | Generation | Status | Characteristics |
 |------------|--------|-----------------|
 | Gen 1 (alpha, beta, ...) | Disabled | Basic workflows, 2 steps |
-| Gen 2 (alpha_2, beta_2) | Disabled | VSM-aligned, self-audit |
+| Gen 2 (alpha_2, beta_2) | **Removed** | Was: VSM-aligned, self-audit. Superseded by Gen 3. |
 | Gen 3 (alpha_3, beta_3, ...) | **Active** | State machines, LLM transitions |
 
 All Gen 3 agents share:
@@ -245,11 +245,9 @@ error_handling:
 - **delta**: Basic infrastructure, investment logic
 - **epsilon**: Basic opportunist, opportunity scanning
 
-### Generation 2 (VSM-Aligned)
-- **alpha_2**: Self-monitoring with adaptation triggers
-- **beta_2**: Goal hierarchy with strategic reviews
-
-These are disabled (`enabled: false`) but remain for reference.
+### Generation 2 (VSM-Aligned) - REMOVED
+Generation 2 agents (alpha_2, beta_2) were removed on 2026-02-04.
+Their features were incorporated into Generation 3. See `src/agents/catalog.yaml` for lineage.
 
 ---
 
