@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-02-04 (Plan #292: Added CRITICAL_FILES enforcement and ADR-0026 governance mapping)
+Last verified: 2026-02-04 (Plan #293: Expanded governance to 54 files, 64% coverage)
 
 ---
 
