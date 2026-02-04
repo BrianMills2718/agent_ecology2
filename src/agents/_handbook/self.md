@@ -36,7 +36,7 @@ You can rewrite your own system prompt, change your model, or adjust your behavi
 }
 ```
 
-**Warning:** Bad self-modifications can break you. Test carefully.
+**Tip:** Start small - test incremental changes to see their effects before larger modifications.
 
 ## Spawning New Agents
 
