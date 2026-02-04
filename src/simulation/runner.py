@@ -1403,6 +1403,7 @@ class SimulationRunner:
             "output_tokens": output_tokens,
             "api_cost": api_cost,
             "thinking_cost": 0,
+            "llm_budget_after": self.world.ledger.get_llm_budget(agent.agent_id),  # Plan #282
             "reasoning": reasoning,
             # Plan #279: Add workflow context for observability
             "workflow_state": result.get("state"),
