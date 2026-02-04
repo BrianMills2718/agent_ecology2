@@ -197,6 +197,15 @@
                     <div class="legend-color" style="background: #a8a8a8;"></div>
                     <span>Source Code</span>
                 </div>
+                <hr style="border-color: #0f3460; margin: 15px 0;">
+                <div class="legend-item">
+                    <div style="width: 30px; height: 2px; background: #4ecca3; margin-right: 10px;"></div>
+                    <span>Strict coupling</span>
+                </div>
+                <div class="legend-item">
+                    <div style="width: 30px; height: 2px; background: #2d8a6e; margin-right: 10px; border-style: dashed;"></div>
+                    <span>Soft coupling</span>
+                </div>
             </div>
 
             <div id="details">
@@ -266,18 +275,11 @@
       "path": "docs/GLOSSARY.md"
     },
     {
-      "id": "doc_current_resources",
-      "label": "resources.md",
+      "id": "doc_current_configuration",
+      "label": "configuration.md",
       "type": "current",
-      "path": "docs/architecture/current/resources.md",
-      "description": "Flow/stock resources, scrip, budget tracking"
-    },
-    {
-      "id": "doc_current_agents",
-      "label": "agents.md",
-      "type": "current",
-      "path": "docs/architecture/current/agents.md",
-      "description": "Agent lifecycle, thinking, memory"
+      "path": "docs/architecture/current/configuration.md",
+      "description": "Config loading and validation"
     },
     {
       "id": "doc_current_contracts",
@@ -287,11 +289,11 @@
       "description": "Contract types, permission checking, genesis contracts"
     },
     {
-      "id": "doc_current_supporting_systems",
-      "label": "supporting_systems.md",
+      "id": "doc_current_coordination_patterns",
+      "label": "coordination_patterns.md",
       "type": "current",
-      "path": "docs/architecture/current/supporting_systems.md",
-      "description": "Checkpoint, logging, dashboard"
+      "path": "docs/architecture/current/coordination_patterns.md",
+      "description": "Coordination patterns using escrow, artifacts, kernel interface"
     },
     {
       "id": "doc_current_execution_model",
@@ -299,20 +301,6 @@
       "type": "current",
       "path": "docs/architecture/current/execution_model.md",
       "description": "Execution model and event loop"
-    },
-    {
-      "id": "doc_current_ci",
-      "label": "ci.md",
-      "type": "current",
-      "path": "docs/architecture/current/ci.md",
-      "description": "CI pipeline"
-    },
-    {
-      "id": "doc_current_agent_cognition",
-      "label": "agent_cognition.md",
-      "type": "current",
-      "path": "docs/architecture/current/agent_cognition.md",
-      "description": "Agent decision-making, state machine, memory, workflow"
     },
     {
       "id": "doc_current_running",
@@ -329,6 +317,34 @@
       "description": "Core systems overview - major infrastructure changes need health status update"
     },
     {
+      "id": "doc_current_agents",
+      "label": "agents.md",
+      "type": "current",
+      "path": "docs/architecture/current/agents.md",
+      "description": "Agent lifecycle, thinking, memory"
+    },
+    {
+      "id": "doc_current_artifacts_executor",
+      "label": "artifacts_executor.md",
+      "type": "current",
+      "path": "docs/architecture/current/artifacts_executor.md",
+      "description": "Artifact storage, policies, code execution, kernel interface, permission checking"
+    },
+    {
+      "id": "doc_current_ci",
+      "label": "ci.md",
+      "type": "current",
+      "path": "docs/architecture/current/ci.md",
+      "description": "CI pipeline"
+    },
+    {
+      "id": "doc_current_agent_cognition",
+      "label": "agent_cognition.md",
+      "type": "current",
+      "path": "docs/architecture/current/agent_cognition.md",
+      "description": "Agent decision-making, state machine, memory, workflow"
+    },
+    {
       "id": "doc_current_genesis_agents",
       "label": "genesis_agents.md",
       "type": "current",
@@ -336,18 +352,18 @@
       "description": "Agent loading and genesis agent configuration"
     },
     {
-      "id": "doc_current_configuration",
-      "label": "configuration.md",
+      "id": "doc_current_resources",
+      "label": "resources.md",
       "type": "current",
-      "path": "docs/architecture/current/configuration.md",
-      "description": "Config loading and validation"
+      "path": "docs/architecture/current/resources.md",
+      "description": "Flow/stock resources, scrip, budget tracking"
     },
     {
-      "id": "doc_current_mint",
-      "label": "mint.md",
+      "id": "doc_current_supporting_systems",
+      "label": "supporting_systems.md",
       "type": "current",
-      "path": "docs/architecture/current/mint.md",
-      "description": "Mint auction, scoring, genesis mint"
+      "path": "docs/architecture/current/supporting_systems.md",
+      "description": "Checkpoint, logging, dashboard"
     },
     {
       "id": "doc_current_genesis_artifacts",
@@ -357,18 +373,11 @@
       "description": "Pre-seeded artifacts (MCP bridges, mint auction)"
     },
     {
-      "id": "doc_current_coordination_patterns",
-      "label": "coordination_patterns.md",
+      "id": "doc_current_mint",
+      "label": "mint.md",
       "type": "current",
-      "path": "docs/architecture/current/coordination_patterns.md",
-      "description": "Coordination patterns using escrow, artifacts, kernel interface"
-    },
-    {
-      "id": "doc_current_artifacts_executor",
-      "label": "artifacts_executor.md",
-      "type": "current",
-      "path": "docs/architecture/current/artifacts_executor.md",
-      "description": "Artifact storage, policies, code execution, kernel interface, permission checking"
+      "path": "docs/architecture/current/mint.md",
+      "description": "Mint auction, scoring, genesis mint"
     },
     {
       "id": "doc_target_01_README",
@@ -420,18 +429,67 @@
       "description": "Kernel/executor - vision vs reality"
     },
     {
-      "id": "src_src_world_contracts_py",
-      "label": "contracts.py",
-      "type": "source",
-      "path": "src/world/contracts.py",
-      "description": "Permission checks are the hot path - keep them fast.\nContracts return decisions; kernel applies stat"
-    },
-    {
       "id": "src_src_world_kernel_contracts_py",
       "label": "kernel_contracts.py",
       "type": "source",
       "path": "src/world/kernel_contracts.py",
       "description": "Five built-in contracts: freeware, transferable_freeware, self_owned, private, public.\nThese are Pyt"
+    },
+    {
+      "id": "src_src_world_executor_py",
+      "label": "executor.py",
+      "type": "source",
+      "path": "src/world/executor.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_world_interface_validation_py",
+      "label": "interface_validation.py",
+      "type": "source",
+      "path": "src/world/interface_validation.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_world_simulation_engine_py",
+      "label": "simulation_engine.py",
+      "type": "source",
+      "path": "src/world/simulation_engine.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_config_schema_py",
+      "label": "config_schema.py",
+      "type": "source",
+      "path": "src/config_schema.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_world_mcp_bridge_py",
+      "label": "mcp_bridge.py",
+      "type": "source",
+      "path": "src/world/mcp_bridge.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_agents_loader_py",
+      "label": "loader.py",
+      "type": "source",
+      "path": "src/agents/loader.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_world_logger_py",
+      "label": "logger.py",
+      "type": "source",
+      "path": "src/world/logger.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_world_mint_auction_py",
+      "label": "mint_auction.py",
+      "type": "source",
+      "path": "src/world/mint_auction.py",
+      "description": ""
     },
     {
       "id": "src_src_world_ledger_py",
@@ -441,11 +499,158 @@
       "description": "All balance mutations go through here.\nNever allow negative balances - fail loud."
     },
     {
+      "id": "src_src_simulation_runner_py",
+      "label": "runner.py",
+      "type": "source",
+      "path": "src/simulation/runner.py",
+      "description": ""
+    },
+    {
       "id": "src_src_world_artifacts_py",
       "label": "artifacts.py",
       "type": "source",
       "path": "src/world/artifacts.py",
       "description": "Core artifact storage and management.\nEverything is an artifact - agents, contracts, data."
+    },
+    {
+      "id": "src_scripts_check_doc_coupling_py",
+      "label": "check_doc_coupling.py",
+      "type": "source",
+      "path": "scripts/check_doc_coupling.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_agents_memory_py",
+      "label": "memory.py",
+      "type": "source",
+      "path": "src/agents/memory.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_agents_models_py",
+      "label": "models.py",
+      "type": "source",
+      "path": "src/agents/models.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_simulation_checkpoint_py",
+      "label": "checkpoint.py",
+      "type": "source",
+      "path": "src/simulation/checkpoint.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_agents_reflex_py",
+      "label": "reflex.py",
+      "type": "source",
+      "path": "src/agents/reflex.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_world_world_py",
+      "label": "world.py",
+      "type": "source",
+      "path": "src/world/world.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_world_mint_scorer_py",
+      "label": "mint_scorer.py",
+      "type": "source",
+      "path": "src/world/mint_scorer.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_world_contracts_py",
+      "label": "contracts.py",
+      "type": "source",
+      "path": "src/world/contracts.py",
+      "description": "Permission checks are the hot path - keep them fast.\nContracts return decisions; kernel applies stat"
+    },
+    {
+      "id": "src_src_dashboard_server_py",
+      "label": "server.py",
+      "type": "source",
+      "path": "src/dashboard/server.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_world_action_executor_py",
+      "label": "action_executor.py",
+      "type": "source",
+      "path": "src/world/action_executor.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_world_permission_checker_py",
+      "label": "permission_checker.py",
+      "type": "source",
+      "path": "src/world/permission_checker.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_config_py",
+      "label": "config.py",
+      "type": "source",
+      "path": "src/config.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_agents_agent_py",
+      "label": "agent.py",
+      "type": "source",
+      "path": "src/agents/agent.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_agents_state_machine_py",
+      "label": "state_machine.py",
+      "type": "source",
+      "path": "src/agents/state_machine.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_world_invoke_handler_py",
+      "label": "invoke_handler.py",
+      "type": "source",
+      "path": "src/world/invoke_handler.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_world_kernel_interface_py",
+      "label": "kernel_interface.py",
+      "type": "source",
+      "path": "src/world/kernel_interface.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_agents_schema_py",
+      "label": "schema.py",
+      "type": "source",
+      "path": "src/agents/schema.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_world_actions_py",
+      "label": "actions.py",
+      "type": "source",
+      "path": "src/world/actions.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_world_rate_tracker_py",
+      "label": "rate_tracker.py",
+      "type": "source",
+      "path": "src/world/rate_tracker.py",
+      "description": ""
+    },
+    {
+      "id": "src_src_agents_workflow_py",
+      "label": "workflow.py",
+      "type": "source",
+      "path": "src/agents/workflow.py",
+      "description": ""
     }
   ],
   "links": [
@@ -485,6 +690,201 @@
       "type": "governs"
     },
     {
+      "source": "src_src_simulation_runner_py",
+      "target": "doc_current_execution_model",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_world_py",
+      "target": "doc_current_execution_model",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_ledger_py",
+      "target": "doc_current_resources",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_simulation_engine_py",
+      "target": "doc_current_resources",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_mcp_bridge_py",
+      "target": "doc_current_genesis_artifacts",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_mint_auction_py",
+      "target": "doc_current_genesis_artifacts",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_agents_agent_py",
+      "target": "doc_current_agents",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_agents_memory_py",
+      "target": "doc_current_agents",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_agents_loader_py",
+      "target": "doc_current_agents",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_artifacts_py",
+      "target": "doc_current_artifacts_executor",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_executor_py",
+      "target": "doc_current_artifacts_executor",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_action_executor_py",
+      "target": "doc_current_artifacts_executor",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_permission_checker_py",
+      "target": "doc_current_artifacts_executor",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_interface_validation_py",
+      "target": "doc_current_artifacts_executor",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_invoke_handler_py",
+      "target": "doc_current_artifacts_executor",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_actions_py",
+      "target": "doc_current_artifacts_executor",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_kernel_interface_py",
+      "target": "doc_current_artifacts_executor",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_config_py",
+      "target": "doc_current_configuration",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_config_schema_py",
+      "target": "doc_current_configuration",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_simulation_checkpoint_py",
+      "target": "doc_current_supporting_systems",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_logger_py",
+      "target": "doc_current_supporting_systems",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_scripts_check_doc_coupling_py",
+      "target": "doc_current_ci",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_ledger_py",
+      "target": "doc_GLOSSARY",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_config_schema_py",
+      "target": "doc_GLOSSARY",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_agents_models_py",
+      "target": "doc_current_agents",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_agents_schema_py",
+      "target": "doc_current_agents",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_world_artifacts_py",
+      "target": "doc_CONCEPTUAL_MODEL",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_actions_py",
+      "target": "doc_CONCEPTUAL_MODEL",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_kernel_interface_py",
+      "target": "doc_CONCEPTUAL_MODEL",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_permission_checker_py",
+      "target": "doc_CONCEPTUAL_MODEL",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_world_contracts_py",
+      "target": "doc_CONCEPTUAL_MODEL",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_world_kernel_contracts_py",
+      "target": "doc_CONCEPTUAL_MODEL",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_world_ledger_py",
+      "target": "doc_CONCEPTUAL_MODEL",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_world_rate_tracker_py",
+      "target": "doc_CONCEPTUAL_MODEL",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_agents_agent_py",
+      "target": "doc_current_agent_cognition",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_agents_workflow_py",
+      "target": "doc_current_agent_cognition",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_agents_state_machine_py",
+      "target": "doc_current_agent_cognition",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_agents_memory_py",
+      "target": "doc_current_agent_cognition",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_agents_reflex_py",
+      "target": "doc_current_agent_cognition",
+      "type": "documented_by"
+    },
+    {
       "source": "src_src_world_contracts_py",
       "target": "doc_current_contracts",
       "type": "documented_by"
@@ -495,14 +895,109 @@
       "type": "documented_by"
     },
     {
-      "source": "src_src_world_ledger_py",
-      "target": "doc_current_resources",
+      "source": "src_src_world_permission_checker_py",
+      "target": "doc_current_contracts",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_mint_scorer_py",
+      "target": "doc_current_mint",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_mint_auction_py",
+      "target": "doc_current_mint",
       "type": "documented_by"
     },
     {
       "source": "src_src_world_artifacts_py",
-      "target": "doc_current_artifacts_executor",
-      "type": "documented_by"
+      "target": "doc_current_coordination_patterns",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_world_executor_py",
+      "target": "doc_current_coordination_patterns",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_world_kernel_interface_py",
+      "target": "doc_current_coordination_patterns",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_agents_loader_py",
+      "target": "doc_current_genesis_agents",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_agents_agent_py",
+      "target": "doc_current_genesis_agents",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_simulation_runner_py",
+      "target": "doc_current_running",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_simulation_checkpoint_py",
+      "target": "doc_current_running",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_config_py",
+      "target": "doc_current_running",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_dashboard_server_py",
+      "target": "doc_current_running",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_world_ledger_py",
+      "target": "doc_current_CORE_SYSTEMS",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_world_artifacts_py",
+      "target": "doc_current_CORE_SYSTEMS",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_world_contracts_py",
+      "target": "doc_current_CORE_SYSTEMS",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_world_kernel_interface_py",
+      "target": "doc_current_CORE_SYSTEMS",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_world_executor_py",
+      "target": "doc_current_CORE_SYSTEMS",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_agents_agent_py",
+      "target": "doc_current_CORE_SYSTEMS",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_agents_workflow_py",
+      "target": "doc_current_CORE_SYSTEMS",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_simulation_runner_py",
+      "target": "doc_current_CORE_SYSTEMS",
+      "type": "documented_by_soft"
+    },
+    {
+      "source": "src_src_world_logger_py",
+      "target": "doc_current_CORE_SYSTEMS",
+      "type": "documented_by_soft"
     },
     {
       "source": "doc_target_02_execution_model",
@@ -560,6 +1055,7 @@
         const linkColors = {
             governs: '#e94560',
             documented_by: '#4ecca3',
+            documented_by_soft: '#2d8a6e',
             implements: '#74b9ff',
             hierarchy: '#ffd93d'
         };
@@ -596,7 +1092,9 @@
             .attr('class', 'link')
             .attr('stroke', d => linkColors[d.type] || '#666')
             .attr('stroke-width', d => d.type === 'governs' ? 2 : 1.5)
-            .attr('stroke-dasharray', d => d.type === 'implements' ? '5,5' : null);
+            .attr('stroke-dasharray', d =>
+                d.type === 'implements' ? '5,5' :
+                d.type === 'documented_by_soft' ? '3,3' : null);
 
         // Draw link labels
         const linkLabel = g.append('g')

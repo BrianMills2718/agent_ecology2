@@ -86,6 +86,7 @@ Master index of all gaps and their implementation plans.
 | 284 | [Implement Unified Documentation Graph](284_unified_doc_graph.md) | Medium | ✅ Complete | - |
 | 285 | [Documentation Graph Tooling](285_doc_graph_tooling.md) | Medium | ✅ Complete | - |
 | 286 | [Interactive Documentation Graph Visualization](286_interactive_doc_graph.md) | Medium | ✅ Complete | - |
+| 287 | [Complete Documentation Graph Visualization](287_complete_doc_graph.md) | Medium | 📋 Planned | - |
 ---
 
 ## TDD Workflow

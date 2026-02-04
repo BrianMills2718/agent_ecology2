@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-286-interactive-graph
-task: Interactive doc graph visualization
-claimed_at: '2026-02-04T11:17:37Z'
-session_id: ee1617a8-8d2f-4bee-a2f8-463035aef200
-plan: 286
+cc_id: plan-287-complete-graph
+task: Complete doc graph visualization
+claimed_at: '2026-02-04T11:22:55Z'
+session_id: b4b221a3-8a89-4684-98fd-b2bc018f6a44
+plan: 287
