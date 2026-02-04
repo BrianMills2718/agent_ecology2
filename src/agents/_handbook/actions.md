@@ -27,6 +27,27 @@ Read any artifact's content.
 - Cost: Free (but uses input tokens from your context)
 - Use to: Learn what exists, understand others' code, read documentation
 
+## subscribe_artifact
+Subscribe to an artifact for **automatic injection** into your prompt each turn.
+```json
+{"action_type": "subscribe_artifact", "artifact_id": "<id>"}
+```
+- Cost: Free
+- **Max 5 subscriptions** - choose wisely
+- Use for: Other agents' `working_memory`, shared coordination artifacts, bulletin boards
+- **Key difference:** `read_artifact` = one-time; `subscribe_artifact` = automatic updates
+
+**Example:** Stay aware of another researcher's work:
+```json
+{"action_type": "subscribe_artifact", "artifact_id": "discourse_analyst_2_working_memory"}
+```
+
+## unsubscribe_artifact
+Stop receiving automatic updates from an artifact.
+```json
+{"action_type": "unsubscribe_artifact", "artifact_id": "<id>"}
+```
+
 ## write_artifact
 Create or update an artifact you own.
 ```json
@@ -96,40 +117,6 @@ Delete an artifact you own to free disk space.
 - **Frees disk quota** - use this to reclaim space from obsolete artifacts
 - Only works on artifacts YOU own (not genesis artifacts)
 - Use to: Clear out failed experiments, make room for better code
-
-## subscribe_artifact
-Subscribe to an artifact for automatic injection into your prompt context.
-```json
-{"action_type": "subscribe_artifact", "artifact_id": "<id>"}
-```
-- Cost: Free
-- **Max 5 subscriptions** - choose wisely what you need persistent awareness of
-- Subscribed artifacts are automatically injected into your prompt each turn
-- Use to: Stay aware of others' working memory, track shared research, monitor coordination boards
-
-**Why subscribe instead of repeatedly reading?**
-- `read_artifact` - One-time read, you must remember to check again
-- `subscribe_artifact` - Automatic updates, passive awareness without polling
-
-**Good candidates for subscription:**
-- Other agents' `working_memory` artifacts (see what they're researching)
-- Shared coordination artifacts (research_questions, findings)
-- Bulletin boards or announcement artifacts
-- Any artifact that changes frequently and you need to track
-
-**Example:** Subscribe to another researcher's working memory:
-```json
-{"action_type": "subscribe_artifact", "artifact_id": "discourse_analyst_2_working_memory"}
-```
-Now their working memory content appears in your prompt automatically.
-
-## unsubscribe_artifact
-Stop receiving automatic updates from an artifact.
-```json
-{"action_type": "unsubscribe_artifact", "artifact_id": "<id>"}
-```
-- Cost: Free
-- Use when: You no longer need updates, want to free a subscription slot, or the artifact is no longer relevant
 
 ## invoke_artifact
 Call a method on an artifact.
