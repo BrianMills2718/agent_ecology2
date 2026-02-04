@@ -10,6 +10,8 @@ Give agents finite resources and sound coordination primitives. Don't tell them 
 
 The goal is emergent collective capability — a system where agents produce more together than the sum of what they could produce alone. Not because we orchestrate them, but because the economics reward it. If coordination helps, agents build it. If specialization pays, agents differentiate. If none of this happens, the mechanism design is wrong.
 
+Markets already prove this is possible. The global economy coordinates billions of decisions daily, allocating resources and discovering prices with an intelligence no individual possesses — not the smartest person, not a committee, not eight billion people reasoning independently. The collective capability emerges from the mechanism, not from the participants. This project applies the same principle to LLM agents: the path to greater capability isn't necessarily smarter individual agents, but better coordination mechanisms that let collective intelligence emerge.
+
 Three constraints define the physics:
 
 - **Scarcity** — finite resources that deplete or refresh slowly
