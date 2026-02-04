@@ -51,6 +51,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `validate_code_map.py` | Validate code mapping files |
 | `get_governance_context.py` | Get doc graph context for a file (ADRs + coupled docs) |
 | `visualize_doc_graph.py` | Visualize documentation graph (text, DOT, PNG/SVG) |
+| `generate_doc_graph_html.py` | Generate interactive HTML visualization (D3.js) |
 
 ### Meta-Process Configuration (Plan #218-220)
 

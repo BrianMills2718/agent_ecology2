@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation Graph - Agent Ecology</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            overflow: hidden;
+        }
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+        #sidebar {
+            width: 320px;
+            background: #16213e;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #0f3460;
+        }
+        #graph {
+            flex: 1;
+            position: relative;
+        }
+        h1 {
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            color: #e94560;
+        }
+        h2 {
+            font-size: 1rem;
+            margin: 20px 0 10px;
+            color: #0f3460;
+            background: #e94560;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        .legend {
+            margin-bottom: 20px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 0.85rem;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        #details {
+            background: #0f3460;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        #details h3 {
+            color: #e94560;
+            margin-bottom: 10px;
+        }
+        #details p {
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #aaa;
+        }
+        #details .label {
+            color: #4ecca3;
+            font-weight: bold;
+        }
+        .controls {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #0f3460;
+        }
+        .controls label {
+            display: block;
+            margin: 10px 0 5px;
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+        .controls input[type="range"] {
+            width: 100%;
+        }
+        .controls button {
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: #e94560;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .controls button:hover {
+            background: #ff6b6b;
+        }
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+        .node {
+            cursor: pointer;
+        }
+        .node text {
+            font-size: 11px;
+            fill: #fff;
+            pointer-events: none;
+        }
+        .link {
+            stroke-opacity: 0.6;
+        }
+        .link-label {
+            font-size: 9px;
+            fill: #888;
+        }
+        #tooltip {
+            position: absolute;
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 0.85rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            max-width: 300px;
+            z-index: 1000;
+        }
+        #tooltip.visible {
+            opacity: 1;
+        }
+        #tooltip .title {
+            font-weight: bold;
+            color: #e94560;
+            margin-bottom: 5px;
+        }
+        #tooltip .type {
+            color: #4ecca3;
+            font-size: 0.75rem;
+            margin-bottom: 5px;
+        }
+        #search {
+            width: 100%;
+            padding: 8px 12px;
+            background: #0f3460;
+            border: 1px solid #1a1a2e;
+            border-radius: 4px;
+            color: #eee;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+        #search::placeholder {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="sidebar">
+            <h1>📚 Doc Graph</h1>
+            <input type="text" id="search" placeholder="Search nodes...">
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e94560;"></div>
+                    <span>ADRs (Decisions)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4ecca3;"></div>
+                    <span>Orientation Docs</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ffd93d;"></div>
+                    <span>Reference Docs</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #6c5ce7;"></div>
+                    <span>Current Architecture</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #74b9ff;"></div>
+                    <span>Target Architecture</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #a8a8a8;"></div>
+                    <span>Source Code</span>
+                </div>
+            </div>
+
+            <div id="details">
+                <h3>Select a node</h3>
+                <p>Click on any node to see details</p>
+            </div>
+
+            <div class="controls">
+                <label>Link Distance</label>
+                <input type="range" id="linkDistance" min="50" max="300" value="150">
+                <label>Charge Strength</label>
+                <input type="range" id="chargeStrength" min="-500" max="-50" value="-200">
+                <button onclick="resetZoom()">Reset View</button>
+            </div>
+        </div>
+        <div id="graph">
+            <div id="tooltip"></div>
+        </div>
+    </div>
+
+    <script>
+        const graphData = {
+  "nodes": [
+    {
+      "id": "adr_1",
+      "label": "ADR-0001",
+      "type": "adr",
+      "description": "Everything is an artifact",
+      "path": "docs/adr/0001-everything-is-artifact.md"
+    },
+    {
+      "id": "adr_2",
+      "label": "ADR-0002",
+      "type": "adr",
+      "description": "No compute debt",
+      "path": "docs/adr/0002-no-compute-debt.md"
+    },
+    {
+      "id": "adr_3",
+      "label": "ADR-0003",
+      "type": "adr",
+      "description": "Contracts can do anything",
+      "path": "docs/adr/0003-contracts-can-do-anything.md"
+    },
+    {
+      "id": "doc_CLAUDE",
+      "label": "CLAUDE.md",
+      "type": "orientation",
+      "path": "CLAUDE.md"
+    },
+    {
+      "id": "doc_CORE_SYSTEMS",
+      "label": "CORE_SYSTEMS.md",
+      "type": "orientation",
+      "path": "docs/architecture/current/CORE_SYSTEMS.md"
+    },
+    {
+      "id": "doc_CONCEPTUAL_MODEL",
+      "label": "CONCEPTUAL_MODEL.yaml",
+      "type": "reference",
+      "path": "docs/CONCEPTUAL_MODEL.yaml"
+    },
+    {
+      "id": "doc_GLOSSARY",
+      "label": "GLOSSARY.md",
+      "type": "reference",
+      "path": "docs/GLOSSARY.md"
+    },
+    {
+      "id": "doc_current_resources",
+      "label": "resources.md",
+      "type": "current",
+      "path": "docs/architecture/current/resources.md",
+      "description": "Flow/stock resources, scrip, budget tracking"
+    },
+    {
+      "id": "doc_current_agents",
+      "label": "agents.md",
+      "type": "current",
+      "path": "docs/architecture/current/agents.md",
+      "description": "Agent lifecycle, thinking, memory"
+    },
+    {
+      "id": "doc_current_contracts",
+      "label": "contracts.md",
+      "type": "current",
+      "path": "docs/architecture/current/contracts.md",
+      "description": "Contract types, permission checking, genesis contracts"
+    },
+    {
+      "id": "doc_current_supporting_systems",
+      "label": "supporting_systems.md",
+      "type": "current",
+      "path": "docs/architecture/current/supporting_systems.md",
+      "description": "Checkpoint, logging, dashboard"
+    },
+    {
+      "id": "doc_current_execution_model",
+      "label": "execution_model.md",
+      "type": "current",
+      "path": "docs/architecture/current/execution_model.md",
+      "description": "Execution model and event loop"
+    },
+    {
+      "id": "doc_current_ci",
+      "label": "ci.md",
+      "type": "current",
+      "path": "docs/architecture/current/ci.md",
+      "description": "CI pipeline"
+    },
+    {
+      "id": "doc_current_agent_cognition",
+      "label": "agent_cognition.md",
+      "type": "current",
+      "path": "docs/architecture/current/agent_cognition.md",
+      "description": "Agent decision-making, state machine, memory, workflow"
+    },
+    {
+      "id": "doc_current_running",
+      "label": "running.md",
+      "type": "current",
+      "path": "docs/architecture/current/running.md",
+      "description": "Simulation runner, checkpoint, config, dashboard"
+    },
+    {
+      "id": "doc_current_CORE_SYSTEMS",
+      "label": "CORE_SYSTEMS.md",
+      "type": "current",
+      "path": "docs/architecture/current/CORE_SYSTEMS.md",
+      "description": "Core systems overview - major infrastructure changes need health status update"
+    },
+    {
+      "id": "doc_current_genesis_agents",
+      "label": "genesis_agents.md",
+      "type": "current",
+      "path": "docs/architecture/current/genesis_agents.md",
+      "description": "Agent loading and genesis agent configuration"
+    },
+    {
+      "id": "doc_current_configuration",
+      "label": "configuration.md",
+      "type": "current",
+      "path": "docs/architecture/current/configuration.md",
+      "description": "Config loading and validation"
+    },
+    {
+      "id": "doc_current_mint",
+      "label": "mint.md",
+      "type": "current",
+      "path": "docs/architecture/current/mint.md",
+      "description": "Mint auction, scoring, genesis mint"
+    },
+    {
+      "id": "doc_current_genesis_artifacts",
+      "label": "genesis_artifacts.md",
+      "type": "current",
+      "path": "docs/architecture/current/genesis_artifacts.md",
+      "description": "Pre-seeded artifacts (MCP bridges, mint auction)"
+    },
+    {
+      "id": "doc_current_coordination_patterns",
+      "label": "coordination_patterns.md",
+      "type": "current",
+      "path": "docs/architecture/current/coordination_patterns.md",
+      "description": "Coordination patterns using escrow, artifacts, kernel interface"
+    },
+    {
+      "id": "doc_current_artifacts_executor",
+      "label": "artifacts_executor.md",
+      "type": "current",
+      "path": "docs/architecture/current/artifacts_executor.md",
+      "description": "Artifact storage, policies, code execution, kernel interface, permission checking"
+    },
+    {
+      "id": "doc_target_01_README",
+      "label": "01_README.md",
+      "type": "target",
+      "path": "docs/architecture/target/01_README.md",
+      "description": "Architecture overview - vision vs reality"
+    },
+    {
+      "id": "doc_target_02_execution_model",
+      "label": "02_execution_model.md",
+      "type": "target",
+      "path": "docs/architecture/target/02_execution_model.md",
+      "description": "Execution model - vision vs reality"
+    },
+    {
+      "id": "doc_target_03_agents",
+      "label": "03_agents.md",
+      "type": "target",
+      "path": "docs/architecture/target/03_agents.md",
+      "description": "Agent system - vision vs reality"
+    },
+    {
+      "id": "doc_target_04_resources",
+      "label": "04_resources.md",
+      "type": "target",
+      "path": "docs/architecture/target/04_resources.md",
+      "description": "Resource system - vision vs reality"
+    },
+    {
+      "id": "doc_target_05_contracts",
+      "label": "05_contracts.md",
+      "type": "target",
+      "path": "docs/architecture/target/05_contracts.md",
+      "description": "Contract system - vision vs reality"
+    },
+    {
+      "id": "doc_target_06_mint",
+      "label": "06_mint.md",
+      "type": "target",
+      "path": "docs/architecture/target/06_mint.md",
+      "description": "Mint system - vision vs reality"
+    },
+    {
+      "id": "doc_target_08_kernel",
+      "label": "08_kernel.md",
+      "type": "target",
+      "path": "docs/architecture/target/08_kernel.md",
+      "description": "Kernel/executor - vision vs reality"
+    },
+    {
+      "id": "src_src_world_contracts_py",
+      "label": "contracts.py",
+      "type": "source",
+      "path": "src/world/contracts.py",
+      "description": "Permission checks are the hot path - keep them fast.\nContracts return decisions; kernel applies stat"
+    },
+    {
+      "id": "src_src_world_kernel_contracts_py",
+      "label": "kernel_contracts.py",
+      "type": "source",
+      "path": "src/world/kernel_contracts.py",
+      "description": "Five built-in contracts: freeware, transferable_freeware, self_owned, private, public.\nThese are Pyt"
+    },
+    {
+      "id": "src_src_world_ledger_py",
+      "label": "ledger.py",
+      "type": "source",
+      "path": "src/world/ledger.py",
+      "description": "All balance mutations go through here.\nNever allow negative balances - fail loud."
+    },
+    {
+      "id": "src_src_world_artifacts_py",
+      "label": "artifacts.py",
+      "type": "source",
+      "path": "src/world/artifacts.py",
+      "description": "Core artifact storage and management.\nEverything is an artifact - agents, contracts, data."
+    }
+  ],
+  "links": [
+    {
+      "source": "adr_1",
+      "target": "src_src_world_contracts_py",
+      "type": "governs"
+    },
+    {
+      "source": "adr_3",
+      "target": "src_src_world_contracts_py",
+      "type": "governs"
+    },
+    {
+      "source": "adr_1",
+      "target": "src_src_world_kernel_contracts_py",
+      "type": "governs"
+    },
+    {
+      "source": "adr_3",
+      "target": "src_src_world_kernel_contracts_py",
+      "type": "governs"
+    },
+    {
+      "source": "adr_1",
+      "target": "src_src_world_ledger_py",
+      "type": "governs"
+    },
+    {
+      "source": "adr_2",
+      "target": "src_src_world_ledger_py",
+      "type": "governs"
+    },
+    {
+      "source": "adr_1",
+      "target": "src_src_world_artifacts_py",
+      "type": "governs"
+    },
+    {
+      "source": "src_src_world_contracts_py",
+      "target": "doc_current_contracts",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_kernel_contracts_py",
+      "target": "doc_current_contracts",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_ledger_py",
+      "target": "doc_current_resources",
+      "type": "documented_by"
+    },
+    {
+      "source": "src_src_world_artifacts_py",
+      "target": "doc_current_artifacts_executor",
+      "type": "documented_by"
+    },
+    {
+      "source": "doc_target_02_execution_model",
+      "target": "doc_current_execution_model",
+      "type": "implements"
+    },
+    {
+      "source": "doc_target_03_agents",
+      "target": "doc_current_agents",
+      "type": "implements"
+    },
+    {
+      "source": "doc_target_04_resources",
+      "target": "doc_current_resources",
+      "type": "implements"
+    },
+    {
+      "source": "doc_target_05_contracts",
+      "target": "doc_current_contracts",
+      "type": "implements"
+    },
+    {
+      "source": "doc_target_06_mint",
+      "target": "doc_current_mint",
+      "type": "implements"
+    },
+    {
+      "source": "doc_target_08_kernel",
+      "target": "doc_current_artifacts_executor",
+      "type": "implements"
+    },
+    {
+      "source": "doc_CLAUDE",
+      "target": "doc_CORE_SYSTEMS",
+      "type": "hierarchy"
+    },
+    {
+      "source": "doc_CORE_SYSTEMS",
+      "target": "doc_CONCEPTUAL_MODEL",
+      "type": "hierarchy"
+    }
+  ]
+};
+
+        // Color scheme
+        const colors = {
+            adr: '#e94560',
+            orientation: '#4ecca3',
+            reference: '#ffd93d',
+            current: '#6c5ce7',
+            target: '#74b9ff',
+            source: '#a8a8a8'
+        };
+
+        const linkColors = {
+            governs: '#e94560',
+            documented_by: '#4ecca3',
+            implements: '#74b9ff',
+            hierarchy: '#ffd93d'
+        };
+
+        // Set up SVG
+        const container = document.getElementById('graph');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        const svg = d3.select('#graph')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+
+        // Add zoom behavior
+        const g = svg.append('g');
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 4])
+            .on('zoom', (event) => g.attr('transform', event.transform));
+        svg.call(zoom);
+
+        // Create simulation
+        const simulation = d3.forceSimulation(graphData.nodes)
+            .force('link', d3.forceLink(graphData.links).id(d => d.id).distance(150))
+            .force('charge', d3.forceManyBody().strength(-200))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(40));
+
+        // Draw links
+        const link = g.append('g')
+            .selectAll('line')
+            .data(graphData.links)
+            .join('line')
+            .attr('class', 'link')
+            .attr('stroke', d => linkColors[d.type] || '#666')
+            .attr('stroke-width', d => d.type === 'governs' ? 2 : 1.5)
+            .attr('stroke-dasharray', d => d.type === 'implements' ? '5,5' : null);
+
+        // Draw link labels
+        const linkLabel = g.append('g')
+            .selectAll('text')
+            .data(graphData.links)
+            .join('text')
+            .attr('class', 'link-label')
+            .text(d => d.type);
+
+        // Draw nodes
+        const node = g.append('g')
+            .selectAll('g')
+            .data(graphData.nodes)
+            .join('g')
+            .attr('class', 'node')
+            .call(d3.drag()
+                .on('start', dragstarted)
+                .on('drag', dragged)
+                .on('end', dragended));
+
+        // Node circles
+        node.append('circle')
+            .attr('r', d => d.type === 'source' ? 8 : 12)
+            .attr('fill', d => colors[d.type] || '#666')
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 1.5);
+
+        // Node labels
+        node.append('text')
+            .attr('dx', 15)
+            .attr('dy', 4)
+            .text(d => d.label);
+
+        // Tooltip
+        const tooltip = d3.select('#tooltip');
+
+        node.on('mouseover', (event, d) => {
+            tooltip
+                .html(`<div class="title">${d.label}</div>
+                       <div class="type">${d.type}</div>
+                       ${d.description ? `<div>${d.description}</div>` : ''}`)
+                .classed('visible', true)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        })
+        .on('mouseout', () => tooltip.classed('visible', false))
+        .on('click', (event, d) => showDetails(d));
+
+        // Update positions on tick
+        simulation.on('tick', () => {
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+
+            linkLabel
+                .attr('x', d => (d.source.x + d.target.x) / 2)
+                .attr('y', d => (d.source.y + d.target.y) / 2);
+
+            node.attr('transform', d => `translate(${d.x},${d.y})`);
+        });
+
+        // Drag functions
+        function dragstarted(event) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+        }
+
+        function dragged(event) {
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+        }
+
+        function dragended(event) {
+            if (!event.active) simulation.alphaTarget(0);
+            event.subject.fx = null;
+            event.subject.fy = null;
+        }
+
+        // Show details in sidebar
+        function showDetails(d) {
+            const details = document.getElementById('details');
+            let html = `<h3>${d.label}</h3>`;
+            html += `<p><span class="label">Type:</span> ${d.type}</p>`;
+            if (d.path) html += `<p><span class="label">Path:</span> ${d.path}</p>`;
+            if (d.description) html += `<p><span class="label">Description:</span> ${d.description}</p>`;
+
+            // Find connected nodes
+            const connected = graphData.links
+                .filter(l => l.source.id === d.id || l.target.id === d.id)
+                .map(l => {
+                    const other = l.source.id === d.id ? l.target : l.source;
+                    return `${l.type} → ${other.label}`;
+                });
+
+            if (connected.length > 0) {
+                html += `<p><span class="label">Connections:</span></p>`;
+                html += `<ul style="margin-left: 20px; font-size: 0.8rem;">`;
+                connected.forEach(c => html += `<li>${c}</li>`);
+                html += `</ul>`;
+            }
+
+            details.innerHTML = html;
+        }
+
+        // Reset zoom
+        function resetZoom() {
+            svg.transition().duration(750).call(
+                zoom.transform,
+                d3.zoomIdentity.translate(width / 2, height / 2).scale(0.8)
+            );
+        }
+
+        // Search
+        document.getElementById('search').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            node.style('opacity', d =>
+                term === '' || d.label.toLowerCase().includes(term) ? 1 : 0.2
+            );
+            link.style('opacity', d => {
+                if (term === '') return 0.6;
+                return d.source.label.toLowerCase().includes(term) ||
+                       d.target.label.toLowerCase().includes(term) ? 0.6 : 0.1;
+            });
+        });
+
+        // Controls
+        document.getElementById('linkDistance').addEventListener('input', (e) => {
+            simulation.force('link').distance(+e.target.value);
+            simulation.alpha(0.3).restart();
+        });
+
+        document.getElementById('chargeStrength').addEventListener('input', (e) => {
+            simulation.force('charge').strength(+e.target.value);
+            simulation.alpha(0.3).restart();
+        });
+
+        // Initial zoom to fit
+        setTimeout(resetZoom, 500);
+    </script>
+</body>
+</html>
