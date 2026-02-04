@@ -83,6 +83,7 @@ Master index of all gaps and their implementation plans.
 | 281 | [Fix Workflow Usage Tracking for Resource Accounting](281_workflow_usage.md) | Medium | ❓ | - |
 | 282 | [Ensure Resource Scarcity System is Fully Operational](282_resource_allocation.md) | Medium | ❓ | - |
 | 283 | [Document Core Systems for Codebase Understanding](283_core_systems_doc.md) | Medium | ❓ | - |
+| 284 | [Implement Unified Documentation Graph](284_unified_doc_graph.md) | Medium | ✅ Complete | - |
 ---
 
 ## TDD Workflow

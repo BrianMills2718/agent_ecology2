@@ -299,6 +299,94 @@ couplings:
     description: "Executor security model, runner budget enforcement"
     soft: true
 
+  # ---------------------------------------------------------------------------
+  # CORE SYSTEMS OVERVIEW (Plan #284)
+  # ---------------------------------------------------------------------------
+  # CORE_SYSTEMS.md provides orientation for new sessions.
+  # Major changes to core infrastructure should update its health status.
+
+  - sources:
+      - src/world/ledger.py
+      - src/world/artifacts.py
+      - src/world/contracts.py
+      - src/world/kernel_interface.py
+      - src/world/executor.py
+      - src/agents/agent.py
+      - src/agents/workflow.py
+      - src/simulation/runner.py
+      - src/world/logger.py
+    docs:
+      - docs/architecture/current/CORE_SYSTEMS.md
+    description: "Core systems overview - major infrastructure changes need health status update"
+    soft: true
+
+# =============================================================================
+# DOCUMENT HIERARCHY (Plan #284 - ADR-0005)
+# =============================================================================
+# Defines the reading order for documentation. Used for orientation guidance.
+#
+# Layers:
+#   1. Orientation - Read first (CLAUDE.md, CORE_SYSTEMS.md)
+#   2. Reference - Look up when needed (CONCEPTUAL_MODEL, GLOSSARY, target/)
+#   3. Implementation - Detailed current state (current/*.md)
+#   4. Code - Source of truth (src/**/*.py)
+#
+# This is advisory - not CI enforced.
+
+document_hierarchy:
+  orientation:
+    description: "Read first when joining the project"
+    docs:
+      - CLAUDE.md
+      - docs/architecture/current/CORE_SYSTEMS.md
+
+  reference:
+    description: "Look up when needed for definitions and vision"
+    docs:
+      - docs/CONCEPTUAL_MODEL.yaml
+      - docs/GLOSSARY.md
+      - docs/architecture/target/
+
+  implementation:
+    description: "Detailed current state (coupled to code)"
+    docs:
+      - docs/architecture/current/
+
+# =============================================================================
+# TARGET ↔ CURRENT LINKS (Plan #284 - ADR-0005)
+# =============================================================================
+# Maps aspirational target docs to their current implementation counterparts.
+# Enables tracing: "What does the vision say?" → "What's actually implemented?"
+
+target_current_links:
+  - target: docs/architecture/target/01_README.md
+    current: docs/architecture/current/README.md
+    description: "Architecture overview - vision vs reality"
+
+  - target: docs/architecture/target/02_execution_model.md
+    current: docs/architecture/current/execution_model.md
+    description: "Execution model - vision vs reality"
+
+  - target: docs/architecture/target/03_agents.md
+    current: docs/architecture/current/agents.md
+    description: "Agent system - vision vs reality"
+
+  - target: docs/architecture/target/04_resources.md
+    current: docs/architecture/current/resources.md
+    description: "Resource system - vision vs reality"
+
+  - target: docs/architecture/target/05_contracts.md
+    current: docs/architecture/current/contracts.md
+    description: "Contract system - vision vs reality"
+
+  - target: docs/architecture/target/06_mint.md
+    current: docs/architecture/current/mint.md
+    description: "Mint system - vision vs reality"
+
+  - target: docs/architecture/target/08_kernel.md
+    current: docs/architecture/current/artifacts_executor.md
+    description: "Kernel/executor - vision vs reality"
+
 # =============================================================================
 # ORPHAN DOC DETECTION
 # =============================================================================
