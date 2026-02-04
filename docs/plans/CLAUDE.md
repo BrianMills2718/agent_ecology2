@@ -87,6 +87,7 @@ Master index of all gaps and their implementation plans.
 | 285 | [Documentation Graph Tooling](285_doc_graph_tooling.md) | Medium | ✅ Complete | - |
 | 286 | [Interactive Documentation Graph Visualization](286_interactive_doc_graph.md) | Medium | ✅ Complete | - |
 | 287 | [Complete Documentation Graph Visualization](287_complete_doc_graph.md) | Medium | ✅ Complete | - |
+| 290 | [Plan 290: Fix Workflow Noop Break Issue](290_fix_noop_workflow_break.md) | Medium | ❓ | - |
 ---
 
 ## TDD Workflow
