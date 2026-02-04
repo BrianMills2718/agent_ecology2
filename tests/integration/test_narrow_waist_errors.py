@@ -25,6 +25,11 @@ def world_with_agent() -> World:
         ],
         "logging": {"output_file": "/dev/null"},
         "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 3},
+        "resources": {
+            "stock": {
+                "disk": {"total": 20000, "unit": "bytes"},  # 10000 per agent
+            }
+        },
     }
     return World(config)
 

@@ -38,9 +38,10 @@ def minimal_config():
             "per_1k_input_tokens": 1,
             "per_1k_output_tokens": 3,
         },
-        "rights": {
-            "default_llm_tokens_quota": 50,
-            "default_disk_quota": 10000,
+        "resources": {
+            "stock": {
+                "disk": {"total": 20000, "unit": "bytes"},  # 10000 per agent
+            }
         },
         "logging": {
             "log_dir": "test_logs",
