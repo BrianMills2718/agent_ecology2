@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-02-03 (Plan #279: workflow observability events)
+**Last verified:** 2026-02-04 (Plan #281: workflow usage tracking)
 
 **See target:** [../target/agents.md](../target/agents.md)
 

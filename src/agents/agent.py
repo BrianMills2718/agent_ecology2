@@ -1906,13 +1906,17 @@ Your response should include:
             # Run synchronous workflow in thread pool to avoid blocking
             workflow_result = await asyncio.to_thread(self.run_workflow, world_state)
             if workflow_result.get("success") and workflow_result.get("action"):
+                # Plan #281: Fail loud if usage missing - required for resource accounting
+                usage = workflow_result.get("usage")
+                if usage is None:
+                    raise RuntimeError(
+                        f"Workflow returned action but no usage data for agent {self.agent_id}. "
+                        "This breaks resource accounting. Check workflow.py _execute_llm_step."
+                    )
                 return {
                     "action": workflow_result["action"],
                     "reasoning": workflow_result.get("reasoning", ""),
-                    "usage": workflow_result.get("usage", {
-                        "input_tokens": 0, "output_tokens": 0,
-                        "total_tokens": 0, "cost": 0.0
-                    }),
+                    "usage": usage,
                     "model": self.llm_model,
                     "state": workflow_result.get("state"),
                     "workflow_step": workflow_result.get("workflow_step"),  # Plan #279
@@ -1923,14 +1927,15 @@ Your response should include:
                     "raw_response": None,
                     "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "cost": 0.0}
                 }
-            # Workflow returned no action (e.g., noop) - continue with result
+            # Workflow returned no action (e.g., all steps skipped via in_state filter)
+            # Zeros are correct here - no LLM step executed, no cost incurred
             return {
                 "action": {"action_type": "noop"},
                 "reasoning": workflow_result.get("reasoning", "Workflow completed without action"),
-                "usage": workflow_result.get("usage", {
+                "usage": workflow_result.get("usage") or {
                     "input_tokens": 0, "output_tokens": 0,
                     "total_tokens": 0, "cost": 0.0
-                }),
+                },
                 "model": self.llm_model,
                 "state": workflow_result.get("state"),  # Plan #279
                 "workflow_step": workflow_result.get("workflow_step"),  # Plan #279
