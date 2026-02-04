@@ -41,16 +41,18 @@ class TestPerAgentBudgetIntegration:
         assert world.ledger.get_resource("agent_rich", "llm_budget") == pytest.approx(2.0)
         assert world.ledger.get_resource("agent_poor", "llm_budget") == pytest.approx(0.01)
 
-    def test_no_per_agent_budget_when_zero(self) -> None:
-        """Test that per-agent budget is not enforced when set to 0."""
+    def test_no_per_agent_budget_when_not_configured(self) -> None:
+        """Test that no llm_budget is allocated when resources.stock.llm_budget not configured."""
         with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
             output_file = f.name
 
+        # Plan #282: llm_budget comes from resources.stock.llm_budget.total
+        # If not configured, agents get no budget (0.0)
         config = {
             "world": {"max_ticks": 10},
             "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 1},
             "logging": {"output_file": output_file},
-            "budget": {"per_agent_budget": 0.0},  # No per-agent enforcement
+            # No resources.stock.llm_budget configured = no budget allocation
             "principals": [
                 {"id": "agent_a", "starting_scrip": 100},
             ],
@@ -62,22 +64,28 @@ class TestPerAgentBudgetIntegration:
 
         # No llm_budget resource should be allocated
         assert world.ledger.get_resource("agent_a", "llm_budget") == 0.0
-        # But the resource dict shouldn't have the key
+        # The resource dict shouldn't have the key
         assert "llm_budget" not in world.ledger.resources.get("agent_a", {})
 
     def test_per_agent_config_override(self) -> None:
-        """Test that per-principal llm_budget overrides default."""
+        """Test that per-principal llm_budget overrides default from stock."""
         with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
             output_file = f.name
 
+        # Plan #282: llm_budget now comes from resources.stock.llm_budget.total
+        # With 2 agents and total=2.0, each gets 1.0 by default
         config = {
             "world": {"max_ticks": 10},
             "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 1},
             "logging": {"output_file": output_file},
-            "budget": {"per_agent_budget": 1.0},  # Default $1.00
+            "resources": {
+                "stock": {
+                    "llm_budget": {"total": 2.0, "unit": "dollars"},  # 2 agents = 1.0 each
+                }
+            },
             "principals": [
-                {"id": "agent_default", "starting_scrip": 100},  # Uses default
-                {"id": "agent_custom", "starting_scrip": 100, "llm_budget": 5.0},  # Custom
+                {"id": "agent_default", "starting_scrip": 100},  # Uses stock default (1.0)
+                {"id": "agent_custom", "starting_scrip": 100, "llm_budget": 5.0},  # Custom override
             ],
             "rights": {
                 "default_quotas": {"compute": 1000.0, "disk": 10000.0}

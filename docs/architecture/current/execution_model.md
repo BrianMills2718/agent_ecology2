@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-03 (Plan #279: workflow observability events)
+**Last verified:** 2026-02-04 (Plan #282: resource allocation fix)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

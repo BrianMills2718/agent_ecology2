@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-285-doc-graph-tooling
-task: Add doc graph hook and visualization
-claimed_at: '2026-02-04T11:07:59Z'
-session_id: ac48b0c2-cc8d-4421-a4e4-44080dde0d91
-plan: 285
+cc_id: plan-282-resource-allocation
+task: Investigate and fix resource allocation
+claimed_at: '2026-02-04T11:06:10Z'
+session_id: 3f63b061-2016-4d66-98b3-9e4bb18c5123
+plan: 282
