@@ -2,7 +2,7 @@
 
 This document explains the security architecture of Agent Ecology, including design decisions, risk acknowledgments, and deployment expectations.
 
-**Last verified:** 2026-02-03 (Plan #279: workflow observability events)
+**Last verified:** 2026-02-04 (Plan #282: llm_budget logging)
 
 ## Overview
 

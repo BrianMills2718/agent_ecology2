@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-04 (Plan #282: resource allocation fix)
+**Last verified:** 2026-02-04 (Plan #282: llm_budget logging)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

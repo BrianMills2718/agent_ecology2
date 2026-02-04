@@ -1,6 +1,6 @@
 # Core Systems Overview
 
-**Last verified:** 2026-02-04 (Initial creation - Plan #283)
+**Last verified:** 2026-02-04 (Plan #282: llm_budget logging)
 
 This document provides a systematic overview of the core systems that make the simulation work. Each system is critical infrastructure that must be understood before making changes.
 
