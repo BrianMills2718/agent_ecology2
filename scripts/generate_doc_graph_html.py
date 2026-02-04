@@ -218,6 +218,15 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     <div class="legend-color" style="background: #a8a8a8;"></div>
                     <span>Source Code</span>
                 </div>
+                <hr style="border-color: #0f3460; margin: 15px 0;">
+                <div class="legend-item">
+                    <div style="width: 30px; height: 2px; background: #4ecca3; margin-right: 10px;"></div>
+                    <span>Strict coupling</span>
+                </div>
+                <div class="legend-item">
+                    <div style="width: 30px; height: 2px; background: #2d8a6e; margin-right: 10px; border-style: dashed;"></div>
+                    <span>Soft coupling</span>
+                </div>
             </div>
 
             <div id="details">
@@ -254,6 +263,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         const linkColors = {
             governs: '#e94560',
             documented_by: '#4ecca3',
+            documented_by_soft: '#2d8a6e',
             implements: '#74b9ff',
             hierarchy: '#ffd93d'
         };
@@ -290,7 +300,9 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             .attr('class', 'link')
             .attr('stroke', d => linkColors[d.type] || '#666')
             .attr('stroke-width', d => d.type === 'governs' ? 2 : 1.5)
-            .attr('stroke-dasharray', d => d.type === 'implements' ? '5,5' : null);
+            .attr('stroke-dasharray', d =>
+                d.type === 'implements' ? '5,5' :
+                d.type === 'documented_by_soft' ? '3,3' : null);
 
         // Draw link labels
         const linkLabel = g.append('g')
@@ -524,18 +536,36 @@ def build_graph_data(data: dict) -> dict:
             description=link.get("description", ""),
         )
 
-    # Add governed source files
+    # Add ALL source files from couplings (not just governed ones)
+    all_sources = set()
+    for coupling in data.get("couplings", []):
+        for src in coupling.get("sources", []):
+            # Skip glob patterns
+            if "*" not in src and src.endswith(".py"):
+                all_sources.add(src)
+
+    # Also add governed sources
     for entry in data.get("governance", []):
         src = entry.get("source", "")
         if src:
-            src_name = Path(src).name
-            add_node(
-                f"src_{src.replace('/', '_').replace('.', '_')}",
-                src_name,
-                "source",
-                path=src,
-                description=entry.get("context", "").strip()[:100],
-            )
+            all_sources.add(src)
+
+    # Create source nodes
+    for src in all_sources:
+        src_name = Path(src).name
+        # Get governance context if any
+        gov_context = ""
+        for entry in data.get("governance", []):
+            if entry.get("source") == src:
+                gov_context = entry.get("context", "").strip()[:100]
+                break
+        add_node(
+            f"src_{src.replace('/', '_').replace('.', '_')}",
+            src_name,
+            "source",
+            path=src,
+            description=gov_context,
+        )
 
     # Add governance links (ADR -> source)
     for entry in data.get("governance", []):
@@ -546,27 +576,37 @@ def build_graph_data(data: dict) -> dict:
         for adr_num in entry.get("adrs", []):
             links.append({"source": f"adr_{adr_num}", "target": src_id, "type": "governs"})
 
-    # Add coupling links (source -> doc) - just key ones
-    for entry in data.get("governance", []):
-        src = entry.get("source", "")
-        if not src:
-            continue
-        src_id = f"src_{src.replace('/', '_').replace('.', '_')}"
+    # Add ALL coupling links (source -> doc)
+    for coupling in data.get("couplings", []):
+        is_soft = coupling.get("soft", False)
+        link_type = "documented_by_soft" if is_soft else "documented_by"
 
-        # Find coupled docs for this source
-        for coupling in data.get("couplings", []):
-            if coupling.get("soft"):
+        for src in coupling.get("sources", []):
+            # Skip glob patterns
+            if "*" in src:
                 continue
-            sources = coupling.get("sources", [])
-            if src in sources:
-                for doc in coupling.get("docs", []):
-                    if "current/" in doc:
-                        doc_name = Path(doc).stem
-                        doc_id = f"doc_current_{doc_name}"
-                        if doc_id in node_ids:
-                            links.append(
-                                {"source": src_id, "target": doc_id, "type": "documented_by"}
-                            )
+            if not src.endswith(".py") and not src.endswith(".yml"):
+                continue
+
+            src_id = f"src_{src.replace('/', '_').replace('.', '_')}"
+            if src_id not in node_ids:
+                continue
+
+            for doc in coupling.get("docs", []):
+                if "current/" in doc:
+                    doc_name = Path(doc).stem
+                    doc_id = f"doc_current_{doc_name}"
+                elif doc == "docs/CONCEPTUAL_MODEL.yaml":
+                    doc_id = "doc_CONCEPTUAL_MODEL"
+                elif doc == "docs/GLOSSARY.md":
+                    doc_id = "doc_GLOSSARY"
+                elif "CORE_SYSTEMS" in doc:
+                    doc_id = "doc_CORE_SYSTEMS"
+                else:
+                    continue
+
+                if doc_id in node_ids:
+                    links.append({"source": src_id, "target": doc_id, "type": link_type})
 
     # Add target -> current links
     for link in data.get("target_current_links", []):
