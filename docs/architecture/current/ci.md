@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-02-04 (Plan #291: relationships.yaml expanded to 45 governance entries, added conceptual_model and glossary sections)
+Last verified: 2026-02-04 (Plan #292: Added CRITICAL_FILES enforcement and ADR-0026 governance mapping)
 
 ---
 

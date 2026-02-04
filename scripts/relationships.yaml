@@ -81,6 +81,9 @@ adrs:
   24:
     title: "Artifact self-handled access"
     file: "0024-artifact-self-handled-access.md"
+  26:
+    title: "Sophisticated initial agents"
+    file: "0026-sophisticated-initial-agents.md"
 
 # =============================================================================
 # GOVERNANCE: ADR -> Source
@@ -262,13 +265,14 @@ governance:
   # ===========================================================================
 
   - source: src/agents/agent.py
-    adrs: [1, 9, 10, 13, 14]
+    adrs: [1, 9, 10, 13, 14, 26]
     context: |
       Agents are artifacts (ADR-0001).
       Working memory injection from memory artifact (ADR-0009).
       Continuous agent loops (ADR-0010).
       Configurable workflows (ADR-0013).
       Continuous execution primary model (ADR-0014).
+      Sophisticated initial agents with rich context (ADR-0026).
 
   - source: src/agents/memory.py
     adrs: [1, 9]
@@ -277,17 +281,19 @@ governance:
       Memory is observable, tradeable artifact (ADR-0001).
 
   - source: src/agents/workflow.py
-    adrs: [13, 14]
+    adrs: [13, 14, 26]
     context: |
       Configurable agent workflows (ADR-0013).
       Integrates with continuous execution loops (ADR-0014).
+      Multi-step workflows for sophisticated agents (ADR-0026).
 
   - source: src/agents/loader.py
-    adrs: [1, 9, 10]
+    adrs: [1, 9, 10, 26]
     context: |
       Loads agents from artifact store (ADR-0001).
       Links agents to memory artifacts (ADR-0009).
       Creates agent loops (ADR-0010).
+      Loads sophisticated agent configurations (ADR-0026).
 
   - source: src/agents/state_store.py
     adrs: [9]
