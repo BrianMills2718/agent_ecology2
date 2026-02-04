@@ -6,7 +6,7 @@
 # - ideating/designing/implementing/testing: build cycle
 # - reflecting: learn from outcomes
 id: alpha_3
-enabled: true
+enabled: false  # Disabled for discourse experiment
 
 # Catalog metadata (Plan #227)
 meta:

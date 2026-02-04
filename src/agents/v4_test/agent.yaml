@@ -3,7 +3,7 @@
 # No state machine - just goal + state + history
 
 id: v4_test
-enabled: true
+enabled: false  # Disabled for discourse experiment
 llm_model: "gemini/gemini-2.0-flash"
 starting_credits: 100
 

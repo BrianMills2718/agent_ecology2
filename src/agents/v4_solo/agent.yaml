@@ -3,7 +3,7 @@
 # Focus: create artifacts, complete mint tasks for guaranteed rewards
 
 id: v4_solo
-enabled: true
+enabled: false  # Disabled for discourse experiment
 llm_model: "gemini/gemini-2.5-flash"  # Plan #272: Upgraded for thinking capability
 starting_credits: 100
 

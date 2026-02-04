@@ -1,7 +1,7 @@
 # beta_3: Integrator with State Machine
 # Extends beta baseline with explicit strategic/tactical/operational states
 id: beta_3
-enabled: true
+enabled: false  # Disabled for discourse experiment
 
 # Catalog metadata (Plan #227)
 meta:
