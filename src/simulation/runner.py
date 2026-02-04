@@ -1379,6 +1379,9 @@ class SimulationRunner:
         input_tokens = usage.get("input_tokens", 0)
         output_tokens = usage.get("output_tokens", 0)
         self.engine.track_api_cost(api_cost)
+        # Plan #282: Deduct from agent's llm_budget resource
+        if api_cost > 0:
+            self.world.ledger.deduct_llm_cost(agent.agent_id, api_cost)
 
         # Log thinking event for dashboard (Plan #132: standardized reasoning field)
         reasoning = result.get("reasoning", "")
