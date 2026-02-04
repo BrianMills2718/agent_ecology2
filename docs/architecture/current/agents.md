@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-02-04 (Plan #281: workflow usage tracking)
+**Last verified:** 2026-02-04 (Plan #191: action result truncation increase)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
