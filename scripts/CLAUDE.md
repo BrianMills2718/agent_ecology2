@@ -41,6 +41,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `audit_governance_mappings.py` | Audit governance mappings for completeness (Plan #289) |
 | `build_doc_index.py` | Build searchable index of docs for semantic search (Plan #289) |
 | `semantic_doc_search.py` | BM25 semantic search over documentation (Plan #289) |
+| `check_governance_completeness.py` | CI check for governance mapping coverage (Plan #289) |
 | `check_doc_coupling.py` | Verify docs updated when source changes |
 | `check_adr_requirement.py` | Check if ADR is required for changes |
 | `check_planning_patterns.py` | Validate planning patterns (Open Questions, uncertainties, claims) |

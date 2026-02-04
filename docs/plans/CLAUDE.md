@@ -87,8 +87,8 @@ Master index of all gaps and their implementation plans.
 | 285 | [Documentation Graph Tooling](285_doc_graph_tooling.md) | Medium | ✅ Complete | - |
 | 286 | [Interactive Documentation Graph Visualization](286_interactive_doc_graph.md) | Medium | ✅ Complete | - |
 | 287 | [Complete Documentation Graph Visualization](287_complete_doc_graph.md) | Medium | ✅ Complete | - |
-| 288 | [Context Injection for Edit Operations](288_context_injection.md) | Medium | 🚧 In Progress | - |
-| 289 | [Plan 289: Complete Context Provision System](289_complete_context_provision.md) | High | 🚧 In Progress | - |
+| 288 | [Context Injection for Edit Operations](288_context_injection.md) | Medium | ✅ Complete | - |
+| 289 | [Plan 289: Complete Context Provision System](289_complete_context_provision.md) | High | ✅ Complete | - |
 ---
 
 ## TDD Workflow
