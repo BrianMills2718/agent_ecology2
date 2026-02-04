@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""Get governance context for a file from relationships.yaml.
+"""Get documentation graph context for a file from relationships.yaml.
 
 Usage:
     python scripts/get_governance_context.py <file_path>
+    python scripts/get_governance_context.py <file_path> --full  # Full JSON output
 
-Outputs JSON string with governance context, or nothing if file is not governed.
+Outputs JSON string with context, or nothing if file has no relationships.
 
 Example output:
-    "This file is governed by ADR-0001 (Everything is an artifact) and ADR-0003 (Contracts can do anything). Context: Permission checks are the hot path - keep them fast."
+    "This file is governed by ADR-0001 (Everything is an artifact). Related docs: resources.md, GLOSSARY.md. Context: All balance mutations go through here."
 """
 
+import fnmatch
 import json
 import sys
 from pathlib import Path
@@ -17,14 +19,25 @@ from pathlib import Path
 import yaml
 
 
-def get_governance_context(file_path: str) -> str | None:
-    """Get governance context for a file.
+def match_glob(pattern: str, path: str) -> bool:
+    """Check if path matches a glob pattern."""
+    # Handle ** patterns
+    if "**" in pattern:
+        # Convert to regex-like matching
+        return fnmatch.fnmatch(path, pattern) or fnmatch.fnmatch(
+            path, pattern.replace("**", "*")
+        )
+    return fnmatch.fnmatch(path, pattern)
+
+
+def get_full_context(file_path: str) -> dict | None:
+    """Get full documentation graph context for a file.
 
     Args:
         file_path: Path to the file (relative to repo root).
 
     Returns:
-        Formatted context string, or None if file is not governed.
+        Dict with adrs, docs, and context, or None if no relationships.
     """
     relationships_path = Path("scripts/relationships.yaml")
     if not relationships_path.exists():
@@ -33,33 +46,81 @@ def get_governance_context(file_path: str) -> str | None:
     with open(relationships_path) as f:
         data = yaml.safe_load(f) or {}
 
-    # Check governance entries
+    result: dict = {"adrs": [], "docs": [], "context": None}
+    adr_defs = data.get("adrs", {})
+
+    # Check governance entries (ADR → Code)
     for entry in data.get("governance", []):
         if entry.get("source") == file_path:
-            adrs = entry.get("adrs", [])
-            context = entry.get("context", "").strip()
-            adr_defs = data.get("adrs", {})
+            for adr_num in entry.get("adrs", []):
+                adr_info = adr_defs.get(adr_num, {})
+                result["adrs"].append(
+                    {"num": adr_num, "title": adr_info.get("title", "Unknown")}
+                )
+            if entry.get("context"):
+                result["context"] = entry["context"].strip()
 
-            if not adrs and not context:
-                return None
+    # Check couplings (Code → Doc)
+    for coupling in data.get("couplings", []):
+        sources = coupling.get("sources", [])
+        for source_pattern in sources:
+            if match_glob(source_pattern, file_path) or source_pattern == file_path:
+                for doc in coupling.get("docs", []):
+                    doc_name = Path(doc).name
+                    if doc_name not in [d["name"] for d in result["docs"]]:
+                        result["docs"].append(
+                            {
+                                "path": doc,
+                                "name": doc_name,
+                                "description": coupling.get("description", ""),
+                                "soft": coupling.get("soft", False),
+                            }
+                        )
+                break
 
-            # Build context string
-            parts = []
+    if not result["adrs"] and not result["docs"]:
+        return None
 
-            if adrs:
-                adr_strs = []
-                for adr_num in adrs:
-                    adr_info = adr_defs.get(adr_num, {})
-                    title = adr_info.get("title", "Unknown")
-                    adr_strs.append(f"ADR-{adr_num:04d} ({title})")
-                parts.append(f"This file is governed by {', '.join(adr_strs)}.")
+    return result
 
-            if context:
-                parts.append(f"Governance context: {context}")
 
-            return " ".join(parts)
+def format_context(ctx: dict) -> str:
+    """Format context dict into a readable string."""
+    parts = []
 
-    return None
+    if ctx["adrs"]:
+        adr_strs = [f"ADR-{a['num']:04d} ({a['title']})" for a in ctx["adrs"]]
+        parts.append(f"This file is governed by {', '.join(adr_strs)}.")
+
+    if ctx["docs"]:
+        # Show strict docs first, then soft
+        strict_docs = [d["name"] for d in ctx["docs"] if not d.get("soft")]
+        soft_docs = [d["name"] for d in ctx["docs"] if d.get("soft")]
+
+        if strict_docs:
+            parts.append(f"Related docs (update required): {', '.join(strict_docs)}.")
+        if soft_docs:
+            parts.append(f"Related docs (advisory): {', '.join(soft_docs)}.")
+
+    if ctx["context"]:
+        parts.append(f"Governance context: {ctx['context']}")
+
+    return " ".join(parts)
+
+
+def get_governance_context(file_path: str) -> str | None:
+    """Get governance context for a file (backwards compatible).
+
+    Args:
+        file_path: Path to the file (relative to repo root).
+
+    Returns:
+        Formatted context string, or None if file has no relationships.
+    """
+    ctx = get_full_context(file_path)
+    if ctx is None:
+        return None
+    return format_context(ctx)
 
 
 def main() -> int:
@@ -67,11 +128,17 @@ def main() -> int:
         return 1
 
     file_path = sys.argv[1]
-    context = get_governance_context(file_path)
+    full_mode = "--full" in sys.argv
 
-    if context:
-        # Output as JSON string (properly escaped)
-        print(json.dumps(context))
+    if full_mode:
+        ctx = get_full_context(file_path)
+        if ctx:
+            print(json.dumps(ctx, indent=2))
+    else:
+        context = get_governance_context(file_path)
+        if context:
+            # Output as JSON string (properly escaped)
+            print(json.dumps(context))
 
     return 0
 
