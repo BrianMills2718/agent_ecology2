@@ -87,113 +87,472 @@ adrs:
 # =============================================================================
 # These define which ADRs govern which source files.
 # sync_governance.py uses these to embed headers in source files.
+#
+# Plan #291: Systematic documentation linking - comprehensive ADR coverage
 
 governance:
-  - source: src/world/artifacts.py
-    adrs: [1, 11, 16]
-    context: |
-      Core artifact storage and management.
-      Everything is an artifact - agents, contracts, data.
-      Use 'created_by' not 'owner' (ADR-0016).
-      'has_standing' determines who can hold resources (ADR-0011).
+  # ===========================================================================
+  # WORLD MODULE - Core Kernel Infrastructure
+  # ===========================================================================
 
-  # ADR-0016: created_by terminology applies to contracts too
+  - source: src/world/world.py
+    adrs: [1, 7, 17, 20, 23]
+    context: |
+      Central kernel coordinating all state. Single ID namespace (ADR-0007).
+      Bootstrap phase creates genesis artifacts (ADR-0017).
+      Emits events per ADR-0020, tracks billing_principal per ADR-0023.
+
+  - source: src/world/artifacts.py
+    adrs: [1, 7, 11, 16]
+    context: |
+      Core artifact storage. Everything is an artifact (ADR-0001).
+      Single ID namespace, reserved namespaces (ADR-0007).
+      Use 'created_by' not 'owner' (ADR-0016).
+      'has_standing' determines principal status (ADR-0011).
+
+  - source: src/world/ledger.py
+    adrs: [1, 2, 11, 12]
+    context: |
+      All balance mutations go through here (ADR-0001).
+      No compute debt - charge before execution (ADR-0002).
+      Never allow negative balances - fail loud (ADR-0012).
+      Only principals (has_standing) can hold resources (ADR-0011).
+
   - source: src/world/contracts.py
     adrs: [1, 3, 15, 16, 19]
     context: |
       Permission checks are the hot path - keep them fast.
-      Contracts return decisions; kernel applies state changes.
+      Contracts return decisions; kernel applies state changes (ADR-0003).
       Use 'created_by' in context, not 'owner' (ADR-0016).
       Contracts are artifacts (ADR-0015).
+      Unified permission architecture (ADR-0019).
 
   - source: src/world/kernel_contracts.py
-    adrs: [1, 3, 15, 16, 17]
+    adrs: [1, 3, 15, 16, 17, 19]
     context: |
       Five built-in contracts: freeware, transferable_freeware, self_owned, private, public.
       Use 'created_by' in permission checks (ADR-0016).
       Dangling contracts fail open (ADR-0017).
+      Cold-start convenience, not kernel privilege (ADR-0017).
 
-  # ADR-0012: Scrip non-negative enforcement
-  - source: src/world/ledger.py
-    adrs: [1, 2, 11, 12]
+  - source: src/world/permission_checker.py
+    adrs: [1, 3, 17, 19]
     context: |
-      All balance mutations go through here.
-      Never allow negative balances - fail loud (ADR-0012).
-      Only principals (has_standing) can hold resources (ADR-0011).
+      Unified permission architecture (ADR-0019).
+      Contracts decide permissions (ADR-0003).
+      Dangling contract fallback to configurable default (ADR-0017).
+      Minimal kernel context: caller, action, target, target_created_by.
 
-  # ADR-0021: Executor design principles
   - source: src/world/executor.py
-    adrs: [1, 11, 21, 23]
+    adrs: [1, 2, 11, 14, 21, 23]
     context: |
-      Executor applies state changes.
+      SafeExecutor for sandboxed code execution.
+      No compute debt - validate before execution (ADR-0002).
       Charges costs to principals (ADR-0011, ADR-0023).
       Follow executor design principles (ADR-0021).
+      Continuous execution context (ADR-0014).
 
-  # ADR-0008: Rate limiting
+  - source: src/world/action_executor.py
+    adrs: [1, 2, 11, 19, 21, 23, 24]
+    context: |
+      Executes action intents. No compute debt (ADR-0002).
+      Permission checking via contracts (ADR-0019).
+      Charges costs to principals (ADR-0011, ADR-0023).
+      Supports handle_request for self-handled access (ADR-0024).
+      Safe executor patterns (ADR-0021).
+
+  - source: src/world/invoke_handler.py
+    adrs: [1, 19, 21]
+    context: |
+      Artifact-to-artifact invocation.
+      Immediate caller model - B's contract checks A can invoke B (ADR-0019).
+      Safe invoke patterns (ADR-0021).
+
+  - source: src/world/actions.py
+    adrs: [1, 19, 20]
+    context: |
+      Five kernel actions: read, write, edit, invoke, delete (ADR-0019).
+      ActionResult with resource tracking per event schema (ADR-0020).
+
+  - source: src/world/kernel_interface.py
+    adrs: [1, 14, 19, 24]
+    context: |
+      KernelState/KernelActions for artifact sandbox.
+      Equal access for all artifacts - no genesis privilege.
+      Verified caller_id for self-handled access (ADR-0024).
+      Continuous execution context (ADR-0014).
+
   - source: src/world/rate_tracker.py
-    adrs: [8]
+    adrs: [8, 10, 14]
     context: |
       Token bucket rate limiting for flow resources (ADR-0008).
+      Gates continuous execution loops (ADR-0010, ADR-0014).
+      Rolling window - independent of simulation ticks.
 
-  # ADR-0009: Memory as artifact
-  - source: src/agents/memory.py
-    adrs: [1, 9]
+  - source: src/world/resource_manager.py
+    adrs: [2, 11, 12, 20, 23]
     context: |
-      Agent memory stored as artifacts (ADR-0009).
+      Unified resource management.
+      No compute debt - check before consumption (ADR-0002).
+      Principals (has_standing) hold resources (ADR-0011).
+      Non-negative balances (ADR-0012).
+      Resource events per ADR-0020, billing_principal per ADR-0023.
 
-  # ADR-0010, ADR-0013, ADR-0014: Agent execution models
-  - source: src/agents/agent.py
-    adrs: [1, 10, 13, 14]
+  - source: src/world/delegation.py
+    adrs: [7, 16, 19, 23]
     context: |
-      Continuous agent loops (ADR-0010).
-      Configurable workflows (ADR-0013).
-      Continuous execution primary model (ADR-0014).
+      Charge delegation with deterministic IDs (ADR-0007).
+      Uses created_by for payer validation (ADR-0016).
+      Contract-based authorization (ADR-0019).
+      Resource attribution for delegated costs (ADR-0023).
 
-  - source: src/agents/workflow.py
-    adrs: [13, 14]
+  - source: src/world/id_registry.py
+    adrs: [7]
     context: |
-      Configurable agent workflows (ADR-0013).
-      Continuous execution primary model (ADR-0014).
+      Single ID namespace - no collisions across entity types (ADR-0007).
 
-  # ADR-0004: Mint system
+  - source: src/world/interface_validation.py
+    adrs: [14, 21]
+    context: |
+      Validates arguments before artifact execution (ADR-0021).
+      Supports continuous execution model (ADR-0014).
+
+  - source: src/world/simulation_engine.py
+    adrs: [2, 14]
+    context: |
+      Resource measurement independent of execution model.
+      No compute debt - charge real resources (ADR-0002).
+      Supports continuous execution (ADR-0014).
+
+  - source: src/world/logger.py
+    adrs: [20]
+    context: |
+      Event schema contract (ADR-0020).
+      Monotonic sequence counter, ISO 8601 timestamps.
+      Resource events: consumed, allocated, spent.
+
+  - source: src/world/triggers.py
+    adrs: [20]
+    context: |
+      Event-driven triggers filter on typed events (ADR-0020).
+
+  # ===========================================================================
+  # MINT MODULE
+  # ===========================================================================
+
   - source: src/world/mint_auction.py
-    adrs: [1, 4]
+    adrs: [1, 4, 11, 12]
     context: |
       Mint as system primitive (ADR-0004).
+      Bid escrow holds real scrip (ADR-0011, ADR-0012).
+      Mint is artifact (ADR-0001).
 
   - source: src/world/mint_scorer.py
     adrs: [4]
     context: |
       Mint scoring for task evaluation (ADR-0004).
 
-  # ADR-0007: Single ID namespace
-  - source: src/world/world.py
-    adrs: [1, 7]
+  - source: src/world/mint_task_manager.py
+    adrs: [4]
     context: |
-      Single ID namespace across all artifacts (ADR-0007).
+      Task-based minting (ADR-0004).
 
-  # ADR-0019: Unified permission architecture
-  - source: src/world/permission_checker.py
-    adrs: [1, 3, 19]
+  # ===========================================================================
+  # AGENTS MODULE
+  # ===========================================================================
+
+  - source: src/agents/agent.py
+    adrs: [1, 9, 10, 13, 14]
     context: |
-      Unified permission architecture (ADR-0019).
-      Contracts decide permissions (ADR-0003).
+      Agents are artifacts (ADR-0001).
+      Working memory injection from memory artifact (ADR-0009).
+      Continuous agent loops (ADR-0010).
+      Configurable workflows (ADR-0013).
+      Continuous execution primary model (ADR-0014).
 
-  # ADR-0020: Event schema
-  - source: src/world/logger.py
+  - source: src/agents/memory.py
+    adrs: [1, 9]
+    context: |
+      Agent memory stored as artifacts (ADR-0009).
+      Memory is observable, tradeable artifact (ADR-0001).
+
+  - source: src/agents/workflow.py
+    adrs: [13, 14]
+    context: |
+      Configurable agent workflows (ADR-0013).
+      Integrates with continuous execution loops (ADR-0014).
+
+  - source: src/agents/loader.py
+    adrs: [1, 9, 10]
+    context: |
+      Loads agents from artifact store (ADR-0001).
+      Links agents to memory artifacts (ADR-0009).
+      Creates agent loops (ADR-0010).
+
+  - source: src/agents/state_store.py
+    adrs: [9]
+    context: |
+      Agent state persistence (separate from memory artifacts).
+      Memory persists via artifact store (ADR-0009).
+
+  - source: src/agents/reflex.py
+    adrs: [13, 14]
+    context: |
+      Reflex-based quick responses in workflow (ADR-0013).
+      Supports continuous execution (ADR-0014).
+
+  - source: src/agents/state_machine.py
+    adrs: [13, 14]
+    context: |
+      Agent state machine for workflow (ADR-0013).
+      Continuous execution model (ADR-0014).
+
+  - source: src/agents/models.py
+    adrs: [1]
+    context: |
+      Agent response models as artifact content (ADR-0001).
+
+  - source: src/agents/schema.py
+    adrs: [1]
+    context: |
+      Action schema for agent artifact operations (ADR-0001).
+
+  - source: src/agents/planning.py
+    adrs: [9]
+    context: |
+      Plan artifacts stored as artifact content (ADR-0009).
+
+  # ===========================================================================
+  # SIMULATION MODULE
+  # ===========================================================================
+
+  - source: src/simulation/runner.py
+    adrs: [1, 10, 14, 17]
+    context: |
+      Simulation orchestration using continuous model (ADR-0014).
+      Creates agent loops (ADR-0010).
+      Triggers bootstrap phase (ADR-0017).
+
+  - source: src/simulation/agent_loop.py
+    adrs: [8, 10, 14]
+    context: |
+      Core continuous execution implementation (ADR-0010, ADR-0014).
+      AgentLoop._execute_iteration() is primary integration point.
+      RateTracker gates resource capacity (ADR-0008).
+
+  - source: src/simulation/artifact_loop.py
+    adrs: [10, 14]
+    context: |
+      Continuous execution for has_loop artifacts (ADR-0010, ADR-0014).
+      V4 artifact agents run autonomously.
+
+  - source: src/simulation/checkpoint.py
+    adrs: [9]
+    context: |
+      Checkpoints preserve working memory (ADR-0009).
+      Behavioral continuity on resume.
+
+  # ===========================================================================
+  # DASHBOARD MODULE - Event Consumption
+  # ===========================================================================
+
+  - source: src/dashboard/models_v2/events.py
     adrs: [20]
     context: |
-      Event schema contract (ADR-0020).
+      Canonical event type definitions per ADR-0020.
+      EventEnvelope, ResourceConsumedEvent, ActionEvent, AgentStateEvent.
 
-  # ADR-0024: Artifact self-handled access
-  - source: src/world/kernel_interface.py
-    adrs: [1, 24]
+  - source: src/dashboard/models_v2/state.py
+    adrs: [20]
     context: |
-      Kernel interface for agent actions.
-      Artifact self-handled access control (ADR-0024).
+      State models built from events (ADR-0020).
+      ResourceUsage, AgentState, WorldState.
+
+  - source: src/dashboard/core_v2/event_parser.py
+    adrs: [20]
+    context: |
+      Parses JSONL event stream into typed events (ADR-0020).
+      Graceful fallback for unknown event types.
+
+  - source: src/dashboard/core_v2/state_tracker.py
+    adrs: [20]
+    context: |
+      Reconstructs world state from event stream (ADR-0020).
+      Uses sequence number for event ordering.
+
+  - source: src/dashboard/core_v2/metrics_engine.py
+    adrs: [20]
+    context: |
+      Computes metrics from event-derived state (ADR-0020).
+
+  - source: src/dashboard/parser.py
+    adrs: [20]
+    context: |
+      Legacy event parser (v1) for compatibility (ADR-0020).
+
+  - source: src/dashboard/auditor.py
+    adrs: [20]
+    context: |
+      Health assessment from event stream (ADR-0020).
+
+  # ===========================================================================
+  # CONFIGURATION
+  # ===========================================================================
+
+  - source: src/config_schema.py
+    adrs: [1, 3, 17, 19]
+    context: |
+      Config validation including contract defaults (ADR-0019).
+      default_when_null, default_on_missing settings (ADR-0017).
+      Method costs for artifact operations (ADR-0001, ADR-0003).
 
   # NOTE: src/world/genesis/factory.py removed in Plan #254
   # Genesis artifacts replaced with kernel primitives (transfer, mint)
+
+# =============================================================================
+# CONCEPTUAL MODEL MAPPINGS (Plan #291)
+# =============================================================================
+# Maps entities from docs/CONCEPTUAL_MODEL.yaml to implementing source files.
+# Used by extract_relevant_context.py to inject conceptual context before edits.
+
+conceptual_model:
+  artifact:
+    description: "The primal entity - any persistent, addressable object"
+    source_files:
+      - src/world/artifacts.py       # Core dataclass and storage
+      - src/world/actions.py         # ActionIntent references artifact_id
+    key_fields: [id, type, content, created_by, has_standing, has_loop, access_contract_id]
+
+  actions:
+    description: "11 core actions: storage (4), execution (1), value (3), observation (2), signal (2)"
+    source_files:
+      - src/world/actions.py         # ActionIntent, ActionResult definitions
+      - src/world/action_executor.py # Action execution logic
+    categories:
+      storage: [read_artifact, write_artifact, edit_artifact, delete_artifact]
+      execution: [invoke_artifact]
+      value: [transfer, mint, submit_to_task]
+      observation: [noop, query_kernel]
+      signal: [subscribe_artifact, unsubscribe_artifact]
+
+  kernel_interface:
+    description: "KernelState (read-only) + KernelActions (write with verified caller)"
+    source_files:
+      - src/world/kernel_interface.py
+    methods:
+      kernel_state: 11  # get_balance, get_resource, read_artifact, etc.
+      kernel_actions: 15  # transfer_scrip, write_artifact, submit_for_mint, etc.
+
+  permission_system:
+    description: "ADR-0019 kernel-mediated contract checking"
+    source_files:
+      - src/world/contracts.py       # PermissionAction, AccessContract protocol
+      - src/world/kernel_contracts.py # Five built-in contracts
+      - src/world/permission_checker.py # check_permission_via_contract()
+    contracts: [freeware, transferable_freeware, self_owned, private, public]
+
+  resources:
+    description: "Three resource types + scrip accounting"
+    source_files:
+      - src/world/ledger.py          # Scrip balances
+      - src/world/rate_tracker.py    # Renewable (token bucket)
+      - src/world/resource_manager.py # Unified resource management
+    types:
+      depletable: "llm_dollars - gone forever"
+      allocatable: "disk_bytes - reusable when freed"
+      renewable: "llm_calls_per_minute - token bucket rate-limited"
+
+  non_existence:
+    description: "Forbidden terminology - these concepts DO NOT EXIST"
+    forbidden_terms:
+      owner: "Use 'created_by' for creator, 'contract' for access (ADR-0016)"
+      owner_id: "Use 'created_by' (ADR-0016)"
+      tick_mode: "Removed in Plan #247 - only continuous execution"
+      tick_based: "Removed in Plan #247 - only continuous execution"
+
+# =============================================================================
+# GLOSSARY MAPPINGS (Plan #291)
+# =============================================================================
+# Maps terms from docs/GLOSSARY.md to implementing source files.
+# Used by extract_relevant_context.py to inject glossary context before edits.
+
+glossary:
+  # Core entity terms
+  artifact:
+    definition: "Any persistent, addressable object"
+    source_files: [src/world/artifacts.py]
+  agent:
+    definition: "Artifact with has_standing=True and has_loop=True"
+    source_files: [src/agents/agent.py, src/world/artifacts.py]
+  principal:
+    definition: "Entity that can hold resources (has_standing=True)"
+    source_files: [src/world/artifacts.py, src/world/ledger.py]
+  contract:
+    definition: "Artifact or kernel object governing access permissions"
+    source_files: [src/world/contracts.py, src/world/kernel_contracts.py]
+
+  # Property terms
+  has_standing:
+    definition: "Can hold resources and enter contracts"
+    source_files: [src/world/artifacts.py, src/world/ledger.py]
+  has_loop:
+    definition: "Runs autonomously"
+    source_files: [src/world/artifacts.py, src/simulation/artifact_loop.py]
+  created_by:
+    definition: "Immutable creator identifier (NOT owner)"
+    source_files: [src/world/artifacts.py]
+  access_contract_id:
+    definition: "Reference to governing contract"
+    source_files: [src/world/artifacts.py, src/world/permission_checker.py]
+
+  # Resource terms
+  scrip:
+    definition: "Internal accounting unit"
+    source_files: [src/world/ledger.py]
+  depletable:
+    definition: "Resource gone forever when consumed"
+    source_files: [src/world/resource_manager.py]
+  allocatable:
+    definition: "Resource reusable when freed"
+    source_files: [src/world/resource_manager.py]
+  renewable:
+    definition: "Token bucket rate-limited resource"
+    source_files: [src/world/rate_tracker.py]
+
+  # Action terms
+  invoke:
+    definition: "Execute artifact code or call genesis method"
+    source_files: [src/world/action_executor.py, src/world/invoke_handler.py]
+  transfer:
+    definition: "Move scrip between principals"
+    source_files: [src/world/ledger.py, src/world/kernel_interface.py]
+  mint:
+    definition: "Submit artifact to auction for scrip creation"
+    source_files: [src/world/mint_auction.py]
+  submit_to_task:
+    definition: "Submit artifact to task-based mint"
+    source_files: [src/world/mint_task_manager.py]
+
+  # System terms
+  kernel:
+    definition: "Core system providing storage, identity, physics enforcement"
+    source_files: [src/world/world.py, src/world/kernel_interface.py]
+  genesis:
+    definition: "Pre-seeded artifacts created at world init"
+    source_files: [src/world/world.py]
+  bootstrap:
+    definition: "Instantaneous initialization phase (World.__init__)"
+    source_files: [src/world/world.py]
+
+  # Forbidden terms (non_existence)
+  owner:
+    deprecated: true
+    replacement: "created_by"
+    reason: "ADR-0016 - owner implies mutable ownership"
+  tick:
+    deprecated: true
+    replacement: "continuous execution"
+    reason: "Plan #247 - tick-based mode removed"
 
 # =============================================================================
 # DOC-CODE COUPLINGS: Source -> Doc
