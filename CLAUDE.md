@@ -259,6 +259,25 @@ Run `python scripts/health_check.py --fix` for diagnostics and auto-repair.
 
 ---
 
+## Core Systems (Read First)
+
+Before making changes, understand the foundational systems. See `docs/architecture/current/CORE_SYSTEMS.md` for full details.
+
+| System | Purpose | Key Files |
+|--------|---------|-----------|
+| Resource Scarcity | LLM budgets, rate limits | `ledger.py`, `runner.py` |
+| Economic Layer | Scrip currency, transfers | `ledger.py`, `mint_*.py` |
+| Artifact System | Code/data storage, execution | `artifacts.py`, `executor.py` |
+| Contract System | Access control | `contracts.py` |
+| Agent Lifecycle | Loading, thinking, workflows | `agent.py`, `workflow.py` |
+| Execution Model | Autonomous loops | `runner.py`, `agent_loop.py` |
+| Kernel Interface | Artifact ↔ world boundary | `kernel_interface.py` |
+| Event Logging | Observability | `logger.py` |
+
+**Important:** All systems should **fail loud** - no silent fallbacks that hide bugs.
+
+---
+
 ## Project Structure
 
 ```

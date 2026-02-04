@@ -81,6 +81,8 @@ Master index of all gaps and their implementation plans.
 | 279 | [Workflow Observability](279_workflow_observability.md) | Medium | ❓ | - |
 | 280 | [Workflow Single Step per Iteration](280_workflow_single_step.md) | Medium | ❓ | - |
 | 281 | [Fix Workflow Usage Tracking for Resource Accounting](281_workflow_usage.md) | Medium | ❓ | - |
+| 282 | [Ensure Resource Scarcity System is Fully Operational](282_resource_allocation.md) | Medium | ❓ | - |
+| 283 | [Document Core Systems for Codebase Understanding](283_core_systems_doc.md) | Medium | ❓ | - |
 ---
 
 ## TDD Workflow
