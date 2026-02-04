@@ -84,6 +84,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `cleanup_orphaned_worktrees.py` | Find/clean orphaned worktrees (merged PRs) |
 | `cleanup_claims_mess.py` | One-time cleanup of stale/duplicate claims |
 | `recover.py` | Auto-recover from meta-process issues (orphaned worktrees, stale claims, etc.) |
+| `analyze_logs.py` | Analyze simulation logs (journeys, collaboration, loops) |
 | `analyze_run.py` | Analyze simulation run results |
 | `view_log.py` | Parse run.jsonl events |
 | `concat_for_review.py` | Concatenate files for review |
