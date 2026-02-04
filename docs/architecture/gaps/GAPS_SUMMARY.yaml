@@ -335,3 +335,33 @@ recommendations:
       ~10 of 92 remaining gaps are near-duplicates across workstreams.
       Implementing one cluster (e.g., contract sandbox enrichment) typically
       closes 2-3 gap entries simultaneously.
+
+# =============================================================================
+# GAP → PLAN CROSS-REFERENCE (Plan #284)
+# =============================================================================
+# Maps gaps to their implementing plans (where known).
+# This enables tracing: Gap → Plan → Implementation
+
+gap_plan_mapping:
+  description: |
+    Cross-reference from gap IDs to implementing plans.
+    Updated as plans close gaps.
+
+  closed_gaps:
+    GAP-EXEC-001: { plan: 102, title: "Autonomous agent loops" }
+    GAP-AGENT-001: { plan: [229, 230], title: "Unified ontology" }
+    GAP-GEN-001: { plan: 100, title: "Contract system foundation" }
+    GAP-RES-001: { plan: 53, title: "RateTracker implementation" }
+    GAP-ART-001: { plan: 181, title: "Split executor.py & world.py" }
+    GAP-AGENT-014: { plan: 231, title: "has_standing <-> ledger invariant" }
+
+  # Gaps with active or planned work
+  in_progress_gaps:
+    GAP-RES-XXX: { plan: 282, title: "Resource allocation investigation", status: "planned" }
+
+  # Reference for commonly-asked-about gaps
+  notable_remaining:
+    GAP-GEN-042: { plan: null, title: "Contracts cannot invoke/call_llm", notes: "High-value but risky" }
+    GAP-RES-004: { plan: null, title: "Per-agent LLM rate allocation", notes: "Part of resource cluster" }
+    GAP-EXEC-017: { plan: null, title: "Worker process isolation", notes: "XL complexity" }
+    GAP-INFRA-011: { plan: null, title: "Local LLM support", notes: "XL complexity" }

@@ -78,6 +78,41 @@ Document observations from running simulations in `SIMULATION_LEARNINGS.md`.
 - Right lessons learned (architectural insights)
 - Future experiment ideas
 
+## Document Hierarchy (ADR-0005)
+
+Documentation follows a layered structure. When joining the project or investigating issues, read from top to bottom:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ Layer 1: ORIENTATION (Read first)                                   │
+│   CLAUDE.md (root)                    → Process and workflow        │
+│   docs/architecture/current/CORE_SYSTEMS.md → What subsystems exist │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ Layer 2: REFERENCE (Look up when needed)                            │
+│   docs/CONCEPTUAL_MODEL.yaml          → Exact entities and fields   │
+│   docs/GLOSSARY.md                    → Terminology definitions     │
+│   docs/architecture/target/           → Where we're heading         │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ Layer 3: IMPLEMENTATION (Detailed current state)                    │
+│   docs/architecture/current/*.md      → How each system works       │
+│   (Coupled to source code - CI enforced)                            │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ Layer 4: CODE (Source of truth)                                     │
+│   src/**/*.py                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Target ↔ Current linking:** Each `target/` doc maps to a `current/` counterpart. See `scripts/relationships.yaml` for the full mapping.
+
 ## CI Enforcement
 
 **Unified documentation graph:** `scripts/relationships.yaml`
