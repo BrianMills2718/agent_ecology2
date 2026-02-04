@@ -295,6 +295,65 @@ def load_adr_principles(adr_file: str) -> list[str]:
     return principles[:5]  # Limit to top 5 principles
 
 
+def run_semantic_search(terms: set[str], top_k: int = 5) -> list[dict]:
+    """Run semantic search for additional relevant docs (Plan #289 Phase 2).
+
+    Returns ADRs found via semantic search that supplement explicit mappings.
+    """
+    index_path = REPO_ROOT / "data" / "doc_index.json"
+    if not index_path.exists():
+        return []
+
+    try:
+        with open(index_path) as f:
+            index = json.load(f)
+    except Exception:
+        return []
+
+    # Simple BM25-like scoring (simplified for inline use)
+    documents = index.get("documents", [])
+    if not documents:
+        return []
+
+    # Build query from terms
+    query_tokens = set()
+    for term in terms:
+        query_tokens.add(term.lower())
+        # Also add parts of compound terms
+        for part in term.split('_'):
+            if len(part) > 2:
+                query_tokens.add(part.lower())
+
+    # Score documents
+    scored = []
+    for doc in documents:
+        doc_tokens = set(doc.get("tokens", []))
+        # Simple overlap score (Jaccard-like)
+        overlap = len(query_tokens & doc_tokens)
+        if overlap > 0:
+            score = overlap / (len(query_tokens) + len(doc_tokens) - overlap + 1)
+            scored.append((score, doc))
+
+    # Sort by score
+    scored.sort(key=lambda x: x[0], reverse=True)
+
+    # Return top results (ADRs only for now, to supplement governance)
+    results = []
+    for score, doc in scored[:top_k * 2]:  # Get extra to filter
+        if doc.get("type") == "adr":
+            results.append({
+                "number": doc.get("number"),
+                "title": doc.get("title", ""),
+                "file": doc.get("file", "").replace("docs/adr/", ""),
+                "score": score,
+                "principles": doc.get("principles", []),
+            })
+        if len(results) >= top_k:
+            break
+
+    return results
+
+
 def extract_context_for_file(file_path: str) -> dict[str, Any]:
     """Main function: extract all relevant context for a file."""
     path = Path(file_path)
@@ -353,15 +412,34 @@ def extract_context_for_file(file_path: str) -> dict[str, Any]:
     # Get governance info
     result["governance"] = get_governance_for_file(file_path, relationships)
 
-    # Extract ADR principles
+    # Extract ADR principles from explicit governance
+    explicit_adr_nums = set()
     for adr in result["governance"].get("adrs", []):
         if adr.get("file"):
+            explicit_adr_nums.add(adr.get("number"))
             principles = load_adr_principles(adr["file"])
             for p in principles:
                 result["adr_principles"].append({
                     "adr": f"ADR-{adr['number']:04d}",
                     "title": adr.get("title", ""),
-                    "principle": p
+                    "principle": p,
+                    "source": "governance",
+                })
+
+    # Semantic search for additional relevant ADRs (Plan #289)
+    semantic_adrs = run_semantic_search(terms, top_k=3)
+    result["semantic_matches"] = []
+    for adr in semantic_adrs:
+        adr_num = adr.get("number")
+        if adr_num and adr_num not in explicit_adr_nums:
+            result["semantic_matches"].append(adr)
+            # Add top principle from semantic match
+            if adr.get("principles"):
+                result["adr_principles"].append({
+                    "adr": f"ADR-{adr_num:04d}",
+                    "title": adr.get("title", ""),
+                    "principle": adr["principles"][0],
+                    "source": "semantic",
                 })
 
     return result
@@ -378,10 +456,19 @@ def format_for_hook(context: dict) -> str:
             lines.append(f"   {w}")
         lines.append("")
 
-    # ADR principles
-    if context.get("adr_principles"):
+    # ADR principles (explicit governance)
+    explicit_principles = [p for p in context.get("adr_principles", []) if p.get("source") == "governance"]
+    if explicit_principles:
         lines.append("📋 ADR PRINCIPLES (must follow):")
-        for p in context["adr_principles"]:
+        for p in explicit_principles:
+            lines.append(f"   [{p['adr']}] {p['principle']}")
+        lines.append("")
+
+    # ADR principles from semantic search (also relevant)
+    semantic_principles = [p for p in context.get("adr_principles", []) if p.get("source") == "semantic"]
+    if semantic_principles:
+        lines.append("🔍 ALSO RELEVANT (semantic match):")
+        for p in semantic_principles:
             lines.append(f"   [{p['adr']}] {p['principle']}")
         lines.append("")
 

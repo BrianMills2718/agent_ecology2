@@ -50,8 +50,9 @@
    - **Answer:** Start with BM25/TF-IDF (no dependencies, fast, effective). Upgrade to embeddings only if needed.
    - **Why it matters:** Affects implementation complexity
 
-3. [ ] **Question:** Should semantic search run on every edit or be cached?
-   - **Status:** ❓ OPEN
+3. [x] **Question:** Should semantic search run on every edit or be cached?
+   - **Status:** ✅ RESOLVED
+   - **Answer:** Cached index (data/doc_index.json). Rebuild with `python scripts/build_doc_index.py` when docs change.
    - **Why it matters:** Performance vs freshness tradeoff
 
 ---
