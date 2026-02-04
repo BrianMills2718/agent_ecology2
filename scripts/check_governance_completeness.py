@@ -43,6 +43,29 @@ EXEMPT_ADRS = {
     25,  # ADR-0025: Deferred Tokenized Rights (explicitly deferred)
 }
 
+# Plan #292: Critical files that MUST have governance mappings
+# These are core kernel files - errors if missing governance in strict mode
+CRITICAL_FILES = {
+    # World module - kernel core
+    "src/world/world.py",
+    "src/world/artifacts.py",
+    "src/world/ledger.py",
+    "src/world/contracts.py",
+    "src/world/executor.py",
+    "src/world/action_executor.py",
+    "src/world/permission_checker.py",
+    "src/world/kernel_interface.py",
+    "src/world/resource_manager.py",
+    "src/world/logger.py",
+    # Agents module - agent core
+    "src/agents/agent.py",
+    "src/agents/loader.py",
+    "src/agents/workflow.py",
+    "src/agents/memory.py",
+    # Simulation module - runner core
+    "src/simulation/runner.py",
+}
+
 
 def load_relationships() -> dict:
     """Load relationships.yaml."""
@@ -107,6 +130,14 @@ def check_src_coverage(relationships: dict, all_src: set[str]) -> tuple[set[str]
 
     unmapped = all_src - mapped_files
     return mapped_files, unmapped
+
+
+def check_critical_files(mapped_files: set[str]) -> set[str]:
+    """Check which critical files are missing governance (Plan #292).
+
+    Returns set of unmapped critical files.
+    """
+    return CRITICAL_FILES - mapped_files
 
 
 def check_index_freshness() -> tuple[bool, str]:
@@ -208,6 +239,12 @@ def main() -> int:
     if src_coverage < 20:
         warnings.append(f"Low source file governance coverage: {src_coverage:.0f}%")
 
+    # Check critical files (Plan #292)
+    unmapped_critical = check_critical_files(mapped_src)
+    if unmapped_critical:
+        for f in sorted(unmapped_critical):
+            errors.append(f"Critical file has no governance mapping: {f}")
+
     # Check index freshness
     index_ok, index_msg = check_index_freshness()
     if not index_ok:
@@ -216,7 +253,7 @@ def main() -> int:
     # Output
     if not args.quiet:
         print("=" * 60)
-        print("GOVERNANCE COMPLETENESS CHECK (Plan #289)")
+        print("GOVERNANCE COMPLETENESS CHECK (Plan #289, #292)")
         print("=" * 60)
 
         print(f"\n## ADR Coverage: {len(mapped_adrs)}/{len(all_adrs)} ({adr_coverage:.0f}%)")
@@ -224,6 +261,10 @@ def main() -> int:
             print(f"   (Exempt: {', '.join(f'ADR-{n:04d}' for n in sorted(EXEMPT_ADRS))})")
 
         print(f"\n## Source Coverage: {len(mapped_src)}/{len(all_src)} ({src_coverage:.0f}%)")
+
+        # Critical files coverage (Plan #292)
+        critical_mapped = len(CRITICAL_FILES) - len(unmapped_critical)
+        print(f"\n## Critical Files: {critical_mapped}/{len(CRITICAL_FILES)} ({critical_mapped / len(CRITICAL_FILES) * 100:.0f}%)")
 
         print(f"\n## Semantic Index: {index_msg}")
 
