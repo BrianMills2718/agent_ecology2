@@ -33,7 +33,11 @@ def world(tmp_path: Path) -> World:
         ],
         "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 3},
         "logging": {"output_file": str(tmp_path / "test.jsonl")},
-        "rights": {"default_disk_quota": 10000},
+        "resources": {
+            "stock": {
+                "disk": {"total": 10000, "unit": "bytes"},
+            }
+        },
     }
     w = World(config)
 
