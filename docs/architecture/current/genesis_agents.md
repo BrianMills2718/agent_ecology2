@@ -2,7 +2,7 @@
 
 Default agents that ship with the system. These are specific instantiations of the agent architecture.
 
-**Last verified:** 2026-02-03 (Plan #277: added discourse_analyst experimental agent)
+**Last verified:** 2026-02-03 (Plan #279: workflow observability events)
 
 **Related:** [agent_cognition.md](agent_cognition.md) for architecture, [agents.md](agents.md) for lifecycle
 

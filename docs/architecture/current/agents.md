@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-02-03 (Plan #277: motivation configuration)
+**Last verified:** 2026-02-03 (Plan #279: workflow observability events)
 
 **See target:** [../target/agents.md](../target/agents.md)
 

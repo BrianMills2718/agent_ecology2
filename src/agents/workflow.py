@@ -288,15 +288,18 @@ class WorkflowRunner:
         self,
         llm_provider: "LLMProvider | None" = None,
         world: "World | None" = None,
+        event_callback: "Callable[[str, dict[str, Any]], None] | None" = None,
     ) -> None:
         """Initialize workflow runner.
 
         Args:
             llm_provider: LLM provider for executing LLM steps
             world: World reference for artifact invocation (Plan #222)
+            event_callback: Callback for workflow events (Plan #279)
         """
         self.llm_provider = llm_provider
         self.world = world
+        self.event_callback = event_callback
         # Per-run cache for invoke results (Plan #222)
         self._invoke_cache: dict[str, Any] = {}
 
@@ -322,6 +325,7 @@ class WorkflowRunner:
         step_results: list[dict[str, Any]] = []
         last_action: dict[str, Any] | None = None
         last_reasoning: str = ""  # Plan #222: Track reasoning from LLM steps
+        last_executed_step: str | None = None  # Plan #279: Track last step for observability
 
         # Plan #222: Clear invoke cache at start of each workflow run
         self._invoke_cache = {}
@@ -343,6 +347,10 @@ class WorkflowRunner:
             result = self.execute_step(step, context, state_machine)
             step_results.append({"step": step.name, **result})
 
+            # Plan #279: Track executed steps (not skipped ones)
+            if not result.get("skipped"):
+                last_executed_step = step.name
+
             # Check if we should stop
             if result.get("workflow_should_stop"):
                 return {
@@ -351,6 +359,7 @@ class WorkflowRunner:
                     "error": result.get("error", "Workflow stopped"),
                     "step_results": step_results,
                     "state": state_machine.current_state if state_machine else None,
+                    "workflow_step": last_executed_step,  # Plan #279
                 }
 
             # Track action and reasoning from LLM steps
@@ -370,6 +379,7 @@ class WorkflowRunner:
             "reasoning": last_reasoning,  # Plan #222: Include reasoning from LLM step
             "step_results": step_results,
             "state": state_machine.current_state if state_machine else None,
+            "workflow_step": last_executed_step,  # Plan #279
         }
 
     def _create_invoke_resolver(
@@ -635,14 +645,33 @@ class WorkflowRunner:
         else:
             return {"success": False, "error": f"Unknown step type: {step.step_type}"}
 
+        # Plan #279: Emit step execution event
+        if self.event_callback:
+            self.event_callback("workflow_step_executed", {
+                "agent_id": context.get("agent_id"),
+                "step_name": step.name,
+                "step_type": step.step_type.value if hasattr(step.step_type, 'value') else str(step.step_type),
+                "success": result.get("success", False),
+                "current_state": context.get("_current_state"),
+            })
+
         # Handle state transition after successful step
         if result.get("success") and step.transition_to and state_machine:
+            old_state = state_machine.current_state
             if state_machine.transition_to(step.transition_to, context):
                 context["_current_state"] = state_machine.current_state
                 result["state_transition"] = {
                     "to": step.transition_to,
                     "success": True,
                 }
+                # Plan #279: Emit state transition event
+                if self.event_callback:
+                    self.event_callback("workflow_state_changed", {
+                        "agent_id": context.get("agent_id"),
+                        "from_state": old_state,
+                        "to_state": step.transition_to,
+                        "step_name": step.name,
+                    })
             else:
                 logger.warning(
                     f"Step '{step.name}' transition to '{step.transition_to}' failed"
