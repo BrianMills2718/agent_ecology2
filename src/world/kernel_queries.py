@@ -183,20 +183,12 @@ class KernelQueryHandler:
                         "error": f"Invalid regex pattern: '{name_pattern}'",
                         "error_code": "invalid_pattern",
                     }
-            # Handle content preview - content can be str or dict
-            content_preview = ""
-            if artifact.content:
-                if isinstance(artifact.content, str):
-                    content_preview = artifact.content[:100]
-                else:
-                    # Dict or other type - stringify first
-                    content_preview = str(artifact.content)[:100]
+            # Compact format for list view - just enough to identify and filter
+            # Use query_kernel(artifact, artifact_id=X) for full details
             results.append({
                 "id": artifact.id,
                 "type": artifact.type,
                 "created_by": artifact.created_by,
-                "executable": artifact.executable,
-                "content_preview": content_preview,
             })
 
         total = len(results)
