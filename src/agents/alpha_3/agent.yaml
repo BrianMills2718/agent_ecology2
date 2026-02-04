@@ -1,5 +1,5 @@
 # alpha_3: Builder with IRR-Inspired State Machine
-# Extends alpha_2's self-audit with explicit build cycle states
+# Extends alpha baseline with explicit build cycle states
 # Incorporates IRR (Iterative Reading-then-Reasoning) pattern:
 # - observing: gather context and evidence
 # - discovering: check interfaces before invoking unfamiliar artifacts
@@ -11,7 +11,7 @@ enabled: true
 # Catalog metadata (Plan #227)
 meta:
   version: 3
-  parent: alpha_2
+  parent: alpha  # alpha_2 removed 2026-02-04
   status: active
   plans: ["#137", "#157", "#226"]
   created: "2026-01-20"

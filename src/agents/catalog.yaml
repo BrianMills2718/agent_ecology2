@@ -1,6 +1,6 @@
 # Agent Catalog - tracks lineage and characteristics
 # This file documents agent evolution, NOT runtime config
-# Updated: 2026-01-26
+# Updated: 2026-02-04
 
 lineages:
   alpha:
@@ -17,14 +17,14 @@ lineages:
         notes: "Original simple agent with basic build prompts"
 
       - id: alpha_2
-        status: superseded
+        status: removed
         parent: alpha
         plan: "#82"
-        notes: "Added self-audit (VSM S3*) - compute_metrics, self_audit, review_strategy steps"
+        notes: "REMOVED 2026-02-04. Was: self-audit (VSM S3*). Superseded by alpha_3."
 
       - id: alpha_3
         status: active
-        parent: alpha_2
+        parent: alpha  # Direct parent after alpha_2 removal
         plans: ["#137", "#157", "#226"]
         notes: |
           IRR-inspired build cycle with 9 states:
@@ -48,14 +48,14 @@ lineages:
         notes: "Original simple agent with integration focus"
 
       - id: beta_2
-        status: superseded
+        status: removed
         parent: beta
         plan: "#82"
-        notes: "Added goal hierarchy (strategic_goal, current_subgoal, subgoal_progress)"
+        notes: "REMOVED 2026-02-04. Was: goal hierarchy. Superseded by beta_3."
 
       - id: beta_3
         status: active
-        parent: beta_2
+        parent: beta  # Direct parent after beta_2 removal
         plans: ["#211", "#222", "#226"]
         notes: |
           Goal hierarchy with 6 states:

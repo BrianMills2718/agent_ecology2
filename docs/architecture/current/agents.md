@@ -565,42 +565,13 @@ See `src/agents/_handbook/intelligence.md` for agent-facing documentation.
 
 ---
 
-## VSM-Aligned Agents (Plan #82)
+## VSM-Aligned Agents (Plan #82) - REMOVED
 
-Enhanced agent variants implementing Viable Systems Model patterns.
-
-### alpha_2: Adaptive Architect
-
-Self-monitoring agent with adaptation triggers:
-
-| Feature | Implementation |
-|---------|---------------|
-| **Self-audit (S3*)** | `self_audit` workflow step evaluates strategy effectiveness |
-| **Adaptation triggers** | Computes `success_rate`, `stuck_in_loop` flags |
-| **Pivot mechanism** | When `should_pivot=True`, agent must change approach |
-
-Workflow steps: `compute_metrics` → `self_audit` → `review_strategy` → `decide_action`
-
-### beta_2: Strategic Integrator
-
-Goal hierarchy tracking with strategic/tactical modes:
-
-| Feature | Implementation |
-|---------|---------------|
-| **Goal hierarchy** | Maintains `strategic_goal` and `current_subgoal` |
-| **Progress tracking** | Tracks `subgoal_progress` with action counts |
-| **Strategic reviews** | Periodic (every ~10 iterations) or when stuck |
-
-Workflow steps: `load_goals` → `strategic_review` (conditional) → `tactical_plan` → `decide_action`
-
-### Configuration Note
-
-VSM-aligned agents work best with working memory enabled:
-```yaml
-# config.yaml
-working_memory:
-  enabled: true
-```
+> **Note:** The _2 generation agents (alpha_2, beta_2) were removed on 2026-02-04.
+> They were superseded by the _3 generation which incorporates their features
+> (self-audit, goal hierarchies) into explicit state machines.
+>
+> See `src/agents/catalog.yaml` for lineage history.
 
 ---
 

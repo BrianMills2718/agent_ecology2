@@ -1,12 +1,12 @@
 # beta_3: Integrator with State Machine
-# Extends beta_2's goal hierarchy with explicit strategic/tactical/operational states
+# Extends beta baseline with explicit strategic/tactical/operational states
 id: beta_3
 enabled: true
 
 # Catalog metadata (Plan #227)
 meta:
   version: 3
-  parent: beta_2
+  parent: beta  # beta_2 removed 2026-02-04
   status: active
   plans: ["#211", "#222", "#226"]
   created: "2026-01-20"
