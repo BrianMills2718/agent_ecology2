@@ -12,6 +12,7 @@ These docs describe what IS implemented today. They are the source of truth for 
 
 | File | Describes |
 |------|-----------|
+| `CORE_SYSTEMS.md` | **START HERE** - Systematic overview of all core systems |
 | `README.md` | Architecture overview and system summary |
 | `execution_model.md` | Tick loop, two-phase commit, timing |
 | `agents.md` | Agent lifecycle, thinking, memory |
