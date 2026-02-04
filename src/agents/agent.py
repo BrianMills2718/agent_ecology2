@@ -183,6 +183,7 @@ class Agent:
 
     # Component configuration (Plan #150 - Prompt Component Library)
     _components_config: dict[str, list[str]] | None
+    _motivation_prompt: str | None  # Plan #277: Assembled motivation prompt
 
     # Reflex configuration (Plan #143)
     _reflex_artifact_id: str | None
@@ -259,6 +260,7 @@ class Agent:
         self._action_schema = action_schema or ACTION_SCHEMA  # Fall back to default
         self._workflow_config = None  # Plan #69: Workflow config
         self._components_config = None  # Plan #150: Prompt component config
+        self._motivation_prompt = None  # Plan #277: Assembled motivation prompt
         self._reflex_artifact_id = None  # Plan #143: Reflex artifact reference
         self._longterm_memory_artifact_id = None  # Plan #146: Long-term memory artifact reference
         self._personality_prompt_artifact_id = None  # Plan #146: Personality prompt artifact reference
@@ -415,6 +417,12 @@ class Agent:
         # Load components config if present (Plan #150)
         if "components" in config:
             self._components_config = config["components"]
+
+        # Load motivation prompt if present (Plan #277)
+        # This can come from inline motivation or motivation_profile reference
+        if "motivation" in config or "motivation_profile" in config:
+            from .motivation_loader import get_motivation_for_agent
+            self._motivation_prompt = get_motivation_for_agent(config)
 
         # Load reflex artifact ID if present (Plan #143)
         if "reflex_artifact_id" in config:
@@ -763,6 +771,11 @@ class Agent:
             agent._workflow_config = config["workflow"]
         if "components" in config:
             agent._components_config = config["components"]
+
+        # Plan #277: Load motivation prompt from artifact content
+        if "motivation" in config or "motivation_profile" in config:
+            from .motivation_loader import get_motivation_for_agent
+            agent._motivation_prompt = get_motivation_for_agent(config)
 
         return agent
 
@@ -1622,6 +1635,12 @@ This will persist across your thinking cycles.
                 behaviors_section = "\n" + "\n".join(fragments) + "\n"
                 # Priority 72 - after action_feedback (80), before action_history (70)
                 variable_sections.append((72, "behaviors", behaviors_section))
+
+        # Plan #277: Inject motivation prompt as high-priority section
+        # Priority 95 - highest, appears first among variable sections
+        if self._motivation_prompt:
+            motivation_section = f"\n# Your Motivation\n{self._motivation_prompt}\n"
+            variable_sections.append((95, "motivation", motivation_section))
 
         # Sort by priority (higher = earlier in prompt)
         variable_sections.sort(key=lambda x: x[0], reverse=True)

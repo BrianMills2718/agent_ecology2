@@ -1,0 +1,66 @@
+# Experiment Configuration Template (Plan #277)
+#
+# Copy this file to create a new experiment configuration.
+# Each experiment tests different motivation configurations to observe emergence.
+
+# Experiment metadata
+experiment:
+  name: "experiment_name"
+  description: |
+    What are you testing? What do you expect to observe?
+  hypothesis: |
+    What do you predict will happen?
+  created: "YYYY-MM-DD"
+  status: planned  # planned | running | completed | aborted
+
+# Simulation parameters
+simulation:
+  duration_seconds: 300
+  max_api_cost: 1.0
+  checkpoint_interval: 60
+
+# Agent configuration
+# List agents to include and their motivation profiles
+agents:
+  # Each entry can specify:
+  # - id: agent ID (must exist in src/agents/)
+  # - motivation_profile: override motivation profile (optional)
+  # - enabled: true/false (optional, default true)
+
+  - id: discourse_analyst
+    motivation_profile: discourse_analyst  # Uses default
+    enabled: true
+
+  # Example: Same agent with different motivation
+  # - id: alpha_3
+  #   motivation_profile: curious_builder
+  #   enabled: true
+
+# Metrics to track
+metrics:
+  # What to measure during the experiment
+  track:
+    - artifact_count
+    - tool_invocations
+    - questions_asked
+    - tools_built
+    - collaboration_events
+
+  # Custom queries to run on event log
+  custom_queries:
+    - name: tools_created
+      description: "Count tools created by each agent"
+      # Query definition depends on analysis tool
+
+# Notes
+notes: |
+  Record observations and learnings here after running the experiment.
+
+  ## Observations
+  - ...
+
+  ## Learnings
+  - ...
+
+  ## Next Steps
+  - ...

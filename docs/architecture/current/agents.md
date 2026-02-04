@@ -2,7 +2,7 @@
 
 How agents work TODAY.
 
-**Last verified:** 2026-02-03 (Plan #273: skip code-based agents in loader)
+**Last verified:** 2026-02-03 (Plan #277: motivation configuration)
 
 **See target:** [../target/agents.md](../target/agents.md)
 
@@ -81,6 +81,7 @@ Prompt includes:
 | Mint submissions | world_state["mint_submissions"] |
 | Recent events | world_state["recent_events"] |
 | Relevant memories | RAG search on current context |
+| Motivation | Telos, nature, drives, personality (Plan #277) |
 | Working memory | Agent artifact `working_memory` section (Plan #59) |
 | Last action result | self.last_action_result |
 | Recent failures | self.failure_history (Plan #88) |
@@ -418,6 +419,53 @@ Agents with buy_before_build will read more artifacts before building.
 ```
 
 See `src/agents/_components/CLAUDE.md` for component authoring details.
+
+---
+
+## Agent Motivation (Plan #277)
+
+Agents can have configurable motivation that defines intrinsic drives beyond extrinsic rewards.
+
+### Four-Layer Model
+
+| Layer | Purpose | Example |
+|-------|---------|---------|
+| **Telos** | Unreachable asymptotic goal | "Fully understand discourse" |
+| **Nature** | Agent expertise/identity | "Computational discourse analyst" |
+| **Drives** | Intrinsic motivations | Curiosity, capability building |
+| **Personality** | Social/decision style | Cooperative, medium risk |
+
+### Configuration
+
+Reference a profile in `agent.yaml`:
+```yaml
+motivation_profile: discourse_analyst  # References config/motivation_profiles/
+```
+
+Or define inline:
+```yaml
+motivation:
+  telos:
+    name: "Goal Name"
+    prompt: "Your ultimate goal is..."
+  nature:
+    expertise: domain_name
+    prompt: "You are a researcher..."
+  drives:
+    curiosity:
+      prompt: "You have genuine questions..."
+  personality:
+    social_orientation: cooperative
+    prompt: "You prefer collaboration..."
+```
+
+### Prompt Injection
+
+Motivation is injected as a high-priority (95) section in `build_prompt()`:
+- Appears after system prompt, before working memory
+- Contains assembled text from telos, nature, drives, personality
+
+See `docs/architecture/current/motivation.md` for full details.
 
 ---
 

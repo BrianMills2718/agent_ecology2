@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-276-kernel-actions-logging
-task: Add logging to all KernelActions methods
-claimed_at: '2026-02-03T22:56:49Z'
-session_id: 6c5a7451-c55d-46a3-890d-d5231482c900
-plan: 276
+cc_id: plan-277-motivation-emergence
+task: Configurable motivation/drives for emergence experiments
+claimed_at: '2026-02-04T00:36:04Z'
+session_id: 6b61f843-5158-4bd9-85dd-1e0ea2ec7029
+plan: 277

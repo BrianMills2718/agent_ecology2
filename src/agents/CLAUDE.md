@@ -13,6 +13,7 @@ LLM-powered agents that observe world state and propose actions.
 | `component_loader.py` | Modular prompt component loading and injection |
 | `hooks.py` | Workflow hooks for auto-invocation at timing points |
 | `loader.py` | Agent discovery from `src/agents/*/` directories |
+| `motivation_loader.py` | Load and assemble motivation profiles (Plan #277) |
 | `memory.py` | Mem0/Qdrant integration for persistent memory |
 | `models.py` | Pydantic models for agent config and results |
 | `planning.py` | Plan artifact pattern for deliberative agent behavior |
