@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-02-04 (Plan #289: relationships.yaml expanded with complete governance mappings)
+Last verified: 2026-02-04 (Plan #291: relationships.yaml expanded to 45 governance entries, added conceptual_model and glossary sections)
 
 ---
 
