@@ -1915,6 +1915,7 @@ Your response should include:
                     }),
                     "model": self.llm_model,
                     "state": workflow_result.get("state"),
+                    "workflow_step": workflow_result.get("workflow_step"),  # Plan #279
                 }
             elif workflow_result.get("error"):
                 return {
@@ -1931,6 +1932,8 @@ Your response should include:
                     "total_tokens": 0, "cost": 0.0
                 }),
                 "model": self.llm_model,
+                "state": workflow_result.get("state"),  # Plan #279
+                "workflow_step": workflow_result.get("workflow_step"),  # Plan #279
             }
 
         # Legacy path: direct LLM call (no workflow)
