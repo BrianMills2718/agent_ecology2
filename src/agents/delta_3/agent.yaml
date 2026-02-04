@@ -1,7 +1,7 @@
 # delta_3: Infrastructure Builder with State Machine
 # Project lifecycle states for long-term infrastructure building
 id: delta_3
-enabled: true
+enabled: false  # Disabled for discourse experiment
 
 # Catalog metadata (Plan #227)
 meta:

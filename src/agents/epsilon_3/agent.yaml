@@ -1,7 +1,7 @@
 # epsilon_3: Information Broker with State Machine
 # Opportunity detection and exploitation cycle
 id: epsilon_3
-enabled: true
+enabled: false  # Disabled for discourse experiment
 
 # Catalog metadata (Plan #227)
 meta:
