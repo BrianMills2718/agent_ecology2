@@ -2,7 +2,7 @@
 
 Detailed documentation of agent decision-making, memory, and learning systems.
 
-**Last verified:** 2026-02-04 (Plan #281: workflow usage tracking)
+**Last verified:** 2026-02-04 (Plan #290: noop workflow break fix)
 
 **Related:** [agents.md](agents.md) for lifecycle, [genesis_agents.md](genesis_agents.md) for default agents, [genesis_artifacts.md](genesis_artifacts.md) for services
 

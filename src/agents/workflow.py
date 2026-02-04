@@ -372,9 +372,10 @@ class WorkflowRunner:
                 # Plan #281: Track usage for resource accounting
                 if "usage" in result:
                     last_usage = result["usage"]
-                # Plan #280: Stop after first LLM step that produces an action
-                # This ensures each iteration executes one meaningful step
-                if last_action is not None:
+                # Plan #280: Stop after first LLM step that produces a meaningful action
+                # noop actions don't count - they indicate "do nothing" (e.g., reflection steps)
+                # Plan #290: Fixed to allow noop actions to pass through
+                if last_action is not None and last_action.get("action_type") != "noop":
                     break
 
         # Update context with final state
