@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-278-discourse-analyst-fix
-task: Fix discourse_analyst working_memory type error
-claimed_at: '2026-02-04T01:02:06Z'
-session_id: 1f9fb5ea-8cbc-4f24-b37e-6201cd1cb0c8
-plan: 278
+cc_id: plan-279-workflow-observability
+task: Add workflow observability and fix state machine
+claimed_at: '2026-02-04T01:50:42Z'
+session_id: c8125dff-4820-4169-a3bd-bee30cf9ad67
+plan: 279

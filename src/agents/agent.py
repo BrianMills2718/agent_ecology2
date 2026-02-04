@@ -2323,8 +2323,13 @@ Your response should include:
 
         # Parse and run workflow
         # Plan #222: Pass world reference for artifact invocation in workflows
+        # Plan #279: Pass event callback for workflow observability
         config = WorkflowConfig.from_dict(workflow_dict)
-        runner = WorkflowRunner(llm_provider=self.llm, world=self._world)
+        runner = WorkflowRunner(
+            llm_provider=self.llm,
+            world=self._world,
+            event_callback=self._workflow_event_callback,
+        )
         workflow_result = runner.run_workflow(config, context)
 
         # Plan #213: Persist state machine data for next workflow run
@@ -2332,6 +2337,22 @@ Your response should include:
             self._workflow_state = {"_state_machine": context["_state_machine"]}
 
         return workflow_result
+
+    def _workflow_event_callback(self, event_type: str, data: dict[str, Any]) -> None:
+        """Callback for workflow events (Plan #279).
+
+        Logs workflow state transitions and step executions to the event log
+        for observability and debugging.
+
+        Args:
+            event_type: Type of event (workflow_state_changed, workflow_step_executed)
+            data: Event data dict
+        """
+        if self._world and hasattr(self._world, 'logger'):
+            self._world.logger.log(event_type, {
+                "event_number": getattr(self._world, 'event_number', 0),
+                **data,
+            })
 
     # --- Checkpoint persistence methods (Plan #163) ---
 

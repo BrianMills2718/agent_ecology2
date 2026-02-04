@@ -723,6 +723,9 @@ class SimulationRunner:
                 "llm_tokens_after": self.world.ledger.get_llm_tokens(agent.agent_id),
                 "llm_budget_after": self.world.ledger.get_llm_budget(agent.agent_id),  # Plan #153
                 "reasoning": reasoning,
+                # Plan #279: Add workflow context for observability
+                "workflow_state": proposal_data.get("state"),
+                "workflow_step": proposal_data.get("workflow_step"),
             }
 
             self.world.logger.log("thinking", thinking_data)
@@ -841,6 +844,9 @@ class SimulationRunner:
                 "cpu_seconds": result.get("cpu_seconds", 0),
                 "memory_bytes": result.get("memory_bytes", 0),
                 "reasoning": reasoning,
+                # Plan #279: Add workflow context for observability
+                "workflow_state": action_result.get("state"),
+                "workflow_step": action_result.get("workflow_step"),
             }
 
             self.world.logger.log("thinking", thinking_data)
@@ -1398,6 +1404,9 @@ class SimulationRunner:
             "api_cost": api_cost,
             "thinking_cost": 0,
             "reasoning": reasoning,
+            # Plan #279: Add workflow context for observability
+            "workflow_state": result.get("state"),
+            "workflow_step": result.get("workflow_step"),
         }
 
         self.world.logger.log("thinking", thinking_data)
