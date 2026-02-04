@@ -24,7 +24,11 @@ def _make_world(tmp_path: Path) -> World:
             {"id": "alice", "starting_scrip": 100},
             {"id": "bob", "starting_scrip": 100},
         ],
-        "rights": {"default_llm_tokens_quota": 50, "default_disk_quota": 10000},
+        "resources": {
+            "stock": {
+                "disk": {"total": 20000, "unit": "bytes"},  # 10000 per agent
+            }
+        },
         "rate_limiting": {
             "enabled": True,
             "window_seconds": 60.0,

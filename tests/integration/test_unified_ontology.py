@@ -374,7 +374,11 @@ class TestCheckpointPreservesArtifacts:
             "resources": {"llm_tokens": {"type": "flow", "quota": 1000}},
             "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 3},
             "logging": {"output_file": str(tmp_path / "test.jsonl")},
-            "rights": {"default_compute_quota": 50, "default_disk_quota": 10000},
+            "resources": {
+                "stock": {
+                    "disk": {"total": 10000, "unit": "bytes"},
+                }
+            },
             "budget": {"checkpoint_file": str(tmp_path / "checkpoint.json")},
         }
 
