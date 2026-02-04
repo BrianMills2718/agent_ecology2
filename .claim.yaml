@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-293-governance-expansion
-task: Add governance mappings for 10 remaining significant files
-claimed_at: '2026-02-04T14:53:54Z'
-session_id: fde5e44d-074d-41de-a04f-d05e83b4eed0
-plan: 293
+cc_id: plan-279-niche-adaptation
+task: Replace prescriptive agent instructions with meta-learning niche adaptation
+claimed_at: '2026-02-04T21:06:02Z'
+session_id: 2a5a66a4-c7ee-411c-8666-09d2efee536e
+plan: 279
