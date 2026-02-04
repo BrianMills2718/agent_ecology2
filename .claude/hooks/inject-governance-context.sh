@@ -49,8 +49,12 @@ if [[ "$FILE_PATH" == "$MAIN_DIR/"* ]]; then
 fi
 
 # Handle worktree paths - extract the repo-relative path
+# Case 1: Absolute path like /home/.../worktrees/branch-name/src/...
 if [[ "$REL_PATH" == *"/worktrees/"* ]] || [[ "$REL_PATH" == *"_worktrees/"* ]]; then
     REL_PATH=$(echo "$REL_PATH" | sed 's|.*/[^/]*worktrees/[^/]*/||')
+# Case 2: Relative path like worktrees/branch-name/src/...
+elif [[ "$REL_PATH" == worktrees/* ]]; then
+    REL_PATH=$(echo "$REL_PATH" | sed 's|^worktrees/[^/]*/||')
 fi
 
 # Run Python script to get governance context

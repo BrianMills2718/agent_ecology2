@@ -37,6 +37,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 
 | Script | Purpose |
 |--------|---------|
+| `extract_relevant_context.py` | Extract GLOSSARY, CONCEPTUAL_MODEL, and ADR context for a file (Plan #288) |
 | `check_doc_coupling.py` | Verify docs updated when source changes |
 | `check_adr_requirement.py` | Check if ADR is required for changes |
 | `check_planning_patterns.py` | Validate planning patterns (Open Questions, uncertainties, claims) |

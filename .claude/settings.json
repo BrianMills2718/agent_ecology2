@@ -53,6 +53,11 @@
           },
           {
             "type": "command",
+            "command": "bash .claude/hooks/inject-edit-context.sh",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
             "command": "bash .claude/hooks/check-inbox.sh",
             "timeout": 5000
           },
