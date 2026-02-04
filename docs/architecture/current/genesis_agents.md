@@ -2,7 +2,7 @@
 
 Default agents that ship with the system. These are specific instantiations of the agent architecture.
 
-**Last verified:** 2026-02-04 (Plan #281: workflow usage tracking)
+**Last verified:** 2026-02-04 (Plan #191: action result truncation increase)
 
 **Related:** [agent_cognition.md](agent_cognition.md) for architecture, [agents.md](agents.md) for lifecycle
 

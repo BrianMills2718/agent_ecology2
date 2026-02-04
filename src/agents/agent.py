@@ -1996,8 +1996,9 @@ Your response should include:
             try:
                 data_str: str = json.dumps(data, indent=2)
                 # Truncate long data to avoid huge prompts
-                if len(data_str) > 500:
-                    data_str = data_str[:500] + "\n... (truncated)"
+                # 2000 chars allows agents to see most artifact content (e.g., handbook sections)
+                if len(data_str) > 2000:
+                    data_str = data_str[:2000] + "\n... (truncated)"
                 self.last_action_result += f"\nData: {data_str}"
             except (TypeError, ValueError):
                 pass  # Skip if data isn't JSON serializable
