@@ -79,6 +79,7 @@ Master index of all gaps and their implementation plans.
 | 276 | [Complete KernelActions Logging](276_kernel_actions_logging.md) | Medium | ✅ Complete | - |
 | 277 | [Plan 277: Configurable Motivation and Emergence Experiments](277_motivation_emergence.md) | High | 🚧 In Progress | - |
 | 279 | [Workflow Observability](279_workflow_observability.md) | Medium | ❓ | - |
+| 280 | [Workflow Single Step per Iteration](280_workflow_single_step.md) | Medium | ❓ | - |
 ---
 
 ## TDD Workflow

@@ -368,6 +368,10 @@ class WorkflowRunner:
                     last_action = result["action"]
                 if "reasoning" in result:
                     last_reasoning = result["reasoning"]
+                # Plan #280: Stop after first LLM step that produces an action
+                # This ensures each iteration executes one meaningful step
+                if last_action is not None:
+                    break
 
         # Update context with final state
         if state_machine:
