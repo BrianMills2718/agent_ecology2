@@ -22,14 +22,15 @@ Modified `World.__init__()` to:
 - `src/world/world.py` - Fix quota computation to use passed config dict
 - `tests/integration/test_per_agent_budget.py` - Update tests to use `resources.stock.llm_budget` config
 - `docs/architecture/current/execution_model.md` - Updated Last verified date
+- `src/simulation/runner.py` - Add `llm_budget_after` to thinking events, add missing `deduct_llm_cost` call
 
 ## Acceptance Criteria
 
 - [x] Agents receive llm_budget from `resources.stock.llm_budget.total / num_agents`
 - [x] Per-principal override via "llm_budget" field still works
 - [x] Tests pass with new config structure
-- [ ] `llm_budget_after` shows non-null values in thinking events (needs simulation verification)
-- [ ] Budget decreases after each LLM call (needs simulation verification)
+- [x] `llm_budget_after` shows non-null values in thinking events
+- [x] Budget decreases after each LLM call (deduct_llm_cost call added)
 
 ## Priority
 

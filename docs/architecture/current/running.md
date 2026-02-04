@@ -2,7 +2,7 @@
 
 Practical guide to running and observing agent ecology simulations.
 
-**Last verified:** 2026-02-04 (Plan #282: llm_budget logging)
+**Last verified:** 2026-02-04 (Plan #282: llm_budget deduction fix)
 
 ---
 
