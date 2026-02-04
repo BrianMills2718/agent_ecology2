@@ -239,6 +239,42 @@ governance:
     context: |
       Event-driven triggers filter on typed events (ADR-0020).
 
+  # Plan #293: Additional world module governance
+  - source: src/world/kernel_queries.py
+    adrs: [19, 20]
+    context: |
+      Read-only kernel state queries for query_kernel action (Plan #184).
+      Permission-aware queries (ADR-0019).
+      Returns typed events per schema (ADR-0020).
+
+  - source: src/world/mcp_bridge.py
+    adrs: [1, 14]
+    context: |
+      MCP server integration for external tool access.
+      Tools exposed as artifacts (ADR-0001).
+      Integrates with continuous execution (ADR-0014).
+
+  - source: src/world/model_access.py
+    adrs: [2, 11, 23]
+    context: |
+      Per-agent model access quotas (Plan #113).
+      No compute debt - check quota before call (ADR-0002).
+      Principals hold quotas (ADR-0011).
+      Resource attribution for model usage (ADR-0023).
+
+  - source: src/world/usage_tracker.py
+    adrs: [20, 23]
+    context: |
+      LLM usage tracking per model (Plan #166).
+      Emits usage events per schema (ADR-0020).
+      Resource attribution for billing (ADR-0023).
+
+  - source: src/world/resource_metrics.py
+    adrs: [20]
+    context: |
+      Read-only resource metrics aggregation (Plan #93).
+      Metrics follow event schema (ADR-0020).
+
   # ===========================================================================
   # MINT MODULE
   # ===========================================================================
@@ -259,6 +295,12 @@ governance:
     adrs: [4]
     context: |
       Task-based minting (ADR-0004).
+
+  - source: src/world/mint_tasks.py
+    adrs: [4]
+    context: |
+      Task-based mint system with verifiable tasks (Plan #269).
+      Tasks define public/hidden tests for objective scoring (ADR-0004).
 
   # ===========================================================================
   # AGENTS MODULE
@@ -328,6 +370,27 @@ governance:
     context: |
       Plan artifacts stored as artifact content (ADR-0009).
 
+  # Plan #293: Additional agent module governance
+  - source: src/agents/component_loader.py
+    adrs: [13, 26]
+    context: |
+      Modular prompt component loading (Plan #222).
+      Enables configurable agent behaviors (ADR-0013).
+      Supports sophisticated agent genotypes (ADR-0026).
+
+  - source: src/agents/hooks.py
+    adrs: [13]
+    context: |
+      Workflow hooks for auto-invocation at timing points.
+      Extends configurable workflow system (ADR-0013).
+
+  - source: src/agents/agent_schema.py
+    adrs: [13, 26]
+    context: |
+      Pydantic schema for agent.yaml validation.
+      Validates configurable workflow definitions (ADR-0013).
+      Enforces sophisticated agent structure (ADR-0026).
+
   # ===========================================================================
   # SIMULATION MODULE
   # ===========================================================================
@@ -357,6 +420,14 @@ governance:
     context: |
       Checkpoints preserve working memory (ADR-0009).
       Behavioral continuity on resume.
+
+  # Plan #293: Additional simulation module governance
+  - source: src/simulation/supervisor.py
+    adrs: [10, 14]
+    context: |
+      AgentSupervisor for crash recovery with backoff.
+      Maintains continuous agent loops (ADR-0010, ADR-0014).
+      Death classification and auto-restart logic.
 
   # ===========================================================================
   # DASHBOARD MODULE - Event Consumption

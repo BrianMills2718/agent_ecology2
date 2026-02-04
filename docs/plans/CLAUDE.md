@@ -92,6 +92,7 @@ Master index of all gaps and their implementation plans.
 | 290 | [Plan 290: Fix Workflow Noop Break Issue](290_fix_noop_workflow_break.md) | Medium | ❓ | - |
 | 291 | [Plan 291: Systematic Documentation Linking](291_systematic_doc_linking.md) | High | ✅ Complete | - |
 | 292 | [Governance Enforcement](292_governance_enforcement.md) | P2 - Process improvement | ✅ Complete | - |
+| 293 | [Governance Expansion](293_governance_expansion.md) | P2 - Process improvement | ✅ Complete | - |
 ---
 
 ## TDD Workflow

@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-292-governance-enforcement
-task: Enforce governance on new ADRs and critical files
-claimed_at: '2026-02-04T14:12:36Z'
-session_id: b3d61b05-4204-48f3-980e-82835c8562e6
-plan: 292
+cc_id: plan-293-governance-expansion
+task: Add governance mappings for 10 remaining significant files
+claimed_at: '2026-02-04T14:53:54Z'
+session_id: fde5e44d-074d-41de-a04f-d05e83b4eed0
+plan: 293
