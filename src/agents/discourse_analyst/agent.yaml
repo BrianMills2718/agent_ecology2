@@ -221,7 +221,7 @@ workflow:
 
         Record insights in your working memory:
         {{"action_type": "write_artifact", "artifact_id": "{agent_id}_working_memory",
-          "content": {{"insights": [...], "next_questions": [...]}}}}
+          "artifact_type": "working_memory", "content": {{"insights": [...], "next_questions": [...]}}}}
 
         Then return to questioning with deeper understanding.
       transition_to: "questioning"
