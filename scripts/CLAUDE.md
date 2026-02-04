@@ -49,7 +49,8 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `check_new_code_tests.py` | Verify new code has test coverage |
 | `validate_spec.py` | Validate feature spec YAML format |
 | `validate_code_map.py` | Validate code mapping files |
-| `get_governance_context.py` | Get governance context for a file from relationships.yaml |
+| `get_governance_context.py` | Get doc graph context for a file (ADRs + coupled docs) |
+| `visualize_doc_graph.py` | Visualize documentation graph (text, DOT, PNG/SVG) |
 
 ### Meta-Process Configuration (Plan #218-220)
 

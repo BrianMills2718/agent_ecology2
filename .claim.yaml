@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-284-doc-graph
-task: Implement full unified documentation graph from ADR-0005
-claimed_at: '2026-02-04T10:54:25Z'
-session_id: 921e2265-c19f-4e76-b7e1-dea1f844c32f
-plan: 284
+cc_id: plan-285-doc-graph-tooling
+task: Add doc graph hook and visualization
+claimed_at: '2026-02-04T11:07:59Z'
+session_id: ac48b0c2-cc8d-4421-a4e4-44080dde0d91
+plan: 285
