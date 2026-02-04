@@ -1,0 +1,60 @@
+# Experiment 001: Discourse Analyst Baseline (Plan #277)
+#
+# Establish baseline behavior for a single discourse_analyst agent
+# with the full motivation configuration.
+
+experiment:
+  name: "discourse_analyst_baseline"
+  description: |
+    Test a single discourse_analyst agent to establish baseline behavior.
+    This agent has the discourse analysis telos, research-focused nature,
+    and drives for curiosity and capability building.
+  hypothesis: |
+    The agent should:
+    1. Ask questions about discourse structure/patterns
+    2. Build tools for discourse analysis
+    3. Use tools to analyze text
+    4. Reflect and generate deeper questions
+    5. Accumulate insights over time
+  created: "2026-02-03"
+  status: planned
+
+simulation:
+  duration_seconds: 300
+  max_api_cost: 1.0
+  checkpoint_interval: 60
+
+agents:
+  - id: discourse_analyst
+    motivation_profile: discourse_analyst
+    enabled: true
+
+metrics:
+  track:
+    - artifact_count
+    - tool_invocations
+    - state_transitions
+    - working_memory_updates
+
+  custom_queries:
+    - name: research_cycle_completions
+      description: "How many times did agent complete full research cycle?"
+    - name: tools_built
+      description: "What tools did the agent create?"
+    - name: questions_explored
+      description: "What questions did the agent investigate?"
+
+notes: |
+  ## Pre-Run Expectations
+  - Agent should cycle through: questioning -> investigating -> building/analyzing -> reflecting
+  - Should create at least one analysis tool
+  - Should record insights in working memory
+
+  ## Observations
+  (To be filled after running)
+
+  ## Learnings
+  (To be filled after running)
+
+  ## Next Steps
+  (To be filled after running)

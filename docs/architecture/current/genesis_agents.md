@@ -2,7 +2,7 @@
 
 Default agents that ship with the system. These are specific instantiations of the agent architecture.
 
-**Last verified:** 2026-02-03 (Plan #273: skip code-based agents in loader)
+**Last verified:** 2026-02-03 (Plan #277: added discourse_analyst experimental agent)
 
 **Related:** [agent_cognition.md](agent_cognition.md) for architecture, [agents.md](agents.md) for lifecycle
 

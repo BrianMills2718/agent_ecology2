@@ -27,6 +27,7 @@ These docs describe what IS implemented today. They are the source of truth for 
 | `running.md` | Practical guide to running simulations |
 | `supporting_systems.md` | Checkpoint, logging, dashboard |
 | `ci.md` | GitHub Actions CI pipeline |
+| `motivation.md` | Agent motivation system (Plan #277) |
 
 ## Coupling to Source
 

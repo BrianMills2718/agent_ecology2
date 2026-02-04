@@ -129,6 +129,9 @@ def load_agents(agents_dir: str | None = None, prompts_dir: str | None = None) -
             "workflow": config.get("workflow"),
             # Prompt components (Plan #150)
             "components": config.get("components"),
+            # Motivation configuration (Plan #277)
+            "motivation": config.get("motivation"),
+            "motivation_profile": config.get("motivation_profile"),
         }
 
         agents.append(agent)
@@ -233,6 +236,11 @@ def create_agent_artifacts(
             agent_config_dict["workflow"] = config["workflow"]
         if config.get("components"):
             agent_config_dict["components"] = config["components"]
+        # Plan #277: Motivation configuration
+        if config.get("motivation"):
+            agent_config_dict["motivation"] = config["motivation"]
+        if config.get("motivation_profile"):
+            agent_config_dict["motivation_profile"] = config["motivation_profile"]
 
         # Create agent artifact (self-owned)
         agent_artifact = create_agent_artifact(

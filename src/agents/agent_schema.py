@@ -283,6 +283,123 @@ class InterfaceDiscoverySchema(BaseModel):
 
 
 # =============================================================================
+# Motivation Schema (Plan #277)
+# =============================================================================
+
+
+class SocialOrientation(str, Enum):
+    """Agent's social orientation toward other agents."""
+    COOPERATIVE = "cooperative"
+    COMPETITIVE = "competitive"
+    MIXED = "mixed"
+
+
+class TelosSchema(BaseModel):
+    """The asymptotic goal that orients the agent (Plan #277).
+
+    The telos is the unreachable goal that can never be fully achieved
+    but can always be improved upon. It provides direction without
+    prescribing specific actions.
+
+    Example:
+        telos:
+          name: "Universal Discourse Analytics"
+          prompt: |
+            Your ultimate goal is to fully understand discourse and possess
+            complete analytical capability to answer any question about it.
+    """
+    name: str = Field(description="Short name for the telos")
+    prompt: str = Field(description="Prompt text describing the telos")
+
+
+class NatureSchema(BaseModel):
+    """What the agent IS - expertise and identity (Plan #277).
+
+    The nature defines the agent's expertise domain and fundamental
+    identity. It shapes how the agent approaches problems.
+
+    Example:
+        nature:
+          expertise: computational_linguistics
+          prompt: |
+            You are a researcher of discourse with deep questions about
+            how discourse works.
+    """
+    expertise: str = Field(description="Domain of expertise")
+    prompt: str = Field(description="Prompt text describing the agent's nature")
+
+
+class DriveSchema(BaseModel):
+    """A single intrinsic drive (Plan #277).
+
+    Drives are what the agent WANTS - intrinsic motivations that don't
+    depend on external rewards.
+
+    Example:
+        curiosity:
+          prompt: |
+            You have genuine questions about discourse. How does it work?
+            What patterns exist? What do arguments actually do?
+    """
+    prompt: str = Field(description="Prompt text for this drive")
+
+
+class PersonalitySchema(BaseModel):
+    """HOW the agent pursues its drives (Plan #277).
+
+    Personality shapes the agent's social behavior and decision-making
+    style, but not what it fundamentally wants.
+
+    Example:
+        personality:
+          social_orientation: cooperative
+          risk_tolerance: medium
+          prompt: |
+            You prefer collaboration over competition.
+    """
+    model_config = ConfigDict(use_enum_values=True)
+
+    social_orientation: SocialOrientation = SocialOrientation.MIXED
+    risk_tolerance: RiskTolerance = RiskTolerance.MEDIUM
+    prompt: str = Field(default="", description="Additional personality prompt")
+
+
+class MotivationSchema(BaseModel):
+    """Complete motivation configuration for an agent (Plan #277).
+
+    Motivation is assembled from four layers:
+    1. Telos - the unreachable goal that orients everything
+    2. Nature - what the agent IS (expertise, identity)
+    3. Drives - what the agent WANTS (intrinsic motivations)
+    4. Personality - HOW the agent pursues its drives
+
+    Agents can either specify motivation inline or reference a profile:
+        motivation_profile: discourse_analyst  # References config/motivation_profiles/
+
+    Example inline motivation:
+        motivation:
+          telos:
+            name: "Universal Discourse Analytics"
+            prompt: "Your ultimate goal is..."
+          nature:
+            expertise: computational_linguistics
+            prompt: "You are a researcher..."
+          drives:
+            curiosity:
+              prompt: "You have genuine questions..."
+            capability:
+              prompt: "You want tools to exist..."
+          personality:
+            social_orientation: cooperative
+            prompt: "You prefer collaboration..."
+    """
+    telos: TelosSchema | None = None
+    nature: NatureSchema | None = None
+    drives: dict[str, DriveSchema] = Field(default_factory=dict)
+    personality: PersonalitySchema = Field(default_factory=PersonalitySchema)
+
+
+# =============================================================================
 # Main Agent Schema
 # =============================================================================
 
@@ -347,6 +464,13 @@ class AgentYamlSchema(BaseModel):
 
     # === Catalog metadata (Plan #227) ===
     meta: MetaSchema | None = None
+
+    # === Motivation (Plan #277) ===
+    motivation: MotivationSchema | None = None
+    motivation_profile: str | None = Field(
+        default=None,
+        description="Name of motivation profile in config/motivation_profiles/"
+    )
 
     # Allow extra fields for forward compatibility during experimentation
     model_config = ConfigDict(extra="allow", populate_by_name=True)
@@ -416,6 +540,7 @@ __all__ = [
     "StepType",
     "ErrorPolicy",
     "AgentStatus",
+    "SocialOrientation",
     # Sub-schemas
     "GenotypeSchema",
     "RAGSchema",
@@ -431,6 +556,12 @@ __all__ = [
     "InterfaceDiscoverySchema",
     "InvokeSpecSchema",
     "ChangelogEntry",
+    # Motivation schemas (Plan #277)
+    "TelosSchema",
+    "NatureSchema",
+    "DriveSchema",
+    "PersonalitySchema",
+    "MotivationSchema",
     # Main schema
     "AgentYamlSchema",
     # Helpers
