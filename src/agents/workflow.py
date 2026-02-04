@@ -326,6 +326,7 @@ class WorkflowRunner:
         last_action: dict[str, Any] | None = None
         last_reasoning: str = ""  # Plan #222: Track reasoning from LLM steps
         last_executed_step: str | None = None  # Plan #279: Track last step for observability
+        last_usage: dict[str, Any] | None = None  # Plan #281: Track usage for resource accounting
 
         # Plan #222: Clear invoke cache at start of each workflow run
         self._invoke_cache = {}
@@ -362,12 +363,15 @@ class WorkflowRunner:
                     "workflow_step": last_executed_step,  # Plan #279
                 }
 
-            # Track action and reasoning from LLM steps
+            # Track action, reasoning, and usage from LLM steps
             if result.get("success") and step.step_type == StepType.LLM:
                 if "action" in result:
                     last_action = result["action"]
                 if "reasoning" in result:
                     last_reasoning = result["reasoning"]
+                # Plan #281: Track usage for resource accounting
+                if "usage" in result:
+                    last_usage = result["usage"]
                 # Plan #280: Stop after first LLM step that produces an action
                 # This ensures each iteration executes one meaningful step
                 if last_action is not None:
@@ -377,6 +381,13 @@ class WorkflowRunner:
         if state_machine:
             context.update(state_machine.to_context())
 
+        # Plan #281: Require usage from LLM steps for resource accounting
+        if last_action is not None and last_usage is None:
+            raise RuntimeError(
+                "Workflow produced an action but no usage data. "
+                "This breaks resource accounting. Check _execute_llm_step."
+            )
+
         return {
             "success": True,
             "action": last_action,
@@ -384,6 +395,7 @@ class WorkflowRunner:
             "step_results": step_results,
             "state": state_machine.current_state if state_machine else None,
             "workflow_step": last_executed_step,  # Plan #279
+            "usage": last_usage,  # Plan #281: Usage for resource accounting
         }
 
     def _create_invoke_resolver(
@@ -784,11 +796,20 @@ class WorkflowRunner:
                     context["current_subgoal"] = wm.get("current_subgoal", "")
                     context["subgoal_progress"] = wm.get("subgoal_progress", {})
 
+                # Plan #281: Capture LLM usage for resource accounting
+                usage = getattr(self.llm_provider, "last_usage", None)
+                if usage is None:
+                    raise RuntimeError(
+                        f"LLM step '{step.name}' completed but llm_provider.last_usage is None. "
+                        "This breaks resource accounting."
+                    )
+
                 logger.debug(f"LLM step '{step.name}' executed successfully")
                 return {
                     "success": True,
                     "reasoning": response.reasoning,
                     "action": response.action.model_dump(),
+                    "usage": usage,  # Plan #281: Include usage for resource accounting
                 }
 
             except Exception as e:
