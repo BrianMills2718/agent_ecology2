@@ -8,21 +8,19 @@ Potential issues to monitor. Not bugs, not plans - just things that might become
 
 ## Active Concerns
 
-### Plan #222: Artifact-Aware Workflow Engine
+### Missing Artifact Trading Escrow
 
 | Concern | Risk | Watch For |
 |---------|------|-----------|
-| **Circular dependencies** | Decision artifacts that need memory/store access might create cycles | Agents hanging, infinite loops, stack overflows during workflow execution |
-| **Stale cache** | Per-run caching might return outdated values if agent state changes mid-workflow | Wrong transition decisions after mid-workflow scrip changes |
-| **Observability noise** | Including invoke results in thought capture might clutter logs | Hard to trace agent behavior in dashboard, excessive log volume |
-| **Decision artifact complexity** | "Simple" decision artifacts might grow complex over time | Decision artifacts that invoke other artifacts, slow workflow execution |
+| **No escrow for artifact trades** | Agents can't safely exchange artifacts (buyer pays, seller doesn't deliver). Core thesis requires coordination primitives for emergence. | Agents avoiding trades, manual artifact transfers, workarounds for trust |
+| **Revenue models blocked** | Without paid-read contracts or escrow-backed trades, agents can't monetize artifacts. Economy limited to mint earnings only. | All agent income from mint, no inter-agent commerce |
 
-### Cognitive Architecture Flexibility
+### Permission Checker Policy Defaults
 
 | Concern | Risk | Watch For |
 |---------|------|-----------|
-| **Schema rigidity** | Fixed prompt composition (step + injections appended) limits patterns | Agents wanting to prepend, insert, or conditionally compose prompts |
-| **Weak model performance** | Metacognitive prompts work for strong models but weak models still struggle | gemini-2.0-flash agents not storing lessons despite prompt improvements |
+| **Freeware fallback in kernel** | `permission_checker.py:150` defaults to `freeware` when contract field is missing. Per ADR-0019, kernel should be neutral - contracts decide access. This embeds a policy choice in the kernel. | Agents getting unexpected access to artifacts missing contracts, masking broken contract assignment |
+| **Missing creator denies silently** | `permission_checker.py:347` defaults missing creator field to `None`, silently denying access instead of failing loud. | Hard-to-debug access denials when artifact metadata is corrupted |
 
 ### General Architecture
 
@@ -45,10 +43,12 @@ Potential issues to monitor. Not bugs, not plans - just things that might become
 
 | Concern | Resolution | Date |
 |---------|------------|------|
+| **Plan #222: Workflow engine concerns** (circular deps, stale cache, observability noise, decision artifact complexity) | Plan #222 workflow engine removed in Plan #299 (legacy agent system removal). Artifact-based loops replaced the workflow engine entirely. Concerns no longer applicable. | 2026-02-05 |
+| **Cognitive architecture flexibility** (schema rigidity, weak model performance) | Prompt composition moved to artifact-based system. Schema rigidity concern is moot with new architecture. Weak model performance is an ongoing experiment, not a design concern. | 2026-02-05 |
 | **Terminology debt** | Renamed "traits" to "behaviors" across codebase: 1 directory, 6 behavior YAMLs, 3 agent YAMLs, component_loader.py, agent.py, tests. Term now accurately describes prompt modifiers. | 2026-01-25 |
 | **Genesis artifact sprawl** | Plan #199 removed genesis_store (redundant with query_kernel). Remaining artifacts (ledger, mint, escrow, memory, event_log, model_registry, voting, debt_contract) serve distinct purposes. | 2026-01-26 |
 | **Simulation learnings split** | Consolidated `simulation_learnings/` directory into root `SIMULATION_LEARNINGS.md`. All observations now in one file with "Archived Observations" section for date-stamped entries. | 2026-02-01 |
-| **CONCERNS.md / DC §11 overlap** | Distinction clarified: CONCERNS.md = operational symptoms to watch for (will this become a problem?); DESIGN_CLARIFICATIONS.md §11 = architectural questions being discussed (what should we do?). Different purposes, no overlap. | 2026-02-01 |
+| **CONCERNS.md / DC 11 overlap** | Distinction clarified: CONCERNS.md = operational symptoms to watch for (will this become a problem?); DESIGN_CLARIFICATIONS.md 11 = architectural questions being discussed (what should we do?). Different purposes, no overlap. | 2026-02-01 |
 
 ---
 
