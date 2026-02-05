@@ -246,7 +246,7 @@ quiz:
   #   manual     - Only when explicitly requested via /quiz or script
   #   prompt     - Ask after make pr-ready if user wants to quiz
   #   automatic  - Block merge until quiz completed
-  integration: manual
+  integration: prompt
 
   # ---------------------------------------------------------------------------
   # Scope
