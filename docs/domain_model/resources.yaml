@@ -1,0 +1,159 @@
+# Domain Model: Resources
+#
+# Concepts that enable resource capabilities defined in prd/resources.md
+#
+# Metadata
+id: domain_model/resources
+type: domain_model
+domain: resources
+status: draft
+prd_refs:
+  - prd/resources#scarcity-enforcement
+  - prd/resources#resource-types
+  - prd/resources#resource-tracking
+  - prd/resources#resource-transfer
+  - prd/resources#scrip-currency
+  - prd/resources#quota-management
+
+# =============================================================================
+# CORE CONCEPTS
+# =============================================================================
+
+concepts:
+  Resource:
+    description: |
+      A constrained capacity that principals consume when performing actions.
+      Resources are the "physics" of the ecosystem - real limits that drive
+      emergent efficiency and collaboration.
+    enables: [scarcity-enforcement, resource-types]
+    relationships:
+      - "has ResourceType"
+      - "tracked in Ledger"
+      - "consumed by Principal"
+    constraints:
+      - "Cannot go negative (no debt)"
+      - "Consumption is atomic"
+
+  ResourceType:
+    description: |
+      Classification of resources by their replenishment behavior.
+      Different types have different enforcement semantics.
+    enables: [resource-types]
+    types:
+      depletable:
+        description: "Gone forever when spent"
+        examples: ["llm_budget (real $)", "api_cost"]
+        behavior: "Subtract on use, never replenish"
+      allocatable:
+        description: "Can be freed and reused"
+        examples: ["disk_bytes", "memory allocation"]
+        behavior: "Track allocation, release on free"
+      renewable:
+        description: "Regenerates over time/window"
+        examples: ["llm_tokens", "cpu_seconds", "api_calls_per_minute"]
+        behavior: "Rolling window or token bucket"
+
+  Scrip:
+    description: |
+      Internal currency unit for economic signaling. Not a physical resource
+      but an accounting abstraction. Enables pricing without resource barter.
+    enables: [scrip-currency]
+    relationships:
+      - "held by Principal"
+      - "transferred between Principals"
+      - "used to pay for artifact access"
+    constraints:
+      - "Non-negative balance (ADR-0012)"
+      - "Transfers are atomic"
+    notes: |
+      Scrip is fiat - not backed by physical resources. Its value emerges
+      from what agents will accept it for.
+
+  Balance:
+    description: |
+      The current amount of a resource or scrip held by a principal.
+      The fundamental unit of resource accounting.
+    enables: [resource-tracking]
+    relationships:
+      - "belongs to Principal"
+      - "tracks one Resource or Scrip"
+    behaviors:
+      - "Queried to check availability"
+      - "Decremented on consumption"
+      - "Incremented on receipt/regeneration"
+
+  Quota:
+    description: |
+      The maximum amount of a resource a principal is allowed to use.
+      Quotas enable differentiated access levels.
+    enables: [quota-management]
+    relationships:
+      - "assigned to Principal"
+      - "limits one Resource"
+    behaviors:
+      - "Checked before consumption"
+      - "Can be transferred between principals"
+      - "Can be increased/decreased by kernel"
+
+  Ledger:
+    description: |
+      The central record of all resource and scrip balances. Single source
+      of truth for economic state.
+    enables: [resource-tracking, scrip-currency]
+    relationships:
+      - "tracks Balances for all Principals"
+      - "records Transfers"
+    constraints:
+      - "Conservation: total scrip is constant (mint adds, no burn)"
+      - "Atomicity: no partial operations"
+    notes: |
+      The ledger is not an artifact - it's kernel infrastructure.
+      Agents cannot create alternative ledgers.
+
+  Transfer:
+    description: |
+      Movement of resources or scrip from one principal to another.
+      The mechanism for economic exchange.
+    enables: [resource-transfer, scrip-currency]
+    relationships:
+      - "has sender Principal"
+      - "has receiver Principal"
+      - "moves Resource or Scrip"
+    constraints:
+      - "Sender must have sufficient balance"
+      - "Atomic (all or nothing)"
+      - "Logged for auditability"
+
+  RateLimit:
+    description: |
+      Enforcement mechanism for renewable resources. Uses rolling window
+      or token bucket algorithm.
+    enables: [resource-types, scarcity-enforcement]
+    relationships:
+      - "applies to renewable Resource"
+      - "configured per Principal"
+    behaviors:
+      - "Tracks usage over time window"
+      - "Rejects requests that exceed limit"
+      - "Capacity regenerates as window slides"
+
+# =============================================================================
+# RELATIONSHIPS TO CODE
+# =============================================================================
+
+code_mappings:
+  Resource:
+    primary: "src/world/ledger.py"
+    config: "config/config.yaml (resources section)"
+
+  Ledger:
+    primary: "src/world/ledger.py"
+    class: "Ledger"
+
+  RateLimit:
+    primary: "src/world/rate_tracker.py"
+    class: "RateTracker"
+
+  Transfer:
+    primary: "src/world/kernel_interface.py"
+    methods: ["transfer_scrip", "transfer_resource"]

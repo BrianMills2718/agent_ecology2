@@ -68,7 +68,7 @@ def generate_dot(data: dict) -> str:
         '    style=filled;',
         '    color=lightyellow;',
         '    node [style=filled, fillcolor=white];',
-        '    doc_CONCEPTUAL_MODEL [label="CONCEPTUAL_MODEL.yaml"];',
+        '    doc_ONTOLOGY [label="ONTOLOGY.yaml"];',
         '    doc_GLOSSARY [label="GLOSSARY.md"];',
         "  }",
         "",
@@ -170,8 +170,8 @@ def generate_dot(data: dict) -> str:
     lines.append("")
     lines.append("  // Hierarchy edges")
     lines.append('  doc_CLAUDE_MD -> doc_CORE_SYSTEMS [label="then read", style=dotted];')
-    lines.append('  doc_CORE_SYSTEMS -> doc_CONCEPTUAL_MODEL [label="reference", style=dotted];')
-    lines.append('  doc_CONCEPTUAL_MODEL -> doc_current_resources [label="details", style=dotted];')
+    lines.append('  doc_CORE_SYSTEMS -> doc_ONTOLOGY [label="reference", style=dotted];')
+    lines.append('  doc_ONTOLOGY -> doc_current_resources [label="details", style=dotted];')
 
     lines.append("}")
     return "\n".join(lines)
@@ -187,7 +187,7 @@ def generate_text(data: dict) -> str:
         "HIERARCHY (Read Order):",
         "  1. CLAUDE.md → Process workflow",
         "  2. CORE_SYSTEMS.md → System overview",
-        "  3. CONCEPTUAL_MODEL.yaml → Exact entities",
+        "  3. ONTOLOGY.yaml → Exact entities",
         "  4. current/*.md → Implementation details",
         "  5. src/**/*.py → Source code",
         "",

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Extract relevant context for a file from GLOSSARY, CONCEPTUAL_MODEL, ADRs, etc.
+"""Extract relevant context for a file from GLOSSARY, ONTOLOGY, ADRs, PRDs, etc.
 
 Given a source file, this script:
 1. Parses the file to extract identifiers and terms
 2. Matches against GLOSSARY entries
-3. Matches against CONCEPTUAL_MODEL sections
+3. Matches against ONTOLOGY sections (formerly CONCEPTUAL_MODEL)
 4. Extracts relevant ADR principles from governance mappings
+5. Loads PRD capabilities and domain model concepts (Plan #294)
 
 Usage:
     python scripts/extract_relevant_context.py src/world/ledger.py
@@ -159,9 +160,9 @@ def load_glossary() -> dict[str, dict[str, str]]:
     return entries
 
 
-def load_conceptual_model() -> dict[str, Any]:
-    """Load CONCEPTUAL_MODEL.yaml."""
-    model_path = REPO_ROOT / "docs" / "CONCEPTUAL_MODEL.yaml"
+def load_ontology() -> dict[str, Any]:
+    """Load ONTOLOGY.yaml (formerly CONCEPTUAL_MODEL.yaml)."""
+    model_path = REPO_ROOT / "docs" / "ONTOLOGY.yaml"
     if not model_path.exists():
         return {}
 
@@ -181,6 +182,194 @@ def load_relationships() -> dict[str, Any]:
         return yaml.safe_load(rel_path.read_text())
     except Exception:
         return {}
+
+
+def get_file_context(file_path: str, relationships: dict) -> dict[str, Any]:
+    """Get PRD/domain model context for a file (Plan #294).
+
+    Looks up file in file_context section, falls back to directory_defaults.
+    Returns dict with prd, domain_model, and adr references.
+    """
+    result = {"prd": [], "domain_model": [], "adr": [], "source": None}
+
+    # Normalize path - strip worktree prefix
+    rel_path = file_path
+    if rel_path.startswith(str(REPO_ROOT)):
+        rel_path = str(Path(file_path).relative_to(REPO_ROOT))
+    if "/worktrees/" in rel_path or rel_path.startswith("worktrees/"):
+        rel_path = re.sub(r'^.*?worktrees/[^/]+/', '', rel_path)
+
+    # Check explicit file_context first
+    file_context = relationships.get("file_context", {})
+    if rel_path in file_context:
+        ctx = file_context[rel_path]
+        result["prd"] = ctx.get("prd", [])
+        result["domain_model"] = ctx.get("domain_model", [])
+        result["adr"] = ctx.get("adr", [])
+        result["source"] = "explicit"
+        return result
+
+    # Fall back to directory_defaults
+    directory_defaults = relationships.get("directory_defaults", {})
+    best_match = None
+    best_match_len = 0
+
+    for dir_pattern, defaults in directory_defaults.items():
+        # Check if file path starts with directory pattern
+        if rel_path.startswith(dir_pattern.rstrip('/')):
+            if len(dir_pattern) > best_match_len:
+                best_match = defaults
+                best_match_len = len(dir_pattern)
+
+    if best_match:
+        result["prd"] = best_match.get("prd", [])
+        result["domain_model"] = best_match.get("domain_model", [])
+        result["adr"] = best_match.get("adr", [])
+        result["source"] = "directory_default"
+
+    return result
+
+
+def load_prd_content(prd_refs: list[str]) -> list[dict]:
+    """Load content from PRD files based on references.
+
+    References format: 'agents#long-term-planning' or just 'agents'
+    """
+    results = []
+
+    for ref in prd_refs:
+        # Parse reference
+        if "#" in ref:
+            domain, section = ref.split("#", 1)
+        else:
+            domain = ref
+            section = None
+
+        prd_path = REPO_ROOT / "docs" / "prd" / f"{domain}.md"
+        if not prd_path.exists():
+            results.append({"domain": domain, "error": "PRD not found"})
+            continue
+
+        content = prd_path.read_text()
+
+        if section:
+            # Extract specific section
+            section_content = extract_markdown_section(content, section)
+            if section_content:
+                results.append({
+                    "domain": domain,
+                    "section": section,
+                    "content": section_content[:500]  # Limit size
+                })
+            else:
+                results.append({
+                    "domain": domain,
+                    "section": section,
+                    "error": f"Section '{section}' not found"
+                })
+        else:
+            # Get overview only (first section after frontmatter)
+            overview = extract_overview(content)
+            results.append({
+                "domain": domain,
+                "content": overview[:300]
+            })
+
+    return results
+
+
+def load_domain_model_content(dm_refs: list[str]) -> list[dict]:
+    """Load content from domain model files based on references.
+
+    References format: 'agents#Goal' or just 'agents'
+    """
+    results = []
+
+    for ref in dm_refs:
+        # Parse reference
+        if "#" in ref:
+            domain, concept = ref.split("#", 1)
+        else:
+            domain = ref
+            concept = None
+
+        dm_path = REPO_ROOT / "docs" / "domain_model" / f"{domain}.yaml"
+        if not dm_path.exists():
+            results.append({"domain": domain, "error": "Domain model not found"})
+            continue
+
+        try:
+            dm = yaml.safe_load(dm_path.read_text())
+        except Exception:
+            results.append({"domain": domain, "error": "Failed to parse YAML"})
+            continue
+
+        if concept:
+            # Extract specific concept
+            concepts = dm.get("concepts", {})
+            if concept in concepts:
+                concept_data = concepts[concept]
+                results.append({
+                    "domain": domain,
+                    "concept": concept,
+                    "description": concept_data.get("description", "")[:200],
+                    "enables": concept_data.get("enables", [])
+                })
+            else:
+                results.append({
+                    "domain": domain,
+                    "concept": concept,
+                    "error": f"Concept '{concept}' not found"
+                })
+        else:
+            # Get all concept names
+            concepts = dm.get("concepts", {})
+            results.append({
+                "domain": domain,
+                "concepts": list(concepts.keys())
+            })
+
+    return results
+
+
+def extract_markdown_section(content: str, section_id: str) -> str | None:
+    """Extract a section from markdown by its header ID."""
+    # Look for header with matching text (case-insensitive)
+    pattern = rf'^###?\s+{re.escape(section_id)}\s*$'
+    lines = content.split('\n')
+
+    in_section = False
+    section_lines = []
+
+    for line in lines:
+        if re.match(pattern, line, re.IGNORECASE):
+            in_section = True
+            continue
+        if in_section:
+            # Stop at next header of same or higher level
+            if re.match(r'^###?\s+', line):
+                break
+            section_lines.append(line)
+
+    return '\n'.join(section_lines).strip() if section_lines else None
+
+
+def extract_overview(content: str) -> str:
+    """Extract overview section from markdown (after frontmatter, before first ##)."""
+    # Skip frontmatter
+    if content.startswith('---'):
+        end = content.find('---', 3)
+        if end > 0:
+            content = content[end + 3:]
+
+    # Get content before first ## header
+    lines = []
+    for line in content.split('\n'):
+        if line.startswith('## '):
+            break
+        lines.append(line)
+
+    return '\n'.join(lines).strip()
 
 
 def get_governance_for_file(file_path: str, relationships: dict) -> dict[str, Any]:
@@ -376,7 +565,11 @@ def extract_context_for_file(file_path: str) -> dict[str, Any]:
         "conceptual_model": {},
         "governance": {},
         "adr_principles": [],
-        "warnings": []
+        "warnings": [],
+        # Plan #294: PRD/domain model context
+        "file_context": {},
+        "prd_content": [],
+        "domain_model_content": [],
     }
 
     # Extract terms from file
@@ -387,8 +580,32 @@ def extract_context_for_file(file_path: str) -> dict[str, Any]:
 
     # Load reference docs
     glossary = load_glossary()
-    model = load_conceptual_model()
+    model = load_ontology()
     relationships = load_relationships()
+
+    # Plan #294: Get PRD/domain model context from file_context mappings
+    file_ctx = get_file_context(file_path, relationships)
+    result["file_context"] = file_ctx
+
+    if file_ctx.get("prd"):
+        result["prd_content"] = load_prd_content(file_ctx["prd"])
+        # Warn if PRD not found
+        for prd in result["prd_content"]:
+            if prd.get("error"):
+                result["warnings"].append(f"PRD: {prd['domain']} - {prd['error']}")
+
+    if file_ctx.get("domain_model"):
+        result["domain_model_content"] = load_domain_model_content(file_ctx["domain_model"])
+        # Warn if domain model not found
+        for dm in result["domain_model_content"]:
+            if dm.get("error"):
+                result["warnings"].append(f"Domain Model: {dm['domain']} - {dm['error']}")
+
+    # Warn if no context links at all
+    if not file_ctx.get("prd") and not file_ctx.get("domain_model") and file_ctx.get("source") is None:
+        result["warnings"].append(
+            f"No PRD/domain model context for this file. Consider adding to relationships.yaml file_context."
+        )
 
     # Match against glossary
     result["glossary_matches"] = extract_glossary_matches(terms, glossary)
@@ -470,6 +687,43 @@ def format_for_hook(context: dict) -> str:
         lines.append("🔍 ALSO RELEVANT (semantic match):")
         for p in semantic_principles:
             lines.append(f"   [{p['adr']}] {p['principle']}")
+        lines.append("")
+
+    # Plan #294: PRD capabilities this file implements
+    prd_content = context.get("prd_content", [])
+    valid_prds = [p for p in prd_content if not p.get("error")]
+    if valid_prds:
+        lines.append("📋 PRD CAPABILITIES (this file implements):")
+        for prd in valid_prds:
+            if prd.get("section"):
+                lines.append(f"   [{prd['domain']}#{prd['section']}]")
+                # Show first 2 lines of content
+                content_lines = prd.get("content", "").split('\n')[:2]
+                for cl in content_lines:
+                    if cl.strip():
+                        lines.append(f"      {cl.strip()[:80]}")
+            else:
+                lines.append(f"   [{prd['domain']}] {prd.get('content', '')[:100]}")
+        lines.append("")
+
+    # Plan #294: Domain model concepts this file uses
+    dm_content = context.get("domain_model_content", [])
+    valid_dms = [d for d in dm_content if not d.get("error")]
+    if valid_dms:
+        lines.append("🧠 DOMAIN CONCEPTS (this file uses):")
+        for dm in valid_dms:
+            if dm.get("concept"):
+                enables = dm.get("enables", [])
+                enables_str = f" → enables: {', '.join(enables)}" if enables else ""
+                lines.append(f"   • {dm['concept']}{enables_str}")
+                if dm.get("description"):
+                    # First line of description
+                    desc = dm["description"].split('\n')[0].strip()[:80]
+                    lines.append(f"      {desc}")
+            else:
+                concepts = dm.get("concepts", [])
+                if concepts:
+                    lines.append(f"   [{dm['domain']}] concepts: {', '.join(concepts[:5])}")
         lines.append("")
 
     # Governance context

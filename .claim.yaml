@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-279-niche-adaptation
-task: Replace prescriptive agent instructions with meta-learning niche adaptation
-claimed_at: '2026-02-04T21:06:02Z'
-session_id: 2a5a66a4-c7ee-411c-8666-09d2efee536e
-plan: 279
+cc_id: plan-294-doc-hierarchy
+task: Document hierarchy and context injection meta-process
+claimed_at: '2026-02-05T05:34:50Z'
+session_id: c909d606-654a-4042-85fc-37079ca2962a
+plan: 294

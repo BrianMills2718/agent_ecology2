@@ -37,7 +37,8 @@ Utility scripts for development and CI. All scripts support `--help` for options
 
 | Script | Purpose |
 |--------|---------|
-| `extract_relevant_context.py` | Extract GLOSSARY, CONCEPTUAL_MODEL, and ADR context for a file (Plan #288, #289) |
+| `extract_relevant_context.py` | Extract GLOSSARY, ONTOLOGY, ADR, PRD, and domain model context for a file (Plan #288, #289, #294) |
+| `check_file_context.py` | Check files have PRD/domain model context links (Plan #294) |
 | `audit_governance_mappings.py` | Audit governance mappings for completeness (Plan #289) |
 | `build_doc_index.py` | Build searchable index of docs for semantic search (Plan #289) |
 | `semantic_doc_search.py` | BM25 semantic search over documentation (Plan #289) |

@@ -49,16 +49,16 @@ The model is:
 
 | File | Purpose |
 |------|---------|
-| `docs/CONCEPTUAL_MODEL.yaml` | The formal model |
+| `docs/ONTOLOGY.yaml` | The formal model (renamed from CONCEPTUAL_MODEL.yaml) |
 | `docs/GLOSSARY.md` | Term definitions (references model) |
 | `docs/architecture/` | Implementation docs (use model terms) |
 
 ## Setup
 
-### 1. Create the conceptual model file
+### 1. Create the ontology file
 
 ```yaml
-# docs/CONCEPTUAL_MODEL.yaml
+# docs/ONTOLOGY.yaml (or docs/CONCEPTUAL_MODEL.yaml - both names are valid)
 version: "1.0"
 last_updated: "2026-01-28"
 
@@ -106,9 +106,9 @@ open_questions:
 ### 2. Reference from CLAUDE.md
 
 ```markdown
-## Conceptual Model
+## Ontology
 
-The authoritative model for "what things ARE" lives in `docs/CONCEPTUAL_MODEL.yaml`.
+The authoritative model for "what things ARE" lives in `docs/ONTOLOGY.yaml`.
 
 **Before using any term, verify it exists in the model.** Terms in `non_existence` MUST NOT be used.
 ```
@@ -123,7 +123,7 @@ import yaml
 from pathlib import Path
 
 def load_model():
-    model_path = Path("docs/CONCEPTUAL_MODEL.yaml")
+    model_path = Path("docs/ONTOLOGY.yaml")
     return yaml.safe_load(model_path.read_text())
 
 def check_non_existence(model, text):

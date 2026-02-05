@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-02-04 (Plan #293: Expanded governance to 54 files, 64% coverage)
+Last verified: 2026-02-05 (Plan #294: Document hierarchy - added file context links check)
 
 ---
 
@@ -86,6 +86,7 @@ Combines documentation-related checks into a single job.
 **Checks:**
 1. **doc-coupling** - Checks that documentation is updated when coupled source files change
 2. **governance-sync** - Ensures source files have correct governance headers
+3. **file-context-links** - Verifies source files have PRD/domain model context links (Plan #294)
 
 ```yaml
 - uses: actions/checkout@v4 (with fetch-depth: 0)
@@ -93,12 +94,14 @@ Combines documentation-related checks into a single job.
 - pip install pyyaml
 - python scripts/check_doc_coupling.py --base origin/main --strict
 - python scripts/sync_governance.py --check
+- python scripts/check_file_context.py --staged
 ```
 
 **What it catches:**
 - Source file changes without corresponding doc updates
 - Documentation drift from implementation
 - Source files missing required ADR governance headers
+- Source files missing PRD or domain model context links
 
 ### 4. plans
 

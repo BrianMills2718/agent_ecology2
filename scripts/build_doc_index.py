@@ -4,7 +4,7 @@
 Parses and indexes:
 - ADRs (title, decision, principles)
 - GLOSSARY.md (terms and definitions)
-- CONCEPTUAL_MODEL.yaml (entities and fields)
+- ONTOLOGY.yaml (entities and fields, formerly CONCEPTUAL_MODEL.yaml)
 - Architecture docs (current/*.md)
 
 Output: data/doc_index.json
@@ -145,8 +145,8 @@ def parse_glossary(glossary_path: Path) -> list[dict]:
     return entries
 
 
-def parse_conceptual_model(model_path: Path) -> list[dict]:
-    """Parse CONCEPTUAL_MODEL.yaml into indexed entries."""
+def parse_ontology(model_path: Path) -> list[dict]:
+    """Parse ONTOLOGY.yaml into indexed entries (formerly parse_conceptual_model)."""
     entries = []
     try:
         content = model_path.read_text()
@@ -177,11 +177,11 @@ def parse_conceptual_model(model_path: Path) -> list[dict]:
             description = str(section_content)
 
         entries.append({
-            "type": "conceptual_model",
-            "id": f"CONCEPT:{section_name}",
+            "type": "ontology",
+            "id": f"ONTOLOGY:{section_name}",
             "section": section_name,
             "description": description[:400] if len(description) > 400 else description,
-            "file": "docs/CONCEPTUAL_MODEL.yaml",
+            "file": "docs/ONTOLOGY.yaml",
             "tokens": tokenize(f"{section_name} {description}"),
         })
 
@@ -250,10 +250,10 @@ def build_index() -> dict:
     if glossary_path.exists():
         index["documents"].extend(parse_glossary(glossary_path))
 
-    # Index CONCEPTUAL_MODEL
-    model_path = REPO_ROOT / "docs" / "CONCEPTUAL_MODEL.yaml"
+    # Index ONTOLOGY (formerly CONCEPTUAL_MODEL)
+    model_path = REPO_ROOT / "docs" / "ONTOLOGY.yaml"
     if model_path.exists():
-        index["documents"].extend(parse_conceptual_model(model_path))
+        index["documents"].extend(parse_ontology(model_path))
 
     # Index architecture docs
     arch_dir = REPO_ROOT / "docs" / "architecture" / "current"

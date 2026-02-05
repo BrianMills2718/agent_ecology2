@@ -1,14 +1,19 @@
 # =============================================================================
-# CONCEPTUAL MODEL - Machine-readable architecture definition (compact)
+# ONTOLOGY - Precise entity definitions (machine-readable)
 # =============================================================================
-# Version 3 - Aligned with CONCEPTUAL_MODEL_FULL.yaml (Part 1: Current).
+# Renamed from CONCEPTUAL_MODEL.yaml in Plan #294.
 #
-# This is the concise reference. For full details, examples, and discussion,
-# see: CONCEPTUAL_MODEL_FULL.yaml
+# This file defines the precise, field-level schema of entities in the system.
+# It's the bottom of the document hierarchy - most concrete layer before code.
+#
+# Document Hierarchy (Plan #294):
+#   Thesis → PRD → Domain Model → ADR → Ontology (this file) → Code
+#
+# See: docs/prd/ for capabilities, docs/domain_model/ for concepts
 # =============================================================================
 
-version: 3
-last_updated: "2026-02-03"  # Plan #276: complete KernelActions logging
+version: 4
+last_updated: "2026-02-05"  # Plan #294: Document hierarchy
 status: current_implementation
 source_of_truth: "src/world/artifacts.py, src/world/actions.py, src/world/kernel_interface.py"
 
@@ -53,6 +58,88 @@ artifact:
     price: "policy['invoke_price'] (backwards compat)"
     is_principal: "has_standing == True"
     is_agent: "has_standing and has_loop"
+
+# =============================================================================
+# AGENT COGNITIVE ARCHITECTURE (ADR-0027)
+# =============================================================================
+# BabyAGI-style artifact constellation for agent cognition.
+# These are PATTERNS of artifact usage, not dataclass fields.
+# See: docs/domain_model/agents.yaml for conceptual model
+# See: docs/prd/agents.md for capability requirements
+
+agent_constellation:
+  description: |
+    Each agent maintains a constellation of related artifacts that together
+    constitute its cognitive state. The naming convention is {agent_id}_{artifact_type}.
+
+  recommended_artifacts:
+    goals:
+      naming: "{agent_id}_goals"
+      type: data
+      purpose: "Goal hierarchy (strategic → tactical → tasks)"
+      structure: |
+        strategic_goals: list of long-term objectives
+        tactical_goals: list of medium-term objectives serving strategic goals
+        current_tasks: list of immediate work items
+      enables: [long-term-planning]
+
+    task_queue:
+      naming: "{agent_id}_task_queue"
+      type: data
+      purpose: "Prioritized work items (BabyAGI-style)"
+      structure: |
+        tasks: list of {id, description, priority, goal_ref, status}
+        last_executed: task_id
+        generated_from: list of insight/outcome refs
+      enables: [long-term-planning, adaptation]
+
+    world_model:
+      naming: "{agent_id}_world_model"
+      type: data
+      purpose: "Understanding of ecosystem"
+      structure: |
+        agents: dict of {agent_id: observations}
+        resources: dict of {resource: availability}
+        artifacts: dict of {artifact_id: notes}
+        last_updated: timestamp
+      enables: [ecosystem-awareness, niche-finding, collaboration]
+
+    self_model:
+      naming: "{agent_id}_self_model"
+      type: data
+      purpose: "Understanding of self, niche hypothesis"
+      structure: |
+        capabilities: list of what I can do well
+        limitations: list of what I struggle with
+        niche_hypothesis: current belief about my niche
+        evidence: list of observations supporting/refuting hypothesis
+      enables: [adaptation, niche-finding, self-modification]
+
+    strategy:
+      naming: "{agent_id}_strategy"
+      type: data
+      purpose: "Current approach to achieving goals"
+      structure: |
+        current_strategy: description of approach
+        priorities: ordered list of focus areas
+        thresholds: when to change strategy
+      enables: [adaptation, niche-finding]
+
+    memory:
+      naming: "{agent_id}_memory"
+      type: data
+      purpose: "Persistent learnings (queryable)"
+      structure: |
+        entries: list of {timestamp, type, content, tags}
+        indices: optional search indices
+      enables: [adaptation, long-term-planning]
+      note: "See ADR-0009 for memory-as-artifact pattern"
+
+  notes: |
+    - These are RECOMMENDED, not REQUIRED by kernel
+    - Agents can modify their own constellation
+    - Internal structure is agent's choice (YAML, JSON, prose)
+    - Kernel only sees artifacts; constellation is a usage pattern
 
 # =============================================================================
 # ACTIONS (11 core + 2 deprecated)

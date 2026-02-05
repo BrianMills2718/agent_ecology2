@@ -1,0 +1,279 @@
+# Domain Model: Agents
+#
+# Concepts that enable agent capabilities defined in prd/agents.md
+#
+# Metadata
+id: domain_model/agents
+type: domain_model
+domain: agents
+status: draft
+prd_refs:
+  - prd/agents#long-term-planning
+  - prd/agents#adaptation
+  - prd/agents#ecosystem-awareness
+  - prd/agents#niche-finding
+  - prd/agents#self-modification
+  - prd/agents#collaboration
+
+# =============================================================================
+# CORE CONCEPTS
+# =============================================================================
+
+concepts:
+  Agent:
+    description: |
+      An agent is a pattern of artifact activity with autonomous execution.
+      Not a monolithic entity, but an identity that emerges from:
+      - What artifacts it reads/writes/invokes
+      - Its loop structure (when/how it runs)
+      - The graph of artifact relationships it maintains
+    enables: [long-term-planning, adaptation, ecosystem-awareness, niche-finding, self-modification, collaboration]
+    relationships:
+      - "pursues Goals"
+      - "maintains TaskQueue"
+      - "builds WorldModel"
+      - "develops SelfModel"
+      - "holds Memory"
+      - "may find Niche"
+    constraints:
+      - "Must have has_standing (can hold resources)"
+      - "Must have has_loop (runs autonomously)"
+    notes: |
+      Key insight: The LLM call is just one kind of processing step, not special.
+      An agent is defined by its artifact constellation, not its prompts.
+
+  Goal:
+    description: |
+      A desired state or outcome an agent pursues. Goals form a hierarchy
+      from strategic (long-term) to tactical (medium-term) to tasks (immediate).
+    enables: [long-term-planning]
+    relationships:
+      - "belongs to Agent"
+      - "may have sub-Goals"
+      - "may block other Goals"
+      - "has Progress"
+    behaviors:
+      - "Can be created, modified, completed, abandoned"
+      - "Can be decomposed into sub-goals"
+      - "Can be reprioritized"
+    constraints:
+      - "Strategic goals should be stable over time"
+      - "Task-level goals should be achievable in single iterations"
+    examples:
+      strategic: "Become the most useful data processing agent in the ecosystem"
+      tactical: "Build a library of reusable data transformations"
+      task: "Create a JSON-to-CSV converter artifact"
+
+  TaskQueue:
+    description: |
+      A prioritized list of immediate work items. BabyAGI-style: tasks are
+      created, prioritized, executed, and generate new tasks. The queue
+      drives what the agent does each iteration.
+    enables: [long-term-planning, adaptation]
+    relationships:
+      - "belongs to Agent"
+      - "contains Tasks"
+      - "serves Goals"
+    behaviors:
+      - "Tasks can be added, removed, reprioritized"
+      - "Execution generates insights and may spawn new tasks"
+      - "Prioritization considers goal alignment and resource availability"
+    constraints:
+      - "Should not grow unboundedly (pruning needed)"
+      - "Should connect to goals (no orphan tasks)"
+
+  WorldModel:
+    description: |
+      Agent's understanding of the ecosystem: what exists, who does what,
+      what resources are available, how things work. Updated through
+      observation and interaction.
+    enables: [ecosystem-awareness, niche-finding, collaboration]
+    relationships:
+      - "belongs to Agent"
+      - "models other Agents"
+      - "tracks Resources"
+      - "maps Artifacts"
+    behaviors:
+      - "Updated after observations (queries, interactions)"
+      - "Can identify gaps in understanding"
+      - "Informs decision-making"
+    constraints:
+      - "May be incomplete or incorrect (agent's belief, not ground truth)"
+      - "Should be updated, not replaced (incremental learning)"
+    examples:
+      agent_model: "alpha_prime: seems to be coordinating, has high scrip balance"
+      resource_model: "LLM budget is scarce, disk is abundant"
+      artifact_model: "There's a JSON parser at tools/json_parser, seems useful"
+
+  SelfModel:
+    description: |
+      Agent's understanding of itself: capabilities, limitations, what works,
+      what doesn't, current niche hypothesis. The basis for self-modification.
+    enables: [adaptation, niche-finding, self-modification]
+    relationships:
+      - "belongs to Agent"
+      - "contains NicheHypothesis"
+      - "tracks Capabilities"
+      - "records Patterns (what works/doesn't)"
+    behaviors:
+      - "Updated after outcomes (success/failure)"
+      - "Informs strategy modifications"
+      - "Guides niche exploration"
+    constraints:
+      - "Should be honest (not delusional about capabilities)"
+      - "Should evolve based on evidence"
+
+  Niche:
+    description: |
+      A unique value proposition within the ecosystem. NOT necessarily
+      specialization - could be generalist, connector, tool-builder,
+      information broker, coordinator, or something novel.
+    enables: [niche-finding]
+    relationships:
+      - "pursued by Agent"
+      - "differentiated from other Niches"
+    behaviors:
+      - "Hypothesized based on observation"
+      - "Tested through action"
+      - "Refined based on outcomes"
+      - "May shift as ecosystem evolves"
+    constraints:
+      - "Should NOT be prescribed at t=0"
+      - "Should emerge from observation and learning"
+    examples:
+      specialist: "Deep expertise in data transformation"
+      generalist: "Good enough at many things, connects disparate ideas"
+      tool_builder: "Creates tools others use"
+      info_broker: "Curates and synthesizes information"
+      coordinator: "Helps others find synergies"
+
+  Memory:
+    description: |
+      Persistent learnings, queryable across iterations. Not just a log,
+      but structured knowledge that informs future decisions.
+    enables: [adaptation, long-term-planning]
+    relationships:
+      - "belongs to Agent"
+      - "contains Learnings"
+      - "may contain Patterns"
+    behaviors:
+      - "Written after significant events"
+      - "Queried when making decisions"
+      - "Pruned when stale or irrelevant"
+    constraints:
+      - "Must be retrievable (not just append-only log)"
+      - "Should support semantic queries, not just key-value"
+
+  Strategy:
+    description: |
+      Current approach to achieving goals. Higher-level than TaskQueue,
+      lower-level than Goals. How the agent plans to operate.
+    enables: [adaptation, niche-finding]
+    relationships:
+      - "belongs to Agent"
+      - "serves Goals"
+      - "guides TaskQueue prioritization"
+    behaviors:
+      - "Modified based on outcomes"
+      - "May shift significantly if current approach isn't working"
+    examples:
+      - "Focus on building tools that others will pay for"
+      - "Minimize resource usage until I understand the ecosystem better"
+      - "Collaborate with alpha_prime on data tasks"
+
+# =============================================================================
+# t=0 ARTIFACT CONSTELLATION
+# =============================================================================
+
+t0_constellation:
+  description: |
+    What artifacts should exist at simulation start for an agent to have
+    the capabilities defined in prd/agents.md. This is the "sophisticated
+    starting point" - not minimal, but maximally capable for emergence.
+
+  recommended_artifacts:
+    "{agent}_goals":
+      type: data
+      purpose: "Goal hierarchy (strategic → tactical → tasks)"
+      content: "YAML/JSON structure of goals with relationships"
+
+    "{agent}_task_queue":
+      type: data
+      purpose: "BabyAGI-style prioritized task list"
+      content: "List of tasks with priorities and goal links"
+
+    "{agent}_world_model":
+      type: data
+      purpose: "Understanding of ecosystem"
+      content: "Model of agents, resources, artifacts"
+
+    "{agent}_self_model":
+      type: data
+      purpose: "Understanding of self"
+      content: "Capabilities, patterns, niche hypothesis"
+
+    "{agent}_strategy":
+      type: data
+      purpose: "Current approach to goals"
+      content: "Strategy description, priorities, thresholds"
+
+    "{agent}_memory":
+      type: data
+      purpose: "Persistent learnings"
+      content: "Structured knowledge, queryable"
+
+  notes: |
+    These aren't required by architecture - they're a sophisticated starting
+    point. Architecture only requires has_standing + has_loop. These artifacts
+    ENABLE the capabilities but don't GUARANTEE them.
+
+# =============================================================================
+# RELATIONSHIPS TO CODE
+# =============================================================================
+
+code_mappings:
+  notes: |
+    These mappings show where concepts appear in code. They don't prescribe
+    implementation - they document current reality.
+
+  Agent:
+    primary: "src/agents/agent.py"
+    also: ["src/agents/workflow.py", "src/agents/v4_solo/"]
+
+  TaskQueue:
+    implemented_in: "Agent prompts (system_prompt.md)"
+    not_yet: "No separate TaskQueue artifact management"
+    gap: "discourse_analyst lacks this, alpha_prime has it"
+
+  WorldModel:
+    implemented_in: "Agent prompts, working_memory"
+    not_yet: "No structured world_model artifact"
+
+  SelfModel:
+    implemented_in: "Agent prompts"
+    not_yet: "No structured self_model artifact"
+
+  Memory:
+    implemented_in: "src/agents/memory.py, memory artifacts"
+    gap: "Memory is append-only log, not structured knowledge"
+
+# =============================================================================
+# OPEN QUESTIONS
+# =============================================================================
+
+open_questions:
+  - id: Q1
+    question: "Should all agents use BabyAGI-style artifact constellation?"
+    current_answer: "Recommended but not enforced"
+
+  - id: Q2
+    question: "How do agents self-modify their constellation over time?"
+    current_answer: "Through edit_artifact actions on their own artifacts"
+
+  - id: Q3
+    question: "How do we observe/measure niche differentiation?"
+    current_answer: "Open - need metrics"
+
+  - id: Q4
+    question: "What prevents agents from deleting critical self-artifacts?"
+    current_answer: "Nothing - this is part of 'accept risk, observe outcomes'"
