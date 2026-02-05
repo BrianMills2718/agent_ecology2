@@ -1,6 +1,6 @@
 # Plan #283: Document Core Systems for Codebase Understanding
 
-## Status: In Progress
+## Status: Complete
 
 ## Problem
 
@@ -31,8 +31,8 @@ Add concise reference in root `CLAUDE.md`.
 - [x] CORE_SYSTEMS.md created with all 8 systems
 - [x] Each system has purpose, health, key files, data flow
 - [x] Plan #282 created for resource allocation investigation
-- [ ] CLAUDE.md updated with reference
-- [ ] PR merged
+- [x] CLAUDE.md updated with reference (line 262-277)
+- [x] Verified complete 2026-02-05
 
 ## Next Steps (Future Plans)
 
