@@ -1741,6 +1741,8 @@ class LibrariesConfig(StrictModel):
             "requests", "aiohttp", "urllib3",  # HTTP
             "numpy", "pandas", "python-dateutil",  # Data
             "scipy", "matplotlib",  # Scientific
+            "scikit-learn", "networkx",  # ML & graph analysis
+            "beautifulsoup4", "lxml", "regex", "tiktoken",  # Text processing
             "cryptography",  # Crypto
             "pyyaml", "pydantic", "jinja2",  # Core (already installed)
         ],
