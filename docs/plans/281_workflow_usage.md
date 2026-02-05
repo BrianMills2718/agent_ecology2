@@ -1,6 +1,6 @@
 # Plan #281: Fix Workflow Usage Tracking for Resource Accounting
 
-## Status: COMPLETE
+**Status:** ✅ Complete
 
 ## Problem
 
