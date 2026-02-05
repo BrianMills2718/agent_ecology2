@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-05 (Plan #299: legacy agent loading disabled, artifact-based agents)
+**Last verified:** 2026-02-05 (Plan #300: added external capabilities to world initialization)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

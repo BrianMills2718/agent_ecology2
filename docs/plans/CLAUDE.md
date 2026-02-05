@@ -99,6 +99,7 @@ Master index of all gaps and their implementation plans.
 | 297 | [Plan Type Distinction](297_plan_type_distinction.md) | Medium | ✅ Complete | - |
 | 298 | [Plan 298: Config-Driven Genesis Artifacts](298_config_driven_genesis.md) | Medium | ✅ Complete | - |
 | 299 | [Eliminate Legacy Agent System - Agents as Pure Artifacts](299_eliminate_legacy_agents.md) | High | ✅ Complete | - |
+| 300 | [Plan: External Capability Requests + RAG Pattern](300_external_capabilities.md) | Medium | ✅ Complete | - |
 ---
 
 ## TDD Workflow

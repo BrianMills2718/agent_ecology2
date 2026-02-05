@@ -268,6 +268,44 @@ class KernelState:
 
         return result
 
+    # -------------------------------------------------------------------------
+    # External Capabilities (Plan #300)
+    # -------------------------------------------------------------------------
+
+    def has_capability(self, capability_name: str) -> bool:
+        """Check if an external capability is available.
+
+        An external capability is available if:
+        1. It's configured in external_capabilities
+        2. It's enabled (enabled: true)
+        3. It has a valid API key
+
+        Args:
+            capability_name: Name of capability (e.g., "openai_embeddings")
+
+        Returns:
+            True if capability is ready to use
+        """
+        if not hasattr(self._world, "capability_manager"):
+            return False
+        manager = self._world.capability_manager
+        if manager is None:
+            return False
+        return manager.is_enabled(capability_name) and manager.get_api_key(capability_name) is not None
+
+    def list_capabilities(self) -> list[dict[str, Any]]:
+        """List all configured external capabilities and their status.
+
+        Returns:
+            List of capability info dicts with name, enabled, has_api_key, budget info
+        """
+        if not hasattr(self._world, "capability_manager"):
+            return []
+        manager = self._world.capability_manager
+        if manager is None:
+            return []
+        return manager.list_capabilities()
+
 
 class KernelActions:
     """Action interface for artifacts - caller is verified.
@@ -1007,4 +1045,120 @@ class KernelActions:
             return True
         except KeyError:
             return False
+
+    # -------------------------------------------------------------------------
+    # External Capabilities (Plan #300)
+    # -------------------------------------------------------------------------
+
+    def request_capability(
+        self,
+        caller_id: str,
+        capability_name: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        """Request access to an external capability.
+
+        Creates a pending request for human review. The human must then:
+        1. Add API key to config
+        2. Set enabled: true
+
+        Args:
+            caller_id: Agent making the request
+            capability_name: Capability being requested (e.g., "openai_embeddings")
+            reason: Why the agent needs this capability
+
+        Returns:
+            {"pending": True, "message": "..."} - Request logged for human review
+        """
+        # Log the request for human visibility
+        _log_kernel_action(self._world, "capability_request", caller_id, True, {
+            "capability": capability_name,
+            "reason": reason,
+            "status": "pending",
+        })
+
+        return {
+            "pending": True,
+            "message": f"Request for '{capability_name}' logged. Waiting for human approval.",
+            "capability": capability_name,
+            "reason": reason,
+        }
+
+    def use_capability(
+        self,
+        caller_id: str,
+        capability_name: str,
+        action: str,
+        params: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Use an approved external capability.
+
+        The capability must be:
+        1. Configured in external_capabilities
+        2. Enabled (enabled: true)
+        3. Have a valid API key
+
+        Args:
+            caller_id: Agent using the capability
+            capability_name: Which capability to use
+            action: Capability-specific action (e.g., "embed" for embeddings)
+            params: Action parameters
+
+        Returns:
+            {"success": True, ...} with capability-specific results
+            {"success": False, "error": "...", "error_code": "..."} on failure
+        """
+        if not hasattr(self._world, "capability_manager") or self._world.capability_manager is None:
+            _log_kernel_action(self._world, "capability_use", caller_id, False, {
+                "capability": capability_name,
+                "action": action,
+                "error_code": "NO_MANAGER",
+            })
+            return {
+                "success": False,
+                "error": "Capability system not initialized",
+                "error_code": "NO_MANAGER",
+            }
+
+        manager = self._world.capability_manager
+
+        # Check if enabled
+        if not manager.is_enabled(capability_name):
+            _log_kernel_action(self._world, "capability_use", caller_id, False, {
+                "capability": capability_name,
+                "action": action,
+                "error_code": "NOT_ENABLED",
+            })
+            return {
+                "success": False,
+                "error": f"Capability '{capability_name}' is not enabled. Request it first.",
+                "error_code": "NOT_ENABLED",
+            }
+
+        # Execute the capability
+        result = manager.execute(capability_name, action, params)
+
+        # Track spend if successful and there's a cost
+        if result.get("success") and "cost" in result:
+            cost = result["cost"]
+            if not manager.track_spend(capability_name, cost):
+                _log_kernel_action(self._world, "capability_use", caller_id, False, {
+                    "capability": capability_name,
+                    "action": action,
+                    "error_code": "BUDGET_EXCEEDED",
+                })
+                return {
+                    "success": False,
+                    "error": f"Capability '{capability_name}' budget exceeded",
+                    "error_code": "BUDGET_EXCEEDED",
+                }
+
+        # Log the result
+        _log_kernel_action(self._world, "capability_use", caller_id, result.get("success", False), {
+            "capability": capability_name,
+            "action": action,
+            "error_code": result.get("error_code") if not result.get("success") else None,
+        })
+
+        return result
 

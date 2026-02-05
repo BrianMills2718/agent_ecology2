@@ -1759,6 +1759,53 @@ class LibrariesConfig(StrictModel):
 
 
 # =============================================================================
+# EXTERNAL CAPABILITIES CONFIG (Plan #300)
+# =============================================================================
+
+class SingleCapabilityConfig(BaseModel):
+    """Configuration for a single external capability.
+
+    External capabilities are services that cost real money and require
+    human approval (API keys configured).
+    """
+
+    model_config = ConfigDict(extra="allow")  # Allow capability-specific fields
+
+    enabled: bool = Field(
+        default=False,
+        description="Whether this capability is enabled"
+    )
+    api_key: str | None = Field(
+        default=None,
+        description="API key (can be ${ENV_VAR} for env variable)"
+    )
+    budget_limit: float | None = Field(
+        default=None,
+        description="Optional spend limit in dollars"
+    )
+
+
+class ExternalCapabilitiesConfig(BaseModel):
+    """External capabilities configuration (Plan #300).
+
+    Maps capability names to their configuration. Example:
+
+    external_capabilities:
+      openai_embeddings:
+        enabled: true
+        api_key: ${OPENAI_API_KEY}
+        model: text-embedding-3-small
+        budget_limit: 10.00
+    """
+
+    model_config = ConfigDict(extra="allow")  # Allow any capability names
+
+    def get_capability(self, name: str) -> dict[str, Any] | None:
+        """Get configuration for a capability by name."""
+        return getattr(self, name, None)
+
+
+# =============================================================================
 # CONTRACTS CONFIG
 # =============================================================================
 
@@ -1958,6 +2005,10 @@ class AppConfig(StrictModel):
     context_budget: ContextBudgetModel = Field(default_factory=ContextBudgetModel)  # Plan #195
     memory: MemoryConfigModel = Field(default_factory=MemoryConfigModel)
     libraries: LibrariesConfig = Field(default_factory=LibrariesConfig)
+    external_capabilities: dict[str, Any] = Field(
+        default_factory=dict,
+        description="External capabilities requiring human approval (Plan #300)"
+    )
     id_generation: IdGenerationConfig = Field(default_factory=IdGenerationConfig)
     learning: LearningConfig = Field(default_factory=LearningConfig)  # Plan #186
     prompt_injection: PromptInjectionConfig = Field(default_factory=PromptInjectionConfig)  # Plan #197

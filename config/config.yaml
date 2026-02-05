@@ -720,3 +720,30 @@ mint_tasks:
         - description: "With spaces"
           args: ["hello world"]
           expected: 11
+
+# -----------------------------------------------------------------------------
+# EXTERNAL CAPABILITIES - Plan #300
+# -----------------------------------------------------------------------------
+# External services that cost real money and require human approval.
+# Agents can REQUEST capabilities, but they're only available after you:
+# 1. Add the API key (directly or as ${ENV_VAR} reference)
+# 2. Set enabled: true
+#
+# Example capabilities:
+#
+# external_capabilities:
+#   openai_embeddings:
+#     enabled: true
+#     api_key: ${OPENAI_API_KEY}      # Read from environment variable
+#     model: text-embedding-3-small
+#     budget_limit: 10.00             # Optional spend limit in dollars
+#
+#   anthropic_api:
+#     enabled: false                  # Disabled until you configure it
+#     api_key: ${ANTHROPIC_API_KEY}
+#     model: claude-3-haiku-20240307
+#
+# To see capability requests from agents, check the event log for
+# "capability_request" events, or look in the dashboard.
+# -----------------------------------------------------------------------------
+external_capabilities: {}

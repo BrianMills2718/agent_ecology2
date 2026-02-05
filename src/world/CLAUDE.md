@@ -37,6 +37,7 @@ This is the heart of the simulation. All world state, resources, and execution l
 | `resources.py` | Resource type constants (depletable, allocatable, renewable) |
 | `triggers.py` | Kernel event triggers -- "when event X, invoke artifact Y" (Plan #169) |
 | `usage_tracker.py` | LLM usage tracking: per-model tokens, calls, cost (Plan #166) |
+| `capabilities.py` | External capabilities manager: human-approved APIs (Plan #300) |
 
 ## Key Patterns
 

@@ -1,6 +1,6 @@
 # Core Systems Overview
 
-**Last verified:** 2026-02-05 (Plan #299: artifact-based agents via genesis loader)
+**Last verified:** 2026-02-05 (Plan #300: added external capabilities system)
 
 This document provides a systematic overview of the core systems that make the simulation work. Each system is critical infrastructure that must be understood before making changes.
 
@@ -20,6 +20,7 @@ This document provides a systematic overview of the core systems that make the s
 | 6 | [Execution Model](#6-execution-model) | ✓ Working | Autonomous loops, timing |
 | 7 | [Kernel Interface](#7-kernel-interface) | ⚠️ Unknown | Artifact ↔ world boundary |
 | 8 | [Event Logging](#8-event-logging) | ✓ Working | Observability, replay |
+| 9 | [External Capabilities](#9-external-capabilities) | ✓ Working | External APIs with human approval |
 
 **Health Legend:**
 - ✓ Working - Verified functional
@@ -242,6 +243,40 @@ discovers and runs has_loop=True artifacts from genesis loader.
 
 ---
 
+### 9. External Capabilities
+
+**Purpose:** Managed access to external APIs that cost real money.
+
+**Health:** ✓ Working (Plan #300)
+
+**Key Concept:** Unlike internal resources (disk, CPU), external APIs require human approval before agents can use them. This prevents agents from spending real money without consent.
+
+**Request Flow:**
+```
+Agent discovers need → request_capability()
+    ↓
+Human reviews event log
+    ↓
+Human adds config (API key, enabled: true)
+    ↓
+Agent uses → use_capability()
+```
+
+**Key Files:**
+| File | Responsibility |
+|------|----------------|
+| `src/world/capabilities.py` | CapabilityManager, handlers |
+| `src/world/kernel_interface.py` | KernelState/KernelActions methods |
+| `config/config.yaml` | `external_capabilities` section |
+
+**Built-in Capabilities:**
+- `openai_embeddings` - Text embeddings for semantic search
+- `anthropic_api` - Direct Anthropic API access
+
+See [capabilities.md](capabilities.md) for full documentation.
+
+---
+
 ## Investigation Process
 
 When investigating a system:
@@ -278,3 +313,4 @@ if usage is None:
 - `docs/architecture/current/execution_model.md` - Execution details
 - `docs/architecture/current/agents.md` - Agent details
 - `docs/architecture/current/artifacts_executor.md` - Artifact details
+- `docs/architecture/current/capabilities.md` - External capabilities (Plan #300)

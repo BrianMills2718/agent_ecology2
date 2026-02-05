@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-02-02 (Plan #269 - mint_tasks config for task-based minting)
+**Last verified:** 2026-02-05 (Plan #300: added external_capabilities config section)
 
 ---
 
