@@ -2,7 +2,7 @@
 
 Operational infrastructure: checkpointing, logging, and dashboard.
 
-**Last verified:** 2026-02-01 (Plan #254: genesis removal, no impact on supporting systems)
+**Last verified:** 2026-02-05 (Plan #299: checkpoint.py updated to use AgentLike protocol)
 
 ---
 

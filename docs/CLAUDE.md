@@ -16,6 +16,7 @@ docs/
 │   └── gaps/             # Comprehensive gap analysis (142 gaps)
 ├── plans/                # Active implementation plans only
 ├── ONTOLOGY.yaml         # Precise entity definitions (machine-readable)
+├── catalog.yaml          # Agent lineage tracking (moved from src/agents/, Plan #299)
 ├── GETTING_STARTED.md    # Installation, config, development
 ├── GLOSSARY.md           # Canonical terminology (single source)
 ├── DESIGN_CLARIFICATIONS.md  # Decision rationale archive

@@ -22,7 +22,7 @@ from ..world.actions import parse_intent_from_json, ActionIntent, ActionTypeLite
 from ..world.simulation_engine import SimulationEngine
 from ..world.world import StateSummary, ConfigDict
 from ..world.mint_auction import KernelMintResult
-from ..world.artifacts import create_agent_artifact, create_memory_artifact
+# Plan #299: create_agent_artifact, create_memory_artifact removed (legacy agent creation)
 from ..world.logger import SummaryCollector
 from ..config import get_validated_config
 
@@ -38,17 +38,13 @@ from .agent_loop import AgentLoopManager, AgentLoopConfig
 from .artifact_loop import ArtifactLoopManager  # Plan #255: V4 artifact loops
 from .pool import WorkerPool, PoolConfig
 
-# Plan #299: Legacy agent imports removed - agents are now artifact-based
-# Legacy code paths that used Agent, AgentStateStore, ReflexExecutor, HooksConfig
-# are retained but will not execute since self.agents is always empty.
-# These will be fully removed when src/agents/ is deleted.
+# Plan #299: Legacy agent system removed - agents are now artifact-based
+# All code now uses ArtifactLoopManager for agent execution.
+# Type stubs for backwards compatibility with remaining type annotations:
 if TYPE_CHECKING:
-    from ..agents import Agent
-    from ..agents.loader import AgentConfig
-    from ..agents.agent import ActionResult as AgentActionResult
-    from ..agents.state_store import AgentStateStore
-    from ..agents.reflex import ReflexExecutor
-    from ..agents.hooks import HooksConfig, HookExecutor, HookTiming, HookDefinition, HookResult
+    from typing import Any as Agent  # Stub - legacy Agent class removed
+    from typing import Any as AgentConfig  # Stub - legacy loader removed
+    from typing import Any as AgentActionResult  # Stub - legacy removed
 
 
 def _derive_provider(model: str) -> str:

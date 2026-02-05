@@ -2,7 +2,7 @@
 
 Default agents that ship with the system. These are specific instantiations of the agent architecture.
 
-**Last verified:** 2026-02-04 (Plan #191: action result truncation increase)
+**Last verified:** 2026-02-05 (Plan #299: Legacy agents removed - agents are now artifact-based. See agents.md for current model.)
 
 **Related:** [agent_cognition.md](agent_cognition.md) for architecture, [agents.md](agents.md) for lifecycle
 

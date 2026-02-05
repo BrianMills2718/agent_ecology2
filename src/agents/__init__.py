@@ -1,41 +1,11 @@
-# Agents package
-from .agent import Agent, ActionResult, TokenUsage, WorldState
-from .schema import ACTION_SCHEMA, ActionType, validate_action_json
-from .loader import load_agents, list_agents, AgentConfig, VisibilityConfigDict
-from .memory import AgentMemory, ArtifactMemory, get_memory
-from .models import (
-    Action,
-    ActionField,
-    ActionResponse,
-    InvokeArtifactAction,
-    NoopAction,
-    PolicyDict,
-    ReadArtifactAction,
-    WriteArtifactAction,
-)
+# Agents package - Plan #299: Legacy agent system removed
+#
+# The legacy agent system has been removed. Agents are now artifacts:
+# - has_loop=True artifacts run autonomously via ArtifactLoopManager
+# - has_standing=True artifacts can hold resources
+# - Strategy, state, and loop code are separate artifacts
+#
+# See: config/genesis/agents/alpha_prime/ for the pattern
+# See: docs/catalog.yaml for historical agent lineage
 
-__all__: list[str] = [
-    "Agent",
-    "ActionResult",
-    "ActionType",
-    "TokenUsage",
-    "WorldState",
-    "ACTION_SCHEMA",
-    "validate_action_json",
-    "load_agents",
-    "list_agents",
-    "AgentConfig",
-    "VisibilityConfigDict",
-    "AgentMemory",
-    "ArtifactMemory",
-    "get_memory",
-    # Pydantic models
-    "Action",
-    "ActionField",
-    "ActionResponse",
-    "InvokeArtifactAction",
-    "NoopAction",
-    "PolicyDict",
-    "ReadArtifactAction",
-    "WriteArtifactAction",
-]
+__all__: list[str] = []

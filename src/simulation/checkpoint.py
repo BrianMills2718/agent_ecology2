@@ -12,9 +12,18 @@ from pathlib import Path
 from typing import Any
 
 from ..world import World
-from ..agents import Agent
 
 from .types import CheckpointData, BalanceInfo, AgentCheckpointState
+
+# Plan #299: Legacy Agent class removed. Use protocol for type hints.
+from typing import Protocol
+
+
+class AgentLike(Protocol):
+    """Protocol for agent-like objects (legacy compatibility)."""
+    agent_id: str
+    def export_state(self) -> dict[str, Any]: ...
+    def restore_state(self, state: dict[str, Any]) -> None: ...
 
 # Current checkpoint format version
 CHECKPOINT_VERSION = 2
@@ -22,7 +31,7 @@ CHECKPOINT_VERSION = 2
 
 def save_checkpoint(
     world: World,
-    agents: list[Agent],
+    agents: list[AgentLike],
     cumulative_cost: float,
     config: dict[str, Any],
     reason: str,
@@ -158,7 +167,7 @@ def load_checkpoint(checkpoint_file: str) -> CheckpointData | None:
     return checkpoint
 
 
-def restore_agent_states(agents: list[Agent], checkpoint: CheckpointData) -> None:
+def restore_agent_states(agents: list[AgentLike], checkpoint: CheckpointData) -> None:
     """Restore agent runtime state from checkpoint.
 
     Matches agents by agent_id and restores their behavioral state
