@@ -620,6 +620,13 @@ libraries:
     # Scientific
     - scipy
     - matplotlib
+    - scikit-learn       # ML: vectorization (TF-IDF), clustering, classification
+    - networkx           # Graph analysis: structure, relationships, networks
+    # Text processing
+    - beautifulsoup4     # HTML/XML parsing
+    - lxml               # Fast XML/HTML parser (bs4 backend)
+    - regex              # Enhanced regex beyond stdlib re
+    - tiktoken           # Token counting for LLM context management
     # Crypto
     - cryptography
     # Already in requirements.txt (core deps)
