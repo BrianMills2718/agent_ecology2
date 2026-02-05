@@ -67,17 +67,18 @@ branch protection for doc-only edits).
 | CWD doc | `meta-process/UNDERSTANDING_CWD.md` | Full explanation of the problem |
 | `--status-only` flag | `complete_plan.py` | Plan #240: skip tests during make finish |
 | Worktree CWD block | `warn-worktree-cwd.sh` | **INEFFECTIVE** — checks hook runner's CWD, not Bash tool's CWD (see Incident #4) |
-| **cd worktree block** | `block-cd-worktree.sh` | PreToolUse hook blocks `cd worktrees/...` commands (added after Incident #6) |
+| **cd worktree block** | `block-cd-worktree.sh` | PreToolUse hook blocks `cd worktrees/...` commands (added after Incident #6, **wired into settings.json after Incident #8**) |
 
 ## What Would Actually Fix This
 
-### For Class A (CWD Invalidation) — PARTIALLY FIXED (Incident #6 follow-up):
+### For Class A (CWD Invalidation) — NOW PROPERLY WIRED (Incident #8 fix):
 `warn-worktree-cwd.sh` (Incident #3) was ineffective because hooks can't see
-the Bash tool's CWD. However, **`block-cd-worktree.sh`** was added after
-Incident #6 to inspect the command text for `cd worktrees/...` patterns.
+the Bash tool's CWD. `block-cd-worktree.sh` was created after Incident #6 to
+inspect command text for `cd worktrees/...` patterns — but was never registered
+in settings.json (discovered in Incident #8). Now wired in.
 
 **Current defenses:**
-- `block-cd-worktree.sh`: PreToolUse hook blocks `cd worktrees/...` commands
+- `block-cd-worktree.sh`: PreToolUse hook blocks `cd worktrees/...` commands (**NOW REGISTERED** in settings.json as of Incident #8)
 - CLAUDE.md: Clarified to "NEVER cd into a worktree, period. Not even with &&."
 
 **Remaining gap:** If a session starts with CWD already inside a worktree
@@ -352,6 +353,49 @@ takes effect and persists across Bash tool invocations.
 **Follow-up:**
 - Recorded in CWD_INCIDENT_LOG.md (this entry)
 - The pattern `cd <absolute-path-to-worktree> && command` is just as dangerous as `cd worktrees/X && command` — the absolute path doesn't prevent CWD persistence
+
+### Incident #8 - 2026-02-05
+
+**Session:** Fixing mypy type errors (trivial-mypy-fixes branch, PR #1046)
+**Class:** A (CWD invalidation)
+**Trigger:** `echo "yes" | make finish BRANCH=trivial-mypy-fixes PR=1046`
+**Symptoms:**
+- `make finish` output started with `pwd: error retrieving current directory`
+- PR merged successfully, worktree deleted, claim released
+- ALL subsequent Bash commands failed with exit code 1, no output
+- Even `/bin/echo "test"` failed — shell completely broken
+- Non-Bash tools (Read, Glob, Edit) continued working fine
+
+**Analysis:**
+
+**Direct cause:** Session ran `cd worktrees/trivial-mypy-fixes && python -m pytest tests/ -x -q --tb=short` to run tests. This changed the Bash tool's persistent CWD to the worktree. When `make finish` deleted the worktree, the CWD became invalid.
+
+**Defense failure — `block-cd-worktree.sh` was NEVER REGISTERED in settings.json.**
+The hook file exists at `.claude/hooks/block-cd-worktree.sh` but was never added to
+`.claude/settings.json` under `PreToolUse > Bash`. The Bash hooks only included:
+`check-cwd-valid.sh`, `block-worktree-remove.sh`, `protect-uncommitted.sh`, and
+`enforce-make-merge.sh`. The cd-blocking hook was created after Incident #6 but
+the settings.json was never updated to wire it in.
+
+**Fix applied:** Added `block-cd-worktree.sh` to `.claude/settings.json` Bash
+PreToolUse hooks (placed second, after check-cwd-valid.sh).
+
+**Evidence the cd happened:** After the cd, relative paths like `python -m mypy worktrees/trivial-mypy-fixes/src/` failed with "No such file or directory" (because CWD was already inside the worktree, making the relative path wrong). Session switched to absolute paths which worked until worktree deletion.
+
+**Correct alternatives that should have been used:**
+- `PYTHONPATH=worktrees/trivial-mypy-fixes python -m pytest tests/unit/ -q`
+- `python -m pytest worktrees/trivial-mypy-fixes/tests/unit/ -q` (but test discovery may differ)
+- `make test` from main
+
+**Resolution:** User refreshed the session shell.
+
+**Follow-up:**
+- Investigate why `block-cd-worktree.sh` hook didn't fire for `cd worktrees/X && cmd` pattern
+- This is the EIGHTH Class A incident; the fundamental problem persists:
+  Bash tool CWD is invisible to hooks and cannot be reset from within a session
+- Consider: should `make finish` attempt to detect if ANY process has CWD in the
+  worktree before deletion? `safe_worktree_remove.py` has this check but it may
+  only check child processes, not the CC parent shell
 
 ---
 
