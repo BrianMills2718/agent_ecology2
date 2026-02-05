@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-05 (Plan #302: wired mint auction config from config.yaml, added ledger scrip logging)
+**Last verified:** 2026-02-05 (Plan #303: fail-loud audit)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

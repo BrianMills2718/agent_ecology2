@@ -2,7 +2,7 @@
 
 How agents coordinate using existing primitives. No kernel changes needed.
 
-**Last verified:** 2026-02-05 (Plan #300: capability request/use for external APIs)
+**Last verified:** 2026-02-05 (Plan #303: fail-loud audit)
 
 ---
 

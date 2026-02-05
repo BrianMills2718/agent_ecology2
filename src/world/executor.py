@@ -59,6 +59,8 @@ from .interface_validation import (
 # Import from invoke_handler module (Plan #181: Split Large Files)
 from .invoke_handler import create_invoke_function
 
+logger = logging.getLogger(__name__)
+
 
 class PaymentResult(TypedDict):
     """Result from a pay() call within artifact execution."""
@@ -191,6 +193,11 @@ def create_syscall_llm(
 
             # Get actual cost from usage
             usage = provider.last_usage
+            if "cost" not in usage:
+                logger.warning(
+                    "LLM usage missing 'cost' field, falling back to estimate: %s",
+                    estimated_cost,
+                )
             actual_cost = usage.get("cost", estimated_cost)
 
             # Deduct from caller's budget
@@ -1205,7 +1212,7 @@ class SafeExecutor:
         # This is the Universal Bridge Pattern - kernel provides syscall, artifact wraps it
         if world is not None and artifact_id and artifact_store:
             artifact = artifact_store.get(artifact_id)
-            if artifact and "can_call_llm" in getattr(artifact, 'capabilities', []):
+            if artifact and "can_call_llm" in artifact.capabilities:
                 # Caller pays - use caller_id (the one who invoked this artifact)
                 paying_principal = caller_id if caller_id else artifact_id
                 controlled_globals["_syscall_llm"] = create_syscall_llm(world, paying_principal)

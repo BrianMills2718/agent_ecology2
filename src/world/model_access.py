@@ -117,11 +117,10 @@ class ModelAccessManager:
         Returns:
             True if agent has sufficient quota
         """
-        try:
-            quota = self.get_quota(agent_id, model)
-            return quota >= tokens
-        except KeyError:
+        if agent_id not in self._quotas or model not in self._models:
             return False
+        quota = self.get_quota(agent_id, model)
+        return quota >= tokens
 
     def consume(self, agent_id: str, model: str, tokens: int) -> None:
         """Record usage against agent's quota.
@@ -168,10 +167,9 @@ class ModelAccessManager:
             True if transfer succeeded, False if insufficient quota
         """
         # Check source has enough
-        try:
-            source_quota = self.get_quota(from_agent, model)
-        except KeyError:
+        if from_agent not in self._quotas or model not in self._models:
             return False
+        source_quota = self.get_quota(from_agent, model)
 
         if source_quota < amount:
             return False

@@ -146,8 +146,8 @@ def check_permission_via_contract(
             reason=f"Contract permission check depth exceeded (depth={contract_depth}, limit={max_contract_depth})"
         )
 
-    # Get contract ID from artifact (default to freeware)
-    contract_id = getattr(artifact, "access_contract_id", "kernel_contract_freeware")
+    # Get contract ID from artifact
+    contract_id = artifact.access_contract_id
     contract, is_fallback, original_contract_id = get_contract_with_fallback_info(
         contract_id, contract_cache, dangling_count_tracker
     )
@@ -315,9 +315,8 @@ def check_permission(
     Returns:
         Tuple of (allowed, reason)
     """
-    # Check if artifact has an explicit access_contract_id
-    has_contract_attr = hasattr(artifact, "access_contract_id")
-    contract_id = getattr(artifact, "access_contract_id", None) if has_contract_attr else None
+    # Get artifact's access_contract_id (always present on Artifact dataclass)
+    contract_id = artifact.access_contract_id
 
     # Case 1: Artifact has a non-null contract - use contract-based checking
     if use_contracts and contract_id is not None:
@@ -337,14 +336,14 @@ def check_permission(
 
     # Case 2: Artifact has NULL contract (ADR-0019)
     # Use configurable default behavior
-    if has_contract_attr and contract_id is None:
+    if contract_id is None:
         default_behavior = config_get("contracts.default_when_null")
         if default_behavior is None:
             default_behavior = "creator_only"  # ADR-0019 default
 
         if default_behavior == "creator_only":
             # Only creator has full access, all others blocked
-            owner = getattr(artifact, "created_by", None)
+            owner = artifact.created_by
             if caller == owner:
                 return (True, "null contract: creator access")
             return (False, f"null contract: only creator '{owner}' can access (caller: {caller})")

@@ -2,7 +2,7 @@
 
 This document explains the security architecture of Agent Ecology, including design decisions, risk acknowledgments, and deployment expectations.
 
-**Last verified:** 2026-02-05 (Plan #301: dead code cleanup)
+**Last verified:** 2026-02-05 (Plan #303: fail-loud audit)
 
 ## Overview
 
