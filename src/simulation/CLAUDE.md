@@ -1,48 +1,35 @@
 # Simulation Module
 
-Orchestrates autonomous agent loops and manages persistence.
+Orchestrates autonomous artifact loops and manages persistence.
 
 ## Module Responsibilities
 
 | File | Responsibility |
 |------|----------------|
 | `__init__.py` | Module exports (SimulationRunner, checkpoint, types, agent loop) |
-| `runner.py` | Main SimulationRunner, autonomous agent loops |
+| `runner.py` | Main SimulationRunner, artifact loop orchestration |
 | `checkpoint.py` | Save/restore world state to JSON |
 | `types.py` | Type definitions for simulation |
 | `agent_loop.py` | Individual agent loop management |
 | `artifact_loop.py` | V4 artifact loop management (Plan #255) |
-| `pool.py` | WorkerPool for parallel agent turn execution via ThreadPoolExecutor |
 | `supervisor.py` | AgentSupervisor: auto-restart crashed agents with backoff and death classification |
-| `worker.py` | Worker functions for isolated agent turn execution with resource measurement |
 
 ## Execution Model (Plan #102 - Autonomous Only)
 
 **Time-based autonomous execution:**
 
-Agents run independently in their own loops, resource-gated by RateTracker.
-Each agent loop:
+Artifact-based agents run independently in their own loops, resource-gated by RateTracker.
+ArtifactLoopManager discovers has_loop artifacts and creates loops for each.
+
+Each artifact loop:
 1. Check resource availability (rate limits)
 2. Get world state snapshot
-3. Decide action (LLM call)
-4. Execute action
-5. Sleep/backoff as needed
-6. Repeat
-
-```python
-# Autonomous mode: Each agent runs via AgentLoop
-from src.world.agent_loop import AgentLoopManager
-
-manager = AgentLoopManager(rate_tracker)
-for agent in agents:
-    manager.create_loop(agent_id, decide_fn, execute_fn)
-
-manager.start_all()  # Agents run continuously
-# RateTracker handles rate limiting via rolling windows
-```
+3. Invoke artifact's run() method
+4. Sleep/backoff as needed
+5. Repeat
 
 **Key characteristics:**
-- Agents run independently (no synchronization)
+- Agents are artifact-based (3-artifact clusters: strategy + state + loop)
 - `RateTracker` for rolling-window rate limiting
 - Resource exhaustion pauses agent (doesn't crash)
 - Time-based auctions via periodic mint update

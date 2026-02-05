@@ -78,28 +78,11 @@ def get_error_message(error_type: str, **kwargs: Any) -> str:
         return template
 
 
-class PrincipalConfig(TypedDict, total=False):
-    """Configuration for a principal."""
-    id: str
-    starting_scrip: int
-    starting_credits: int  # Legacy name
-
-
-class LoggingConfig(TypedDict, total=False):
-    """Logging configuration."""
-    output_file: str
-    logs_dir: str
-
-
 class CostsConfig(TypedDict, total=False):
     """Costs configuration (token costs only)."""
     per_1k_input_tokens: int
     per_1k_output_tokens: int
 
-
-class WorldConfig(TypedDict, total=False):
-    """World configuration section (minimal - continuous execution mode only)."""
-    pass
 
 
 # Note: ConfigDict is an alias for dict[str, Any] because the actual config

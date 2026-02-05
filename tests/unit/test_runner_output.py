@@ -49,9 +49,6 @@ class TestRunnerOutputMode:
         # Runtime timeout
         runner.max_runtime_seconds = 3600
 
-        # Mock agents
-        runner.agents = [MagicMock(agent_id="alice"), MagicMock(agent_id="bob")]
-
         return runner
 
     def test_autonomous_output_no_ticks(self) -> None:
@@ -70,7 +67,7 @@ class TestRunnerOutputMode:
 
         # Should show autonomous mode
         assert "Autonomous" in output
-        assert "agents run independently" in output
+        assert "artifact-based agent loops" in output
 
         # Should NOT show "Max ticks" (tick-based removed in Plan #102)
         assert "Max ticks" not in output
@@ -108,9 +105,6 @@ class TestRunnerOutputTerminology:
 
         # Runtime timeout
         runner.max_runtime_seconds = 3600
-
-        # Mock agents
-        runner.agents = [MagicMock(agent_id="alice")]
 
         return runner
 
@@ -177,7 +171,6 @@ class TestRunnerOutputTerminology:
         runner.engine = MagicMock()
         runner.engine.max_api_cost = 0
         runner.max_runtime_seconds = 3600
-        runner.agents = []
 
         # Capture stdout
         captured = io.StringIO()

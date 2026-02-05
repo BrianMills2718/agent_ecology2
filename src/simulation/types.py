@@ -2,12 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, TypedDict, TYPE_CHECKING
-
-# Plan #299: Legacy agent system removed - agents are now artifact-based
-if TYPE_CHECKING:
-    from typing import Any as Agent  # Stub - legacy Agent class removed
-    from typing import Any as AgentActionResult  # Stub - legacy removed
+from typing import Any, TypedDict
 
 
 @dataclass
@@ -129,26 +124,3 @@ class CheckpointData(TypedDict, total=False):
 
     # Optional timestamp
     timestamp: str
-
-
-class ActionProposal(TypedDict):
-    """Structure for an agent's action proposal during two-phase commit."""
-
-    agent: "Agent"
-    proposal: "AgentActionResult"
-    thinking_cost: int
-    api_cost: float
-
-
-class ThinkingResult(TypedDict, total=False):
-    """Result from parallel agent thinking."""
-
-    agent: "Agent"
-    proposal: "AgentActionResult"
-    thinking_cost: int
-    api_cost: float
-    input_tokens: int
-    output_tokens: int
-    skipped: bool
-    skip_reason: str
-    error: str
