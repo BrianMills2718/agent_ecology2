@@ -145,22 +145,25 @@ class KernelQueryHandler:
         artifact_type = params.get("type")
         executable = params.get("executable")
         name_pattern = params.get("name_pattern")
-        limit = params.get("limit", 50)
-        offset = params.get("offset", 0)
+        limit_raw = params.get("limit", 50)
+        offset_raw = params.get("offset", 0)
 
         # Validate param types
-        if limit is not None and not isinstance(limit, int):
+        if limit_raw is not None and not isinstance(limit_raw, int):
             return {
                 "success": False,
-                "error": f"Param 'limit' must be an integer, got '{type(limit).__name__}'",
+                "error": f"Param 'limit' must be an integer, got '{type(limit_raw).__name__}'",
                 "error_code": "invalid_param_type",
             }
-        if offset is not None and not isinstance(offset, int):
+        if offset_raw is not None and not isinstance(offset_raw, int):
             return {
                 "success": False,
-                "error": f"Param 'offset' must be an integer, got '{type(offset).__name__}'",
+                "error": f"Param 'offset' must be an integer, got '{type(offset_raw).__name__}'",
                 "error_code": "invalid_param_type",
             }
+        # After validation, we know these are ints
+        limit: int = limit_raw if limit_raw is not None else 50
+        offset: int = offset_raw if offset_raw is not None else 0
 
         # Build filtered results
         results = []
@@ -299,10 +302,10 @@ class KernelQueryHandler:
         # Get all resources for this principal
         resources: dict[str, Any] = {}
 
-        # Check disk usage via rights registry if available
-        if self._world.rights_registry:
-            disk_used = self._world.rights_registry.get_disk_used(principal_id)
-            disk_quota = self._world.rights_registry.get_disk_quota(principal_id)
+        # Check disk usage via resource manager if available
+        if self._world.resource_manager:
+            disk_used = self._world.resource_manager.get_balance(principal_id, "disk")
+            disk_quota = self._world.resource_manager.get_quota(principal_id, "disk")
             resources["disk"] = {"used": disk_used, "quota": disk_quota}
 
         # Filter to specific resource if requested
@@ -335,9 +338,9 @@ class KernelQueryHandler:
 
         quotas: dict[str, Any] = {}
 
-        if self._world.rights_registry:
-            disk_quota = self._world.rights_registry.get_disk_quota(principal_id)
-            disk_used = self._world.rights_registry.get_disk_used(principal_id)
+        if self._world.resource_manager:
+            disk_quota = self._world.resource_manager.get_quota(principal_id, "disk")
+            disk_used = self._world.resource_manager.get_balance(principal_id, "disk")
             quotas["disk"] = {
                 "quota": disk_quota,
                 "used": disk_used,
@@ -418,9 +421,9 @@ class KernelQueryHandler:
             }
 
         if artifact_id:
-            records = self._world.invocation_registry.get_by_artifact(artifact_id, limit)
+            records = self._world.invocation_registry.get_all_invocations(artifact_id=artifact_id, limit=limit)
         elif invoker_id:
-            records = self._world.invocation_registry.get_by_invoker(invoker_id, limit)
+            records = self._world.invocation_registry.get_all_invocations(invoker_id=invoker_id, limit=limit)
         else:
             # Return summary stats
             records = []

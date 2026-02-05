@@ -102,12 +102,11 @@ class WorldConfig(TypedDict, total=False):
     pass
 
 
-class ConfigDict(TypedDict, total=False):
-    """Full configuration dictionary."""
-    world: WorldConfig
-    costs: CostsConfig
-    logging: LoggingConfig
-    principals: list[PrincipalConfig]
+# Note: ConfigDict is an alias for dict[str, Any] because the actual config
+# contains many more keys than a narrow TypedDict can express (resources,
+# artifacts, genesis, external_capabilities, etc.). Using a narrow TypedDict
+# would require constant updating as config keys are added.
+ConfigDict = dict[str, Any]
 
 
 class BalanceInfo(TypedDict):
@@ -131,15 +130,16 @@ class MintSubmissionStatus(TypedDict, total=False):
     score: int | None
 
 
-class StateSummary(TypedDict):
+class StateSummary(TypedDict, total=False):
     """World state summary."""
     event_number: int
-    balances: dict[str, BalanceInfo]
+    balances: dict[str, Any]  # Uses ledger.BalanceInfo structure
     artifacts: list[dict[str, Any]]
     quotas: dict[str, QuotaInfo]
     mint_submissions: dict[str, MintSubmissionStatus]
     recent_events: list[dict[str, Any]]
     resource_metrics: dict[str, dict[str, Any]]  # Plan #93: Agent resource visibility
+    time_context: dict[str, Any]  # Plan #157: Simulation time awareness
 
 
 class World:
@@ -453,9 +453,9 @@ class World:
             artifact_id = submission.get("artifact_id", "")
             if artifact_id:
                 mint_status[artifact_id] = {
-                    "status": submission.get("status", "unknown"),
-                    "submitter": submission.get("submitter", "unknown"),
-                    "score": submission.get("score") if submission.get("status") == "scored" else None
+                    "status": str(submission.get("status", "unknown")),
+                    "submitter": str(submission.get("submitter", "unknown")),
+                    "score": int(submission["score"]) if submission.get("status") == "scored" and submission.get("score") is not None else None
                 }
 
         # Get resource metrics for all agents (Plan #93)
@@ -1004,7 +1004,7 @@ class World:
                 principal_id=invocation["owner"],  # Trigger owner calls their callback
                 artifact_id=invocation["callback_artifact"],
                 method=invocation["callback_method"],
-                args={"event": invocation["event"]},  # Pass event as arg
+                args=[invocation["event"]],  # Pass event as first arg
             )
 
             # Execute the invoke (Plan #181: delegates to ActionExecutor)

@@ -209,6 +209,11 @@ class AgentLoop:
         """Number of consecutive errors encountered."""
         return self._consecutive_errors
 
+    @consecutive_errors.setter
+    def consecutive_errors(self, value: int) -> None:
+        """Set consecutive error count (used by supervisor on restart)."""
+        self._consecutive_errors = value
+
     @property
     def iteration_count(self) -> int:
         """Total number of iterations executed."""
@@ -233,11 +238,6 @@ class AgentLoop:
     def voluntary_shutdown(self, value: bool) -> None:
         """Set voluntary shutdown flag."""
         self._voluntary_shutdown = value
-
-    @consecutive_errors.setter
-    def consecutive_errors(self, value: int) -> None:
-        """Set consecutive error count (used by supervisor on restart)."""
-        self._consecutive_errors = value
 
     async def start(self) -> None:
         """Start the autonomous loop.
