@@ -61,6 +61,11 @@ class MintAuction:
         artifacts: ArtifactStore,
         logger: EventLogger,
         get_event_number: Callable[[], int],
+        *,
+        first_auction_delay_seconds: float = 30.0,
+        bidding_window_seconds: float = 60.0,
+        period_seconds: float = 120.0,
+        mint_ratio: int = 10,
     ) -> None:
         """Initialize MintAuction.
 
@@ -69,6 +74,10 @@ class MintAuction:
             artifacts: ArtifactStore for artifact validation
             logger: EventLogger for logging events
             get_event_number: Callable that returns current event number
+            first_auction_delay_seconds: Delay before first auction starts
+            bidding_window_seconds: Duration of bidding phase
+            period_seconds: Seconds between auction starts
+            mint_ratio: Divisor for score-to-scrip (score / ratio = scrip)
         """
         self._ledger = ledger
         self._artifacts = artifacts
@@ -87,10 +96,11 @@ class MintAuction:
         # Time-based auction state (Plan #254: moved from GenesisMint)
         self._start_time = time.time()
         self._auction_start_time: float | None = None
-        # Config defaults - could be made configurable
-        self._first_auction_delay_seconds = 30.0
-        self._bidding_window_seconds = 60.0
-        self._period_seconds = 120.0
+        # TD-012: Read from config via world.py
+        self._first_auction_delay_seconds = first_auction_delay_seconds
+        self._bidding_window_seconds = bidding_window_seconds
+        self._period_seconds = period_seconds
+        self._mint_ratio = mint_ratio
 
     def set_cost_callbacks(
         self,
@@ -358,8 +368,7 @@ class MintAuction:
             # Testing mode - use provided score
             score = _mock_score
             score_reason = "Mock score for testing"
-            mint_ratio = 10  # Default, could come from config
-            scrip_minted = score // mint_ratio
+            scrip_minted = score // self._mint_ratio
             if scrip_minted > 0:
                 self.mint_scrip(winner_id, scrip_minted)
         else:
@@ -385,8 +394,7 @@ class MintAuction:
                     if score_result["success"]:
                         score = score_result["score"]
                         score_reason = score_result.get("reason")
-                        mint_ratio = 10  # Could come from config
-                        scrip_minted = score // mint_ratio
+                        scrip_minted = score // self._mint_ratio
                         if scrip_minted > 0:
                             self.mint_scrip(winner_id, scrip_minted)
                     else:

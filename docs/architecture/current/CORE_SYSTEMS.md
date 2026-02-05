@@ -196,8 +196,7 @@ State persisted to {name}_state artifact
 |------|----------------|
 | `src/simulation/runner.py` | SimulationRunner orchestrator |
 | `src/simulation/artifact_loop.py` | ArtifactLoopManager for has_loop artifacts |
-| `src/simulation/agent_loop.py` | AgentLoopManager (legacy, unused) |
-| `src/simulation/pool.py` | Thread pool for parallel execution |
+| `src/simulation/agent_loop.py` | AgentLoopManager for individual agent loops |
 | `src/simulation/supervisor.py` | Crash recovery, backoff |
 
 **Mode:** Autonomous only (Plan #102 removed tick-based mode)

@@ -2,7 +2,7 @@
 
 Artifacts that exist at world initialization for cold-start convenience.
 
-**Last verified:** 2026-02-01 (Plan #254: Genesis module removed)
+**Last verified:** 2026-02-05 (Plan #302: mint auction params now read from config)
 
 ---
 

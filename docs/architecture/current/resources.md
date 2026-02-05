@@ -350,12 +350,7 @@ See `docs/architecture/current/configuration.md` for rate limiting config option
 - Replenishes continuously over time
 - ~90% accurate (±10% for Python runtime overhead)
 
-**Enforcement (worker pool mode):**
-```python
-# In worker.py
-if cpu_time_used > cpu_quota:
-    return {"success": False, "error": "cpu_quota_exceeded"}
-```
+**Enforcement:** Via RateTracker rolling window. Agents are blocked until window has capacity.
 
 ### Memory Bytes
 
@@ -372,12 +367,7 @@ if cpu_time_used > cpu_quota:
 - Replenishes continuously over time
 - ~90% accurate (±10% for shared Python runtime)
 
-**Enforcement (worker pool mode):**
-```python
-# In worker.py
-if memory_used > memory_quota:
-    return {"success": False, "error": "memory_quota_exceeded"}
-```
+**Enforcement:** Via RateTracker rolling window. Agents are blocked until window has capacity.
 
 ### Resource Measurement Accuracy
 

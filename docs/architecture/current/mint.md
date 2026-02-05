@@ -2,7 +2,7 @@
 
 How artifact scoring and scrip minting works today.
 
-**Last verified:** 2026-02-01 (Plan #254: Mint is now a kernel primitive)
+**Last verified:** 2026-02-05 (Plan #302: mint_ratio and auction timing now from config)
 
 **Source:** `src/world/mint_auction.py` (MintAuction), `src/world/mint_scorer.py`
 

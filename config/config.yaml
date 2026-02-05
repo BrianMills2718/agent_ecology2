@@ -150,7 +150,7 @@ genesis:
     methods:
       status:
         cost: 0                 # free
-        description: "Check auction status (phase, tick, bid count). Args: []"
+        description: "Check auction status (phase, event_number, bid count). Args: []"
       bid:
         cost: 0                 # free - bidding is free
         description: "Submit sealed bid during bidding window. Args: [artifact_id, amount]"
@@ -212,7 +212,7 @@ genesis:
     methods:
       issue:
         cost: 1                 # cost 1
-        description: "Issue a debt. Invoker becomes debtor. Args: [creditor_id, principal, interest_rate, due_tick]"
+        description: "Issue a debt. Invoker becomes debtor. Args: [creditor_id, principal, interest_rate, due_event]"
       accept:
         cost: 0                 # free - creditor accepts
         description: "Accept a pending debt (creditor must call). Args: [debt_id]"
@@ -221,7 +221,7 @@ genesis:
         description: "Repay debt (debtor pays creditor). Args: [debt_id, amount]"
       collect:
         cost: 0                 # free - attempt collection
-        description: "Collect overdue debt (creditor only, after due_tick). Args: [debt_id]"
+        description: "Collect overdue debt (creditor only, after due_event). Args: [debt_id]"
       transfer_creditor:
         cost: 1                 # cost 1
         description: "Transfer creditor rights to another principal (sell the debt). Args: [debt_id, new_creditor_id]"
@@ -568,7 +568,7 @@ budget:
   max_api_cost: 0.50            # $ (0 = unlimited). Default $0.50 for safety.
   max_runtime_seconds: 3600     # Hard timeout in seconds (0 = unlimited). Default 1 hour.
   checkpoint_file: "checkpoint.json"
-  checkpoint_interval: 10       # Save checkpoint every N ticks (0 = disable)
+  checkpoint_interval: 10       # Save checkpoint every N events (0 = disable)
   checkpoint_on_end: true       # Save checkpoint when simulation ends normally
 
 # -----------------------------------------------------------------------------
