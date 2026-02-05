@@ -212,6 +212,9 @@ class World:
         else:
             self.logger = EventLogger(output_file=config["logging"]["output_file"])
 
+        # TD-011: Wire event logger to ledger for scrip mutation logging
+        self.ledger.set_logger(self.logger)
+
         # Unified resource manager (Plan #95)
         self.resource_manager = ResourceManager()
 
@@ -242,11 +245,18 @@ class World:
         self.capability_manager = CapabilityManager(self, external_caps_config)
 
         # Initialize MintAuction (extracted from World - TD-001)
+        # TD-012: Read auction params from config instead of hardcoding
+        mint_config = config.get("genesis", {}).get("mint", {})
+        auction_config = mint_config.get("auction", {})
         self.mint_auction = MintAuction(
             ledger=self.ledger,
             artifacts=self.artifacts,
             logger=self.logger,
             get_event_number=lambda: self.event_number,
+            first_auction_delay_seconds=auction_config.get("first_auction_delay_seconds", 30.0),
+            bidding_window_seconds=auction_config.get("bidding_window_seconds", 60.0),
+            period_seconds=auction_config.get("period_seconds", 120.0),
+            mint_ratio=mint_config.get("mint_ratio", 10),
         )
 
         # Initialize MintTaskManager (Plan #269)

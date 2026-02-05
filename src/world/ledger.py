@@ -41,6 +41,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .id_registry import IDRegistry
+    from .logger import EventLogger
 
 
 def _to_decimal(value: float) -> Decimal:
@@ -122,6 +123,17 @@ class Ledger:
         # Async locks for thread-safe concurrent access
         self._scrip_lock = asyncio.Lock()
         self._resource_lock = asyncio.Lock()
+        # TD-011: Optional event logger for observability
+        self._logger: "EventLogger | None" = None
+
+    def set_logger(self, logger: "EventLogger") -> None:
+        """Set the event logger for scrip mutation logging (TD-011)."""
+        self._logger = logger
+
+    def _log_scrip_event(self, event_type: str, data: dict[str, Any]) -> None:
+        """Log a scrip mutation event if logger is available."""
+        if self._logger is not None:
+            self._logger.log(event_type, data)
 
     @classmethod
     def from_config(
@@ -327,6 +339,11 @@ class Ledger:
         if not self.can_afford_scrip(principal_id, amount):
             return False
         self.scrip[principal_id] -= amount
+        self._log_scrip_event("scrip_deducted", {
+            "principal_id": principal_id,
+            "amount": amount,
+            "new_balance": self.scrip[principal_id],
+        })
         return True
 
     def credit_scrip(self, principal_id: str, amount: int) -> None:
@@ -334,6 +351,11 @@ class Ledger:
         if principal_id not in self.scrip:
             self.scrip[principal_id] = 0
         self.scrip[principal_id] += amount
+        self._log_scrip_event("scrip_credited", {
+            "principal_id": principal_id,
+            "amount": amount,
+            "new_balance": self.scrip[principal_id],
+        })
 
     def transfer_scrip(self, from_id: str, to_id: str, amount: int) -> bool:
         """Transfer scrip between principals. Returns False if insufficient funds.
@@ -350,6 +372,13 @@ class Ledger:
             self.scrip[to_id] = 0
         self.scrip[from_id] -= amount
         self.scrip[to_id] += amount
+        self._log_scrip_event("scrip_transferred", {
+            "from_id": from_id,
+            "to_id": to_id,
+            "amount": amount,
+            "from_balance": self.scrip[from_id],
+            "to_balance": self.scrip[to_id],
+        })
         return True
 
     def principal_exists(self, principal_id: str) -> bool:

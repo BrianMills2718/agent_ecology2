@@ -2,7 +2,7 @@
 
 Practical guide to running and observing agent ecology simulations.
 
-**Last verified:** 2026-02-05 (Plan #301: dead code cleanup)
+**Last verified:** 2026-02-05 (Plan #302: dashboard assess_health fix)
 
 ---
 

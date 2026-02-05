@@ -101,6 +101,7 @@ Master index of all gaps and their implementation plans.
 | 299 | [Eliminate Legacy Agent System - Agents as Pure Artifacts](299_eliminate_legacy_agents.md) | High | ✅ Complete | - |
 | 300 | [Plan: External Capability Requests + RAG Pattern](300_external_capabilities.md) | Medium | ✅ Complete | - |
 | 301 | [Dead Code & Legacy Cleanup (Post Plan #299)](301_dead_code_cleanup.md) | Medium | ✅ Complete | - |
+| 302 | [Tech Debt Quick Wins (TD-011 through TD-014)](302_tech_debt_quick_wins.md) | Medium | ✅ Complete | - |
 ---
 
 ## TDD Workflow

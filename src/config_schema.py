@@ -333,7 +333,7 @@ class MintMethodsConfig(StrictModel):
     status: MethodConfig = Field(
         default_factory=lambda: MethodConfig(
             cost=0,
-            description="Check auction status (phase, tick, bid count). Args: []"
+            description="Check auction status (phase, event_number, bid count). Args: []"
         )
     )
     bid: MethodConfig = Field(
@@ -548,7 +548,7 @@ class DebtContractMethodsConfig(StrictModel):
     issue: MethodConfig = Field(
         default_factory=lambda: MethodConfig(
             cost=1,
-            description="Issue a debt. Invoker becomes debtor. Args: [creditor_id, principal, interest_rate, due_tick]"
+            description="Issue a debt. Invoker becomes debtor. Args: [creditor_id, principal, interest_rate, due_event]"
         )
     )
     accept: MethodConfig = Field(
@@ -566,7 +566,7 @@ class DebtContractMethodsConfig(StrictModel):
     collect: MethodConfig = Field(
         default_factory=lambda: MethodConfig(
             cost=0,
-            description="Collect overdue debt (creditor only, after due_tick). Args: [debt_id]"
+            description="Collect overdue debt (creditor only, after due_event). Args: [debt_id]"
         )
     )
     transfer_creditor: MethodConfig = Field(

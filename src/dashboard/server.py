@@ -181,7 +181,9 @@ class DashboardApp:
             # Broadcast KPI update (Plan #142)
             kpis = calculate_kpis(self.parser.state)
             emergence = calculate_emergence_metrics(self.parser.state)
-            health = assess_health(self.parser.state, self.thresholds)
+            total_agents = len(self.parser.state.agents)
+            health = assess_health(kpis, self.prev_kpis, self.thresholds, total_agents=max(1, total_agents))
+            self.prev_kpis = kpis
             await self.connection_manager.broadcast({
                 "type": "kpi_update",
                 "data": {
