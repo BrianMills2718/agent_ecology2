@@ -1,6 +1,6 @@
 # Plan 290: Fix Workflow Noop Break Issue
 
-## Status: Complete
+**Status:** ✅ Complete
 
 ## Problem
 

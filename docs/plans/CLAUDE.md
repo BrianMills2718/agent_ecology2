@@ -64,7 +64,7 @@ Master index of all gaps and their implementation plans.
 | 254 | [Remove Genesis Artifacts, Promote Transfer to Kernel](254_remove_genesis_artifacts.md) | High | ✅ Complete | - |
 | 255 | [Kernel LLM Gateway](255_kernel_llm_gateway.md) | Medium | ✅ Complete | - |
 | 256 | [Alpha Prime Bootstrap](256_alpha_prime_bootstrap.md) | Medium | ✅ Complete | - |
-| 257 | [Plan 257: Remove Genesis Artifact References from _3 Agents](257_remove_genesis_agent_refs.md) | Medium | ❓ | - |
+| 257 | [Plan 257: Remove Genesis Artifact References from _3 Agents](257_remove_genesis_agent_refs.md) | Medium | ✅ Complete | - |
 | 258 | [Plan 258: Improve Mint Prompting](258_mint_prompting.md) | Medium | ❓ | - |
 | 259 | [Plan 259: Add submit_to_mint Action Type](259_submit_to_mint_action.md) | Medium | ❓ | - |
 | 260 | [Improve Mint Prompts](260_improve_mint_prompts.md) | Medium | ❓ | - |
@@ -82,14 +82,14 @@ Master index of all gaps and their implementation plans.
 | 280 | [Workflow Single Step per Iteration](280_workflow_single_step.md) | Medium | ❓ | - |
 | 281 | [Fix Workflow Usage Tracking for Resource Accounting](281_workflow_usage.md) | Medium | ❓ | - |
 | 282 | [Ensure Resource Scarcity System is Fully Operational](282_resource_allocation.md) | Medium | ❓ | - |
-| 283 | [Document Core Systems for Codebase Understanding](283_core_systems_doc.md) | Medium | ❓ | - |
+| 283 | [Document Core Systems for Codebase Understanding](283_core_systems_doc.md) | Medium | ✅ Complete | - |
 | 284 | [Implement Unified Documentation Graph](284_unified_doc_graph.md) | Medium | ✅ Complete | - |
 | 285 | [Documentation Graph Tooling](285_doc_graph_tooling.md) | Medium | ✅ Complete | - |
 | 286 | [Interactive Documentation Graph Visualization](286_interactive_doc_graph.md) | Medium | ✅ Complete | - |
 | 287 | [Complete Documentation Graph Visualization](287_complete_doc_graph.md) | Medium | ✅ Complete | - |
 | 288 | [Context Injection for Edit Operations](288_context_injection.md) | Medium | ✅ Complete | - |
 | 289 | [Plan 289: Complete Context Provision System](289_complete_context_provision.md) | High | ✅ Complete | - |
-| 290 | [Plan 290: Fix Workflow Noop Break Issue](290_fix_noop_workflow_break.md) | Medium | ❓ | - |
+| 290 | [Plan 290: Fix Workflow Noop Break Issue](290_fix_noop_workflow_break.md) | Medium | ✅ Complete | - |
 | 291 | [Plan 291: Systematic Documentation Linking](291_systematic_doc_linking.md) | High | ✅ Complete | - |
 | 292 | [Governance Enforcement](292_governance_enforcement.md) | P2 - Process improvement | ✅ Complete | - |
 | 293 | [Governance Expansion](293_governance_expansion.md) | P2 - Process improvement | ✅ Complete | - |

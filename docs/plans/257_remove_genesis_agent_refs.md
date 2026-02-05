@@ -1,6 +1,6 @@
 # Plan 257: Remove Genesis Artifact References from _3 Agents
 
-## Status: Complete
+**Status:** ✅ Complete
 
 ## Problem
 
