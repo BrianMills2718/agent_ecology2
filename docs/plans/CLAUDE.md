@@ -94,6 +94,8 @@ Master index of all gaps and their implementation plans.
 | 292 | [Governance Enforcement](292_governance_enforcement.md) | P2 - Process improvement | ✅ Complete | - |
 | 293 | [Governance Expansion](293_governance_expansion.md) | P2 - Process improvement | ✅ Complete | - |
 | 294 | [Document Hierarchy and Context Injection Meta-Process](294_document_hierarchy_meta_process.md) | High | ✅ Complete | - |
+| 295 | [Plan 295: Resource-Gating Architecture Refactor](295_resource_gating_architecture.md) | High (architectural alignment) | ✅ Complete | - |
+| 296 | [Plan 296: Implementation Understanding Quiz Meta-Process](296_implementation_quiz_meta_process.md) | High (process improvement) | 📋 Planned | - |
 ---
 
 ## TDD Workflow
