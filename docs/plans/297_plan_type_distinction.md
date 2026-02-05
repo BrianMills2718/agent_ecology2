@@ -1,6 +1,19 @@
 # Plan #297: Plan Type Distinction
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
+
+**Verified:** 2026-02-05T15:52:57Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-02-05T15:52:57Z
+tests:
+  unit: skipped (design plan)
+  e2e_smoke: skipped (design plan)
+  e2e_real: skipped (design plan)
+  doc_coupling: skipped (design plan)
+commit: 97ace33
+```
 **Priority:** Medium
 **Theme:** Meta-Process
 
@@ -28,7 +41,20 @@ Root cause: Same template/workflow for design docs and implementation plans.
 Add `type` field to plan template header:
 
 ```markdown
-**Status:** 📋 Planned
+**Status:** ✅ Complete
+
+**Verified:** 2026-02-05T15:52:57Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-02-05T15:52:57Z
+tests:
+  unit: skipped (design plan)
+  e2e_smoke: skipped (design plan)
+  e2e_real: skipped (design plan)
+  doc_coupling: skipped (design plan)
+commit: 97ace33
+```
 **Type:** design | implementation
 **Priority:** High
 ```
@@ -74,7 +100,20 @@ Update `meta-process/templates/plan.md`:
 ```markdown
 # Plan #N: Title
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete
+
+**Verified:** 2026-02-05T15:52:57Z
+**Verification Evidence:**
+```yaml
+completed_by: scripts/complete_plan.py
+timestamp: 2026-02-05T15:52:57Z
+tests:
+  unit: skipped (design plan)
+  e2e_smoke: skipped (design plan)
+  e2e_real: skipped (design plan)
+  doc_coupling: skipped (design plan)
+commit: 97ace33
+```
 **Type:** implementation  <!-- design | implementation -->
 **Priority:** High
 
