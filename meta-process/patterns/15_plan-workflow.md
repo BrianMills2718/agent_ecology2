@@ -137,6 +137,7 @@ mkdir -p docs/plans
 - [ ] Full test suite passes
 - [ ] Type check passes
 - [ ] Docs updated
+- [ ] If this plan deleted files/classes: checked for orphaned references (imports, iterations, tests)
 
 ---
 
