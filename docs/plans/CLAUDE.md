@@ -45,7 +45,7 @@ Master index of all gaps and their implementation plans.
 | 162 | [Gap 162: Contract Artifact Lookup](162_contract_artifact_lookup.md) | Low | 📋 Deferred | - |
 | 207 | [Executor Method Refactoring](207_executor_refactor.md) | Low | 📋 Deferred | - |
 | 209 | [Trigger-Hook Integration](209_trigger_hook_integration.md) | Low | 📋 Deferred | - |
-| 227 | [Agent Catalog & Experiment Tracking](227_agent_catalog_experiment_tracking.md) | High | 🚧 In Progress | - |
+| 227 | [Agent Catalog & Experiment Tracking](227_agent_catalog_experiment_tracking.md) | High | ✅ Complete | - |
 | 231 | [Plan 231: Tight Coupling Between has_standing and Ledger Registration](231_has_standing_ledger_coupling.md) | Medium | ✅ Complete | - |
 | 234 | [Plan 234: ADR-0024 Handle Request Migration](234_adr0024_handle_request_migration.md) | Medium | ✅ Complete | Full artifact autonomy, custom access control patterns |
 | 236 | [Plan 236: Charge Delegation](236_charge_delegation.md) | High | ✅ Complete | None (enables charge_to for Plan #234) |

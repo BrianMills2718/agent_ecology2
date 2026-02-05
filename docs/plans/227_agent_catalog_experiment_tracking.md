@@ -1,6 +1,6 @@
 # Plan #227: Agent Catalog & Experiment Tracking
 
-**Status:** In Progress
+**Status:** ✅ Complete
 **Priority:** High
 **Theme:** Agent Development Infrastructure
 
@@ -249,11 +249,13 @@ Runs baseline and treatment, collects metrics, generates comparison report.
 
 ## Acceptance Criteria
 
-- [ ] catalog.yaml documents all agent lineages
-- [ ] Active agents have meta sections with changelog
-- [ ] `python scripts/collect_metrics.py run.jsonl` outputs metrics
-- [ ] Can compare two runs and see performance delta
-- [ ] experiments/ directory exists for storing results
+- [x] catalog.yaml documents all agent lineages
+- [x] Active agents have meta sections with changelog
+- [x] `python scripts/collect_metrics.py run.jsonl` outputs metrics
+- [x] Can compare two runs and see performance delta
+- [x] experiments/ directory exists for storing results
+
+**Note:** Phase 3 (full experiment framework with `make experiment`) is deferred for future work.
 
 ---
 

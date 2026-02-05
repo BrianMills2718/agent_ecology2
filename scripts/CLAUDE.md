@@ -87,6 +87,8 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `recover.py` | Auto-recover from meta-process issues (orphaned worktrees, stale claims, etc.) |
 | `analyze_logs.py` | Analyze simulation logs (journeys, collaboration, loops) |
 | `analyze_run.py` | Analyze simulation run results |
+| `collect_metrics.py` | Collect metrics from events.jsonl (Plan #227) |
+| `compare_experiments.py` | Compare metrics between two runs (Plan #227) |
 | `view_log.py` | Parse run.jsonl events |
 | `concat_for_review.py` | Concatenate files for review |
 | `build_review_package.sh` | Build EXTERNAL_REVIEW_PACKAGE.md from target architecture docs |
