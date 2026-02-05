@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-02-04 (Plan #293: Expanded governance to 54 files, 64% coverage)
+Last verified: 2026-02-05 (Plan #294: Document hierarchy - renamed CONCEPTUAL_MODEL to ONTOLOGY)
 
 ---
 

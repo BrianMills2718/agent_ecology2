@@ -6,17 +6,21 @@ All extended documentation lives here. Root CLAUDE.md has the overview.
 
 ```
 docs/
+├── THESIS.md             # Why this project exists (read first)
+├── prd/                  # Product requirements by domain (capabilities)
+├── domain_model/         # Conceptual models by domain (concepts)
 ├── adr/                  # Architecture Decision Records (immutable)
 ├── architecture/
 │   ├── current/          # What IS implemented (source of truth)
 │   ├── target/           # What we WANT (aspirational)
 │   └── gaps/             # Comprehensive gap analysis (142 gaps)
 ├── plans/                # Active implementation plans only
+├── ONTOLOGY.yaml         # Precise entity definitions (machine-readable)
 ├── GETTING_STARTED.md    # Installation, config, development
 ├── GLOSSARY.md           # Canonical terminology (single source)
 ├── DESIGN_CLARIFICATIONS.md  # Decision rationale archive
 ├── SECURITY.md           # Security model
-└── EXPLORATION_NOTES_288.md  # Plan #288 exploration (context provision)
+└── drafts/               # Work-in-progress captured thoughts
 
 # See also:
 meta/
@@ -34,12 +38,15 @@ meta/
 
 | File | Purpose | When to Update |
 |------|---------|----------------|
+| `THESIS.md` | Why this project exists, core proposition | Rarely (foundational) |
+| `prd/` | Capability requirements by domain | New capabilities identified |
+| `domain_model/` | Conceptual models by domain | New concepts for capabilities |
 | `adr/` | Architecture Decision Records | New architectural decisions |
 | `../meta/patterns/` | Reusable process patterns | New patterns identified |
 | `../meta/acceptance_gates/` | Feature specifications | New features defined |
+| `ONTOLOGY.yaml` | Precise entity definitions (was CONCEPTUAL_MODEL) | Field-level changes |
 | `GETTING_STARTED.md` | Installation, configuration, development | Setup/tooling changes |
 | `GLOSSARY.md` | Canonical terminology | New concepts added |
-| `CONCEPTUAL_MODEL.yaml` | Structured conceptual model of the system | Model changes |
 | `CONCERNS.md` | Open concerns and known issues | New concerns identified |
 | `DEFERRED_FEATURES.md` | Features intentionally deferred | Deferral decisions |
 | `DESIGN_CLARIFICATIONS.md` | WHY decisions were made | Architecture discussions |
@@ -49,6 +56,8 @@ meta/
 | `THREAT_MODEL.md` | Threat analysis and mitigations | Security model changes |
 | `V1_ACCEPTANCE.md` | V1 acceptance criteria and readiness | Milestone progress |
 | `references` | Symlink to shared references (external) | External references |
+| `drafts/` | Work-in-progress captured thoughts | Ongoing exploration |
+| `SIMULATION_LEARNINGS.md` | Observations from running simulations | After simulation experiments |
 | `EXPLORATION_NOTES_288.md` | Exploration notes for Plan #288 (context provision) | Historical |
 
 ## Doc Types
@@ -80,40 +89,53 @@ Document observations from running simulations in `SIMULATION_LEARNINGS.md`.
 - Right lessons learned (architectural insights)
 - Future experiment ideas
 
-## Document Hierarchy (ADR-0005)
+## Document Hierarchy (Plan #294)
 
-Documentation follows a layered structure. When joining the project or investigating issues, read from top to bottom:
+Documentation follows a layered structure from vision to code:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ Layer 1: ORIENTATION (Read first)                                   │
-│   CLAUDE.md (root)                    → Process and workflow        │
-│   docs/architecture/current/CORE_SYSTEMS.md → What subsystems exist │
+│ Layer 0: THESIS (Why we exist)                                      │
+│   docs/THESIS.md                      → Core proposition            │
 └─────────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│ Layer 2: REFERENCE (Look up when needed)                            │
-│   docs/CONCEPTUAL_MODEL.yaml          → Exact entities and fields   │
+│ Layer 1: CAPABILITIES (What we need)                                │
+│   docs/prd/{domain}.md                → Capabilities by domain      │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ Layer 2: CONCEPTS (How we think about it)                           │
+│   docs/domain_model/{domain}.yaml     → Concepts enabling caps      │
 │   docs/GLOSSARY.md                    → Terminology definitions     │
-│   docs/architecture/target/           → Where we're heading         │
 └─────────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│ Layer 3: IMPLEMENTATION (Detailed current state)                    │
+│ Layer 3: ARCHITECTURE (How we build it)                             │
+│   docs/adr/                           → Architectural decisions     │
+│   docs/architecture/target/           → Where we're heading         │
+│   docs/ONTOLOGY.yaml                  → Precise entity definitions  │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ Layer 4: IMPLEMENTATION (What exists now)                           │
 │   docs/architecture/current/*.md      → How each system works       │
+│   docs/plans/                         → Active implementation work  │
 │   (Coupled to source code - CI enforced)                            │
 └─────────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│ Layer 4: CODE (Source of truth)                                     │
+│ Layer 5: CODE (Source of truth)                                     │
 │   src/**/*.py                                                       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Target ↔ Current linking:** Each `target/` doc maps to a `current/` counterpart. See `scripts/relationships.yaml` for the full mapping.
+**Linking:** Each layer references its parent. See `scripts/relationships.yaml` for file-level mappings.
 
 ## CI Enforcement
 

@@ -487,9 +487,9 @@ governance:
   # Genesis artifacts replaced with kernel primitives (transfer, mint)
 
 # =============================================================================
-# CONCEPTUAL MODEL MAPPINGS (Plan #291)
+# ONTOLOGY MAPPINGS (Plan #291, renamed Plan #294)
 # =============================================================================
-# Maps entities from docs/CONCEPTUAL_MODEL.yaml to implementing source files.
+# Maps entities from docs/ONTOLOGY.yaml (formerly CONCEPTUAL_MODEL.yaml) to source files.
 # Used by extract_relevant_context.py to inject conceptual context before edits.
 
 conceptual_model:
@@ -775,7 +775,7 @@ couplings:
       - src/world/actions.py
       - src/world/kernel_interface.py
     docs:
-      - docs/CONCEPTUAL_MODEL.yaml
+      - docs/ONTOLOGY.yaml
     description: "Conceptual model - artifact fields, actions, kernel interface"
 
   # Permission system in conceptual model
@@ -784,7 +784,7 @@ couplings:
       - src/world/contracts.py
       - src/world/kernel_contracts.py
     docs:
-      - docs/CONCEPTUAL_MODEL.yaml
+      - docs/ONTOLOGY.yaml
     description: "Permission system documented in conceptual model"
     soft: true
 
@@ -793,7 +793,7 @@ couplings:
       - src/world/ledger.py
       - src/world/rate_tracker.py
     docs:
-      - docs/CONCEPTUAL_MODEL.yaml
+      - docs/ONTOLOGY.yaml
     description: "Resource types and scrip documented in conceptual model"
     soft: true
 
@@ -892,7 +892,7 @@ couplings:
 #
 # Layers:
 #   1. Orientation - Read first (CLAUDE.md, CORE_SYSTEMS.md)
-#   2. Reference - Look up when needed (CONCEPTUAL_MODEL, GLOSSARY, target/)
+#   2. Reference - Look up when needed (ONTOLOGY, GLOSSARY, target/)
 #   3. Implementation - Detailed current state (current/*.md)
 #   4. Code - Source of truth (src/**/*.py)
 #
@@ -908,7 +908,7 @@ document_hierarchy:
   reference:
     description: "Look up when needed for definitions and vision"
     docs:
-      - docs/CONCEPTUAL_MODEL.yaml
+      - docs/ONTOLOGY.yaml
       - docs/GLOSSARY.md
       - docs/architecture/target/
 
@@ -963,7 +963,7 @@ orphan_detection:
     - docs/architecture/current
     - docs/architecture/target
   scan_files:
-    - docs/CONCEPTUAL_MODEL.yaml
+    - docs/ONTOLOGY.yaml
     - docs/GLOSSARY.md
     - docs/SECURITY.md
     - docs/DESIGN_CLARIFICATIONS.md
