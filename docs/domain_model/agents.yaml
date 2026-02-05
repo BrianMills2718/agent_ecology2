@@ -2,7 +2,7 @@
 #
 # Concepts that enable agent capabilities defined in prd/agents.md
 #
----
+# Metadata
 id: domain_model/agents
 type: domain_model
 domain: agents
@@ -14,7 +14,6 @@ prd_refs:
   - prd/agents#niche-finding
   - prd/agents#self-modification
   - prd/agents#collaboration
----
 
 # =============================================================================
 # CORE CONCEPTS

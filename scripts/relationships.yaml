@@ -1045,3 +1045,88 @@ claude_md:
     - "*.svg"              # Static assets
     - "*.css"              # Stylesheets
     - "*.html"             # HTML templates (in asset dirs)
+
+# =============================================================================
+# FILE CONTEXT LINKAGE (Plan #294)
+# =============================================================================
+# Maps source files to governing PRDs, domain models, and ADRs.
+# Used by context injection hooks to provide relevant specs during edits.
+#
+# Format:
+#   file_context:
+#     src/path/file.py:
+#       prd: [domain#capability, ...]
+#       domain_model: [domain#concept, ...]
+#       adr: [NNNN, ...]
+#
+#   directory_defaults:
+#     src/path/:
+#       prd: [domain]
+#       domain_model: [domain]
+#
+# Resolution order:
+#   1. Exact file match in file_context
+#   2. Most specific directory_defaults match
+#   3. Warning if no match
+
+file_context:
+  # ==========================================================================
+  # AGENTS DOMAIN
+  # ==========================================================================
+  src/agents/agent.py:
+    prd: [agents#long-term-planning, agents#adaptation, agents#self-modification]
+    domain_model: [agents#Agent, agents#Goal, agents#TaskQueue, agents#Memory]
+    adr: [0009, 0027]
+
+  src/agents/workflow.py:
+    prd: [agents#adaptation]
+    domain_model: [agents#TaskQueue, agents#Strategy]
+    adr: [0013, 0027]
+
+  src/agents/memory.py:
+    prd: [agents#adaptation, agents#long-term-planning]
+    domain_model: [agents#Memory]
+    adr: [0009]
+
+  src/agents/agent_loop.py:
+    prd: [agents#long-term-planning]
+    domain_model: [agents#Agent, agents#TaskQueue]
+    adr: [0010, 0014, 0027]
+
+  src/agents/llm_client.py:
+    prd: [agents#adaptation]
+    domain_model: [agents#Agent]
+    adr: []
+
+  src/agents/prompt_builder.py:
+    prd: [agents#ecosystem-awareness, agents#self-modification]
+    domain_model: [agents#WorldModel, agents#SelfModel]
+    adr: [0027]
+
+# Directory defaults (fallback when file not explicitly listed)
+directory_defaults:
+  src/agents/:
+    prd: [agents]
+    domain_model: [agents]
+    adr: [0027]
+
+  src/world/:
+    prd: []  # TODO: Create resources.md, contracts.md PRDs
+    domain_model: []
+    adr: []
+
+  src/simulation/:
+    prd: []
+    domain_model: []
+    adr: [0010, 0014]
+
+  src/dashboard/:
+    prd: []
+    domain_model: []
+    adr: []
+
+# Files explicitly excluded from context injection
+file_context_exempt:
+  - "src/**/__init__.py"      # Package markers
+  - "src/**/conftest.py"      # Test fixtures
+  - "tests/**"                # Test files derive from source
