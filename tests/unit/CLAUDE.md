@@ -19,7 +19,6 @@ Unit tests verify single classes/functions work correctly:
 | `test_contracts.py` | Contract artifact behavior |
 | `test_agent_loop.py` | Agent decision loop |
 | `test_rate_tracker.py` | Rate limiting logic |
-| `test_models.py` | Pydantic model validation |
 
 ## Running
 

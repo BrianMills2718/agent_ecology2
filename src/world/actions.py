@@ -5,9 +5,26 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
-from ..agents.schema import ActionType as ActionTypeLiteral
+# Literal type for valid action types (moved from src/agents/schema.py in Plan #299)
+ActionTypeLiteral = Literal[
+    "noop",
+    "read_artifact",
+    "write_artifact",
+    "edit_artifact",
+    "delete_artifact",
+    "invoke_artifact",
+    "query_kernel",
+    "subscribe_artifact",
+    "unsubscribe_artifact",
+    "transfer",
+    "mint",
+    "submit_to_mint",
+    "submit_to_task",
+    "configure_context",  # Deprecated
+    "modify_system_prompt",  # Deprecated
+]
 
 
 class ActionType(str, Enum):

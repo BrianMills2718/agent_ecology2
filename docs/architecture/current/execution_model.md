@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-05 (Plan #298: moved bootstrap methods to config-driven genesis)
+**Last verified:** 2026-02-05 (Plan #299: legacy agent loading disabled, artifact-based agents)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
@@ -10,25 +10,26 @@ How agent execution works TODAY.
 
 ## Agent Initialization
 
-SimulationRunner creates artifact-backed agents by default (Plan #6: Unified Ontology).
+**Plan #299:** Legacy agent loading is disabled. Agents are now purely artifact-based.
 
 ```python
-# 1. Load agent configs from disk
-agent_configs = load_agents()
+# Genesis loader creates artifact-based agents during World.__init__()
+# Each agent is a 3-artifact cluster:
+#   1. {agent}_strategy - text artifact with system prompt
+#   2. {agent}_state - JSON artifact with state
+#   3. {agent}_loop - executable artifact with has_loop=True
 
-# 2. Create artifact representations in world.artifacts
-create_agent_artifacts(world.artifacts, agent_configs, create_memory=True)
-
-# 3. Load Agent instances from artifacts
-agents = load_agents_from_store(world.artifacts, log_dir, run_id, default_model)
+# ArtifactLoopManager discovers has_loop artifacts at runtime
+artifact_loop_ids = artifact_loop_manager.discover_loops()
 ```
 
-Each agent gets:
-- An agent artifact with `has_standing=True`, `has_loop=True`
-- A linked memory artifact (`type="memory"`, linked via `memory_artifact_id`)
-- Properties set via `_load_from_artifact()`
+Genesis agents (in `config/genesis/agents/`) get:
+- A strategy artifact (text with system prompt)
+- A state artifact (JSON with current state)
+- A loop artifact (`has_loop=True`, `executable=True`, code from `loop_code.py`)
+- A principal entry in the ledger with starting scrip and LLM budget
 
-See `docs/architecture/current/agents.md` for artifact-backed agent details.
+See `config/genesis/SCHEMA.md` for artifact cluster format.
 
 ---
 

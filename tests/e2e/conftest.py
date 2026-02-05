@@ -1,6 +1,6 @@
 """E2E test fixtures.
 
-Provides mocked LLM for E2E tests to avoid real API costs.
+Plan #299: Legacy agent system removed. Fixtures updated for artifact-based agents.
 """
 
 from __future__ import annotations
@@ -11,16 +11,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.agents.models import FlatActionResponse, FlatAction
-
 
 @pytest.fixture
-def mock_llm_response() -> FlatActionResponse:
-    """Create a standard mock LLM response."""
-    return FlatActionResponse(
-        reasoning="I will perform a noop action to observe the world state.",
-        action=FlatAction(action_type="noop"),
-    )
+def mock_llm_response() -> dict[str, Any]:
+    """Create a standard mock LLM response for artifact-based agents."""
+    return {
+        "action": "noop",
+        "reasoning": "I will perform a noop action to observe the world state.",
+    }
 
 
 @pytest.fixture
@@ -36,27 +34,21 @@ def mock_llm_usage() -> dict[str, Any]:
 
 @pytest.fixture
 def mock_llm(
-    mock_llm_response: FlatActionResponse,
+    mock_llm_response: dict[str, Any],
     mock_llm_usage: dict[str, Any],
 ) -> Generator[MagicMock, None, None]:
     """Mock LLM provider for E2E tests.
 
     This patches litellm.acompletion to return a mocked response,
     avoiding real API calls during E2E tests.
-
-    Usage:
-        def test_something(mock_llm):
-            # LLM calls are now mocked
-            runner = SimulationRunner(config)
-            world = runner.run_sync()
     """
-    # Create async mock for litellm.acompletion
+    import json
+
     mock_completion = AsyncMock()
 
-    # Create mock response that looks like litellm response
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = mock_llm_response.model_dump_json()
+    mock_response.choices[0].message.content = json.dumps(mock_llm_response)
     mock_response.usage = MagicMock()
     mock_response.usage.prompt_tokens = mock_llm_usage["input_tokens"]
     mock_response.usage.completion_tokens = mock_llm_usage["output_tokens"]
@@ -64,7 +56,6 @@ def mock_llm(
 
     mock_completion.return_value = mock_response
 
-    # Also mock synchronous completion
     mock_sync = MagicMock(return_value=mock_response)
 
     with patch("litellm.acompletion", mock_completion), \
@@ -77,13 +68,11 @@ def e2e_config(tmp_path: Path) -> dict[str, Any]:
     """Create E2E test configuration.
 
     Uses minimal settings for fast test execution.
-    Plan #109: Removed max_ticks (tick mode removed in Plan #102).
-    Tests must call run_sync(duration=X) with a short duration.
     """
     log_file = tmp_path / "e2e_test.jsonl"
 
     return {
-        "world": {},  # Plan #102: max_ticks removed, use duration param instead
+        "world": {},
         "costs": {
             "per_1k_input_tokens": 1,
             "per_1k_output_tokens": 3,
@@ -101,17 +90,16 @@ def e2e_config(tmp_path: Path) -> dict[str, Any]:
         },
         "llm": {
             "default_model": "gemini/gemini-3-flash-preview",
-            "rate_limit_delay": 0,  # No delay for tests
+            "rate_limit_delay": 0,
         },
         "budget": {
-            "max_api_cost": 0,  # Unlimited (mocked anyway)
-            "checkpoint_interval": 0,  # Disable checkpoints
+            "max_api_cost": 0,
+            "checkpoint_interval": 0,
             "checkpoint_on_end": False,
         },
         "rate_limiting": {
             "enabled": False,
         },
-        # Note: Runner is always autonomous (Plan #102 removed tick-based mode)
     }
 
 

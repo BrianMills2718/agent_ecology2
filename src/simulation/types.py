@@ -4,9 +4,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, TypedDict, TYPE_CHECKING
 
+# Plan #299: Legacy agent system removed - agents are now artifact-based
 if TYPE_CHECKING:
-    from ..agents import Agent
-    from ..agents.agent import ActionResult as AgentActionResult
+    from typing import Any as Agent  # Stub - legacy Agent class removed
+    from typing import Any as AgentActionResult  # Stub - legacy removed
 
 
 @dataclass

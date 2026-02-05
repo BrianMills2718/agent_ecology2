@@ -1,0 +1,28 @@
+# Discourse Analyst 3 Genesis Agent (Plan #299)
+# Research agent focused on understanding rhetoric
+
+id: discourse_analyst_3
+enabled_key: discourse_analyst_3.enabled
+enabled: true
+
+artifacts:
+  - id: discourse_analyst_3_strategy
+    type: text
+    content_file: strategy.md
+
+  - id: discourse_analyst_3_state
+    type: json
+    content_file: initial_state.json
+
+  - id: discourse_analyst_3_loop
+    type: executable
+    code_file: loop_code.py
+    has_loop: true
+    capabilities: [can_call_llm]
+
+principal:
+  id: discourse_analyst_3_loop
+  starting_scrip_key: discourse_analyst_3.starting_scrip
+  starting_scrip_default: 100
+  starting_llm_budget_key: discourse_analyst_3.starting_llm_budget
+  starting_llm_budget_default: 1.0

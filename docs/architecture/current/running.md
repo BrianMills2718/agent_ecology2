@@ -2,7 +2,7 @@
 
 Practical guide to running and observing agent ecology simulations.
 
-**Last verified:** 2026-02-05 (Plan #295: ledger cleanup - removed deprecated llm_tokens API)
+**Last verified:** 2026-02-05 (Plan #299: artifact-based agents via genesis loader)
 
 ---
 
@@ -17,8 +17,11 @@ cp .env.example .env
 # Edit .env with your GEMINI_API_KEY
 
 # Run simulation (60 seconds)
-python run.py --duration 60 --agents 2
+python run.py --duration 60
 ```
+
+> **Note:** Plan #299 disabled legacy agent loading. Agents are now artifact-based
+> and configured in `config/genesis/agents/`. The `--agents N` flag is deprecated.
 
 ---
 

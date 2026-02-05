@@ -218,10 +218,4 @@ class TestDatetimeDeprecation:
         source = inspect.getsource(registry_module)
         assert "utcnow()" not in source
 
-    def test_no_utcnow_in_memory(self) -> None:
-        """src/agents/memory.py should not use datetime.utcnow()."""
-        import src.agents.memory as memory_module
-        import inspect
-
-        source = inspect.getsource(memory_module)
-        assert "utcnow()" not in source
+    # Plan #299: test_no_utcnow_in_memory removed - memory.py deleted

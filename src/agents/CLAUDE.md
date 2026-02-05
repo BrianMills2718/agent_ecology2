@@ -1,85 +1,66 @@
-# Agents Module
+# Agents Module - DEPRECATED (Plan #299)
 
-LLM-powered agents that observe world state and propose actions.
+The legacy agent system has been removed. This directory is now a placeholder.
 
-## Module Responsibilities
+## Remaining Files
 
-| File | Responsibility |
-|------|----------------|
-| `__init__.py` | Package exports (Agent, ActionResult, load_agents, etc.) |
-| `agent.py` | LLM integration, action proposal, token tracking |
-| `agent_schema.py` | Pydantic schema for agent.yaml validation |
-| `catalog.yaml` | Agent lineage tracking and genotype characteristics |
-| `component_loader.py` | Modular prompt component loading and injection |
-| `hooks.py` | Workflow hooks for auto-invocation at timing points |
-| `loader.py` | Agent discovery from `src/agents/*/` directories |
-| `motivation_loader.py` | Load and assemble motivation profiles (Plan #277) |
-| `memory.py` | Mem0/Qdrant integration for persistent memory |
-| `models.py` | Pydantic models for agent config and results |
-| `planning.py` | Plan artifact pattern for deliberative agent behavior |
-| `reflex.py` | Fast pre-LLM decision scripts (agent-created artifacts) |
-| `safe_eval.py` | Secure expression evaluation for workflow conditions |
-| `schema.py` | Action schema definitions for LLM |
-| `state_machine.py` | State machine definitions and transitions |
-| `state_store.py` | SQLite-backed agent state persistence between turns |
-| `template.py` | Safe `{{variable}}` template rendering for workflow context |
-| `workflow.py` | Configurable workflow execution with state machine support |
+| File | Purpose |
+|------|---------|
+| `__init__.py` | Empty placeholder - exports nothing |
 
-## Agent Directories
+## New Architecture
 
-Each agent lives in `src/agents/{name}/`:
-```
-src/agents/alpha/
-├── alpha/agent.yaml        # Config (model, starting_scrip, RAG settings)
-└── alpha/system_prompt.md  # Agent personality and instructions
-```
+Agents are now **3-artifact clusters** loaded by the genesis system:
 
-## Agent Generations
+1. **Strategy artifact** (text) - System prompt and instructions
+2. **State artifact** (JSON) - Agent's working memory and state
+3. **Loop artifact** (executable, has_loop=True) - Autonomous behavior code
 
-| Generation | Agents | Features |
-|------------|--------|----------|
-| Original | alpha, beta, gamma, delta, epsilon | Basic workflows, RAG memory |
-| _2 (VSM-aligned) | *(removed)* | Was: self-audit, goal hierarchies. Superseded by _3. |
-| _3 (State machines) | alpha_3, beta_3, gamma_3, delta_3, epsilon_3 | Explicit state machines |
+See `config/genesis/agents/alpha_prime/` for the reference implementation.
 
-### _3 Generation State Machines
+## What Was Removed
 
-| Agent | Focus | States |
-|-------|-------|--------|
-| alpha_3 | Builder | ideating → designing → implementing → testing |
-| beta_3 | Integrator | strategic → tactical → operational → reviewing |
-| gamma_3 | Coordinator | solo → discovering → negotiating → executing → settling |
-| delta_3 | Infrastructure | planning → building → deploying → maintaining → deprecating |
-| epsilon_3 | Info Broker | monitoring → analyzing → executing → learning |
+| File | Lines | Was |
+|------|-------|-----|
+| `agent.py` | ~2700 | LLM wrapper with 77 methods |
+| `workflow.py` | ~1100 | State machine engine |
+| `loader.py` | ~300 | Agent discovery |
+| `memory.py` | ~800 | Mem0/Qdrant integration |
+| `schema.py` | ~600 | Action schema definitions |
+| `models.py` | ~400 | Pydantic models |
+| `hooks.py` | ~400 | Workflow hooks |
+| `state_machine.py` | ~300 | State machine definitions |
+| `state_store.py` | ~350 | SQLite state persistence |
+| `component_loader.py` | ~400 | Prompt component loading |
+| `motivation_loader.py` | ~150 | Motivation profiles |
+| `agent_schema.py` | ~450 | Agent.yaml validation |
+| `planning.py` | ~160 | Plan artifact patterns |
+| `reflex.py` | ~350 | Pre-LLM decision scripts |
+| `safe_eval.py` | ~90 | Secure expression evaluation |
+| `template.py` | ~70 | Template rendering |
 
-## Key Patterns
+**Total removed:** ~8600 lines of legacy code
 
-### Async Thinking
+## Historical Reference
+
+- `docs/catalog.yaml` - Agent lineage tracking (moved from here)
+- Previous agent directories: alpha/, beta/, gamma/, delta/, epsilon/ (and _3 variants)
+- discourse_analyst variants also removed
+
+## Key Pattern: Artifact-Based Agents
+
 ```python
-# Agents think in parallel via asyncio.gather()
-results = await asyncio.gather(*[agent.propose_action_async() for agent in agents])
-```
+# Genesis loader creates 3 artifacts for each agent:
+# 1. alpha_prime_strategy (text) - prompt
+# 2. alpha_prime_state (JSON) - state
+# 3. alpha_prime_loop (executable, has_loop=True) - behavior
 
-### Memory Integration
-```python
-# Memory uses Mem0 with Qdrant backend
-memory.add(agent_id, "Learned that trading is profitable")
-relevant = memory.search(agent_id, "trading strategies", limit=5)
-```
-
-### Token Tracking
-```python
-# Every LLM call tracks input/output tokens
-result = agent.propose_action(world_state)
-# result.input_tokens, result.output_tokens available
+# ArtifactLoopManager discovers and runs has_loop=True artifacts
+manager.discover_loops()  # Finds alpha_prime_loop
+manager.start_all()       # Runs loops autonomously
 ```
 
 ## Strict Couplings
 
-Changes here MUST update `docs/architecture/current/agents.md`.
-
-## Testing
-
-```bash
-pytest tests/unit/test_async_agent.py tests/unit/test_memory.py -v
-```
+This directory is now minimal. Main coupling is:
+- `docs/architecture/current/agents.md` - Must be updated to reflect new architecture

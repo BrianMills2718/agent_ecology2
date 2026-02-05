@@ -1,0 +1,11 @@
+{
+  "iteration": 0,
+  "state": "questioning",
+  "model": "gemini/gemini-2.0-flash",
+  "current_question": null,
+  "insights": [],
+  "tools_built": [],
+  "action_history": [],
+  "insights_closed_tasks": [],
+  "insights_completed_tasks": []
+}

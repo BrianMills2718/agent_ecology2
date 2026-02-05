@@ -15,10 +15,9 @@ Integration tests verify components integrate correctly:
 | File | Tests |
 |------|-------|
 | `test_runner.py` | SimulationRunner orchestration |
-| `test_escrow.py` | Escrow + ledger + contracts |
 | `test_invoke.py` | Contract invocation flow |
 | `test_checkpoint.py` | State persistence/restore |
-| `test_mint_auction.py` | Mint + ledger + scoring |
+| `test_alpha_prime.py` | Artifact-based agent loops |
 
 ## Running
 
