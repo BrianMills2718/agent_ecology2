@@ -76,7 +76,9 @@ concepts:
 | Model | Domain | Status |
 |-------|--------|--------|
 | `agents.yaml` | Agent cognitive architecture | Draft |
-| (more to come) | | |
+| `resources.yaml` | Resource scarcity concepts | Draft |
+| `contracts.yaml` | Access control concepts | Draft |
+| `artifacts.yaml` | Storage and execution concepts | Draft |
 
 ## Creating a New Domain Model
 

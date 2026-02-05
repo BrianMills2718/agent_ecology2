@@ -159,7 +159,7 @@ def check_index_freshness() -> tuple[bool, str]:
     ]
     doc_files = [
         REPO_ROOT / "docs" / "GLOSSARY.md",
-        REPO_ROOT / "docs" / "CONCEPTUAL_MODEL.yaml",
+        REPO_ROOT / "docs" / "ONTOLOGY.yaml",
     ]
 
     stale_sources = []

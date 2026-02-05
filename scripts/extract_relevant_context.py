@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Extract relevant context for a file from GLOSSARY, CONCEPTUAL_MODEL, ADRs, etc.
+"""Extract relevant context for a file from GLOSSARY, ONTOLOGY, ADRs, PRDs, etc.
 
 Given a source file, this script:
 1. Parses the file to extract identifiers and terms
 2. Matches against GLOSSARY entries
-3. Matches against CONCEPTUAL_MODEL sections
+3. Matches against ONTOLOGY sections (formerly CONCEPTUAL_MODEL)
 4. Extracts relevant ADR principles from governance mappings
+5. Loads PRD capabilities and domain model concepts (Plan #294)
 
 Usage:
     python scripts/extract_relevant_context.py src/world/ledger.py
@@ -159,9 +160,9 @@ def load_glossary() -> dict[str, dict[str, str]]:
     return entries
 
 
-def load_conceptual_model() -> dict[str, Any]:
-    """Load CONCEPTUAL_MODEL.yaml."""
-    model_path = REPO_ROOT / "docs" / "CONCEPTUAL_MODEL.yaml"
+def load_ontology() -> dict[str, Any]:
+    """Load ONTOLOGY.yaml (formerly CONCEPTUAL_MODEL.yaml)."""
+    model_path = REPO_ROOT / "docs" / "ONTOLOGY.yaml"
     if not model_path.exists():
         return {}
 
@@ -579,7 +580,7 @@ def extract_context_for_file(file_path: str) -> dict[str, Any]:
 
     # Load reference docs
     glossary = load_glossary()
-    model = load_conceptual_model()
+    model = load_ontology()
     relationships = load_relationships()
 
     # Plan #294: Get PRD/domain model context from file_context mappings

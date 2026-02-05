@@ -1071,6 +1071,59 @@ claude_md:
 
 file_context:
   # ==========================================================================
+  # WORLD DOMAIN - Core Kernel Infrastructure
+  # ==========================================================================
+  src/world/artifacts.py:
+    prd: [artifacts#persistent-storage, artifacts#universal-addressability, artifacts#metadata-and-typing]
+    domain_model: [artifacts#Artifact, artifacts#ArtifactStore, artifacts#ArtifactType, artifacts#Metadata]
+    adr: [0001, 0007, 0011, 0016]
+
+  src/world/executor.py:
+    prd: [artifacts#execution]
+    domain_model: [artifacts#Executable, artifacts#Wallet, artifacts#Interface]
+    adr: [0002, 0021, 0023]
+
+  src/world/ledger.py:
+    prd: [resources#scarcity-enforcement, resources#resource-tracking, resources#scrip-currency]
+    domain_model: [resources#Ledger, resources#Balance, resources#Scrip, resources#Transfer]
+    adr: [0002, 0011, 0012]
+
+  src/world/contracts.py:
+    prd: [contracts#permission-checking, contracts#flexible-policies, contracts#contract-as-artifact]
+    domain_model: [contracts#Contract, contracts#PermissionAction, contracts#PermissionResult, contracts#PermissionContext]
+    adr: [0003, 0015, 0019]
+
+  src/world/kernel_contracts.py:
+    prd: [contracts#default-behavior, contracts#flexible-policies]
+    domain_model: [contracts#GenesisContract, contracts#AccessPolicy]
+    adr: [0003, 0015, 0017, 0019]
+
+  src/world/permission_checker.py:
+    prd: [contracts#permission-checking]
+    domain_model: [contracts#Contract, contracts#PermissionResult, contracts#PermissionContext]
+    adr: [0003, 0017, 0019]
+
+  src/world/rate_tracker.py:
+    prd: [resources#resource-types, resources#scarcity-enforcement]
+    domain_model: [resources#RateLimit, resources#ResourceType]
+    adr: [0008]
+
+  src/world/resource_manager.py:
+    prd: [resources#resource-tracking, resources#quota-management]
+    domain_model: [resources#Resource, resources#Quota, resources#Balance]
+    adr: [0002, 0011, 0012, 0023]
+
+  src/world/kernel_interface.py:
+    prd: [artifacts#execution, resources#resource-transfer]
+    domain_model: [artifacts#Wallet, resources#Transfer]
+    adr: [0014, 0019, 0024]
+
+  src/world/action_executor.py:
+    prd: [artifacts#execution, contracts#permission-checking]
+    domain_model: [artifacts#Executable, contracts#PermissionResult]
+    adr: [0002, 0019, 0021, 0024]
+
+  # ==========================================================================
   # AGENTS DOMAIN
   # ==========================================================================
   src/agents/agent.py:
@@ -1111,19 +1164,19 @@ directory_defaults:
     adr: [0027]
 
   src/world/:
-    prd: []  # TODO: Create resources.md, contracts.md PRDs
-    domain_model: []
-    adr: []
+    prd: [resources, contracts, artifacts]
+    domain_model: [resources, contracts, artifacts]
+    adr: [0001, 0003, 0011, 0012, 0015, 0016, 0019]
 
   src/simulation/:
-    prd: []
+    prd: []  # Simulation is infrastructure, not a domain
     domain_model: []
     adr: [0010, 0014]
 
   src/dashboard/:
-    prd: []
+    prd: []  # Dashboard is observability infrastructure
     domain_model: []
-    adr: []
+    adr: [0020]
 
 # Files explicitly excluded from context injection
 file_context_exempt:

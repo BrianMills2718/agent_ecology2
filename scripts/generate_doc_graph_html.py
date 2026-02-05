@@ -493,10 +493,10 @@ def build_graph_data(data: dict) -> dict:
 
     # Add reference docs
     add_node(
-        "doc_CONCEPTUAL_MODEL",
-        "CONCEPTUAL_MODEL.yaml",
+        "doc_ONTOLOGY",
+        "ONTOLOGY.yaml",
         "reference",
-        path="docs/CONCEPTUAL_MODEL.yaml",
+        path="docs/ONTOLOGY.yaml",
     )
     add_node("doc_GLOSSARY", "GLOSSARY.md", "reference", path="docs/GLOSSARY.md")
 
@@ -596,8 +596,8 @@ def build_graph_data(data: dict) -> dict:
                 if "current/" in doc:
                     doc_name = Path(doc).stem
                     doc_id = f"doc_current_{doc_name}"
-                elif doc == "docs/CONCEPTUAL_MODEL.yaml":
-                    doc_id = "doc_CONCEPTUAL_MODEL"
+                elif doc == "docs/ONTOLOGY.yaml":
+                    doc_id = "doc_ONTOLOGY"
                 elif doc == "docs/GLOSSARY.md":
                     doc_id = "doc_GLOSSARY"
                 elif "CORE_SYSTEMS" in doc:
@@ -622,7 +622,7 @@ def build_graph_data(data: dict) -> dict:
     # Add hierarchy links
     links.append({"source": "doc_CLAUDE", "target": "doc_CORE_SYSTEMS", "type": "hierarchy"})
     links.append(
-        {"source": "doc_CORE_SYSTEMS", "target": "doc_CONCEPTUAL_MODEL", "type": "hierarchy"}
+        {"source": "doc_CORE_SYSTEMS", "target": "doc_ONTOLOGY", "type": "hierarchy"}
     )
 
     return {"nodes": nodes, "links": links}

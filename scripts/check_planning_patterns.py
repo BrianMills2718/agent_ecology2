@@ -14,7 +14,7 @@ Configuration via meta-process.yaml:
     uncertainty_tracking: advisory | required | disabled
     warn_on_unverified_claims: true | false
     warn_on_prohibited_terms: true | false
-    conceptual_model_path: docs/CONCEPTUAL_MODEL.yaml
+    ontology_path: docs/ONTOLOGY.yaml
 
 Usage:
     python scripts/check_planning_patterns.py --plan 229
@@ -65,9 +65,9 @@ def load_config(project_root: Path) -> dict:
     return config.get("planning", {})
 
 
-def load_conceptual_model(project_root: Path, config: dict) -> dict:
-    """Load conceptual model if it exists."""
-    model_path = config.get("conceptual_model_path", "docs/CONCEPTUAL_MODEL.yaml")
+def load_ontology(project_root: Path, config: dict) -> dict:
+    """Load ontology if it exists (formerly conceptual model)."""
+    model_path = config.get("ontology_path", "docs/ONTOLOGY.yaml")
     full_path = project_root / model_path
 
     if not full_path.exists():
@@ -330,7 +330,7 @@ def main():
 
     project_root = args.project_root
     config = load_config(project_root)
-    model = load_conceptual_model(project_root, config)
+    model = load_ontology(project_root, config)
 
     # Collect files to check
     files_to_check = []

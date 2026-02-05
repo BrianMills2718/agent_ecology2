@@ -1,0 +1,134 @@
+# Domain Model: Contracts
+#
+# Concepts that enable contract capabilities defined in prd/contracts.md
+#
+# Metadata
+id: domain_model/contracts
+type: domain_model
+domain: contracts
+status: draft
+prd_refs:
+  - prd/contracts#permission-checking
+  - prd/contracts#flexible-policies
+  - prd/contracts#contract-as-artifact
+  - prd/contracts#default-behavior
+  - prd/contracts#pricing-integration
+
+# =============================================================================
+# CORE CONCEPTS
+# =============================================================================
+
+concepts:
+  Contract:
+    description: |
+      An artifact that determines who can perform what operations on other
+      artifacts. Contracts are the access control layer of the ecosystem.
+    enables: [permission-checking, flexible-policies, contract-as-artifact]
+    relationships:
+      - "governs Artifacts via access_contract_id"
+      - "implements AccessContract protocol"
+      - "is an Artifact (executable)"
+    constraints:
+      - "Must implement check_permission method"
+      - "Returns PermissionResult for every check"
+    notes: |
+      Contracts are artifacts, so agents can create new access patterns.
+      This enables emergent authorization schemes.
+
+  PermissionAction:
+    description: |
+      The type of operation being requested. Contracts check whether
+      a caller is allowed to perform this action.
+    enables: [permission-checking]
+    values:
+      - "READ: Access artifact content"
+      - "WRITE: Create or replace artifact"
+      - "EDIT: Modify artifact content surgically"
+      - "INVOKE: Call artifact's executable code"
+      - "DELETE: Remove artifact"
+
+  PermissionResult:
+    description: |
+      The outcome of a permission check. Indicates whether action is
+      allowed and optionally includes cost and conditions.
+    enables: [permission-checking, pricing-integration]
+    fields:
+      allowed: "boolean - whether action is permitted"
+      reason: "string - human-readable explanation"
+      cost: "int - scrip cost (0 = free)"
+      conditions: "dict - optional metadata"
+
+  PermissionContext:
+    description: |
+      Information passed to contracts to help make access decisions.
+      Includes caller identity, target info, and operation details.
+    enables: [permission-checking, flexible-policies]
+    fields:
+      caller: "Principal requesting access"
+      action: "PermissionAction being requested"
+      target: "Artifact being accessed"
+      target_created_by: "Creator of target artifact"
+      method: "Method name (invoke only)"
+      args: "Method arguments (invoke only)"
+
+  Principal:
+    description: |
+      An entity that can own resources and make requests. Agents are
+      principals. Some artifacts (with has_standing) are principals.
+    enables: [permission-checking]
+    relationships:
+      - "has Scrip balance"
+      - "has Resource quotas"
+      - "can be caller in PermissionContext"
+    constraints:
+      - "Identified by unique ID"
+      - "has_standing=true to hold resources"
+
+  GenesisContract:
+    description: |
+      Pre-defined contract patterns available at simulation start.
+      Solve the cold-start problem - agents need access control before
+      they've created their own contracts.
+    enables: [default-behavior]
+    examples:
+      freeware: "Public read/invoke, owner-only write"
+      private: "Owner-only everything"
+      self_owned: "Owner-only everything (alias)"
+      public: "Everyone can do everything"
+      transferable_freeware: "Freeware + authorized writers"
+    notes: |
+      Genesis contracts are unprivileged conveniences, not kernel features.
+      Agents could build equivalent contracts.
+
+  AccessPolicy:
+    description: |
+      The artifact field that links an artifact to its governing contract.
+      Every artifact has an access_contract_id.
+    enables: [permission-checking]
+    relationships:
+      - "stored in artifact.access_contract_id"
+      - "references a Contract"
+    constraints:
+      - "Can only be changed by creator (FM-7)"
+      - "Defaults to kernel_contract_freeware"
+
+# =============================================================================
+# RELATIONSHIPS TO CODE
+# =============================================================================
+
+code_mappings:
+  Contract:
+    primary: "src/world/contracts.py"
+    protocol: "AccessContract"
+
+  GenesisContract:
+    primary: "src/world/genesis_contracts.py"
+    instances: ["FreewareContract", "PrivateContract", "PublicContract"]
+
+  PermissionResult:
+    primary: "src/world/contracts.py"
+    class: "PermissionResult"
+
+  PermissionAction:
+    primary: "src/world/contracts.py"
+    enum: "PermissionAction"

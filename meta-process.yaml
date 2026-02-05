@@ -210,7 +210,7 @@ planning:
   uncertainty_tracking: advisory
 
   # ---------------------------------------------------------------------------
-  # Conceptual Modeling
+  # Ontology (Conceptual Modeling)
   # ---------------------------------------------------------------------------
   # Maintain a formal model of "what things ARE" in the system.
   # Reduces AI misconceptions about architecture.
@@ -220,15 +220,15 @@ planning:
   # Levels:
   #   disabled - No model required
   #   advisory - If model exists, CC should reference it
-  #   required - Must have docs/CONCEPTUAL_MODEL.yaml, terms validated
+  #   required - Must have docs/ONTOLOGY.yaml, terms validated
   conceptual_modeling: disabled
 
   # If conceptual_modeling is advisory or required:
   # Warn when code/plans use terms from the model's non_existence section
   warn_on_prohibited_terms: true
 
-  # Path to conceptual model file (if using conceptual_modeling)
-  conceptual_model_path: docs/CONCEPTUAL_MODEL.yaml
+  # Path to ontology file (formerly conceptual_model_path)
+  ontology_path: docs/ONTOLOGY.yaml
 
 # =============================================================================
 # Project Type (for new project setup)

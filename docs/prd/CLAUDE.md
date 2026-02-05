@@ -55,7 +55,9 @@ Unresolved design questions.
 | PRD | Domain | Status |
 |-----|--------|--------|
 | `agents.md` | Agent capabilities | Draft |
-| (more to come) | | |
+| `resources.md` | Resource scarcity capabilities | Draft |
+| `contracts.md` | Access control capabilities | Draft |
+| `artifacts.md` | Storage and execution capabilities | Draft |
 
 ## Creating a New PRD
 

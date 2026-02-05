@@ -1,0 +1,158 @@
+# Domain Model: Artifacts
+#
+# Concepts that enable artifact capabilities defined in prd/artifacts.md
+#
+# Metadata
+id: domain_model/artifacts
+type: domain_model
+domain: artifacts
+status: draft
+prd_refs:
+  - prd/artifacts#persistent-storage
+  - prd/artifacts#universal-addressability
+  - prd/artifacts#execution
+  - prd/artifacts#metadata-and-typing
+  - prd/artifacts#discoverability
+  - prd/artifacts#dependency-tracking
+
+# =============================================================================
+# CORE CONCEPTS
+# =============================================================================
+
+concepts:
+  Artifact:
+    description: |
+      The fundamental unit of persistent state. "Everything is an artifact" -
+      agents, data, contracts, tools, configurations. Different properties
+      (has_standing, has_loop, executable) determine behavior.
+    enables: [persistent-storage, universal-addressability, metadata-and-typing]
+    relationships:
+      - "stored in ArtifactStore"
+      - "governed by Contract"
+      - "may depend on other Artifacts"
+      - "may be executable"
+    constraints:
+      - "Has unique, stable id"
+      - "created_by is immutable"
+      - "type is immutable after creation"
+    notes: |
+      This is the primal entity. Labels like "agent", "contract", "tool"
+      are conceptual categories, not separate types.
+
+  ArtifactStore:
+    description: |
+      The persistence layer for artifacts. Handles CRUD operations
+      with access control integration.
+    enables: [persistent-storage]
+    relationships:
+      - "contains all Artifacts"
+      - "enforces access control via Contracts"
+    behaviors:
+      - "read: Retrieve artifact by ID"
+      - "write: Create or update artifact"
+      - "delete: Soft or hard delete"
+      - "list: Query artifacts by criteria"
+
+  Executable:
+    description: |
+      An artifact that contains runnable code. When invoked, the code
+      executes in a sandboxed environment with access to caller context.
+    enables: [execution]
+    relationships:
+      - "is an Artifact with executable=true"
+      - "has code field with Python"
+      - "may have interface schema"
+    constraints:
+      - "Must define run() or handle_request()"
+      - "Executes with timeout protection"
+      - "Has access to wallet (caller's resources)"
+
+  Interface:
+    description: |
+      A JSON Schema describing what an executable artifact accepts
+      and returns. Enables discoverability and validation.
+    enables: [discoverability, execution]
+    relationships:
+      - "attached to Executable artifact"
+      - "describes methods and parameters"
+    behaviors:
+      - "Advertises capabilities to other agents"
+      - "Enables input validation"
+
+  ArtifactType:
+    description: |
+      Classification of artifacts by their purpose. Immutable after
+      creation to prevent type-confusion attacks.
+    enables: [metadata-and-typing]
+    common_types:
+      data: "Passive data storage"
+      code: "Executable code"
+      contract: "Access control policy"
+      config: "Configuration data"
+      trigger: "Event triggers"
+      memory: "Agent memory store"
+    notes: |
+      Type is advisory - kernel doesn't branch on most types.
+      Some types (trigger, right) have special kernel handling.
+
+  Dependency:
+    description: |
+      A declared relationship where one artifact requires another
+      to function. Enables proper loading order and impact analysis.
+    enables: [dependency-tracking]
+    relationships:
+      - "from dependent Artifact"
+      - "to required Artifact"
+    behaviors:
+      - "Validated on load (required artifact exists)"
+      - "Used for loading order"
+      - "Enables impact analysis"
+
+  Metadata:
+    description: |
+      Artifact fields that describe the artifact rather than being
+      its content. Includes creator, timestamps, type, etc.
+    enables: [metadata-and-typing, discoverability]
+    standard_fields:
+      id: "Unique identifier (immutable)"
+      type: "Artifact type (immutable after creation)"
+      created_by: "Creator principal (immutable)"
+      created_at: "Creation timestamp"
+      updated_at: "Last update timestamp"
+      deleted: "Soft deletion flag"
+    custom_fields:
+      metadata: "Dict for arbitrary key-value pairs"
+
+  Wallet:
+    description: |
+      The resource context provided to executable code during invocation.
+      Allows code to spend caller's resources and access caller identity.
+    enables: [execution]
+    relationships:
+      - "provided by Executor"
+      - "bound to caller Principal"
+    capabilities:
+      - "Read caller's resource balances"
+      - "Spend resources on caller's behalf"
+      - "Invoke other artifacts"
+
+# =============================================================================
+# RELATIONSHIPS TO CODE
+# =============================================================================
+
+code_mappings:
+  Artifact:
+    primary: "src/world/artifacts.py"
+    class: "Artifact"
+
+  ArtifactStore:
+    primary: "src/world/artifacts.py"
+    class: "ArtifactStore"
+
+  Executable:
+    primary: "src/world/executor.py"
+    note: "Artifacts with executable=true and code field"
+
+  Wallet:
+    primary: "src/world/executor.py"
+    class: "Wallet"
