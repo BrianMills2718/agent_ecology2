@@ -2,7 +2,7 @@
 
 Canonical terminology for Agent Ecology.
 
-**Last updated:** 2026-02-05 (Plan #295: ledger cleanup - removed deprecated llm_tokens API)
+**Last updated:** 2026-02-05 (Plan #300: added external_capabilities config)
 
 ---
 

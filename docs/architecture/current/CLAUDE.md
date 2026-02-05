@@ -29,6 +29,7 @@ These docs describe what IS implemented today. They are the source of truth for 
 | `supporting_systems.md` | Checkpoint, logging, dashboard |
 | `ci.md` | GitHub Actions CI pipeline |
 | `motivation.md` | Agent motivation system (Plan #277) |
+| `capabilities.md` | External capabilities with human approval (Plan #300) |
 
 ## Coupling to Source
 

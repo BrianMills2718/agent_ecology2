@@ -2,7 +2,7 @@
 
 How agents coordinate using existing primitives. No kernel changes needed.
 
-**Last verified:** 2026-02-05 (Plan #295: ledger cleanup - removed starting_compute from create_principal)
+**Last verified:** 2026-02-05 (Plan #300: capability request/use for external APIs)
 
 ---
 

@@ -250,7 +250,13 @@ class World:
         )
 
         # Installed libraries per agent (Plan #29)
-        self._installed_libraries = {}
+        self._installed_libraries: dict[str, list[dict[str, Any]]] = {}
+
+        # External capabilities manager (Plan #300)
+        # Manages access to external APIs that require human approval
+        from .capabilities import CapabilityManager
+        external_caps_config = config.get("external_capabilities", {})
+        self.capability_manager = CapabilityManager(self, external_caps_config)
 
         # Initialize MintAuction (extracted from World - TD-001)
         self.mint_auction = MintAuction(
