@@ -33,10 +33,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def load_genesis(world: "World", genesis_dir: Path | None = None) -> None:
+def load_genesis(
+    world: "World",
+    genesis_dir: Path | None = None,
+    config: dict[str, Any] | None = None,
+) -> None:
     """Load all genesis artifacts from config directory.
 
-    Called by SimulationRunner after World creation, before agents start.
+    Called by World.__init__ during bootstrap.
 
     Order:
     1. kernel/ - infrastructure (mint_agent, llm_gateway)
@@ -46,6 +50,7 @@ def load_genesis(world: "World", genesis_dir: Path | None = None) -> None:
     Args:
         world: The World instance to populate
         genesis_dir: Path to genesis config directory (default: config/genesis)
+        config: Config dict (uses global config if not provided)
     """
     if genesis_dir is None:
         genesis_dir = Path("config/genesis")
@@ -58,7 +63,7 @@ def load_genesis(world: "World", genesis_dir: Path | None = None) -> None:
     kernel_dir = genesis_dir / "kernel"
     if kernel_dir.exists():
         for manifest_file in sorted(kernel_dir.glob("*.yaml")):
-            _load_kernel_manifest(world, manifest_file)
+            _load_kernel_manifest(world, manifest_file, config)
 
     # 2. Load standalone artifacts
     artifacts_dir = genesis_dir / "artifacts"
@@ -73,10 +78,35 @@ def load_genesis(world: "World", genesis_dir: Path | None = None) -> None:
             if agent_dir.is_dir():
                 manifest_file = agent_dir / "agent.yaml"
                 if manifest_file.exists():
-                    _load_agent_manifest(world, manifest_file)
+                    _load_agent_manifest(world, manifest_file, config)
 
 
-def _load_kernel_manifest(world: "World", manifest_file: Path) -> None:
+def _get_config_value(config: dict[str, Any] | None, key: str, default: Any = None) -> Any:
+    """Get a value from config dict by dotted key path.
+
+    If config dict is provided, ONLY look in that dict (don't fall back to global).
+    This allows tests to override the global config by passing a dict.
+
+    If no config dict is provided, fall back to global config.
+    """
+    if config is not None:
+        # Try to get from config dict using dotted key path
+        parts = key.split(".")
+        value = config
+        for part in parts:
+            if isinstance(value, dict) and part in value:
+                value = value[part]
+            else:
+                # Key not found in config dict - return default (don't use global)
+                return default
+        return value
+    # No config dict provided, use global config
+    return config_get(key, default)
+
+
+def _load_kernel_manifest(
+    world: "World", manifest_file: Path, config: dict[str, Any] | None = None
+) -> None:
     """Load and create kernel infrastructure artifacts."""
     with open(manifest_file) as f:
         raw = yaml.safe_load(f)
@@ -88,7 +118,7 @@ def _load_kernel_manifest(world: "World", manifest_file: Path) -> None:
         _create_artifact(world, artifact_spec, manifest_file.parent)
 
     if manifest.principal:
-        _create_principal(world, manifest.principal)
+        _create_principal(world, manifest.principal, config)
 
 
 def _load_artifact_manifest(world: "World", manifest_file: Path) -> None:
@@ -134,7 +164,9 @@ def _load_artifact_manifest(world: "World", manifest_file: Path) -> None:
         _create_artifact(world, artifact_spec, manifest_file.parent)
 
 
-def _load_agent_manifest(world: "World", manifest_file: Path) -> None:
+def _load_agent_manifest(
+    world: "World", manifest_file: Path, config: dict[str, Any] | None = None
+) -> None:
     """Load and create a genesis agent (multi-artifact cluster)."""
     with open(manifest_file) as f:
         raw = yaml.safe_load(f)
@@ -143,7 +175,7 @@ def _load_agent_manifest(world: "World", manifest_file: Path) -> None:
 
     # Check if enabled via config key
     if manifest.enabled_key:
-        enabled = config_get(manifest.enabled_key, manifest.enabled)
+        enabled = _get_config_value(config, manifest.enabled_key, manifest.enabled)
     else:
         enabled = manifest.enabled
 
@@ -159,7 +191,7 @@ def _load_agent_manifest(world: "World", manifest_file: Path) -> None:
 
     # Create principal if specified
     if manifest.principal:
-        _create_principal(world, manifest.principal)
+        _create_principal(world, manifest.principal, config)
 
 
 def _create_artifact(
@@ -205,24 +237,26 @@ def _create_artifact(
     logger.debug(f"Created artifact: {spec.id}")
 
 
-def _create_principal(world: "World", spec: "PrincipalSpec") -> None:
+def _create_principal(
+    world: "World", spec: "PrincipalSpec", config: dict[str, Any] | None = None
+) -> None:
     """Create a principal in the ledger."""
     from decimal import Decimal
 
     # Resolve values from config or use defaults
     starting_scrip = spec.starting_scrip
     if spec.starting_scrip_key:
-        starting_scrip = config_get(spec.starting_scrip_key, starting_scrip)
+        starting_scrip = _get_config_value(config, spec.starting_scrip_key, starting_scrip)
 
     starting_llm_budget = spec.starting_llm_budget
     if spec.starting_llm_budget_key:
         starting_llm_budget = float(
-            config_get(spec.starting_llm_budget_key, starting_llm_budget)
+            _get_config_value(config, spec.starting_llm_budget_key, starting_llm_budget)
         )
 
     disk_quota = spec.disk_quota
     if spec.disk_quota_key:
-        disk_quota = float(config_get(spec.disk_quota_key, disk_quota))
+        disk_quota = float(_get_config_value(config, spec.disk_quota_key, disk_quota))
 
     # Create principal if not exists
     if not world.ledger.principal_exists(spec.id):
