@@ -231,6 +231,64 @@ planning:
   ontology_path: docs/ONTOLOGY.yaml
 
 # =============================================================================
+# Implementation Quiz (Plan #296)
+# =============================================================================
+# Quiz users on code changes before merge to verify:
+# - Comprehension: User understands what the code does
+# - Tradeoffs: User understands design decisions made
+# - Alignment: Implementation matches user's intentions
+
+quiz:
+  # ---------------------------------------------------------------------------
+  # Integration Point
+  # ---------------------------------------------------------------------------
+  # When to run the quiz:
+  #   manual     - Only when explicitly requested via /quiz or script
+  #   prompt     - Ask after make pr-ready if user wants to quiz
+  #   automatic  - Block merge until quiz completed
+  integration: manual
+
+  # ---------------------------------------------------------------------------
+  # Scope
+  # ---------------------------------------------------------------------------
+  # Minimum lines changed to include a file in quiz (0 = quiz all changes)
+  min_lines_changed: 0
+
+  # File extensions to include (empty = all code files)
+  include_extensions:
+    - .py
+    - .yaml
+    - .yml
+    - .md
+    - .json
+
+  # Directories to exclude from quiz
+  exclude_dirs:
+    - __pycache__
+    - .pytest_cache
+    - node_modules
+    - .git
+
+  # ---------------------------------------------------------------------------
+  # Question Types
+  # ---------------------------------------------------------------------------
+  # Types of questions to ask:
+  #   comprehension - What does this code do?
+  #   tradeoff      - What design decisions were made?
+  #   alignment     - Does this match your intention?
+  question_types:
+    - comprehension
+    - tradeoff
+    - alignment
+
+  # ---------------------------------------------------------------------------
+  # Output
+  # ---------------------------------------------------------------------------
+  # Save quiz results to file for review
+  save_results: true
+  results_dir: docs/quizzes
+
+# =============================================================================
 # Project Type (for new project setup)
 # =============================================================================
 # Helps configure defaults based on project characteristics.
