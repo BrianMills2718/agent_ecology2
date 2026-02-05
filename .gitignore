@@ -94,3 +94,15 @@ runs/
 
 # Claude Code session files
 .claude_session
+
+# Temp and backup files
+*.bak
+backups/
+temp_*.txt
+doc_graph.png
+
+# Temp and backup files
+*.bak
+backups/
+temp_*.txt
+doc_graph.png
