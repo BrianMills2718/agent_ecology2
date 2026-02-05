@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-02-05 (Plan #300: added capability methods to kernel interface)
+**Last verified:** 2026-02-05 (Plan #303: fail-loud audit)
 
 ---
 

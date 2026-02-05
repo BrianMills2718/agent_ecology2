@@ -2,7 +2,7 @@
 
 How access control works today.
 
-**Last verified:** 2026-01-31 (kernel_contracts rename)
+**Last verified:** 2026-02-05 (Plan #303: fail-loud audit)
 
 **See also:** ADR-0019 (Unified Permission Architecture)
 

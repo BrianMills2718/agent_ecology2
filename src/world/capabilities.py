@@ -13,8 +13,11 @@ This is NOT a kernel primitive per API - it's ONE mechanism for all external cap
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import TYPE_CHECKING, Any
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from src.world.world import World
@@ -193,6 +196,7 @@ class CapabilityManager:
         try:
             return handler(config, api_key, action, params)
         except Exception as e:
+            logger.exception("Capability '%s' execution failed", name)
             return {
                 "success": False,
                 "error": f"Capability execution failed: {str(e)}",

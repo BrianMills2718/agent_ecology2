@@ -259,7 +259,7 @@ class ActionExecutor:
         existing = w.artifacts.get(intent.artifact_id)
         if existing:
             # Plan #235 Phase 1: Block writes to kernel_protected artifacts
-            if getattr(existing, "kernel_protected", False):
+            if existing.kernel_protected:
                 return ActionResult(
                     success=False,
                     message=f"Artifact '{intent.artifact_id}' is kernel_protected: "
@@ -363,14 +363,14 @@ class ActionExecutor:
             interface=interface,
             access_contract_id=intent.access_contract_id,
             metadata=intent.metadata,
-            has_standing=getattr(intent, 'has_standing', False),
-            has_loop=getattr(intent, 'has_loop', False),
+            has_standing=intent.has_standing,
+            has_loop=intent.has_loop,
         )
 
         # Plan #254: Auto-create principal if has_standing=True on NEW artifacts
         # This enables write_artifact to spawn principals (replacing genesis_ledger.spawn_principal)
         is_new_artifact = existing is None
-        has_standing = getattr(intent, 'has_standing', False)
+        has_standing = intent.has_standing
         if is_new_artifact and has_standing:
             # Create principal in ledger (holds scrip and resources)
             if not w.ledger.principal_exists(intent.artifact_id):
@@ -382,7 +382,7 @@ class ActionExecutor:
                     "principal_id": intent.artifact_id,
                     "created_by": intent.principal_id,
                     "has_standing": True,
-                    "has_loop": getattr(intent, 'has_loop', False),
+                    "has_loop": intent.has_loop,
                     "starting_scrip": starting_scrip,
                 })
 
@@ -404,7 +404,7 @@ class ActionExecutor:
             "size_bytes": total_size,
             "was_update": existing is not None,
             "has_standing": has_standing,
-            "has_loop": getattr(intent, 'has_loop', False),
+            "has_loop": intent.has_loop,
         })
 
         action = "Updated" if existing else "Created"
@@ -417,7 +417,7 @@ class ActionExecutor:
                 "size_bytes": total_size,
                 "was_update": existing is not None,
                 "has_standing": has_standing,
-                "has_loop": getattr(intent, 'has_loop', False),
+                "has_loop": intent.has_loop,
                 "principal_created": is_new_artifact and has_standing,
             },
         )
@@ -445,7 +445,7 @@ class ActionExecutor:
         # Plan #254: Genesis artifacts removed - kernel_ prefixed artifacts protected by kernel_protected flag
 
         # Plan #235 Phase 1: Block edits to kernel_protected artifacts
-        if getattr(artifact, "kernel_protected", False):
+        if artifact.kernel_protected:
             return ActionResult(
                 success=False,
                 message=f"Artifact '{intent.artifact_id}' is kernel_protected: "
@@ -1204,7 +1204,7 @@ class ActionExecutor:
             )
 
         # Check capability
-        capabilities = getattr(minter_artifact, 'capabilities', None) or []
+        capabilities = minter_artifact.capabilities
         if 'can_mint' not in capabilities:
             return ActionResult(
                 success=False,

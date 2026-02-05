@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import builtins
 import json
+import logging
 import math
 import random
 import signal
@@ -47,6 +48,8 @@ from typing import Any, Generator, Optional, Protocol, TYPE_CHECKING, runtime_ch
 
 if TYPE_CHECKING:
     from .ledger import Ledger
+
+logger = logging.getLogger(__name__)
 
 
 class PermissionAction(str, Enum):
@@ -349,6 +352,7 @@ def _get_contract_timeout_from_config() -> int:
         from src.config import get_validated_config
         return get_validated_config().executor.contract_timeout
     except Exception:
+        logger.warning("Failed to load contract_timeout from config, using default 5s", exc_info=True)
         return 5  # Fallback default
 
 
@@ -570,6 +574,10 @@ def check_permission(caller, action, target, context, ledger):
 
         allowed = result.get("allowed", False)
         reason = result.get("reason", "No reason provided")
+        if "cost" not in result:
+            logger.warning(
+                "Executable contract returned no 'cost' field, defaulting to 0"
+            )
         cost = result.get("cost", 0)
         payer = result.get("payer")  # Plan #140: Contract-specified payer
 

@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-302-tech-debt-quick-wins
-task: Fix TD-011 through TD-014
-claimed_at: '2026-02-05T22:44:16Z'
-session_id: 463f3b3e-cae8-4e90-84ba-ecf4007aa212
-plan: 302
+cc_id: plan-303-fail-loud
+task: Fix 13 silent fallback violations (TD-010)
+claimed_at: '2026-02-05T23:07:02Z'
+session_id: deb6a5c6-b537-477c-a2e2-c73d0d02188e
+plan: 303
