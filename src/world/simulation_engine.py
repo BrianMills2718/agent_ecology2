@@ -325,7 +325,7 @@ class SimulationEngine:
 
     def get_rates(self) -> tuple[int, int]:
         """
-        Get token rates for passing to ledger.deduct_thinking_cost().
+        Get token rates for cost calculation.
 
         Returns:
             (rate_input, rate_output): Token rates tuple

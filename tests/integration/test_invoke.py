@@ -52,8 +52,8 @@ class TestInvokeBasic:
         self.store = ArtifactStore()
 
         # Create test principals
-        self.ledger.create_principal("caller", starting_scrip=100, starting_compute=50)
-        self.ledger.create_principal("owner", starting_scrip=50, starting_compute=50)
+        self.ledger.create_principal("caller", starting_scrip=100)
+        self.ledger.create_principal("owner", starting_scrip=50)
 
     def test_basic_invoke(self) -> None:
         """Test basic invoke() call to another artifact."""
@@ -168,8 +168,8 @@ class TestInvokeRecursion:
         self.ledger = Ledger()
         self.store = ArtifactStore()
 
-        self.ledger.create_principal("caller", starting_scrip=100, starting_compute=50)
-        self.ledger.create_principal("owner", starting_scrip=50, starting_compute=50)
+        self.ledger.create_principal("caller", starting_scrip=100)
+        self.ledger.create_principal("owner", starting_scrip=50)
 
     def test_nested_invoke(self) -> None:
         """Test A calls B calls C (depth=2)."""
@@ -255,9 +255,9 @@ class TestInvokePermissions:
         self.ledger = Ledger()
         self.store = ArtifactStore()
 
-        self.ledger.create_principal("caller", starting_scrip=100, starting_compute=50)
-        self.ledger.create_principal("owner", starting_scrip=50, starting_compute=50)
-        self.ledger.create_principal("allowed", starting_scrip=50, starting_compute=50)
+        self.ledger.create_principal("caller", starting_scrip=100)
+        self.ledger.create_principal("owner", starting_scrip=50)
+        self.ledger.create_principal("allowed", starting_scrip=50)
 
     def test_invoke_permission_denied(self) -> None:
         """Test invoke() when caller doesn't have permission.
@@ -334,8 +334,8 @@ class TestInvokeErrorPropagation:
         self.ledger = Ledger()
         self.store = ArtifactStore()
 
-        self.ledger.create_principal("caller", starting_scrip=100, starting_compute=50)
-        self.ledger.create_principal("owner", starting_scrip=50, starting_compute=50)
+        self.ledger.create_principal("caller", starting_scrip=100)
+        self.ledger.create_principal("owner", starting_scrip=50)
 
     def test_error_in_invoked_artifact(self) -> None:
         """Test that errors in invoked artifact propagate correctly."""

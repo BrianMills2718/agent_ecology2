@@ -32,8 +32,8 @@ from src.world.ledger import Ledger
 def ledger() -> Ledger:
     """Ledger with two principals."""
     led = Ledger()
-    led.create_principal("alice", starting_scrip=1000, starting_compute=100)
-    led.create_principal("bob", starting_scrip=500, starting_compute=100)
+    led.create_principal("alice", starting_scrip=1000)
+    led.create_principal("bob", starting_scrip=500)
     return led
 
 

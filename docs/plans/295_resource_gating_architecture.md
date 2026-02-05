@@ -265,3 +265,19 @@ config/
 This is a significant architectural change. The goal is alignment with "physics-first" and "emergence over prescription" principles. Scarcity should emerge from resource limits, not from artificial scheduling.
 
 The scheduler isn't "wrong" - it's a pragmatic solution. But it imposes structure rather than letting it emerge. This refactor moves toward a purer model where the kernel provides physics and artifacts deal with scarcity naturally.
+
+---
+
+## Implementation Log
+
+### Phase 1 Prep (2026-02-05)
+
+Cleaned up deprecated `llm_tokens` API in ledger as preparation for Phase 1:
+- Removed `SimpleBalanceInfo` (use `BalanceInfo`)
+- Removed `starting_compute` parameter from `create_principal()`
+- Removed `get_llm_tokens()`, `spend_llm_tokens()`, `can_spend_llm_tokens()`
+- Removed `get_all_llm_tokens()`, `reset_llm_tokens()`
+- Removed `deduct_thinking_cost()` (cost calc stays in SimulationEngine)
+- Updated all call sites in src/, tests/, docs/
+
+This establishes a clean base for generalized quota tracking.

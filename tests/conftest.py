@@ -177,12 +177,14 @@ def test_ledger() -> Ledger:
     """Create a test Ledger instance with some principals.
 
     Pre-configured with two test principals:
-    - test_agent_1: 100 scrip, 50 compute
-    - test_agent_2: 200 scrip, 50 compute
+    - test_agent_1: 100 scrip
+    - test_agent_2: 200 scrip
+
+    Note: Resources (like llm_budget) are set up separately via set_resource().
     """
     ledger = Ledger()
-    ledger.create_principal("test_agent_1", starting_scrip=100, starting_compute=50)
-    ledger.create_principal("test_agent_2", starting_scrip=200, starting_compute=50)
+    ledger.create_principal("test_agent_1", starting_scrip=100)
+    ledger.create_principal("test_agent_2", starting_scrip=200)
     return ledger
 
 
@@ -300,9 +302,9 @@ def feature_world(tmp_path: Path) -> World:
 def ledger_with_principals() -> Ledger:
     """Ledger with test principals for ledger feature tests."""
     ledger = Ledger()
-    ledger.create_principal("alice", starting_scrip=1000, starting_compute=100)
-    ledger.create_principal("bob", starting_scrip=500, starting_compute=100)
-    ledger.create_principal("charlie", starting_scrip=200, starting_compute=100)
+    ledger.create_principal("alice", starting_scrip=1000)
+    ledger.create_principal("bob", starting_scrip=500)
+    ledger.create_principal("charlie", starting_scrip=200)
     return ledger
 
 

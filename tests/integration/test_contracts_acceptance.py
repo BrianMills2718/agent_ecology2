@@ -93,8 +93,8 @@ class TestContractsEdgeCases:
     def test_contract_with_ledger_access(self) -> None:
         """Contract can read ledger data for decisions."""
         ledger = Ledger()
-        ledger.create_principal("rich_agent", starting_scrip=1000, starting_compute=50)
-        ledger.create_principal("poor_agent", starting_scrip=10, starting_compute=50)
+        ledger.create_principal("rich_agent", starting_scrip=1000)
+        ledger.create_principal("poor_agent", starting_scrip=10)
 
         contract = ExecutableContract(
             contract_id="rich_only_contract",
@@ -194,8 +194,8 @@ def check_permission(caller, action, target, context, ledger):
           - Contract cannot steal funds
         """
         ledger = Ledger()
-        ledger.create_principal("victim", starting_scrip=100, starting_compute=50)
-        ledger.create_principal("attacker", starting_scrip=0, starting_compute=50)
+        ledger.create_principal("victim", starting_scrip=100)
+        ledger.create_principal("attacker", starting_scrip=0)
 
         readonly = ReadOnlyLedger(ledger)
 

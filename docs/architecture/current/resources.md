@@ -272,7 +272,7 @@ Set by artifact owner:
 | File | Key Functions | Description |
 |------|---------------|-------------|
 | `src/world/ledger.py` | `Ledger`, `can_spend_resource()`, `can_afford_scrip()` | Resource tracking |
-| `src/world/ledger.py` | `calculate_thinking_cost()`, `deduct_thinking_cost()` | Thinking cost calculation |
+| `src/world/simulation_engine.py` | `calculate_thinking_cost()` | Thinking cost calculation |
 | `src/world/ledger.py` | `transfer_scrip()`, `distribute_ubi()` | Scrip transfers (Plan #254) |
 | `src/world/world.py` | `World.advance_tick()` | Tick resource reset |
 | `src/world/simulation_engine.py` | `calculate_thinking_cost()`, `is_budget_exhausted()` | Cost calculation, budget tracking |

@@ -1,8 +1,8 @@
 """Ledger for tracking resources and scrip (economic currency)
 
 Two separate systems:
-1. Resources - Generic resource tracking (llm_tokens, disk, bandwidth, etc.)
-   - Renewable resources: Rate-limited via RateTracker (e.g., llm_tokens)
+1. Resources - Generic resource tracking (llm_budget, disk, bandwidth, etc.)
+   - Renewable resources: Rate-limited via RateTracker
    - Stock resources: Finite pool, never reset (e.g., disk)
 2. Scrip - Economic currency. Persistent. Earned/spent through trade.
 
@@ -31,9 +31,7 @@ See docs/architecture/current/resources.md for full design rationale.
 from __future__ import annotations
 
 import asyncio
-import math
-import warnings
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 from typing import Any, TypedDict
 
 from src.world.rate_tracker import RateTracker
@@ -84,16 +82,6 @@ class BalanceInfo(TypedDict):
     resources: dict[str, float]
 
 
-class SimpleBalanceInfo(TypedDict):
-    """DEPRECATED (Plan #166): Simple balance format with llm_tokens and scrip.
-
-    The llm_tokens field is deprecated. Use BalanceInfo with resources dict
-    and check for 'llm_budget' instead of 'llm_tokens'.
-    """
-    llm_tokens: int  # DEPRECATED: use llm_budget from resources
-    scrip: int
-
-
 class Ledger:
     """
     Tracks resources and scrip per principal.
@@ -102,8 +90,8 @@ class Ledger:
     - scrip: Economic currency (special - used for trading)
 
     Resources can be:
-    - Renewable: Rate-limited via RateTracker (llm_tokens, bandwidth)
-    - Stock: Never reset (disk, api_budget)
+    - Renewable: Rate-limited via RateTracker (llm_budget, bandwidth)
+    - Stock: Never reset (disk)
 
     Integrates with RateTracker for rolling-window rate limiting.
 
@@ -137,8 +125,8 @@ class Ledger:
 
     @classmethod
     def from_config(
-        cls, 
-        config: dict[str, Any], 
+        cls,
+        config: dict[str, Any],
         agent_ids: list[str],
         id_registry: "IDRegistry | None" = None,
     ) -> "Ledger":
@@ -174,7 +162,6 @@ class Ledger:
         principal_id: str,
         starting_scrip: int,
         starting_resources: dict[str, float] | None = None,
-        starting_compute: int = 0,  # Backward compat
     ) -> None:
         """Create a new principal with starting balances.
 
@@ -192,9 +179,6 @@ class Ledger:
             # This supports unified ontology where artifacts can be principals
         self.scrip[principal_id] = starting_scrip
         self.resources[principal_id] = starting_resources.copy() if starting_resources else {}
-        # Backward compat: if starting_compute provided, set llm_tokens
-        if starting_compute > 0:
-            self.resources[principal_id]["llm_tokens"] = float(starting_compute)
 
     # ===== GENERIC RESOURCE API =====
 
@@ -226,7 +210,7 @@ class Ledger:
         self.resources[principal_id][resource] = _decimal_add(current, amount)
 
     def set_resource(self, principal_id: str, resource: str, amount: float) -> None:
-        """Set a resource to a specific value (legacy, prefer RateTracker)."""
+        """Set a resource to a specific value."""
         if principal_id not in self.resources:
             self.resources[principal_id] = {}
         self.resources[principal_id][resource] = amount
@@ -444,109 +428,9 @@ class Ledger:
             self.scrip[to_id] += amount
             return True
 
-    # ===== LLM TOKENS (DEPRECATED - Plan #166) =====
-    # These methods are DEPRECATED. Use dollar-based budget methods instead:
-    # - get_llm_budget() / can_afford_llm_call() / deduct_llm_cost()
-    # Token-based tracking conflated usage, rate limits, and budget.
-    # Dollar budget is THE constraint; these remain for backward compatibility.
-
-    def get_llm_tokens(self, principal_id: str) -> int:
-        """DEPRECATED (Plan #166): Get available LLM tokens for a principal.
-
-        Use get_llm_budget() for dollar-based budget instead.
-        Token-based tracking will be removed in a future version.
-
-        Mode-aware: Uses RateTracker remaining capacity when rate limiting
-        is enabled (default), otherwise uses simple balance.
-
-        Returns:
-            Available tokens (int). Returns 999999 if unlimited.
-        """
-        warnings.warn(
-            "get_llm_tokens() is deprecated (Plan #166). "
-            "Use get_llm_budget() for dollar-based budget constraint.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        remaining = self.get_resource_remaining(principal_id, "llm_tokens")
-        # Handle infinity (unconfigured resource = unlimited)
-        if remaining == float("inf"):
-            return 999999  # Large value indicating unlimited
-        return int(remaining)
-
-    def can_spend_llm_tokens(self, principal_id: str, amount: int) -> bool:
-        """DEPRECATED (Plan #166): Check if principal can afford to spend LLM tokens.
-
-        Use can_afford_llm_call() for dollar-based budget check instead.
-
-        Mode-aware: Uses RateTracker capacity check when rate limiting
-        is enabled (default), otherwise uses simple balance check.
-        """
-        warnings.warn(
-            "can_spend_llm_tokens() is deprecated (Plan #166). "
-            "Use can_afford_llm_call() for dollar-based budget check.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.check_resource_capacity(principal_id, "llm_tokens", float(amount))
-
-    def spend_llm_tokens(self, principal_id: str, amount: int) -> bool:
-        """DEPRECATED (Plan #166): Spend LLM tokens for a principal.
-
-        Use deduct_llm_cost() for dollar-based budget deduction instead.
-
-        Mode-aware: Uses RateTracker consumption when rate limiting
-        is enabled (default), otherwise uses simple balance deduction.
-
-        Returns:
-            True if successful, False if insufficient tokens.
-        """
-        warnings.warn(
-            "spend_llm_tokens() is deprecated (Plan #166). "
-            "Use deduct_llm_cost() for dollar-based budget deduction.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.consume_resource(principal_id, "llm_tokens", float(amount))
-
-    def reset_llm_tokens(self, principal_id: str, quota: int) -> None:
-        """Reset LLM token balance for a principal.
-
-        Note: With RateTracker active, this sets the underlying balance but
-        get_llm_tokens() returns RateTracker remaining capacity instead.
-        """
-        self.set_resource(principal_id, "llm_tokens", float(quota))
-
-    def get_all_llm_tokens(self) -> dict[str, int]:
-        """DEPRECATED (Plan #166): Get snapshot of all LLM token balances.
-
-        Token-based tracking is being replaced with dollar-based budget.
-        """
-        warnings.warn(
-            "get_all_llm_tokens() is deprecated (Plan #166). "
-            "Use get_all_balances_full() for comprehensive resource view.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        result: dict[str, int] = {}
-        for pid, resources in self.resources.items():
-            result[pid] = int(resources.get("llm_tokens", 0))
-        return result
-
     # ===== REPORTING =====
 
-    def get_all_balances(self) -> dict[str, SimpleBalanceInfo]:
-        """Get snapshot of all balances with llm_tokens and scrip."""
-        result: dict[str, SimpleBalanceInfo] = {}
-        all_principals = set(self.resources.keys()) | set(self.scrip.keys())
-        for pid in all_principals:
-            result[pid] = {
-                "llm_tokens": int(self.get_resource(pid, "llm_tokens")),
-                "scrip": self.scrip.get(pid, 0),
-            }
-        return result
-
-    def get_all_balances_full(self) -> dict[str, BalanceInfo]:
+    def get_all_balances(self) -> dict[str, BalanceInfo]:
         """Get snapshot of all balances including all resources."""
         result: dict[str, BalanceInfo] = {}
         all_principals = set(self.resources.keys()) | set(self.scrip.keys())
@@ -713,70 +597,8 @@ class Ledger:
         async with self._resource_lock:
             return self.rate_tracker.consume(agent_id, resource, amount)
 
-    # ===== THINKING COST (LLM tokens) =====
-
-    def calculate_thinking_cost(
-        self,
-        input_tokens: int,
-        output_tokens: int,
-        rate_input: float,
-        rate_output: float,
-    ) -> int:
-        """Calculate thinking cost based on token usage and rates.
-
-        Thinking consumes llm_tokens resource.
-
-        Args:
-            input_tokens: Number of input (prompt) tokens
-            output_tokens: Number of output (completion) tokens
-            rate_input: Cost units per 1K input tokens
-            rate_output: Cost units per 1K output tokens
-
-        Returns:
-            Total thinking cost in llm_tokens units (rounded up)
-        """
-        input_cost = (input_tokens / 1000) * rate_input
-        output_cost = (output_tokens / 1000) * rate_output
-        return math.ceil(input_cost + output_cost)
-
-    def deduct_thinking_cost(
-        self,
-        principal_id: str,
-        input_tokens: int,
-        output_tokens: int,
-        rate_input: float,
-        rate_output: float,
-    ) -> tuple[bool, int]:
-        """DEPRECATED (Plan #153, #166): Calculate and deduct thinking cost.
-
-        Use deduct_llm_cost() for dollar-based budgets instead.
-        Token-based cost tracking is being phased out.
-
-        Mode-aware: Uses RateTracker consumption when rate limiting is enabled,
-        otherwise uses simple balance deduction.
-
-        Returns:
-            (success, cost): Whether deduction succeeded and the cost amount
-        """
-        warnings.warn(
-            "deduct_thinking_cost() is deprecated (Plan #153, #166). "
-            "Use deduct_llm_cost() for dollar-based budget.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        cost = self.calculate_thinking_cost(
-            input_tokens, output_tokens, rate_input, rate_output
-        )
-        # Use mode-aware spend_llm_tokens (also deprecated, but called internally)
-        # Suppress the nested warning to avoid double-warning
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            success = self.spend_llm_tokens(principal_id, cost)
-        return success, cost
-
     # ===== LLM BUDGET (Plan #153) =====
     # Dollar-based budget constraint - THE primary LLM resource limit.
-    # Token capacity is derived from budget / model_cost_per_token.
 
     def get_llm_budget(self, principal_id: str) -> float:
         """Get remaining LLM budget in dollars for a principal (Plan #153).
@@ -834,11 +656,9 @@ class Ledger:
             principal_id: ID of the principal
 
         Returns:
-            Dict with 'remaining' and 'initial' budget amounts
+            Dict with 'remaining' budget amount
         """
         remaining = self.get_llm_budget(principal_id)
-        # Initial budget would need to be tracked separately or from config
-        # For now, we just return remaining
         return {
             "remaining": remaining,
         }

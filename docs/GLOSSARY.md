@@ -2,7 +2,7 @@
 
 Canonical terminology for Agent Ecology.
 
-**Last updated:** 2026-02-02 (Plan #269: mint_tasks config - see MintTask, TaskTest in config_schema.py)
+**Last updated:** 2026-02-05 (Plan #295: ledger cleanup - removed deprecated llm_tokens API)
 
 ---
 

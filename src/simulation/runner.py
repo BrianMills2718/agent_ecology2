@@ -544,8 +544,6 @@ class SimulationRunner:
 
         Returns ThinkingResult with proposal or skip/error info.
         """
-        llm_tokens_before: int = self.world.ledger.get_llm_tokens(agent.agent_id)
-
         # Check per-agent LLM budget (Plan #12)
         # If agent has llm_budget allocated but it's exhausted, skip thinking
         llm_budget = self.world.ledger.get_resource(agent.agent_id, "llm_budget")
@@ -580,24 +578,9 @@ class SimulationRunner:
         input_tokens: int = usage.get("input_tokens", 0)
         output_tokens: int = usage.get("output_tokens", 0)
 
-        # Deduct thinking cost
-        rate_input, rate_output = self.engine.get_rates()
-        thinking_result = self.world.ledger.deduct_thinking_cost(
-            agent.agent_id, input_tokens, output_tokens, rate_input, rate_output
-        )
-        thinking_success: bool = thinking_result[0]
-        thinking_cost: int = thinking_result[1]
-
-        if not thinking_success:
-            return {
-                "agent": agent,
-                "skipped": True,
-                "skip_reason": f"insufficient_compute (cost {thinking_cost} > {llm_tokens_before})",
-                "thinking_cost": thinking_cost,
-                "api_cost": api_cost,
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-            }
+        # Calculate thinking cost (for observability, actual deduction uses llm_budget)
+        thinking_cost_result = self.engine.calculate_thinking_cost(input_tokens, output_tokens)
+        thinking_cost: int = thinking_cost_result["total_cost"]
 
         if "error" in proposal:
             return {
@@ -720,7 +703,7 @@ class SimulationRunner:
                 "output_tokens": output_tokens,
                 "api_cost": api_cost,
                 "thinking_cost": thinking_cost,
-                "llm_tokens_after": self.world.ledger.get_llm_tokens(agent.agent_id),
+                "llm_budget_remaining": self.world.ledger.get_resource_remaining(agent.agent_id, "llm_budget"),
                 "llm_budget_after": self.world.ledger.get_llm_budget(agent.agent_id),  # Plan #153
                 "reasoning": reasoning,
                 # Plan #279: Add workflow context for observability

@@ -14,12 +14,12 @@ class TestPayCapability:
     def test_pay_transfers_scrip(self) -> None:
         """pay() should transfer scrip from artifact to target."""
         ledger = Ledger()
-        ledger.create_principal("alice", starting_scrip=0, starting_compute=0)
+        ledger.create_principal("alice", starting_scrip=0)
         # Fund the contract
         ledger.transfer_scrip("alice", "payout_contract", 100)
         # Actually alice starts with 0 and we transfer 100 from nowhere, let's fix:
         ledger = Ledger()
-        ledger.create_principal("alice", starting_scrip=100, starting_compute=0)
+        ledger.create_principal("alice", starting_scrip=100)
         ledger.transfer_scrip("alice", "payout_contract", 100)
 
         code = '''
@@ -44,7 +44,7 @@ def run(recipient):
     def test_pay_insufficient_funds_fails(self) -> None:
         """pay() should fail if artifact doesn't have enough scrip."""
         ledger = Ledger()
-        ledger.create_principal("alice", starting_scrip=100, starting_compute=0)
+        ledger.create_principal("alice", starting_scrip=100)
         ledger.transfer_scrip("alice", "small_contract", 10)
 
         code = '''
@@ -67,7 +67,7 @@ def run(recipient):
     def test_pay_negative_amount_rejected(self) -> None:
         """pay() should reject negative amounts."""
         ledger = Ledger()
-        ledger.create_principal("alice", starting_scrip=100, starting_compute=0)
+        ledger.create_principal("alice", starting_scrip=100)
         ledger.transfer_scrip("alice", "contract", 50)
 
         code = '''
@@ -90,7 +90,7 @@ def run(recipient):
     def test_get_balance_returns_current_balance(self) -> None:
         """get_balance() should return artifact's current scrip."""
         ledger = Ledger()
-        ledger.create_principal("alice", starting_scrip=100, starting_compute=0)
+        ledger.create_principal("alice", starting_scrip=100)
         ledger.transfer_scrip("alice", "contract", 75)
 
         code = '''
@@ -111,8 +111,8 @@ def run():
     def test_multiple_payments(self) -> None:
         """Artifact can make multiple payments in one execution."""
         ledger = Ledger()
-        ledger.create_principal("alice", starting_scrip=0, starting_compute=0)
-        ledger.create_principal("bob", starting_scrip=0, starting_compute=0)
+        ledger.create_principal("alice", starting_scrip=0)
+        ledger.create_principal("bob", starting_scrip=0)
         ledger.ensure_principal("rich_contract")
         ledger.credit_scrip("rich_contract", 100)
 
@@ -202,7 +202,7 @@ class TestPayCapabilitySecurity:
     def test_cannot_spend_other_wallets(self) -> None:
         """pay() can only spend from the artifact's own wallet."""
         ledger = Ledger()
-        ledger.create_principal("rich_agent", starting_scrip=1000, starting_compute=0)
+        ledger.create_principal("rich_agent", starting_scrip=1000)
         ledger.ensure_principal("contract")
         ledger.credit_scrip("contract", 10)
 

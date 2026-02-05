@@ -59,8 +59,8 @@ class TestDependencyInjection:
     def ledger(self) -> Ledger:
         """Create ledger with test principals."""
         ledger = Ledger()
-        ledger.create_principal("alice", starting_scrip=1000, starting_compute=1000)
-        ledger.create_principal("bob", starting_scrip=500, starting_compute=500)
+        ledger.create_principal("alice", starting_scrip=1000)
+        ledger.create_principal("bob", starting_scrip=500)
         return ledger
 
     @pytest.fixture
@@ -297,7 +297,7 @@ class TestDependencyContext:
     def ledger(self) -> Ledger:
         """Create ledger."""
         ledger = Ledger()
-        ledger.create_principal("alice", starting_scrip=1000, starting_compute=1000)
+        ledger.create_principal("alice", starting_scrip=1000)
         return ledger
 
     @pytest.fixture

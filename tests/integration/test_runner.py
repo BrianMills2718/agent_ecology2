@@ -420,35 +420,6 @@ class TestRateTrackerResourceBehavior:
     """Tests for RateTracker-based resource behavior (Plan #247: legacy tick mode removed)."""
 
     @patch("src.simulation.runner.load_agents")
-    def test_advance_tick_does_not_reset_rate_tracker(
-        self, mock_load: MagicMock
-    ) -> None:
-        """advance_tick does NOT affect RateTracker capacity."""
-        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = make_minimal_config(tmpdir)
-            config["rate_limiting"] = {
-                "enabled": True,
-                "window_seconds": 60.0,
-                "resources": {"llm_tokens": {"max_per_window": 1000}}
-            }
-            runner = SimulationRunner(config, verbose=False)
-
-            # get_llm_tokens returns RateTracker remaining (full capacity initially)
-            assert runner.world.ledger.get_llm_tokens("agent") == 1000
-
-            # Spend some compute (consumes from RateTracker)
-            runner.world.ledger.spend_llm_tokens("agent", 600)
-            assert runner.world.ledger.get_llm_tokens("agent") == 400
-
-            # Advance tick should NOT affect RateTracker (no reset)
-            runner.world.advance_tick()
-
-            # Compute should remain at 400 (RateTracker, not tick-based)
-            assert runner.world.ledger.get_llm_tokens("agent") == 400
-
-    @patch("src.simulation.runner.load_agents")
     def test_rate_tracker_always_created(self, mock_load: MagicMock) -> None:
         """RateTracker is always created regardless of config (Plan #247)."""
         mock_load.return_value = []
