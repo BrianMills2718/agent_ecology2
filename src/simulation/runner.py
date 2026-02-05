@@ -18,14 +18,10 @@ from datetime import datetime
 from typing import Any, cast, get_args, TYPE_CHECKING
 
 from ..world import World
-from ..world.actions import parse_intent_from_json, ActionIntent
+from ..world.actions import parse_intent_from_json, ActionIntent, ActionTypeLiteral
 from ..world.simulation_engine import SimulationEngine
 from ..world.world import StateSummary, ConfigDict
 from ..world.mint_auction import KernelMintResult
-from ..agents import Agent
-from ..agents.loader import load_agents, create_agent_artifacts, load_agents_from_store, AgentConfig
-from ..agents.agent import ActionResult as AgentActionResult, TokenUsage
-from ..agents.schema import ActionType
 from ..world.artifacts import create_agent_artifact, create_memory_artifact
 from ..world.logger import SummaryCollector
 from ..config import get_validated_config
@@ -41,16 +37,18 @@ from .checkpoint import save_checkpoint, load_checkpoint
 from .agent_loop import AgentLoopManager, AgentLoopConfig
 from .artifact_loop import ArtifactLoopManager  # Plan #255: V4 artifact loops
 from .pool import WorkerPool, PoolConfig
-from ..agents.state_store import AgentStateStore
-from ..agents.reflex import ReflexExecutor, build_reflex_context
-from ..agents.hooks import (
-    HooksConfig,
-    HookExecutor,
-    HookTiming,
-    HookDefinition,
-    HookResult,
-    expand_subscribed_artifacts,
-)
+
+# Plan #299: Legacy agent imports removed - agents are now artifact-based
+# Legacy code paths that used Agent, AgentStateStore, ReflexExecutor, HooksConfig
+# are retained but will not execute since self.agents is always empty.
+# These will be fully removed when src/agents/ is deleted.
+if TYPE_CHECKING:
+    from ..agents import Agent
+    from ..agents.loader import AgentConfig
+    from ..agents.agent import ActionResult as AgentActionResult
+    from ..agents.state_store import AgentStateStore
+    from ..agents.reflex import ReflexExecutor
+    from ..agents.hooks import HooksConfig, HookExecutor, HookTiming, HookDefinition, HookResult
 
 
 def _derive_provider(model: str) -> str:
@@ -291,56 +289,15 @@ class SimulationRunner:
             print(f"Restored artifacts: {len(checkpoint['artifacts'])}")
             print()
 
-    def _create_agents(self, agent_configs: list[AgentConfig]) -> list[Agent]:
-        """Create artifact-backed Agent instances from config.
+    def _create_agents(self, agent_configs: "list[AgentConfig]") -> "list[Agent]":
+        """Plan #299: Legacy agent creation disabled - returns empty list.
 
-        Uses the unified ontology (Gap #6): agents are artifacts with
-        has_standing=True and has_loop=True. Agent artifacts are
-        stored in the world's artifact store, enabling persistence
-        and trading.
+        Agents are now artifact-based and created by genesis loader.
+        ArtifactLoopManager discovers and runs has_loop artifacts.
         """
-        # Fill in default model for configs that don't specify one
-        default_model: str = self.config["llm"]["default_model"]
-        for config in agent_configs:
-            if not config.get("llm_model"):
-                config["llm_model"] = default_model
-
-        # Create agent artifacts in the world's artifact store
-        # This populates the store with agent and memory artifacts
-        create_agent_artifacts(
-            self.world.artifacts,
-            agent_configs,
-            create_memory=True,
-        )
-
-        # Load agents from the artifact store
-        # Each agent is backed by its artifact in the store
-        agents = load_agents_from_store(
-            self.world.artifacts,
-            log_dir=self.config["logging"]["log_dir"],
-            run_id=self.run_id,
-        )
-
-        # Load prior learnings if cross-run learning enabled (Plan #186)
-        prior_states = self._load_prior_learnings()
-        if prior_states:
-            learning_config = self.config.get("learning", {}).get("cross_run", {})
-            for agent in agents:
-                if agent.agent_id in prior_states:
-                    prior_state = prior_states[agent.agent_id]
-                    # Only restore working_memory by default
-                    if learning_config.get("load_working_memory", True):
-                        wm = prior_state.get("working_memory")
-                        if wm:
-                            agent._working_memory = wm
-                            print(f"  Restored working_memory for {agent.agent_id}")
-
-        # Plan #254: Genesis memory removed - agents use working_memory directly
-        for agent in agents:
-            # Set world reference for semantic memory access
-            agent.set_world(self.world)
-
-        return agents
+        # Plan #299: No legacy agents - return empty list
+        # Agent configs is always empty since load_agents() is no longer called
+        return []
 
 
     def _load_prior_learnings(self) -> dict[str, dict[str, Any]]:
@@ -408,97 +365,14 @@ class SimulationRunner:
         candidates.sort(key=lambda f: os.path.getmtime(f), reverse=True)
         return candidates[0]
 
-    def _check_for_new_principals(self) -> list[Agent]:
-        """Check ledger for principals without Agent instances.
+    def _check_for_new_principals(self) -> "list[Agent]":
+        """Plan #299: Legacy principal detection disabled.
 
-        Creates artifact-backed Agent instances for spawned principals.
-        Uses the unified ontology (Gap #6): spawned agents are also
-        artifacts with has_standing=True and has_loop=True.
+        New principals are now handled by ArtifactLoopManager which discovers
+        and runs has_loop=True artifacts. This method returns empty list for
+        backwards compatibility with tests.
         """
-        ledger_principals: set[str] = set(self.world.ledger.scrip.keys())
-        existing_agent_ids: set[str] = {agent.agent_id for agent in self.agents}
-        new_principal_ids: set[str] = ledger_principals - existing_agent_ids
-
-        # Filter out system principals (they're not agents)
-        # - genesis_* prefixed IDs (legacy)
-        # - kernel_mint_agent (Plan #254: system principal for minting)
-        new_principal_ids = {
-            pid for pid in new_principal_ids
-            if not pid.startswith("genesis_") and pid != "kernel_mint_agent"
-        }
-
-        new_agents: list[Agent] = []
-        default_model: str = self.config.get("llm", {}).get(
-            "default_model", "gemini/gemini-3-flash-preview"
-        )
-        log_dir: str = self.config.get("logging", {}).get("log_dir", "llm_logs")
-        default_system_prompt: str = (
-            "You are a new agent. Survive and thrive. "
-            "You start with nothing - seek resources and opportunities. "
-            "Read handbook_toc to learn the rules."
-        )
-
-        for principal_id in new_principal_ids:
-            # Skip if agent artifact already exists (e.g., from checkpoint restore)
-            if principal_id in self.world.artifacts.artifacts:
-                artifact = self.world.artifacts.get(principal_id)
-                if artifact and artifact.is_agent:
-                    # Load agent from existing artifact
-                    # Plan #197: Spawned agents are not genesis agents
-                    new_agent = Agent.from_artifact(
-                        artifact,
-                        store=self.world.artifacts,
-                        log_dir=log_dir,
-                        run_id=self.run_id,
-                        is_genesis=False,
-                    )
-                    new_agents.append(new_agent)
-                    if self.verbose:
-                        print(f"  [NEW AGENT] Loaded agent from artifact: {principal_id}")
-                    continue
-
-            # Create memory artifact for new agent
-            memory_id = f"{principal_id}_memory"
-            memory_artifact = create_memory_artifact(
-                memory_id=memory_id,
-                created_by=principal_id,
-            )
-            self.world.artifacts.artifacts[memory_id] = memory_artifact
-
-            # Create agent artifact with default config
-            agent_config = {
-                "llm_model": default_model,
-                "system_prompt": default_system_prompt,
-                "action_schema": "",
-            }
-            agent_artifact = create_agent_artifact(
-                agent_id=principal_id,
-                created_by=principal_id,  # Self-created
-                agent_config=agent_config,
-                memory_artifact_id=memory_id,
-            )
-            self.world.artifacts.artifacts[principal_id] = agent_artifact
-
-            # Plan #231: Ensure ResourceManager knows about this principal
-            if hasattr(self.world, 'resource_manager'):
-                if not self.world.resource_manager.principal_exists(principal_id):
-                    self.world.resource_manager.create_principal(principal_id)
-
-            # Create agent from artifact
-            # Plan #197: Spawned agents are not genesis agents
-            new_agent = Agent.from_artifact(
-                agent_artifact,
-                store=self.world.artifacts,
-                log_dir=log_dir,
-                run_id=self.run_id,
-                is_genesis=False,
-            )
-            new_agents.append(new_agent)
-
-            if self.verbose:
-                print(f"  [NEW AGENT] Created artifact-backed agent: {principal_id}")
-
-        return new_agents
+        return []
 
     def _handle_mint_update(self) -> KernelMintResult | None:
         """Handle mint auction update (Plan #83 - time-based).

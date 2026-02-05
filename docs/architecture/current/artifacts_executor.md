@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-02-05 (Plan #295: ledger cleanup - removed starting_compute from create_principal)
+**Last verified:** 2026-02-05 (Plan #299: ActionTypeLiteral moved to world/actions.py)
 
 ---
 
