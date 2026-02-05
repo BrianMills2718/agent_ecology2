@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-227-metrics-scripts
-task: Implement collect_metrics.py and compare_experiments.py
-claimed_at: '2026-02-05T17:05:58Z'
-session_id: 7584f825-e63a-4126-b55d-164b79fb5b95
-plan: 227
+cc_id: plan-299-eliminate-legacy-agents
+task: Eliminate legacy agent system, convert to artifacts
+claimed_at: '2026-02-05T18:01:29Z'
+session_id: 8349c172-0ffc-4027-bc08-0c8fcf27c513
+plan: 299
