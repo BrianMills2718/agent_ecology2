@@ -1,50 +1,33 @@
 """SimulationRunner - Main orchestrator for agent ecology simulation.
 
 Handles:
-- World and agent initialization
+- World and artifact-based agent initialization
 - Checkpoint restore
-- Autonomous agent loops with time-based rate limiting
+- Autonomous artifact loops with time-based rate limiting
 - Budget tracking
-- Dynamic agent creation
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
-import random
 import time
 from datetime import datetime
-from typing import Any, cast, get_args, TYPE_CHECKING
+from typing import Any, cast
 
 from ..world import World
-from ..world.actions import parse_intent_from_json, ActionIntent, ActionTypeLiteral
 from ..world.simulation_engine import SimulationEngine
-from ..world.world import StateSummary, ConfigDict
+from ..world.world import ConfigDict
 from ..world.mint_auction import KernelMintResult
-# Plan #299: create_agent_artifact, create_memory_artifact removed (legacy agent creation)
 from ..world.logger import SummaryCollector
 from ..config import get_validated_config
 
 from .types import (
     PrincipalConfig,
     CheckpointData,
-    ActionProposal,
-    ThinkingResult,
     ErrorStats,
 )
-from .checkpoint import save_checkpoint, load_checkpoint
 from .agent_loop import AgentLoopManager, AgentLoopConfig
 from .artifact_loop import ArtifactLoopManager  # Plan #255: V4 artifact loops
-from .pool import WorkerPool, PoolConfig
-
-# Plan #299: Legacy agent system removed - agents are now artifact-based
-# All code now uses ArtifactLoopManager for agent execution.
-# Type stubs for backwards compatibility with remaining type annotations:
-if TYPE_CHECKING:
-    from typing import Any as Agent  # Stub - legacy Agent class removed
-    from typing import Any as AgentConfig  # Stub - legacy loader removed
-    from typing import Any as AgentActionResult  # Stub - legacy removed
 
 
 def _derive_provider(model: str) -> str:
@@ -79,10 +62,9 @@ class SimulationRunner:
     """Orchestrates the agent ecology simulation.
 
     Encapsulates all simulation state and logic:
-    - World, agents, and physics engine
-    - Autonomous agent loops with time-based rate limiting
+    - World initialization and artifact-based agent discovery
+    - Autonomous artifact loops with time-based rate limiting
     - Budget tracking and checkpointing
-    - Dynamic agent creation for spawned principals
     - Pause/resume control for dashboard integration
 
     Usage:
@@ -137,21 +119,8 @@ class SimulationRunner:
         self.max_runtime_seconds: int = budget_config.get("max_runtime_seconds", 3600)
         self._run_start_time: float | None = None  # Set when run() is called
 
-        # Plan #299: Legacy agent loading disabled - using artifact-based agents only
-        # Genesis loader creates has_loop artifacts that ArtifactLoopManager discovers
-        agent_configs: list[AgentConfig] = []
-        self.agent_configs = agent_configs
-
-        # Build principals list for world initialization
-        default_starting_scrip: int = config.get("scrip", {}).get("starting_amount", 100)
-        principals: list[PrincipalConfig] = []
-        for a in agent_configs:
-            scrip = a.get("starting_scrip") or a.get("starting_credits") or default_starting_scrip
-            principals.append({
-                "id": a["id"],
-                "starting_scrip": scrip if isinstance(scrip, int) else default_starting_scrip,
-            })
-        config["principals"] = principals
+        # Principals are created by genesis loader, not agent configs
+        config["principals"] = []
 
         # Initialize world
         self.world = World(cast(ConfigDict, config), run_id=self.run_id)
@@ -163,9 +132,6 @@ class SimulationRunner:
         # Wire up cost tracking callbacks for genesis embedder (Plan #153)
         self._wire_embedder_cost_callbacks()
 
-        # Initialize agents
-        self.agents = self._create_agents(agent_configs)
-
         # Create AgentLoopManager (always autonomous mode, Plan #102)
         # Plan #247: Ledger.from_config() always creates a RateTracker
         rate_tracker = self.world.rate_tracker
@@ -173,33 +139,6 @@ class SimulationRunner:
 
         # Plan #255: Create ArtifactLoopManager for V4 has_loop artifacts
         self.artifact_loop_manager = ArtifactLoopManager(self.world, rate_tracker)
-
-        # Worker pool support (Plan #53)
-        execution_config = config.get("execution", {})
-        self.use_worker_pool = execution_config.get("use_worker_pool", False)
-        self._worker_pool: WorkerPool | None = None
-        self._state_store: AgentStateStore | None = None
-
-        if self.use_worker_pool:
-            # Initialize state store and save initial agent states
-            pool_config = execution_config.get("worker_pool", {})
-            from pathlib import Path
-            state_db_path = Path(pool_config.get("state_db_path", "agent_state.db"))
-            self._state_store = AgentStateStore(state_db_path)
-
-            # Save all agent states to SQLite
-            for agent in self.agents:
-                state = agent.to_state()
-                self._state_store.save(state)
-
-            # Create worker pool
-            self._worker_pool = WorkerPool(PoolConfig(
-                num_workers=pool_config.get("num_workers", 4),
-                state_db_path=state_db_path,
-                log_dir=config.get("llm", {}).get("log_dir"),
-                run_id=self.run_id,
-            ))
-            self._worker_pool.start()
 
         # Pause/resume state
         self._paused = False
@@ -209,9 +148,6 @@ class SimulationRunner:
 
         # Summary logging (Plan #60)
         self._summary_collector: SummaryCollector | None = None
-
-        # Hook executor (Plan #208) - initialized lazily
-        self._hook_executor: HookExecutor | None = None
 
     def _wire_embedder_cost_callbacks(self) -> None:
         """Wire up cost tracking callbacks for kernel components.
@@ -285,91 +221,6 @@ class SimulationRunner:
             print(f"Restored artifacts: {len(checkpoint['artifacts'])}")
             print()
 
-    def _create_agents(self, agent_configs: "list[AgentConfig]") -> "list[Agent]":
-        """Plan #299: Legacy agent creation disabled - returns empty list.
-
-        Agents are now artifact-based and created by genesis loader.
-        ArtifactLoopManager discovers and runs has_loop artifacts.
-        """
-        # Plan #299: No legacy agents - return empty list
-        # Agent configs is always empty since load_agents() is no longer called
-        return []
-
-
-    def _load_prior_learnings(self) -> dict[str, dict[str, Any]]:
-        """Load agent states from previous run checkpoint (Plan #186).
-
-        Enables cross-run learning by restoring working_memory from
-        a prior simulation. Only loads working_memory by default,
-        not per-run state like action_history.
-
-        Returns:
-            Dict mapping agent_id -> agent_state from prior checkpoint.
-        """
-        learning_config = self.config.get("learning", {}).get("cross_run", {})
-
-        if not learning_config.get("enabled", False):
-            return {}
-
-        checkpoint_path = learning_config.get("prior_checkpoint")
-        if not checkpoint_path and learning_config.get("auto_discover", True):
-            checkpoint_path = self._find_latest_checkpoint()
-
-        if not checkpoint_path:
-            return {}
-
-        import os
-        if not os.path.exists(checkpoint_path):
-            print(f"Cross-run learning: checkpoint not found at {checkpoint_path}")
-            return {}
-
-        checkpoint = load_checkpoint(checkpoint_path)
-        if not checkpoint:
-            return {}
-
-        agent_states = checkpoint.get("agent_states", {})
-        print(f"Cross-run learning: loaded states for {len(agent_states)} agents from {checkpoint_path}")
-        return agent_states
-
-    def _find_latest_checkpoint(self) -> str | None:
-        """Find the most recent checkpoint file in logs directory.
-
-        Auto-discovers checkpoints for cross-run learning when
-        prior_checkpoint is not explicitly specified.
-
-        Returns:
-            Path to latest checkpoint, or None if not found.
-        """
-        import os
-        import glob
-
-        # Look for checkpoint.json in common locations
-        search_paths = [
-            "checkpoint.json",  # Default location
-            "logs/checkpoint.json",
-            "*.checkpoint.json",
-        ]
-
-        candidates = []
-        for pattern in search_paths:
-            candidates.extend(glob.glob(pattern))
-
-        if not candidates:
-            return None
-
-        # Return most recently modified
-        candidates.sort(key=lambda f: os.path.getmtime(f), reverse=True)
-        return candidates[0]
-
-    def _check_for_new_principals(self) -> "list[Agent]":
-        """Plan #299: Legacy principal detection disabled.
-
-        New principals are now handled by ArtifactLoopManager which discovers
-        and runs has_loop=True artifacts. This method returns empty list for
-        backwards compatibility with tests.
-        """
-        return []
-
     def _handle_mint_update(self) -> KernelMintResult | None:
         """Handle mint auction update (Plan #83 - time-based).
 
@@ -404,403 +255,13 @@ class SimulationRunner:
                 },
             )
 
-    async def _think_agent(
-        self,
-        agent: Agent,
-        current_state: StateSummary,
-    ) -> ThinkingResult:
-        """Have a single agent think (async).
-
-        Returns ThinkingResult with proposal or skip/error info.
-        """
-        # Check per-agent LLM budget (Plan #12)
-        # If agent has llm_budget allocated but it's exhausted, skip thinking
-        llm_budget = self.world.ledger.get_resource(agent.agent_id, "llm_budget")
-        # Only enforce if the agent has ever had budget allocated (> 0 at genesis)
-        # A budget of 0 from genesis means "no per-agent budget enforcement"
-        has_budget_config = agent.agent_id in self.world.ledger.resources and \
-            "llm_budget" in self.world.ledger.resources[agent.agent_id]
-        if has_budget_config and llm_budget <= 0:
-            return {
-                "agent": agent,
-                "skipped": True,
-                "skip_reason": "insufficient_llm_budget",
-                "thinking_cost": 0,
-                "api_cost": 0.0,
-                "input_tokens": 0,
-                "output_tokens": 0,
-            }
-
-        try:
-            proposal: AgentActionResult = await agent.propose_action_async(cast(dict[str, Any], current_state))
-        except Exception as e:
-            return {
-                "agent": agent,
-                "error": f"LLM call failed: {e}",
-                "skipped": True,
-                "skip_reason": "llm_error",
-            }
-
-        # Extract token usage
-        usage = proposal.get("usage") or {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "cost": 0.0}
-        api_cost: float = usage.get("cost", 0.0)
-        input_tokens: int = usage.get("input_tokens", 0)
-        output_tokens: int = usage.get("output_tokens", 0)
-
-        # Calculate thinking cost (for observability, actual deduction uses llm_budget)
-        thinking_cost_result = self.engine.calculate_thinking_cost(input_tokens, output_tokens)
-        thinking_cost: int = thinking_cost_result["total_cost"]
-
-        if "error" in proposal:
-            return {
-                "agent": agent,
-                "skipped": True,
-                "skip_reason": "intent_rejected",
-                "error": proposal["error"],
-                "thinking_cost": thinking_cost,
-                "api_cost": api_cost,
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-            }
-
-        return {
-            "agent": agent,
-            "proposal": proposal,
-            "thinking_cost": thinking_cost,
-            "api_cost": api_cost,
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "skipped": False,
-        }
-
-    def _process_thinking_results(
-        self, results: list[ThinkingResult]
-    ) -> list[ActionProposal]:
-        """Process thinking results and return valid proposals."""
-        proposals: list[ActionProposal] = []
-
-        for result in results:
-            agent = result["agent"]
-            api_cost = result.get("api_cost", 0.0)
-            # Track global and per-agent costs (Plan #12)
-            self.engine.track_api_cost(api_cost, agent_id=agent.agent_id)
-
-            # Deduct from agent's llm_budget resource if allocated (Plan #12, #153)
-            if api_cost > 0:
-                self.world.ledger.deduct_llm_cost(agent.agent_id, api_cost)
-
-            if result.get("skipped"):
-                reason = result.get("skip_reason", "unknown")
-                error = result.get("error", "")
-
-                # Record error for summary (Plan #129)
-                if "llm_error" in reason and error:
-                    self._record_error("llm_error", agent.agent_id, error)
-                elif "intent_rejected" in reason and error:
-                    self._record_error("intent_rejected", agent.agent_id, error)
-
-                if "insufficient_compute" in reason:
-                    self.world.logger.log(
-                        "thinking_failed",
-                        {
-                            "event_number": self.world.event_number,
-                            "principal_id": agent.agent_id,
-                            "reason": "insufficient_compute",
-                            "thinking_cost": result.get("thinking_cost", 0),
-                            "tokens": {
-                                "input": result.get("input_tokens", 0),
-                                "output": result.get("output_tokens", 0),
-                            },
-                        },
-                    )
-                    if self.verbose:
-                        print(f"    {agent.agent_id}: OUT OF COMPUTE ({reason})")
-                elif "insufficient_llm_budget" in reason:
-                    # Per-agent LLM budget exhausted (Plan #12)
-                    self.world.logger.log(
-                        "thinking_failed",
-                        {
-                            "event_number": self.world.event_number,
-                            "principal_id": agent.agent_id,
-                            "reason": "insufficient_llm_budget",
-                            "llm_budget_remaining": self.world.ledger.get_resource(
-                                agent.agent_id, "llm_budget"
-                            ),
-                        },
-                    )
-                    if self.verbose:
-                        print(f"    {agent.agent_id}: OUT OF LLM BUDGET")
-                elif "intent_rejected" in reason:
-                    self.world.logger.log(
-                        "intent_rejected",
-                        {
-                            "event_number": self.world.event_number,
-                            "principal_id": agent.agent_id,
-                            "error": error,
-                        },
-                    )
-                    if self.verbose:
-                        print(f"    {agent.agent_id}: REJECTED: {error[:100]}")
-                else:
-                    if self.verbose:
-                        print(f"    {agent.agent_id}: SKIPPED ({reason})")
-                continue
-
-            # Valid proposal
-            input_tokens = result.get("input_tokens", 0)
-            output_tokens = result.get("output_tokens", 0)
-            thinking_cost = result.get("thinking_cost", 0)
-
-            # Track LLM tokens for summary (Plan #60)
-            if self._summary_collector:
-                self._summary_collector.record_llm_tokens(input_tokens + output_tokens)
-
-            # Extract reasoning from proposal if available (Plan #132: standardized field)
-            proposal_data = result.get("proposal", {})
-            reasoning = proposal_data.get("reasoning", "")
-
-            # Build thinking event data with full observability
-            model = agent.llm_model
-            provider = _derive_provider(model)
-
-            thinking_data: dict[str, Any] = {
-                "event_number": self.world.event_number,
-                "principal_id": agent.agent_id,
-                "model": model,
-                "provider": provider,
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "api_cost": api_cost,
-                "thinking_cost": thinking_cost,
-                "llm_budget_remaining": self.world.ledger.get_resource_remaining(agent.agent_id, "llm_budget"),
-                "llm_budget_after": self.world.ledger.get_llm_budget(agent.agent_id),  # Plan #153
-                "reasoning": reasoning,
-                # Plan #279: Add workflow context for observability
-                "workflow_state": proposal_data.get("state"),
-                "workflow_step": proposal_data.get("workflow_step"),
-            }
-
-            self.world.logger.log("thinking", thinking_data)
-
-            if self.verbose:
-                budget_remaining = self.world.ledger.get_llm_budget(agent.agent_id)
-                cost_str = f" (${api_cost:.4f}, budget: ${budget_remaining:.4f})" if api_cost > 0 else ""
-                print(f"    {agent.agent_id}: {input_tokens} in, {output_tokens} out{cost_str}")
-
-            proposals.append({
-                "agent": agent,
-                "proposal": result["proposal"],
-                "thinking_cost": thinking_cost,
-                "api_cost": api_cost,
-            })
-
-        return proposals
-
-    def _process_pool_results(
-        self, round_results: Any  # RoundResults from pool
-    ) -> list[ActionProposal]:
-        """Process pool results and return valid proposals (Plan #53).
-
-        Converts RoundResults from WorkerPool.run_round() to ActionProposal list
-        for Phase 2 execution.
-        """
-        from .pool import RoundResults
-
-        proposals: list[ActionProposal] = []
-
-        # Build agent lookup by ID
-        agents_by_id = {agent.agent_id: agent for agent in self.agents}
-
-        for result in round_results.results:
-            agent_id = result["agent_id"]
-            agent = agents_by_id.get(agent_id)
-
-            if agent is None:
-                # Agent not found - could be a newly spawned agent
-                if self.verbose:
-                    print(f"    {agent_id}: NOT FOUND (skipping)")
-                continue
-
-            if not result.get("success", False):
-                # Turn failed
-                error = result.get("error", "unknown error")
-                self._record_error("pool_turn_failed", agent_id, error)  # Plan #129
-                self.world.logger.log(
-                    "pool_turn_failed",
-                    {
-                        "event_number": self.world.event_number,
-                        "principal_id": agent_id,
-                        "error": error,
-                        "cpu_seconds": result.get("cpu_seconds", 0),
-                        "memory_bytes": result.get("memory_bytes", 0),
-                    },
-                )
-                if self.verbose:
-                    print(f"    {agent_id}: FAILED: {error[:100]}")
-                continue
-
-            # Successful turn - extract action
-            action_result = result.get("action", {})
-            if not action_result:
-                if self.verbose:
-                    print(f"    {agent_id}: NO ACTION")
-                continue
-
-            # Handle error responses from propose_action
-            if "error" in action_result and "action" not in action_result:
-                error_msg = action_result.get("error", "")
-                self._record_error("propose_action_error", agent_id, error_msg)  # Plan #129
-                self.world.logger.log(
-                    "thinking_failed",
-                    {
-                        "event_number": self.world.event_number,
-                        "principal_id": agent_id,
-                        "reason": "propose_action_error",
-                        "error": error_msg,
-                    },
-                )
-                if self.verbose:
-                    print(f"    {agent_id}: ERROR: {error_msg[:100]}")
-                continue
-
-            # Extract usage info for cost tracking
-            usage = action_result.get("usage", {})
-            api_cost = usage.get("cost", 0.0)
-            input_tokens = usage.get("input_tokens", 0)
-            output_tokens = usage.get("output_tokens", 0)
-
-            # Track costs (Plan #153: use deduct_llm_cost)
-            self.engine.track_api_cost(api_cost, agent_id=agent_id)
-            if api_cost > 0:
-                self.world.ledger.deduct_llm_cost(agent_id, api_cost)
-
-            # Track LLM tokens for summary (Plan #60)
-            if self._summary_collector:
-                self._summary_collector.record_llm_tokens(input_tokens + output_tokens)
-
-            # Log the thinking (Plan #132: standardized reasoning field)
-            reasoning = action_result.get("reasoning", "")
-            model = action_result.get("model", "unknown")
-            provider = _derive_provider(model)
-
-            thinking_data: dict[str, Any] = {
-                "event_number": self.world.event_number,
-                "principal_id": agent_id,
-                "model": model,
-                "provider": provider,
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "api_cost": api_cost,
-                "thinking_cost": input_tokens + output_tokens,
-                "llm_budget_after": self.world.ledger.get_llm_budget(agent_id),  # Plan #153
-                "cpu_seconds": result.get("cpu_seconds", 0),
-                "memory_bytes": result.get("memory_bytes", 0),
-                "reasoning": reasoning,
-                # Plan #279: Add workflow context for observability
-                "workflow_state": action_result.get("state"),
-                "workflow_step": action_result.get("workflow_step"),
-            }
-
-            self.world.logger.log("thinking", thinking_data)
-
-            if self.verbose:
-                budget_remaining = self.world.ledger.get_llm_budget(agent_id)
-                cost_str = f" (${api_cost:.4f}, budget: ${budget_remaining:.4f})" if api_cost > 0 else ""
-                print(f"    {agent_id}: {input_tokens} in, {output_tokens} out{cost_str}")
-
-            # Create proposal (Plan #132: standardized reasoning field)
-            proposal_dict: AgentActionResult = {
-                "action": action_result.get("action", {}),
-                "reasoning": reasoning,
-            }
-
-            proposals.append({
-                "agent": agent,
-                "proposal": proposal_dict,
-                "thinking_cost": input_tokens + output_tokens,
-                "api_cost": api_cost,
-            })
-
-        return proposals
-
-    def _execute_proposals(self, proposals: list[ActionProposal]) -> None:
-        """Execute proposals in randomized order (Phase 2)."""
-        if self.verbose and proposals:
-            print(f"  [PHASE 2] Executing {len(proposals)} proposals in randomized order...")
-
-        random.shuffle(proposals)
-
-        for action_proposal in proposals:
-            agent = action_proposal["agent"]
-            proposal = action_proposal["proposal"]
-
-            action_dict: dict[str, Any] = proposal["action"]
-            # Plan #49/#132: Pass reasoning to narrow waist
-            action_dict["reasoning"] = proposal.get("reasoning", "")
-            intent: ActionIntent | str = parse_intent_from_json(
-                agent.agent_id, json.dumps(action_dict)
-            )
-
-            if isinstance(intent, str):
-                self.world.logger.log(
-                    "intent_rejected",
-                    {
-                        "event_number": self.world.event_number,
-                        "principal_id": agent.agent_id,
-                        "error": intent,
-                        "action_dict": action_dict,
-                    },
-                )
-                if self.verbose:
-                    print(f"    {agent.agent_id}: PARSE ERROR: {intent}")
-                continue
-
-            result = self.world.execute_action(intent)
-            if self.verbose:
-                status: str = "SUCCESS" if result.success else "FAILED"
-                print(f"    {agent.agent_id}: {status}: {result.message}")
-
-            raw_action_type = action_dict.get("action_type", "noop")
-
-            # Track action for summary (Plan #60)
-            if self._summary_collector:
-                self._summary_collector.record_action(raw_action_type, success=result.success)
-
-                # Track artifact creation
-                if raw_action_type == "write_artifact" and result.success:
-                    self._summary_collector.record_artifact_created()
-                    artifact_id = action_dict.get("artifact_id", "unknown")
-                    self._summary_collector.add_highlight(f"{agent.agent_id} created {artifact_id}")
-
-                # Track scrip transfers from invoke results
-                if raw_action_type == "invoke" and result.success and result.data:
-                    transfer_amount = result.data.get("scrip_transferred", 0)
-                    if transfer_amount > 0:
-                        self._summary_collector.record_scrip_transfer(transfer_amount)
-            valid_types = get_args(ActionTypeLiteral)
-            action_type: ActionTypeLiteral = raw_action_type if raw_action_type in valid_types else "noop"
-            agent.set_last_result(action_type, result.success, result.message, result.data)
-            agent.record_action(action_type, json.dumps(action_dict), result.success)
-
-            # Store artifact content in memory when successfully read
-            if action_type == "read_artifact" and result.success and result.data:
-                artifact_data = result.data.get("artifact", {})
-                artifact_id = artifact_data.get("id", action_dict.get("artifact_id", "unknown"))
-                content = artifact_data.get("content", "")
-                # Truncate long content for memory storage
-                if len(content) > 500:
-                    content = content[:500] + "..."
-                observation = f"Read {artifact_id}: {content}"
-                agent.record_observation(observation)
-
     def _print_startup_info(self) -> None:
         """Print simulation startup information."""
         if not self.verbose:
             return
 
         print("=== Agent Ecology Simulation ===")
-        print("Mode: Autonomous (agents run independently)")
-        print(f"Agents: {[a.agent_id for a in self.agents]}")
+        print("Mode: Autonomous (artifact-based agent loops)")
 
         # Show LLM budget (the real depletable resource)
         if self.engine.max_api_cost > 0:
@@ -933,21 +394,11 @@ class SimulationRunner:
             "running": self._running,
             "paused": self._paused,
             "event_count": self.world.event_number,  # Monotonic event counter
-            "agent_count": len(self.agents),
+            "artifact_loop_count": self.artifact_loop_manager.loop_count,
             "api_cost": self.engine.cumulative_api_cost,
             "max_api_cost": self.engine.max_api_cost,
             "max_runtime_seconds": self.max_runtime_seconds,
         }
-
-    def _migrate_working_memory_to_longterm(self) -> None:
-        """Migrate important working_memory entries to longterm at session end.
-
-        Plan #254: Genesis memory removed. Working memory migration is now
-        handled via checkpointing instead of genesis_memory.
-        """
-        # Plan #254: Genesis memory removed - no-op for now
-        # Working memory is persisted via checkpoint
-        pass
 
     def is_runtime_exceeded(self) -> bool:
         """Check if maximum runtime has been exceeded.
@@ -987,16 +438,15 @@ class SimulationRunner:
         finally:
             self._running = False
             SimulationRunner._active_runner = None
-            # Plan #213: Auto-migrate important working_memory entries to longterm
-            self._migrate_working_memory_to_longterm()
 
         self._print_final_summary()
         return self.world
 
     async def _run_autonomous(self, duration: float | None = None) -> None:
-        """Run simulation in autonomous mode with independent agent loops.
+        """Run simulation in autonomous mode with independent artifact loops.
 
-        Agents run continuously in their own loops, resource-gated by RateTracker.
+        Artifact-based agents run continuously in their own loops, resource-gated
+        by RateTracker.
         Plan #83: Mint auctions run on wall-clock time via periodic update().
 
         Args:
@@ -1005,20 +455,13 @@ class SimulationRunner:
         if not self.world.loop_manager:
             raise RuntimeError("loop_manager not initialized")
 
-        if self.verbose:
-            print(f"  [AUTONOMOUS] Creating loops for {len(self.agents)} agents...")
-
-        # Create loops for all agents
-        for agent in self.agents:
-            self._create_agent_loop(agent)
-
         # Plan #255: Discover has_loop artifacts (V4 artifact-based agents)
         artifact_loop_ids = self.artifact_loop_manager.discover_loops()
         if artifact_loop_ids and self.verbose:
             print(f"  [AUTONOMOUS] Discovered {len(artifact_loop_ids)} artifact loops: {artifact_loop_ids}")
 
         if self.verbose:
-            print(f"  [AUTONOMOUS] Starting all agent loops...")
+            print(f"  [AUTONOMOUS] Starting all loops...")
 
         # Start all loops
         await self.world.loop_manager.start_all()
@@ -1132,455 +575,10 @@ class SimulationRunner:
             # Normal shutdown
             pass
 
-    def _create_agent_loop(self, agent: Agent) -> None:
-        """Create an agent loop with appropriate config and callbacks.
-
-        Args:
-            agent: The agent to create a loop for.
-        """
-        if not self.world.loop_manager:
-            raise RuntimeError("loop_manager not initialized")
-
-        # Get loop config from execution config
-        execution_config = self.config.get("execution", {})
-        loop_config_dict = execution_config.get("agent_loop", {})
-
-        config = AgentLoopConfig(
-            min_loop_delay=loop_config_dict.get("min_loop_delay", 0.1),
-            max_loop_delay=loop_config_dict.get("max_loop_delay", 10.0),
-            resource_check_interval=loop_config_dict.get("resource_check_interval", 1.0),
-            max_consecutive_errors=loop_config_dict.get("max_consecutive_errors", 5),
-            resources_to_check=loop_config_dict.get("resources_to_check", ["llm_calls"]),
-        )
-
-        # Create the loop using callbacks that adapt the Agent to AgentProtocol
-        # Note: lambdas with default args to capture agent reference
-        self.world.loop_manager.create_loop(
-            agent_id=agent.agent_id,
-            decide_action=lambda a=agent: self._agent_decide_action(a),  # type: ignore[misc]
-            execute_action=lambda action, a=agent: self._agent_execute_action(a, action),  # type: ignore[misc]
-            config=config,
-            is_alive=lambda a=agent: getattr(a, "alive", True),  # type: ignore[misc]
-        )
-
-    async def _agent_decide_action(self, agent: Agent) -> dict[str, Any] | None:
-        """Decide callback for agent loop.
-
-        Calls the agent's propose_action_async and returns the action dict.
-        If agent has a reflex, tries reflex first (Plan #143).
-
-        Args:
-            agent: The agent making the decision.
-
-        Returns:
-            Action dict or None if agent chose to skip.
-        """
-        # Check global budget before making LLM call (defense in depth)
-        if self.engine.is_budget_exhausted():
-            return None  # Skip LLM call, budget exceeded
-
-        # Reload config from artifact before each decision (Plan #8)
-        # This allows config changes made by other agents to take effect
-        agent.reload_from_artifact()
-
-        # Get current world state
-        current_state = self.world.get_state_summary()
-
-        # Plan #143: Check reflex before LLM
-        reflex_action = await self._try_reflex(agent)
-        if reflex_action is not None:
-            return reflex_action
-
-        # Plan #208: Execute pre_decision hooks
-        hook_context = self._build_hook_context(agent, cast(dict[str, Any], current_state))
-        hook_context, should_continue = await self._execute_hooks(
-            agent, HookTiming.PRE_DECISION, hook_context
-        )
-        if not should_continue:
-            # Hook with on_error=fail failed, abort decision
-            self.world.logger.log(
-                "thinking_failed",
-                {
-                    "event_number": self.world.event_number,
-                    "principal_id": agent.agent_id,
-                    "reason": "pre_decision_hook_failed",
-                },
-            )
-            return None
-
-        # Call the agent's propose method
-        result = await agent.propose_action_async(cast(dict[str, Any], current_state))
-
-        # Check for error FIRST - don't log thinking events for failed LLM calls (Plan #121)
-        if "error" in result:
-            # Log thinking_failed event instead of empty thinking event
-            self.world.logger.log(
-                "thinking_failed",
-                {
-                    "event_number": self.world.event_number,
-                    "principal_id": agent.agent_id,
-                    "reason": "llm_call_failed",
-                    "error": result.get("error", ""),
-                },
-            )
-            return None
-
-        # Track API cost (only for successful calls)
-        usage = result.get("usage") or {"cost": 0.0, "input_tokens": 0, "output_tokens": 0}
-        api_cost = usage.get("cost", 0.0)
-        input_tokens = usage.get("input_tokens", 0)
-        output_tokens = usage.get("output_tokens", 0)
-        self.engine.track_api_cost(api_cost)
-        # Plan #282: Deduct from agent's llm_budget resource
-        if api_cost > 0:
-            self.world.ledger.deduct_llm_cost(agent.agent_id, api_cost)
-
-        # Log thinking event for dashboard (Plan #132: standardized reasoning field)
-        reasoning = result.get("reasoning", "")
-
-        # Plan #121: Warn if reasoning is empty despite successful LLM call
-        if not reasoning.strip():
-            import logging
-            logging.getLogger(__name__).warning(
-                f"Empty reasoning for {agent.agent_id} despite successful LLM call "
-                f"(tokens: {input_tokens}/{output_tokens})"
-            )
-
-        model = result.get("model", agent.llm_model)
-        provider = _derive_provider(model)
-
-        thinking_data: dict[str, Any] = {
-            "event_number": self.world.event_number,
-            "principal_id": agent.agent_id,
-            "model": model,
-            "provider": provider,
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "api_cost": api_cost,
-            "thinking_cost": 0,
-            "llm_budget_after": self.world.ledger.get_llm_budget(agent.agent_id),  # Plan #282
-            "reasoning": reasoning,
-            # Plan #279: Add workflow context for observability
-            "workflow_state": result.get("state"),
-            "workflow_step": result.get("workflow_step"),
-        }
-
-        self.world.logger.log("thinking", thinking_data)
-
-        # Plan #208: Execute post_decision hooks
-        action = result.get("action")
-        if action:
-            hook_context["proposed_action"] = action
-            hook_context, should_continue = await self._execute_hooks(
-                agent, HookTiming.POST_DECISION, hook_context
-            )
-            if not should_continue:
-                # Hook with on_error=fail failed, abort action
-                self.world.logger.log(
-                    "action_aborted",
-                    {
-                        "event_number": self.world.event_number,
-                        "principal_id": agent.agent_id,
-                        "reason": "post_decision_hook_failed",
-                    },
-                )
-                return None
-
-        # Return the action dict
-        return action
-
-    async def _agent_execute_action(
-        self, agent: Agent, action: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Execute callback for agent loop.
-
-        Parses the action and executes it via the world.
-
-        Args:
-            agent: The agent executing the action.
-            action: The action dict to execute.
-
-        Returns:
-            Result dict with success flag and other info.
-        """
-        # Parse the action intent
-        intent = parse_intent_from_json(agent.agent_id, json.dumps(action))
-
-        if isinstance(intent, str):
-            # Parse error
-            return {"success": False, "error": intent}
-
-        # Execute via world
-        result = self.world.execute_action(intent)
-
-        # Increment event counter for each executed action (autonomous mode)
-        if result.success:
-            self.world.increment_event_counter()
-
-        # Record the action for the agent
-        action_type = action.get("action_type", "noop")
-        agent.set_last_result(action_type, result.success, result.message, result.data)
-        agent.record_action(action_type, json.dumps(action), result.success)
-
-        # Plan #208: Execute post_action or on_error hooks
-        current_state = self.world.get_state_summary()
-        hook_context = self._build_hook_context(
-            agent,
-            cast(dict[str, Any], current_state),
-            last_action=action,
-            last_result=result.message,
-            action_success=result.success,
-        )
-
-        if result.success:
-            # Run post_action hooks
-            await self._execute_hooks(agent, HookTiming.POST_ACTION, hook_context)
-        else:
-            # Run on_error hooks
-            hook_context["error_message"] = result.message
-            hook_context["failed_action"] = action
-            await self._execute_hooks(agent, HookTiming.ON_ERROR, hook_context)
-
-        return {
-            "success": result.success,
-            "message": result.message,
-            "data": result.data,
-        }
-
-    async def _try_reflex(self, agent: Agent) -> dict[str, Any] | None:
-        """Try to execute agent's reflex before LLM (Plan #143).
-
-        If agent has a reflex_artifact_id, loads the reflex code from the
-        artifact and executes it. If the reflex fires (returns an action),
-        returns it to skip the LLM call.
-
-        Args:
-            agent: The agent to check reflex for.
-
-        Returns:
-            Action dict if reflex fired, None to fall through to LLM.
-        """
-        # Check if agent has a reflex
-        if not agent.has_reflex:
-            return None
-
-        reflex_artifact_id = agent.reflex_artifact_id
-        if not reflex_artifact_id:
-            return None
-
-        # Load reflex artifact
-        reflex_artifact = self.world.artifacts.get(reflex_artifact_id)
-        if not reflex_artifact:
-            # Log missing reflex artifact (soft reference)
-            self.world.logger.log(
-                "reflex_error",
-                {
-                    "event_number": self.world.event_number,
-                    "principal_id": agent.agent_id,
-                    "reflex_artifact_id": reflex_artifact_id,
-                    "error": "reflex artifact not found",
-                },
-            )
-            return None
-
-        # Get reflex code from artifact content
-        reflex_code = reflex_artifact.content
-        if not reflex_code:
-            return None
-
-        # Build reflex context
-        context = build_reflex_context(agent.agent_id, self.world)
-
-        # Execute reflex
-        executor = ReflexExecutor()
-        result = executor.execute(reflex_code, context)
-
-        # Log reflex execution
-        self.world.logger.log(
-            "reflex_executed",
-            {
-                "event_number": self.world.event_number,
-                "principal_id": agent.agent_id,
-                "reflex_artifact_id": reflex_artifact_id,
-                "fired": result.fired,
-                "execution_time_ms": result.execution_time_ms,
-                "error": result.error,
-            },
-        )
-
-        # If reflex fired, return the action
-        if result.fired and result.action is not None:
-            if self.verbose:
-                print(
-                    f"    {agent.agent_id}: REFLEX fired "
-                    f"({result.execution_time_ms:.1f}ms)"
-                )
-            return result.action
-
-        # Reflex didn't fire - fall through to LLM
-        if result.error:
-            if self.verbose:
-                print(
-                    f"    {agent.agent_id}: REFLEX error: {result.error[:100]}"
-                )
-
-        return None
-
-    # --- Hook methods (Plan #208) ---
-
-    def _get_hook_executor(self) -> HookExecutor:
-        """Get or create the hook executor (lazy initialization).
-
-        Returns:
-            HookExecutor instance.
-        """
-        if self._hook_executor is None:
-            max_depth = self.config.get("hooks", {}).get("max_depth", 5)
-            self._hook_executor = HookExecutor(
-                artifact_store=self.world.artifacts,
-                invoker=self.world,
-                max_depth=max_depth,
-                on_hook_complete=self._on_hook_complete,
-            )
-        return self._hook_executor
-
-    def _on_hook_complete(
-        self,
-        agent_id: str,
-        timing: HookTiming,
-        hook: HookDefinition,
-        result: HookResult,
-        duration_ms: float,
-    ) -> None:
-        """Callback for hook completion observability (Plan #208 Phase 4).
-
-        Logs the hook execution result for dashboard visibility.
-
-        Args:
-            agent_id: The agent that ran the hook.
-            timing: When the hook ran (pre_decision, etc.).
-            hook: The hook definition that was executed.
-            result: The result of the hook execution.
-            duration_ms: Execution time in milliseconds.
-        """
-        self.world.logger.log(
-            "hook_executed",
-            {
-                "event_number": self.world.event_number,
-                "principal_id": agent_id,
-                "timing": timing.value,
-                "artifact_id": hook.artifact_id,
-                "method": hook.method,
-                "success": result.success,
-                "error": result.error,
-                "inject_as": result.inject_as,
-                "duration_ms": round(duration_ms, 2),
-            },
-        )
-
-    def _get_agent_hooks(self, agent: Agent) -> HooksConfig:
-        """Get merged hooks config for an agent.
-
-        Includes agent-level hooks and expanded subscribed_artifacts.
-
-        Args:
-            agent: The agent to get hooks for.
-
-        Returns:
-            Merged HooksConfig.
-        """
-        # Start with agent's explicit hooks
-        hooks = HooksConfig.from_dict(agent.hooks_config)
-
-        # Expand subscribed_artifacts to pre_decision hooks (Plan #191 unification)
-        if agent._subscribed_artifacts:
-            subscribed_hooks = expand_subscribed_artifacts(agent._subscribed_artifacts)
-            hooks = subscribed_hooks.merge(hooks)
-
-        return hooks
-
-    def _build_hook_context(
-        self,
-        agent: Agent,
-        world_state: dict[str, Any],
-        **extra: Any,
-    ) -> dict[str, Any]:
-        """Build context dict for hook argument interpolation.
-
-        Args:
-            agent: The agent running hooks.
-            world_state: Current world state.
-            **extra: Additional context entries.
-
-        Returns:
-            Context dict for interpolation.
-        """
-        # Get agent's working memory for current_goal
-        working_memory = agent._working_memory or {}
-        current_goal = working_memory.get("current_goal", "")
-
-        # Get balance from world state
-        balance = world_state.get("balances", {}).get(agent.agent_id, 0)
-
-        return {
-            "agent_id": agent.agent_id,
-            "current_goal": current_goal,
-            "balance": balance,
-            "last_action": agent.last_action_result or "",
-            "last_result": agent.last_action_result or "",
-            **extra,
-        }
-
-    async def _execute_hooks(
-        self,
-        agent: Agent,
-        timing: HookTiming,
-        context: dict[str, Any],
-    ) -> tuple[dict[str, Any], bool]:
-        """Execute hooks at a timing point.
-
-        Args:
-            agent: The agent whose hooks to execute.
-            timing: When in the workflow (pre_decision, etc.).
-            context: Current context for interpolation.
-
-        Returns:
-            Tuple of (updated_context, should_continue).
-            should_continue is False if a hook with on_error=fail failed.
-        """
-        hooks_config = self._get_agent_hooks(agent)
-        hooks = hooks_config.get_hooks(timing)
-
-        if not hooks:
-            return context, True
-
-        executor = self._get_hook_executor()
-
-        # Log hook execution start
-        self.world.logger.log(
-            "hooks_executing",
-            {
-                "event_number": self.world.event_number,
-                "principal_id": agent.agent_id,
-                "timing": timing.value,
-                "hook_count": len(hooks),
-            },
-        )
-
-        updated_context, should_continue = await executor.execute_hooks(
-            hooks=hooks,
-            timing=timing,
-            caller_id=agent.agent_id,
-            context=context,
-        )
-
-        return updated_context, should_continue
-
     async def shutdown(self, timeout: float | None = None) -> None:
         """Gracefully stop the simulation.
 
-        Stops all agent loops if in autonomous mode.
-        Stops worker pool if in pool mode.
+        Stops all agent loops and artifact loops.
 
         Args:
             timeout: Maximum seconds to wait for loops to stop.
@@ -1593,9 +591,6 @@ class SimulationRunner:
         # Plan #255: Stop artifact loops
         if self.artifact_loop_manager.loop_count > 0:
             await self.artifact_loop_manager.stop_all(timeout=timeout)
-        if self._worker_pool is not None:
-            self._worker_pool.stop()
-            self._worker_pool = None
         self._running = False
 
     def run_sync(self, duration: float | None = None) -> World:

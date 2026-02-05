@@ -6,8 +6,6 @@ from .types import (
     PrincipalConfig,
     BalanceInfo,
     CheckpointData,
-    ActionProposal,
-    ThinkingResult,
 )
 from .agent_loop import (
     AgentLoop, AgentLoopManager, AgentLoopConfig,
@@ -24,8 +22,6 @@ __all__ = [
     "PrincipalConfig",
     "BalanceInfo",
     "CheckpointData",
-    "ActionProposal",
-    "ThinkingResult",
     "AgentLoop",
     "AgentLoopManager",
     "AgentLoopConfig",

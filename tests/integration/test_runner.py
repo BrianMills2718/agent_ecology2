@@ -6,12 +6,9 @@ Tests the core orchestration logic without running full async simulations.
 """
 
 import tempfile
-from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
-import yaml
 
 from src.simulation.runner import SimulationRunner
 from src.simulation.types import CheckpointData
@@ -47,33 +44,25 @@ class TestSimulationRunnerInit:
             assert runner.world is not None
             assert runner.config == config
             assert runner.verbose is False
-            assert runner.agents == []
 
-    def test_no_legacy_agents_loaded(self) -> None:
-        """SimulationRunner no longer loads legacy agents (Plan #299).
-
-        Legacy agent loading has been disabled. Agents are now artifact-based
-        and loaded via genesis. The load_agents function is not called.
-        """
+    def test_artifact_loop_manager_created(self) -> None:
+        """SimulationRunner creates ArtifactLoopManager for artifact-based agents."""
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
             runner = SimulationRunner(config, verbose=False)
 
-            # No legacy agents loaded - artifact-based agents are discovered
-            # by ArtifactLoopManager.discover_loops() during run()
-            assert len(runner.agents) == 0
+            # Artifact-based agents are discovered by ArtifactLoopManager
+            assert runner.artifact_loop_manager is not None
 
     def test_max_agents_param_exists(self) -> None:
-        """SimulationRunner accepts max_agents parameter (legacy compat)."""
+        """SimulationRunner accepts max_agents parameter."""
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
-            # Parameter is accepted but has no effect on artifact-based agents
             runner = SimulationRunner(config, max_agents=2, verbose=False)
 
-            # No legacy agents loaded
-            assert len(runner.agents) == 0
+            assert runner.max_agents == 2
 
     def test_generates_run_id(self) -> None:
         """SimulationRunner generates a run ID."""
@@ -170,59 +159,6 @@ class TestCheckpointRestore:
             assert runner.world.artifacts.get("art2") is not None
 
 
-class TestCheckForNewPrincipals:
-    """Tests for _check_for_new_principals.
-
-    Plan #299: Legacy agent detection disabled. New principals are now handled
-    by ArtifactLoopManager which discovers and runs has_loop=True artifacts.
-    These tests verify the method returns empty list.
-    """
-
-    def test_detects_spawned_principals(self) -> None:
-        """_check_for_new_principals returns empty (legacy disabled)."""
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = make_minimal_config(tmpdir)
-            runner = SimulationRunner(config, verbose=False)
-
-            # Manually add a principal to ledger
-            runner.world.ledger.create_principal("spawned_1", 50)
-
-            # Plan #299: Returns empty - legacy agent creation disabled
-            new_agents = runner._check_for_new_principals()
-
-            assert len(new_agents) == 0
-
-    def test_ignores_existing_agents(self) -> None:
-        """_check_for_new_principals returns empty list."""
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = make_minimal_config(tmpdir)
-            runner = SimulationRunner(config, verbose=False)
-
-            # No new principals
-            new_agents = runner._check_for_new_principals()
-
-            assert len(new_agents) == 0
-
-    def test_multiple_spawned_principals(self) -> None:
-        """_check_for_new_principals returns empty (legacy disabled)."""
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = make_minimal_config(tmpdir)
-            runner = SimulationRunner(config, verbose=False)
-
-            # Add multiple principals
-            runner.world.ledger.create_principal("new_1", 50)
-            runner.world.ledger.create_principal("new_2", 50)
-            runner.world.ledger.create_principal("new_3", 50)
-
-            # Plan #299: Returns empty - legacy agent creation disabled
-            new_agents = runner._check_for_new_principals()
-
-            assert len(new_agents) == 0
-
-
 class TestPauseResume:
     """Tests for pause/resume functionality."""
 
@@ -284,8 +220,8 @@ class TestGetStatus:
             assert status["running"] is False
             assert status["paused"] is False
             assert status["event_count"] == 0  # Plan #102: renamed from "tick"
-            # Plan #299: No legacy agents - artifact loops discovered at runtime
-            assert status["agent_count"] == 0
+            # Plan #301: artifact_loop_count replaces agent_count (always 0 at init)
+            assert status["artifact_loop_count"] == 0
             assert "api_cost" in status
             assert "max_api_cost" in status
 
@@ -313,30 +249,6 @@ class TestActiveRunner:
         result = SimulationRunner.get_active()
 
         assert result is None
-
-
-class TestCreateAgents:
-    """Tests for _create_agents method (Plan #299: legacy loading disabled)."""
-
-    def test_no_legacy_agents_created(self) -> None:
-        """_create_agents returns empty list (Plan #299: legacy loading disabled)."""
-        # Mock is set but won't be called
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = make_minimal_config(tmpdir)
-            runner = SimulationRunner(config, verbose=False)
-
-            # No legacy agents created - artifact loops discovered at runtime
-            assert len(runner.agents) == 0
-
-    def test_agent_configs_empty(self) -> None:
-        """agent_configs is always empty (Plan #299: legacy loading disabled)."""
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = make_minimal_config(tmpdir)
-            runner = SimulationRunner(config, verbose=False)
-
-            assert len(runner.agent_configs) == 0
 
 
 class TestPrincipalConfig:
@@ -506,18 +418,8 @@ class TestAutonomousMode:
             assert "max_ticks" not in params  # Removed in Plan #102
 
 
-class TestAgentAliveProperty:
-    """Tests for Agent.alive property (Plan #299: legacy agents removed)."""
-
-    def test_no_legacy_agents(self) -> None:
-        """No legacy agents are created (Plan #299)."""
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config = make_minimal_config(tmpdir)
-            runner = SimulationRunner(config, verbose=False)
-
-            # No legacy agents - artifact loops handle agent behavior
-            assert len(runner.agents) == 0
+class TestArtifactLoopDiscovery:
+    """Tests for artifact loop discovery (Plan #301: legacy agents removed)."""
 
     def test_artifact_loops_discovered_at_runtime(self) -> None:
         """Artifact loops are discovered during run(), not at init."""

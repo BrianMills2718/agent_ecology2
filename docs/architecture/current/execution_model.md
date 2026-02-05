@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-05 (Plan #300: added external capabilities to world initialization)
+**Last verified:** 2026-02-05 (Plan #301: removed dead code - worker pool, hooks, legacy agent methods)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
@@ -295,91 +295,3 @@ execution:
 | Rolling window rate limiting | Rolling window only ✅ |
 
 See `docs/architecture/target/02_execution_model.md` for target architecture.
-
----
-
-## Worker Pool Mode (Plan #53)
-
-Optional process-per-agent-turn architecture for scaling to 100+ agents.
-
-### Why Worker Pool?
-
-- Current: All agents in one Python process → OOM with 50+ agents
-- Worker pool: Agent state persisted to SQLite, workers load/execute/save
-- Enables ~10x scale increase with same memory footprint
-
-### Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Agent State Store (SQLite)                                  │
-│  - WAL mode for concurrency                                  │
-│  - Agent state serialized as JSON                            │
-└─────────────────────────────────────────────────────────────┘
-          │
-          ▼
-┌─────────────┐ ┌─────────────┐ ┌─────────────┐
-│ Worker 1    │ │ Worker 2    │ │ Worker N    │
-│ (thread)    │ │ (thread)    │ │ (thread)    │
-│             │ │             │ │             │
-│ Load agent  │ │ Load agent  │ │ Load agent  │
-│ Run turn    │ │ Run turn    │ │ Run turn    │
-│ Measure res │ │ Measure res │ │ Measure res │
-│ Save state  │ │ Save state  │ │ Save state  │
-│ Next agent  │ │ Next agent  │ │ Next agent  │
-└─────────────┘ └─────────────┘ └─────────────┘
-```
-
-### Configuration
-
-```yaml
-execution:
-  use_worker_pool: true  # Enable worker pool mode
-  worker_pool:
-    num_workers: 4       # Number of parallel workers
-    state_db_path: "agent_state.db"  # SQLite database path
-```
-
-### How It Works
-
-1. **State Persistence**: Each agent's state serialized to SQLite via `AgentStateStore`
-2. **Worker Pool**: `ThreadPoolExecutor` runs N workers concurrently
-3. **Turn Execution**: Worker loads agent, runs turn, measures resources, saves state
-4. **Resource Attribution**: Per-agent CPU/memory tracked via `psutil`
-
-### Key Components
-
-| File | Purpose |
-|------|---------|
-| `src/agents/state_store.py` | SQLite-backed agent state persistence |
-| `src/simulation/worker.py` | Worker process that runs agent turns |
-| `src/simulation/pool.py` | Worker pool manager |
-
-### Agent State Serialization
-
-```python
-# Agent.to_state() - serialize
-state = AgentState(
-    agent_id=self.agent_id,
-    model=self.model,
-    system_prompt=self.system_prompt,
-    history=list(self.history),
-    rag_enabled=self.rag_enabled,
-)
-
-# Agent.from_state() - deserialize
-agent = Agent.from_state(state, log_dir=log_dir, run_id=run_id)
-```
-
-### Resource Measurement Per-Turn
-
-| Resource | Measurement Method | Accuracy |
-|----------|-------------------|----------|
-| CPU | `time.process_time()` | ~90% |
-| Memory | `psutil.Process().memory_info().rss` | ~90% |
-
-### Limitations
-
-- Workers are threads, not processes (GIL contention)
-- ~10% measurement error from shared Python runtime
-- State serialization overhead (~10ms per turn)
