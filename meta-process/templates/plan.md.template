@@ -1,6 +1,7 @@
 # Plan #N: [Name]
 
 **Status:** Planned
+**Type:** implementation  <!-- implementation | design -->
 **Priority:** High | Medium | Low
 **Blocked By:** None
 **Blocks:** None
