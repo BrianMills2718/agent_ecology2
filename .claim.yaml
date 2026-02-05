@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-303-fail-loud
-task: Fix 13 silent fallback violations (TD-010)
-claimed_at: '2026-02-05T23:07:02Z'
-session_id: deb6a5c6-b537-477c-a2e2-c73d0d02188e
-plan: 303
+cc_id: plan-304-stale-refs
+task: Fix stale doc references (TD-013)
+claimed_at: '2026-02-05T23:55:22Z'
+session_id: 3c6ba88f-40c3-4bf3-bd70-b30a20ee2de4
+plan: 304
