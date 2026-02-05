@@ -493,7 +493,7 @@ class ActionExecutor:
 
         if not result["success"]:
             # Map edit_artifact error codes to ActionResult error codes
-            error = result.get("data", {}).get("error", "unknown")
+            error = (result.get("data") or {}).get("error", "unknown")
             error_code_map = {
                 "not_found": ErrorCode.NOT_FOUND,
                 "deleted": ErrorCode.NOT_FOUND,

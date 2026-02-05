@@ -526,13 +526,13 @@ class KernelActions:
             "task_id": result.task_id,
             "artifact_id": result.artifact_id,
             "message": result.message,
-            "reward": result.reward,
+            "reward": result.reward_earned,
         }
 
         # Plan #274: Log submission result
         _log_kernel_action(self._world, "kernel_submit_to_task", caller_id, result.success, {
             "artifact_id": artifact_id, "task_id": task_id,
-            "reward": result.reward if result.success else 0,
+            "reward": result.reward_earned if result.success else 0,
             "message": result.message,
         })
 

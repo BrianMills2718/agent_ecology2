@@ -149,24 +149,25 @@ class SimulationProcessManager:
         Returns:
             Status dict with success and any error
         """
-        if not self.is_running:
+        process = self._process
+        if process is None or not self.is_running:
             return {
                 "success": True,
                 "message": "No simulation running",
             }
 
-        pid = self._process.pid if self._process else None
+        pid = process.pid
 
         try:
             # Send SIGTERM for graceful shutdown
-            self._process.send_signal(signal.SIGTERM)
+            process.send_signal(signal.SIGTERM)
 
             try:
-                self._process.wait(timeout=timeout)
+                process.wait(timeout=timeout)
             except subprocess.TimeoutExpired:
                 # Force kill if it didn't stop
-                self._process.kill()
-                self._process.wait(timeout=2)
+                process.kill()
+                process.wait(timeout=2)
 
             self._cleanup()
 
