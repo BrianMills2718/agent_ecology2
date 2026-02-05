@@ -189,6 +189,7 @@ class KernelQueryHandler:
                 "id": artifact.id,
                 "type": artifact.type,
                 "created_by": artifact.created_by,
+                "executable": artifact.executable,
             })
 
         total = len(results)
