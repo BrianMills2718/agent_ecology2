@@ -38,4 +38,4 @@ This explains why agents kept producing `noop` when they intended to use `submit
 - Manual verification: `FlatAction(action_type='submit_to_mint', artifact_id='test', bid=10)` now works
 - `to_typed_action()` returns `FlatAction` (not `NoopAction`) for submit_to_mint
 
-## Status: Complete
+**Status:** ✅ Complete

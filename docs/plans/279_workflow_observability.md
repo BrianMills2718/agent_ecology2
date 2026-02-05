@@ -1,5 +1,7 @@
 # Plan #279: Workflow Observability
 
+**Status:** ✅ Complete
+
 ## Problem
 
 Agents using workflow state machines have no logging of:

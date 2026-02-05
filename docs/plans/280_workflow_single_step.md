@@ -1,6 +1,6 @@
 # Plan #280: Workflow Single Step per Iteration
 
-## Status: COMPLETE
+**Status:** ✅ Complete
 
 ## Problem
 

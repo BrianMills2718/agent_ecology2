@@ -1,6 +1,6 @@
 # Plan 259: Add submit_to_mint Action Type
 
-## Status: In Progress
+**Status:** ✅ Complete
 
 ## Problem
 

@@ -24,4 +24,4 @@ Make prompts more explicit about the distinction:
 - `src/agents/_handbook/mint.md` - Add explicit correct/wrong examples
 - `src/agents/_components/behaviors/mint_reminder.yaml` - Add explicit correct/wrong examples
 
-## Status: Complete
+**Status:** ✅ Complete
