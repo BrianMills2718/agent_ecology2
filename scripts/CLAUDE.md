@@ -97,6 +97,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 |--------|---------|
 | `check.sh` | One-command validation: runs all CI checks locally (pytest, mypy, lint, doc-coupling) |
 | `health_check.py` | Meta-process health check (validates worktrees, claims, hooks, config, git state) |
+| `implementation_quiz.py` | Post-implementation quiz on changed files (Plan #296) |
 
 ### Setup
 
@@ -226,3 +227,27 @@ python scripts/bootstrap_meta_process.py --progress
 Edit `relationships.yaml` to add doc relationships:
 - `governance`: ADR → source file mappings
 - `couplings`: source → doc mappings (for CI enforcement)
+
+## Implementation Quiz (Plan #296)
+
+```bash
+# Quiz all changed files in current branch
+python scripts/implementation_quiz.py
+
+# Quiz specific files
+python scripts/implementation_quiz.py --file src/world/ledger.py
+
+# Dry run - show what would be quizzed
+python scripts/implementation_quiz.py --dry-run
+
+# Quiz against a different base branch
+python scripts/implementation_quiz.py --base origin/main
+
+# Show quiz configuration
+python scripts/implementation_quiz.py --config
+```
+
+Configuration in `meta-process.yaml`:
+- `quiz.integration`: manual | prompt | automatic
+- `quiz.min_lines_changed`: minimum lines to include file
+- `quiz.include_extensions`: file types to quiz
