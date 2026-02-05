@@ -1,0 +1,21 @@
+# Kernel Mint Agent (Plan #254, #298)
+#
+# System artifact that handles mint authority. Only entity that can
+# call the mint action. Replaces genesis_mint.
+
+id: mint_agent
+kernel: true
+
+artifacts:
+  - id: kernel_mint_agent
+    type: system
+    content:
+      description: "Kernel mint authority - handles auction submissions and minting"
+      capabilities: ["can_mint"]
+    executable: false
+    capabilities: [can_mint]
+    has_standing: true
+
+principal:
+  id: kernel_mint_agent
+  starting_scrip: 0

@@ -1,0 +1,27 @@
+# Handbook artifacts - documentation for agents (Plan #298)
+#
+# Creates readable documentation artifacts from src/agents/_handbook/*.md
+
+id: handbook
+enabled: true
+
+source_dir: src/agents/_handbook
+file_pattern: "*.md"
+artifact_type: documentation
+id_prefix: ""  # Use id_mapping for custom IDs
+
+# Map filenames to artifact IDs
+id_mapping:
+  _index: handbook_toc
+  actions: handbook_actions
+  tools: handbook_tools
+  resources: handbook_resources
+  trading: handbook_trading
+  mint: handbook_mint
+  coordination: handbook_coordination
+  external: handbook_external
+  self: handbook_self
+  memory: handbook_memory
+  planning: handbook_planning
+  intelligence: handbook_intelligence
+  learning: handbook_learning
