@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-297-plan-type-distinction
-task: Add plan type distinction to meta-process
-claimed_at: '2026-02-05T15:48:55Z'
-session_id: 94d0c8fb-a15c-49c0-bf8d-2ccfc46d6355
-plan: 297
+cc_id: plan-295-phase1-ledger-cleanup
+task: 'Phase 1: Clean up ledger deprecated code'
+claimed_at: '2026-02-05T15:54:52Z'
+session_id: d86f74c9-ac1f-4e5c-a281-f6553a48a8ae
+plan: 295

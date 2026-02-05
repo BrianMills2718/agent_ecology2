@@ -114,7 +114,7 @@ class TestChargeDelegationIntegration:
         state = KernelState(w)
 
         # Create charlie as a third principal
-        w.ledger.create_principal("charlie", starting_scrip=0, starting_compute=100)
+        w.ledger.create_principal("charlie", starting_scrip=0)
 
         alice_initial = state.get_balance("alice")
         bob_initial = state.get_balance("bob")

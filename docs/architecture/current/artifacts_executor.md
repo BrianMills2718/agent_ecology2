@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-02-03 (Plan #276 - complete KernelActions logging)
+**Last verified:** 2026-02-05 (Plan #295: ledger cleanup - removed starting_compute from create_principal)
 
 ---
 

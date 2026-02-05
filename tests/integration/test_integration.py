@@ -260,44 +260,6 @@ class TestFullTickCycle:
         assert "kernel_mint_agent" in artifact_ids
 
 
-class TestComputeAndScripSeparation:
-    """Tests to verify compute (flow) and scrip (stock) are separate resources."""
-
-    def test_compute_is_separate_from_scrip(self, world_with_temp_log):
-        """Verify compute and scrip are tracked separately."""
-        world = world_with_temp_log
-        world.advance_tick()
-
-        # Get initial values
-        initial_scrip = world.ledger.get_scrip("agent_1")
-        initial_compute = world.ledger.get_resource_remaining("agent_1", "llm_tokens")
-
-        # Execute action - actions are free, but compute can be spent explicitly
-        world.ledger.spend_llm_tokens("agent_1", 5)
-
-        # Compute capacity should decrease, scrip should stay same
-        assert world.ledger.get_resource_remaining("agent_1", "llm_tokens") < initial_compute
-        assert world.ledger.get_scrip("agent_1") == initial_scrip
-
-    def test_compute_and_scrip_are_independent(self, world_with_temp_log):
-        """Spending compute doesn't affect scrip and vice versa."""
-        world = world_with_temp_log
-        world.advance_tick()
-
-        initial_scrip = world.ledger.get_scrip("agent_1")
-        initial_compute = world.ledger.get_resource_remaining("agent_1", "llm_tokens")
-
-        # Spend some compute (consumes from RateTracker)
-        world.ledger.spend_llm_tokens("agent_1", 10)
-
-        # Transfer some scrip
-        world.ledger.transfer_scrip("agent_1", "agent_2", 20)
-
-        # Verify they changed independently
-        assert world.ledger.get_resource_remaining("agent_1", "llm_tokens") == initial_compute - 10
-        assert world.ledger.get_scrip("agent_1") == initial_scrip - 20
-
-
 class TestTransferKernelAction:
     """Tests for scrip transfer via kernel action (Plan #254)."""
 

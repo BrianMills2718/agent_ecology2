@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-04 (Plan #282: llm_budget deduction fix)
+**Last verified:** 2026-02-05 (Plan #295: ledger cleanup - removed deprecated llm_tokens API)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

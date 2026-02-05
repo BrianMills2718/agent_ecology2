@@ -26,9 +26,9 @@ def world_config() -> dict[str, Any]:
         "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 1},
         "logging": {"output_file": output_file},
         "principals": [
-            {"id": "alice", "starting_scrip": 1000, "starting_compute": 1000},
-            {"id": "bob", "starting_scrip": 1000, "starting_compute": 1000},
-            {"id": "sponsor", "starting_scrip": 1000, "starting_compute": 1000},
+            {"id": "alice", "starting_scrip": 1000},
+            {"id": "bob", "starting_scrip": 1000},
+            {"id": "sponsor", "starting_scrip": 1000},
         ],
         "rights": {
             "default_quotas": {"compute": 1000.0, "disk": 10000.0, "llm_tokens": 1000.0}

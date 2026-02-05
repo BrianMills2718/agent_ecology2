@@ -882,7 +882,7 @@ class KernelActions:
     # -------------------------------------------------------------------------
 
     def create_principal(
-        self, principal_id: str, starting_scrip: int = 0, starting_compute: int = 0
+        self, principal_id: str, starting_scrip: int = 0
     ) -> bool:
         """Create a new principal with optional starting resources.
 
@@ -893,7 +893,6 @@ class KernelActions:
         Args:
             principal_id: ID for the new principal (must be unique)
             starting_scrip: Initial scrip balance (default 0)
-            starting_compute: Initial compute allocation (default 0)
 
         Returns:
             True if principal created, False if already exists
@@ -909,7 +908,6 @@ class KernelActions:
         self._world.ledger.create_principal(
             principal_id,
             starting_scrip=starting_scrip,
-            starting_compute=starting_compute
         )
 
         # 2. Artifact has_standing (Plan #231: ledger <-> has_standing invariant)
@@ -922,7 +920,7 @@ class KernelActions:
 
         # Plan #276: Log successful creation
         _log_kernel_action(self._world, "kernel_create_principal", principal_id, True, {
-            "starting_scrip": starting_scrip, "starting_compute": starting_compute,
+            "starting_scrip": starting_scrip,
         })
 
         return True

@@ -33,8 +33,8 @@ class TestLedgerFeature:
         ledger = ledger_with_principals
         # Setup matches AC: alice=1000, bob=500 (use subset scenario)
         # Create fresh principals to match exact AC values
-        ledger.create_principal("principal_a", starting_scrip=100, starting_compute=10)
-        ledger.create_principal("principal_b", starting_scrip=50, starting_compute=10)
+        ledger.create_principal("principal_a", starting_scrip=100)
+        ledger.create_principal("principal_b", starting_scrip=50)
 
         result = ledger.transfer_scrip("principal_a", "principal_b", 30)
 
@@ -54,8 +54,8 @@ class TestLedgerFeature:
           - No partial transfer occurs
         """
         ledger = Ledger()
-        ledger.create_principal("principal_a", starting_scrip=20, starting_compute=10)
-        ledger.create_principal("principal_b", starting_scrip=0, starting_compute=10)
+        ledger.create_principal("principal_a", starting_scrip=20)
+        ledger.create_principal("principal_b", starting_scrip=0)
 
         result = ledger.transfer_scrip("principal_a", "principal_b", 50)
 
@@ -78,7 +78,7 @@ class TestLedgerFeature:
         """
         ledger = Ledger()
         # Using scrip as "resource" since it's the main balance type
-        ledger.create_principal("agent", starting_scrip=100, starting_compute=100)
+        ledger.create_principal("agent", starting_scrip=100)
 
         initial_scrip = ledger.get_scrip("agent")
         assert initial_scrip == 100
@@ -103,9 +103,9 @@ class TestLedgerFeature:
           - Lock prevents race condition
         """
         ledger = Ledger()
-        ledger.create_principal("sender", starting_scrip=100, starting_compute=10)
-        ledger.create_principal("receiver1", starting_scrip=0, starting_compute=10)
-        ledger.create_principal("receiver2", starting_scrip=0, starting_compute=10)
+        ledger.create_principal("sender", starting_scrip=100)
+        ledger.create_principal("receiver1", starting_scrip=0)
+        ledger.create_principal("receiver2", starting_scrip=0)
 
         results = []
 
@@ -143,8 +143,8 @@ class TestLedgerFeature:
         This test verifies integer arithmetic is correct.
         """
         ledger = Ledger()
-        ledger.create_principal("agent_a", starting_scrip=100, starting_compute=10)
-        ledger.create_principal("agent_b", starting_scrip=0, starting_compute=10)
+        ledger.create_principal("agent_a", starting_scrip=100)
+        ledger.create_principal("agent_b", starting_scrip=0)
 
         # Multiple small transfers
         for _ in range(10):
@@ -162,7 +162,7 @@ class TestLedgerEdgeCases:
     def test_transfer_to_self_succeeds(self) -> None:
         """Self-transfer should succeed without changing balance."""
         ledger = Ledger()
-        ledger.create_principal("agent", starting_scrip=100, starting_compute=10)
+        ledger.create_principal("agent", starting_scrip=100)
 
         result = ledger.transfer_scrip("agent", "agent", 50)
 
@@ -176,8 +176,8 @@ class TestLedgerEdgeCases:
         This documents actual behavior rather than prescribing it.
         """
         ledger = Ledger()
-        ledger.create_principal("alice", starting_scrip=100, starting_compute=10)
-        ledger.create_principal("bob", starting_scrip=50, starting_compute=10)
+        ledger.create_principal("alice", starting_scrip=100)
+        ledger.create_principal("bob", starting_scrip=50)
 
         result = ledger.transfer_scrip("alice", "bob", 0)
 

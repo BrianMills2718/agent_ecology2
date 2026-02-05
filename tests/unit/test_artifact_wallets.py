@@ -13,7 +13,7 @@ class TestArtifactWallets:
     def test_transfer_to_nonexistent_creates_wallet(self) -> None:
         """Transferring to a non-existent ID should create it."""
         ledger = Ledger()
-        ledger.create_principal("alice", starting_scrip=100, starting_compute=50)
+        ledger.create_principal("alice", starting_scrip=100)
 
         # Transfer to an artifact (doesn't exist yet)
         result = ledger.transfer_scrip("alice", "escrow_contract_1", 30)
@@ -25,8 +25,8 @@ class TestArtifactWallets:
     def test_artifact_can_receive_multiple_transfers(self) -> None:
         """Artifact wallet can accumulate from multiple sources."""
         ledger = Ledger()
-        ledger.create_principal("alice", starting_scrip=100, starting_compute=0)
-        ledger.create_principal("bob", starting_scrip=100, starting_compute=0)
+        ledger.create_principal("alice", starting_scrip=100)
+        ledger.create_principal("bob", starting_scrip=100)
 
         ledger.transfer_scrip("alice", "firm_treasury", 30)
         ledger.transfer_scrip("bob", "firm_treasury", 20)
@@ -36,8 +36,8 @@ class TestArtifactWallets:
     def test_artifact_can_send_scrip(self) -> None:
         """Artifact with balance can send to others."""
         ledger = Ledger()
-        ledger.create_principal("alice", starting_scrip=100, starting_compute=0)
-        ledger.create_principal("bob", starting_scrip=0, starting_compute=0)
+        ledger.create_principal("alice", starting_scrip=100)
+        ledger.create_principal("bob", starting_scrip=0)
 
         # Fund the artifact
         ledger.transfer_scrip("alice", "payout_contract", 50)
@@ -52,7 +52,7 @@ class TestArtifactWallets:
     def test_artifact_insufficient_funds_rejected(self) -> None:
         """Artifact can't spend more than it has."""
         ledger = Ledger()
-        ledger.create_principal("alice", starting_scrip=100, starting_compute=0)
+        ledger.create_principal("alice", starting_scrip=100)
 
         ledger.transfer_scrip("alice", "small_contract", 10)
 
@@ -97,7 +97,7 @@ class TestArtifactWalletEdgeCases:
     def test_transfer_zero_amount_rejected(self) -> None:
         """Zero transfers should be rejected."""
         ledger = Ledger()
-        ledger.create_principal("alice", starting_scrip=100, starting_compute=0)
+        ledger.create_principal("alice", starting_scrip=100)
 
         result = ledger.transfer_scrip("alice", "artifact", 0)
         assert result is False
@@ -105,7 +105,7 @@ class TestArtifactWalletEdgeCases:
     def test_transfer_negative_amount_rejected(self) -> None:
         """Negative transfers should be rejected."""
         ledger = Ledger()
-        ledger.create_principal("alice", starting_scrip=100, starting_compute=0)
+        ledger.create_principal("alice", starting_scrip=100)
 
         result = ledger.transfer_scrip("alice", "artifact", -10)
         assert result is False
@@ -113,7 +113,7 @@ class TestArtifactWalletEdgeCases:
     def test_artifact_in_all_balances(self) -> None:
         """Artifacts should appear in get_all_balances."""
         ledger = Ledger()
-        ledger.create_principal("alice", starting_scrip=100, starting_compute=50)
+        ledger.create_principal("alice", starting_scrip=100)
         ledger.transfer_scrip("alice", "contract_1", 30)
 
         balances = ledger.get_all_balances()
@@ -121,4 +121,4 @@ class TestArtifactWalletEdgeCases:
         assert "alice" in balances
         assert "contract_1" in balances
         assert balances["contract_1"]["scrip"] == 30
-        assert balances["contract_1"]["llm_tokens"] == 0
+        assert balances["contract_1"]["resources"] == {}  # No resources allocated

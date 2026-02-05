@@ -28,11 +28,11 @@ def artifact_store() -> ArtifactStore:
 def ledger() -> Ledger:
     """Create a ledger with test principals."""
     ledger = Ledger()
-    ledger.create_principal("owner", starting_scrip=1000, starting_compute=100)
-    ledger.create_principal("reader", starting_scrip=500, starting_compute=100)
-    ledger.create_principal("writer", starting_scrip=500, starting_compute=100)
-    ledger.create_principal("invoker", starting_scrip=500, starting_compute=100)
-    ledger.create_principal("unauthorized", starting_scrip=500, starting_compute=100)
+    ledger.create_principal("owner", starting_scrip=1000)
+    ledger.create_principal("reader", starting_scrip=500)
+    ledger.create_principal("writer", starting_scrip=500)
+    ledger.create_principal("invoker", starting_scrip=500)
+    ledger.create_principal("unauthorized", starting_scrip=500)
     return ledger
 
 
