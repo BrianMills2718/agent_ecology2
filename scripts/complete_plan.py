@@ -69,6 +69,32 @@ def get_plan_status(plan_file: Path) -> str:
     return match.group(1).strip() if match else "Unknown"
 
 
+def get_plan_type(plan_file: Path) -> str:
+    """Extract plan type from plan file.
+
+    Returns 'design' or 'implementation' (default if not specified).
+    Plan #297: Distinguish between design docs and implementation plans.
+    """
+    content = plan_file.read_text()
+    match = re.search(r"\*\*Type:\*\*\s*(\w+)", content)
+    if match:
+        plan_type = match.group(1).strip().lower()
+        if plan_type in ("design", "implementation"):
+            return plan_type
+    # Default to implementation for backwards compatibility
+    return "implementation"
+
+
+def count_unchecked_items(plan_file: Path) -> int:
+    """Count unchecked verification items in plan file.
+
+    Plan #297: Block --status-only for implementation plans with unchecked items.
+    """
+    content = plan_file.read_text()
+    # Count `- [ ]` patterns (unchecked checkboxes)
+    return len(re.findall(r"- \[ \]", content))
+
+
 def get_human_review_section(plan_file: Path) -> str | None:
     """Extract the Human Review Required section from plan file.
 
@@ -431,12 +457,17 @@ def complete_plan(
 
     current_status = get_plan_status(plan_file)
 
+    # Plan #297: Get plan type for type-aware completion
+    plan_type = get_plan_type(plan_file)
+    unchecked_count = count_unchecked_items(plan_file)
+
     if verbose:
         print(f"\n{'='*60}")
         print(f"Completing Plan #{plan_number}")
         print(f"{'='*60}")
         print(f"File: {plan_file.name}")
         print(f"Current Status: {current_status}")
+        print(f"Plan Type: {plan_type}")
 
     if ("\u2705" in current_status or "Complete" in current_status) and not force:
         print(f"\nPlan #{plan_number} is already marked complete.")
@@ -457,9 +488,23 @@ def complete_plan(
     if human_review_section and human_verified and verbose:
         print(f"  (--human-verified: human review confirmed)")
 
+    # Plan #297: Design plans don't need code verification
+    if plan_type == "design":
+        if verbose:
+            print(f"\n📄 Design plan: skipping code verification (output is the document)")
+        unit_summary = "skipped (design plan)"
+        e2e_smoke_summary = "skipped (design plan)"
+        e2e_real_summary = "skipped (design plan)"
+        doc_summary = "skipped (design plan)"
     # Plan #240: Status-only mode skips all test execution.
     # Use when CI has already validated the code (e.g., make finish after PR merge).
-    if status_only:
+    elif status_only:
+        # Plan #297: Warn about unchecked items for implementation plans
+        if unchecked_count > 0 and verbose:
+            print(f"\n⚠️  WARNING: {unchecked_count} unchecked verification items in plan")
+            print(f"   This implementation plan has incomplete checklists.")
+            print(f"   Consider running without --status-only to verify, or")
+            print(f"   manually check items before marking complete.")
         if verbose:
             print("\n⏭️  Status-only mode: skipping all tests (CI-validated)")
         unit_summary = "skipped (--status-only, CI-validated)"
