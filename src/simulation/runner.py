@@ -143,10 +143,9 @@ class SimulationRunner:
         self.max_runtime_seconds: int = budget_config.get("max_runtime_seconds", 3600)
         self._run_start_time: float | None = None  # Set when run() is called
 
-        # Load agent configs
-        agent_configs: list[AgentConfig] = load_agents()
-        if max_agents:
-            agent_configs = agent_configs[:max_agents]
+        # Plan #299: Legacy agent loading disabled - using artifact-based agents only
+        # Genesis loader creates has_loop artifacts that ArtifactLoopManager discovers
+        agent_configs: list[AgentConfig] = []
         self.agent_configs = agent_configs
 
         # Build principals list for world initialization

@@ -284,79 +284,42 @@ class TestSimulationRunnerIntegration:
     def test_runner_creates_agent_artifacts(
         self, minimal_config: dict[str, Any]
     ) -> None:
-        """SimulationRunner populates artifact store with agent artifacts."""
+        """Plan #299: Legacy agent loading disabled - genesis loader creates artifacts."""
         from src.simulation.runner import SimulationRunner
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            agents_dir = Path(tmpdir)
-            agent_dir = agents_dir / "test_agent"
-            agent_dir.mkdir()
-            (agent_dir / "agent.yaml").write_text(yaml.dump({"id": "test_agent"}))
-            (agent_dir / "system_prompt.md").write_text("Test")
+        # No legacy agent loading - genesis loader creates artifact-based agents
+        runner = SimulationRunner(minimal_config, verbose=False)
 
-            def mock_load(*args: Any, **kwargs: Any) -> list[AgentConfig]:
-                return load_agents(str(agents_dir))
-
-            # Patch at the point of use (where runner imports it)
-            with patch("src.simulation.runner.load_agents", mock_load):
-                runner = SimulationRunner(minimal_config, max_agents=1)
-
-                # Check that agent artifact exists in store
-                assert "test_agent" in runner.world.artifacts.artifacts
-                agent_artifact = runner.world.artifacts.artifacts["test_agent"]
-                assert agent_artifact.is_agent is True
+        # Genesis loader creates kernel artifacts (like kernel_mint_agent)
+        assert "kernel_mint_agent" in runner.world.artifacts.artifacts
+        # No legacy agents created
+        assert len(runner.agents) == 0
 
     def test_runner_agents_are_artifact_backed(
         self, minimal_config: dict[str, Any]
     ) -> None:
-        """All agents from SimulationRunner have is_artifact_backed=True."""
+        """Plan #299: No legacy agents - artifact loops handle agent behavior."""
         from src.simulation.runner import SimulationRunner
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            agents_dir = Path(tmpdir)
-            agent_dir = agents_dir / "alpha"
-            agent_dir.mkdir()
-            (agent_dir / "agent.yaml").write_text(yaml.dump({"id": "alpha"}))
+        runner = SimulationRunner(minimal_config, verbose=False)
 
-            def mock_load(*args: Any, **kwargs: Any) -> list[AgentConfig]:
-                return load_agents(str(agents_dir))
-
-            with patch("src.simulation.runner.load_agents", mock_load):
-                runner = SimulationRunner(minimal_config, max_agents=1)
-
-                # All agents should be artifact-backed
-                for agent in runner.agents:
-                    assert agent.is_artifact_backed is True, (
-                        f"Agent {agent.agent_id} is not artifact-backed"
-                    )
+        # No legacy agents - artifact loops discovered at runtime
+        assert len(runner.agents) == 0
+        # ArtifactLoopManager will discover has_loop artifacts during run()
+        assert runner.artifact_loop_manager is not None
 
     def test_runner_creates_memory_artifacts(
         self, minimal_config: dict[str, Any]
     ) -> None:
-        """SimulationRunner creates memory artifacts for each agent."""
+        """Plan #299: Legacy memory artifacts not created - state in JSON artifacts."""
         from src.simulation.runner import SimulationRunner
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            agents_dir = Path(tmpdir)
-            agent_dir = agents_dir / "mem_agent"
-            agent_dir.mkdir()
-            (agent_dir / "agent.yaml").write_text(yaml.dump({"id": "mem_agent"}))
+        runner = SimulationRunner(minimal_config, verbose=False)
 
-            def mock_load(*args: Any, **kwargs: Any) -> list[AgentConfig]:
-                return load_agents(str(agents_dir))
-
-            with patch("src.simulation.runner.load_agents", mock_load):
-                runner = SimulationRunner(minimal_config, max_agents=1)
-
-                # Memory artifact should exist
-                assert "mem_agent_memory" in runner.world.artifacts.artifacts
-                memory_artifact = runner.world.artifacts.artifacts["mem_agent_memory"]
-                assert memory_artifact.is_agent is False
-                assert memory_artifact.type == "memory"
-
-                # Agent should link to memory
-                agent_artifact = runner.world.artifacts.artifacts["mem_agent"]
-                assert agent_artifact.memory_artifact_id == "mem_agent_memory"
+        # No legacy agents = no legacy memory artifacts
+        assert len(runner.agents) == 0
+        # Artifact-based agents store state in JSON artifacts (e.g., alpha_prime_state)
+        # These are created by genesis loader, not by runner
 
 
 class TestCheckpointPreservesArtifacts:

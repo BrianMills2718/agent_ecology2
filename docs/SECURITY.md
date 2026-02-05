@@ -2,7 +2,7 @@
 
 This document explains the security architecture of Agent Ecology, including design decisions, risk acknowledgments, and deployment expectations.
 
-**Last verified:** 2026-02-05 (Plan #295: ledger cleanup - removed deprecated llm_tokens API)
+**Last verified:** 2026-02-05 (Plan #299: artifact-based agents via genesis loader)
 
 ## Overview
 

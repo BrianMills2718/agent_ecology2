@@ -1,6 +1,6 @@
 # Core Systems Overview
 
-**Last verified:** 2026-02-05 (Plan #295: ledger cleanup - removed deprecated llm_tokens API)
+**Last verified:** 2026-02-05 (Plan #299: artifact-based agents via genesis loader)
 
 This document provides a systematic overview of the core systems that make the simulation work. Each system is critical infrastructure that must be understood before making changes.
 
@@ -150,29 +150,37 @@ scrip:
 
 **Purpose:** How agents are discovered, loaded, think, and persist state.
 
-**Health:** ✓ Working - Workflows fixed in Plans #280, #281
+**Health:** ✓ Working - Plan #299: Artifact-based agents via genesis loader
 
-**Data Flow:**
+**Data Flow (Plan #299):**
 ```
-src/agents/{name}/agent.yaml + system_prompt.md
-    ↓ loader.py discovers
-Agent.__init__() with config
+config/genesis/agents/{name}/
+    ├── agent.yaml      (manifest: artifacts + principal)
+    ├── strategy.md     (system prompt)
+    ├── initial_state.json (initial state)
+    └── loop_code.py    (autonomous loop code)
+    ↓ genesis loader
+World.artifacts gets 3 artifacts:
+    - {name}_strategy (text)
+    - {name}_state (JSON)
+    - {name}_loop (executable, has_loop=True)
+    ↓ runner._run_autonomous()
+ArtifactLoopManager.discover_loops()
     ↓
-propose_action_async(world_state)
+ArtifactLoop runs loop_code.py continuously
     ↓
-Workflow.run_workflow() or legacy LLM call
+Loop code calls _syscall_llm() for decisions
     ↓
-Returns action + usage
+State persisted to {name}_state artifact
 ```
 
 **Key Files:**
 | File | Responsibility |
 |------|----------------|
-| `src/agents/loader.py` | Discovery from directories |
-| `src/agents/agent.py` | Core Agent class |
-| `src/agents/workflow.py` | Decision-making flow |
-| `src/agents/state_store.py` | SQLite state persistence |
-| `src/agents/memory.py` | Semantic memory (deprecated) |
+| `src/genesis/loader.py` | Load artifacts from config/genesis/ |
+| `src/simulation/artifact_loop.py` | Run has_loop artifacts |
+| `src/world/executor.py` | Execute artifact code with _syscall_llm |
+| `config/genesis/agents/` | Agent YAML configs |
 
 ---
 
@@ -180,17 +188,21 @@ Returns action + usage
 
 **Purpose:** How the simulation runs agents in parallel.
 
-**Health:** ✓ Working
+**Health:** ✓ Working - Plan #299: ArtifactLoopManager for has_loop artifacts
 
 **Key Files:**
 | File | Responsibility |
 |------|----------------|
 | `src/simulation/runner.py` | SimulationRunner orchestrator |
-| `src/simulation/agent_loop.py` | Per-agent autonomous loop |
+| `src/simulation/artifact_loop.py` | ArtifactLoopManager for has_loop artifacts |
+| `src/simulation/agent_loop.py` | AgentLoopManager (legacy, unused) |
 | `src/simulation/pool.py` | Thread pool for parallel execution |
 | `src/simulation/supervisor.py` | Crash recovery, backoff |
 
 **Mode:** Autonomous only (Plan #102 removed tick-based mode)
+
+**Plan #299 Change:** Legacy agent loading disabled. ArtifactLoopManager
+discovers and runs has_loop=True artifacts from genesis loader.
 
 ---
 

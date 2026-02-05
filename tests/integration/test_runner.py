@@ -52,8 +52,13 @@ class TestSimulationRunnerInit:
             assert runner.agents == []
 
     @patch("src.simulation.runner.load_agents")
-    def test_loads_agents_from_loader(self, mock_load: MagicMock) -> None:
-        """SimulationRunner loads agents via load_agents."""
+    def test_no_legacy_agents_loaded(self, mock_load: MagicMock) -> None:
+        """SimulationRunner no longer loads legacy agents (Plan #299).
+
+        Legacy agent loading has been disabled. Agents are now artifact-based
+        and loaded via genesis. The load_agents function is not called.
+        """
+        # mock_load won't be called because legacy loading is disabled
         mock_load.return_value = [
             {"id": "agent_a", "starting_scrip": 100},
             {"id": "agent_b", "starting_scrip": 200},
@@ -63,24 +68,23 @@ class TestSimulationRunnerInit:
             config = make_minimal_config(tmpdir)
             runner = SimulationRunner(config, verbose=False)
 
-            assert len(runner.agents) == 2
-            assert runner.agents[0].agent_id == "agent_a"
-            assert runner.agents[1].agent_id == "agent_b"
+            # No legacy agents loaded - artifact-based agents are discovered
+            # by ArtifactLoopManager.discover_loops() during run()
+            assert len(runner.agents) == 0
+            mock_load.assert_not_called()
 
     @patch("src.simulation.runner.load_agents")
-    def test_respects_max_agents(self, mock_load: MagicMock) -> None:
-        """SimulationRunner limits agents to max_agents."""
-        mock_load.return_value = [
-            {"id": "a1", "starting_scrip": 100},
-            {"id": "a2", "starting_scrip": 100},
-            {"id": "a3", "starting_scrip": 100},
-        ]
+    def test_max_agents_param_exists(self, mock_load: MagicMock) -> None:
+        """SimulationRunner accepts max_agents parameter (legacy compat)."""
+        mock_load.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
+            # Parameter is accepted but has no effect on artifact-based agents
             runner = SimulationRunner(config, max_agents=2, verbose=False)
 
-            assert len(runner.agents) == 2
+            # No legacy agents loaded
+            assert len(runner.agents) == 0
 
     @patch("src.simulation.runner.load_agents")
     def test_generates_run_id(self, mock_load: MagicMock) -> None:
@@ -306,10 +310,8 @@ class TestGetStatus:
     @patch("src.simulation.runner.load_agents")
     def test_returns_status_dict(self, mock_load: MagicMock) -> None:
         """get_status returns correct status information."""
-        mock_load.return_value = [
-            {"id": "a1", "starting_scrip": 100},
-            {"id": "a2", "starting_scrip": 100},
-        ]
+        # Plan #299: Legacy agent loading disabled - mock won't be called
+        mock_load.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
@@ -320,7 +322,8 @@ class TestGetStatus:
             assert status["running"] is False
             assert status["paused"] is False
             assert status["event_count"] == 0  # Plan #102: renamed from "tick"
-            assert status["agent_count"] == 2
+            # Plan #299: No legacy agents - artifact loops discovered at runtime
+            assert status["agent_count"] == 0
             assert "api_cost" in status
             assert "max_api_cost" in status
 
@@ -354,11 +357,12 @@ class TestActiveRunner:
 
 
 class TestCreateAgents:
-    """Tests for _create_agents method."""
+    """Tests for _create_agents method (Plan #299: legacy loading disabled)."""
 
     @patch("src.simulation.runner.load_agents")
-    def test_creates_agents_with_correct_ids(self, mock_load: MagicMock) -> None:
-        """_create_agents creates agents with correct IDs."""
+    def test_no_legacy_agents_created(self, mock_load: MagicMock) -> None:
+        """_create_agents returns empty list (Plan #299: legacy loading disabled)."""
+        # Mock is set but won't be called
         mock_load.return_value = [
             {"id": "alice", "starting_scrip": 100},
             {"id": "bob", "starting_scrip": 200},
@@ -368,28 +372,29 @@ class TestCreateAgents:
             config = make_minimal_config(tmpdir)
             runner = SimulationRunner(config, verbose=False)
 
-            assert runner.agents[0].agent_id == "alice"
-            assert runner.agents[1].agent_id == "bob"
+            # No legacy agents created - artifact loops discovered at runtime
+            assert len(runner.agents) == 0
+            mock_load.assert_not_called()
 
     @patch("src.simulation.runner.load_agents")
-    def test_uses_default_model_when_not_specified(self, mock_load: MagicMock) -> None:
-        """_create_agents uses default model when agent config lacks llm_model."""
-        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]  # No llm_model
+    def test_agent_configs_empty(self, mock_load: MagicMock) -> None:
+        """agent_configs is always empty (Plan #299: legacy loading disabled)."""
+        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
-            config["llm"]["default_model"] = "my-custom-model"
             runner = SimulationRunner(config, verbose=False)
 
-            assert runner.agents[0].llm_model == "my-custom-model"
+            assert len(runner.agent_configs) == 0
 
 
 class TestPrincipalConfig:
-    """Tests for principal config building."""
+    """Tests for principal config building (Plan #299: from genesis, not legacy agents)."""
 
     @patch("src.simulation.runner.load_agents")
-    def test_builds_principals_from_agents(self, mock_load: MagicMock) -> None:
-        """SimulationRunner builds principals list for World init."""
+    def test_no_principals_from_legacy_agents(self, mock_load: MagicMock) -> None:
+        """SimulationRunner no longer builds principals from legacy agents."""
+        # Mock is set but won't be called
         mock_load.return_value = [
             {"id": "alice", "starting_scrip": 150},
             {"id": "bob", "starting_scrip": 75},
@@ -399,21 +404,22 @@ class TestPrincipalConfig:
             config = make_minimal_config(tmpdir)
             runner = SimulationRunner(config, verbose=False)
 
-            # Verify principals were created in ledger
-            assert runner.world.ledger.get_scrip("alice") == 150
-            assert runner.world.ledger.get_scrip("bob") == 75
+            # Legacy agents don't create principals - genesis loader creates them
+            # These IDs won't exist in ledger from legacy loading
+            assert not runner.world.ledger.principal_exists("alice")
+            assert not runner.world.ledger.principal_exists("bob")
 
     @patch("src.simulation.runner.load_agents")
-    def test_uses_default_scrip_when_not_specified(self, mock_load: MagicMock) -> None:
-        """SimulationRunner uses default starting_amount when not in agent config."""
-        mock_load.return_value = [{"id": "agent"}]  # No starting_scrip
+    def test_genesis_principals_exist(self, mock_load: MagicMock) -> None:
+        """Genesis loader creates principals, not legacy agent loading."""
+        mock_load.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
-            config["scrip"]["starting_amount"] = 500
             runner = SimulationRunner(config, verbose=False)
 
-            assert runner.world.ledger.get_scrip("agent") == 500
+            # Genesis creates kernel_mint_agent principal
+            assert runner.world.ledger.principal_exists("kernel_mint_agent")
 
 
 class TestRateTrackerResourceBehavior:
@@ -433,21 +439,24 @@ class TestRateTrackerResourceBehavior:
     @patch("src.simulation.runner.load_agents")
     def test_scrip_never_resets(self, mock_load: MagicMock) -> None:
         """Scrip never resets on advance_tick."""
-        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
+        mock_load.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
             runner = SimulationRunner(config, verbose=False)
 
+            # Create a test principal directly (Plan #299: no legacy agent loading)
+            runner.world.ledger.create_principal("test_agent", starting_scrip=100)
+
             # Spend some scrip
-            runner.world.ledger.deduct_scrip("agent", 30)
-            assert runner.world.ledger.get_scrip("agent") == 70
+            runner.world.ledger.deduct_scrip("test_agent", 30)
+            assert runner.world.ledger.get_scrip("test_agent") == 70
 
             # Advance tick
             runner.world.advance_tick()
 
             # Scrip should remain at 70 (never resets)
-            assert runner.world.ledger.get_scrip("agent") == 70
+            assert runner.world.ledger.get_scrip("test_agent") == 70
 
 
 class TestAutonomousMode:
@@ -501,9 +510,9 @@ class TestAutonomousMode:
             assert runner.world.rate_tracker.window_seconds == 120.0
 
     @patch("src.simulation.runner.load_agents")
-    def test_create_agent_loop_with_config(self, mock_load: MagicMock) -> None:
-        """_create_agent_loop uses config values."""
-        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
+    def test_loop_manager_config_propagates(self, mock_load: MagicMock) -> None:
+        """Loop manager config is set from execution config (Plan #299: no legacy agents)."""
+        mock_load.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
@@ -518,16 +527,11 @@ class TestAutonomousMode:
             }
             runner = SimulationRunner(config, verbose=False)
 
-            # Create loop for the agent
-            runner._create_agent_loop(runner.agents[0])
-
-            # Check that loop was created
-            loop = runner.world.loop_manager.get_loop("agent")
-            assert loop is not None
-            assert loop.config.min_loop_delay == 0.5
-            assert loop.config.max_loop_delay == 20.0
-            assert loop.config.resource_check_interval == 2.0
-            assert loop.config.max_consecutive_errors == 10
+            # Config is stored but loops aren't created until runtime
+            # (artifact loops discovered via ArtifactLoopManager.discover_loops())
+            assert runner.world.loop_manager is not None
+            # No legacy loops created
+            assert runner.world.loop_manager.loop_count == 0
 
     @patch("src.simulation.runner.load_agents")
     def test_shutdown_stops_loops(self, mock_load: MagicMock) -> None:
@@ -580,63 +584,56 @@ class TestAutonomousMode:
 
 
 class TestAgentAliveProperty:
-    """Tests for Agent.alive property (for autonomous loops)."""
+    """Tests for Agent.alive property (Plan #299: legacy agents removed)."""
 
     @patch("src.simulation.runner.load_agents")
-    def test_agent_starts_alive(self, mock_load: MagicMock) -> None:
-        """Agent starts with alive=True."""
-        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
+    def test_no_legacy_agents(self, mock_load: MagicMock) -> None:
+        """No legacy agents are created (Plan #299)."""
+        mock_load.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
             runner = SimulationRunner(config, verbose=False)
 
-            agent = runner.agents[0]
-            assert agent.alive is True
+            # No legacy agents - artifact loops handle agent behavior
+            assert len(runner.agents) == 0
 
     @patch("src.simulation.runner.load_agents")
-    def test_agent_alive_can_be_set(self, mock_load: MagicMock) -> None:
-        """Agent.alive can be set to False."""
-        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
+    def test_artifact_loops_discovered_at_runtime(self, mock_load: MagicMock) -> None:
+        """Artifact loops are discovered during run(), not at init."""
+        mock_load.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
             runner = SimulationRunner(config, verbose=False)
 
-            agent = runner.agents[0]
-            agent.alive = False
-            assert agent.alive is False
-
-            # Can also set back to True
-            agent.alive = True
-            assert agent.alive is True
+            # ArtifactLoopManager exists but hasn't discovered loops yet
+            assert runner.artifact_loop_manager is not None
+            # Loops are discovered during _run_autonomous()
+            assert runner.artifact_loop_manager.loop_count == 0
 
 
 class TestBudgetExhaustion:
     """Tests for global budget exhaustion checks (critical bug fix)."""
 
     @patch("src.simulation.runner.load_agents")
-    def test_agent_decide_skips_when_budget_exhausted(
-        self, mock_load: MagicMock
-    ) -> None:
-        """_agent_decide_action returns None when global budget exhausted."""
-        mock_load.return_value = [{"id": "agent", "starting_scrip": 100}]
+    def test_budget_exhausted_flag(self, mock_load: MagicMock) -> None:
+        """engine.is_budget_exhausted() returns True when budget exceeded."""
+        mock_load.return_value = []
 
         with tempfile.TemporaryDirectory() as tmpdir:
             config = make_minimal_config(tmpdir)
             config["budget"]["max_api_cost"] = 0.01  # Very low budget
             runner = SimulationRunner(config, verbose=False)
 
+            # Initially not exhausted
+            assert runner.engine.is_budget_exhausted() is False
+
             # Exhaust the budget
             runner.engine.track_api_cost(0.02)  # Over the $0.01 limit
 
             # Verify budget is exhausted
             assert runner.engine.is_budget_exhausted() is True
-
-            # _agent_decide_action should return None
-            import asyncio
-            result = asyncio.run(runner._agent_decide_action(runner.agents[0]))
-            assert result is None
 
     @patch("src.simulation.runner.load_agents")
     def test_autonomous_loop_checks_budget(self, mock_load: MagicMock) -> None:
