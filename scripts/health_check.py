@@ -141,7 +141,10 @@ class HealthCheck:
             "python", "scripts/check_claims.py", "--cleanup-orphaned", "--dry-run"
         ])
 
-        if "Would remove" in result.stdout or "orphaned" in result.stdout.lower():
+        # Only warn if there are actual orphaned claims to remove
+        # (don't match "No orphaned claims found")
+        has_orphaned = "Would remove" in result.stdout
+        if has_orphaned:
             self.warning("Orphaned claims exist (claims without worktrees)")
             if self.fix:
                 fix_result = self.run_command([
