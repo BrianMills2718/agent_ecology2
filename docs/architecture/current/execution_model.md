@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-05 (Plan #295: ledger cleanup - removed deprecated llm_tokens API)
+**Last verified:** 2026-02-05 (Plan #298: clarified event_number docstring - dual purpose for logs and triggers)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
