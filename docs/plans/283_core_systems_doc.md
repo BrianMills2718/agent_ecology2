@@ -1,6 +1,6 @@
 # Plan #283: Document Core Systems for Codebase Understanding
 
-## Status: Complete
+**Status:** ✅ Complete
 
 ## Problem
 
