@@ -296,180 +296,96 @@ implemented_by:
 
 ---
 
-## Open Uncertainties: Linkage & Injection
+## Uncertainties: Linkage & Injection
 
-### Linkage Uncertainties
+Resolved using Pattern #33 (Uncertainty Resolution) on 2026-02-05.
 
-**U1: In-file vs centralized storage?**
-- Option A: Links in `relationships.yaml` (centralized, one place to look)
-- Option B: Links in file headers as comments (co-located, but scattered)
-- Option C: Both (file headers authoritative, yaml auto-generated)
-- **Current choice:** Option A (centralized) - but is this right?
+### Resolved Decisions
 
-**U2: Granularity of file_context entries?**
-- Every file individually? (precise but verbose)
-- Directory defaults only? (simple but imprecise)
-- Hybrid? (defaults + overrides for specific files)
-- **Current choice:** Hybrid - but where's the right balance?
+| ID | Uncertainty | Decision | Rationale |
+|----|-------------|----------|-----------|
+| U1 | In-file vs centralized storage | **Centralized (relationships.yaml)** | One place to look, easier to validate, matches existing pattern |
+| U2 | Granularity of file_context | **Hybrid (directory defaults + file overrides)** | 80/20 rule - most files in a directory share context |
+| U3 | Multi-domain files | **List primary + secondary domains** | Primary gets full context, secondary gets summary |
+| U4 | Test files | **Auto-derive from source file** | `tests/**/test_foo.py` inherits from `src/**/foo.py` |
+| U5 | Generated files | **Exclude** | Add `generated: true` marker or exclude pattern |
+| U7 | When to inject | **Edit only (initially)** | Read is informational; expand later if needed |
+| U8 | Missing sections | **Warning + CI validation** | CI validates all links resolve; runtime warns but doesn't block |
+| U10 | Who maintains mappings | **Claude Code adds, CI enforces** | New file must add to relationships.yaml in same PR |
+| U11 | When links get added | **At file creation** | Bootstrap existing files incrementally per-domain |
 
-**U3: How to handle files touching multiple domains?**
-- `src/world/world.py` touches agents, resources, contracts, artifacts
-- List all domains? Gets verbose.
-- Primary domain + secondary?
-- **Uncertain:** Need practical experience to decide
+### Deferred (Need Empirical Testing)
 
-**U4: What about test files?**
-- Should `tests/unit/test_agent.py` link to same docs as `src/agents/agent.py`?
-- Auto-derive from source file being tested?
-- Separate test-specific context?
-- **Uncertain:** Not addressed yet
-
-**U5: How to handle generated files?**
-- `docs/plans/CLAUDE.md` is auto-generated
-- Should it have context links?
-- **Uncertain:** Probably exclude from system
-
-### Injection Uncertainties
-
-**U6: How much context is too much?**
-- Full PRD + domain model + ADRs could be 10KB+
-- Does this overflow context? Slow things down?
-- **Uncertain:** May need summarization or selective loading
-
-**U7: When to inject vs when to warn?**
-- Inject on Read too, or only Edit?
-- Inject on Glob/Grep?
-- **Uncertain:** Edit seems clear; others less so
-
-**U8: How to handle missing sections?**
-- Link points to `agents#collaboration` but section doesn't exist
-- Hard error? Warning? Skip?
-- **Current choice:** Warning, but need validation script
-
-**U9: Caching injected context?**
-- If editing multiple files in same domain, re-fetch each time?
-- Cache per-session? Per-domain?
-- **Uncertain:** Performance optimization for later
-
-### Process Uncertainties
-
-**U10: Who maintains file_context mappings?**
-- Claude Code when creating files?
-- User when creating PRDs?
-- CI enforcement? (files must have links)
-- **Current choice:** CI enforcement, but who adds initially?
-
-**U11: When do links get added?**
-- When file is created?
-- When PRD is created?
-- Retroactively for existing codebase?
-- **Uncertain:** Need bootstrap strategy for existing files
-
-**U12: How to validate link freshness?**
-- File last modified: 2026-02-01
-- Linked PRD last modified: 2026-02-05
-- Does file need review? How to know?
-- **Uncertain:** Staleness detection is hard
-
-**U13: How to handle refactoring?**
-- Rename concept in domain model
-- All file links using old concept name break
-- **Uncertain:** Need migration strategy or stable IDs
+| ID | Uncertainty | Current Assumption | Revisit When |
+|----|-------------|-------------------|--------------|
+| U6 | Context size limits | Start with full injection | If context overflow observed |
+| U9 | Caching | No caching (re-fetch each time) | If performance is problematic |
+| U12 | Link freshness/staleness | Flag for review when PRD changes | When implementing Phase 3 |
+| U13 | Refactoring/migrations | Use stable IDs in links | When first rename breaks links |
 
 ---
 
-## Open Questions / Uncertainties
+## Resolved Questions
 
-### Hierarchy Questions
+These questions from the original planning have been answered:
 
-1. **Is the hierarchy strictly linear or a graph?**
-   - Can an ADR reference multiple PRDs?
-   - Can a plan implement multiple ADRs?
-   - Instinct: It's a DAG, not a strict tree
+| Question | Resolution |
+|----------|------------|
+| Is the hierarchy linear or a graph? | **DAG** - ADRs can reference multiple PRDs, plans can span ADRs |
+| How granular are PRDs? | **One per domain** - agents.md, resources.md, etc. with sections for capabilities |
+| Where does thesis come from? | **Extracted to docs/THESIS.md** - separate from process-focused CLAUDE.md |
+| Domain Model vs Ontology relationship? | **Complementary** - Domain Model is conceptual, Ontology is precise fields. Domain Model references PRD, Ontology references Domain Model. Sync via CI. |
+| How detailed should domain models be? | **Concepts + relationships + behaviors + constraints** - see agents.yaml |
+| Cross-cutting concerns? | **Own PRD if major** (observability.md), otherwise sections in relevant PRDs |
+| Link rot prevention? | **CI validation** - script checks all links resolve |
+| Domain detection from path? | **Explicit mapping in relationships.yaml** - directory_defaults + file overrides |
+| Who creates PRDs/domain models? | **Collaborative** - user provides vision, Claude Code drafts, iterate together |
+| When created? | **Incrementally** - create when domain work begins, not upfront for everything |
+| Bureaucratic overhead? | **PRDs stable, plans handle details** - PRD changes are rare, plans are frequent |
 
-2. **How granular are PRDs?**
-   - One PRD per domain (agents, resources, contracts)?
-   - One PRD per capability (planning, collaboration)?
-   - One master PRD with sections?
+## Remaining Open Questions
 
-3. **Where does the thesis come from?**
-   - It partially exists in CLAUDE.md
-   - Should it be extracted to its own file?
-   - Or is CLAUDE.md the thesis?
+1. **How do we keep Domain Model and Ontology in sync?**
+   - Need CI check that concepts in domain model have corresponding ontology entries?
+   - Or is manual review sufficient?
 
-### Domain Model Questions
-
-4. **What's the relationship between Domain Model and Ontology?**
-   - Domain Model: conceptual, human-readable ("Agent pursues Goals")
-   - Ontology: precise, machine-readable ("artifact.goal_hierarchy: list")
-   - How do we keep them in sync?
-
-5. **How detailed should domain models be?**
-   - Just concepts and relationships?
-   - Also behaviors and constraints?
-   - Examples and non-examples?
-
-### Linking Questions
-
-6. **How do we handle cross-cutting concerns?**
-   - "Observability" touches all domains
-   - Does it get its own PRD? Or sections in each domain PRD?
-
-7. **How do we prevent link rot?**
-   - Docs get renamed/moved
-   - Need validation that links resolve
-
-### Injection Questions
-
-8. **How do we detect domain from file path?**
-   - Simple mapping: `src/agents/** → agents domain`
-   - What about files that touch multiple domains?
-
-9. **How much context is too much?**
-   - Injecting full PRD + domain model + ADRs could be huge
-   - Need summarization or selective injection?
-
-10. **Who maintains the mappings?**
-    - Manual: file → domain mapping in config
-    - Auto: infer from file content/imports
-
-### Process Questions
-
-11. **Who creates PRDs and domain models?**
-    - User provides vision, Claude Code drafts docs?
-    - User writes them directly?
-    - Collaborative iteration?
-
-12. **When do these docs get created?**
-    - Before any implementation in a domain?
-    - Retroactively for existing domains?
-    - Incrementally as needed?
-
-13. **How do we avoid bureaucratic overhead?**
-    - Every small change needs PRD update?
-    - Or PRDs are stable, plans handle details?
+2. **What's the right level of context injection?**
+   - Start with full injection, observe if problematic
+   - May need summarization layer later
 
 ---
 
-## Proposed Next Steps
+## Implementation Status
 
-### Phase 1: Foundation (do now?)
-1. Extract/create `docs/THESIS.md` from CLAUDE.md philosophy section
-2. Create `docs/prd/` directory structure
-3. Create `docs/domain_model/` directory structure
-4. Rename CONCEPTUAL_MODEL.yaml → ONTOLOGY.yaml
+### Phase 1: Foundation - COMPLETE
 
-### Phase 2: Test Case - Agents
-1. Write `docs/prd/agents.md` - agent capabilities
-2. Write `docs/domain_model/agents.yaml` - agent concepts
-3. Create ADR for agent cognitive architecture (BabyAGI-style)
-4. Update ONTOLOGY.yaml with agent-specific fields
-5. See if this would have prevented the discourse_analyst confusion
+- [x] Extract/create `docs/THESIS.md` from CLAUDE.md philosophy section
+- [x] Create `docs/prd/` directory structure with CLAUDE.md and TEMPLATE.md
+- [x] Create `docs/domain_model/` directory structure with CLAUDE.md
+- [x] Rename CONCEPTUAL_MODEL.yaml → ONTOLOGY.yaml
+- [x] Update docs/CLAUDE.md with new hierarchy diagram
 
-### Phase 3: Injection Mechanism
-1. Create domain → docs mapping
+### Phase 2: Test Case - Agents - PARTIALLY COMPLETE
+
+- [x] Write `docs/prd/agents.md` - agent capabilities (6 capabilities defined)
+- [x] Write `docs/domain_model/agents.yaml` - agent concepts (7 concepts + t=0 constellation)
+- [ ] Create ADR for agent cognitive architecture (BabyAGI-style)
+- [ ] Update ONTOLOGY.yaml with agent-specific fields
+- [ ] Validate: would this have prevented the discourse_analyst confusion?
+
+### Phase 3: Injection Mechanism - NOT STARTED
+
+1. Add file_context section to relationships.yaml
 2. Implement PreToolUse hook for context injection
-3. Implement missing-spec detection
+3. Implement missing-spec detection (warn if editing file with no PRD link)
+4. Test on real implementation work
+
+### Phase 4: Enforcement - NOT STARTED
+
+1. CI check: new files must have context links
+2. CI check: plans should reference PRDs
+3. CI check: validate all links resolve
+4. CI warning: staleness detection (PRD changed, linked files unchanged)
 4. Test on real implementation work
 
 ### Phase 4: Enforcement

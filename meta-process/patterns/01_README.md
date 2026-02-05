@@ -39,6 +39,7 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 | [Gap Analysis](30_gap-analysis.md) | Ad-hoc planning misses gaps between current and target | Medium | 28 |
 | [External LLM Review](31_external-llm-review.md) | AI misses issues humans would catch | Low | — |
 | [Recurring Issue Tracking](32_recurring-issue-tracking.md) | Issues recur despite "fixes", going in circles | Low | — |
+| [Uncertainty Resolution](33_uncertainty-resolution.md) | Uncertainties listed but never resolved | Low | 29 |
 
 > **Conventions vs. patterns:** Patterns 06 (Git Hooks), 11 (Terminology), and 26 (Ownership Respect) are infrastructure or conventions rather than coordination patterns. They have no dependencies and can be adopted independently.
 
@@ -50,6 +51,7 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 - Git Hooks - any project with CI
 - Question-Driven Planning - AI tendency to guess instead of investigate
 - Uncertainty Tracking - preserve context across sessions
+- Uncertainty Resolution - systematic lifecycle for resolving tracked uncertainties
 
 **Add these when needed (more setup):**
 - Plan Workflow - for larger tasks with multiple steps
