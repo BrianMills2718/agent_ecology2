@@ -1,6 +1,6 @@
 # Plan 257: Remove Genesis Artifact References from _3 Agents
 
-## Status: In Progress
+## Status: Complete
 
 ## Problem
 
@@ -46,9 +46,9 @@ These references cause:
 
 ## Required Tests
 
-- [ ] Run simulation for 2 minutes - invoke success rate should improve significantly
-- [ ] alpha_3 should not attempt to invoke genesis_error_detector
-- [ ] All _3 agents should function without genesis artifact errors
+- [x] Run simulation for 2 minutes - invoke success rate should improve significantly
+- [x] alpha_3 should not attempt to invoke genesis_error_detector
+- [x] All _3 agents should function without genesis artifact errors
 
 ## Files Modified
 
@@ -62,3 +62,13 @@ These references cause:
 
 - Simulation logs show no genesis_* invoke failures
 - Invoke success rate >50% (up from 1.9%)
+
+### Verified 2026-02-05
+
+All _3 agent yaml files have been converted:
+- **alpha_3**: Uses code-computed `should_pivot` instead of `genesis_error_detector` invoke (line 321)
+- **beta_3**: Comments confirm conversion from `genesis_loop_detector` and `genesis_balance_checker` (lines 257, 272)
+- **delta_3**: No genesis invoke calls remain
+- **gamma_3**: Uses direct transfers instead of `genesis_escrow`
+
+Grep verification: `grep -r "invoke.*genesis_\|genesis_.*invoke" src/agents/*_3/agent.yaml` returns no matches.
