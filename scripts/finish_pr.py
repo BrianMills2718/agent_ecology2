@@ -21,8 +21,11 @@ import json
 import os
 import subprocess
 import sys
+import webbrowser
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 
 def run_cmd(
@@ -231,6 +234,66 @@ def ensure_plan_complete(
 
     return True, "Completed and pushed"
 
+def get_quiz_config() -> dict[str, Any]:
+    """Load quiz configuration from meta-process.yaml."""
+    config_path = Path("meta-process.yaml")
+    if not config_path.exists():
+        return {"integration": "manual"}
+
+    with open(config_path) as f:
+        config = yaml.safe_load(f) or {}
+
+    return config.get("quiz", {"integration": "manual"})
+
+
+def run_implementation_quiz(branch: str, base: str = "main") -> tuple[bool, str]:
+    """Run the implementation quiz (HTML mode) and return result.
+
+    Returns:
+        (should_proceed, message)
+    """
+    quiz_config = get_quiz_config()
+    integration = quiz_config.get("integration", "manual")
+
+    if integration == "manual":
+        return True, "Quiz skipped (integration: manual)"
+
+    # Run the quiz in HTML mode
+    result = subprocess.run(
+        ["python", "scripts/implementation_quiz.py", "--html", "--branch", branch, "--base", base],
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        return True, f"Quiz generation failed: {result.stderr}"
+
+    if integration == "prompt":
+        # Ask user if they want to proceed
+        print()
+        print("📋 Implementation quiz opened in browser.")
+        print("   Review the changes and answer the questions.")
+        print()
+        response = input("   Proceed with merge? (yes/no) [yes]: ").lower().strip()
+        if response in ["no", "n"]:
+            return False, "User chose not to proceed after quiz"
+        return True, "User confirmed after quiz"
+
+    elif integration == "automatic":
+        # For automatic mode, we'd need quiz results - for now, require confirmation
+        print()
+        print("📋 Implementation quiz opened in browser.")
+        print("   Complete the quiz to verify your understanding.")
+        print()
+        print("   ⚠️  Automatic mode: Merge blocked until you confirm quiz completion.")
+        response = input("   Have you completed the quiz? (yes/no): ").lower().strip()
+        if response not in ["yes", "y"]:
+            return False, "Quiz not completed - merge blocked"
+        return True, "Quiz completed"
+
+    return True, "Quiz completed"
+
+
 def find_worktree_path(branch: str) -> Path | None:
     """Find the worktree path for a branch."""
     result = run_cmd(["git", "worktree", "list", "--porcelain"], check=False)
@@ -388,7 +451,7 @@ def validate_finish_preconditions(
     return len(errors) == 0, errors, context
 
 
-def finish_pr(branch: str, pr_number: int, check_ci: bool = False, skip_complete: bool = False) -> bool:
+def finish_pr(branch: str, pr_number: int, check_ci: bool = False, skip_complete: bool = False, skip_quiz: bool = False) -> bool:
     """Complete the full PR lifecycle.
 
     Plan #189 Phase 5: Atomic Finish
@@ -458,6 +521,25 @@ def finish_pr(branch: str, pr_number: int, check_ci: bool = False, skip_complete
         if diff_check.returncode != 0 and "No 'Files Affected'" not in (diff_check.stderr or ""):
             print("   (Advisory: not blocking merge)")
         print()
+
+    # ═══════════════════════════════════════════════════════════════════
+    # PHASE 1.7: IMPLEMENTATION QUIZ (Plan #296)
+    # Open quiz in browser to verify user understanding of changes.
+    # Behavior controlled by quiz.integration in meta-process.yaml:
+    #   - manual: skip (user runs quiz explicitly)
+    #   - prompt: open quiz, ask if user wants to proceed
+    #   - automatic: open quiz, require confirmation before merge
+    # ═══════════════════════════════════════════════════════════════════
+    if skip_quiz:
+        print("⏭️  Skipping implementation quiz (--skip-quiz)")
+    else:
+        print("🧠 Checking implementation quiz...")
+        quiz_ok, quiz_msg = run_implementation_quiz(branch)
+        if not quiz_ok:
+            print(f"❌ {quiz_msg}")
+            return False
+        print(f"✅ {quiz_msg}")
+    print()
 
     # ═══════════════════════════════════════════════════════════════════
     # PHASE 2: EXECUTION (atomic - either completes fully or not at all)
@@ -564,6 +646,11 @@ def main() -> int:
         action="store_true",
         help="Skip auto-completing the plan (for partial work or doc-only changes)"
     )
+    parser.add_argument(
+        "--skip-quiz",
+        action="store_true",
+        help="Skip the implementation understanding quiz"
+    )
 
     args = parser.parse_args()
 
@@ -606,7 +693,7 @@ def main() -> int:
                 print(f"  • {error}")
             return 1
 
-    success = finish_pr(args.branch, args.pr, args.check_ci, args.skip_complete)
+    success = finish_pr(args.branch, args.pr, args.check_ci, args.skip_complete, args.skip_quiz)
     return 0 if success else 1
 
 
