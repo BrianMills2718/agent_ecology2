@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-05 (Plan #298: clarified event_number docstring - dual purpose for logs and triggers)
+**Last verified:** 2026-02-05 (Plan #298: moved bootstrap methods to config-driven genesis)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

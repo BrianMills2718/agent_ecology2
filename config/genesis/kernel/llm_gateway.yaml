@@ -1,0 +1,27 @@
+# Kernel LLM Gateway (Plan #255, #298)
+#
+# System artifact that provides LLM access as a service.
+# Agents invoke this to think. Wraps the _syscall_llm kernel primitive.
+#
+# Universal Bridge Pattern: Template for all external API access.
+# The kernel provides the syscall, this artifact wraps it.
+#
+# Economics:
+# - Budget (llm_budget) is deducted from the CALLER, not the gateway
+# - No scrip fee - thinking is metabolic, not transactional
+
+id: llm_gateway
+kernel: true
+
+artifacts:
+  - id: kernel_llm_gateway
+    type: executable
+    content:
+      description: "LLM access gateway - caller pays budget, no scrip fee"
+      capabilities: ["can_call_llm"]
+      version: "1.0.0"
+    code_file: llm_gateway_code.py
+    executable: true
+    capabilities: [can_call_llm]
+    has_standing: false
+    has_loop: false

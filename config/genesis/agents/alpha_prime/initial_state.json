@@ -1,0 +1,16 @@
+{
+  "iteration": 0,
+  "created_at": "genesis",
+  "model": "gemini/gemini-2.5-flash",
+  "objective": "Earn 200 scrip by completing mint tasks",
+  "task_queue": [
+    {"id": 1, "description": "Query available mint tasks", "priority": 10}
+  ],
+  "completed_tasks": [],
+  "next_task_id": 2,
+  "insights": {
+    "closed_tasks": [],
+    "completed_tasks": [],
+    "artifacts_created": []
+  }
+}

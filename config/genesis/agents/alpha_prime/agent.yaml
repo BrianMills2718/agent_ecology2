@@ -1,0 +1,55 @@
+# Alpha Prime - BabyAGI-style Task Agent (Plans #256, #273, #298)
+#
+# A 3-artifact cluster:
+# - alpha_prime_strategy: The constitution (text, system prompt)
+# - alpha_prime_state: The memory (JSON, persistent state with task queue)
+# - alpha_prime_loop: The metabolism (executable, has_loop=True)
+#
+# BabyAGI-style task management:
+# - Maintains prioritized task queue
+# - Creates new tasks based on results
+# - Tracks completed tasks for context
+
+id: alpha_prime
+enabled_key: alpha_prime.enabled
+enabled: false  # Default to disabled; config enables
+
+artifacts:
+  # 1. Strategy artifact (the constitution)
+  - id: alpha_prime_strategy
+    type: text
+    content_file: strategy.md
+    executable: false
+    has_standing: false
+    has_loop: false
+
+  # 2. State artifact (BabyAGI task queue)
+  - id: alpha_prime_state
+    type: json
+    content_file: initial_state.json
+    executable: false
+    has_standing: false
+    has_loop: false
+    access_contract_id: kernel_contract_transferable_freeware
+    metadata:
+      authorized_writer: alpha_prime_loop
+
+  # 3. Loop artifact (the metabolism - executable code)
+  - id: alpha_prime_loop
+    type: executable
+    content:
+      description: "BabyAGI-style task agent"
+    code_file: loop_code.py
+    executable: true
+    capabilities: [can_call_llm]
+    has_standing: true
+    has_loop: true
+
+principal:
+  id: alpha_prime_loop
+  starting_scrip_key: alpha_prime.starting_scrip
+  starting_scrip: 100
+  starting_llm_budget_key: alpha_prime.starting_llm_budget
+  starting_llm_budget: 1.0
+  disk_quota_key: alpha_prime.disk_quota
+  disk_quota: 10000.0
