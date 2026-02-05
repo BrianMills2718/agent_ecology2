@@ -22,7 +22,6 @@ from ..world.logger import SummaryCollector
 from ..config import get_validated_config
 
 from .types import (
-    PrincipalConfig,
     CheckpointData,
     ErrorStats,
 )

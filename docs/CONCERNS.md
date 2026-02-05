@@ -19,8 +19,7 @@ Potential issues to monitor. Not bugs, not plans - just things that might become
 
 | Concern | Risk | Watch For |
 |---------|------|-----------|
-| **Freeware fallback in kernel** | `permission_checker.py:150` defaults to `freeware` when contract field is missing. Per ADR-0019, kernel should be neutral - contracts decide access. This embeds a policy choice in the kernel. | Agents getting unexpected access to artifacts missing contracts, masking broken contract assignment |
-| **Missing creator denies silently** | `permission_checker.py:347` defaults missing creator field to `None`, silently denying access instead of failing loud. | Hard-to-debug access denials when artifact metadata is corrupted |
+| **Freeware fallback in kernel** | `permission_checker.py` uses `access_contract_id` field (default: `"kernel_contract_freeware"`). Per ADR-0019, kernel should be neutral - contracts decide access. This embeds a policy choice in the kernel. | Agents getting unexpected access to artifacts missing contracts, masking broken contract assignment |
 
 ### General Architecture
 
@@ -49,6 +48,7 @@ Potential issues to monitor. Not bugs, not plans - just things that might become
 | **Genesis artifact sprawl** | Plan #199 removed genesis_store (redundant with query_kernel). Remaining artifacts (ledger, mint, escrow, memory, event_log, model_registry, voting, debt_contract) serve distinct purposes. | 2026-01-26 |
 | **Simulation learnings split** | Consolidated `simulation_learnings/` directory into root `SIMULATION_LEARNINGS.md`. All observations now in one file with "Archived Observations" section for date-stamped entries. | 2026-02-01 |
 | **CONCERNS.md / DC 11 overlap** | Distinction clarified: CONCERNS.md = operational symptoms to watch for (will this become a problem?); DESIGN_CLARIFICATIONS.md 11 = architectural questions being discussed (what should we do?). Different purposes, no overlap. | 2026-02-01 |
+| **Missing creator denies silently** | Plan #303: `getattr(artifact, "created_by", None)` replaced with direct `artifact.created_by` - fails loud on corrupted artifacts | 2026-02-05 |
 
 ---
 

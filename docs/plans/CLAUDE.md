@@ -103,6 +103,7 @@ Master index of all gaps and their implementation plans.
 | 301 | [Dead Code & Legacy Cleanup (Post Plan #299)](301_dead_code_cleanup.md) | Medium | ✅ Complete | - |
 | 302 | [Tech Debt Quick Wins (TD-011 through TD-014)](302_tech_debt_quick_wins.md) | Medium | ✅ Complete | - |
 | 303 | [Fix 13 Silent Fallback Violations (TD-010)](303_fail_loud_fixes.md) | Medium | ✅ Complete | - |
+| 304 | [Fix Stale Doc References (TD-013)](304_stale_refs.md) | Medium | ✅ Complete | - |
 ---
 
 ## TDD Workflow
