@@ -40,9 +40,9 @@ pr-ready:  ## Rebase and push (run before creating PR)
 pr:  ## Create PR (opens browser)
 	GIT_CONFIG_NOSYSTEM=1 gh pr create --web
 
-finish:  ## Complete PR lifecycle: merge + cleanup (usage: make finish BRANCH=plan-XX PR=N [SKIP_COMPLETE=1]) - RUN FROM MAIN!
-	@if [ -z "$(BRANCH)" ] || [ -z "$(PR)" ]; then echo "Usage: make finish BRANCH=plan-XX PR=N [SKIP_COMPLETE=1]"; exit 1; fi
-	cd $(MAIN_DIR) && python $(MAIN_DIR)/scripts/finish_pr.py --branch $(BRANCH) --pr $(PR) $(if $(SKIP_COMPLETE),--skip-complete,)
+finish:  ## Complete PR lifecycle: merge + cleanup (usage: make finish BRANCH=plan-XX PR=N [SKIP_COMPLETE=1] [SKIP_QUIZ=1]) - RUN FROM MAIN!
+	@if [ -z "$(BRANCH)" ] || [ -z "$(PR)" ]; then echo "Usage: make finish BRANCH=plan-XX PR=N [SKIP_COMPLETE=1] [SKIP_QUIZ=1]"; exit 1; fi
+	cd $(MAIN_DIR) && python $(MAIN_DIR)/scripts/finish_pr.py --branch $(BRANCH) --pr $(PR) $(if $(SKIP_COMPLETE),--skip-complete,) $(if $(SKIP_QUIZ),--skip-quiz,)
 
 clean:  ## Remove generated files
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
