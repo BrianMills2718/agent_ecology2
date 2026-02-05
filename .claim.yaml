@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-290-noop-break
-task: Fix workflow noop break issue
-claimed_at: '2026-02-05T06:30:21Z'
-session_id: 94b81a7c-463b-4865-a21c-ab84ed0c5e09
-plan: 290
+cc_id: plan-257-genesis-refs
+task: Remove genesis artifact references from _3 agents
+claimed_at: '2026-02-05T06:32:16Z'
+session_id: 18b5c672-04ce-46e8-8b43-90c89f1292ff
+plan: 257
