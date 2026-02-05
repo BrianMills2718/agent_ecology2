@@ -941,8 +941,13 @@ CRITICAL: Use UNIQUE artifact IDs. submit_to_task is an action_type, not invoke_
     def increment_event_counter(self) -> int:
         """Increment the event counter and return the new value.
 
-        Used for event ordering in logs. Not related to execution timing.
-        Plan #185: Also fires any triggers scheduled for this event.
+        The event counter serves two purposes:
+        1. Event ordering in logs (observability)
+        2. Scheduled trigger firing (Plan #185)
+
+        Note: This is NOT the primary execution control. Agents run based on:
+        - Time duration (seconds)
+        - LLM budget (dollars)
         """
         self.event_number += 1
 

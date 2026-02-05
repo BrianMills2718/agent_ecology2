@@ -97,6 +97,7 @@ Master index of all gaps and their implementation plans.
 | 295 | [Plan 295: Resource-Gating Architecture Refactor](295_resource_gating_architecture.md) | High (architectural alignment) | ✅ Complete | - |
 | 296 | [Plan 296: Implementation Understanding Quiz Meta-Process](296_implementation_quiz_meta_process.md) | High (process improvement) | ✅ Complete | - |
 | 297 | [Plan Type Distinction](297_plan_type_distinction.md) | Medium | ✅ Complete | - |
+| 298 | [Plan 298: Config-Driven Genesis Artifacts](298_config_driven_genesis.md) | Medium | 📋 Planned | - |
 ---
 
 ## TDD Workflow
