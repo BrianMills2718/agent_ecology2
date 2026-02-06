@@ -1975,6 +1975,16 @@ class MintTasksConfig(StrictModel):
     )
 
 
+class DelegationConfig(StrictModel):
+    """Charge delegation configuration (TD-012)."""
+
+    max_history: int = Field(
+        default=1000,
+        gt=0,
+        description="Max charge history entries per (payer, charger) pair"
+    )
+
+
 # =============================================================================
 # ROOT CONFIG MODEL
 # =============================================================================
@@ -2016,6 +2026,7 @@ class AppConfig(StrictModel):
     prompt_injection: PromptInjectionConfig = Field(default_factory=PromptInjectionConfig)  # Plan #197
     alpha_prime: AlphaPrimeConfig = Field(default_factory=AlphaPrimeConfig)  # Plan #256
     mint_tasks: MintTasksConfig = Field(default_factory=MintTasksConfig)  # Plan #269
+    delegation: DelegationConfig = Field(default_factory=DelegationConfig)  # TD-012
 
     # Dynamic fields set at runtime
     principals: list[dict[str, int | str]] = Field(

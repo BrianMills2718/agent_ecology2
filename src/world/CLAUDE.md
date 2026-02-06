@@ -38,6 +38,7 @@ This is the heart of the simulation. All world state, resources, and execution l
 | `triggers.py` | Kernel event triggers -- "when event X, invoke artifact Y" (Plan #169) |
 | `usage_tracker.py` | LLM usage tracking: per-model tokens, calls, cost (Plan #166) |
 | `capabilities.py` | External capabilities manager: human-approved APIs (Plan #300) |
+| `constants.py` | Centralized constants: kernel contract IDs, SYSTEM_OWNER (Plan #305) |
 
 ## Key Patterns
 

@@ -8,40 +8,6 @@ Tracked architectural concerns and potential improvements. Items here are candid
 
 ## Active Debt (Should Address)
 
-### TD-011: Missing observability in delegation and artifact transfers
-
-**Observed:** 2026-02-05 (codebase audit) | **Partially resolved:** Plan #302 wired ledger logging
-
-**Problem:** State-mutating modules missing event logging:
-
-1. ~~**`ledger.py`** - Zero logging~~ **Fixed in Plan #302** (scrip mutation logging wired via EventLogger)
-2. **`delegation.py`** - Grant/revoke operations mutate artifacts without event logging.
-3. **`artifacts.py:transfer_ownership()`** - Metadata mutations not logged.
-
-**Impact:** Cannot trace delegation changes or artifact ownership transfers.
-
-**Recommended fix:** Add event logging to delegation grant/revoke and artifact transfer.
-
-**Effort:** Low | **Risk:** Very Low (additive logging)
-
----
-
-### TD-012: Hardcoded delegation max entries
-
-**Observed:** 2026-02-05 (codebase audit) | **Partially resolved:** Plan #302 moved mint params to config
-
-**Problem:** Remaining hardcoded parameter:
-
-| File | Line | Value | Should Be Config |
-|------|------|-------|------------------|
-| `delegation.py` | 73 | `_MAX_ENTRIES_PER_PAIR = 1000` | `delegation.max_history` |
-
-~~`mint_auction.py` auction timing and mint_ratio~~ **Fixed in Plan #302** (now read from config)
-
-**Effort:** Very Low | **Risk:** Very Low
-
----
-
 ### TD-005: Config flow is implicit
 
 **Problem:** Components receive full config dict, extract what they need. No clear contract about what each component needs.
@@ -76,16 +42,6 @@ Tracked architectural concerns and potential improvements. Items here are candid
 
 ---
 
-### TD-008: Genesis artifact IDs are hardcoded
-
-**Problem:** IDs like `"genesis_ledger"`, `"genesis_mint"` are string literals scattered throughout.
-
-**Recommended fix:** Constants in one place (e.g., `src/world/constants.py`).
-
-**Effort:** Low | **Risk:** Very Low
-
----
-
 ## Resolved
 
 | ID | Description | Resolved In | Date |
@@ -98,6 +54,9 @@ Tracked architectural concerns and potential improvements. Items here are candid
 | TD-010 | Silent fallbacks violating Fail Loud (13 instances) | Plan #303: getattr removals, cost logging, exception narrowing | 2026-02-05 |
 | TD-013 | Stale doc references (pool.py, worker.py, tick, unused import) | Plans #301, #304; doc refs fixed earlier, unused import removed | 2026-02-05 |
 | TD-014 | Dashboard assess_health() type mismatch | Plan #302: fixed call pattern | 2026-02-05 |
+| TD-008 | Genesis/kernel contract IDs hardcoded | Plan #305: `constants.py` with centralized IDs | 2026-02-05 |
+| TD-011 | Missing observability in delegation/transfers | Plans #302, #305: EventLogger wired to ledger, delegation, artifact transfer | 2026-02-05 |
+| TD-012 | Hardcoded economic parameters | Plans #302, #305: mint params + delegation max_history now in config | 2026-02-05 |
 
 ---
 

@@ -34,6 +34,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+from .constants import (
+    KERNEL_CONTRACT_FREEWARE,
+    KERNEL_CONTRACT_TRANSFERABLE_FREEWARE,
+    KERNEL_CONTRACT_SELF_OWNED,
+    KERNEL_CONTRACT_PRIVATE,
+    KERNEL_CONTRACT_PUBLIC,
+)
 from .contracts import AccessContract, PermissionAction, PermissionResult
 
 
@@ -52,7 +59,7 @@ class FreewareContract:
     freeware software, anyone can use it but only the author can change it.
     """
 
-    contract_id: str = "kernel_contract_freeware"
+    contract_id: str = KERNEL_CONTRACT_FREEWARE
     contract_type: str = "freeware"
 
     def check_permission(
@@ -114,7 +121,7 @@ class TransferableFreewareContract:
     is tied to the immutable created_by field.
     """
 
-    contract_id: str = "kernel_contract_transferable_freeware"
+    contract_id: str = KERNEL_CONTRACT_TRANSFERABLE_FREEWARE
     contract_type: str = "transferable_freeware"
 
     def check_permission(
@@ -183,7 +190,7 @@ class SelfOwnedContract:
     during execution.
     """
 
-    contract_id: str = "kernel_contract_self_owned"
+    contract_id: str = KERNEL_CONTRACT_SELF_OWNED
     contract_type: str = "self_owned"
 
     def check_permission(
@@ -235,7 +242,7 @@ class PrivateContract:
     with a private contract cannot even access itself - only the owner can.
     """
 
-    contract_id: str = "kernel_contract_private"
+    contract_id: str = KERNEL_CONTRACT_PRIVATE
     contract_type: str = "private"
 
     def check_permission(
@@ -288,7 +295,7 @@ class PublicContract:
     use freeware instead.
     """
 
-    contract_id: str = "kernel_contract_public"
+    contract_id: str = KERNEL_CONTRACT_PUBLIC
     contract_type: str = "public"
 
     def check_permission(

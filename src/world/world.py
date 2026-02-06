@@ -321,6 +321,8 @@ class World:
 
         # Charge delegation management (Plan #236)
         self.delegation_manager = DelegationManager(self.artifacts, self.ledger)
+        # TD-011: Wire event logger to delegation manager
+        self.delegation_manager.set_logger(self.logger)
         # Kernel query handler (Plan #184)
         # Provides read-only access to kernel state via query_kernel action
         self.kernel_query_handler = KernelQueryHandler(self)
