@@ -4,7 +4,7 @@ Gap analysis summary comparing current vs target architecture.
 
 **Methodology:** See `meta-process/patterns/30_gap-analysis.md` (Pattern #30)
 
-**Last refreshed:** 2026-01-31 (Plan #241)
+**Last refreshed:** 2026-02-06 (Plan #306)
 
 ---
 
@@ -18,18 +18,18 @@ For active implementation tracking, see `docs/plans/CLAUDE.md`.
 
 ---
 
-## Current State (2026-01-31 refresh)
+## Current State (2026-02-06 refresh)
 
 | Metric | Value |
 |--------|-------|
 | Original gaps (2026-01-12) | 142 |
-| Closed | 65 (46%) |
-| Remaining | 92 |
+| Closed | 75 (53%) |
+| Remaining | 82 |
 | New gaps (emerged since original) | 15 |
 | Cross-workstream duplicates | ~10 |
-| Estimated unique remaining | ~82 |
+| Estimated unique remaining | ~72 |
 
-All Phase 1 foundational gaps are closed. Critical path has shifted to integration/enrichment.
+All Phase 1 foundational gaps are closed. Legacy tick-based resource mode fully removed (Plan #247, 6 gaps). Critical path has shifted to integration/enrichment.
 
 ---
 

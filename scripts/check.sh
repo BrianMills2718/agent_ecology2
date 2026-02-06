@@ -72,6 +72,21 @@ else
 fi
 echo ""
 
+# Advisory: Gap freshness check (non-blocking)
+GAPS_FILE="docs/architecture/gaps/GAPS_SUMMARY.yaml"
+if [[ -f "$GAPS_FILE" ]]; then
+    REFRESHED=$(grep 'refreshed:' "$GAPS_FILE" | head -1 | sed 's/.*refreshed: *//')
+    if [[ -n "$REFRESHED" ]]; then
+        REFRESH_EPOCH=$(date -d "$REFRESHED" +%s 2>/dev/null || echo 0)
+        NOW_EPOCH=$(date +%s)
+        DAYS_SINCE=$(( (NOW_EPOCH - REFRESH_EPOCH) / 86400 ))
+        if [[ $DAYS_SINCE -gt 30 ]]; then
+            echo -e "${YELLOW}⚠ GAPS_SUMMARY.yaml last refreshed ${DAYS_SINCE} days ago (${REFRESHED}). Consider re-running gap analysis.${NC}"
+            echo ""
+        fi
+    fi
+fi
+
 # Summary
 echo "========================================"
 if [[ $FAILED -eq 0 ]]; then

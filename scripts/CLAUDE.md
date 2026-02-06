@@ -37,6 +37,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 
 | Script | Purpose |
 |--------|---------|
+| `file_context.py` | **Unified context loader**: CLAUDE.md chain, ADRs, coupled docs, concerns, tech debt, custom docs (Plan #306) |
 | `extract_relevant_context.py` | Extract GLOSSARY, ONTOLOGY, ADR, PRD, and domain model context for a file (Plan #288, #289, #294) |
 | `check_file_context.py` | Check files have PRD/domain model context links (Plan #294) |
 | `audit_governance_mappings.py` | Audit governance mappings for completeness (Plan #289) |
@@ -123,6 +124,11 @@ git commit --no-verify        # Bypass (not recommended)
 ## Common Commands
 
 ```bash
+# Context loading (Pattern #34)
+python scripts/file_context.py src/world/contracts.py           # Load all context for a file
+python scripts/file_context.py src/world/contracts.py --json    # JSON output
+python scripts/file_context.py src/world/contracts.py src/world/kernel_contracts.py  # Multiple files
+
 # Doc coupling
 python scripts/check_doc_coupling.py --suggest     # What docs to update
 python scripts/check_doc_coupling.py --strict      # CI mode

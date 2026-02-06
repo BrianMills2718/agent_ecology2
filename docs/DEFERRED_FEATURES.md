@@ -159,6 +159,76 @@ Multi-model support is implemented via LiteLLM:
 
 ---
 
+## Charge Routing (`charge_to`)
+
+**Status**: Deferred (Plan #236 tracks implementation)
+**Priority**: Medium
+**Depends on**: Plan #235 (non-forgeable rights) - complete
+
+### Problem
+
+Today "caller always pays" (`resource_payer = intent.principal_id`). Need `charge_to` to enable "target pays" and "pool pays" patterns without introducing drain-anyone exploits.
+
+### Design
+
+`charge_to` is orthogonal to ADR-0024 — settlement happens AFTER execution in the action executor.
+
+Requires consent mechanism: explicit delegation records (static policy lookup, no handler recursion), exposure caps (max per call/window), and atomic settlement (single lock around check→debit→record).
+
+### Why Deferred
+
+Plan #236 is planned but not started. Consent model adds complexity.
+
+**Reference:** Plan #236 (Charge Delegation)
+
+---
+
+## Consent Model for Non-Caller Charging
+
+**Status**: Deferred (Plan #236 tracks implementation)
+**Priority**: Medium
+**Depends on**: Charge routing (above)
+
+### Design Principles
+
+1. **Explicit delegation records** — Static policy lookup, no handler recursion
+2. **Exposure caps** — Max per call/window limits worst-case loss
+3. **Atomic settlement** — Single lock around check→debit→record prevents race-condition bypass
+
+Avoids infinite regress ("who pays for the authorization check?").
+
+**Reference:** Plan #236 (Charge Delegation)
+
+---
+
+## Contract-Governed Policy Upgrades
+
+**Status**: Deferred
+**Priority**: Low
+**Depends on**: ADR-0024
+
+### Problem
+
+Changing an artifact's `access_contract_id` should be governed by the **current contract**, not just "creator-only."
+
+**Current interim:** Creator-only restriction (Plan #235 FM-7).
+
+---
+
+## Transferable Authority (Kernel-Enforced)
+
+**Status**: Deferred
+**Priority**: Medium
+**Depends on**: ADR-0024, non-forgeable rights (Plan #235)
+
+### Problem
+
+Need kernel-enforced ownership transfer mechanism distinct from `created_by` (provenance). Must be transferable between principals and not metadata-based (metadata is forgeable).
+
+**See also:** UNCERTAINTIES.md U-002
+
+---
+
 ## Adding New Deferred Features
 
 When deferring a feature, document:
