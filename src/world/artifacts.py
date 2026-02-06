@@ -8,12 +8,22 @@
 # --- GOVERNANCE END ---
 from __future__ import annotations
 
+import logging
 import json
 import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable, TypedDict, TYPE_CHECKING
+
+from src.world.constants import (
+    KERNEL_CONTRACT_FREEWARE,
+    KERNEL_CONTRACT_SELF_OWNED,
+    KERNEL_CONTRACT_PRIVATE,
+    KERNEL_CONTRACT_PUBLIC,
+)
+
+logger = logging.getLogger(__name__)
 
 
 def extract_invoke_targets(code: str) -> list[str]:
@@ -199,7 +209,7 @@ class Artifact:
     depends_on: list[str] = field(default_factory=list)
     # Access contract for permission checking (Plan #100: Contract System Overhaul)
     # All permissions are checked via contracts - no hardcoded owner bypass
-    access_contract_id: str = "kernel_contract_freeware"
+    access_contract_id: str = KERNEL_CONTRACT_FREEWARE
     # User-defined metadata for addressing/categorization (Plan #168)
     # Arbitrary key-value pairs for agent use (recipient, tags, priority, etc.)
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -325,7 +335,7 @@ def create_agent_artifact(
     created_by: str,
     agent_config: dict[str, Any],
     memory_artifact_id: str | None = None,
-    access_contract_id: str = "kernel_contract_self_owned",
+    access_contract_id: str = KERNEL_CONTRACT_SELF_OWNED,
 ) -> Artifact:
     """Factory function to create an agent artifact.
 
@@ -361,17 +371,17 @@ def create_agent_artifact(
     # Build policy based on access contract
     # Note: This is a simple mapping - full contract integration comes later
     artifact_policy = default_policy()
-    if access_contract_id == "kernel_contract_self_owned":
-        # Self-owned: only owner/self can access
+    if access_contract_id == KERNEL_CONTRACT_SELF_OWNED:
+        # Self-owned: only creator/self can access
         artifact_policy["allow_read"] = []
         artifact_policy["allow_write"] = []
         artifact_policy["allow_invoke"] = []
-    elif access_contract_id == "kernel_contract_private":
-        # Private: only owner can access
+    elif access_contract_id == KERNEL_CONTRACT_PRIVATE:
+        # Private: only creator can access
         artifact_policy["allow_read"] = []
         artifact_policy["allow_write"] = []
         artifact_policy["allow_invoke"] = []
-    elif access_contract_id == "kernel_contract_public":
+    elif access_contract_id == KERNEL_CONTRACT_PUBLIC:
         # Public: anyone can access
         artifact_policy["allow_read"] = ["*"]
         artifact_policy["allow_write"] = ["*"]
@@ -907,7 +917,7 @@ class ArtifactStore:
                 entity_type: EntityType = "genesis" if type == "genesis" else "artifact"
                 self.id_registry.register(artifact_id, entity_type)
             # Determine access contract - use provided or default
-            contract_id = access_contract_id if access_contract_id else "kernel_contract_freeware"
+            contract_id = access_contract_id if access_contract_id else KERNEL_CONTRACT_FREEWARE
             artifact = Artifact(
                 id=artifact_id,
                 type=type,
@@ -1222,6 +1232,10 @@ class ArtifactStore:
 
         # Set metadata (note: doesn't affect access under freeware/self_owned/private)
         artifact.metadata["controller"] = to_id
+        logger.info(
+            "Artifact controller transferred: %s from=%s to=%s",
+            artifact_id, from_id, to_id,
+        )
         return True
 
     def write_artifact(

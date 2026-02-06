@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-05 (Plan #304: stale refs cleanup)
+**Last verified:** 2026-02-05 (Plan #305: constants centralization, delegation logging)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

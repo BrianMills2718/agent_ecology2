@@ -13,7 +13,7 @@
 # =============================================================================
 
 version: 4
-last_updated: "2026-02-05"  # Plan #303: fail-loud audit
+last_updated: "2026-02-05"  # Plan #305: constants centralization, delegation logging
 status: current_implementation
 source_of_truth: "src/world/artifacts.py, src/world/actions.py, src/world/kernel_interface.py"
 

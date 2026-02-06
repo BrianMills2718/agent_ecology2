@@ -28,6 +28,12 @@ scrip:
   starting_amount: 100
 
 # -----------------------------------------------------------------------------
+# DELEGATION - Charge delegation settings
+# -----------------------------------------------------------------------------
+delegation:
+  max_history: 1000            # Max charge history entries per (payer, charger) pair
+
+# -----------------------------------------------------------------------------
 # COSTS - DEPRECATED (Plan #153)
 # -----------------------------------------------------------------------------
 # These abstract cost rates are deprecated. The system now uses

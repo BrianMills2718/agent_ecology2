@@ -2,7 +2,7 @@
 
 Canonical terminology for Agent Ecology.
 
-**Last updated:** 2026-02-05 (Plan #302: added scrip event types for ledger logging)
+**Last updated:** 2026-02-05 (Plan #305: constants centralization, delegation logging)
 
 ---
 

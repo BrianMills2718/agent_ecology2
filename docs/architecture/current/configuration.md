@@ -2,7 +2,7 @@
 
 How configuration works TODAY.
 
-**Last verified:** 2026-02-05 (Plan #302: fixed stale tick terminology in config schema)
+**Last verified:** 2026-02-05 (Plan #305: constants centralization, delegation logging)
 
 ---
 

@@ -18,6 +18,7 @@ from dataclasses import replace as dataclass_replace
 from typing import TYPE_CHECKING, Any
 
 from ..config import get as config_get, get_validated_config
+from .constants import KERNEL_CONTRACT_FREEWARE
 from .contracts import (
     AccessContract,
     ExecutableContract,
@@ -83,7 +84,7 @@ def get_contract_with_fallback_info(
 
     # Log warning for observability
     logger = logging.getLogger(__name__)
-    default_contract_id = config_get("contracts.default_on_missing") or "kernel_contract_freeware"
+    default_contract_id = config_get("contracts.default_on_missing") or KERNEL_CONTRACT_FREEWARE
     logger.warning(
         f"Dangling contract: '{contract_id}' not found, "
         f"falling back to '{default_contract_id}'"

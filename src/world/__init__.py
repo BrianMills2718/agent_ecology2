@@ -13,7 +13,7 @@ from .logger import EventLogger
 # Mint: MintIntent or mint action (requires can_mint capability)
 # Balances: query_kernel("balances", ...)
 # Events: query_kernel("events", ...)
-SYSTEM_OWNER = "SYSTEM"  # Constant for system-owned artifacts
+from .constants import SYSTEM_OWNER  # Re-exported from constants.py
 from .executor import SafeExecutor, get_executor
 from .simulation_engine import SimulationEngine, ThinkingCostResult, BudgetCheckResult
 from .rate_tracker import RateTracker, UsageRecord

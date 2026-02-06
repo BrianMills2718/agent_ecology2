@@ -14,6 +14,7 @@ Key invariants:
 
 from __future__ import annotations
 
+import logging
 import json
 import time
 from collections import deque
@@ -21,9 +22,15 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from typing import Any, TYPE_CHECKING
 
+from src.config import get as config_get
+from src.world.constants import KERNEL_CONTRACT_PRIVATE
+
 if TYPE_CHECKING:
     from src.world.artifacts import Artifact, ArtifactStore
     from src.world.ledger import Ledger
+    from src.world.logger import EventLogger
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -69,8 +76,8 @@ class ChargeRecord:
 # DelegationManager
 # ---------------------------------------------------------------------------
 
-# Hard cap on charge history entries per (payer, charger) pair (FM-5)
-_MAX_ENTRIES_PER_PAIR: int = 1000
+# Default hard cap on charge history entries per (payer, charger) pair (FM-5)
+_DEFAULT_MAX_ENTRIES_PER_PAIR: int = 1000
 
 
 class DelegationManager:
@@ -89,6 +96,18 @@ class DelegationManager:
         self._ledger = ledger
         # In-memory rate window: (payer_id, charger_id) -> deque[ChargeRecord]
         self._charge_history: dict[tuple[str, str], deque[ChargeRecord]] = {}
+        # TD-012: Read max entries from config, fall back to default
+        max_entries = config_get("delegation.max_history")
+        self._max_entries_per_pair: int = (
+            int(max_entries) if max_entries is not None
+            else _DEFAULT_MAX_ENTRIES_PER_PAIR
+        )
+        # TD-011: Optional event logger for observability
+        self._event_logger: "EventLogger | None" = None
+
+    def set_logger(self, event_logger: "EventLogger") -> None:
+        """Set the event logger for delegation event logging (TD-011)."""
+        self._event_logger = event_logger
 
     # ------------------------------------------------------------------
     # Delegation CRUD
@@ -141,9 +160,14 @@ class DelegationManager:
                 "charge_delegation",
                 content,
                 caller_id,
-                access_contract_id="kernel_contract_private",
+                access_contract_id=KERNEL_CONTRACT_PRIVATE,
             )
             artifact.kernel_protected = True
+            self._log_event("delegation_granted", {
+                "payer": caller_id, "charger": charger_id,
+                "max_per_call": max_per_call, "max_per_window": max_per_window,
+                "window_seconds": window_seconds, "created": True,
+            })
             return True
 
         # Update existing: load, upsert entry, save via modify_protected_content
@@ -163,6 +187,11 @@ class DelegationManager:
             {"delegations": [d.to_dict() for d in delegations]}
         )
         self._artifacts.modify_protected_content(artifact_id, content=new_content)
+        self._log_event("delegation_granted", {
+            "payer": caller_id, "charger": charger_id,
+            "max_per_call": max_per_call, "max_per_window": max_per_window,
+            "window_seconds": window_seconds, "updated": not updated,
+        })
         return True
 
     def revoke(self, caller_id: str, charger_id: str) -> bool:
@@ -191,6 +220,9 @@ class DelegationManager:
             {"delegations": [d.to_dict() for d in delegations]}
         )
         self._artifacts.modify_protected_content(artifact_id, content=new_content)
+        self._log_event("delegation_revoked", {
+            "payer": caller_id, "charger": charger_id,
+        })
         return True
 
     # ------------------------------------------------------------------
@@ -395,5 +427,10 @@ class DelegationManager:
             history.popleft()
 
         # Hard cap: keep only the most recent entries
-        while len(history) > _MAX_ENTRIES_PER_PAIR:
+        while len(history) > self._max_entries_per_pair:
             history.popleft()
+
+    def _log_event(self, event_type: str, data: dict[str, Any]) -> None:
+        """Log a delegation event if logger is available."""
+        if self._event_logger is not None:
+            self._event_logger.log(event_type, data)

@@ -2,7 +2,7 @@
 
 How access control works today.
 
-**Last verified:** 2026-02-05 (Plan #303: fail-loud audit)
+**Last verified:** 2026-02-05 (Plan #305: constants centralization, delegation logging)
 
 **See also:** ADR-0019 (Unified Permission Architecture)
 
