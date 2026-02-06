@@ -255,8 +255,7 @@ class TestFullTickCycle:
         artifact_ids = [a["id"] for a in state["artifacts"]]
         assert "summary_test_artifact" in artifact_ids
 
-        # Plan #254: Pre-seeded artifacts (handbooks, kernel_mint_agent) replace genesis
-        assert any("handbook" in aid for aid in artifact_ids)
+        # Plan #254: Pre-seeded artifacts (kernel_mint_agent) replace genesis
         assert "kernel_mint_agent" in artifact_ids
 
 

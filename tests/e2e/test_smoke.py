@@ -57,13 +57,13 @@ class TestSimulationSmoke:
         runner = SimulationRunner(e2e_config, verbose=False)
         world = runner.run_sync(duration=TEST_DURATION)
 
-        # Artifact store should have artifacts (handbooks, agent artifacts, etc.)
+        # Artifact store should have artifacts (kernel, agent artifacts, etc.)
         all_artifacts = world.artifacts.list_all()
         assert len(all_artifacts) > 0
 
-        # Check for expected pre-seeded artifacts (handbooks)
+        # Check for expected pre-seeded artifacts (kernel infrastructure)
         artifact_ids = [a["id"] for a in all_artifacts]
-        assert any("handbook" in aid for aid in artifact_ids), "Should have handbook artifacts"
+        assert "kernel_mint_agent" in artifact_ids, "Should have kernel_mint_agent artifact"
 
     def test_simulation_tracks_balances(
         self,

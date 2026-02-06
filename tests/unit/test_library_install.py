@@ -63,7 +63,7 @@ class TestLibraryInstall:
         initial_capacity = state.get_available_capacity("agent_1", "disk")
 
         # Install a non-genesis library
-        result = actions.install_library("agent_1", "scikit-learn")
+        result = actions.install_library("agent_1", "flask")
 
         assert result["success"] is True
         assert result["quota_cost"] > 0
@@ -102,14 +102,11 @@ class TestLibraryInstall:
             "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 3},
             "logging": {"output_file": "/dev/null"},
             "principals": [{"id": "agent_1", "starting_scrip": 100}],
-            "rights": {
-                "default_quotas": {
-                    "compute": 1000.0,
-                    "disk": 100.0,  # Very small - only 100 bytes
-                }
-            },
         }
         world = World(config)
+        # Plan #254: Set disk quota directly via ResourceManager
+        # (rights.default_quotas config removed)
+        world.resource_manager.set_quota("agent_1", "disk", 100.0)  # Very small - only 100 bytes
         actions = KernelActions(world)
         state = KernelState(world)
 
@@ -117,7 +114,7 @@ class TestLibraryInstall:
         initial_capacity = state.get_available_capacity("agent_1", "disk")
 
         # Try to install a non-genesis library (estimated at 5MB)
-        result = actions.install_library("agent_1", "scikit-learn")
+        result = actions.install_library("agent_1", "flask")
 
         assert result["success"] is False
         assert result["error_code"] == "QUOTA_EXCEEDED"
@@ -136,13 +133,13 @@ class TestLibraryInstall:
         assert installed == []
 
         # Install a non-genesis library
-        result = actions.install_library("agent_1", "scikit-learn", ">=1.0.0")
+        result = actions.install_library("agent_1", "flask", ">=2.0.0")
         assert result["success"] is True
 
         # Should be recorded
         installed = world_with_quota.get_installed_libraries("agent_1")
         assert len(installed) == 1
-        assert installed[0] == ("scikit-learn", ">=1.0.0")
+        assert installed[0] == ("flask", ">=2.0.0")
 
     def test_genesis_library_not_recorded(self, world_with_quota: World) -> None:
         """Genesis libraries are not recorded (they're always available)."""

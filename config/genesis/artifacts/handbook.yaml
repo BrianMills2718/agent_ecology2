@@ -3,7 +3,7 @@
 # Creates readable documentation artifacts from src/agents/_handbook/*.md
 
 id: handbook
-enabled: true
+enabled: false  # Source dir src/agents/_handbook/ deleted by Plan #299
 
 source_dir: src/agents/_handbook
 file_pattern: "*.md"
