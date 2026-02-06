@@ -13,6 +13,9 @@ artifacts:
   - id: discourse_analyst_3_state
     type: json
     content_file: initial_state.json
+    access_contract_id: kernel_contract_transferable_freeware
+    metadata:
+      authorized_writer: discourse_analyst_3_loop
 
   - id: discourse_analyst_3_loop
     type: executable
