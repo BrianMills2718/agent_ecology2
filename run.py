@@ -21,6 +21,11 @@ logging.getLogger("mem0").setLevel(logging.WARNING)
 logging.getLogger("mem0.memory.main").setLevel(logging.WARNING)
 logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 
+# Pre-import litellm so it's fully initialized before threads use it.
+# Without this, concurrent threads in _syscall_llm can corrupt litellm's
+# import state, causing "partially initialized module" errors.
+import litellm  # noqa: F401
+
 import sys
 import shutil
 import asyncio
