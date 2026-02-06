@@ -23,6 +23,6 @@ artifacts:
 principal:
   id: discourse_analyst_loop
   starting_scrip_key: discourse_analyst.starting_scrip
-  starting_scrip_default: 100
+  starting_scrip: 100
   starting_llm_budget_key: discourse_analyst.starting_llm_budget
-  starting_llm_budget_default: 1.0
+  starting_llm_budget: 1.0
