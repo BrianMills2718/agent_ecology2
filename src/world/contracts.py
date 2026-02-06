@@ -89,6 +89,9 @@ class PermissionResult:
         payer: Principal who pays the cost. If None, caller pays (default).
             Contracts can specify an alternate payer (e.g., artifact creator,
             a sponsor tracked in metadata, or the artifact itself if it has standing).
+        recipient: Principal who receives payment. If None, no payment routed.
+            Contracts specify who gets paid — payment routing is the contract's
+            decision, not determined by created_by.
         conditions: Optional additional conditions or metadata.
     """
 
@@ -96,6 +99,7 @@ class PermissionResult:
     reason: str
     cost: int = 0
     payer: Optional[str] = None
+    recipient: Optional[str] = None
     conditions: Optional[dict[str, object]] = field(default=None)
 
     def __post_init__(self) -> None:

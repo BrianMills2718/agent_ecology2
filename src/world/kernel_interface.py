@@ -157,8 +157,8 @@ class KernelState:
 
         # Plan #140: Check permission via contract (not hardcoded created_by check)
         executor = get_executor()
-        allowed, _reason = executor._check_permission(caller_id, "read", artifact)
-        if not allowed:
+        perm_result = executor._check_permission(caller_id, "read", artifact)
+        if not perm_result.allowed:
             return None
 
         return artifact.content
@@ -448,12 +448,12 @@ class KernelActions:
         if existing is not None:
             # Update existing - check permission via contract (Plan #140)
             executor = get_executor()
-            allowed, _reason = executor._check_permission(caller_id, "write", existing)
-            if not allowed:
+            perm_result = executor._check_permission(caller_id, "write", existing)
+            if not perm_result.allowed:
                 # Plan #274: Log failed update
                 _log_kernel_action(self._world, "kernel_write_artifact", caller_id, False, {
                     "artifact_id": artifact_id, "was_update": True,
-                    "error": f"Permission denied: {_reason}",
+                    "error": f"Permission denied: {perm_result.reason}",
                 })
                 return False
             existing.content = content
@@ -995,10 +995,10 @@ class KernelActions:
 
         # Check write permission via contract
         executor = get_executor()
-        allowed, _reason = executor._check_permission(caller_id, "write", artifact)
-        if not allowed:
+        perm_result = executor._check_permission(caller_id, "write", artifact)
+        if not perm_result.allowed:
             _log_kernel_action(self._world, "kernel_update_metadata", caller_id, False, {
-                "artifact_id": artifact_id, "key": key, "error": f"Permission denied: {_reason}",
+                "artifact_id": artifact_id, "key": key, "error": f"Permission denied: {perm_result.reason}",
             })
             return False
 

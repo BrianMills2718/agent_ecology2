@@ -308,15 +308,16 @@ class TestPayerResolution:
             art.metadata[k] = v
         return art
 
-    def test_payer_resolution_ignores_forgeable_metadata(self) -> None:
-        """resolve_payer uses created_by for 'target', never metadata fields.
+    def test_payer_resolution_uses_metadata(self) -> None:
+        """resolve_payer uses metadata for 'target' (ADR-0028).
 
-        FM-2: A malicious artifact could set metadata["authorized_writer"]
-        to a rich victim. resolve_payer must ignore all mutable metadata.
+        The authorized_principal/authorized_writer in metadata determines
+        who the contract-recognized owner is. Delegation authorization
+        prevents unauthorized charges (FM-2 is handled by authorize_charge).
         """
         artifact = self._make_artifact(
-            created_by="real_owner",
-            authorized_writer="rich_victim",
+            created_by="original_creator",
+            authorized_principal="current_owner",
         )
 
         payer = DelegationManager.resolve_payer(
@@ -324,8 +325,8 @@ class TestPayerResolution:
             caller_id="invoker",
             artifact=artifact,
         )
-        assert payer == "real_owner"
-        assert payer != "rich_victim"
+        # ADR-0028: payer is the contract-recognized owner, not created_by
+        assert payer == "current_owner"
 
     def test_payer_resolution_caller(self) -> None:
         """charge_to='caller' returns the caller_id."""
@@ -345,13 +346,14 @@ class TestPayerResolution:
         """resolve_payer always returns a principal ID, not an artifact ID.
 
         FM-3: Artifacts cannot be payers. charge_to='target' resolves to
-        artifact.created_by (the principal), not the artifact_id.
+        the authorized principal, not the artifact_id.
         """
         artifact = self._make_artifact(created_by="alice")
         payer = DelegationManager.resolve_payer(
             "target", "invoker", artifact
         )
-        # The result must be a principal (created_by), not the artifact
+        # The result must be a principal, not the artifact
+        # ADR-0028: auto-populated authorized_writer from created_by
         assert payer == "alice"
         assert payer != artifact.id
 

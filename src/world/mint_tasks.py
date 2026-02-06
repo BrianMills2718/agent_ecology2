@@ -390,13 +390,15 @@ class MintTaskManager:
                 message=f"Artifact '{artifact_id}' not found",
             )
 
-        # Validate artifact is owned by caller
-        if artifact.created_by != principal_id:
+        # Validate caller has write permission (ADR-0028: no hardcoded created_by checks)
+        authorized_writer = (artifact.metadata or {}).get("authorized_writer")
+        authorized_principal = (artifact.metadata or {}).get("authorized_principal")
+        if principal_id not in (authorized_writer, authorized_principal):
             return TaskSubmissionResult(
                 success=False,
                 task_id=task_id,
                 artifact_id=artifact_id,
-                message=f"You don't own artifact '{artifact_id}'",
+                message=f"Not authorized to submit artifact '{artifact_id}'",
             )
 
         # Validate artifact has code

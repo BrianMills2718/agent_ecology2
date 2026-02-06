@@ -687,24 +687,13 @@ class SafeExecutor:
         caller: str,
         action: str,
         artifact: "Artifact",
-    ) -> tuple[bool, str]:
+    ) -> "PermissionResult":
         """Legacy permission check using freeware contract.
 
         DEPRECATED: Legacy mode is deprecated. All artifacts should use
-        access_contract_id for permission checking. When an artifact lacks
-        the access_contract_id attribute, falls back to freeware semantics:
-        - READ, INVOKE: Anyone can access
-        - WRITE, EDIT, DELETE: Only owner can access
+        access_contract_id for permission checking.
 
         Plan #181: Delegates to permission_checker module.
-
-        Args:
-            caller: The principal requesting access
-            action: The action being attempted
-            artifact: The artifact being accessed
-
-        Returns:
-            Tuple of (allowed, reason)
         """
         return _permission_checker.check_permission_legacy(caller, action, artifact)
 
@@ -715,7 +704,7 @@ class SafeExecutor:
         artifact: "Artifact",
         method: str | None = None,
         args: list[Any] | None = None,
-    ) -> tuple[bool, str]:
+    ) -> "PermissionResult":
         """Check if caller has permission for action on artifact.
 
         Permission checking follows ADR-0019:
@@ -725,15 +714,8 @@ class SafeExecutor:
 
         Plan #181: Delegates to permission_checker module.
 
-        Args:
-            caller: The principal requesting access
-            action: The action being attempted
-            artifact: The artifact being accessed
-            method: Method name (for invoke actions, per ADR-0019)
-            args: Arguments (for invoke actions, per ADR-0019)
-
         Returns:
-            Tuple of (allowed, reason)
+            PermissionResult with allowed, reason, cost, recipient, etc.
         """
         # Use a mutable tracker so the module can increment the count
         dangling_tracker = [self._dangling_contract_count]

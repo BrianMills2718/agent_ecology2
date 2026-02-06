@@ -232,6 +232,7 @@ class TestTriggerRegistryRefreshScheduled:
         artifact.type = "trigger"
         artifact.deleted = False
         artifact.created_by = "agent1"
+        artifact.metadata = {}  # Will be set per-test
         return artifact
 
     @pytest.fixture
@@ -240,6 +241,8 @@ class TestTriggerRegistryRefreshScheduled:
         callback = MagicMock()
         callback.id = "callback1"
         callback.created_by = "agent1"  # Same owner
+        # ADR-0028: triggers check authorized_writer/authorized_principal from metadata
+        callback.metadata = {"authorized_writer": "agent1"}
         return callback
 
     @pytest.fixture
@@ -262,6 +265,7 @@ class TestTriggerRegistryRefreshScheduled:
             "enabled": True,
             "callback_artifact": "callback1",
             "fire_at_event": 100,
+            "authorized_writer": "agent1",
         }
 
         registry = TriggerRegistry(mock_store)
@@ -283,6 +287,7 @@ class TestTriggerRegistryRefreshScheduled:
             "enabled": True,
             "callback_artifact": "callback1",
             "filter": {"event_type": "artifact_created"},
+            "authorized_writer": "agent1",
         }
 
         registry = TriggerRegistry(mock_store)
@@ -302,6 +307,7 @@ class TestTriggerRegistryRefreshScheduled:
             "enabled": True,
             "callback_artifact": "callback1",
             "fire_at_event": 50,
+            "authorized_writer": "agent1",
         }
 
         registry = TriggerRegistry(mock_store)

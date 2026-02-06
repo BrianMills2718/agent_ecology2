@@ -5,8 +5,9 @@ Delegation records are stored as kernel_protected artifacts with
 deterministic IDs: ``charge_delegation:{payer_id}``.
 
 Key invariants:
-- Only the payer themselves can grant/revoke delegations (created_by anchor)
-- Payer resolution uses ONLY immutable fields (created_by), never metadata
+- Only the payer themselves can grant/revoke delegations
+- Payer resolution uses metadata (authorized_principal/authorized_writer)
+  per ADR-0028; delegation authorization prevents unauthorized charges (FM-2)
 - Rate window tracking is ephemeral (same as RateTracker — no checkpoint)
 - Settlement atomicity relies on single-threaded execution; see FM-1 note
   in action_executor.py
@@ -333,9 +334,9 @@ class DelegationManager:
     ) -> str:
         """Resolve who should pay based on the ``charge_to`` directive.
 
-        ONLY uses immutable fields (``created_by``).
-        NEVER consults ``metadata``, ``authorized_writer``, or any other
-        mutable data (FM-2).
+        ADR-0028: Uses metadata (authorized_principal/authorized_writer)
+        to determine the contract-recognized owner. Delegation authorization
+        (authorize_charge) prevents unauthorized charges.
 
         Args:
             charge_to: One of "caller", "target", "contract",
@@ -353,15 +354,23 @@ class DelegationManager:
             return caller_id
 
         if charge_to == "target":
-            # FM-3: Always resolve to created_by (a principal), not artifact_id
-            return artifact.created_by
+            # ADR-0028: Resolve via metadata, not created_by
+            metadata = artifact.metadata or {}
+            return (
+                metadata.get("authorized_principal")
+                or metadata.get("authorized_writer")
+                or artifact.created_by  # Final fallback for untagged artifacts
+            )
 
         if charge_to == "contract":
-            # Resolve to the contract's creator. The access_contract_id points
-            # to a contract artifact whose created_by is the authority anchor.
-            # For now, fall back to artifact.created_by as the contract owner
-            # is typically the same principal.
-            return artifact.created_by
+            # Resolve to the authorized principal of the artifact.
+            # ADR-0028: Use metadata, not created_by.
+            metadata = artifact.metadata or {}
+            return (
+                metadata.get("authorized_principal")
+                or metadata.get("authorized_writer")
+                or artifact.created_by  # Final fallback for untagged artifacts
+            )
 
         if charge_to.startswith("pool:"):
             # Explicit payer ID after the "pool:" prefix

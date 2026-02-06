@@ -227,12 +227,15 @@ class TriggerRegistry:
             if not callback_artifact:
                 continue
 
-            # Spam prevention: trigger owner must own callback artifact
+            # Spam prevention: trigger's authorized principal must match callback's
             callback = self._artifact_store.get(callback_artifact)
             if callback is None:
                 continue
-            if callback.created_by != artifact.created_by:
-                # Cannot trigger artifacts you don't own
+            # ADR-0028: Use metadata for authorization, not created_by
+            trigger_principal = (artifact.metadata or {}).get("authorized_writer") or (artifact.metadata or {}).get("authorized_principal")
+            callback_principal = (callback.metadata or {}).get("authorized_writer") or (callback.metadata or {}).get("authorized_principal")
+            if trigger_principal != callback_principal:
+                # Cannot trigger artifacts you don't control
                 continue
 
             # Plan #185: Check for scheduling fields

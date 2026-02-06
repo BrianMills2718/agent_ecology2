@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-05 (Plan #305: constants centralization, delegation logging)
+**Last verified:** 2026-02-06 (Plan #306: created_by auth fix - no doc content changes needed)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

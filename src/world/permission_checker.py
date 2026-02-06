@@ -178,14 +178,10 @@ def check_permission_via_contract(
             return cached_result
 
     # Build context for contract (ADR-0019: minimal context)
-    # Per ADR-0016: created_by is immutable and represents the original creator
     context: dict[str, object] = {
-        "target_created_by": artifact.created_by,  # Immutable: who created it
+        "target_created_by": artifact.created_by,  # Informational only (ADR-0028)
+        "target_metadata": artifact.metadata if hasattr(artifact, "metadata") and artifact.metadata else {},
     }
-    # Plan #213: Include artifact metadata for transferable_freeware contract
-    # This enables contracts to check metadata["authorized_writer"] for tradeable artifacts
-    if hasattr(artifact, "metadata") and artifact.metadata:
-        context["target_metadata"] = artifact.metadata
     # Add method and args for invoke actions (ADR-0019)
     if action == "invoke":
         context["method"] = method
@@ -237,7 +233,7 @@ def check_permission_legacy(
     access_contract_id for permission checking. When an artifact lacks
     the access_contract_id attribute, falls back to freeware semantics:
     - READ, INVOKE: Anyone can access
-    - WRITE, EDIT, DELETE: Only owner can access
+    - WRITE, EDIT, DELETE: Only authorized_writer can access
 
     Args:
         caller: The principal requesting access
@@ -245,7 +241,7 @@ def check_permission_legacy(
         artifact: The artifact being accessed
 
     Returns:
-        Tuple of (allowed, reason)
+        PermissionResult with decision
     """
     import warnings
     warnings.warn(
@@ -255,20 +251,20 @@ def check_permission_legacy(
         stacklevel=3,
     )
 
-    # CAP-003: No special owner bypass. Delegate to freeware contract
-    # which properly handles owner access for write/delete/transfer actions.
+    # CAP-003: No special bypass. Delegate to freeware contract
+    # which checks authorized_writer from metadata.
     freeware = get_kernel_contract("freeware")
 
     # Convert action string to PermissionAction
     try:
         perm_action = PermissionAction(action)
     except ValueError:
-        return (False, f"legacy: unknown action {action}")
+        return PermissionResult(allowed=False, reason=f"legacy: unknown action {action}")
 
-    # ADR-0019: minimal context with target_created_by
-    # Per ADR-0016: created_by is immutable and represents the original creator
+    # ADR-0019/ADR-0028: context with metadata for authorization
     context: dict[str, object] = {
-        "target_created_by": artifact.created_by,  # Immutable
+        "target_created_by": artifact.created_by,  # Informational only (ADR-0028)
+        "target_metadata": artifact.metadata if hasattr(artifact, "metadata") and artifact.metadata else {},
     }
 
     result = freeware.check_permission(
@@ -277,7 +273,7 @@ def check_permission_legacy(
         target=artifact.id,
         context=context,
     )
-    return (result.allowed, f"legacy (freeware): {result.reason}")
+    return dataclass_replace(result, reason=f"legacy (freeware): {result.reason}")
 
 
 def check_permission(
@@ -292,7 +288,7 @@ def check_permission(
     use_contracts: bool,
     method: str | None = None,
     args: list[Any] | None = None,
-) -> tuple[bool, str]:
+) -> PermissionResult:
     """Check if caller has permission for action on artifact.
 
     Permission checking follows ADR-0019:
@@ -314,14 +310,14 @@ def check_permission(
         args: Arguments (for invoke actions, per ADR-0019)
 
     Returns:
-        Tuple of (allowed, reason)
+        PermissionResult with allowed, reason, cost, recipient, etc.
     """
     # Get artifact's access_contract_id (always present on Artifact dataclass)
     contract_id = artifact.access_contract_id
 
     # Case 1: Artifact has a non-null contract - use contract-based checking
     if use_contracts and contract_id is not None:
-        result = check_permission_via_contract(
+        return check_permission_via_contract(
             caller=caller,
             action=action,
             artifact=artifact,
@@ -333,21 +329,33 @@ def check_permission(
             method=method,
             args=args,
         )
-        return (result.allowed, result.reason)
 
     # Case 2: Artifact has NULL contract (ADR-0019)
-    # Use configurable default behavior
+    # Delegate to private contract with proper context (including metadata).
+    # "creator_only" config is honored by checking authorized_principal metadata.
     if contract_id is None:
         default_behavior = config_get("contracts.default_when_null")
         if default_behavior is None:
             default_behavior = "creator_only"  # ADR-0019 default
 
         if default_behavior == "creator_only":
-            # Only creator has full access, all others blocked
-            owner = artifact.created_by
-            if caller == owner:
-                return (True, "null contract: creator access")
-            return (False, f"null contract: only creator '{owner}' can access (caller: {caller})")
+            # Delegate to private contract (authorized_principal from metadata)
+            private = get_kernel_contract("private")
+            try:
+                perm_action = PermissionAction(action)
+            except ValueError:
+                return PermissionResult(allowed=False, reason=f"null contract: unknown action {action}")
+            context: dict[str, object] = {
+                "target_created_by": artifact.created_by,  # Informational only (ADR-0028)
+                "target_metadata": artifact.metadata if hasattr(artifact, "metadata") and artifact.metadata else {},
+            }
+            result = private.check_permission(
+                caller=caller,
+                action=perm_action,
+                target=artifact.id,
+                context=context,
+            )
+            return dataclass_replace(result, reason=f"null contract: {result.reason}")
         # else: fall through to legacy/freeware behavior
 
     # Legacy policy-based check (for backward compatibility or freeware default)

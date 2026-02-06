@@ -18,6 +18,7 @@ from typing import Any, Callable, TypedDict, TYPE_CHECKING
 
 from src.world.constants import (
     KERNEL_CONTRACT_FREEWARE,
+    KERNEL_CONTRACT_TRANSFERABLE_FREEWARE,
     KERNEL_CONTRACT_SELF_OWNED,
     KERNEL_CONTRACT_PRIVATE,
     KERNEL_CONTRACT_PUBLIC,
@@ -918,6 +919,18 @@ class ArtifactStore:
                 self.id_registry.register(artifact_id, entity_type)
             # Determine access contract - use provided or default
             contract_id = access_contract_id if access_contract_id else KERNEL_CONTRACT_FREEWARE
+
+            # Plan #306: Auto-populate authorization metadata from created_by.
+            # This is a one-time default at creation — the field is mutable afterward
+            # (e.g., escrow can transfer authorized_writer to a buyer).
+            # Only set if the caller didn't already provide the field.
+            if contract_id in (KERNEL_CONTRACT_FREEWARE, KERNEL_CONTRACT_TRANSFERABLE_FREEWARE):
+                if "authorized_writer" not in metadata:
+                    metadata["authorized_writer"] = created_by
+            elif contract_id in (KERNEL_CONTRACT_SELF_OWNED, KERNEL_CONTRACT_PRIVATE):
+                if "authorized_principal" not in metadata:
+                    metadata["authorized_principal"] = created_by
+
             artifact = Artifact(
                 id=artifact_id,
                 type=type,

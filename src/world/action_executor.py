@@ -163,8 +163,8 @@ class ActionExecutor:
         if artifact:
             # Check read permission via contracts
             executor = get_executor()
-            allowed, reason = executor._check_permission(intent.principal_id, "read", artifact)
-            if not allowed:
+            perm_result = executor._check_permission(intent.principal_id, "read", artifact)
+            if not perm_result.allowed:
                 return ActionResult(
                     success=False,
                     message=get_error_message("access_denied_read", artifact_id=intent.artifact_id),
@@ -183,13 +183,14 @@ class ActionExecutor:
                     retriable=True,
                     error_details={"required": read_price, "available": w.ledger.get_scrip(intent.principal_id)},
                 )
-            # Pay read_price to owner (economic transfer -> SCRIP)
-            if read_price > 0:
+            # Pay read_price to recipient (ADR-0028: contract decides who gets paid)
+            recipient = perm_result.recipient
+            if read_price > 0 and recipient:
                 w.ledger.deduct_scrip(intent.principal_id, read_price)
-                w.ledger.credit_scrip(artifact.created_by, read_price)
+                w.ledger.credit_scrip(recipient, read_price)
             return ActionResult(
                 success=True,
-                message=f"Read artifact {intent.artifact_id}" + (f" (paid {read_price} scrip to {artifact.created_by})" if read_price > 0 else ""),
+                message=f"Read artifact {intent.artifact_id}" + (f" (paid {read_price} scrip to {recipient})" if read_price > 0 and recipient else ""),
                 data={"artifact": artifact.to_dict(), "read_price_paid": read_price}
             )
         # Plan #254: Genesis artifacts removed - artifact not found
@@ -271,8 +272,8 @@ class ActionExecutor:
                 )
             # Check write permission via contracts
             executor = get_executor()
-            allowed, reason = executor._check_permission(intent.principal_id, "write", existing)
-            if not allowed:
+            perm_result = executor._check_permission(intent.principal_id, "write", existing)
+            if not perm_result.allowed:
                 return ActionResult(
                     success=False,
                     message=get_error_message("access_denied_write", artifact_id=intent.artifact_id),
@@ -458,8 +459,8 @@ class ActionExecutor:
 
         # Check write permission via contracts
         executor = get_executor()
-        allowed, reason = executor._check_permission(intent.principal_id, "write", artifact)
-        if not allowed:
+        perm_result = executor._check_permission(intent.principal_id, "write", artifact)
+        if not perm_result.allowed:
             return ActionResult(
                 success=False,
                 message=get_error_message("access_denied_write", artifact_id=intent.artifact_id),
@@ -602,15 +603,15 @@ class ActionExecutor:
             if not _artifact_has_handle_request(artifact):
                 # Legacy path: kernel checks permission (ADR-0019)
                 executor = get_executor()
-                allowed, reason = executor._check_permission(
+                perm_result = executor._check_permission(
                     intent.principal_id, "invoke", artifact, method=method_name, args=args
                 )
-                if not allowed:
+                if not perm_result.allowed:
                     duration_ms = (time.perf_counter() - start_time) * 1000
                     self._log_invoke_failure(
                         intent.principal_id, artifact_id, method_name,
                         duration_ms, "permission_denied",
-                        reason
+                        perm_result.reason
                     )
                     return ActionResult(
                         success=False,
@@ -755,17 +756,19 @@ class ActionExecutor:
         w = self.world
         artifact_id = intent.artifact_id
 
-        # Only the owner can access their config
-        if artifact.created_by != intent.principal_id:
+        # Check permission via contract (ADR-0028: no hardcoded created_by checks)
+        executor = get_executor()
+        perm_result = executor._check_permission(intent.principal_id, "invoke", artifact)
+        if not perm_result.allowed:
             duration_ms = (time.perf_counter() - start_time) * 1000
             self._log_invoke_failure(
                 intent.principal_id, artifact_id, method_name,
                 duration_ms, "not_authorized",
-                "Only the config owner can access it"
+                perm_result.reason,
             )
             return ActionResult(
                 success=False,
-                message=f"Permission denied: only {artifact.created_by} can access this config",
+                message=f"Permission denied: {perm_result.reason}",
                 error_code=ErrorCode.NOT_AUTHORIZED.value,
                 error_category=ErrorCategory.PERMISSION.value,
                 retriable=False,
@@ -885,11 +888,11 @@ class ActionExecutor:
 
         # Plan #140: Check delete permission via contract
         executor = get_executor()
-        allowed, reason = executor._check_permission(intent.principal_id, "delete", artifact)
-        if not allowed:
+        perm_result = executor._check_permission(intent.principal_id, "delete", artifact)
+        if not perm_result.allowed:
             return ActionResult(
                 success=False,
-                message=f"Delete not permitted: {reason}",
+                message=f"Delete not permitted: {perm_result.reason}",
                 error_code=ErrorCode.NOT_AUTHORIZED.value,
                 error_category=ErrorCategory.PERMISSION.value,
                 retriable=False,
@@ -1288,11 +1291,13 @@ class ActionExecutor:
                 retriable=False,
             )
 
-        # Validate caller owns the artifact
-        if artifact.created_by != principal_id:
+        # Validate caller has write permission (ADR-0028: no hardcoded created_by checks)
+        executor = get_executor()
+        perm_result = executor._check_permission(principal_id, "write", artifact)
+        if not perm_result.allowed:
             return ActionResult(
                 success=False,
-                message=f"You don't own '{artifact_id}'. Only the owner can submit to mint.",
+                message=f"Cannot submit '{artifact_id}' to mint: {perm_result.reason}",
                 error_code=ErrorCode.NOT_AUTHORIZED.value,
                 error_category=ErrorCategory.PERMISSION.value,
                 retriable=False,
@@ -1824,7 +1829,8 @@ class ActionExecutor:
         w = self.world
         artifact_id = intent.artifact_id
         price = artifact.price
-        created_by = artifact.created_by
+        # ADR-0028: Payment recipient from metadata, not created_by
+        recipient = (artifact.metadata or {}).get("authorized_writer") or (artifact.metadata or {}).get("authorized_principal")
 
         # Plan #236: Resolve payer via charge_to delegation
         # Atomicity note (FM-1): Settlement is safe because execution is
@@ -1927,13 +1933,13 @@ class ActionExecutor:
                 else:
                     w.ledger.spend_resource(resource_payer, resource, amount)
 
-            # Pay price to owner (Plan #236: resource_payer may differ from caller)
-            if price > 0 and created_by != resource_payer:
+            # Pay price to recipient (ADR-0028: contract decides who gets paid)
+            if price > 0 and recipient and recipient != resource_payer:
                 w.ledger.deduct_scrip(resource_payer, price)
-                w.ledger.credit_scrip(created_by, price)
+                w.ledger.credit_scrip(recipient, price)
                 w.logger.log("scrip_earned", {
                     "event_number": w.event_number,
-                    "recipient": created_by,
+                    "recipient": recipient,
                     "amount": price,
                     "from": resource_payer,
                     "artifact_id": artifact_id,
@@ -1943,7 +1949,7 @@ class ActionExecutor:
                     "event_number": w.event_number,
                     "spender": resource_payer,
                     "amount": price,
-                    "to": created_by,
+                    "to": recipient,
                     "artifact_id": artifact_id,
                     "method": method_name,
                 })
@@ -1960,12 +1966,12 @@ class ActionExecutor:
             )
 
             # Build message with price info
-            if price > 0 and created_by == resource_payer:
+            if price > 0 and recipient == resource_payer:
                 price_msg = " (self-invoke: no scrip transferred, you paid yourself)"
             elif price > 0 and resource_payer != intent.principal_id:
-                price_msg = f" (delegated: {resource_payer} paid {price} scrip to {created_by})"
+                price_msg = f" (delegated: {resource_payer} paid {price} scrip to {recipient})"
             elif price > 0:
-                price_msg = f" (paid {price} scrip to {created_by})"
+                price_msg = f" (paid {price} scrip to {recipient})"
             else:
                 price_msg = ""
 
@@ -1984,7 +1990,7 @@ class ActionExecutor:
                 data={
                     "result": exec_result.get("result"),
                     "price_paid": price,
-                    "owner": created_by
+                    "recipient": recipient
                 },
                 resources_consumed=resources_consumed if resources_consumed else None,
                 charged_to=resource_payer,

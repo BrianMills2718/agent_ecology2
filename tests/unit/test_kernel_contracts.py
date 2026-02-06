@@ -40,13 +40,14 @@ class TestFreewareContract:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Create standard context with target_created_by (per ADR-0016).
+        """Create standard context with target_metadata (per ADR-0028).
 
-        Per ADR-0016: created_by is immutable. Contracts check target_created_by
-        to determine who the original creator is.
+        Per ADR-0028: created_by is purely informational. Contracts check
+        target_metadata["authorized_writer"] for authorization.
         """
         return {
-            "target_created_by": "owner_agent",  # Immutable: who created it
+            "target_created_by": "owner_agent",  # Informational only
+            "target_metadata": {"authorized_writer": "owner_agent"},
         }
 
     def test_contract_id(self, contract: FreewareContract) -> None:
@@ -89,7 +90,7 @@ class TestFreewareContract:
     def test_write_owner(
         self, contract: FreewareContract, context: dict[str, object]
     ) -> None:
-        """Verify owner can write to freeware artifacts."""
+        """Verify authorized_writer can write to freeware artifacts."""
         result = contract.check_permission(
             caller="owner_agent",
             action=PermissionAction.WRITE,
@@ -97,12 +98,12 @@ class TestFreewareContract:
             context=context,
         )
         assert result.allowed is True
-        assert "creator access" in result.reason
+        assert "authorized writer" in result.reason
 
     def test_write_other_denied(
         self, contract: FreewareContract, context: dict[str, object]
     ) -> None:
-        """Verify non-owner cannot write to freeware artifacts."""
+        """Verify non-authorized_writer cannot write to freeware artifacts."""
         result = contract.check_permission(
             caller="other_agent",
             action=PermissionAction.WRITE,
@@ -110,7 +111,7 @@ class TestFreewareContract:
             context=context,
         )
         assert result.allowed is False
-        assert "only creator" in result.reason
+        assert "authorized_writer" in result.reason
 
     def test_delete_owner(
         self, contract: FreewareContract, context: dict[str, object]
@@ -158,13 +159,14 @@ class TestSelfOwnedContract:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Create standard context with target_created_by (per ADR-0016).
+        """Create standard context with target_metadata (per ADR-0028).
 
-        Per ADR-0016: created_by is immutable. Contracts check target_created_by
-        to determine who the original creator is.
+        Per ADR-0028: created_by is purely informational. Contracts check
+        target_metadata["authorized_principal"] for authorization.
         """
         return {
-            "target_created_by": "owner_agent",  # Immutable: who created it
+            "target_created_by": "owner_agent",  # Informational only
+            "target_metadata": {"authorized_principal": "owner_agent"},
         }
 
     def test_contract_id(self, contract: SelfOwnedContract) -> None:
@@ -207,7 +209,7 @@ class TestSelfOwnedContract:
     def test_owner_access_read(
         self, contract: SelfOwnedContract, context: dict[str, object]
     ) -> None:
-        """Verify owner can read the artifact."""
+        """Verify authorized_principal can read the artifact."""
         result = contract.check_permission(
             caller="owner_agent",
             action=PermissionAction.READ,
@@ -215,7 +217,7 @@ class TestSelfOwnedContract:
             context=context,
         )
         assert result.allowed is True
-        assert "creator access" in result.reason
+        assert "authorized principal" in result.reason
 
     def test_owner_access_all_actions(
         self, contract: SelfOwnedContract, context: dict[str, object]
@@ -267,13 +269,14 @@ class TestPrivateContract:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Create standard context with target_created_by (per ADR-0016).
+        """Create standard context with target_metadata (per ADR-0028).
 
-        Per ADR-0016: created_by is immutable. Contracts check target_created_by
-        to determine who the original creator is.
+        Per ADR-0028: created_by is purely informational. Contracts check
+        target_metadata["authorized_principal"] for authorization.
         """
         return {
-            "target_created_by": "owner_agent",  # Immutable: who created it
+            "target_created_by": "owner_agent",  # Informational only
+            "target_metadata": {"authorized_principal": "owner_agent"},
         }
 
     def test_contract_id(self, contract: PrivateContract) -> None:
@@ -291,7 +294,7 @@ class TestPrivateContract:
     def test_owner_access_all_actions(
         self, contract: PrivateContract, context: dict[str, object]
     ) -> None:
-        """Verify owner has access to all actions."""
+        """Verify authorized_principal has access to all actions."""
         for action in PermissionAction:
             result = contract.check_permission(
                 caller="owner_agent",
@@ -300,7 +303,7 @@ class TestPrivateContract:
                 context=context,
             )
             assert result.allowed is True, f"Owner should have {action} access"
-            assert "creator access" in result.reason
+            assert "authorized principal" in result.reason
 
     def test_other_denied_all_actions(
         self, contract: PrivateContract, context: dict[str, object]
@@ -517,13 +520,17 @@ class TestContractComparison:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Standard context with target_created_by (per ADR-0016).
+        """Standard context with target_metadata (per ADR-0028).
 
-        Per ADR-0016: created_by is immutable. Contracts check target_created_by
-        to determine who the original creator is.
+        Per ADR-0028: created_by is purely informational. Contracts check
+        target_metadata for authorization.
         """
         return {
-            "target_created_by": "owner_agent",  # Immutable: who created it
+            "target_created_by": "owner_agent",  # Informational only
+            "target_metadata": {
+                "authorized_writer": "owner_agent",
+                "authorized_principal": "owner_agent",
+            },
         }
 
     def test_owner_always_allowed_except_public(

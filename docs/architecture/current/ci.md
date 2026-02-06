@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-02-05 (Plan #294: Document hierarchy - added file context links check)
+Last verified: 2026-02-06 (Plan #306: created_by auth fix - no doc content changes needed)
 
 ---
 

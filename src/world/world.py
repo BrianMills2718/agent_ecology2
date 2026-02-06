@@ -544,9 +544,9 @@ class World:
 
         # Plan #140: Check delete permission via contract (not hardcoded created_by check)
         executor = get_executor()
-        allowed, reason = executor._check_permission(requester_id, "delete", artifact)
-        if not allowed:
-            return {"success": False, "error": f"Delete not permitted: {reason}"}
+        perm_result = executor._check_permission(requester_id, "delete", artifact)
+        if not perm_result.allowed:
+            return {"success": False, "error": f"Delete not permitted: {perm_result.reason}"}
 
         # Soft delete - mark as tombstone
         artifact.deleted = True

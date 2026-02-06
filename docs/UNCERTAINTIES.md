@@ -42,16 +42,9 @@ Surfaced automatically by `scripts/file_context.py` during context loading (Patt
 
 **Blocking:** false
 
-**Status:** OPEN
+**Status:** RESOLVED (ADR-0028, Plan #306 Workstream C)
 
-**Resolution:** —
-
-**Options:**
-1. `controller_id` system field (mutable by current controller)
-2. Rights-based authority (holder of specific right controls artifact)
-3. Contract-governed (contract code determines controller)
-
-**Blocked by:** ADR-0024 + non-forgeable rights (Plan #235). Future decision.
+**Resolution:** Option 3 — contract-governed via metadata. Contracts check `metadata["authorized_writer"]` (freeware) or `metadata["authorized_principal"]` (self_owned/private). These metadata fields are mutable, enabling ownership transfer. No new system field needed. See ADR-0028.
 
 ---
 

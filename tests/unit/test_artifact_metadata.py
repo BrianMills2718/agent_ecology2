@@ -125,15 +125,16 @@ class TestArtifactStoreWriteWithMetadata:
         )
         assert artifact.metadata == {"v": 2, "edited": True}
 
-    def test_write_without_metadata_defaults_empty(self, artifact_store: ArtifactStore) -> None:
-        """write() without metadata defaults to empty dict."""
+    def test_write_without_metadata_auto_populates_auth(self, artifact_store: ArtifactStore) -> None:
+        """write() without metadata auto-populates authorized_writer (ADR-0028)."""
         artifact = artifact_store.write(
             artifact_id="test",
             type="generic",
             content="content",
             created_by="alice",
         )
-        assert artifact.metadata == {}
+        # ADR-0028: freeware artifacts auto-populate authorized_writer from created_by
+        assert artifact.metadata == {"authorized_writer": "alice"}
 
 
 class TestWriteArtifactIntentMetadata:

@@ -18,8 +18,8 @@ from src.world.executor import get_executor
 def check_permission(agent_id: str, action: str, artifact: Artifact) -> bool:
     """Check permission via the executor's contract-based system."""
     executor = get_executor()
-    allowed, reason = executor._check_permission(agent_id, action, artifact)
-    return allowed
+    result = executor._check_permission(agent_id, action, artifact)
+    return result.allowed
 
 
 @pytest.mark.feature("artifacts")

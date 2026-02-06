@@ -2,7 +2,7 @@
 
 How artifact scoring and scrip minting works today.
 
-**Last verified:** 2026-02-05 (Plan #303: fail-loud audit)
+**Last verified:** 2026-02-06 (Plan #306: created_by auth fix - no doc content changes needed)
 
 **Source:** `src/world/mint_auction.py` (MintAuction), `src/world/mint_scorer.py`
 

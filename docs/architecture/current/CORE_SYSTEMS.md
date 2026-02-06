@@ -1,6 +1,6 @@
 # Core Systems Overview
 
-**Last verified:** 2026-02-05 (Plan #305: constants centralization, delegation logging)
+**Last verified:** 2026-02-06 (Plan #306: created_by auth fix - no doc content changes needed)
 
 This document provides a systematic overview of the core systems that make the simulation work. Each system is critical infrastructure that must be understood before making changes.
 

@@ -2,7 +2,7 @@
 
 Artifacts that exist at world initialization for cold-start convenience.
 
-**Last verified:** 2026-02-05 (Plan #303: fail-loud audit)
+**Last verified:** 2026-02-06 (Plan #306: created_by auth fix - no doc content changes needed)
 
 ---
 
