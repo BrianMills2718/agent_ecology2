@@ -5,13 +5,13 @@
 
 metadata:
   created: 2026-01-12
-  refreshed: 2026-01-31
+  refreshed: 2026-02-06
   original_total: 142
-  closed: 65
-  remaining: 92  # 32 still_open + 45 modified + 15 new
+  closed: 75  # 65 prior + 6 (Plan #247) + 4 more from Plans #254, #282, #295, #299
+  remaining: 82  # down from 92, after 10 closures and dedup
   new_gaps: 15
   cross_workstream_duplicates: ~10  # overlapping gaps counted in multiple workstreams
-  estimated_unique_remaining: ~82
+  estimated_unique_remaining: ~72
   sources:
     current: docs/architecture/current/
     target: docs/architecture/target/
@@ -25,6 +25,12 @@ metadata:
     - "Plan #236: Charge delegation (WS-3, WS-4)"
     - "Plan #239: Fixed broken edit_artifact + 2 bugs (WS-5)"
     - "Plan #245: Schema audit: runtime crash fix + doc cleanups (WS-5)"
+    # Added 2026-02-06:
+    - "Plan #247: Remove legacy tick-based resource mode (WS-3) — 6 gaps closed"
+    - "Plan #254: Remove genesis artifacts, promote transfer to kernel (WS-4)"
+    - "Plan #282: Ensure resource scarcity fully operational (WS-3)"
+    - "Plan #295: Resource-gating architecture refactor (WS-3)"
+    - "Plan #299: Eliminate legacy agent system (WS-2)"
   workstream_files:
     - ws1_execution_model.yaml
     - ws2_agents.yaml
@@ -81,21 +87,20 @@ workstream_summary:
     name: "Resources"
     file: ws3_resources.yaml
     original_count: 30
-    closed: 6
-    still_open: 10
-    modified: 14
-    new: 3
-    remaining: 27
+    closed: 14  # +6 from Plan #247 (legacy tick removal), +2 from Plans #282, #295
+    still_open: 6
+    modified: 8
+    new: 2
+    remaining: 16
     key_remaining:
       - GAP-RES-008: "ProcessPoolExecutor for worker isolation (XL, high)"
       - GAP-RES-004: "Per-agent LLM rate allocation (M, medium)"
-      - GAP-RES-019: "Action blocking vs skip on resource exhaustion (L, high)"
       - GAP-RES-031: "Charge delegation vs has_standing reconciliation (M, medium) [NEW]"
     description: |
-      Most gaps remaining of any workstream (27/30). Plan #53 closed 4 and
-      partially addressed 4 more. Legacy tick-based mode creates a shadow
-      set of "mostly closed" gaps. Per-agent rate allocation cluster and
-      worker isolation chain are the key remaining groups.
+      Significantly improved since 2026-01-31 refresh. Plan #247 removed ALL legacy
+      tick-based resource mode, closing 6 gaps (GAP-RES-018/019/028/029/030/033).
+      Plans #282 and #295 addressed resource scarcity operational gaps. Remaining:
+      per-agent rate allocation cluster and worker isolation chain.
 
   - id: WS-4
     name: "Genesis/Contracts"
@@ -202,10 +207,10 @@ cross_workstream_overlaps:
 # =============================================================================
 
 complexity_summary:
-  description: "Complexity of 92 remaining gaps"
-  S: 29
-  M: 38
-  L: 21
+  description: "Complexity of ~82 remaining gaps (estimated after 10 closures)"
+  S: 25
+  M: 34
+  L: 19
   XL: 4
 
 # =============================================================================
@@ -213,10 +218,10 @@ complexity_summary:
 # =============================================================================
 
 risk_summary:
-  description: "Risk of 92 remaining gaps"
-  low: 51
-  medium: 34
-  high: 7
+  description: "Risk of ~82 remaining gaps (estimated after 10 closures)"
+  low: 46
+  medium: 30
+  high: 6
 
 # =============================================================================
 # CRITICAL PATH - UPDATED
@@ -280,8 +285,9 @@ parallel_workstreams:
   stream_C_legacy_removal:
     name: "Legacy Mode Removal"
     gaps: [GAP-RES-018, GAP-RES-019, GAP-RES-028, GAP-RES-029, GAP-RES-030, GAP-RES-033]
-    description: "Remove tick-based fallback paths, enable rate limiting by default"
-    can_parallel_with: [stream_A, stream_B, stream_D]
+    status: "CLOSED — All gaps in this stream closed by Plan #247"
+    description: "Tick-based fallback paths removed, rate limiting enabled by default"
+    can_parallel_with: []
 
   stream_D_agent_enrichment:
     name: "Agent Capability Enrichment"
@@ -306,11 +312,11 @@ recommendations:
       unified ontology, contract-based access control, and rate tracking. Focus
       shifts from building foundations to enriching and connecting existing systems.
 
-  - title: "Legacy tick mode removal is high-ROI"
+  - title: "Legacy tick mode removal — DONE (Plan #247)"
     description: |
-      Removing legacy tick-based fallback paths (rate_limiting.enabled=false default)
-      would close or substantially close 5-6 gaps simultaneously across WS-3.
-      Low risk since autonomous mode already works correctly.
+      Plan #247 removed all legacy tick-based fallback paths, closing 6 gaps
+      simultaneously (GAP-RES-018/019/028/029/030/033). This was the highest-ROI
+      single plan completion since the original gap analysis.
 
   - title: "Contract sandbox enrichment is highest-value remaining work"
     description: |
@@ -354,10 +360,17 @@ gap_plan_mapping:
     GAP-RES-001: { plan: 53, title: "RateTracker implementation" }
     GAP-ART-001: { plan: 181, title: "Split executor.py & world.py" }
     GAP-AGENT-014: { plan: 231, title: "has_standing <-> ledger invariant" }
+    # Added 2026-02-06:
+    GAP-RES-018: { plan: 247, title: "Remove legacy tick-based resource mode" }
+    GAP-RES-019: { plan: 247, title: "Remove legacy tick-based resource mode" }
+    GAP-RES-028: { plan: 247, title: "Remove legacy tick-based resource mode" }
+    GAP-RES-029: { plan: 247, title: "Remove legacy tick-based resource mode" }
+    GAP-RES-030: { plan: 247, title: "Remove legacy tick-based resource mode" }
+    GAP-RES-033: { plan: 247, title: "Remove legacy tick-based resource mode" }
 
   # Gaps with active or planned work
   in_progress_gaps:
-    GAP-RES-XXX: { plan: 282, title: "Resource allocation investigation", status: "planned" }
+    GAP-RES-XXX: { plan: [282, 295], title: "Resource scarcity and allocation", status: "complete" }
 
   # Reference for commonly-asked-about gaps
   notable_remaining:
