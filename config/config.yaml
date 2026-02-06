@@ -656,7 +656,7 @@ id_generation:
 # ALPHA PRIME - V4 Artifact-Based Agent
 # -----------------------------------------------------------------------------
 alpha_prime:
-  enabled: true                           # Enable Alpha Prime bootstrap on World init
+  enabled: false                          # Disabled for 4-drives experiment
   starting_scrip: 100                     # Initial scrip balance
   starting_llm_budget: 1.0                # Initial LLM budget in dollars
   model: "gemini/gemini-2.0-flash"        # Model for Alpha Prime's cognition
@@ -665,7 +665,7 @@ alpha_prime:
 # MINT TASKS - Task-Based Minting (Plan #269)
 # -----------------------------------------------------------------------------
 mint_tasks:
-  enabled: true                           # Enable task-based mint system
+  enabled: false                          # Disabled for 4-drives experiment
   seed_tasks:
     - task_id: "add_numbers"
       description: "Create an artifact that adds two numbers. Your run(a, b) function should return a + b."
