@@ -52,7 +52,7 @@ meta/
 | `CONCERNS.md` | Open concerns and known issues | New concerns identified |
 | `UNCERTAINTIES.md` | Open questions needing human review | New ambiguities found |
 | `DEFERRED_FEATURES.md` | Features intentionally deferred | Deferral decisions |
-| `DESIGN_CLARIFICATIONS.md` | WHY decisions were made | Architecture discussions |
+| `DESIGN_CLARIFICATIONS.md` | **Decomposed** (Plan #306) — tombstone pointing to new locations | Do not add new content here |
 | `DOCKER.md` | Docker setup and containerization | Docker config changes |
 | `SCHEMA_AUDIT.md` | Config schema audit findings | Schema changes |
 | `SECURITY.md` | Security model and boundaries | Security changes |
@@ -73,7 +73,8 @@ meta/
 | Process patterns | `../meta/patterns/` | Reusable patterns identified |
 | Feature specs | `../meta/acceptance_gates/` | Feature definitions |
 | Implementation | `plans/` | Gap identified/closed |
-| Decisions | `DESIGN_CLARIFICATIONS.md` | When debating approaches |
+| Uncertainties | `UNCERTAINTIES.md` | Open questions found during implementation |
+| Deferred features | `DEFERRED_FEATURES.md` | Features deferred for later |
 
 ## Simulation Learnings
 

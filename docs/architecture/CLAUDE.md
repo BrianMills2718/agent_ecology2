@@ -44,5 +44,6 @@ architecture/
 
 3. **Making architecture decisions?**
    - Update `target/` with new vision
-   - Document rationale in `docs/DESIGN_CLARIFICATIONS.md`
+   - File open questions in `docs/UNCERTAINTIES.md`
+   - Defer features in `docs/DEFERRED_FEATURES.md`
    - Consider re-running gap analysis on affected workstreams (Pattern #30)
