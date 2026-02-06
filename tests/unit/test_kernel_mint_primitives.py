@@ -90,7 +90,7 @@ class TestWorldMintPrimitives:
         )
 
         # Alice cannot submit Bob's artifact
-        with pytest.raises(ValueError, match="not owner"):
+        with pytest.raises(ValueError, match="not authorized"):
             world.submit_for_mint("alice", "bobs_artifact", bid=10)
 
     def test_submit_for_mint_requires_executable(self, world: World) -> None:
@@ -313,7 +313,7 @@ class TestKernelActionsMint:
 
         # Should fail because Bob doesn't own art_1
         assert result["success"] is False
-        assert "not owner" in result.get("error", "").lower()
+        assert "not authorized" in result.get("error", "").lower()
 
     def test_cancel_mint_submission_action(self, world: World) -> None:
         """KernelActions provides cancel_mint_submission method."""

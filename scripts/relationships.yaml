@@ -106,11 +106,11 @@ governance:
       Emits events per ADR-0020, tracks billing_principal per ADR-0023.
 
   - source: src/world/artifacts.py
-    adrs: [1, 7, 11, 16]
+    adrs: [1, 7, 11, 16, 28]
     context: |
       Core artifact storage. Everything is an artifact (ADR-0001).
       Single ID namespace, reserved namespaces (ADR-0007).
-      Use 'created_by' not 'owner' (ADR-0016).
+      'created_by' is informational only, like 'created_at' (ADR-0016, ADR-0028).
       'has_standing' determines principal status (ADR-0011).
 
   - source: src/world/ledger.py
@@ -122,29 +122,29 @@ governance:
       Only principals (has_standing) can hold resources (ADR-0011).
 
   - source: src/world/contracts.py
-    adrs: [1, 3, 15, 16, 19]
+    adrs: [1, 3, 15, 16, 19, 28]
     context: |
       Permission checks are the hot path - keep them fast.
       Contracts return decisions; kernel applies state changes (ADR-0003).
-      Use 'created_by' in context, not 'owner' (ADR-0016).
+      'created_by' in context is informational only (ADR-0028). Contracts check metadata for auth.
       Contracts are artifacts (ADR-0015).
       Unified permission architecture (ADR-0019).
 
   - source: src/world/kernel_contracts.py
-    adrs: [1, 3, 15, 16, 17, 19]
+    adrs: [1, 3, 15, 16, 17, 19, 28]
     context: |
       Five built-in contracts: freeware, transferable_freeware, self_owned, private, public.
-      Use 'created_by' in permission checks (ADR-0016).
+      Check metadata (authorized_writer/authorized_principal), not created_by (ADR-0028).
       Dangling contracts fail open (ADR-0017).
       Cold-start convenience, not kernel privilege (ADR-0017).
 
   - source: src/world/permission_checker.py
-    adrs: [1, 3, 17, 19]
+    adrs: [1, 3, 17, 19, 28]
     context: |
       Unified permission architecture (ADR-0019).
       Contracts decide permissions (ADR-0003).
       Dangling contract fallback to configurable default (ADR-0017).
-      Minimal kernel context: caller, action, target, target_created_by.
+      Kernel context: caller, action, target, target_metadata (auth fields), target_created_by (informational).
 
   - source: src/world/executor.py
     adrs: [1, 2, 11, 14, 21, 23]
@@ -156,7 +156,7 @@ governance:
       Continuous execution context (ADR-0014).
 
   - source: src/world/action_executor.py
-    adrs: [1, 2, 11, 19, 21, 23, 24]
+    adrs: [1, 2, 11, 19, 21, 23, 24, 28]
     context: |
       Executes action intents. No compute debt (ADR-0002).
       Permission checking via contracts (ADR-0019).
@@ -165,7 +165,7 @@ governance:
       Safe executor patterns (ADR-0021).
 
   - source: src/world/invoke_handler.py
-    adrs: [1, 19, 21]
+    adrs: [1, 19, 21, 28]
     context: |
       Artifact-to-artifact invocation.
       Immediate caller model - B's contract checks A can invoke B (ADR-0019).
@@ -202,10 +202,10 @@ governance:
       Resource events per ADR-0020, billing_principal per ADR-0023.
 
   - source: src/world/delegation.py
-    adrs: [7, 16, 19, 23]
+    adrs: [7, 16, 19, 23, 28]
     context: |
       Charge delegation with deterministic IDs (ADR-0007).
-      Uses created_by for payer validation (ADR-0016).
+      Uses metadata (authorized_principal/authorized_writer) for payer resolution (ADR-0028).
       Contract-based authorization (ADR-0019).
       Resource attribution for delegated costs (ADR-0023).
 

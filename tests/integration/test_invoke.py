@@ -39,6 +39,7 @@ def make_artifact(
         executable=executable,
         code=code,
         policy=policy,
+        metadata={"authorized_writer": created_by},
     )
 
 

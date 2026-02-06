@@ -138,20 +138,21 @@ def execute_invoke(
     # The target artifact handles its own access control.
     if not target_has_handle_request:
         # ADR-0019: pass method ("run") and args in context
-        allowed, reason = check_permission_func(
+        perm_check = check_permission_func(
             immediate_caller, "invoke", target, method="run", args=list(invoke_args)
         )
-        if not allowed:
+        if not perm_check.allowed:
             return {
                 "success": False,
                 "result": None,
-                "error": f"Caller {immediate_caller} not allowed to invoke {target_artifact_id}: {reason}",
+                "error": f"Caller {immediate_caller} not allowed to invoke {target_artifact_id}: {perm_check.reason}",
                 "price_paid": 0
             }
 
     # Determine price: contract cost (if any) + artifact price
     price = target.price
-    created_by = target.created_by
+    # ADR-0028: Payment recipient from metadata, not created_by
+    recipient = (target.metadata or {}).get("authorized_writer") or (target.metadata or {}).get("authorized_principal")
 
     # If using contracts and target has a contract, check for additional cost
     contract_cost = 0
@@ -193,11 +194,11 @@ def execute_invoke(
     )
 
     if nested_result.get("success"):
-        # Pay total cost to artifact creator (only on success)
+        # Pay total cost to recipient (ADR-0028: contract decides who gets paid)
         # Plan #140: Use contract-specified payer instead of hardcoded caller
-        if total_cost > 0 and created_by != cost_payer:
+        if total_cost > 0 and recipient and recipient != cost_payer:
             ledger.deduct_scrip(cost_payer, total_cost)
-            ledger.credit_scrip(created_by, total_cost)
+            ledger.credit_scrip(recipient, total_cost)
 
         return {
             "success": True,
