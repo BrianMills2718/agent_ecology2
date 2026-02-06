@@ -1,8 +1,8 @@
 # Atomic claim file - this worktree is claimed
 # Deleting worktree = releasing claim
 
-cc_id: plan-305-tech-debt-cleanup
-task: Fix TD-006/007/008/011/012 - remaining low-effort tech debt
-claimed_at: '2026-02-06T01:38:36Z'
-session_id: be03c62e-c619-4660-b509-1516fe8cdfa0
-plan: 305
+cc_id: plan-306-engineering-workflow
+task: Meta-process engineering workflow pattern + file_context.py + uncertainties
+claimed_at: '2026-02-06T19:36:18Z'
+session_id: 9bd13800-db93-41ad-b2f7-40e84566d16b
+plan: 306
