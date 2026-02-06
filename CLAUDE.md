@@ -87,6 +87,24 @@ If user approves bypass: `git commit --no-verify -m "message"`
 
 Do NOT bypass unilaterally. The decision to skip checks belongs to the user.
 
+### Engineering Workflow (Pattern #34)
+
+Before editing any `src/` file, load its context first:
+
+```bash
+python scripts/file_context.py src/world/contracts.py
+```
+
+This outputs governing ADRs, coupled docs, CLAUDE.md chain, banned terms, open concerns,
+tech debt items, and repo-specific docs relevant to that file. See
+`meta-process/patterns/34_engineering-workflow.md` for the full 7-phase workflow:
+
+```
+SCOPE → CONTEXT LOAD → AMBIGUITY CHECK → PLAN → IMPLEMENT → VERIFY → CLEANUP
+```
+
+If context reveals contradictions between docs, surface them to the user BEFORE implementing.
+
 ---
 
 ## Quick Reference - Make Commands

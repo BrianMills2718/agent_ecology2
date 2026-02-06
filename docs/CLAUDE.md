@@ -19,6 +19,7 @@ docs/
 ├── catalog.yaml          # Agent lineage tracking (moved from src/agents/, Plan #299)
 ├── GETTING_STARTED.md    # Installation, config, development
 ├── GLOSSARY.md           # Canonical terminology (single source)
+├── UNCERTAINTIES.md      # Open questions needing human review (Plan #306)
 ├── DESIGN_CLARIFICATIONS.md  # Decision rationale archive
 ├── SECURITY.md           # Security model
 └── drafts/               # Work-in-progress captured thoughts
@@ -49,6 +50,7 @@ meta/
 | `GETTING_STARTED.md` | Installation, configuration, development | Setup/tooling changes |
 | `GLOSSARY.md` | Canonical terminology | New concepts added |
 | `CONCERNS.md` | Open concerns and known issues | New concerns identified |
+| `UNCERTAINTIES.md` | Open questions needing human review | New ambiguities found |
 | `DEFERRED_FEATURES.md` | Features intentionally deferred | Deferral decisions |
 | `DESIGN_CLARIFICATIONS.md` | WHY decisions were made | Architecture discussions |
 | `DOCKER.md` | Docker setup and containerization | Docker config changes |

@@ -289,6 +289,38 @@ quiz:
   results_dir: docs/quizzes
 
 # =============================================================================
+# Custom Docs (Plan #306)
+# =============================================================================
+# Project-specific document types that plug into context loading via
+# `scripts/file_context.py`. Each entry maps a doc name to its path and
+# the file patterns that should trigger its inclusion in context output.
+#
+# Format:
+#   name:
+#     path: docs/EXAMPLE.md
+#     surface_when: ["src/module/", "config/"]  # prefix patterns, or "*" for always
+#
+# These docs are NOT part of the portable meta-process — they're repo-specific
+# knowledge that the engineering workflow (Pattern #34) surfaces during context load.
+
+custom_docs:
+  simulation_learnings:
+    path: docs/SIMULATION_LEARNINGS.md
+    surface_when: ["src/simulation/", "src/agents/", "config/genesis/agents/"]
+
+  uncertainties:
+    path: docs/UNCERTAINTIES.md
+    surface_when: ["*"]
+
+  deferred_features:
+    path: docs/DEFERRED_FEATURES.md
+    surface_when: ["src/world/"]
+
+  security:
+    path: docs/SECURITY.md
+    surface_when: ["src/world/permission_checker.py", "src/world/kernel_contracts.py", "src/world/contracts.py", "src/world/executor.py"]
+
+# =============================================================================
 # Project Type (for new project setup)
 # =============================================================================
 # Helps configure defaults based on project characteristics.
