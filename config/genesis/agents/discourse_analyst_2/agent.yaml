@@ -23,6 +23,7 @@ artifacts:
   - id: discourse_analyst_2_loop
     type: executable
     code_file: loop_code.py
+    has_standing: true
     has_loop: true
     capabilities: [can_call_llm]
     access_contract_id: kernel_contract_transferable_freeware

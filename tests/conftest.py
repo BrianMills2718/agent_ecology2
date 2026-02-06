@@ -168,7 +168,12 @@ def minimal_config() -> ConfigDict:
             "enabled": True,
             "window_seconds": 60.0,
             "resources": {"llm_tokens": {"max_per_window": 1000}}
-        }
+        },
+        # Disable genesis agents for test isolation
+        "discourse_analyst": {"enabled": False},
+        "discourse_analyst_2": {"enabled": False},
+        "discourse_analyst_3": {"enabled": False},
+        "alpha_prime": {"enabled": False},
     }
 
 
@@ -239,7 +244,12 @@ def single_agent_config() -> ConfigDict:
             "enabled": True,
             "window_seconds": 60.0,
             "resources": {"llm_tokens": {"max_per_window": 1000}}
-        }
+        },
+        # Disable genesis agents for test isolation
+        "discourse_analyst": {"enabled": False},
+        "discourse_analyst_2": {"enabled": False},
+        "discourse_analyst_3": {"enabled": False},
+        "alpha_prime": {"enabled": False},
     }
 
 
@@ -291,7 +301,12 @@ def feature_world(tmp_path: Path) -> World:
             "enabled": True,
             "window_seconds": 60.0,
             "resources": {"llm_tokens": {"max_per_window": 1000}}
-        }
+        },
+        # Disable genesis agents for test isolation
+        "discourse_analyst": {"enabled": False},
+        "discourse_analyst_2": {"enabled": False},
+        "discourse_analyst_3": {"enabled": False},
+        "alpha_prime": {"enabled": False},
     }
     world = World(config)
     world.increment_event_counter()  # Initialize event count
