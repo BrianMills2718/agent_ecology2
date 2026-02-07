@@ -7,35 +7,45 @@ This directory contains hook templates for the meta-process framework. There are
 
 ## Quick Reference
 
-### Git Hooks (`hooks/`)
+### Git Hooks (`git/`)
+
+Installed to `hooks/` in the target project.
 
 | Hook | Trigger | Purpose | Blocking |
 |------|---------|---------|----------|
-| `pre-commit` | Before commit | Doc-coupling, mypy, config validation, branch freshness | Yes |
+| `pre-commit` | Before commit | Plan index, doc-coupling, mypy, plan status, branch freshness | Yes (per check) |
 | `commit-msg` | After message entered | Validates `[Plan #N]` or `[Trivial]` prefix | Yes |
-| `post-commit` | After commit | Reminds about unpushed commits | No (warning) |
-| `pre-push` | Before push | Warns if no active claim for branch | No (warning) |
+| `post-commit` | After commit | Reminds about unpushed commits | No (info) |
 
-### Claude Code Hooks (`.claude/hooks/`)
+All git hooks degrade gracefully — checks are skipped when their scripts aren't installed. A minimal install won't block commits.
+
+### Claude Code Hooks (`claude/`)
+
+Installed to `.claude/hooks/` in the target project.
+
+#### Core Hooks (always installed)
 
 | Hook | Trigger | Purpose | Blocking |
 |------|---------|---------|----------|
-| `protect-main.sh` | Edit/Write | Block edits in main directory | Yes |
+| `protect-main.sh` | Edit/Write | Warn when editing files on main/master branch | No (warning) |
+| `check-hook-enabled.sh` | (helper) | Check if a hook is enabled in `meta-process.yaml` | N/A |
+| `check-references-reviewed.sh` | Edit/Write | Warn if plan lacks References Reviewed section | No (warning) |
+
+#### Worktree Coordination Hooks (opt-in, `claude/worktree-coordination/`)
+
+Installed only with `install.sh --full`. For teams running multiple AI instances concurrently.
+
+| Hook | Trigger | Purpose | Blocking |
+|------|---------|---------|----------|
+| `protect-main.sh` | Edit/Write | Block edits in main directory (force worktree use) | Yes |
+| `block-cd-worktree.sh` | Bash | Block `cd worktrees/...` commands | Yes |
 | `block-worktree-remove.sh` | Bash | Block direct `git worktree` commands | Yes |
 | `check-cwd-valid.sh` | Bash | Fail gracefully if CWD was deleted | Yes |
-| `protect-uncommitted.sh` | Bash | Block destructive git commands with uncommitted changes | Yes |
-| `enforce-make-merge.sh` | Bash | Block direct `gh pr merge`, enforce `make merge` | Yes |
-| `check-file-scope.sh` | Edit/Write | Block edits to files not in plan's scope | Yes (optional) |
-| `check-inbox.sh` | Edit/Write | Block edits if unread messages exist | Yes (optional) |
-| `check-references-reviewed.sh` | Edit/Write | Warn if plan lacks References Reviewed | No (warning) |
-| `inject-governance-context.sh` | Read | Add ADR context after reading governed files | No (info) |
-| `notify-inbox-startup.sh` | Read/Glob | Warn about unread messages once on startup | No (warning) |
 | `warn-worktree-cwd.sh` | Session start | Warn if running from inside a worktree | No (warning) |
-| `session-startup-cleanup.sh` | Session start | Auto-cleanup orphaned claims | No (cleanup) |
-| `refresh-session-marker.sh` | Edit/Write | Update session marker for worktree tracking | No (tracking) |
-| `check-hook-enabled.sh` | (helper) | Check if a hook is enabled in config | N/A |
-| `check-planning-patterns.sh` | Edit/Write (plans) | Validate planning patterns in plan files | Configurable |
-| `pre-commit-planning-patterns.sh` | pre-commit | Validate planning patterns before commit | Configurable |
+| `check-file-scope.sh` | Edit/Write | Block edits outside plan's declared scope | Yes (optional) |
+| `enforce-make-merge.sh` | Bash | Block direct `gh pr merge` | Yes |
+| `check-inbox.sh` | Edit/Write | Block edits if unread messages exist | Yes (optional) |
+| `notify-inbox-startup.sh` | Read/Glob | Warn about unread messages on startup | No (warning) |
 
 ## Exit Codes
 
@@ -46,6 +56,23 @@ All hooks use consistent exit codes:
 | 0 | Success / Allow operation |
 | 1 | Block operation (with error message) |
 | 2 | Block operation (permission/validation issue) |
+
+## Portability
+
+Git hooks use the `find_script()` pattern to locate scripts at either `scripts/meta/` (installed path) or `scripts/` (development path). This means hooks work both in the framework's source repo and in projects that installed the framework.
+
+```bash
+find_script() {
+    local name="$1"
+    if [[ -f "$REPO_ROOT/scripts/meta/$name" ]]; then
+        echo "$REPO_ROOT/scripts/meta/$name"
+    elif [[ -f "$REPO_ROOT/scripts/$name" ]]; then
+        echo "$REPO_ROOT/scripts/$name"
+    fi
+}
+```
+
+Each check is guarded: if its script isn't found, the check is silently skipped.
 
 ## Debugging Hooks
 
@@ -100,85 +127,36 @@ git commit --no-verify -m "..."
 
 ### Claude Code Hooks
 
-Claude Code hooks are configured in `meta-process.yaml`:
+Claude Code hooks are configured in `.claude/settings.json`. Remove hook entries to disable specific hooks, or remove the `.claude/hooks/` directory to disable all.
+
+Optional hooks can also be controlled via `meta-process.yaml`:
 
 ```yaml
 hooks:
-  # Core hooks (always recommended)
-  protect_main: true
-  block_worktree_remove: true
-  check_cwd_valid: true
-
-  # Optional hooks
   check_file_scope: false      # Requires plan with Files Affected
   check_inbox: false           # Requires inter-CC messaging enabled
   check_references_reviewed: true
 ```
 
-Or disable all hooks by removing the `.claude/hooks/` directory.
+## Git Hook Details
 
-## Hook Details
+### pre-commit
 
-### protect-main.sh
+Runs up to 5 checks, each skipped if its script isn't installed:
 
-**Purpose:** Prevent editing files directly in main directory.
+1. **Plan index regeneration** - Rebuilds `docs/plans/CLAUDE.md` when plan files change
+2. **Doc-coupling check** - Validates doc-code relationships (requires `check_doc_coupling.py`)
+3. **Mypy** - Type checks changed `src/` files (requires `mypy` installed)
+4. **Plan status consistency** - Validates plan status format (requires `sync_plan_status.py`)
+5. **Branch divergence check** - Warns/blocks if branch has diverged from remote
 
-**Why:** Multiple Claude Code instances share main. Edits here can conflict or be overwritten. Forces use of worktrees for isolation.
+### commit-msg
 
-**Blocked:**
-- Edit/Write to any file in main (not in a worktree)
-- Edit/Write to worktrees without an active claim
+Validates that commit messages start with `[Plan #N]` or `[Trivial]`. Also allows merge commits and fixup/squash commits.
 
-**Allowed:**
-- Edit/Write to files in claimed worktrees
+### post-commit
 
-**Recovery:**
-```bash
-# Create a worktree first
-make worktree
-# Then edit in worktrees/your-branch/
-```
-
-### block-worktree-remove.sh
-
-**Purpose:** Prevent bypassing the claim system.
-
-**Blocked:**
-- `git worktree add` (use `make worktree` instead)
-- `git worktree remove` (use `make worktree-remove` instead)
-
-**Why:** Direct git worktree commands bypass claiming, breaking coordination.
-
-### check-file-scope.sh
-
-**Purpose:** Keep work focused on declared scope.
-
-**Blocked:** Edit/Write to files not listed in plan's `## Files Affected` section.
-
-**Recovery:**
-```markdown
-## Files Affected
-- src/module.py          <!-- Add files you need to edit -->
-- tests/test_module.py
-```
-
-### enforce-make-merge.sh
-
-**Purpose:** Ensure PRs go through proper validation.
-
-**Blocked:**
-- `gh pr merge` (use `make merge PR=N` instead)
-- `python scripts/merge_pr.py` directly
-
-**Why:** `make merge` runs validation checks before merging.
-
-### inject-governance-context.sh
-
-**Purpose:** Show relevant ADRs when reading governed files.
-
-**Behavior:** After Read tool completes on a governed file, injects a reminder about which ADRs apply.
-
-**Not blocking:** Just informational.
+Informational only. Shows count of unpushed commits and suggests `git push`.
 
 ## Installation
 
@@ -188,7 +166,7 @@ make worktree
 ./meta-process/install.sh /path/to/project --minimal
 ```
 
-This copies hooks and configures git.
+This copies hooks and configures git to use the `hooks/` directory.
 
 ### Manual Setup
 
@@ -196,34 +174,12 @@ This copies hooks and configures git.
 # Git hooks
 git config core.hooksPath hooks
 
-# Claude Code hooks (create settings.json)
-mkdir -p .claude
-cat > .claude/settings.json << 'EOF'
-{
-  "hooks": {
-    "PreToolUse": [
-      {"matcher": {"tool_name": "Edit"}, "hooks": [{"type": "command", "command": "bash .claude/hooks/protect-main.sh \"$TOOL_INPUT_FILE_PATH\""}]}
-    ]
-  }
-}
-EOF
+# Claude Code hooks (add to .claude/settings.json)
+mkdir -p .claude/hooks
+# Copy desired hooks from meta-process/hooks/claude/
 ```
 
 ## Troubleshooting
-
-### "BLOCKED: Cannot edit files in main directory"
-
-You're trying to edit without a worktree:
-```bash
-make worktree    # Create workspace first
-```
-
-### "BLOCKED: Direct 'git worktree add' is not allowed"
-
-Use the proper command:
-```bash
-make worktree    # Instead of git worktree add
-```
 
 ### "Commit message must start with [Plan #N] or [Trivial]"
 
@@ -253,77 +209,11 @@ For emergencies, bypass with:
 ```bash
 # Git hooks
 git commit --no-verify -m "..."
-
-# Claude Code hooks - edit meta-process.yaml to disable
 ```
-
----
-
-## Planning Pattern Hooks
-
-These hooks validate planning patterns in plan files. See [Question-Driven Planning](../patterns/28_question-driven-planning.md) and [Uncertainty Tracking](../patterns/29_uncertainty-tracking.md).
-
-### check-planning-patterns.sh
-
-**Purpose:** Validate planning patterns when editing plan files.
-
-**Checks:**
-- Open Questions section exists
-- No unverified claims ("I believe", "might be", etc.)
-- No prohibited terms from conceptual model
-
-**Configuration (meta-process.yaml):**
-```yaml
-planning:
-  question_driven_planning: advisory  # disabled | advisory | required
-  uncertainty_tracking: advisory
-  warn_on_unverified_claims: true
-  warn_on_prohibited_terms: true
-```
-
-**Behavior by level:**
-- `disabled` - No checks
-- `advisory` - Warnings only (default)
-- `required` - Errors block operation
-
-### pre-commit-planning-patterns.sh
-
-**Purpose:** Validate planning patterns in plan files before commit.
-
-**Usage:** Add to your pre-commit hook chain:
-```bash
-# In hooks/pre-commit
-source meta-process/hooks/pre-commit-planning-patterns.sh
-```
-
-### Validation Script
-
-For standalone validation:
-```bash
-# Check single plan
-python scripts/check_planning_patterns.py --plan 229
-
-# Check all plans
-python scripts/check_planning_patterns.py --all
-
-# Strict mode (advisory becomes required)
-python scripts/check_planning_patterns.py --plan 229 --strict
-```
-
-### CI Integration
-
-Copy `meta-process/ci/planning-patterns.yml` to `.github/workflows/` to enable CI validation.
-
-The CI workflow:
-- Runs on PRs that modify plan files
-- Uses `advisory` mode by default
-- Uses `required` mode when `weight: heavy`
 
 ## See Also
 
 - [Git Hooks Pattern](../patterns/06_git-hooks.md)
-- [Worktree Enforcement Pattern](../patterns/19_worktree-enforcement.md)
-- [Claim System Pattern](../patterns/18_claim-system.md)
+- [Plan Workflow](../patterns/15_plan-workflow.md)
 - [Question-Driven Planning](../patterns/28_question-driven-planning.md)
-- [Uncertainty Tracking](../patterns/29_uncertainty-tracking.md)
-- [Conceptual Modeling](../patterns/27_conceptual-modeling.md)
+- [Worktree Coordination Module](../patterns/worktree-coordination/README.md) (opt-in)
