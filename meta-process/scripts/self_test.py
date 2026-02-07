@@ -55,6 +55,7 @@ def check_file_existence(root: Path) -> list[str]:
         "parse_plan.py",
         "sync_plan_status.py",
         "merge_pr.py",
+        "generate_quiz.py",
     ]
     for s in core_scripts:
         if not (root / "scripts" / s).exists():
@@ -99,6 +100,9 @@ def check_file_existence(root: Path) -> list[str]:
         "protect-main.sh",
         "check-hook-enabled.sh",
         "check-references-reviewed.sh",
+        "track-reads.sh",
+        "gate-edit.sh",
+        "post-edit-quiz.sh",
     ]
     for h in core_hooks:
         if not (root / "hooks" / "claude" / h).exists():
@@ -274,6 +278,7 @@ def check_install(root: Path) -> list[str]:
             ".claude/settings.json",
             ".claude/hooks/track-reads.sh",
             ".claude/hooks/gate-edit.sh",
+            ".claude/hooks/post-edit-quiz.sh",
         ]
         for f in expected_files:
             if not (project / f).exists():

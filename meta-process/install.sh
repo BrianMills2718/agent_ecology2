@@ -68,6 +68,7 @@ CORE_SCRIPTS=(
     "parse_plan.py"
     "sync_plan_status.py"
     "merge_pr.py"
+    "generate_quiz.py"
 )
 
 for script in "${CORE_SCRIPTS[@]}"; do
@@ -130,6 +131,7 @@ CORE_CLAUDE_HOOKS=(
     "check-references-reviewed.sh"
     "track-reads.sh"
     "gate-edit.sh"
+    "post-edit-quiz.sh"
 )
 
 for hook in "${CORE_CLAUDE_HOOKS[@]}"; do
