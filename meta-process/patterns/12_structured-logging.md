@@ -67,7 +67,7 @@ class DualLogger:
         self.readable_log.write_text("")
 
         # Setup Python logger for readable output
-        self._logger = logging.getLogger("agent_ecology")
+        self._logger = logging.getLogger("simulation")
         handler = logging.FileHandler(readable_log)
         handler.setFormatter(logging.Formatter(
             "%(asctime)s [%(levelname)s] %(message)s",
