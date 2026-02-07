@@ -167,7 +167,7 @@ class MetricsEngine:
 
     def _compute_rankings(
         self, state: WorldState
-    ) -> dict[str, dict[str, int]]:
+    ) -> dict[str, dict[str, int | None]]:
         """Compute rankings for all agents."""
         agents = list(state.agents.values())
         if not agents:

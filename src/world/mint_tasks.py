@@ -335,11 +335,11 @@ class MintTaskManager:
             True if assertion passes
         """
         if assertion_type == "equals":
-            return actual == expected
+            return bool(actual == expected)
         elif assertion_type == "contains":
-            return expected in actual
+            return bool(expected in actual)
         elif assertion_type == "type_is":
-            return type(actual).__name__ == expected
+            return bool(type(actual).__name__ == expected)
         elif assertion_type == "truthy":
             return bool(actual)
         else:

@@ -137,7 +137,8 @@ class KernelQueryHandler:
                 "error_code": "not_implemented",
             }
 
-        return handler(params)
+        result: dict[str, Any] = handler(params)
+        return result
 
     def _query_artifacts(self, params: dict[str, Any]) -> dict[str, Any]:
         """Query artifacts with filters."""

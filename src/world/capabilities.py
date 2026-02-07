@@ -62,7 +62,7 @@ class CapabilityManager:
         cap = self._capabilities.get(name)
         if not cap:
             return False
-        return cap.get("enabled", False)
+        return bool(cap.get("enabled", False))
 
     def get_config(self, name: str) -> dict[str, Any] | None:
         """Get configuration for a capability.
@@ -88,7 +88,7 @@ class CapabilityManager:
         if not cap:
             return None
 
-        api_key = cap.get("api_key")
+        api_key: str | None = cap.get("api_key")
         if not api_key:
             return None
 
@@ -111,7 +111,8 @@ class CapabilityManager:
         cap = self._capabilities.get(name)
         if not cap:
             return None
-        return cap.get("budget_limit")
+        result: float | None = cap.get("budget_limit")
+        return result
 
     def get_current_spend(self, name: str) -> float:
         """Get current spend for a capability.
@@ -194,7 +195,8 @@ class CapabilityManager:
             }
 
         try:
-            return handler(config, api_key, action, params)
+            result: dict[str, Any] = handler(config, api_key, action, params)
+            return result
         except Exception as e:
             logger.exception("Capability '%s' execution failed", name)
             return {
@@ -340,7 +342,7 @@ def _handle_anthropic_api(
     # Extract text from first content block
     response_text = ""
     if response.content and hasattr(response.content[0], "text"):
-        response_text = response.content[0].text  # type: ignore[union-attr]
+        response_text = response.content[0].text
 
     return {
         "success": True,

@@ -59,6 +59,17 @@ from .interface_validation import (
 # Import from invoke_handler module (Plan #181: Split Large Files)
 from .invoke_handler import create_invoke_function
 
+# Explicit re-exports for mypy --strict (used by action_executor.py)
+__all__ = [
+    "get_executor",
+    "validate_args_against_interface",
+    "convert_positional_to_named_args",
+    "convert_named_to_positional_args",
+    "parse_json_args",
+    "ValidationResult",
+    "SafeExecutor",
+]
+
 logger = logging.getLogger(__name__)
 
 
@@ -184,7 +195,8 @@ def create_syscall_llm(
             import concurrent.futures
 
             def _run_sync() -> str:
-                return provider.generate(prompt, system_prompt=system_prompt)
+                result: str = provider.generate(prompt, system_prompt=system_prompt)
+                return result
 
             # Always run in thread to avoid async context issues
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
@@ -687,7 +699,7 @@ class SafeExecutor:
         caller: str,
         action: str,
         artifact: "Artifact",
-    ) -> "PermissionResult":
+    ) -> PermissionResult:
         """Legacy permission check using freeware contract.
 
         DEPRECATED: Legacy mode is deprecated. All artifacts should use
@@ -1295,7 +1307,8 @@ class SafeExecutor:
                         "result": None,
                         "price_paid": 0
                     }
-                return controlled_globals["invoke"](artifact_id, *(args or []))
+                result: dict[str, Any] = controlled_globals["invoke"](artifact_id, *(args or []))
+                return result
 
             def pay(self, target: str, amount: int) -> dict[str, Any]:
                 """Transfer scrip to another principal.
@@ -1309,13 +1322,15 @@ class SafeExecutor:
                 """
                 if "pay" not in controlled_globals:
                     return {"success": False, "error": "pay not available"}
-                return controlled_globals["pay"](target, amount)
+                result: dict[str, Any] = controlled_globals["pay"](target, amount)
+                return result
 
             def get_balance(self) -> int:
                 """Get this artifact's current scrip balance."""
                 if "get_balance" not in controlled_globals:
                     return 0
-                return controlled_globals["get_balance"]()
+                balance: int = controlled_globals["get_balance"]()
+                return balance
 
             def get_kernel_state(self) -> Any:
                 """Get access to kernel_state for read operations."""

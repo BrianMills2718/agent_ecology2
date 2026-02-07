@@ -25,7 +25,7 @@ import yaml
 
 from src.config import get as config_get
 
-from .schema import AgentManifest, ArtifactManifest, ArtifactSpec, KernelManifest
+from .schema import AgentManifest, ArtifactManifest, ArtifactSpec, KernelManifest, PrincipalSpec
 
 if TYPE_CHECKING:
     from src.world.world import World
@@ -227,7 +227,7 @@ def _create_artifact(
         content=content,
         created_by="SYSTEM",
         executable=spec.executable,
-        code=code,
+        code=code or "",
         capabilities=spec.capabilities if spec.capabilities else None,
         has_standing=spec.has_standing,
         has_loop=spec.has_loop,

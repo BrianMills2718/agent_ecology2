@@ -12,11 +12,10 @@ from __future__ import annotations
 import asyncio
 import time
 from datetime import datetime
-from typing import Any, cast
+from typing import Any
 
 from ..world import World
 from ..world.simulation_engine import SimulationEngine
-from ..world.world import ConfigDict
 from ..world.mint_auction import KernelMintResult
 from ..world.logger import SummaryCollector
 from ..config import get_validated_config
@@ -122,7 +121,7 @@ class SimulationRunner:
         config["principals"] = []
 
         # Initialize world
-        self.world = World(cast(ConfigDict, config), run_id=self.run_id)
+        self.world = World(config, run_id=self.run_id)
 
         # Restore checkpoint if provided
         if checkpoint:
@@ -154,10 +153,13 @@ class SimulationRunner:
         This integrates API costs into the global budget tracking system:
         - MintAuction (kernel): scorer LLM calls during auction resolution
         """
+        def _track_cost(cost: float) -> None:
+            self.engine.track_api_cost(cost)
+
         # Wire up kernel mint auction scorer callbacks
         self.world.mint_auction.set_cost_callbacks(
             is_budget_exhausted=self.engine.is_budget_exhausted,
-            track_api_cost=lambda cost: self.engine.track_api_cost(cost),
+            track_api_cost=_track_cost,
         )
 
     def _restore_checkpoint(self, checkpoint: CheckpointData) -> None:
@@ -200,9 +202,9 @@ class SimulationRunner:
         for pid in self.world.ledger.scrip:
             if pid.startswith("genesis_"):
                 continue
-            artifact = self.world.artifacts.artifacts.get(pid)
-            if artifact and not artifact.has_standing:
-                artifact.has_standing = True
+            maybe_artifact = self.world.artifacts.artifacts.get(pid)
+            if maybe_artifact and not maybe_artifact.has_standing:
+                maybe_artifact.has_standing = True
 
         for aid, artifact in self.world.artifacts.artifacts.items():
             if artifact.has_standing and aid not in self.world.ledger.scrip:

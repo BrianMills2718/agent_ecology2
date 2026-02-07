@@ -10,6 +10,7 @@
 #   Thesis → PRD → Domain Model → ADR → Ontology (this file) → Code
 #
 # See: docs/prd/ for capabilities, docs/domain_model/ for concepts
+# Last verified: 2026-02-06 (mypy strict fixes - type annotations only, no behavioral changes)
 # =============================================================================
 
 version: 4

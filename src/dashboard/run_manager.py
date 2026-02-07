@@ -29,7 +29,7 @@ class RunInfo:
     status: Literal["running", "completed", "stopped"]
     jsonl_path: Path
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, object]:
         """Convert to JSON-serializable dict."""
         return {
             "run_id": self.run_id,
