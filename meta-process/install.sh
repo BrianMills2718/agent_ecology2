@@ -128,6 +128,8 @@ CORE_CLAUDE_HOOKS=(
     "protect-main.sh"
     "check-hook-enabled.sh"
     "check-references-reviewed.sh"
+    "track-reads.sh"
+    "gate-edit.sh"
 )
 
 for hook in "${CORE_CLAUDE_HOOKS[@]}"; do
@@ -159,6 +161,19 @@ if [[ "$MODE" == "--full" ]]; then
             echo -e "  ${GREEN}Copied: .claude/hooks/worktree-coordination/$hook${NC}"
         fi
     done
+fi
+
+# Generate .claude/settings.json (wires hooks to Claude Code events)
+echo "Configuring Claude Code settings..."
+if [[ ! -f "$TARGET_DIR/.claude/settings.json" ]]; then
+    if [[ "$MODE" == "--full" ]]; then
+        cp "$SCRIPT_DIR/templates/settings.json.full" "$TARGET_DIR/.claude/settings.json"
+    else
+        cp "$SCRIPT_DIR/templates/settings.json.minimal" "$TARGET_DIR/.claude/settings.json"
+    fi
+    echo -e "  ${GREEN}Created: .claude/settings.json${NC}"
+else
+    echo -e "  ${YELLOW}Skipped: .claude/settings.json (already exists)${NC}"
 fi
 
 # Copy templates

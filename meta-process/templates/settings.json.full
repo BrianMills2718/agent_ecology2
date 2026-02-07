@@ -6,11 +6,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/inject-governance-context.sh",
-            "timeout": 3000
-          },
-          {
-            "type": "command",
             "command": "bash .claude/hooks/track-reads.sh",
             "timeout": 1000
           }
@@ -25,11 +20,6 @@
             "type": "command",
             "command": "bash .claude/hooks/gate-edit.sh",
             "timeout": 5000
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/inject-edit-context.sh",
-            "timeout": 5000
           }
         ]
       },
@@ -38,8 +28,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/protect-uncommitted.sh",
-            "timeout": 5000
+            "command": "bash .claude/hooks/worktree-coordination/block-cd-worktree.sh",
+            "timeout": 3000
           }
         ]
       }

@@ -271,6 +271,9 @@ def check_install(root: Path) -> list[str]:
             "CLAUDE.md",
             "ISSUES.md",
             "scripts/meta/parse_plan.py",
+            ".claude/settings.json",
+            ".claude/hooks/track-reads.sh",
+            ".claude/hooks/gate-edit.sh",
         ]
         for f in expected_files:
             if not (project / f).exists():

@@ -68,17 +68,11 @@ specs_critique.txt
 .DS_Store
 Thumbs.db
 
-# Claude Code session files (handoffs, temp context)
-.claude/
-# Track shared coordination files for multi-CC
-# NOTE: active-work.yaml is intentionally NOT tracked - it must be local-only
-# to prevent claim state from being overwritten when PRs merge
-!.claude/handoff_template.md
+# Claude Code session files (ignore contents, track specific files)
+.claude/*
 !.claude/settings.json
-!.claude/meta-config.yaml
 !.claude/hooks/
 !.claude/commands/
-!.claude/messages/
 
 # Generated documentation packages (regeneratable via build scripts)
 docs/EXTERNAL_REVIEW_PACKAGE.md
