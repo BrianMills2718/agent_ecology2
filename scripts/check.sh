@@ -22,7 +22,7 @@ echo ""
 FAILED=0
 
 # 1. Pytest
-echo -e "${YELLOW}[1/5] Running pytest...${NC}"
+echo -e "${YELLOW}[1/6] Running pytest...${NC}"
 if pytest tests/ -q --tb=short; then
     echo -e "${GREEN}✓ Tests passed${NC}"
 else
@@ -32,7 +32,7 @@ fi
 echo ""
 
 # 2. Mypy
-echo -e "${YELLOW}[2/5] Running mypy...${NC}"
+echo -e "${YELLOW}[2/6] Running mypy...${NC}"
 if python -m mypy --strict --ignore-missing-imports --exclude '__pycache__' --no-namespace-packages src/config.py src/world/*.py src/agents/*.py run.py 2>/dev/null; then
     echo -e "${GREEN}✓ Type check passed${NC}"
 else
@@ -42,7 +42,7 @@ fi
 echo ""
 
 # 3. Doc-coupling
-echo -e "${YELLOW}[3/5] Checking doc-code coupling...${NC}"
+echo -e "${YELLOW}[3/6] Checking doc-code coupling...${NC}"
 if python scripts/check_doc_coupling.py --strict 2>/dev/null; then
     echo -e "${GREEN}✓ Doc-coupling passed${NC}"
 else
@@ -53,7 +53,7 @@ fi
 echo ""
 
 # 4. Plan status sync
-echo -e "${YELLOW}[4/5] Checking plan status sync...${NC}"
+echo -e "${YELLOW}[4/6] Checking plan status sync...${NC}"
 if python scripts/sync_plan_status.py --check 2>/dev/null; then
     echo -e "${GREEN}✓ Plan status in sync${NC}"
 else
@@ -63,11 +63,24 @@ else
 fi
 echo ""
 
-# 5. Quick or full claim check
-if [[ "$QUICK" == true ]]; then
-    echo -e "${YELLOW}[5/5] Skipping claim check (--quick mode)${NC}"
+# 5. Meta-process self-test (files + links only, skip slow install test)
+echo -e "${YELLOW}[5/6] Running meta-process self-test...${NC}"
+if [[ -f "meta-process/scripts/self_test.py" ]]; then
+    if python meta-process/scripts/self_test.py --files --links; then
+        echo -e "${GREEN}✓ Meta-process self-test passed${NC}"
+    else
+        echo -e "${RED}✗ Meta-process self-test failed${NC}"
+        FAILED=1
+    fi
 else
-    echo -e "${YELLOW}[5/5] Checking for stale claims...${NC}"
+    echo -e "${YELLOW}  Skipped (meta-process/scripts/self_test.py not found)${NC}"
+fi
+
+# 6. Quick or full claim check
+if [[ "$QUICK" == true ]]; then
+    echo -e "${YELLOW}[6/6] Skipping claim check (--quick mode)${NC}"
+else
+    echo -e "${YELLOW}[6/6] Checking for stale claims...${NC}"
     python scripts/check_claims.py --list 2>/dev/null || true
 fi
 echo ""
