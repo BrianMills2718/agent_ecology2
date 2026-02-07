@@ -57,6 +57,14 @@ If yes → **stop and ask** before proceeding.
 - **Delete > Comment.** Remove unused code, don't comment it out.
 - **Flat > Nested.** Prefer flat structures over deep hierarchies.
 
+### Hook-Injected Context (IMPORTANT)
+
+Hooks inject governance context, constraint checks, and quizzes as system-reminders after reading or editing src/ files. **You MUST surface these to the user visibly:**
+
+1. **After editing a src/ file:** A post-edit quiz appears. Show the quiz questions to the user and answer each one explicitly. Don't silently absorb them.
+2. **Before editing a src/ file:** Constraint checks appear. State how your edit respects each constraint. If a constraint is irrelevant, say so.
+3. **After reading a governed file:** Governance context appears. Mention relevant ADRs and constraints when they affect your planned changes.
+
 ---
 
 ## Workflow
