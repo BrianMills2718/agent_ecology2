@@ -555,7 +555,8 @@ def get_worktree_claim_status(
         branch = wt.get("branch", "")
         path = wt.get("path", "")
 
-        if path.endswith("/agent_ecology") and "worktrees" not in path:
+        # Skip the main worktree (the repo root itself)
+        if path == str(_MAIN_ROOT):
             continue
 
         wt_claim = branch_to_claim.get(branch)

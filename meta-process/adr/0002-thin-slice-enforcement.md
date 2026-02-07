@@ -11,7 +11,7 @@ Claude Code (and AI coding assistants generally) tends toward **big-bang develop
 - Discovers fundamental issues too late
 - Results in painful integration failures and rework
 
-This pattern emerged repeatedly in the agent_ecology project:
+This pattern emerged repeatedly in practice:
 - Multi-day implementations that failed basic E2E tests
 - "Complete" plans that didn't actually work when integrated
 - Wasted effort on code that needed fundamental rework
