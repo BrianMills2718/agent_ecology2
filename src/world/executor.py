@@ -364,12 +364,6 @@ class ExecutionResult(TypedDict, total=False):
     execution_time_ms: float
 
 
-class CodeValidationResult(TypedDict, total=False):
-    """Result from code validation."""
-    valid: bool
-    error: str
-
-
 # Note: ValidationResult, convert_positional_to_named_args,
 # convert_named_to_positional_args, and validate_args_against_interface
 # are now imported from interface_validation module (Plan #181)
@@ -409,11 +403,6 @@ def get_preloaded_modules() -> dict[str, ModuleType | _DatetimeModule]:
         for name in preloaded
         if name in AVAILABLE_MODULES
     }
-
-
-class ExecutionError(Exception):
-    """Error during code execution"""
-    pass
 
 
 class TimeoutError(Exception):
@@ -615,24 +604,6 @@ class SafeExecutor:
         self._dangling_contract_count = dangling_tracker[0]
         return result
 
-    def _get_contract(
-        self, contract_id: str
-    ) -> AccessContract | ExecutableContract:
-        """Get contract by ID, with caching.
-
-        Checks genesis contracts first, then falls back to freeware
-        if not found. Also supports ExecutableContracts registered
-        via register_executable_contract().
-
-        Args:
-            contract_id: The contract ID to look up
-
-        Returns:
-            The contract instance (never None - falls back to freeware)
-        """
-        contract, _, _ = self._get_contract_with_fallback_info(contract_id)
-        return contract
-
     def register_executable_contract(self, contract: ExecutableContract) -> None:
         """Register an executable contract for use in permission checks.
 
@@ -693,21 +664,6 @@ class SafeExecutor:
         # Update instance state from tracker
         self._dangling_contract_count = dangling_tracker[0]
         return result
-
-    def _check_permission_legacy(
-        self,
-        caller: str,
-        action: str,
-        artifact: "Artifact",
-    ) -> PermissionResult:
-        """Legacy permission check using freeware contract.
-
-        DEPRECATED: Legacy mode is deprecated. All artifacts should use
-        access_contract_id for permission checking.
-
-        Plan #181: Delegates to permission_checker module.
-        """
-        return _permission_checker.check_permission_legacy(caller, action, artifact)
 
     def _check_permission(
         self,
