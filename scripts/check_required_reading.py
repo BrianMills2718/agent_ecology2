@@ -135,26 +135,36 @@ def format_gate_message(
             lines.append(f"  ✓ {doc['path']}")
         lines.append("")
 
-    # Governance constraints (always show as confirmation template)
+    # Governance constraints — directive format that forces active engagement
     gov = required.get("governance")
     if gov and gov.get("adrs"):
-        lines.append("After reading, confirm you understand these constraints:")
-        lines.append("")
-        # Show governance context as checklist
-        if gov.get("context"):
-            for ctx_line in gov["context"].splitlines():
-                ctx_line = ctx_line.strip()
-                if ctx_line:
-                    lines.append(f"  - [ ] {ctx_line}")
-        lines.append("")
         adr_nums = ", ".join(
             f"ADR-{a['number']:04d}" for a in gov["adrs"]
         )
-        lines.append(f"  Governing ADRs: {adr_nums}")
+        lines.append(
+            f"CONSTRAINT CHECK for {file_path} (governed by {adr_nums}):"
+        )
         lines.append("")
-
-    if lines:
-        lines.append("  What risks does your change introduce?")
+        lines.append(
+            "You MUST explicitly address each constraint in your response:"
+        )
+        lines.append("")
+        if gov.get("context"):
+            for i, ctx_line in enumerate(
+                gov["context"].splitlines(), 1
+            ):
+                ctx_line = ctx_line.strip()
+                if ctx_line:
+                    lines.append(f"  {i}. \"{ctx_line}\"")
+                    lines.append(
+                        f"     → How does your edit relate to this?"
+                    )
+                    lines.append("")
+        lines.append(
+            "State how each constraint is respected by this edit. "
+            "If a constraint is irrelevant to this specific change, "
+            "say so explicitly."
+        )
         lines.append("")
 
     return "\n".join(lines)
