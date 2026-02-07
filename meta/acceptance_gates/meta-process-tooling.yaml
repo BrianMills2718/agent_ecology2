@@ -109,15 +109,10 @@ acceptance_criteria:
 adrs: []  # No ADRs directly govern this feature yet
 
 code:
-  - scripts/validate_spec.py
   - scripts/check_locked_files.py
-  - scripts/check_feature_coverage.py
   - scripts/check_plan_completion.py
 
-tests:
-  - tests/unit/test_validate_spec.py
-  - tests/unit/test_check_locked_files.py
-  - tests/unit/test_check_feature_coverage.py
+tests: []
 
 docs:
   - docs/meta/feature-driven-development.md

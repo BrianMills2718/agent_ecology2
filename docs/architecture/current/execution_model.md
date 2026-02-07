@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-06 (mypy strict fixes - type annotations only, no behavioral changes)
+**Last verified:** 2026-02-07 (Plan #308: dead code cleanup - removed unused import, no behavioral changes)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 

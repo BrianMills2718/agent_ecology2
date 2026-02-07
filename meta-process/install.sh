@@ -83,10 +83,7 @@ if [[ "$MODE" == "--full" ]]; then
         "check_doc_coupling.py"
         "sync_governance.py"
         "check_mock_usage.py"
-        "check_adr_requirement.py"
-        "validate_spec.py"
         "check_locked_files.py"
-        "check_feature_coverage.py"
     )
     for script in "${FULL_SCRIPTS[@]}"; do
         if [[ -f "$SCRIPT_DIR/scripts/$script" ]]; then

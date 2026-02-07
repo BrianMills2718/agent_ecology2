@@ -280,24 +280,11 @@ Resolution: Primary gate's ADRs apply. Both gates' tests must pass.
 5. **Add test mappings** - Which tests verify each gate
 6. **Deprecate old configs** - Replace governance.yaml, doc_coupling.yaml
 
-### Validation Script
-
-```bash
-# Check all src/ files are assigned to a gate
-python scripts/check_feature_coverage.py
-
-# Output:
-# ✓ src/world/ledger.py -> gate:ledger
-# ✓ src/world/escrow.py -> gate:escrow
-# ✗ src/world/orphan.py -> UNASSIGNED
-```
-
 ## Files
 
 | File | Purpose |
 |------|---------|
 | `features.yaml` | Single source of truth (gate definitions) |
-| `scripts/check_feature_coverage.py` | Ensure all code assigned |
 
 ## Benefits
 

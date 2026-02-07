@@ -2,7 +2,7 @@
 
 How resources work TODAY.
 
-**Last verified:** 2026-02-01 (Plan #254: Genesis removed, transfer is now kernel action)
+**Last verified:** 2026-02-07 (Plan #308: dead code cleanup - removed unused ledger wrappers, no behavioral changes)
 
 **See target:** [../target/resources.md](../target/resources.md)
 

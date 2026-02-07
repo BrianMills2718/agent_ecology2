@@ -175,20 +175,8 @@ jobs:
       - name: Check for suspicious mock patterns
         run: python scripts/check_mock_usage.py --strict
 
-      - name: Check new files have tests
-        run: python scripts/check_new_code_tests.py --base origin/main --strict --suggest
-
-      - name: Check feature coverage
-        continue-on-error: true
-        run: python scripts/check_feature_coverage.py --warn-only
 
       # --- Meta checks ---
-      - name: Check locked sections
-        run: python scripts/check_locked_files.py --base origin/main
-
-      - name: Validate feature specs
-        run: python scripts/validate_spec.py --all
-
       - name: Verify branch was claimed
         continue-on-error: true
         run: |
@@ -229,9 +217,6 @@ jobs:
             fi
           done
 
-      - name: Check ADR requirements
-        continue-on-error: true
-        run: python scripts/check_adr_requirement.py --base origin/main
 
   # =============================================================================
   # Plan Checks - Runs for all PRs

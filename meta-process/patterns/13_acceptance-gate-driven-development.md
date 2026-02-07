@@ -476,25 +476,14 @@ Every unit of work must prove it works end-to-end before declaring success.
 | File | Purpose |
 |------|---------|
 | `acceptance_gates/*.yaml` | Acceptance gate definitions (single source of truth) |
-| `scripts/validate_spec.py` | Validates spec completeness |
-| `scripts/check_locked_files.py` | Ensures locked files unchanged |
-| `scripts/generate_tests.py` | Generates test stubs from specs *(not yet implemented)* |
+| `scripts/check_locked_files.py` | Ensures locked files unchanged (manual tool) |
 
 See [META-ADR-0004: Gate YAML Is Documentation](../adr/0004-gate-yaml-is-documentation.md) for why gate definitions live in YAML, not separate markdown files.
 
 ## Setup (New Project)
 
 1. Create `acceptance_gates/` directory
-2. Add spec validation to CI:
-   ```yaml
-   - name: validate-specs
-     run: python scripts/validate_spec.py --all
-
-   - name: check-locked-files
-     run: python scripts/check_locked_files.py
-   ```
-3. Configure minimum spec requirements *(config/spec_requirements.yaml — not yet implemented, use acceptance gate YAML directly)*
-4. Add feature definition template
+2. Add feature definition template
 
 ## Usage
 
@@ -547,8 +536,7 @@ claude "Implement cooperation v2"
 ## CI Enforcement
 
 Add these checks to your CI pipeline:
-- **Spec validation:** `python scripts/validate_spec.py --all`
-- **Lock enforcement:** `python scripts/check_locked_files.py`
+- **Lock enforcement:** `python scripts/check_locked_files.py` (manual)
 - **Gate tests:** `pytest tests/acceptance_gates/ -v`
 
 ## Customization
