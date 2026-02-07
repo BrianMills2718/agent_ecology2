@@ -29,7 +29,7 @@ Phase (optional grouping)
 
 ### Why "Acceptance Gate" Not "Feature"
 
-See [META-ADR-0001](adr/0001-acceptance-gate-terminology.md) for full rationale.
+See [META-ADR-0001](../adr/0001-acceptance-gate-terminology.md) for full rationale.
 
 1. **"Feature" is overloaded** - means different things everywhere (product feature, feature flag, feature branch)
 2. **"Acceptance gate" conveys mechanism** - it's a gate you must pass, not an optional checkpoint
@@ -134,9 +134,9 @@ Terminology is enforced through:
 
 ## Related ADRs
 
-- [META-ADR-0001: Acceptance Gate Terminology](adr/0001-acceptance-gate-terminology.md)
-- [META-ADR-0002: Thin-Slice Enforcement](adr/0002-thin-slice-enforcement.md)
-- [META-ADR-0003: Plan-Gate Hierarchy](adr/0003-plan-gate-hierarchy.md)
+- [META-ADR-0001: Acceptance Gate Terminology](../adr/0001-acceptance-gate-terminology.md)
+- [META-ADR-0002: Thin-Slice Enforcement](../adr/0002-thin-slice-enforcement.md)
+- [META-ADR-0003: Plan-Gate Hierarchy](../adr/0003-plan-gate-hierarchy.md)
 
 ## Origin
 

@@ -284,7 +284,7 @@ STALE_HOURS = 4  # Claims older than this are flagged
 ## See Also
 
 - [Claim system pattern](18_claim-system.md) - More detailed claim management
-- [Plan workflow pattern](15_plan-workflow.md) - How plans integrate with PRs
+- [Plan workflow pattern](../15_plan-workflow.md) - How plans integrate with PRs
 
 ## Current Implementation (Simplified)
 

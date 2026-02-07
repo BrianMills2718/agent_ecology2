@@ -12,7 +12,7 @@ Claude Code (and AI coding assistants generally) tends toward **big-bang develop
 
 **Acceptance gates force thin-slice development** by requiring functional capabilities to pass real E2E tests before being considered complete. This pattern exists to prevent the "fingers crossed" approach to integration.
 
-See [META-ADR-0002: Thin-Slice Enforcement](adr/0002-thin-slice-enforcement.md) for the full rationale.
+See [META-ADR-0002: Thin-Slice Enforcement](../adr/0002-thin-slice-enforcement.md) for the full rationale.
 
 ## Core Concept: Acceptance Gates Are E2E Checkpoints
 
@@ -40,7 +40,7 @@ Acceptance Gate: escrow
 - Plans can be "complete" while acceptance gate is still not passed
 - Gate passed = the REAL checkpoint
 
-See [META-ADR-0003: Plan-Gate Hierarchy](adr/0003-plan-gate-hierarchy.md) for why E2E is at the gate level, not plan level.
+See [META-ADR-0003: Plan-Gate Hierarchy](../adr/0003-plan-gate-hierarchy.md) for why E2E is at the gate level, not plan level.
 
 ### Why Real E2E Matters
 
@@ -79,7 +79,7 @@ An Acceptance Gate contains:
 
 **Tasks** operate ON Acceptance Gates. Plans become administrative tracking, not organizational structure.
 
-See [META-ADR-0001: Acceptance Gate Terminology](adr/0001-acceptance-gate-terminology.md) for why we use "acceptance gate" not "feature".
+See [META-ADR-0001: Acceptance Gate Terminology](../adr/0001-acceptance-gate-terminology.md) for why we use "acceptance gate" not "feature".
 
 ### The Lock-Before-Implement Principle
 
@@ -480,7 +480,7 @@ Every unit of work must prove it works end-to-end before declaring success.
 | `scripts/check_locked_files.py` | Ensures locked files unchanged |
 | `scripts/generate_tests.py` | Generates test stubs from specs *(not yet implemented)* |
 
-See [META-ADR-0004: Gate YAML Is Documentation](adr/0004-gate-yaml-is-documentation.md) for why gate definitions live in YAML, not separate markdown files.
+See [META-ADR-0004: Gate YAML Is Documentation](../adr/0004-gate-yaml-is-documentation.md) for why gate definitions live in YAML, not separate markdown files.
 
 ## Setup (New Project)
 
@@ -614,10 +614,10 @@ require_approval_for_lock: true
 
 ## Related Meta-Process ADRs
 
-- [META-ADR-0001: Acceptance Gate Terminology](adr/0001-acceptance-gate-terminology.md) - Why "acceptance gate" not "feature"
-- [META-ADR-0002: Thin-Slice Enforcement](adr/0002-thin-slice-enforcement.md) - Anti-big-bang goal
-- [META-ADR-0003: Plan-Gate Hierarchy](adr/0003-plan-gate-hierarchy.md) - E2E at gate level
-- [META-ADR-0004: Gate YAML Is Documentation](adr/0004-gate-yaml-is-documentation.md) - YAML as single source
+- [META-ADR-0001: Acceptance Gate Terminology](../adr/0001-acceptance-gate-terminology.md) - Why "acceptance gate" not "feature"
+- [META-ADR-0002: Thin-Slice Enforcement](../adr/0002-thin-slice-enforcement.md) - Anti-big-bang goal
+- [META-ADR-0003: Plan-Gate Hierarchy](../adr/0003-plan-gate-hierarchy.md) - E2E at gate level
+- [META-ADR-0004: Gate YAML Is Documentation](../adr/0004-gate-yaml-is-documentation.md) - YAML as single source
 
 ## Origin
 

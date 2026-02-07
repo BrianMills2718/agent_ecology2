@@ -272,7 +272,7 @@ class TestFeatureEdgeCases:
 
 ## Mocking Policy
 
-See [mocking-policy.md](./mocking-policy.md) for details.
+See [Mocking Policy](./04_mocking-policy.md) for details.
 
 **Summary:**
 - No mocks by default

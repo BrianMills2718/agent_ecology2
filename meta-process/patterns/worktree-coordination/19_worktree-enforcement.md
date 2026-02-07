@@ -343,9 +343,9 @@ python scripts/parse_plan.py --plan 89 --references-reviewed --json
 
 - [Rebase Workflow](20_rebase-workflow.md) - Keeps worktrees up-to-date before creating PRs
 - [Claim System](18_claim-system.md) - Coordinates which instance works on what
-- [Git Hooks](06_git-hooks.md) - Pre-commit validation before pushing
+- [Git Hooks](../06_git-hooks.md) - Pre-commit validation before pushing
 - [PR Coordination](21_pr-coordination.md) - Tracks review requests across instances
-- [Plan Workflow](15_plan-workflow.md) - Plan template with Files Affected section
+- [Plan Workflow](../15_plan-workflow.md) - Plan template with Files Affected section
 
 ## Worktree Removal Protection
 

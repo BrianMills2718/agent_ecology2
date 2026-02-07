@@ -289,4 +289,4 @@ See this project's [CLAUDE.md](../../CLAUDE.md) for a complete example.
 
 - [Claim system pattern](worktree-coordination/18_claim-system.md) - Coordination tables in CLAUDE.md
 - [Plan workflow pattern](15_plan-workflow.md) - Linking CLAUDE.md to plans
-- [Handoff protocol pattern](archive/handoff-protocol.md) - Session continuity (archived)
+- [Uncertainty Tracking](29_uncertainty-tracking.md) - Session continuity across sessions

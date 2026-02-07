@@ -185,7 +185,7 @@ between CC instances become common.
 
 ## Planned
 
-### MP-007: Script testing gap → [Plan #248](../../docs/plans/248_script_testing.md)
+### MP-007: Script testing gap → [Plan #248](../docs/plans/248_script_testing.md)
 
 **Observed:** 2026-01-31
 **Investigated:** 2026-01-31
@@ -196,7 +196,7 @@ between CC instances become common.
 
 ---
 
-### MP-015: Plan-to-diff verification → [Plan #249](../../docs/plans/249_plan_to_diff_verification.md)
+### MP-015: Plan-to-diff verification → [Plan #249](../docs/plans/249_plan_to_diff_verification.md)
 
 **Observed:** 2026-01-31
 **Investigated:** 2026-01-31
