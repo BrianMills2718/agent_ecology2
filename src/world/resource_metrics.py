@@ -238,31 +238,3 @@ class ResourceMetricsProvider:
 
         return metrics
 
-    def get_all_metrics(
-        self,
-        ledger_resources: dict[str, dict[str, float]],
-        agents: dict[str, Any],
-        start_time: float,
-        visibility_config: ResourceVisibilityConfig | None = None,
-    ) -> dict[str, AgentResourceMetrics]:
-        """Get resource metrics for all agents.
-
-        Args:
-            ledger_resources: Resource balances from ledger
-            agents: Dict of agent objects
-            start_time: Simulation start time
-            visibility_config: Optional visibility configuration
-
-        Returns:
-            Dict mapping agent_id to AgentResourceMetrics
-        """
-        result: dict[str, AgentResourceMetrics] = {}
-        for agent_id in agents:
-            result[agent_id] = self.get_agent_metrics(
-                agent_id=agent_id,
-                ledger_resources=ledger_resources,
-                agents=agents,
-                start_time=start_time,
-                visibility_config=visibility_config,
-            )
-        return result

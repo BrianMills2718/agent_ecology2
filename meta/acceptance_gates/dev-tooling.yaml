@@ -113,8 +113,6 @@ code:
   - scripts/merge_pr.py
   - scripts/cleanup_branches.py
   - scripts/check_mock_usage.py
-  - scripts/check_mock_tests.py
-  - scripts/check_new_code_tests.py
   - scripts/check_plan_blockers.py
   - scripts/check_plan_completion.py
   - scripts/check_plan_overlap.py
@@ -129,7 +127,6 @@ code:
   - scripts/view_log.py
 
 tests:
-  - tests/unit/test_check_new_code_tests.py
   - tests/unit/test_check_plan_blockers.py
   - tests/unit/test_meta_status.py
   - tests/unit/test_merge_pr.py

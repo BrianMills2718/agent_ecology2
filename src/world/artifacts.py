@@ -85,33 +85,12 @@ class PolicyDict(TypedDict, total=False):
     allow_invoke: PolicyAllow
 
 
-class ArtifactDict(TypedDict, total=False):
-    """Type for artifact dictionary representation."""
-
-    id: str
-    type: str
-    content: str
-    created_by: str
-    created_at: str
-    updated_at: str
-    executable: bool
-    price: int
-    has_code: bool
-    policy: PolicyDict
-    interface: dict[str, Any]  # Plan #14: JSON Schema for discoverability
-
-
 class WriteResult(TypedDict):
     """Result of an artifact write operation."""
 
     success: bool
     message: str
     data: dict[str, Any] | None
-
-
-def is_contract_reference(value: PolicyAllow) -> bool:
-    """Check if a policy value is a contract reference (starts with @)"""
-    return isinstance(value, str) and value.startswith("@")
 
 
 def default_policy() -> dict[str, Any]:
@@ -1106,11 +1085,6 @@ class ArtifactStore:
         """
         artifact = self.get(artifact_id)
         return artifact.created_by if artifact else None
-
-    # Backwards compatibility alias (deprecated)
-    def get_owner(self, artifact_id: str) -> str | None:
-        """Deprecated: Use get_creator() instead."""
-        return self.get_creator(artifact_id)
 
     def list_all(self, include_deleted: bool = False) -> list[dict[str, Any]]:
         """List all artifacts.

@@ -40,7 +40,7 @@ from .mint_tasks import MintTaskManager  # Plan #269
 from .triggers import TriggerRegistry
 from .delegation import DelegationManager
 
-from ..config import get as config_get, compute_per_agent_quota, PerAgentQuota
+from ..config import get as config_get, PerAgentQuota
 from ..genesis import load_genesis
 
 if TYPE_CHECKING:

@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-02-07 (expanded governance coverage in relationships.yaml to 54/72 src files)
+Last verified: 2026-02-07 (removed deleted scripts from CI steps)
 
 ---
 

@@ -26,17 +26,12 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `semantic_doc_search.py` | BM25 semantic search over documentation |
 | `check_governance_completeness.py` | CI check for governance mapping coverage |
 | `check_doc_coupling.py` | Verify docs updated when source changes |
-| `check_adr_requirement.py` | Check if ADR is required for changes |
 | `check_planning_patterns.py` | Validate planning patterns (Open Questions, uncertainties) |
 | `sync_governance.py` | Sync ADR governance headers |
 | `check_mock_usage.py` | Detect suspicious mock patterns in tests |
-| `check_mock_tests.py` | Detect mock usage in test files |
 | `check_claude_md.py` | Validate CLAUDE.md existence, coverage, and phantom refs |
-| `check_feature_coverage.py` | Verify all src files assigned to features |
-| `check_locked_files.py` | Protect locked acceptance criteria |
-| `check_new_code_tests.py` | Verify new code has test coverage |
-| `validate_spec.py` | Validate feature spec YAML format |
-| `validate_code_map.py` | Validate code mapping files |
+| `check_locked_files.py` | Protect locked acceptance criteria (manual) |
+| `validate_code_map.py` | Validate code mapping files (manual) |
 | `get_governance_context.py` | Get doc graph context for a file (ADRs + coupled docs) |
 | `visualize_doc_graph.py` | Visualize documentation graph (text, DOT, PNG/SVG) |
 | `generate_doc_graph_html.py` | Generate interactive HTML visualization (D3.js) |

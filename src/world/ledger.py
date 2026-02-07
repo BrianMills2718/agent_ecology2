@@ -666,28 +666,3 @@ class Ledger:
         """
         return self.spend_resource(principal_id, "llm_budget", actual_cost)
 
-    async def deduct_llm_cost_async(self, principal_id: str, actual_cost: float) -> bool:
-        """Async thread-safe deduct LLM cost from budget (Plan #153).
-
-        Args:
-            principal_id: ID of the principal
-            actual_cost: Actual cost in dollars from the API
-
-        Returns:
-            True if successful
-        """
-        return await self.spend_resource_async(principal_id, "llm_budget", actual_cost)
-
-    def get_llm_budget_info(self, principal_id: str) -> dict[str, float]:
-        """Get LLM budget info including remaining and spent (Plan #153).
-
-        Args:
-            principal_id: ID of the principal
-
-        Returns:
-            Dict with 'remaining' budget amount
-        """
-        remaining = self.get_llm_budget(principal_id)
-        return {
-            "remaining": remaining,
-        }

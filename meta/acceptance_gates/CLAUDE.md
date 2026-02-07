@@ -116,9 +116,6 @@ The `locked: true` flag prevents weakening criteria after commit:
 # List features
 python scripts/check_claims.py --list-features
 
-# Validate feature spec format
-python scripts/validate_spec.py --feature escrow
-
 # Run feature's real E2E tests
 pytest tests/e2e/ -v --run-external -k "feature_name"
 ```

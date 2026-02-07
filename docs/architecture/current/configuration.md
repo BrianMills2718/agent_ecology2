@@ -396,10 +396,6 @@ mint:
 from config import (
     get,                    # get("world.max_ticks")
     get_validated_config,   # Returns typed AppConfig
-    get_stock_resource,     # get_stock_resource("disk", "total")
-    get_flow_resource,      # get_flow_resource("compute", "per_tick")
-    get_genesis_config,     # get_genesis_config("mint", "mint_ratio")
-    compute_per_agent_quota # Computes quotas based on num_agents
 )
 ```
 
