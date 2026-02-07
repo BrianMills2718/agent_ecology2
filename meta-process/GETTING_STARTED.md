@@ -6,7 +6,6 @@ A step-by-step guide to adopting the meta-process framework for AI-assisted deve
 
 Meta-process is a collection of patterns for coordinating AI coding assistants (Claude Code, Cursor, etc.) on shared codebases. It solves problems like:
 
-- **Parallel work conflicts** - Multiple instances editing the same files
 - **Context loss** - AI forgetting project conventions mid-session
 - **Documentation drift** - Docs diverging from code over time
 - **Unverified completions** - "Done" work that doesn't actually work
@@ -25,7 +24,7 @@ Before starting, decide how much process overhead you want:
 | **medium** | Most projects (default) | Advisory + templates | Balanced |
 | **heavy** | Critical/regulated projects | Required + validation | Full enforcement |
 
-### Planning Patterns (New in v2)
+### Planning Patterns
 
 These patterns improve planning quality and reduce AI drift:
 
@@ -51,15 +50,6 @@ planning:
   warn_on_unverified_claims: true     # Warn on "I believe", "might be"
 ```
 
-### Project Type Guidance
-
-| If your project is... | Start with... |
-|-----------------------|---------------|
-| **New + Simple** | `weight: light`, planning: advisory |
-| **New + Complex** | `weight: medium`, enable conceptual_modeling |
-| **Existing + Adding meta-process** | `weight: light` first, increase over time |
-| **Regulated/Critical** | `weight: heavy`, all patterns required |
-
 ---
 
 ## Quick Start (30 minutes)
@@ -83,46 +73,39 @@ This creates:
 Edit `meta-process.yaml`:
 
 ```yaml
-# Choose your weight level (controls which checks run)
 weight: medium  # minimal | light | medium | heavy
 
-# Hook configuration
-hooks:
-  protect_main: true       # Require worktrees for edits
-  enforce_workflow: true   # Enforce make commands
-  enforce_file_scope: false  # Enable later for strict scope control
-
-# Planning patterns
 planning:
   question_driven_planning: advisory  # disabled | advisory | required
   uncertainty_tracking: advisory
+
+enforcement:
+  strict_doc_coupling: false  # Start with warnings, enable later
 ```
 
 ### Step 3: Verify
 
 ```bash
-make status              # Should show clean state
-python scripts/check_claims.py --list   # Should show no claims
+make status    # Should show clean state
+make test      # Tests should pass
 ```
 
 ### Step 4: Test the Workflow
 
 ```bash
-# 1. Create a workspace
-make worktree
-# Enter: "Test meta-process setup"
-# Enter: (blank for no plan)
-# Enter: "test-setup"
+# 1. Create a feature branch
+git checkout -b test-setup
 
 # 2. Make a trivial change
-echo "# Test" >> worktrees/test-setup/README.md
+echo "# Test" >> README.md
 
-# 3. Commit
-git -C worktrees/test-setup add -A
-git -C worktrees/test-setup commit -m "[Trivial] Test setup"
+# 3. Commit with convention
+git add README.md
+git commit -m "[Trivial] Test setup"
 
 # 4. Clean up
-make worktree-remove BRANCH=test-setup
+git checkout main
+git branch -d test-setup
 ```
 
 If that worked, you're ready!
@@ -131,17 +114,12 @@ If that worked, you're ready!
 
 ## Core Concepts
 
-These terms appear throughout the guide. Quick definitions before diving in:
-
 | Concept | What It Is |
 |---------|------------|
-| **Worktree** | An isolated copy of your repo for one task. Prevents parallel edits from conflicting. |
-| **Claim** | A declaration that you're working on something. Prevents duplicate work. |
 | **Plan** | A markdown file in `docs/plans/` describing what to build. Required for significant work. |
-| **Pattern** | A reusable solution to a coordination problem. See the [Pattern Index](patterns/01_README.md) (the `Requires` column shows dependencies). |
+| **Pattern** | A reusable solution to a coordination problem. See the [Pattern Index](patterns/01_README.md). |
 | **Weight** | How much process enforcement — from `minimal` (almost nothing) to `heavy` (full validation). |
-
-Detailed explanations of [CWD rules](#always-run-from-main), [claims](#claims-prevent-conflicts), and [commit conventions](#commit-message-convention) are in the Key Concepts section below.
+| **Commit Convention** | `[Plan #N] Description` for planned work, `[Trivial] Description` for tiny changes. |
 
 ---
 
@@ -149,12 +127,12 @@ Detailed explanations of [CWD rules](#always-run-from-main), [claims](#claims-pr
 
 ### Day 1-2: Core Workflow
 
-**Goal:** Get comfortable with worktrees and claims.
+**Goal:** Get comfortable with branches and plans.
 
-1. **Read patterns** (in this order — each builds on the previous):
+1. **Read patterns** (in this order):
    - [CLAUDE.md Authoring](patterns/02_claude-md-authoring.md) - Project context
-   - [Claim System](patterns/18_claim-system.md) - Coordination
-   - [Worktree Enforcement](patterns/19_worktree-enforcement.md) - File isolation (requires Claims)
+   - [Plan Workflow](patterns/15_plan-workflow.md) - Work tracking
+   - [Question-Driven Planning](patterns/28_question-driven-planning.md) - Better AI planning
 
 2. **Set up your CLAUDE.md:**
    ```markdown
@@ -162,25 +140,24 @@ Detailed explanations of [CWD rules](#always-run-from-main), [claims](#claims-pr
 
    ## Quick Reference
    - `make test` - Run tests
-   - `make worktree` - Create workspace
+   - `make check` - Run all checks
 
    ## Design Principles
    1. Fail loud - No silent errors
    2. Test first - Write tests before code
 
    ## Key Rules
-   - Always use worktrees for implementation
    - Commit messages: `[Plan #N]` or `[Trivial]`
    ```
 
 3. **Practice the workflow:**
    ```bash
-   make worktree      # Start work
+   git checkout -b plan-1-my-feature   # Create branch
    # ... edit files ...
-   git -C worktrees/X commit -m "[Trivial] ..."
-   git -C worktrees/X push -u origin X
-   gh pr create --head X
-   make finish BRANCH=X PR=N
+   git add -A && git commit -m "[Plan #1] Add feature"
+   git push -u origin plan-1-my-feature
+   gh pr create
+   make finish BRANCH=plan-1-my-feature PR=N
    ```
 
 ### Day 3-4: Plans
@@ -188,30 +165,19 @@ Detailed explanations of [CWD rules](#always-run-from-main), [claims](#claims-pr
 **Goal:** Track work in plan files.
 
 1. **Read patterns:**
-   - [Plan Workflow](patterns/15_plan-workflow.md)
    - [Plan Status Validation](patterns/23_plan-status-validation.md)
 
 2. **Create your first plan:**
    ```bash
-   # Copy template
    cp docs/plans/TEMPLATE.md docs/plans/001_my_first_plan.md
-
    # Edit to describe your task
-   ```
-
-3. **Use plans in workflow:**
-   ```bash
-   make worktree
-   # Enter plan number: 1
-   # Creates: worktrees/plan-1-my_first_plan/
    ```
 
 ### Day 5-7: Git Hooks
 
 **Goal:** Catch issues before CI.
 
-1. **Read patterns:**
-   - [Git Hooks](patterns/06_git-hooks.md)
+1. **Read:** [Git Hooks](patterns/06_git-hooks.md)
 
 2. **Install hooks:**
    ```bash
@@ -233,9 +199,8 @@ Detailed explanations of [CWD rules](#always-run-from-main), [claims](#claims-pr
 
 1. **Read:** [Doc-Code Coupling](patterns/10_doc-code-coupling.md)
 
-2. **Configure mappings:**
+2. **Configure mappings in `scripts/relationships.yaml`:**
    ```yaml
-   # scripts/doc_coupling.yaml
    couplings:
      - sources: ["src/api/*.py"]
        docs: ["docs/api.md"]
@@ -245,7 +210,7 @@ Detailed explanations of [CWD rules](#always-run-from-main), [claims](#claims-pr
 3. **Enable strict enforcement in meta-process.yaml:**
    ```yaml
    enforcement:
-     strict_doc_coupling: true
+     strict_doc_coupling: true  # Soft couplings also block
    ```
 
 ### Add Mock Enforcement
@@ -259,89 +224,13 @@ Detailed explanations of [CWD rules](#always-run-from-main), [claims](#claims-pr
 
 ---
 
-## Key Concepts
-
-### Always Run From Main
-
-Your working directory should always be the main repo:
-
-```bash
-# CORRECT - Use worktree as a path
-cd /repo                           # Stay in main
-vim worktrees/plan-1/src/file.py   # Edit via path
-git -C worktrees/plan-1 commit     # Commit via -C flag
-
-# WRONG - Don't cd into worktree
-cd /repo/worktrees/plan-1          # If worktree deleted, shell breaks
-vim src/file.py
-git commit
-```
-
-**Why?** If you're inside a worktree and it gets deleted (after merge), your shell's working directory becomes invalid.
-
-> For detailed explanation with examples, see [Understanding CWD and Paths](UNDERSTANDING_CWD.md).
-
-### Claims Prevent Conflicts
-
-Before starting work, you claim it:
-
-```bash
-make worktree     # Automatically creates claim
-```
-
-Other instances see your claim:
-
-```bash
-python scripts/check_claims.py --list
-# Active claims:
-#   plan-1-feature  ->  Plan #1: Add feature X
-```
-
-They know not to work on the same thing.
-
-### Commit Message Convention
-
-```bash
-[Plan #N] Description    # Links to plan file
-[Trivial] Fix typo       # For tiny changes (<20 lines, no src/)
-```
-
-The git hook enforces this.
-
----
-
 ## Troubleshooting
-
-### "BLOCKED: Cannot edit files in main directory"
-
-You tried to edit without a worktree:
-
-```bash
-# Fix: Create a worktree first
-make worktree
-# Then edit files in worktrees/your-branch/
-```
-
-### "Conflict detected. Another instance is working on this plan"
-
-Someone else claimed this work:
-
-```bash
-# Check who
-python scripts/check_claims.py --list
-
-# Either:
-# 1. Work on something else
-# 2. Wait for them to finish
-# 3. Coordinate directly
-```
 
 ### "Commit message must start with [Plan #N] or [Trivial]"
 
 Your commit message doesn't follow the convention:
 
 ```bash
-# Fix: Use proper prefix
 git commit -m "[Trivial] Fix typo in README"
 # or
 git commit -m "[Plan #1] Add user authentication"
@@ -358,25 +247,6 @@ git config core.hooksPath
 git config core.hooksPath hooks
 ```
 
-> For complete hook documentation, see [Hooks Overview](hooks/README.md).
-
----
-
-## Next Steps
-
-After completing the basics:
-
-1. **Adopt planning patterns** - Improve AI planning quality
-   - Start with: [Question-Driven Planning](patterns/28_question-driven-planning.md) (low overhead)
-   - Add: [Uncertainty Tracking](patterns/29_uncertainty-tracking.md) when context loss is painful
-   - Consider: [Conceptual Modeling](patterns/27_conceptual-modeling.md) for complex architectures
-
-2. **Add acceptance gates** - Verify work actually works before marking complete
-   - See: [Acceptance-Gate-Driven Development](patterns/13_acceptance-gate-driven-development.md)
-
-3. **Add ADRs** - Preserve architectural decisions
-   - See: [ADR](patterns/07_adr.md), [ADR Governance](patterns/08_adr-governance.md)
-
 ---
 
 ## Quick Reference
@@ -384,11 +254,8 @@ After completing the basics:
 | Task | Command |
 |------|---------|
 | Check status | `make status` |
-| Create workspace | `make worktree` |
-| List workspaces | `make worktree-list` |
-| See claims | `python scripts/check_claims.py --list` |
 | Run tests | `make test` |
-| Run checks | `make check` |
+| Run all checks | `make check` |
 | Prepare PR | `make pr-ready` |
 | Create PR | `make pr` |
 | Finish work | `make finish BRANCH=X PR=N` |
@@ -399,27 +266,30 @@ After completing the basics:
 
 | Stage | Patterns | Effort |
 |-------|----------|--------|
-| **Week 1** | CLAUDE.md, Worktrees, Claims, Plans | Low |
-| **Week 1** | Question-Driven Planning (use plan template) | Low |
-| **Week 2** | Git Hooks, Doc-Code Coupling | Low |
-| **Week 2** | Uncertainty Tracking (in plans) | Low |
+| **Week 1** | CLAUDE.md, Plans, Question-Driven Planning | Low |
+| **Week 1** | Git Hooks, Commit Convention | Low |
+| **Week 2** | Doc-Code Coupling, Uncertainty Tracking | Low |
 | **Month 1** | Mock Enforcement, Plan Verification | Medium |
-| **When needed** | Conceptual Modeling (complex architectures) | Medium |
-| **Later** | ADRs, Acceptance Gates, Full Graph | High |
+| **When needed** | ADRs, Acceptance Gates, Conceptual Modeling | Medium-High |
 
 Start small. Add patterns when you feel the pain they solve.
 
-> **Solo or small team?** Skip these until you run 3+ concurrent AI instances:
-> PR Coordination, Ownership Respect, Human Review, inter-CC messaging,
-> and session tracking. They add cognitive overhead with no benefit at small scale.
-> See the [Pattern Index](patterns/01_README.md) "Multi-CC only" section for details.
-
 ### Planning Pattern Adoption
 
-The new planning patterns have minimal overhead:
+The planning patterns have minimal overhead:
 
 1. **Question-Driven Planning** - Just use the updated plan template. Fill in "Open Questions" before "Plan".
-
 2. **Uncertainty Tracking** - Track uncertainties in the plan's table. Update status as you resolve them.
+3. **Conceptual Modeling** - Only add when AI instances repeatedly misunderstand your architecture.
 
-3. **Conceptual Modeling** - Only add when AI instances repeatedly misunderstand your architecture. Create `docs/CONCEPTUAL_MODEL.yaml` with your core concepts.
+---
+
+## Advanced: Multi-CC Coordination
+
+If you run **multiple AI instances concurrently** on the same codebase and experience conflicts, see the [Worktree Coordination Module](patterns/worktree-coordination/README.md). It provides:
+
+- **Claims** — Prevents two instances from working on the same task
+- **Worktrees** — File isolation via git worktrees
+- **Inter-CC Messaging** — Async communication between instances
+
+Most projects don't need this. Try the branch-based workflow first.

@@ -3,40 +3,13 @@
 
 # Configuration
 SCRIPTS_META := scripts/meta
-WORKTREE_BASE := ../worktrees
 PLANS_DIR := docs/plans
 
 # --- Session Start ---
-.PHONY: status claims
+.PHONY: status
 
-status:  ## Show git status + active claims
-	@git status --short
-	@echo ""
-	@python $(SCRIPTS_META)/check_claims.py --list 2>/dev/null || true
-
-claims:  ## List active claims
-	@python $(SCRIPTS_META)/check_claims.py --list
-
-# --- Worktree Management ---
-.PHONY: worktree worktree-list worktree-remove
-
-worktree:  ## Create worktree (interactive: prompts for branch name)
-	@read -p "Branch name (e.g., plan-42-feature): " branch; \
-	read -p "Task description: " task; \
-	python $(SCRIPTS_META)/check_claims.py --claim --id "$$branch" --task "$$task" && \
-	git worktree add "$(WORKTREE_BASE)/$$branch" -b "$$branch" origin/main && \
-	echo "" && \
-	echo "Worktree created at: $(WORKTREE_BASE)/$$branch" && \
-	echo "cd $(WORKTREE_BASE)/$$branch"
-
-worktree-list:  ## List all worktrees
-	@git worktree list
-
-worktree-remove:  ## Remove worktree safely (BRANCH=name required)
-ifndef BRANCH
-	$(error BRANCH is required. Usage: make worktree-remove BRANCH=plan-42-feature)
-endif
-	@python $(SCRIPTS_META)/safe_worktree_remove.py $(BRANCH)
+status:  ## Show git status
+	@git status --short --branch
 
 # --- During Implementation ---
 .PHONY: test test-quick check
@@ -73,30 +46,16 @@ ifndef PR
 endif
 	@python $(SCRIPTS_META)/merge_pr.py $(PR)
 
-finish:  ## Merge PR + cleanup worktree (BRANCH=name PR=number required)
+finish:  ## Merge PR + cleanup branch (BRANCH=name PR=number required)
 ifndef BRANCH
 	$(error BRANCH is required. Usage: make finish BRANCH=plan-42-feature PR=123)
 endif
 ifndef PR
 	$(error PR is required. Usage: make finish BRANCH=plan-42-feature PR=123)
 endif
-	@python $(SCRIPTS_META)/finish_pr.py $(PR) $(BRANCH)
-
-# --- Claims ---
-.PHONY: claim release
-
-claim:  ## Claim work (TASK="description" required, PLAN=N optional)
-ifndef TASK
-	$(error TASK is required. Usage: make claim TASK="Fix bug" PLAN=42)
-endif
-ifdef PLAN
-	@python $(SCRIPTS_META)/check_claims.py --claim --plan $(PLAN) --task "$(TASK)"
-else
-	@python $(SCRIPTS_META)/check_claims.py --claim --task "$(TASK)"
-endif
-
-release:  ## Release current claim
-	@python $(SCRIPTS_META)/check_claims.py --release
+	@gh pr merge $(PR) --squash --delete-branch
+	@git checkout main && git pull --ff-only
+	@git branch -d $(BRANCH) 2>/dev/null || true
 
 # --- Plans ---
 .PHONY: plan-tests plan-complete
@@ -120,13 +79,7 @@ help-meta:  ## Show meta-process targets
 	@echo "Meta-Process Targets:"
 	@echo ""
 	@echo "  Session:"
-	@echo "    status          Show git status + claims"
-	@echo "    claims          List active claims"
-	@echo ""
-	@echo "  Worktrees:"
-	@echo "    worktree        Create worktree (interactive)"
-	@echo "    worktree-list   List worktrees"
-	@echo "    worktree-remove Remove worktree (BRANCH=name)"
+	@echo "    status          Show git status"
 	@echo ""
 	@echo "  Development:"
 	@echo "    test            Run tests"

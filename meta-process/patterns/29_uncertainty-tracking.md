@@ -34,7 +34,7 @@ OPEN → INVESTIGATING → RESOLVED
 |------|---------|
 | `docs/CONCEPTUAL_MODEL.yaml` | Model-level open questions |
 | Plan files | Plan-specific uncertainties |
-| `.claude/CONTEXT.md` (per-worktree) | Session-specific tracking |
+| `.claude/CONTEXT.md` | Session-specific tracking |
 
 ## Format
 
@@ -231,7 +231,7 @@ A new session reading this knows:
 | Conceptual Modeling | Model's `open_questions` section |
 | Question-Driven Planning | Uncertainties drive the questions |
 | Plan Workflow | Plans include uncertainty section |
-| Worktree Enforcement | `.claude/CONTEXT.md` tracks per-worktree |
+| Session Context | `.claude/CONTEXT.md` tracks per-session |
 
 ## Origin
 
