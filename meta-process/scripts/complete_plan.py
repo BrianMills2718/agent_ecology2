@@ -527,7 +527,6 @@ def complete_plan(
         print(f"   Verification evidence recorded in {plan_file.name}")
         print(f"\nNext steps:")
         print(f"   1. Commit changes: git add {plan_file}")
-        print(f"   2. Release claim: python scripts/check_claims.py --release")
 
     return True
 

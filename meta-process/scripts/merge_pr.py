@@ -68,15 +68,27 @@ def find_worktree_for_branch(branch: str) -> Path | None:
 
 
 def release_claim_for_branch(branch: str) -> bool:
-    """Release any claim associated with this branch. PR merged = work done."""
-    result = run_cmd(
-        ["python", "scripts/check_claims.py", "--release", "--id", branch, "--force"],
-        check=False,
-    )
-    if result.returncode == 0 and "Released" in result.stdout:
-        print(f"   Released claim for '{branch}'")
-        return True
-    # No claim existed or already released - that's fine
+    """Release any claim associated with this branch. PR merged = work done.
+
+    Gracefully degrades if claims system is not installed (worktree-coordination module).
+    """
+    # Try both script locations (portable: scripts/meta, project: scripts, worktree-coord)
+    for script_path in [
+        "scripts/worktree-coordination/check_claims.py",
+        "scripts/meta/worktree-coordination/check_claims.py",
+        "scripts/check_claims.py",
+        "scripts/meta/check_claims.py",
+    ]:
+        if Path(script_path).exists():
+            result = run_cmd(
+                ["python", script_path, "--release", "--id", branch, "--force"],
+                check=False,
+            )
+            if result.returncode == 0 and "Released" in result.stdout:
+                print(f"   Released claim for '{branch}'")
+                return True
+            return False  # Script exists but no claim - that's fine
+    # Claims system not installed - skip silently
     return False
 
 

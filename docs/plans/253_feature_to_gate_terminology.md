@@ -36,7 +36,7 @@ commit: c3c91dc
 - `meta-process/patterns/13_acceptance-gate-driven-development.md` - mixed usage
 - `meta-process/patterns/14_acceptance-gate-linkage.md` - mixed usage
 - `meta-process/patterns/15_plan-workflow.md` - references
-- `meta-process/patterns/18_claim-system.md` - `--feature` in examples
+- `meta-process/patterns/worktree-coordination/18_claim-system.md` - `--feature` in examples
 - `meta-process/patterns/03_testing-strategy.md` - references
 
 **Target:** All scripts and documentation use "gate" or "acceptance gate" terminology per META-ADR-0001.

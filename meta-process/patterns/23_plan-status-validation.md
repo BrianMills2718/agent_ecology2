@@ -95,4 +95,4 @@ Transitions:
 
 - [Plan Workflow](15_plan-workflow.md) - Full plan lifecycle
 - [Verification Enforcement](17_verification-enforcement.md) - How plans are completed
-- [Claim System](18_claim-system.md) - Coordinating who works on what
+- [Claim System](worktree-coordination/18_claim-system.md) - Coordinating who works on what
