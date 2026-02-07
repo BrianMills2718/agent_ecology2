@@ -181,7 +181,7 @@ git branch -r | grep plan-
 
 Before starting new work:
 ```bash
-make worktree BRANCH=plan-NN-description
+git checkout -b plan-NN-description
 ```
 
 ---

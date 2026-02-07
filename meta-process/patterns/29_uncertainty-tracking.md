@@ -168,7 +168,7 @@ performance issues. Will add depth limit if observed in practice.
 For long-running work, uncertainties help new sessions understand state:
 
 ```markdown
-# Worktree Context (.claude/CONTEXT.md)
+# Session Context (.claude/CONTEXT.md)
 
 ## Current Uncertainties
 

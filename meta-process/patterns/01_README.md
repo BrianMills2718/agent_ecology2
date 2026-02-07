@@ -30,7 +30,6 @@ These patterns work with a simple branch-based workflow. No special infrastructu
 | [Plan Status Validation](23_plan-status-validation.md) | Status/content mismatch in plans | Low | 15 |
 | [Phased ADR Pattern](24_phased-adr-pattern.md) | Complex features need phased rollout | Medium | 07 |
 | [PR Review Process](25_pr-review-process.md) | Inconsistent review quality | Low | — |
-| [Ownership Respect](26_ownership-respect.md) | CC instances interfering with each other's work | Low | — |
 | [Conceptual Modeling](27_conceptual-modeling.md) | AI accumulates misconceptions about architecture | Medium | — |
 | [Question-Driven Planning](28_question-driven-planning.md) | AI guesses instead of investigating | Low | — |
 | [Uncertainty Tracking](29_uncertainty-tracking.md) | Uncertainties forgotten across sessions | Low | — |
@@ -53,6 +52,7 @@ See [worktree-coordination/README.md](worktree-coordination/README.md) for setup
 | [Worktree Enforcement](worktree-coordination/19_worktree-enforcement.md) | Main directory corruption from parallel edits | Low | 18 |
 | [Rebase Workflow](worktree-coordination/20_rebase-workflow.md) | Stale worktrees causing "reverted" changes | Low | 19 |
 | [PR Coordination](worktree-coordination/21_pr-coordination.md) | Lost review requests | Low | 15, 18 |
+| [Ownership Respect](worktree-coordination/26_ownership-respect.md) | CC instances interfering with each other's work | Low | 18 |
 
 ## When to Use
 
@@ -75,7 +75,7 @@ See [worktree-coordination/README.md](worktree-coordination/README.md) for setup
 - Claim System + Worktree Enforcement - when multiple AI instances run concurrently
 - PR Coordination + Ownership Respect - cross-instance work tracking
 
-> **Conventions vs. patterns:** Patterns 06 (Git Hooks), 11 (Terminology), and 26 (Ownership Respect) are infrastructure or conventions rather than coordination patterns. They have no dependencies and can be adopted independently.
+> **Conventions vs. patterns:** Patterns 06 (Git Hooks) and 11 (Terminology) are infrastructure or conventions rather than coordination patterns. They have no dependencies and can be adopted independently.
 
 ## Pattern Template
 
