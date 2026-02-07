@@ -59,14 +59,18 @@ if [[ -z "$PLAN_NUM" ]]; then
     exit 0
 fi
 
-# Check references using parse_plan.py
-SCRIPT_DIR="$MAIN_DIR/scripts"
-if [[ ! -f "$SCRIPT_DIR/parse_plan.py" ]]; then
+# Check references using parse_plan.py (check both script locations)
+PARSE_PLAN=""
+if [[ -f "$MAIN_DIR/scripts/meta/parse_plan.py" ]]; then
+    PARSE_PLAN="$MAIN_DIR/scripts/meta/parse_plan.py"
+elif [[ -f "$MAIN_DIR/scripts/parse_plan.py" ]]; then
+    PARSE_PLAN="$MAIN_DIR/scripts/parse_plan.py"
+else
     exit 0
 fi
 
 # Get references reviewed
-RESULT=$(python "$SCRIPT_DIR/parse_plan.py" --plan "$PLAN_NUM" --references-reviewed --json 2>/dev/null || echo '{"error": "parse_failed"}')
+RESULT=$(python "$PARSE_PLAN" --plan "$PLAN_NUM" --references-reviewed --json 2>/dev/null || echo '{"error": "parse_failed"}')
 
 # Parse result
 REFS=$(echo "$RESULT" | jq -r '.references_reviewed // []')
