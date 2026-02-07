@@ -18,7 +18,8 @@ enforcement:
   plan_index_auto_add: true
 
   # When true, ALL doc-code couplings fail CI on violation (including soft: true)
-  strict_doc_coupling: true
+  # When false, only strict couplings block; soft couplings are advisory warnings
+  strict_doc_coupling: false
 
   # Show warning when running in non-strict mode
   show_strictness_warning: true

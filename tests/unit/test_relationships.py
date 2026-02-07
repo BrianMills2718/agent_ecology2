@@ -90,7 +90,7 @@ class TestCheckDocCouplingIntegration:
         sys.path.insert(0, str(SCRIPTS_DIR))
         from check_doc_coupling import load_couplings
 
-        couplings = load_couplings(SCRIPTS_DIR / "doc_coupling.yaml")
+        couplings = load_couplings(SCRIPTS_DIR / "relationships.yaml")
         assert isinstance(couplings, list)
         assert len(couplings) > 0
 
@@ -100,7 +100,7 @@ class TestCheckDocCouplingIntegration:
         sys.path.insert(0, str(SCRIPTS_DIR))
         from check_doc_coupling import load_couplings
 
-        couplings = load_couplings(SCRIPTS_DIR / "doc_coupling.yaml")
+        couplings = load_couplings(SCRIPTS_DIR / "relationships.yaml")
         for coupling in couplings:
             assert "sources" in coupling
             assert "docs" in coupling
@@ -115,7 +115,7 @@ class TestSyncGovernanceIntegration:
         sys.path.insert(0, str(SCRIPTS_DIR))
         from sync_governance import GovernanceConfig
 
-        config = GovernanceConfig.load(SCRIPTS_DIR / "governance.yaml")
+        config = GovernanceConfig.load(SCRIPTS_DIR / "relationships.yaml")
         assert isinstance(config.files, dict)
         assert isinstance(config.adrs, dict)
         assert len(config.files) > 0
@@ -127,7 +127,7 @@ class TestSyncGovernanceIntegration:
         sys.path.insert(0, str(SCRIPTS_DIR))
         from sync_governance import GovernanceConfig
 
-        config = GovernanceConfig.load(SCRIPTS_DIR / "governance.yaml")
+        config = GovernanceConfig.load(SCRIPTS_DIR / "relationships.yaml")
         expected = ["src/world/contracts.py", "src/world/ledger.py", "src/world/artifacts.py"]
         for path in expected:
             assert path in config.files, f"Missing governance for {path}"

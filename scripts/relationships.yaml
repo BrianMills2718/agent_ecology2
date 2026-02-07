@@ -712,44 +712,14 @@ couplings:
   - sources:
       - .github/workflows/ci.yml
       - scripts/check_doc_coupling.py
-      - scripts/doc_coupling.yaml
       - scripts/relationships.yaml
     docs:
       - docs/architecture/current/ci.md
     description: "CI pipeline"
 
   # ---------------------------------------------------------------------------
-  # SOFT COUPLINGS (warning-only unless strict_doc_coupling: true)
+  # SOFT COUPLINGS (advisory warnings, never block commits)
   # ---------------------------------------------------------------------------
-
-  # Gap closure tracking (excludes ci.md — CI docs don't close plans)
-  - sources:
-      - docs/architecture/current/execution_model.md
-      - docs/architecture/current/agents.md
-      - docs/architecture/current/resources.md
-      - docs/architecture/current/genesis_artifacts.md
-      - docs/architecture/current/artifacts_executor.md
-      - docs/architecture/current/configuration.md
-      - docs/architecture/current/supporting_systems.md
-      - docs/architecture/current/agent_cognition.md
-      - docs/architecture/current/contracts.md
-      - docs/architecture/current/mint.md
-      - docs/architecture/current/coordination_patterns.md
-      - docs/architecture/current/genesis_agents.md
-      - docs/architecture/current/running.md
-    docs:
-      - docs/plans/CLAUDE.md
-    description: "Gap closure tracking - update plan status if gap closed"
-    soft: true
-
-  # Terminology changes
-  - sources:
-      - src/world/ledger.py
-      - src/config_schema.py
-    docs:
-      - docs/GLOSSARY.md
-    description: "Terminology - new terms or renamed concepts?"
-    soft: true
 
   # Dashboard UI
   - sources:

@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-02-06 (Plan #306: created_by auth fix - no doc content changes needed)
+Last verified: 2026-02-06 (removed legacy doc_coupling.yaml/governance.yaml, simplified coupling rules)
 
 ---
 
