@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-02-06 (Plan #306: created_by auth fix - no doc content changes needed)
+**Last verified:** 2026-02-06 (mypy strict fixes - type annotations only, no behavioral changes)
 
 ---
 

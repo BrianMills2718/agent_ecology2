@@ -130,7 +130,7 @@ async def get_efficiency_leaderboard(limit: int = 10) -> LeaderboardResponse:
     def get_success_rate(a: Any) -> float:
         if a.action_count == 0:
             return 0.0
-        return a.action_successes / a.action_count
+        return float(a.action_successes / a.action_count)
 
     sorted_agents = sorted(agents, key=get_success_rate, reverse=True)[:limit]
 

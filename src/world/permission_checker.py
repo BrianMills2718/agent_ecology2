@@ -226,7 +226,7 @@ def check_permission_legacy(
     caller: str,
     action: str,
     artifact: "Artifact",
-) -> tuple[bool, str]:
+) -> PermissionResult:
     """Legacy permission check using freeware contract.
 
     DEPRECATED: Legacy mode is deprecated. All artifacts should use
@@ -359,4 +359,5 @@ def check_permission(
         # else: fall through to legacy/freeware behavior
 
     # Legacy policy-based check (for backward compatibility or freeware default)
-    return check_permission_legacy(caller, action, artifact)
+    legacy_result = check_permission_legacy(caller, action, artifact)
+    return legacy_result

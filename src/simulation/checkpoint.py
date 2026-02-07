@@ -9,7 +9,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from ..world import World
 
@@ -64,7 +64,7 @@ def save_checkpoint(
         "version": CHECKPOINT_VERSION,
         "event_number": world.event_number,
         "tick": world.event_number,  # Legacy alias for backward compat
-        "balances": world.ledger.get_all_balances(),
+        "balances": cast(dict[str, BalanceInfo], world.ledger.get_all_balances()),
         "cumulative_api_cost": cumulative_cost,
         "artifacts": [a.to_dict() for a in world.artifacts.artifacts.values()],
         "agent_ids": [a.agent_id for a in agents],
@@ -144,7 +144,7 @@ def load_checkpoint(checkpoint_file: str) -> CheckpointData | None:
         if isinstance(state_data, dict):
             agent_states[agent_id] = state_data  # type: ignore[assignment]
         else:
-            agent_states[agent_id] = {}  # type: ignore[assignment]
+            agent_states[agent_id] = {}
 
     # Support both event_number and legacy tick field
     event_num = int(data.get("event_number", data.get("tick", 0)))

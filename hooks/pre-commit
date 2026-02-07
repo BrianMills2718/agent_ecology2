@@ -29,25 +29,15 @@ if ! python scripts/check_doc_coupling.py --strict 2>/dev/null; then
     exit 1
 fi
 
-# 3. Mypy on changed src/ files
+# 3. Mypy on changed src/ files (blocking)
 STAGED_SRC=$(echo "$STAGED_PY" | grep '^src/' || true)
 if [ -n "$STAGED_SRC" ]; then
     echo "Running mypy on changed files..."
-    MYPY_FILES=""
-    for f in $STAGED_SRC; do
-        case "$f" in
-            src/config.py|src/world/*.py|src/agents/*.py)
-                MYPY_FILES="$MYPY_FILES $f"
-                ;;
-        esac
-    done
-
-    if [ -n "$MYPY_FILES" ]; then
-        if ! python -m mypy --strict --ignore-missing-imports --follow-imports=silent $MYPY_FILES 2>/dev/null; then
-            echo ""
-            echo "WARNING: mypy type check found issues (non-blocking)"
-            echo ""
-        fi
+    if ! python -m mypy --strict --ignore-missing-imports --follow-imports=silent $STAGED_SRC 2>/dev/null; then
+        echo ""
+        echo "ERROR: mypy type check failed!"
+        echo ""
+        exit 1
     fi
 fi
 

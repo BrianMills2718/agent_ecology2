@@ -98,7 +98,7 @@ def _match_operator(event_value: Any, filter_value: Any) -> bool:
     """
     # Plain value = equality check
     if not isinstance(filter_value, dict):
-        return event_value == filter_value
+        return bool(event_value == filter_value)
 
     # Operator-based matching
     for op, op_value in filter_value.items():

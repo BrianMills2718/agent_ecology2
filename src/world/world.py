@@ -191,7 +191,7 @@ class World:
         self.id_registry = IDRegistry()
 
         # Core state - create ledger with rate_limiting config and ID registry
-        self.ledger = Ledger.from_config(cast(dict[str, Any], config), [], self.id_registry)
+        self.ledger = Ledger.from_config(config, [], self.id_registry)
 
         # Plan #182: Get indexed metadata fields from artifacts config
         artifacts_config = config.get("artifacts", {})
@@ -444,12 +444,15 @@ class World:
         # Get mint submission status from mint_auction directly
         mint_status: dict[str, MintSubmissionStatus] = {}
         for submission in self.mint_auction.get_submissions():
-            artifact_id = submission.get("artifact_id", "")
+            # Cast to dict[str, Any] since runtime data may have extra fields
+            # beyond the KernelMintSubmission TypedDict (e.g. score, status, submitter)
+            sub: dict[str, Any] = dict(submission)
+            artifact_id = sub.get("artifact_id", "")
             if artifact_id:
                 mint_status[artifact_id] = {
-                    "status": str(submission.get("status", "unknown")),
-                    "submitter": str(submission.get("submitter", "unknown")),
-                    "score": int(submission["score"]) if submission.get("status") == "scored" and submission.get("score") is not None else None
+                    "status": str(sub.get("status", "unknown")),
+                    "submitter": str(sub.get("submitter", "unknown")),
+                    "score": int(sub["score"]) if sub.get("status") == "scored" and sub.get("score") is not None else None
                 }
 
         # Get resource metrics for all agents (Plan #93)

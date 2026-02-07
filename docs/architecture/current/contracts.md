@@ -2,7 +2,7 @@
 
 How access control works today.
 
-**Last verified:** 2026-02-06 (Plan #306: created_by is informational, contracts use metadata for auth)
+**Last verified:** 2026-02-06 (mypy strict fixes - type annotations only, no behavioral changes)
 
 **See also:** ADR-0019 (Unified Permission Architecture)
 
