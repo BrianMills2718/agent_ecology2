@@ -130,8 +130,7 @@ Don't create an incident log for:
 
 ## Examples
 
-- `meta-process/CWD_INCIDENT_LOG.md` — Shell CWD invalidation issues
-- `meta-process/ORPHANED_WORKTREE_LOG.md` — Orphaned worktree issues
+- Incident logs for recurring issues (e.g., CI failures, merge conflicts)
 
 ## Integration with ISSUES.md
 

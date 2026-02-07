@@ -18,8 +18,8 @@ if [[ "$TARGET_DIR" == "-h" || "$TARGET_DIR" == "--help" ]]; then
     echo "Usage: $0 /path/to/project [--minimal|--full]"
     echo ""
     echo "Modes:"
-    echo "  --minimal  Install core patterns only (plans, claims, worktrees)"
-    echo "  --full     Install all patterns including acceptance gates"
+    echo "  --minimal  Install core patterns (plans, git hooks, doc-coupling)"
+    echo "  --full     Install all patterns including worktree coordination and acceptance gates"
     echo ""
     echo "After installation, edit meta-process.yaml to configure."
     exit 0
@@ -62,16 +62,12 @@ fi
 # Copy scripts
 echo "Copying scripts..."
 CORE_SCRIPTS=(
-    "check_claims.py"
     "check_plan_tests.py"
     "check_plan_blockers.py"
     "complete_plan.py"
     "parse_plan.py"
     "sync_plan_status.py"
-    "safe_worktree_remove.py"
     "merge_pr.py"
-    "finish_pr.py"
-    "meta_status.py"
 )
 
 for script in "${CORE_SCRIPTS[@]}"; do
@@ -90,8 +86,6 @@ if [[ "$MODE" == "--full" ]]; then
         "validate_spec.py"
         "check_locked_files.py"
         "check_feature_coverage.py"
-        "check_messages.py"
-        "send_message.py"
     )
     for script in "${FULL_SCRIPTS[@]}"; do
         if [[ -f "$SCRIPT_DIR/scripts/$script" ]]; then
@@ -99,11 +93,28 @@ if [[ "$MODE" == "--full" ]]; then
             echo -e "  ${GREEN}Copied: scripts/meta/$script${NC}"
         fi
     done
+
+    # Worktree coordination scripts (opt-in module)
+    WORKTREE_SCRIPTS=(
+        "check_claims.py"
+        "safe_worktree_remove.py"
+        "finish_pr.py"
+        "meta_status.py"
+        "check_messages.py"
+        "send_message.py"
+    )
+    mkdir -p "$TARGET_DIR/scripts/meta/worktree-coordination"
+    for script in "${WORKTREE_SCRIPTS[@]}"; do
+        if [[ -f "$SCRIPT_DIR/scripts/worktree-coordination/$script" ]]; then
+            cp "$SCRIPT_DIR/scripts/worktree-coordination/$script" "$TARGET_DIR/scripts/meta/worktree-coordination/"
+            echo -e "  ${GREEN}Copied: scripts/meta/worktree-coordination/$script${NC}"
+        fi
+    done
 fi
 
 # Copy git hooks
 echo "Copying git hooks..."
-for hook in commit-msg pre-commit pre-push post-commit; do
+for hook in commit-msg pre-commit post-commit; do
     if [[ -f "$SCRIPT_DIR/hooks/git/$hook" ]]; then
         cp "$SCRIPT_DIR/hooks/git/$hook" "$TARGET_DIR/hooks/"
         chmod +x "$TARGET_DIR/hooks/$hook"
@@ -115,8 +126,8 @@ done
 echo "Copying Claude Code hooks..."
 CORE_CLAUDE_HOOKS=(
     "protect-main.sh"
-    "check-cwd-valid.sh"
-    "block-worktree-remove.sh"
+    "check-hook-enabled.sh"
+    "check-references-reviewed.sh"
 )
 
 for hook in "${CORE_CLAUDE_HOOKS[@]}"; do
@@ -128,18 +139,23 @@ for hook in "${CORE_CLAUDE_HOOKS[@]}"; do
 done
 
 if [[ "$MODE" == "--full" ]]; then
-    FULL_CLAUDE_HOOKS=(
+    # Worktree coordination hooks (opt-in module)
+    WORKTREE_CLAUDE_HOOKS=(
+        "block-cd-worktree.sh"
+        "block-worktree-remove.sh"
+        "check-cwd-valid.sh"
+        "warn-worktree-cwd.sh"
         "check-file-scope.sh"
-        "check-references-reviewed.sh"
         "enforce-make-merge.sh"
         "check-inbox.sh"
         "notify-inbox-startup.sh"
     )
-    for hook in "${FULL_CLAUDE_HOOKS[@]}"; do
-        if [[ -f "$SCRIPT_DIR/hooks/claude/$hook" ]]; then
-            cp "$SCRIPT_DIR/hooks/claude/$hook" "$TARGET_DIR/.claude/hooks/"
-            chmod +x "$TARGET_DIR/.claude/hooks/$hook"
-            echo -e "  ${GREEN}Copied: .claude/hooks/$hook${NC}"
+    mkdir -p "$TARGET_DIR/.claude/hooks/worktree-coordination"
+    for hook in "${WORKTREE_CLAUDE_HOOKS[@]}"; do
+        if [[ -f "$SCRIPT_DIR/hooks/claude/worktree-coordination/$hook" ]]; then
+            cp "$SCRIPT_DIR/hooks/claude/worktree-coordination/$hook" "$TARGET_DIR/.claude/hooks/worktree-coordination/"
+            chmod +x "$TARGET_DIR/.claude/hooks/worktree-coordination/$hook"
+            echo -e "  ${GREEN}Copied: .claude/hooks/worktree-coordination/$hook${NC}"
         fi
     done
 fi
@@ -163,14 +179,11 @@ if [[ ! -f "$TARGET_DIR/ISSUES.md" ]]; then
 fi
 
 if [[ "$MODE" == "--full" ]]; then
-    if [[ ! -f "$TARGET_DIR/scripts/doc_coupling.yaml" ]]; then
-        cp "$SCRIPT_DIR/templates/doc_coupling.yaml.example" "$TARGET_DIR/scripts/doc_coupling.yaml"
-        echo -e "  ${GREEN}Created: scripts/doc_coupling.yaml${NC}"
-    fi
-
-    if [[ ! -f "$TARGET_DIR/scripts/governance.yaml" ]]; then
-        cp "$SCRIPT_DIR/templates/governance.yaml.example" "$TARGET_DIR/scripts/governance.yaml"
-        echo -e "  ${GREEN}Created: scripts/governance.yaml${NC}"
+    if [[ ! -f "$TARGET_DIR/scripts/relationships.yaml" ]]; then
+        if [[ -f "$SCRIPT_DIR/templates/doc_coupling.yaml.example" ]]; then
+            cp "$SCRIPT_DIR/templates/doc_coupling.yaml.example" "$TARGET_DIR/scripts/relationships.yaml"
+            echo -e "  ${GREEN}Created: scripts/relationships.yaml${NC}"
+        fi
     fi
 
     if [[ ! -f "$TARGET_DIR/acceptance_gates/EXAMPLE.yaml" ]]; then
@@ -206,8 +219,14 @@ fi
 # Copy pattern documentation
 echo "Copying pattern documentation..."
 mkdir -p "$TARGET_DIR/docs/meta-patterns"
-cp -r "$SCRIPT_DIR/patterns/"*.md "$TARGET_DIR/docs/meta-patterns/" 2>/dev/null || true
-echo -e "  ${GREEN}Copied pattern documentation to docs/meta-patterns/${NC}"
+cp "$SCRIPT_DIR/patterns/"*.md "$TARGET_DIR/docs/meta-patterns/" 2>/dev/null || true
+echo -e "  ${GREEN}Copied core pattern documentation to docs/meta-patterns/${NC}"
+
+if [[ "$MODE" == "--full" ]]; then
+    mkdir -p "$TARGET_DIR/docs/meta-patterns/worktree-coordination"
+    cp "$SCRIPT_DIR/patterns/worktree-coordination/"*.md "$TARGET_DIR/docs/meta-patterns/worktree-coordination/" 2>/dev/null || true
+    echo -e "  ${GREEN}Copied worktree coordination patterns to docs/meta-patterns/worktree-coordination/${NC}"
+fi
 
 # Copy CLAUDE.md templates
 echo "Copying CLAUDE.md templates..."
@@ -268,6 +287,6 @@ echo "  3. Run 'make status' to verify setup"
 fi
 echo ""
 echo "Quick start:"
-echo "  make worktree           # Create isolated workspace"
+echo "  git checkout -b plan-N-description  # Create feature branch"
 echo "  # ... do work ..."
-echo "  make pr-ready && make pr  # Ship it"
+echo "  make pr-ready && make pr            # Ship it"

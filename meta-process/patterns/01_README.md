@@ -4,7 +4,9 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 
 > **New to meta-process?** Start with the [Getting Started Guide](../GETTING_STARTED.md) for a step-by-step onboarding path.
 
-## Pattern Index
+## Core Patterns
+
+These patterns work with a simple branch-based workflow. No special infrastructure required.
 
 | Pattern | Problem Solved | Complexity | Requires |
 |---------|----------------|------------|----------|
@@ -24,10 +26,6 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 | [Plan Workflow](15_plan-workflow.md) | Untracked work, scope creep | Medium | — |
 | [Plan Blocker Enforcement](16_plan-blocker-enforcement.md) | Blocked plans started anyway | Medium | 15 |
 | [Verification Enforcement](17_verification-enforcement.md) | Untested "complete" work | Medium | 15 |
-| [Claim System](18_claim-system.md) | Parallel work conflicts | Medium | — |
-| [Worktree Enforcement](19_worktree-enforcement.md) | Main directory corruption from parallel edits | Low | 18 |
-| [Rebase Workflow](20_rebase-workflow.md) | Stale worktrees causing "reverted" changes | Low | 19 |
-| [PR Coordination](21_pr-coordination.md) | Lost review requests | Low | 15, 18 |
 | [Human Review Pattern](22_human-review-pattern.md) | Risky changes merged without review | Medium | 17 |
 | [Plan Status Validation](23_plan-status-validation.md) | Status/content mismatch in plans | Low | 15 |
 | [Phased ADR Pattern](24_phased-adr-pattern.md) | Complex features need phased rollout | Medium | 07 |
@@ -41,40 +39,43 @@ Reusable development process patterns. Each pattern solves a specific coordinati
 | [Recurring Issue Tracking](32_recurring-issue-tracking.md) | Issues recur despite "fixes", going in circles | Low | — |
 | [Uncertainty Resolution](33_uncertainty-resolution.md) | Uncertainties listed but never resolved | Low | 29 |
 
-> **Conventions vs. patterns:** Patterns 06 (Git Hooks), 11 (Terminology), and 26 (Ownership Respect) are infrastructure or conventions rather than coordination patterns. They have no dependencies and can be adopted independently.
+## Worktree Coordination Module (opt-in)
+
+For teams running **multiple AI instances concurrently** on the same codebase. Provides file isolation via git worktrees and claim-based coordination to prevent conflicts.
+
+> **Most projects don't need this.** A simple branch-based workflow (one instance at a time) works well. Enable this module only when parallel AI instances cause real coordination problems.
+
+See [worktree-coordination/README.md](worktree-coordination/README.md) for setup and usage.
+
+| Pattern | Problem Solved | Complexity | Requires |
+|---------|----------------|------------|----------|
+| [Claim System](worktree-coordination/18_claim-system.md) | Parallel work conflicts | Medium | — |
+| [Worktree Enforcement](worktree-coordination/19_worktree-enforcement.md) | Main directory corruption from parallel edits | Low | 18 |
+| [Rebase Workflow](worktree-coordination/20_rebase-workflow.md) | Stale worktrees causing "reverted" changes | Low | 19 |
+| [PR Coordination](worktree-coordination/21_pr-coordination.md) | Lost review requests | Low | 15, 18 |
 
 ## When to Use
 
 **Start with these (low overhead):**
 - CLAUDE.md Authoring - any project using AI coding assistants
-- Mock Enforcement - if using pytest with mocks
 - Git Hooks - any project with CI
 - Question-Driven Planning - AI tendency to guess instead of investigate
 - Uncertainty Tracking - preserve context across sessions
-- Uncertainty Resolution - systematic lifecycle for resolving tracked uncertainties
+- Plan Workflow - for larger tasks with multiple steps
 
 **Add these when needed (more setup):**
-- Plan Workflow - for larger tasks with multiple steps
-- Claim System - prevents duplicate work across worktrees or instances
-- Worktree Enforcement - if using parallel workspaces
-- Rebase Workflow - when using worktrees (prevents "reverted" changes)
+- Doc-Code Coupling - when docs drift from code
+- ADR + ADR Governance - when architectural decisions need to be preserved
 - Acceptance-Gate-Driven Development - verified progress, preventing AI drift/cheating
-- ADR - when architectural decisions need to be preserved long-term
-- Phased ADR Pattern - when building simpler first but preserving full design vision
-- Documentation Graph - when you need to trace ADR → target → current → code
 - Verification Enforcement - when plans need proof of completion
 - Conceptual Modeling - when AI instances repeatedly misunderstand core concepts
-- Gap Analysis - systematic comparison of current vs target architecture to inform planning
+- Gap Analysis - systematic comparison of current vs target architecture
 
-**Multi-CC only (enable when 3+ instances run concurrently):**
-- PR Coordination - tracks review requests between instances
-- Ownership Respect - prevents instances from editing each other's work
-- PR Review Process - standardized review checklists for cross-instance PRs
-- Human Review Pattern - gates for risky changes when self-merge is default
+**Multi-CC coordination (opt-in module):**
+- Claim System + Worktree Enforcement - when multiple AI instances run concurrently
+- PR Coordination + Ownership Respect - cross-instance work tracking
 
-> **Scripts also scale-dependent:** Inter-CC messaging (`send_message.py`, `check_messages.py`),
-> session tracking (`session_manager.py`), and file-level access control (`check_locked_files.py`)
-> are disabled by default. Enable only when multi-CC coordination becomes necessary.
+> **Conventions vs. patterns:** Patterns 06 (Git Hooks), 11 (Terminology), and 26 (Ownership Respect) are infrastructure or conventions rather than coordination patterns. They have no dependencies and can be adopted independently.
 
 ## Pattern Template
 
@@ -106,13 +107,6 @@ What to change for different projects.
 ## Limitations
 What this pattern doesn't solve.
 ```
-
-## Archive
-
-Deprecated patterns and non-pattern files are archived externally (not in repo):
-- `handoff-protocol.md` - Superseded by automatic context compaction
-- `META_TEMPLATE_SPEC_V0.1.md` - Comprehensive spec, superseded by GETTING_STARTED.md + individual patterns
-- `PLAN_TEMPLATE_HOOKS.md` - Completed implementation plan (not a pattern)
 
 ## Origin
 

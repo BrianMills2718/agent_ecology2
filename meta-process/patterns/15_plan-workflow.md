@@ -278,9 +278,8 @@ vim docs/plans/CLAUDE.md
 ### Implementing a plan (4-step workflow)
 
 ```bash
-# 1. START - Claim + create isolated workspace
-make worktree              # Interactive: claim + create worktree
-# You're now in worktrees/plan-33-my-feature/
+# 1. START - Create feature branch
+git checkout -b plan-33-my-feature
 
 # 2. IMPLEMENT - TDD approach
 python scripts/check_plan_tests.py --plan 33 --tdd  # See what tests to write
@@ -290,19 +289,10 @@ python scripts/check_plan_tests.py --plan 33 --tdd  # See what tests to write
 # 3. VERIFY - All CI checks locally
 make check                 # Runs: test, mypy, lint, doc-coupling
 
-# 4. SHIP - PR + merge + cleanup (all automated)
+# 4. SHIP - PR + merge + cleanup
 make pr-ready && make pr   # Rebase, push, create PR
-# Wait for CI to pass, then FROM MAIN (not worktree):
-cd /path/to/main && make finish BRANCH=plan-33-my-feature PR=N
-# This single command: merges PR + releases claim + deletes worktree + pulls main
-```
-
-**Critical:** The `make finish` command MUST run from main, not from the worktree.
-The `cd` and `make finish` must be in the same bash command to prevent shell CWD issues.
-
-Example:
-```bash
-cd /home/user/project && make finish BRANCH=plan-33-my-feature PR=123
+# Wait for CI to pass, then:
+make finish BRANCH=plan-33-my-feature PR=N
 ```
 
 ### Checking plan status

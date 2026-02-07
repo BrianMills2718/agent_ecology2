@@ -14,7 +14,7 @@ Root cause: CC instances default to being helpful by fixing problems they see, w
 
 ## Solution
 
-**Priority 0: Check ownership before acting.** Before recommending any action on a PR, worktree, or claimed work:
+**Priority 0: Check ownership before acting.** Before recommending any action on a PR or claimed work:
 
 1. Run `python scripts/meta_status.py` and check the "Yours?" column
 2. Only act on items marked "✓ YOURS"
