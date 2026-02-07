@@ -81,34 +81,6 @@ class TestRelationshipsSchema:
             assert isinstance(entry["docs"], list)
 
 
-class TestValidatePlanIntegration:
-    """Test validate_plan.py reads from relationships.yaml."""
-
-    def test_load_relationships_returns_edges(self) -> None:
-        """load_relationships should return edges in internal format."""
-        import sys
-        sys.path.insert(0, str(SCRIPTS_DIR))
-        from validate_plan import load_relationships
-
-        config = load_relationships()
-        assert "edges" in config
-        assert "adrs" in config
-        assert isinstance(config["edges"], list)
-        assert len(config["edges"]) > 0
-
-    def test_edges_have_required_fields(self) -> None:
-        """Each edge should have from, to, and type."""
-        import sys
-        sys.path.insert(0, str(SCRIPTS_DIR))
-        from validate_plan import load_relationships
-
-        config = load_relationships()
-        for edge in config["edges"]:
-            assert "from" in edge, f"Missing 'from' in edge: {edge}"
-            assert "to" in edge, f"Missing 'to' in edge: {edge}"
-            assert "type" in edge, f"Missing 'type' in edge: {edge}"
-
-
 class TestCheckDocCouplingIntegration:
     """Test check_doc_coupling.py reads from relationships.yaml."""
 

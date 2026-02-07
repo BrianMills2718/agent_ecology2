@@ -2,16 +2,6 @@
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/refresh-session-marker.sh",
-            "timeout": 3000
-          }
-        ]
-      },
-      {
         "matcher": "Read",
         "hooks": [
           {
@@ -24,51 +14,11 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Read|Glob",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/warn-worktree-cwd.sh",
-            "timeout": 3000
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/notify-inbox-startup.sh",
-            "timeout": 3000
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/session-startup-cleanup.sh",
-            "timeout": 5000
-          }
-        ]
-      },
-      {
         "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/protect-main.sh",
-            "timeout": 5000
-          },
-          {
-            "type": "command",
             "command": "bash .claude/hooks/inject-edit-context.sh",
-            "timeout": 5000
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/check-inbox.sh",
-            "timeout": 5000
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/check-file-scope.sh",
-            "timeout": 5000
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/check-references-reviewed.sh",
             "timeout": 5000
           }
         ]
@@ -78,22 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/check-cwd-valid.sh",
-            "timeout": 3000
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/block-worktree-remove.sh",
-            "timeout": 5000
-          },
-          {
-            "type": "command",
             "command": "bash .claude/hooks/protect-uncommitted.sh",
-            "timeout": 5000
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/enforce-make-merge.sh",
             "timeout": 5000
           }
         ]

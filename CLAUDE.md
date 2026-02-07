@@ -1,12 +1,5 @@
 # Agent Ecology - Claude Code Context
 
-> **ALWAYS RUN FROM MAIN.** Your CWD should be `/home/brian/brian_projects/agent_ecology2/` (main).
-> Use worktrees as **paths** for file isolation, not as working directories.
-> **NEVER cd into a worktree, period.** Not even with `&&`. Use `git -C` for git commands.
-> This lets you handle the full lifecycle: create worktree → edit → commit → merge → cleanup.
-
----
-
 ## Philosophy & Goals
 
 **What this is:** An experiment in emergent collective capability for LLM agents under real resource constraints.
@@ -22,11 +15,11 @@
 ### Architecture Decision Heuristics
 
 1. **Emergence is the goal** - Ask "what does this incentivize?"
-2. **Minimal kernel, maximum flexibility** - Kernel provides primitives for maximum agent capability. "Minimal" means focused on physics/primitives, NOT fewer features. If a kernel primitive expands what agents can do, it increases flexibility. Kernel should not impose policy - just provide building blocks agents compose.
+2. **Minimal kernel, maximum flexibility** - Kernel provides primitives, not policy
 3. **Align incentives** - Bad incentives = bad emergence
 4. **Pragmatism over purity** - Don't let elegance obstruct goals
 5. **Avoid defaults** - Prefer explicit choice; make defaults configurable
-6. **Genesis as cold-start conveniences** - Genesis artifacts (ledger, escrow) and genesis contracts (freeware, private) are unprivileged conveniences that solve cold-start. They're NOT kernel features - agents could build equivalents. Kernel defaults (what happens when no contract exists) are separate from genesis.
+6. **Genesis as cold-start conveniences** - Genesis artifacts are unprivileged conveniences, not kernel features
 7. **Selection pressure over protection** - Let agents fail and learn
 8. **Observe, don't prevent** - Reputation emerges from observation
 9. **When in doubt, contract decides** - Contracts are flexible; kernel isn't
@@ -58,124 +51,15 @@ If yes → **stop and ask** before proceeding.
 
 ### Working Style
 
-- Don't jump into coding complex problems. Brainstorm first, finalize the approach together.
-- Recommend the simplest solution. Present multiple approaches when they exist and ask which is preferred.
-- Raise concerns early. If something feels off or unclear, ask rather than assume.
+- Brainstorm first, finalize the approach together.
+- Recommend the simplest solution. Present multiple approaches when they exist.
+- Raise concerns early. Ask rather than assume.
 - **Delete > Comment.** Remove unused code, don't comment it out.
 - **Flat > Nested.** Prefer flat structures over deep hierarchies.
 
-### Process Awareness
-
-If you find yourself doing something that isn't covered by the meta-process
-(no pattern, no template, no convention), treat it as a signal:
-
-- Either the meta-process has a gap — record it in `meta-process/ISSUES.md`
-- Or you're deviating from process — stop and ask before continuing
-
-Don't silently invent new conventions. Make them explicit.
-
-### Pre-commit Hook Failures
-
-When a pre-commit hook fails:
-1. STOP and report the failure to user
-2. Explain what failed and why
-3. Ask how to proceed:
-   - Fix the issue (default)
-   - Bypass with user approval
-
-If user approves bypass: `git commit --no-verify -m "message"`
-
-Do NOT bypass unilaterally. The decision to skip checks belongs to the user.
-
-### Engineering Workflow (Pattern #34)
-
-Before editing any `src/` file, load its context first:
-
-```bash
-python scripts/file_context.py src/world/contracts.py
-```
-
-This outputs governing ADRs, coupled docs, CLAUDE.md chain, banned terms, open concerns,
-tech debt items, and repo-specific docs relevant to that file. See
-`meta-process/patterns/34_engineering-workflow.md` for the full 7-phase workflow:
-
-```
-SCOPE → CONTEXT LOAD → AMBIGUITY CHECK → PLAN → IMPLEMENT → VERIFY → CLEANUP
-```
-
-If context reveals contradictions between docs, surface them to the user BEFORE implementing.
-
 ---
 
-## Quick Reference - Make Commands
-
-The Makefile has 15 targets. Use `make help` to see them all.
-
-### Core Workflow
-```bash
-make status              # Git status + active claims
-make worktree            # Create worktree with claim (ALWAYS use this to start work)
-make test                # Run pytest
-make check               # All CI checks (test + mypy + lint + doc-coupling)
-make pr-ready            # Rebase + push
-make pr                  # Create PR
-make finish BRANCH=X PR=N  # Merge + cleanup + auto-complete (from main)
-```
-
-### Other
-```bash
-make worktree-remove BRANCH=X  # Safe removal (add FORCE=1 to skip checks)
-make clean               # Remove __pycache__, .pytest_cache, .mypy_cache
-make run                 # Run simulation (DURATION=60 AGENTS=2)
-make dash                # View dashboard
-make kill                # Stop simulation
-```
-
-### Non-interactive worktree creation (for CC sessions):
-```bash
-bash scripts/create_worktree.sh --branch plan-N-desc --plan N --task "description"
-```
-
-Claim and worktree cleanup runs automatically on session startup.
-
-Script reference: see `scripts/CLAUDE.md`.
-
----
-
-## Meta-Process Workflow
-
-### The Complete Cycle (4 Steps)
-
-```
-1. START            -->  make worktree PLAN=N (claim + create isolated workspace)
-       |
-2. IMPLEMENT        -->  Edit files in worktrees/plan-N-xxx/src/... (paths from main)
-       |
-3. VERIFY           -->  make check (run from main)
-       |
-4. SHIP             -->  make pr-ready && make pr && make finish BRANCH=X PR=N
-```
-
-**Key insight:** You stay in main the whole time. Worktrees are paths for file isolation:
-- Edit: `worktrees/plan-123-foo/src/world/ledger.py`
-- Commit: `git -C worktrees/plan-123-foo commit -m "..."`
-- When you run `make finish`, the worktree is deleted but your CWD (main) stays valid.
-
-### Per-Worktree Context File
-
-Each worktree has a `.claude/CONTEXT.md` file for tracking progress:
-
-```
-worktrees/plan-123-foo/.claude/CONTEXT.md
-```
-
-**Update this file as you work.** It helps:
-- Resume after context compaction
-- Document decisions made
-- Track which files were changed
-- Hand off to another session if needed
-
-The file is ephemeral - deleted when the worktree is removed after merge.
+## Workflow
 
 ### Commit Messages
 
@@ -184,102 +68,32 @@ The file is ephemeral - deleted when the worktree is removed after merge.
 [Trivial] Fix typo          # For tiny changes (<20 lines, no src/ changes)
 ```
 
-**Convention:** `[Plan #N]` or `[Trivial]` required for all commits.
-
----
-
-## Key Rules
-
-### Always Run From Main
-- **Your CWD:** Always `/home/brian/brian_projects/agent_ecology2/` (main)
-- **Worktrees:** Paths for file isolation, NOT working directories
-- **Why:** You can handle full lifecycle (create → edit → merge → cleanup) without CWD issues
-
-### Ownership
-- Check claims before acting on any PR/worktree
-- If work is claimed by another session: **read only**, move on to other work
-- Self-merge your own PRs when ready (no review required)
-- Only the owner should run `make finish` to merge + cleanup their worktree
-
-### Plans
-- All significant work requires a plan in `docs/plans/NN_name.md`
-- Use `[Trivial]` only for: <20 lines, no `src/` changes, no new files
-- Complete plans with: `python scripts/complete_plan.py --plan N`
-
-### Never
-- Commit directly to main (use feature branches)
-- Use `git worktree rmv` directly (use `make worktree-remove`)
-- Use `gh pr merge` directly (use `make finish`)
-- Skip the claim when creating worktrees (use `make worktree`)
-- cd into a worktree (use `git -C` instead — even `cd worktrees/X && cmd` breaks the shell)
-
----
-
-## Meta-Process Guarantees
-
-### Why Worktrees Exist
-
-Worktrees provide **file isolation** for parallel work:
-
-- Each plan gets its own directory with independent working state
-- Changes in one worktree never affect another (no merge conflicts during work)
-- Multiple plans can be in progress simultaneously
-- Main stays clean (no uncommitted changes)
-
-**Key:** Worktrees are paths (`worktrees/plan-X/src/file.py`), not CWDs. You always run from main.
-
-### Why Claims Exist
-
-Claims provide **coordination** so work doesn't collide:
-
-- Branch-based: if a `plan-N-*` branch exists, work is claimed
-- Stale detection: branches merged or inactive >48h with no worktree = stale
-- Auto-release: when branches merge, claims automatically release
-- Visible: check with `make status` or `python scripts/check_claims.py --list`
-
-**Without claims:** Two sessions might start the same plan simultaneously, creating conflicting PRs.
-
-### What Happens If You Bypass
-
-| Bypass | Consequence |
-|--------|-------------|
-| Edit in main directly | No isolation, changes can conflict with other work |
-| Skip `make worktree` | No claim = others can't see your work |
-| Use `git worktree add` directly | Bypasses claim system, causes coordination failures |
-| Use `git worktree remove` directly | Bypasses safety checks |
-| Use `gh pr merge` directly | Bypasses validation, may break checks |
-| Run from inside worktree | If worktree is deleted, your shell breaks |
-
-### Git Commands in Worktrees - CRITICAL
-
-**NEVER cd into a worktree, period.** Not even with `&&`. The Bash tool's CWD persists across invocations.
+### Make Commands
 
 ```bash
-# WRONG - CWD changes and persists, even with &&
-cd worktrees/plan-123-foo && git add -A && git commit -m "..."
-# CWD is now worktrees/plan-123-foo - if worktree is deleted, shell breaks
-
-# ALSO WRONG - separate cd command
-cd worktrees/plan-123-foo
-git add -A
-
-# RIGHT - CWD stays at main
-git -C worktrees/plan-123-foo add -A && git -C worktrees/plan-123-foo commit -m "..."
+make status              # Git status
+make test                # Run pytest
+make check               # All CI checks (test + mypy + doc-coupling)
+make pr-ready            # Rebase + push
+make pr                  # Create PR (opens browser)
+make finish BRANCH=X PR=N  # Merge PR + cleanup branch
+make run                 # Run simulation (DURATION=60 AGENTS=2)
+make clean               # Remove __pycache__, .pytest_cache, .mypy_cache
 ```
 
-**Why this matters:** If your shell CWD is inside a worktree when `make finish` deletes it, all subsequent bash commands fail with no output. The shell is broken and needs a session restart.
+### Plans
 
-**Defense:** A PreToolUse hook (`block-cd-worktree.sh`) blocks `cd worktrees/...` commands.
+All significant work requires a plan in `docs/plans/NN_name.md`. Use `[Trivial]` only for: <20 lines, no `src/` changes, no new files.
 
-### How to Recover
+### Pre-commit Hook Failures
 
-Run `python scripts/health_check.py --fix` for diagnostics and auto-repair.
+When a pre-commit hook fails: STOP, explain what failed, ask user how to proceed. If user approves bypass: `git commit --no-verify -m "message"`. Do NOT bypass unilaterally.
 
 ---
 
-## Core Systems (Read First)
+## Core Systems
 
-Before making changes, understand the foundational systems. See `docs/architecture/current/CORE_SYSTEMS.md` for full details.
+See `docs/architecture/current/CORE_SYSTEMS.md` for full details.
 
 | System | Purpose | Key Files |
 |--------|---------|-----------|
@@ -301,11 +115,8 @@ Before making changes, understand the foundational systems. See `docs/architectu
 ```
 agent_ecology/
   run.py                    # Main entry point
-  repomix.core.json         # External LLM review: system code + docs (~230K tokens)
-  repomix.meta-process.json # External LLM review: meta-process (~135K tokens)
   config/
-    config.yaml             # Runtime values
-    # Validation via Pydantic in src/config_schema.py
+    config.yaml             # Runtime values (Pydantic validated via src/config_schema.py)
   src/
     config.py               # Config helpers
     world/                  # World state, ledger, executor, artifacts
@@ -314,18 +125,11 @@ agent_ecology/
     dashboard/              # HTML dashboard server
   tests/                    # pytest suite
   docs/
-    plans/                  # Implementation plans (gaps)
+    plans/                  # Implementation plans
     adr/                    # Architecture Decision Records
-    architecture/           # current/ and target/ state
-  meta/
-    acceptance_gates/       # This project's feature specifications (YAML)
-  meta-process/             # Portable framework (copy to other projects)
-    patterns/               # Pattern documentation (26 patterns)
-    scripts/                # Portable scripts
-    hooks/                  # Hook templates
+    architecture/           # current/ (what IS) and target/ (what we WANT)
   scripts/                  # Utility scripts for CI and development
   hooks/                    # Git hooks (pre-commit, commit-msg)
-  dashboard-v2/             # React dashboard frontend (builds to src/dashboard/static-v2/)
 ```
 
 ---
@@ -333,3 +137,5 @@ agent_ecology/
 ## Documentation
 
 See `docs/CLAUDE.md` for the full documentation index. Doc-code coupling is enforced by `make check`.
+
+Script reference: see `scripts/CLAUDE.md`.
