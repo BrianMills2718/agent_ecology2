@@ -421,6 +421,13 @@ governance:
       Checkpoints preserve working memory (ADR-0009).
       Behavioral continuity on resume.
 
+  - source: src/simulation/types.py
+    adrs: [20]
+    context: |
+      Type definitions for error tracking (Plan #129).
+      ErrorRecord/ErrorStats used by runner and supervisor.
+      Error events follow schema contract (ADR-0020).
+
   # Plan #293: Additional simulation module governance
   - source: src/simulation/supervisor.py
     adrs: [10, 14]
@@ -472,6 +479,44 @@ governance:
     context: |
       Health assessment from event stream (ADR-0020).
 
+  - source: src/dashboard/dependency_graph.py
+    adrs: [1, 20]
+    context: |
+      Artifact dependency graph construction and metrics.
+      Visualizes artifact relationships (ADR-0001).
+      Computed from event stream (ADR-0020).
+
+  - source: src/dashboard/kpis.py
+    adrs: [1, 20]
+    context: |
+      Ecosystem health KPI calculations (Plan #76).
+      Capital flow and emergence metrics from artifacts (ADR-0001).
+      Computed from event-derived state (ADR-0020).
+
+  - source: src/dashboard/models.py
+    adrs: [20]
+    context: |
+      Pydantic response schemas for dashboard API.
+      Schema definitions for event-derived data (ADR-0020).
+
+  - source: src/dashboard/process_manager.py
+    adrs: [14]
+    context: |
+      Simulation subprocess spawning and stopping.
+      External to simulation kernel — manages process lifecycle (ADR-0014).
+
+  - source: src/dashboard/run_manager.py
+    adrs: [14]
+    context: |
+      Run discovery, selection, and resume (Plan #224).
+      Manages historical simulation runs for continuous execution (ADR-0014).
+
+  - source: src/dashboard/watcher.py
+    adrs: [20]
+    context: |
+      File watching (watchdog) for live JSONL updates.
+      Streams events for real-time dashboard (ADR-0020).
+
   # ===========================================================================
   # CONFIGURATION
   # ===========================================================================
@@ -482,6 +527,40 @@ governance:
       Config validation including contract defaults (ADR-0019).
       default_when_null, default_on_missing settings (ADR-0017).
       Method costs for artifact operations (ADR-0001, ADR-0003).
+
+  - source: src/world/capabilities.py
+    adrs: [3, 23]
+    context: |
+      External capabilities with human-approved access (Plan #300).
+      Bridges kernel to external systems (ADR-0003).
+      Tracks usage against budgets with resource attribution (ADR-0023).
+
+  - source: src/world/constants.py
+    adrs: [1, 7]
+    context: |
+      Centralized kernel constants (Plan #305).
+      System owner ID, genesis prefix, kernel contract IDs (ADR-0007).
+      Source of truth for reserved system principals (ADR-0001).
+
+  - source: src/world/errors.py
+    adrs: [1, 20]
+    context: |
+      Standardized error response conventions.
+      Errors are observable data (ADR-0001).
+      Error events follow schema contract (ADR-0020).
+
+  - source: src/world/invocation_registry.py
+    adrs: [20, 23]
+    context: |
+      In-memory invocation history for observability (Gap #27).
+      Invocation events per schema (ADR-0020).
+      Attribution for artifact-to-artifact calls (ADR-0023).
+
+  - source: src/world/resources.py
+    adrs: [23]
+    context: |
+      Canonical resource type constants (Plan #166, TD-004).
+      Resource categories: depletable, allocatable, renewable (ADR-0023).
 
   # NOTE: src/world/genesis/factory.py removed in Plan #254
   # Genesis artifacts replaced with kernel primitives (transfer, mint)
@@ -717,6 +796,20 @@ couplings:
       - docs/architecture/current/ci.md
     description: "CI pipeline"
 
+  # External capabilities
+  - sources:
+      - src/world/capabilities.py
+    docs:
+      - docs/architecture/current/capabilities.md
+    description: "External capabilities manager, human-approved APIs"
+
+  # Mint tasks
+  - sources:
+      - src/world/mint_tasks.py
+    docs:
+      - docs/architecture/current/mint.md
+    description: "Task-based mint system"
+
   # ---------------------------------------------------------------------------
   # SOFT COUPLINGS (advisory warnings, never block commits)
   # ---------------------------------------------------------------------------
@@ -765,6 +858,45 @@ couplings:
     docs:
       - docs/ONTOLOGY.yaml
     description: "Resource types and scrip documented in conceptual model"
+    soft: true
+
+  # World infrastructure
+  - sources:
+      - src/world/constants.py
+      - src/world/errors.py
+      - src/world/resources.py
+    docs:
+      - docs/architecture/current/CORE_SYSTEMS.md
+    description: "Kernel constants, error conventions, resource type definitions"
+    soft: true
+
+  # Invocation tracking
+  - sources:
+      - src/world/invocation_registry.py
+    docs:
+      - docs/architecture/current/artifacts_executor.md
+    description: "Invocation history tracking for observability"
+    soft: true
+
+  # Dashboard analysis
+  - sources:
+      - src/dashboard/dependency_graph.py
+      - src/dashboard/kpis.py
+      - src/dashboard/models.py
+      - src/dashboard/process_manager.py
+      - src/dashboard/run_manager.py
+      - src/dashboard/watcher.py
+    docs:
+      - docs/architecture/current/supporting_systems.md
+    description: "Dashboard analysis, KPIs, process management, run management"
+    soft: true
+
+  # Simulation types
+  - sources:
+      - src/simulation/types.py
+    docs:
+      - docs/architecture/current/execution_model.md
+    description: "Error tracking types used by runner and supervisor"
     soft: true
 
   # Agent cognitive architecture

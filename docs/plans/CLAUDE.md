@@ -107,6 +107,7 @@ Master index of all gaps and their implementation plans.
 | 305 | [Final Tech Debt Cleanup (TD-008, TD-011, TD-012)](305_tech_debt_final_cleanup.md) | Medium | ✅ Complete | - |
 | 306 | [Meta-Process Engineering Workflow + Documentation Cleanup](306_engineering_workflow.md) | Medium | ✅ Complete | - |
 | 307 | [Dashboard Audit — v1 vs v2 and Dead Code](307_dashboard_audit.md) | Medium | ❓ | - |
+| 308 | [Wire Up Disconnected Features Found in Dead Code Audit](308_dead_code_gaps.md) | Medium | ❓ | - |
 ---
 
 ## TDD Workflow
