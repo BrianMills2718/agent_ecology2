@@ -1,30 +1,15 @@
 # Agent Ecology - Common Commands
 # Usage: make <target>
 
-# Get the main repo directory (first worktree listed is always main)
-# This ensures we always use main's scripts, not potentially stale worktree copies
-MAIN_DIR := $(shell git worktree list | head -1 | awk '{print $$1}')
-
-.PHONY: help status worktree worktree-remove test check pr-ready pr finish clean run dash dash-run kill analyze
+.PHONY: help status test check pr-ready pr finish clean run dash dash-run kill analyze
 
 # --- Core workflow ---
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-status:  ## Show git and claim status
-	@echo "=== Git Status ==="
+status:  ## Show git status
 	@git status -sb
-	@echo ""
-	@echo "=== Active Claims ==="
-	@python scripts/check_claims.py --list 2>/dev/null || true
-
-worktree:  ## Create worktree with mandatory claim (interactive)
-	@./scripts/create_worktree.sh
-
-worktree-remove:  ## Remove a worktree safely (usage: make worktree-remove BRANCH=name [FORCE=1])
-	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree-remove BRANCH=feature-name [FORCE=1]"; exit 1; fi
-	python $(MAIN_DIR)/scripts/safe_worktree_remove.py $(if $(FORCE),--force,) $(MAIN_DIR)/worktrees/$(BRANCH)
 
 test: ensure-hooks  ## Run pytest
 	pytest tests/ -v --tb=short
@@ -40,9 +25,9 @@ pr-ready:  ## Rebase and push (run before creating PR)
 pr:  ## Create PR (opens browser)
 	GIT_CONFIG_NOSYSTEM=1 gh pr create --web
 
-finish:  ## Complete PR lifecycle: merge + cleanup (usage: make finish BRANCH=plan-XX PR=N [SKIP_COMPLETE=1] [SKIP_QUIZ=1]) - RUN FROM MAIN!
-	@if [ -z "$(BRANCH)" ] || [ -z "$(PR)" ]; then echo "Usage: make finish BRANCH=plan-XX PR=N [SKIP_COMPLETE=1] [SKIP_QUIZ=1]"; exit 1; fi
-	cd $(MAIN_DIR) && python $(MAIN_DIR)/scripts/finish_pr.py --branch $(BRANCH) --pr $(PR) $(if $(SKIP_COMPLETE),--skip-complete,) $(if $(SKIP_QUIZ),--skip-quiz,)
+finish:  ## Merge PR + cleanup (usage: make finish BRANCH=name PR=N)
+	@if [ -z "$(BRANCH)" ] || [ -z "$(PR)" ]; then echo "Usage: make finish BRANCH=name PR=N"; exit 1; fi
+	python scripts/merge_and_cleanup.py --branch $(BRANCH) --pr $(PR)
 
 clean:  ## Remove generated files
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
@@ -71,7 +56,7 @@ analyze:  ## Analyze simulation run (usage: make analyze RUN=logs/latest)
 
 install-hooks:
 	@mkdir -p .git/hooks
-	@for hook in pre-commit commit-msg pre-push post-commit; do \
+	@for hook in pre-commit commit-msg post-commit; do \
 		if [ -f hooks/$$hook ]; then \
 			ln -sf ../../hooks/$$hook .git/hooks/$$hook 2>/dev/null || true; \
 		fi; \

@@ -111,24 +111,15 @@ class TestHookIntegration:
 
 
 class TestHookConfiguration:
-    """Tests for hook configuration in meta-process.yaml."""
-
-    def test_hook_config_exists(self) -> None:
-        """Test that inject_governance_context config exists."""
-        meta_process_path = Path(__file__).parent.parent.parent / "meta-process.yaml"
-        with open(meta_process_path) as f:
-            config = yaml.safe_load(f)
-
-        assert "hooks" in config
-        assert "inject_governance_context" in config["hooks"]
+    """Tests for hook configuration via meta_config."""
 
     def test_hook_enabled_by_default(self) -> None:
-        """Test that hook is enabled by default."""
-        meta_process_path = Path(__file__).parent.parent.parent / "meta-process.yaml"
-        with open(meta_process_path) as f:
-            config = yaml.safe_load(f)
+        """Test that inject_governance_context hook defaults to enabled."""
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
+        from meta_config import is_hook_enabled
 
-        assert config["hooks"]["inject_governance_context"] is True
+        assert is_hook_enabled("inject_governance_context") is True
 
 
 class TestSettingsJson:

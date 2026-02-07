@@ -10,10 +10,9 @@ Catch issues before they reach CI. These hooks run locally on every commit.
 
 | Hook | Purpose |
 |------|---------|
-| `pre-commit` | Doc-coupling, CLAUDE.md validation, mypy, config validation, branch divergence check |
+| `pre-commit` | Plan index regeneration, doc-coupling check, mypy on staged files |
 | `commit-msg` | Validates commit message format (`[Plan #N]` or `[Trivial]`) |
 | `post-commit` | Reminds about unpushed commits to prevent divergence |
-| `pre-push` | Warns if pushing branch without active claim (warning only) |
 
 ## Installation
 
@@ -29,7 +28,6 @@ make install-hooks
 ```
 
 The Makefile creates symlinks from `.git/hooks/` to this directory.
-Worktrees share hooks with the main repo automatically.
 
 ## Bypass
 
@@ -42,16 +40,9 @@ git commit --no-verify -m "..."
 ## What They Check
 
 **pre-commit:**
-1. Doc-coupling violations (strict mode)
-2. Plan index regeneration
-3. CLAUDE.md validation (progressive — only checks touched directories)
-4. Mypy on staged `src/` files
-5. Coupling config validity
-6. Plan status consistency (when plan files staged)
-7. Branch divergence detection (blocks if diverged, warns if behind)
-
-> **Note:** Plan status check (#4) prevents manual status edits that don't update both
-> the plan file AND the index. Always use `complete_plan.py` instead of editing manually.
+1. Plan index regeneration (`generate_plan_index.py`)
+2. Doc-coupling violations (strict mode)
+3. Mypy on staged `src/` files (non-blocking warning)
 
 **commit-msg:**
 1. Requires `[Plan #N]` or `[Trivial]` prefix
@@ -70,5 +61,4 @@ git commit --no-verify -m "..."
 
 ## Related
 
-- `meta/patterns/06_git-hooks.md` - Full pattern documentation
 - `.github/workflows/ci.yml` - CI runs similar checks
