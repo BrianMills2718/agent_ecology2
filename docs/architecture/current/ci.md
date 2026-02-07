@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-02-06 (removed legacy doc_coupling.yaml/governance.yaml, simplified coupling rules)
+Last verified: 2026-02-07 (expanded governance coverage in relationships.yaml to 54/72 src files)
 
 ---
 
@@ -142,57 +142,28 @@ Combines code quality checks into a single job.
 
 **Checks:**
 1. **mock-usage** - Detects suspicious mock patterns
-2. **new-code-tests** - Ensures new source files have tests
-3. **feature-coverage** - Reports files not assigned to features (informational)
 
 ```yaml
 - uses: actions/checkout@v4 (with fetch-depth: 0)
 - uses: actions/setup-python@v5 (Python 3.11)
 - pip install pyyaml
 - python scripts/check_mock_usage.py --strict
-- python scripts/check_new_code_tests.py --base origin/main --strict --suggest
-- python scripts/check_feature_coverage.py --warn-only  # continue-on-error
 ```
 
 **What it catches:**
 - Mocking internal `src.` code instead of testing it
-- New files without test coverage
-- Unassigned source files (informational)
 
 ### 6. meta (PRs only)
 
 Combines meta-process checks. Only runs on pull requests.
 
 **Checks:**
-1. **locked-sections** - Detects modifications to locked acceptance criteria
-2. **validate-specs** - Validates feature specification files
-3. **claim-verification** - Verifies branch was claimed (informational)
-4. **human-review-check** - Checks for plans requiring human review (informational)
-5. **adr-requirement** - Checks ADR coverage for core files (informational)
-
-```yaml
-- uses: actions/checkout@v4 (with fetch-depth: 0)
-- uses: actions/setup-python@v5 (Python 3.11)
-- pip install pyyaml
-- python scripts/check_locked_files.py --base origin/main
-- python scripts/validate_spec.py --all
-- (inline claim verification)  # continue-on-error
-- (inline human review check)  # continue-on-error
-- (inline ADR requirement check)  # continue-on-error
-```
+1. **claim-verification** - Verifies branch was claimed (informational)
+2. **human-review-check** - Checks for plans requiring human review (informational)
 
 **What it catches:**
-- Modifications to locked acceptance criteria
-- Invalid feature specification format
 - PRs from unclaimed branches (informational)
 - PRs for plans with `## Human Review Required` section
-- Core file changes without ADR references
-
-**Human Review Check:**
-Extracts plan numbers from commit messages, checks if plan files have `## Human Review Required` section, and warns if human review is needed before merge.
-
-**ADR Requirement Check:**
-Monitors changes to core architecture files (`src/world/{ledger,executor,genesis_*,action}.py`). If modified, checks if commits reference ADRs and provides informational guidance.
 
 ### 7. post-merge (main only)
 
