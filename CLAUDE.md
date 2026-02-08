@@ -59,11 +59,22 @@ If yes → **stop and ask** before proceeding.
 
 ### Hook-Injected Context (IMPORTANT)
 
-Hooks inject governance context, constraint checks, and quizzes as system-reminders after reading or editing src/ files. **You MUST surface these to the user visibly:**
+Hooks inject governance context, constraint checks, and quizzes as system-reminders after reading or editing src/ files. These serve two purposes: (1) giving you the right context before making changes, and (2) keeping the user informed.
 
-1. **After editing a src/ file:** A post-edit quiz appears. Show the quiz questions to the user and answer each one explicitly. Don't silently absorb them.
+**SHOW_USER rule:** When a system-reminder contains `[SHOW_USER]...[/SHOW_USER]` tags, you **MUST** display that content to the user before proceeding. Do not silently absorb it. This is how the meta-process surfaces constraints and quiz questions to the human in the loop.
+
+Specifically:
+1. **After editing a src/ file:** A post-edit quiz appears. Show the quiz questions to the user and answer each one explicitly.
 2. **Before editing a src/ file:** Constraint checks appear. State how your edit respects each constraint. If a constraint is irrelevant, say so.
 3. **After reading a governed file:** Governance context appears. Mention relevant ADRs and constraints when they affect your planned changes.
+
+Visibility is configurable via `meta-process.yaml` → `visibility` section. When set to `on-demand`, tags are omitted but you still see and use the context.
+
+### User Review and Quiz (On-Demand)
+
+The user may ask to review context or be quizzed at any time:
+- **"Show me the context for [file]"** → Run `python scripts/get_governance_context.py [file]` and `python scripts/file_context.py [file]`, display results.
+- **"Quiz me on [area]"** → Run `python scripts/generate_quiz.py [file]`, display the questions to the user and let them answer.
 
 ---
 
@@ -85,6 +96,8 @@ make check               # All CI checks (test + mypy + doc-coupling)
 make pr-ready            # Rebase + push
 make pr                  # Create PR (opens browser)
 make finish BRANCH=X PR=N  # Merge PR + cleanup branch
+make branches            # List stale remote branches
+make branches-delete     # Delete stale remote branches (merged PRs)
 make run                 # Run simulation (DURATION=60 AGENTS=2)
 make clean               # Remove __pycache__, .pytest_cache, .mypy_cache
 ```

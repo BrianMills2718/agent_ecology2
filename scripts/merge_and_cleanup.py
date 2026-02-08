@@ -35,8 +35,15 @@ def main() -> int:
     print("Pulling latest main...")
     run(["git", "pull", "--ff-only"])
 
-    # Clean up local branch if it still exists
-    run(["git", "branch", "-d", args.branch], check=False)
+    # Clean up local branch — use -D because squash-merge creates new hashes
+    # so git branch -d (which checks merge status) fails on squash-merged branches
+    result = run(["git", "branch", "-D", args.branch], check=False)
+    if result.returncode == 0:
+        print(f"Deleted local branch {args.branch}.")
+    else:
+        # Branch may not exist locally, which is fine
+        if "not found" not in result.stderr:
+            print(f"Warning: could not delete local branch {args.branch}: {result.stderr.strip()}")
 
     print(f"\nDone! PR #{args.pr} merged, branch {args.branch} cleaned up.")
     return 0

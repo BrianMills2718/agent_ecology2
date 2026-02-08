@@ -76,12 +76,20 @@ else
     echo -e "${YELLOW}  Skipped (meta-process/scripts/self_test.py not found)${NC}"
 fi
 
-# 6. Quick or full claim check
-if [[ "$QUICK" == true ]]; then
-    echo -e "${YELLOW}[6/6] Skipping claim check (--quick mode)${NC}"
+# 6. Stale local branch advisory
+echo -e "${YELLOW}[6/6] Checking for stale local branches...${NC}"
+CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+STALE_BRANCHES=$(git branch --format='%(refname:short)' | grep -v "^main$" | grep -v "^${CURRENT_BRANCH}$" || true)
+if [[ -n "$STALE_BRANCHES" ]]; then
+    BRANCH_COUNT=$(echo "$STALE_BRANCHES" | wc -l | tr -d ' ')
+    echo -e "${YELLOW}  ⚠ ${BRANCH_COUNT} local branch(es) besides main:${NC}"
+    echo "$STALE_BRANCHES" | while read -r branch; do
+        LAST_COMMIT=$(git log "$branch" -1 --format="%cr" 2>/dev/null || echo "unknown")
+        echo "    - $branch ($LAST_COMMIT)"
+    done
+    echo -e "${YELLOW}  Run: make branches to check remote status, or delete with: git branch -D <name>${NC}"
 else
-    echo -e "${YELLOW}[6/6] Checking for stale claims...${NC}"
-    python scripts/check_claims.py --list 2>/dev/null || true
+    echo -e "${GREEN}✓ No stale local branches${NC}"
 fi
 echo ""
 

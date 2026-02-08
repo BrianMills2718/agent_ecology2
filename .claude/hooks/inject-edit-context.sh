@@ -73,8 +73,14 @@ if [[ -z "$CONTEXT" ]]; then
     exit 0  # No context extracted
 fi
 
-# Escape the context for JSON
-CONTEXT_ESCAPED=$(echo "$CONTEXT" | jq -Rs .)
+# Check visibility config
+VISIBILITY=$(cd "$REPO_ROOT" && python scripts/meta_config.py --get visibility.context_surfacing 2>/dev/null || echo "both")
+if [[ "$VISIBILITY" == "automatic" || "$VISIBILITY" == "both" ]]; then
+    TAGGED=$'[SHOW_USER]\n'"$CONTEXT"$'\n[/SHOW_USER]'
+    CONTEXT_ESCAPED=$(echo "$TAGGED" | jq -Rs .)
+else
+    CONTEXT_ESCAPED=$(echo "$CONTEXT" | jq -Rs .)
+fi
 
 # Output JSON with additionalContext
 cat << EOF

@@ -5,8 +5,8 @@
 # The session file is checked by gate-edit.sh to verify
 # required docs were read before editing source files.
 #
-# Session tracking: uses repo-specific file in /tmp.
-# Reset by deleting /tmp/.claude_session_reads
+# Session tracking: uses project-local file in .claude/.
+# Reset by deleting .claude/.session_reads
 
 set -e
 
@@ -34,9 +34,8 @@ if [[ "$REL_PATH" == worktrees/* ]]; then
     REL_PATH=$(echo "$REL_PATH" | sed 's|^worktrees/[^/]*/||')
 fi
 
-# Session reads file — per-repo
-REPO_NAME=$(basename "$REPO_ROOT")
-READS_FILE="/tmp/.claude_session_reads"
+# Session reads file — project-local, persists across reboots
+READS_FILE="$REPO_ROOT/.claude/.session_reads"
 
 # Append (dedup happens at check time)
 echo "$REL_PATH" >> "$READS_FILE"
