@@ -7,10 +7,10 @@
 A feature is COMPLETE when its acceptance criteria pass with **real (non-mocked) integration**. Not when code is written. Not when unit tests pass. When real E2E works with no mocks.
 
 ```
-Feature: escrow
-├── AC-1: Deposit works       ← Must pass with NO MOCKS
-├── AC-2: Purchase works      ← Must pass with NO MOCKS
-├── AC-3: Cancellation works  ← Must pass with NO MOCKS
+Feature: ledger
+├── AC-1: Transfer works       ← Must pass with NO MOCKS
+├── AC-2: Balance tracks       ← Must pass with NO MOCKS
+├── AC-3: History records      ← Must pass with NO MOCKS
 │
 └── DONE when: pytest tests/e2e/test_real_e2e.py --run-external passes
 ```
@@ -65,7 +65,7 @@ acceptance_criteria:
 
 # Implementation mapping
 adrs: [ADR-0001]           # Architectural constraints
-code: [src/world/genesis.py]
+code: [src/genesis/]
 tests: [tests/e2e/test_escrow_e2e.py]  # Real E2E tests
 docs: [docs/architecture/current/genesis_artifacts.md]
 ```
@@ -113,9 +113,6 @@ The `locked: true` flag prevents weakening criteria after commit:
 ## Commands
 
 ```bash
-# List features
-python scripts/check_claims.py --list-features
-
 # Run feature's real E2E tests
 pytest tests/e2e/ -v --run-external -k "feature_name"
 ```
