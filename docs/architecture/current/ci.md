@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-02-07 (removed deleted scripts from CI steps)
+Last verified: 2026-02-08 (relationships.yaml description and coupling update)
 
 ---
 
