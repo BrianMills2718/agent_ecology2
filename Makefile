@@ -1,7 +1,7 @@
 # Agent Ecology - Common Commands
 # Usage: make <target>
 
-.PHONY: help status test check pr-ready pr finish clean run dash dash-run kill analyze
+.PHONY: help status test check pr-ready pr finish clean run dash dash-run kill analyze branches branches-delete
 
 # --- Core workflow ---
 
@@ -34,6 +34,14 @@ clean:  ## Remove generated files
 	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .mypy_cache -exec rm -rf {} + 2>/dev/null || true
 	rm -f run.jsonl checkpoint.json 2>/dev/null || true
+
+# --- Branch management ---
+
+branches:  ## List stale remote branches (merged PRs, abandoned, etc.)
+	python scripts/cleanup_branches.py
+
+branches-delete:  ## Delete stale remote branches with merged PRs
+	python scripts/cleanup_branches.py --delete
 
 # --- Simulation ---
 

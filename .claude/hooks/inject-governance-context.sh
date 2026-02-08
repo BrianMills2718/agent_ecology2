@@ -80,8 +80,25 @@ if [[ -z "$CONTEXT" ]] || [[ "$CONTEXT" == "null" ]] || [[ "$CONTEXT" == "{}" ]]
     exit 0  # No governance context for this file
 fi
 
-# Output JSON with additionalContext
-cat << EOF
+# Check visibility config — should we tag for user surfacing?
+VISIBILITY=$(cd "$(dirname "$SCRIPT_DIR_PATH")" && python scripts/meta_config.py --get visibility.context_surfacing 2>/dev/null || echo "both")
+
+if [[ "$VISIBILITY" == "automatic" || "$VISIBILITY" == "both" ]]; then
+    # Wrap context in SHOW_USER tags so Claude surfaces it to the user
+    CONTEXT_STR=$(echo "$CONTEXT" | jq -r '.' 2>/dev/null || echo "$CONTEXT")
+    TAGGED=$'[SHOW_USER]\n'"$CONTEXT_STR"$'\n[/SHOW_USER]'
+    TAGGED_ESCAPED=$(echo "$TAGGED" | jq -Rs .)
+    cat << EOF
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PostToolUse",
+    "additionalContext": $TAGGED_ESCAPED
+  }
+}
+EOF
+else
+    # Claude sees it but user doesn't
+    cat << EOF
 {
   "hookSpecificOutput": {
     "hookEventName": "PostToolUse",
@@ -89,5 +106,6 @@ cat << EOF
   }
 }
 EOF
+fi
 
 exit 0

@@ -67,7 +67,14 @@ if [[ -z "$QUIZ_TEXT" ]]; then
     exit 0
 fi
 
-QUIZ_ESCAPED=$(echo "$QUIZ_TEXT" | jq -Rs .)
+# Check visibility config for quiz mode
+QUIZ_VISIBILITY=$(cd "$REPO_ROOT" && python scripts/meta_config.py --get visibility.quiz_mode 2>/dev/null || echo "both")
+if [[ "$QUIZ_VISIBILITY" == "automatic" || "$QUIZ_VISIBILITY" == "both" ]]; then
+    TAGGED=$'[SHOW_USER]\n'"$QUIZ_TEXT"$'\n[/SHOW_USER]'
+    QUIZ_ESCAPED=$(echo "$TAGGED" | jq -Rs .)
+else
+    QUIZ_ESCAPED=$(echo "$QUIZ_TEXT" | jq -Rs .)
+fi
 
 cat << EOF
 {

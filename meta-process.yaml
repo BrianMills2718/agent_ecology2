@@ -57,6 +57,15 @@ custom_docs:
     path: docs/SECURITY.md
     surface_when: ["src/world/permission_checker.py", "src/world/kernel_contracts.py", "src/world/contracts.py", "src/world/executor.py"]
 
+# Visibility (Plan #309)
+# Controls whether hook-injected context is surfaced to the user.
+# Options: automatic (always show), on-demand (only when user asks), both
+visibility:
+  # Governance context, edit constraints, coupled doc info
+  context_surfacing: both
+  # Post-edit quiz questions
+  quiz_mode: both
+
 # Project Type
 project:
   type: existing

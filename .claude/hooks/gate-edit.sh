@@ -55,7 +55,7 @@ if [[ ! -f "$CHECK_SCRIPT" ]]; then
     exit 0  # Script not available, allow
 fi
 
-READS_FILE="/tmp/.claude_session_reads"
+READS_FILE="$REPO_ROOT/.claude/.session_reads"
 
 # Run the check
 set +e
@@ -78,7 +78,14 @@ fi
 
 # All required reading done — output constraints as advisory context
 if [[ -n "$RESULT" ]]; then
-    RESULT_ESCAPED=$(echo "$RESULT" | jq -Rs .)
+    # Check visibility config
+    VISIBILITY=$(cd "$REPO_ROOT" && python scripts/meta_config.py --get visibility.context_surfacing 2>/dev/null || echo "both")
+    if [[ "$VISIBILITY" == "automatic" || "$VISIBILITY" == "both" ]]; then
+        TAGGED=$'[SHOW_USER]\n'"$RESULT"$'\n[/SHOW_USER]'
+        RESULT_ESCAPED=$(echo "$TAGGED" | jq -Rs .)
+    else
+        RESULT_ESCAPED=$(echo "$RESULT" | jq -Rs .)
+    fi
     cat << EOF
 {
   "hookSpecificOutput": {
