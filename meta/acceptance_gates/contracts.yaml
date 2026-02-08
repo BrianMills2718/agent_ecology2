@@ -94,9 +94,9 @@ adrs:
   - ADR-0003  # Contracts can do anything (flexible logic)
 
 code:
-  - src/world/contracts.py        # Core interfaces
-  - src/world/genesis_contracts.py # Built-in genesis contracts
-  - src/world/executor.py          # Contract execution
+  - src/world/contracts.py          # Core interfaces
+  - src/world/kernel_contracts.py   # Built-in kernel contracts
+  - src/world/executor.py           # Contract execution
 
 tests:
   - tests/integration/test_contracts_acceptance.py  # Feature acceptance tests

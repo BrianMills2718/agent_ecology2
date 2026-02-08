@@ -105,15 +105,11 @@ adrs:
   - ADR-0001  # Everything is an artifact (agents can be artifacts)
 
 code:
-  - src/agents/agent.py
-  - src/agents/loader.py
-  - src/agents/memory.py
-  - src/agents/schema.py
-  - src/agents/models.py
+  - src/agents/__init__.py
 
 tests:
-  - tests/unit/test_async_agent.py
-  - tests/unit/test_agent_artifacts.py
+  - tests/unit/test_alpha_prime.py
+  - tests/integration/test_alpha_prime.py
 
 docs:
   - docs/architecture/current/agents.md
