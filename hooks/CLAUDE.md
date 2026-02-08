@@ -41,7 +41,7 @@ git commit --no-verify -m "..."
 
 **pre-commit:**
 1. Plan index regeneration (`generate_plan_index.py`)
-2. Doc-coupling violations (strict mode)
+2. Doc-coupling violations (respects `strict_doc_coupling` config + weight system)
 3. Mypy on staged `src/` files (non-blocking warning)
 
 **commit-msg:**

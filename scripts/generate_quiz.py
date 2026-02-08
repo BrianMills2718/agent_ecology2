@@ -162,21 +162,21 @@ def generate_quiz(
     file_path: str,
     repo_root: Path,
     relationships: dict,  # type: ignore[type-arg]
+    trivial: bool = False,
 ) -> dict:  # type: ignore[type-arg]
     """Generate quiz questions for a file.
+
+    Args:
+        file_path: Relative path to the file.
+        repo_root: Repository root.
+        relationships: Loaded relationships.yaml data.
+        trivial: If True, skip structural and risk questions (small change).
 
     Returns:
         {
             "file": "src/world/contracts.py",
-            "questions": [
-                {
-                    "category": "constraint",
-                    "question": "...",
-                    "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
-                    "context": "ADR-0003"
-                },
-                ...
-            ]
+            "trivial": false,
+            "questions": [...]
         }
     """
     questions: list[dict] = []  # type: ignore[type-arg]
@@ -207,30 +207,31 @@ def generate_quiz(
                 "context": adr_ref,
             })
 
-    # === Structural questions ===
-    if file_info["has_protocol"]:
-        protocol_classes = [
-            c["name"] for c in file_info["classes"]
-            if "Protocol" in c.get("bases", [])
-        ]
-        if protocol_classes:
+    # === Structural questions (skipped for trivial changes) ===
+    if not trivial:
+        if file_info["has_protocol"]:
+            protocol_classes = [
+                c["name"] for c in file_info["classes"]
+                if "Protocol" in c.get("bases", [])
+            ]
+            if protocol_classes:
+                questions.append({
+                    "category": "structure",
+                    "question": f"This file defines Protocol(s): {', '.join(protocol_classes)}. "
+                                f"Did your change modify the protocol interface? "
+                                f"If so, what downstream implementations need updating?",
+                    "type": "confirm_or_justify",
+                    "context": "Protocol changes break implementors",
+                })
+
+        if file_info["has_pydantic"]:
             questions.append({
                 "category": "structure",
-                "question": f"This file defines Protocol(s): {', '.join(protocol_classes)}. "
-                            f"Did your change modify the protocol interface? "
-                            f"If so, what downstream implementations need updating?",
+                "question": "This file uses Pydantic models. Did your change add/remove/rename fields? "
+                            "If so, what serialization/deserialization paths are affected?",
                 "type": "confirm_or_justify",
-                "context": "Protocol changes break implementors",
+                "context": "Pydantic field changes can break checkpoints and APIs",
             })
-
-    if file_info["has_pydantic"]:
-        questions.append({
-            "category": "structure",
-            "question": "This file uses Pydantic models. Did your change add/remove/rename fields? "
-                        "If so, what serialization/deserialization paths are affected?",
-            "type": "confirm_or_justify",
-            "context": "Pydantic field changes can break checkpoints and APIs",
-        })
 
     # === Coupling questions ===
     if coupled_docs:
@@ -259,20 +260,22 @@ def generate_quiz(
             "context": "Terminology violations cause confusion",
         })
 
-    # === Risk question (always) ===
-    questions.append({
-        "category": "risk",
-        "question": "What could go wrong with this change? Consider:\n"
-                    "  - Performance impact (is this on a hot path?)\n"
-                    "  - Backwards compatibility (does this break existing data?)\n"
-                    "  - Error handling (what happens when this fails?)\n"
-                    "  - Observability (will problems be visible in logs/dashboard?)",
-        "type": "free_response",
-        "context": "Explicit risk assessment",
-    })
+    # === Risk question (skipped for trivial changes) ===
+    if not trivial:
+        questions.append({
+            "category": "risk",
+            "question": "What could go wrong with this change? Consider:\n"
+                        "  - Performance impact (is this on a hot path?)\n"
+                        "  - Backwards compatibility (does this break existing data?)\n"
+                        "  - Error handling (what happens when this fails?)\n"
+                        "  - Observability (will problems be visible in logs/dashboard?)",
+            "type": "free_response",
+            "context": "Explicit risk assessment",
+        })
 
     return {
         "file": file_path,
+        "trivial": trivial,
         "governance": governance,
         "coupled_docs": [d["path"] for d in coupled_docs],
         "file_info": {
@@ -291,8 +294,9 @@ def format_quiz_markdown(quiz: dict) -> str:  # type: ignore[type-arg]
     lines.append("")
 
     info = quiz["file_info"]
+    trivial_note = " (trivial change — reduced quiz)" if quiz.get("trivial") else ""
     lines.append(f"*{info['lines']} lines, {info['classes']} classes, "
-                 f"{info['functions']} top-level functions*")
+                 f"{info['functions']} top-level functions{trivial_note}*")
     lines.append("")
 
     if quiz["governance"]:
@@ -327,6 +331,42 @@ def format_quiz_markdown(quiz: dict) -> str:  # type: ignore[type-arg]
                  "\"Wrong\" answers = misalignment to discuss, not failures.*")
 
     return "\n".join(lines)
+
+
+def get_diff_stats(
+    file_path: str, repo_root: Path, staged: bool = False
+) -> dict[str, int]:
+    """Get diff stats (lines added/removed) for a file.
+
+    Returns:
+        {"lines_added": N, "lines_removed": N, "total": N}
+    """
+    if staged:
+        cmd = ["git", "diff", "--cached", "--numstat", "--", file_path]
+    else:
+        cmd = ["git", "diff", "--numstat", "--", file_path]
+    try:
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, check=True, cwd=repo_root
+        )
+        for line in result.stdout.strip().splitlines():
+            parts = line.split("\t")
+            if len(parts) >= 3:
+                added = int(parts[0]) if parts[0] != "-" else 0
+                removed = int(parts[1]) if parts[1] != "-" else 0
+                return {
+                    "lines_added": added,
+                    "lines_removed": removed,
+                    "total": added + removed,
+                }
+    except (subprocess.CalledProcessError, ValueError):
+        pass
+    return {"lines_added": 0, "lines_removed": 0, "total": 0}
+
+
+def is_trivial_change(diff_stats: dict[str, int], threshold: int = 5) -> bool:
+    """Check if a change is trivial based on line count."""
+    return diff_stats["total"] < threshold
 
 
 def get_changed_files(repo_root: Path, staged: bool = False) -> list[str]:
@@ -366,6 +406,10 @@ def main() -> None:
         "--json", action="store_true",
         help="Output as JSON"
     )
+    parser.add_argument(
+        "--trivial-threshold", type=int, default=0,
+        help="Lines changed below this threshold → reduced quiz (0 = disabled)"
+    )
     args = parser.parse_args()
 
     repo_root = Path.cwd()
@@ -392,7 +436,11 @@ def main() -> None:
 
     quizzes = []
     for f in files:
-        quiz = generate_quiz(f, repo_root, relationships)
+        trivial = False
+        if args.trivial_threshold > 0:
+            stats = get_diff_stats(f, repo_root, staged=args.staged)
+            trivial = is_trivial_change(stats, args.trivial_threshold)
+        quiz = generate_quiz(f, repo_root, relationships, trivial=trivial)
         if quiz["questions"]:
             quizzes.append(quiz)
 
