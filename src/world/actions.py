@@ -22,6 +22,7 @@ ActionTypeLiteral = Literal[
     "mint",
     "submit_to_mint",
     "submit_to_task",
+    "update_metadata",
     "configure_context",  # Deprecated
     "modify_system_prompt",  # Deprecated
 ]
@@ -56,6 +57,7 @@ class ActionType(str, Enum):
     MINT = "mint"  # Plan #254: Create scrip (privileged, requires can_mint capability)
     SUBMIT_TO_MINT = "submit_to_mint"  # Plan #259: Submit artifact to mint auction
     SUBMIT_TO_TASK = "submit_to_task"  # Plan #269: Submit artifact as task solution
+    UPDATE_METADATA = "update_metadata"  # Plan #308: Update artifact metadata
     # Deprecated (Plan #254) - convenience actions that wrap edit_artifact
     CONFIGURE_CONTEXT = "configure_context"  # Plan #192: Deprecated
     MODIFY_SYSTEM_PROMPT = "modify_system_prompt"  # Plan #194: Deprecated
@@ -426,6 +428,35 @@ class SubmitToMintIntent(ActionIntent):
         d = super().to_dict()
         d["artifact_id"] = self.artifact_id
         d["bid"] = self.bid
+        return d
+
+
+@dataclass
+class UpdateMetadataIntent(ActionIntent):
+    """Update a metadata key on an artifact (Plan #308).
+
+    Allows agents to set or delete user-defined metadata keys.
+    Auth-sensitive keys (authorized_writer, authorized_principal) are
+    protected at the executor level — use escrow for ownership transfer.
+    """
+
+    artifact_id: str
+    key: str
+    value: object
+
+    def __init__(
+        self, principal_id: str, artifact_id: str, key: str, value: object = None, reasoning: str = ""
+    ) -> None:
+        super().__init__(ActionType.UPDATE_METADATA, principal_id, reasoning=reasoning)
+        self.artifact_id = artifact_id
+        self.key = key
+        self.value = value
+
+    def to_dict(self) -> dict[str, Any]:
+        d = super().to_dict()
+        d["artifact_id"] = self.artifact_id
+        d["key"] = self.key
+        d["value"] = self.value
         return d
 
 
@@ -851,6 +882,21 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
             return "task_id must be a string"
         return SubmitToTaskIntent(principal_id, artifact_id, task_id, reasoning=reasoning)
 
+    elif action_type == "update_metadata":
+        # Plan #308: Update artifact metadata
+        artifact_id = data.get("artifact_id")
+        if not artifact_id:
+            return "update_metadata requires 'artifact_id'"
+        if not isinstance(artifact_id, str):
+            return "artifact_id must be a string"
+        key = data.get("key")
+        if not key:
+            return "update_metadata requires 'key'"
+        if not isinstance(key, str):
+            return "update_metadata 'key' must be a string"
+        value = data.get("value")  # None means delete the key
+        return UpdateMetadataIntent(principal_id, artifact_id, key, value, reasoning=reasoning)
+
     elif action_type == "configure_context":
         # Plan #192: Configure prompt context sections
         sections = data.get("sections")
@@ -875,4 +921,4 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
         return ModifySystemPromptIntent(principal_id, operation, content, section_marker, reasoning=reasoning)
 
     else:
-        return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel, subscribe_artifact, unsubscribe_artifact, transfer, mint, submit_to_mint, configure_context, modify_system_prompt"
+        return f"Unknown action_type: {action_type}. Valid types: noop, read_artifact, write_artifact, edit_artifact, delete_artifact, invoke_artifact, query_kernel, subscribe_artifact, unsubscribe_artifact, transfer, mint, submit_to_mint, submit_to_task, update_metadata, configure_context, modify_system_prompt"

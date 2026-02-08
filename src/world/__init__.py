@@ -4,6 +4,7 @@ from .actions import (
     ActionIntent, NoopIntent, ReadArtifactIntent, WriteArtifactIntent,
     EditArtifactIntent, InvokeArtifactIntent, DeleteArtifactIntent,
     TransferIntent, MintIntent,  # Plan #254: Kernel value actions
+    UpdateMetadataIntent,  # Plan #308
 )
 from .ledger import Ledger
 from .artifacts import ArtifactStore, Artifact, WriteResult
@@ -35,6 +36,7 @@ __all__ = [
     "ActionIntent", "NoopIntent", "ReadArtifactIntent", "WriteArtifactIntent",
     "EditArtifactIntent", "InvokeArtifactIntent", "DeleteArtifactIntent",
     "TransferIntent", "MintIntent",  # Plan #254: Kernel value actions
+    "UpdateMetadataIntent",  # Plan #308
     "Ledger",
     "ArtifactStore", "Artifact", "WriteResult",
     "EventLogger",

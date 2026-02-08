@@ -1,6 +1,6 @@
 # Plan #308: Wire Up Disconnected Features Found in Dead Code Audit
 
-**Status:** 🟡 Proposed
+**Status:** 🚧 In Progress
 
 ## Background
 
@@ -10,25 +10,20 @@ This plan tracks the HIGH and MEDIUM gaps. LOW items (truly dead code) were dele
 
 ## HIGH — Functional Gaps
 
-### 1. Agents can't update artifact metadata
-- **Where:** `kernel_interface.py:966` — `update_artifact_metadata()` is fully implemented with permission checking and logging, but has zero call sites
-- **Impact:** Escrow can't update `authorized_writer` after purchase (Plan #213). Agents can't update custom metadata on owned artifacts.
-- **Fix:** Expose via `update_metadata` action type in action_executor.py
+### 1. ~~Agents can't update artifact metadata~~ — DONE
+- **Implemented:** `update_metadata` action type added to actions.py, action_executor.py
+- **Security:** Protected keys (`authorized_writer`, `authorized_principal`) guarded at executor level; kernel method stays unrestricted for escrow
 
-### 2. Agents can't discover mint tasks
-- **Where:** `mint_tasks.py:240` — `get_available_tasks()` returns open tasks, never called
-- **Impact:** Task-based mint system (Plan #269, marked "complete") has no agent-facing discovery. Agents are blind to available work.
-- **Fix:** Expose via `query_kernel` with query_type `"mint_tasks"` (handler exists in kernel_queries.py but verify it calls get_available_tasks)
+### 2. ~~Agents can't discover mint tasks~~ — NOT A GAP
+- **Finding:** Already fully wired via `query_kernel` with `query_type="mint_tasks"`. Handler at `kernel_queries.py:506` is complete. `get_available_tasks()` is unused because the handler reimplements with extra filtering (status param).
 
-### 3. Model access quotas never refresh
+### 3. Model access quotas never refresh — DEFERRED
 - **Where:** `model_access.py:215` — `advance_window()` resets rate windows, never called
-- **Impact:** If a per-agent model quota is depleted, it's depleted forever. Time-based quota refresh is broken.
-- **Fix:** Call `advance_window()` from the simulation tick/runner at configured intervals
+- **Finding:** `ModelAccessManager` is fully built but 100% disconnected (zero production imports). `RateTracker` already handles time-based quota refresh via rolling windows. Needs design decision: is ModelAccessManager's value (per-model tradeable quotas) wanted, or is RateTracker sufficient?
 
-### 4. MCP bridge disconnected from bootstrap
+### 4. MCP bridge disconnected from bootstrap — DEFERRED
 - **Where:** `mcp_bridge.py:499` — `create_mcp_artifacts()` factory, never called from world init
-- **Impact:** MCP config in config.yaml is non-functional. Agents can't use fetch/filesystem/web_search even when configured.
-- **Fix:** Call factory from World.__init__ or genesis bootstrap, register resulting artifacts
+- **Finding:** Factory + classes complete, config validates, but requires Node.js/npm and spawns subprocesses. Deferred due to external dependency risk and need for end-to-end testing.
 
 ## MEDIUM — Observability Gaps
 

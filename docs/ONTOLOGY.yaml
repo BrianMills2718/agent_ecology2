@@ -10,7 +10,7 @@
 #   Thesis → PRD → Domain Model → ADR → Ontology (this file) → Code
 #
 # See: docs/prd/ for capabilities, docs/domain_model/ for concepts
-# Last verified: 2026-02-07 (Plan #308: dead code cleanup - removed ArtifactDict/is_contract_reference/get_owner, no behavioral changes)
+# Last verified: 2026-02-08 (Plan #308: added update_metadata action type)
 # =============================================================================
 
 version: 4
@@ -143,14 +143,16 @@ agent_constellation:
     - Kernel only sees artifacts; constellation is a usage pattern
 
 # =============================================================================
-# ACTIONS (11 core + 2 deprecated)
+# ACTIONS (12 core + 2 deprecated)
 # =============================================================================
 # Source: src/world/actions.py:13-40
 
 actions:
   storage:
-    description: "Artifact CRUD, go through contract permission checking (ADR-0019)"
-    operations: [read_artifact, write_artifact, edit_artifact, delete_artifact]
+    description: "Artifact CRUD + metadata, go through contract permission checking (ADR-0019)"
+    operations: [read_artifact, write_artifact, edit_artifact, delete_artifact, update_metadata]
+    notes:
+      update_metadata: "Set/delete metadata key on artifact. Protected keys (authorized_writer, authorized_principal) blocked at executor level (Plan #308, ADR-0028)"
 
   execution:
     description: "Code execution, goes through contract permission checking"
