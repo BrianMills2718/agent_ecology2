@@ -101,7 +101,7 @@ code:
   - src/config_schema.py
 
 tests:
-  - tests/unit/test_config.py
+  - tests/unit/test_config_schema.py
 
 docs:
   - docs/architecture/current/configuration.md

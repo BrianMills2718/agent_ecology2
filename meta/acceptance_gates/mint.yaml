@@ -96,12 +96,12 @@ adrs:
 
 code:
   - src/world/mint_scorer.py
-  - src/world/genesis.py
+  - src/world/mint_auction.py
+  - src/world/mint_tasks.py
 
 tests:
   - tests/integration/test_mint_acceptance.py  # Feature acceptance tests
   - tests/unit/test_originality.py
-  - tests/integration/test_mint_auction.py
 
 docs:
   - docs/architecture/current/genesis_artifacts.md

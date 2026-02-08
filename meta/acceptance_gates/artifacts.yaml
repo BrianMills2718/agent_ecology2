@@ -143,7 +143,6 @@ tests:
   - tests/unit/test_policy.py
   - tests/unit/test_kernel_interface.py
   - tests/integration/test_invoke.py
-  - tests/integration/test_unified_ontology.py
 
 docs:
   - docs/architecture/current/artifacts_executor.md
