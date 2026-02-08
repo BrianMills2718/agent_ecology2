@@ -93,8 +93,10 @@ python scripts/check_doc_coupling.py --strict      # CI mode
 
 # Plan status sync
 python scripts/sync_plan_status.py --check         # CI mode (validates all)
+python scripts/sync_plan_status.py --check --warn-stale 14  # + stale plan advisory
 python scripts/sync_plan_status.py --sync          # Sync index to match files
 python scripts/sync_plan_status.py --list          # Show all statuses
+python scripts/sync_plan_status.py --warn-stale 14 # Standalone stale check
 
 # Governance sync
 python scripts/sync_governance.py --check          # CI mode
@@ -111,6 +113,10 @@ python scripts/check_mock_usage.py --strict        # CI mode
 # Branch cleanup
 python scripts/cleanup_branches.py           # List stale branches
 python scripts/cleanup_branches.py --delete  # Delete stale branches
+
+# Quiz (scope-aware)
+python scripts/generate_quiz.py src/world/contracts.py  # Full quiz
+python scripts/generate_quiz.py src/world/contracts.py --trivial-threshold 5  # Reduced for small changes
 ```
 
 ## Configuration

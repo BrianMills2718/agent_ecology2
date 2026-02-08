@@ -46,8 +46,8 @@ CHECK_WEIGHTS: dict[str, Weight] = {
     # Enabled at medium and above
     "doc_coupling_strict": Weight.MEDIUM,
     "adr_governance_headers": Weight.MEDIUM,
-    "claim_system": Weight.MEDIUM,
-    "worktree_enforcement": Weight.MEDIUM,
+    "stale_plan_warning": Weight.MEDIUM,
+    "pre_merge_gates": Weight.MEDIUM,
     # Enabled only at heavy
     "bidirectional_prompts": Weight.HEAVY,
     "symbol_level_checks": Weight.HEAVY,

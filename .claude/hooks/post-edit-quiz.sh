@@ -50,9 +50,16 @@ if [[ ! -f "$QUIZ_SCRIPT" ]]; then
     exit 0
 fi
 
+# Get trivial threshold from config (0 = disabled)
+THRESHOLD=$(cd "$REPO_ROOT" && python scripts/meta_config.py --get quiz.trivial_threshold 2>/dev/null || echo "0")
+THRESHOLD_FLAG=""
+if [[ "$THRESHOLD" != "0" ]] && [[ "$THRESHOLD" != "None" ]] && [[ -n "$THRESHOLD" ]]; then
+    THRESHOLD_FLAG="--trivial-threshold $THRESHOLD"
+fi
+
 # Generate quiz (JSON mode for structured output)
 set +e
-RESULT=$(cd "$REPO_ROOT" && python "$QUIZ_SCRIPT" "$REL_PATH" --json 2>/dev/null)
+RESULT=$(cd "$REPO_ROOT" && python "$QUIZ_SCRIPT" "$REL_PATH" --json $THRESHOLD_FLAG 2>/dev/null)
 QUIZ_EXIT=$?
 set -e
 
@@ -61,7 +68,7 @@ if [[ $QUIZ_EXIT -ne 0 ]] || [[ -z "$RESULT" ]] || [[ "$RESULT" == "[]" ]]; then
 fi
 
 # Extract just the questions as readable text
-QUIZ_TEXT=$(cd "$REPO_ROOT" && python "$QUIZ_SCRIPT" "$REL_PATH" 2>/dev/null)
+QUIZ_TEXT=$(cd "$REPO_ROOT" && python "$QUIZ_SCRIPT" "$REL_PATH" $THRESHOLD_FLAG 2>/dev/null)
 
 if [[ -z "$QUIZ_TEXT" ]]; then
     exit 0

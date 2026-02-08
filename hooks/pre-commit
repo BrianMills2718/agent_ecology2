@@ -19,9 +19,13 @@ python scripts/generate_plan_index.py --write 2>/dev/null || {
 }
 git add docs/plans/CLAUDE.md 2>/dev/null || true
 
-# 2. Doc-coupling check
+# 2. Doc-coupling check (respects meta-process.yaml strict_doc_coupling setting)
 echo "Checking doc-code coupling..."
-if ! python scripts/check_doc_coupling.py --strict 2>/dev/null; then
+STRICT_FLAG="--strict"
+if python scripts/meta_config.py --get enforcement.strict_doc_coupling 2>/dev/null | grep -qi "false"; then
+    STRICT_FLAG=""
+fi
+if ! python scripts/check_doc_coupling.py $STRICT_FLAG --weight-aware 2>/dev/null; then
     echo ""
     echo "ERROR: Doc-coupling violation detected!"
     echo "Run 'python scripts/check_doc_coupling.py --suggest' to see which docs to update."

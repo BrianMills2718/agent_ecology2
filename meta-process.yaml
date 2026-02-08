@@ -6,7 +6,7 @@
 # Weight Level (Plan #218)
 # Controls which checks run. Higher weight = more enforcement.
 # Levels: heavy, medium, light, minimal
-weight: medium
+weight: heavy
 
 # Per-check overrides (optional)
 # Values: "strict" (force on), "disabled" (force off), or omit for weight default.
@@ -57,6 +57,12 @@ custom_docs:
     path: docs/SECURITY.md
     surface_when: ["src/world/permission_checker.py", "src/world/kernel_contracts.py", "src/world/contracts.py", "src/world/executor.py"]
 
+# Quiz Configuration
+quiz:
+  # Changes below this line count get a reduced quiz (constraint + coupling only)
+  # Set to 0 to always show full quiz
+  trivial_threshold: 5
+
 # Visibility (Plan #309)
 # Controls whether hook-injected context is surfaced to the user.
 # Options: automatic (always show), on-demand (only when user asks), both
@@ -65,6 +71,13 @@ visibility:
   context_surfacing: both
   # Post-edit quiz questions
   quiz_mode: both
+
+# Pre-Merge Gates
+# Controls what gets checked before `make finish` merges a PR.
+merge_gates:
+  check_pr_status: true      # Warn if PR checks are failing
+  check_plan_complete: true   # Warn if referenced plan not marked complete
+  strict: false               # When true, warnings become blockers (use --skip-gates to bypass)
 
 # Project Type
 project:

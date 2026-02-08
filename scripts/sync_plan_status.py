@@ -23,7 +23,9 @@ This script ensures they stay in sync and validates that status matches content.
 
 import argparse
 import re
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 import yaml
@@ -215,6 +217,52 @@ def check_content_consistency() -> list[dict]:
             })
 
     return issues
+
+
+def check_staleness(warn_days: int) -> list[dict]:
+    """Check for plans that are stale (not updated in warn_days days).
+
+    Only checks plans with status "In Progress" or "Planned".
+    Uses git log to determine when the plan file was last modified.
+
+    Returns list of stale plan dicts with keys:
+        plan, title, status, days_stale, path
+    """
+    stale = []
+    now = time.time()
+    plan_files = sorted(PLANS_DIR.glob("[0-9]*_*.md"))
+
+    for pf in plan_files:
+        plan = parse_plan_status(pf)
+        if not plan:
+            continue
+
+        # Only check active plans
+        status_name = STATUS_MAP.get(plan["status_emoji"], "")
+        if status_name not in ("In Progress", "Planned"):
+            continue
+
+        # Get last modified time from git
+        try:
+            result = subprocess.run(
+                ["git", "log", "-1", "--format=%ct", "--", str(pf)],
+                capture_output=True, text=True, check=True,
+            )
+            last_modified = int(result.stdout.strip())
+        except (subprocess.CalledProcessError, ValueError):
+            continue
+
+        days_old = int((now - last_modified) / 86400)
+        if days_old > warn_days:
+            stale.append({
+                "plan": plan["number"],
+                "title": plan["title"],
+                "status": status_name,
+                "days_stale": days_old,
+                "path": str(pf),
+            })
+
+    return stale
 
 
 def fix_content_status() -> int:
@@ -511,11 +559,16 @@ def main() -> int:
         action="store_true",
         help="List all plan statuses",
     )
+    parser.add_argument(
+        "--warn-stale",
+        type=int, metavar="DAYS",
+        help="Warn about In Progress/Planned plans not updated in DAYS days (advisory)",
+    )
 
     args = parser.parse_args()
 
     # Default to check if no action specified
-    if not any([args.check, args.sync, args.fix_content, args.list]):
+    if not any([args.check, args.sync, args.fix_content, args.list, args.warn_stale]):
         args.check = True
 
     if args.list:
@@ -534,6 +587,19 @@ def main() -> int:
         content_issues = check_content_consistency()
 
         all_issues = index_issues + content_issues
+
+        # Stale plan advisory (non-blocking, always shown when requested)
+        if args.warn_stale:
+            stale_plans = check_staleness(args.warn_stale)
+            if stale_plans:
+                print("STALE PLANS (advisory):")
+                print("-" * 60)
+                for sp in stale_plans:
+                    print(f"  Plan #{sp['plan']}: {sp['title'][:40]}")
+                    print(f"    Status: {sp['status']}, last updated {sp['days_stale']} days ago")
+                print()
+                print(f"  {len(stale_plans)} plan(s) not updated in >{args.warn_stale} days")
+                print()
 
         if not all_issues:
             print("✅ All plan statuses are consistent.")
@@ -568,6 +634,21 @@ def main() -> int:
             exit_code = 1
 
         return exit_code
+
+    # Standalone --warn-stale (without --check)
+    if args.warn_stale:
+        stale_plans = check_staleness(args.warn_stale)
+        if stale_plans:
+            print("STALE PLANS:")
+            print("-" * 60)
+            for sp in stale_plans:
+                print(f"  Plan #{sp['plan']}: {sp['title'][:40]}")
+                print(f"    Status: {sp['status']}, last updated {sp['days_stale']} days ago")
+            print()
+            print(f"  {len(stale_plans)} plan(s) not updated in >{args.warn_stale} days")
+        else:
+            print(f"No plans stale >{args.warn_stale} days.")
+        return 0
 
     return 0
 

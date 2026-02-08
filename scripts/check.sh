@@ -41,9 +41,13 @@ else
 fi
 echo ""
 
-# 3. Doc-coupling
+# 3. Doc-coupling (respects meta-process.yaml strict_doc_coupling setting)
 echo -e "${YELLOW}[3/6] Checking doc-code coupling...${NC}"
-if python scripts/check_doc_coupling.py --strict 2>/dev/null; then
+STRICT_FLAG="--strict"
+if python scripts/meta_config.py --get enforcement.strict_doc_coupling 2>/dev/null | grep -qi "false"; then
+    STRICT_FLAG=""
+fi
+if python scripts/check_doc_coupling.py $STRICT_FLAG --weight-aware 2>/dev/null; then
     echo -e "${GREEN}✓ Doc-coupling passed${NC}"
 else
     echo -e "${RED}✗ Doc-coupling failed${NC}"
@@ -52,9 +56,9 @@ else
 fi
 echo ""
 
-# 4. Plan status sync
+# 4. Plan status sync (with stale plan advisory)
 echo -e "${YELLOW}[4/6] Checking plan status sync...${NC}"
-if python scripts/sync_plan_status.py --check 2>/dev/null; then
+if python scripts/sync_plan_status.py --check --warn-stale 14 2>/dev/null; then
     echo -e "${GREEN}✓ Plan status in sync${NC}"
 else
     echo -e "${RED}✗ Plan status out of sync${NC}"
