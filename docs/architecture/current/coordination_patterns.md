@@ -468,7 +468,7 @@ Simple contracts that compose > complex monolithic systems. Each pattern solves 
 
 | File | What It Provides |
 |------|------------------|
-| `src/world/genesis.py` | Genesis artifact implementations |
+| `src/genesis/` | Genesis artifact implementations |
 | `src/world/executor.py` | Contract execution with kernel access |
 | `src/world/kernel_interface.py` | Kernel state/action APIs for contracts |
 | `docs/architecture/current/genesis_artifacts.md` | Genesis method reference |
