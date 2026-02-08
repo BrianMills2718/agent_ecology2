@@ -13,6 +13,7 @@ from src.world.actions import (
     InvokeArtifactIntent,
     NoopIntent,
     ReadArtifactIntent,
+    UpdateMetadataIntent,
     WriteArtifactIntent,
     parse_intent_from_json,
 )
@@ -281,3 +282,43 @@ class TestEditArtifactParsing:
         assert result["old_string"].endswith("...")
         assert len(result["new_string"]) < 110
         assert result["new_string"].endswith("...")
+
+
+@pytest.mark.plans([308])
+class TestUpdateMetadataParsing:
+    """Tests for update_metadata parsing validation (Plan #308)"""
+
+    def test_parse_update_metadata_requires_artifact_id(self) -> None:
+        """update_metadata requires artifact_id"""
+        json_str = '{"action_type": "update_metadata", "key": "tag", "value": "v1"}'
+        result = parse_intent_from_json("agent1", json_str)
+
+        assert isinstance(result, str)
+        assert "artifact_id" in result.lower()
+
+    def test_parse_update_metadata_requires_key(self) -> None:
+        """update_metadata requires key"""
+        json_str = '{"action_type": "update_metadata", "artifact_id": "doc", "value": "v1"}'
+        result = parse_intent_from_json("agent1", json_str)
+
+        assert isinstance(result, str)
+        assert "key" in result.lower()
+
+    def test_parse_update_metadata_valid_intent(self) -> None:
+        """update_metadata with all required fields creates valid intent"""
+        json_str = '{"action_type": "update_metadata", "artifact_id": "doc", "key": "tag", "value": "v1"}'
+        result = parse_intent_from_json("agent1", json_str)
+
+        assert isinstance(result, UpdateMetadataIntent)
+        assert result.artifact_id == "doc"
+        assert result.key == "tag"
+        assert result.value == "v1"
+        assert result.principal_id == "agent1"
+
+    def test_parse_update_metadata_value_defaults_to_none(self) -> None:
+        """update_metadata without value defaults to None (key deletion)"""
+        json_str = '{"action_type": "update_metadata", "artifact_id": "doc", "key": "tag"}'
+        result = parse_intent_from_json("agent1", json_str)
+
+        assert isinstance(result, UpdateMetadataIntent)
+        assert result.value is None

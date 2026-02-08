@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-02-07 (Plan #308: dead code cleanup - removed unused types/wrappers, no behavioral changes)
+**Last verified:** 2026-02-08 (Plan #308: added update_metadata action type with protected key guard)
 
 ---
 
@@ -638,6 +638,9 @@ class ActionIntent:
 | `UnsubscribeArtifactIntent` | UNSUBSCRIBE_ARTIFACT | `artifact_id` |
 | `TransferIntent` | TRANSFER | `recipient_id`, `amount`, `memo` (Plan #254) |
 | `MintIntent` | MINT | `recipient_id`, `amount`, `reason` (Plan #254, privileged) |
+| `SubmitToMintIntent` | SUBMIT_TO_MINT | `artifact_id` (Plan #259) |
+| `SubmitToTaskIntent` | SUBMIT_TO_TASK | `task_id`, `artifact_id` (Plan #269) |
+| `UpdateMetadataIntent` | UPDATE_METADATA | `artifact_id`, `key`, `value` (Plan #308) |
 | `ConfigureContextIntent` | CONFIGURE_CONTEXT | `section_name`, `enabled`, `priority` (deprecated) |
 | `ModifySystemPromptIntent` | MODIFY_SYSTEM_PROMPT | `operation`, `content`, `section_name` (deprecated) |
 

@@ -18,6 +18,7 @@ from .actions import (
     EditArtifactIntent, InvokeArtifactIntent, DeleteArtifactIntent,
     QueryKernelIntent, SubscribeArtifactIntent, UnsubscribeArtifactIntent,
     TransferIntent, MintIntent, SubmitToMintIntent, SubmitToTaskIntent,  # Plan #254, #259, #269
+    UpdateMetadataIntent,  # Plan #308
     ConfigureContextIntent, ModifySystemPromptIntent,
 )
 from .artifacts import Artifact
@@ -142,6 +143,9 @@ class ActionExecutor:
 
         elif isinstance(intent, SubmitToTaskIntent):
             result = self._execute_submit_to_task(intent)
+
+        elif isinstance(intent, UpdateMetadataIntent):
+            result = self._execute_update_metadata(intent)
 
         elif isinstance(intent, ConfigureContextIntent):
             result = self._execute_configure_context(intent)
@@ -1376,6 +1380,79 @@ class ActionExecutor:
             error_code=None if result.success else ErrorCode.RUNTIME_ERROR.value,
             error_category=None if result.success else ErrorCategory.VALIDATION.value,
             retriable=not result.success,
+        )
+
+    # Keys that control authorization decisions (ADR-0028).
+    # Agents cannot modify these directly — use escrow for ownership transfer.
+    _PROTECTED_METADATA_KEYS = frozenset({"authorized_writer", "authorized_principal"})
+
+    def _execute_update_metadata(self, intent: UpdateMetadataIntent) -> ActionResult:
+        """Execute an update_metadata action (Plan #308).
+
+        Updates a single metadata key on an artifact.
+
+        Protected keys (authorized_writer, authorized_principal) are blocked
+        at this level to prevent privilege escalation. The kernel method
+        (kernel_interface.update_artifact_metadata) is intentionally
+        unrestricted for trusted callers like escrow.
+        """
+        w = self.world
+
+        # Guard: reject auth-sensitive keys (ADR-0028)
+        if intent.key in self._PROTECTED_METADATA_KEYS:
+            return ActionResult(
+                success=False,
+                message=f"Cannot modify protected metadata key '{intent.key}'. Use escrow for ownership transfer.",
+                error_code=ErrorCode.NOT_AUTHORIZED.value,
+                error_category=ErrorCategory.PERMISSION.value,
+                retriable=False,
+                error_details={"key": intent.key, "protected_keys": sorted(self._PROTECTED_METADATA_KEYS)},
+            )
+
+        # Check artifact exists
+        artifact = w.artifacts.get(intent.artifact_id)
+        if not artifact:
+            return ActionResult(
+                success=False,
+                message=f"Artifact {intent.artifact_id} not found",
+                error_code=ErrorCode.NOT_FOUND.value,
+                error_category=ErrorCategory.RESOURCE.value,
+                retriable=False,
+                error_details={"artifact_id": intent.artifact_id},
+            )
+
+        # Check write permission via contract (ADR-0019)
+        executor = get_executor()
+        perm_result = executor._check_permission(intent.principal_id, "write", artifact)
+        if not perm_result.allowed:
+            return ActionResult(
+                success=False,
+                message=f"Metadata update not permitted: {perm_result.reason}",
+                error_code=ErrorCode.NOT_AUTHORIZED.value,
+                error_category=ErrorCategory.PERMISSION.value,
+                retriable=False,
+                error_details={"artifact_id": intent.artifact_id, "key": intent.key},
+            )
+
+        # Update or delete the metadata key
+        if intent.value is None:
+            artifact.metadata.pop(intent.key, None)
+        else:
+            artifact.metadata[intent.key] = intent.value
+
+        # Log the update
+        w.logger.log("metadata_updated", {
+            "event_number": w.event_number,
+            "artifact_id": intent.artifact_id,
+            "principal_id": intent.principal_id,
+            "key": intent.key,
+            "value": intent.value,
+        })
+
+        return ActionResult(
+            success=True,
+            message=f"Updated metadata key '{intent.key}' on {intent.artifact_id}",
+            data={"artifact_id": intent.artifact_id, "key": intent.key},
         )
 
     def _execute_configure_context(self, intent: ConfigureContextIntent) -> ActionResult:

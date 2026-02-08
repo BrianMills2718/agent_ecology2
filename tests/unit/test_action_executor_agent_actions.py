@@ -19,6 +19,7 @@ from src.world.actions import (
     ConfigureContextIntent,
     ModifySystemPromptIntent,
     WriteArtifactIntent,
+    UpdateMetadataIntent,
 )
 from src.world.artifacts import create_agent_artifact
 
@@ -150,3 +151,81 @@ class TestModifySystemPromptAction:
         assert "system_prompt_modifications" in config
         mods = config["system_prompt_modifications"]
         assert "Always be helpful." in str(mods)
+
+
+@pytest.mark.plans([308])
+class TestUpdateMetadataAction:
+    """Tests that update_metadata works through the action executor (Plan #308)."""
+
+    def test_update_metadata_success(self, world: World) -> None:
+        """update_metadata should set a metadata key on an artifact."""
+        _create_target_artifact(world)
+
+        intent = UpdateMetadataIntent("agent_001", "handbook", "tag", "important")
+        result = world.execute_action(intent)
+
+        assert result.success is True
+        artifact = world.artifacts.get("handbook")
+        assert artifact is not None
+        assert artifact.metadata["tag"] == "important"
+
+    def test_update_metadata_not_found(self, world: World) -> None:
+        """update_metadata on nonexistent artifact should fail."""
+        intent = UpdateMetadataIntent("agent_001", "nonexistent", "tag", "val")
+        result = world.execute_action(intent)
+
+        assert result.success is False
+
+    def test_update_metadata_permission_denied(self, world: World) -> None:
+        """update_metadata without write access should fail."""
+        # Create artifact owned by SYSTEM with private contract
+        world.artifacts.write(
+            artifact_id="private_doc",
+            type="document",
+            content="secret",
+            created_by="SYSTEM",
+            access_contract_id="private",
+        )
+
+        intent = UpdateMetadataIntent("agent_001", "private_doc", "tag", "val")
+        result = world.execute_action(intent)
+
+        assert result.success is False
+
+    def test_update_metadata_delete_key(self, world: World) -> None:
+        """update_metadata with value=None should delete the key."""
+        _create_target_artifact(world)
+
+        # Set a key first
+        world.execute_action(UpdateMetadataIntent("agent_001", "handbook", "tag", "temp"))
+        artifact = world.artifacts.get("handbook")
+        assert artifact is not None
+        assert "tag" in artifact.metadata
+
+        # Delete it
+        result = world.execute_action(UpdateMetadataIntent("agent_001", "handbook", "tag", None))
+
+        assert result.success is True
+        artifact = world.artifacts.get("handbook")
+        assert artifact is not None
+        assert "tag" not in artifact.metadata
+
+    def test_update_metadata_rejects_authorized_writer(self, world: World) -> None:
+        """update_metadata must reject attempts to set authorized_writer."""
+        _create_target_artifact(world)
+
+        intent = UpdateMetadataIntent("agent_001", "handbook", "authorized_writer", "agent_001")
+        result = world.execute_action(intent)
+
+        assert result.success is False
+        assert "protected" in result.message.lower() or "escrow" in result.message.lower()
+
+    def test_update_metadata_rejects_authorized_principal(self, world: World) -> None:
+        """update_metadata must reject attempts to set authorized_principal."""
+        _create_target_artifact(world)
+
+        intent = UpdateMetadataIntent("agent_001", "handbook", "authorized_principal", "agent_001")
+        result = world.execute_action(intent)
+
+        assert result.success is False
+        assert "protected" in result.message.lower() or "escrow" in result.message.lower()
