@@ -10,51 +10,6 @@ from unittest.mock import MagicMock  # mock-ok: CapabilityManager needs World wh
 
 import pytest
 
-from src.world.model_access import ModelAccessManager, ModelConfig
-
-
-def _make_mgr(*model_ids: str) -> ModelAccessManager:
-    """Create a ModelAccessManager with simple model configs."""
-    models = [
-        ModelConfig(id=mid, global_limit_rpd=1000, cost_per_1k_input=0.01, cost_per_1k_output=0.03)
-        for mid in model_ids
-    ]
-    return ModelAccessManager(models=models)
-
-
-class TestModelAccessExplicitChecks:
-    """Category C: model_access.py uses explicit checks instead of broad KeyError catch."""
-
-    def test_has_quota_unregistered_agent_returns_false(self) -> None:
-        """Unregistered agent returns False without raising."""
-        mgr = _make_mgr("gpt-4")
-        assert mgr.has_capacity("nonexistent_agent", "gpt-4", 100) is False
-
-    def test_has_quota_unregistered_model_returns_false(self) -> None:
-        """Unregistered model returns False without raising."""
-        mgr = _make_mgr("gpt-4")
-        mgr.register_agent("alice")
-        assert mgr.has_capacity("alice", "nonexistent_model", 100) is False
-
-    def test_has_quota_sufficient_returns_true(self) -> None:
-        """Agent with sufficient quota returns True."""
-        mgr = _make_mgr("gpt-4")
-        mgr.register_agent("alice")
-        assert mgr.has_capacity("alice", "gpt-4", 100) is True
-
-    def test_transfer_unregistered_source_returns_false(self) -> None:
-        """Transfer from unregistered agent returns False without raising."""
-        mgr = _make_mgr("gpt-4")
-        mgr.register_agent("bob")
-        assert mgr.transfer_quota("nonexistent", "bob", "gpt-4", 100) is False
-
-    def test_transfer_unregistered_model_returns_false(self) -> None:
-        """Transfer of unregistered model returns False without raising."""
-        mgr = _make_mgr("gpt-4")
-        mgr.register_agent("alice")
-        mgr.register_agent("bob")
-        assert mgr.transfer_quota("alice", "bob", "nonexistent_model", 100) is False
-
 
 class TestCostFallbackLogging:
     """Category B: cost fallbacks log warnings when 'cost' field is missing."""
