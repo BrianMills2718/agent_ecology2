@@ -82,7 +82,7 @@ def run():
             task_queue.append({
                 "id": nid,
                 "description": f"Auto-advanced to {phase} phase — act accordingly",
-                "priority": 9,
+                "priority": 7,
             })
             state["next_task_id"] = nid + 1
 
@@ -119,18 +119,38 @@ def run():
     last_result = state.get("last_action_result")
     completed = state.get("completed_tasks", [])[-5:]
 
+    # Track unsubmitted tools (built but not yet submitted to any mint task)
+    submitted_artifacts = set()
+    for fa in state.get("failed_attempts", []):
+        if fa.get("type", "").startswith("submit_"):
+            submitted_artifacts.add(fa.get("artifact", ""))
+    for ah in state.get("action_history", []):
+        if ah.get("action_type") == "submit_to_task":
+            submitted_artifacts.add(ah.get("artifact_id", ""))
+    completed_mint = set(state.get("completed_mint_tasks", []))
+    unsubmitted_tools = [t for t in tools_built if t not in submitted_artifacts]
+
     phase_guidance = {
         "questioning": "Identify a specific research question. What gap matters most?",
         "investigating": "Gather info: query artifacts, read others' work. Don't investigate forever — if nothing exists, BUILD it.",
-        "building": "CREATE something tangible. Write an executable artifact. This is where value comes from.",
+        "building": "CREATE something tangible, then SUBMIT it. Build → submit → earn scrip. If you have unsubmitted tools, SUBMIT them first!",
         "analyzing": "Apply your tools. Invoke artifacts, test hypotheses, generate results.",
         "reflecting": "Synthesize what you learned. Record knowledge. Plan what's next.",
     }
+
+    # Format available mint tasks for prompt
+    available_mint = state.get("available_mint_tasks", [])
+    open_mint = [t for t in available_mint if t.get("status") == "open"]
+    completed_mint_list = state.get("completed_mint_tasks", [])
 
     prompt = f"""{strategy}
 
 == STATUS ==
 Iteration: {state['iteration']} | Scrip: {scrip_balance} | Tools built: {len(tools_built)} | Tasks completed: {len(state.get('completed_tasks', []))}
+
+== AVAILABLE MINT TASKS (use task_id string for submit_to_task) ==
+{json.dumps(open_mint, indent=2) if open_mint else "(query mint_tasks first to see available tasks)"}
+NOTE: task_id is a STRING like "add_numbers", NOT a number.
 
 == CURRENT TASK ==
 Task #{current_task['id']}: {current_task['description']}
@@ -147,6 +167,10 @@ Task #{current_task['id']}: {current_task['description']}
 == TOOLS YOU'VE BUILT ==
 {json.dumps(tools_built, indent=2) if tools_built else "(none — building tools is how you gain capability)"}
 
+== ⚠ UNSUBMITTED TOOLS (built but NOT yet submitted to mint tasks) ==
+{json.dumps(unsubmitted_tools, indent=2) if unsubmitted_tools else "(all tools submitted or none built)"}
+{">>> YOU HAVE TOOLS READY TO SUBMIT! Use submit_to_task NOW to earn scrip. <<<" if unsubmitted_tools else ""}
+
 == FAILED ATTEMPTS (don't repeat these) ==
 {json.dumps(failed_attempts, indent=2) if failed_attempts else "(none)"}
 
@@ -156,8 +180,11 @@ Task #{current_task['id']}: {current_task['description']}
 == TASK QUEUE ==
 {json.dumps(task_queue[1:4], indent=2) if len(task_queue) > 1 else "(empty — generate new tasks)"}
 
-== COMPLETED ==
+== COMPLETED TASKS ==
 {json.dumps(completed, indent=2) if completed else "(none yet)"}
+
+== MINT TASKS ALREADY DONE (by you or others — don't retry) ==
+{json.dumps(state.get('completed_mint_tasks', []), indent=2) if state.get('completed_mint_tasks') else "(none — earn scrip by completing mint tasks!)"}
 
 RESPOND WITH JSON:
 {{
@@ -177,15 +204,17 @@ ACTIONS:
 - Write data: {{"action_type": "write_artifact", "artifact_id": "{agent_prefix}_data_NAME", "artifact_type": "json", "content": {{...}}}}
 - Invoke tool: {{"action_type": "invoke_artifact", "artifact_id": "tool_id", "method": "run", "args": [...]}}
 - Query mint tasks: {{"action_type": "query_kernel", "query_type": "mint_tasks", "params": {{}}}}
-- Submit to mint task: {{"action_type": "submit_to_task", "artifact_id": "my_tool", "task_id": "task_name"}}
+- Submit to mint task: {{"action_type": "submit_to_task", "artifact_id": "{agent_prefix}_tool_X", "task_id": "add_numbers"}}  (task_id is a STRING from the mint tasks list!)
 - Noop: {{"action_type": "noop"}}
 
 RULES:
 1. NEVER repeat a failed action. Check failed_attempts first.
-2. Prefer BUILDING over investigating. Creating artifacts = capability.
-3. Each response MUST include at least 1 new_task.
-4. Use UNIQUE artifact IDs with your prefix: {agent_prefix}_
-5. If you've queried 3+ times without results, BUILD instead."""
+2. If you have UNSUBMITTED TOOLS, your next action MUST be submit_to_task. Building more tools before submitting = wasted effort.
+3. Prefer BUILDING over investigating. Creating artifacts = capability.
+4. Each response MUST include at least 1 new_task.
+5. Use UNIQUE artifact IDs with your prefix: {agent_prefix}_
+6. If you've queried 3+ times without results, BUILD instead.
+7. The cycle is: query mint tasks → build tool → SUBMIT tool → repeat. Never skip the submit step."""
 
     # --- Call LLM ---
     llm_result = _syscall_llm(model, [{"role": "user", "content": prompt}])
@@ -263,19 +292,42 @@ RULES:
             })
             state["next_task_id"] = nid + 1
 
-    # Track tool creation
+    # Track tool creation and auto-inject submit task
     if action.get("action_type") == "write_artifact" and action.get("executable"):
         tool_id = action.get("artifact_id", "unknown")
         if tool_id not in state.get("tools_built", []):
             state.setdefault("tools_built", []).append(tool_id)
+        # Auto-inject high-priority submit task so the agent doesn't forget
+        # Try to match tool to a known mint task by name
+        mint_tasks_available = state.get("available_mint_tasks", [])
+        matching_task = None
+        for mt in mint_tasks_available:
+            tid = mt.get("task_id", "")
+            if tid and tid in tool_id:
+                matching_task = tid
+                break
+        nid = state.get("next_task_id", 1)
+        if matching_task:
+            desc = f'SUBMIT {tool_id} to task "{matching_task}" NOW — use submit_to_task with task_id="{matching_task}"'
+        else:
+            desc = f"SUBMIT {tool_id} to the appropriate mint task NOW — check available mint tasks for the right task_id string"
+        state.setdefault("task_queue", []).append({
+            "id": nid,
+            "description": desc,
+            "priority": 10,
+        })
+        state["next_task_id"] = nid + 1
 
-    # Record action in history
-    state.setdefault("action_history", []).append({
+    # Record action in history (include artifact_id for tracking)
+    history_entry = {
         "iteration": state["iteration"],
         "phase": phase,
         "action_type": action.get("action_type"),
         "reasoning": reasoning[:100],
-    })
+    }
+    if action.get("artifact_id"):
+        history_entry["artifact_id"] = action["artifact_id"]
+    state.setdefault("action_history", []).append(history_entry)
     state["action_history"] = state["action_history"][-10:]
 
     # Save state BEFORE executing action
@@ -294,6 +346,19 @@ RULES:
         try:
             result = kernel_state.query(query_type, params, caller_id=caller_id)
             action_result = {"success": True, "result": result}
+            # Store mint tasks in a clean format for the prompt
+            if query_type == "mint_tasks" and isinstance(result, dict):
+                raw_tasks = result.get("tasks", [])
+                clean_tasks = []
+                for t in raw_tasks:
+                    if isinstance(t, dict):
+                        clean_tasks.append({
+                            "task_id": t.get("task_id", ""),
+                            "description": t.get("description", ""),
+                            "reward": t.get("reward_scrip", t.get("reward", 0)),
+                            "status": "open" if t.get("is_open", True) else "closed",
+                        })
+                state["available_mint_tasks"] = clean_tasks
         except Exception as e:
             action_result = {"success": False, "error": str(e)}
             state.setdefault("failed_attempts", []).append({
@@ -360,7 +425,20 @@ RULES:
         task_id = action.get("task_id", "")
         try:
             result = kernel_actions.submit_to_task(caller_id, artifact_id, task_id)
-            action_result = {"success": True, "result": result}
+            if result.get("success"):
+                action_result = {"success": True, "result": result}
+                # Track completed mint tasks so we don't retry them
+                state.setdefault("completed_mint_tasks", []).append(task_id)
+            else:
+                # Submission failed — include test details for learning
+                action_result = {"success": False, "result": result}
+                state.setdefault("failed_attempts", []).append({
+                    "iteration": state["iteration"],
+                    "type": f"submit_{task_id}",
+                    "artifact": artifact_id,
+                    "error": result.get("message", "unknown"),
+                    "tests": result.get("public_tests", {}),
+                })
         except Exception as e:
             action_result = {"success": False, "error": str(e)}
 

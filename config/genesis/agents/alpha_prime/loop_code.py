@@ -213,14 +213,15 @@ CRITICAL: Use UNIQUE artifact IDs. submit_to_task is an action_type, not invoke_
         task_id = action.get("task_id", "")
         try:
             result = kernel_actions.submit_to_task(caller_id, artifact_id, task_id)
-            action_result = {"success": True, "result": result}
-            # Update insights on successful submission
             if result.get("success"):
+                action_result = {"success": True, "result": result}
                 state["insights"].setdefault("completed_tasks", []).append(task_id)
-            elif "no longer open" in str(result.get("error", "")):
-                # Task is closed - add to insights
-                if task_id not in state["insights"].get("closed_tasks", []):
-                    state["insights"].setdefault("closed_tasks", []).append(task_id)
+            else:
+                # Include test failure details so agent can learn
+                action_result = {"success": False, "result": result}
+                if "no longer open" in str(result.get("message", "")):
+                    if task_id not in state["insights"].get("closed_tasks", []):
+                        state["insights"].setdefault("closed_tasks", []).append(task_id)
             # Save updated insights
             kernel_actions.write_artifact(caller_id, "alpha_prime_state", json.dumps(state, indent=2))
         except Exception as e:
