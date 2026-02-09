@@ -571,7 +571,7 @@ context_budget:
 # BUDGET - Global API limit and runtime backstops
 # -----------------------------------------------------------------------------
 budget:
-  max_api_cost: 0.50            # $ (0 = unlimited). Default $0.50 for safety.
+  max_api_cost: 2.00            # $ (0 = unlimited). $2 for longer v2 experiment runs.
   max_runtime_seconds: 3600     # Hard timeout in seconds (0 = unlimited). Default 1 hour.
   checkpoint_file: "checkpoint.json"
   checkpoint_interval: 10       # Save checkpoint every N events (0 = disable)
@@ -657,7 +657,7 @@ id_generation:
 alpha_prime:
   enabled: true                           # Enabled for v2 experiment
   starting_scrip: 100                     # Initial scrip balance
-  starting_llm_budget: 1.0                # Initial LLM budget in dollars
+  starting_llm_budget: 2.0                # $2 LLM budget for longer runs
   model: "gemini/gemini-2.0-flash"        # Model for Alpha Prime's cognition
 
 # -----------------------------------------------------------------------------
@@ -713,6 +713,150 @@ mint_tasks:
         - description: "With spaces"
           args: ["hello world"]
           expected: 11
+
+    # --- Tier 2: Text Analysis (40 scrip) ---
+
+    - task_id: "word_count"
+      description: "Create an artifact that counts words in text. Your run(text) function should split on whitespace and return the word count as an integer."
+      reward: 40
+      public_tests:
+        - description: "Simple sentence"
+          args: ["hello world"]
+          expected: 2
+        - description: "Empty string"
+          args: [""]
+          expected: 0
+      hidden_tests:
+        - description: "Multiple spaces"
+          args: ["  hello   world  "]
+          expected: 2
+        - description: "Single word"
+          args: ["hello"]
+          expected: 1
+
+    - task_id: "word_frequency"
+      description: "Create an artifact that counts word frequencies. Your run(text) function should return a dict mapping each lowercase word to its count. Split on whitespace, strip punctuation."
+      reward: 40
+      public_tests:
+        - description: "Simple repetition"
+          args: ["hello world hello"]
+          expected: {"hello": 2, "world": 1}
+        - description: "Single word"
+          args: ["test"]
+          expected: {"test": 1}
+      hidden_tests:
+        - description: "Case insensitive"
+          args: ["Hello hello HELLO"]
+          expected: {"hello": 3}
+        - description: "With punctuation"
+          args: ["hello, world! hello."]
+          expected: {"hello": 2, "world": 1}
+
+    - task_id: "sentence_count"
+      description: "Create an artifact that counts sentences. Your run(text) function should count sentences (delimited by . ? or !) and return an integer."
+      reward: 40
+      public_tests:
+        - description: "Two sentences"
+          args: ["Hello world. How are you?"]
+          expected: 2
+        - description: "One sentence"
+          args: ["Hello world."]
+          expected: 1
+      hidden_tests:
+        - description: "Three types"
+          args: ["Statement. Question? Exclamation!"]
+          expected: 3
+        - description: "Empty"
+          args: [""]
+          expected: 0
+
+    # --- Tier 3: Discourse-Relevant (50 scrip) ---
+
+    - task_id: "avg_sentence_length"
+      description: "Create an artifact that computes average sentence length. Your run(text) function should split text into sentences (by . ? !), count words per sentence, and return the average as a float rounded to 1 decimal."
+      reward: 50
+      public_tests:
+        - description: "Two equal sentences"
+          args: ["I am here. You are there."]
+          expected: 3.0
+        - description: "Unequal sentences"
+          args: ["Hi. How are you today?"]
+          expected: 2.5
+      hidden_tests:
+        - description: "Single sentence"
+          args: ["The quick brown fox jumps."]
+          expected: 5.0
+        - description: "Complex"
+          args: ["Short. This is a longer sentence with many words."]
+          expected: 4.5
+
+    - task_id: "question_ratio"
+      description: "Create an artifact that measures question density. Your run(text) function should return the ratio of questions to total sentences as a float rounded to 2 decimals. A question is a sentence ending with ?."
+      reward: 50
+      public_tests:
+        - description: "Half questions"
+          args: ["Statement. Question?"]
+          expected: 0.50
+        - description: "All questions"
+          args: ["Really? Seriously?"]
+          expected: 1.00
+      hidden_tests:
+        - description: "No questions"
+          args: ["Hello. World."]
+          expected: 0.00
+        - description: "One of three"
+          args: ["Hello. World? Goodbye."]
+          expected: 0.33
+
+    - task_id: "transition_word_count"
+      description: "Create an artifact that counts discourse transition words. Your run(text) function should count occurrences of these words (case-insensitive): however, therefore, because, although, furthermore, moreover, nevertheless, consequently, meanwhile, thus. Return an integer."
+      reward: 50
+      public_tests:
+        - description: "Two transitions"
+          args: ["However, this is true. Therefore, we proceed."]
+          expected: 2
+        - description: "No transitions"
+          args: ["Hello world."]
+          expected: 0
+      hidden_tests:
+        - description: "Case insensitive"
+          args: ["HOWEVER the plan failed. Because we tried."]
+          expected: 2
+        - description: "Multiple same word"
+          args: ["Because this. Because that. Because reasons."]
+          expected: 3
+
+    # --- Tier 4: Complex Analysis (75 scrip) ---
+
+    - task_id: "readability_score"
+      description: "Create an artifact that computes Flesch Reading Ease. Your run(text) function should compute: 206.835 - 1.015*(total_words/total_sentences) - 84.6*(total_syllables/total_words). Estimate syllables by counting vowel groups (a,e,i,o,u) in each word (minimum 1 per word). Return a float rounded to 1 decimal."
+      reward: 75
+      public_tests:
+        - description: "Simple text"
+          args: ["The cat sat on the mat."]
+          expected: 116.1
+        - description: "Harder text"
+          args: ["The extraordinary phenomenon demonstrates considerable complexity."]
+          expected: -27.4
+      hidden_tests:
+        - description: "Two sentences"
+          args: ["Short words here. Big complicated terminology utilized."]
+          expected: 56.5
+
+    - task_id: "extract_claims"
+      description: "Create an artifact that extracts claim-indicator sentences. Your run(text) function should return a list of sentences that contain claim indicators: 'I believe', 'it follows', 'therefore', 'evidence shows', 'clearly', 'we must', 'the fact is', 'in conclusion'. Case-insensitive matching. Return list of matching sentence strings."
+      reward: 75
+      public_tests:
+        - description: "One claim"
+          args: ["The sky is blue. I believe this matters. The end."]
+          expected: ["I believe this matters."]
+        - description: "No claims"
+          args: ["Hello world. Goodbye."]
+          expected: []
+      hidden_tests:
+        - description: "Multiple claims"
+          args: ["Clearly this is wrong. The weather is nice. Therefore we must act."]
+          expected: ["Clearly this is wrong.", "Therefore we must act."]
 
 # -----------------------------------------------------------------------------
 # EXTERNAL CAPABILITIES - Plan #300

@@ -33,13 +33,15 @@ Analytical lenses:
 - **Character agency** — Who acts and why, motivation and response patterns
 - **Thematic resonance** — What meanings emerge from repeated patterns
 
-## Concrete Actions You Should Take
+## Strategic Priorities
 
-1. **Build a sequence analyzer** — an executable that takes text and extracts event sequences
-2. **Build a causal chain mapper** — identify cause-effect relationships in text
-3. **Query mint tasks** — find tasks that reward tool creation, earn scrip
-4. **Check other agents' tools** — use what exists, don't duplicate
-5. **Submit tools to mint tasks** — earn scrip for your creations
+1. **Query mint tasks FIRST** — these pay scrip. Understand what's available.
+2. **Decompose complex tasks** — if a task needs word counting AND sentence splitting,
+   build the word counter first, test it, THEN build the full solution.
+3. **Build incrementally** — v1 that works > v5 that doesn't. Submit early, improve later.
+4. **Track what works** — record successful strategies in your knowledge base.
+5. **Check other agents' tools** — use what exists, don't duplicate.
+6. **After completing easy tasks, tackle harder ones** — build skills progressively.
 
 ## Ecosystem
 

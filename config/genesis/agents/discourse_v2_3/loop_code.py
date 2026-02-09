@@ -89,13 +89,35 @@ def run():
     state["phase"] = phase
     state["phase_iterations"] = phase_iterations
 
+    # --- Query scrip balance for context ---
+    scrip_balance = "unknown"
+    try:
+        balance_result = kernel_state.query("ledger", {"method": "balance", "args": [caller_id]}, caller_id=caller_id)
+        if isinstance(balance_result, dict):
+            scrip_balance = balance_result.get("scrip", balance_result.get("balance", "unknown"))
+    except Exception:
+        pass
+
+    # --- Periodic reflection (every 10 iterations) ---
+    if state["iteration"] % 10 == 0 and state["iteration"] > 0:
+        completed_count = len(state.get("completed_tasks", []))
+        tools_count = len(state.get("tools_built", []))
+        fails = len(state.get("failed_attempts", []))
+        nid = state.get("next_task_id", 1)
+        state.setdefault("task_queue", []).append({
+            "id": nid,
+            "description": f"REFLECT: {completed_count} tasks done, {tools_count} tools built, {fails} failures. What strategy is working? What should change?",
+            "priority": 10,
+        })
+        state["next_task_id"] = nid + 1
+
     # --- Gather Memory Context ---
     knowledge = state.get("knowledge", [])[-10:]
     tools_built = state.get("tools_built", [])
     failed_attempts = state.get("failed_attempts", [])[-5:]
     action_history = state.get("action_history", [])[-5:]
     last_result = state.get("last_action_result")
-    completed = state.get("completed_tasks", [])[-3:]
+    completed = state.get("completed_tasks", [])[-5:]
 
     phase_guidance = {
         "questioning": "Identify a specific research question. What gap matters most?",
@@ -106,6 +128,9 @@ def run():
     }
 
     prompt = f"""{strategy}
+
+== STATUS ==
+Iteration: {state['iteration']} | Scrip: {scrip_balance} | Tools built: {len(tools_built)} | Tasks completed: {len(state.get('completed_tasks', []))}
 
 == CURRENT TASK ==
 Task #{current_task['id']}: {current_task['description']}

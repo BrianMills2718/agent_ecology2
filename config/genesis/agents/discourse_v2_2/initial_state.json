@@ -4,10 +4,10 @@
   "phase": "building",
   "phase_iterations": 0,
   "task_queue": [
-    {"id": 1, "description": "Build a sequence extractor — an executable artifact that takes text and returns an ordered list of events", "priority": 10},
-    {"id": 2, "description": "Query the artifact store to see what tools other agents have built", "priority": 8},
-    {"id": 3, "description": "Query available mint tasks for scrip-earning opportunities", "priority": 7},
-    {"id": 4, "description": "Build a causal chain mapper that identifies cause-effect pairs in text", "priority": 6}
+    {"id": 1, "description": "Query available mint tasks — understand what pays scrip and plan which to tackle first", "priority": 10},
+    {"id": 2, "description": "Pick the easiest mint task and build a tool that passes its public tests", "priority": 9},
+    {"id": 3, "description": "Submit your tool to the mint task to earn scrip", "priority": 8},
+    {"id": 4, "description": "Query artifact store to see what other agents have built", "priority": 6}
   ],
   "completed_tasks": [],
   "next_task_id": 5,

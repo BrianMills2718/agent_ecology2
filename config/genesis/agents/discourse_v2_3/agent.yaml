@@ -35,4 +35,4 @@ principal:
   starting_scrip_key: discourse_v2_3.starting_scrip
   starting_scrip: 100
   starting_llm_budget_key: discourse_v2_3.starting_llm_budget
-  starting_llm_budget: 1.0
+  starting_llm_budget: 2.0

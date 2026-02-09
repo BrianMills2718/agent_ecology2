@@ -35,17 +35,27 @@ def run():
     current_task = task_queue[0]
 
     # Build context for LLM
-    recent_completed = state.get("completed_tasks", [])[-3:]  # Last 3 results
+    recent_completed = state.get("completed_tasks", [])[-5:]  # Last 5 results
     insights = state.get("insights", {})
     objective = state.get("objective", "Earn scrip by completing mint tasks")
 
     # Plan #275: Include mint tasks data in prompt so LLM can see available tasks
     available_tasks = state.get("last_mint_tasks_query", [])
-    action_history = state.get("action_history", [])[-3:]  # Last 3 actions
+    action_history = state.get("action_history", [])[-5:]  # Last 5 actions
+
+    # Query scrip balance
+    scrip_balance = "unknown"
+    try:
+        balance_result = kernel_state.query("ledger", {"method": "balance", "args": [caller_id]}, caller_id=caller_id)
+        if isinstance(balance_result, dict):
+            scrip_balance = balance_result.get("scrip", balance_result.get("balance", "unknown"))
+    except Exception:
+        pass
 
     prompt = f"""You are Alpha Prime. Execute your current task and plan next steps.
 
 OBJECTIVE: {objective}
+STATUS: Iteration {state['iteration']} | Scrip: {scrip_balance} | Artifacts: {len(insights.get('artifacts_created', []))} | Tasks completed: {len(insights.get('completed_tasks', []))}
 
 CURRENT TASK (id={current_task['id']}): {current_task['description']}
 
