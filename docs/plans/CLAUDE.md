@@ -106,14 +106,10 @@ Master index of all gaps and their implementation plans.
 | 304 | [Fix Stale Doc References (TD-013)](304_stale_refs.md) | Medium | ✅ Complete | - |
 | 305 | [Final Tech Debt Cleanup (TD-008, TD-011, TD-012)](305_tech_debt_final_cleanup.md) | Medium | ✅ Complete | - |
 | 306 | [Meta-Process Engineering Workflow + Documentation Cleanup](306_engineering_workflow.md) | Medium | ✅ Complete | - |
-| 307 | [Dashboard Audit — v1 vs v2 and Dead Code](307_dashboard_audit.md) | Medium | ❓ | - |
-<<<<<<< HEAD
-| 308 | [Wire Up Disconnected Features Found in Dead Code Audit](308_dead_code_gaps.md) | Medium | 🚧 In Progress | - |
-| 310 | [PermissionResult Field Rename and Expansion](310_permission_result_rename.md) | Medium | ✅ Complete | - |
-=======
-| 308 | [Wire Up Disconnected Features Found in Dead Code Audit](308_dead_code_gaps.md) | Medium | ❓ | - |
+| 307 | [Dashboard Audit — v1 vs v2 and Dead Code](307_dashboard_audit.md) | Medium | ✅ Complete | - |
+| 308 | [Wire Up Disconnected Features Found in Dead Code Audit](308_dead_code_gaps.md) | Medium | ✅ Complete | - |
 | 309 | [Plan 309: Rewrite Target Contract Architecture](309_target_contracts_rewrite.md) | High | ✅ Complete | - |
->>>>>>> b5aa483 ([Plan #309] Rewrite target contract architecture and fix stale doc references)
+| 310 | [PermissionResult Field Rename and Expansion](310_permission_result_rename.md) | Medium | ✅ Complete | - |
 ---
 
 ## TDD Workflow

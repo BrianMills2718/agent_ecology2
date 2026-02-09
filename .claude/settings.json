@@ -33,6 +33,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "bash .claude/hooks/worktree-coordination/protect-main.sh",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
             "command": "bash .claude/hooks/gate-edit.sh",
             "timeout": 5000
           },
@@ -50,6 +55,16 @@
             "type": "command",
             "command": "bash .claude/hooks/protect-uncommitted.sh",
             "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/worktree-coordination/block-cd-worktree.sh",
+            "timeout": 3000
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/worktree-coordination/block-worktree-remove.sh",
+            "timeout": 3000
           }
         ]
       }

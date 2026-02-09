@@ -76,3 +76,23 @@ ensure-hooks:
 	@if [ ! -L .git/hooks/pre-commit ]; then \
 		$(MAKE) install-hooks --no-print-directory; \
 	fi
+
+# --- Worktree Coordination (parallel CC isolation) ---
+
+worktree:  ## Create worktree (usage: make worktree BRANCH=plan-42-feature)
+	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree BRANCH=plan-42-feature"; exit 1; fi
+	@mkdir -p worktrees
+	@git worktree add worktrees/$(BRANCH) -b $(BRANCH) 2>/dev/null || git worktree add worktrees/$(BRANCH) $(BRANCH)
+	@echo ""
+	@echo "Worktree created: worktrees/$(BRANCH)"
+	@echo ""
+	@echo "IMPORTANT: Do NOT cd into the worktree."
+	@echo "Use absolute paths for file operations."
+	@echo "Use git -C worktrees/$(BRANCH) for git commands."
+
+worktree-list:  ## List active worktrees
+	@git worktree list
+
+worktree-remove:  ## Safely remove worktree (usage: make worktree-remove BRANCH=plan-42-feature)
+	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree-remove BRANCH=plan-42-feature"; exit 1; fi
+	@python scripts/safe_worktree_remove.py --branch $(BRANCH)
