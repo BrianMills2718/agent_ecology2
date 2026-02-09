@@ -9,12 +9,25 @@ Tests the Alpha Prime 3-artifact cluster integration:
 
 import pytest
 import json
-import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 from src.world.world import World
+from src.world.llm_client import LLMCallResult
 from src.simulation.artifact_loop import ArtifactLoopManager
+
+
+def _mock_call_llm_result(
+    content: str = "Hello",
+    cost: float = 0.001,
+) -> LLMCallResult:
+    """Create a mock LLMCallResult for testing."""
+    return LLMCallResult(
+        content=content,
+        usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+        cost=cost,
+        model="gpt-4",
+    )
 
 
 @pytest.fixture
@@ -84,16 +97,17 @@ class TestAlphaPrimeExecution:
         from src.world.executor import get_executor
 
         # mock-ok: LLM calls are external API
-        mock_provider = MagicMock()
         # Plan #273: BabyAGI response format with action + task_update
-        mock_provider.generate.return_value = json.dumps({
-            "action": {"action_type": "noop"},
-            "task_result": "Executed query",
-            "new_tasks": []
-        })
-        mock_provider.last_usage = {"cost": 0.001, "prompt_tokens": 10, "completion_tokens": 5}
+        mock_response = _mock_call_llm_result(
+            content=json.dumps({
+                "action": {"action_type": "noop"},
+                "task_result": "Executed query",
+                "new_tasks": []
+            }),
+            cost=0.001,
+        )
 
-        with patch('llm_provider.LLMProvider', return_value=mock_provider):
+        with patch('src.world.llm_client.call_llm', return_value=mock_response):
             executor = get_executor()
             result = executor.execute_with_invoke(
                 artifact_id="alpha_prime_loop",
@@ -117,18 +131,19 @@ class TestAlphaPrimeExecution:
         assert initial_state["iteration"] == 0
 
         # mock-ok: LLM calls are external API
-        mock_provider = MagicMock()
         # Plan #273: BabyAGI response with task completion and new tasks
-        mock_provider.generate.return_value = json.dumps({
-            "action": {"action_type": "query_kernel", "query_type": "mint_tasks", "params": {}},
-            "task_result": "Found 3 mint tasks",
-            "new_tasks": [
-                {"description": "Build adder artifact", "priority": 8}
-            ]
-        })
-        mock_provider.last_usage = {"cost": 0.001, "prompt_tokens": 10, "completion_tokens": 5}
+        mock_response = _mock_call_llm_result(
+            content=json.dumps({
+                "action": {"action_type": "query_kernel", "query_type": "mint_tasks", "params": {}},
+                "task_result": "Found 3 mint tasks",
+                "new_tasks": [
+                    {"description": "Build adder artifact", "priority": 8}
+                ]
+            }),
+            cost=0.001,
+        )
 
-        with patch('llm_provider.LLMProvider', return_value=mock_provider):
+        with patch('src.world.llm_client.call_llm', return_value=mock_response):
             executor = get_executor()
             result = executor.execute_with_invoke(
                 artifact_id="alpha_prime_loop",
@@ -159,15 +174,16 @@ class TestAlphaPrimeExecution:
         assert initial_budget == 1.0
 
         # mock-ok: LLM calls are external API
-        mock_provider = MagicMock()
-        mock_provider.generate.return_value = json.dumps({
-            "action": {"action_type": "noop"},
-            "task_result": "Done",
-            "new_tasks": []
-        })
-        mock_provider.last_usage = {"cost": 0.05, "prompt_tokens": 100, "completion_tokens": 50}
+        mock_response = _mock_call_llm_result(
+            content=json.dumps({
+                "action": {"action_type": "noop"},
+                "task_result": "Done",
+                "new_tasks": []
+            }),
+            cost=0.05,
+        )
 
-        with patch('llm_provider.LLMProvider', return_value=mock_provider):
+        with patch('src.world.llm_client.call_llm', return_value=mock_response):
             executor = get_executor()
             result = executor.execute_with_invoke(
                 artifact_id="alpha_prime_loop",

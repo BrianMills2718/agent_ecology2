@@ -9,10 +9,23 @@ Tests the kernel LLM gateway:
 
 import pytest
 from unittest.mock import patch, MagicMock
-import sys
 
 from src.world.world import World
 from src.world.executor import create_syscall_llm, LLMSyscallResult
+from src.world.llm_client import LLMCallResult
+
+
+def _mock_call_llm_result(
+    content: str = "Hello, world!",
+    cost: float = 0.001,
+) -> LLMCallResult:
+    """Create a mock LLMCallResult for testing."""
+    return LLMCallResult(
+        content=content,
+        usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+        cost=cost,
+        model="gpt-4",
+    )
 
 
 @pytest.mark.plans([255])
@@ -61,17 +74,10 @@ class TestSyscallLLM:
         test_world.ledger.create_principal("syscall_caller_1", starting_scrip=100)
         test_world.ledger.set_resource("syscall_caller_1", "llm_budget", 10.0)
 
-        # Create the syscall function
         syscall = create_syscall_llm(test_world, "syscall_caller_1")
 
-        # Mock-ok: LLM calls are external API
-        # The LLMProvider is imported dynamically inside create_syscall_llm
-        with patch.dict(sys.modules, {'llm_provider': MagicMock()}):
-            mock_provider = MagicMock()
-            mock_provider.generate.return_value = "Hello, world!"
-            mock_provider.last_usage = {"cost": 0.001, "prompt_tokens": 10, "completion_tokens": 5}
-            sys.modules['llm_provider'].LLMProvider.return_value = mock_provider
-
+        # mock-ok: LLM calls are external API
+        with patch("src.world.llm_client.call_llm", return_value=_mock_call_llm_result()):
             result = syscall("gpt-4", [{"role": "user", "content": "Hi"}])
 
         assert isinstance(result, dict)
@@ -89,16 +95,8 @@ class TestSyscallLLM:
 
         initial_budget = test_world.ledger.get_resource("syscall_caller_2", "llm_budget")
 
-        # Mock-ok: LLM calls are external API
-        # Need to patch before creating syscall, since it imports LLMProvider at call time
-        mock_llm_provider_module = MagicMock()
-        mock_provider = MagicMock()
-        mock_provider.generate.return_value = "Hello, world!"
-        mock_provider.last_usage = {"cost": 0.005, "prompt_tokens": 10, "completion_tokens": 5}
-        mock_llm_provider_module.LLMProvider.return_value = mock_provider
-
-        with patch.dict(sys.modules, {'llm_provider': mock_llm_provider_module}):
-            # Create the syscall function INSIDE the patch context
+        # mock-ok: LLM calls are external API
+        with patch("src.world.llm_client.call_llm", return_value=_mock_call_llm_result(cost=0.005)):
             syscall = create_syscall_llm(test_world, "syscall_caller_2")
             result = syscall("gpt-4", [{"role": "user", "content": "Hi"}])
 
@@ -113,7 +111,6 @@ class TestSyscallLLM:
         test_world.ledger.create_principal("syscall_caller_3", starting_scrip=100)
         test_world.ledger.set_resource("syscall_caller_3", "llm_budget", 0.0001)  # Very small budget
 
-        # Create the syscall function
         syscall = create_syscall_llm(test_world, "syscall_caller_3")
 
         # No mock needed - should fail before LLM call
@@ -128,15 +125,10 @@ class TestSyscallLLM:
         test_world.ledger.create_principal("syscall_caller_4", starting_scrip=100)
         test_world.ledger.set_resource("syscall_caller_4", "llm_budget", 10.0)
 
-        # Create the syscall function
         syscall = create_syscall_llm(test_world, "syscall_caller_4")
 
-        # Mock-ok: LLM calls are external API
-        # Use patch on the already-imported llm_provider module (Plan #273 fix)
-        import llm_provider
-        mock_provider = MagicMock()
-        mock_provider.generate.side_effect = Exception("API error")
-        with patch.object(llm_provider, 'LLMProvider', return_value=mock_provider):
+        # mock-ok: LLM calls are external API
+        with patch("src.world.llm_client.call_llm", side_effect=Exception("API error")):
             result = syscall("gpt-4", [{"role": "user", "content": "Hi"}])
 
         assert result["success"] is False

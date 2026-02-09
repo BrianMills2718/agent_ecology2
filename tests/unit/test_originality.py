@@ -6,42 +6,52 @@ of the mint scorer module.
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-
+from src.world.llm_client import LLMCallResult
 from src.world.mint_scorer import MintScorer
+
+
+def _mock_call_llm_result(
+    content: str = '{"score": 50, "reason": "OK"}',
+    cost: float = 0.001,
+) -> LLMCallResult:
+    """Create a mock LLMCallResult for testing."""
+    return LLMCallResult(
+        content=content,
+        usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+        cost=cost,
+        model="test-model",
+    )
 
 
 @pytest.fixture
 def scorer() -> MintScorer:
     """Create a fresh MintScorer instance for testing.
 
-    Uses mocked LLMProvider to avoid actual API calls.
+    # mock-ok: LLM calls are external API
     """
-    with patch("src.world.mint_scorer.LLMProvider"):
-        scorer = MintScorer(model="test-model", log_dir="/tmp/test_logs")
-        # Clear any seen hashes from previous tests
-        scorer._seen_hashes = set()
-        return scorer
+    scorer = MintScorer(model="test-model", log_dir="/tmp/test_logs")
+    scorer._seen_hashes = set()
+    return scorer
 
 
 @pytest.fixture
-def scorer_with_mock_llm() -> tuple[MintScorer, MagicMock]:
-    """Create a MintScorer with a mocked LLM that returns valid JSON.
+def scorer_with_mock_llm():  # type: ignore[no-untyped-def]
+    """Create a MintScorer with a mocked call_llm that returns valid JSON.
 
-    Returns both the scorer and the mock LLM for verification.
+    Yields (scorer, mock) so the patch remains active during the test.
+    # mock-ok: LLM calls are external API
     """
-    with patch("src.world.mint_scorer.LLMProvider") as mock_llm_class:
-        mock_llm = MagicMock()
-        mock_llm.generate.return_value = '{"score": 75, "reason": "Good content"}'
-        mock_llm_class.return_value = mock_llm
-
+    mock_llm = MagicMock(return_value=_mock_call_llm_result(
+        content='{"score": 75, "reason": "Good content"}'
+    ))
+    with patch("src.world.mint_scorer.call_llm", mock_llm):
         scorer = MintScorer(model="test-model", log_dir="/tmp/test_logs")
         scorer._seen_hashes = set()
-        return scorer, mock_llm
+        yield scorer, mock_llm
 
 
 class TestOriginalityOracle:
@@ -60,7 +70,9 @@ class TestOriginalityOracle:
         content = "This content will be submitted twice."
 
         # First submission - mark as seen via score_artifact
-        scorer.score_artifact("artifact_1", "text", content)
+        # mock-ok: LLM calls are external API
+        with patch("src.world.mint_scorer.call_llm", return_value=_mock_call_llm_result()):
+            scorer.score_artifact("artifact_1", "text", content)
 
         # Second submission should not be original
         result = scorer.is_original(content)
@@ -73,7 +85,9 @@ class TestOriginalityOracle:
         content_with_whitespace = "  hello  "
 
         # First submission
-        scorer.score_artifact("artifact_1", "text", content_no_whitespace)
+        # mock-ok: LLM calls are external API
+        with patch("src.world.mint_scorer.call_llm", return_value=_mock_call_llm_result()):
+            scorer.score_artifact("artifact_1", "text", content_no_whitespace)
 
         # Whitespace-padded version should be detected as duplicate
         result = scorer.is_original(content_with_whitespace)
@@ -87,7 +101,9 @@ class TestOriginalityOracle:
         content_upper = "HELLO"
 
         # First submission
-        scorer.score_artifact("artifact_1", "text", content_lower)
+        # mock-ok: LLM calls are external API
+        with patch("src.world.mint_scorer.call_llm", return_value=_mock_call_llm_result()):
+            scorer.score_artifact("artifact_1", "text", content_lower)
 
         # Different case versions should be detected as duplicates
         assert scorer.is_original(content_mixed) is False
@@ -99,7 +115,9 @@ class TestOriginalityOracle:
         content_2 = "Completely different content"
 
         # Submit first content
-        scorer.score_artifact("artifact_1", "text", content_1)
+        # mock-ok: LLM calls are external API
+        with patch("src.world.mint_scorer.call_llm", return_value=_mock_call_llm_result()):
+            scorer.score_artifact("artifact_1", "text", content_1)
 
         # Different content should still be original
         result = scorer.is_original(content_2)
@@ -111,7 +129,9 @@ class TestOriginalityOracle:
         content = "Content that will be duplicated"
 
         # First submission
-        first_result = scorer.score_artifact("artifact_1", "text", content)
+        # mock-ok: LLM calls are external API
+        with patch("src.world.mint_scorer.call_llm", return_value=_mock_call_llm_result()):
+            first_result = scorer.score_artifact("artifact_1", "text", content)
 
         # Second submission with same content
         second_result = scorer.score_artifact("artifact_2", "text", content)
@@ -130,7 +150,7 @@ class TestOriginalityOracle:
         result = scorer.score_artifact("artifact_1", "text", content)
 
         # Verify LLM was called
-        mock_llm.generate.assert_called_once()
+        mock_llm.assert_called_once()
 
         # Verify the result contains the mocked score
         assert result["success"] is True
