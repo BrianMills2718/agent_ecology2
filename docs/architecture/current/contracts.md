@@ -2,11 +2,11 @@
 
 How access control works today.
 
-**Last verified:** 2026-02-06 (mypy strict fixes - type annotations only, no behavioral changes)
+**Last verified:** 2026-02-08 (Plan #310 - PermissionResult field rename and expansion)
 
 **See also:** ADR-0019 (Unified Permission Architecture)
 
-**Source:** `src/world/contracts.py`, `src/world/genesis_contracts.py`
+**Source:** `src/world/contracts.py`, `src/world/kernel_contracts.py`
 
 ---
 
@@ -37,11 +37,14 @@ Returned by permission checks:
 ```python
 @dataclass
 class PermissionResult:
-    allowed: bool      # Whether action is permitted
-    reason: str        # Human-readable explanation
-    cost: int = 0      # Scrip cost (0 = free, must be non-negative)
-    conditions: dict   # Optional metadata
-    recipient: str | None = None  # Who receives payment (ADR-0028)
+    allowed: bool                          # Whether action is permitted
+    reason: str                            # Human-readable explanation
+    scrip_cost: int = 0                    # Scrip cost (0 = free, must be non-negative)
+    scrip_payer: str | None = None         # Who pays scrip (None = caller)
+    scrip_recipient: str | None = None     # Who receives scrip payment (ADR-0028)
+    resource_payer: str | None = None      # Who pays real resource costs (None = caller)
+    state_updates: dict | None = None      # Contract state changes (applied atomically by kernel)
+    conditions: dict | None = None         # Optional metadata
 ```
 
 ### AccessContract Protocol
@@ -167,9 +170,13 @@ def check_permission(caller, action, target, context, ledger):
     # ledger: ReadOnlyLedger - Read-only ledger for balance checks
 
     return {
-        "allowed": True,    # bool - required
-        "reason": "...",    # str - required
-        "cost": 0           # int - optional, scrip cost
+        "allowed": True,         # bool - required
+        "reason": "...",         # str - required
+        "scrip_cost": 0,         # int - optional, scrip cost
+        "scrip_payer": None,     # str - optional, who pays (None = caller)
+        "scrip_recipient": None, # str - optional, who receives payment
+        "resource_payer": None,  # str - optional, who pays real resources
+        "state_updates": None,   # dict - optional, contract state changes
     }
 ```
 
@@ -231,9 +238,9 @@ def check_permission(caller, action, target, context, ledger):
         price = 5  # Cheaper for reads
 
     if not ledger.can_afford_scrip(caller, price):
-        return {"allowed": False, "reason": "Insufficient scrip", "cost": 0}
+        return {"allowed": False, "reason": "Insufficient scrip", "scrip_cost": 0}
 
-    return {"allowed": True, "reason": f"Paid {price} scrip", "cost": price}
+    return {"allowed": True, "reason": f"Paid {price} scrip", "scrip_cost": price}
 ''',
     cache_policy={"ttl_seconds": 60}  # Cache results for 1 minute
 )

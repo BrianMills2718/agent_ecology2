@@ -187,8 +187,8 @@ class ActionExecutor:
                     retriable=True,
                     error_details={"required": read_price, "available": w.ledger.get_scrip(intent.principal_id)},
                 )
-            # Pay read_price to recipient (ADR-0028: contract decides who gets paid)
-            recipient = perm_result.recipient
+            # Pay read_price to scrip_recipient (ADR-0028: contract decides who gets paid)
+            recipient = perm_result.scrip_recipient
             if read_price > 0 and recipient:
                 w.ledger.deduct_scrip(intent.principal_id, read_price)
                 w.ledger.credit_scrip(recipient, read_price)

@@ -640,4 +640,4 @@ class TestContractComparison:
                 target="artifact_1",
                 context=context,
             )
-            assert result.cost == 0, f"{name} should have zero cost by default"
+            assert result.scrip_cost == 0, f"{name} should have zero cost by default"

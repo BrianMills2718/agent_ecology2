@@ -86,7 +86,7 @@ class TestPermissionResult:
         result = PermissionResult(allowed=True, reason="test: allowed")
         assert result.allowed is True
         assert result.reason == "test: allowed"
-        assert result.cost == 0
+        assert result.scrip_cost == 0
         assert result.conditions is None
 
     def test_basic_denied_result(self) -> None:
@@ -97,14 +97,14 @@ class TestPermissionResult:
 
     def test_result_with_cost(self) -> None:
         """Verify result with cost."""
-        result = PermissionResult(allowed=True, reason="test: with cost", cost=50)
+        result = PermissionResult(allowed=True, reason="test: with cost", scrip_cost=50)
         assert result.allowed is True
-        assert result.cost == 50
+        assert result.scrip_cost == 50
 
     def test_result_with_zero_cost(self) -> None:
         """Verify result with explicit zero cost."""
-        result = PermissionResult(allowed=True, reason="test: free", cost=0)
-        assert result.cost == 0
+        result = PermissionResult(allowed=True, reason="test: free", scrip_cost=0)
+        assert result.scrip_cost == 0
 
     def test_result_with_conditions(self) -> None:
         """Verify result with conditions dict."""
@@ -119,8 +119,8 @@ class TestPermissionResult:
 
     def test_result_negative_cost_raises(self) -> None:
         """Verify negative cost raises ValueError."""
-        with pytest.raises(ValueError, match="cost cannot be negative"):
-            PermissionResult(allowed=True, reason="test", cost=-1)
+        with pytest.raises(ValueError, match="scrip_cost cannot be negative"):
+            PermissionResult(allowed=True, reason="test", scrip_cost=-1)
 
     def test_result_equality(self) -> None:
         """Verify result equality comparison."""
@@ -133,8 +133,8 @@ class TestPermissionResult:
 
     def test_result_cost_equality(self) -> None:
         """Verify results with different costs are not equal."""
-        result1 = PermissionResult(allowed=True, reason="test", cost=10)
-        result2 = PermissionResult(allowed=True, reason="test", cost=20)
+        result1 = PermissionResult(allowed=True, reason="test", scrip_cost=10)
+        result2 = PermissionResult(allowed=True, reason="test", scrip_cost=20)
         assert result1 != result2
 
     def test_result_immutable_conditions(self) -> None:
@@ -294,11 +294,11 @@ class TestAccessContractProtocol:
             ) -> PermissionResult:
                 if action == PermissionAction.READ:
                     return PermissionResult(
-                        allowed=True, reason="read allowed", cost=self.read_cost
+                        allowed=True, reason="read allowed", scrip_cost=self.read_cost
                     )
                 if action == PermissionAction.WRITE:
                     return PermissionResult(
-                        allowed=True, reason="write allowed", cost=self.write_cost
+                        allowed=True, reason="write allowed", scrip_cost=self.write_cost
                     )
                 return PermissionResult(allowed=False, reason="action not supported")
 
@@ -308,13 +308,13 @@ class TestAccessContractProtocol:
             "user", PermissionAction.READ, "artifact"
         )
         assert read_result.allowed is True
-        assert read_result.cost == 10
+        assert read_result.scrip_cost == 10
 
         write_result = contract.check_permission(
             "user", PermissionAction.WRITE, "artifact"
         )
         assert write_result.allowed is True
-        assert write_result.cost == 50
+        assert write_result.scrip_cost == 50
 
 
 class TestPermissionActionUsagePatterns:
@@ -507,7 +507,7 @@ class TestExecutableContract:
             contract_id="allow_all",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "All access allowed", "cost": 0}
+    return {"allowed": True, "reason": "All access allowed", "scrip_cost": 0}
 '''
         )
 
@@ -519,7 +519,7 @@ def check_permission(caller, action, target, context, ledger):
 
         assert result.allowed is True
         assert result.reason == "All access allowed"
-        assert result.cost == 0
+        assert result.scrip_cost == 0
 
     def test_basic_deny_all(self) -> None:
         """Test a simple contract that denies everything."""
@@ -527,7 +527,7 @@ def check_permission(caller, action, target, context, ledger):
             contract_id="deny_all",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": False, "reason": "No access allowed", "cost": 0}
+    return {"allowed": False, "reason": "No access allowed", "scrip_cost": 0}
 '''
         )
 
@@ -548,8 +548,8 @@ def check_permission(caller, action, target, context, ledger):
 def check_permission(caller, action, target, context, ledger):
     owner = context.get("owner")
     if caller == owner:
-        return {"allowed": True, "reason": "Owner access", "cost": 0}
-    return {"allowed": False, "reason": "Only owner can access", "cost": 0}
+        return {"allowed": True, "reason": "Owner access", "scrip_cost": 0}
+    return {"allowed": False, "reason": "Only owner can access", "scrip_cost": 0}
 '''
         )
 
@@ -578,8 +578,8 @@ def check_permission(caller, action, target, context, ledger):
             code='''
 def check_permission(caller, action, target, context, ledger):
     if action in ("read", "execute", "invoke"):
-        return {"allowed": True, "reason": "Read access allowed", "cost": 0}
-    return {"allowed": False, "reason": "Write access denied", "cost": 0}
+        return {"allowed": True, "reason": "Read access allowed", "scrip_cost": 0}
+    return {"allowed": False, "reason": "Write access denied", "scrip_cost": 0}
 '''
         )
 
@@ -611,10 +611,10 @@ def check_permission(caller, action, target, context, ledger):
 def check_permission(caller, action, target, context, ledger):
     price = 10
     if ledger is None:
-        return {"allowed": False, "reason": "Ledger required", "cost": 0}
+        return {"allowed": False, "reason": "Ledger required", "scrip_cost": 0}
     if not ledger.can_afford_scrip(caller, price):
-        return {"allowed": False, "reason": "Insufficient scrip", "cost": 0}
-    return {"allowed": True, "reason": "Paid access", "cost": price}
+        return {"allowed": False, "reason": "Insufficient scrip", "scrip_cost": 0}
+    return {"allowed": True, "reason": "Paid access", "scrip_cost": price}
 '''
         )
 
@@ -626,7 +626,7 @@ def check_permission(caller, action, target, context, ledger):
             ledger=ledger,
         )
         assert result.allowed is True
-        assert result.cost == 10
+        assert result.scrip_cost == 10
 
         # Poor user cannot afford
         result = contract.check_permission(
@@ -647,8 +647,8 @@ def check_permission(caller, action, target, context, ledger):
     # time module is pre-loaded in CONTRACT_ALLOWED_MODULES
     current_time = time.time()
     if current_time > 0:
-        return {"allowed": True, "reason": "Time check passed", "cost": 0}
-    return {"allowed": False, "reason": "Time check failed", "cost": 0}
+        return {"allowed": True, "reason": "Time check passed", "scrip_cost": 0}
+    return {"allowed": False, "reason": "Time check failed", "scrip_cost": 0}
 '''
         )
 
@@ -668,7 +668,7 @@ def check_permission(caller, action, target, context, ledger):
 def check_permission(caller, action, target, context, ledger):
     # Use math module
     value = math.sqrt(16)
-    return {"allowed": value == 4.0, "reason": f"sqrt(16) = {value}", "cost": 0}
+    return {"allowed": value == 4.0, "reason": f"sqrt(16) = {value}", "scrip_cost": 0}
 '''
         )
 
@@ -687,7 +687,7 @@ def check_permission(caller, action, target, context, ledger):
 def check_permission(caller, action, target, context, ledger):
     data = json.dumps({"key": "value"})
     parsed = json.loads(data)
-    return {"allowed": parsed["key"] == "value", "reason": "JSON works", "cost": 0}
+    return {"allowed": parsed["key"] == "value", "reason": "JSON works", "scrip_cost": 0}
 '''
         )
 
@@ -706,7 +706,7 @@ def check_permission(caller, action, target, context, ledger):
 def check_permission(caller, action, target, context, ledger):
     random.seed(42)
     value = random.randint(1, 100)
-    return {"allowed": 1 <= value <= 100, "reason": f"Random: {value}", "cost": 0}
+    return {"allowed": 1 <= value <= 100, "reason": f"Random: {value}", "scrip_cost": 0}
 '''
         )
 
@@ -775,7 +775,7 @@ def check_permission(caller, action, target, context, ledger
             code='''
 def check_permission(caller, action, target, context, ledger):
     x = 1 / 0  # Division by zero
-    return {"allowed": True, "reason": "ok", "cost": 0}
+    return {"allowed": True, "reason": "ok", "scrip_cost": 0}
 '''
         )
 
@@ -811,7 +811,7 @@ def check_permission(caller, action, target, context, ledger):
             contract_id="bad_allowed",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": "yes", "reason": "test", "cost": 0}
+    return {"allowed": "yes", "reason": "test", "scrip_cost": 0}
 '''
         )
 
@@ -829,7 +829,7 @@ def check_permission(caller, action, target, context, ledger):
             contract_id="float_cost",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "test", "cost": 10.5}
+    return {"allowed": True, "reason": "test", "scrip_cost": 10.5}
 '''
         )
 
@@ -839,8 +839,8 @@ def check_permission(caller, action, target, context, ledger):
             target="artifact_1",
         )
         assert result.allowed is True
-        assert result.cost == 10
-        assert isinstance(result.cost, int)
+        assert result.scrip_cost == 10
+        assert isinstance(result.scrip_cost, int)
 
     def test_negative_cost_becomes_zero(self) -> None:
         """Test that negative cost becomes zero."""
@@ -848,7 +848,7 @@ def check_permission(caller, action, target, context, ledger):
             contract_id="negative_cost",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "test", "cost": -5}
+    return {"allowed": True, "reason": "test", "scrip_cost": -5}
 '''
         )
 
@@ -858,7 +858,7 @@ def check_permission(caller, action, target, context, ledger):
             target="artifact_1",
         )
         assert result.allowed is True
-        assert result.cost == 0
+        assert result.scrip_cost == 0
 
     def test_dangerous_builtins_removed(self) -> None:
         """Test that dangerous builtins are not available."""
@@ -869,9 +869,9 @@ def check_permission(caller, action, target, context, ledger):
 def check_permission(caller, action, target, context, ledger):
     try:
         f = open("/etc/passwd")
-        return {"allowed": True, "reason": "opened file", "cost": 0}
+        return {"allowed": True, "reason": "opened file", "scrip_cost": 0}
     except NameError:
-        return {"allowed": False, "reason": "open not available", "cost": 0}
+        return {"allowed": False, "reason": "open not available", "scrip_cost": 0}
 '''
         )
 
@@ -892,9 +892,9 @@ def check_permission(caller, action, target, context, ledger):
 def check_permission(caller, action, target, context, ledger):
     try:
         result = eval("1 + 1")
-        return {"allowed": True, "reason": "eval works", "cost": 0}
+        return {"allowed": True, "reason": "eval works", "scrip_cost": 0}
     except NameError:
-        return {"allowed": False, "reason": "eval not available", "cost": 0}
+        return {"allowed": False, "reason": "eval not available", "scrip_cost": 0}
 '''
         )
 
@@ -914,9 +914,9 @@ def check_permission(caller, action, target, context, ledger):
 def check_permission(caller, action, target, context, ledger):
     try:
         exec("x = 1")
-        return {"allowed": True, "reason": "exec works", "cost": 0}
+        return {"allowed": True, "reason": "exec works", "scrip_cost": 0}
     except NameError:
-        return {"allowed": False, "reason": "exec not available", "cost": 0}
+        return {"allowed": False, "reason": "exec not available", "scrip_cost": 0}
 '''
         )
 
@@ -936,9 +936,9 @@ def check_permission(caller, action, target, context, ledger):
 def check_permission(caller, action, target, context, ledger):
     try:
         os = __import__("os")
-        return {"allowed": True, "reason": "import works", "cost": 0}
+        return {"allowed": True, "reason": "import works", "scrip_cost": 0}
     except NameError:
-        return {"allowed": False, "reason": "import not available", "cost": 0}
+        return {"allowed": False, "reason": "import not available", "scrip_cost": 0}
 '''
         )
 
@@ -962,7 +962,7 @@ def check_permission(caller, action, target, context, ledger):
     return {
         "allowed": True,
         "reason": f"owner={owner}, type={artifact_type}, tick={tick}",
-        "cost": 0
+        "scrip_cost": 0
     }
 '''
         )
@@ -984,7 +984,7 @@ def check_permission(caller, action, target, context, ledger):
             contract_id="test",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "ok", "cost": 0}
+    return {"allowed": True, "reason": "ok", "scrip_cost": 0}
 '''
         )
 
@@ -996,7 +996,7 @@ def check_permission(caller, action, target, context, ledger):
             contract_id="my_custom_contract",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "ok", "cost": 0}
+    return {"allowed": True, "reason": "ok", "scrip_cost": 0}
 '''
         )
 
@@ -1009,8 +1009,8 @@ def check_permission(caller, action, target, context, ledger):
             code='''
 def check_permission(caller, action, target, context, ledger):
     if ledger is None:
-        return {"allowed": True, "reason": "No ledger, free access", "cost": 0}
-    return {"allowed": True, "reason": "Ledger present", "cost": 0}
+        return {"allowed": True, "reason": "No ledger, free access", "scrip_cost": 0}
+    return {"allowed": True, "reason": "Ledger present", "scrip_cost": 0}
 '''
         )
 
@@ -1059,8 +1059,8 @@ class TestExecutableContractWithExecutor:
 def check_permission(caller, action, target, context, ledger):
     price = 10
     if ledger and not ledger.can_afford_scrip(caller, price):
-        return {"allowed": False, "reason": "Insufficient scrip", "cost": 0}
-    return {"allowed": True, "reason": "Paid access", "cost": price}
+        return {"allowed": False, "reason": "Insufficient scrip", "scrip_cost": 0}
+    return {"allowed": True, "reason": "Paid access", "scrip_cost": price}
 '''
         )
 
@@ -1078,8 +1078,8 @@ def check_permission(caller, action, target, context, ledger):
 def check_permission(caller, action, target, context, ledger):
     price = 10
     if ledger and not ledger.can_afford_scrip(caller, price):
-        return {"allowed": False, "reason": "Insufficient scrip", "cost": 0}
-    return {"allowed": True, "reason": "Paid access", "cost": price}
+        return {"allowed": False, "reason": "Insufficient scrip", "scrip_cost": 0}
+    return {"allowed": True, "reason": "Paid access", "scrip_cost": price}
 '''
         )
 
@@ -1093,7 +1093,7 @@ def check_permission(caller, action, target, context, ledger):
             "rich_user", "read", self.artifact
         )
         assert result.allowed is True
-        assert result.cost == 10
+        assert result.scrip_cost == 10
 
         # Poor user should be denied
         result = self.executor._check_permission_via_contract(
@@ -1264,7 +1264,7 @@ class TestContractTimeoutConfiguration:
             contract_id="default_timeout",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "ok", "cost": 0}
+    return {"allowed": True, "reason": "ok", "scrip_cost": 0}
 '''
         )
 
@@ -1280,7 +1280,7 @@ def check_permission(caller, action, target, context, ledger):
             contract_id="custom_timeout",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "ok", "cost": 0}
+    return {"allowed": True, "reason": "ok", "scrip_cost": 0}
 ''',
             timeout=10  # Custom timeout
         )
@@ -1294,7 +1294,7 @@ def check_permission(caller, action, target, context, ledger):
             contract_id="llm_contract",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "ok", "cost": 0}
+    return {"allowed": True, "reason": "ok", "scrip_cost": 0}
 ''',
             capabilities=["call_llm"]  # Declares LLM capability
         )
@@ -1311,7 +1311,7 @@ def check_permission(caller, action, target, context, ledger):
             contract_id="llm_custom_timeout",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "ok", "cost": 0}
+    return {"allowed": True, "reason": "ok", "scrip_cost": 0}
 ''',
             capabilities=["call_llm"],
             timeout=60  # Explicit override
@@ -1330,7 +1330,7 @@ def check_permission(caller, action, target, context, ledger):
 def check_permission(caller, action, target, context, ledger):
     # time module is already available (pre-loaded)
     time.sleep(2)
-    return {"allowed": True, "reason": "ok", "cost": 0}
+    return {"allowed": True, "reason": "ok", "scrip_cost": 0}
 ''',
             timeout=1  # 1 second timeout - should fail
         )
@@ -1355,7 +1355,7 @@ def check_permission(caller, action, target, context, ledger):
 def check_permission(caller, action, target, context, ledger):
     # time module is already available (pre-loaded)
     time.sleep(0.1)  # 100ms sleep
-    return {"allowed": True, "reason": "completed", "cost": 0}
+    return {"allowed": True, "reason": "completed", "scrip_cost": 0}
 ''',
             timeout=5  # 5 second timeout - plenty of time
         )
@@ -1376,7 +1376,7 @@ def check_permission(caller, action, target, context, ledger):
             contract_id="capable_contract",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "ok", "cost": 0}
+    return {"allowed": True, "reason": "ok", "scrip_cost": 0}
 ''',
             capabilities=["call_llm", "invoke_artifact"]
         )
@@ -1392,7 +1392,7 @@ def check_permission(caller, action, target, context, ledger):
             contract_id="basic_contract",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "ok", "cost": 0}
+    return {"allowed": True, "reason": "ok", "scrip_cost": 0}
 '''
         )
 
@@ -1416,7 +1416,7 @@ class TestContractPermissionCaching:
             contract_id="cached_contract",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "ok", "cost": 0}
+    return {"allowed": True, "reason": "ok", "scrip_cost": 0}
 ''',
             cache_policy={"ttl_seconds": 60}
         )
@@ -1430,7 +1430,7 @@ def check_permission(caller, action, target, context, ledger):
             contract_id="uncached_contract",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "ok", "cost": 0}
+    return {"allowed": True, "reason": "ok", "scrip_cost": 0}
 '''
         )
 
@@ -1443,7 +1443,7 @@ def check_permission(caller, action, target, context, ledger):
             contract_id="valid_cache",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "ok", "cost": 0}
+    return {"allowed": True, "reason": "ok", "scrip_cost": 0}
 ''',
             cache_policy={"ttl_seconds": 30}
         )
@@ -1456,7 +1456,7 @@ def check_permission(caller, action, target, context, ledger):
         from src.world.contracts import PermissionCache
 
         cache = PermissionCache()
-        result = PermissionResult(allowed=True, reason="cached", cost=0)
+        result = PermissionResult(allowed=True, reason="cached", scrip_cost=0)
 
         # Store a result
         cache_key = ("artifact_1", "read", "user_1", "v1")
@@ -1474,7 +1474,7 @@ def check_permission(caller, action, target, context, ledger):
         import time
 
         cache = PermissionCache()
-        result = PermissionResult(allowed=True, reason="cached", cost=0)
+        result = PermissionResult(allowed=True, reason="cached", scrip_cost=0)
 
         # Store with 0.1 second TTL
         cache_key = ("artifact_1", "read", "user_1", "v1")
@@ -1503,7 +1503,7 @@ def check_permission(caller, action, target, context, ledger):
         from src.world.contracts import PermissionCache
 
         cache = PermissionCache()
-        result = PermissionResult(allowed=True, reason="test", cost=0)
+        result = PermissionResult(allowed=True, reason="test", scrip_cost=0)
 
         # Store with specific key
         key1 = ("artifact_1", "read", "user_1", "v1")
@@ -1545,7 +1545,7 @@ def check_permission(caller, action, target, context, ledger):
             contract_id="cached_contract",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "cached result", "cost": 0}
+    return {"allowed": True, "reason": "cached result", "scrip_cost": 0}
 ''',
             cache_policy={"ttl_seconds": 60}
         )
@@ -1602,7 +1602,7 @@ def check_permission(caller, action, target, context, ledger):
             contract_id="uncached_contract",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "not cached", "cost": 0}
+    return {"allowed": True, "reason": "not cached", "scrip_cost": 0}
 '''
             # No cache_policy
         )
@@ -1642,8 +1642,8 @@ def check_permission(caller, action, target, context, ledger):
         from src.world.contracts import PermissionCache
 
         cache = PermissionCache()
-        result1 = PermissionResult(allowed=True, reason="allowed", cost=0)
-        result2 = PermissionResult(allowed=False, reason="denied", cost=0)
+        result1 = PermissionResult(allowed=True, reason="allowed", scrip_cost=0)
+        result2 = PermissionResult(allowed=False, reason="denied", scrip_cost=0)
 
         # Same artifact but different callers
         key1 = ("artifact_1", "read", "alice", "v1")
@@ -1661,7 +1661,7 @@ def check_permission(caller, action, target, context, ledger):
         from src.world.contracts import PermissionCache
 
         cache = PermissionCache()
-        result = PermissionResult(allowed=True, reason="test", cost=0)
+        result = PermissionResult(allowed=True, reason="test", scrip_cost=0)
 
         cache.put(("a1", "read", "u1", "v1"), result, ttl_seconds=60)
         cache.put(("a2", "read", "u2", "v1"), result, ttl_seconds=60)
@@ -1690,8 +1690,8 @@ def check_permission(caller, action, target, context, ledger):
         from src.world.contracts import PermissionCache
 
         cache = PermissionCache()
-        result_v1 = PermissionResult(allowed=True, reason="v1", cost=0)
-        result_v2 = PermissionResult(allowed=False, reason="v2", cost=0)
+        result_v1 = PermissionResult(allowed=True, reason="v1", scrip_cost=0)
+        result_v2 = PermissionResult(allowed=False, reason="v2", scrip_cost=0)
 
         # Same artifact/action/user but different contract versions
         cache.put(("artifact", "read", "user", "v1"), result_v1, ttl_seconds=60)

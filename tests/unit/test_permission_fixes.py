@@ -49,23 +49,23 @@ class TestPermissionResultPayer:
     def test_payer_defaults_to_none(self) -> None:
         """Payer defaults to None (caller pays)."""
         result = PermissionResult(allowed=True, reason="test")
-        assert result.payer is None
+        assert result.scrip_payer is None
 
     def test_payer_can_be_set(self) -> None:
         """Payer can be explicitly set."""
         result = PermissionResult(
-            allowed=True, reason="test", cost=100, payer="sponsor_agent"
+            allowed=True, reason="test", scrip_cost=100, scrip_payer="sponsor_agent"
         )
-        assert result.payer == "sponsor_agent"
-        assert result.cost == 100
+        assert result.scrip_payer == "sponsor_agent"
+        assert result.scrip_cost == 100
 
     def test_payer_with_zero_cost(self) -> None:
         """Payer field works even with zero cost."""
         result = PermissionResult(
-            allowed=True, reason="test", cost=0, payer="sponsor"
+            allowed=True, reason="test", scrip_cost=0, scrip_payer="sponsor"
         )
-        assert result.payer == "sponsor"
-        assert result.cost == 0
+        assert result.scrip_payer == "sponsor"
+        assert result.scrip_cost == 0
 
 
 @pytest.mark.plans([140])
@@ -126,10 +126,10 @@ class TestPayerFromContract:
     def test_payer_field_in_permission_result(self) -> None:
         """PermissionResult can carry payer info."""
         result = PermissionResult(
-            allowed=True, reason="sponsored access", cost=50, payer="sponsor"
+            allowed=True, reason="sponsored access", scrip_cost=50, scrip_payer="sponsor"
         )
-        assert result.payer == "sponsor"
-        assert result.cost == 50
+        assert result.scrip_payer == "sponsor"
+        assert result.scrip_cost == 50
 
 
 @pytest.mark.plans([140])

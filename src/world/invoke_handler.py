@@ -163,10 +163,10 @@ def execute_invoke(
         perm_result = check_permission_via_contract_func(
             immediate_caller, "invoke", target, method="run", args=list(invoke_args)
         )
-        contract_cost = perm_result.cost
+        contract_cost = perm_result.scrip_cost
         # Contract can specify alternate payer (Plan #140)
-        if perm_result.payer is not None:
-            cost_payer = perm_result.payer
+        if perm_result.scrip_payer is not None:
+            cost_payer = perm_result.scrip_payer
 
     total_cost = price + contract_cost
     if total_cost > 0 and not ledger.can_afford_scrip(cost_payer, total_cost):
