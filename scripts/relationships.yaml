@@ -760,6 +760,7 @@ couplings:
   - sources:
       - src/world/artifacts.py
       - src/world/executor.py
+      - src/world/llm_client.py
       - src/world/action_executor.py
       - src/world/permission_checker.py
       - src/world/interface_validation.py
@@ -768,7 +769,7 @@ couplings:
       - src/world/kernel_interface.py
     docs:
       - docs/architecture/current/artifacts_executor.md
-    description: "Artifact storage, policies, code execution, kernel interface, permission checking"
+    description: "Artifact storage, policies, code execution, LLM client, kernel interface, permission checking"
 
   # Configuration
   - sources:
@@ -1099,8 +1100,6 @@ claude_md:
     - ".github/*"
     - "meta-process/"                       # Portable framework (not project-specific)
     - "meta-process/*"
-    - "llm_provider_standalone/"            # Standalone utility
-    - "llm_provider_standalone/*"
     - "scripts/dev_scripts/"                # Small dev utilities
 
     # Asset / build directories
