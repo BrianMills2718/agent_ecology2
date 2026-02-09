@@ -95,4 +95,4 @@ worktree-list:  ## List active worktrees
 
 worktree-remove:  ## Safely remove worktree (usage: make worktree-remove BRANCH=plan-42-feature)
 	@if [ -z "$(BRANCH)" ]; then echo "Usage: make worktree-remove BRANCH=plan-42-feature"; exit 1; fi
-	@python scripts/safe_worktree_remove.py --branch $(BRANCH)
+	@python scripts/safe_worktree_remove.py worktrees/$(BRANCH)
