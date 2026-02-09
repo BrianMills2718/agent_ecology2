@@ -10,15 +10,13 @@ Resource Categories:
 - RENEWABLE: Rate-limited, replenishes over time (e.g., cpu_seconds per minute)
 
 Terminology (Plan #166 - Resource Rights Model):
-- RESOURCE_LLM_BUDGET (a.k.a. dollar_budget): Primary LLM constraint in dollars
+- RESOURCE_LLM_BUDGET: Primary LLM constraint in dollars
 - RESOURCE_LLM_TOKENS: DEPRECATED - use RESOURCE_LLM_BUDGET instead
   The token-based model conflated usage tracking with rights/quotas.
   Dollar budget is the single constraint; per-model tracking is handled separately.
 
 Future (Plan #166 Phase 3+): Resources will become tradeable artifacts.
 """
-
-import warnings
 
 # === Depletable Resources (stock, finite) ===
 # Once spent, these are gone - scarcity drives behavior
@@ -28,13 +26,7 @@ RESOURCE_LLM_BUDGET = "llm_budget"
 
 This is THE constraint on LLM usage. Agents spend their dollar budget on LLM
 calls. When budget is exhausted, no more LLM calls are allowed.
-
-Alias: RESOURCE_DOLLAR_BUDGET (Plan #166 terminology)
 """
-
-# Plan #166: New canonical name for dollar-based budget
-RESOURCE_DOLLAR_BUDGET = RESOURCE_LLM_BUDGET
-"""Alias for RESOURCE_LLM_BUDGET. Preferred name per Plan #166."""
 
 # === Allocatable Resources (quota, reclaimable) ===
 # Agents have a quota; usage can be reclaimed (e.g., deleting artifacts)
@@ -64,12 +56,6 @@ to dollar-based budget constraint (RESOURCE_LLM_BUDGET).
 
 RESOURCE_CPU = "cpu_seconds"
 """CPU time in seconds per period."""
-
-# === Legacy / Deprecated ===
-# Kept for backward compatibility - prefer canonical names above
-
-RESOURCE_COMPUTE = "compute"
-"""DEPRECATED: Old name for llm_tokens. Use RESOURCE_LLM_TOKENS instead."""
 
 # === All Resources ===
 
@@ -101,12 +87,9 @@ RENEWABLE_RESOURCES = frozenset({
 __all__ = [
     # Primary resources
     "RESOURCE_LLM_BUDGET",
-    "RESOURCE_DOLLAR_BUDGET",  # Plan #166 alias
     "RESOURCE_DISK",
     "RESOURCE_LLM_TOKENS",
     "RESOURCE_CPU",
-    # Deprecated
-    "RESOURCE_COMPUTE",
     # Collections
     "ALL_RESOURCES",
     "DEPLETABLE_RESOURCES",

@@ -719,8 +719,7 @@ class Artifact:
 
 ### Factory Functions
 
-- `create_agent_artifact(agent_id, owner_id, config)` - Create agent artifact
-- `create_memory_artifact(memory_id, owner_id)` - Create memory artifact
+- `create_agent_artifact(agent_id, created_by, config)` - Create agent artifact
 
 ### Auto-Principal Creation (Plan #254)
 

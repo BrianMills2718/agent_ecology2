@@ -98,11 +98,6 @@ class LLMSyscallResult(TypedDict):
     error: str
 
 
-class BudgetExhaustedError(Exception):
-    """Raised when caller cannot afford an LLM call (Plan #255)."""
-    pass
-
-
 def create_syscall_llm(
     world: "World",
     caller_id: str,
@@ -141,9 +136,6 @@ def create_syscall_llm(
 
         Returns:
             LLMSyscallResult with content, usage, and cost
-
-        Raises:
-            BudgetExhaustedError: If caller cannot afford the call
         """
         # Estimate cost (rough: $0.001 per message as minimum)
         # Real cost will be calculated after the call
@@ -249,11 +241,6 @@ def get_max_contract_depth() -> int:
     Plan #181: Delegates to permission_checker module.
     """
     return _permission_checker.get_max_contract_depth()
-
-
-# Legacy constant for backward compatibility
-DEFAULT_MAX_INVOKE_DEPTH = 5
-DEFAULT_MAX_CONTRACT_DEPTH = _permission_checker.DEFAULT_MAX_CONTRACT_DEPTH
 
 
 def _format_runtime_error(e: Exception, prefix: str = "Runtime error") -> str:

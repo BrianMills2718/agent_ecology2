@@ -359,21 +359,3 @@ def _assess_concerns_only(
 
     return concerns
 
-
-def log_health_report(report: HealthReport, logger: logging.Logger) -> None:
-    """Log health report as structured event.
-
-    Args:
-        report: The health report to log
-        logger: Logger to use for output
-    """
-    logger.info(
-        "health_report",
-        extra={
-            "event_type": "health_report",
-            "overall_status": report.overall_status,
-            "health_score": report.health_score,
-            "concern_count": len(report.concerns),
-            "trend": report.trend,
-        },
-    )
