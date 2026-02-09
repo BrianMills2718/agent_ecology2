@@ -83,3 +83,12 @@ merge_gates:
 project:
   type: existing
   complexity: moderate
+
+# Worktree Coordination (recovered from PR #1063/#1066)
+# Each CC instance must work in its own worktree when parallel instances are active.
+claims:
+  enabled: true
+  stale_hours: 4  # Claims older than this get warnings
+
+hooks:
+  enforce_workflow: true  # Enable block-cd-worktree and related hooks

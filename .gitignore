@@ -72,6 +72,7 @@ Thumbs.db
 .claude/*
 !.claude/settings.json
 !.claude/hooks/
+!.claude/active-work.yaml
 !.claude/commands/
 
 # Generated documentation packages (regeneratable via build scripts)

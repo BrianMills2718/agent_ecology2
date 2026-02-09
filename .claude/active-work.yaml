@@ -1,0 +1,4 @@
+# Active Work Claims
+# Managed by scripts/check_claims.py
+# Each CC instance registers a claim before editing files.
+claims: []
