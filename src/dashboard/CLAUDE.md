@@ -10,7 +10,7 @@ Server-rendered HTML/JS served from `static/` with WebSocket streaming.
 | `__init__.py` | Package exports (create_app, run_dashboard, JSONLParser, etc.) |
 | `server.py` | FastAPI server, route registration, static file serving |
 | `parser.py` | JSONL event log parsing, simulation state reconstruction |
-| `models.py` | Pydantic response schemas (AgentBalance, ArtifactInfo, etc.) |
+| `models.py` | Pydantic response schemas (ArtifactInfo, AgentSummary, etc.) |
 | `watcher.py` | File watching (watchdog) for live JSONL updates |
 | `auditor.py` | Threshold-based ecosystem health assessment and reports |
 | `dependency_graph.py` | Artifact dependency graph construction and metrics |

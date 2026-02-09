@@ -14,15 +14,6 @@ class ResourceBalance(BaseModel):
     used: float = 0
 
 
-class AgentBalance(BaseModel):
-    """Complete balance info for an agent."""
-    agent_id: str
-    scrip: int = 0
-    llm_tokens: ResourceBalance
-    disk: ResourceBalance
-    status: Literal["active", "low_resources", "frozen"] = "active"
-
-
 class AgentSummary(BaseModel):
     """Summary of agent for list view."""
     agent_id: str
@@ -538,27 +529,6 @@ class EcosystemKPIsResponse(BaseModel):
 
 
 # Agent Configuration Display (Plan #108)
-
-
-class AgentConfigResponse(BaseModel):
-    """Agent configuration from YAML file for dashboard display."""
-
-    agent_id: str
-    llm_model: str | None = None
-    starting_credits: int = 100
-    enabled: bool = True
-    temperature: float | None = None
-    max_tokens: int | None = None
-    # Genotype traits (gen3 agents)
-    genotype: dict[str, str] | None = None
-    # RAG configuration
-    rag: dict[str, Any] | None = None
-    # Workflow configuration (state machine + steps)
-    workflow: dict[str, Any] | None = None
-    # Error handling config
-    error_handling: dict[str, Any] | None = None
-    # Whether config file was found
-    config_found: bool = True
 
 
 # Emergence Observability Metrics (Plan #110 Phase 3)

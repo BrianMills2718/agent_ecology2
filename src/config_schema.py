@@ -2087,9 +2087,7 @@ __all__ = [
     # Sub-configs
     "ResourcesConfig",
     "StockResources",
-    "FlowResources",
     "StockResource",
-    "FlowResource",
     "ScripConfig",
     "CostsConfig",
     # Timeouts
