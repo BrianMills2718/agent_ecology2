@@ -43,10 +43,6 @@ from pathlib import Path
 
 DEFAULT_EXEMPT_DIRS: list[str] = [
     "*/static/*",
-    "*/static-v2/*",
-    "*/api/routes/",
-    "dashboard-v2/src/*",
-    "dashboard-v2/public/",
     "docs/architecture/gaps/",
     "docs/simulation_learnings/",
     "src/agents/_components/behaviors/",

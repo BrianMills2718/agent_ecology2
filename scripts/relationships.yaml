@@ -1105,16 +1105,8 @@ claude_md:
 
     # Asset / build directories
     - "*/static/*"                          # Asset directories
-    - "*/static-v2/*"                       # Build output
 
     # Dashboard internals (described by parent CLAUDE.md)
-    - "dashboard-v2/src/"                   # Described by dashboard-v2/CLAUDE.md
-    - "dashboard-v2/src/*"
-    - "dashboard-v2/public/"                # Static assets
-    - "src/dashboard/api/"                  # Described by src/dashboard/CLAUDE.md
-    - "src/dashboard/api/*"
-    - "src/dashboard/core_v2/"              # Described by src/dashboard/CLAUDE.md
-    - "src/dashboard/models_v2/"            # Described by src/dashboard/CLAUDE.md
 
     # Agent personality directories (config, not code modules)
     - "src/agents/_handbook/"               # Template/reference

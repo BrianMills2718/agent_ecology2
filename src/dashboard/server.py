@@ -43,7 +43,6 @@ from .process_manager import SimulationProcessManager
 from .watcher import PollingWatcher
 from .run_manager import RunManager
 from .models import (
-    SimulationState as SimulationStateModel,
     AgentSummary,
     AgentDetail,
     ArtifactInfo,
@@ -52,9 +51,6 @@ from .models import (
     GenesisActivitySummary,
     ResourceChartData,
     EconomicFlowData,
-    ConfigInfo,
-    EventFilter,
-    EcosystemKPIsResponse,
     InvocationEvent,
     InvocationStatsResponse,
     DependencyGraphData,
@@ -614,28 +610,11 @@ def create_app(
     if dashboard.static_dir.exists():
         app.mount("/static", StaticFiles(directory=str(dashboard.static_dir)), name="static")
 
-    # Static files - v2 (React) if directory exists
-    static_v2_dir = dashboard.static_dir.parent / "static-v2"
-    if static_v2_dir.exists():
-        app.mount("/static-v2", StaticFiles(directory=str(static_v2_dir)), name="static-v2")
-
     # Routes
 
     @app.get("/", response_class=HTMLResponse, response_model=None)
     async def index() -> HTMLResponse:
-        """Serve the main dashboard page based on config version."""
-        config = get_validated_config()
-        version = getattr(config.dashboard, 'version', 'v1')
-
-        if version == 'v2':
-            # Serve React dashboard
-            index_path = static_v2_dir / "index.html"
-            if index_path.exists():
-                with open(index_path) as f:
-                    return HTMLResponse(content=f.read())
-            return HTMLResponse("<h1>Dashboard v2 not built. Run: cd dashboard-v2 && npm run build</h1>")
-
-        # Default: serve v1 (vanilla JS)
+        """Serve the main dashboard page."""
         index_path = dashboard.static_dir / "index.html"
         if index_path.exists():
             with open(index_path) as f:

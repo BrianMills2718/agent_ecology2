@@ -237,26 +237,6 @@ class RawEvent(BaseModel):
         return v
 
 
-class EventFilter(BaseModel):
-    """Filter for querying events."""
-    event_types: list[str] | None = None
-    agent_id: str | None = None
-    artifact_id: str | None = None
-    tick_min: int | None = None
-    tick_max: int | None = None
-    limit: int = 100
-    offset: int = 0
-
-
-class ConfigInfo(BaseModel):
-    """Configuration information for display."""
-    resources: dict[str, Any]
-    costs: dict[str, Any]
-    genesis: dict[str, Any]
-    world: dict[str, Any]
-    budget: dict[str, Any]
-
-
 class ChartDataPoint(BaseModel):
     """Single data point for charts."""
     tick: int
@@ -491,44 +471,6 @@ class DependencyGraphData(BaseModel):
 
 
 # Ecosystem Health KPIs
-
-
-class EcosystemKPIsResponse(BaseModel):
-    """Ecosystem health KPIs for API response."""
-
-    # Capital metrics
-    total_scrip: int = 0
-    scrip_velocity: float = 0.0
-    gini_coefficient: float = 0.0
-    median_scrip: int = 0
-
-    # Activity metrics
-    active_agent_ratio: float = 0.0
-    frozen_agent_count: int = 0
-    actions_per_second: float = 0.0  # Renamed from actions_per_tick
-    thinking_cost_rate: float = 0.0
-
-    # Market metrics
-    escrow_volume: int = 0
-    escrow_active_listings: int = 0
-    mint_scrip_rate: float = 0.0
-    artifact_creation_rate: float = 0.0
-
-    # Resource metrics
-    llm_budget_remaining: float = 0.0
-    llm_budget_burn_rate: float = 0.0
-
-    # Emergence metrics
-    agent_spawn_rate: float = 0.0
-    coordination_events: int = 0
-    artifact_diversity: int = 0
-
-    # Trends (last N ticks)
-    scrip_velocity_trend: list[float] = Field(default_factory=list)
-    activity_trend: list[float] = Field(default_factory=list)
-
-
-# Agent Configuration Display (Plan #108)
 
 
 # Emergence Observability Metrics (Plan #110 Phase 3)
