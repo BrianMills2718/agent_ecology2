@@ -169,3 +169,5 @@ Not applicable — these are meta-process script tests, not simulation features.
 - Many scripts have logic in `if __name__ == "__main__"` blocks — may need refactoring to extract testable functions
 - Use `# mock-ok: subprocess/filesystem isolation` annotations where mocks are unavoidable
 - Source: MP-007 investigation in `meta-process/ISSUES.md`
+
+**Post-completion note (Feb 2026):** The scripts tested in this plan (`cleanup_orphaned_worktrees.py`, `cleanup_claims_mess.py`, `recover.py`) and their tests were all deleted in PR #1063 when the worktree system was simplified. The plan was validly completed at the time; the scripts were later removed. New tests for the recovered `check_claims.py` and `safe_worktree_remove.py` were added separately.

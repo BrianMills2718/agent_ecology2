@@ -100,7 +100,20 @@ make branches            # List stale remote branches
 make branches-delete     # Delete stale remote branches (merged PRs)
 make run                 # Run simulation (DURATION=60 AGENTS=2)
 make clean               # Remove __pycache__, .pytest_cache, .mypy_cache
+make worktree BRANCH=X   # Create worktree + claim for parallel CC isolation
+make worktree-list       # List active worktrees
+make worktree-remove BRANCH=X  # Safely remove worktree
 ```
+
+### Parallel CC Instances (Worktree Isolation)
+
+When running multiple Claude Code instances on this repo, each must use a worktree:
+
+1. `make worktree BRANCH=plan-NN-description TASK="what you're doing"`
+2. Edit files using absolute paths: `$(pwd)/worktrees/BRANCH/src/...`
+3. Use `git -C worktrees/BRANCH` for git commands
+4. Do NOT `cd` into the worktree
+5. When done: `make finish BRANCH=X PR=N` (merges PR, releases claim, removes worktree)
 
 ### Plans
 
