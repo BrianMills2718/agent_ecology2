@@ -27,8 +27,8 @@ class TestContractsFeature:
             code='''
 def check_permission(caller, action, target, context, ledger):
     if action == "read":
-        return {"allowed": True, "reason": "Read allowed for all callers", "cost": 0}
-    return {"allowed": False, "reason": "Only read allowed", "cost": 0}
+        return {"allowed": True, "reason": "Read allowed for all callers", "scrip_cost": 0}
+    return {"allowed": False, "reason": "Only read allowed", "scrip_cost": 0}
 '''
         )
 
@@ -50,8 +50,8 @@ def check_permission(caller, action, target, context, ledger):
 def check_permission(caller, action, target, context, ledger):
     owner = context.get("owner") if context else None
     if caller == owner:
-        return {"allowed": True, "reason": "Owner access granted", "cost": 0}
-    return {"allowed": False, "reason": "Access denied: only owner can access", "cost": 0}
+        return {"allowed": True, "reason": "Owner access granted", "scrip_cost": 0}
+    return {"allowed": False, "reason": "Access denied: only owner can access", "scrip_cost": 0}
 '''
         )
 
@@ -72,7 +72,7 @@ def check_permission(caller, action, target, context, ledger):
             contract_id="cost_contract",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    return {"allowed": True, "reason": "Action allowed with cost", "cost": 10}
+    return {"allowed": True, "reason": "Action allowed with cost", "scrip_cost": 10}
 '''
         )
 
@@ -83,7 +83,7 @@ def check_permission(caller, action, target, context, ledger):
         )
 
         assert result.allowed is True
-        assert result.cost == 10
+        assert result.scrip_cost == 10
 
 
 @pytest.mark.feature("contracts")
@@ -103,8 +103,8 @@ def check_permission(caller, action, target, context, ledger):
     if ledger is not None:
         balance = ledger.get_scrip(caller)
         if balance >= 100:
-            return {"allowed": True, "reason": "Sufficient balance", "cost": 0}
-    return {"allowed": False, "reason": "Insufficient balance for access", "cost": 0}
+            return {"allowed": True, "reason": "Sufficient balance", "scrip_cost": 0}
+    return {"allowed": False, "reason": "Insufficient balance for access", "scrip_cost": 0}
 '''
         )
 
@@ -167,7 +167,7 @@ def check_permission(caller, action, target, context, ledger):
 def check_permission(caller, action, target, context, ledger):
     # Compute something
     total = sum(range(1000))
-    return {"allowed": True, "reason": "computed", "cost": 0}
+    return {"allowed": True, "reason": "computed", "scrip_cost": 0}
 '''
         )
         

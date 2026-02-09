@@ -68,7 +68,7 @@ class TestCostFallbackLogging:
         assert result > 0
 
     def test_executable_contract_cost_missing_logs_warning(self, caplog: pytest.LogCaptureFixture) -> None:
-        """ExecutableContract logs warning when result has no 'cost' field."""
+        """ExecutableContract logs warning when result has no 'scrip_cost' field."""
         from src.world.contracts import ExecutableContract, PermissionAction
 
         contract_code = '''
@@ -89,7 +89,7 @@ def check_permission(caller, action, target, context, ledger=None):
             )
 
         assert result.allowed is True
-        assert any("no 'cost' field" in msg for msg in caplog.messages), \
+        assert any("no 'scrip_cost' field" in msg for msg in caplog.messages), \
             f"Expected cost warning, got: {caplog.messages}"
 
 

@@ -82,30 +82,41 @@ class PermissionResult:
     Returned by AccessContract.check_permission() to indicate whether
     an action is allowed and provide additional context.
 
+    Three separate concerns (Plan #310):
+      - Access control: allowed, reason
+      - Scrip economics: scrip_cost, scrip_payer, scrip_recipient
+      - Real resource attribution: resource_payer
+
     Attributes:
         allowed: Whether the action is permitted.
         reason: Human-readable explanation of the decision.
-        cost: Scrip cost to perform the action (0 = free).
-        payer: Principal who pays the cost. If None, caller pays (default).
+        scrip_cost: Scrip cost to perform the action (0 = free).
+        scrip_payer: Principal who pays scrip. If None, caller pays (default).
             Contracts can specify an alternate payer (e.g., artifact creator,
             a sponsor tracked in metadata, or the artifact itself if it has standing).
-        recipient: Principal who receives payment. If None, no payment routed.
+        scrip_recipient: Principal who receives scrip payment. If None, no payment routed.
             Contracts specify who gets paid — payment routing is the contract's
             decision, not determined by created_by.
+        resource_payer: Principal who pays real resource costs (LLM $, disk, compute).
+            If None, caller pays. Enables delegation of real resource costs.
+        state_updates: Contract state changes to be applied atomically by the kernel.
+            Keys are state field names, values are new values.
         conditions: Optional additional conditions or metadata.
     """
 
     allowed: bool
     reason: str
-    cost: int = 0
-    payer: Optional[str] = None
-    recipient: Optional[str] = None
+    scrip_cost: int = 0
+    scrip_payer: Optional[str] = None
+    scrip_recipient: Optional[str] = None
+    resource_payer: Optional[str] = None
+    state_updates: Optional[dict[str, object]] = field(default=None)
     conditions: Optional[dict[str, object]] = field(default=None)
 
     def __post_init__(self) -> None:
         """Validate the result after initialization."""
-        if self.cost < 0:
-            raise ValueError(f"cost cannot be negative: {self.cost}")
+        if self.scrip_cost < 0:
+            raise ValueError(f"scrip_cost cannot be negative: {self.scrip_cost}")
 
 
 # Use runtime_checkable so we can use isinstance() checks
@@ -578,12 +589,15 @@ def check_permission(caller, action, target, context, ledger):
 
         allowed = result.get("allowed", False)
         reason = result.get("reason", "No reason provided")
-        if "cost" not in result:
+        if "scrip_cost" not in result:
             logger.warning(
-                "Executable contract returned no 'cost' field, defaulting to 0"
+                "Executable contract returned no 'scrip_cost' field, defaulting to 0"
             )
-        cost = result.get("cost", 0)
-        payer = result.get("payer")  # Plan #140: Contract-specified payer
+        scrip_cost = result.get("scrip_cost", 0)
+        scrip_payer = result.get("scrip_payer")
+        scrip_recipient = result.get("scrip_recipient")
+        resource_payer = result.get("resource_payer")
+        state_updates = result.get("state_updates")
 
         # Validate types
         if not isinstance(allowed, bool):
@@ -593,20 +607,32 @@ def check_permission(caller, action, target, context, ledger):
             )
         if not isinstance(reason, str):
             reason = str(reason)
-        if not isinstance(cost, int):
+        if not isinstance(scrip_cost, int):
             try:
-                cost = int(cost)
+                scrip_cost = int(scrip_cost)
             except (TypeError, ValueError):
-                cost = 0
-        # Validate payer is string or None
-        if payer is not None and not isinstance(payer, str):
-            payer = None  # Ignore invalid payer, default to caller
+                scrip_cost = 0
+        # Validate scrip_payer is string or None
+        if scrip_payer is not None and not isinstance(scrip_payer, str):
+            scrip_payer = None  # Ignore invalid payer, default to caller
+        # Validate scrip_recipient is string or None
+        if scrip_recipient is not None and not isinstance(scrip_recipient, str):
+            scrip_recipient = None
+        # Validate resource_payer is string or None
+        if resource_payer is not None and not isinstance(resource_payer, str):
+            resource_payer = None
+        # Validate state_updates is dict or None
+        if state_updates is not None and not isinstance(state_updates, dict):
+            state_updates = None
 
         return PermissionResult(
             allowed=allowed,
             reason=reason,
-            cost=max(0, cost),  # Ensure non-negative
-            payer=payer,
+            scrip_cost=max(0, scrip_cost),  # Ensure non-negative
+            scrip_payer=scrip_payer,
+            scrip_recipient=scrip_recipient,
+            resource_payer=resource_payer,
+            state_updates=state_updates,
         )
 
     def check_permission(

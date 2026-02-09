@@ -107,7 +107,7 @@ class FreewareContract:
             return PermissionResult(
                 allowed=True,
                 reason="freeware: open access",
-                recipient=authorized_writer,
+                scrip_recipient=authorized_writer,
             )
 
         # Authorized-writer-only actions
@@ -121,7 +121,7 @@ class FreewareContract:
                 return PermissionResult(
                     allowed=True,
                     reason="freeware: authorized writer",
-                    recipient=authorized_writer,
+                    scrip_recipient=authorized_writer,
                 )
             return PermissionResult(
                 allowed=False, reason="freeware: only authorized_writer can modify"
@@ -181,7 +181,7 @@ class TransferableFreewareContract:
             return PermissionResult(
                 allowed=True,
                 reason="transferable_freeware: open access",
-                recipient=authorized_writer,
+                scrip_recipient=authorized_writer,
             )
 
         # Authorized-writer-only actions
@@ -195,7 +195,7 @@ class TransferableFreewareContract:
                 return PermissionResult(
                     allowed=True,
                     reason="transferable_freeware: authorized writer",
-                    recipient=authorized_writer,
+                    scrip_recipient=authorized_writer,
                 )
             return PermissionResult(
                 allowed=False,
@@ -251,7 +251,7 @@ class SelfOwnedContract:
             return PermissionResult(
                 allowed=True,
                 reason="self_owned: self access",
-                recipient=authorized_principal,
+                scrip_recipient=authorized_principal,
             )
 
         # Authorized principal access
@@ -259,7 +259,7 @@ class SelfOwnedContract:
             return PermissionResult(
                 allowed=True,
                 reason="self_owned: authorized principal",
-                recipient=authorized_principal,
+                scrip_recipient=authorized_principal,
             )
 
         # All others denied
@@ -311,7 +311,7 @@ class PrivateContract:
             return PermissionResult(
                 allowed=True,
                 reason="private: authorized principal",
-                recipient=authorized_principal,
+                scrip_recipient=authorized_principal,
             )
 
         # All others denied (including the artifact itself)
