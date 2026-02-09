@@ -313,6 +313,7 @@ class ArtifactLoop:
                 caller_id=self.artifact_id,
                 artifact_id=self.artifact_id,
                 artifact_store=self.world.artifacts,
+                ledger=self.world.ledger,
             )
 
             return {

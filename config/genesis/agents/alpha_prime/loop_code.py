@@ -84,7 +84,12 @@ RESPOND WITH JSON:
 
 ACTIONS:
 - Query tasks: {{"action_type": "query_kernel", "query_type": "mint_tasks", "params": {{}}}}
+- Query artifacts: {{"action_type": "query_kernel", "query_type": "artifacts", "params": {{"name_pattern": "..."}}}}
+- Read artifact: {{"action_type": "read_artifact", "artifact_id": "..."}}
 - Write artifact: {{"action_type": "write_artifact", "artifact_id": "alpha_prime_X", "artifact_type": "executable", "executable": true, "code": "def run(...):\\n    ..."}}
+- Write artifact (with standing): {{"action_type": "write_artifact", "artifact_id": "my_service", "artifact_type": "executable", "executable": true, "has_standing": true, "code": "def run():\\n    ..."}}
+- Invoke artifact: {{"action_type": "invoke_artifact", "artifact_id": "tool_id", "method": "run", "args": [...]}}
+- Transfer scrip: {{"action_type": "transfer", "recipient_id": "...", "amount": 50, "memo": "payment for..."}}
 - Submit to task: {{"action_type": "submit_to_task", "artifact_id": "alpha_prime_X", "task_id": "task_name"}}
 
 CRITICAL: Use UNIQUE artifact IDs. submit_to_task is an action_type, not invoke_artifact."""
@@ -184,27 +189,57 @@ CRITICAL: Use UNIQUE artifact IDs. submit_to_task is an action_type, not invoke_
         except Exception as e:
             action_result = {"success": False, "error": str(e)}
 
+    elif action_type == "read_artifact":
+        artifact_id = action.get("artifact_id", "")
+        try:
+            content = kernel_state.read_artifact(artifact_id, caller_id)
+            action_result = {"success": True, "result": content}
+        except Exception as e:
+            action_result = {"success": False, "error": str(e)}
+
     elif action_type == "write_artifact":
         artifact_id = action.get("artifact_id", "")
         artifact_type = action.get("artifact_type", "text")
         content = action.get("content", "")
         code = action.get("code", "")
         executable = action.get("executable", False)
+        has_standing = action.get("has_standing", False)
         try:
-            # Use kernel_actions to write the artifact
             result = kernel_actions.write_artifact(
                 caller_id,
                 artifact_id,
-                content or code,  # Content is the code for executables
+                content or code,
                 artifact_type=artifact_type,
                 executable=executable,
                 code=code if executable else None,
+                has_standing=has_standing,
             )
             action_result = {"success": True, "result": f"Created artifact {artifact_id}"}
             # Plan #275: Track artifact creation in insights
             if artifact_id not in state["insights"].get("artifacts_created", []):
                 state["insights"].setdefault("artifacts_created", []).append(artifact_id)
                 kernel_actions.write_artifact(caller_id, "alpha_prime_state", json.dumps(state, indent=2))
+        except Exception as e:
+            action_result = {"success": False, "error": str(e)}
+
+    elif action_type == "invoke_artifact":
+        artifact_id = action.get("artifact_id", "")
+        args = action.get("args", [])
+        try:
+            result = invoke(artifact_id, *args)
+            action_result = {"success": True, "result": result}
+        except Exception as e:
+            action_result = {"success": False, "error": str(e)}
+
+    elif action_type == "transfer":
+        recipient_id = action.get("recipient_id", "")
+        amount = action.get("amount", 0)
+        try:
+            success = kernel_actions.transfer_scrip(caller_id, recipient_id, amount)
+            if success:
+                action_result = {"success": True, "result": f"Transferred {amount} to {recipient_id}"}
+            else:
+                action_result = {"success": False, "error": "Transfer failed (insufficient funds or invalid recipient)"}
         except Exception as e:
             action_result = {"success": False, "error": str(e)}
 

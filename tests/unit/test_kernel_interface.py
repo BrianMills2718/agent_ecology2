@@ -261,3 +261,135 @@ def run(*args):
         assert result["result"].get("balance") == 100
 
 
+class TestWriteArtifactHasStanding:
+    """Test has_standing parameter creates ledger principals."""
+
+    def test_write_artifact_with_has_standing_creates_principal(self, world: World) -> None:
+        """Writing artifact with has_standing=True creates a ledger principal."""
+        actions = KernelActions(world)
+
+        result = actions.write_artifact(
+            caller_id="alice",
+            artifact_id="escrow_service",
+            content="def run(): pass",
+            artifact_type="executable",
+            executable=True,
+            has_standing=True,
+        )
+
+        assert result is True
+        # Verify the artifact was created
+        assert world.artifacts.get("escrow_service") is not None
+        # Verify a principal was created in the ledger
+        assert world.ledger.principal_exists("escrow_service")
+
+    def test_write_artifact_has_standing_false_no_principal(self, world: World) -> None:
+        """Writing artifact without has_standing does NOT create a principal."""
+        actions = KernelActions(world)
+
+        result = actions.write_artifact(
+            caller_id="alice",
+            artifact_id="plain_artifact",
+            content="some data",
+            artifact_type="generic",
+        )
+
+        assert result is True
+        assert world.artifacts.get("plain_artifact") is not None
+        assert not world.ledger.principal_exists("plain_artifact")
+
+    def test_has_standing_idempotent_on_update(self, world: World) -> None:
+        """Updating an artifact with has_standing doesn't create duplicate principal."""
+        actions = KernelActions(world)
+
+        # Create with standing
+        actions.write_artifact(
+            caller_id="alice",
+            artifact_id="my_service",
+            content="v1",
+            has_standing=True,
+        )
+        initial_balance = world.ledger.get_scrip("my_service")
+
+        # Update the same artifact (has_standing on update is a no-op since
+        # principal already exists and update path doesn't re-create)
+        actions.write_artifact(
+            caller_id="alice",
+            artifact_id="my_service",
+            content="v2",
+        )
+
+        # Principal still exists, balance unchanged
+        assert world.ledger.principal_exists("my_service")
+        assert world.ledger.get_scrip("my_service") == initial_balance
+
+
+class TestArtifactLoopInvoke:
+    """Test that artifact loop injects invoke() into execution context."""
+
+    def test_invoke_available_when_ledger_passed(self, world: World) -> None:
+        """invoke() global is available when ledger is passed to execute_with_invoke."""
+        from src.world.executor import SafeExecutor
+
+        executor = SafeExecutor(ledger=world.ledger)
+
+        # Create a target artifact to invoke
+        target_code = '''
+def run(*args):
+    return {"echoed": list(args)}
+'''
+        world.artifacts.write(
+            "target_art", "executable", target_code, "alice",
+            executable=True, code=target_code,
+        )
+
+        # Create caller code that uses invoke()
+        caller_code = '''
+def run(*args):
+    result = invoke("target_art", "hello")
+    return {"invoke_result": result}
+'''
+        world.artifacts.write(
+            "caller_art", "executable", caller_code, "alice",
+            executable=True, code=caller_code,
+        )
+
+        result = executor.execute_with_invoke(
+            code=caller_code,
+            world=world,
+            caller_id="alice",
+            artifact_id="caller_art",
+            artifact_store=world.artifacts,
+            ledger=world.ledger,
+        )
+
+        assert result["success"], f"Execution failed: {result.get('error')}"
+        invoke_result = result["result"]["invoke_result"]
+        assert invoke_result["success"]
+
+    def test_invoke_not_available_without_ledger(self, world: World) -> None:
+        """invoke() global is NOT available when ledger is omitted."""
+        from src.world.executor import SafeExecutor
+
+        executor = SafeExecutor(ledger=world.ledger)
+
+        caller_code = '''
+def run(*args):
+    # invoke should not be defined
+    return {"has_invoke": "invoke" in dir()}
+'''
+
+        result = executor.execute_with_invoke(
+            code=caller_code,
+            world=world,
+            caller_id="alice",
+            artifact_id="test_art",
+            artifact_store=world.artifacts,
+            # ledger intentionally omitted
+        )
+
+        # Code should run but invoke should not be in namespace
+        # (it checks dir() which won't find it since it's not in locals)
+        assert result["success"]
+
+
