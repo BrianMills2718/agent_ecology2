@@ -14,6 +14,13 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `generate_plan_index.py` | Auto-generate docs/plans/CLAUDE.md index from plan files |
 | `sync_plan_status.py` | Sync plan status + validate content consistency |
 
+### Worktree Coordination (Parallel CC Isolation)
+
+| Script | Purpose |
+|--------|---------|
+| `check_claims.py` | Manage worktree claims — create, release, list, verify (`.claude/active-work.yaml`) |
+| `safe_worktree_remove.py` | Safely remove worktrees — checks for uncommitted changes, active sessions |
+
 ### Documentation & Quality
 
 | Script | Purpose |
@@ -117,6 +124,12 @@ python scripts/cleanup_branches.py --delete  # Delete stale branches
 # Quiz (scope-aware)
 python scripts/generate_quiz.py src/world/contracts.py  # Full quiz
 python scripts/generate_quiz.py src/world/contracts.py --trivial-threshold 5  # Reduced for small changes
+
+# Worktree coordination (parallel CC instances)
+python scripts/check_claims.py --list                   # List all claims
+python scripts/check_claims.py --claim --plan 42 --task "Fix bug" --id plan-42-fix  # Create claim
+python scripts/check_claims.py --release                # Release current branch's claim
+python scripts/check_claims.py --cleanup                # Remove old completed entries
 ```
 
 ## Configuration
