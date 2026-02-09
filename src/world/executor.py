@@ -28,6 +28,14 @@ from types import FrameType, ModuleType
 from typing import Any, Callable, Generator, TypedDict
 
 from ..config import get, get_validated_config
+
+# Pre-import litellm at module level to ensure full initialization.
+# Without this, first import inside an async executor context leaves
+# litellm partially initialized (circular import in submodules).
+try:
+    import litellm  # noqa: F401
+except ImportError:
+    pass  # litellm optional if no agents use can_call_llm
 from .simulation_engine import measure_resources
 
 # Import types for type hints (avoid circular import at runtime)
@@ -153,17 +161,11 @@ def create_syscall_llm(
             )
 
         try:
-            from .llm_client import call_llm, LLMCallResult
-            import concurrent.futures
+            from .llm_client import call_llm
 
-            # Run in thread to avoid async context issues (Plan #273)
-            # The artifact loop runs async, so litellm detects the event loop
-            def _run_sync() -> LLMCallResult:
-                return call_llm(model=model, messages=messages, timeout=60)
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(_run_sync)
-                llm_result = future.result(timeout=60)
+            # Call litellm directly — litellm.completion() is synchronous
+            # and works fine in async contexts despite event loop detection
+            llm_result = call_llm(model=model, messages=messages, timeout=60)
 
             actual_cost = llm_result.cost
 
