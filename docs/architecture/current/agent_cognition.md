@@ -1,14 +1,14 @@
-# Agent Cognitive Architecture
+# Agent Cognitive Architecture (DEPRECATED)
 
-Detailed documentation of agent decision-making, memory, and learning systems.
+> **DEPRECATED:** This entire document describes the legacy agent system that was removed in Plan #299.
+> All code referenced here (`agent.py`, `workflow.py`, `state_machine.py`, `memory.py`, `reflex.py`) no longer exists.
+> For the current agent architecture, see **[agents.md](agents.md)** which documents the 3-artifact cluster model.
 
-**Last verified:** 2026-02-05 (Plan #299: Legacy agent system removed - this doc describes deprecated architecture. See agents.md for current model.)
-
-**Related:** [agents.md](agents.md) for lifecycle, [genesis_agents.md](genesis_agents.md) for default agents, [genesis_artifacts.md](genesis_artifacts.md) for services
+**Last verified:** 2026-02-09 (Marked deprecated — legacy architecture removed in Plan #299)
 
 ---
 
-## Overview
+## Historical Overview (Legacy)
 
 Agent cognition has multiple subsystems working together:
 

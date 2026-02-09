@@ -16,7 +16,7 @@ These docs describe what IS implemented today. They are the source of truth for 
 | `README.md` | Architecture overview and system summary |
 | `execution_model.md` | Tick loop, two-phase commit, timing |
 | `agents.md` | Agent lifecycle, thinking, memory |
-| `agent_cognition.md` | Agent decision-making, memory, and learning systems |
+| `agent_cognition.md` | **DEPRECATED** - Legacy agent cognition (see agents.md) |
 | `contracts.md` | Contract system and access control |
 | `coordination_patterns.md` | How agents coordinate using existing primitives |
 | `resources.md` | Flow/stock resources, scrip, ledger |

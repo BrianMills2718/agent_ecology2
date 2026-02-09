@@ -77,12 +77,15 @@ To update governance:
 | [0017](0017-dangling-contracts-fail-open.md) | Dangling Contracts Fail Open | Accepted |
 | [0018](0018-bootstrap-and-eris.md) | Bootstrap Phase and Eris | Accepted |
 | [0019](0019-unified-permission-architecture.md) | Unified Permission Architecture | Accepted |
-| [0020](0020-event-schema-contract.md) | Event Schema Contract | Proposed |
+| [0020](0020-event-schema-contract.md) | Event Schema Contract | Accepted |
 | [0021](0021-executor-design-principles.md) | Executor Design Principles | Accepted |
 | [0022](0022-research-system-trust-model.md) | Research System Trust Model | Accepted |
 | [0023](0023-resource-attribution.md) | Resource Attribution Model | Accepted |
 | [0024](0024-artifact-self-handled-access.md) | Artifact Self-Handled Access Control | Accepted |
 | [0025](0025-deferred-tokenized-rights.md) | Deferred Tokenized Rights | Accepted |
+| [0026](0026-sophisticated-initial-agents.md) | Sophisticated Initial Agents | Accepted |
+| [0027](0027-babyagi-agent-architecture.md) | BabyAGI-Style Agent Cognitive Architecture | Accepted |
+| [0028](0028-created-by-informational.md) | created_by is Purely Informational | Accepted |
 
 ---
 

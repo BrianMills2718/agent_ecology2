@@ -212,7 +212,7 @@ Resource-gated by `RateTracker` with rolling windows:
 |------|---------------|-------------|
 | `src/simulation/agent_loop.py` | `AgentLoop._execute_iteration()` | **Primary integration point** for agent features |
 | `src/simulation/agent_loop.py` | `AgentLoopManager` | Manages agent loops lifecycle |
-| `src/agents/rate_tracker.py` | `RateTracker` | Rolling window resource gating |
+| `src/world/rate_tracker.py` | `RateTracker` | Rolling window resource gating |
 | `src/simulation/runner.py` | `SimulationRunner.run()` | Main entry point (autonomous only) |
 | `src/world/world.py` | `World.execute_action()` | Action dispatcher |
 | `src/world/actions.py` | `parse_intent_from_json()` | Action parsing (the "narrow waist") |
