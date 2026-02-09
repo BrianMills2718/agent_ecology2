@@ -394,6 +394,13 @@ class ActionExecutor:
         # Consume disk quota for the size delta
         if size_delta > 0:
             w.consume_quota(intent.principal_id, "disk", float(size_delta))
+            w.logger.log_resource_allocated(
+                principal_id=intent.principal_id,
+                resource="disk",
+                amount=float(size_delta),
+                used_after=float(w.resource_manager.get_balance(intent.principal_id, "disk")),
+                quota=float(w.resource_manager.get_quota(intent.principal_id, "disk")),
+            )
         elif size_delta < 0:
             # Reclaim freed disk space (negative consume = return)
             # Note: This doesn't actually give back quota in current impl
