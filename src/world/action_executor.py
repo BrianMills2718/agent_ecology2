@@ -911,6 +911,7 @@ class ActionExecutor:
         artifact.deleted = True
         artifact.deleted_at = datetime.now(timezone.utc).isoformat()
         artifact.deleted_by = intent.principal_id
+        w.artifacts._remove_from_index(artifact)
 
         # Log the deletion
         w.logger.log("artifact_deleted", {
