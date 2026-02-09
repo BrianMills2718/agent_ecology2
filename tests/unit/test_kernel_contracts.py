@@ -40,14 +40,14 @@ class TestFreewareContract:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Create standard context with target_metadata (per ADR-0028).
+        """Create standard context with _artifact_state (per ADR-0028).
 
         Per ADR-0028: created_by is purely informational. Contracts check
-        target_metadata["authorized_writer"] for authorization.
+        _artifact_state["writer"] for authorization.
         """
         return {
             "target_created_by": "owner_agent",  # Informational only
-            "target_metadata": {"authorized_writer": "owner_agent"},
+            "_artifact_state": {"writer": "owner_agent"},
         }
 
     def test_contract_id(self, contract: FreewareContract) -> None:
@@ -90,7 +90,7 @@ class TestFreewareContract:
     def test_write_owner(
         self, contract: FreewareContract, context: dict[str, object]
     ) -> None:
-        """Verify authorized_writer can write to freeware artifacts."""
+        """Verify writer can write to freeware artifacts."""
         result = contract.check_permission(
             caller="owner_agent",
             action=PermissionAction.WRITE,
@@ -98,12 +98,12 @@ class TestFreewareContract:
             context=context,
         )
         assert result.allowed is True
-        assert "authorized writer" in result.reason
+        assert "writer" in result.reason
 
     def test_write_other_denied(
         self, contract: FreewareContract, context: dict[str, object]
     ) -> None:
-        """Verify non-authorized_writer cannot write to freeware artifacts."""
+        """Verify non-writer cannot write to freeware artifacts."""
         result = contract.check_permission(
             caller="other_agent",
             action=PermissionAction.WRITE,
@@ -111,7 +111,7 @@ class TestFreewareContract:
             context=context,
         )
         assert result.allowed is False
-        assert "authorized_writer" in result.reason
+        assert "writer" in result.reason
 
     def test_delete_owner(
         self, contract: FreewareContract, context: dict[str, object]
@@ -159,14 +159,14 @@ class TestSelfOwnedContract:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Create standard context with target_metadata (per ADR-0028).
+        """Create standard context with _artifact_state (per ADR-0028).
 
         Per ADR-0028: created_by is purely informational. Contracts check
-        target_metadata["authorized_principal"] for authorization.
+        _artifact_state["principal"] for authorization.
         """
         return {
             "target_created_by": "owner_agent",  # Informational only
-            "target_metadata": {"authorized_principal": "owner_agent"},
+            "_artifact_state": {"principal": "owner_agent"},
         }
 
     def test_contract_id(self, contract: SelfOwnedContract) -> None:
@@ -209,7 +209,7 @@ class TestSelfOwnedContract:
     def test_owner_access_read(
         self, contract: SelfOwnedContract, context: dict[str, object]
     ) -> None:
-        """Verify authorized_principal can read the artifact."""
+        """Verify principal can read the artifact."""
         result = contract.check_permission(
             caller="owner_agent",
             action=PermissionAction.READ,
@@ -217,7 +217,7 @@ class TestSelfOwnedContract:
             context=context,
         )
         assert result.allowed is True
-        assert "authorized principal" in result.reason
+        assert "principal" in result.reason
 
     def test_owner_access_all_actions(
         self, contract: SelfOwnedContract, context: dict[str, object]
@@ -269,14 +269,14 @@ class TestPrivateContract:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Create standard context with target_metadata (per ADR-0028).
+        """Create standard context with _artifact_state (per ADR-0028).
 
         Per ADR-0028: created_by is purely informational. Contracts check
-        target_metadata["authorized_principal"] for authorization.
+        _artifact_state["principal"] for authorization.
         """
         return {
             "target_created_by": "owner_agent",  # Informational only
-            "target_metadata": {"authorized_principal": "owner_agent"},
+            "_artifact_state": {"principal": "owner_agent"},
         }
 
     def test_contract_id(self, contract: PrivateContract) -> None:
@@ -294,7 +294,7 @@ class TestPrivateContract:
     def test_owner_access_all_actions(
         self, contract: PrivateContract, context: dict[str, object]
     ) -> None:
-        """Verify authorized_principal has access to all actions."""
+        """Verify principal has access to all actions."""
         for action in PermissionAction:
             result = contract.check_permission(
                 caller="owner_agent",
@@ -303,7 +303,7 @@ class TestPrivateContract:
                 context=context,
             )
             assert result.allowed is True, f"Owner should have {action} access"
-            assert "authorized principal" in result.reason
+            assert "principal" in result.reason
 
     def test_other_denied_all_actions(
         self, contract: PrivateContract, context: dict[str, object]
@@ -520,16 +520,16 @@ class TestContractComparison:
 
     @pytest.fixture
     def context(self) -> dict[str, object]:
-        """Standard context with target_metadata (per ADR-0028).
+        """Standard context with _artifact_state (per ADR-0028).
 
         Per ADR-0028: created_by is purely informational. Contracts check
-        target_metadata for authorization.
+        _artifact_state for authorization.
         """
         return {
             "target_created_by": "owner_agent",  # Informational only
-            "target_metadata": {
-                "authorized_writer": "owner_agent",
-                "authorized_principal": "owner_agent",
+            "_artifact_state": {
+                "writer": "owner_agent",
+                "principal": "owner_agent",
             },
         }
 
@@ -575,7 +575,7 @@ class TestContractComparison:
         """Compare stranger write access across contracts."""
         expected = {
             "freeware": False,  # Creator only
-            "transferable_freeware": False,  # Authorized_writer only (Plan #213)
+            "transferable_freeware": False,  # Writer only (Plan #213)
             "self_owned": False,  # Self/owner only
             "private": False,  # Owner only
             "public": True,  # Open everything

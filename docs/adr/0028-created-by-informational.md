@@ -17,38 +17,38 @@ The fundamental issue: `created_by` records who originally created an artifact (
 - Payment routing (who receives scrip for artifact usage)
 - Authorization checks of any kind
 
-**Contracts alone decide authorization** via metadata fields:
-- `metadata["authorized_writer"]` — who can write (used by freeware/transferable_freeware contracts)
-- `metadata["authorized_principal"]` — who has full access (used by self_owned/private contracts)
+**Contracts alone decide authorization** via artifact state fields:
+- `artifact.state["writer"]` — who can write (used by freeware/transferable_freeware contracts)
+- `artifact.state["principal"]` — who has full access (used by self_owned/private contracts)
 
 **Contracts alone decide payment** via `PermissionResult.recipient`:
 - Contracts set `recipient` on allowed results
 - Payment code uses `result.recipient` instead of `artifact.created_by`
 
-**Backward compatibility:** `ArtifactStore.write()` auto-populates authorization metadata from `created_by` when creating new artifacts (if not already set by the caller). This preserves existing behavior while making the authorization field mutable and transferable.
+**Backward compatibility:** `ArtifactStore.write()` auto-populates authorization state fields from `created_by` when creating new artifacts (if not already set by the caller). This preserves existing behavior while making the authorization field mutable and transferable. Auth data lives in `artifact.state` (not `metadata`) to prevent forgery via `update_metadata` (Plan #311).
 
 ### Concrete changes
 
-1. **Kernel contracts** check `context["target_metadata"]` instead of `context["target_created_by"]`
+1. **Kernel contracts** check `context["_artifact_state"]` instead of `context["target_created_by"]`
 2. **PermissionResult** has a new `recipient` field set by contracts
-3. **Payment routing** uses `PermissionResult.recipient` or metadata fields
+3. **Payment routing** uses `PermissionResult.recipient` or artifact state fields
 4. **Hardcoded auth checks** replaced with contract permission checks
-5. **Delegation payer resolution** uses metadata for target/contract charge_to directives
+5. **Delegation payer resolution** uses artifact state for target/contract charge_to directives
 
 ## Consequences
 
 ### Positive
 
-- Ownership transfer becomes possible (change `authorized_writer` metadata)
+- Ownership transfer becomes possible (change `artifact.state["writer"]`)
 - Clear separation: creation fact vs. authorization policy
 - Contracts have full control over authorization (principle #9: "when in doubt, contract decides")
 - Consistent with ADR-0016's stated prose intent
 
 ### Negative
 
-- Metadata fields are mutable — authorization can change (this is intentional for transferability)
-- Artifacts created outside `ArtifactStore.write()` (e.g., in tests) must set authorization metadata explicitly
-- Delegation payer resolution now uses mutable metadata instead of immutable `created_by` (delegation authorization prevents abuse)
+- Artifact state fields are mutable — authorization can change (this is intentional for transferability)
+- Artifacts created outside `ArtifactStore.write()` (e.g., in tests) must set authorization state explicitly
+- Delegation payer resolution now uses mutable artifact state instead of immutable `created_by` (delegation authorization prevents abuse)
 
 ### Neutral
 

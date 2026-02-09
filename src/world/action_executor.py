@@ -1382,32 +1382,12 @@ class ActionExecutor:
             retriable=not result.success,
         )
 
-    # Keys that control authorization decisions (ADR-0028).
-    # Agents cannot modify these directly — use escrow for ownership transfer.
-    _PROTECTED_METADATA_KEYS = frozenset({"authorized_writer", "authorized_principal"})
-
     def _execute_update_metadata(self, intent: UpdateMetadataIntent) -> ActionResult:
         """Execute an update_metadata action (Plan #308).
 
         Updates a single metadata key on an artifact.
-
-        Protected keys (authorized_writer, authorized_principal) are blocked
-        at this level to prevent privilege escalation. The kernel method
-        (kernel_interface.update_artifact_metadata) is intentionally
-        unrestricted for trusted callers like escrow.
         """
         w = self.world
-
-        # Guard: reject auth-sensitive keys (ADR-0028)
-        if intent.key in self._PROTECTED_METADATA_KEYS:
-            return ActionResult(
-                success=False,
-                message=f"Cannot modify protected metadata key '{intent.key}'. Use escrow for ownership transfer.",
-                error_code=ErrorCode.NOT_AUTHORIZED.value,
-                error_category=ErrorCategory.PERMISSION.value,
-                retriable=False,
-                error_details={"key": intent.key, "protected_keys": sorted(self._PROTECTED_METADATA_KEYS)},
-            )
 
         # Check artifact exists
         artifact = w.artifacts.get(intent.artifact_id)
@@ -1906,8 +1886,8 @@ class ActionExecutor:
         w = self.world
         artifact_id = intent.artifact_id
         price = artifact.price
-        # ADR-0028: Payment recipient from metadata, not created_by
-        recipient = (artifact.metadata or {}).get("authorized_writer") or (artifact.metadata or {}).get("authorized_principal")
+        # Plan #311: Payment recipient from artifact state, not metadata or created_by
+        recipient = (artifact.state or {}).get("writer") or (artifact.state or {}).get("principal")
 
         # Plan #236: Resolve payer via charge_to delegation
         # Atomicity note (FM-1): Settlement is safe because execution is

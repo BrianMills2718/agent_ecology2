@@ -6,8 +6,8 @@ deterministic IDs: ``charge_delegation:{payer_id}``.
 
 Key invariants:
 - Only the payer themselves can grant/revoke delegations
-- Payer resolution uses metadata (authorized_principal/authorized_writer)
-  per ADR-0028; delegation authorization prevents unauthorized charges (FM-2)
+- Payer resolution uses artifact.state (principal/writer) per Plan #311;
+  delegation authorization prevents unauthorized charges (FM-2)
 - Rate window tracking is ephemeral (same as RateTracker — no checkpoint)
 - Settlement atomicity relies on single-threaded execution; see FM-1 note
   in action_executor.py
@@ -334,8 +334,8 @@ class DelegationManager:
     ) -> str:
         """Resolve who should pay based on the ``charge_to`` directive.
 
-        ADR-0028: Uses metadata (authorized_principal/authorized_writer)
-        to determine the contract-recognized owner. Delegation authorization
+        Plan #311: Uses artifact.state (principal/writer) to determine
+        the contract-recognized owner. Delegation authorization
         (authorize_charge) prevents unauthorized charges.
 
         Args:
@@ -354,21 +354,21 @@ class DelegationManager:
             return caller_id
 
         if charge_to == "target":
-            # ADR-0028: Resolve via metadata, not created_by
-            metadata = artifact.metadata or {}
+            # Plan #311: Resolve via artifact state, not metadata or created_by
+            state = artifact.state or {}
             return (
-                metadata.get("authorized_principal")
-                or metadata.get("authorized_writer")
+                state.get("principal")
+                or state.get("writer")
                 or artifact.created_by  # Final fallback for untagged artifacts
             )
 
         if charge_to == "contract":
             # Resolve to the authorized principal of the artifact.
-            # ADR-0028: Use metadata, not created_by.
-            metadata = artifact.metadata or {}
+            # Plan #311: Use artifact state, not metadata or created_by.
+            state = artifact.state or {}
             return (
-                metadata.get("authorized_principal")
-                or metadata.get("authorized_writer")
+                state.get("principal")
+                or state.get("writer")
                 or artifact.created_by  # Final fallback for untagged artifacts
             )
 

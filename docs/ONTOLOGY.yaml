@@ -10,11 +10,11 @@
 #   Thesis → PRD → Domain Model → ADR → Ontology (this file) → Code
 #
 # See: docs/prd/ for capabilities, docs/domain_model/ for concepts
-# Last verified: 2026-02-08 (Plan #308: added update_metadata action type)
+# Last verified: 2026-02-08 (Plan #311: auth data moved from metadata to artifact.state)
 # =============================================================================
 
 version: 4
-last_updated: "2026-02-06"  # Plan #306: created_by auth fix, PermissionResult.recipient
+last_updated: "2026-02-08"  # Plan #311: auth data moved from metadata to artifact.state
 status: current_implementation
 source_of_truth: "src/world/artifacts.py, src/world/actions.py, src/world/kernel_interface.py"
 
@@ -152,7 +152,7 @@ actions:
     description: "Artifact CRUD + metadata, go through contract permission checking (ADR-0019)"
     operations: [read_artifact, write_artifact, edit_artifact, delete_artifact, update_metadata]
     notes:
-      update_metadata: "Set/delete metadata key on artifact. Protected keys (authorized_writer, authorized_principal) blocked at executor level (Plan #308, ADR-0028)"
+      update_metadata: "Set/delete metadata key on artifact. Auth fields (writer, principal) live in artifact.state, not metadata, so cannot be forged via update_metadata (Plan #311, ADR-0028)"
 
   execution:
     description: "Code execution, goes through contract permission checking"
@@ -232,7 +232,7 @@ permission_system:
     - "self_owned (owner-only everything)"
     - "private (owner-only)"
     - "public (everyone)"
-    - "transferable_freeware (freeware + authorized_writer)"
+    - "transferable_freeware (freeware + state writer)"
 
 # =============================================================================
 # RESOURCES

@@ -233,6 +233,7 @@ def _create_artifact(
         has_loop=spec.has_loop,
         access_contract_id=spec.access_contract_id,
         metadata=spec.metadata if spec.metadata else None,
+        state=spec.state if spec.state else None,
     )
     logger.debug(f"Created artifact: {spec.id}")
 

@@ -436,8 +436,8 @@ class UpdateMetadataIntent(ActionIntent):
     """Update a metadata key on an artifact (Plan #308).
 
     Allows agents to set or delete user-defined metadata keys.
-    Auth-sensitive keys (authorized_writer, authorized_principal) are
-    protected at the executor level — use escrow for ownership transfer.
+    Auth data lives in artifact.state (Plan #311), not metadata.
+    Metadata is purely non-auth (like EXIF data).
     """
 
     artifact_id: str

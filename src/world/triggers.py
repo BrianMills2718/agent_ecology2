@@ -231,9 +231,9 @@ class TriggerRegistry:
             callback = self._artifact_store.get(callback_artifact)
             if callback is None:
                 continue
-            # ADR-0028: Use metadata for authorization, not created_by
-            trigger_principal = (artifact.metadata or {}).get("authorized_writer") or (artifact.metadata or {}).get("authorized_principal")
-            callback_principal = (callback.metadata or {}).get("authorized_writer") or (callback.metadata or {}).get("authorized_principal")
+            # Plan #311: Use artifact state for authorization, not metadata or created_by
+            trigger_principal = (artifact.state or {}).get("writer") or (artifact.state or {}).get("principal")
+            callback_principal = (callback.state or {}).get("writer") or (callback.state or {}).get("principal")
             if trigger_principal != callback_principal:
                 # Cannot trigger artifacts you don't control
                 continue

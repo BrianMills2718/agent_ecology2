@@ -2,7 +2,7 @@
 
 This document explains the security architecture of Agent Ecology, including design decisions, risk acknowledgments, and deployment expectations.
 
-**Last verified:** 2026-02-06 (mypy strict fixes - type annotations only, no behavioral changes)
+**Last verified:** 2026-02-08 (Plan #311 - auth data moved from metadata to artifact.state)
 
 ## Overview
 
@@ -270,11 +270,11 @@ Identified during schema audit (2026-01-31), fixed by Plan #235.
 
 **Fix:** Plan #235 Phase 0 — `access_contract_id` is creator-only.
 
-### Authorized Writer Forgery — ACKNOWLEDGED
+### Artifact State Mutation — MITIGATED
 
-**Vulnerability:** `authorized_writer` (metadata field) is forgeable — any writer can overwrite it.
+**Previous vulnerability:** Auth data (`authorized_writer`, `authorized_principal`) was stored in `metadata`, which any writer could overwrite via `update_metadata`.
 
-**Rule:** NEVER use `authorized_writer` as an authorization anchor for payment or delegation. Only `created_by` (immutable system field) is kernel-trustworthy.
+**Fix (Plan #311):** Auth data moved to `artifact.state` (`writer`, `principal`). The `state` dict is not exposed via `update_metadata` — it can only be modified through contract-governed operations. This prevents forgery by artifact writers while still allowing legitimate ownership transfer through contracts.
 
 ### Principle
 

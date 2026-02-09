@@ -2,7 +2,7 @@
 
 Canonical terminology for Agent Ecology.
 
-**Last updated:** 2026-02-05 (Plan #305: constants centralization, delegation logging)
+**Last updated:** 2026-02-08 (Plan #311: auth data moved from metadata to artifact.state)
 
 ---
 
@@ -241,7 +241,7 @@ Eleven action types:
 - `method`, `args` - only for invoke
 - Everything else (balances, history) → contracts fetch via invoke
 
-**Genesis contracts:** Freeware, Self-owned, Private, Public, Transferable Freeware (allows `authorized_writer` metadata-based write access).
+**Genesis contracts:** Freeware, Self-owned, Private, Public, Transferable Freeware (allows `artifact.state["writer"]`-based write access).
 
 Common contract patterns: Freeware, Self-owned, Gatekeeper, Escrow, Paywall.
 

@@ -2,7 +2,7 @@
 
 How access control works today.
 
-**Last verified:** 2026-02-08 (Plan #310 - PermissionResult field rename and expansion)
+**Last verified:** 2026-02-08 (Plan #311 - auth data moved from metadata to artifact.state)
 
 **See also:** ADR-0019 (Unified Permission Architecture)
 
@@ -66,12 +66,13 @@ class AccessContract(Protocol):
 ```
 
 **Context keys** passed to `check_permission` (current implementation):
-- `target_metadata`: Metadata dict of the target artifact (used for authorization — `authorized_writer`, `authorized_principal`)
+- `_artifact_state`: Auth state dict of the target artifact (used for authorization — `writer`, `principal`)
+- `target_metadata`: Metadata dict of the target artifact (user-defined key-value pairs, NOT used for auth)
 - `target_created_by`: Creator of the target artifact (informational only per ADR-0028 — do NOT use for auth decisions)
 - `artifact_type`: Type of the target artifact
 - `caller_type`: Type of the calling principal
 
-**Note:** Kernel contracts use `target_metadata` for authorization decisions, never `target_created_by`. The `authorized_writer` and `authorized_principal` metadata fields are auto-populated from `created_by` at artifact creation time, but are mutable afterward to enable ownership transfer.
+**Note:** Kernel contracts use `_artifact_state` for authorization decisions, never `target_created_by` or `target_metadata`. The `writer` and `principal` fields in artifact state are auto-populated from `created_by` at artifact creation time, but are mutable afterward to enable ownership transfer. Auth data was moved from metadata to artifact.state in Plan #311 to prevent forgery via `update_metadata`.
 
 ---
 
@@ -98,13 +99,13 @@ Pre-made permission presets available at initialization. Like genesis artifacts 
 
 | Contract | ID | Behavior |
 |----------|-----|----------|
-| **Freeware** | `kernel_contract_freeware` | Anyone reads/invokes; only `authorized_writer` writes/deletes |
-| **SelfOwned** | `kernel_contract_self_owned` | Only artifact itself (or `authorized_principal`) can access |
-| **Private** | `kernel_contract_private` | Only `authorized_principal` can access |
+| **Freeware** | `kernel_contract_freeware` | Anyone reads/invokes; only `state["writer"]` writes/deletes |
+| **SelfOwned** | `kernel_contract_self_owned` | Only artifact itself (or `state["principal"]`) can access |
+| **Private** | `kernel_contract_private` | Only `state["principal"]` can access |
 | **Public** | `kernel_contract_public` | Anyone can do anything |
-| **TransferableFreeware** | `kernel_contract_transferable_freeware` | Like freeware; `authorized_writer` can write |
+| **TransferableFreeware** | `kernel_contract_transferable_freeware` | Like freeware; `state["writer"]` can write |
 
-**Note on authorization (ADR-0028):** Kernel contracts check mutable metadata fields (`authorized_writer`, `authorized_principal`), NOT the immutable `created_by` field. These metadata fields are auto-populated from `created_by` at artifact creation, preserving the same default behavior. But because they're mutable, ownership can be transferred by updating the metadata. `created_by` is purely informational, like `created_at`.
+**Note on authorization (ADR-0028, Plan #311):** Kernel contracts check `_artifact_state` fields (`writer`, `principal`), NOT the immutable `created_by` field or user-mutable `metadata`. These state fields are auto-populated from `created_by` at artifact creation, preserving the same default behavior. But because they're mutable (via contracts), ownership can be transferred. Auth data lives in `artifact.state` rather than `metadata` to prevent forgery via `update_metadata`. `created_by` is purely informational, like `created_at`.
 
 ### Common Pattern: Freeware
 
@@ -128,7 +129,7 @@ Executor calls contract.check_permission(
     caller="agent_a",
     action=PermissionAction.READ,
     target="artifact_x",
-    context={"target_metadata": X.metadata, "target_created_by": X.created_by, "artifact_type": X.type}
+    context={"_artifact_state": X.state, "target_metadata": X.metadata, "target_created_by": X.created_by, "artifact_type": X.type}
 )
   ↓
 Contract returns PermissionResult(allowed=True/False, ...)
@@ -271,14 +272,14 @@ Key ADRs governing the contract system:
 | ADR-0015 | Contracts are artifacts, no genesis privilege |
 | ADR-0016 | `created_by` replaces `owner_id` |
 | ADR-0017 | Dangling contracts fail-open to configurable default |
-| ADR-0028 | `created_by` is purely informational; contracts use metadata for auth |
+| ADR-0028 | `created_by` is purely informational; contracts use artifact.state for auth |
 | ADR-0018 | Bootstrap phase, Eris as creator |
 | ADR-0019 | Unified permission architecture (consolidates above) |
 
 ### Key Principles (ADR-0019)
 
 1. **Immediate Caller Model**: When A→B→C, C's contract checks if B (not A) has permission
-2. **Minimal Context**: Kernel provides caller, action, target, target_metadata, target_created_by (informational), method/args (for invoke)
+2. **Minimal Context**: Kernel provides caller, action, target, _artifact_state (auth), target_metadata, target_created_by (informational), method/args (for invoke)
 3. **Null Contract Default**: When `access_contract_id` is null, authorized principal has full rights, others blocked
 4. **Dangling Contract Fallback**: When contract is deleted, falls back to configurable default (freeware)
 5. **Contracts Fetch Context**: Contracts invoke other artifacts (ledger, event_log) for balances, history, etc.

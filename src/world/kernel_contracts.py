@@ -3,15 +3,15 @@
 This module provides the five kernel contracts that are available at world
 initialization. These contracts cover the most common access patterns:
 
-- FreewareContract: Anyone can read/invoke, only authorized_writer can modify
-- TransferableFreewareContract: Same as freeware (both use authorized_writer)
-- SelfOwnedContract: Only the artifact itself (or authorized_principal) can access
-- PrivateContract: Only authorized_principal can access
+- FreewareContract: Anyone can read/invoke, only writer can modify
+- TransferableFreewareContract: Same as freeware (both use writer)
+- SelfOwnedContract: Only the artifact itself (or principal) can access
+- PrivateContract: Only principal can access
 - PublicContract: Anyone can do anything (true commons)
 
-Authorization is determined by metadata fields (authorized_writer,
-authorized_principal), NOT by created_by. created_by is purely informational
-metadata, like created_at. See ADR-0028.
+Authorization is determined by artifact state fields (writer, principal),
+NOT by created_by. created_by is purely informational, like created_at.
+See ADR-0028. State is passed via context["_artifact_state"].
 
 Kernel contracts are immutable and cannot be modified. They are referenced
 by their contract_id (e.g., 'kernel_contract_freeware') and are available
@@ -32,7 +32,7 @@ See also:
 #
 # Five built-in contracts: freeware, transferable_freeware, self_owned, private, public.
 # These are Python classes, not artifacts (current implementation).
-# Authorization uses metadata fields (authorized_writer, authorized_principal),
+# Authorization uses artifact state fields (writer, principal),
 # NEVER created_by. See ADR-0028.
 # --- GOVERNANCE END ---
 from __future__ import annotations
@@ -50,17 +50,17 @@ from .constants import (
 from .contracts import AccessContract, PermissionAction, PermissionResult
 
 
-def _get_metadata_field(context: Optional[dict[str, object]], field: str) -> Any:
-    """Extract a field from target_metadata in the permission context.
+def _get_state_field(context: Optional[dict[str, object]], field: str) -> Any:
+    """Extract a field from _artifact_state in the permission context.
 
-    Returns None if context is missing, target_metadata is missing/not a dict,
+    Returns None if context is missing, _artifact_state is missing/not a dict,
     or the field is not present.
     """
     if not context:
         return None
-    target_metadata = context.get("target_metadata")
-    if isinstance(target_metadata, dict):
-        return target_metadata.get(field)
+    state = context.get("_artifact_state")
+    if isinstance(state, dict):
+        return state.get(field)
     return None
 
 
@@ -70,13 +70,13 @@ class FreewareContract:
 
     Access rules:
     - READ, INVOKE: Anyone can access
-    - WRITE, EDIT, DELETE: Only metadata["authorized_writer"] can modify
+    - WRITE, EDIT, DELETE: Only state["writer"] can modify
 
-    Authorization is based on the mutable metadata["authorized_writer"] field,
+    Authorization is based on the mutable state["writer"] field,
     NOT on created_by. This field is auto-populated from created_by at artifact
     creation time, but can be changed afterward (e.g., via escrow transfer).
 
-    If no authorized_writer is set in metadata, write access is denied (fail closed).
+    If no writer is set in state, write access is denied (fail closed).
     """
 
     contract_id: str = KERNEL_CONTRACT_FREEWARE
@@ -95,36 +95,36 @@ class FreewareContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Should contain 'target_metadata' with 'authorized_writer'
+            context: Should contain '_artifact_state' with 'writer'
 
         Returns:
             PermissionResult with decision
         """
-        authorized_writer = _get_metadata_field(context, "authorized_writer")
+        writer = _get_state_field(context, "writer")
 
         # Open access actions - anyone can perform these
         if action in (PermissionAction.READ, PermissionAction.INVOKE):
             return PermissionResult(
                 allowed=True,
                 reason="freeware: open access",
-                scrip_recipient=authorized_writer,
+                scrip_recipient=writer,
             )
 
         # Authorized-writer-only actions
         if action in (PermissionAction.WRITE, PermissionAction.EDIT, PermissionAction.DELETE):
-            if authorized_writer is None:
+            if writer is None:
                 return PermissionResult(
                     allowed=False,
-                    reason="freeware: no authorized_writer in metadata",
+                    reason="freeware: no writer in state",
                 )
-            if caller == authorized_writer:
+            if caller == writer:
                 return PermissionResult(
                     allowed=True,
                     reason="freeware: authorized writer",
-                    scrip_recipient=authorized_writer,
+                    scrip_recipient=writer,
                 )
             return PermissionResult(
-                allowed=False, reason="freeware: only authorized_writer can modify"
+                allowed=False, reason="freeware: only writer can modify"
             )
 
         # Unknown action - fail closed
@@ -135,21 +135,21 @@ class FreewareContract:
 class TransferableFreewareContract:
     """Transferable freeware access contract (Plan #213, ADR-0028).
 
-    Write permission is based on metadata["authorized_writer"]. This enables
+    Write permission is based on state["writer"]. This enables
     artifact trading via escrow:
 
-    1. Creator's authorized_writer is auto-set at creation
-    2. When sold, escrow updates metadata["authorized_writer"] = buyer
-    3. Buyer can now write (this contract checks authorized_writer)
+    1. Creator's writer is auto-set at creation
+    2. When sold, escrow updates state["writer"] = buyer
+    3. Buyer can now write (this contract checks writer)
 
     Access rules:
     - READ, INVOKE: Anyone can access
-    - WRITE, EDIT, DELETE: Only authorized_writer can modify
+    - WRITE, EDIT, DELETE: Only writer can modify
 
-    If no authorized_writer is set in metadata, write access is denied (fail closed).
+    If no writer is set in state, write access is denied (fail closed).
 
     Note: Both freeware and transferable_freeware now use the same authorization
-    mechanism (authorized_writer). The distinction is semantic — transferable_freeware
+    mechanism (writer). The distinction is semantic — transferable_freeware
     signals that the artifact is intended to be traded.
     """
 
@@ -169,37 +169,37 @@ class TransferableFreewareContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Should contain 'target_metadata' with 'authorized_writer'
+            context: Should contain '_artifact_state' with 'writer'
 
         Returns:
             PermissionResult with decision
         """
-        authorized_writer = _get_metadata_field(context, "authorized_writer")
+        writer = _get_state_field(context, "writer")
 
         # Open access actions - anyone can perform these
         if action in (PermissionAction.READ, PermissionAction.INVOKE):
             return PermissionResult(
                 allowed=True,
                 reason="transferable_freeware: open access",
-                scrip_recipient=authorized_writer,
+                scrip_recipient=writer,
             )
 
         # Authorized-writer-only actions
         if action in (PermissionAction.WRITE, PermissionAction.EDIT, PermissionAction.DELETE):
-            if authorized_writer is None:
+            if writer is None:
                 return PermissionResult(
                     allowed=False,
-                    reason="transferable_freeware: no authorized_writer in metadata",
+                    reason="transferable_freeware: no writer in state",
                 )
-            if caller == authorized_writer:
+            if caller == writer:
                 return PermissionResult(
                     allowed=True,
                     reason="transferable_freeware: authorized writer",
-                    scrip_recipient=authorized_writer,
+                    scrip_recipient=writer,
                 )
             return PermissionResult(
                 allowed=False,
-                reason="transferable_freeware: only authorized_writer can modify",
+                reason="transferable_freeware: only writer can modify",
             )
 
         # Unknown action - fail closed
@@ -212,7 +212,7 @@ class SelfOwnedContract:
 
     Access rules:
     - Self-access: The artifact can access itself (caller == target)
-    - Principal-access: metadata["authorized_principal"] can access
+    - Principal-access: state["principal"] can access
     - All others: Denied
 
     This is used for agent memory, private state, and artifacts that
@@ -239,27 +239,27 @@ class SelfOwnedContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Should contain 'target_metadata' with 'authorized_principal'
+            context: Should contain '_artifact_state' with 'principal'
 
         Returns:
             PermissionResult with decision
         """
-        authorized_principal = _get_metadata_field(context, "authorized_principal")
+        principal = _get_state_field(context, "principal")
 
         # Self-access: artifact accessing itself
         if caller == target:
             return PermissionResult(
                 allowed=True,
                 reason="self_owned: self access",
-                scrip_recipient=authorized_principal,
+                scrip_recipient=principal,
             )
 
         # Authorized principal access
-        if authorized_principal is not None and caller == authorized_principal:
+        if principal is not None and caller == principal:
             return PermissionResult(
                 allowed=True,
                 reason="self_owned: authorized principal",
-                scrip_recipient=authorized_principal,
+                scrip_recipient=principal,
             )
 
         # All others denied
@@ -299,19 +299,19 @@ class PrivateContract:
             caller: Principal requesting access
             action: Action being attempted
             target: Artifact being accessed
-            context: Should contain 'target_metadata' with 'authorized_principal'
+            context: Should contain '_artifact_state' with 'principal'
 
         Returns:
             PermissionResult with decision
         """
-        authorized_principal = _get_metadata_field(context, "authorized_principal")
+        principal = _get_state_field(context, "principal")
 
         # Only authorized principal has access
-        if authorized_principal is not None and caller == authorized_principal:
+        if principal is not None and caller == principal:
             return PermissionResult(
                 allowed=True,
                 reason="private: authorized principal",
-                scrip_recipient=authorized_principal,
+                scrip_recipient=principal,
             )
 
         # All others denied (including the artifact itself)

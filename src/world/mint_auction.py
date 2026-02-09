@@ -163,10 +163,10 @@ class MintAuction:
         artifact = self._artifacts.get(artifact_id)
         if artifact is None:
             raise ValueError(f"Artifact {artifact_id} not found")
-        # ADR-0028: Check authorization via metadata, not created_by
-        authorized_writer = (artifact.metadata or {}).get("authorized_writer")
-        authorized_principal = (artifact.metadata or {}).get("authorized_principal")
-        if principal_id not in (authorized_writer, authorized_principal):
+        # ADR-0028/Plan #311: Check authorization via artifact state, not created_by
+        writer = (artifact.state or {}).get("writer")
+        principal = (artifact.state or {}).get("principal")
+        if principal_id not in (writer, principal):
             raise ValueError(f"Principal {principal_id} is not authorized for {artifact_id}")
         if not artifact.executable:
             raise ValueError(f"Artifact {artifact_id} is not executable")
