@@ -82,7 +82,7 @@ def run():
             task_queue.append({
                 "id": nid,
                 "description": f"Auto-advanced to {phase} phase — act accordingly",
-                "priority": 9,
+                "priority": 7,
             })
             state["next_task_id"] = nid + 1
 
@@ -119,10 +119,21 @@ def run():
     last_result = state.get("last_action_result")
     completed = state.get("completed_tasks", [])[-5:]
 
+    # Track unsubmitted tools (built but not yet submitted to any mint task)
+    submitted_artifacts = set()
+    for fa in state.get("failed_attempts", []):
+        if fa.get("type", "").startswith("submit_"):
+            submitted_artifacts.add(fa.get("artifact", ""))
+    for ah in state.get("action_history", []):
+        if ah.get("action_type") == "submit_to_task":
+            submitted_artifacts.add(ah.get("artifact_id", ""))
+    completed_mint = set(state.get("completed_mint_tasks", []))
+    unsubmitted_tools = [t for t in tools_built if t not in submitted_artifacts]
+
     phase_guidance = {
         "questioning": "Identify a specific research question. What gap matters most?",
         "investigating": "Gather info: query artifacts, read others' work. Don't investigate forever — if nothing exists, BUILD it.",
-        "building": "CREATE something tangible. Write an executable artifact. This is where value comes from.",
+        "building": "CREATE something tangible, then SUBMIT it. Build → submit → earn scrip. If you have unsubmitted tools, SUBMIT them first!",
         "analyzing": "Apply your tools. Invoke artifacts, test hypotheses, generate results.",
         "reflecting": "Synthesize what you learned. Record knowledge. Plan what's next.",
     }
@@ -146,6 +157,10 @@ Task #{current_task['id']}: {current_task['description']}
 
 == TOOLS YOU'VE BUILT ==
 {json.dumps(tools_built, indent=2) if tools_built else "(none — building tools is how you gain capability)"}
+
+== ⚠ UNSUBMITTED TOOLS (built but NOT yet submitted to mint tasks) ==
+{json.dumps(unsubmitted_tools, indent=2) if unsubmitted_tools else "(all tools submitted or none built)"}
+{">>> YOU HAVE TOOLS READY TO SUBMIT! Use submit_to_task NOW to earn scrip. <<<" if unsubmitted_tools else ""}
 
 == FAILED ATTEMPTS (don't repeat these) ==
 {json.dumps(failed_attempts, indent=2) if failed_attempts else "(none)"}
@@ -185,10 +200,12 @@ ACTIONS:
 
 RULES:
 1. NEVER repeat a failed action. Check failed_attempts first.
-2. Prefer BUILDING over investigating. Creating artifacts = capability.
-3. Each response MUST include at least 1 new_task.
-4. Use UNIQUE artifact IDs with your prefix: {agent_prefix}_
-5. If you've queried 3+ times without results, BUILD instead."""
+2. If you have UNSUBMITTED TOOLS, your next action MUST be submit_to_task. Building more tools before submitting = wasted effort.
+3. Prefer BUILDING over investigating. Creating artifacts = capability.
+4. Each response MUST include at least 1 new_task.
+5. Use UNIQUE artifact IDs with your prefix: {agent_prefix}_
+6. If you've queried 3+ times without results, BUILD instead.
+7. The cycle is: query mint tasks → build tool → SUBMIT tool → repeat. Never skip the submit step."""
 
     # --- Call LLM ---
     llm_result = _syscall_llm(model, [{"role": "user", "content": prompt}])
@@ -266,19 +283,30 @@ RULES:
             })
             state["next_task_id"] = nid + 1
 
-    # Track tool creation
+    # Track tool creation and auto-inject submit task
     if action.get("action_type") == "write_artifact" and action.get("executable"):
         tool_id = action.get("artifact_id", "unknown")
         if tool_id not in state.get("tools_built", []):
             state.setdefault("tools_built", []).append(tool_id)
+        # Auto-inject high-priority submit task so the agent doesn't forget
+        nid = state.get("next_task_id", 1)
+        state.setdefault("task_queue", []).append({
+            "id": nid,
+            "description": f"SUBMIT {tool_id} to a mint task NOW — you built it, earn scrip!",
+            "priority": 10,
+        })
+        state["next_task_id"] = nid + 1
 
-    # Record action in history
-    state.setdefault("action_history", []).append({
+    # Record action in history (include artifact_id for tracking)
+    history_entry = {
         "iteration": state["iteration"],
         "phase": phase,
         "action_type": action.get("action_type"),
         "reasoning": reasoning[:100],
-    })
+    }
+    if action.get("artifact_id"):
+        history_entry["artifact_id"] = action["artifact_id"]
+    state.setdefault("action_history", []).append(history_entry)
     state["action_history"] = state["action_history"][-10:]
 
     # Save state BEFORE executing action
