@@ -520,14 +520,29 @@ class KernelActions:
         manager = self._world.mint_task_manager
         result = manager.submit_solution(caller_id, artifact_id, task_id)
 
-        # Convert TaskSubmissionResult to dict
-        result_dict = {
+        # Convert TaskSubmissionResult to dict — include test details so agents
+        # can learn from failures (Plan #311)
+        result_dict: dict[str, Any] = {
             "success": result.success,
             "task_id": result.task_id,
             "artifact_id": result.artifact_id,
             "message": result.message,
             "reward": result.reward_earned,
         }
+        if result.public_results:
+            result_dict["public_tests"] = {
+                "passed": sum(1 for r in result.public_results if r.passed),
+                "total": len(result.public_results),
+                "details": [
+                    {
+                        "test_id": r.test_id,
+                        "passed": r.passed,
+                        "expected": r.expected,
+                        "actual": r.actual,
+                    }
+                    for r in result.public_results
+                ],
+            }
 
         # Plan #274: Log submission result
         _log_kernel_action(self._world, "kernel_submit_to_task", caller_id, result.success, {

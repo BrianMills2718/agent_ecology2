@@ -156,8 +156,11 @@ Task #{current_task['id']}: {current_task['description']}
 == TASK QUEUE ==
 {json.dumps(task_queue[1:4], indent=2) if len(task_queue) > 1 else "(empty — generate new tasks)"}
 
-== COMPLETED ==
+== COMPLETED TASKS ==
 {json.dumps(completed, indent=2) if completed else "(none yet)"}
+
+== MINT TASKS ALREADY DONE (by you or others — don't retry) ==
+{json.dumps(state.get('completed_mint_tasks', []), indent=2) if state.get('completed_mint_tasks') else "(none — earn scrip by completing mint tasks!)"}
 
 RESPOND WITH JSON:
 {{
@@ -360,7 +363,20 @@ RULES:
         task_id = action.get("task_id", "")
         try:
             result = kernel_actions.submit_to_task(caller_id, artifact_id, task_id)
-            action_result = {"success": True, "result": result}
+            if result.get("success"):
+                action_result = {"success": True, "result": result}
+                # Track completed mint tasks so we don't retry them
+                state.setdefault("completed_mint_tasks", []).append(task_id)
+            else:
+                # Submission failed — include test details for learning
+                action_result = {"success": False, "result": result}
+                state.setdefault("failed_attempts", []).append({
+                    "iteration": state["iteration"],
+                    "type": f"submit_{task_id}",
+                    "artifact": artifact_id,
+                    "error": result.get("message", "unknown"),
+                    "tests": result.get("public_tests", {}),
+                })
         except Exception as e:
             action_result = {"success": False, "error": str(e)}
 
