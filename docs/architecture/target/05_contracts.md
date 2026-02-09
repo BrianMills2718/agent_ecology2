@@ -2,32 +2,61 @@
 
 What we're building toward.
 
-**Last verified:** 2026-01-21
+**Last verified:** 2026-02-08
 
-**See current:** Access control is currently hardcoded policy fields on artifacts.
+**See current:** `docs/architecture/current/contracts.md`
+
+**Resolves contradictions from:** Previous version of this doc, ADR-0019 context model, ADR-0028 metadata approach, ADR-0011 payment model.
 
 ---
 
-## Contracts Are Artifacts
+## Core Principle
 
-Contracts are executable artifacts that answer permission questions.
+**The contract is the ONLY authority for access control.** There is no kernel bypass, no metadata intermediary, no `created_by` interpretation. When you ask "can X do Y to Z?", the answer comes from Z's contract — full stop.
+
+This follows directly from the architecture heuristics:
+- **When in doubt, contract decides** (heuristic #9)
+- **Minimal kernel, maximum flexibility** (heuristic #2)
+- **Genesis as cold-start conveniences** (heuristic #6)
+
+---
+
+## Contracts Are Artifacts (ADR-0015)
+
+Contracts are executable artifacts. There is no distinction between "kernel contracts" and "user contracts" at runtime.
 
 ```python
-# Contract = artifact with has_loop=true and check_permission tool
-{
-    "id": "genesis_freeware",
-    "has_loop": True,
-    "has_standing": False,  # Contracts don't need standing
-    "interface": {
+# A contract is an artifact that implements check_permission
+Artifact(
+    id="default_freeware",
+    type="contract",
+    executable=True,
+    has_standing=False,      # Optional — contracts MAY have standing
+    interface={
         "tools": [{
             "name": "check_permission",
             "inputSchema": {...}
         }]
-    }
-}
+    },
+    access_contract_id="default_freeware",  # Self-referential
+)
 ```
 
-Every artifact has an `access_contract_id` pointing to the contract that governs its permissions.
+Every artifact has an `access_contract_id` pointing to the contract that governs its permissions. Duck typing applies — if an artifact implements `check_permission`, it can serve as a contract.
+
+**Key:** Contracts live in the artifact store, not a separate registry. One unified namespace.
+
+### Self-Governing Artifacts
+
+An artifact's `access_contract_id` can point to itself. This means the artifact defines its own access rules inline — no external contract needed.
+
+| Pattern | `access_contract_id` | Contract code lives... |
+|---------|----------------------|------------------------|
+| External contract | Another artifact's ID | In the referenced artifact |
+| Self-governing | The artifact's own ID | In the artifact's own code |
+| Default | Not specified | Configured default applies (or error if `require_explicit`) |
+
+Self-governing is already how default contracts work (their `access_contract_id` points to themselves). Any executable artifact with a `check_permission` function can do this.
 
 ---
 
@@ -35,44 +64,40 @@ Every artifact has an `access_contract_id` pointing to the contract that governs
 
 ```
 Agent A wants to read Artifact X
-  1. System looks up X.access_contract_id → "genesis_freeware"
-  2. System invokes genesis_freeware.check_permission({
-       artifact_id: X.id,
-       action: "read",
-       requester_id: A.id
-     })
-  3. Contract returns {allowed: true/false, reason: "..."}
-  4. If allowed: proceed with action
+  1. Kernel looks up X.access_contract_id → "default_freeware"
+  2. Kernel invokes default_freeware.check_permission(
+       caller="agent_a",
+       action="read",
+       target="artifact_x"
+     )
+  3. Contract returns PermissionResult(allowed, reason, cost, payment)
+  4. If allowed: kernel applies payment/costs, then proceeds
   5. If not: return error to A
 ```
 
-### Cost Model
+### Base Permission Checks Are Free
 
-**Base permission checks are free.** (Certainty: 85%)
-
-Simple permission checks (can_read, can_invoke, can_write) cost zero compute. Rationale: you need compute to check if you have compute - this creates infinite regress if checks have cost.
+Simple permission checks (can_read, can_invoke, can_write) cost zero compute. Rationale: you need compute to check if you have compute — infinite regress.
 
 | Operation | Cost |
 |-----------|------|
 | Base check (simple logic) | 0 |
-| Contract calls LLM | Invoker pays LLM cost |
-| Contract invokes artifacts | Invoker pays invoke cost |
+| Contract calls LLM | Determined by contract's payment model |
+| Contract invokes artifacts | Determined by contract's payment model |
 
-See DESIGN_CLARIFICATIONS.md for full cost model discussion.
+---
 
-### Kernel Actions (ADR-0019)
+## Kernel Actions (ADR-0019)
 
-Five primitive actions, all contract-checked:
+Five primitive actions. All contract-checked. No exceptions.
 
-| Action | Purpose | Context Includes |
-|--------|---------|------------------|
-| `read` | Read artifact content | caller, action, target |
-| `write` | Create/replace artifact | caller, action, target |
-| `edit` | Surgical content modification | caller, action, target |
-| `invoke` | Call method on artifact | caller, action, target, method, args |
-| `delete` | Remove artifact | caller, action, target |
-
-Only `invoke` includes method and args in context.
+| Action | Purpose |
+|--------|---------|
+| `read` | Read artifact content |
+| `write` | Create/replace artifact content |
+| `edit` | Surgical content modification |
+| `invoke` | Call method on artifact |
+| `delete` | Remove artifact |
 
 ### Immediate Caller Model (ADR-0019)
 
@@ -80,91 +105,418 @@ When A invokes B, and B invokes C:
 - B's contract checks: "can A invoke B?"
 - C's contract checks: "can B invoke C?"
 
-The **immediate caller** is checked, not the original caller. Delegation is explicit (update contracts) not implicit.
+The **immediate caller** is checked, not the original caller. Like Ethereum's `msg.sender`. Delegation is explicit (update contracts), not implicit.
 
-### Minimal Context (ADR-0019)
+---
 
-Kernel provides minimal context to contracts:
+## Context Model
+
+The kernel provides **minimal** context to contracts. Contracts fetch anything else they need.
 
 ```python
 context = {
-    "caller": str,             # Who is making the request
+    "caller": str,             # Who is making the request (immediate caller)
     "action": str,             # read | write | edit | invoke | delete
     "target": str,             # Artifact ID being accessed
-    "target_created_by": str,  # Creator of target (pragmatic inclusion)
+    "target_created_by": str,  # Informational only — who created the target
+    "target_metadata": dict,   # Target artifact's metadata (informational)
     "method": str,             # Only for invoke
     "args": list,              # Only for invoke
 }
 ```
 
-**Included:** caller, action, target, target_created_by, method/args (invoke only)
+**What the kernel passes:** caller, action, target, target_created_by (informational), target_metadata (informational), method/args (invoke only).
 
-**NOT included** (contracts fetch via invoke):
-- Balances → `genesis_ledger`
-- History → `genesis_event_log`
-- Other metadata → `genesis_store`
+**What the kernel does NOT pass** (contracts fetch what they need):
+- Caller's balance → invoke a ledger artifact or use kernel query
+- Event history → invoke an event log artifact
+- Other artifact info → invoke the artifact directly
+
+**Critical:** The kernel does NOT interpret `target_created_by` or `target_metadata` for access control. It passes them as data. Only the contract decides what matters.
 
 ---
 
-## Required Interface
+## `created_by` — Kernel-Applied, Informational Only
 
-All contracts must implement `check_permission`:
+`created_by` records who created the artifact. Like `created_at`, it is:
 
-```json
-{
-    "name": "check_permission",
-    "description": "Check if requester can perform action on artifact",
-    "inputSchema": {
-        "type": "object",
-        "properties": {
-            "artifact_id": {
-                "type": "string",
-                "description": "ID of the artifact being accessed"
-            },
-            "action": {
-                "type": "string",
-                "enum": ["read", "write", "edit", "invoke", "delete"],
-                "description": "Action being attempted"
-            },
-            "requester_id": {
-                "type": "string",
-                "description": "ID of the agent/artifact requesting access"
+- **Kernel-applied** — the kernel sets it from the immediate caller context. Agents do not pass it as a parameter.
+- **Immutable** — once set, never changes.
+- **Informational** — contracts may read it but it has no authority. The contract decides what to do with it.
+
+```python
+# WRONG — agent passes created_by
+store.write(id="my_thing", created_by="agent_a", ...)
+
+# RIGHT — kernel determines created_by from caller context
+store.write(id="my_thing", caller="agent_a", ...)
+# kernel sets created_by = caller automatically
+```
+
+**No metadata laundering:** The kernel does NOT copy `created_by` into metadata fields for authorization. There are no kernel-managed `authorized_writer` or `authorized_principal` metadata fields. The contract alone decides authorization.
+
+**Ownership transfer:** Handled by the contract, not by mutating metadata. Options:
+1. Change `access_contract_id` to a contract that authorizes the new owner
+2. Use a contract with internal state (`state_updates`) that tracks the current owner — the contract's state can store a mutable "owner" field
+
+See ADR-0028 for the decision rationale. See "Migration Notes" for how this differs from the current implementation.
+
+---
+
+## Default Contracts
+
+Pre-made contracts created at bootstrap (t=0). These are regular artifacts — no special kernel privilege. They solve the cold-start problem: something must exist before agents can create artifacts that reference contracts.
+
+**Naming:** `default_*` prefix (not `genesis_*`). They are conveniences, not system-level entities. Agents could create equivalent contracts themselves.
+
+### Configurable Per Simulation
+
+```yaml
+# config.yaml
+contracts:
+  # Must agents explicitly specify access_contract_id?
+  require_explicit: true  # true = error if not specified; false = use default_contract
+
+  # What contract new artifacts get when require_explicit=false
+  default_contract: "default_freeware"
+
+  # Fallback when access_contract_id points to a deleted contract (ADR-0017)
+  default_on_missing: "default_freeware"
+```
+
+**Current setting: `require_explicit: true`.** Every artifact must specify its contract. This forces agents to think about access control explicitly. Relax later if the friction isn't worth it.
+
+When `require_explicit: false`, `default_contract` controls what contract is assigned. Different simulations can experiment with different defaults (e.g., `default_private` to force agents to explicitly share, `default_public` for open collaboration).
+
+### Default Contract Table
+
+| Contract | ID | Behavior |
+|----------|-----|----------|
+| **Freeware** | `default_freeware` | Anyone reads/invokes; only creator writes/deletes |
+| **Private** | `default_private` | Only creator has any access |
+| **Self-Owned** | `default_self_owned` | Only artifact itself can access |
+| **Public** | `default_public` | Anyone can do anything |
+
+### default_freeware
+
+```python
+def check_permission(caller, action, target, context):
+    if action in ["read", "invoke"]:
+        return {"allowed": True, "reason": "Open access"}
+
+    # For write/edit/delete: only the creator can modify
+    if caller == context["target_created_by"]:
+        return {"allowed": True, "reason": "Creator access"}
+
+    return {"allowed": False, "reason": "Only creator can modify"}
+```
+
+**Note:** This contract uses `target_created_by` — that's the contract's policy decision, not a kernel mechanism. A different contract could use an allowlist, a vote, or an LLM judgment. The kernel doesn't care how the contract decides.
+
+**Ownership transfer with freeware:** Not directly supported (uses immutable `created_by`). For transferable ownership, use a contract that tracks its own mutable owner state, or switch to a different contract.
+
+### default_self_owned
+
+```python
+def check_permission(caller, action, target, context):
+    if caller == target:  # Agent accessing itself
+        return {"allowed": True, "reason": "Self access"}
+    return {"allowed": False, "reason": "Self-owned: only self can access"}
+```
+
+---
+
+## Custom Contracts
+
+Agents can create contracts for any access pattern. If it implements `check_permission`, it's a contract.
+
+### Example: Paid Read Access
+
+```python
+def check_permission(caller, action, target, context, state):
+    if action == "read":
+        return {
+            "allowed": True,
+            "reason": "Paid 5 scrip",
+            "scrip_cost": 5,
+            "scrip_payer": caller,
+            "scrip_recipient": context["target_created_by"],
+        }
+    # ... other actions
+```
+
+### Example: Multi-Sig Access
+
+```python
+def check_permission(caller, action, target, context, state):
+    if action in ["write", "edit", "delete"]:
+        required = ["alice", "bob", "carol"]
+        signatures = invoke("signature_registry", "get_signatures", [target, action])
+        valid = [s for s in signatures if s["signer"] in required]
+        if len(valid) >= 2:
+            return {"allowed": True, "reason": f"Multi-sig: {len(valid)}/3"}
+        return {"allowed": False, "reason": f"Need 2/3 signatures, have {len(valid)}"}
+    return {"allowed": True, "reason": "Open access for reads"}
+```
+
+### Example: Subscription Contract
+
+A contract that manages subscriptions. Subscribers pay scrip upfront; real resource costs (LLM dollars) charged to the firm's central pool:
+
+```python
+def check_permission(caller, action, target, context, state):
+    subscribers = state.get("subscribers", [])
+    firm_pool = state.get("firm_pool_id")
+
+    if caller in subscribers:
+        # Subscriber: no scrip charge, firm pays real resource costs
+        return {
+            "allowed": True,
+            "reason": "Active subscription",
+            "scrip_cost": 0,
+            "resource_payer": firm_pool,  # LLM dollars from firm's budget
+            "state_updates": {
+                "access_count": state.get("access_count", 0) + 1,
+                "subscribers": subscribers  # unchanged
             }
-        },
-        "required": ["artifact_id", "action", "requester_id"]
+        }
+
+    # Non-subscribers: pay scrip per access, pay own resource costs
+    return {
+        "allowed": True,
+        "reason": "Pay-per-use",
+        "scrip_cost": 10,
+        "scrip_payer": caller,
+        "scrip_recipient": firm_pool,
+        "resource_payer": caller,  # Caller pays own LLM costs
     }
-}
 ```
 
-### Response Format
+---
 
-```json
-{
-    "allowed": true,
-    "reason": "Open access for read"
-}
-// or
-{
-    "allowed": false,
-    "reason": "Only creator can write"
-}
+## Contract Capabilities
+
+**Contracts can do anything.** (ADR-0003)
+
+Contracts are executable artifacts with full capabilities:
+- Call LLM
+- Invoke other artifacts
+- Track their own state (access counts, usage patterns, etc.)
+- Manage payment routing
+
+### What Contracts CAN Do
+
+- Read any data they need (via invoke)
+- Call LLMs for judgment-based access decisions
+- Route scrip payments (caller pays, third party pays, contract pays from its own balance)
+- Route real resource costs (specify which principal's resource budget is charged)
+- Track persistent state (access counts, usage patterns, subscriber lists — anything)
+- Implement any access pattern (Ostrom-style, multi-sig, subscription, auction)
+
+### What Contracts CANNOT Do
+
+- **Bypass other contracts** — invoking another artifact goes through that artifact's contract
+- **Mutate kernel resource limits directly** — contracts return decisions; the kernel applies real resource charges
+- **Spend another principal's real resources without authorization** — kernel validates resource spending authorization
+
+### Contract State
+
+Contracts can maintain persistent state. The state is a free-form dict — infinitely flexible.
+
+```python
+def check_permission(caller, action, target, context, state):
+    # `state` is the contract's persistent state, passed in as read-only snapshot
+    read_count = state.get("read_count", 0)
+    subscribers = state.get("subscribers", [])
+
+    if action == "read":
+        if caller in subscribers:
+            return {
+                "allowed": True,
+                "reason": "Subscriber access",
+                "state_updates": {"read_count": read_count + 1}
+            }
+        elif read_count < 100:
+            return {
+                "allowed": True,
+                "reason": "Free tier",
+                "state_updates": {"read_count": read_count + 1}
+            }
+        else:
+            return {"allowed": False, "reason": "Free tier exhausted, subscribe first"}
 ```
+
+- **`state`** is passed into `check_permission` as a read-only snapshot of the contract's persistent state
+- **`state_updates`** in the return value tells the kernel what to change
+- The kernel commits state updates atomically after the permission check succeeds
+- State can contain anything: counters, lists, dicts, subscriber registries, access logs
+- If the permission check denies access, state updates are NOT applied
+
+This avoids the circularity problem (contract writing to itself during its own permission check) while keeping state infinitely flexible.
+
+### Return Format
+
+```python
+@dataclass
+class PermissionResult:
+    allowed: bool                        # Whether action is permitted
+    reason: str                          # Human-readable explanation
+    scrip_cost: int = 0                  # Scrip cost (0 = free)
+    scrip_payer: str | None = None       # Who pays scrip (default: caller)
+    scrip_recipient: str | None = None   # Who receives scrip payment
+    resource_payer: str | None = None    # Whose real resource budget is charged (default: caller)
+    state_updates: dict | None = None    # Contract state changes to apply
+    conditions: dict = {}                # Optional metadata
+```
+
+Three separate concerns in the return value:
+
+| Concern | Fields | Example |
+|---------|--------|---------|
+| Access control | `allowed`, `reason` | "Is this allowed?" |
+| Economic exchange | `scrip_cost`, `scrip_payer`, `scrip_recipient` | "Agent pays 10 scrip to firm" |
+| Resource attribution | `resource_payer` | "LLM costs come from firm_pool's dollar budget" |
+| State tracking | `state_updates` | "Increment read counter" |
+
+---
+
+## Kernel vs Artifact Boundary
+
+The system has two kinds of scarcity. They work differently.
+
+### Real Resources (Kernel — Physics)
+
+LLM budget (real dollars), disk space (real bytes), compute time, rate limits. These map to physical constraints that cost real money. The kernel enforces them because they cannot be faked.
+
+- Kernel tracks real resource budgets per principal
+- Kernel deducts real costs when operations happen (LLM calls, disk writes)
+- Contracts can route WHO gets charged (`resource_payer`) but cannot bypass limits
+- **Authorization for real resource spending is kernel-level** — a principal must authorize a contract to spend its real resource budget
+
+### Scrip (Artifacts — Economics)
+
+Scrip is artificially scarce. It's an in-world medium of exchange whose value comes from the market — what agents will trade for it. **Scrip has no inherent relationship to real dollars.** Its value emerges from agents exchanging scrip for access to artifacts, services, or real resources.
+
+- Scrip ledger is an artifact, not kernel infrastructure
+- Scrip transfers are artifact operations (go through contracts like everything else)
+- Agents can create alternative currencies as artifacts
+- The "official" scrip is just the one the default mint happens to use
+- Scrip's purchasing power is set by the market, not the kernel
+
+### External Value Signals
+
+Scrip is the channel through which external value judgments enter the system. The mint creates scrip based on external signals:
+
+| Signal | Mechanism | Example |
+|--------|-----------|---------|
+| Human bounties | Tasks with tests that must pass | "Build an add function, 30 scrip reward" |
+| LLM scoring | Auction-based artifact evaluation | "Submit artifact, LLM scores it, scrip minted" |
+| External metrics | GitHub stars, user feedback | "Scrip minted proportional to GitHub stars" |
+| Future signals | Configurable | Whatever value signals matter for the experiment |
+
+The mint is an artifact. Different simulations can use different mints with different value signals.
+
+---
+
+## Standing and Payment (Supersedes ADR-0011)
+
+ADR-0011 established "invoker always pays." This is too restrictive for real economic patterns.
+
+### Contracts Can Optionally Have Standing
+
+```python
+# A contract WITH standing can hold scrip and real resource budgets
+Artifact(
+    id="subscription_contract",
+    type="contract",
+    has_standing=True,   # Can hold scrip, hold resource budgets, pay costs
+    ...
+)
+```
+
+**With standing**, a contract can:
+- Hold a scrip balance (receive subscription fees, pay out rewards)
+- Hold real resource budgets (e.g., a pool of LLM dollars allocated to it)
+- Pay costs on behalf of users
+- Fund its own operations (e.g., LLM calls for judgment-based access)
+
+**Without standing** (default), a contract is pure logic — no funds, no costs. The caller pays everything.
+
+### Flexible Payment Routing
+
+Contracts specify two separate payment routes:
+
+**Scrip routing** (artifact-level, goes through scrip ledger artifact):
+
+| Pattern | `scrip_payer` | Example |
+|---------|---------------|---------|
+| Invoker pays | `caller` (default) | Standard per-use billing |
+| Contract pays | `contract.id` | Contract funded by subscribers |
+| Free | `scrip_cost: 0` | Open access |
+
+Scrip authorization is handled by the scrip ledger artifact's own contract. No kernel involvement.
+
+**Real resource routing** (kernel-level):
+
+| Pattern | `resource_payer` | Example |
+|---------|------------------|---------|
+| Invoker pays | `caller` (default) | Caller's LLM budget charged |
+| Firm pool pays | `"firm_pool"` | Firm's central LLM budget charged |
+| Contract pays | `contract.id` | Contract's own resource budget charged |
+
+**Authorization for real resource routing:** The kernel validates that the `resource_payer` has authorized this contract to spend its real resources. This is a kernel concern because real resources map to actual dollars.
+
+### Example: Firm-Funded Subscription
+
+```
+1. Firm creates subscription_contract with has_standing=True
+2. Firm authorizes subscription_contract to spend firm_pool's resource budget
+   (kernel-level: "this contract can spend our LLM dollars")
+3. Subscribers pay scrip upfront to subscription_contract's scrip balance
+   (artifact-level: scrip transfer through ledger artifact)
+4. On each access, contract returns:
+   - scrip_cost: 0 (subscriber already paid)
+   - resource_payer: "firm_pool" (LLM costs come from firm's budget)
+5. Kernel checks firm_pool authorized this contract → charges firm_pool's
+   real LLM budget
+```
+
+Note: the firm isn't shuffling scrip between its own accounts (pointless). The subscription contract routes the **real resource costs** (LLM dollars, disk bytes) to the firm's central budget.
+
+---
+
+## Interface Requirements
+
+**Interface is mandatory for executable artifacts** (configurable).
+
+```yaml
+# config.yaml
+executor:
+  require_interface_for_executables: true  # Default: true
+  interface_validation: strict             # none | warn | strict
+```
+
+Contracts must declare `check_permission` in their interface schema. This enables:
+- Discovery — agents can see what a contract expects
+- Validation — kernel catches malformed calls early
+- Helpful errors — agents get clear feedback on wrong invocations
+
+For early runs, both settings should be maxed out (`true` and `strict`). This forces agents to be explicit about their interfaces, which produces better error messages and faster learning. Relax later if needed.
 
 ---
 
 ## Bootstrap Phase (ADR-0018)
 
-Genesis contracts (and all genesis artifacts) are created during a bootstrap phase in `World.__init__()`:
+Default contracts (and all default artifacts) are created during bootstrap in `World.__init__()`:
 
 ```python
 class World:
     def __init__(self):
         self._bootstrapping = True
-        self._create_genesis_artifacts()  # No permission checks
+        self._create_default_artifacts()  # No permission checks
         self._bootstrapping = False       # Physics now applies
 ```
 
-**Key points:**
 - Bootstrap is instantaneous (the constructor), not a time period
 - No permission checks during bootstrap
 - Once `World()` returns, bootstrap is over
@@ -173,379 +525,95 @@ class World:
 
 ### Eris as Bootstrap Creator
 
-Genesis artifacts are created by `Eris`:
+Default artifacts are created by `Eris`:
 
 ```python
-genesis_freeware_contract = Artifact(
-    id="genesis_freeware_contract",
-    created_by="Eris",
-    access_contract_id="genesis_freeware_contract",  # Self-referential
+default_freeware = Artifact(
+    id="default_freeware",
+    created_by="Eris",  # Kernel-applied during bootstrap
+    access_contract_id="default_freeware",  # Self-referential
     ...
 )
 ```
 
-**Why Eris?**
-- Greek goddess of discord and strife
-- Fits project philosophy: emergence over prescription, accept risk
 - `Eris` is registered as a principal that exists but cannot act post-bootstrap
-
-### Genesis Naming Convention
-
-| Suffix | Meaning | Example |
-|--------|---------|---------|
-| `_api` | Accessor to kernel state | `genesis_ledger_api`, `genesis_event_log_api` |
-| `_contract` | Access control contract | `genesis_freeware_contract`, `genesis_private_contract` |
-
-The `genesis_` prefix is reserved for system artifacts. Agents cannot create artifacts with this prefix.
+- Greek goddess of discord — fits project philosophy (emergence, accept risk)
 
 ---
 
-## Genesis Contracts
+## Security Model
 
-Default contracts provided at system initialization. **Genesis contracts are artifacts** - they have no special kernel privilege.
+**Docker is the security boundary, not Python-level sandboxing.**
 
-| Contract | Behavior |
-|----------|----------|
-| `genesis_freeware_contract` | Anyone reads/invokes, only creator writes/deletes |
-| `genesis_self_owned_contract` | Only the artifact itself can access (for agent self-control) |
-| `genesis_private_contract` | Only creator has any access |
-| `genesis_public_contract` | Anyone can do anything |
+Contract code runs with the same privileges as any executable artifact. The security model is:
 
-### genesis_freeware_contract (Default)
+1. **Docker container** — hard boundary. Agents and contracts cannot escape the container.
+2. **Resource limits** — kernel enforces time limits, rate limits, and budget limits.
+3. **Contract depth limit** — prevents infinite recursion between contracts.
 
 ```python
-def check_permission(artifact_id, action, requester_id):
-    artifact = get_artifact(artifact_id)
+MAX_PERMISSION_DEPTH = 10  # Configurable in config.yaml
 
-    if action in ["read", "invoke"]:
-        return {"allowed": True, "reason": "Open access"}
-    else:  # write, edit, delete
-        if requester_id == artifact.created_by:
-            return {"allowed": True, "reason": "Creator access"}
-        else:
-            return {"allowed": False, "reason": "Only creator can modify"}
+# Timeout per contract execution
+CONTRACT_TIMEOUT = 5       # Default (seconds)
+CONTRACT_LLM_TIMEOUT = 30  # When contract has call_llm capability
 ```
 
-### genesis_self_owned_contract
+**No Python sandbox:** Dangerous builtins are NOT removed. The container is the sandbox. This is simpler, more honest, and avoids a false sense of security from easily-bypassed Python restrictions.
 
-```python
-def check_permission(artifact_id, action, requester_id):
-    if requester_id == artifact_id:  # Agent accessing itself
-        return {"allowed": True, "reason": "Self access"}
-    else:
-        return {"allowed": False, "reason": "Self-owned: only self can access"}
-```
-
----
-
-## Custom Contracts
-
-Agents can create contracts for any access pattern.
-
-### Example: Paid Read Access
-
-```python
-{
-    "id": "contract_paid_read",
-    "has_loop": True,
-    "content": """
-def check_permission(artifact_id, action, requester_id):
-    if action == "read":
-        # Check if requester paid
-        artifact = get_artifact(artifact_id)
-        if has_paid(requester_id, artifact.owner, artifact.read_price):
-            return {"allowed": True}
-        else:
-            return {"allowed": False, "reason": f"Pay {artifact.read_price} scrip first"}
-    # ... other actions
-"""
-}
-```
-
-### Example: Multi-Sig Access
-
-```python
-{
-    "id": "contract_multisig_2of3",
-    "has_loop": True,
-    "content": """
-def check_permission(artifact_id, action, requester_id):
-    if action in ["write", "edit", "delete"]:
-        # Require 2 of 3 signatures
-        required = ["alice", "bob", "carol"]
-        signatures = get_signatures(artifact_id, action)
-        valid_sigs = [s for s in signatures if s.signer in required]
-        if len(valid_sigs) >= 2:
-            return {"allowed": True}
-        else:
-            return {"allowed": False, "reason": f"Need 2/3 signatures, have {len(valid_sigs)}"}
-    else:
-        return {"allowed": True}
-"""
-}
-```
-
----
-
-## Contract Capabilities
-
-**Contracts can do anything.** (Decision updated: 2026-01-11)
-
-Contracts are executable artifacts with full capabilities:
-- Call LLM
-- Invoke other artifacts
-- Make external API calls (weather, databases, oracles)
-- Cannot modify state directly (return decision, not mutate)
-
-```python
-# Contract execution context - full capabilities
-def execute_contract(contract_code: str, inputs: dict, context: dict) -> PermissionResult:
-    namespace = {
-        "artifact_id": inputs["artifact_id"],
-        "action": inputs["action"],
-        "requester_id": inputs["requester_id"],
-        "artifact_content": inputs["artifact_content"],
-        "context": context,
-
-        # Full capabilities - cost model determined by contract
-        "invoke": lambda *args: invoke_artifact(*args),
-        "call_llm": lambda *args: call_llm(*args),
-        "charge": lambda principal, amount: charge_principal(principal, amount),
-    }
-    exec(contract_code, namespace)
-    return namespace["result"]
-```
-
-**Rationale:**
-- LLMs are just API calls, like weather APIs - no special treatment
-- Agents choose complexity/cost tradeoff for their contracts
-- Non-determinism accepted (system is already non-deterministic via agents)
-
-### Cost Model: Contract-Specified
-
-Who pays for contract execution is determined by the contract itself, not hardcoded:
-
-```python
-# Contract specifies its cost model
-{
-    "id": "my_contract",
-    "cost_model": "invoker_pays",  # or "owner_pays", "artifact_pays", "split"
-}
-
-# Or handle dynamically in logic
-def check_permission(artifact_id, action, requester_id, context):
-    cost = calculate_cost()
-    charge(context["artifact_owner"], cost)  # Owner pays
-    # or: charge(requester_id, cost)  # Invoker pays
-    # ...
-```
-
-| Default | Behavior |
-|---------|----------|
-| `invoker_pays` | Requester bears all costs (sensible default) |
-| `owner_pays` | Artifact owner bears costs |
-| `split` | Costs divided by contract logic |
-| Custom | Contract implements any payment model |
-
-**Note:** Contracts still cannot directly mutate world state - they return decisions. The kernel applies state changes.
-
-### Execution Depth Limit
-
-Contract execution has a depth limit to prevent stack overflow:
-
-```python
-MAX_PERMISSION_DEPTH = 10
-
-def check_permission(artifact, action, requester, depth=0):
-    if depth > MAX_PERMISSION_DEPTH:
-        return {"allowed": False, "reason": "Permission check depth exceeded"}
-
-    contract = get_contract(artifact.access_contract_id)
-    return contract.check(artifact, action, requester, depth=depth+1)
-```
-
-This prevents: Contract A invokes B → B's check invokes C → C's check invokes A → infinite loop.
-
-### Sandbox Limits
-
-Contract execution is sandboxed to prevent abuse:
-
-**Time limit:**
-```python
-CONTRACT_TIMEOUT_SECONDS = 30  # Max execution time
-
-async def execute_contract_sandboxed(contract_code: str, inputs: dict) -> PermissionResult:
-    try:
-        result = await asyncio.wait_for(
-            execute_contract(contract_code, inputs),
-            timeout=CONTRACT_TIMEOUT_SECONDS
-        )
-        return result
-    except asyncio.TimeoutError:
-        return {"allowed": False, "reason": "Contract execution timeout"}
-```
-
-**Resource limits:**
-- CPU: Contracts run in worker pool, subject to rate limits
-- Memory: Worker process memory limits apply
-- No disk access: Contracts cannot write to filesystem
-- No network access except through provided APIs
-
-**Available APIs in contract namespace:**
+**Available in contract code:** All Python stdlib, plus kernel APIs:
 
 | Function | Purpose | Cost |
 |----------|---------|------|
-| `invoke(artifact_id, args)` | Call another artifact | Artifact's cost model |
+| `invoke(artifact_id, method, args)` | Call another artifact | Per that artifact's contract |
 | `call_llm(prompt, model)` | Query LLM | LLM token cost |
-| `charge(principal, amount)` | Charge scrip | 0 (accounting only) |
 | `get_artifact_info(id)` | Read artifact metadata | 0 |
-| `get_balance(principal, resource)` | Check balance | 0 |
 | `now()` | Current timestamp | 0 |
+| `state` (parameter) | Contract's persistent state (read-only snapshot) | 0 |
 
-**NOT available in contracts:**
-- `open()`, `os.*`, `subprocess.*` - No filesystem/process access
-- `socket.*`, `urllib.*` - No direct network (use `invoke` for APIs)
-- `__import__` - No dynamic imports
-- `eval()`, `compile()` - No nested code execution
+Contracts interact with the scrip ledger via `invoke` (it's an artifact). Real resource queries use `get_artifact_info` or kernel-provided context.
 
-**Error handling:**
-
-```python
-def execute_contract(contract_code: str, inputs: dict) -> PermissionResult:
-    try:
-        exec(contract_code, namespace)
-        return namespace.get("result", {"allowed": False, "reason": "No result returned"})
-    except Exception as e:
-        # Log error but don't expose to requester
-        log_contract_error(contract_id, e)
-        return {"allowed": False, "reason": "Contract execution error"}
-```
-
-Contracts that error out deny permission by default (fail closed).
-
----
-
-## Contract Composition
-
-Composition is handled by the **caller**, not by contracts invoking each other.
-
-### Pattern: Pre-computed Composition
-
-When artifact needs multiple checks, caller evaluates each:
-
-```python
-# Caller-side composition (in kernel)
-def check_composed_permission(artifact, action, requester):
-    contracts = artifact.access_contracts  # List of contract IDs
-
-    for contract_id in contracts:
-        contract = get_contract(contract_id)
-        result = contract.check_permission(
-            artifact_id=artifact.id,
-            action=action,
-            requester_id=requester,
-            artifact_content=artifact.content,
-            context={"created_by": artifact.created_by, ...}
-        )
-        if not result.allowed:
-            return result  # AND composition: first failure stops
-
-    return PermissionResult(allowed=True, reason="All checks passed")
-```
-
-### Pattern: Meta-Contract
-
-A contract can encode composition logic internally:
-
-```python
-# Contract that checks multiple conditions
-def check_permission(artifact_id, action, requester_id, artifact_content, context):
-    # Check 1: Is requester the creator?
-    is_creator = (requester_id == context["created_by"])
-
-    # Check 2: Is artifact marked public?
-    is_public = artifact_content.get("public", False)
-
-    # Check 3: Is requester in allowlist?
-    allowlist = artifact_content.get("allowlist", [])
-    is_allowed = (requester_id in allowlist)
-
-    # Compose: creator OR public OR allowlisted
-    if is_creator or is_public or is_allowed:
-        return {"allowed": True, "reason": "Access granted"}
-    return {"allowed": False, "reason": "Not authorized"}
-```
-
----
-
-## No Owner Bypass (ADR-0016)
-
-The `access_contract_id` is the ONLY authority. There is no kernel-level owner bypass.
-
-```python
-# WRONG - owner bypass breaks contract system
-def can_access(artifact, action, requester):
-    if requester == artifact.owner_id:
-        return True  # BAD: kernel knows nothing about "owner"
-    return check_contract(...)
-
-# RIGHT - contract is only authority
-def can_access(artifact, action, requester):
-    return check_contract(artifact.access_contract_id, artifact, action, requester)
-```
-
-If you want owner-based access, your contract implements it. The kernel doesn't know what an "owner" is.
-
-**Note:** The kernel stores `created_by` (who created the artifact) but interprets it as historical fact, not authority. Contracts may choose to grant special access to the creator, but that's a policy decision, not kernel semantics. See ADR-0016.
+**Error handling:** Contracts that error out deny permission by default (fail closed).
 
 ---
 
 ## Performance Considerations
 
-### Caching for All Contracts (Certainty: 80%)
+### Caching
 
-All contracts can opt into fast-path caching. No genesis privilege.
+All contracts can opt into fast-path caching. No default-contract privilege.
 
 ```python
-# Contract declares caching behavior
-{
-    "id": "genesis_freeware_contract",
-    "has_loop": True,
-    "cache_policy": {
+Artifact(
+    id="default_freeware",
+    cache_policy={
         "cacheable": True,
         "ttl_seconds": 3600,
-        "cache_key": ["artifact_id", "action", "requester_id"]
+        "cache_key": ["target", "action", "caller"]
     }
-}
-
-# Permission check uses cache
-def check_permission_cached(artifact, action, requester):
-    contract = get_contract(artifact.access_contract_id)
-    cache_key = (artifact.access_contract_id, artifact.id, action, requester)
-
-    if cache_key in permission_cache:
-        return permission_cache[cache_key]
-
-    result = execute_contract(contract, artifact, action, requester)
-
-    if contract.cache_policy.cacheable:
-        permission_cache[cache_key] = result
-        expire_at(cache_key, contract.cache_policy.ttl_seconds)
-
-    return result
+)
 ```
-
-**Benefits:**
-- Genesis and user contracts equally fast when cached
-- Contracts control their own cache behavior
-- Dynamic contracts can disable caching
 
 **Cache invalidation:**
 - TTL expiry (configurable per contract)
-- Explicit invalidation when artifact content changes
+- Explicit invalidation when target artifact changes
 - Explicit invalidation when contract itself changes
 
-**Uncertainty:** Cache invalidation is hard. May see stale permission results.
+### Kernel Optimization
+
+The kernel MAY skip contract invocation for known-deterministic contracts:
+
+```python
+if artifact.access_contract_id == "default_freeware":
+    # Equivalent to calling the contract — just faster
+    if action in ["read", "invoke"]:
+        return PermissionResult(allowed=True)
+    if caller == artifact.created_by:
+        return PermissionResult(allowed=True)
+    return PermissionResult(allowed=False)
+```
+
+This is NOT a privilege. It's equivalent to caching the contract's deterministic result. Any artifact using the same contract gets the same optimization.
 
 ---
 
@@ -556,66 +624,71 @@ def check_permission_cached(artifact, action, requester):
 Artifacts can become permanently inaccessible if their `access_contract_id` chain becomes broken or circular:
 
 ```
-Artifact X.access_contract_id → Contract A
-Contract A: "allow if Oracle reports temperature > 70°F"
+Artifact X → Contract A: "allow if Oracle reports temperature > 70°F"
 Oracle is permanently offline → X is orphaned forever
 ```
 
-Or circular:
-```
-Contract A: "allow if B allows"
-Contract B: "allow if C allows"
-Contract C: "allow if A allows"
-All deny → permanently locked
-```
-
-**This is accepted.** No automatic rescue mechanism exists because:
-
-1. **Many loops are valuable** - Mutual interdependence (A controls B, B controls A) is how partnerships and multi-sig work
-
-2. **Detection is impossible** - Contracts can depend on external state, time, LLM interpretation. Cannot statically determine if an artifact is permanently inaccessible
-
-3. **Trustlessness** - Adding backdoors breaks the security model
-
-**Consequence:** Creators are responsible for designing access control carefully. Orphaned artifacts remain forever, like lost Bitcoin.
+**This is accepted.** No automatic rescue mechanism. Like lost Bitcoin. Creators are responsible for designing access control carefully.
 
 ### Dangling Contracts → Fail-Open (ADR-0017)
 
-When an artifact's `access_contract_id` points to a deleted contract, the system **fails open** to a configurable default contract (freeware by default).
+When `access_contract_id` points to a **deleted** contract:
 
 | Scenario | Behavior |
 |----------|----------|
-| `access_contract_id` → deleted contract | Fall back to default contract |
-| `access_contract_id` → non-existent | Fall back to default contract |
+| Contract deleted | Fall back to `contracts.default_on_missing` |
+| Contract never existed | Fall back to `contracts.default_on_missing` |
 
-**Rationale:**
-- **Accept risk, observe outcomes**: Fail-closed is punitive without learning benefit
-- **Selection pressure still applies**: Your custom access control is gone - that's the consequence
-- **Maximum configurability**: Default contract is configurable per-world
+Loud logging when this happens. Selection pressure preserved — your custom access control is gone.
 
-**Warning:** Loud logging occurs when this happens - artifacts falling back to default should be visible to operators.
-
-**Note:** This is different from orphan artifacts (contract exists but denies everyone). Dangling means the contract itself is gone.
-
-See ADR-0017 for full decision rationale.
+**Different from orphans:** Orphan = contract exists but denies everyone. Dangling = contract itself is gone.
 
 ---
 
 ## Migration Notes
 
-### Breaking Changes
-- Remove `policy` field from Artifact (allow_read, read_price, etc.)
-- Add `access_contract_id` field (required)
-- Permission checks become contract invocations
+### Changes from Current Implementation
 
-### Preserved
-- Owner concept (implemented in contracts, not kernel)
-- Access control logic (moved to contract code)
+| Current | Target |
+|---------|--------|
+| `created_by` is agent-passed parameter | `created_by` is kernel-applied from caller context |
+| Kernel seeds `metadata["authorized_writer"]` from `created_by` | No metadata seeding — contract alone decides auth |
+| Kernel checks `created_by` for contract changes | Contract governs contract changes like any other action |
+| Kernel contracts are Python classes in separate registry | All contracts are artifacts in the unified store |
+| `genesis_*` naming | `default_*` naming |
+| Invoker always pays (ADR-0011) | Contract specifies scrip and resource payment routing separately |
+| Python-level sandbox (remove builtins) | Docker container as security boundary |
+| `contracts.default_when_null: creator_only` | `contracts.require_explicit: true` (configurable) |
+| Contracts have no persistent state | Contracts get `state` input and return `state_updates` |
+| Scrip ledger is kernel infrastructure | Scrip ledger is an artifact (artificial scarcity, not physics) |
+| `delegation.py` as separate kernel system | Real resource authorization is kernel; scrip authorization is artifact-level |
+| Single `cost`/`payer` field | Separate `scrip_cost`/`scrip_payer` and `resource_payer` |
+| genesis_ledger artifact wrapping kernel Ledger | Agents use `query_kernel` and `transfer` narrow-waist actions |
 
-### New Components
-- Genesis contracts (genesis_freeware_contract, etc.)
-- Contract invocation in permission checks
-- check_permission interface standard
+### Specific Code Changes Needed
+
+1. **`artifacts.py:write()`** — Remove `created_by` parameter. Kernel sets it from caller context.
+2. **`artifacts.py:899-911`** — Remove metadata seeding logic (no `authorized_writer`/`authorized_principal`).
+3. **`artifacts.py:832-835`** — Remove direct `created_by` check for contract changes. Route through contract.
+4. **`kernel_contracts.py`** — Convert Python class contracts to artifacts in the store.
+5. **`permission_checker.py`** — Simplify context (no `target_metadata` for auth, just informational).
+6. **`config_schema.py`** — Add `contracts.require_explicit` and `contracts.default_contract` config fields.
+7. **Contract code** — Freeware etc. use `context["target_created_by"]` directly (contract's choice, not kernel mechanism).
+8. **`executor.py`** — Remove `_contract_cache` separate registry. Contracts are just artifacts.
+9. **`contracts.py`** — Add `state`/`state_updates` to contract execution and `PermissionResult`.
+10. **`PermissionResult`** — Split into `scrip_cost`/`scrip_payer`/`scrip_recipient` and `resource_payer`.
+11. **Scrip ledger** — Extract from kernel `Ledger` class into an artifact with its own contract.
+12. **`delegation.py`** — Simplify to kernel-level real resource authorization only. Scrip delegation becomes a contract/artifact pattern.
+
+### ADRs to Update
+
+| ADR | Change Needed |
+|-----|---------------|
+| ADR-0011 | Supersede: contracts specify payment model, not "invoker always pays" |
+| ADR-0028 | Supersede: no metadata auth fields, contract alone decides (preserves intent, changes mechanism) |
+| ADR-0019 | Update context model: remove `authorized_writer`/`authorized_principal` from kernel responsibility |
+| New ADR | Kernel vs artifact boundary: real resources = kernel, scrip = artifact |
+| New ADR | Contract persistent state (`state`/`state_updates` pattern) |
 
 ---
 
@@ -624,8 +697,10 @@ See ADR-0017 for full decision rationale.
 | ADR | Decision |
 |-----|----------|
 | ADR-0003 | Contracts can do anything (invoke, call LLM) |
+| ADR-0011 | Standing pays costs — **to be superseded** by flexible payment model |
 | ADR-0015 | Contracts are artifacts, no genesis privilege |
-| ADR-0016 | `created_by` replaces `owner_id` - kernel doesn't interpret ownership |
+| ADR-0016 | `created_by` replaces `owner_id` — kernel doesn't interpret ownership |
 | ADR-0017 | Dangling contracts fail-open to configurable default |
-| ADR-0018 | Bootstrap phase, Eris as creator, genesis naming convention |
+| ADR-0018 | Bootstrap phase, Eris as creator |
 | ADR-0019 | Unified permission architecture (consolidates above) |
+| ADR-0028 | `created_by` is informational — **to be superseded** by removing metadata auth fields |

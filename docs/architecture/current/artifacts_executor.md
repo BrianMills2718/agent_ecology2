@@ -360,7 +360,7 @@ Contract references will enable DAOs, conditional access, and contracts governin
 ## Access Checks
 
 Per ADR-0016 and Plan #210: "Ownership" is not a kernel concept. Contracts decide access.
-Standard kernel contracts (freeware, self_owned, private) check `target_created_by`.
+Standard kernel contracts (freeware, self_owned, private) check `target_metadata` fields (`authorized_writer`, `authorized_principal`) per ADR-0028.
 
 **Contract-Based Permission Checks (default)**
 

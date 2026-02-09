@@ -917,7 +917,8 @@ couplings:
       - src/world/permission_checker.py
     docs:
       - docs/architecture/current/contracts.md
-    description: "Contract types, permission checking, genesis contracts"
+      - docs/architecture/target/05_contracts.md
+    description: "Contract types, permission checking, kernel contracts"
 
   # Mint system (Plan #254: genesis/mint.py removed)
   - sources:
