@@ -138,10 +138,19 @@ def run():
         "reflecting": "Synthesize what you learned. Record knowledge. Plan what's next.",
     }
 
+    # Format available mint tasks for prompt
+    available_mint = state.get("available_mint_tasks", [])
+    open_mint = [t for t in available_mint if t.get("status") == "open"]
+    completed_mint_list = state.get("completed_mint_tasks", [])
+
     prompt = f"""{strategy}
 
 == STATUS ==
 Iteration: {state['iteration']} | Scrip: {scrip_balance} | Tools built: {len(tools_built)} | Tasks completed: {len(state.get('completed_tasks', []))}
+
+== AVAILABLE MINT TASKS (use task_id string for submit_to_task) ==
+{json.dumps(open_mint, indent=2) if open_mint else "(query mint_tasks first to see available tasks)"}
+NOTE: task_id is a STRING like "add_numbers", NOT a number.
 
 == CURRENT TASK ==
 Task #{current_task['id']}: {current_task['description']}
@@ -195,7 +204,7 @@ ACTIONS:
 - Write data: {{"action_type": "write_artifact", "artifact_id": "{agent_prefix}_data_NAME", "artifact_type": "json", "content": {{...}}}}
 - Invoke tool: {{"action_type": "invoke_artifact", "artifact_id": "tool_id", "method": "run", "args": [...]}}
 - Query mint tasks: {{"action_type": "query_kernel", "query_type": "mint_tasks", "params": {{}}}}
-- Submit to mint task: {{"action_type": "submit_to_task", "artifact_id": "my_tool", "task_id": "task_name"}}
+- Submit to mint task: {{"action_type": "submit_to_task", "artifact_id": "{agent_prefix}_tool_X", "task_id": "add_numbers"}}  (task_id is a STRING from the mint tasks list!)
 - Noop: {{"action_type": "noop"}}
 
 RULES:
@@ -289,10 +298,22 @@ RULES:
         if tool_id not in state.get("tools_built", []):
             state.setdefault("tools_built", []).append(tool_id)
         # Auto-inject high-priority submit task so the agent doesn't forget
+        # Try to match tool to a known mint task by name
+        mint_tasks_available = state.get("available_mint_tasks", [])
+        matching_task = None
+        for mt in mint_tasks_available:
+            tid = mt.get("task_id", "")
+            if tid and tid in tool_id:
+                matching_task = tid
+                break
         nid = state.get("next_task_id", 1)
+        if matching_task:
+            desc = f'SUBMIT {tool_id} to task "{matching_task}" NOW — use submit_to_task with task_id="{matching_task}"'
+        else:
+            desc = f"SUBMIT {tool_id} to the appropriate mint task NOW — check available mint tasks for the right task_id string"
         state.setdefault("task_queue", []).append({
             "id": nid,
-            "description": f"SUBMIT {tool_id} to a mint task NOW — you built it, earn scrip!",
+            "description": desc,
             "priority": 10,
         })
         state["next_task_id"] = nid + 1
@@ -325,6 +346,19 @@ RULES:
         try:
             result = kernel_state.query(query_type, params, caller_id=caller_id)
             action_result = {"success": True, "result": result}
+            # Store mint tasks in a clean format for the prompt
+            if query_type == "mint_tasks" and isinstance(result, dict):
+                raw_tasks = result.get("tasks", [])
+                clean_tasks = []
+                for t in raw_tasks:
+                    if isinstance(t, dict):
+                        clean_tasks.append({
+                            "task_id": t.get("task_id", ""),
+                            "description": t.get("description", ""),
+                            "reward": t.get("reward_scrip", t.get("reward", 0)),
+                            "status": "open" if t.get("is_open", True) else "closed",
+                        })
+                state["available_mint_tasks"] = clean_tasks
         except Exception as e:
             action_result = {"success": False, "error": str(e)}
             state.setdefault("failed_attempts", []).append({
