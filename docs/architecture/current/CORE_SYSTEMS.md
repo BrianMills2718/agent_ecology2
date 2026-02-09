@@ -44,9 +44,9 @@ config.yaml (resources.stock.llm_budget.total)
     ↓ distribution: equal
 World.__init__() → Ledger.set_resource() for each agent
     ↓
-Agent thinks → LLMProvider.generate()
+Agent thinks → call_llm() via src/world/llm_client.py
     ↓
-LLMProvider.last_usage captures tokens + cost
+LLMCallResult.cost captures per-call cost
     ↓
 Workflow returns usage (Plan #281)
     ↓
