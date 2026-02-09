@@ -171,6 +171,8 @@ class AccessContract(Protocol):
             action: The action being attempted (read, write, edit, invoke, delete).
             target: The artifact_id being accessed.
             context: Additional context about the access attempt (ADR-0019):
+                    - '_artifact_state': Contract-managed state dict (auth data)
+                    - 'target_metadata': Informational metadata dict (non-auth)
                     - 'target_created_by': Creator of the target artifact
                     - 'method': Method name (invoke only)
                     - 'args': Method arguments (invoke only)
@@ -392,23 +394,25 @@ class ExecutableContract:
 
     The code must define a check_permission function with signature:
         def check_permission(caller, action, target, context, ledger):
-            # Return dict with: allowed (bool), reason (str), cost (int), payer (str|None)
-            return {"allowed": True, "reason": "Access granted", "cost": 0}
+            # Return dict with: allowed, reason, scrip_cost, scrip_payer, scrip_recipient, etc.
+            return {"allowed": True, "reason": "Access granted", "scrip_cost": 0}
 
     Contract code has access to:
         - caller: str - Principal requesting access
         - action: str - The action being attempted (read, write, invoke, etc.)
         - target: str - Artifact ID being accessed
-        - context: dict - Additional context (created_by, artifact_type, event_number, etc.)
+        - context: dict - Additional context (_artifact_state, target_metadata,
+            target_created_by, method, args, etc.)
         - ledger: ReadOnlyLedger - Read-only ledger for balance checks
 
     Return dict fields:
         - allowed: bool - Whether the action is permitted
         - reason: str - Human-readable explanation
-        - cost: int - Scrip cost for the action (default 0)
-        - payer: str|None - Principal who pays the cost (default: caller pays)
-            Contracts can specify alternate payers like context["target_created_by"],
-            a sponsor from artifact metadata, or any principal with standing.
+        - scrip_cost: int - Scrip cost for the action (default 0)
+        - scrip_payer: str|None - Who pays the scrip cost (default: caller)
+        - scrip_recipient: str|None - Who receives scrip payment
+        - resource_payer: str|None - Who pays real resource costs
+        - state_updates: dict|None - Updates to merge into artifact.state
 
     Available modules in contract code:
         - math, json, random, time

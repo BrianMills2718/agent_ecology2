@@ -652,7 +652,7 @@ Loud logging when this happens. Selection pressure preserved — your custom acc
 | Current | Target |
 |---------|--------|
 | `created_by` is agent-passed parameter | `created_by` is kernel-applied from caller context |
-| Kernel seeds `metadata["authorized_writer"]` from `created_by` | No metadata seeding — contract alone decides auth |
+| Kernel seeds `artifact.state["writer"]`/`artifact.state["principal"]` from `created_by` (Plan #311) | No state seeding — contract alone decides auth |
 | Kernel checks `created_by` for contract changes | Contract governs contract changes like any other action |
 | Kernel contracts are Python classes in separate registry | All contracts are artifacts in the unified store |
 | `genesis_*` naming | `default_*` naming |
@@ -668,7 +668,7 @@ Loud logging when this happens. Selection pressure preserved — your custom acc
 ### Specific Code Changes Needed
 
 1. **`artifacts.py:write()`** — Remove `created_by` parameter. Kernel sets it from caller context.
-2. **`artifacts.py:899-911`** — Remove metadata seeding logic (no `authorized_writer`/`authorized_principal`).
+2. **`artifacts.py`** — ~~Remove metadata seeding logic~~ Plan #311 moved auth seeding from `metadata["authorized_writer"]`/`metadata["authorized_principal"]` to `artifact.state["writer"]`/`artifact.state["principal"]`. Target: remove state seeding entirely — contract alone decides auth.
 3. **`artifacts.py:832-835`** — Remove direct `created_by` check for contract changes. Route through contract.
 4. **`kernel_contracts.py`** — Convert Python class contracts to artifacts in the store.
 5. **`permission_checker.py`** — Simplify context (no `target_metadata` for auth, just informational).
@@ -686,7 +686,7 @@ Loud logging when this happens. Selection pressure preserved — your custom acc
 |-----|---------------|
 | ADR-0011 | Supersede: contracts specify payment model, not "invoker always pays" |
 | ADR-0028 | Supersede: no metadata auth fields, contract alone decides (preserves intent, changes mechanism) |
-| ADR-0019 | Update context model: remove `authorized_writer`/`authorized_principal` from kernel responsibility |
+| ADR-0019 | ~~Update context model~~ Done: `_artifact_state` and `target_metadata` added to context model. Remaining: remove state seeding from kernel responsibility |
 | New ADR | Kernel vs artifact boundary: real resources = kernel, scrip = artifact |
 | New ADR | Contract persistent state (`state`/`state_updates` pattern) |
 

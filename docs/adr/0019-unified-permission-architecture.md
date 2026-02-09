@@ -106,6 +106,8 @@ context = {
     "action": str,             # read | write | edit | invoke | delete
     "target": str,             # Artifact ID being accessed
     "target_created_by": str,  # Creator of target (pragmatic - already on artifact)
+    "_artifact_state": dict,   # Contract-managed state (Plan #311 — auth data lives here)
+    "target_metadata": dict,   # Informational metadata (non-auth, like EXIF)
     "method": str,             # Only for invoke
     "args": list,              # Only for invoke
 }
@@ -114,6 +116,8 @@ context = {
 **What's included:**
 - `caller`, `action`, `target` - always provided
 - `target_created_by` - pragmatic inclusion (already stored on artifact, commonly needed)
+- `_artifact_state` - contract-managed authorization state (e.g. `{"writer": "agent_id"}`)
+- `target_metadata` - informational metadata (non-auth fields)
 - `method`, `args` - only for invoke action
 
 **What's NOT included (contracts fetch via invoke):**
@@ -152,7 +156,7 @@ def check_permission(artifact, action, caller):
         # Skip contract call, apply freeware logic directly
         if action in ["read", "invoke"]:
             return PermissionResult(allowed=True)
-        if caller == artifact.created_by:
+        if caller == artifact.state.get("writer"):
             return PermissionResult(allowed=True)
         return PermissionResult(allowed=False)
 
@@ -163,6 +167,8 @@ def check_permission(artifact, action, caller):
 **Rationale:** Pragmatic performance win. Internal "firms" (clusters of artifacts with permissive access) have zero contract overhead.
 
 **Not a privilege:** Freeware is still a contract. The optimization is equivalent to caching the contract's deterministic result. Any artifact can achieve similar by using freeware.
+
+**Note:** Uses `artifact.state["writer"]` (set from `created_by` at creation time), not `created_by` directly (ADR-0028).
 
 ### 8. Genesis Contracts Are Convenience
 
