@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-02-08 (Plan #311: added llm_client.py, replaced LLMProvider with litellm)
+**Last verified:** 2026-02-08 (Plan #308: wired _remove_from_index on deletion, log_resource_allocated on write, dedup cleanups)
 
 ---
 

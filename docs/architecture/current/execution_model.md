@@ -2,7 +2,7 @@
 
 How agent execution works TODAY.
 
-**Last verified:** 2026-02-07 (Plan #308: dead code cleanup - removed unused import, no behavioral changes)
+**Last verified:** 2026-02-08 (Plan #308: wired on_error callbacks in AgentLoop/ArtifactLoop, log_resource_allocated in executor)
 
 **See target:** [../target/execution_model.md](../target/execution_model.md)
 
