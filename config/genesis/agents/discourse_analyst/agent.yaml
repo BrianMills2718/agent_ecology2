@@ -3,7 +3,7 @@
 
 id: discourse_analyst
 enabled_key: discourse_analyst.enabled
-enabled: true
+enabled: false  # Disabled: replaced by discourse_v2
 
 artifacts:
   - id: discourse_analyst_strategy

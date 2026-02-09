@@ -110,6 +110,7 @@ Master index of all gaps and their implementation plans.
 | 308 | [Wire Up Disconnected Features Found in Dead Code Audit](308_dead_code_gaps.md) | Medium | ✅ Complete | - |
 | 309 | [Plan 309: Rewrite Target Contract Architecture](309_target_contracts_rewrite.md) | High | ✅ Complete | - |
 | 310 | [PermissionResult Field Rename and Expansion](310_permission_result_rename.md) | Medium | ✅ Complete | - |
+| 311 | [V2 Discourse Agents](311_discourse_v2_agents.md) | Medium | 🚧 In Progress | - |
 ---
 
 ## TDD Workflow
