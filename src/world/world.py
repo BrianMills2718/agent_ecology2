@@ -262,7 +262,6 @@ class World:
         # Initialize MintTaskManager (Plan #269)
         self.mint_task_manager: MintTaskManager | None = None
         if config_get("mint_tasks.enabled", False):
-            from .executor import get_executor
             self.mint_task_manager = MintTaskManager(
                 ledger=self.ledger,
                 artifacts=self.artifacts,
@@ -330,6 +329,9 @@ class World:
         # Action executor (Plan #181: Split large files)
         # Handles all action intent processing
         self._action_executor = ActionExecutor(self)
+
+        # Plan #311: Wire artifact_store to executor for state_updates application
+        get_executor().set_artifact_store(self.artifacts)
 
         self.logger.log("world_init", {
             "costs": self.costs,
