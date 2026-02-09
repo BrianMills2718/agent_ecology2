@@ -3,13 +3,12 @@
 Summarize specs using Gemini API in parallel chunks
 """
 
-import sys
 import asyncio
 from pathlib import Path
 
+import litellm
+
 REPO_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(REPO_ROOT / "llm_provider_standalone"))
-from llm_provider import LLMProvider
 
 SPECS_FILE = REPO_ROOT / "agent_ecology_v2_specs.txt"
 OUTPUT_FILE = REPO_ROOT / "specs_summary.md"
@@ -52,13 +51,18 @@ CONTENT:
 Provide the summary now:"""
 
 
-async def summarize_chunk(provider: LLMProvider, chunk_id: int, start: int, end: int, section_name: str, lines: list) -> tuple:
+async def summarize_chunk(model: str, chunk_id: int, start: int, end: int, section_name: str, lines: list) -> tuple:
     """Summarize a single chunk"""
     content = "\n".join(lines[start:end])
     prompt = PROMPT_TEMPLATE.format(section_name=section_name, content=content)
 
     try:
-        result = await provider.generate_async(prompt)
+        response = await litellm.acompletion(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            timeout=120,
+        )
+        result = response.choices[0].message.content
         return (chunk_id, section_name, result)
     except Exception as e:
         return (chunk_id, section_name, f"ERROR: {e}")
@@ -71,19 +75,14 @@ async def main():
         lines = f.readlines()
     print(f"Loaded {len(lines)} lines")
 
-    # Initialize provider
-    provider = LLMProvider(
-        model="gemini/gemini-2.5-flash",
-        log_dir="llm_logs",
-        timeout=120
-    )
+    model = "gemini/gemini-2.5-flash"
 
     # Process chunks in parallel (but limit concurrency for rate limits)
     print(f"Processing {len(CHUNKS)} chunks...")
 
     tasks = []
     for i, (start, end, section_name) in enumerate(CHUNKS):
-        task = summarize_chunk(provider, i, start, end, section_name, lines)
+        task = summarize_chunk(model, i, start, end, section_name, lines)
         tasks.append(task)
 
     # Run with some concurrency limit

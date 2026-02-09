@@ -15,17 +15,10 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-import sys
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 from typing import Callable, TypedDict
 
-# Add llm_provider_standalone to path
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / 'llm_provider_standalone'))
-
-from llm_provider import LLMProvider
-
+from .llm_client import call_llm
 from ..config import get, get_validated_config
 
 
@@ -75,22 +68,18 @@ class MintScorer:
     All settings (model, timeout, max_content_length) come from config.yaml.
     """
 
-    llm: LLMProvider
+    model: str
+    timeout: int
     max_content_length: int
+    last_cost: float  # Cost of most recent LLM call (for mint_auction tracking)
     _seen_hashes: set[str] = set()
 
     def __init__(self, model: str | None = None, log_dir: str | None = None) -> None:
         # Get config values with fallbacks
-        model = model or get("mint_scorer.model") or "gemini/gemini-3-flash-preview"
-        log_dir = log_dir or get("logging.log_dir") or "llm_logs"
-        timeout: int = get("mint_scorer.timeout") or 30
-
-        self.llm = LLMProvider(
-            model=model,
-            log_dir=log_dir,
-            timeout=timeout
-        )
-        self.max_content_length: int = get("mint_scorer.max_content_length") or 2000
+        self.model = model or get("mint_scorer.model") or "gemini/gemini-3-flash-preview"
+        self.timeout = get("mint_scorer.timeout") or 30
+        self.max_content_length = get("mint_scorer.max_content_length") or 2000
+        self.last_cost = 0.0
 
     def _compute_content_hash(self, content: str) -> str:
         """Compute MD5 hash of content for duplicate detection."""
@@ -158,20 +147,26 @@ class MintScorer:
         )
 
         try:
+            messages = [{"role": "user", "content": prompt}]
+
             # Run LLM call in thread pool to avoid async context issues
             # (litellm detects async event loop and refuses sync calls)
             try:
-                loop = asyncio.get_running_loop()
+                asyncio.get_running_loop()
                 # We're in an async context - run in thread pool
                 config = get_validated_config()
                 workers = config.mint_scorer.thread_pool_workers
                 with ThreadPoolExecutor(max_workers=workers) as executor:
-                    future = executor.submit(self.llm.generate, prompt)
-                    response_raw = future.result(timeout=60)
+                    future = executor.submit(
+                        call_llm, self.model, messages, timeout=self.timeout
+                    )
+                    llm_result = future.result(timeout=60)
             except RuntimeError:
                 # No async loop - call directly
-                response_raw = self.llm.generate(prompt)
-            response: str = str(response_raw)
+                llm_result = call_llm(self.model, messages, timeout=self.timeout)
+
+            self.last_cost = llm_result.cost
+            response: str = llm_result.content
         except Exception as e:
             return {
                 "success": False,

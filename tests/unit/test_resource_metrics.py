@@ -2,7 +2,6 @@
 
 Tests the resource visibility system that aggregates metrics from:
 - Ledger.resources (llm_budget, etc.)
-- Agent.llm.get_usage_stats() (tokens, cost, requests)
 - Config (initial allocations)
 
 Plan #93: Agent Resource Visibility
@@ -11,7 +10,6 @@ Plan #93: Agent Resource Visibility
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
 from typing import Any
 
 import pytest
@@ -24,57 +22,25 @@ from src.world.resource_metrics import (
 )
 
 
-@dataclass
-class MockLLMProvider:
-    """Mock LLM provider with usage stats for testing."""
-
-    _usage_stats: dict[str, Any]
-
-    def get_usage_stats(self) -> dict[str, Any]:
-        return self._usage_stats.copy()
-
-
-@dataclass
-class MockAgent:
-    """Mock agent with LLM provider for testing."""
-
-    agent_id: str
-    llm: MockLLMProvider
-
-
 class TestResourceMetricsBasic:
     """Tests for basic ResourceMetricsProvider functionality."""
 
     def test_get_agent_metrics_basic(self) -> None:
         """Returns metrics for agent with llm_budget."""
-        # Setup: Create provider with initial config
         provider = ResourceMetricsProvider(
             initial_allocations={"llm_budget": 1.0, "disk": 10000},
             resource_units={"llm_budget": "dollars", "disk": "bytes"},
         )
 
-        # Create mock ledger resources
         ledger_resources = {"agent_a": {"llm_budget": 0.75}}
 
-        # Create mock agent with usage stats
-        mock_llm = MockLLMProvider(
-            _usage_stats={
-                "total_tokens": 1000,
-                "requests": 5,
-                "total_cost": 0.25,
-            }
-        )
-        agents = {"agent_a": MockAgent(agent_id="agent_a", llm=mock_llm)}
-
-        # Get metrics
         metrics = provider.get_agent_metrics(
             agent_id="agent_a",
             ledger_resources=ledger_resources,
-            agents=agents,
-            start_time=time.time() - 60,  # Started 60 seconds ago
+            agents={},
+            start_time=time.time() - 60,
         )
 
-        # Verify basic structure
         assert metrics.agent_id == "agent_a"
         assert "llm_budget" in metrics.resources
         assert metrics.resources["llm_budget"].remaining == 0.75
@@ -88,12 +54,11 @@ class TestResourceMetricsBasic:
         )
 
         ledger_resources = {"agent_a": {"llm_budget": 0.6}}
-        agents = {"agent_a": MockAgent(agent_id="agent_a", llm=MockLLMProvider(_usage_stats={}))}
 
         metrics = provider.get_agent_metrics(
             agent_id="agent_a",
             ledger_resources=ledger_resources,
-            agents=agents,
+            agents={},
             start_time=time.time(),
         )
 
@@ -108,46 +73,16 @@ class TestResourceMetricsBasic:
         )
 
         ledger_resources = {"agent_a": {"llm_budget": 0.3}}
-        agents = {"agent_a": MockAgent(agent_id="agent_a", llm=MockLLMProvider(_usage_stats={}))}
 
         metrics = provider.get_agent_metrics(
             agent_id="agent_a",
             ledger_resources=ledger_resources,
-            agents=agents,
+            agents={},
             start_time=time.time(),
         )
 
         # 1.0 - 0.3 = 0.7
         assert metrics.resources["llm_budget"].spent == 0.7
-
-    def test_metrics_with_llm_stats(self) -> None:
-        """Includes tokens_in, tokens_out from LLMProvider."""
-        provider = ResourceMetricsProvider(
-            initial_allocations={"llm_budget": 1.0},
-            resource_units={"llm_budget": "dollars"},
-        )
-
-        ledger_resources = {"agent_a": {"llm_budget": 0.5}}
-        mock_llm = MockLLMProvider(
-            _usage_stats={
-                "total_tokens": 5000,
-                "requests": 10,
-                "total_cost": 0.5,
-            }
-        )
-        agents = {"agent_a": MockAgent(agent_id="agent_a", llm=mock_llm)}
-
-        metrics = provider.get_agent_metrics(
-            agent_id="agent_a",
-            ledger_resources=ledger_resources,
-            agents=agents,
-            start_time=time.time(),
-        )
-
-        llm_metrics = metrics.resources["llm_budget"]
-        assert llm_metrics.total_requests == 10
-        # total_tokens tracked (in/out breakdown may not be available)
-        assert llm_metrics.tokens_in is not None or llm_metrics.tokens_out is not None
 
     def test_burn_rate_calculation(self) -> None:
         """burn_rate = spent / elapsed_seconds"""
@@ -157,7 +92,6 @@ class TestResourceMetricsBasic:
         )
 
         ledger_resources = {"agent_a": {"llm_budget": 0.4}}
-        agents = {"agent_a": MockAgent(agent_id="agent_a", llm=MockLLMProvider(_usage_stats={}))}
 
         # Started 100 seconds ago
         start_time = time.time() - 100
@@ -165,7 +99,7 @@ class TestResourceMetricsBasic:
         metrics = provider.get_agent_metrics(
             agent_id="agent_a",
             ledger_resources=ledger_resources,
-            agents=agents,
+            agents={},
             start_time=start_time,
         )
 
@@ -185,14 +119,13 @@ class TestDetailLevels:
         )
 
         ledger_resources = {"agent_a": {"llm_budget": 0.5}}
-        agents = {"agent_a": MockAgent(agent_id="agent_a", llm=MockLLMProvider(_usage_stats={}))}
 
         config = ResourceVisibilityConfig(detail_level="minimal")
 
         metrics = provider.get_agent_metrics(
             agent_id="agent_a",
             ledger_resources=ledger_resources,
-            agents=agents,
+            agents={},
             start_time=time.time(),
             visibility_config=config,
         )
@@ -213,14 +146,13 @@ class TestDetailLevels:
         )
 
         ledger_resources = {"agent_a": {"llm_budget": 0.5}}
-        agents = {"agent_a": MockAgent(agent_id="agent_a", llm=MockLLMProvider(_usage_stats={}))}
 
         config = ResourceVisibilityConfig(detail_level="standard")
 
         metrics = provider.get_agent_metrics(
             agent_id="agent_a",
             ledger_resources=ledger_resources,
-            agents=agents,
+            agents={},
             start_time=time.time(),
             visibility_config=config,
         )
@@ -243,21 +175,13 @@ class TestDetailLevels:
         )
 
         ledger_resources = {"agent_a": {"llm_budget": 0.5}}
-        mock_llm = MockLLMProvider(
-            _usage_stats={
-                "total_tokens": 5000,
-                "requests": 10,
-                "total_cost": 0.5,
-            }
-        )
-        agents = {"agent_a": MockAgent(agent_id="agent_a", llm=mock_llm)}
 
         config = ResourceVisibilityConfig(detail_level="verbose")
 
         metrics = provider.get_agent_metrics(
             agent_id="agent_a",
             ledger_resources=ledger_resources,
-            agents=agents,
+            agents={},
             start_time=time.time() - 100,
             visibility_config=config,
         )
@@ -268,7 +192,6 @@ class TestDetailLevels:
         assert llm_metrics.initial == 1.0
         assert llm_metrics.spent == 0.5
         assert llm_metrics.percentage == 50.0
-        assert llm_metrics.total_requests == 10
         assert llm_metrics.burn_rate is not None
 
 
@@ -283,7 +206,6 @@ class TestResourceFiltering:
         )
 
         ledger_resources = {"agent_a": {"llm_budget": 0.5, "disk": 5000}}
-        agents = {"agent_a": MockAgent(agent_id="agent_a", llm=MockLLMProvider(_usage_stats={}))}
 
         # Only request llm_budget
         config = ResourceVisibilityConfig(resources=["llm_budget"])
@@ -291,7 +213,7 @@ class TestResourceFiltering:
         metrics = provider.get_agent_metrics(
             agent_id="agent_a",
             ledger_resources=ledger_resources,
-            agents=agents,
+            agents={},
             start_time=time.time(),
             visibility_config=config,
         )

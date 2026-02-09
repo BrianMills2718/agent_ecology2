@@ -143,12 +143,7 @@ class ResourceMetricsProvider:
         # Get agent's current resources from ledger
         agent_resources = ledger_resources.get(agent_id, {})
 
-        # Get LLM usage stats if agent exists
         llm_stats: dict[str, Any] = {}
-        if agent_id in agents:
-            agent = agents[agent_id]
-            if hasattr(agent, "llm") and hasattr(agent.llm, "get_usage_stats"):
-                llm_stats = agent.llm.get_usage_stats()
 
         # Build metrics for each resource
         metrics: dict[str, ResourceMetrics] = {}

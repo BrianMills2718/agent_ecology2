@@ -105,9 +105,9 @@ def create_syscall_llm(
     """Create _syscall_llm function for artifact sandbox (Plan #255).
 
     This is the kernel primitive for LLM access. It:
-    1. Checks caller's llm_budget
-    2. Calls LLM via LLMProvider
-    3. Deducts actual cost from caller's budget
+    1. Checks caller's llm_budget (ADR-0002: no compute debt)
+    2. Calls LLM via llm_client.call_llm
+    3. Deducts actual cost from caller's budget (ADR-0011/0023)
     4. Returns response
 
     The Universal Bridge Pattern: This is the template for all external
@@ -141,7 +141,7 @@ def create_syscall_llm(
         # Real cost will be calculated after the call
         estimated_cost = max(0.001, len(messages) * 0.0005)
 
-        # Check budget
+        # Check budget (ADR-0002: no compute debt — validate before execution)
         if not world.ledger.can_afford_llm_call(caller_id, estimated_cost):
             current_budget = world.ledger.get_llm_budget(caller_id)
             return LLMSyscallResult(
@@ -153,64 +153,27 @@ def create_syscall_llm(
             )
 
         try:
-            # Plan #273: Import inside function for proper mockability
-            # Import here (not at module level) so tests can patch it
-            import sys
-            from pathlib import Path
-
-            # Add llm_provider_standalone to path if not already
-            project_root = Path(__file__).parent.parent.parent
-            llm_provider_path = str(project_root / 'llm_provider_standalone')
-            if llm_provider_path not in sys.path:
-                sys.path.insert(0, llm_provider_path)
-
-            from llm_provider import LLMProvider
-
-            # Create provider for this call
-            log_dir = get("logging.log_dir", "llm_logs")
-            provider = LLMProvider(model=model, log_dir=log_dir)
-
-            # Plan #273: Convert messages to prompt string
-            # LLMProvider expects a prompt string, not OpenAI-style messages list
-            # Extract user message content
-            prompt_parts = []
-            system_prompt = None
-            for msg in messages:
-                if msg.get("role") == "system":
-                    system_prompt = msg.get("content", "")
-                elif msg.get("role") == "user":
-                    prompt_parts.append(msg.get("content", ""))
-            prompt = "\n".join(prompt_parts)
-
-            # Plan #273: Run sync generate in a thread to avoid async context detection
-            # The artifact loop runs async, so litellm sees an event loop and refuses sync calls
+            from .llm_client import call_llm, LLMCallResult
             import concurrent.futures
 
-            def _run_sync() -> str:
-                result: str = provider.generate(prompt, system_prompt=system_prompt)
-                return result
+            # Run in thread to avoid async context issues (Plan #273)
+            # The artifact loop runs async, so litellm detects the event loop
+            def _run_sync() -> LLMCallResult:
+                return call_llm(model=model, messages=messages, timeout=60)
 
-            # Always run in thread to avoid async context issues
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 future = pool.submit(_run_sync)
-                response = future.result(timeout=60)
+                llm_result = future.result(timeout=60)
 
-            # Get actual cost from usage
-            usage = provider.last_usage
-            if "cost" not in usage:
-                logger.warning(
-                    "LLM usage missing 'cost' field, falling back to estimate: %s",
-                    estimated_cost,
-                )
-            actual_cost = usage.get("cost", estimated_cost)
+            actual_cost = llm_result.cost
 
-            # Deduct from caller's budget
+            # Deduct from caller's budget (ADR-0011/0023: charges to principals)
             world.ledger.deduct_llm_cost(caller_id, actual_cost)
 
             return LLMSyscallResult(
                 success=True,
-                content=response if isinstance(response, str) else str(response),
-                usage=usage,
+                content=llm_result.content,
+                usage=llm_result.usage,
                 cost=actual_cost,
                 error="",
             )

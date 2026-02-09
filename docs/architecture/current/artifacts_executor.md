@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-02-08 (Plan #308: added update_metadata action type with protected key guard)
+**Last verified:** 2026-02-08 (Plan #311: added llm_client.py, replaced LLMProvider with litellm)
 
 ---
 
@@ -13,6 +13,7 @@ Artifacts are the fundamental unit of state in the ecology. The executor runs ag
 **Key files:**
 - `src/world/artifacts.py` - Artifact storage and access control
 - `src/world/executor.py` - Code execution with wallet/invoke capabilities
+- `src/world/llm_client.py` - Thin LLM wrapper (litellm + instructor) for `_syscall_llm` and mint scoring
 
 ---
 
