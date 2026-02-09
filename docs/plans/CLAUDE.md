@@ -111,6 +111,7 @@ Master index of all gaps and their implementation plans.
 | 309 | [Plan 309: Rewrite Target Contract Architecture](309_target_contracts_rewrite.md) | High | ✅ Complete | - |
 | 310 | [PermissionResult Field Rename and Expansion](310_permission_result_rename.md) | Medium | ✅ Complete | - |
 | 311 | [V2 Discourse Agents](311_discourse_v2_agents.md) | Medium | 🚧 In Progress | - |
+| 312 | [Audit Remediation](312_audit_remediation.md) | Medium | 🔵 Proposed | - |
 ---
 
 ## TDD Workflow
