@@ -1,4 +1,10 @@
-# Active Work Claims
-# Managed by scripts/check_claims.py
-# Each CC instance registers a claim before editing files.
-claims: []
+# Active Work Lock File
+# Machine-readable tracking for multi-CC coordination.
+# Use: python scripts/check_claims.py --help
+
+claims:
+- cc_id: plan-308-medium-wire
+  task: 'Plan #308 MEDIUM items - doc coupling updates'
+  claimed_at: '2026-02-09T06:14:30Z'
+  session_id: 7c45087d-8051-41c7-a479-420cf31db366
+completed: []
