@@ -1,0 +1,38 @@
+# Discourse V2-3 — Task-driven Rhetoric & Persuasion Researcher
+# Hybrid: alpha_prime task queue + discourse analyst research cycle
+
+id: discourse_v2_3
+enabled_key: discourse_v2_3.enabled
+enabled: true
+
+artifacts:
+  - id: discourse_v2_3_strategy
+    type: text
+    content_file: strategy.md
+    access_contract_id: kernel_contract_transferable_freeware
+    state:
+      writer: discourse_v2_3_loop
+
+  - id: discourse_v2_3_state
+    type: json
+    content_file: initial_state.json
+    access_contract_id: kernel_contract_transferable_freeware
+    state:
+      writer: discourse_v2_3_loop
+
+  - id: discourse_v2_3_loop
+    type: executable
+    code_file: loop_code.py
+    has_standing: true
+    has_loop: true
+    capabilities: [can_call_llm]
+    access_contract_id: kernel_contract_transferable_freeware
+    state:
+      writer: discourse_v2_3_loop
+
+principal:
+  id: discourse_v2_3_loop
+  starting_scrip_key: discourse_v2_3.starting_scrip
+  starting_scrip: 100
+  starting_llm_budget_key: discourse_v2_3.starting_llm_budget
+  starting_llm_budget: 1.0
