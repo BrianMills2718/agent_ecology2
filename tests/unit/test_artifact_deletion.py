@@ -381,3 +381,79 @@ class TestDeleteNonexistentArtifact:
         result = world.delete_artifact("nonexistent", "alice")
         assert result["success"] is False
         assert "not found" in result.get("error", "").lower()
+
+
+class TestDeletedArtifactRemovedFromIndexes:
+    """Plan #308: Deleted artifacts are removed from query indexes."""
+
+    def test_deleted_artifact_removed_from_type_index(self) -> None:
+        """query_by_type() excludes deleted artifacts after deletion."""
+        with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+            output_file = f.name
+
+        config = {
+            "world": {"max_ticks": 10},
+            "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 1},
+            "logging": {"output_file": output_file},
+            "principals": [
+                {"id": "alice", "starting_scrip": 100},
+            ],
+            "rights": {
+                "default_quotas": {"compute": 1000.0, "disk": 10000.0}
+            },
+        }
+        world = World(config)
+
+        world.artifacts.write("art1", "oracle", "content1", "alice")
+        world.artifacts.write("art2", "oracle", "content2", "alice")
+
+        # Both should be in type index
+        oracles = world.artifacts.query_by_type("oracle")
+        oracle_ids = [a.id for a in oracles]
+        assert "art1" in oracle_ids
+        assert "art2" in oracle_ids
+
+        # Delete art1 via world (which now calls _remove_from_index)
+        world.delete_artifact("art1", "alice")
+
+        # art1 should be gone from type index
+        oracles = world.artifacts.query_by_type("oracle")
+        oracle_ids = [a.id for a in oracles]
+        assert "art1" not in oracle_ids
+        assert "art2" in oracle_ids
+
+    def test_deleted_artifact_removed_from_creator_index(self) -> None:
+        """query_by_creator() excludes deleted artifacts after deletion."""
+        with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as f:
+            output_file = f.name
+
+        config = {
+            "world": {"max_ticks": 10},
+            "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 1},
+            "logging": {"output_file": output_file},
+            "principals": [
+                {"id": "alice", "starting_scrip": 100},
+            ],
+            "rights": {
+                "default_quotas": {"compute": 1000.0, "disk": 10000.0}
+            },
+        }
+        world = World(config)
+
+        world.artifacts.write("art1", "generic", "content1", "alice")
+        world.artifacts.write("art2", "generic", "content2", "alice")
+
+        # Both in creator index
+        alice_arts = world.artifacts.query_by_creator("alice")
+        alice_ids = [a.id for a in alice_arts]
+        assert "art1" in alice_ids
+        assert "art2" in alice_ids
+
+        # Delete art1
+        world.delete_artifact("art1", "alice")
+
+        # art1 should be gone from creator index
+        alice_arts = world.artifacts.query_by_creator("alice")
+        alice_ids = [a.id for a in alice_arts]
+        assert "art1" not in alice_ids
+        assert "art2" in alice_ids

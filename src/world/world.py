@@ -555,6 +555,7 @@ class World:
         artifact.deleted = True
         artifact.deleted_at = datetime.now(timezone.utc).isoformat()
         artifact.deleted_by = requester_id
+        self.artifacts._remove_from_index(artifact)
 
         # Log the deletion
         self.logger.log("artifact_deleted", {

@@ -10,7 +10,7 @@
 #   Thesis → PRD → Domain Model → ADR → Ontology (this file) → Code
 #
 # See: docs/prd/ for capabilities, docs/domain_model/ for concepts
-# Last verified: 2026-02-08 (Plan #311: auth data moved from metadata to artifact.state)
+# Last verified: 2026-02-08 (Plan #308: _remove_from_index on deletion, dedup write() index update)
 # =============================================================================
 
 version: 4

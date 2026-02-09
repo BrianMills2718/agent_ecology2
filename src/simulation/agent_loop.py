@@ -179,6 +179,7 @@ class AgentLoop:
     rate_tracker: "RateTracker"
     config: AgentLoopConfig = field(default_factory=AgentLoopConfig)
     is_alive: Callable[[], bool] = field(default=lambda: True)
+    on_error: Callable[[str, str, str], None] | None = None
 
     _state: AgentState = field(default=AgentState.STOPPED, init=False)
     _task: asyncio.Task[None] | None = field(default=None, init=False)
@@ -404,6 +405,11 @@ class AgentLoop:
             except Exception as e:
                 logger.exception(f"Agent {self.agent_id} loop error: {e}")
                 self._consecutive_errors += 1
+                if self.on_error:
+                    try:
+                        self.on_error("loop_error", self.agent_id, str(e))
+                    except Exception:
+                        logger.warning(f"on_error callback failed for {self.agent_id}")
                 await asyncio.sleep(delay)
 
         self._state = AgentState.STOPPED
@@ -497,6 +503,11 @@ class AgentLoop:
 
         except Exception as e:
             logger.exception(f"Agent {self.agent_id} iteration error: {e}")
+            if self.on_error:
+                try:
+                    self.on_error("iteration_error", self.agent_id, str(e))
+                except Exception:
+                    logger.warning(f"on_error callback failed for {self.agent_id}")
             return {"success": False, "error": str(e)}
 
 
@@ -517,6 +528,7 @@ class AgentLoopManager:
         """
         self.rate_tracker = rate_tracker
         self._loops: dict[str, AgentLoop] = {}
+        self.on_error: Callable[[str, str, str], None] | None = None
 
     def create_loop(
         self,
@@ -551,6 +563,7 @@ class AgentLoopManager:
             rate_tracker=self.rate_tracker,
             config=config or AgentLoopConfig(),
             is_alive=is_alive or (lambda: True),
+            on_error=self.on_error,
         )
         self._loops[agent_id] = loop
         return loop

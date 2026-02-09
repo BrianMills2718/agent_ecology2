@@ -24,7 +24,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from ..config import get_validated_config
 
@@ -105,6 +105,7 @@ class ArtifactLoop:
     world: "World"
     rate_tracker: "RateTracker"
     config: ArtifactLoopConfig = field(default_factory=ArtifactLoopConfig)
+    on_error: Callable[[str, str, str], None] | None = None
 
     _state: ArtifactState = field(default=ArtifactState.STOPPED, init=False)
     _task: asyncio.Task[None] | None = field(default=None, init=False)
@@ -271,6 +272,11 @@ class ArtifactLoop:
             except Exception as e:
                 logger.exception(f"Artifact {self.artifact_id} loop error: {e}")
                 self._consecutive_errors += 1
+                if self.on_error:
+                    try:
+                        self.on_error("loop_error", self.artifact_id, str(e))
+                    except Exception:
+                        logger.warning(f"on_error callback failed for {self.artifact_id}")
                 await asyncio.sleep(delay)
 
         self._state = ArtifactState.STOPPED
@@ -316,6 +322,11 @@ class ArtifactLoop:
 
         except Exception as e:
             logger.exception(f"Artifact {self.artifact_id} iteration error: {e}")
+            if self.on_error:
+                try:
+                    self.on_error("iteration_error", self.artifact_id, str(e))
+                except Exception:
+                    logger.warning(f"on_error callback failed for {self.artifact_id}")
             return {"success": False, "error": str(e)}
 
 
@@ -340,6 +351,7 @@ class ArtifactLoopManager:
         self.world = world
         self.rate_tracker = rate_tracker
         self._loops: dict[str, ArtifactLoop] = {}
+        self.on_error: Callable[[str, str, str], None] | None = None
 
     def discover_loops(self) -> list[str]:
         """Discover all artifacts with has_loop=True and executable code.
@@ -394,6 +406,7 @@ class ArtifactLoopManager:
             world=self.world,
             rate_tracker=self.rate_tracker,
             config=config or ArtifactLoopConfig(),
+            on_error=self.on_error,
         )
         self._loops[artifact_id] = loop
         return loop

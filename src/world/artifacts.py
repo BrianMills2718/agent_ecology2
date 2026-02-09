@@ -671,9 +671,8 @@ class ArtifactStore:
                 )
 
             # Plan #182: Capture old state for index update
-            old_type = artifact.type
-            old_owner = artifact.created_by
-            old_metadata = artifact.metadata.copy() if artifact.metadata else {}
+            import copy
+            old_snapshot = copy.copy(artifact)
 
             artifact.content = content
             artifact.type = type
@@ -689,23 +688,8 @@ class ArtifactStore:
             # Plan #168: Update metadata (always replace, even with empty dict)
             artifact.metadata = metadata
 
-            # Plan #182: Update indexes if relevant fields changed
-            if old_type != type:
-                self._index_by_type[old_type].discard(artifact_id)
-                self._index_by_type[type].add(artifact_id)
-            if old_owner != artifact.created_by:
-                self._index_by_creator[old_owner].discard(artifact_id)
-                self._index_by_creator[artifact.created_by].add(artifact_id)
-            for field in self._indexed_metadata_fields:
-                old_value = self._get_nested_value(old_metadata, field)
-                new_value = self._get_nested_value(metadata, field)
-                if old_value != new_value:
-                    if old_value is not None and field in self._index_by_metadata:
-                        self._index_by_metadata[field][old_value].discard(artifact_id)
-                    if new_value is not None:
-                        if field not in self._index_by_metadata:
-                            self._index_by_metadata[field] = defaultdict(set)
-                        self._index_by_metadata[field][new_value].add(artifact_id)
+            # Plan #182: Update indexes via _update_index (deduplicated)
+            self._update_index(old_snapshot, artifact)
         else:
             # Plan #235 Phase 1 (FM-4): Reserved ID namespace enforcement
             if artifact_id.startswith("charge_delegation:"):
@@ -957,9 +941,7 @@ class ArtifactStore:
         for artifact_id in artifact_ids:
             artifact = self.artifacts.get(artifact_id)
             if artifact and not artifact.deleted:
-                total += len(artifact.content.encode("utf-8")) + len(
-                    artifact.code.encode("utf-8")
-                )
+                total += self.get_artifact_size(artifact_id)
         return total
 
     # Backwards compatibility alias (deprecated)

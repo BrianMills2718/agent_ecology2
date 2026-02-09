@@ -138,6 +138,10 @@ class SimulationRunner:
         # Plan #255: Create ArtifactLoopManager for V4 has_loop artifacts
         self.artifact_loop_manager = ArtifactLoopManager(self.world, rate_tracker)
 
+        # Plan #308: Wire error tracking callbacks so _record_error() is called
+        self.world.loop_manager.on_error = self._record_error
+        self.artifact_loop_manager.on_error = self._record_error
+
         # Pause/resume state
         self._paused = False
         self._pause_event = asyncio.Event()

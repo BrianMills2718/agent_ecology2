@@ -1393,3 +1393,101 @@ class TestEdgeCases:
         await loop_manager.stop_all()
 
         assert loop_manager.running_count == 0
+
+
+# =============================================================================
+# Plan #308: on_error Callback Tests
+# =============================================================================
+
+
+class TestOnErrorCallback:
+    """Tests for the on_error callback wiring (Plan #308)."""
+
+    @pytest.mark.asyncio
+    async def test_on_error_called_on_iteration_exception(
+        self,
+        rate_tracker: RateTracker,
+    ) -> None:
+        """on_error callback is invoked when _execute_iteration raises."""
+        errors: list[tuple[str, str, str]] = []
+
+        def record_error(error_type: str, agent_id: str, message: str) -> None:
+            errors.append((error_type, agent_id, message))
+
+        decide = AsyncMock(side_effect=RuntimeError("test boom"))
+        execute = AsyncMock(return_value={"success": True})
+
+        config = AgentLoopConfig(
+            min_loop_delay=0.01,
+            max_loop_delay=0.01,
+            max_consecutive_errors=2,
+        )
+        loop = AgentLoop(
+            agent_id="err_agent",
+            decide_action=decide,
+            execute_action=execute,
+            rate_tracker=rate_tracker,
+            config=config,
+            on_error=record_error,
+        )
+
+        await loop.start()
+        await asyncio.sleep(0.15)
+        await loop.stop()
+
+        # Should have recorded at least one iteration_error
+        assert len(errors) > 0
+        assert errors[0][0] == "iteration_error"
+        assert errors[0][1] == "err_agent"
+        assert "test boom" in errors[0][2]
+
+    @pytest.mark.asyncio
+    async def test_on_error_none_does_not_crash(
+        self,
+        rate_tracker: RateTracker,
+    ) -> None:
+        """AgentLoop without on_error still handles exceptions without crash."""
+        decide = AsyncMock(side_effect=RuntimeError("no callback boom"))
+        execute = AsyncMock(return_value={"success": True})
+
+        config = AgentLoopConfig(
+            min_loop_delay=0.01,
+            max_loop_delay=0.01,
+            max_consecutive_errors=2,
+        )
+        loop = AgentLoop(
+            agent_id="safe_agent",
+            decide_action=decide,
+            execute_action=execute,
+            rate_tracker=rate_tracker,
+            config=config,
+            # on_error deliberately not set (None)
+        )
+
+        await loop.start()
+        await asyncio.sleep(0.1)
+        await loop.stop()
+
+        # Should have encountered errors but not crashed
+        assert loop.consecutive_errors > 0
+
+    def test_manager_passes_on_error_to_loops(
+        self,
+        rate_tracker: RateTracker,
+    ) -> None:
+        """AgentLoopManager passes on_error callback to created loops."""
+        errors: list[tuple[str, str, str]] = []
+
+        def record_error(error_type: str, agent_id: str, message: str) -> None:
+            errors.append((error_type, agent_id, message))
+
+        manager = AgentLoopManager(rate_tracker)
+        manager.on_error = record_error
+
+        loop = manager.create_loop(
+            agent_id="mgr_agent",
+            decide_action=AsyncMock(return_value=None),
+            execute_action=AsyncMock(return_value={"success": True}),
+        )
+
+        assert loop.on_error is record_error
