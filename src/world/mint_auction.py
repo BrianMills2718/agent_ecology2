@@ -393,12 +393,8 @@ class MintAuction:
                     )
 
                     # Track scorer's LLM cost (Plan #153)
-                    if self._track_api_cost is not None and hasattr(scorer, 'llm'):
-                        if "cost" not in scorer.llm.last_usage:
-                            logger.warning(
-                                "Mint scorer LLM usage missing 'cost' field, defaulting to 0.0"
-                            )
-                        scorer_cost = scorer.llm.last_usage.get("cost", 0.0)
+                    if self._track_api_cost is not None:
+                        scorer_cost = getattr(scorer, "last_cost", 0.0)
                         if scorer_cost > 0:
                             self._track_api_cost(scorer_cost)
 
