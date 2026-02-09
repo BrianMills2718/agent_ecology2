@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-02-08 (Plan #308: wired _remove_from_index on deletion, log_resource_allocated on write, dedup cleanups)
+**Last verified:** 2026-02-09 (Plan #311: artifact.state for contract auth, state_updates application via permission_checker)
 
 ---
 
@@ -361,7 +361,7 @@ Contract references will enable DAOs, conditional access, and contracts governin
 ## Access Checks
 
 Per ADR-0016 and Plan #210: "Ownership" is not a kernel concept. Contracts decide access.
-Standard kernel contracts (freeware, self_owned, private) check `target_metadata` fields (`authorized_writer`, `authorized_principal`) per ADR-0028.
+Standard kernel contracts (freeware, self_owned, private) check `_artifact_state` fields (`writer`, `principal`) per ADR-0028. Contracts can return `state_updates` in `PermissionResult` to mutate artifact state (e.g., ownership transfer).
 
 **Contract-Based Permission Checks (default)**
 

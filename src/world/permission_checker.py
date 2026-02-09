@@ -28,9 +28,11 @@ from .contracts import (
 from .kernel_contracts import get_contract_by_id, get_kernel_contract
 
 if TYPE_CHECKING:
-    from .artifacts import Artifact
+    from .artifacts import Artifact, ArtifactStore
     from .contracts import PermissionCache
     from .ledger import Ledger
+
+logger = logging.getLogger(__name__)
 
 
 def get_max_contract_depth() -> int:
@@ -112,6 +114,7 @@ def check_permission_via_contract(
     contract_depth: int = 0,
     method: str | None = None,
     args: list[Any] | None = None,
+    artifact_store: "ArtifactStore | None" = None,
 ) -> PermissionResult:
     """Check permission using artifact's access contract.
 
@@ -122,6 +125,10 @@ def check_permission_via_contract(
     Plan #100 Phase 2: Supports TTL-based caching for contracts with
     cache_policy. Caching is opt-in - contracts without cache_policy
     are never cached.
+
+    Plan #311: After permission check, applies state_updates from the
+    PermissionResult to artifact.state. This enables contracts to mutate
+    per-artifact auth data (e.g., escrow transferring state["writer"]).
 
     Args:
         caller: The principal requesting access
@@ -136,6 +143,7 @@ def check_permission_via_contract(
             Per Plan #100, prevents infinite recursion in permission checks.
         method: Method name for invoke actions
         args: Arguments for invoke actions
+        artifact_store: ArtifactStore for applying state_updates back to artifact
 
     Returns:
         PermissionResult with allowed, reason, and optional cost
@@ -211,6 +219,17 @@ def check_permission_via_contract(
             target=artifact.id,
             context=context,
         )
+
+    # Plan #311: Apply state_updates from contract result to artifact.state
+    # This enables contracts to mutate per-artifact auth data (e.g., escrow
+    # transferring state["writer"] to a buyer on successful permission check).
+    if result.state_updates is not None and artifact_store is not None:
+        target = artifact_store.get(artifact.id)
+        if target is not None:
+            target.state.update(result.state_updates)
+            logger.debug(
+                "Applied state_updates to %s: %s", artifact.id, result.state_updates
+            )
 
     # Plan #100 ADR-0017: Add dangling contract info to conditions for observability
     if is_fallback and original_contract_id is not None:
@@ -290,6 +309,7 @@ def check_permission(
     use_contracts: bool,
     method: str | None = None,
     args: list[Any] | None = None,
+    artifact_store: "ArtifactStore | None" = None,
 ) -> PermissionResult:
     """Check if caller has permission for action on artifact.
 
@@ -310,6 +330,7 @@ def check_permission(
         use_contracts: Whether to use contract-based checking
         method: Method name (for invoke actions, per ADR-0019)
         args: Arguments (for invoke actions, per ADR-0019)
+        artifact_store: ArtifactStore for applying state_updates back to artifact
 
     Returns:
         PermissionResult with allowed, reason, cost, recipient, etc.
@@ -330,6 +351,7 @@ def check_permission(
             max_contract_depth=max_contract_depth,
             method=method,
             args=args,
+            artifact_store=artifact_store,
         )
 
     # Case 2: Artifact has NULL contract (ADR-0019)

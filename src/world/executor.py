@@ -475,6 +475,7 @@ class SafeExecutor:
     max_contract_depth: int
     _contract_cache: dict[str, AccessContract | ExecutableContract]
     _ledger: "Ledger | None"
+    _artifact_store: "ArtifactStore | None"
     _permission_cache: "PermissionCache"
     _dangling_contract_count: int
 
@@ -492,6 +493,7 @@ class SafeExecutor:
         self.max_contract_depth = max_contract_depth if max_contract_depth is not None else get_max_contract_depth()
         self._contract_cache = {}
         self._ledger = ledger
+        self._artifact_store = None
         # Permission cache for TTL-based caching (Plan #100 Phase 2)
         from src.world.contracts import PermissionCache
         self._permission_cache = PermissionCache()
@@ -508,6 +510,18 @@ class SafeExecutor:
             ledger: The ledger instance to use
         """
         self._ledger = ledger
+
+    def set_artifact_store(self, artifact_store: "ArtifactStore") -> None:
+        """Set the artifact store for applying contract state_updates.
+
+        Plan #311: Contracts can return state_updates in PermissionResult.
+        The kernel applies these to artifact.state after permission checks.
+        Requires access to the ArtifactStore to look up the target artifact.
+
+        Args:
+            artifact_store: The ArtifactStore instance to use
+        """
+        self._artifact_store = artifact_store
 
     def clear_permission_cache(self) -> None:
         """Clear all cached permission results.
@@ -610,6 +624,7 @@ class SafeExecutor:
             contract_depth=contract_depth,
             method=method,
             args=args,
+            artifact_store=self._artifact_store,
         )
         # Update instance state from tracker
         self._dangling_contract_count = dangling_tracker[0]
@@ -649,6 +664,7 @@ class SafeExecutor:
             use_contracts=self.use_contracts,
             method=method,
             args=args,
+            artifact_store=self._artifact_store,
         )
         # Update instance state from tracker
         self._dangling_contract_count = dangling_tracker[0]
