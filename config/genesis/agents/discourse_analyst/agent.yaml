@@ -10,15 +10,15 @@ artifacts:
     type: text
     content_file: strategy.md
     access_contract_id: kernel_contract_transferable_freeware
-    metadata:
-      authorized_writer: discourse_analyst_loop
+    state:
+      writer: discourse_analyst_loop
 
   - id: discourse_analyst_state
     type: json
     content_file: initial_state.json
     access_contract_id: kernel_contract_transferable_freeware
-    metadata:
-      authorized_writer: discourse_analyst_loop
+    state:
+      writer: discourse_analyst_loop
 
   - id: discourse_analyst_loop
     type: executable
@@ -27,8 +27,8 @@ artifacts:
     has_loop: true
     capabilities: [can_call_llm]
     access_contract_id: kernel_contract_transferable_freeware
-    metadata:
-      authorized_writer: discourse_analyst_loop
+    state:
+      writer: discourse_analyst_loop
 
 principal:
   id: discourse_analyst_loop

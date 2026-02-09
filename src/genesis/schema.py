@@ -43,6 +43,9 @@ class ArtifactSpec(BaseModel):
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional metadata"
     )
+    state: dict[str, Any] = Field(
+        default_factory=dict, description="Initial contract-managed state (Plan #311)"
+    )
 
 
 class PrincipalSpec(BaseModel):

@@ -92,18 +92,18 @@ class TestCreatorOnlyAccessContract:
         )
         assert artifact.access_contract_id == "kernel_contract_freeware"
 
-    def test_authorized_writer_cannot_swap_access_contract(self) -> None:
-        """An authorized writer (not creator) cannot swap access_contract_id."""
+    def test_writer_cannot_swap_access_contract(self) -> None:
+        """A writer (not creator) cannot swap access_contract_id."""
         store = ArtifactStore()
         store.write(
             "test-artifact", "document", "content", "creator1",
             access_contract_id="kernel_contract_private",
         )
 
-        # authorized_writer tries to change contract
+        # writer tries to change contract
         with pytest.raises(PermissionError, match="Only creator .* can change access_contract_id"):
             store.write(
-                "test-artifact", "document", "hacked content", "authorized_writer",
+                "test-artifact", "document", "hacked content", "writer",
                 access_contract_id="kernel_contract_freeware",
             )
 

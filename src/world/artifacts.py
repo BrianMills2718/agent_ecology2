@@ -183,6 +183,10 @@ class Artifact:
     # User-defined metadata for addressing/categorization (Plan #168)
     # Arbitrary key-value pairs for agent use (recipient, tags, priority, etc.)
     metadata: dict[str, Any] = field(default_factory=dict)
+    # Contract-managed authorization state (Plan #311)
+    # Contracts read this via context["_artifact_state"] and write via state_updates.
+    # Convention: freeware uses {"writer": ...}, self_owned/private use {"principal": ...}
+    state: dict[str, Any] = field(default_factory=dict)
     # Plan #235 Phase 1: Kernel protection (system field, not metadata)
     # Once True, only kernel primitives can modify this artifact
     kernel_protected: bool = False
@@ -268,6 +272,9 @@ class Artifact:
         # Include metadata if any (Plan #168)
         if self.metadata:
             result["metadata"] = self.metadata
+        # Include contract-managed state if any (Plan #311)
+        if self.state:
+            result["state"] = self.state
         return result
 
     def __getattr__(self, name: str) -> Any:
@@ -285,7 +292,7 @@ class Artifact:
             "name": "id",
         }
 
-        available = ["id", "type", "content", "created_by", "executable", "interface", "policy", "metadata"]
+        available = ["id", "type", "content", "created_by", "executable", "interface", "policy", "metadata", "state"]
 
         if name in suggestions:
             correct = suggestions[name]
@@ -570,6 +577,7 @@ class ArtifactStore:
         require_interface: bool = False,
         access_contract_id: str | None = None,
         metadata: dict[str, Any] | None = None,
+        state: dict[str, Any] | None = None,
         has_standing: bool = False,
         has_loop: bool = False,
         capabilities: list[str] | None = None,
@@ -609,6 +617,7 @@ class ArtifactStore:
         now = datetime.now(timezone.utc).isoformat()
         depends_on = depends_on or []
         metadata = metadata or {}
+        state = state or {}
 
         # Plan #170: Auto-extract invoke targets for executable artifacts
         if executable and code:
@@ -723,16 +732,16 @@ class ArtifactStore:
             # Determine access contract - use provided or default
             contract_id = access_contract_id if access_contract_id else KERNEL_CONTRACT_FREEWARE
 
-            # Plan #306: Auto-populate authorization metadata from created_by.
+            # Plan #311: Auto-populate contract state from created_by.
             # This is a one-time default at creation — the field is mutable afterward
-            # (e.g., escrow can transfer authorized_writer to a buyer).
-            # Only set if the caller didn't already provide the field.
+            # (e.g., escrow can transfer state["writer"] to a buyer).
+            # State is contract-managed auth data; metadata is purely non-auth.
             if contract_id in (KERNEL_CONTRACT_FREEWARE, KERNEL_CONTRACT_TRANSFERABLE_FREEWARE):
-                if "authorized_writer" not in metadata:
-                    metadata["authorized_writer"] = created_by
+                if "writer" not in state:
+                    state["writer"] = created_by
             elif contract_id in (KERNEL_CONTRACT_SELF_OWNED, KERNEL_CONTRACT_PRIVATE):
-                if "authorized_principal" not in metadata:
-                    metadata["authorized_principal"] = created_by
+                if "principal" not in state:
+                    state["principal"] = created_by
 
             artifact = Artifact(
                 id=artifact_id,
@@ -748,6 +757,7 @@ class ArtifactStore:
                 interface=interface,
                 access_contract_id=contract_id,
                 metadata=metadata,
+                state=state,
                 has_standing=has_standing,
                 has_loop=has_loop,
                 capabilities=capabilities,

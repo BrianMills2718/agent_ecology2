@@ -185,7 +185,7 @@ class TestWritePermissionViaContract:
             type="document",
             content="Original content",
             created_by="owner",
-            policy={"allow_write": ["authorized_writer"]},
+            policy={"allow_write": ["writer"]},
         )
 
         # Freeware contract: only creator can write

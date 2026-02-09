@@ -1040,7 +1040,7 @@ class TestExecutableContractWithExecutor:
 
         self.executor = SafeExecutor(timeout=5, use_contracts=True, ledger=self.ledger)
 
-        # Create test artifact with authorization metadata (ADR-0028)
+        # Create test artifact with authorization state (ADR-0028)
         self.artifact = Artifact(
             id="test_artifact",
             type="test",
@@ -1048,7 +1048,7 @@ class TestExecutableContractWithExecutor:
             created_by="owner",
             created_at=datetime.utcnow().isoformat(),
             updated_at=datetime.utcnow().isoformat(),
-            metadata={"authorized_writer": "owner", "authorized_principal": "owner"},
+            state={"writer": "owner", "principal": "owner"},
         )
 
     def test_register_executable_contract(self) -> None:
@@ -1720,7 +1720,7 @@ class TestDanglingContractHandling:
 
         self.executor = SafeExecutor(timeout=5, use_contracts=True, ledger=self.ledger)
 
-        # Create artifact with a non-existent contract (ADR-0028: add auth metadata)
+        # Create artifact with a non-existent contract (ADR-0028: add auth state)
         self.artifact = Artifact(
             id="test_artifact",
             type="test",
@@ -1728,7 +1728,7 @@ class TestDanglingContractHandling:
             created_by="owner",
             created_at=datetime.utcnow().isoformat(),
             updated_at=datetime.utcnow().isoformat(),
-            metadata={"authorized_writer": "owner"},
+            state={"writer": "owner"},
         )
         self.artifact.access_contract_id = "deleted_contract_xyz"  # type: ignore[attr-defined]
 

@@ -130,8 +130,8 @@ class TestDeleteArtifactOwnerOnly:
         # Alice cannot delete bob's artifact
         result = world.delete_artifact("bob_artifact", "alice")
         assert result["success"] is False
-        # Per ADR-0028: error says "authorized_writer" (freeware checks metadata)
-        assert "authorized_writer" in result.get("error", "").lower()
+        # Per ADR-0028: error says "only writer" (freeware checks state)
+        assert "only writer" in result.get("error", "").lower()
 
         # Verify artifact is not deleted
         artifact = world.artifacts.get("bob_artifact")

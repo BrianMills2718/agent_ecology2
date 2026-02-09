@@ -300,24 +300,24 @@ class TestRateWindow:
 class TestPayerResolution:
     """Tests for resolve_payer static method."""
 
-    def _make_artifact(self, created_by: str, **metadata: Any) -> Artifact:
+    def _make_artifact(self, created_by: str, **state_fields: Any) -> Artifact:
         """Helper to create a minimal Artifact for testing."""
         store = ArtifactStore()
         art = store.write("test-art", "executable", "code", created_by)
-        for k, v in metadata.items():
-            art.metadata[k] = v
+        for k, v in state_fields.items():
+            art.state[k] = v
         return art
 
-    def test_payer_resolution_uses_metadata(self) -> None:
-        """resolve_payer uses metadata for 'target' (ADR-0028).
+    def test_payer_resolution_uses_state(self) -> None:
+        """resolve_payer uses state for 'target' (ADR-0028).
 
-        The authorized_principal/authorized_writer in metadata determines
-        who the contract-recognized owner is. Delegation authorization
-        prevents unauthorized charges (FM-2 is handled by authorize_charge).
+        The principal/writer in state determines who the contract-recognized
+        owner is. Delegation authorization prevents unauthorized charges
+        (FM-2 is handled by authorize_charge).
         """
         artifact = self._make_artifact(
             created_by="original_creator",
-            authorized_principal="current_owner",
+            principal="current_owner",
         )
 
         payer = DelegationManager.resolve_payer(
@@ -325,7 +325,7 @@ class TestPayerResolution:
             caller_id="invoker",
             artifact=artifact,
         )
-        # ADR-0028: payer is the contract-recognized owner, not created_by
+        # ADR-0028: payer is the contract-recognized owner from state, not created_by
         assert payer == "current_owner"
 
     def test_payer_resolution_caller(self) -> None:
@@ -353,7 +353,7 @@ class TestPayerResolution:
             "target", "invoker", artifact
         )
         # The result must be a principal, not the artifact
-        # ADR-0028: auto-populated authorized_writer from created_by
+        # ADR-0028: auto-populated writer in state from created_by
         assert payer == "alice"
         assert payer != artifact.id
 

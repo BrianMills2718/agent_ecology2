@@ -968,12 +968,12 @@ class KernelActions:
     ) -> bool:
         """Update a single metadata key on an artifact (Plan #213).
 
-        This is the canonical way to update artifact metadata, including
-        "authorized_writer" for transferable_freeware contracts.
+        This is the canonical way to update artifact metadata.
+        Auth data lives in artifact.state (Plan #311), not metadata.
 
         Permission checking:
         - Caller must have WRITE permission on the artifact via its contract
-        - This enables escrow to update authorized_writer after purchase
+        - This enables escrow to update metadata after purchase
 
         Args:
             caller_id: Principal requesting the update

@@ -1,4 +1,4 @@
-# Genesis Config Schema (Plan #298)
+# Genesis Config Schema (Plan #298, updated Plan #311)
 
 YAML format for genesis artifact configuration.
 
@@ -43,8 +43,8 @@ artifacts:
       iteration: 0
       data: []
     access_contract_id: kernel_contract_transferable_freeware
-    metadata:
-      authorized_writer: my_agent_loop
+    state:
+      writer: my_agent_loop
 
   - id: my_agent_loop
     type: executable
@@ -130,7 +130,8 @@ principal:
 | `has_standing` | bool | Can hold resources (scrip, budget) |
 | `has_loop` | bool | Runs autonomously |
 | `access_contract_id` | string | Access control contract |
-| `metadata` | dict | Additional metadata |
+| `state` | dict | Authorization state (e.g. `writer`, `principal`) used by contracts |
+| `metadata` | dict | Additional non-auth metadata |
 
 ## Principal Spec Fields
 

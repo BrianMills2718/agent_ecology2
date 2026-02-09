@@ -210,22 +210,11 @@ class TestUpdateMetadataAction:
         assert artifact is not None
         assert "tag" not in artifact.metadata
 
-    def test_update_metadata_rejects_authorized_writer(self, world: World) -> None:
-        """update_metadata must reject attempts to set authorized_writer."""
+    def test_update_metadata_allows_any_key(self, world: World) -> None:
+        """update_metadata should allow any key since auth data is in state, not metadata."""
         _create_target_artifact(world)
 
-        intent = UpdateMetadataIntent("agent_001", "handbook", "authorized_writer", "agent_001")
+        # These were previously protected but auth data is now in artifact.state
+        intent = UpdateMetadataIntent("agent_001", "handbook", "authorized_writer", "anyone")
         result = world.execute_action(intent)
-
-        assert result.success is False
-        assert "protected" in result.message.lower() or "escrow" in result.message.lower()
-
-    def test_update_metadata_rejects_authorized_principal(self, world: World) -> None:
-        """update_metadata must reject attempts to set authorized_principal."""
-        _create_target_artifact(world)
-
-        intent = UpdateMetadataIntent("agent_001", "handbook", "authorized_principal", "agent_001")
-        result = world.execute_action(intent)
-
-        assert result.success is False
-        assert "protected" in result.message.lower() or "escrow" in result.message.lower()
+        assert result.success is True

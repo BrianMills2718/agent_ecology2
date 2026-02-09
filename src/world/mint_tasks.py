@@ -390,10 +390,10 @@ class MintTaskManager:
                 message=f"Artifact '{artifact_id}' not found",
             )
 
-        # Validate caller has write permission (ADR-0028: no hardcoded created_by checks)
-        authorized_writer = (artifact.metadata or {}).get("authorized_writer")
-        authorized_principal = (artifact.metadata or {}).get("authorized_principal")
-        if principal_id not in (authorized_writer, authorized_principal):
+        # Validate caller has write permission (Plan #311: check artifact state, not metadata)
+        writer = (artifact.state or {}).get("writer")
+        principal = (artifact.state or {}).get("principal")
+        if principal_id not in (writer, principal):
             return TaskSubmissionResult(
                 success=False,
                 task_id=task_id,

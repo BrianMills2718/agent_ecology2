@@ -44,7 +44,7 @@ Surfaced automatically by `scripts/file_context.py` during context loading (Patt
 
 **Status:** RESOLVED (ADR-0028, Plan #306 Workstream C)
 
-**Resolution:** Option 3 — contract-governed via metadata. Contracts check `metadata["authorized_writer"]` (freeware) or `metadata["authorized_principal"]` (self_owned/private). These metadata fields are mutable, enabling ownership transfer. No new system field needed. See ADR-0028.
+**Resolution:** Option 3 — contract-governed via artifact state. Contracts check `artifact.state["writer"]` (freeware) or `artifact.state["principal"]` (self_owned/private). These state fields are mutable via contracts, enabling ownership transfer. Auth data lives in `artifact.state` (not `metadata`) to prevent forgery via `update_metadata` (Plan #311). No new system field needed. See ADR-0028.
 
 ---
 

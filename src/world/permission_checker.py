@@ -181,6 +181,7 @@ def check_permission_via_contract(
     context: dict[str, object] = {
         "target_created_by": artifact.created_by,  # Informational only (ADR-0028)
         "target_metadata": artifact.metadata if hasattr(artifact, "metadata") and artifact.metadata else {},
+        "_artifact_state": dict(artifact.state) if hasattr(artifact, "state") and artifact.state else {},
     }
     # Add method and args for invoke actions (ADR-0019)
     if action == "invoke":
@@ -233,7 +234,7 @@ def check_permission_legacy(
     access_contract_id for permission checking. When an artifact lacks
     the access_contract_id attribute, falls back to freeware semantics:
     - READ, INVOKE: Anyone can access
-    - WRITE, EDIT, DELETE: Only authorized_writer can access
+    - WRITE, EDIT, DELETE: Only writer (from state) can access
 
     Args:
         caller: The principal requesting access
@@ -252,7 +253,7 @@ def check_permission_legacy(
     )
 
     # CAP-003: No special bypass. Delegate to freeware contract
-    # which checks authorized_writer from metadata.
+    # which checks writer from artifact state.
     freeware = get_kernel_contract("freeware")
 
     # Convert action string to PermissionAction
@@ -265,6 +266,7 @@ def check_permission_legacy(
     context: dict[str, object] = {
         "target_created_by": artifact.created_by,  # Informational only (ADR-0028)
         "target_metadata": artifact.metadata if hasattr(artifact, "metadata") and artifact.metadata else {},
+        "_artifact_state": dict(artifact.state) if hasattr(artifact, "state") and artifact.state else {},
     }
 
     result = freeware.check_permission(
@@ -332,14 +334,14 @@ def check_permission(
 
     # Case 2: Artifact has NULL contract (ADR-0019)
     # Delegate to private contract with proper context (including metadata).
-    # "creator_only" config is honored by checking authorized_principal metadata.
+    # "creator_only" config is honored by checking principal in artifact state.
     if contract_id is None:
         default_behavior = config_get("contracts.default_when_null")
         if default_behavior is None:
             default_behavior = "creator_only"  # ADR-0019 default
 
         if default_behavior == "creator_only":
-            # Delegate to private contract (authorized_principal from metadata)
+            # Delegate to private contract (principal from artifact state)
             private = get_kernel_contract("private")
             try:
                 perm_action = PermissionAction(action)
@@ -348,6 +350,7 @@ def check_permission(
             context: dict[str, object] = {
                 "target_created_by": artifact.created_by,  # Informational only (ADR-0028)
                 "target_metadata": artifact.metadata if hasattr(artifact, "metadata") and artifact.metadata else {},
+                "_artifact_state": dict(artifact.state) if hasattr(artifact, "state") and artifact.state else {},
             }
             result = private.check_permission(
                 caller=caller,

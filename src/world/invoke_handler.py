@@ -151,8 +151,8 @@ def execute_invoke(
 
     # Determine price: contract cost (if any) + artifact price
     price = target.price
-    # ADR-0028: Payment recipient from metadata, not created_by
-    recipient = (target.metadata or {}).get("authorized_writer") or (target.metadata or {}).get("authorized_principal")
+    # Plan #311: Payment recipient from artifact state, not metadata or created_by
+    recipient = (target.state or {}).get("writer") or (target.state or {}).get("principal")
 
     # If using contracts and target has a contract, check for additional cost
     contract_cost = 0
