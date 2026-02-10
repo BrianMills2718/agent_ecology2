@@ -114,6 +114,7 @@ Master index of all gaps and their implementation plans.
 | 312 | [Plan 312: Expose Kernel Primitives for Agent-Built Coordination](312_expose_kernel_primitives.md) | High | ✅ Complete | - |
 | 313 | [SOTA Cognitive Architecture for Discourse Agents](313_cognitive_architecture.md) | Medium | ✅ Complete | - |
 | 314 | [Audit Remediation](314_audit_remediation.md) | Medium | ❓ | - |
+| 315 | [Plan 315: Unify Write Path for Disk Quota Enforcement](315_unify_write_path.md) | Medium | ✅ Complete | - |
 ---
 
 ## TDD Workflow

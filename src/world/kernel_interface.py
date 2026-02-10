@@ -427,9 +427,10 @@ class KernelActions:
         code: str | None = None,
         has_standing: bool = False,
     ) -> bool:
-        """Write or update an artifact (access controlled via contracts).
+        """Write or update an artifact via the unified action executor.
 
-        Plan #273: Extended to support executable artifacts with code.
+        Routes through ActionExecutor for consistent permission checking,
+        disk quota enforcement, code validation, and logging.
 
         Args:
             caller_id: Who is writing
@@ -444,54 +445,25 @@ class KernelActions:
         Returns:
             True if write succeeded, False otherwise
         """
-        from src.world.executor import get_executor
+        from src.world.actions import WriteArtifactIntent
 
+        # Preserve existing type/executable on updates (callers don't re-specify)
         existing = self._world.artifacts.get(artifact_id)
-
         if existing is not None:
-            # Update existing - check permission via contract (Plan #140)
-            executor = get_executor()
-            perm_result = executor._check_permission(caller_id, "write", existing)
-            if not perm_result.allowed:
-                # Plan #274: Log failed update
-                _log_kernel_action(self._world, "kernel_write_artifact", caller_id, False, {
-                    "artifact_id": artifact_id, "was_update": True,
-                    "error": f"Permission denied: {perm_result.reason}",
-                })
-                return False
-            existing.content = content
-            if code is not None:
-                existing.code = code
-            # Plan #274: Log successful update
-            _log_kernel_action(self._world, "kernel_write_artifact", caller_id, True, {
-                "artifact_id": artifact_id, "was_update": True,
-                "artifact_type": existing.type, "executable": existing.executable,
-            })
-            return True
-        else:
-            # Create new - Plan #273: Support executable artifacts
-            kwargs: dict[str, Any] = {
-                "artifact_id": artifact_id,
-                "type": artifact_type,
-                "content": content,
-                "created_by": caller_id,
-                "executable": executable,
-            }
-            if code is not None:
-                kwargs["code"] = code
-            self._world.artifacts.write(**kwargs)
-            # Create principal if has_standing requested (ADR-0011)
-            if has_standing and not self._world.ledger.principal_exists(artifact_id):
-                from src.config import get
-                starting_scrip = get("agents.starting_scrip") or 0
-                self._world.ledger.create_principal(artifact_id, starting_scrip)
-            # Plan #274: Log successful creation
-            _log_kernel_action(self._world, "kernel_write_artifact", caller_id, True, {
-                "artifact_id": artifact_id, "was_update": False,
-                "artifact_type": artifact_type, "executable": executable,
-                "has_standing": has_standing,
-            })
-            return True
+            artifact_type = existing.type
+            executable = existing.executable
+
+        intent = WriteArtifactIntent(
+            principal_id=caller_id,
+            artifact_id=artifact_id,
+            artifact_type=artifact_type,
+            content=content,
+            executable=executable,
+            code=code or "",
+            has_standing=has_standing,
+        )
+        result = self._world.execute_action(intent)
+        return result.success
 
     def submit_to_task(
         self,
