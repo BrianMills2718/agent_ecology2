@@ -65,14 +65,24 @@ def run():
     task_queue.sort(key=lambda t: t.get("priority", 5), reverse=True)
     current_task = task_queue[0]
 
-    # Select relevant episodic memories for current situation
+    # Select relevant episodic memories: always include most recent + keyword matches
     episodic = state.get("episodic_memory", [])
     current_desc = current_task.get("description", "").lower()
-    relevant_reflections = [
+    keyword_matches = [
         ep for ep in episodic
         if any(word in ep.get("lesson", "").lower()
                for word in current_desc.split() if len(word) > 3)
-    ][:3]
+    ]
+    # Combine: most recent 2 + keyword matches, deduped, max 5
+    recent = episodic[-2:] if len(episodic) >= 2 else episodic[:]
+    seen = set()
+    relevant_reflections = []
+    for ep in recent + keyword_matches:
+        key = ep.get("lesson", "")[:50]
+        if key not in seen:
+            seen.add(key)
+            relevant_reflections.append(ep)
+    relevant_reflections = relevant_reflections[:5]
 
     # Check procedural memory for relevant skills
     procedural = state.get("procedural_memory", {})
@@ -241,6 +251,28 @@ RESPOND WITH JSON:
             except json.JSONDecodeError:
                 reflection = None
 
+        # Inject corrective task from reflection
+        if reflection and isinstance(reflection, dict):
+            if reflection.get("should_self_modify") and reflection.get("modification_target"):
+                nid = state.get("next_task_id", 1)
+                target = reflection["modification_target"]
+                state.setdefault("task_queue", []).insert(0, {
+                    "id": nid,
+                    "description": f"Self-modify: rewrite {target} based on reflection",
+                    "priority": 10,
+                })
+                state["next_task_id"] = nid + 1
+            elif reflection.get("lesson") and reflection.get("category") in ("tool_building", "research"):
+                # Inject a corrective task for actionable lessons
+                lesson = reflection["lesson"]
+                nid = state.get("next_task_id", 1)
+                state.setdefault("task_queue", []).insert(0, {
+                    "id": nid,
+                    "description": f"Act on lesson: {lesson[:80]}",
+                    "priority": 8,
+                })
+                state["next_task_id"] = nid + 1
+
     # =====================================================================
     # PHASE 5: UPDATE (no LLM call)
     # =====================================================================
@@ -264,16 +296,22 @@ RESPOND WITH JSON:
     if task_complete:
         state["task_queue"] = [t for t in task_queue if t["id"] != current_task["id"]]
 
-    # Add new tasks
+    # Add new tasks (with deduplication)
+    existing_descs = {t.get("description", "").lower().strip() for t in state.get("task_queue", [])}
     for nt in new_tasks:
         if isinstance(nt, dict) and "description" in nt:
+            desc = nt["description"]
+            # Skip if a very similar task already exists
+            if desc.lower().strip() in existing_descs:
+                continue
             nid = state.get("next_task_id", 1)
             state.setdefault("task_queue", []).append({
                 "id": nid,
-                "description": nt["description"],
+                "description": desc,
                 "priority": nt.get("priority", 5),
             })
             state["next_task_id"] = nid + 1
+            existing_descs.add(desc.lower().strip())
 
     # Trim task queue
     state["task_queue"] = state.get("task_queue", [])[:10]
