@@ -3,15 +3,6 @@
 #
 # Controls enforcement strictness for meta-process checks.
 
-# Weight Level (Plan #218)
-# Controls which checks run. Higher weight = more enforcement.
-# Levels: heavy, medium, light, minimal
-weight: heavy
-
-# Per-check overrides (optional)
-# Values: "strict" (force on), "disabled" (force off), or omit for weight default.
-overrides: {}
-
 # Enforcement
 enforcement:
   # Auto-add new plan files to docs/plans/CLAUDE.md index
@@ -78,11 +69,6 @@ merge_gates:
   check_pr_status: true      # Warn if PR checks are failing
   check_plan_complete: true   # Warn if referenced plan not marked complete
   strict: false               # When true, warnings become blockers (use --skip-gates to bypass)
-
-# Project Type
-project:
-  type: existing
-  complexity: moderate
 
 # Worktree Coordination (recovered from PR #1063/#1066)
 # Each CC instance must work in its own worktree when parallel instances are active.

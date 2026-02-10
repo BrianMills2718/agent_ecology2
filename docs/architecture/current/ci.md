@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-02-09 (meta-process audit: removed check_file_context.py, meta_process_config.py)
+Last verified: 2026-02-09 (meta-process audit: removed weight-aware flag, added planning patterns to check.sh)
 
 ---
 
@@ -233,9 +233,6 @@ couplings:
 
 **Orphan doc detection:**
 Use `--check-orphans` to find docs not referenced in any coupling entry. Configured via `orphan_detection:` section in `relationships.yaml` (scan directories, scan files, exempt paths).
-
-**Weight-aware checks (Plan #218):**
-Use `--weight-aware` flag to respect meta-process weight settings from `meta-process.yaml`.
 
 ---
 
