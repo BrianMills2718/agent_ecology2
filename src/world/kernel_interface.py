@@ -425,6 +425,7 @@ class KernelActions:
         artifact_type: str = "generic",
         executable: bool = False,
         code: str | None = None,
+        has_standing: bool = False,
     ) -> bool:
         """Write or update an artifact (access controlled via contracts).
 
@@ -437,6 +438,8 @@ class KernelActions:
             artifact_type: Type if creating new
             executable: Whether the artifact is executable (Plan #273)
             code: Executable code if creating executable artifact (Plan #273)
+            has_standing: If True, create a ledger principal for the artifact
+                so it can hold scrip (ADR-0011)
 
         Returns:
             True if write succeeded, False otherwise
@@ -477,10 +480,16 @@ class KernelActions:
             if code is not None:
                 kwargs["code"] = code
             self._world.artifacts.write(**kwargs)
+            # Create principal if has_standing requested (ADR-0011)
+            if has_standing and not self._world.ledger.principal_exists(artifact_id):
+                from src.config import get
+                starting_scrip = get("agents.starting_scrip") or 0
+                self._world.ledger.create_principal(artifact_id, starting_scrip)
             # Plan #274: Log successful creation
             _log_kernel_action(self._world, "kernel_write_artifact", caller_id, True, {
                 "artifact_id": artifact_id, "was_update": False,
                 "artifact_type": artifact_type, "executable": executable,
+                "has_standing": has_standing,
             })
             return True
 

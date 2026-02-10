@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-02-09 (Plan #311: artifact.state for contract auth, state_updates application via permission_checker)
+**Last verified:** 2026-02-09 (Plan #312: has_standing on KernelActions.write_artifact, ledger passed in artifact_loop for invoke)
 
 ---
 
@@ -522,11 +522,14 @@ def run():
     kernel_actions.transfer_scrip(caller_id, "bob", 50)
     kernel_actions.transfer_resource(caller_id, "bob", "llm_tokens", 10.0)
     kernel_actions.write_artifact(caller_id, "new_art", "content")
+    kernel_actions.write_artifact(caller_id, "my_dao", "code", has_standing=True)  # Creates principal
 ```
 
 The `caller_id` is also injected so artifacts know who invoked them.
 
 **Key principle:** All artifacts have equal access to kernel interfaces - no privilege difference (Plan #254).
+
+**Artifact loops (Plan #312):** `artifact_loop.py` passes `ledger` to `execute_with_invoke`, so `invoke()`, `pay()`, and `get_balance()` are available in continuous artifact execution context. This enables artifact-to-artifact composition during autonomous loops.
 
 ### Recursion Protection
 

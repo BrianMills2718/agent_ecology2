@@ -95,7 +95,9 @@ ACTIONS:
 - Read artifact: {{"action_type": "read_artifact", "artifact_id": "..."}}
 - Write artifact (tool): {{"action_type": "write_artifact", "artifact_id": "discourse_analyst_2_tool_X", "artifact_type": "executable", "executable": true, "code": "def run(text):\\n    # analyze text\\n    return result"}}
 - Write artifact (data): {{"action_type": "write_artifact", "artifact_id": "discourse_analyst_2_data_X", "artifact_type": "json", "content": {{...}}}}
+- Write artifact (with standing): {{"action_type": "write_artifact", "artifact_id": "my_service", "artifact_type": "executable", "executable": true, "has_standing": true, "code": "def run():\\n    ..."}}
 - Invoke tool: {{"action_type": "invoke_artifact", "artifact_id": "tool_id", "method": "run", "args": [...]}}
+- Transfer scrip: {{"action_type": "transfer", "recipient_id": "...", "amount": 50, "memo": "payment for..."}}
 - Query mint tasks: {{"action_type": "query_kernel", "query_type": "mint_tasks", "params": {{}}}}
 - Submit to task: {{"action_type": "submit_to_task", "artifact_id": "my_tool", "task_id": "task_name"}}
 - Noop (skip turn): {{"action_type": "noop"}}
@@ -202,6 +204,7 @@ ACTIONS:
         content = action.get("content", "")
         code = action.get("code", "")
         executable = action.get("executable", False)
+        has_standing = action.get("has_standing", False)
         try:
             result = kernel_actions.write_artifact(
                 caller_id,
@@ -210,6 +213,7 @@ ACTIONS:
                 artifact_type=artifact_type,
                 executable=executable,
                 code=code if executable else None,
+                has_standing=has_standing,
             )
             action_result = {"success": True, "result": f"Created artifact {artifact_id}"}
         except Exception as e:
@@ -217,12 +221,22 @@ ACTIONS:
 
     elif action_type == "invoke_artifact":
         artifact_id = action.get("artifact_id", "")
-        method = action.get("method", "run")
         args = action.get("args", [])
-        kwargs = action.get("kwargs", {})
         try:
-            result = kernel_actions.invoke_artifact(caller_id, artifact_id, method, args, kwargs)
+            result = invoke(artifact_id, *args)
             action_result = {"success": True, "result": result}
+        except Exception as e:
+            action_result = {"success": False, "error": str(e)}
+
+    elif action_type == "transfer":
+        recipient_id = action.get("recipient_id", "")
+        amount = action.get("amount", 0)
+        try:
+            success = kernel_actions.transfer_scrip(caller_id, recipient_id, amount)
+            if success:
+                action_result = {"success": True, "result": f"Transferred {amount} to {recipient_id}"}
+            else:
+                action_result = {"success": False, "error": "Transfer failed (insufficient funds or invalid recipient)"}
         except Exception as e:
             action_result = {"success": False, "error": str(e)}
 
