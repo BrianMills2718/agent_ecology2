@@ -18,7 +18,7 @@ This document provides a systematic overview of the core systems that make the s
 | 4 | [Contract System](#4-contract-system) | ⚠️ Unknown | Access control policies |
 | 5 | [Agent Lifecycle](#5-agent-lifecycle) | ✓ Working | Loading, thinking, workflows |
 | 6 | [Execution Model](#6-execution-model) | ✓ Working | Autonomous loops, timing |
-| 7 | [Kernel Interface](#7-kernel-interface) | ⚠️ Unknown | Artifact ↔ world boundary |
+| 7 | [Kernel Interface](#7-kernel-interface) | ✓ Working | Artifact ↔ world boundary |
 | 8 | [Event Logging](#8-event-logging) | ✓ Working | Observability, replay |
 | 9 | [External Capabilities](#9-external-capabilities) | ✓ Working | External APIs with human approval |
 
@@ -64,7 +64,7 @@ Runner skips agents where llm_budget <= 0
 | `src/world/ledger.py` | `get_resource()`, `deduct_llm_cost()`, `set_resource()` |
 | `src/world/resource_manager.py` | Unified resource operations |
 | `src/world/rate_tracker.py` | Rolling window rate limits |
-| `src/simulation/runner.py:578,638` | Cost extraction, deduction |
+| `src/simulation/runner.py:161,166` | Cost tracking via `SimulationEngine.track_api_cost()` |
 
 **Config Example:**
 ```yaml
@@ -210,18 +210,13 @@ discovers and runs has_loop=True artifacts from genesis loader.
 
 **Purpose:** The sandbox boundary - what artifacts can see and do.
 
-**Health:** ⚠️ Unknown - Needs systematic investigation
+**Health:** ✓ Working - KernelState/KernelActions well-defined (ADR-0001, ADR-0019, ADR-0024)
 
 **Key Files:**
 | File | Responsibility |
 |------|----------------|
 | `src/world/kernel_interface.py` | `KernelState` (read), `KernelActions` (write) |
 | `src/world/kernel_queries.py` | Read-only query types |
-
-**Questions to Investigate:**
-- [ ] What can artifacts read via KernelState?
-- [ ] What can artifacts do via KernelActions?
-- [ ] How is the sandbox enforced?
 
 ---
 
