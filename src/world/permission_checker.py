@@ -52,19 +52,22 @@ def get_contract_with_fallback_info(
     contract_id: str,
     contract_cache: dict[str, AccessContract | ExecutableContract],
     dangling_count_tracker: list[int],
+    artifact_store: "ArtifactStore | None" = None,
 ) -> tuple[AccessContract | ExecutableContract, bool, str | None]:
     """Get contract by ID, with info about whether fallback was used.
 
-    Checks kernel contracts first, then falls back to configurable
-    default if not found. Also supports ExecutableContracts registered
-    via register_executable_contract().
+    Checks kernel contracts first, then artifact store for executable
+    contract artifacts, then falls back to configurable default if not
+    found.
 
     Plan #100 Phase 2, ADR-0017: Dangling contracts fail open to default.
+    Plan #317: Artifact-store lookup for agent-created contracts.
 
     Args:
         contract_id: The contract ID to look up
         contract_cache: Cache dict for contract lookups
         dangling_count_tracker: Single-element list to track dangling count
+        artifact_store: ArtifactStore for looking up agent-created contract artifacts
 
     Returns:
         Tuple of (contract, is_fallback, original_contract_id)
@@ -80,6 +83,20 @@ def get_contract_with_fallback_info(
     if contract:
         contract_cache[contract_id] = contract
         return contract, False, None
+
+    # Check artifact store for executable contract artifacts (Plan #317)
+    if artifact_store is not None:
+        contract_artifact = artifact_store.get(contract_id)
+        if (
+            contract_artifact is not None
+            and contract_artifact.executable
+            and "def check_permission(" in (contract_artifact.code or "")
+        ):
+            exec_contract = ExecutableContract(
+                contract_id=contract_id, code=contract_artifact.code
+            )
+            contract_cache[contract_id] = exec_contract
+            return exec_contract, False, None
 
     # Contract not found - use configurable default (ADR-0017)
     dangling_count_tracker[0] += 1
@@ -158,7 +175,8 @@ def check_permission_via_contract(
     # Get contract ID from artifact
     contract_id = artifact.access_contract_id
     contract, is_fallback, original_contract_id = get_contract_with_fallback_info(
-        contract_id, contract_cache, dangling_count_tracker
+        contract_id, contract_cache, dangling_count_tracker,
+        artifact_store=artifact_store,
     )
 
     # Convert action string to PermissionAction
