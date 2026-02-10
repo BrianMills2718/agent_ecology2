@@ -27,7 +27,6 @@ Utility scripts for development and CI. All scripts support `--help` for options
 |--------|---------|
 | `file_context.py` | **Unified context loader**: CLAUDE.md chain, ADRs, coupled docs, concerns, tech debt |
 | `extract_relevant_context.py` | Extract GLOSSARY, ONTOLOGY, ADR, PRD, and domain model context for a file |
-| `check_file_context.py` | Check files have PRD/domain model context links |
 | `audit_governance_mappings.py` | Audit governance mappings for completeness |
 | `build_doc_index.py` | Build searchable index of docs for semantic search |
 | `semantic_doc_search.py` | BM25 semantic search over documentation |
@@ -53,7 +52,6 @@ Utility scripts for development and CI. All scripts support `--help` for options
 
 | Script | Purpose |
 |--------|---------|
-| `meta_process_config.py` | Check/configure meta-process weight level |
 | `meta_config.py` | Read meta-process configuration (used by hooks/scripts) |
 | `symbol_extractor.py` | Extract symbols from Python files (AST-based) |
 | `bootstrap_meta_process.py` | Bootstrap meta-process for existing repos |
