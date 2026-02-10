@@ -386,10 +386,8 @@ class KernelActions:
             })
             return False
 
-        # Perform transfer
-        self._world.ledger.spend_resource(caller_id, resource, amount)
-        new_recipient = self._world.ledger.get_resource(to, resource) + amount
-        self._world.ledger.set_resource(to, resource, new_recipient)
+        # Perform transfer (ledger uses Decimal arithmetic internally)
+        self._world.ledger.transfer_resource(caller_id, to, resource, amount)
 
         # Plan #276: Log successful transfer
         _log_kernel_action(self._world, "kernel_transfer_resource", caller_id, True, {
