@@ -46,7 +46,7 @@ def run():
     # Query scrip balance
     scrip_balance = "unknown"
     try:
-        balance_result = kernel_state.query("ledger", {"method": "balance", "args": [caller_id]}, caller_id=caller_id)
+        balance_result = kernel_state.query("balances", {"principal_id": caller_id}, caller_id=caller_id)
         if isinstance(balance_result, dict):
             scrip_balance = balance_result.get("scrip", balance_result.get("balance", "unknown"))
     except Exception:
