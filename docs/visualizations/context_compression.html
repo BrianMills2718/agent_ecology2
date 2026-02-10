@@ -80,9 +80,9 @@ const LAYERS = [
     description: 'Machine-readable entity schema. All entities, their fields, types, and relationships in one file. A compressed map of every dataclass.',
     files: ['docs/ONTOLOGY.yaml'],
     color: '#d2a8ff',
-    consumed: false,
+    consumed: true,
     enforced: false,
-    freshness: 'Manual (needs freshness mechanism)',
+    freshness: 'Consumed (injected before edits) but no freshness check vs code',
     examples: [
       'Artifact:\n  id: str (unique)\n  content: str | dict\n  artifact_type: text|json|executable|contract\n  state: dict (contract-managed auth)\n  access_contract_id: str\n  created_by: str (informational only)',
     ],
@@ -97,9 +97,9 @@ const LAYERS = [
     description: 'Conceptual relationships between domains. How contracts relate to artifacts, how agents relate to resources, how the ledger connects to standing.',
     files: ['docs/domain_model/artifacts.yaml', 'docs/domain_model/contracts.yaml', 'docs/domain_model/resources.yaml', 'docs/domain_model/agents.yaml'],
     color: '#ffa657',
-    consumed: false,
+    consumed: true,
     enforced: false,
-    freshness: 'Manual (needs freshness mechanism)',
+    freshness: 'Partially consumed (file_context edges) but no freshness check vs code',
     examples: [
       'Contract:\n  enables: [access-control, payment-routing]\n  relationships:\n    - "governs access to Artifacts"\n    - "reads Artifact.state for auth"\n    - "returns PermissionResult to Executor"',
     ],
@@ -114,9 +114,9 @@ const LAYERS = [
     description: 'Canonical vocabulary. Defines terms like "scrip" (not credits), "principal" (not account), "artifact" (not object). Prevents AI from using wrong terminology.',
     files: ['docs/GLOSSARY.md'],
     color: '#f778ba',
-    consumed: false,
+    consumed: true,
     enforced: false,
-    freshness: 'Manual (needs injection + freshness)',
+    freshness: 'Consumed (injected before edits, deprecated term warnings) but no new-term detection',
     examples: [
       'scrip: In-world medium of exchange.\n  NO relationship to real dollars.\n  Use "scrip" not "credits"\n\nprincipal: Any artifact with standing.\n  Use "principal" not "account"',
     ],
@@ -131,9 +131,9 @@ const LAYERS = [
     description: 'The core proposition: give agents scarcity, sound coordination primitives, and observe what emerges. Everything traces back to this.',
     files: ['docs/THESIS.md'],
     color: '#ff7b72',
-    consumed: true,
-    enforced: true,
-    freshness: 'Stable (rarely changes)',
+    consumed: false,
+    enforced: false,
+    freshness: 'Stable (rarely changes, no automated consumption)',
     examples: [
       'Give LLM agents real resource constraints\n(compute, disk, API budget), sound\ncoordination primitives (contracts,\nescrow, ledger), and observe what\nemergent collective capability arises.',
     ],
@@ -157,12 +157,12 @@ const ADRS_LAYER = {
 };
 
 const EDGE_TYPES = [
-  { id: 'governance', label: 'Governance', desc: 'ADR governs source file', color: '#ffd700', from: 'ADRs', to: 'Code', enforced: true, mechanism: 'sync_governance.py embeds ADR headers in source files' },
-  { id: 'coupling', label: 'Doc-Code Coupling', desc: 'Source documented by architecture doc', color: '#79c0ff', from: 'Code', to: 'Arch Docs', enforced: true, mechanism: 'CI blocks commits if coupled docs not updated' },
-  { id: 'file_context', label: 'File Context', desc: 'Source linked to PRD + domain model + ADR', color: '#d2a8ff', from: 'Code', to: 'All Layers', enforced: true, mechanism: 'Hooks inject context before edits' },
-  { id: 'conceptual', label: 'Conceptual Model', desc: 'Ontology entity mapped to source', color: '#d2a8ff', from: 'Ontology', to: 'Code', enforced: false, mechanism: 'Declared in relationships.yaml, not yet injected' },
-  { id: 'glossary_map', label: 'Glossary Map', desc: 'Term mapped to implementing file', color: '#f778ba', from: 'Glossary', to: 'Code', enforced: false, mechanism: 'Declared in relationships.yaml, not yet injected' },
-  { id: 'target_link', label: 'Target Link', desc: 'Target architecture linked to current', color: '#8b949e', from: 'Target Arch', to: 'Current Arch', enforced: false, mechanism: 'Informational link in relationships.yaml' },
+  { id: 'governance', label: 'Governance', desc: 'ADR governs source file', color: '#ffd700', from: 'ADRs', to: 'Code', level: 'enforced', mechanism: 'sync_governance.py embeds ADR headers; gate-edit.sh blocks if not read' },
+  { id: 'coupling', label: 'Doc-Code Coupling', desc: 'Source documented by architecture doc', color: '#79c0ff', from: 'Code', to: 'Arch Docs', level: 'enforced', mechanism: 'CI blocks commits if coupled docs not updated alongside source' },
+  { id: 'file_context', label: 'File Context', desc: 'Source linked to PRD + domain model + ADR', color: '#d2a8ff', from: 'Code', to: 'All Layers', level: 'consumed', mechanism: 'inject-edit-context.sh provides PRD/domain/ADR context before edits' },
+  { id: 'conceptual', label: 'Conceptual Model', desc: 'Ontology entity mapped to source', color: '#d2a8ff', from: 'Ontology', to: 'Code', level: 'consumed', mechanism: 'extract_relevant_context.py injects matching entities before edits' },
+  { id: 'glossary_map', label: 'Glossary Map', desc: 'Term mapped to implementing file', color: '#f778ba', from: 'Glossary', to: 'Code', level: 'consumed', mechanism: 'extract_relevant_context.py injects matching terms + deprecated warnings' },
+  { id: 'target_link', label: 'Target Link', desc: 'Target architecture linked to current', color: '#8b949e', from: 'Target Arch', to: 'Current Arch', level: 'declared', mechanism: 'Declared in relationships.yaml but no script consumes it yet' },
 ];
 
 const SCENARIOS = [
@@ -259,11 +259,17 @@ function CompressionBar({ layer, maxSize, isSelected, isHighlighted, onClick }) 
               background: '#23883622', color: '#3fb950', fontWeight: 600,
             }}>ENFORCED</span>
           )}
-          {!layer.enforced && (
+          {!layer.enforced && layer.consumed && (
+            <span style={{
+              fontSize: 10, padding: '2px 6px', borderRadius: 4,
+              background: '#58a6ff22', color: '#58a6ff', fontWeight: 600,
+            }}>CONSUMED</span>
+          )}
+          {!layer.enforced && !layer.consumed && (
             <span style={{
               fontSize: 10, padding: '2px 6px', borderRadius: 4,
               background: '#da363622', color: '#f85149', fontWeight: 600,
-            }}>NEEDS FRESHNESS</span>
+            }}>NOT CONSUMED</span>
           )}
         </div>
 
@@ -465,9 +471,13 @@ function EdgeTypesPanel() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: '#c9d1d9' }}>{edge.label}</span>
                 <span style={{ fontSize: 11, color: '#484f58' }}>{edge.from} → {edge.to}</span>
-                {edge.enforced ? (
+                {edge.level === 'enforced' ? (
                   <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: '#23883622', color: '#3fb950' }}>
-                    Active
+                    Enforced
+                  </span>
+                ) : edge.level === 'consumed' ? (
+                  <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: '#58a6ff22', color: '#58a6ff' }}>
+                    Consumed
                   </span>
                 ) : (
                   <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: '#30363d', color: '#8b949e' }}>
