@@ -103,6 +103,7 @@ class TestTriggerEventEmission:
             artifact_id="test_artifact",
             artifact_type="data",
             content="Hello world",
+            access_contract_id="kernel_contract_freeware",
         )
         result = world.execute_action(intent)
         assert result.success
@@ -147,6 +148,7 @@ class TestTriggerEventEmission:
             artifact_id="test_artifact",
             artifact_type="data",
             content="Hello world",
+            access_contract_id="kernel_contract_freeware",
         )
         world.execute_action(intent)
 
@@ -192,6 +194,7 @@ class TestTriggerRefresh:
             artifact_type="trigger",
             content=str(trigger_config),
             metadata=trigger_config,
+            access_contract_id="kernel_contract_freeware",
         )
         result = world.execute_action(intent)
         assert result.success
@@ -238,6 +241,7 @@ class TestTriggerFilters:
             artifact_id="test_artifact",
             artifact_type="data",
             content="Hello",
+            access_contract_id="kernel_contract_freeware",
         )
         world.execute_action(intent)
 
@@ -282,6 +286,7 @@ class TestTriggerFilters:
             artifact_id="msg_001",
             artifact_type="message",
             content="Hello Alice!",
+            access_contract_id="kernel_contract_freeware",
         )
         world.execute_action(intent)
 
@@ -296,6 +301,7 @@ class TestTriggerFilters:
             artifact_id="data_001",
             artifact_type="data",  # Different type
             content="Some data",
+            access_contract_id="kernel_contract_freeware",
         )
         world.execute_action(intent2)
 

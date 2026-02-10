@@ -38,6 +38,8 @@ def world(tmp_path: Path) -> World:
 def _write_artifact(world: World, artifact_id: str, content: str,
                     principal_id: str = "alice", **kwargs: object) -> ActionResult:
     """Helper to write an artifact."""
+    if "access_contract_id" not in kwargs:
+        kwargs["access_contract_id"] = "kernel_contract_freeware"
     intent = WriteArtifactIntent(
         principal_id=principal_id,
         artifact_id=artifact_id,

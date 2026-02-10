@@ -422,6 +422,7 @@ def _execute_action(action_type, action, agent_prefix):
         code = action.get("code", "")
         executable = action.get("executable", False)
         has_standing = action.get("has_standing", False)
+        access_contract_id = action.get("access_contract_id", None)
         try:
             kernel_actions.write_artifact(
                 caller_id, artifact_id, content or code,
@@ -429,6 +430,7 @@ def _execute_action(action_type, action, agent_prefix):
                 executable=executable,
                 code=code if executable else None,
                 has_standing=has_standing,
+                access_contract_id=access_contract_id,
             )
             return {"success": True, "result": f"Created artifact {artifact_id}"}
         except Exception as e:

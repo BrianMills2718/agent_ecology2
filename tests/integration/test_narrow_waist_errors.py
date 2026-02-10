@@ -83,6 +83,7 @@ class TestReadArtifactErrors:
             artifact_type="data",
             content="Valuable content",
             policy={"read_price": 200, "allow_read": ["*"]},
+            access_contract_id="kernel_contract_freeware",
         )
         world_with_agent.execute_action(write_intent)
 
@@ -110,6 +111,7 @@ class TestWriteArtifactErrors:
             artifact_id="alice_artifact",
             artifact_type="data",
             content="Alice's data",
+            access_contract_id="kernel_contract_freeware",
         )
         world_with_agent.execute_action(write_intent)
 
@@ -195,6 +197,7 @@ class TestInvokeArtifactErrors:
             artifact_type="data",
             content="Just data",
             executable=False,
+            access_contract_id="kernel_contract_freeware",
         )
         world_with_agent.execute_action(write_intent)
 
@@ -264,6 +267,7 @@ class TestInvokeArtifactErrors:
             price=200,  # More than Bob has
             code="def run(*args): return 'expensive result'",
             interface=interface,
+            access_contract_id="kernel_contract_freeware",
         )
         world_with_agent.execute_action(write_intent)
 

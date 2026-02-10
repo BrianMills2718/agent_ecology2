@@ -286,6 +286,34 @@ class ActionExecutor:
                     retriable=False,
                 )
 
+        # Require explicit access_contract_id for new artifacts (ADR-0019)
+        if existing is None and not intent.access_contract_id:
+            from src.world.constants import (
+                KERNEL_CONTRACT_FREEWARE,
+                KERNEL_CONTRACT_TRANSFERABLE_FREEWARE,
+                KERNEL_CONTRACT_SELF_OWNED,
+                KERNEL_CONTRACT_PRIVATE,
+                KERNEL_CONTRACT_PUBLIC,
+            )
+            contract_list = [
+                f"  {KERNEL_CONTRACT_FREEWARE} — anyone reads/invokes, only creator modifies",
+                f"  {KERNEL_CONTRACT_TRANSFERABLE_FREEWARE} — like freeware, signals tradeable",
+                f"  {KERNEL_CONTRACT_SELF_OWNED} — only self or principal can access",
+                f"  {KERNEL_CONTRACT_PRIVATE} — only principal can access",
+                f"  {KERNEL_CONTRACT_PUBLIC} — anyone can do anything",
+            ]
+            return ActionResult(
+                success=False,
+                message=(
+                    f"New artifact '{intent.artifact_id}' requires access_contract_id. "
+                    f"Available contracts:\n" + "\n".join(contract_list)
+                ),
+                error_code=ErrorCode.INVALID_ARGUMENT.value,
+                error_category=ErrorCategory.VALIDATION.value,
+                retriable=True,
+                error_details={"artifact_id": intent.artifact_id},
+            )
+
         # Disk quota enforcement (Plan #95: Unified resource system)
         # Disk is an allocatable resource - agents have quota, we track usage
         content_size = len(intent.content.encode("utf-8"))

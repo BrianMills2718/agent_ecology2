@@ -426,6 +426,7 @@ class KernelActions:
         executable: bool = False,
         code: str | None = None,
         has_standing: bool = False,
+        access_contract_id: str | None = None,
     ) -> bool:
         """Write or update an artifact via the unified action executor.
 
@@ -441,6 +442,8 @@ class KernelActions:
             code: Executable code if creating executable artifact (Plan #273)
             has_standing: If True, create a ledger principal for the artifact
                 so it can hold scrip (ADR-0011)
+            access_contract_id: Contract governing the artifact (ADR-0019).
+                Required for new artifacts. Updates preserve existing contract.
 
         Returns:
             True if write succeeded, False otherwise
@@ -461,9 +464,12 @@ class KernelActions:
             executable=executable,
             code=code or "",
             has_standing=has_standing,
+            access_contract_id=access_contract_id,
         )
         result = self._world.execute_action(intent)
-        return result.success
+        if not result.success:
+            raise ValueError(result.message)
+        return True
 
     def submit_to_task(
         self,
