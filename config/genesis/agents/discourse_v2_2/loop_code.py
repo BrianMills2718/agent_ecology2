@@ -146,8 +146,6 @@ ACTIONS:
 - Write data: {{"action_type": "write_artifact", "artifact_id": "{agent_prefix}_data_NAME", "artifact_type": "json", "content": {{...}}}}
 - Invoke tool: {{"action_type": "invoke_artifact", "artifact_id": "tool_id", "args": [...]}}
 - Transfer scrip: {{"action_type": "transfer", "to": "recipient_id", "amount": 10}}
-- Query mint tasks: {{"action_type": "query_kernel", "query_type": "mint_tasks", "params": {{}}}}
-- Submit to mint task: {{"action_type": "submit_to_task", "artifact_id": "my_tool", "task_id": "task_name"}}
 - Rewrite own strategy: {{"action_type": "write_artifact", "artifact_id": "{strategy_id}", "artifact_type": "text", "content": "new strategy text..."}}
 - Rewrite own loop: {{"action_type": "write_artifact", "artifact_id": "{agent_prefix}_loop", "artifact_type": "executable", "executable": true, "has_standing": true, "code": "def run():\\n    ..."}}
 - Noop: {{"action_type": "noop"}}"""
@@ -341,13 +339,6 @@ RESPOND WITH JSON:
             if action_result.get("success"):
                 proc[tool_id]["verified"] = True
 
-    if action_type == "submit_to_task" and action_result.get("success"):
-        tool_id = action.get("artifact_id", "unknown")
-        proc = state.setdefault("procedural_memory", {})
-        if tool_id in proc:
-            proc[tool_id]["verified"] = True
-            proc[tool_id]["last_result"] = "mint_verified"
-
     # Final state save
     kernel_actions.write_artifact(caller_id, state_id, json.dumps(state, indent=2))
 
@@ -430,15 +421,6 @@ def _execute_action(action_type, action, agent_prefix):
         try:
             result = kernel_actions.transfer_scrip(caller_id, to, amount)
             return {"success": True, "result": f"Transferred {amount} scrip to {to}"}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-
-    elif action_type == "submit_to_task":
-        artifact_id = action.get("artifact_id", "")
-        task_id = action.get("task_id", "")
-        try:
-            result = kernel_actions.submit_to_task(caller_id, artifact_id, task_id)
-            return {"success": True, "result": result}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
