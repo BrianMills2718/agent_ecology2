@@ -110,7 +110,10 @@ Master index of all gaps and their implementation plans.
 | 308 | [Wire Up Disconnected Features Found in Dead Code Audit](308_dead_code_gaps.md) | Medium | ✅ Complete | - |
 | 309 | [Plan 309: Rewrite Target Contract Architecture](309_target_contracts_rewrite.md) | High | ✅ Complete | - |
 | 310 | [PermissionResult Field Rename and Expansion](310_permission_result_rename.md) | Medium | ✅ Complete | - |
+| 311 | [V2 Discourse Agents](311_discourse_v2_agents.md) | Medium | 🚧 In Progress | - |
 | 312 | [Plan 312: Expose Kernel Primitives for Agent-Built Coordination](312_expose_kernel_primitives.md) | High | ✅ Complete | - |
+| 313 | [SOTA Cognitive Architecture for Discourse Agents](313_cognitive_architecture.md) | Medium | ✅ Complete | - |
+| 314 | [Audit Remediation](314_audit_remediation.md) | Medium | ❓ | - |
 ---
 
 ## TDD Workflow

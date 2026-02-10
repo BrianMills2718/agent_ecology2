@@ -1,0 +1,65 @@
+{
+  "description": "Sample texts for discourse analysis across three domains: argument, narrative, and rhetoric.",
+  "texts": [
+    {
+      "id": "arg_1",
+      "domain": "argument",
+      "title": "The Case Against Absolute Free Speech",
+      "text": "Free speech absolutism sounds noble in theory, but it ignores a basic reality: some speech causes measurable harm. Hate speech increases violence against targeted groups — this is not conjecture but documented fact. The question is not whether to limit speech, but where to draw the line. Every society already does this with fraud, perjury, and incitement. The absolutist position is not principled; it simply draws the line in a different place while pretending no line exists."
+    },
+    {
+      "id": "arg_2",
+      "domain": "argument",
+      "title": "In Defense of Specialization",
+      "text": "The modern celebration of the 'generalist' ignores why specialization exists. Complex problems require deep expertise. A doctor who dabbles in law and engineering treats no one well. The argument that specialists 'miss the big picture' confuses correlation with causation — it is not specialization that causes narrow thinking, but the failure to communicate across specialties. The solution is better collaboration between specialists, not the dilution of expertise."
+    },
+    {
+      "id": "arg_3",
+      "domain": "argument",
+      "title": "The Broken Window Fallacy",
+      "text": "A boy breaks a shopkeeper's window. The crowd consoles the shopkeeper: at least the glazier will get paid, and he'll spend that money elsewhere, stimulating the economy. But this reasoning ignores what is unseen. The shopkeeper would have spent that money on a new suit, benefiting the tailor. The window breaking did not create net economic activity — it merely redirected spending from something productive to mere restoration. Destruction is never economically beneficial, because it forces us to replace what we already had instead of adding something new."
+    },
+    {
+      "id": "narr_1",
+      "domain": "narrative",
+      "title": "The Last Shift",
+      "text": "Maria had worked the night shift at the factory for eleven years. She knew every sound the machines made — the steady hum of the press, the clicking of the conveyor belt, the occasional groan of metal under stress. On her last night, the press went silent at 3 AM. She walked over and found a crack in the main bearing. In the old days, she would have called maintenance and waited. Instead, she pulled out the repair manual she'd memorized years ago and fixed it herself. The press hummed back to life. Nobody would ever know it had stopped."
+    },
+    {
+      "id": "narr_2",
+      "domain": "narrative",
+      "title": "Three Versions of Tuesday",
+      "text": "According to Chen, the meeting ended at noon and everyone left satisfied. According to Rivera, the meeting ended at noon but left critical questions unanswered. According to Park, the meeting never really ended — it just dissolved when people started checking their phones. All three submitted their reports that afternoon. Management read Chen's version. Rivera's went into a file. Park's was returned with a note: 'Please resubmit in standard format.'"
+    },
+    {
+      "id": "narr_3",
+      "domain": "narrative",
+      "title": "The Seed Bank",
+      "text": "When the first drought hit, the village shared its grain reserves equally. When the second drought came two years later, the reserves were smaller but the sharing was the same. By the third drought, there were no reserves. The village elder, who had argued for saving seed grain after the first drought, said nothing. She had already planted her hidden cache in the hills above the village. Those seeds became the only harvest that year. The village never voted on grain policy again — they simply did whatever she suggested."
+    },
+    {
+      "id": "rhet_1",
+      "domain": "rhetoric",
+      "title": "Product Launch Speech",
+      "text": "Three years ago, we asked a simple question: why does software have to be complicated? Your grandmother can use a telephone. Your child can use a crayon. But somehow, the tools we build for professionals require a manual the size of a novel. Today, we're releasing something different. Not simpler — that would mean less powerful. What we've built is something that matches the way you actually think. We didn't start with features. We started with you."
+    },
+    {
+      "id": "rhet_2",
+      "domain": "rhetoric",
+      "title": "Charity Fundraising Letter",
+      "text": "Dear Friend, Right now, as you read this letter in your warm home, a child named Amara is sleeping on a concrete floor in a refugee camp. She is seven years old. She likes mathematics and drawing horses. Last month, her school was destroyed. For the cost of your daily coffee — just $3 a day — you can help rebuild Amara's school. You won't just be donating money. You'll be giving a seven-year-old girl the chance to become the mathematician she dreams of being. Will you help?"
+    },
+    {
+      "id": "rhet_3",
+      "domain": "rhetoric",
+      "title": "Corporate Restructuring Memo",
+      "text": "Team, After careful analysis and extensive consultation, we've made the difficult decision to restructure our operations. This is not a reflection of your work — which has been exceptional — but a necessary response to market conditions beyond our control. The changes will affect approximately 200 positions. We are committed to supporting every affected team member with generous severance, career counseling, and priority rehiring as conditions improve. Our goal is to emerge from this transition as a stronger, more focused organization."
+    },
+    {
+      "id": "rhet_4",
+      "domain": "rhetoric",
+      "title": "Environmental Campaign Ad",
+      "text": "They told us the glacier would last forever. They told us the coral reefs were resilient. They told us the forests would grow back. They were wrong. Every year, we lose an area of forest the size of Portugal. Every decade, the oceans rise another inch. Every generation inherits less than the one before. But here's what they didn't tell you: it's not too late. One law. One vote. One generation that chose to act. That's all it takes. The question isn't whether we can afford to act. It's whether we can afford not to."
+    }
+  ]
+}
