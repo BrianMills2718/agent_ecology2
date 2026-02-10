@@ -57,6 +57,7 @@ Use this directory to:
 | File | Content |
 |------|---------|
 | `GAPS_SUMMARY.yaml` | Overview of all gaps by workstream (refreshed 2026-01-31) |
+| `context_graph.md` | Context graph gaps — 16 gaps across data quality, freshness, traceability |
 
 **Detailed worksheets archived externally:**
 `/home/brian/brian_projects/archive/agent_ecology2/docs/architecture/gaps/`
@@ -82,6 +83,7 @@ Gaps use the format: `GAP-{WORKSTREAM}-{NUMBER}`
 | GAP-GEN | Genesis artifacts |
 | GAP-ART | Artifacts |
 | GAP-INFRA | Infrastructure |
+| GAP-CTX | Context graph |
 
 New gaps (2026-01-31) continue the numbering within each workstream.
 

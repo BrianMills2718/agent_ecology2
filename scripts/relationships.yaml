@@ -84,6 +84,12 @@ adrs:
   26:
     title: "Sophisticated initial agents"
     file: "0026-sophisticated-initial-agents.md"
+  27:
+    title: "BabyAGI agent architecture"
+    file: "0027-babyagi-agent-architecture.md"
+  28:
+    title: "created_by is informational"
+    file: "0028-created-by-informational.md"
 
 # =============================================================================
 # GOVERNANCE: ADR -> Source

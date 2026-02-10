@@ -30,6 +30,7 @@ These docs describe what IS implemented today. They are the source of truth for 
 | `ci.md` | GitHub Actions CI pipeline |
 | `motivation.md` | Agent motivation system (Plan #277) |
 | `capabilities.md` | External capabilities with human approval (Plan #300) |
+| `context_graph.md` | Context graph system — how context is routed to AI assistants |
 
 ## Coupling to Source
 

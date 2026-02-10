@@ -26,6 +26,7 @@ These docs describe what we WANT to build. They are aspirational, not current re
 | `06_mint.md` | Anytime bidding, continuous scoring, minting |
 | `07_infrastructure.md` | Docker isolation, real resource limits |
 | `08_kernel.md` | Target kernel architecture and primitives |
+| `context_graph.md` | Target context graph — compression routing, freshness, traceability |
 
 ## Warning
 
