@@ -32,6 +32,7 @@ They do NOT cover:
 | [0002](0002-thin-slice-enforcement.md) | Thin-Slice Enforcement | Accepted |
 | [0003](0003-plan-gate-hierarchy.md) | Plan-Gate Hierarchy | Accepted |
 | [0004](0004-gate-yaml-is-documentation.md) | Gate YAML Is Documentation | Accepted |
+| [0005](0005-hierarchical-context-compression.md) | Documentation Layers Are Hierarchical Context Compression | Accepted |
 
 ## Format
 

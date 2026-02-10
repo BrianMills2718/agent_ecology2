@@ -98,8 +98,11 @@ python scripts/validate_plan.py --plan 28
 |---------|--------|--------------|
 | [ADR Governance](08_adr-governance.md) | Subsumed | `governs` edges replace `governance.yaml` |
 | [Doc-Code Coupling](10_doc-code-coupling.md) | Subsumed | `documented_by` edges replace `doc_coupling.yaml` |
+| [Conceptual Modeling](27_conceptual-modeling.md) | Complementary | Ontology/glossary are compression layers routed by this graph |
 
 Both patterns remain valid until migration is complete. After migration, they become implementation details of this unified pattern.
+
+**Rationale:** See [META-ADR-0005](../adr/0005-hierarchical-context-compression.md) — the documentation graph is the routing layer for hierarchical context compression. Each documentation layer (glossary, ontology, domain model, ADRs, architecture docs) is a lossy compression of the codebase at a different zoom level. This graph determines which compression to inject for a given task.
 
 ## Limitations
 
