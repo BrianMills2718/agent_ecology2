@@ -37,7 +37,7 @@ fi
 # Session reads file — project-local, persists across reboots
 READS_FILE="$REPO_ROOT/.claude/.session_reads"
 
-# Append (dedup happens at check time)
-echo "$REL_PATH" >> "$READS_FILE"
+# Append with dedup-on-write (prevents unbounded file growth)
+grep -qxF "$REL_PATH" "$READS_FILE" 2>/dev/null || echo "$REL_PATH" >> "$READS_FILE"
 
 exit 0

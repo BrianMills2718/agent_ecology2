@@ -57,7 +57,7 @@ if [[ "$THRESHOLD" != "0" ]] && [[ "$THRESHOLD" != "None" ]] && [[ -n "$THRESHOL
     THRESHOLD_FLAG="--trivial-threshold $THRESHOLD"
 fi
 
-# Generate quiz (JSON mode for structured output)
+# Generate quiz (JSON mode only — single invocation)
 set +e
 RESULT=$(cd "$REPO_ROOT" && python "$QUIZ_SCRIPT" "$REL_PATH" --json $THRESHOLD_FLAG 2>/dev/null)
 QUIZ_EXIT=$?
@@ -67,8 +67,40 @@ if [[ $QUIZ_EXIT -ne 0 ]] || [[ -z "$RESULT" ]] || [[ "$RESULT" == "[]" ]]; then
     exit 0
 fi
 
-# Extract just the questions as readable text
-QUIZ_TEXT=$(cd "$REPO_ROOT" && python "$QUIZ_SCRIPT" "$REL_PATH" $THRESHOLD_FLAG 2>/dev/null)
+# Convert JSON to readable text (avoids a second generate_quiz.py invocation)
+QUIZ_TEXT=$(python -c "
+import json, sys
+quizzes = json.loads(sys.stdin.read())
+for q in quizzes:
+    info = q['file_info']
+    trivial = ' (trivial change — reduced quiz)' if q.get('trivial') else ''
+    print(f\"## Understanding Quiz: {q['file']}\")
+    print()
+    print(f\"*{info['lines']} lines, {info['classes']} classes, {info['functions']} top-level functions{trivial}*\")
+    print()
+    if q.get('governance'):
+        adrs = ', '.join(f\"ADR-{a['number']:04d} ({a['title']})\" for a in q['governance']['adrs'])
+        print(f'**Governing ADRs:** {adrs}')
+        print()
+    for i, qn in enumerate(q['questions'], 1):
+        cat = qn['category'].upper()
+        print(f'### Q{i} [{cat}]')
+        print()
+        print(qn['question'])
+        print()
+        if qn['type'] == 'confirm_or_justify':
+            print('- [ ] Yes, my change respects this')
+            print('- [ ] No — justification: ___________')
+        elif qn['type'] == 'confirm':
+            print('- [ ] Confirmed — no violations')
+            print('- [ ] Found issue: ___________')
+        elif qn['type'] == 'free_response':
+            print('*Response:* ___________')
+        print()
+    print('---')
+    print('*This quiz surfaces implicit decisions. \"Wrong\" answers = misalignment to discuss, not failures.*')
+    print()
+" <<< "$RESULT" 2>/dev/null)
 
 if [[ -z "$QUIZ_TEXT" ]]; then
     exit 0

@@ -34,14 +34,6 @@ from typing import Any
 
 import yaml
 
-# Plan #218: Weight-aware check control
-try:
-    from meta_process_config import Weight, check_enabled
-    HAS_WEIGHT_CONFIG = True
-except ImportError:
-    HAS_WEIGHT_CONFIG = False
-
-
 META_CONFIG_FILE = Path("meta-process.yaml")
 RELATIONSHIPS_FILE = Path("scripts/relationships.yaml")
 
@@ -594,12 +586,14 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    # Plan #218: Check if this check is enabled at current weight
-    if args.weight_aware and HAS_WEIGHT_CONFIG:
-        check_name = "doc_coupling_strict" if args.strict else "doc_coupling_warning"
-        if not check_enabled(check_name):
-            print(f"Doc coupling check ({check_name}) disabled at current weight.")
-            return 0
+    # Plan #218: Check if doc coupling is enabled via meta-process config
+    if args.weight_aware:
+        if META_CONFIG_FILE.exists():
+            with open(META_CONFIG_FILE) as f:
+                meta_cfg = yaml.safe_load(f) or {}
+            if not meta_cfg.get("enforcement", {}).get("strict_doc_coupling", True):
+                print("Doc coupling check disabled via meta-process.yaml.")
+                return 0
 
     config_path = Path(args.config)
     if not config_path.exists():
