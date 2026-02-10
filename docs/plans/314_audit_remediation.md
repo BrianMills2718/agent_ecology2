@@ -1,4 +1,4 @@
-# Plan #312: Audit Remediation
+# Plan #314: Audit Remediation
 
 **Status:** 🔵 Proposed
 **Created:** 2026-02-09

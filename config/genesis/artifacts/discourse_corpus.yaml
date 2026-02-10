@@ -1,0 +1,11 @@
+# Discourse corpus — sample texts for discourse analysis agents
+# Contains argumentative, narrative, and rhetorical passages for analysis
+
+id: discourse_corpus
+enabled: true
+
+artifacts:
+  - id: discourse_corpus
+    type: json
+    content_file: discourse_corpus.json
+    access_contract_id: kernel_contract_transferable_freeware
