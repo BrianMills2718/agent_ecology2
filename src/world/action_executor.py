@@ -300,7 +300,9 @@ class ActionExecutor:
             size_delta = total_size - old_content_size - old_code_size
 
         # Check disk quota if size_delta > 0 (writing more than reclaiming)
-        if size_delta > 0:
+        # Quota of 0 means unconfigured — skip enforcement (scarcity is opt-in)
+        disk_quota = w.resource_manager.get_quota(intent.principal_id, "disk")
+        if size_delta > 0 and disk_quota > 0:
             available = w.get_available_capacity(intent.principal_id, "disk")
             if available < size_delta:
                 return ActionResult(
@@ -391,8 +393,8 @@ class ActionExecutor:
                     "starting_scrip": starting_scrip,
                 })
 
-        # Consume disk quota for the size delta
-        if size_delta > 0:
+        # Consume disk quota for the size delta (only when quota configured)
+        if size_delta > 0 and disk_quota > 0:
             w.consume_quota(intent.principal_id, "disk", float(size_delta))
             w.logger.log_resource_allocated(
                 principal_id=intent.principal_id,
