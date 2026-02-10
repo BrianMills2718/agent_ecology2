@@ -3,881 +3,861 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hierarchical Context Compression — META-ADR-0005</title>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<title>Context Graph — How We Link Knowledge Across a Codebase</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
   body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     background: #0a0e17;
     color: #c9d1d9;
-    min-height: 100vh;
-    overflow-x: hidden;
+    overflow: hidden;
+    height: 100vh;
+  }
+  #app { display: flex; height: 100vh; }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: 340px;
+    background: #0d1117;
+    border-right: 1px solid #21262d;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  #sidebar-header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid #21262d;
+  }
+  #sidebar-header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #f0f6fc;
+    margin-bottom: 6px;
+  }
+  #sidebar-header p {
+    font-size: 12px;
+    color: #8b949e;
+    line-height: 1.5;
+  }
+  #sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+  }
+  .section-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #484f58;
+    margin: 16px 0 8px;
+    font-weight: 600;
+  }
+  .section-title:first-child { margin-top: 0; }
+
+  /* Legend items */
+  .legend-group { margin-bottom: 16px; }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 13px;
+  }
+  .legend-item:hover { background: #161b22; }
+  .legend-item.active { background: #1f2937; }
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 2px solid transparent;
+  }
+  .legend-line {
+    width: 24px;
+    height: 0;
+    flex-shrink: 0;
+    border-top-width: 2px;
+    border-top-style: solid;
+  }
+  .legend-label { color: #c9d1d9; }
+  .legend-sub { font-size: 11px; color: #6e7681; }
+
+  /* Detail panel */
+  #detail-panel {
+    padding: 16px;
+    background: #161b22;
+    border-radius: 8px;
+    border: 1px solid #21262d;
+    margin-top: 8px;
+  }
+  #detail-panel h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  #detail-panel p {
+    font-size: 12px;
+    color: #8b949e;
+    line-height: 1.6;
+  }
+  #detail-panel .tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 600;
+    margin-right: 4px;
+    margin-bottom: 4px;
+  }
+  #detail-panel code {
+    font-size: 11px;
+    background: #0d1117;
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #79c0ff;
   }
 
-  #root { min-height: 100vh; }
+  /* ── Graph area ── */
+  #graph-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  #graph-area svg {
+    width: 100%;
+    height: 100%;
+  }
 
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 8px; }
-  ::-webkit-scrollbar-track { background: #161b22; }
-  ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+  /* Tooltip */
+  #tooltip {
+    position: absolute;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 12px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    max-width: 280px;
+    z-index: 100;
+    line-height: 1.5;
+  }
+  #tooltip.visible { opacity: 1; }
+  #tooltip .tt-title { font-weight: 600; color: #f0f6fc; margin-bottom: 4px; }
+  #tooltip .tt-type { font-size: 11px; color: #8b949e; }
+  #tooltip .tt-desc { margin-top: 6px; color: #c9d1d9; }
+
+  /* Scenario bar */
+  #scenario-bar {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+  }
+  .scenario-btn {
+    padding: 8px 14px;
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    color: #8b949e;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .scenario-btn:hover { border-color: #484f58; color: #c9d1d9; }
+  .scenario-btn.active { border-color: #58a6ff; color: #58a6ff; background: #58a6ff0d; }
+
+  /* Info overlay */
+  #info-overlay {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    background: #161b22ee;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-size: 12px;
+    z-index: 10;
+    line-height: 1.6;
+    backdrop-filter: blur(8px);
+  }
+  #info-overlay h4 {
+    font-size: 13px;
+    color: #f0f6fc;
+    margin-bottom: 6px;
+  }
+  #info-overlay .flow-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 4px 0;
+  }
+  #info-overlay .flow-num {
+    color: #58a6ff;
+    font-weight: 700;
+    flex-shrink: 0;
+    width: 16px;
+  }
+  .hidden { display: none !important; }
+
+  /* Node labels in SVG */
+  .node-label {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    font-size: 11px;
+    fill: #c9d1d9;
+    pointer-events: none;
+    text-anchor: middle;
+  }
+  .node-sublabel {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    font-size: 9px;
+    fill: #6e7681;
+    pointer-events: none;
+    text-anchor: middle;
+  }
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="app">
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <h1>Context Graph</h1>
+      <p>How documentation layers link knowledge across a codebase.
+         Each node type is a compression of the codebase at a different zoom level.
+         Edges define how context flows between layers.</p>
+    </div>
+    <div id="sidebar-content">
 
-<script type="text/babel">
-const { useState, useCallback, useMemo } = React;
+      <div class="section-title">Node Types (Compression Layers)</div>
+      <div class="legend-group" id="node-legend"></div>
 
-// ─── Data ───────────────────────────────────────────────────────────────────
+      <div class="section-title">Edge Types (Context Flow)</div>
+      <div class="legend-group" id="edge-legend"></div>
 
-const LAYERS = [
+      <div id="detail-panel">
+        <h3>Click a node or edge</h3>
+        <p>Select any element in the graph to see how it fits into the context system.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="graph-area">
+    <div id="scenario-bar"></div>
+    <div id="tooltip"></div>
+    <div id="info-overlay" class="hidden"></div>
+  </div>
+</div>
+
+<script>
+// ─── Data Model ─────────────────────────────────────────────────────────────
+
+const NODE_TYPES = [
   {
-    id: 'code',
-    zoom: 0,
-    label: 'Code',
-    size: '~15,000 lines',
-    sizeNum: 15000,
-    question: 'What does this line do?',
-    description: 'The full source of truth. Every detail, every edge case, every implementation choice.',
-    files: ['src/world/artifacts.py', 'src/world/executor.py', 'src/world/kernel_contracts.py', 'src/world/ledger.py', 'src/world/permission_checker.py', '...60+ files'],
-    color: '#7ee787',
-    consumed: true,
-    enforced: true,
-    freshness: 'Is the truth',
-    examples: [
-      '@dataclass\nclass Artifact:\n    id: str\n    content: str | dict\n    artifact_type: ArtifactType\n    metadata: dict\n    state: dict[str, Any]\n    access_contract_id: str\n    created_by: str\n    ...',
-    ],
+    id: 'source', label: 'Source Code', color: '#7ee787', zoom: 0,
+    size: '~15,000 lines', shape: 'rect',
+    desc: 'The full source of truth. Every implementation detail.',
+    compression: 'No compression — this IS the truth.',
+    example: 'src/world/artifacts.py, src/world/executor.py',
+    freshness: 'Is the truth (always fresh)',
   },
   {
-    id: 'arch',
-    zoom: 1,
-    label: 'Architecture Docs',
-    size: '~2,000 lines',
-    sizeNum: 2000,
-    question: 'How does this system work?',
-    description: 'Explains how systems interact, what the execution model is, how contracts work. Implementation-level but prose, not code.',
-    files: ['docs/architecture/current/contracts.md', 'docs/architecture/current/execution_model.md', 'docs/architecture/current/resources.md', 'docs/architecture/current/CORE_SYSTEMS.md'],
-    color: '#79c0ff',
-    consumed: true,
-    enforced: true,
+    id: 'arch_doc', label: 'Architecture Doc', color: '#79c0ff', zoom: 1,
+    size: '~2,000 lines', shape: 'rect',
+    desc: 'Prose explaining how systems work. Implementation-level but readable.',
+    compression: '~7:1 — one doc covers multiple source files.',
+    example: 'docs/architecture/current/contracts.md',
     freshness: 'Doc-code coupling (CI enforced)',
-    examples: [
-      'The contract system mediates ALL access to artifacts.\nWhen agent A tries to write artifact X:\n  1. Executor calls contract.check_permission()\n  2. Contract reads artifact.state\n  3. Returns PermissionResult (allowed, cost, payer)',
-    ],
   },
   {
-    id: 'ontology',
-    zoom: 2,
-    label: 'Ontology',
-    size: '~300 lines',
-    sizeNum: 300,
-    question: 'What entities exist? What fields do they have?',
-    description: 'Machine-readable entity schema. All entities, their fields, types, and relationships in one file. A compressed map of every dataclass.',
-    files: ['docs/ONTOLOGY.yaml'],
-    color: '#d2a8ff',
-    consumed: false,
-    enforced: false,
+    id: 'ontology', label: 'Ontology', color: '#d2a8ff', zoom: 2,
+    size: '~300 lines', shape: 'diamond',
+    desc: 'Machine-readable entity schema. All entities, fields, types in one file.',
+    compression: '~50:1 — all dataclasses compressed to one YAML.',
+    example: 'docs/ONTOLOGY.yaml',
     freshness: 'Manual (needs freshness mechanism)',
-    examples: [
-      'Artifact:\n  id: str (unique)\n  content: str | dict\n  artifact_type: text|json|executable|contract\n  state: dict (contract-managed auth)\n  access_contract_id: str\n  created_by: str (informational only)',
-    ],
   },
   {
-    id: 'domain',
-    zoom: 3,
-    label: 'Domain Model',
-    size: '~50 lines/domain',
-    sizeNum: 200,
-    question: 'How do concepts relate?',
-    description: 'Conceptual relationships between domains. How contracts relate to artifacts, how agents relate to resources, how the ledger connects to standing.',
-    files: ['docs/domain_model/artifacts.yaml', 'docs/domain_model/contracts.yaml', 'docs/domain_model/resources.yaml', 'docs/domain_model/agents.yaml'],
-    color: '#ffa657',
-    consumed: false,
-    enforced: false,
+    id: 'domain_model', label: 'Domain Model', color: '#ffa657', zoom: 3,
+    size: '~50 lines/domain', shape: 'diamond',
+    desc: 'Conceptual relationships between domains. How contracts relate to artifacts, how agents relate to resources.',
+    compression: '~75:1 — concept relationships, not field details.',
+    example: 'docs/domain_model/contracts.yaml',
     freshness: 'Manual (needs freshness mechanism)',
-    examples: [
-      'Contract:\n  enables: [access-control, payment-routing]\n  relationships:\n    - "governs access to Artifacts"\n    - "reads Artifact.state for auth"\n    - "returns PermissionResult to Executor"',
-    ],
   },
   {
-    id: 'glossary',
-    zoom: 4,
-    label: 'Glossary',
-    size: '~30 terms',
-    sizeNum: 60,
-    question: 'What does this word mean?',
-    description: 'Canonical vocabulary. Defines terms like "scrip" (not credits), "principal" (not account), "artifact" (not object). Prevents AI from using wrong terminology.',
-    files: ['docs/GLOSSARY.md'],
-    color: '#f778ba',
-    consumed: false,
-    enforced: false,
+    id: 'glossary', label: 'Glossary', color: '#f778ba', zoom: 4,
+    size: '~30 terms', shape: 'diamond',
+    desc: 'Canonical vocabulary. What words mean in this codebase. Prevents AI from using wrong terms.',
+    compression: '~250:1 — just definitions, no structure.',
+    example: 'docs/GLOSSARY.md',
     freshness: 'Manual (needs injection + freshness)',
-    examples: [
-      'scrip: In-world medium of exchange.\n  NO relationship to real dollars.\n  Use "scrip" not "credits"\n\nprincipal: Any artifact with standing.\n  Use "principal" not "account"',
-    ],
   },
   {
-    id: 'thesis',
-    zoom: 5,
-    label: 'Thesis',
-    size: '~1 paragraph',
-    sizeNum: 10,
-    question: 'Why does this project exist?',
-    description: 'The core proposition: give agents scarcity, sound coordination primitives, and observe what emerges. Everything traces back to this.',
-    files: ['docs/THESIS.md'],
-    color: '#ff7b72',
-    consumed: true,
-    enforced: true,
+    id: 'adr', label: 'ADR', color: '#ffd700', zoom: null,
+    size: '~28 decisions', shape: 'hexagon',
+    desc: 'Architecture Decision Records. The ONLY layer capturing rationale — why, not what.',
+    compression: 'Orthogonal axis — compresses decisions, not structure.',
+    example: 'docs/adr/0028-created-by-informational.md',
+    freshness: 'Governance sync (header injection, enforced)',
+  },
+  {
+    id: 'thesis', label: 'Thesis', color: '#ff7b72', zoom: 5,
+    size: '~1 paragraph', shape: 'circle',
+    desc: 'Why this project exists. The core proposition everything traces back to.',
+    compression: '~1500:1 — the ultimate compression.',
+    example: 'docs/THESIS.md',
     freshness: 'Stable (rarely changes)',
-    examples: [
-      'Give LLM agents real resource constraints\n(compute, disk, API budget), sound\ncoordination primitives (contracts,\nescrow, ledger), and observe what\nemergent collective capability arises.',
-    ],
+  },
+  {
+    id: 'prd', label: 'PRD', color: '#a5d6ff', zoom: null,
+    size: '~capabilities/domain', shape: 'rect',
+    desc: 'Product requirements. What capabilities each domain needs. May collapse into ADRs.',
+    compression: 'Overlaps ADRs + domain models.',
+    example: 'docs/prd/artifacts.md',
+    freshness: 'Manual (evaluate for collapse)',
+  },
+  {
+    id: 'plan', label: 'Plan', color: '#58a6ff', zoom: null,
+    size: '~70 plans', shape: 'rect',
+    desc: 'Implementation plans. Tracks what is being changed, why, and links back to ADRs. Commit messages reference plan numbers.',
+    compression: 'Compresses intent — what a set of changes is trying to achieve.',
+    example: 'docs/plans/311_artifact_state.md',
+    freshness: 'Plan workflow (enforced by commit-msg hook)',
   },
 ];
 
-const ADRS_LAYER = {
-  id: 'adrs',
-  label: 'ADRs',
-  size: '~28 decisions',
-  question: 'Why was this decision made?',
-  description: 'The ONLY layer that captures information not in the code at all — rationale. Why contracts own auth instead of metadata. Why scrip has no real-dollar value. Why there are no ticks.',
-  files: ['docs/adr/0001-everything-is-artifact.md', 'docs/adr/0016-created-by-informational.md', 'docs/adr/0024-handle-request.md', 'docs/adr/0028-created-by-informational.md'],
-  color: '#ffd700',
-  consumed: true,
-  enforced: true,
-  freshness: 'Governance sync (header injection)',
-  examples: [
-    'ADR-0028: created_by is informational\n\nContext: Kernel was using created_by\nfor access control decisions.\n\nDecision: created_by is purely\ninformational (like created_at).\nContracts are the ONLY authority.',
-  ],
-};
-
 const EDGE_TYPES = [
-  { id: 'governance', label: 'Governance', desc: 'ADR governs source file', color: '#ffd700', from: 'ADRs', to: 'Code', enforced: true, mechanism: 'sync_governance.py embeds ADR headers in source files' },
-  { id: 'coupling', label: 'Doc-Code Coupling', desc: 'Source documented by architecture doc', color: '#79c0ff', from: 'Code', to: 'Arch Docs', enforced: true, mechanism: 'CI blocks commits if coupled docs not updated' },
-  { id: 'file_context', label: 'File Context', desc: 'Source linked to PRD + domain model + ADR', color: '#d2a8ff', from: 'Code', to: 'All Layers', enforced: true, mechanism: 'Hooks inject context before edits' },
-  { id: 'conceptual', label: 'Conceptual Model', desc: 'Ontology entity mapped to source', color: '#d2a8ff', from: 'Ontology', to: 'Code', enforced: false, mechanism: 'Declared in relationships.yaml, not yet injected' },
-  { id: 'glossary_map', label: 'Glossary Map', desc: 'Term mapped to implementing file', color: '#f778ba', from: 'Glossary', to: 'Code', enforced: false, mechanism: 'Declared in relationships.yaml, not yet injected' },
-  { id: 'target_link', label: 'Target Link', desc: 'Target architecture linked to current', color: '#8b949e', from: 'Target Arch', to: 'Current Arch', enforced: false, mechanism: 'Informational link in relationships.yaml' },
+  {
+    id: 'governance', label: 'Governance', color: '#ffd700',
+    from: 'adr', to: 'source', style: 'solid', width: 2.5,
+    desc: 'ADR governs source file. Hooks inject ADR context before edits. sync_governance.py embeds headers.',
+    enforced: true,
+    mechanism: 'Hook reads graph → injects ADR text into system prompt before edit',
+  },
+  {
+    id: 'doc_coupling', label: 'Doc-Code Coupling', color: '#79c0ff',
+    from: 'source', to: 'arch_doc', style: 'solid', width: 2.5,
+    desc: 'Source file documented by architecture doc. CI blocks commits if coupled docs not updated together.',
+    enforced: true,
+    mechanism: 'Pre-commit hook checks if source changed → requires paired doc update',
+  },
+  {
+    id: 'file_context', label: 'File Context', color: '#d2a8ff',
+    from: 'source', to: 'domain_model', style: 'solid', width: 2,
+    desc: 'Source linked to domain model concepts, PRD capabilities, ADRs. Hooks inject all before edits.',
+    enforced: true,
+    mechanism: 'Hook reads graph → assembles context blob from all linked layers → injects',
+  },
+  {
+    id: 'conceptual_map', label: 'Entity Mapping', color: '#d2a8ff',
+    from: 'ontology', to: 'source', style: 'dashed', width: 1.5,
+    desc: 'Ontology entity mapped to implementing source file. Declared but not yet injected.',
+    enforced: false,
+    mechanism: 'Declared in graph. Future: inject entity fields when editing implementation.',
+  },
+  {
+    id: 'glossary_map', label: 'Term Mapping', color: '#f778ba',
+    from: 'glossary', to: 'source', style: 'dashed', width: 1.5,
+    desc: 'Glossary term mapped to source file where it\'s implemented. Declared but not yet injected.',
+    enforced: false,
+    mechanism: 'Declared in graph. Future: inject relevant term definitions when editing.',
+  },
+  {
+    id: 'prd_link', label: 'Capability Link', color: '#a5d6ff',
+    from: 'prd', to: 'domain_model', style: 'dashed', width: 1,
+    desc: 'PRD capability enables domain model concepts. Informational hierarchy link.',
+    enforced: false,
+    mechanism: 'Declared in domain_model YAML via enables: field.',
+  },
+  {
+    id: 'target_link', label: 'Target Link', color: '#484f58',
+    from: 'arch_doc', to: 'arch_doc', style: 'dotted', width: 1,
+    desc: 'Current architecture doc linked to its target (aspirational) counterpart.',
+    enforced: false,
+    mechanism: 'Informational link in graph. Shows gap between current and desired state.',
+  },
+  {
+    id: 'thesis_prd', label: 'Drives', color: '#ff7b72',
+    from: 'thesis', to: 'prd', style: 'solid', width: 1.5,
+    desc: 'Thesis goals drive PRD capabilities. Each PRD capability traces back to a thesis proposition.',
+    enforced: false,
+    mechanism: 'PRD frontmatter contains thesis_refs linking to thesis goals.',
+  },
+  {
+    id: 'prd_adr', label: 'Requires', color: '#a5d6ff',
+    from: 'prd', to: 'adr', style: 'dashed', width: 1.5,
+    desc: 'PRD capabilities require architectural decisions. ADRs record how capabilities will be achieved.',
+    enforced: false,
+    mechanism: 'ADRs reference PRD capabilities in their Context section.',
+  },
+  {
+    id: 'adr_plan', label: 'Implemented By', color: '#ffd700',
+    from: 'adr', to: 'plan', style: 'dashed', width: 1.5,
+    desc: 'ADR decisions are implemented through plans. Plans reference governing ADRs.',
+    enforced: false,
+    mechanism: 'Plan files list ADR references. Commit messages link [Plan #N].',
+  },
+  {
+    id: 'plan_source', label: 'Changes', color: '#58a6ff',
+    from: 'plan', to: 'source', style: 'solid', width: 2,
+    desc: 'Plans produce source code changes. Commit messages reference plan numbers, linking code to intent.',
+    enforced: true,
+    mechanism: 'commit-msg hook validates [Plan #N] format. Git log traces code back to plan.',
+  },
+  {
+    id: 'domain_ontology', label: 'Specifies', color: '#ffa657',
+    from: 'domain_model', to: 'ontology', style: 'dashed', width: 1,
+    desc: 'Domain model concepts get precise field-level definitions in the ontology.',
+    enforced: false,
+    mechanism: 'Ontology entries correspond to domain model concepts with exact fields/types.',
+  },
 ];
 
 const SCENARIOS = [
   {
-    id: 'edit_file',
-    label: 'Editing a single file',
-    desc: 'You\'re modifying executor.py',
-    layers: ['code', 'adrs'],
-    injected: ['Governing ADRs (0024, 0028)', 'Coupled docs to update', 'Domain model concepts', 'Relevant glossary terms'],
-    zoom: 'Zoom 0-2: Need code detail + schema + rationale',
+    id: 'all', label: 'Full Graph',
+    desc: 'All node types and edge types visible.',
+    highlight: null,
+    flow: null,
   },
   {
-    id: 'plan_change',
-    label: 'Planning a multi-file change',
-    desc: 'Redesigning the contract system',
-    layers: ['domain', 'arch', 'adrs'],
-    injected: ['Domain model relationships', 'Architecture doc overviews', 'All governing ADRs', 'Affected file list from graph'],
-    zoom: 'Zoom 1-3: Need system relationships, not line-level detail',
+    id: 'edit_file', label: 'Editing a Source File',
+    desc: 'What happens when an AI agent edits executor.py',
+    highlight: { nodes: ['source', 'adr', 'arch_doc', 'domain_model', 'glossary', 'ontology'], edges: ['governance', 'doc_coupling', 'file_context', 'conceptual_map', 'glossary_map'] },
+    flow: [
+      'Agent opens src/world/executor.py for editing',
+      'Hook fires → queries context graph for this file',
+      'Graph returns: governing ADRs, coupled docs, domain concepts, glossary terms',
+      'Context assembled and injected into AI prompt',
+      'AI edits with full architectural awareness',
+      'Post-edit: CI verifies coupled docs updated',
+    ],
   },
   {
-    id: 'new_contributor',
-    label: 'New to the project',
-    desc: 'First time seeing this codebase',
-    layers: ['thesis', 'glossary', 'domain'],
-    injected: ['Thesis (why this exists)', 'Glossary (what words mean)', 'Domain model (how concepts relate)', 'Architecture overview'],
-    zoom: 'Zoom 3-5: Need vocabulary and purpose before detail',
+    id: 'traceability', label: 'Full Traceability Chain',
+    desc: 'How intent flows from thesis to code',
+    highlight: { nodes: ['thesis', 'prd', 'adr', 'plan', 'source'], edges: ['thesis_prd', 'prd_adr', 'adr_plan', 'plan_source'] },
+    flow: [
+      'Thesis: "Give agents scarcity and observe what emerges"',
+      'PRD: "System must support contract-based access control"',
+      'ADR-0003: "Contracts can do anything — no kernel-prescribed limits"',
+      'Plan #311: "Move auth data from metadata to artifact.state"',
+      'Code: artifact.state dict + contract reads context["_artifact_state"]',
+      'Every line of code traces back to WHY through this chain',
+    ],
   },
   {
-    id: 'debug',
-    label: 'Debugging a permission failure',
-    desc: 'Agent can\'t write to an artifact',
-    layers: ['code', 'ontology', 'adrs'],
-    injected: ['Artifact.state fields (ontology)', 'Contract check_permission flow', 'ADR-0028 (created_by is informational)', 'Permission checker source'],
-    zoom: 'Zoom 0-2: Need exact fields + exact flow + why it works this way',
+    id: 'enforced', label: 'Enforced Edges Only',
+    desc: 'Only edges with active enforcement (CI or hooks)',
+    highlight: { nodes: ['source', 'adr', 'arch_doc', 'domain_model', 'plan'], edges: ['governance', 'doc_coupling', 'file_context', 'plan_source'] },
+    flow: [
+      'Four edge types are actively enforced:',
+      'Governance: ADR headers synced into source files',
+      'Doc-coupling: CI blocks commits if docs not updated',
+      'File context: Hooks inject linked context before edits',
+      'Plan-source: commit-msg hook requires [Plan #N] format',
+    ],
+  },
+  {
+    id: 'compression', label: 'Compression Hierarchy',
+    desc: 'Zoom levels from full code to one-paragraph thesis',
+    highlight: { nodes: ['source', 'arch_doc', 'ontology', 'domain_model', 'glossary', 'thesis'], edges: ['domain_ontology'] },
+    flow: [
+      'Zoom 0: Code (~15,000 lines) — "What does this line do?"',
+      'Zoom 1: Arch Docs (~2,000 lines) — "How does this system work?"',
+      'Zoom 2: Ontology (~300 lines) — "What entities and fields exist?"',
+      'Zoom 3: Domain Model (~200 lines) — "How do concepts relate?"',
+      'Zoom 4: Glossary (~30 terms) — "What does this word mean?"',
+      'Zoom 5: Thesis (~1 paragraph) — "Why does this project exist?"',
+    ],
   },
 ];
 
-// ─── Components ─────────────────────────────────────────────────────────────
+// ─── Graph Layout ───────────────────────────────────────────────────────────
 
-function Header() {
-  return (
-    <header style={{
-      padding: '40px 40px 20px',
-      borderBottom: '1px solid #21262d',
-      background: 'linear-gradient(180deg, #0d1117 0%, #0a0e17 100%)',
-    }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ fontSize: 12, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 8 }}>
-          META-ADR-0005
-        </div>
-        <h1 style={{ fontSize: 32, fontWeight: 700, color: '#f0f6fc', marginBottom: 12 }}>
-          Hierarchical Context Compression
-        </h1>
-        <p style={{ fontSize: 16, color: '#8b949e', maxWidth: 720, lineHeight: 1.6 }}>
-          Documentation layers are lossy compressions of the codebase at different zoom levels.
-          The context graph routes to the right compression for the current task.
-        </p>
-      </div>
-    </header>
-  );
+// Position nodes in a meaningful layout (not force-directed — we want conceptual clarity)
+function getNodePositions(w, h) {
+  const cx = w / 2;
+  const cy = h / 2;
+  return {
+    // Bottom: code + implementation
+    source:       { x: cx,       y: cy + 180 },
+    plan:         { x: cx - 200, y: cy + 100 },
+    arch_doc:     { x: cx + 240, y: cy + 60 },
+    // Middle: architecture + decisions
+    adr:          { x: cx - 260, y: cy - 20 },
+    ontology:     { x: cx + 180, y: cy - 80 },
+    // Upper middle: concepts
+    domain_model: { x: cx,       y: cy - 100 },
+    glossary:     { x: cx - 180, y: cy - 160 },
+    // Top: vision
+    prd:          { x: cx + 100, y: cy - 240 },
+    thesis:       { x: cx - 80,  y: cy - 300 },
+  };
 }
 
-function CompressionBar({ layer, maxSize, isSelected, isHighlighted, onClick }) {
-  const barWidth = Math.max(3, (Math.log(layer.sizeNum + 1) / Math.log(maxSize + 1)) * 100);
-  const opacity = isHighlighted === null ? 1 : isHighlighted ? 1 : 0.25;
+// ─── Rendering ──────────────────────────────────────────────────────────────
 
-  return (
-    <div
-      onClick={() => onClick(layer.id)}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 16,
-        padding: '12px 16px',
-        cursor: 'pointer',
-        borderRadius: 8,
-        border: isSelected ? `1px solid ${layer.color}44` : '1px solid transparent',
-        background: isSelected ? `${layer.color}08` : 'transparent',
-        transition: 'all 0.2s ease',
-        opacity,
-      }}
-    >
-      <div style={{ width: 80, textAlign: 'right', flexShrink: 0 }}>
-        <div style={{ fontSize: 11, color: '#8b949e', fontFamily: 'monospace' }}>ZOOM {layer.zoom}</div>
-      </div>
+const graphArea = document.getElementById('graph-area');
+const width = graphArea.clientWidth;
+const height = graphArea.clientHeight;
+const positions = getNodePositions(width, height);
 
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-          <span style={{ fontSize: 15, fontWeight: 600, color: layer.color }}>{layer.label}</span>
-          <span style={{ fontSize: 12, color: '#484f58', fontFamily: 'monospace' }}>{layer.size}</span>
-          {layer.enforced && (
-            <span style={{
-              fontSize: 10, padding: '2px 6px', borderRadius: 4,
-              background: '#23883622', color: '#3fb950', fontWeight: 600,
-            }}>ENFORCED</span>
-          )}
-          {!layer.enforced && (
-            <span style={{
-              fontSize: 10, padding: '2px 6px', borderRadius: 4,
-              background: '#da363622', color: '#f85149', fontWeight: 600,
-            }}>NEEDS FRESHNESS</span>
-          )}
-        </div>
+const svg = d3.select('#graph-area')
+  .append('svg')
+  .attr('width', width)
+  .attr('height', height);
 
-        <div style={{ position: 'relative', height: 8, background: '#161b22', borderRadius: 4, overflow: 'hidden' }}>
-          <div style={{
-            width: `${barWidth}%`,
-            height: '100%',
-            background: `linear-gradient(90deg, ${layer.color}88, ${layer.color})`,
-            borderRadius: 4,
-            transition: 'width 0.5s ease',
-          }} />
-        </div>
+// Defs for arrowheads
+const defs = svg.append('defs');
+EDGE_TYPES.forEach(e => {
+  defs.append('marker')
+    .attr('id', `arrow-${e.id}`)
+    .attr('viewBox', '0 -5 10 10')
+    .attr('refX', 28)
+    .attr('refY', 0)
+    .attr('markerWidth', 6)
+    .attr('markerHeight', 6)
+    .attr('orient', 'auto')
+    .append('path')
+    .attr('d', 'M0,-4L10,0L0,4')
+    .attr('fill', e.color);
+});
 
-        <div style={{ fontSize: 12, color: '#8b949e', marginTop: 4, fontStyle: 'italic' }}>
-          "{layer.question}"
-        </div>
-      </div>
-    </div>
-  );
-}
+const g = svg.append('g');
 
-function ADRSidebar({ isSelected, isHighlighted, onClick }) {
-  const a = ADRS_LAYER;
-  const opacity = isHighlighted === null ? 1 : isHighlighted ? 1 : 0.25;
+// Zoom
+const zoom = d3.zoom()
+  .scaleExtent([0.3, 3])
+  .on('zoom', (event) => g.attr('transform', event.transform));
+svg.call(zoom);
 
-  return (
-    <div
-      onClick={() => onClick('adrs')}
-      style={{
-        padding: '16px',
-        borderRadius: 8,
-        border: isSelected ? `1px solid ${a.color}44` : '1px solid #21262d',
-        background: isSelected ? `${a.color}08` : '#0d1117',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
-        opacity,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <span style={{ fontSize: 15, fontWeight: 600, color: a.color }}>{a.label}</span>
-        <span style={{ fontSize: 12, color: '#484f58', fontFamily: 'monospace' }}>{a.size}</span>
-        <span style={{
-          fontSize: 10, padding: '2px 6px', borderRadius: 4,
-          background: '#23883622', color: '#3fb950', fontWeight: 600,
-        }}>ENFORCED</span>
-      </div>
-      <div style={{ fontSize: 12, color: '#8b949e', fontStyle: 'italic', marginBottom: 6 }}>
-        "{a.question}"
-      </div>
-      <div style={{ fontSize: 11, color: '#6e7681' }}>
-        Compresses <strong style={{ color: '#c9d1d9' }}>rationale</strong> — the only axis not in code
-      </div>
-    </div>
-  );
-}
+// Center initially
+const initTransform = d3.zoomIdentity.translate(0, 60).scale(0.9);
+svg.call(zoom.transform, initTransform);
 
-function DetailPanel({ selectedId }) {
-  const item = selectedId === 'adrs'
-    ? ADRS_LAYER
-    : LAYERS.find(l => l.id === selectedId);
+// ── Draw edges ──
+const edgeGroup = g.append('g');
 
-  if (!item) {
-    return (
-      <div style={{
-        padding: 32,
-        textAlign: 'center',
-        color: '#484f58',
-        border: '1px dashed #21262d',
-        borderRadius: 8,
-      }}>
-        Click a layer to see details
-      </div>
-    );
+const edgeElements = EDGE_TYPES.map(e => {
+  const fromPos = positions[e.from];
+  const toPos = e.to === e.from
+    ? { x: positions[e.from].x + 60, y: positions[e.from].y - 60 }
+    : positions[e.to];
+
+  if (!fromPos || !toPos) return null;
+
+  const line = edgeGroup.append('line')
+    .attr('x1', fromPos.x)
+    .attr('y1', fromPos.y)
+    .attr('x2', toPos.x)
+    .attr('y2', toPos.y)
+    .attr('stroke', e.color)
+    .attr('stroke-width', e.width)
+    .attr('stroke-dasharray', e.style === 'dashed' ? '8,4' : e.style === 'dotted' ? '3,3' : null)
+    .attr('stroke-opacity', 0.7)
+    .attr('marker-end', `url(#arrow-${e.id})`)
+    .attr('data-edge-id', e.id)
+    .style('cursor', 'pointer');
+
+  // Edge label at midpoint
+  const mx = (fromPos.x + toPos.x) / 2;
+  const my = (fromPos.y + toPos.y) / 2;
+  const labelEl = edgeGroup.append('text')
+    .attr('x', mx)
+    .attr('y', my - 6)
+    .attr('text-anchor', 'middle')
+    .attr('fill', e.color)
+    .attr('font-size', '9px')
+    .attr('font-family', 'Inter, system-ui, sans-serif')
+    .attr('opacity', 0.8)
+    .attr('data-edge-id', e.id)
+    .text(e.label);
+
+  return { line, labelEl, data: e };
+}).filter(Boolean);
+
+// ── Draw nodes ──
+const nodeGroup = g.append('g');
+
+const nodeElements = NODE_TYPES.map(n => {
+  const pos = positions[n.id];
+  if (!pos) return null;
+
+  const group = nodeGroup.append('g')
+    .attr('transform', `translate(${pos.x}, ${pos.y})`)
+    .attr('data-node-id', n.id)
+    .style('cursor', 'pointer');
+
+  // Shape
+  const r = 22;
+  if (n.shape === 'hexagon') {
+    const hex = d3.range(6).map(i => {
+      const angle = (Math.PI / 3) * i - Math.PI / 6;
+      return [r * Math.cos(angle), r * Math.sin(angle)];
+    });
+    group.append('polygon')
+      .attr('points', hex.map(p => p.join(',')).join(' '))
+      .attr('fill', n.color + '22')
+      .attr('stroke', n.color)
+      .attr('stroke-width', 2);
+  } else if (n.shape === 'diamond') {
+    group.append('polygon')
+      .attr('points', `0,${-r} ${r},0 0,${r} ${-r},0`)
+      .attr('fill', n.color + '22')
+      .attr('stroke', n.color)
+      .attr('stroke-width', 2);
+  } else if (n.shape === 'circle') {
+    group.append('circle')
+      .attr('r', r)
+      .attr('fill', n.color + '22')
+      .attr('stroke', n.color)
+      .attr('stroke-width', 2);
+  } else {
+    group.append('rect')
+      .attr('x', -r * 1.3)
+      .attr('y', -r * 0.8)
+      .attr('width', r * 2.6)
+      .attr('height', r * 1.6)
+      .attr('rx', 6)
+      .attr('fill', n.color + '22')
+      .attr('stroke', n.color)
+      .attr('stroke-width', 2);
   }
 
-  return (
-    <div style={{
-      padding: 24,
-      borderRadius: 8,
-      border: `1px solid ${item.color}33`,
-      background: '#0d1117',
-    }}>
-      <h3 style={{ color: item.color, fontSize: 18, marginBottom: 8 }}>{item.label}</h3>
-      <p style={{ fontSize: 14, color: '#c9d1d9', lineHeight: 1.6, marginBottom: 16 }}>
-        {item.description}
-      </p>
+  // Zoom badge
+  if (n.zoom !== null) {
+    group.append('circle')
+      .attr('cx', r + 4)
+      .attr('cy', -r + 2)
+      .attr('r', 9)
+      .attr('fill', '#0d1117')
+      .attr('stroke', n.color)
+      .attr('stroke-width', 1.5);
+    group.append('text')
+      .attr('x', r + 4)
+      .attr('y', -r + 6)
+      .attr('text-anchor', 'middle')
+      .attr('fill', n.color)
+      .attr('font-size', '9px')
+      .attr('font-weight', '700')
+      .attr('font-family', 'Inter, system-ui, sans-serif')
+      .text(n.zoom);
+  }
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-        <div>
-          <div style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-            Files
-          </div>
-          <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#c9d1d9' }}>
-            {item.files.map((f, i) => (
-              <div key={i} style={{ padding: '2px 0', color: f.startsWith('...') ? '#484f58' : '#c9d1d9' }}>{f}</div>
-            ))}
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-            Freshness Mechanism
-          </div>
-          <div style={{ fontSize: 13, color: item.enforced ? '#3fb950' : '#f85149' }}>
-            {item.freshness}
-          </div>
-        </div>
-      </div>
+  // Label
+  group.append('text')
+    .attr('class', 'node-label')
+    .attr('y', r + 16)
+    .text(n.label);
 
-      {item.examples && (
-        <div>
-          <div style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-            Example Content
-          </div>
-          <pre style={{
-            fontSize: 12,
-            fontFamily: 'monospace',
-            padding: 16,
-            background: '#161b22',
-            borderRadius: 6,
-            border: '1px solid #21262d',
-            color: item.color,
-            overflow: 'auto',
-            lineHeight: 1.5,
-            whiteSpace: 'pre-wrap',
-          }}>
-            {item.examples[0]}
-          </pre>
-        </div>
-      )}
-    </div>
-  );
-}
+  // Size sublabel
+  group.append('text')
+    .attr('class', 'node-sublabel')
+    .attr('y', r + 28)
+    .text(n.size);
 
-function ScenarioCard({ scenario, isSelected, onClick }) {
-  return (
-    <div
-      onClick={() => onClick(scenario.id)}
-      style={{
-        padding: 16,
-        borderRadius: 8,
-        border: isSelected ? '1px solid #58a6ff' : '1px solid #21262d',
-        background: isSelected ? '#58a6ff08' : '#0d1117',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
-      }}
-    >
-      <div style={{ fontSize: 14, fontWeight: 600, color: isSelected ? '#58a6ff' : '#c9d1d9', marginBottom: 4 }}>
-        {scenario.label}
-      </div>
-      <div style={{ fontSize: 12, color: '#8b949e', marginBottom: 10 }}>
-        {scenario.desc}
-      </div>
-      {isSelected && (
-        <div>
-          <div style={{ fontSize: 11, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-            Context Injected
-          </div>
-          {scenario.injected.map((item, i) => (
-            <div key={i} style={{ fontSize: 12, color: '#c9d1d9', padding: '2px 0', paddingLeft: 12, position: 'relative' }}>
-              <span style={{ position: 'absolute', left: 0, color: '#3fb950' }}>+</span>
-              {item}
-            </div>
-          ))}
-          <div style={{ fontSize: 11, color: '#6e7681', marginTop: 8, fontStyle: 'italic' }}>
-            {scenario.zoom}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+  return { group, data: n };
+}).filter(Boolean);
 
-function EdgeTypesPanel() {
-  return (
-    <div style={{
-      padding: 24,
-      borderRadius: 8,
-      border: '1px solid #21262d',
-      background: '#0d1117',
-    }}>
-      <h3 style={{ fontSize: 16, color: '#f0f6fc', marginBottom: 16 }}>
-        Context Graph Edge Types
-      </h3>
-      <div style={{ fontSize: 13, color: '#8b949e', marginBottom: 16, lineHeight: 1.5 }}>
-        The graph in <code style={{ color: '#79c0ff', background: '#161b22', padding: '1px 5px', borderRadius: 3 }}>
-        scripts/relationships.yaml</code> routes between compression layers using these edge types:
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {EDGE_TYPES.map(edge => (
-          <div key={edge.id} style={{
-            display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 12px',
-            borderRadius: 6, background: '#161b22',
-          }}>
-            <div style={{
-              width: 8, height: 8, borderRadius: '50%', background: edge.color,
-              marginTop: 5, flexShrink: 0,
-            }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#c9d1d9' }}>{edge.label}</span>
-                <span style={{ fontSize: 11, color: '#484f58' }}>{edge.from} → {edge.to}</span>
-                {edge.enforced ? (
-                  <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: '#23883622', color: '#3fb950' }}>
-                    Active
-                  </span>
-                ) : (
-                  <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, background: '#30363d', color: '#8b949e' }}>
-                    Declared
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: 12, color: '#8b949e' }}>{edge.mechanism}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+// ─── Sidebar Legend ─────────────────────────────────────────────────────────
 
-function CacheAnalogy() {
-  return (
-    <div style={{
-      padding: 24,
-      borderRadius: 8,
-      border: '1px solid #da363633',
-      background: '#0d1117',
-    }}>
-      <h3 style={{ fontSize: 16, color: '#f0f6fc', marginBottom: 12 }}>
-        The Cache Analogy
-      </h3>
-      <div style={{ fontSize: 13, color: '#c9d1d9', lineHeight: 1.7 }}>
-        <p style={{ marginBottom: 12 }}>
-          Each documentation layer is a <strong style={{ color: '#f85149' }}>cache</strong> of the codebase.
-          Caches are valuable because they're fast to read. But stale caches are
-          <strong style={{ color: '#f85149' }}> worse than no cache</strong> — they give confident wrong answers.
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div style={{ padding: 12, background: '#23883611', borderRadius: 6, border: '1px solid #23883633' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#3fb950', marginBottom: 6 }}>
-              Cache invalidation (working)
-            </div>
-            <div style={{ fontSize: 12, color: '#8b949e' }}>
-              Doc-code coupling checks (CI)<br/>
-              Governance header sync<br/>
-              Hook-injected context
-            </div>
-          </div>
-          <div style={{ padding: 12, background: '#da363611', borderRadius: 6, border: '1px solid #da363633' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#f85149', marginBottom: 6 }}>
-              Cache invalidation (missing)
-            </div>
-            <div style={{ fontSize: 12, color: '#8b949e' }}>
-              Ontology vs code drift<br/>
-              Domain model vs code drift<br/>
-              Glossary term staleness
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CompressionRatioViz() {
-  const total = 15000;
-  const layers = LAYERS.map(l => ({
-    ...l,
-    ratio: l.sizeNum === total ? '1:1' : `${Math.round(total / l.sizeNum)}:1`,
-    pct: (l.sizeNum / total) * 100,
-  }));
-
-  return (
-    <div style={{
-      padding: 24,
-      borderRadius: 8,
-      border: '1px solid #21262d',
-      background: '#0d1117',
-    }}>
-      <h3 style={{ fontSize: 16, color: '#f0f6fc', marginBottom: 4 }}>
-        Compression Ratios
-      </h3>
-      <div style={{ fontSize: 12, color: '#8b949e', marginBottom: 16 }}>
-        How much each layer compresses relative to the full codebase
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {layers.map(l => (
-          <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 100, textAlign: 'right', fontSize: 12, color: l.color, fontWeight: 600 }}>
-              {l.label}
-            </div>
-            <div style={{ flex: 1, position: 'relative', height: 20, background: '#161b22', borderRadius: 4 }}>
-              <div style={{
-                width: `${Math.max(1, l.pct)}%`,
-                height: '100%',
-                background: l.color,
-                borderRadius: 4,
-                opacity: 0.6,
-              }} />
-            </div>
-            <div style={{ width: 60, fontSize: 13, color: '#c9d1d9', fontFamily: 'monospace', fontWeight: 600 }}>
-              {l.ratio}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function JustificationTable() {
-  const allLayers = [...LAYERS, ADRS_LAYER];
-  return (
-    <div style={{
-      padding: 24,
-      borderRadius: 8,
-      border: '1px solid #21262d',
-      background: '#0d1117',
-    }}>
-      <h3 style={{ fontSize: 16, color: '#f0f6fc', marginBottom: 4 }}>
-        Layer Justification Test
-      </h3>
-      <div style={{ fontSize: 12, color: '#8b949e', marginBottom: 16 }}>
-        Every layer must: (1) compress something unique, (2) be consumed, (3) have a freshness mechanism
-      </div>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid #21262d' }}>
-              {['Layer', 'Unique?', 'Consumed?', 'Fresh?', 'Verdict'].map(h => (
-                <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#8b949e', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {allLayers.sort((a, b) => (a.zoom ?? -1) - (b.zoom ?? -1)).map(l => {
-              const passes = l.consumed && l.enforced;
-              const partial = l.consumed || l.enforced;
-              return (
-                <tr key={l.id} style={{ borderBottom: '1px solid #161b22' }}>
-                  <td style={{ padding: '8px 12px', color: l.color, fontWeight: 600 }}>{l.label}</td>
-                  <td style={{ padding: '8px 12px', color: '#3fb950' }}>Yes</td>
-                  <td style={{ padding: '8px 12px', color: l.consumed ? '#3fb950' : '#f85149' }}>
-                    {l.consumed ? 'Yes' : 'Partial'}
-                  </td>
-                  <td style={{ padding: '8px 12px', color: l.enforced ? '#3fb950' : '#f85149' }}>
-                    {l.enforced ? 'Yes' : 'No'}
-                  </td>
-                  <td style={{ padding: '8px 12px' }}>
-                    {passes ? (
-                      <span style={{ color: '#3fb950', fontWeight: 600 }}>Keep</span>
-                    ) : (
-                      <span style={{ color: '#d29922', fontWeight: 600 }}>Keep + add freshness</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ─── Main App ───────────────────────────────────────────────────────────────
-
-function App() {
-  const [selectedLayer, setSelectedLayer] = useState(null);
-  const [selectedScenario, setSelectedScenario] = useState(null);
-  const [activeTab, setActiveTab] = useState('hierarchy');
-
-  const maxSize = Math.max(...LAYERS.map(l => l.sizeNum));
-
-  const highlightedLayers = useMemo(() => {
-    if (!selectedScenario) return null;
-    const sc = SCENARIOS.find(s => s.id === selectedScenario);
-    return sc ? sc.layers : null;
-  }, [selectedScenario]);
-
-  const handleLayerClick = useCallback((id) => {
-    setSelectedLayer(prev => prev === id ? null : id);
-    setSelectedScenario(null);
-  }, []);
-
-  const handleScenarioClick = useCallback((id) => {
-    setSelectedScenario(prev => prev === id ? null : id);
-    setSelectedLayer(null);
-  }, []);
-
-  const tabs = [
-    { id: 'hierarchy', label: 'Compression Hierarchy' },
-    { id: 'routing', label: 'Context Routing' },
-    { id: 'health', label: 'Layer Health' },
-  ];
-
-  return (
+const nodeLegend = document.getElementById('node-legend');
+NODE_TYPES.forEach(n => {
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  item.dataset.nodeId = n.id;
+  item.innerHTML = `
+    <div class="legend-dot" style="background: ${n.color}33; border-color: ${n.color};"></div>
     <div>
-      <Header />
-
-      {/* Tab bar */}
-      <div style={{
-        display: 'flex', gap: 0, padding: '0 40px',
-        borderBottom: '1px solid #21262d',
-        background: '#0d1117',
-        maxWidth: 1280, margin: '0 auto',
-      }}>
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '12px 20px',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === tab.id ? '2px solid #58a6ff' : '2px solid transparent',
-              color: activeTab === tab.id ? '#f0f6fc' : '#8b949e',
-              fontSize: 14,
-              fontWeight: activeTab === tab.id ? 600 : 400,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <main style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 40px' }}>
-
-        {/* ── Tab: Hierarchy ── */}
-        {activeTab === 'hierarchy' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 24 }}>
-            <div>
-              {/* Compression bars */}
-              <div style={{ marginBottom: 24 }}>
-                <h2 style={{ fontSize: 14, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
-                  Structural Compression (zoom levels)
-                </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {LAYERS.map(layer => (
-                    <CompressionBar
-                      key={layer.id}
-                      layer={layer}
-                      maxSize={maxSize}
-                      isSelected={selectedLayer === layer.id}
-                      isHighlighted={highlightedLayers ? highlightedLayers.includes(layer.id) : null}
-                      onClick={handleLayerClick}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* ADR sidebar */}
-              <div style={{ marginBottom: 24 }}>
-                <h2 style={{ fontSize: 14, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
-                  Rationale Compression (orthogonal axis)
-                </h2>
-                <ADRSidebar
-                  isSelected={selectedLayer === 'adrs'}
-                  isHighlighted={highlightedLayers ? highlightedLayers.includes('adrs') : null}
-                  onClick={handleLayerClick}
-                />
-              </div>
-
-              {/* Compression ratios */}
-              <CompressionRatioViz />
-            </div>
-
-            {/* Right panel */}
-            <div>
-              <DetailPanel selectedId={selectedLayer} />
-            </div>
-          </div>
-        )}
-
-        {/* ── Tab: Routing ── */}
-        {activeTab === 'routing' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-            <div>
-              <h2 style={{ fontSize: 14, color: '#8b949e', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
-                Task Scenarios
-              </h2>
-              <div style={{ fontSize: 13, color: '#8b949e', marginBottom: 16, lineHeight: 1.5 }}>
-                The context graph routes to different zoom levels depending on what you're doing.
-                Click a scenario to see what gets injected.
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {SCENARIOS.map(s => (
-                  <ScenarioCard
-                    key={s.id}
-                    scenario={s}
-                    isSelected={selectedScenario === s.id}
-                    onClick={handleScenarioClick}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-              <EdgeTypesPanel />
-              <CacheAnalogy />
-            </div>
-          </div>
-        )}
-
-        {/* ── Tab: Health ── */}
-        {activeTab === 'health' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <JustificationTable />
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-              <CacheAnalogy />
-
-              <div style={{
-                padding: 24, borderRadius: 8, border: '1px solid #21262d', background: '#0d1117',
-              }}>
-                <h3 style={{ fontSize: 16, color: '#f0f6fc', marginBottom: 12 }}>
-                  Next Steps
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {[
-                    { status: 'todo', text: 'Add glossary term injection to edit hooks' },
-                    { status: 'todo', text: 'Add ontology field injection to edit hooks' },
-                    { status: 'todo', text: 'Add freshness check for domain model vs code' },
-                    { status: 'todo', text: 'Evaluate collapsing PRDs into ADRs' },
-                    { status: 'done', text: 'ADR governance sync (sync_governance.py)' },
-                    { status: 'done', text: 'Doc-code coupling enforcement (CI)' },
-                    { status: 'done', text: 'File context injection (hooks)' },
-                  ].map((item, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                      <span style={{
-                        color: item.status === 'done' ? '#3fb950' : '#d29922',
-                        fontWeight: 600,
-                        width: 16,
-                      }}>
-                        {item.status === 'done' ? '\u2713' : '\u25CB'}
-                      </span>
-                      <span style={{ color: item.status === 'done' ? '#8b949e' : '#c9d1d9' }}>
-                        {item.text}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Architecture diagram */}
-            <div style={{
-              padding: 24, borderRadius: 8, border: '1px solid #21262d', background: '#0d1117',
-            }}>
-              <h3 style={{ fontSize: 16, color: '#f0f6fc', marginBottom: 16 }}>
-                System Architecture
-              </h3>
-              <pre style={{
-                fontSize: 13, fontFamily: 'monospace', lineHeight: 1.6, color: '#c9d1d9',
-                overflow: 'auto', padding: 16, background: '#161b22', borderRadius: 6,
-              }}>{`
-  ┌─────────────────────────────────────────────────────────────┐
-  │                    AI Agent / Claude Code                    │
-  │                  "I need to edit executor.py"                │
-  └──────────────────────────┬──────────────────────────────────┘
-                             │
-                             ▼
-  ┌─────────────────────────────────────────────────────────────┐
-  │              Context Graph (relationships.yaml)              │
-  │                                                             │
-  │   executor.py ──governance──► ADR-0024, ADR-0028            │
-  │   executor.py ──coupling───► artifacts_executor.md          │
-  │   executor.py ──context────► prd/artifacts, domain/agents   │
-  │   executor.py ──conceptual─► Artifact, Executor (ontology)  │
-  │   executor.py ──glossary───► "principal", "scrip", "state"  │
-  └──────────────────────────┬──────────────────────────────────┘
-                             │
-                   ┌─────────┼─────────┐
-                   ▼         ▼         ▼
-              ┌────────┐ ┌───────┐ ┌──────────┐
-              │  ADRs  │ │ Arch  │ │ Ontology │  ...layers
-              │ (why)  │ │ (how) │ │ (schema) │
-              └────────┘ └───────┘ └──────────┘
-                   │         │         │
-                   └─────────┼─────────┘
-                             ▼
-              ┌──────────────────────────────┐
-              │    Assembled Context Blob     │
-              │   Injected via hook before    │
-              │        edit proceeds          │
-              └──────────────────────────────┘`}
-              </pre>
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer style={{
-        padding: '24px 40px',
-        borderTop: '1px solid #21262d',
-        textAlign: 'center',
-        color: '#484f58',
-        fontSize: 12,
-      }}>
-        META-ADR-0005: Hierarchical Context Compression
-        &nbsp;&middot;&nbsp; Agent Ecology meta-process
-        &nbsp;&middot;&nbsp; {new Date().toISOString().split('T')[0]}
-      </footer>
+      <div class="legend-label">${n.label}</div>
+      <div class="legend-sub">${n.zoom !== null ? `Zoom ${n.zoom} · ` : ''}${n.size}</div>
     </div>
-  );
+  `;
+  item.addEventListener('click', () => showNodeDetail(n));
+  nodeLegend.appendChild(item);
+});
+
+const edgeLegend = document.getElementById('edge-legend');
+EDGE_TYPES.forEach(e => {
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  item.dataset.edgeId = e.id;
+  const dashStyle = e.style === 'dashed' ? 'border-top-style: dashed;' : e.style === 'dotted' ? 'border-top-style: dotted;' : '';
+  item.innerHTML = `
+    <div class="legend-line" style="border-top-color: ${e.color}; ${dashStyle}"></div>
+    <div>
+      <div class="legend-label">${e.label}</div>
+      <div class="legend-sub">${e.enforced ? 'Enforced' : 'Declared'}</div>
+    </div>
+  `;
+  item.addEventListener('click', () => showEdgeDetail(e));
+  edgeLegend.appendChild(item);
+});
+
+// ─── Interactions ───────────────────────────────────────────────────────────
+
+const detailPanel = document.getElementById('detail-panel');
+const tooltip = document.getElementById('tooltip');
+const infoOverlay = document.getElementById('info-overlay');
+
+function showNodeDetail(n) {
+  const enfTag = n.freshness.includes('enforced') || n.freshness.includes('Enforced') || n.freshness === 'Is the truth (always fresh)' || n.freshness.includes('Stable')
+    ? `<span class="tag" style="background: #23883633; color: #3fb950;">Enforced</span>`
+    : `<span class="tag" style="background: #da363622; color: #f85149;">Needs freshness</span>`;
+  detailPanel.innerHTML = `
+    <h3 style="color: ${n.color}">${n.label}</h3>
+    ${enfTag}
+    ${n.zoom !== null ? `<span class="tag" style="background: ${n.color}22; color: ${n.color};">Zoom ${n.zoom}</span>` : ''}
+    <p style="margin-top: 8px;">${n.desc}</p>
+    <p style="margin-top: 8px;"><strong style="color:#c9d1d9">Compression:</strong> ${n.compression}</p>
+    <p><strong style="color:#c9d1d9">Freshness:</strong> ${n.freshness}</p>
+    <p><strong style="color:#c9d1d9">Example:</strong> <code>${n.example}</code></p>
+  `;
+  // Highlight
+  highlightNode(n.id);
 }
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+function showEdgeDetail(e) {
+  const enfTag = e.enforced
+    ? `<span class="tag" style="background: #23883633; color: #3fb950;">Enforced</span>`
+    : `<span class="tag" style="background: #30363d; color: #8b949e;">Declared only</span>`;
+  detailPanel.innerHTML = `
+    <h3 style="color: ${e.color}">${e.label}</h3>
+    ${enfTag}
+    <p style="margin-top: 8px;">${e.desc}</p>
+    <p style="margin-top: 8px;"><strong style="color:#c9d1d9">How it works:</strong> ${e.mechanism}</p>
+  `;
+  highlightEdge(e.id);
+}
+
+function highlightNode(nodeId) {
+  nodeElements.forEach(n => {
+    n.group.attr('opacity', n.data.id === nodeId ? 1 : 0.3);
+  });
+  // Highlight connected edges
+  edgeElements.forEach(e => {
+    const connected = e.data.from === nodeId || e.data.to === nodeId;
+    e.line.attr('stroke-opacity', connected ? 0.9 : 0.1);
+    e.labelEl.attr('opacity', connected ? 1 : 0.15);
+  });
+}
+
+function highlightEdge(edgeId) {
+  edgeElements.forEach(e => {
+    const match = e.data.id === edgeId;
+    e.line.attr('stroke-opacity', match ? 0.9 : 0.1);
+    e.labelEl.attr('opacity', match ? 1 : 0.15);
+  });
+  nodeElements.forEach(n => {
+    const edge = EDGE_TYPES.find(e => e.id === edgeId);
+    const connected = edge && (edge.from === n.data.id || edge.to === n.data.id);
+    n.group.attr('opacity', connected ? 1 : 0.3);
+  });
+}
+
+function resetHighlight() {
+  nodeElements.forEach(n => n.group.attr('opacity', 1));
+  edgeElements.forEach(e => {
+    e.line.attr('stroke-opacity', 0.7);
+    e.labelEl.attr('opacity', 0.8);
+  });
+}
+
+function applyScenario(scenario) {
+  if (!scenario.highlight) {
+    resetHighlight();
+    infoOverlay.classList.add('hidden');
+    return;
+  }
+
+  const h = scenario.highlight;
+  nodeElements.forEach(n => {
+    n.group.attr('opacity', h.nodes.includes(n.data.id) ? 1 : 0.15);
+  });
+  edgeElements.forEach(e => {
+    const match = h.edges.includes(e.data.id);
+    e.line.attr('stroke-opacity', match ? 0.9 : 0.08);
+    e.labelEl.attr('opacity', match ? 1 : 0.08);
+  });
+
+  if (scenario.flow) {
+    infoOverlay.classList.remove('hidden');
+    infoOverlay.innerHTML = `
+      <h4>${scenario.label}</h4>
+      ${scenario.flow.map((step, i) => `
+        <div class="flow-step">
+          <span class="flow-num">${i + 1}.</span>
+          <span>${step}</span>
+        </div>
+      `).join('')}
+    `;
+  } else {
+    infoOverlay.classList.add('hidden');
+  }
+}
+
+// ── Scenario buttons ──
+const scenarioBar = document.getElementById('scenario-bar');
+SCENARIOS.forEach(s => {
+  const btn = document.createElement('button');
+  btn.className = 'scenario-btn' + (s.id === 'all' ? ' active' : '');
+  btn.textContent = s.label;
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyScenario(s);
+  });
+  scenarioBar.appendChild(btn);
+});
+
+// ── Node click on SVG ──
+nodeElements.forEach(n => {
+  n.group.on('click', () => showNodeDetail(n.data));
+});
+edgeElements.forEach(e => {
+  e.line.on('click', () => showEdgeDetail(e.data));
+});
+
+// ── Tooltips ──
+nodeElements.forEach(n => {
+  n.group
+    .on('mouseover', (event) => {
+      tooltip.innerHTML = `
+        <div class="tt-title">${n.data.label}</div>
+        <div class="tt-type">${n.data.zoom !== null ? `Zoom ${n.data.zoom} · ` : ''}${n.data.size}</div>
+        <div class="tt-desc">${n.data.desc}</div>
+      `;
+      tooltip.classList.add('visible');
+    })
+    .on('mousemove', (event) => {
+      tooltip.style.left = (event.offsetX + 16) + 'px';
+      tooltip.style.top = (event.offsetY - 10) + 'px';
+    })
+    .on('mouseout', () => tooltip.classList.remove('visible'));
+});
+
+// Double-click to reset
+svg.on('dblclick', () => {
+  resetHighlight();
+  detailPanel.innerHTML = '<h3>Click a node or edge</h3><p>Select any element in the graph to see how it fits into the context system.</p>';
+  document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.scenario-btn').classList.add('active');
+  infoOverlay.classList.add('hidden');
+});
+
 </script>
 </body>
 </html>
