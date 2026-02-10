@@ -99,7 +99,7 @@ genesis:
     ledger:
       enabled: true
     mint:
-      enabled: true
+      enabled: false
     rights_registry:
       enabled: true
     event_log:
@@ -664,7 +664,7 @@ alpha_prime:
 # MINT TASKS - Task-Based Minting (Plan #269)
 # -----------------------------------------------------------------------------
 mint_tasks:
-  enabled: true                           # Enabled for v2 experiment
+  enabled: false                          # Disabled — scrip is zero-sum
   seed_tasks:
     - task_id: "add_numbers"
       description: "Create an artifact that adds two numbers. Your run(a, b) function should return a + b."

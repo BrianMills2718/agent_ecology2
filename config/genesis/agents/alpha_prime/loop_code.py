@@ -26,7 +26,7 @@ def run():
     task_queue = state.get("task_queue", [])
     if not task_queue:
         # No tasks - add initial task
-        task_queue = [{"id": 1, "description": "Query available mint tasks", "priority": 10}]
+        task_queue = [{"id": 1, "description": "Explore available artifacts and other agents", "priority": 10}]
         state["task_queue"] = task_queue
         state["next_task_id"] = 2
 
@@ -37,10 +37,7 @@ def run():
     # Build context for LLM
     recent_completed = state.get("completed_tasks", [])[-5:]  # Last 5 results
     insights = state.get("insights", {})
-    objective = state.get("objective", "Earn scrip by completing mint tasks")
-
-    # Plan #275: Include mint tasks data in prompt so LLM can see available tasks
-    available_tasks = state.get("last_mint_tasks_query", [])
+    objective = state.get("objective", "Build useful tools and trade with other agents")
     action_history = state.get("action_history", [])[-5:]  # Last 5 actions
 
     # Query scrip balance
@@ -59,9 +56,6 @@ STATUS: Iteration {state['iteration']} | Scrip: {scrip_balance} | Artifacts: {le
 
 CURRENT TASK (id={current_task['id']}): {current_task['description']}
 
-AVAILABLE MINT TASKS (from last query):
-{json.dumps(available_tasks, indent=2) if available_tasks else "(Query mint_tasks first to see available tasks)"}
-
 RECENT RESULTS:
 {json.dumps(recent_completed, indent=2) if recent_completed else "(none yet)"}
 
@@ -69,8 +63,6 @@ RECENT ACTIONS:
 {json.dumps(action_history, indent=2) if action_history else "(none yet)"}
 
 INSIGHTS:
-- Closed tasks (don't retry): {insights.get('closed_tasks', [])}
-- Completed submissions: {insights.get('completed_tasks', [])}
 - Artifacts created: {insights.get('artifacts_created', [])}
 
 RESPOND WITH JSON:
@@ -83,16 +75,14 @@ RESPOND WITH JSON:
 }}
 
 ACTIONS:
-- Query tasks: {{"action_type": "query_kernel", "query_type": "mint_tasks", "params": {{}}}}
 - Query artifacts: {{"action_type": "query_kernel", "query_type": "artifacts", "params": {{"name_pattern": "..."}}}}
 - Read artifact: {{"action_type": "read_artifact", "artifact_id": "..."}}
 - Write artifact: {{"action_type": "write_artifact", "artifact_id": "alpha_prime_X", "artifact_type": "executable", "executable": true, "code": "def run(...):\\n    ..."}}
 - Write artifact (with standing): {{"action_type": "write_artifact", "artifact_id": "my_service", "artifact_type": "executable", "executable": true, "has_standing": true, "code": "def run():\\n    ..."}}
 - Invoke artifact: {{"action_type": "invoke_artifact", "artifact_id": "tool_id", "method": "run", "args": [...]}}
 - Transfer scrip: {{"action_type": "transfer", "recipient_id": "...", "amount": 50, "memo": "payment for..."}}
-- Submit to task: {{"action_type": "submit_to_task", "artifact_id": "alpha_prime_X", "task_id": "task_name"}}
 
-CRITICAL: Use UNIQUE artifact IDs. submit_to_task is an action_type, not invoke_artifact."""
+CRITICAL: Use UNIQUE artifact IDs. Scrip is zero-sum — earn it by building useful tools and trading."""
 
     # Call LLM
     llm_result = _syscall_llm(model, [
@@ -182,10 +172,6 @@ CRITICAL: Use UNIQUE artifact IDs. submit_to_task is an action_type, not invoke_
             # Plan #274: Pass caller_id for logging
             result = kernel_state.query(query_type, params, caller_id=caller_id)
             action_result = {"success": True, "result": result}
-            # Plan #275: Store query results in state so LLM can see them
-            if query_type == "mint_tasks":
-                state["last_mint_tasks_query"] = result.get("tasks", [])
-                kernel_actions.write_artifact(caller_id, "alpha_prime_state", json.dumps(state, indent=2))
         except Exception as e:
             action_result = {"success": False, "error": str(e)}
 
@@ -240,24 +226,6 @@ CRITICAL: Use UNIQUE artifact IDs. submit_to_task is an action_type, not invoke_
                 action_result = {"success": True, "result": f"Transferred {amount} to {recipient_id}"}
             else:
                 action_result = {"success": False, "error": "Transfer failed (insufficient funds or invalid recipient)"}
-        except Exception as e:
-            action_result = {"success": False, "error": str(e)}
-
-    elif action_type == "submit_to_task":
-        artifact_id = action.get("artifact_id", "")
-        task_id = action.get("task_id", "")
-        try:
-            result = kernel_actions.submit_to_task(caller_id, artifact_id, task_id)
-            action_result = {"success": True, "result": result}
-            # Update insights on successful submission
-            if result.get("success"):
-                state["insights"].setdefault("completed_tasks", []).append(task_id)
-            elif "no longer open" in str(result.get("error", "")):
-                # Task is closed - add to insights
-                if task_id not in state["insights"].get("closed_tasks", []):
-                    state["insights"].setdefault("closed_tasks", []).append(task_id)
-            # Save updated insights
-            kernel_actions.write_artifact(caller_id, "alpha_prime_state", json.dumps(state, indent=2))
         except Exception as e:
             action_result = {"success": False, "error": str(e)}
 
