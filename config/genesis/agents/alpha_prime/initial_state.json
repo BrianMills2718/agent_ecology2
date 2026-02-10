@@ -1,16 +1,15 @@
 {
   "iteration": 0,
   "created_at": "genesis",
-  "model": "gemini/gemini-2.5-flash",
-  "objective": "Earn 200 scrip by completing mint tasks",
+  "model": "gemini/gemini-2.0-flash",
+  "objective": "Build useful tools and trade with other agents",
   "task_queue": [
-    {"id": 1, "description": "Query available mint tasks", "priority": 10}
+    {"id": 1, "description": "Explore available artifacts and other agents", "priority": 10},
+    {"id": 2, "description": "Build a tool that other agents would pay to use", "priority": 9}
   ],
   "completed_tasks": [],
-  "next_task_id": 2,
+  "next_task_id": 3,
   "insights": {
-    "closed_tasks": [],
-    "completed_tasks": [],
     "artifacts_created": []
   }
 }
