@@ -179,7 +179,8 @@ class TestExecuteWriteArtifact:
             principal_id="agent_1",
             artifact_id="test_artifact",
             artifact_type="data",
-            content="This is test content"
+            content="This is test content",
+            access_contract_id="kernel_contract_freeware",
         )
         result = world.execute_action(intent)
 
@@ -240,7 +241,8 @@ class TestFullTickCycle:
             principal_id="agent_1",
             artifact_id="summary_test_artifact",
             artifact_type="data",
-            content="Test content for summary"
+            content="Test content for summary",
+            access_contract_id="kernel_contract_freeware",
         )
         world.execute_action(write_intent)
 

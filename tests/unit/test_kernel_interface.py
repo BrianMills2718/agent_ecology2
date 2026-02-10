@@ -275,6 +275,7 @@ class TestWriteArtifactHasStanding:
             artifact_type="executable",
             executable=True,
             has_standing=True,
+            access_contract_id="kernel_contract_freeware",
         )
 
         assert result is True
@@ -292,6 +293,7 @@ class TestWriteArtifactHasStanding:
             artifact_id="plain_artifact",
             content="some data",
             artifact_type="generic",
+            access_contract_id="kernel_contract_freeware",
         )
 
         assert result is True
@@ -308,6 +310,7 @@ class TestWriteArtifactHasStanding:
             artifact_id="my_service",
             content="v1",
             has_standing=True,
+            access_contract_id="kernel_contract_freeware",
         )
         initial_balance = world.ledger.get_scrip("my_service")
 

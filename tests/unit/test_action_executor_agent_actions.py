@@ -60,6 +60,7 @@ def _create_target_artifact(world: World, artifact_id: str = "handbook") -> None
         artifact_id=artifact_id,
         artifact_type="document",
         content="Handbook content here.",
+        access_contract_id="kernel_contract_freeware",
     )
     result = world.execute_action(intent)
     assert result.success, f"Failed to create target artifact: {result.message}"
