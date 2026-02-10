@@ -22,7 +22,7 @@ echo ""
 FAILED=0
 
 # 1. Pytest
-echo -e "${YELLOW}[1/6] Running pytest...${NC}"
+echo -e "${YELLOW}[1/7] Running pytest...${NC}"
 if pytest tests/ -q --tb=short; then
     echo -e "${GREEN}✓ Tests passed${NC}"
 else
@@ -32,7 +32,7 @@ fi
 echo ""
 
 # 2. Mypy
-echo -e "${YELLOW}[2/6] Running mypy...${NC}"
+echo -e "${YELLOW}[2/7] Running mypy...${NC}"
 if python -m mypy --strict --ignore-missing-imports --exclude '__pycache__' --no-namespace-packages src/config.py src/world/*.py src/agents/*.py run.py 2>/dev/null; then
     echo -e "${GREEN}✓ Type check passed${NC}"
 else
@@ -42,12 +42,12 @@ fi
 echo ""
 
 # 3. Doc-coupling (respects meta-process.yaml strict_doc_coupling setting)
-echo -e "${YELLOW}[3/6] Checking doc-code coupling...${NC}"
+echo -e "${YELLOW}[3/7] Checking doc-code coupling...${NC}"
 STRICT_FLAG="--strict"
 if python scripts/meta_config.py --get enforcement.strict_doc_coupling 2>/dev/null | grep -qi "false"; then
     STRICT_FLAG=""
 fi
-if python scripts/check_doc_coupling.py $STRICT_FLAG --weight-aware 2>/dev/null; then
+if python scripts/check_doc_coupling.py $STRICT_FLAG 2>/dev/null; then
     echo -e "${GREEN}✓ Doc-coupling passed${NC}"
 else
     echo -e "${RED}✗ Doc-coupling failed${NC}"
@@ -57,7 +57,7 @@ fi
 echo ""
 
 # 4. Plan status sync (with stale plan advisory)
-echo -e "${YELLOW}[4/6] Checking plan status sync...${NC}"
+echo -e "${YELLOW}[4/7] Checking plan status sync...${NC}"
 if python scripts/sync_plan_status.py --check --warn-stale 14 2>/dev/null; then
     echo -e "${GREEN}✓ Plan status in sync${NC}"
 else
@@ -67,8 +67,17 @@ else
 fi
 echo ""
 
-# 5. Meta-process self-test (files + links only, skip slow install test)
-echo -e "${YELLOW}[5/6] Running meta-process self-test...${NC}"
+# 5. Planning patterns (advisory — flags hedging language and missing sections)
+echo -e "${YELLOW}[5/7] Checking planning patterns...${NC}"
+if python scripts/check_planning_patterns.py --all 2>/dev/null; then
+    echo -e "${GREEN}✓ Planning patterns OK${NC}"
+else
+    echo -e "${YELLOW}⚠ Planning pattern warnings (advisory, not blocking)${NC}"
+fi
+echo ""
+
+# 6. Meta-process self-test (files + links only, skip slow install test)
+echo -e "${YELLOW}[6/7] Running meta-process self-test...${NC}"
 if [[ -f "meta-process/scripts/self_test.py" ]]; then
     if python meta-process/scripts/self_test.py --files --links; then
         echo -e "${GREEN}✓ Meta-process self-test passed${NC}"
@@ -80,8 +89,8 @@ else
     echo -e "${YELLOW}  Skipped (meta-process/scripts/self_test.py not found)${NC}"
 fi
 
-# 6. Stale local branch advisory
-echo -e "${YELLOW}[6/6] Checking for stale local branches...${NC}"
+# 7. Stale local branch advisory
+echo -e "${YELLOW}[7/7] Checking for stale local branches...${NC}"
 CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "")
 STALE_BRANCHES=$(git branch --format='%(refname:short)' | grep -v "^main$" | grep -v "^${CURRENT_BRANCH}$" || true)
 if [[ -n "$STALE_BRANCHES" ]]; then

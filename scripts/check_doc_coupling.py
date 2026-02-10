@@ -575,25 +575,11 @@ def main() -> int:
         help="Show all relationships for a specific file",
     )
     parser.add_argument(
-        "--weight-aware",
-        action="store_true",
-        help="Check meta-process weight before running (Plan #218)",
-    )
-    parser.add_argument(
         "--check-orphans",
         action="store_true",
         help="Check for docs not referenced in the coupling graph",
     )
     args = parser.parse_args()
-
-    # Plan #218: Check if doc coupling is enabled via meta-process config
-    if args.weight_aware:
-        if META_CONFIG_FILE.exists():
-            with open(META_CONFIG_FILE) as f:
-                meta_cfg = yaml.safe_load(f) or {}
-            if not meta_cfg.get("enforcement", {}).get("strict_doc_coupling", True):
-                print("Doc coupling check disabled via meta-process.yaml.")
-                return 0
 
     config_path = Path(args.config)
     if not config_path.exists():
