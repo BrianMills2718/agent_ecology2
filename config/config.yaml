@@ -360,6 +360,7 @@ executor:
 contracts:
   default_when_null: creator_only                # Null contract: only creator can access (ADR-0019)
   default_on_missing: kernel_contract_freeware  # Dangling contract: fallback to freeware (ADR-0017)
+  allow_kernel_contracts_for_agents: false       # Agents must create own contracts (Plan #317)
 
 # -----------------------------------------------------------------------------
 # VALIDATION - Input validation limits to prevent DoS

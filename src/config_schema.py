@@ -1819,6 +1819,10 @@ class ContractsConfig(StrictModel):
         default="kernel_contract_freeware",
         description="Default contract to use when access_contract_id points to deleted/missing contract (ADR-0017)"
     )
+    allow_kernel_contracts_for_agents: bool = Field(
+        default=True,
+        description="If False, agents cannot use kernel contracts for new artifacts — must create their own"
+    )
 
 
 

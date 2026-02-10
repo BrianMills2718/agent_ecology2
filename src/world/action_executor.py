@@ -314,6 +314,66 @@ class ActionExecutor:
                 error_details={"artifact_id": intent.artifact_id},
             )
 
+        # Self-referencing bootstrap: artifact IS its own contract (Plan #317)
+        # Allows creation without needing a pre-existing contract artifact.
+        if (
+            existing is None
+            and intent.access_contract_id == intent.artifact_id
+        ):
+            if not intent.executable:
+                return ActionResult(
+                    success=False,
+                    message=f"Self-referencing contract '{intent.artifact_id}' must be executable",
+                    error_code=ErrorCode.INVALID_ARGUMENT.value,
+                    error_category=ErrorCategory.VALIDATION.value,
+                    retriable=True,
+                    error_details={"artifact_id": intent.artifact_id},
+                )
+            if "def check_permission(" not in (intent.code or ""):
+                return ActionResult(
+                    success=False,
+                    message=f"Self-referencing contract '{intent.artifact_id}' must define check_permission()",
+                    error_code=ErrorCode.INVALID_ARGUMENT.value,
+                    error_category=ErrorCategory.VALIDATION.value,
+                    retriable=True,
+                    error_details={"artifact_id": intent.artifact_id},
+                )
+            # Valid self-referencing contract — skip kernel contract check below
+
+        # Reject kernel contracts for new agent-created artifacts (Plan #317)
+        elif existing is None and intent.access_contract_id:
+            contracts_config = w.config.get("contracts", {})
+            allow_kernel = contracts_config.get("allow_kernel_contracts_for_agents", True)
+            if (
+                not allow_kernel
+                and intent.access_contract_id.startswith("kernel_contract_")
+            ):
+                return ActionResult(
+                    success=False,
+                    message=(
+                        "Kernel contracts are disabled for new artifacts. "
+                        "You must create your own contract artifact.\n\n"
+                        "To bootstrap a contract, create a self-referencing executable artifact:\n"
+                        "  action_type: write_artifact\n"
+                        "  artifact_id: my_contract\n"
+                        "  access_contract_id: my_contract  (self-referencing)\n"
+                        "  executable: true\n"
+                        "  code: |\n"
+                        "    def check_permission(caller, action, target, context, ledger):\n"
+                        "        state = context.get('_artifact_state', {})\n"
+                        "        writer = state.get('writer', '')\n"
+                        "        if action in ('write', 'edit', 'delete'):\n"
+                        "            return {'allowed': caller == writer, 'reason': 'writer-only modify'}\n"
+                        "        return {'allowed': True, 'reason': 'public read/invoke'}\n\n"
+                        "Then use that contract for subsequent artifacts:\n"
+                        "  access_contract_id: my_contract"
+                    ),
+                    error_code=ErrorCode.NOT_AUTHORIZED.value,
+                    error_category=ErrorCategory.PERMISSION.value,
+                    retriable=True,
+                    error_details={"artifact_id": intent.artifact_id},
+                )
+
         # Disk quota enforcement (Plan #95: Unified resource system)
         # Disk is an allocatable resource - agents have quota, we track usage
         content_size = len(intent.content.encode("utf-8"))

@@ -674,10 +674,11 @@ class SafeExecutor:
 
     def validate_code(self, code: str) -> tuple[bool, str]:
         """
-        Validate that code can be compiled and has a run() or handle_request() function.
+        Validate that code can be compiled and has a recognized entry point.
 
         Plan #234: Accept handle_request(caller, operation, args) as alternative
         to run() for ADR-0024 artifact-handled access control.
+        Plan #317: Accept check_permission() for contract artifacts.
 
         Returns:
             (success, error_message)
@@ -685,11 +686,12 @@ class SafeExecutor:
         if not code or not code.strip():
             return False, "Empty code"
 
-        # Check for run() or handle_request() function definition
+        # Check for recognized entry point function definition
         has_run = "def run(" in code
         has_handle_request = "def handle_request(" in code
-        if not has_run and not has_handle_request:
-            return False, "Code must define a run() or handle_request(caller, operation, args) function"
+        has_check_permission = "def check_permission(" in code
+        if not has_run and not has_handle_request and not has_check_permission:
+            return False, "Code must define a run(), handle_request(), or check_permission() function"
 
         # Try to compile with standard Python
         try:
