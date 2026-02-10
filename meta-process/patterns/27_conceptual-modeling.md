@@ -201,6 +201,9 @@ Alternatives:
 | ADR | Decisions may update model |
 | Acceptance Gates | Specs should use model terminology |
 | Plan Workflow | Plans reference model for shared understanding |
+| Documentation Graph | Graph routes to ontology/glossary based on file being edited |
+
+**Rationale:** See [META-ADR-0005](../adr/0005-hierarchical-context-compression.md) — the ontology and glossary are compression layers in the hierarchical context system. The ontology compresses entity schema (~300 lines vs ~15,000 lines of code). The glossary compresses vocabulary (~30 terms). Both provide information that is expensive to reconstruct from code alone.
 
 ## Origin
 
