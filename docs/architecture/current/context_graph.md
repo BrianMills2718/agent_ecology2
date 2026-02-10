@@ -198,11 +198,18 @@ custom_docs:                   # Additional docs injected per path
     surface_when: ["src/simulation/", "src/agents/", "config/genesis/agents/"]
 ```
 
+## Validation
+
+`validate_relationships.py` checks internal consistency of `relationships.yaml`:
+
+```bash
+python scripts/validate_relationships.py  # Full validation (run in pre-commit)
+```
+
+Checks: stale governance sources, unregistered ADR references, duplicate entries, broken coupling sources/docs, broken file_context entries, ADR file registration, governance coverage.
+
 ## Known Issues
 
-1. **21 stale governance entries** — reference files that have been renamed or deleted
-2. **7 ADRs not registered** in the `adrs` section (referenced in governance but missing definitions)
-3. **3 functional source files** have no governance entry
-4. **3 sections unused** — `document_hierarchy`, `target_current_links`, `orphan_detection` are declared but no script reads them
-5. **No traceability chain** — Thesis→PRD→ADR→Plan→Code is conceptual but not encoded as graph edges
-6. **Manual maintenance** — the 1280-line YAML is entirely hand-maintained; no tooling generates or validates it holistically
+1. **3 sections unused** — `document_hierarchy`, `target_current_links`, `orphan_detection` are declared but no script reads them
+2. **No traceability chain** — Thesis→PRD→ADR→Plan→Code is conceptual but not encoded as graph edges
+3. **Manual maintenance** — the YAML is entirely hand-maintained; no tooling generates it

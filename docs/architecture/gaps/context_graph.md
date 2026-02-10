@@ -140,11 +140,11 @@ The 1280-line `relationships.yaml` requires manual updates for every new file, e
 
 ## Prioritized Implementation Order
 
-### Phase 1: Data Quality (1 plan)
-- GAP-CTX-01: Clean stale governance entries
-- GAP-CTX-02: Register missing ADRs
-- GAP-CTX-03: Add missing governance entries
-- GAP-CTX-04: Write `validate_relationships.py`
+### Phase 1: Data Quality (COMPLETE)
+- ~~GAP-CTX-01: Clean stale governance entries~~ (21 removed)
+- ~~GAP-CTX-02: Register missing ADRs~~ (5 added)
+- ~~GAP-CTX-03: Add missing governance entries~~ (5 added)
+- ~~GAP-CTX-04: Write `validate_relationships.py`~~ (created, all checks pass)
 
 ### Phase 2: Activate Dead Sections (1 plan)
 - GAP-CTX-06: Consume target_current_links

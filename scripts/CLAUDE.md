@@ -41,6 +41,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `get_governance_context.py` | Get doc graph context for a file (ADRs + coupled docs) |
 | `visualize_doc_graph.py` | Visualize documentation graph (text, DOT, PNG/SVG) |
 | `generate_doc_graph_html.py` | Generate interactive HTML visualization (D3.js) |
+| `validate_relationships.py` | Validate relationships.yaml internal consistency (stale refs, missing ADRs) |
 
 ### Plan Management
 
