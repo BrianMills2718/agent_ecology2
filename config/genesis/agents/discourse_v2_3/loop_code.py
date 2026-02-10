@@ -111,6 +111,16 @@ def run():
     semantic = state.get("semantic_memory", {})
     action_history = state.get("action_history", [])[-5:]
 
+    # Format recent iterations with full reasoning and results
+    recent_iters_lines = []
+    for ah in action_history:
+        status = "OK" if ah.get("success") else "FAILED"
+        recent_iters_lines.append(f"  i{ah.get('iteration','?')} [{ah.get('phase','')}] {ah.get('action_type','')} -> {status}")
+        recent_iters_lines.append(f"    Reasoning: {ah.get('reasoning', '(none)')}")
+        if ah.get("result"):
+            recent_iters_lines.append(f"    Result: {ah['result']}")
+    recent_iters_text = "\n".join(recent_iters_lines) if recent_iters_lines else "(first iteration)"
+
     prompt = f"""{strategy}
 
 == STATUS ==
@@ -120,8 +130,8 @@ Research question: {research_question}
 == CURRENT TASK ==
 Task #{current_task['id']}: {current_task['description']}
 
-== LAST ACTION RESULT ==
-{json.dumps(last_result, indent=2) if last_result else "(first iteration)"}
+== RECENT ITERATIONS (your last {len(action_history)} actions and their results) ==
+{recent_iters_text}
 
 == RELEVANT REFLECTIONS ==
 {json.dumps(relevant_reflections, indent=2) if relevant_reflections else "(none yet)"}
@@ -132,11 +142,11 @@ Task #{current_task['id']}: {current_task['description']}
 == VERIFIED SKILLS ==
 {json.dumps(verified_skills, indent=2) if verified_skills else "(none — build tools to gain skills)"}
 
-== RECENT ACTIONS ==
-{json.dumps(action_history, indent=2) if action_history else "(none)"}
-
 == TASK QUEUE ==
 {json.dumps(task_queue[1:4], indent=2) if len(task_queue) > 1 else "(no other tasks)"}
+
+If your recent iterations show repeated failures or the same approach not working,
+mark the current task complete and try something different.
 
 RESPOND WITH JSON:
 {{
@@ -211,8 +221,8 @@ ACTIONS:
     if is_reflect_iteration:
         reflect_prompt = f"""You are reflecting on your recent actions as a research agent.
 
-== YOUR LAST 5 ACTIONS ==
-{json.dumps(action_history, indent=2)}
+== YOUR RECENT ITERATIONS ==
+{recent_iters_text}
 
 == CURRENT RESULT ==
 {json.dumps(action_result, indent=2)}
@@ -251,28 +261,6 @@ RESPOND WITH JSON:
             except json.JSONDecodeError:
                 reflection = None
 
-        # Inject corrective task from reflection
-        if reflection and isinstance(reflection, dict):
-            if reflection.get("should_self_modify") and reflection.get("modification_target"):
-                nid = state.get("next_task_id", 1)
-                target = reflection["modification_target"]
-                state.setdefault("task_queue", []).insert(0, {
-                    "id": nid,
-                    "description": f"Self-modify: rewrite {target} based on reflection",
-                    "priority": 10,
-                })
-                state["next_task_id"] = nid + 1
-            elif reflection.get("lesson") and reflection.get("category") in ("tool_building", "research"):
-                # Inject a corrective task for actionable lessons
-                lesson = reflection["lesson"]
-                nid = state.get("next_task_id", 1)
-                state.setdefault("task_queue", []).insert(0, {
-                    "id": nid,
-                    "description": f"Act on lesson: {lesson[:80]}",
-                    "priority": 8,
-                })
-                state["next_task_id"] = nid + 1
-
     # =====================================================================
     # PHASE 5: UPDATE (no LLM call)
     # =====================================================================
@@ -282,15 +270,17 @@ RESPOND WITH JSON:
     state["research_question"] = new_research_question
     state["last_action_result"] = action_result
 
-    # Record action in history
+    # Record action in history — full reasoning and result for immediate-term context
+    result_summary = str(action_result.get("result", action_result.get("error", "")))[:500]
     state.setdefault("action_history", []).append({
         "iteration": iteration,
         "phase": new_research_phase,
         "action_type": action_type,
-        "reasoning": reasoning[:100],
+        "reasoning": reasoning,
         "success": action_result.get("success", False),
+        "result": result_summary,
     })
-    state["action_history"] = state["action_history"][-10:]
+    state["action_history"] = state["action_history"][-5:]
 
     # Handle task completion
     if task_complete:
@@ -361,7 +351,7 @@ RESPOND WITH JSON:
         tool_id = action.get("artifact_id", "unknown")
         proc = state.setdefault("procedural_memory", {})
         proc[tool_id] = {
-            "description": reasoning[:200],
+            "description": reasoning,
             "verified": False,
             "created_iteration": iteration,
             "times_invoked": 0,
