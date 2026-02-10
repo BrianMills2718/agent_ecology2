@@ -573,8 +573,13 @@ def build_graph_data(data: dict) -> dict:
         if not src:
             continue
         src_id = f"src_{src.replace('/', '_').replace('.', '_')}"
+        if src_id not in node_ids:
+            continue
         for adr_num in entry.get("adrs", []):
-            links.append({"source": f"adr_{adr_num}", "target": src_id, "type": "governs"})
+            adr_id = f"adr_{adr_num}"
+            if adr_id not in node_ids:
+                continue
+            links.append({"source": adr_id, "target": src_id, "type": "governs"})
 
     # Add ALL coupling links (source -> doc)
     for coupling in data.get("couplings", []):
