@@ -566,6 +566,15 @@ def check_permission(caller, action, target, context, ledger):
 
         # Prepare arguments for check_permission
         action_str = action.value if isinstance(action, PermissionAction) else str(action)
+        # Map kernel action names to agent-facing names.
+        # Agents write contracts checking 'write_artifact' but kernel passes 'write'.
+        _KERNEL_TO_AGENT_ACTION = {
+            "read": "read_artifact",
+            "write": "write_artifact",
+            "edit": "edit_artifact",
+            "invoke": "invoke_artifact",
+        }
+        action_str = _KERNEL_TO_AGENT_ACTION.get(action_str, action_str)
         ctx = context if context else {}
         readonly_ledger = ReadOnlyLedger(ledger) if ledger else None
 

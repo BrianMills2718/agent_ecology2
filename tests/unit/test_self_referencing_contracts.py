@@ -29,7 +29,7 @@ SELF_REF_CONTRACT_CODE = """\
 def check_permission(caller, action, target, context, ledger):
     state = context.get('_artifact_state', {})
     writer = state.get('writer', '')
-    if action in ('write', 'edit', 'delete'):
+    if action in ('write_artifact', 'edit_artifact', 'delete'):
         return {'allowed': caller == writer, 'reason': 'writer-only modify'}
     return {'allowed': True, 'reason': 'public read/invoke'}
 """

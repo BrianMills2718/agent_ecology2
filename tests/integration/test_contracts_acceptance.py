@@ -26,7 +26,7 @@ class TestContractsFeature:
             contract_id="allow_read_contract",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    if action == "read":
+    if action == "read_artifact":
         return {"allowed": True, "reason": "Read allowed for all callers", "scrip_cost": 0}
     return {"allowed": False, "reason": "Only read allowed", "scrip_cost": 0}
 '''
