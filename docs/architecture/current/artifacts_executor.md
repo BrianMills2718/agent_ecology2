@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-02-09 (Plan #312: has_standing on KernelActions.write_artifact, ledger passed in artifact_loop for invoke)
+**Last verified:** 2026-02-10 (Plan #319: _syscall_llm emits thinking/thinking_failed events)
 
 ---
 
@@ -530,6 +530,8 @@ The `caller_id` is also injected so artifacts know who invoked them.
 **Key principle:** All artifacts have equal access to kernel interfaces - no privilege difference (Plan #254).
 
 **Artifact loops (Plan #312):** `artifact_loop.py` passes `ledger` to `execute_with_invoke`, so `invoke()`, `pay()`, and `get_balance()` are available in continuous artifact execution context. This enables artifact-to-artifact composition during autonomous loops.
+
+**LLM call observability (Plan #319):** `_syscall_llm` emits `thinking` events on success and `thinking_failed` events on budget exhaustion or LLM errors. These events include `principal_id`, `model`, `api_cost`, token counts, and reasoning text (capped at 2000 chars). The dashboard, `analyze_run.py`, `analyze_logs.py`, and `collect_metrics.py` consume these events for cognition tracking.
 
 ### Recursion Protection
 

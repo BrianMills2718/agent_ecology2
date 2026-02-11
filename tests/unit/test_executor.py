@@ -2,11 +2,18 @@
 Tests for src/world/executor.py
 
 Phase 0 of Plan #53: Verify executor uses ResourceMeasurer and returns cpu_seconds.
+Plan #319: Verify _syscall_llm emits thinking events.
 """
+
+from __future__ import annotations
+
+from typing import Any
+from unittest.mock import patch
 
 import pytest
 
-from src.world.executor import SafeExecutor
+from src.world.executor import SafeExecutor, create_syscall_llm
+from src.world.world import World, ConfigDict
 
 
 class TestSafeExecutorResourceMeasurement:
@@ -351,3 +358,139 @@ def run():
         assert result["success"] is True
         assert result["result"]["success"] is False
         assert "not available" in result["result"]["error"]
+
+
+@pytest.mark.plans([319])
+class TestSyscallLLMThinkingEvents:
+    """Plan #319: Verify _syscall_llm emits thinking/thinking_failed events."""
+
+    @pytest.fixture
+    def world(self, tmp_path: Any) -> World:
+        """Create a World with a logger for event capture."""
+        log_file = tmp_path / "test_thinking.jsonl"
+        config: ConfigDict = {
+            "world": {},
+            "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 3},
+            "logging": {"output_file": str(log_file)},
+            "principals": [{"id": "test_agent", "starting_scrip": 100}],
+            "rights": {"default_llm_tokens_quota": 50, "default_disk_quota": 10000},
+            "rate_limiting": {
+                "enabled": True,
+                "window_seconds": 60.0,
+                "resources": {"llm_tokens": {"max_per_window": 1000}},
+            },
+            "discourse_analyst": {"enabled": False},
+            "discourse_analyst_2": {"enabled": False},
+            "discourse_analyst_3": {"enabled": False},
+            "alpha_prime": {"enabled": False},
+        }
+        return World(config)
+
+    def test_thinking_event_on_success(self, world: World) -> None:
+        """Successful LLM call should emit a 'thinking' event with expected fields."""
+        # Give agent LLM budget
+        world.ledger.set_resource("test_agent", "llm_budget", 1.0)
+
+        # mock-ok: external LLM API — avoid real API calls in unit tests
+        from src.world.llm_client import LLMCallResult
+
+        mock_result = LLMCallResult(
+            content='{"action": "noop", "reasoning": "thinking hard"}',
+            usage={"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150},
+            cost=0.001,
+            model="test-model",
+        )
+
+        syscall = create_syscall_llm(world, "test_agent")
+
+        with patch("src.world.llm_client.call_llm", return_value=mock_result):
+            result = syscall("test-model", [{"role": "user", "content": "hello"}])
+
+        assert result["success"] is True
+
+        events = world.logger.read_recent(100)
+        thinking_events = [e for e in events if e["event_type"] == "thinking"]
+        assert len(thinking_events) == 1
+
+        evt = thinking_events[0]
+        assert evt["principal_id"] == "test_agent"
+        assert evt["model"] == "test-model"
+        assert evt["input_tokens"] == 100
+        assert evt["output_tokens"] == 50
+        assert evt["api_cost"] == 0.001
+        assert "llm_budget_after" in evt
+        assert evt["reasoning"] == '{"action": "noop", "reasoning": "thinking hard"}'
+
+    def test_thinking_failed_on_budget_exhaustion(self, world: World) -> None:
+        """Budget exhaustion should emit a 'thinking_failed' event."""
+        # Set zero LLM budget
+        world.ledger.set_resource("test_agent", "llm_budget", 0.0)
+
+        syscall = create_syscall_llm(world, "test_agent")
+        result = syscall("test-model", [{"role": "user", "content": "hello"}])
+
+        assert result["success"] is False
+        assert "Budget exhausted" in result["error"]
+
+        events = world.logger.read_recent(100)
+        failed_events = [e for e in events if e["event_type"] == "thinking_failed"]
+        assert len(failed_events) == 1
+
+        evt = failed_events[0]
+        assert evt["principal_id"] == "test_agent"
+        assert evt["model"] == "test-model"
+        assert evt["api_cost"] == 0.0
+        assert "Budget exhausted" in evt["reason"]
+
+    def test_thinking_failed_on_llm_error(self, world: World) -> None:
+        """LLM exception should emit a 'thinking_failed' event."""
+        world.ledger.set_resource("test_agent", "llm_budget", 1.0)
+
+        syscall = create_syscall_llm(world, "test_agent")
+
+        # mock-ok: external LLM API — simulate LLM failure
+        with patch(
+            "src.world.llm_client.call_llm",
+            side_effect=RuntimeError("API timeout"),
+        ):
+            result = syscall("test-model", [{"role": "user", "content": "hello"}])
+
+        assert result["success"] is False
+        assert "API timeout" in result["error"]
+
+        events = world.logger.read_recent(100)
+        failed_events = [e for e in events if e["event_type"] == "thinking_failed"]
+        assert len(failed_events) == 1
+
+        evt = failed_events[0]
+        assert evt["principal_id"] == "test_agent"
+        assert evt["model"] == "test-model"
+        assert evt["api_cost"] == 0.0
+        assert "API timeout" in evt["reason"]
+
+    def test_reasoning_capped_at_2000_chars(self, world: World) -> None:
+        """Reasoning field in thinking event should be capped at 2000 chars."""
+        world.ledger.set_resource("test_agent", "llm_budget", 1.0)
+
+        from src.world.llm_client import LLMCallResult
+
+        long_content = "x" * 5000
+        mock_result = LLMCallResult(
+            content=long_content,
+            usage={"prompt_tokens": 10, "completion_tokens": 10, "total_tokens": 20},
+            cost=0.0001,
+            model="test-model",
+        )
+
+        syscall = create_syscall_llm(world, "test_agent")
+
+        # mock-ok: external LLM API
+        with patch("src.world.llm_client.call_llm", return_value=mock_result):
+            result = syscall("test-model", [{"role": "user", "content": "hello"}])
+
+        assert result["success"] is True
+
+        events = world.logger.read_recent(100)
+        thinking_events = [e for e in events if e["event_type"] == "thinking"]
+        assert len(thinking_events) == 1
+        assert len(thinking_events[0]["reasoning"]) == 2000
