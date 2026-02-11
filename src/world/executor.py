@@ -246,7 +246,42 @@ def _format_runtime_error(e: Exception, prefix: str = "Runtime error") -> str:
     base = f"{prefix}: {error_type}: {error_msg}"
 
     # Add hints based on error type
-    if isinstance(e, ModuleNotFoundError):
+    if isinstance(e, NameError):
+        # Agents commonly hallucinate API names like 'kernel', 'world', 'state'
+        # Guide them to the actual sandbox API
+        sandbox_api = (
+            "Available sandbox API: "
+            "kernel_state (read world state: .read_artifact(id, caller_id), "
+            ".list_artifacts(), .get_balance(id)), "
+            "kernel_actions (write: .transfer_scrip(), .write_artifact()), "
+            "invoke(artifact_id, *args) (call another artifact's run()), "
+            "pay(target, amount), get_balance(), "
+            "caller_id (str), Action (class with .invoke_artifact(), .read_artifact(), .pay())"
+        )
+        name = error_msg.replace("name '", "").replace("' is not defined", "")
+        hint = f"Hint: '{name}' is not available in the sandbox. {sandbox_api}"
+        # Extra-specific hints for common mistakes
+        if name == "kernel":
+            hint = (
+                f"Hint: There is no 'kernel' object. "
+                f"Use kernel_state for reads (e.g., kernel_state.read_artifact(id, caller_id)) "
+                f"and kernel_actions for writes (e.g., kernel_actions.transfer_scrip(caller_id, to, amount)). "
+                f"{sandbox_api}"
+            )
+        elif name in ("world", "World"):
+            hint = (
+                f"Hint: There is no 'world' object. "
+                f"Use kernel_state for read-only world access, kernel_actions for writes. "
+                f"{sandbox_api}"
+            )
+        elif name in ("state", "self"):
+            hint = (
+                f"Hint: '{name}' is not available. Artifacts are stateless functions. "
+                f"Store state by writing to a data artifact via kernel_actions.write_artifact(). "
+                f"{sandbox_api}"
+            )
+        return f"{base}. {hint}"
+    elif isinstance(e, ModuleNotFoundError):
         # Extract module name from error message
         module = error_msg.replace("No module named ", "").strip("'\"")
         return (
@@ -853,7 +888,7 @@ class SafeExecutor:
                 execution_time_ms = (time.perf_counter() - start_time) * 1000
                 error_result = {
                     "success": False,
-                    "error": f"Argument error: {e}",
+                    "error": _format_runtime_error(e, "Argument error"),
                     "execution_time_ms": execution_time_ms,
                 }
             except Exception as e:  # exception-ok: user code can raise anything
@@ -1033,7 +1068,7 @@ class SafeExecutor:
                 execution_time_ms = (time.perf_counter() - start_time) * 1000
                 error_result = {
                     "success": False,
-                    "error": f"Argument error: {e}",
+                    "error": _format_runtime_error(e, "Argument error"),
                     "execution_time_ms": execution_time_ms,
                 }
             except Exception as e:  # exception-ok: user code can raise anything
@@ -1407,7 +1442,7 @@ class SafeExecutor:
                 execution_time_ms = (time.perf_counter() - start_time) * 1000
                 error_result = {
                     "success": False,
-                    "error": f"Argument error: {e}",
+                    "error": _format_runtime_error(e, "Argument error"),
                     "execution_time_ms": execution_time_ms,
                 }
             except Exception as e:  # exception-ok: user code can raise anything
