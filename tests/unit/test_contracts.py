@@ -610,12 +610,16 @@ def check_permission(caller, action, target, context, ledger):
         assert result.allowed is False
 
     def test_action_based_access(self) -> None:
-        """Test a contract with different rules per action."""
+        """Test a contract with different rules per action.
+
+        Contracts receive agent-facing action names (read_artifact, write_artifact, etc.)
+        because the kernel maps PermissionAction values before calling contracts.
+        """
         contract = ExecutableContract(
             contract_id="action_based",
             code='''
 def check_permission(caller, action, target, context, ledger):
-    if action in ("read", "execute", "invoke"):
+    if action in ("read_artifact", "invoke_artifact"):
         return {"allowed": True, "reason": "Read access allowed", "scrip_cost": 0}
     return {"allowed": False, "reason": "Write access denied", "scrip_cost": 0}
 '''
@@ -636,6 +640,48 @@ def check_permission(caller, action, target, context, ledger):
             target="artifact_1",
         )
         assert result.allowed is False
+
+    def test_agent_style_action_names_in_contract(self) -> None:
+        """Contracts receive agent-facing action names, not kernel names.
+
+        Kernel passes PermissionAction.WRITE ('write') but agents write contracts
+        checking 'write_artifact'. The kernel maps the names so both work.
+        """
+        contract = ExecutableContract(
+            contract_id="agent_style",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    if action == 'write_artifact' and target.startswith('my_'):
+        return True
+    if action == 'read_artifact':
+        return True
+    return False
+'''
+        )
+
+        # Write to 'my_tool' should be allowed
+        result = contract.check_permission(
+            caller="agent_1",
+            action=PermissionAction.WRITE,
+            target="my_tool",
+        )
+        assert result.allowed is True
+
+        # Write to 'other_tool' should be denied
+        result = contract.check_permission(
+            caller="agent_1",
+            action=PermissionAction.WRITE,
+            target="other_tool",
+        )
+        assert result.allowed is False
+
+        # Read should be allowed
+        result = contract.check_permission(
+            caller="agent_1",
+            action=PermissionAction.READ,
+            target="anything",
+        )
+        assert result.allowed is True
 
     def test_pay_per_use_with_ledger(self) -> None:
         """Test a pay-per-use contract that checks ledger balance."""
