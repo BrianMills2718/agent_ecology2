@@ -2,7 +2,7 @@
 
 How artifacts and code execution work TODAY.
 
-**Last verified:** 2026-02-10 (Plan #319: _syscall_llm emits thinking/thinking_failed events)
+**Last verified:** 2026-02-10 (Plan #320: artifact_read events + kernel_query params)
 
 ---
 
@@ -532,6 +532,8 @@ The `caller_id` is also injected so artifacts know who invoked them.
 **Artifact loops (Plan #312):** `artifact_loop.py` passes `ledger` to `execute_with_invoke`, so `invoke()`, `pay()`, and `get_balance()` are available in continuous artifact execution context. This enables artifact-to-artifact composition during autonomous loops.
 
 **LLM call observability (Plan #319):** `_syscall_llm` emits `thinking` events on success and `thinking_failed` events on budget exhaustion or LLM errors. These events include `principal_id`, `model`, `api_cost`, token counts, and reasoning text (capped at 2000 chars). The dashboard, `analyze_run.py`, `analyze_logs.py`, and `collect_metrics.py` consume these events for cognition tracking.
+
+**Read and query observability (Plan #320):** `_execute_read()` emits `artifact_read` events on successful reads with `artifact_id`, `principal_id`, `artifact_type`, `read_price_paid`, and `content_size`. `KernelState.read_artifact()` emits the same event for sandbox reads. `KernelState.query()` includes `params` in `kernel_query` events so query filters are visible in logs.
 
 ### Recursion Protection
 

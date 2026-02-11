@@ -161,6 +161,16 @@ class KernelState:
         if not perm_result.allowed:
             return None
 
+        # Plan #320: Log sandbox read for observability
+        self._world.logger.log("artifact_read", {
+            "event_number": self._world.event_number,
+            "artifact_id": artifact_id,
+            "principal_id": caller_id,
+            "artifact_type": artifact.type,
+            "read_price_paid": 0,
+            "content_size": len(artifact.content) if artifact.content else 0,
+        })
+
         return artifact.content
 
     # --- Kernel Mint Read Methods (Plan #44) ---
@@ -263,6 +273,7 @@ class KernelState:
                 "event_number": self._world.event_number,
                 "principal_id": caller_id,
                 "query_type": query_type,
+                "params": params or {},  # Plan #320: Include query params
                 "success": result.get("success", True),
             })
 

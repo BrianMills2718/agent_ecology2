@@ -3,6 +3,7 @@ Tests for src/world/executor.py
 
 Phase 0 of Plan #53: Verify executor uses ResourceMeasurer and returns cpu_seconds.
 Plan #319: Verify _syscall_llm emits thinking events.
+Plan #320: Verify artifact_read and kernel_query events are emitted.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from unittest.mock import patch
 import pytest
 
 from src.world.executor import SafeExecutor, create_syscall_llm
+from src.world.actions import WriteArtifactIntent, ReadArtifactIntent, QueryKernelIntent
 from src.world.world import World, ConfigDict
 
 
@@ -494,3 +496,102 @@ class TestSyscallLLMThinkingEvents:
         thinking_events = [e for e in events if e["event_type"] == "thinking"]
         assert len(thinking_events) == 1
         assert len(thinking_events[0]["reasoning"]) == 2000
+
+
+@pytest.mark.plans([320])
+class TestReadAndQueryEvents:
+    """Plan #320: Verify artifact_read and kernel_query events are emitted."""
+
+    @pytest.fixture
+    def world(self, tmp_path: Any) -> World:
+        """Create a World with agents for read/query testing."""
+        log_file = tmp_path / "test_read_query.jsonl"
+        config: ConfigDict = {
+            "world": {},
+            "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 3},
+            "logging": {"output_file": str(log_file)},
+            "principals": [
+                {"id": "alice", "starting_scrip": 1000},
+                {"id": "bob", "starting_scrip": 500},
+            ],
+            "rights": {"default_llm_tokens_quota": 50, "default_disk_quota": 10000},
+            "rate_limiting": {
+                "enabled": True,
+                "window_seconds": 60.0,
+                "resources": {"llm_tokens": {"max_per_window": 1000}},
+            },
+            "discourse_analyst": {"enabled": False},
+            "discourse_analyst_2": {"enabled": False},
+            "discourse_analyst_3": {"enabled": False},
+            "discourse_v2": {"enabled": False},
+            "discourse_v2_2": {"enabled": False},
+            "discourse_v2_3": {"enabled": False},
+            "alpha_prime": {"enabled": False},
+        }
+        w = World(config)
+        w.increment_event_counter()
+        return w
+
+    def test_artifact_read_event_on_success(self, world: World) -> None:
+        """Successful read should emit an 'artifact_read' event."""
+        # Create an artifact first
+        write_intent = WriteArtifactIntent(
+            principal_id="alice",
+            artifact_id="test_doc",
+            artifact_type="json",
+            content='{"data": "hello"}',
+            access_contract_id="kernel_contract_freeware",
+        )
+        write_result = world.execute_action(write_intent)
+        assert write_result.success, f"Setup write failed: {write_result.message}"
+
+        # Read it
+        read_intent = ReadArtifactIntent(
+            principal_id="alice",
+            artifact_id="test_doc",
+        )
+        read_result = world.execute_action(read_intent)
+        assert read_result.success, f"Read failed: {read_result.message}"
+
+        # Check for artifact_read event
+        events = world.logger.read_recent(100)
+        read_events = [e for e in events if e["event_type"] == "artifact_read"]
+        assert len(read_events) == 1
+
+        evt = read_events[0]
+        assert evt["artifact_id"] == "test_doc"
+        assert evt["principal_id"] == "alice"
+        assert evt["artifact_type"] == "json"
+        assert evt["read_price_paid"] == 0
+        assert evt["content_size"] == len('{"data": "hello"}')
+
+    def test_kernel_query_includes_params(self, world: World) -> None:
+        """kernel_query events should include query params."""
+        query_intent = QueryKernelIntent(
+            principal_id="alice",
+            query_type="artifacts",
+            params={"name_pattern": "test_*"},
+        )
+        world.execute_action(query_intent)
+
+        events = world.logger.read_recent(100)
+        query_events = [e for e in events if e["event_type"] == "kernel_query"]
+        assert len(query_events) >= 1
+
+        evt = query_events[-1]
+        assert evt["principal_id"] == "alice"
+        assert evt["query_type"] == "artifacts"
+        assert evt["params"] == {"name_pattern": "test_*"}
+
+    def test_no_artifact_read_event_on_not_found(self, world: World) -> None:
+        """Failed read (not found) should NOT emit artifact_read event."""
+        read_intent = ReadArtifactIntent(
+            principal_id="alice",
+            artifact_id="nonexistent",
+        )
+        read_result = world.execute_action(read_intent)
+        assert not read_result.success
+
+        events = world.logger.read_recent(100)
+        read_events = [e for e in events if e["event_type"] == "artifact_read"]
+        assert len(read_events) == 0
