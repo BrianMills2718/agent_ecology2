@@ -661,6 +661,10 @@ alpha_prime:
   starting_llm_budget: 2.0                # $2 LLM budget for longer runs
   model: "gemini/gemini-2.0-flash"        # Model for Alpha Prime's cognition
 
+# NOTE: discourse_v3 agents are enabled via their agent.yaml files.
+# V2 agents disabled in their agent.yaml (enabled: false).
+# To switch back: flip enabled flags in config/genesis/agents/discourse_v2*/agent.yaml
+
 # -----------------------------------------------------------------------------
 # MINT TASKS - Task-Based Minting (Plan #269)
 # -----------------------------------------------------------------------------
