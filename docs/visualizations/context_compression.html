@@ -162,7 +162,7 @@ const EDGE_TYPES = [
   { id: 'file_context', label: 'File Context', desc: 'Source linked to PRD + domain model + ADR', color: '#d2a8ff', from: 'Code', to: 'All Layers', level: 'consumed', mechanism: 'inject-edit-context.sh provides PRD/domain/ADR context before edits' },
   { id: 'conceptual', label: 'Conceptual Model', desc: 'Ontology entity mapped to source', color: '#d2a8ff', from: 'Ontology', to: 'Code', level: 'consumed', mechanism: 'extract_relevant_context.py injects matching entities before edits' },
   { id: 'glossary_map', label: 'Glossary Map', desc: 'Term mapped to implementing file', color: '#f778ba', from: 'Glossary', to: 'Code', level: 'consumed', mechanism: 'extract_relevant_context.py injects matching terms + deprecated warnings' },
-  { id: 'target_link', label: 'Target Link', desc: 'Target architecture linked to current', color: '#8b949e', from: 'Target Arch', to: 'Current Arch', level: 'declared', mechanism: 'Declared in relationships.yaml but no script consumes it yet' },
+  { id: 'target_link', label: 'Target Link', desc: 'Target architecture linked to current', color: '#8b949e', from: 'Target Arch', to: 'Current Arch', level: 'consumed', mechanism: 'get_governance_context.py injects target/current vision when reading architecture docs' },
 ];
 
 const SCENARIOS = [

@@ -17,8 +17,10 @@ Gaps between [current](../current/context_graph.md) and [target](../target/conte
 | Severity: Medium | 7 |
 | Severity: Low | 5 |
 | Estimated effort | 3-4 plans |
+| Closed (Phase 1+2) | 7 |
+| Remaining | 9 |
 
-The context graph exists and works for its core use cases (governance injection, doc-code coupling). The main gaps are: stale data, unused sections, missing freshness enforcement for compression layers, and no traceability chain.
+The context graph exists and works for its core use cases (governance injection, doc-code coupling). Phase 1 (data quality) and Phase 2 (dead sections) are complete. Remaining gaps: freshness enforcement for compression layers and traceability chain.
 
 ---
 
@@ -146,10 +148,10 @@ The 1280-line `relationships.yaml` requires manual updates for every new file, e
 - ~~GAP-CTX-03: Add missing governance entries~~ (5 added)
 - ~~GAP-CTX-04: Write `validate_relationships.py`~~ (created, all checks pass)
 
-### Phase 2: Activate Dead Sections (1 plan)
-- GAP-CTX-06: Consume target_current_links
-- GAP-CTX-05: Decide on document_hierarchy (consume or remove)
-- GAP-CTX-07: Decide on orphan_detection (implement or remove)
+### Phase 2: Activate Dead Sections (COMPLETE)
+- ~~GAP-CTX-06: Consume target_current_links~~ (added to `get_governance_context.py`)
+- ~~GAP-CTX-05: Decide on document_hierarchy~~ (kept as informational data — reading order guidance for humans)
+- ~~GAP-CTX-07: Decide on orphan_detection~~ (kept as informational data — future automation candidate)
 
 ### Phase 3: Freshness Enforcement (1 plan)
 - GAP-CTX-08: Ontology freshness check
