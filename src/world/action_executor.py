@@ -192,6 +192,17 @@ class ActionExecutor:
             if read_price > 0 and recipient:
                 w.ledger.deduct_scrip(intent.principal_id, read_price)
                 w.ledger.credit_scrip(recipient, read_price)
+            # Plan #320: Log read for observability (mirrors artifact_written pattern)
+            w.logger.log("artifact_read", {
+                "event_number": w.event_number,
+                "artifact_id": intent.artifact_id,
+                "principal_id": intent.principal_id,
+                "artifact_type": artifact.type,
+                "read_price_paid": read_price,
+                "scrip_recipient": recipient,
+                "content_size": len(artifact.content) if artifact.content else 0,
+            })
+
             return ActionResult(
                 success=True,
                 message=f"Read artifact {intent.artifact_id}" + (f" (paid {read_price} scrip to {recipient})" if read_price > 0 and recipient else ""),
@@ -1035,6 +1046,15 @@ class ActionExecutor:
             intent.query_type,
             intent.params,
         )
+
+        # Plan #320: Log query with params for observability
+        w.logger.log("kernel_query", {
+            "event_number": w.event_number,
+            "principal_id": intent.principal_id,
+            "query_type": intent.query_type,
+            "params": intent.params,
+            "success": query_result.get("success", False),
+        })
 
         if query_result.get("success"):
             return ActionResult(

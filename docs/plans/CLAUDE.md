@@ -118,6 +118,7 @@ Master index of all gaps and their implementation plans.
 | 316 | [Require Explicit Contract on New Artifacts](316_require_explicit_contract.md) | Medium | ✅ Complete | - |
 | 318 | [Agent Cognitive Architecture — Persistent Notebook](318_agent_notebook.md) | Medium | ✅ Complete | - |
 | 319 | [Emit Thinking Events from `_syscall_llm`](319_thinking_events.md) | Medium | ✅ Complete | - |
+| 320 | [Log artifact reads and kernel query params](320_observability_reads_queries.md) | Medium | ✅ Complete — PR #TBD | - |
 ---
 
 ## TDD Workflow
