@@ -187,14 +187,19 @@ class KernelQueryHandler:
                         "error": f"Invalid regex pattern: '{name_pattern}'",
                         "error_code": "invalid_pattern",
                     }
-            # Compact format for list view - just enough to identify and filter
-            # Use query_kernel(artifact, artifact_id=X) for full details
-            results.append({
+            # Enriched format: enough info for agents to decide invoke vs rebuild
+            entry: dict[str, Any] = {
                 "id": artifact.id,
                 "type": artifact.type,
                 "created_by": artifact.created_by,
                 "executable": artifact.executable,
-            })
+                "content_size": len(artifact.content or "") if hasattr(artifact, "content") else 0,
+            }
+            # For executable artifacts, include a code preview so agents can
+            # evaluate whether to invoke vs rebuild without a separate read
+            if artifact.executable and artifact.code:
+                entry["code_preview"] = artifact.code[:300]
+            results.append(entry)
 
         total = len(results)
         results = results[offset:offset + limit]
