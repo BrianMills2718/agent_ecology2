@@ -199,6 +199,17 @@ def execute_invoke(
         if total_cost > 0 and recipient and recipient != cost_payer:
             ledger.transfer_scrip(cost_payer, recipient, total_cost)
 
+        # Log successful invocation for observability
+        if world and hasattr(world, "logger"):
+            world.logger.log("invoke", {
+                "principal_id": caller_id,
+                "caller_artifact": artifact_id,
+                "target_artifact": target_artifact_id,
+                "success": True,
+                "price_paid": total_cost,
+                "depth": current_depth,
+            })
+
         return {
             "success": True,
             "result": nested_result.get("result"),
@@ -206,10 +217,23 @@ def execute_invoke(
             "price_paid": total_cost
         }
     else:
+        error_msg = nested_result.get("error", "Unknown error")
+
+        # Log failed invocation for observability
+        if world and hasattr(world, "logger"):
+            world.logger.log("invoke_failed", {
+                "principal_id": caller_id,
+                "caller_artifact": artifact_id,
+                "target_artifact": target_artifact_id,
+                "success": False,
+                "error": str(error_msg)[:500],
+                "depth": current_depth,
+            })
+
         return {
             "success": False,
             "result": None,
-            "error": nested_result.get("error", "Unknown error"),
+            "error": error_msg,
             "price_paid": 0
         }
 
