@@ -295,7 +295,19 @@ RESPOND WITH JSON:
     state["last_action_result"] = action_result
 
     # Record action in history — full reasoning and result for immediate-term context
-    result_summary = str(action_result.get("result", action_result.get("error", "")))[:500]
+    # Discovery queries get a higher limit since they're the key cross-agent mechanism
+    result_raw = action_result.get("result", action_result.get("error", ""))
+    if action_type == "query_kernel" and isinstance(result_raw, dict) and "results" in result_raw:
+        # Format discovery results compactly for LLM readability
+        artifacts_found = result_raw.get("results", [])
+        lines = [f"Found {len(artifacts_found)} artifacts:"]
+        for art in artifacts_found:
+            lines.append(f"  - {art.get('id')} (by {art.get('created_by','?')}, {art.get('type','?')})")
+            if art.get("code_preview"):
+                lines.append(f"    code: {art['code_preview'][:200]}")
+        result_summary = "\n".join(lines)[:1500]
+    else:
+        result_summary = str(result_raw)[:500]
     state.setdefault("action_history", []).append({
         "iteration": iteration,
         "phase": new_research_phase,
