@@ -540,6 +540,44 @@ def check_permission(caller, action, target, context, ledger):
         assert result.allowed is False
         assert result.reason == "No access allowed"
 
+    def test_bare_bool_true_accepted(self) -> None:
+        """Contract returning bare True is accepted as allowed."""
+        contract = ExecutableContract(
+            contract_id="bool_allow",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return True
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+
+        assert result.allowed is True
+        assert result.reason == "allowed"
+
+    def test_bare_bool_false_accepted(self) -> None:
+        """Contract returning bare False is accepted as denied."""
+        contract = ExecutableContract(
+            contract_id="bool_deny",
+            code='''
+def check_permission(caller, action, target, context, ledger):
+    return False
+'''
+        )
+
+        result = contract.check_permission(
+            caller="anyone",
+            action=PermissionAction.READ,
+            target="artifact_1",
+        )
+
+        assert result.allowed is False
+        assert result.reason == "denied"
+
     def test_owner_only_access(self) -> None:
         """Test a contract that allows only owner access."""
         contract = ExecutableContract(

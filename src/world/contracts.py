@@ -585,6 +585,9 @@ def check_permission(caller, action, target, context, ledger):
             )
 
         # Validate and convert result
+        # Accept bare bool returns as a convenience for simple contracts
+        if isinstance(result, bool):
+            result = {"allowed": result, "reason": "allowed" if result else "denied"}
         if not isinstance(result, dict):
             return PermissionResult(
                 allowed=False,
