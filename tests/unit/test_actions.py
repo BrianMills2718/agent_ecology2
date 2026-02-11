@@ -3,6 +3,8 @@
 TDD tests for adding reasoning to the narrow waist.
 """
 
+import json
+
 import pytest
 
 from src.world.actions import (
@@ -282,6 +284,88 @@ class TestEditArtifactParsing:
         assert result["old_string"].endswith("...")
         assert len(result["new_string"]) < 110
         assert result["new_string"].endswith("...")
+
+
+class TestWriteArtifactAccessContractParsing:
+    """Tests for access_contract_id extraction in write_artifact parsing."""
+
+    def test_parse_write_extracts_access_contract_id(self) -> None:
+        """parse_intent_from_json should extract access_contract_id for write_artifact."""
+        json_str = json.dumps({
+            "action_type": "write_artifact",
+            "artifact_id": "my_doc",
+            "artifact_type": "data",
+            "content": "hello",
+            "access_contract_id": "my_contract",
+        })
+        result = parse_intent_from_json("agent1", json_str)
+        assert isinstance(result, WriteArtifactIntent)
+        assert result.access_contract_id == "my_contract"
+
+    def test_parse_write_access_contract_id_defaults_to_none(self) -> None:
+        """access_contract_id defaults to None when not provided."""
+        json_str = json.dumps({
+            "action_type": "write_artifact",
+            "artifact_id": "my_doc",
+            "artifact_type": "data",
+            "content": "hello",
+        })
+        result = parse_intent_from_json("agent1", json_str)
+        assert isinstance(result, WriteArtifactIntent)
+        assert result.access_contract_id is None
+
+    def test_parse_write_rejects_non_string_access_contract_id(self) -> None:
+        """Non-string access_contract_id returns validation error."""
+        json_str = json.dumps({
+            "action_type": "write_artifact",
+            "artifact_id": "my_doc",
+            "artifact_type": "data",
+            "content": "hello",
+            "access_contract_id": 123,
+        })
+        result = parse_intent_from_json("agent1", json_str)
+        assert isinstance(result, str)
+        assert "access_contract_id" in result
+
+
+class TestWriteArtifactDictContentSerialization:
+    """Tests for auto-serialization of dict/list content in write_artifact."""
+
+    def test_parse_write_serializes_dict_content(self) -> None:
+        """Dict content should be auto-serialized to JSON string."""
+        json_str = json.dumps({
+            "action_type": "write_artifact",
+            "artifact_id": "my_data",
+            "artifact_type": "json",
+            "content": {"key": "value", "count": 42},
+        })
+        result = parse_intent_from_json("agent1", json_str)
+        assert isinstance(result, WriteArtifactIntent)
+        assert result.content == '{"key": "value", "count": 42}'
+
+    def test_parse_write_serializes_list_content(self) -> None:
+        """List content should be auto-serialized to JSON string."""
+        json_str = json.dumps({
+            "action_type": "write_artifact",
+            "artifact_id": "my_list",
+            "artifact_type": "json",
+            "content": [1, 2, 3],
+        })
+        result = parse_intent_from_json("agent1", json_str)
+        assert isinstance(result, WriteArtifactIntent)
+        assert result.content == "[1, 2, 3]"
+
+    def test_parse_write_string_content_unchanged(self) -> None:
+        """String content should pass through unchanged."""
+        json_str = json.dumps({
+            "action_type": "write_artifact",
+            "artifact_id": "my_doc",
+            "artifact_type": "text",
+            "content": "hello world",
+        })
+        result = parse_intent_from_json("agent1", json_str)
+        assert isinstance(result, WriteArtifactIntent)
+        assert result.content == "hello world"
 
 
 @pytest.mark.plans([308])

@@ -675,6 +675,7 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
         policy: dict[str, Any] | None = data.get("policy")  # Can be None or a dict
         interface: dict[str, Any] | None = data.get("interface")  # Plan #114: Interface schema
         metadata: dict[str, Any] | None = data.get("metadata")  # Plan #168: User metadata
+        access_contract_id: str | None = data.get("access_contract_id")  # ADR-0019
         # Plan #254: Principal creation fields
         has_standing = data.get("has_standing", False)
         has_loop = data.get("has_loop", False)
@@ -686,9 +687,15 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
         if not isinstance(artifact_type, str):
             artifact_type = "generic"
         if not isinstance(content, str):
-            content = ""
+            # Auto-serialize dicts/lists to JSON instead of silently dropping
+            if isinstance(content, (dict, list)):
+                content = json.dumps(content)
+            else:
+                content = str(content)
         if not isinstance(code, str):
             code = ""
+        if access_contract_id is not None and not isinstance(access_contract_id, str):
+            return "access_contract_id must be a string"
 
         # Validate policy if provided
         if policy is not None and not isinstance(policy, dict):
@@ -731,6 +738,7 @@ def parse_intent_from_json(principal_id: str, json_str: str) -> ActionIntent | s
             code=code,
             policy=policy,
             interface=interface,
+            access_contract_id=access_contract_id,
             metadata=metadata,
             has_standing=has_standing,
             has_loop=has_loop,
