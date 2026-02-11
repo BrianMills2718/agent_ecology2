@@ -17,10 +17,10 @@ Gaps between [current](../current/context_graph.md) and [target](../target/conte
 | Severity: Medium | 7 |
 | Severity: Low | 5 |
 | Estimated effort | 3-4 plans |
-| Closed (Phase 1+2) | 7 |
-| Remaining | 9 |
+| Closed (Phase 1+2+3 partial) | 8 |
+| Remaining | 8 |
 
-The context graph exists and works for its core use cases (governance injection, doc-code coupling). Phase 1 (data quality) and Phase 2 (dead sections) are complete. Remaining gaps: freshness enforcement for compression layers and traceability chain.
+The context graph exists and works for its core use cases (governance injection, doc-code coupling). Phases 1-2 complete, Phase 3 partially done (ontology freshness automated). Remaining gaps need design decisions (domain model, glossary, PRD freshness) or have unclear consumption stories (traceability edges).
 
 ---
 
@@ -153,14 +153,16 @@ The 1280-line `relationships.yaml` requires manual updates for every new file, e
 - ~~GAP-CTX-05: Decide on document_hierarchy~~ (kept as informational data — reading order guidance for humans)
 - ~~GAP-CTX-07: Decide on orphan_detection~~ (kept as informational data — future automation candidate)
 
-### Phase 3: Freshness Enforcement (1 plan)
-- GAP-CTX-08: Ontology freshness check
-- GAP-CTX-09: Domain model freshness check
-- GAP-CTX-10: Glossary new-term detection
-- GAP-CTX-11: PRD evaluation
+### Phase 3: Freshness Enforcement (partial)
+- ~~GAP-CTX-08: Ontology freshness check~~ (`check_ontology_freshness.py` — 4 checks, found and fixed 8 drift issues)
+- GAP-CTX-09: Domain model freshness check (needs design — heuristic matching)
+- GAP-CTX-10: Glossary new-term detection (needs design — noisy false positives)
+- GAP-CTX-11: PRD evaluation (needs design — structural decision)
 
-### Phase 4: Traceability + Automation (1 plan, deferred)
-- GAP-CTX-12 through GAP-CTX-15: Add traceability edges
+### Phase 4: Traceability + Automation (deferred)
+- GAP-CTX-12 through GAP-CTX-13: Add traceability edges (needs consumer story)
+- GAP-CTX-14: ADR→Plan edges (plans already reference ADRs in text; no consumer exists)
+- GAP-CTX-15: Plan→Source edges (low operational value — plans are ephemeral)
 - GAP-CTX-16: Source-declared edges (largest effort, most impact)
 
-Phases 1-2 are small and immediately valuable. Phase 3 requires design decisions. Phase 4 is the strategic target but not urgent.
+Phases 1-2 complete, Phase 3 partially done. Remaining gaps need design decisions or have unclear consumption stories.

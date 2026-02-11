@@ -153,7 +153,7 @@ ADRs are orthogonal — they compress **rationale** (why decisions were made), n
 |-------|---------------------|--------|
 | Architecture docs | CI-enforced doc-code coupling | Automated |
 | ADR governance headers | `sync_governance.py --check` | Automated |
-| Ontology | None | Manual review only |
+| Ontology | `check_ontology_freshness.py` (fields, actions, methods) | Automated |
 | Domain model | None | Manual review only |
 | Glossary | None (deprecated terms marked) | Manual review only |
 | Thesis | Rarely changes | Stable |
@@ -161,7 +161,7 @@ ADRs are orthogonal — they compress **rationale** (why decisions were made), n
 
 ## Scripts
 
-13 Python scripts consume `relationships.yaml`:
+14 Python scripts consume `relationships.yaml`:
 
 | Script | Purpose | Enforcement |
 |--------|---------|-------------|
@@ -170,6 +170,7 @@ ADRs are orthogonal — they compress **rationale** (why decisions were made), n
 | `check_required_reading.py` | Block edits if docs not read | ENFORCE |
 | `check_governance_completeness.py` | Audit governance coverage | WARN |
 | `check_claude_md.py` | Validate CLAUDE.md presence | WARN |
+| `check_ontology_freshness.py` | Compare ONTOLOGY.yaml against source via AST | WARN |
 | `get_governance_context.py` | Return governance context for a file | CONSUME |
 | `file_context.py` | Unified context loader | CONSUME |
 | `extract_relevant_context.py` | Match glossary/ontology to source | CONSUME |
