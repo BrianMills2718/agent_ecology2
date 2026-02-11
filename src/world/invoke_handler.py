@@ -197,8 +197,7 @@ def execute_invoke(
         # Pay total cost to recipient (ADR-0028: contract decides who gets paid)
         # Plan #140: Use contract-specified payer instead of hardcoded caller
         if total_cost > 0 and recipient and recipient != cost_payer:
-            ledger.deduct_scrip(cost_payer, total_cost)
-            ledger.credit_scrip(recipient, total_cost)
+            ledger.transfer_scrip(cost_payer, recipient, total_cost)
 
         return {
             "success": True,
