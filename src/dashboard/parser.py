@@ -449,6 +449,8 @@ class JSONLParser:
             # Track artifact creation
             artifact_id = intent.get("artifact_id", "")
             content = intent.get("content", "")
+            if not isinstance(content, str):
+                content = json.dumps(content)
             if artifact_id:
                 is_new = artifact_id not in self.state.artifacts
                 self.state.artifacts[artifact_id] = ArtifactState(
