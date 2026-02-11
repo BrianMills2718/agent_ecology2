@@ -42,6 +42,7 @@ Utility scripts for development and CI. All scripts support `--help` for options
 | `visualize_doc_graph.py` | Visualize documentation graph (text, DOT, PNG/SVG) |
 | `generate_doc_graph_html.py` | Generate interactive HTML visualization (D3.js) |
 | `validate_relationships.py` | Validate relationships.yaml internal consistency (stale refs, missing ADRs) |
+| `check_ontology_freshness.py` | Compare ONTOLOGY.yaml fields/actions/methods against source via AST |
 
 ### Plan Management
 

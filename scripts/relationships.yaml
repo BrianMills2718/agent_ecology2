@@ -485,14 +485,14 @@ conceptual_model:
     key_fields: [id, type, content, created_by, has_standing, has_loop, access_contract_id]
 
   actions:
-    description: "11 core actions: storage (4), execution (1), value (3), observation (2), signal (2)"
+    description: "14 core actions: storage (5), execution (1), value (4), observation (2), signal (2)"
     source_files:
     - src/world/actions.py           # ActionIntent, ActionResult definitions
     - src/world/action_executor.py   # Action execution logic
     categories:
-      storage: [read_artifact, write_artifact, edit_artifact, delete_artifact]
+      storage: [read_artifact, write_artifact, edit_artifact, delete_artifact, update_metadata]
       execution: [invoke_artifact]
-      value: [transfer, mint, submit_to_task]
+      value: [transfer, mint, submit_to_mint, submit_to_task]
       observation: [noop, query_kernel]
       signal: [subscribe_artifact, unsubscribe_artifact]
 
@@ -501,8 +501,8 @@ conceptual_model:
     source_files:
     - src/world/kernel_interface.py
     methods:
-      kernel_state: 11  # get_balance, get_resource, read_artifact, etc.
-      kernel_actions: 15  # transfer_scrip, write_artifact, submit_for_mint, etc.
+      kernel_state: 14  # get_balance, get_resource, read_artifact, query, has_capability, etc.
+      kernel_actions: 18  # transfer_scrip, write_artifact, submit_for_mint, request_capability, etc.
 
   permission_system:
     description: "ADR-0019 kernel-mediated contract checking"

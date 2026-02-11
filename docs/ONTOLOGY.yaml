@@ -10,11 +10,11 @@
 #   Thesis → PRD → Domain Model → ADR → Ontology (this file) → Code
 #
 # See: docs/prd/ for capabilities, docs/domain_model/ for concepts
-# Last verified: 2026-02-08 (Plan #308: _remove_from_index on deletion, dedup write() index update)
+# Last verified: 2026-02-09 (check_ontology_freshness.py — all 4 checks pass)
 # =============================================================================
 
 version: 4
-last_updated: "2026-02-08"  # Plan #311: auth data moved from metadata to artifact.state
+last_updated: "2026-02-09"  # Freshness check: added state field, submit_to_mint, 6 kernel methods
 status: current_implementation
 source_of_truth: "src/world/artifacts.py, src/world/actions.py, src/world/kernel_interface.py"
 
@@ -52,6 +52,7 @@ artifact:
     depends_on: { type: list, default: "[]" }
     access_contract_id: { type: str, default: '"kernel_contract_freeware"' }
     metadata: { type: dict, default: "{}" }
+    state: { type: dict, default: "{}", note: "Plan #311: contract-managed auth state (e.g., writer, principal)" }
     kernel_protected: { type: bool, default: false, note: "Plan #235 Phase 1" }
     capabilities: { type: list, default: "[]", note: "Plan #254: e.g., ['can_mint']" }
 
@@ -160,10 +161,11 @@ actions:
 
   value:
     description: "Scrip management (Plan #254, #269)"
-    operations: [transfer, mint, submit_to_task]
+    operations: [transfer, mint, submit_to_mint, submit_to_task]
     notes:
       transfer: "Move scrip between principals, validates balance"
       mint: "Submit artifact to auction-based mint (Plan #254)"
+      submit_to_mint: "Submit artifact to mint auction (Plan #259)"
       submit_to_task: "Submit artifact to task-based mint for test evaluation (Plan #269)"
 
   observation:
@@ -186,7 +188,7 @@ actions:
 
 kernel_interface:
   kernel_state:
-    description: "Read-only (11 methods)"
+    description: "Read-only (14 methods)"
     methods:
       - "get_balance(principal_id) -> int"
       - "get_resource(principal_id, resource) -> float"
@@ -199,9 +201,12 @@ kernel_interface:
       - "get_quota(principal_id, resource) -> float"
       - "get_available_capacity(principal_id, resource) -> float"
       - "would_exceed_quota(principal_id, resource, amount) -> bool"
+      - "query(query_type, params) -> dict"
+      - "has_capability(capability_name) -> bool"
+      - "list_capabilities() -> list[dict]"
 
   kernel_actions:
-    description: "Write operations with verified caller (15 methods)"
+    description: "Write operations with verified caller (18 methods)"
     methods:
       - "transfer_scrip(caller_id, to, amount) -> bool"
       - "transfer_resource(caller_id, to, resource, amount) -> bool"
@@ -209,6 +214,7 @@ kernel_interface:
       - "write_artifact(caller_id, artifact_id, content, type) -> bool"
       - "submit_for_mint(caller_id, artifact_id, bid) -> dict"
       - "cancel_mint_submission(caller_id, submission_id) -> bool"
+      - "submit_to_task(caller_id, task_artifact_id, solution_artifact_id) -> dict"
       - "transfer_quota(from_id, to_id, resource, amount) -> bool"
       - "consume_quota(principal_id, resource, amount) -> bool"
       - "install_library(caller_id, library_name, version) -> dict"
@@ -218,6 +224,8 @@ kernel_interface:
       - "grant_charge_delegation(caller_id, delegate_id, max_per_call, max_per_window) -> bool"
       - "revoke_charge_delegation(caller_id, delegate_id) -> bool"
       - "authorize_charge(caller_id, payer_id, amount) -> bool"
+      - "request_capability(caller_id, capability_name, params) -> dict"
+      - "use_capability(caller_id, capability_name, params) -> dict"
 
 # =============================================================================
 # PERMISSION SYSTEM (ADR-0019 - current)
