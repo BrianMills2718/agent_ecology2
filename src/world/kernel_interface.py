@@ -358,9 +358,8 @@ class KernelActions:
             })
             return False
 
-        # Perform transfer
-        self._world.ledger.deduct_scrip(caller_id, amount)
-        self._world.ledger.credit_scrip(to, amount)
+        # Perform transfer (atomic)
+        self._world.ledger.transfer_scrip(caller_id, to, amount)
 
         # Plan #274: Log successful transfer
         _log_kernel_action(self._world, "kernel_transfer_scrip", caller_id, True, {
