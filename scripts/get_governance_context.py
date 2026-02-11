@@ -78,7 +78,25 @@ def get_full_context(file_path: str) -> dict | None:
                         )
                 break
 
-    if not result["adrs"] and not result["docs"]:
+    # Check target_current_links (Target ↔ Current architecture)
+    result["target_link"] = None
+    for link in data.get("target_current_links", []):
+        if link.get("current") == file_path:
+            result["target_link"] = {
+                "path": link["target"],
+                "direction": "target",
+                "description": link.get("description", ""),
+            }
+            break
+        elif link.get("target") == file_path:
+            result["target_link"] = {
+                "path": link["current"],
+                "direction": "current",
+                "description": link.get("description", ""),
+            }
+            break
+
+    if not result["adrs"] and not result["docs"] and not result["target_link"]:
         return None
 
     return result
@@ -104,6 +122,13 @@ def format_context(ctx: dict) -> str:
 
     if ctx["context"]:
         parts.append(f"Governance context: {ctx['context']}")
+
+    if ctx.get("target_link"):
+        link = ctx["target_link"]
+        if link["direction"] == "target":
+            parts.append(f"Target vision: {link['path']}")
+        else:
+            parts.append(f"Current implementation: {link['path']}")
 
     return " ".join(parts)
 

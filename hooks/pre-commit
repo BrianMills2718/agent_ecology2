@@ -19,7 +19,19 @@ python scripts/generate_plan_index.py --write 2>/dev/null || {
 }
 git add docs/plans/CLAUDE.md 2>/dev/null || true
 
-# 2. Doc-coupling check (respects meta-process.yaml strict_doc_coupling setting)
+# 2. Validate relationships.yaml internal consistency
+if [ -f scripts/validate_relationships.py ]; then
+    echo "Validating relationships.yaml..."
+    if ! python scripts/validate_relationships.py 2>/dev/null; then
+        echo ""
+        echo "ERROR: relationships.yaml has broken references!"
+        echo "Run 'python scripts/validate_relationships.py' to see details."
+        echo ""
+        exit 1
+    fi
+fi
+
+# 3. Doc-coupling check (respects meta-process.yaml strict_doc_coupling setting)
 echo "Checking doc-code coupling..."
 STRICT_FLAG="--strict"
 if python scripts/meta_config.py --get enforcement.strict_doc_coupling 2>/dev/null | grep -qi "false"; then
@@ -33,7 +45,7 @@ if ! python scripts/check_doc_coupling.py $STRICT_FLAG 2>/dev/null; then
     exit 1
 fi
 
-# 3. Mypy on changed src/ files (blocking)
+# 4. Mypy on changed src/ files (blocking)
 STAGED_SRC=$(echo "$STAGED_PY" | grep '^src/' || true)
 if [ -n "$STAGED_SRC" ]; then
     echo "Running mypy on changed files..."

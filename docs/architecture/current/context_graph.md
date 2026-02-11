@@ -127,7 +127,7 @@ Each section of the graph has a different enforcement level:
 | `glossary` | **CONSUMED** | `extract_relevant_context.py` | Terms injected before edit |
 | `conceptual_model` | **CONSUMED** | `extract_relevant_context.py` | Entities injected before edit |
 | `document_hierarchy` | DECLARED | Nothing reads it at runtime | Unused |
-| `target_current_links` | DECLARED | Nothing reads it at runtime | Unused |
+| `target_current_links` | **CONSUMED** | `get_governance_context.py` | Target/current vision injected |
 | `orphan_detection` | DECLARED | No script consumes it | Unused |
 
 **Key distinction:** ENFORCED = code blocks on violation (commit fails, edit blocked). CONSUMED = code reads and injects but doesn't block. DECLARED = exists in YAML but nothing reads it.
@@ -210,6 +210,6 @@ Checks: stale governance sources, unregistered ADR references, duplicate entries
 
 ## Known Issues
 
-1. **3 sections unused** — `document_hierarchy`, `target_current_links`, `orphan_detection` are declared but no script reads them
+1. **2 sections unused** — `document_hierarchy` and `orphan_detection` are declared but no script reads them (kept as informational data)
 2. **No traceability chain** — Thesis→PRD→ADR→Plan→Code is conceptual but not encoded as graph edges
 3. **Manual maintenance** — the YAML is entirely hand-maintained; no tooling generates it
