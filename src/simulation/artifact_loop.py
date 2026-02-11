@@ -154,9 +154,8 @@ class ArtifactLoop:
         try:
             budget = self.world.ledger.get_llm_budget(self.artifact_id)
             return budget > 0
-        except Exception:
-            # If artifact doesn't have a budget entry, assume it's ok
-            # (might be using a different resource model)
+        except Exception:  # exception-ok: artifact may not have budget entry
+            logger.warning("Budget check failed for %s, assuming OK", self.artifact_id, exc_info=True)
             return True
 
     async def start(self) -> None:
@@ -269,13 +268,13 @@ class ArtifactLoop:
             except asyncio.CancelledError:
                 logger.debug(f"Artifact {self.artifact_id} loop cancelled")
                 break
-            except Exception as e:
+            except Exception as e:  # exception-ok: loop must survive artifact errors
                 logger.exception(f"Artifact {self.artifact_id} loop error: {e}")
                 self._consecutive_errors += 1
                 if self.on_error:
                     try:
                         self.on_error("loop_error", self.artifact_id, str(e))
-                    except Exception:
+                    except Exception:  # exception-ok: error callback must not crash loop
                         logger.warning(f"on_error callback failed for {self.artifact_id}")
                 await asyncio.sleep(delay)
 
@@ -321,12 +320,12 @@ class ArtifactLoop:
                 "result": result,
             }
 
-        except Exception as e:
+        except Exception as e:  # exception-ok: iteration must return error, not crash
             logger.exception(f"Artifact {self.artifact_id} iteration error: {e}")
             if self.on_error:
                 try:
                     self.on_error("iteration_error", self.artifact_id, str(e))
-                except Exception:
+                except Exception:  # exception-ok: error callback must not crash iteration
                     logger.warning(f"on_error callback failed for {self.artifact_id}")
             return {"success": False, "error": str(e)}
 

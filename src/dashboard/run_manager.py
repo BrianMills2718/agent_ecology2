@@ -97,7 +97,7 @@ class RunManager:
             try:
                 run_info = self._extract_metadata(run_dir, events_file)
                 runs.append(run_info)
-            except Exception as e:
+            except Exception as e:  # exception-ok: corrupted run dir shouldn't crash listing
                 logger.warning(f"Failed to extract metadata from {run_dir}: {e}")
                 continue
 
@@ -107,7 +107,7 @@ class RunManager:
             try:
                 run_info = self._extract_metadata_from_jsonl(root_jsonl, "legacy")
                 runs.append(run_info)
-            except Exception as e:
+            except Exception as e:  # exception-ok: corrupted jsonl shouldn't crash listing
                 logger.warning(f"Failed to extract metadata from {root_jsonl}: {e}")
 
         # Sort by start_time descending

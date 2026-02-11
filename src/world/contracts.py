@@ -368,7 +368,7 @@ def _get_contract_timeout_from_config() -> int:
     try:
         from src.config import get_validated_config
         return get_validated_config().executor.contract_timeout
-    except Exception:
+    except Exception:  # exception-ok: config may be unavailable during startup/tests
         logger.warning("Failed to load contract_timeout from config, using default 5s", exc_info=True)
         return 5  # Fallback default
 
@@ -381,7 +381,8 @@ def _get_contract_llm_timeout_from_config() -> int:
     try:
         from src.config import get_validated_config
         return get_validated_config().executor.contract_llm_timeout
-    except Exception:
+    except Exception:  # exception-ok: config may be unavailable during startup/tests
+        logger.warning("Failed to load contract_llm_timeout from config, using default 30s", exc_info=True)
         return 30  # Fallback default
 
 
@@ -475,7 +476,7 @@ def check_permission(caller, action, target, context, ledger):
         except SyntaxError as e:
             return False, f"Syntax error in contract code: {e}"
         except Exception as e:
-            return False, f"Contract code compilation failed: {e}"
+            return False, f"Contract code compilation failed: {e}"  # exception-ok: contract is user code
 
     def _execute_contract_code(
         self,
@@ -509,7 +510,7 @@ def check_permission(caller, action, target, context, ledger):
         try:
             compiled = compile(self.code, '<contract_code>', 'exec')
         except Exception as e:
-            return PermissionResult(
+            return PermissionResult(  # exception-ok: contract is user code
                 allowed=False,
                 reason=f"Contract compilation failed: {e}"
             )
@@ -545,7 +546,7 @@ def check_permission(caller, action, target, context, ledger):
                 reason="Contract code definition timed out"
             )
         except Exception as e:
-            return PermissionResult(
+            return PermissionResult(  # exception-ok: contract is user code
                 allowed=False,
                 reason=f"Contract code execution error: {type(e).__name__}: {e}"
             )
@@ -588,7 +589,7 @@ def check_permission(caller, action, target, context, ledger):
                 reason="Contract check_permission execution timed out"
             )
         except Exception as e:
-            return PermissionResult(
+            return PermissionResult(  # exception-ok: contract is user code
                 allowed=False,
                 reason=f"Contract check_permission error: {type(e).__name__}: {e}"
             )

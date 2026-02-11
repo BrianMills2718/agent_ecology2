@@ -167,7 +167,7 @@ class MintScorer:
 
             self.last_cost = llm_result.cost
             response: str = llm_result.content
-        except Exception as e:
+        except Exception as e:  # exception-ok: LLM scoring can fail any way
             return {
                 "success": False,
                 "score": 0,

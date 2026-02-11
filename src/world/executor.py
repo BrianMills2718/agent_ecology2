@@ -198,7 +198,7 @@ def create_syscall_llm(
                 error="",
             )
 
-        except Exception as e:
+        except Exception as e:  # exception-ok: LLM call can fail any way
             world.logger.log("thinking_failed", {
                 "principal_id": caller_id,
                 "model": model,

@@ -309,7 +309,7 @@ class MintTaskManager:
                 error=None,
             )
 
-        except Exception as e:
+        except Exception as e:  # exception-ok: test execution runs user code
             return TaskTestResult(
                 test_id=test.test_id,
                 passed=False,
