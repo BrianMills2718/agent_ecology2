@@ -17,6 +17,7 @@ def run():
     agent_prefix = caller_id.replace("_loop", "")
     state_id = f"{agent_prefix}_state"
     strategy_id = f"{agent_prefix}_strategy"
+    notebook_id = f"{agent_prefix}_notebook"
 
     # --- Read current state ---
     state_raw = kernel_state.read_artifact(state_id, caller_id)
@@ -35,6 +36,17 @@ def run():
     strategy = kernel_state.read_artifact(strategy_id, caller_id)
     if not strategy:
         strategy = "You are a research agent."
+
+    # Read notebook (persistent long-term memory)
+    notebook_raw = kernel_state.read_artifact(notebook_id, caller_id)
+    try:
+        notebook = json.loads(notebook_raw) if isinstance(notebook_raw, str) else notebook_raw
+    except (json.JSONDecodeError, TypeError):
+        notebook = {"key_facts": {}, "journal": []}
+    if not isinstance(notebook, dict):
+        notebook = {"key_facts": {}, "journal": []}
+    key_facts = notebook.get("key_facts", {})
+    journal = notebook.get("journal", [])
 
     model = state.get("model", "gemini/gemini-2.0-flash")
 
@@ -109,7 +121,7 @@ def run():
     research_question = state.get("research_question", "(none yet)")
     research_phase = state.get("research_phase", "questioning")
     semantic = state.get("semantic_memory", {})
-    action_history = state.get("action_history", [])[-5:]
+    action_history = state.get("action_history", [])[-10:]
 
     # Format recent iterations with full reasoning and results
     recent_iters_lines = []
@@ -121,11 +133,22 @@ def run():
             recent_iters_lines.append(f"    Result: {ah['result']}")
     recent_iters_text = "\n".join(recent_iters_lines) if recent_iters_lines else "(first iteration)"
 
+    # Format notebook for prompt
+    key_facts_text = json.dumps(key_facts, indent=2) if key_facts else "(empty — record important discoveries here)"
+    journal_recent = journal[-20:]
+    journal_text = "\n".join(journal_recent) if journal_recent else "(empty — entries are logged automatically each iteration)"
+
     prompt = f"""{strategy}
 
 == STATUS ==
 Iteration: {iteration} | Scrip: {scrip_balance} | Phase: {research_phase}
 Research question: {research_question}
+
+== YOUR NOTEBOOK (persistent memory — survives across iterations) ==
+Key facts: {key_facts_text}
+
+Recent journal (last {len(journal_recent)} entries):
+{journal_text}
 
 == CURRENT TASK ==
 Task #{current_task['id']}: {current_task['description']}
@@ -156,7 +179,8 @@ RESPOND WITH JSON:
   "research_question": "Your current research question (update if changed)",
   "task_complete": true or false,
   "new_tasks": [{{"description": "...", "priority": 1-10}}],
-  "new_knowledge": {{"type": "domain|strategy|ecosystem", "insight": "..."}} or null
+  "new_knowledge": {{"type": "domain|strategy|ecosystem", "insight": "..."}} or null,
+  "notebook_update": {{"key_facts_update": {{"key": "value to remember"}}, "journal_note": "optional extra note"}} or null
 }}
 
 ACTIONS:
@@ -280,7 +304,7 @@ RESPOND WITH JSON:
         "success": action_result.get("success", False),
         "result": result_summary,
     })
-    state["action_history"] = state["action_history"][-5:]
+    state["action_history"] = state["action_history"][-15:]
 
     # Handle task completion
     if task_complete:
@@ -366,6 +390,27 @@ RESPOND WITH JSON:
             proc[tool_id]["last_result"] = "success" if action_result.get("success") else "failure"
             if action_result.get("success"):
                 proc[tool_id]["verified"] = True
+
+    # --- Update notebook ---
+    # Auto-log journal entry (always)
+    result_brief = str(action_result.get("result", action_result.get("error", "")))[:100]
+    journal_entry = f"i{iteration} [{action_type}] {'OK' if action_result.get('success') else 'FAIL'}: {result_brief}"
+    journal.append(journal_entry)
+
+    # Apply LLM-requested notebook updates
+    nb_update = parsed.get("notebook_update")
+    if nb_update and isinstance(nb_update, dict):
+        kf_updates = nb_update.get("key_facts_update", {})
+        if isinstance(kf_updates, dict):
+            key_facts.update(kf_updates)
+        extra_note = nb_update.get("journal_note", "")
+        if extra_note:
+            journal.append(f"i{iteration} [note] {str(extra_note)[:200]}")
+
+    # Cap journal at 50 entries, save notebook
+    notebook["key_facts"] = key_facts
+    notebook["journal"] = journal[-50:]
+    kernel_actions.write_artifact(caller_id, notebook_id, json.dumps(notebook, indent=2))
 
     # Final state save
     kernel_actions.write_artifact(caller_id, state_id, json.dumps(state, indent=2))

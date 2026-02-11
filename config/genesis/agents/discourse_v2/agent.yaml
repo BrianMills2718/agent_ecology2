@@ -20,6 +20,13 @@ artifacts:
     state:
       writer: discourse_v2_loop
 
+  - id: discourse_v2_notebook
+    type: json
+    content_file: initial_notebook.json
+    access_contract_id: kernel_contract_transferable_freeware
+    state:
+      writer: discourse_v2_loop
+
   - id: discourse_v2_loop
     type: executable
     code_file: loop_code.py
