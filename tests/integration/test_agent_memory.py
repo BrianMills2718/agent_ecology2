@@ -5,10 +5,8 @@ Tests that agents can update their own working memory via write_artifact.
 
 import pytest
 import json
-from typing import Any
 
 from src.world.world import World
-from src.world.artifacts import ArtifactStore
 from src.world.actions import WriteArtifactIntent
 
 
@@ -16,92 +14,72 @@ class TestAgentSelfUpdate:
     """Test that agents can update their own working memory."""
 
     @pytest.mark.plans([59])
-    def test_agent_updates_own_memory(self, test_world: World) -> None:
+    def test_agent_updates_own_memory(self, feature_world: World) -> None:
         """Agent should be able to write to self to update working memory."""
-        world = test_world
-        # Get the agent artifact
-        agent_id = "alpha"
+        world = feature_world
 
-        # Check if alpha exists, if not use first available user agent
-        if world.artifacts.get(agent_id) is None:
-            # Get first non-kernel agent artifact
-            all_artifacts = list(world.artifacts.artifacts.values())
-            agent_artifacts = [
-                a for a in all_artifacts
-                if a.has_standing and not a.id.startswith("kernel_")
-            ]
-            if not agent_artifacts:
-                pytest.skip("No user agent artifacts found")
-            agent_id = agent_artifacts[0].id
-
-        # Get current artifact content
-        artifact = world.artifacts.get(agent_id)
-        assert artifact is not None
-
-        # Parse current content (content may be dict or JSON string)
-        try:
-            if isinstance(artifact.content, dict):
-                current_content = artifact.content
-            elif artifact.content:
-                current_content = json.loads(artifact.content)
-            else:
-                current_content = {}
-        except json.JSONDecodeError:
-            current_content = {}
-
-        # Add working_memory to content
-        new_content = current_content.copy()
-        new_content["working_memory"] = {
-            "current_goal": "Build trading system",
-            "progress": {"stage": "Design", "completed": []},
-            "lessons": [],
-        }
-
-        # Agent writes to self
+        # Create an agent artifact that alice owns
         intent = WriteArtifactIntent(
-            principal_id=agent_id,
-            artifact_id=agent_id,
-            artifact_type="agent",
-            content=json.dumps(new_content),
+            principal_id="alice",
+            artifact_id="alice_memory",
+            artifact_type="generic",
+            content=json.dumps({"notes": "initial"}),
+            access_contract_id="kernel_contract_freeware",
         )
         result = world.execute_action(intent)
+        assert result.success, f"Setup write failed: {result.message}"
 
+        # Now alice updates her own artifact
+        new_content = {
+            "notes": "initial",
+            "working_memory": {
+                "current_goal": "Build trading system",
+                "progress": {"stage": "Design", "completed": []},
+                "lessons": [],
+            },
+        }
+        intent = WriteArtifactIntent(
+            principal_id="alice",
+            artifact_id="alice_memory",
+            artifact_type="generic",
+            content=json.dumps(new_content),
+            access_contract_id="kernel_contract_freeware",
+        )
+        result = world.execute_action(intent)
         assert result.success, f"Write failed: {result.message}"
 
         # Verify the update persisted
-        updated = world.artifacts.get(agent_id)
+        updated = world.artifacts.get("alice_memory")
         assert updated is not None
-
         updated_content = json.loads(updated.content)
         assert "working_memory" in updated_content
         assert updated_content["working_memory"]["current_goal"] == "Build trading system"
 
     @pytest.mark.plans([59])
-    def test_agent_cannot_update_other_agent_memory(self, test_world: World) -> None:
+    def test_agent_cannot_update_other_agent_memory(self, feature_world: World) -> None:
         """Agent should NOT be able to write to another agent's artifact."""
-        world = test_world
-        # Get two different agents
-        all_artifacts = list(world.artifacts.artifacts.values())
-        agents = [a.id for a in all_artifacts if a.has_standing]
-        if len(agents) < 2:
-            pytest.skip("Need at least 2 agents for this test")
+        world = feature_world
 
-        agent_a, agent_b = agents[0], agents[1]
+        # Alice creates her own artifact
+        intent = WriteArtifactIntent(
+            principal_id="alice",
+            artifact_id="alice_private",
+            artifact_type="generic",
+            content=json.dumps({"secret": "data"}),
+            access_contract_id="kernel_contract_freeware",
+        )
+        result = world.execute_action(intent)
+        assert result.success, f"Setup write failed: {result.message}"
 
-        # Agent A tries to write to Agent B
-        result = world.execute_action({
-            "action_type": "write_artifact",
-            "principal_id": agent_a,
-            "artifact_id": agent_b,  # Trying to write to another agent!
-            "content": json.dumps({"hacked": True}),
-        })
+        # Bob tries to write to Alice's artifact
+        intent = WriteArtifactIntent(
+            principal_id="bob",
+            artifact_id="alice_private",
+            artifact_type="generic",
+            content=json.dumps({"hacked": True}),
+            access_contract_id="kernel_contract_freeware",
+        )
+        result = world.execute_action(intent)
 
-        # Should fail - agents can only write to artifacts they own
-        # (or the write should be rejected by ownership check)
-        # Note: The exact behavior depends on ownership rules
-        # If agents own themselves, this should fail ownership check
-        if result.success:
-            # If it succeeded, verify ownership allows it
-            artifact_b = world.artifacts.get(agent_b)
-            owner = artifact_b.created_by if artifact_b else None
-            assert owner == agent_a, "Write succeeded but agent_a doesn't own agent_b"
+        # Should fail — bob doesn't own alice's artifact
+        assert not result.success, "Bob should not be able to write to Alice's artifact"
