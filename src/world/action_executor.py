@@ -299,26 +299,51 @@ class ActionExecutor:
 
         # Require explicit access_contract_id for new artifacts (ADR-0019)
         if existing is None and not intent.access_contract_id:
-            from src.world.constants import (
-                KERNEL_CONTRACT_FREEWARE,
-                KERNEL_CONTRACT_TRANSFERABLE_FREEWARE,
-                KERNEL_CONTRACT_SELF_OWNED,
-                KERNEL_CONTRACT_PRIVATE,
-                KERNEL_CONTRACT_PUBLIC,
-            )
-            contract_list = [
-                f"  {KERNEL_CONTRACT_FREEWARE} — anyone reads/invokes, only creator modifies",
-                f"  {KERNEL_CONTRACT_TRANSFERABLE_FREEWARE} — like freeware, signals tradeable",
-                f"  {KERNEL_CONTRACT_SELF_OWNED} — only self or principal can access",
-                f"  {KERNEL_CONTRACT_PRIVATE} — only principal can access",
-                f"  {KERNEL_CONTRACT_PUBLIC} — anyone can do anything",
-            ]
-            return ActionResult(
-                success=False,
-                message=(
+            contracts_config = w.config.get("contracts", {})
+            allow_kernel = contracts_config.get("allow_kernel_contracts_for_agents", True)
+
+            if allow_kernel:
+                from src.world.constants import (
+                    KERNEL_CONTRACT_FREEWARE,
+                    KERNEL_CONTRACT_TRANSFERABLE_FREEWARE,
+                    KERNEL_CONTRACT_SELF_OWNED,
+                    KERNEL_CONTRACT_PRIVATE,
+                    KERNEL_CONTRACT_PUBLIC,
+                )
+                contract_list = [
+                    f"  {KERNEL_CONTRACT_FREEWARE} — anyone reads/invokes, only creator modifies",
+                    f"  {KERNEL_CONTRACT_TRANSFERABLE_FREEWARE} — like freeware, signals tradeable",
+                    f"  {KERNEL_CONTRACT_SELF_OWNED} — only self or principal can access",
+                    f"  {KERNEL_CONTRACT_PRIVATE} — only principal can access",
+                    f"  {KERNEL_CONTRACT_PUBLIC} — anyone can do anything",
+                ]
+                msg = (
                     f"New artifact '{intent.artifact_id}' requires access_contract_id. "
                     f"Available contracts:\n" + "\n".join(contract_list)
-                ),
+                )
+            else:
+                msg = (
+                    f"New artifact '{intent.artifact_id}' requires access_contract_id. "
+                    "Kernel contracts are disabled — you must create your own contract artifact.\n\n"
+                    "To bootstrap a contract, create a self-referencing executable artifact:\n"
+                    "  action_type: write_artifact\n"
+                    "  artifact_id: my_contract\n"
+                    "  access_contract_id: my_contract  (self-referencing)\n"
+                    "  executable: true\n"
+                    "  code: |\n"
+                    "    def check_permission(caller, action, target, context, ledger):\n"
+                    "        state = context.get('_artifact_state', {})\n"
+                    "        writer = state.get('writer', '')\n"
+                    "        if action in ('write', 'edit', 'delete'):\n"
+                    "            return {'allowed': caller == writer, 'reason': 'writer-only modify'}\n"
+                    "        return {'allowed': True, 'reason': 'public read/invoke'}\n\n"
+                    "Then use that contract for subsequent artifacts:\n"
+                    "  access_contract_id: my_contract"
+                )
+
+            return ActionResult(
+                success=False,
+                message=msg,
                 error_code=ErrorCode.INVALID_ARGUMENT.value,
                 error_category=ErrorCategory.VALIDATION.value,
                 retriable=True,
