@@ -3,7 +3,7 @@
 
 id: discourse_v2
 enabled_key: discourse_v2.enabled
-enabled: true
+enabled: false  # Disabled — V3 agents active for smoke test
 
 artifacts:
   - id: discourse_v2_strategy
