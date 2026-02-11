@@ -84,7 +84,7 @@ class ConnectionManager:
         for connection in self.active_connections:
             try:
                 await connection.send_json(message)
-            except Exception:
+            except Exception:  # exception-ok: disconnected client, will be cleaned up
                 disconnected.append(connection)
 
         # Clean up disconnected clients
@@ -206,7 +206,7 @@ class DashboardApp:
             import yaml
             with open(self.config_path) as f:
                 return yaml.safe_load(f) or {}
-        except Exception as e:
+        except Exception as e:  # exception-ok: config file may be missing or malformed
             logger.warning("Failed to load config from %s: %s", self.config_path, e)
             return {}
 
@@ -766,7 +766,7 @@ def create_app(
                 "config_found": True,
             }
 
-        except Exception as e:
+        except Exception as e:  # exception-ok: agent config YAML can fail any way
             return {
                 "agent_id": agent_id,
                 "config_found": False,
@@ -992,7 +992,7 @@ def create_app(
                 for line in f:
                     if line.strip():
                         summaries.append(json.loads(line))
-        except Exception as e:
+        except Exception as e:  # exception-ok: summary.jsonl can be corrupt or malformed
             return {
                 "available": False,
                 "message": f"Error reading summary.jsonl: {e}",

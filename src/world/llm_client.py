@@ -57,7 +57,7 @@ def _compute_cost(response: Any) -> float:
     try:
         cost = float(litellm.completion_cost(completion_response=response))
         return cost
-    except Exception:
+    except Exception:  # exception-ok: litellm cost calc may not support all models
         # Fallback: rough estimate based on total tokens
         total: int = response.usage.total_tokens
         fallback = total * 0.000001  # $1 per million tokens as rough floor

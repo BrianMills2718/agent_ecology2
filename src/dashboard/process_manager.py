@@ -130,7 +130,7 @@ class SimulationProcessManager:
                 "jsonl_path": "logs/latest/events.jsonl",
             }
 
-        except Exception as e:
+        except Exception as e:  # exception-ok: process spawn can fail any way
             self._cleanup()
             return {
                 "success": False,
@@ -177,7 +177,7 @@ class SimulationProcessManager:
                 "message": "Simulation stopped",
             }
 
-        except Exception as e:
+        except Exception as e:  # exception-ok: process stop can fail any way
             self._cleanup()
             return {
                 "success": False,
@@ -276,7 +276,7 @@ class SimulationProcessManager:
                 "checkpoint_path": checkpoint_path,
             }
 
-        except Exception as e:
+        except Exception as e:  # exception-ok: process resume can fail any way
             self._cleanup()
             return {
                 "success": False,

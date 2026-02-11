@@ -8,7 +8,11 @@ from typing import Callable, Awaitable, Any, TYPE_CHECKING
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileModifiedEvent, FileSystemEvent
 
+import logging
+
 from ..config import get_validated_config
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from watchdog.observers import Observer as ObserverType
@@ -88,8 +92,8 @@ class JSONLWatcher:
             for cb in self._callbacks:
                 try:
                     await cb()
-                except Exception as e:
-                    print(f"Watcher callback error: {e}")
+                except Exception as e:  # exception-ok: callback must not crash watcher
+                    logger.exception("Watcher callback error: %s", e)
 
         self.handler = JSONLFileHandler(
             self.jsonl_path,
@@ -170,13 +174,13 @@ class PollingWatcher:
                     for cb in self._callbacks:
                         try:
                             await cb()
-                        except Exception as e:
-                            print(f"Polling callback error: {e}")
+                        except Exception as e:  # exception-ok: callback must not crash poller
+                            logger.exception("Polling callback error: %s", e)
 
             except asyncio.CancelledError:
                 break
-            except Exception as e:
-                print(f"Polling error: {e}")
+            except Exception as e:  # exception-ok: poller must survive transient errors
+                logger.exception("Polling error: %s", e)
                 await asyncio.sleep(1.0)
 
     def stop(self) -> None:

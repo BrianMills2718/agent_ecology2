@@ -197,7 +197,7 @@ class CapabilityManager:
         try:
             result: dict[str, Any] = handler(config, api_key, action, params)
             return result
-        except Exception as e:
+        except Exception as e:  # exception-ok: external capability can fail any way
             logger.exception("Capability '%s' execution failed", name)
             return {
                 "success": False,

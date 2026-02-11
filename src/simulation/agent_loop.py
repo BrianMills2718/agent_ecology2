@@ -402,13 +402,13 @@ class AgentLoop:
             except asyncio.CancelledError:
                 logger.debug(f"Agent {self.agent_id} loop cancelled")
                 break
-            except Exception as e:
+            except Exception as e:  # exception-ok: loop must survive agent errors
                 logger.exception(f"Agent {self.agent_id} loop error: {e}")
                 self._consecutive_errors += 1
                 if self.on_error:
                     try:
                         self.on_error("loop_error", self.agent_id, str(e))
-                    except Exception:
+                    except Exception:  # exception-ok: error callback must not crash loop
                         logger.warning(f"on_error callback failed for {self.agent_id}")
                 await asyncio.sleep(delay)
 
@@ -501,12 +501,12 @@ class AgentLoop:
                 "result": result,
             }
 
-        except Exception as e:
+        except Exception as e:  # exception-ok: iteration must return error, not crash
             logger.exception(f"Agent {self.agent_id} iteration error: {e}")
             if self.on_error:
                 try:
                     self.on_error("iteration_error", self.agent_id, str(e))
-                except Exception:
+                except Exception:  # exception-ok: error callback must not crash iteration
                     logger.warning(f"on_error callback failed for {self.agent_id}")
             return {"success": False, "error": str(e)}
 

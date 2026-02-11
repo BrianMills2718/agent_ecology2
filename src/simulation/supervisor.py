@@ -181,7 +181,7 @@ class AgentSupervisor:
         while self._running:
             try:
                 await self._check_all_agents()
-            except Exception as e:
+            except Exception as e:  # exception-ok: supervisor must survive monitoring errors
                 logger.error(f"Supervisor monitor error: {e}")
             await asyncio.sleep(self._check_interval)
 
@@ -246,7 +246,7 @@ class AgentSupervisor:
             if scrip <= 0:
                 logger.debug(f"Agent {agent_id} has zero scrip - smart death")
                 return DeathType.SMART
-        except Exception as e:
+        except Exception as e:  # exception-ok: scrip check failure shouldn't prevent other checks
             logger.warning(f"Could not check scrip for {agent_id}: {e}")
 
         # Check for voluntary shutdown
@@ -374,7 +374,7 @@ class AgentSupervisor:
                 },
             )
 
-        except Exception as e:
+        except Exception as e:  # exception-ok: restart failure logged, supervisor continues
             logger.error(f"Failed to restart agent {agent_id}: {e}")
 
     async def _reset_and_restart_loop(

@@ -406,7 +406,7 @@ class MintAuction:
                             self.mint_scrip(winner_id, scrip_minted)
                     else:
                         error = score_result.get("error", "Scoring failed")
-                except Exception as e:
+                except Exception as e:  # exception-ok: scoring runs external code
                     error = f"Scoring error: {str(e)}"
             else:
                 error = f"Artifact {artifact_id} not found"

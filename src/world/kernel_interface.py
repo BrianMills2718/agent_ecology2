@@ -879,7 +879,7 @@ class KernelActions:
                 "error": "Package installation timed out (>120s)",
                 "error_code": "TIMEOUT",
             }
-        except Exception as e:
+        except Exception as e:  # exception-ok: pip install can fail any way
             _log_kernel_action(self._world, "kernel_install_library", caller_id, False, {
                 "library": library_name, "error_code": "INSTALL_ERROR",
             })

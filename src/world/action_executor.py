@@ -1317,7 +1317,7 @@ class ActionExecutor:
         # Execute the transfer
         try:
             w.ledger.transfer_scrip(sender_id, recipient_id, amount)
-        except Exception as e:
+        except Exception as e:  # exception-ok: ledger operation can fail
             return ActionResult(
                 success=False,
                 message=f"Transfer failed: {e}",
@@ -1402,7 +1402,7 @@ class ActionExecutor:
         # Execute the mint
         try:
             w.ledger.credit_scrip(recipient_id, amount)
-        except Exception as e:
+        except Exception as e:  # exception-ok: ledger operation can fail
             return ActionResult(
                 success=False,
                 message=f"Mint failed: {e}",
@@ -1478,7 +1478,7 @@ class ActionExecutor:
         # Submit to mint auction
         try:
             submission_id = w.submit_for_mint(principal_id, artifact_id, bid)
-        except Exception as e:
+        except Exception as e:  # exception-ok: mint submission can fail
             return ActionResult(
                 success=False,
                 message=f"Mint submission failed: {e}",
@@ -2004,7 +2004,7 @@ class ActionExecutor:
                     retriable=retriable,
                     error_details=result_data.get("details"),
                 )
-        except Exception as e:
+        except Exception as e:  # exception-ok: artifact execution can fail any way
             duration_ms = (time.perf_counter() - start_time) * 1000
             self._log_invoke_failure(
                 intent.principal_id, artifact_id, method_name,
