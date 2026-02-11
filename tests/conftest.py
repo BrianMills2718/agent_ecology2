@@ -173,6 +173,9 @@ def minimal_config() -> ConfigDict:
         "discourse_analyst": {"enabled": False},
         "discourse_analyst_2": {"enabled": False},
         "discourse_analyst_3": {"enabled": False},
+        "discourse_v2": {"enabled": False},
+        "discourse_v2_2": {"enabled": False},
+        "discourse_v2_3": {"enabled": False},
         "alpha_prime": {"enabled": False},
     }
 
@@ -249,6 +252,9 @@ def single_agent_config() -> ConfigDict:
         "discourse_analyst": {"enabled": False},
         "discourse_analyst_2": {"enabled": False},
         "discourse_analyst_3": {"enabled": False},
+        "discourse_v2": {"enabled": False},
+        "discourse_v2_2": {"enabled": False},
+        "discourse_v2_3": {"enabled": False},
         "alpha_prime": {"enabled": False},
     }
 
@@ -306,6 +312,9 @@ def feature_world(tmp_path: Path) -> World:
         "discourse_analyst": {"enabled": False},
         "discourse_analyst_2": {"enabled": False},
         "discourse_analyst_3": {"enabled": False},
+        "discourse_v2": {"enabled": False},
+        "discourse_v2_2": {"enabled": False},
+        "discourse_v2_3": {"enabled": False},
         "alpha_prime": {"enabled": False},
     }
     world = World(config)

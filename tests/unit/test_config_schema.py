@@ -168,7 +168,7 @@ class TestConfigFileLoading:
         # Check some expected values from the real config
         # Note: max_ticks removed in Plan #102 - world section now empty/optional
         assert config.llm.default_model == "gemini/gemini-2.0-flash"
-        assert config.budget.max_api_cost == 0.50  # Safe default to prevent runaway costs
+        assert config.budget.max_api_cost == 2.00  # Raised for longer experiment runs
         assert config.budget.max_runtime_seconds == 3600  # 1 hour hard timeout
 
     def test_missing_file_raises_error(self) -> None:
