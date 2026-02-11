@@ -346,7 +346,7 @@ class KernelActions:
         """
         if amount <= 0:
             _log_kernel_action(self._world, "kernel_transfer_scrip", caller_id, False, {
-                "to": to, "amount": amount, "error": "Invalid amount"
+                "to": to, "amount": amount, "error": f"Invalid amount: {amount}. Amount must be positive"
             })
             return False
 
@@ -354,7 +354,7 @@ class KernelActions:
         balance = self._world.ledger.get_scrip(caller_id)
         if balance < amount:
             _log_kernel_action(self._world, "kernel_transfer_scrip", caller_id, False, {
-                "to": to, "amount": amount, "error": "Insufficient balance"
+                "to": to, "amount": amount, "error": f"Insufficient balance: have {balance} scrip, need {amount}"
             })
             return False
 
@@ -384,7 +384,7 @@ class KernelActions:
         """
         if amount <= 0:
             _log_kernel_action(self._world, "kernel_transfer_resource", caller_id, False, {
-                "to": to, "resource": resource, "amount": amount, "error": "Invalid amount"
+                "to": to, "resource": resource, "amount": amount, "error": f"Invalid amount: {amount}. Amount must be positive"
             })
             return False
 
@@ -392,7 +392,7 @@ class KernelActions:
         current = self._world.ledger.get_resource(caller_id, resource)
         if current < amount:
             _log_kernel_action(self._world, "kernel_transfer_resource", caller_id, False, {
-                "to": to, "resource": resource, "amount": amount, "error": "Insufficient resource"
+                "to": to, "resource": resource, "amount": amount, "error": f"Insufficient {resource}: have {current}, need {amount}"
             })
             return False
 
@@ -610,7 +610,7 @@ class KernelActions:
         """
         if amount <= 0:
             _log_kernel_action(self._world, "kernel_transfer_quota", from_id, False, {
-                "to": to_id, "resource": resource, "amount": amount, "error": "Invalid amount"
+                "to": to_id, "resource": resource, "amount": amount, "error": f"Invalid amount: {amount}. Amount must be positive"
             })
             return False
 
@@ -618,7 +618,7 @@ class KernelActions:
         from_quota = self._world.get_quota(from_id, resource)
         if from_quota < amount:
             _log_kernel_action(self._world, "kernel_transfer_quota", from_id, False, {
-                "to": to_id, "resource": resource, "amount": amount, "error": "Insufficient quota"
+                "to": to_id, "resource": resource, "amount": amount, "error": f"Insufficient {resource} quota: have {from_quota}, need {amount}"
             })
             return False
 

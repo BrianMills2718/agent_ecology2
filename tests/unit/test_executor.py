@@ -362,6 +362,62 @@ def run():
         assert "not available" in result["result"]["error"]
 
 
+class TestHelpfulSandboxErrors:
+    """Verify sandbox errors include helpful hints for agents."""
+
+    @pytest.fixture
+    def executor(self) -> SafeExecutor:
+        return SafeExecutor(timeout=5, use_contracts=False)
+
+    def test_kernel_name_error_shows_correct_api(self, executor: SafeExecutor) -> None:
+        """NameError for 'kernel' should suggest kernel_state/kernel_actions."""
+        code = """
+def run():
+    result = kernel.read_artifact("some_id")
+    return result
+"""
+        result = executor.execute(code)
+        assert result["success"] is False
+        assert "kernel_state" in result["error"]
+        assert "kernel_actions" in result["error"]
+        assert "no 'kernel' object" in result["error"].lower()
+
+    def test_world_name_error_shows_correct_api(self, executor: SafeExecutor) -> None:
+        """NameError for 'world' should suggest kernel_state/kernel_actions."""
+        code = """
+def run():
+    return world.ledger.get_scrip("alice")
+"""
+        result = executor.execute(code)
+        assert result["success"] is False
+        assert "kernel_state" in result["error"]
+        assert "kernel_actions" in result["error"]
+
+    def test_generic_name_error_shows_sandbox_api(self, executor: SafeExecutor) -> None:
+        """Any NameError should list the available sandbox API."""
+        code = """
+def run():
+    return some_unknown_function()
+"""
+        result = executor.execute(code)
+        assert result["success"] is False
+        assert "sandbox" in result["error"].lower()
+        assert "kernel_state" in result["error"]
+        assert "invoke" in result["error"]
+        assert "caller_id" in result["error"]
+
+    def test_argument_error_uses_hint_system(self, executor: SafeExecutor) -> None:
+        """TypeError during execution should include helpful hints."""
+        code = """
+def run():
+    return 42
+"""
+        # Call with args that run() doesn't accept
+        result = executor.execute(code, args=["unexpected_arg"])
+        assert result["success"] is False
+        assert "Hint:" in result["error"] or "argument" in result["error"].lower()
+
+
 @pytest.mark.plans([319])
 class TestSyscallLLMThinkingEvents:
     """Plan #319: Verify _syscall_llm emits thinking/thinking_failed events."""

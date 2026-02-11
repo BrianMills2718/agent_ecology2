@@ -185,7 +185,7 @@ def check_permission_via_contract(
     except ValueError:
         return PermissionResult(
             allowed=False,
-            reason=f"Unknown action: {action}"
+            reason=f"Unknown action: '{action}'. Valid actions: read, write, edit, invoke, delete"
         )
 
     # Plan #100 Phase 2: Check permission cache for ExecutableContracts with cache_policy
@@ -297,7 +297,7 @@ def check_permission_legacy(
     try:
         perm_action = PermissionAction(action)
     except ValueError:
-        return PermissionResult(allowed=False, reason=f"legacy: unknown action {action}")
+        return PermissionResult(allowed=False, reason=f"legacy: unknown action '{action}'. Valid actions: read, write, edit, invoke, delete")
 
     # ADR-0019/ADR-0028: context with metadata for authorization
     context: dict[str, object] = {
@@ -386,7 +386,7 @@ def check_permission(
             try:
                 perm_action = PermissionAction(action)
             except ValueError:
-                return PermissionResult(allowed=False, reason=f"null contract: unknown action {action}")
+                return PermissionResult(allowed=False, reason=f"null contract: unknown action '{action}'. Valid actions: read, write, edit, invoke, delete")
             context: dict[str, object] = {
                 "target_created_by": artifact.created_by,  # Informational only (ADR-0028)
                 "target_metadata": artifact.metadata if hasattr(artifact, "metadata") and artifact.metadata else {},
