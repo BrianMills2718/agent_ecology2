@@ -116,6 +116,7 @@ Master index of all gaps and their implementation plans.
 | 314 | [Audit Remediation](314_audit_remediation.md) | Medium | ❓ | - |
 | 315 | [Plan 315: Unify Write Path for Disk Quota Enforcement](315_unify_write_path.md) | Medium | ✅ Complete | - |
 | 316 | [Require Explicit Contract on New Artifacts](316_require_explicit_contract.md) | Medium | ✅ Complete | - |
+| 318 | [Agent Cognitive Architecture — Persistent Notebook](318_agent_notebook.md) | Medium | ✅ Complete | - |
 ---
 
 ## TDD Workflow
