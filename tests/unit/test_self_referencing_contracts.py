@@ -132,6 +132,50 @@ class TestSelfReferencingBootstrap:
         assert result.error_code == ErrorCode.INVALID_ARGUMENT.value
 
 
+class TestMissingContractIdErrorMessage:
+    """Test that missing access_contract_id gives the right error depending on config."""
+
+    def test_missing_contract_id_shows_bootstrap_when_kernel_disabled(
+        self, world_kernel_contracts_disabled: World
+    ) -> None:
+        """When kernel contracts disabled, missing access_contract_id shows bootstrap recipe."""
+        w = world_kernel_contracts_disabled
+        intent = WriteArtifactIntent(
+            principal_id="alice",
+            artifact_id="my_doc",
+            artifact_type="data",
+            content="hello",
+            # No access_contract_id
+        )
+        result = w.execute_action(intent)
+        assert result.success is False
+        assert "requires access_contract_id" in result.message
+        assert "Kernel contracts are disabled" in result.message
+        assert "self-referencing" in result.message
+        assert "check_permission(" in result.message
+        # Should NOT list kernel contracts when they're disabled
+        assert "kernel_contract_freeware" not in result.message
+
+    def test_missing_contract_id_shows_kernel_list_when_enabled(
+        self, world_kernel_contracts_enabled: World
+    ) -> None:
+        """When kernel contracts enabled, missing access_contract_id lists kernel contracts."""
+        w = world_kernel_contracts_enabled
+        intent = WriteArtifactIntent(
+            principal_id="alice",
+            artifact_id="my_doc",
+            artifact_type="data",
+            content="hello",
+            # No access_contract_id
+        )
+        result = w.execute_action(intent)
+        assert result.success is False
+        assert "requires access_contract_id" in result.message
+        assert "kernel_contract_freeware" in result.message
+        # Should NOT show bootstrap recipe when kernel contracts are available
+        assert "self-referencing" not in result.message
+
+
 class TestKernelContractRejection:
     """Test that kernel contracts are rejected for new artifacts when disabled."""
 
