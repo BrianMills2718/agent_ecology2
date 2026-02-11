@@ -190,8 +190,7 @@ class ActionExecutor:
             # Pay read_price to scrip_recipient (ADR-0028: contract decides who gets paid)
             recipient = perm_result.scrip_recipient
             if read_price > 0 and recipient:
-                w.ledger.deduct_scrip(intent.principal_id, read_price)
-                w.ledger.credit_scrip(recipient, read_price)
+                w.ledger.transfer_scrip(intent.principal_id, recipient, read_price)
             # Plan #320: Log read for observability (mirrors artifact_written pattern)
             w.logger.log("artifact_read", {
                 "event_number": w.event_number,
@@ -916,6 +915,11 @@ class ActionExecutor:
         if method_name == "get":
             key = args.get("key") if isinstance(args, dict) else (args[0] if args else None)
             if not key:
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self._log_invoke_failure(
+                    intent.principal_id, artifact_id, method_name,
+                    duration_ms, "invalid_argument", "Missing required argument: key"
+                )
                 return ActionResult(
                     success=False,
                     message="Missing required argument: key",
@@ -938,6 +942,11 @@ class ActionExecutor:
             key = args.get("key") if isinstance(args, dict) else (args[0] if len(args) > 0 else None)
             value = args.get("value") if isinstance(args, dict) else (args[1] if len(args) > 1 else None)
             if not key:
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self._log_invoke_failure(
+                    intent.principal_id, artifact_id, method_name,
+                    duration_ms, "invalid_argument", "Missing required argument: key"
+                )
                 return ActionResult(
                     success=False,
                     message="Missing required argument: key",
@@ -973,6 +982,12 @@ class ActionExecutor:
             )
 
         else:
+            duration_ms = (time.perf_counter() - start_time) * 1000
+            self._log_invoke_failure(
+                intent.principal_id, artifact_id, method_name,
+                duration_ms, "unknown_method",
+                f"Unknown config method: {method_name}. Available: get, set, list_keys, describe"
+            )
             return ActionResult(
                 success=False,
                 message=f"Unknown config method: {method_name}. Available: get, set, list_keys, describe",
@@ -2135,8 +2150,7 @@ class ActionExecutor:
 
             # Pay price to recipient (ADR-0028: contract decides who gets paid)
             if price > 0 and recipient and recipient != resource_payer:
-                w.ledger.deduct_scrip(resource_payer, price)
-                w.ledger.credit_scrip(recipient, price)
+                w.ledger.transfer_scrip(resource_payer, recipient, price)
                 w.logger.log("scrip_earned", {
                     "event_number": w.event_number,
                     "recipient": recipient,
