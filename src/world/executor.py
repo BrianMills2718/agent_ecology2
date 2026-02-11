@@ -152,12 +152,19 @@ def create_syscall_llm(
         # Check budget (ADR-0002: no compute debt — validate before execution)
         if not world.ledger.can_afford_llm_call(caller_id, estimated_cost):
             current_budget = world.ledger.get_llm_budget(caller_id)
+            reason = f"Budget exhausted: {caller_id} has ${current_budget:.4f}, need ~${estimated_cost:.4f}"
+            world.logger.log("thinking_failed", {
+                "principal_id": caller_id,
+                "model": model,
+                "api_cost": 0.0,
+                "reason": reason,
+            })
             return LLMSyscallResult(
                 success=False,
                 content="",
                 usage={},
                 cost=0.0,
-                error=f"Budget exhausted: {caller_id} has ${current_budget:.4f}, need ~${estimated_cost:.4f}",
+                error=reason,
             )
 
         try:
@@ -172,6 +179,17 @@ def create_syscall_llm(
             # Deduct from caller's budget (ADR-0011/0023: charges to principals)
             world.ledger.deduct_llm_cost(caller_id, actual_cost)
 
+            # Plan #319: Emit thinking event for observability
+            world.logger.log("thinking", {
+                "principal_id": caller_id,
+                "model": model,
+                "input_tokens": llm_result.usage.get("prompt_tokens", 0),
+                "output_tokens": llm_result.usage.get("completion_tokens", 0),
+                "api_cost": actual_cost,
+                "llm_budget_after": world.ledger.get_llm_budget(caller_id),
+                "reasoning": llm_result.content[:2000],
+            })
+
             return LLMSyscallResult(
                 success=True,
                 content=llm_result.content,
@@ -181,6 +199,12 @@ def create_syscall_llm(
             )
 
         except Exception as e:
+            world.logger.log("thinking_failed", {
+                "principal_id": caller_id,
+                "model": model,
+                "api_cost": 0.0,
+                "reason": str(e)[:500],
+            })
             return LLMSyscallResult(
                 success=False,
                 content="",
