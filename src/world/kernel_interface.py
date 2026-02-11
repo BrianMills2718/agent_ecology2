@@ -739,9 +739,13 @@ class KernelActions:
         Returns:
             ``(True, "ok")`` if authorized, ``(False, reason)`` otherwise.
         """
-        return self._world.delegation_manager.authorize_charge(
+        authorized, reason = self._world.delegation_manager.authorize_charge(
             charger_id, payer_id, amount
         )
+        _log_kernel_action(self._world, "kernel_authorize_charge", charger_id, authorized, {
+            "payer_id": payer_id, "amount": amount, "reason": reason,
+        })
+        return authorized, reason
 
     # -------------------------------------------------------------------------
     # Library Installation (Plan #29)
