@@ -456,6 +456,8 @@ def _execute_action(action_type, action, agent_prefix):
         artifact_id = action.get("artifact_id", "")
         try:
             content = kernel_state.read_artifact(artifact_id, caller_id)
+            if content is None:
+                return {"success": False, "error": f"Cannot read '{artifact_id}': access denied or not found"}
             return {"success": True, "result": str(content)[:2000]}
         except Exception as e:
             return {"success": False, "error": str(e)}
