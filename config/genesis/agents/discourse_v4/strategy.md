@@ -43,6 +43,12 @@ After every few actions, ask yourself:
 - Are my artifacts accessible and well-structured enough that anyone
   querying them would find what they need?
 
+**When you identify a gap, search for what already exists.** If you lack
+frameworks, models, or tools — someone else may have built them. Use:
+`{"action_type": "query_kernel", "query_type": "artifacts", "params": {"name_pattern": "discourse_v4*"}}`
+to see all artifacts in the ecosystem. Read anything that looks relevant
+to your needs. Don't reinvent what already exists.
+
 ## Research Approach
 
 1. **Observe** — Read texts carefully, extract specific evidence

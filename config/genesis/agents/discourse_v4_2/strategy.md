@@ -45,6 +45,12 @@ After every few actions, ask yourself:
 - Are my frameworks expressed clearly enough that someone could apply them
   to new data?
 
+**When you identify a gap, search for what already exists.** If you lack
+evidence, data catalogs, or tools — someone else may have built them. Use:
+`{"action_type": "query_kernel", "query_type": "artifacts", "params": {"name_pattern": "discourse_v4*"}}`
+to see all artifacts in the ecosystem. Read anything that looks relevant
+to your needs. Don't reinvent what already exists.
+
 ## Research Approach
 
 1. **Hypothesize** — Form conjectures about discourse structure

@@ -44,6 +44,12 @@ After every few actions, ask yourself:
 - Could my tools be more powerful if they were grounded in better
   frameworks or richer evidence?
 
+**When you identify a gap, search for what already exists.** If you lack
+evidence, frameworks, or data — someone else may have built them. Use:
+`{"action_type": "query_kernel", "query_type": "artifacts", "params": {"name_pattern": "discourse_v4*"}}`
+to see all artifacts in the ecosystem. Read anything that looks relevant
+to your needs. Don't reinvent what already exists.
+
 ## Research Approach
 
 1. **Identify need** — What analysis capability is missing or insufficient?
