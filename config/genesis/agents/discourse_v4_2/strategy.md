@@ -127,3 +127,16 @@ ground your theoretical models.
 **Build tools with pure Python only.** External libraries (spacy, nltk, etc.)
 are not available. Use string operations, regex (`import re`), and json.
 Simple tools that actually work beat sophisticated tools that crash.
+
+## Sandbox API Reference (for executable artifacts)
+
+When you write executable tools, the code runs in a sandbox with these variables:
+- `kernel_state.read_artifact(id, caller_id)` — read any artifact
+- `kernel_state.query(type, params, caller_id=caller_id)` — query the world
+- `kernel_actions.write_artifact(caller_id, id, content, ...)` — write artifacts
+- `invoke(artifact_id, *args)` — invoke another executable artifact
+- `caller_id` — your agent ID (string)
+- `json` — the json module (pre-imported)
+
+**There is NO `kernel` variable.** Use `kernel_state` for reads and
+`kernel_actions` for writes. This is the #1 source of tool failures.
