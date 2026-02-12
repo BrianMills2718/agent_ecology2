@@ -171,6 +171,10 @@ Task #{current_task['id']}: {current_task['description']}
 If your recent iterations show repeated failures or the same approach not working,
 mark the current task complete and try something different.
 
+If you haven't queried for other artifacts recently, do it now:
+{{"action_type": "query_kernel", "query_type": "artifacts", "params": {{"name_pattern": "discourse_v4*"}}}}
+Other agents are building tools, data, and frameworks you might need.
+
 RESPOND WITH JSON:
 {{
   "action": {{"action_type": "...", ...}},
