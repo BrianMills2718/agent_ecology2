@@ -109,12 +109,16 @@ When done acting, call think_and_plan to record your reasoning and manage tasks.
         {"role": "user", "content": user_msg},
     ]
 
-    # --- Tool calling (single round for now; multi-turn has Gemini empty-choices bug) ---
-    MAX_TOOL_ROUNDS = 1
+    # --- Multi-turn tool calling: up to 3 rounds per iteration ---
+    MAX_TOOL_ROUNDS = 3
     all_actions = []
 
+    rounds_used = 0
     for _round in range(MAX_TOOL_ROUNDS):
+        # All rounds use tool_choice="required" — Gemini returns empty choices with "auto".
+        # The LLM naturally stops by calling think_and_plan as its last action.
         result = _syscall_llm(model, messages, tools=TOOLS, tool_choice="required")
+        rounds_used = _round + 1
 
         if not result.get("success"):
             state["last_action_result"] = {"success": False, "error": result.get("error")}
@@ -172,6 +176,9 @@ When done acting, call think_and_plan to record your reasoning and manage tasks.
         })
     state["action_history"] = state["action_history"][-15:]
 
+    # Log rounds and tools used per iteration
+    journal.append(f"i{iteration} [meta] rounds={rounds_used} tools={len(all_actions)}")
+
     # Save notebook
     notebook["key_facts"] = key_facts
     notebook["journal"] = journal[-50:]
@@ -181,7 +188,7 @@ When done acting, call think_and_plan to record your reasoning and manage tasks.
     kernel_actions.write_artifact(caller_id, state_id, json.dumps(state, indent=2))
 
     last_result = all_actions[-1]["result"] if all_actions else {"success": True, "result": "No actions taken"}
-    return {"success": True, "action_result": last_result}
+    return {"success": True, "action_result": last_result, "rounds_used": rounds_used, "tools_used": len(all_actions)}
 
 
 # --- Tool definitions (OpenAI format) ---
