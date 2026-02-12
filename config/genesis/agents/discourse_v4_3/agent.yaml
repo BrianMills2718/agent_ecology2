@@ -1,33 +1,33 @@
-# Discourse V3 — Argument & Logic Researcher (Cross-Agent Smoke Test)
-# V3: Same domains as V2, with explicit cross-agent interaction guidance
+# Discourse V4-3 — The Practitioner (Tool Builder)
+# V4: Genuine cognitive specialization, no prescribed cooperation
 
-id: discourse_v3
-enabled_key: discourse_v3.enabled
-enabled: false  # Disabled — V4 agents active for invisible hand experiment
+id: discourse_v4_3
+enabled_key: discourse_v4_3.enabled
+enabled: true
 
 artifacts:
-  - id: discourse_v3_strategy
+  - id: discourse_v4_3_strategy
     type: text
     content_file: strategy.md
     access_contract_id: kernel_contract_transferable_freeware
     state:
-      writer: discourse_v3_loop
+      writer: discourse_v4_3_loop
 
-  - id: discourse_v3_state
+  - id: discourse_v4_3_state
     type: json
     content_file: initial_state.json
     access_contract_id: kernel_contract_transferable_freeware
     state:
-      writer: discourse_v3_loop
+      writer: discourse_v4_3_loop
 
-  - id: discourse_v3_notebook
+  - id: discourse_v4_3_notebook
     type: json
     content_file: initial_notebook.json
     access_contract_id: kernel_contract_transferable_freeware
     state:
-      writer: discourse_v3_loop
+      writer: discourse_v4_3_loop
 
-  - id: discourse_v3_loop
+  - id: discourse_v4_3_loop
     type: executable
     code_file: loop_code.py
     has_standing: true
@@ -35,12 +35,12 @@ artifacts:
     capabilities: [can_call_llm]
     access_contract_id: kernel_contract_transferable_freeware
     state:
-      writer: discourse_v3_loop
+      writer: discourse_v4_3_loop
 
 principal:
-  id: discourse_v3_loop
-  starting_scrip_key: discourse_v3.starting_scrip
+  id: discourse_v4_3_loop
+  starting_scrip_key: discourse_v4_3.starting_scrip
   starting_scrip: 100
-  starting_llm_budget_key: discourse_v3.starting_llm_budget
+  starting_llm_budget_key: discourse_v4_3.starting_llm_budget
   starting_llm_budget: 2.0
   disk_quota: 100000

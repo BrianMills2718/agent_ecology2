@@ -3,7 +3,7 @@
 
 id: discourse_v3_3
 enabled_key: discourse_v3_3.enabled
-enabled: true
+enabled: false  # Disabled — V4 agents active for invisible hand experiment
 
 artifacts:
   - id: discourse_v3_3_strategy

@@ -282,6 +282,31 @@ This aligns with previous findings that weaker models need more structured guida
 
 ---
 
+## 2026-02-11: V3 Smoke Test — Cross-Agent Plumbing Validation
+
+### Experiment
+Created 3 discourse_v3 agents to smoke-test cross-agent interaction plumbing. V3 agents had: "Reuse Before Build" principle, open contract template, explicit cross-agent tasks in queue. 3x 300s runs.
+
+### Results
+
+| Metric | Run 1 | Run 2 | Run 3 |
+|--------|-------|-------|-------|
+| Events | 887 | 1024 | 1168 |
+| Cross-agent invocations | 0 | 1 (failed) | 1 (succeeded) |
+| Unique artifacts | ~14 | ~14 | 14 |
+| Scrip movement | 0 | 0 | 0 |
+
+### Diagnosis: Why No Cooperation Emerged
+1. **Cognitively identical agents.** 95% identical strategy templates with cosmetic domain labels. No comparative advantage.
+2. **Self-contained goals.** "Analyze discourse from angle X" is achievable alone.
+3. **Non-binding scarcity.** <1% of LLM budget used. No pressure to specialize.
+4. **Prescribed cooperation.** Cross-agent tasks (#4-6) are forced, not discovered.
+
+### Right Lesson
+The issue is agent cognitive architecture, not kernel physics. The invisible hand requires: local goals creating demand for external capabilities, genuine cognitive diversity, and scarcity making self-sufficiency expensive. The physics should just accurately account for real costs. The lever for emergence is agent design.
+
+---
+
 ## Future Experiments
 
 - [x] ~~Evaluate metacognitive prompt strategies~~ (done: simplified prompt improves quality)
