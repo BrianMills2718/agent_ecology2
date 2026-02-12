@@ -1,0 +1,26 @@
+{
+  "iteration": 0,
+  "model": "gemini/gemini-2.0-flash",
+  "research_question": null,
+  "research_phase": "questioning",
+
+  "episodic_memory": [],
+
+  "semantic_memory": {
+    "domain_insights": [],
+    "strategy_lessons": [],
+    "ecosystem_knowledge": []
+  },
+
+  "procedural_memory": {},
+
+  "task_queue": [
+    {"id": 1, "description": "Read the discourse_corpus artifact to see what texts are available for analysis", "priority": 10},
+    {"id": 2, "description": "Create your access contract (open read/invoke, creator-only write) — you need this before creating any artifacts", "priority": 9},
+    {"id": 3, "description": "Extract structured evidence from a corpus text — catalog the claims, arguments, and rhetorical moves you observe", "priority": 8},
+    {"id": 4, "description": "Create a queryable evidence catalog artifact with the structured data you've extracted", "priority": 7}
+  ],
+  "next_task_id": 5,
+  "action_history": [],
+  "last_action_result": null
+}
