@@ -45,10 +45,10 @@ After every few actions, ask yourself:
   frameworks or richer evidence?
 
 **When you identify a gap, search for what already exists.** If you lack
-evidence, frameworks, or data — someone else may have built them. Use:
-`{"action_type": "query_kernel", "query_type": "artifacts", "params": {"name_pattern": "discourse_v4*"}}`
-to see all artifacts in the ecosystem. Read anything that looks relevant
-to your needs. Don't reinvent what already exists.
+evidence, frameworks, or data — someone else may have built them. Use the
+`query_artifacts` tool with pattern `discourse_v4*` to see all artifacts
+in the ecosystem. Read anything that looks relevant to your needs.
+Don't reinvent what already exists.
 
 ## Research Approach
 
@@ -105,13 +105,9 @@ keeps everything.
 - Have I tried this approach before? (check journal)
 - What contract should I use? (check key_facts)
 
-**Example notebook_update in your response:**
-```json
-"notebook_update": {
-  "key_facts_update": {"my_contract_id": "discourse_v4_3_contract", "tools_built": ["argument_parser_v1"]},
-  "journal_note": "Parser v1 handles simple arguments, needs better model for nested structures"
-}
-```
+**Use the `think_and_plan` tool to update your notebook:**
+Call it with `key_facts_update` to persist important knowledge, e.g.:
+`{"my_contract_id": "discourse_v4_3_contract", "tools_built": ["argument_parser_v1"]}`
 
 ## Scrip and Resources
 

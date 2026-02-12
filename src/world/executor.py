@@ -104,17 +104,18 @@ class LLMSyscallResult(TypedDict):
     usage: dict[str, Any]
     cost: float
     error: str
+    tool_calls: list[dict[str, Any]]  # Plan #323: structured tool calling
 
 
 def create_syscall_llm(
     world: "World",
     caller_id: str,
-) -> Callable[[str, list[dict[str, Any]]], LLMSyscallResult]:
+) -> Callable[..., LLMSyscallResult]:
     """Create _syscall_llm function for artifact sandbox (Plan #255).
 
     This is the kernel primitive for LLM access. It:
     1. Checks caller's llm_budget (ADR-0002: no compute debt)
-    2. Calls LLM via llm_client.call_llm
+    2. Calls LLM via llm_client.call_llm (or call_llm_with_tools)
     3. Deducts actual cost from caller's budget (ADR-0011/0023)
     4. Returns response
 
@@ -132,8 +133,10 @@ def create_syscall_llm(
     def _syscall_llm(
         model: str,
         messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
+        tool_choice: str | None = None,
     ) -> LLMSyscallResult:
-        """Kernel syscall for LLM access (Plan #255).
+        """Kernel syscall for LLM access (Plan #255, #323).
 
         Deducts llm_budget from caller automatically. Only available to
         artifacts with can_call_llm capability.
@@ -141,9 +144,11 @@ def create_syscall_llm(
         Args:
             model: LLM model name (e.g., "gpt-4", "gemini/gemini-2.0-flash")
             messages: Chat messages in OpenAI format
+            tools: Optional tool definitions in OpenAI format (Plan #323)
+            tool_choice: "required"|"auto"|"none" — controls tool use (Plan #323)
 
         Returns:
-            LLMSyscallResult with content, usage, and cost
+            LLMSyscallResult with content, usage, cost, and tool_calls
         """
         # Estimate cost (rough: $0.001 per message as minimum)
         # Real cost will be calculated after the call
@@ -165,14 +170,23 @@ def create_syscall_llm(
                 usage={},
                 cost=0.0,
                 error=reason,
+                tool_calls=[],
             )
 
         try:
-            from .llm_client import call_llm
+            from .llm_client import call_llm, call_llm_with_tools
 
-            # Call litellm directly — litellm.completion() is synchronous
-            # and works fine in async contexts despite event loop detection
-            llm_result = call_llm(model=model, messages=messages, timeout=60)
+            # Plan #323: Use call_llm_with_tools when tools provided
+            if tools:
+                tool_kwargs: dict[str, Any] = {}
+                if tool_choice:
+                    tool_kwargs["tool_choice"] = tool_choice
+                llm_result = call_llm_with_tools(
+                    model=model, messages=messages, tools=tools, timeout=60,
+                    **tool_kwargs,
+                )
+            else:
+                llm_result = call_llm(model=model, messages=messages, timeout=60)
 
             actual_cost = llm_result.cost
 
@@ -196,6 +210,7 @@ def create_syscall_llm(
                 usage=llm_result.usage,
                 cost=actual_cost,
                 error="",
+                tool_calls=llm_result.tool_calls,
             )
 
         except Exception as e:  # exception-ok: LLM call can fail any way
@@ -211,6 +226,7 @@ def create_syscall_llm(
                 usage={},
                 cost=0.0,
                 error=f"LLM call failed: {e}",
+                tool_calls=[],
             )
 
     return _syscall_llm

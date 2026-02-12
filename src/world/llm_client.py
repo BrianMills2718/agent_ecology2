@@ -128,6 +128,9 @@ def call_llm(
 
     response = litellm.completion(**call_kwargs)
 
+    if not response.choices:
+        raise RuntimeError("LLM returned empty choices list")
+
     content: str = response.choices[0].message.content or ""
     usage = _extract_usage(response)
     cost = _compute_cost(response)
