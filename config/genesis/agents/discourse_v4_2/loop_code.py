@@ -186,13 +186,16 @@ RESPOND WITH JSON:
 ACTIONS:
 - Query artifacts: {{"action_type": "query_kernel", "query_type": "artifacts", "params": {{"name_pattern": "..."}}}}
 - Read artifact: {{"action_type": "read_artifact", "artifact_id": "..."}}
-- Write executable: {{"action_type": "write_artifact", "artifact_id": "{agent_prefix}_tool_NAME", "artifact_type": "executable", "executable": true, "has_standing": false, "code": "def run(text):\\n    return result"}}
-- Write data: {{"action_type": "write_artifact", "artifact_id": "{agent_prefix}_data_NAME", "artifact_type": "json", "content": {{...}}}}
+- Write executable: {{"action_type": "write_artifact", "artifact_id": "{agent_prefix}_tool_NAME", "artifact_type": "executable", "executable": true, "has_standing": false, "access_contract_id": "{agent_prefix}_contract", "code": "def run(text):\\n    # Available in sandbox: kernel_state, kernel_actions, invoke(), caller_id, json\\n    # kernel_state.read_artifact(id, caller_id) — read artifacts\\n    # kernel_actions.write_artifact(caller_id, id, content) — write artifacts\\n    # There is NO 'kernel' variable. Use kernel_state or kernel_actions.\\n    return result"}}
+- Write data: {{"action_type": "write_artifact", "artifact_id": "{agent_prefix}_data_NAME", "artifact_type": "json", "access_contract_id": "{agent_prefix}_contract", "content": {{...}}}}
 - Invoke tool: {{"action_type": "invoke_artifact", "artifact_id": "tool_id", "args": [...]}}
 - Transfer scrip: {{"action_type": "transfer", "to": "recipient_id", "amount": 10}}
 - Rewrite own strategy: {{"action_type": "write_artifact", "artifact_id": "{strategy_id}", "artifact_type": "text", "content": "new strategy text..."}}
 - Rewrite own loop: {{"action_type": "write_artifact", "artifact_id": "{agent_prefix}_loop", "artifact_type": "executable", "executable": true, "has_standing": true, "code": "def run():\\n    ..."}}
-- Noop: {{"action_type": "noop"}}"""
+- Noop: {{"action_type": "noop"}}
+
+IMPORTANT: When writing new artifacts, always include "access_contract_id": "{agent_prefix}_contract".
+Executable code runs in a sandbox. Available: kernel_state, kernel_actions, invoke(), caller_id, json. There is NO 'kernel' object."""
 
     llm_result = _syscall_llm(model, [{"role": "user", "content": prompt}])
 
@@ -482,6 +485,8 @@ def _execute_action(action_type, action, agent_prefix):
         executable = action.get("executable", False)
         has_standing = action.get("has_standing", False)
         access_contract_id = action.get("access_contract_id", None)
+        if access_contract_id is None:
+            access_contract_id = f"{agent_prefix}_contract"
         try:
             kernel_actions.write_artifact(
                 caller_id, artifact_id, content or code,
