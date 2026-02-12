@@ -121,6 +121,7 @@ Master index of all gaps and their implementation plans.
 | 320 | [Log artifact reads and kernel query params](320_observability_reads_queries.md) | Medium | ✅ Complete — PR #TBD | - |
 | 321 | [Helpful Sandbox Error Messages](321_helpful_sandbox_errors.md) | Medium | ✅ Complete | - |
 | 322 | [V4 Agent Experiment — Invisible Hand Design](322_v4_agent_experiment.md) | Medium | ✅ Complete | - |
+| 323 | [Switch V4 Agents to Structured Tool Calling](323_structured_tool_calling.md) | Medium | 🚧 In Progress | - |
 ---
 
 ## TDD Workflow

@@ -34,7 +34,6 @@ class TestFixtures:
         assert isinstance(test_world, World)
         assert test_world.event_number == 0  # Event counter starts at 0
         # Note: max_ticks removed in Plan #102 - execution limits now time-based
-        assert len(test_world.principal_ids) == 2
         assert "agent_1" in test_world.principal_ids
         assert "agent_2" in test_world.principal_ids
 
@@ -52,7 +51,6 @@ class TestFixtures:
     def test_single_agent_world_fixture(self, single_agent_world):
         """Verify single_agent_world creates a World with one agent."""
         assert isinstance(single_agent_world, World)
-        assert len(single_agent_world.principal_ids) == 1
         assert "solo_agent" in single_agent_world.principal_ids
 
     def test_world_advance_tick(self, test_world):

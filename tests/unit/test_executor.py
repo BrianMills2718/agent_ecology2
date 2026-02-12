@@ -554,6 +554,131 @@ class TestSyscallLLMThinkingEvents:
         assert len(thinking_events[0]["reasoning"]) == 2000
 
 
+@pytest.mark.plans([323])
+class TestSyscallLLMToolCalling:
+    """Plan #323: Verify _syscall_llm supports structured tool calling."""
+
+    @pytest.fixture
+    def world(self, tmp_path: Any) -> World:
+        """Create a World with a logger for event capture."""
+        log_file = tmp_path / "test_tool_calling.jsonl"
+        config: ConfigDict = {
+            "world": {},
+            "costs": {"per_1k_input_tokens": 1, "per_1k_output_tokens": 3},
+            "logging": {"output_file": str(log_file)},
+            "principals": [{"id": "test_agent", "starting_scrip": 100}],
+            "rights": {"default_llm_tokens_quota": 50, "default_disk_quota": 10000},
+            "rate_limiting": {
+                "enabled": True,
+                "window_seconds": 60.0,
+                "resources": {"llm_tokens": {"max_per_window": 1000}},
+            },
+            "discourse_analyst": {"enabled": False},
+            "discourse_analyst_2": {"enabled": False},
+            "discourse_analyst_3": {"enabled": False},
+            "alpha_prime": {"enabled": False},
+        }
+        return World(config)
+
+    def test_tool_calls_returned_in_result(self, world: World) -> None:
+        """_syscall_llm with tools should return tool_calls in result."""
+        world.ledger.set_resource("test_agent", "llm_budget", 1.0)
+
+        from src.world.llm_client import LLMCallResult
+
+        mock_result = LLMCallResult(
+            content="",
+            usage={"prompt_tokens": 50, "completion_tokens": 20, "total_tokens": 70},
+            cost=0.001,
+            model="test-model",
+            tool_calls=[{
+                "id": "call_123",
+                "type": "function",
+                "function": {"name": "read_artifact", "arguments": '{"artifact_id": "corpus"}'},
+            }],
+        )
+
+        tools = [{
+            "type": "function",
+            "function": {
+                "name": "read_artifact",
+                "parameters": {"type": "object", "properties": {"artifact_id": {"type": "string"}}},
+            },
+        }]
+
+        syscall = create_syscall_llm(world, "test_agent")
+
+        # mock-ok: external LLM API — avoid real API calls in unit tests
+        with patch("src.world.llm_client.call_llm_with_tools", return_value=mock_result) as mock_fn:
+            result = syscall("test-model", [{"role": "user", "content": "hello"}], tools=tools)
+
+        assert result["success"] is True
+        assert len(result["tool_calls"]) == 1
+        assert result["tool_calls"][0]["function"]["name"] == "read_artifact"
+        # Verify call_llm_with_tools was called (not call_llm)
+        mock_fn.assert_called_once()
+
+    def test_no_tools_returns_empty_tool_calls(self, world: World) -> None:
+        """_syscall_llm without tools should return empty tool_calls list."""
+        world.ledger.set_resource("test_agent", "llm_budget", 1.0)
+
+        from src.world.llm_client import LLMCallResult
+
+        mock_result = LLMCallResult(
+            content="Hello!",
+            usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+            cost=0.0001,
+            model="test-model",
+        )
+
+        syscall = create_syscall_llm(world, "test_agent")
+
+        # mock-ok: external LLM API
+        with patch("src.world.llm_client.call_llm", return_value=mock_result) as mock_fn:
+            result = syscall("test-model", [{"role": "user", "content": "hello"}])
+
+        assert result["success"] is True
+        assert result["tool_calls"] == []
+        assert result["content"] == "Hello!"
+        # Verify call_llm was called (not call_llm_with_tools)
+        mock_fn.assert_called_once()
+
+    def test_budget_exhaustion_returns_empty_tool_calls(self, world: World) -> None:
+        """Budget exhaustion with tools should return empty tool_calls."""
+        world.ledger.set_resource("test_agent", "llm_budget", 0.0)
+
+        syscall = create_syscall_llm(world, "test_agent")
+        result = syscall("test-model", [{"role": "user", "content": "hello"}], tools=[])
+
+        assert result["success"] is False
+        assert result["tool_calls"] == []
+
+    def test_llm_error_returns_empty_tool_calls(self, world: World) -> None:
+        """LLM error should return empty tool_calls."""
+        world.ledger.set_resource("test_agent", "llm_budget", 1.0)
+
+        tools = [{
+            "type": "function",
+            "function": {
+                "name": "read_artifact",
+                "parameters": {"type": "object", "properties": {}},
+            },
+        }]
+
+        syscall = create_syscall_llm(world, "test_agent")
+
+        # mock-ok: external LLM API — simulate failure
+        with patch(
+            "src.world.llm_client.call_llm_with_tools",
+            side_effect=RuntimeError("API error"),
+        ):
+            result = syscall("test-model", [{"role": "user", "content": "hello"}], tools=tools)
+
+        assert result["success"] is False
+        assert result["tool_calls"] == []
+        assert "API error" in result["error"]
+
+
 @pytest.mark.plans([320])
 class TestReadAndQueryEvents:
     """Plan #320: Verify artifact_read and kernel_query events are emitted."""
