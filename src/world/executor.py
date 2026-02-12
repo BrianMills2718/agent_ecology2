@@ -134,6 +134,7 @@ def create_syscall_llm(
         model: str,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
+        tool_choice: str | None = None,
     ) -> LLMSyscallResult:
         """Kernel syscall for LLM access (Plan #255, #323).
 
@@ -144,6 +145,7 @@ def create_syscall_llm(
             model: LLM model name (e.g., "gpt-4", "gemini/gemini-2.0-flash")
             messages: Chat messages in OpenAI format
             tools: Optional tool definitions in OpenAI format (Plan #323)
+            tool_choice: "required"|"auto"|"none" — controls tool use (Plan #323)
 
         Returns:
             LLMSyscallResult with content, usage, cost, and tool_calls
@@ -176,8 +178,12 @@ def create_syscall_llm(
 
             # Plan #323: Use call_llm_with_tools when tools provided
             if tools:
+                tool_kwargs: dict[str, Any] = {}
+                if tool_choice:
+                    tool_kwargs["tool_choice"] = tool_choice
                 llm_result = call_llm_with_tools(
                     model=model, messages=messages, tools=tools, timeout=60,
+                    **tool_kwargs,
                 )
             else:
                 llm_result = call_llm(model=model, messages=messages, timeout=60)

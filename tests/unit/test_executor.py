@@ -678,6 +678,43 @@ class TestSyscallLLMToolCalling:
         assert result["tool_calls"] == []
         assert "API error" in result["error"]
 
+    def test_tool_choice_passed_to_llm_client(self, world: World) -> None:
+        """tool_choice parameter should be forwarded to call_llm_with_tools."""
+        world.ledger.set_resource("test_agent", "llm_budget", 1.0)
+
+        from src.world.llm_client import LLMCallResult
+
+        mock_result = LLMCallResult(
+            content="",
+            usage={"prompt_tokens": 50, "completion_tokens": 20, "total_tokens": 70},
+            cost=0.001,
+            model="test-model",
+            tool_calls=[{
+                "id": "call_456",
+                "type": "function",
+                "function": {"name": "query_artifacts", "arguments": '{"name_pattern": "*"}'},
+            }],
+        )
+
+        tools = [{
+            "type": "function",
+            "function": {
+                "name": "query_artifacts",
+                "parameters": {"type": "object", "properties": {"name_pattern": {"type": "string"}}},
+            },
+        }]
+
+        syscall = create_syscall_llm(world, "test_agent")
+
+        # mock-ok: external LLM API — verify tool_choice is passed through
+        with patch("src.world.llm_client.call_llm_with_tools", return_value=mock_result) as mock_fn:
+            result = syscall("test-model", [{"role": "user", "content": "hello"}], tools=tools, tool_choice="required")
+
+        assert result["success"] is True
+        mock_fn.assert_called_once()
+        call_kwargs = mock_fn.call_args
+        assert call_kwargs.kwargs.get("tool_choice") == "required"
+
 
 @pytest.mark.plans([320])
 class TestReadAndQueryEvents:

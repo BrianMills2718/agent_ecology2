@@ -109,12 +109,12 @@ When done acting, call think_and_plan to record your reasoning and manage tasks.
         {"role": "user", "content": user_msg},
     ]
 
-    # --- Multi-turn tool calling loop ---
-    MAX_TOOL_ROUNDS = 3
+    # --- Tool calling (single round for now; multi-turn has Gemini empty-choices bug) ---
+    MAX_TOOL_ROUNDS = 1
     all_actions = []
 
     for _round in range(MAX_TOOL_ROUNDS):
-        result = _syscall_llm(model, messages, tools=TOOLS)
+        result = _syscall_llm(model, messages, tools=TOOLS, tool_choice="required")
 
         if not result.get("success"):
             state["last_action_result"] = {"success": False, "error": result.get("error")}
