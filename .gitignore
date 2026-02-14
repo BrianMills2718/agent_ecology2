@@ -103,3 +103,4 @@ temp_*.txt
 doc_graph.png
 causal_relations.json
 discourse_v2_loop_state.json
+*.png
