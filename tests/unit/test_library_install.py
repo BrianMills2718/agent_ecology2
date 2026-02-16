@@ -7,6 +7,8 @@ These tests verify the kernel action for installing Python libraries:
 - Insufficient quota fails the install
 """
 
+import subprocess
+
 import pytest
 
 from src.config import load_config
@@ -32,6 +34,16 @@ def world_with_quota() -> World:
     return world
 
 
+@pytest.fixture
+def mock_pip_install_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Mock pip install subprocess call for deterministic unit tests."""
+
+    def _fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+
+
 class TestLibraryInstall:
     """Tests for kernel_actions.install_library()."""
 
@@ -54,7 +66,11 @@ class TestLibraryInstall:
         final_capacity = state.get_available_capacity("agent_1", "disk")
         assert final_capacity == initial_capacity
 
-    def test_install_deducts_quota(self, world_with_quota: World) -> None:
+    def test_install_deducts_quota(
+        self,
+        world_with_quota: World,
+        mock_pip_install_success: None,
+    ) -> None:
         """Non-genesis library installation deducts from disk quota."""
         actions = KernelActions(world_with_quota)
         state = KernelState(world_with_quota)
@@ -124,7 +140,11 @@ class TestLibraryInstall:
         final_capacity = state.get_available_capacity("agent_1", "disk")
         assert final_capacity == initial_capacity
 
-    def test_library_installation_is_recorded(self, world_with_quota: World) -> None:
+    def test_library_installation_is_recorded(
+        self,
+        world_with_quota: World,
+        mock_pip_install_success: None,
+    ) -> None:
         """Installed libraries are tracked in world state."""
         actions = KernelActions(world_with_quota)
 
