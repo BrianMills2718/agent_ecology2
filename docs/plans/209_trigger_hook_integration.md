@@ -23,6 +23,11 @@ hooks:
 
 If this bridging pattern becomes common, we should add sugar to simplify it.
 
+## Plan
+
+Deferred. Wait for repeated trigger-inbox patterns in real agent behavior, then
+promote the integration sketch below into a concrete implementation plan.
+
 ## Proposed Solution (When Needed)
 
 Add direct trigger reference in hooks:

@@ -11,6 +11,11 @@
 
 This plan captures insights, questions, and considerations from a deep architectural discussion. The core insight is that **agents are not special entities but patterns of artifact activity with LLM calls in a cybernetic loop**. This reframes the entire system but requires significant changes. We're deferring this to first validate that simpler v3 fixes (action history, prompt fixes) solve the immediate problems.
 
+## Plan
+
+Deferred. Use this document as the design backlog for a future architecture
+rewrite once the v3 fixes have been validated and reprioritized.
+
 ---
 
 ## Core Insight: Agents as Patterns

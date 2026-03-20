@@ -26,6 +26,12 @@ when multiple CC instances are actively working in parallel and code quality
 benefits from cross-review. Deferred until multi-CC workflows are common enough
 to justify the coordination overhead.
 
+## Plan
+
+Deferred. If multi-CC review becomes common enough to justify enforcement,
+convert the questions and infrastructure notes below into a concrete orchestration
+plan with explicit merge-gate tests.
+
 ---
 
 ## Existing Infrastructure (Plan #85)

@@ -11,6 +11,12 @@ After Plan #181's extraction work, `executor.py` is still at 1331 lines (target 
 The remaining size is due to duplicated logic across three execute methods that cannot
 be extracted without refactoring.
 
+## Plan
+
+Deferred. If the executor size becomes an active maintenance problem, use the
+helper extraction outline below as the starting point for an incremental,
+heavily tested refactor.
+
 ## Current State (Post Plan #181)
 
 | File | Lines | Target |
