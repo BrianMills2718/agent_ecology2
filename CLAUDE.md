@@ -173,3 +173,20 @@ agent_ecology/
 See `docs/CLAUDE.md` for the full documentation index. Doc-code coupling is enforced by `make check`.
 
 Script reference: see `scripts/CLAUDE.md`.
+
+## Commands
+
+```bash
+make help          # List all targets
+make test          # Run test suite
+make check         # Run tests + lint + doc validation
+make serve         # Start simulation dashboard
+make status        # git status --short --branch
+```
+
+## References
+
+- `docs/plans/CLAUDE.md` — Plan index
+- `docs/CLAUDE.md` — Full documentation index
+- `scripts/CLAUDE.md` — Script reference
+- `docs/adr/` — Architecture Decision Records
