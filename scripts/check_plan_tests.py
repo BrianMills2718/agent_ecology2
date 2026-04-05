@@ -226,7 +226,7 @@ def find_test_class(content: str, func_name: str) -> str | None:
     """
     lines = content.split("\n")
     current_class: str | None = None
-    func_pattern = re.compile(rf"^\s*def\s+{re.escape(func_name)}\s*\(")
+    func_pattern = re.compile(rf"^\s*(?:async\s+)?def\s+{re.escape(func_name)}\s*\(")
     class_pattern = re.compile(r"^class\s+(\w+)\s*[:\(]")
 
     for line in lines:
@@ -263,13 +263,13 @@ def get_pytest_path(req: TestRequirement, project_root: Path) -> str | None:
     if "::" in req.function:
         class_name, func_name = req.function.split("::", 1)
         class_pattern = rf"class\s+{re.escape(class_name)}\s*[:\(]"
-        func_pattern = rf"def\s+{re.escape(func_name)}\s*\("
+        func_pattern = rf"(?:async\s+)?def\s+{re.escape(func_name)}\s*\("
         if re.search(class_pattern, content) and re.search(func_pattern, content):
             return f"{req.file}::{req.function}"
         return None
 
     # Function without class - check if it exists
-    func_pattern = rf"def\s+{re.escape(req.function)}\s*\("
+    func_pattern = rf"(?:async\s+)?def\s+{re.escape(req.function)}\s*\("
     if not re.search(func_pattern, content):
         return None
 
