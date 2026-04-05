@@ -3,6 +3,18 @@
 #
 # Controls enforcement strictness for meta-process checks.
 
+# Compatibility block for newer meta-process hooks/scripts.
+meta_process:
+  commits:
+    require_prefix: true
+    valid_prefixes:
+      - "^\\[Plan #\\d+\\]"
+      - "^\\[Trivial\\]"
+      - "^\\[Unplanned\\]"
+  quality:
+    dead_code:
+      enabled: false
+
 # Enforcement
 enforcement:
   # Auto-add new plan files to docs/plans/CLAUDE.md index

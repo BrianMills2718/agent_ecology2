@@ -173,3 +173,25 @@ agent_ecology/
 See `docs/CLAUDE.md` for the full documentation index. Doc-code coupling is enforced by `make check`.
 
 Script reference: see `scripts/CLAUDE.md`.
+
+## Commands
+
+```bash
+make check              # Run tests + type check + lint
+make test               # Run tests
+make status             # Git status
+make cost               # Show LLM spend (DAYS=7)
+make errors             # Show recent error breakdown
+
+# Worktree workflow (branch protection requires PRs)
+make worktree BRANCH=name TASK="..." PLAN=N
+make session-start BRANCH=name
+```
+
+## References
+
+- `CLAUDE.md` — This file (canonical operating guidance)
+- `AGENTS.md` — Generated mirror for non-Claude agents
+- `docs/CLAUDE.md` — Full documentation index
+- `scripts/CLAUDE.md` — Script reference
+- `scripts/relationships.yaml` — Doc-code coupling graph

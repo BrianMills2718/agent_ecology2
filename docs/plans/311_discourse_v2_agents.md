@@ -39,6 +39,17 @@ All share the same hybrid loop_code.py, parameterized via caller_id.
 - Disable v1: `discourse_analyst{,_2,_3}/agent.yaml` set `enabled: false`
 - Enable alpha_prime and mint_tasks in `config/config.yaml`
 
+## Acceptance Criteria
+
+- [ ] All three v2 discourse agents (discourse_v2, discourse_v2_2, discourse_v2_3) have agent.yaml, strategy.md, initial_state.json, loop_code.py, and CLAUDE.md in `config/genesis/agents/`
+- [ ] V1 discourse agents (discourse_analyst, discourse_analyst_2, discourse_analyst_3) disabled via `enabled: false` in their agent.yaml
+- [ ] Alpha_prime and mint_tasks enabled in `config/config.yaml`
+- [ ] V2 agents make LLM calls and create artifacts within a simulation run (vs v1 stuck in investigating)
+- [ ] Task queues progress: tasks are completed and new tasks are generated during the run
+- [ ] Knowledge bases accumulate entries across iterations
+- [ ] Auto-progression fires when an agent is stuck in a phase for 3+ iterations
+- [ ] Failed-attempt tracking prevents repeating actions that previously failed
+
 ## Verification
 
 Run simulation with v2 agents + alpha_prime, observe:

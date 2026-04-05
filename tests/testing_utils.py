@@ -27,6 +27,9 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol, TypeVar
 
+import httpx
+from fastapi import FastAPI
+
 T = TypeVar("T")
 
 
@@ -283,3 +286,28 @@ async def wait_for_predicate(
                 f"Condition '{description}' not met within {timeout}s (got {value!r})"
             )
         await asyncio.sleep(interval)
+
+
+class SyncASGIClient:
+    """Sync wrapper for ASGI app requests using httpx.AsyncClient.
+
+    This avoids FastAPI TestClient lifecycle hangs seen in some dependency
+    combinations while keeping synchronous test call sites.
+    """
+
+    def __init__(self, app: FastAPI, base_url: str = "http://testserver") -> None:
+        self._app = app
+        self._base_url = base_url
+
+    def get(self, path: str, **kwargs: Any) -> httpx.Response:
+        """Execute a GET request against the ASGI app."""
+
+        async def _request() -> httpx.Response:
+            transport = httpx.ASGITransport(app=self._app)
+            async with httpx.AsyncClient(
+                transport=transport,
+                base_url=self._base_url,
+            ) as client:
+                return await client.get(path, **kwargs)
+
+        return asyncio.run(_request())

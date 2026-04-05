@@ -13,6 +13,11 @@ This plan describes an alternative approach to handling Gemini's structured outp
 
 If always using `FlatActionResponse` causes problems (e.g., validation issues, schema bloat affecting LLM quality, or need for true type discrimination), we would need a provider-level solution.
 
+## Plan
+
+Deferred. If Plan #137 proves insufficient, revisit this document and turn the
+implementation sketch below into concrete ordered steps with tests.
+
 ## Alternative Approach: Schema Transform in Provider
 
 Instead of maintaining separate Pydantic models (ActionResponse vs FlatActionResponse), the `llm_provider_standalone` could automatically transform union schemas for Gemini.

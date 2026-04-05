@@ -26,6 +26,12 @@ Contracts cannot look up metadata about the caller (creator, contract, custom fi
 
 **Why Low:** Current primitives are sufficient for building coordination structures. This is an ergonomic optimization that reduces friction for certain trust patterns. No agent has yet needed this capability. Defer until a real use case emerges.
 
+## Plan
+
+Deferred. Revisit when a concrete trust-coordination use case appears, then
+choose between the minimal context extension and the broader read-only lookup
+surface described below.
+
 ---
 
 ## Context

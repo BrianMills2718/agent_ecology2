@@ -1,12 +1,12 @@
 """Integration tests for dashboard health endpoint."""
 
 import pytest
-from fastapi.testclient import TestClient
 from pathlib import Path
 import tempfile
 import json
 
 from src.dashboard.server import create_app
+from tests.testing_utils import SyncASGIClient
 
 
 @pytest.fixture
@@ -28,16 +28,16 @@ def temp_jsonl() -> Path:
 
 
 @pytest.fixture
-def client(temp_jsonl: Path) -> TestClient:
+def client(temp_jsonl: Path) -> SyncASGIClient:
     """Create a test client with temporary JSONL."""
     app = create_app(jsonl_path=temp_jsonl)
-    return TestClient(app)
+    return SyncASGIClient(app)
 
 
 class TestHealthEndpoint:
     """Tests for /api/health endpoint."""
 
-    def test_health_endpoint(self, client: TestClient) -> None:
+    def test_health_endpoint(self, client: SyncASGIClient) -> None:
         """API should return valid health report."""
         response = client.get("/api/health")
         assert response.status_code == 200
@@ -56,7 +56,7 @@ class TestHealthEndpoint:
         assert isinstance(data["concerns"], list)
         assert "kpis" in data
 
-    def test_health_endpoint_concerns_structure(self, client: TestClient) -> None:
+    def test_health_endpoint_concerns_structure(self, client: SyncASGIClient) -> None:
         """Concerns should have proper structure."""
         response = client.get("/api/health")
         assert response.status_code == 200
@@ -72,7 +72,7 @@ class TestHealthEndpoint:
             assert concern["severity"] in ["warning", "critical"]
             assert "message" in concern
 
-    def test_health_endpoint_kpis_subset(self, client: TestClient) -> None:
+    def test_health_endpoint_kpis_subset(self, client: SyncASGIClient) -> None:
         """Health endpoint should include key KPIs."""
         response = client.get("/api/health")
         assert response.status_code == 200
@@ -92,7 +92,7 @@ class TestHealthEndpoint:
 class TestHealthWithSimulation:
     """Tests for health assessment with simulation data."""
 
-    def test_health_with_simulation(self, client: TestClient) -> None:
+    def test_health_with_simulation(self, client: SyncASGIClient) -> None:
         """Health reports should reflect simulation state."""
         # First call - should return unknown trend (no previous data)
         response1 = client.get("/api/health")
@@ -107,7 +107,7 @@ class TestHealthWithSimulation:
         # Trend should now be known (stable since same data)
         assert data2["trend"] in ["improving", "stable", "declining"]
 
-    def test_health_status_consistency(self, client: TestClient) -> None:
+    def test_health_status_consistency(self, client: SyncASGIClient) -> None:
         """Health status should be consistent with concerns."""
         response = client.get("/api/health")
         assert response.status_code == 200
