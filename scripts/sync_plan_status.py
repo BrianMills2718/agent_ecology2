@@ -23,16 +23,11 @@ This script ensures they stay in sync and validates that status matches content.
 
 import argparse
 import re
-import subprocess
 import sys
-import time
 from pathlib import Path
-
-import yaml
 
 
 PLANS_DIR = Path("docs/plans")
-META_CONFIG_FILE = Path("meta-process.yaml")
 INDEX_FILE = PLANS_DIR / "CLAUDE.md"
 
 # Status emoji mapping
@@ -45,33 +40,6 @@ STATUS_MAP = {
 }
 
 REVERSE_STATUS_MAP = {v: k for k, v in STATUS_MAP.items()}
-
-
-def load_meta_config() -> dict:
-    """Load meta-process configuration.
-
-    Returns default values if config file doesn't exist.
-    """
-    defaults = {
-        "enforcement": {
-            "plan_index_auto_add": True,
-            "strict_doc_coupling": True,
-            "show_strictness_warning": True,
-        }
-    }
-
-    if not META_CONFIG_FILE.exists():
-        return defaults
-
-    try:
-        with open(META_CONFIG_FILE) as f:
-            config = yaml.safe_load(f) or {}
-        # Merge with defaults
-        enforcement = defaults["enforcement"].copy()
-        enforcement.update(config.get("enforcement", {}))
-        return {"enforcement": enforcement}
-    except Exception:
-        return defaults
 
 
 def parse_plan_status(plan_path: Path) -> dict | None:
@@ -205,9 +173,7 @@ def check_content_consistency() -> list[dict]:
             })
 
         # Check: "Planned" but missing plan content
-        # Skip deferred plans - they're allowed to lack ## Plan sections
-        is_deferred = "deferred" in plan["status_raw"].lower()
-        if status == "📋" and not has_plan and not is_deferred:
+        if status == "📋" and not has_plan:
             issues.append({
                 "plan": plan["number"],
                 "issue": "missing_content",
@@ -217,52 +183,6 @@ def check_content_consistency() -> list[dict]:
             })
 
     return issues
-
-
-def check_staleness(warn_days: int) -> list[dict]:
-    """Check for plans that are stale (not updated in warn_days days).
-
-    Only checks plans with status "In Progress" or "Planned".
-    Uses git log to determine when the plan file was last modified.
-
-    Returns list of stale plan dicts with keys:
-        plan, title, status, days_stale, path
-    """
-    stale = []
-    now = time.time()
-    plan_files = sorted(PLANS_DIR.glob("[0-9]*_*.md"))
-
-    for pf in plan_files:
-        plan = parse_plan_status(pf)
-        if not plan:
-            continue
-
-        # Only check active plans
-        status_name = STATUS_MAP.get(plan["status_emoji"], "")
-        if status_name not in ("In Progress", "Planned"):
-            continue
-
-        # Get last modified time from git
-        try:
-            result = subprocess.run(
-                ["git", "log", "-1", "--format=%ct", "--", str(pf)],
-                capture_output=True, text=True, check=True,
-            )
-            last_modified = int(result.stdout.strip())
-        except (subprocess.CalledProcessError, ValueError):
-            continue
-
-        days_old = int((now - last_modified) / 86400)
-        if days_old > warn_days:
-            stale.append({
-                "plan": plan["number"],
-                "title": plan["title"],
-                "status": status_name,
-                "days_stale": days_old,
-                "path": str(pf),
-            })
-
-    return stale
 
 
 def fix_content_status() -> int:
@@ -346,94 +266,13 @@ def check_consistency() -> list[dict]:
     return issues
 
 
-def add_missing_plans_to_index(content: str, plan_statuses: dict[int, dict]) -> tuple[str, int]:
-    """Add plans that exist as files but are missing from index.
-
-    Returns tuple of (new_content, count_added).
-    """
-    # Parse existing index to find what's already there
-    index_statuses = parse_index_table(INDEX_FILE)
-    existing_nums = set(index_statuses.keys())
-
-    # Find missing plans
-    missing_nums = set(plan_statuses.keys()) - existing_nums
-    if not missing_nums:
-        return content, 0
-
-    # Find the table in the content
-    table_match = re.search(
-        r"(## Gap Summary\s+\|[^\n]+\n\|[-\s|]+\n)((?:\|[^\n]+\n)*)",
-        content
-    )
-
-    if not table_match:
-        print("Warning: Could not find Gap Summary table in index")
-        return content, 0
-
-    table_header = table_match.group(1)
-    table_rows = table_match.group(2)
-
-    # Parse existing rows to maintain order
-    rows_by_num: dict[int, str] = {}
-    for line in table_rows.strip().split("\n"):
-        if not line.strip():
-            continue
-        cells = [c.strip() for c in line.split("|")[1:-1]]
-        if len(cells) >= 1:
-            try:
-                num = int(cells[0])
-                rows_by_num[num] = line
-            except ValueError:
-                pass
-
-    # Generate rows for missing plans
-    added = 0
-    for num in missing_nums:
-        plan = plan_statuses[num]
-
-        # Extract title for link - clean up "Plan N:" prefix if present
-        title = plan["title"]
-        title = re.sub(r"^Plan\s*#?\d+[:\s]*", "", title).strip()
-
-        # Build the row
-        # Format: | # | [Title](file.md) | Priority | Status | Blocks |
-        link = f"[{title}]({plan['file']})"
-        status_emoji = plan["status_emoji"]
-        status_text = STATUS_MAP.get(status_emoji, "")
-
-        # Default priority based on status
-        if status_emoji == "✅":
-            priority = "**High**"  # Complete plans were likely high priority
-        else:
-            priority = "Medium"  # Default for new plans
-
-        row = f"| {num} | {link} | {priority} | {status_emoji} {status_text} | - |"
-        rows_by_num[num] = row
-        added += 1
-        print(f"  Added Plan #{num}: {title}")
-
-    # Rebuild table with all rows in sorted order
-    sorted_rows = [rows_by_num[n] for n in sorted(rows_by_num.keys())]
-    new_table_body = "\n".join(sorted_rows) + "\n"
-
-    # Replace in content
-    new_content = content[:table_match.start()] + table_header + new_table_body + content[table_match.end():]
-
-    return new_content, added
-
-
 def sync_index_to_plans() -> int:
-    """Update index table to match plan file statuses.
-
-    If plan_index_auto_add is enabled in meta-process.yaml, also adds
-    plans that exist as files but are missing from the index.
-    """
+    """Update index table to match plan file statuses."""
     if not INDEX_FILE.exists():
         print(f"Error: {INDEX_FILE} not found")
         return 1
 
-    original_content = INDEX_FILE.read_text()
-    content = original_content
+    content = INDEX_FILE.read_text()
 
     # Get plan file statuses
     plan_files = sorted(PLANS_DIR.glob("[0-9]*_*.md"))
@@ -442,13 +281,6 @@ def sync_index_to_plans() -> int:
         status = parse_plan_status(pf)
         if status:
             plan_statuses[status["number"]] = status
-
-    # Check if we should auto-add missing plans
-    config = load_meta_config()
-    if config["enforcement"].get("plan_index_auto_add", True):
-        content, added = add_missing_plans_to_index(content, plan_statuses)
-        if added:
-            print(f"Added {added} missing plan(s) to index.\n")
 
     # Find and update each row in the table
     def replace_status(match: re.Match) -> str:
@@ -498,7 +330,7 @@ def sync_index_to_plans() -> int:
         flags=re.MULTILINE
     )
 
-    if new_content != original_content:
+    if new_content != content:
         INDEX_FILE.write_text(new_content)
         print("Updated index table to match plan files.")
         return 0
@@ -559,16 +391,11 @@ def main() -> int:
         action="store_true",
         help="List all plan statuses",
     )
-    parser.add_argument(
-        "--warn-stale",
-        type=int, metavar="DAYS",
-        help="Warn about In Progress/Planned plans not updated in DAYS days (advisory)",
-    )
 
     args = parser.parse_args()
 
     # Default to check if no action specified
-    if not any([args.check, args.sync, args.fix_content, args.list, args.warn_stale]):
+    if not any([args.check, args.sync, args.fix_content, args.list]):
         args.check = True
 
     if args.list:
@@ -587,19 +414,6 @@ def main() -> int:
         content_issues = check_content_consistency()
 
         all_issues = index_issues + content_issues
-
-        # Stale plan advisory (non-blocking, always shown when requested)
-        if args.warn_stale:
-            stale_plans = check_staleness(args.warn_stale)
-            if stale_plans:
-                print("STALE PLANS (advisory):")
-                print("-" * 60)
-                for sp in stale_plans:
-                    print(f"  Plan #{sp['plan']}: {sp['title'][:40]}")
-                    print(f"    Status: {sp['status']}, last updated {sp['days_stale']} days ago")
-                print()
-                print(f"  {len(stale_plans)} plan(s) not updated in >{args.warn_stale} days")
-                print()
 
         if not all_issues:
             print("✅ All plan statuses are consistent.")
@@ -634,21 +448,6 @@ def main() -> int:
             exit_code = 1
 
         return exit_code
-
-    # Standalone --warn-stale (without --check)
-    if args.warn_stale:
-        stale_plans = check_staleness(args.warn_stale)
-        if stale_plans:
-            print("STALE PLANS:")
-            print("-" * 60)
-            for sp in stale_plans:
-                print(f"  Plan #{sp['plan']}: {sp['title'][:40]}")
-                print(f"    Status: {sp['status']}, last updated {sp['days_stale']} days ago")
-            print()
-            print(f"  {len(stale_plans)} plan(s) not updated in >{args.warn_stale} days")
-        else:
-            print(f"No plans stale >{args.warn_stale} days.")
-        return 0
 
     return 0
 

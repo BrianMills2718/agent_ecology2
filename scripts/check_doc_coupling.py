@@ -4,9 +4,7 @@
 Usage:
     python scripts/check_doc_coupling.py [--base BASE_REF] [--suggest]
     python scripts/check_doc_coupling.py --staged  # For pre-commit hook
-    python scripts/check_doc_coupling.py --bidirectional  # Check both directions
-    python scripts/check_doc_coupling.py --suggest-all FILE  # Show all relationships
-    python scripts/check_doc_coupling.py --check-orphans  # Find uncoupled docs
+    python scripts/check_doc_coupling.py --staged --strict --ack-file .doc-coupling-acks
 
 Compares current branch against BASE_REF (default: origin/main) to find
 changed files, then checks if coupled docs were also updated.
@@ -14,10 +12,9 @@ changed files, then checks if coupled docs were also updated.
 The --staged option checks only staged files, suitable for pre-commit hooks.
 If source files are staged AND their coupled docs are also staged, it passes.
 
-Bidirectional mode (Plan #216):
-- Code changes → surface related docs + ADRs
-- Doc changes → surface related code + ADRs
-- ADR changes → surface governed code + related docs
+The --ack-file option loads acknowledged gaps from a YAML file. Each entry
+requires a ``path`` and a non-empty ``reason``. Acknowledged gaps are
+downgraded from strict violations to warnings (printed, non-blocking).
 
 Exit codes:
     0 - All couplings satisfied (or no coupled changes)
@@ -26,43 +23,53 @@ Exit codes:
 
 import argparse
 import fnmatch
-import re
+import glob
+import yaml  # type: ignore[import-untyped]
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
-
-import yaml
-
-META_CONFIG_FILE = Path("meta-process.yaml")
-RELATIONSHIPS_FILE = Path("scripts/relationships.yaml")
 
 
-def load_meta_config() -> dict:
-    """Load meta-process configuration.
+def load_yaml(path: Path):
+    """Load YAML from path and return dict-like object."""
+    with open(path) as f:
+        return yaml.safe_load(f) or {}
 
-    Returns default values if config file doesn't exist.
-    """
-    defaults = {
-        "enforcement": {
-            "plan_index_auto_add": True,
-            "strict_doc_coupling": True,
-            "show_strictness_warning": True,
-        }
-    }
 
-    if not META_CONFIG_FILE.exists():
-        return defaults
+def resolve_couplings(config_path: Path) -> list[dict]:
+    """Load coupling definitions from legacy or unified config."""
+    data = load_yaml(config_path)
 
-    try:
-        with open(META_CONFIG_FILE) as f:
-            config = yaml.safe_load(f) or {}
-        # Merge with defaults
-        enforcement = defaults["enforcement"].copy()
-        enforcement.update(config.get("enforcement", {}))
-        return {"enforcement": enforcement}
-    except Exception:
-        return defaults
+    if isinstance(data, list):
+        return data
+
+    if not isinstance(data, dict):
+        return []
+
+    # New unified format: scripts/relationships.yaml
+    couplings = data.get("couplings")
+    if isinstance(couplings, list):
+        return couplings
+
+    # Legacy format: doc_coupling.yaml
+    legacy_couplings = data.get("couplings")
+    return legacy_couplings if isinstance(legacy_couplings, list) else []
+
+
+def resolve_config_path(config_arg: str) -> Path:
+    """Resolve default config path with legacy fallback."""
+    requested = Path(config_arg)
+
+    if requested.exists():
+        return requested
+
+    # Prefer unified file, but fallback to legacy when missing.
+    if requested.name == "relationships.yaml":
+        legacy = Path("scripts/doc_coupling.yaml")
+        if legacy.exists():
+            return legacy
+
+    return requested
 
 
 def get_changed_files(base_ref: str) -> set[str]:
@@ -104,259 +111,8 @@ def get_staged_files() -> set[str]:
 
 
 def load_couplings(config_path: Path) -> list[dict]:
-    """Load coupling definitions from YAML.
-
-    Supports both formats:
-    - relationships.yaml (unified): has 'couplings' section with full paths
-    - doc_coupling.yaml (legacy): has 'couplings' section with full paths
-
-    If config_path is doc_coupling.yaml but relationships.yaml exists and has
-    couplings, prefer relationships.yaml (unified source of truth).
-    """
-    # Check if we should use relationships.yaml instead
-    relationships_path = config_path.parent / "relationships.yaml"
-    if config_path.name == "doc_coupling.yaml" and relationships_path.exists():
-        with open(relationships_path) as f:
-            unified_data = yaml.safe_load(f)
-        if unified_data and "couplings" in unified_data:
-            # Use unified relationships.yaml
-            return unified_data.get("couplings", [])
-
-    # Fall back to specified config file
-    with open(config_path) as f:
-        data = yaml.safe_load(f)
-    return data.get("couplings", [])
-
-
-def load_relationships(config_path: Path | None = None) -> dict[str, Any]:
-    """Load full relationships from YAML.
-
-    Args:
-        config_path: Path to relationships.yaml, or None to use default.
-
-    Returns:
-        Dict with 'adrs', 'governance', and 'couplings' sections.
-    """
-    path = config_path or RELATIONSHIPS_FILE
-    if not path.exists():
-        return {"adrs": {}, "governance": [], "couplings": []}
-
-    with open(path) as f:
-        data = yaml.safe_load(f) or {}
-
-    return {
-        "adrs": data.get("adrs", {}),
-        "governance": data.get("governance", []),
-        "couplings": data.get("couplings", []),
-        "orphan_detection": data.get("orphan_detection", {}),
-    }
-
-
-def extract_adr_number(filepath: Path) -> int | None:
-    """Extract ADR number from an ADR file path.
-
-    Args:
-        filepath: Path like 'docs/adr/0003-contracts-can-do-anything.md'
-
-    Returns:
-        ADR number (e.g., 3) or None if not an ADR path.
-    """
-    if "docs/adr/" not in str(filepath):
-        return None
-
-    # Match pattern like 0001-xxx.md or 0003-xxx.md
-    match = re.search(r"(\d{4})-[^/]+\.md$", str(filepath))
-    if match:
-        return int(match.group(1))
-    return None
-
-
-def get_related_nodes(
-    changed_file: Path,
-    relationships: dict[str, Any],
-) -> list[str]:
-    """Find all nodes related to changed_file in any direction.
-
-    This implements bidirectional coupling: given any file, find all
-    related files whether the relationship is source→doc, doc→source,
-    source→ADR, or ADR→source.
-
-    Args:
-        changed_file: Path to the changed file.
-        relationships: Dict from load_relationships().
-
-    Returns:
-        List of related file paths.
-    """
-    related: list[str] = []
-    filepath = str(changed_file)
-
-    # Check couplings (source ↔ doc, bidirectional)
-    for coupling in relationships.get("couplings", []):
-        sources = coupling.get("sources", [])
-        docs = coupling.get("docs", [])
-
-        # If changed file matches a source pattern, add related docs
-        if matches_any_pattern(filepath, sources):
-            related.extend(docs)
-
-        # If changed file is a doc, add related sources
-        if filepath in docs:
-            related.extend(sources)
-
-    # Check governance (source ↔ ADR, bidirectional)
-    for entry in relationships.get("governance", []):
-        source = entry.get("source", "")
-        adrs = entry.get("adrs", [])
-
-        # If changed file is a governed source, add related ADRs
-        if filepath == source:
-            adr_defs = relationships.get("adrs", {})
-            for adr_num in adrs:
-                adr_info = adr_defs.get(adr_num, {})
-                adr_file = adr_info.get("file", f"{adr_num:04d}-unknown.md")
-                related.append(f"docs/adr/{adr_file}")
-
-        # If changed file is an ADR, add governed sources
-        adr_num = extract_adr_number(changed_file)
-        if adr_num is not None and adr_num in adrs:
-            related.append(source)
-
-    # Remove duplicates while preserving order
-    seen: set[str] = set()
-    unique_related: list[str] = []
-    for item in related:
-        if item not in seen:
-            seen.add(item)
-            unique_related.append(item)
-
-    return unique_related
-
-
-def get_related_nodes_with_context(
-    changed_file: Path,
-    relationships: dict[str, Any],
-) -> dict[str, Any]:
-    """Find all related nodes with governance context.
-
-    Like get_related_nodes() but also returns governance context if available.
-
-    Args:
-        changed_file: Path to the changed file.
-        relationships: Dict from load_relationships().
-
-    Returns:
-        Dict with 'related' (list of paths) and 'context' (string or None).
-    """
-    related = get_related_nodes(changed_file, relationships)
-    context = None
-
-    # Find governance context for this file
-    filepath = str(changed_file)
-    for entry in relationships.get("governance", []):
-        if entry.get("source") == filepath:
-            context = entry.get("context", "")
-            break
-
-    return {"related": related, "context": context}
-
-
-def check_bidirectional(
-    changed_files: set[str],
-    relationships: dict[str, Any],
-) -> list[dict[str, Any]]:
-    """Check couplings bidirectionally.
-
-    For each changed file, check if its related files were also changed.
-    Returns warnings for files that might need attention.
-
-    Args:
-        changed_files: Set of changed file paths.
-        relationships: Dict from load_relationships().
-
-    Returns:
-        List of warning dicts with 'changed', 'related', 'description'.
-    """
-    warnings: list[dict[str, Any]] = []
-
-    for changed in changed_files:
-        related = get_related_nodes(Path(changed), relationships)
-
-        # Find which related files were NOT changed
-        missing = [r for r in related if r not in changed_files]
-
-        if missing:
-            warnings.append({
-                "changed": changed,
-                "related": missing,
-                "description": f"Consider checking: {', '.join(missing[:3])}",
-            })
-
-    return warnings
-
-
-def get_suggest_all_output(
-    filepath: Path,
-    relationships: dict[str, Any],
-) -> str:
-    """Generate --suggest-all output for a file.
-
-    Shows all relationships for the given file: ADRs, docs, and context.
-
-    Args:
-        filepath: Path to query.
-        relationships: Dict from load_relationships().
-
-    Returns:
-        Formatted string for display.
-    """
-    lines = [f"Related to {filepath}:"]
-
-    filepath_str = str(filepath)
-
-    # Find ADRs that govern this file
-    adrs_found: list[str] = []
-    context = None
-    for entry in relationships.get("governance", []):
-        if entry.get("source") == filepath_str:
-            adr_defs = relationships.get("adrs", {})
-            for adr_num in entry.get("adrs", []):
-                adr_info = adr_defs.get(adr_num, {})
-                adr_file = adr_info.get("file", f"{adr_num:04d}-unknown.md")
-                adr_title = adr_info.get("title", "Unknown")
-                adrs_found.append(f"docs/adr/{adr_file} ({adr_title})")
-            context = entry.get("context")
-
-    # Find coupled docs
-    docs_found: list[str] = []
-    for coupling in relationships.get("couplings", []):
-        sources = coupling.get("sources", [])
-        docs = coupling.get("docs", [])
-        if matches_any_pattern(filepath_str, sources):
-            for doc in docs:
-                desc = coupling.get("description", "")
-                docs_found.append(f"{doc} ({desc})")
-
-    # Format output
-    if adrs_found:
-        lines.append("  ADRs:")
-        for adr in adrs_found:
-            lines.append(f"    - {adr}")
-
-    if docs_found:
-        lines.append("  Docs:")
-        for doc in docs_found:
-            lines.append(f"    - {doc}")
-
-    if context:
-        lines.append("  Context:")
-        for line in context.strip().split("\n"):
-            lines.append(f"    {line}")
-
-    if not adrs_found and not docs_found:
-        lines.append("  (No relationships found)")
-
-    return "\n".join(lines)
+    """Load coupling definitions from YAML."""
+    return resolve_couplings(config_path)
 
 
 def validate_config(couplings: list[dict]) -> list[str]:
@@ -367,6 +123,10 @@ def validate_config(couplings: list[dict]) -> list[str]:
     warnings = []
     for coupling in couplings:
         for doc in coupling.get("docs", []):
+            if any(ch in doc for ch in "*?[]"):
+                if not glob.glob(doc, recursive=True):
+                    warnings.append(f"Coupled doc glob doesn't match any files: {doc}")
+                continue
             if not Path(doc).exists():
                 warnings.append(f"Coupled doc doesn't exist: {doc}")
         # Don't validate source patterns - they're globs
@@ -378,25 +138,97 @@ def matches_any_pattern(filepath: str, patterns: list[str]) -> bool:
     for pattern in patterns:
         if fnmatch.fnmatch(filepath, pattern):
             return True
-        # Also check without leading path for simple patterns
-        if fnmatch.fnmatch(Path(filepath).name, pattern):
+        # Basename fallback only for patterns with glob wildcards (e.g. "*.md").
+        # Plain filenames like "CLAUDE.md" must match the full path to avoid
+        # false positives where docs/plans/CLAUDE.md matches root CLAUDE.md.
+        if any(c in pattern for c in "*?[") and fnmatch.fnmatch(Path(filepath).name, pattern):
             return True
     return False
 
 
+def load_ack_file(ack_path: Path) -> dict[str, str]:
+    """Load acknowledged doc-coupling gaps from a YAML file.
+
+    Returns a mapping of normalized path -> reason. Entries with empty
+    or missing reasons are silently skipped (they will not suppress gaps).
+    """
+    if not ack_path.exists():
+        return {}
+    try:
+        data = yaml.safe_load(ack_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    if not isinstance(data, list):
+        return {}
+    acks: dict[str, str] = {}
+    for entry in data:
+        if not isinstance(entry, dict):
+            continue
+        path = entry.get("path", "")
+        reason = str(entry.get("reason", "")).strip()
+        if path and reason:
+            acks[str(Path(path))] = reason
+    return acks
+
+
+def filter_violations_with_acks(
+    strict_violations: list[dict],
+    acks: dict[str, str],
+) -> tuple[list[dict], list[dict]]:
+    """Separate strict violations into remaining violations and acknowledged gaps.
+
+    A violation is acknowledged when ALL of its expected docs have an ack entry
+    with a non-empty reason. Partially acknowledged violations remain strict.
+    """
+    remaining = []
+    acknowledged = []
+    for v in strict_violations:
+        expected = v.get("expected_docs", [])
+        all_acked = expected and all(
+            any(
+                fnmatch.fnmatch(ack_path, doc) or fnmatch.fnmatch(doc, ack_path)
+                for ack_path in acks
+            )
+            for doc in expected
+        )
+        if all_acked:
+            acknowledged.append(v)
+        else:
+            remaining.append(v)
+    return remaining, acknowledged
+
+
+def matches_any_doc(filepath: str, docs: list[str]) -> bool:
+    """Check whether a changed file matches any configured documentation target."""
+
+    return matches_any_pattern(filepath, docs)
+
+
+def run_verify_sync(cmd: str) -> bool:
+    """Run a verify_sync command. Returns True if docs are verified in sync."""
+    try:
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+
+
 def check_couplings(
-    changed_files: set[str],
-    couplings: list[dict],
-    force_strict: bool = False,
+    changed_files: set[str], couplings: list[dict]
 ) -> tuple[list[dict], list[dict]]:
     """Check which couplings have source changes without doc changes.
 
-    Args:
-        changed_files: Set of changed file paths
-        couplings: List of coupling definitions
-        force_strict: If True, treat ALL couplings as strict (ignores soft: true)
-
     Returns tuple of (strict_violations, soft_warnings).
+
+    Couplings with a ``verify_sync`` command get an automatic check:
+    if the command exits 0, the docs are verified as current and the
+    co-modification requirement is waived.
     """
     strict_violations = []
     soft_warnings = []
@@ -405,8 +237,8 @@ def check_couplings(
         sources = coupling.get("sources", [])
         docs = coupling.get("docs", [])
         description = coupling.get("description", "")
-        # When force_strict is True, ignore soft flag
-        is_soft = coupling.get("soft", False) and not force_strict
+        is_soft = coupling.get("soft", False)
+        verify_sync = coupling.get("verify_sync")
 
         # Find which source patterns matched
         matched_sources = []
@@ -418,9 +250,15 @@ def check_couplings(
             continue  # No source files changed for this coupling
 
         # Check if any coupled doc was updated
-        docs_updated = any(doc in changed_files for doc in docs)
+        docs_updated = any(
+            matches_any_doc(changed, docs) for changed in changed_files
+        )
 
         if not docs_updated:
+            # If coupling has verify_sync, check if docs are already current
+            if verify_sync and run_verify_sync(verify_sync):
+                continue  # Docs verified in sync — no co-modification needed
+
             violation = {
                 "description": description,
                 "changed_sources": matched_sources,
@@ -449,7 +287,7 @@ def print_suggestions(changed_files: set[str], couplings: list[dict]) -> None:
         for changed in changed_files:
             if matches_any_pattern(changed, sources):
                 for doc in docs:
-                    if doc not in changed_files:
+                    if not matches_any_doc(changed, [doc]):
                         if doc not in suggestions:
                             suggestions[doc] = []
                         suggestions[doc].append(f"{changed} ({description})")
@@ -467,72 +305,8 @@ def print_suggestions(changed_files: set[str], couplings: list[dict]) -> None:
         print()
 
 
-def check_orphan_docs(relationships: dict[str, Any]) -> list[str]:
-    """Find docs not referenced in the coupling graph.
-
-    Uses the orphan_detection section of relationships.yaml to determine
-    which docs to scan and which are exempt. Any doc found that isn't
-    referenced in a coupling entry is considered an orphan.
-
-    Returns list of orphan doc paths.
-    """
-    orphan_config = relationships.get("orphan_detection", {})
-    if not orphan_config:
-        return []
-
-    scan_dirs = orphan_config.get("scan_directories", [])
-    scan_files = orphan_config.get("scan_files", [])
-    exempt_paths = orphan_config.get("exempt_paths", [])
-
-    # Collect all docs to check
-    docs_to_check: set[str] = set()
-
-    # Add explicitly listed files
-    for f in scan_files:
-        if Path(f).exists():
-            docs_to_check.add(f)
-
-    # Scan directories for .md and .yaml files
-    for scan_dir in scan_dirs:
-        dir_path = Path(scan_dir)
-        if not dir_path.exists():
-            continue
-        for ext in ("*.md", "*.yaml", "*.yml"):
-            for found in dir_path.rglob(ext):
-                docs_to_check.add(str(found))
-
-    # Remove exempt paths
-    filtered: set[str] = set()
-    for doc in docs_to_check:
-        exempt = False
-        for exempt_path in exempt_paths:
-            if doc.startswith(exempt_path) or doc == exempt_path.rstrip("/"):
-                exempt = True
-                break
-        if not exempt:
-            filtered.add(doc)
-
-    # Collect all docs referenced in couplings
-    referenced_docs: set[str] = set()
-    for coupling in relationships.get("couplings", []):
-        for doc in coupling.get("docs", []):
-            referenced_docs.add(doc)
-
-    # Also count docs referenced in governance (ADR files)
-    for entry in relationships.get("governance", []):
-        adr_defs = relationships.get("adrs", {})
-        for adr_num in entry.get("adrs", []):
-            adr_info = adr_defs.get(adr_num, {})
-            adr_file = adr_info.get("file", "")
-            if adr_file:
-                referenced_docs.add(f"docs/adr/{adr_file}")
-
-    # Find orphans
-    orphans = sorted(filtered - referenced_docs)
-    return orphans
-
-
 def main() -> int:
+    """CLI entry point. Parses args and checks that docs are updated when coupled source files change."""
     parser = argparse.ArgumentParser(description="Check doc-code coupling")
     parser.add_argument(
         "--base",
@@ -542,7 +316,7 @@ def main() -> int:
     parser.add_argument(
         "--config",
         default="scripts/relationships.yaml",
-        help="Path to relationships.yaml (unified doc graph)",
+        help="Path to coupling config (default: scripts/relationships.yaml)",
     )
     parser.add_argument(
         "--strict",
@@ -565,23 +339,13 @@ def main() -> int:
         help="Check staged files only (for pre-commit hook)",
     )
     parser.add_argument(
-        "--bidirectional",
-        action="store_true",
-        help="Check couplings in both directions (Plan #216)",
-    )
-    parser.add_argument(
-        "--suggest-all",
-        metavar="FILE",
-        help="Show all relationships for a specific file",
-    )
-    parser.add_argument(
-        "--check-orphans",
-        action="store_true",
-        help="Check for docs not referenced in the coupling graph",
+        "--ack-file",
+        default=None,
+        help="Path to YAML file with acknowledged gaps (path + reason per entry)",
     )
     args = parser.parse_args()
 
-    config_path = Path(args.config)
+    config_path = resolve_config_path(args.config)
     if not config_path.exists():
         print(f"Config not found: {config_path}")
         return 1
@@ -599,36 +363,6 @@ def main() -> int:
         print("Config validation passed.")
         return 0
 
-    # --suggest-all mode: show all relationships for a file
-    if args.suggest_all:
-        relationships = load_relationships()
-        output = get_suggest_all_output(Path(args.suggest_all), relationships)
-        print(output)
-        return 0
-
-    # --check-orphans mode: find docs not in coupling graph
-    if args.check_orphans:
-        relationships = load_relationships()
-        orphans = check_orphan_docs(relationships)
-        if orphans:
-            print("=" * 60)
-            print("ORPHAN DOCS (not in coupling graph)")
-            print("=" * 60)
-            print()
-            print("These docs are not referenced in any coupling entry in")
-            print("scripts/relationships.yaml. They may drift without warning.")
-            print()
-            for orphan in orphans:
-                print(f"  {orphan}")
-            print()
-            print("To fix: add a coupling entry in scripts/relationships.yaml")
-            print("Or add to orphan_detection.exempt_paths if intentionally uncoupled.")
-            print("=" * 60)
-            return 1 if args.strict else 0
-        else:
-            print("Orphan doc check passed: all docs are in the coupling graph.")
-            return 0
-
     # Get changed files based on mode
     if args.staged:
         changed_files = get_staged_files()
@@ -637,12 +371,6 @@ def main() -> int:
             return 0
     else:
         changed_files = get_changed_files(args.base)
-        # In strict mode (pre-commit hook), also include staged files.
-        # This allows a commit to fix coupling violations from prior commits
-        # on the branch — without this, the hook sees the source change in
-        # the branch diff but can't see the doc fix being committed now.
-        if args.strict:
-            changed_files |= get_staged_files()
         if not changed_files:
             print("No changed files detected.")
             return 0
@@ -652,63 +380,18 @@ def main() -> int:
         print_suggestions(changed_files, couplings)
         return 0
 
-    # Bidirectional mode (Plan #216)
-    if args.bidirectional:
-        relationships = load_relationships()
-        warnings = check_bidirectional(changed_files, relationships)
+    strict_violations, soft_warnings = check_couplings(changed_files, couplings)
 
-        if not warnings:
-            print("Bidirectional coupling check passed.")
-            return 0
+    # Apply acknowledgments if provided
+    acked_warnings: list[dict] = []
+    if args.ack_file:
+        acks = load_ack_file(Path(args.ack_file))
+        if acks:
+            strict_violations, acked_warnings = filter_violations_with_acks(
+                strict_violations, acks
+            )
 
-        print("=" * 60)
-        print("BIDIRECTIONAL COUPLING WARNINGS")
-        print("=" * 60)
-        print()
-        print("The following files changed. Related files may need review:")
-        print()
-
-        for w in warnings:
-            print(f"  {w['changed']}")
-            for related in w["related"][:5]:
-                print(f"    -> {related}")
-            if len(w["related"]) > 5:
-                print(f"    ... and {len(w['related']) - 5} more")
-            print()
-
-        print("=" * 60)
-        print("Use --suggest-all <file> to see full relationship graph.")
-        print("=" * 60)
-
-        # Bidirectional mode is informational, don't fail
-        return 0
-
-    # Load meta-process config for strictness setting
-    meta_config = load_meta_config()
-    strict_doc_coupling = meta_config["enforcement"].get("strict_doc_coupling", True)
-    show_warning = meta_config["enforcement"].get("show_strictness_warning", True)
-
-    # Show warning if running in non-strict mode
-    if not strict_doc_coupling and show_warning:
-        print("=" * 60)
-        print("WARNING: Doc-code coupling is running in NON-STRICT mode")
-        print("=" * 60)
-        print()
-        print("Soft couplings will produce warnings instead of failures.")
-        print("This allows documentation drift to accumulate silently.")
-        print()
-        print("To enable strict mode, set in meta-process.yaml:")
-        print("  enforcement:")
-        print("    strict_doc_coupling: true")
-        print()
-        print("=" * 60)
-        print()
-
-    strict_violations, soft_warnings = check_couplings(
-        changed_files, couplings, force_strict=strict_doc_coupling
-    )
-
-    if not strict_violations and not soft_warnings:
+    if not strict_violations and not soft_warnings and not acked_warnings:
         print("Doc-code coupling check passed.")
         return 0
 
@@ -739,9 +422,31 @@ def main() -> int:
             print(f"    Consider: {', '.join(v['expected_docs'])}")
             print()
 
-    print("=" * 60)
-    print("If docs are already accurate, update 'Last verified' date.")
-    print("=" * 60)
+    if acked_warnings:
+        acks = load_ack_file(Path(args.ack_file)) if args.ack_file else {}
+        print("=" * 60)
+        print("ACKNOWLEDGED GAPS (non-blocking)")
+        print("=" * 60)
+        print()
+        for v in acked_warnings:
+            print(f"  {v['description']}")
+            print(f"    Changed: {', '.join(v['changed_sources'][:3])}")
+            for doc in v["expected_docs"]:
+                matching_reason = next(
+                    (
+                        acks[p]
+                        for p in acks
+                        if fnmatch.fnmatch(p, doc) or fnmatch.fnmatch(doc, p)
+                    ),
+                    "acknowledged",
+                )
+                print(f"    Ack: {doc} — {matching_reason}")
+            print()
+
+    if strict_violations:
+        print("=" * 60)
+        print("If docs are already accurate, update 'Last verified' date.")
+        print("=" * 60)
 
     return 1 if (args.strict and strict_violations) else 0
 

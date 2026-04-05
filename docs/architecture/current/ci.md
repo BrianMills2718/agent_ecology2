@@ -2,7 +2,7 @@
 
 Documentation of CI/CD setup.
 
-Last verified: 2026-02-09 (meta-process audit: removed weight-aware flag, added planning patterns to check.sh)
+Last verified: 2026-04-05 (governance install: enforced_planning governed-repo contract installed)
 
 ---
 
