@@ -4,10 +4,10 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
-from fastapi.testclient import TestClient
+
+from tests.testing_utils import SyncASGIClient
 
 
 @pytest.mark.plans(107)
@@ -87,7 +87,7 @@ class TestTemporalNetworkEndpoint:
 
         try:
             app = create_app(jsonl_path=jsonl_path)
-            client = TestClient(app)
+            client = SyncASGIClient(app)
 
             response = client.get("/api/temporal-network")
             assert response.status_code == 200
@@ -167,7 +167,7 @@ class TestTemporalNetworkEndpoint:
 
         try:
             app = create_app(jsonl_path=jsonl_path)
-            client = TestClient(app)
+            client = SyncASGIClient(app)
 
             response = client.get("/api/temporal-network")
             assert response.status_code == 200
@@ -209,7 +209,7 @@ class TestTemporalNetworkEndpoint:
 
         try:
             app = create_app(jsonl_path=jsonl_path)
-            client = TestClient(app)
+            client = SyncASGIClient(app)
 
             response = client.get("/api/temporal-network")
             assert response.status_code == 200
@@ -290,7 +290,7 @@ class TestAgentMetricsEndpoint:
 
         try:
             app = create_app(jsonl_path=jsonl_path)
-            client = TestClient(app)
+            client = SyncASGIClient(app)
 
             # Test getting metrics for alice
             response = client.get("/api/agents/alice/metrics")
@@ -336,7 +336,7 @@ class TestAgentMetricsEndpoint:
 
         try:
             app = create_app(jsonl_path=jsonl_path)
-            client = TestClient(app)
+            client = SyncASGIClient(app)
 
             response = client.get("/api/agents/nonexistent/metrics")
             assert response.status_code == 200
@@ -376,7 +376,7 @@ class TestAgentMetricsEndpoint:
 
         try:
             app = create_app(jsonl_path=jsonl_path)
-            client = TestClient(app)
+            client = SyncASGIClient(app)
 
             response = client.get("/api/agents/frozen_agent/metrics")
             assert response.status_code == 200
@@ -407,7 +407,7 @@ class TestAgentConfigEndpoint:
         }) + '\n')
 
         app = create_app(jsonl_path=str(jsonl_file))
-        client = TestClient(app)
+        client = SyncASGIClient(app)
 
         response = client.get("/api/agents/nonexistent_agent_xyz/config")
         assert response.status_code == 200
@@ -431,7 +431,7 @@ class TestAgentConfigEndpoint:
         }) + '\n')
 
         app = create_app(jsonl_path=str(jsonl_file))
-        client = TestClient(app)
+        client = SyncASGIClient(app)
 
         # Test with alpha agent which should exist
         response = client.get("/api/agents/alpha/config")

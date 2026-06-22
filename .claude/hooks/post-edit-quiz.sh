@@ -50,16 +50,9 @@ if [[ ! -f "$QUIZ_SCRIPT" ]]; then
     exit 0
 fi
 
-# Get trivial threshold from config (0 = disabled)
-THRESHOLD=$(cd "$REPO_ROOT" && python scripts/meta_config.py --get quiz.trivial_threshold 2>/dev/null || echo "0")
-THRESHOLD_FLAG=""
-if [[ "$THRESHOLD" != "0" ]] && [[ "$THRESHOLD" != "None" ]] && [[ -n "$THRESHOLD" ]]; then
-    THRESHOLD_FLAG="--trivial-threshold $THRESHOLD"
-fi
-
-# Generate quiz (JSON mode only — single invocation)
+# Generate quiz (JSON mode for structured output)
 set +e
-RESULT=$(cd "$REPO_ROOT" && python "$QUIZ_SCRIPT" "$REL_PATH" --json $THRESHOLD_FLAG 2>/dev/null)
+RESULT=$(cd "$REPO_ROOT" && python "$QUIZ_SCRIPT" "$REL_PATH" --json 2>/dev/null)
 QUIZ_EXIT=$?
 set -e
 
@@ -67,53 +60,14 @@ if [[ $QUIZ_EXIT -ne 0 ]] || [[ -z "$RESULT" ]] || [[ "$RESULT" == "[]" ]]; then
     exit 0
 fi
 
-# Convert JSON to readable text (avoids a second generate_quiz.py invocation)
-QUIZ_TEXT=$(python -c "
-import json, sys
-quizzes = json.loads(sys.stdin.read())
-for q in quizzes:
-    info = q['file_info']
-    trivial = ' (trivial change — reduced quiz)' if q.get('trivial') else ''
-    print(f\"## Understanding Quiz: {q['file']}\")
-    print()
-    print(f\"*{info['lines']} lines, {info['classes']} classes, {info['functions']} top-level functions{trivial}*\")
-    print()
-    if q.get('governance'):
-        adrs = ', '.join(f\"ADR-{a['number']:04d} ({a['title']})\" for a in q['governance']['adrs'])
-        print(f'**Governing ADRs:** {adrs}')
-        print()
-    for i, qn in enumerate(q['questions'], 1):
-        cat = qn['category'].upper()
-        print(f'### Q{i} [{cat}]')
-        print()
-        print(qn['question'])
-        print()
-        if qn['type'] == 'confirm_or_justify':
-            print('- [ ] Yes, my change respects this')
-            print('- [ ] No — justification: ___________')
-        elif qn['type'] == 'confirm':
-            print('- [ ] Confirmed — no violations')
-            print('- [ ] Found issue: ___________')
-        elif qn['type'] == 'free_response':
-            print('*Response:* ___________')
-        print()
-    print('---')
-    print('*This quiz surfaces implicit decisions. \"Wrong\" answers = misalignment to discuss, not failures.*')
-    print()
-" <<< "$RESULT" 2>/dev/null)
+# Extract just the questions as readable text
+QUIZ_TEXT=$(cd "$REPO_ROOT" && python "$QUIZ_SCRIPT" "$REL_PATH" 2>/dev/null)
 
 if [[ -z "$QUIZ_TEXT" ]]; then
     exit 0
 fi
 
-# Check visibility config for quiz mode
-QUIZ_VISIBILITY=$(cd "$REPO_ROOT" && python scripts/meta_config.py --get visibility.quiz_mode 2>/dev/null || echo "both")
-if [[ "$QUIZ_VISIBILITY" == "automatic" || "$QUIZ_VISIBILITY" == "both" ]]; then
-    TAGGED=$'[SHOW_USER]\n'"$QUIZ_TEXT"$'\n[/SHOW_USER]'
-    QUIZ_ESCAPED=$(echo "$TAGGED" | jq -Rs .)
-else
-    QUIZ_ESCAPED=$(echo "$QUIZ_TEXT" | jq -Rs .)
-fi
+QUIZ_ESCAPED=$(echo "$QUIZ_TEXT" | jq -Rs .)
 
 cat << EOF
 {

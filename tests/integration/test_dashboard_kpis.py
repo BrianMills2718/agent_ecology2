@@ -6,8 +6,7 @@ import json
 import tempfile
 from pathlib import Path
 
-import pytest
-from fastapi.testclient import TestClient
+from tests.testing_utils import SyncASGIClient
 
 
 class TestKpiEndpoint:
@@ -44,7 +43,7 @@ class TestKpiEndpoint:
 
         try:
             app = create_app(jsonl_path=jsonl_path)
-            client = TestClient(app)
+            client = SyncASGIClient(app)
 
             response = client.get("/api/kpis")
             assert response.status_code == 200
@@ -104,7 +103,7 @@ class TestKpiEndpoint:
 
         try:
             app = create_app(jsonl_path=jsonl_path)
-            client = TestClient(app)
+            client = SyncASGIClient(app)
 
             response = client.get("/api/kpis")
             assert response.status_code == 200
